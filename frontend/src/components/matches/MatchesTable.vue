@@ -197,8 +197,10 @@ watch(() => props.resetCounter, () => {
   width: 100%;
 
   /* Below this the pane scrolls horizontally instead of crushing the
-     columns; nowrap cells + the map/hero/tags ellipsis do the rest. */
-  min-width: 54rem;
+     columns; nowrap cells + the map/hero/tags ellipsis do the rest.
+     Wider than the pre-split table — Mode/Queue and E/A/D each own a
+     column now. */
+  min-width: 64rem;
   border-collapse: collapse;
   font-family: var(--mono);
 }
@@ -221,6 +223,15 @@ watch(() => props.resetCounter, () => {
 }
 .leaves-thead .th[data-sort-col="result"] { text-align: right; }
 .leaves-thead .th[data-sort-col="result"] .th-inner { flex-direction: row-reverse; }
+
+/* Numeric E / A / D headers right-align to sit over their tabular-num
+   cells (MatchTableRow .tc-stat-cell). */
+.leaves-thead .th[data-sort-col="eliminations"],
+.leaves-thead .th[data-sort-col="assists"],
+.leaves-thead .th[data-sort-col="deaths"] { text-align: right; }
+.leaves-thead .th[data-sort-col="eliminations"] .th-inner,
+.leaves-thead .th[data-sort-col="assists"] .th-inner,
+.leaves-thead .th[data-sort-col="deaths"] .th-inner { flex-direction: row-reverse; }
 
 .th-sortable {
   cursor: pointer;

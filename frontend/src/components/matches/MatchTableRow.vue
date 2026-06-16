@@ -104,7 +104,9 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
     </td>
     <td class="tc tc-mode">
       <span class="tc-chip">{{ formatPlayModeLabel(rec) }}</span>
-      <span class="tc-chip tc-chip-q">{{ formatQueueTypeLabel(rec) }}</span>
+    </td>
+    <td class="tc tc-queue">
+      <span class="tc-chip">{{ formatQueueTypeLabel(rec) }}</span>
     </td>
     <td class="tc tc-hero">
       <span
@@ -117,12 +119,14 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
     <td class="tc tc-role">
       {{ formatRoles(rec, ow.heroRole) }}
     </td>
-    <td class="tc tc-stats">
-      <span class="tc-stat">{{ rec.data?.eliminations ?? '—' }}</span>
-      <span class="tc-sep" aria-hidden="true">/</span>
-      <span class="tc-stat">{{ rec.data?.assists ?? '—' }}</span>
-      <span class="tc-sep" aria-hidden="true">/</span>
-      <span class="tc-stat tc-deaths">{{ rec.data?.deaths ?? '—' }}</span>
+    <td class="tc tc-stat-cell tc-elim">
+      {{ rec.data?.eliminations ?? '—' }}
+    </td>
+    <td class="tc tc-stat-cell tc-assist">
+      {{ rec.data?.assists ?? '—' }}
+    </td>
+    <td class="tc tc-stat-cell tc-death">
+      {{ rec.data?.deaths ?? '—' }}
     </td>
     <td class="tc tc-tags">
       <span
@@ -235,16 +239,19 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   text-transform: uppercase;
   color: var(--text-faint);
 }
-.tc-chip-q { margin-left: 0.4rem; }
 
-.tc-stats {
+/* E / A / D each own a column now — display-italic numerals, deaths
+   dimmed so a glance reads kills-over-deaths. Right-aligned so the
+   digits line up column-wise like a spreadsheet. */
+.tc-stat-cell {
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
   font-size: 0.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
-.tc-sep { color: var(--text-faint); padding: 0 0.15rem; font-size: 0.7rem; }
-.tc-deaths { color: var(--text-dim); }
+.tc-death { color: var(--text-dim); }
 
 .tc-tags { white-space: normal; max-width: 12rem; }
 
