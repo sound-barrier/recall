@@ -54,6 +54,15 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      // WebKit (Safari engine) = the macOS Wails WKWebView the desktop app
+      // renders in. Scoped to the `*-webkit.spec.ts` regression specs so the
+      // main suite stays Chromium-only (sane wall-time), while engine-specific
+      // bugs the desktop app hits — but Chromium/Firefox don't — get a guard.
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /.*-webkit\.spec\.ts$/,
+    },
   ],
 
   webServer: {
