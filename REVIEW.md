@@ -174,21 +174,29 @@ direction, not a blocker; the shell shrinks one composable per commit.
 **Size:** L (partial). **Risk:** Med — App.vue owns a lot of shared state; stage
 one composable per commit.
 
-### Q14. components/matches/ — pivot/ sub-grouped; rest is continued direction
+### Q14. components/matches/ — sub-grouped into 8 feature folders (done)
 
-The 65-file flat `components/matches/` is past the ~20–25 the `CLAUDE.md`
-*Package & directory size* rule flags. The **pivot cluster** (`PivotTable` +
-`PivotShelf`/`PivotCrosstab`/`PivotFieldChip`) moved into `matches/pivot/`,
-demonstrating the feature-subfolder pattern (pure `@/`-alias move — only the entry
-import + the three intra-cluster imports changed).
+The 65-file flat `components/matches/` (past the ~20–25 the `CLAUDE.md` *Package &
+directory size* rule flags) is now carved into eight cohesive feature subfolders,
+leaving only the `MatchesView` orchestrator (+ its two tests) at the top level:
 
-The remaining clusters — `detail/` (`MatchDetailPanel` → `MatchCardExpanded` + its
-seven children), `list/`, `dossier/`, `status/`, `archive/` — are the same
-mechanical move, but `detail/`/`list/` share components with the leaf-row, so they
-want a `matches/shared/` carve-out first. Continued direction.
+| Folder | n | Concern |
+|---|---|---|
+| `detail/` | 14 | the slide-out panel, its `MatchCardExpanded` body + that body's editor children, the screenshot lightbox |
+| `list/` | 19 | members list, leaf-row + data-table + table-row, list chrome, row context menu, bulk bar, anchor toast, archive drawer, sort/group popovers |
+| `dossier/` | 12 | dossier head + sections, section wrapper + Add/Manage menu, KPI bands, hero-mode widgets |
+| `shared/` | 6 | the genuinely cross-cluster leaves — `MatchProvenanceBadge` + `HighlightedText` (list rows **and** detail panel), `MatchesSkeleton` (view fallback) |
+| `pivot/` | 4 | the crosstab `PivotTable` + shelf/chip |
+| `timeline/` | 3 | Campaign Log heatmap + sparkline + header |
+| `narrow/` | 2 | the "Narrow this set" popover + presets |
+| `manual/` | 2 | manual-match modal + map/role config |
 
-**Size:** M (pivot/ done). **Risk:** Low — location-independent `@/` imports make
-the rest mechanical.
+All pure `@/`-alias relocations (location-independent imports make every reference
+a one-line rewrite); each cluster validated per-commit by `vue-tsc` + `eslint`,
+with the full unit suite (1609) and Playwright e2e green over the whole carve. The
+three `.lazy-views.test.ts` guards confirm the moved dynamic-import paths.
+
+**Size:** M (done). **Risk:** Low.
 
 ### Q15. Go complexity — engine hot paths done; dev-support residual acceptable
 
