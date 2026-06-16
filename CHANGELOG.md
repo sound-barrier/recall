@@ -1,5 +1,71 @@
 # Changelog
 
+## [0.0.16](https://github.com/sound-barrier/recall/compare/v0.15.0...v0.0.16) (2026-06-16)
+
+
+### Features
+
+* **aggregate:** overlay user overrides + synthesize manual matches ([474f9e5](https://github.com/sound-barrier/recall/commit/474f9e5789ff4760c8be58e361cc2c18911ee3db))
+* **api:** expose manual-create + edit / reset match endpoints ([b8fbfb8](https://github.com/sound-barrier/recall/commit/b8fbfb8755a14489d81ec4941a55bd7e794189f2))
+* **api:** record a leaver on hand-entered matches ([67cba60](https://github.com/sound-barrier/recall/commit/67cba60c916e27d13c5f4c19247cf302f8ee18b2))
+* **app:** add edit / reset / manual-create match methods ([37d3257](https://github.com/sound-barrier/recall/commit/37d3257067c223e5f7e042e920b68ff003f72aab))
+* **db:** add user-data override layer for edits + manual matches ([468fd55](https://github.com/sound-barrier/recall/commit/468fd55770066012ce10dcc07a222c506b56e6b8))
+* **fixtures:** seed edited + manual matches for both personas ([a60fa47](https://github.com/sound-barrier/recall/commit/a60fa4749d010cbfea1252a9a4666eee47a44de0))
+* **matches:** add drag-and-drop pivot view to the data table ([ab0a40a](https://github.com/sound-barrier/recall/commit/ab0a40acfc2f78577a91e8e4d62aafd9d71e1b53))
+* **matches:** add flat one-row-per-match CSV export helper ([b382c12](https://github.com/sound-barrier/recall/commit/b382c12a7279bd41cf14d54d00ad39996d38c28c))
+* **matches:** add manual match-entry modal + toolbar entry point ([774c8e8](https://github.com/sound-barrier/recall/commit/774c8e8976ebb5791d8d536c53a7f016071f121d))
+* **matches:** add provenance badge (OCR / Edited / Manual) ([093d8e4](https://github.com/sound-barrier/recall/commit/093d8e42fc07076da3e4d0e4563350962bc63fe6))
+* **matches:** add pure pivot engine for the matches set ([ad804eb](https://github.com/sound-barrier/recall/commit/ad804ebff016afb7844b4c0eddc6ccdf75fbfb18))
+* **matches:** add replay code, notes, tags & group to Add-match ([e08bcdb](https://github.com/sound-barrier/recall/commit/e08bcdb6fef5085856da7292d7986a9335746555))
+* **matches:** auto-highlight the first map/hero typeahead match ([57dcdaa](https://github.com/sound-barrier/recall/commit/57dcdaa54a492cb2f4467d8ab5d24180099e38ac))
+* **matches:** collapse grouped sections in the cozy/compact list ([2402249](https://github.com/sound-barrier/recall/commit/24022495a3d9df2c7e1b22224b1524ad45d0cf8d))
+* **matches:** export selected matches to a flat CSV ([cbfaca8](https://github.com/sound-barrier/recall/commit/cbfaca8502b1bd62ebcfbb9e111434fd84d5a3d8))
+* **matches:** filter the set by provenance ([728dd73](https://github.com/sound-barrier/recall/commit/728dd738ca1850e8b2591ed5fb4a032df1339c70))
+* **matches:** group the cozy/compact list by provenance ([9e56580](https://github.com/sound-barrier/recall/commit/9e5658089e8471f30ecd93989a11398df02b0c79))
+* **matches:** inline-edit combat stats with ✎ revert + reset to OCR ([3f15819](https://github.com/sound-barrier/recall/commit/3f15819e926e9b8549b1503c852db7218d62e545))
+* **matches:** keep modals open on in-field Esc ([d1cd4af](https://github.com/sound-barrier/recall/commit/d1cd4af01627712541159f31f07e705b940bea84))
+* **matches:** prefix-match the map, hero, and tag typeaheads ([45b4abd](https://github.com/sound-barrier/recall/commit/45b4abdf1e5272ee9f78a6738654fe3c096242eb))
+* **matches:** restyle Add-match modal — popup, combobox pickers, required * ([b913c73](https://github.com/sound-barrier/recall/commit/b913c73e54e1ab865856ae6ade5c013cad1d28ed))
+* **matches:** restyle the manual-entry modal to match Filter matches ([9053b2d](https://github.com/sound-barrier/recall/commit/9053b2d4133801152dd7bac63bc303220e0d36a2))
+* **matches:** split mode/queue and E/A/D into own table columns ([4ffd6ec](https://github.com/sound-barrier/recall/commit/4ffd6ecab1f77421ec05a2abfef9e085b4821fe0))
+* **matches:** surface provenance in columns, on hover, and in the panel ([0bb36cc](https://github.com/sound-barrier/recall/commit/0bb36ccfd97c6a122d27cef6dbcc99a11d0876d4))
+* **matches:** Tab-complete typeahead + no autocorrect on comboboxes ([3eb019c](https://github.com/sound-barrier/recall/commit/3eb019cc2831b3416100eefea8c44db8323804a2))
+
+
+### Bug Fixes
+
+* **api:** align manual-heroes + MatchAnnotation schema with the server ([e97e854](https://github.com/sound-barrier/recall/commit/e97e85435e9ababfaa140729c70353815696b5b6))
+* **api:** bound manual + override inputs to match MatchResult ([35ae2a4](https://github.com/sound-barrier/recall/commit/35ae2a4f70da7759c840ad09b51332b90065c011))
+* **db:** keep the default screenshots-dir row on Clear ([047edea](https://github.com/sound-barrier/recall/commit/047edeac2fc038c1b21888776617804db728bfc0))
+* **matches:** keep the detail panel on its own layer (WebKit vanish) ([3bfabb5](https://github.com/sound-barrier/recall/commit/3bfabb5b0c9dfb6b50edf78ec2750e6afe1869c8))
+* **matches:** make pivot filter feedback unmistakable ([272bef3](https://github.com/sound-barrier/recall/commit/272bef3adf5c2a7978d790249270cc2f327f48de))
+* **matches:** pivot filter ticks were visually stuck ([b37e817](https://github.com/sound-barrier/recall/commit/b37e817dab9929957bac6e850e191ae82837017b))
+* **matches:** pivot menu swallowed clicks in WKWebView ([b105603](https://github.com/sound-barrier/recall/commit/b1056034cce99bec8c09b63644f73264ccc18cdc))
+* **matches:** require a single role for role-queue manual entry ([48c2aab](https://github.com/sound-barrier/recall/commit/48c2aabf537a5b5bab6cbb33b6bec3dc9e7c798d))
+* **matches:** surface leaf provenance in the hover card, not a title ([ab6d225](https://github.com/sound-barrier/recall/commit/ab6d225b7d2baac00cbe20d25b5aa9f354752dda))
+
+
+### Documentation
+
+* document match editing, manual entry, and provenance ([6abcc3d](https://github.com/sound-barrier/recall/commit/6abcc3de4464845ff9b1b13057b1f9fef7e56f7b))
+
+
+### Build & Packaging
+
+* **bundle:** raise total JS/CSS budgets for editable + manual matches ([fee3116](https://github.com/sound-barrier/recall/commit/fee3116d3461fba30471ff58c23e468114042404))
+
+
+### Tests
+
+* **matches:** cover pivot filter checklist + clarify its label ([bb764cc](https://github.com/sound-barrier/recall/commit/bb764cc2e92ab04d510eee44ef045833f60c5fce))
+* **matches:** e2e for split columns, pivot view & CSV export ([87e0f88](https://github.com/sound-barrier/recall/commit/87e0f8809f6713a31a68486c513de51eef53481e))
+* **matches:** update sort-popover level count for split columns ([269e6fb](https://github.com/sound-barrier/recall/commit/269e6fbd56009787a25dd91627ad02520d4e9d94))
+
+
+### Chores
+
+* cut v0.0.16 ([bbf20ad](https://github.com/sound-barrier/recall/commit/bbf20ad09c9713810390fe5667a2d748d2d34939))
+
 ## [0.15.0](https://github.com/sound-barrier/recall/compare/v0.14.2...v0.15.0) (2026-06-15)
 
 
