@@ -194,37 +194,31 @@ moved files changes; only the importers' paths update.
 **Size:** M. **Risk:** Low — location-independent `@/` imports + green SFC/e2e
 suites make this a mechanical move.
 
-### Q15. Go production functions over the gocyclo-15 refactor line
+### Q15. Go complexity — engine hot paths done; dev-support residual acceptable
 
-**Where:** `gocyclo -over 15` (production, non-test, excluding parser/`tmp`):
-`UpsertUserMatchData` (18, `pkg/db/store_usermatch.go:12`), `MergeMatchResult`
-(17, `pkg/correlate/correlation_merge.go:31`), `FoldGroup` (17,
-`pkg/aggregate/aggregate.go:153`), `ReAggregateUnknowns` (16,
-`pkg/db/store_reaggregate.go:27`), `MatchByTimestampWindow` (16,
-`pkg/correlate/correlation.go:312`), `SeedProfile` (16) + `writeFixture` (21,
-`pkg/app/seed.go`).
+The five read/write/correlation hot paths flagged here were extracted into named
+sub-steps (all now ≤10, pure refactors under the green store/aggregate/correlate
+suites): `UpsertUserMatchData` 18→8, `FoldGroup` 17→8, `MergeMatchResult` 17→2,
+`ReAggregateUnknowns` 16→6 (also de-duplicated the hero/map promote blocks), and
+`MatchByTimestampWindow` 16→9.
 
-**What:** `CLAUDE.md` aspires to ≤10 and calls **>15 a refactor candidate**. The
-read/write/correlation hot paths (`UpsertUserMatchData`, `MergeMatchResult`,
-`FoldGroup`, `ReAggregateUnknowns`, `MatchByTimestampWindow`) are the ones worth
-extracting sub-steps from — each folds several distinct concerns into one
-function. The `seed.go` pair is dev-onboarding support (lower stakes). Parser
-density (`parsePersonalStatCell` 17) stays exempt per the rule. **Fix:** extract
-named sub-steps (no behaviour change), guarded by the existing store/aggregate/
-correlate suites.
+The remaining `gocyclo>15` are left as-is **by design**: `writeFixture` (21) /
+`SeedProfile` (16) in `pkg/app/seed.go` and `pickHeroConstrained` (18) /
+`applyChaosShape` (17) in `pkg/fixtures/` are dev-seed support (off the
+user-facing path), and `parsePersonalStatCell` (17) is the dense parser logic
+`CLAUDE.md` explicitly exempts. Revisit only if they grow further.
 
-**Size:** M. **Risk:** Low — pure extraction under green unit tests.
+**Size:** M (engine paths done). **Risk:** Low.
 
-### Q16. Two Go files just over the 500-line soft ceiling
+### Q16. Go file sizes — store.go split; parse.go is 1-line-over noise
 
-**Where:** `pkg/db/store.go` (534), `pkg/app/parse.go` (501).
+`store.go` (534) carried the `Store` interface + `SQLStore` impl **plus** ~270
+lines of row/state structs; the data-model types moved to `store_types.go` and
+store.go is now 265. `parse.go` (501) is one line past the ~500 soft ceiling — a
+dense single-concern pipeline at the irreducible end, left as-is (the ceiling is
+best-effort, not a gate).
 
-**What:** both marginally past the `CLAUDE.md` ~500-line file ceiling. `store.go`
-can shed the per-type row loaders into the existing `store_<type>.go` siblings;
-`parse.go` is a dense single-concern pipeline (closer to the irreducible end).
-Best-effort, not a gate — listed for completeness.
-
-**Size:** S. **Risk:** Low.
+**Size:** S (done). **Risk:** Low.
 
 ### Q17. Coverage sits right on the floor
 
