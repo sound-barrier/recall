@@ -35,7 +35,8 @@ releases, etc.).
 | `make lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |
 | `make fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt`). |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` after editing `api/openapi.yaml`. |
-| `make cover` | Generate Go + frontend coverage reports (umbrella). Required before opening a PR. |
+| `make cover` | Generate Go + frontend **unit** coverage reports (umbrella). Required before opening a PR. |
+| `make cover-e2e` | **Integration** coverage from the Playwright suite (Go `-cover` + monocart V8 frontend) → `coverage/e2e/`. Informational, not gated. |
 
 Full command catalog, env-var overrides, Dockerfile stages, package layout, and
 helper-script reference: **`docs/dev-reference.md`**.
