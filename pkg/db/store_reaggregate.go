@@ -1,5 +1,57 @@
 package db
 
+import "database/sql"
+
+// reaggPending is one (row id, canonical value) pair resolved by a
+// re-aggregation pass, batched into UPDATE statements by promoteColumn.
+type reaggPending struct {
+	id  int64
+	val string
+}
+
+// collectReaggPending runs `query` (id, raw) and returns the rows whose raw
+// value the matcher resolves to a non-empty canonical. The SELECT lives in its
+// own function so the single `defer rows.Close()` covers every return path
+// (sqlclosecheck).
+func collectReaggPending(tx *sql.Tx, query string, fn func(string) string) ([]reaggPending, error) {
+	rows, err := tx.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []reaggPending
+	for rows.Next() {
+		var id int64
+		var raw string
+		if err := rows.Scan(&id, &raw); err != nil {
+			return nil, err
+		}
+		if canonical := fn(raw); canonical != "" {
+			out = append(out, reaggPending{id: id, val: canonical})
+		}
+	}
+	return out, rows.Err()
+}
+
+// promoteColumn resolves one (select, update) pair via the matcher and writes
+// the canonical values back, returning how many rows it promoted. A blank
+// selectSQL (a table without that column, e.g. personal has no map) is a no-op.
+func promoteColumn(tx *sql.Tx, selectSQL, updateSQL string, fn func(string) string) (int, error) {
+	if selectSQL == "" {
+		return 0, nil
+	}
+	todo, err := collectReaggPending(tx, selectSQL, fn)
+	if err != nil {
+		return 0, err
+	}
+	for _, p := range todo {
+		if _, err := tx.Exec(updateSQL, p.val, p.id); err != nil {
+			return 0, err
+		}
+	}
+	return len(todo), nil
+}
+
 // ReAggregateUnknowns walks the per-screenshot rows where the
 // canonical hero/map is empty but a raw OCR string is preserved, and
 // runs the caller-supplied matchers (the parser's extractHeroes /
@@ -30,34 +82,6 @@ func (s *SQLStore) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }() // no-op after Commit
-
-	type pending struct {
-		id  int64
-		val string
-	}
-	// collectPending opens the SELECT inside its own scope so the
-	// single `defer rows.Close()` covers every return (sqlclosecheck).
-	// Returns the list of (id, canonical) pairs that resolved this
-	// pass; the caller batches the UPDATE statements outside this scope.
-	collectPending := func(query string, fn func(string) string) ([]pending, error) {
-		rows, qerr := tx.Query(query)
-		if qerr != nil {
-			return nil, qerr
-		}
-		defer func() { _ = rows.Close() }()
-		var out []pending
-		for rows.Next() {
-			var id int64
-			var raw string
-			if err := rows.Scan(&id, &raw); err != nil {
-				return nil, err
-			}
-			if canonical := fn(raw); canonical != "" {
-				out = append(out, pending{id: id, val: canonical})
-			}
-		}
-		return out, rows.Err()
-	}
 
 	// Hard-coded SELECT/UPDATE SQL per table keeps the table name
 	// out of any concatenated query string — gosec G202 then has
@@ -91,30 +115,15 @@ func (s *SQLStore) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn
 
 	promoted := 0
 	for _, q := range queries {
-		if q.selectHero != "" {
-			todo, err := collectPending(q.selectHero, heroFn)
-			if err != nil {
-				return 0, err
-			}
-			for _, p := range todo {
-				if _, err := tx.Exec(q.updateHero, p.val, p.id); err != nil {
-					return 0, err
-				}
-				promoted++
-			}
+		heroN, err := promoteColumn(tx, q.selectHero, q.updateHero, heroFn)
+		if err != nil {
+			return 0, err
 		}
-		if q.selectMap != "" {
-			todo, err := collectPending(q.selectMap, mapFn)
-			if err != nil {
-				return 0, err
-			}
-			for _, p := range todo {
-				if _, err := tx.Exec(q.updateMap, p.val, p.id); err != nil {
-					return 0, err
-				}
-				promoted++
-			}
+		mapN, err := promoteColumn(tx, q.selectMap, q.updateMap, mapFn)
+		if err != nil {
+			return 0, err
 		}
+		promoted += heroN + mapN
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, err
