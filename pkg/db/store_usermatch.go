@@ -1,5 +1,7 @@
 package db
 
+import "database/sql"
+
 // User match-data override layer — the single store backing both inline edits
 // of a parsed match and hand-entered (manual) matches. Mirrors the
 // match_annotations store: UPSERT the parent + wholesale delete-then-reinsert
@@ -41,63 +43,101 @@ func (s *SQLStore) UpsertUserMatchData(d UserMatchData) error {
 		return err
 	}
 
+	if err := deleteUserMatchChildren(tx, d.MatchKey); err != nil {
+		return err
+	}
+	if err := insertUserMatchHeroes(tx, d.MatchKey, d.Heroes); err != nil {
+		return err
+	}
+	if err := insertUserMatchHeroStats(tx, d.MatchKey, d.HeroStats); err != nil {
+		return err
+	}
+	if err := insertUserMatchSR(tx, d.MatchKey, d.SR); err != nil {
+		return err
+	}
+	if err := insertUserMatchModifiers(tx, d.MatchKey, d.Modifiers); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// deleteUserMatchChildren wipes every child row for the match so the inserts
+// that follow replace them wholesale — a re-save that drops a hero must remove
+// that hero's old row, which a plain UPSERT wouldn't.
+func deleteUserMatchChildren(tx *sql.Tx, matchKey string) error {
 	for _, q := range []string{
 		`DELETE FROM user_match_heroes WHERE match_key = ?`,
 		`DELETE FROM user_match_hero_stats WHERE match_key = ?`,
 		`DELETE FROM user_match_sr WHERE match_key = ?`,
 		`DELETE FROM user_match_rank_modifiers WHERE match_key = ?`,
 	} {
-		if _, err := tx.Exec(q, d.MatchKey); err != nil {
+		if _, err := tx.Exec(q, matchKey); err != nil {
 			return err
 		}
 	}
-	for _, h := range d.Heroes {
+	return nil
+}
+
+func insertUserMatchHeroes(tx *sql.Tx, matchKey string, heroes []UserMatchHero) error {
+	for _, h := range heroes {
 		if h.Hero == "" {
 			continue
 		}
 		if _, err := tx.Exec(
 			`INSERT OR IGNORE INTO user_match_heroes (match_key, hero, percent_played, play_time, position)
 			 VALUES (?,?,?,?,?)`,
-			d.MatchKey, h.Hero, h.PercentPlayed, h.PlayTime, h.Position,
+			matchKey, h.Hero, h.PercentPlayed, h.PlayTime, h.Position,
 		); err != nil {
 			return err
 		}
 	}
-	for _, st := range d.HeroStats {
+	return nil
+}
+
+func insertUserMatchHeroStats(tx *sql.Tx, matchKey string, stats []UserMatchHeroStat) error {
+	for _, st := range stats {
 		if st.Hero == "" || st.StatKey == "" {
 			continue
 		}
 		if _, err := tx.Exec(
 			`INSERT OR IGNORE INTO user_match_hero_stats (match_key, hero, stat_key, stat_value)
 			 VALUES (?,?,?,?)`,
-			d.MatchKey, st.Hero, st.StatKey, st.Value,
+			matchKey, st.Hero, st.StatKey, st.Value,
 		); err != nil {
 			return err
 		}
 	}
-	for _, sr := range d.SR {
+	return nil
+}
+
+func insertUserMatchSR(tx *sql.Tx, matchKey string, srs []HeroSR) error {
+	for _, sr := range srs {
 		if sr.Hero == "" {
 			continue
 		}
 		if _, err := tx.Exec(
 			`INSERT OR IGNORE INTO user_match_sr (match_key, hero, sr, change) VALUES (?,?,?,?)`,
-			d.MatchKey, sr.Hero, sr.SR, sr.Change,
+			matchKey, sr.Hero, sr.SR, sr.Change,
 		); err != nil {
 			return err
 		}
 	}
-	for _, m := range d.Modifiers {
+	return nil
+}
+
+func insertUserMatchModifiers(tx *sql.Tx, matchKey string, mods []string) error {
+	for _, m := range mods {
 		if m == "" {
 			continue
 		}
 		if _, err := tx.Exec(
 			`INSERT OR IGNORE INTO user_match_rank_modifiers (match_key, modifier) VALUES (?,?)`,
-			d.MatchKey, m,
+			matchKey, m,
 		); err != nil {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *SQLStore) DeleteUserMatchData(matchKey string) error {
