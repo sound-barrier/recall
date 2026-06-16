@@ -151,22 +151,7 @@ func AggregateScreenshots(snap db.Screenshots) []match.MatchRecord {
 }
 
 func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.MatchRecord {
-	// Fold order: filename-timestamp asc, then parsed_at asc. This
-	// matches the pre-refactor ordering, where mergeByTimestamp folded
-	// earliest-first inside each window.
-	sort.Slice(vs, func(i, j int) bool {
-		ti, oki := correlate.ParseFilenameTimestamp(vs[i].filename)
-		tj, okj := correlate.ParseFilenameTimestamp(vs[j].filename)
-		switch {
-		case oki && okj && !ti.Equal(tj):
-			return ti.Before(tj)
-		case oki && !okj:
-			return true
-		case !oki && okj:
-			return false
-		}
-		return vs[i].parsedAt < vs[j].parsedAt
-	})
+	sortViewsForFold(vs)
 
 	var data parser.MatchResult
 	sources := make([]string, 0, len(vs))
@@ -197,13 +182,7 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Mat
 			}
 		}
 	}
-	// Derived fields — never stored in the DB.
-	if data.Hero != "" {
-		data.Role = correlate.FirstNonEmpty(data.Role, parser.HeroRole(data.Hero))
-	}
-	if data.Map != "" {
-		data.GameMode = correlate.FirstNonEmpty(data.GameMode, parser.MapGameMode(data.Map))
-	}
+	applyDerivedFields(&data)
 
 	// Surface the parser-detected queue format as the top-level
 	// QueueType (a user match_queue annotation overrides it in
@@ -226,6 +205,37 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Mat
 		rec.SourceDirIDs = dirIDsPerFile
 	}
 	return rec
+}
+
+// sortViewsForFold orders a match's screenshots filename-timestamp asc, then
+// parsed_at asc — the same order mergeByTimestamp folded earliest-first inside
+// each window, so "first non-empty wins" keeps the earliest screenshot's value.
+func sortViewsForFold(vs []ScreenshotView) {
+	sort.Slice(vs, func(i, j int) bool {
+		ti, oki := correlate.ParseFilenameTimestamp(vs[i].filename)
+		tj, okj := correlate.ParseFilenameTimestamp(vs[j].filename)
+		switch {
+		case oki && okj && !ti.Equal(tj):
+			return ti.Before(tj)
+		case oki && !okj:
+			return true
+		case !oki && okj:
+			return false
+		}
+		return vs[i].parsedAt < vs[j].parsedAt
+	})
+}
+
+// applyDerivedFields fills Role from Hero and GameMode from Map via the shipped
+// reference data. These are derived, never stored — recomputed on every read so
+// a roster/map-data update can't strand a stale value.
+func applyDerivedFields(data *parser.MatchResult) {
+	if data.Hero != "" {
+		data.Role = correlate.FirstNonEmpty(data.Role, parser.HeroRole(data.Hero))
+	}
+	if data.Map != "" {
+		data.GameMode = correlate.FirstNonEmpty(data.GameMode, parser.MapGameMode(data.Map))
+	}
 }
 
 // SynthesizeManualMatches appends an empty MatchRecord for every user-data key
