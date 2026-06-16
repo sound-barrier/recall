@@ -50,11 +50,11 @@ item down (numbers drift).
 
 > **2026-06-16 pre-1.0 framing.** 1.0 freezes the HTTP API + SQLite-schema
 > contract and activates the migration framework (`pkg/db/migrate.go`). The one
-> contract item (Q12, the queue-route rename) is worth landing *before* the
-> freeze; the code-quality items (Q13–Q17) are polish that can land before or
-> after. Activating the migration framework itself is a separate follow-up
-> (Q18), deliberately out of scope for the contract-fix PRs. The DB schema needs
-> no contract fix — it's already 3NF-clean (see below).
+> contract item (the queue-route rename) has been paid down before the freeze;
+> the code-quality items (Q13–Q17) are polish that can land before or after.
+> Activating the migration framework itself is a separate follow-up (Q18),
+> deliberately out of scope for the contract-fix PRs. The DB schema needs no
+> contract fix — it's already 3NF-clean (see below).
 
 ### REST API contract (`api/openapi.yaml`, `pkg/cmd/server*.go`)
 
@@ -63,24 +63,10 @@ healthy overall — noun resources, correct verb→intent, the 200/201/202/204/4
 table is honoured, params are snake_case, response arrays use `make([]T, 0)`, the
 `_fetch` 204/202 handling is consistent, and diagnostic-only ops carry
 `x-internal: true` (`/profiles/test/seed`, `/system/screenshots-folder-candidates/stats`,
-`/system/tesseract-probe`). One real inconsistency:
-
-### Q12. `queue` vs `queue-type` URL-segment asymmetry for the same concept-pair
-
-**Where:** `api/openapi.yaml` — per-match `PUT/DELETE /api/v1/matches/{match_key}/queue`
-(`SetMatchQueue`/`ClearMatchQueue`) vs bulk `PUT /api/v1/matches/queue-type`
-(`BulkSetMatchQueue`).
-
-**What:** the play-mode pair uses the **same** segment for both scopes
-(`/matches/{match_key}/play-mode` + `/matches/play-mode`), but the queue pair
-splits: per-match `/queue` vs bulk `/queue-type`. Same concept, two names — a
-papercut that becomes a permanent inconsistency once the URL contract freezes at
-1.0. **Fix:** rename the bulk route to `PUT /api/v1/matches/queue` so both queue
-routes and the play-mode template all match; update `pkg/cmd/server*.go`, the
-`api.ts` wrapper, `api.gen.d.ts`, and the spec together. Pure rename, no
-behaviour change.
-
-**Size:** S. **Risk:** High — public URL shape; must land before the 1.0 freeze.
+`/system/tesseract-probe`). The one inconsistency the audit found — the bulk queue
+route's `queue-type` segment vs the per-match `/queue` and the play-mode template
+— was paid down before the freeze (bulk renamed to `PUT /api/v1/matches/queue`).
+No outstanding REST-contract debt.
 
 ### DB schema / 3NF (`pkg/db/schema.sql`)
 
@@ -265,7 +251,7 @@ raise-the-bar item.
 the *Adding a field* workflow to versioned migrations. **Deliberately out of
 scope** for the contract-fix PRs (per the pre-1.0 decision) — recorded here as the
 1.0 cutover task so it isn't lost. Land it *with or just after* the 1.0 tag, once
-the contract-breaking items (Q12) have settled the final schema shape.
+the schema shape is final.
 
 **Size:** M. **Risk:** High — on-disk schema management; get the baseline exactly
 matching the shipped `schema.sql` or existing installs mis-migrate.
@@ -321,7 +307,8 @@ Recorded so the audit isn't misleadingly negative; do **not** "fix" these.
   `.claude/rules/api-design.md`: noun resources, correct verb→intent, the
   200/201/202/204/4xx table, snake_case params, `make([]T, 0)` response arrays,
   the `_fetch` 204/202 handling, and `x-internal: true` on the three diagnostic
-  ops. Only the queue/queue-type segment rename (Q12) is outstanding.
+  ops. The one segment-naming inconsistency (bulk queue route) was paid down
+  before the 1.0 freeze.
 - **DB schema is 3NF-clean** — derived `role`/`type` computed at read time (never
   stored), repeating groups split into child tables with composite PKs,
   deliberate FK actions (RESTRICT/CASCADE), `*_at` timestamps, CHECK-guarded

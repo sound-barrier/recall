@@ -457,7 +457,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/queue-type": {
+    "/api/v1/matches/queue": {
         parameters: {
             query?: never;
             header?: never;
@@ -502,7 +502,7 @@ export interface paths {
          * Apply one play mode to many matches at once
          * @description Sets `play_mode` to the same value on every key in
          *     `match_keys` inside one SQLite transaction. Same shape as
-         *     `PUT /api/v1/matches/queue-type` — see that endpoint for the
+         *     `PUT /api/v1/matches/queue` — see that endpoint for the
          *     bulk-toolbar rationale.
          *
          *     Empty `play_mode` (string `""`) clears the rows (bulk

@@ -12,7 +12,7 @@
  *     {match_keys: [...], play_mode: 'competitive'} — not N
  *     per-match PUTs.
  *   - Set queue → Open Queue fires ONE
- *     PUT /api/v1/matches/queue-type with body
+ *     PUT /api/v1/matches/queue with body
  *     {match_keys: [...], queue_type: 'open'}.
  *   - Clear (Unknown mode) submits play_mode: '' — the bulk Clear
  *     semantic.
@@ -90,7 +90,7 @@ test.describe('Matches — bulk play-mode and queue-type setters', () => {
     await expect(page.locator('[data-bulk-menu="play-mode"]')).toBeHidden()
   })
 
-  test('Set queue → Open Queue fires ONE bulk PUT to /queue-type', async ({ page }) => {
+  test('Set queue → Open Queue fires ONE bulk PUT to /queue', async ({ page }) => {
     const matches = [rec('a'), rec('b')]
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
@@ -99,7 +99,7 @@ test.describe('Matches — bulk play-mode and queue-type setters', () => {
     })
 
     let bulkQueueReq: { body: unknown } | null = null
-    await page.route('**/api/v1/matches/queue-type', async (route: Route) => {
+    await page.route('**/api/v1/matches/queue', async (route: Route) => {
       bulkQueueReq = { body: await route.request().postDataJSON() }
       await route.fulfill({ status: 204, body: '' })
     })
