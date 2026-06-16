@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.16.1](https://github.com/sound-barrier/recall/compare/v0.16.0...v0.16.1) (2026-06-16)
+
+
+### Features
+
+* **matches:** vim motions, Narrow Tab-to-toggle, refreshed cheatsheet ([300558a](https://github.com/sound-barrier/recall/commit/300558a3c48eb28360ffb7f8ccebadb71ac22fe6))
+
+
+### Documentation
+
+* **e2e:** document unit vs integration coverage ([9e32336](https://github.com/sound-barrier/recall/commit/9e32336d34e69c4e55a53fb04fd6002ad54ef0cf))
+
+
+### Build & Packaging
+
+* **e2e:** collect Go + frontend integration coverage ([4679c96](https://github.com/sound-barrier/recall/commit/4679c962e300ce5a29096e0e691aae74dec040e8))
+* migrate from make to task + mise toolchain ([555355d](https://github.com/sound-barrier/recall/commit/555355d8991350ac0113c3e2a39ba1fb0523c748))
+
+
+### CI
+
+* **e2e:** upload + report integration coverage ([a143d39](https://github.com/sound-barrier/recall/commit/a143d39cae20498f3472c4b92c773cf5d434b3a0))
+
 ## [0.16.0](https://github.com/sound-barrier/recall/compare/v0.15.0...v0.16.0) (2026-06-16)
 
 
