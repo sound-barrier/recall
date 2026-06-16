@@ -25,7 +25,7 @@ export interface FilterOption {
 </script>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 // A draggable field tile. Mouse users drag it between shelves; keyboard
 // and screen-reader users press it to open a menu of the same moves
@@ -74,10 +74,13 @@ function choose(payload: ChipActPayload) {
   emit('act', payload)
 }
 
-// Keep filter checkboxes open while toggling several; everything else
-// closes after one pick. relatedTarget leaving the wrap closes the menu.
-function onFocusOut(e: FocusEvent) {
-  if (!wrapRef.value?.contains(e.relatedTarget as Node | null)) menuOpen.value = false
+// Dismiss on an outside pointer press rather than focusout: WebKit (the
+// desktop WKWebView) doesn't focus a <button> on click, so a focusout-based
+// close fired mid-click and swallowed the toggle — the box "wouldn't
+// uncheck." An outside-pointerdown listener is engine-agnostic and keeps
+// the menu open while the user flips several filter values inside it.
+function onDocPointerDown(e: Event) {
+  if (!wrapRef.value?.contains(e.target as Node | null)) menuOpen.value = false
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -89,14 +92,20 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 watch(menuOpen, async (open) => {
-  if (!open) return
-  await nextTick()
-  menuRef.value?.querySelector<HTMLElement>('button, input')?.focus()
+  if (open) {
+    document.addEventListener('pointerdown', onDocPointerDown, true)
+    await nextTick()
+    menuRef.value?.querySelector<HTMLElement>('button, input')?.focus()
+  } else {
+    document.removeEventListener('pointerdown', onDocPointerDown, true)
+  }
 })
+
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDown, true))
 </script>
 
 <template>
-  <div ref="wrapRef" class="pivot-chip-wrap" @focusout="onFocusOut" @keydown="onKeydown">
+  <div ref="wrapRef" class="pivot-chip-wrap" @keydown="onKeydown">
     <button
       ref="chipRef"
       type="button"
