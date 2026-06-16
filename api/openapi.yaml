@@ -449,6 +449,8 @@ paths:
           description: Override set persisted.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          description: A map or hero override isn't in the Overwatch roster.
         "500":
           $ref: "#/components/responses/InternalError"
     delete:

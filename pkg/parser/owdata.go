@@ -139,6 +139,21 @@ func HeroesByRole() map[string][]string { return loadDataset().heroesByRole }
 // must not be mutated by callers.
 func MapsByGameMode() map[string][]string { return loadDataset().mapsByGameMode }
 
+// IsKnownHero reports whether name resolves to a hero in the roster, comparing
+// in the normalized form the lookup tables are keyed by (so "Lúcio", "lucio",
+// and "LUCIO" all match).
+func IsKnownHero(name string) bool {
+	_, ok := loadDataset().heroRoles[normalize(name)]
+	return ok
+}
+
+// IsKnownMap reports whether name resolves to a map in the roster (normalized
+// comparison, mirroring IsKnownHero).
+func IsKnownMap(name string) bool {
+	_, ok := loadDataset().mapGameModes[normalize(name)]
+	return ok
+}
+
 // Sources returns the screenshot-source filename grammars. The
 // returned slice is owned by the current dataset and must not be
 // mutated by callers.

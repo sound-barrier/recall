@@ -79,12 +79,48 @@ func TestUpdateMatchData_Persists204(t *testing.T) {
 	fs := dbtest.New()
 	fs.Summaries = []db.SummaryRow{{Filename: "s.png", MatchKey: "match-A", Map: "rialto"}}
 	_, mux := newTestApp(t, fs)
-	rec := put(t, mux, dataPath("match-A"), map[string]any{"map": "kings row"})
+	rec := put(t, mux, dataPath("match-A"), map[string]any{"map": "ilios"})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204; body=%q", rec.Code, rec.Body.String())
 	}
 	if _, ok := fs.UserMatchData["match-A"]; !ok {
 		t.Errorf("UserMatchData not written for match-A")
+	}
+}
+
+func TestUpdateMatchData_OutOfRangeStatIs400(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := put(t, mux, dataPath("match-A"), map[string]any{"damage": -1})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestUpdateMatchData_UnknownMapIs409(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := put(t, mux, dataPath("match-A"), map[string]any{"map": "notamap"})
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCreateManualMatch_UnknownMapOrHeroIs409(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	base := func() map[string]any {
+		return map[string]any{
+			"map": "ilios", "play_mode": "competitive", "queue_type": "role",
+			"heroes": []string{"ana"}, "result": "victory",
+		}
+	}
+	bad := base()
+	bad["map"] = "notamap"
+	if rec := fire(t, mux, http.MethodPost, "/api/v1/matches", bad); rec.Code != http.StatusConflict {
+		t.Errorf("unknown map: status = %d, want 409; body=%q", rec.Code, rec.Body.String())
+	}
+	bad = base()
+	bad["heroes"] = []string{"notahero"}
+	if rec := fire(t, mux, http.MethodPost, "/api/v1/matches", bad); rec.Code != http.StatusConflict {
+		t.Errorf("unknown hero: status = %d, want 409; body=%q", rec.Code, rec.Body.String())
 	}
 }
 

@@ -17,7 +17,7 @@ func TestUpdateMatchData_OverridesOCRAndMarksEdited(t *testing.T) {
 	fake.Summaries = []db.SummaryRow{{Filename: "s.png", MatchKey: key, Map: "rialto", Hero: "lucio"}}
 	a := app.NewWithStore(fake)
 
-	newMap := "kings row"
+	newMap := "ilios"
 	if err := a.UpdateMatchData(key, match.UserMatchDataInput{Map: &newMap}); err != nil {
 		t.Fatalf("UpdateMatchData: %v", err)
 	}
@@ -26,8 +26,8 @@ func TestUpdateMatchData_OverridesOCRAndMarksEdited(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchByKey: %v", err)
 	}
-	if rec.Data.Map != "kings row" {
-		t.Errorf("Map = %q, want overridden 'kings row'", rec.Data.Map)
+	if rec.Data.Map != "ilios" {
+		t.Errorf("Map = %q, want overridden 'ilios'", rec.Data.Map)
 	}
 	if rec.Source != match.SourceOCREdited {
 		t.Errorf("Source = %q, want ocr_edited", rec.Source)
@@ -172,6 +172,8 @@ func TestCreateManualMatch_Validates(t *testing.T) {
 		{"change_percent out of range", func(m *match.ManualMatchInput) {
 			m.Rank = &match.ManualRankInput{Division: 3, Progress: 50, ChangePercent: 2_000_000}
 		}, app.ErrInvalidRank},
+		{"unknown map", func(m *match.ManualMatchInput) { m.Map = "notamap" }, app.ErrUnknownMap},
+		{"unknown hero", func(m *match.ManualMatchInput) { m.Heroes = []string{"notahero"} }, app.ErrUnknownHero},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -181,6 +183,46 @@ func TestCreateManualMatch_Validates(t *testing.T) {
 				t.Errorf("err = %v, want %v", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestUpdateMatchData_RejectsOutOfRangeStats(t *testing.T) {
+	a := app.NewWithStore(dbtest.New())
+	neg, big, overLevel, overPct, bigChange := -1, 1_000_001, 6, 101, 2_000_000
+	cases := []struct {
+		name string
+		in   match.UserMatchDataInput
+	}{
+		{"negative damage", match.UserMatchDataInput{Damage: &neg}},
+		{"damage too big", match.UserMatchDataInput{Damage: &big}},
+		{"negative eliminations", match.UserMatchDataInput{Eliminations: &neg}},
+		{"level too high", match.UserMatchDataInput{Level: &overLevel}},
+		{"rank_progress too high", match.UserMatchDataInput{RankProgress: &overPct}},
+		{"change_percent out of range", match.UserMatchDataInput{ChangePercent: &bigChange}},
+		{"hero percent too high", match.UserMatchDataInput{Heroes: []match.UserHeroInput{{Hero: "ana", PercentPlayed: &overPct}}}},
+		{"hero_stat value negative", match.UserMatchDataInput{HeroStats: []match.UserHeroStatInput{{Hero: "ana", StatKey: "damage", Value: -5}}}},
+		{"sr out of range", match.UserMatchDataInput{SR: []match.UserHeroSRInput{{Hero: "ana", SR: -1}}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := a.UpdateMatchData("m1", tc.in); !errors.Is(err, app.ErrStatOutOfRange) {
+				t.Errorf("err = %v, want ErrStatOutOfRange", err)
+			}
+		})
+	}
+}
+
+func TestUpdateMatchData_RejectsUnknownMapHero(t *testing.T) {
+	a := app.NewWithStore(dbtest.New())
+	badMap, badHero := "notamap", "notahero"
+	if err := a.UpdateMatchData("m1", match.UserMatchDataInput{Map: &badMap}); !errors.Is(err, app.ErrUnknownMap) {
+		t.Errorf("unknown map: err = %v, want ErrUnknownMap", err)
+	}
+	if err := a.UpdateMatchData("m1", match.UserMatchDataInput{Hero: &badHero}); !errors.Is(err, app.ErrUnknownHero) {
+		t.Errorf("unknown hero: err = %v, want ErrUnknownHero", err)
+	}
+	if err := a.UpdateMatchData("m1", match.UserMatchDataInput{Heroes: []match.UserHeroInput{{Hero: badHero}}}); !errors.Is(err, app.ErrUnknownHero) {
+		t.Errorf("unknown heroes[]: err = %v, want ErrUnknownHero", err)
 	}
 }
 

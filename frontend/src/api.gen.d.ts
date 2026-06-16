@@ -2850,6 +2850,13 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            /** @description A map or hero override isn't in the Overwatch roster. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             500: components["responses"]["InternalError"];
         };
     };
