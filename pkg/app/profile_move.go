@@ -19,9 +19,12 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 //
 //  1. Open the target profile's SQLStore, upsert every parent row +
 //     its children (via the same UpsertSummary / UpsertTeams /
-//     etc. APIs production parse uses) + every annotation + the
-//     hidden_matches flag. Filenames carry over verbatim so a future
-//     re-parse of the same source PNG on the new profile is a no-op.
+//     etc. APIs production parse uses) + the user-override layer
+//     (user_match_data + the queue / play-mode aux rows — a manual
+//     match or an edited OCR match lives entirely there) + every
+//     annotation + the hidden_matches flag. Filenames carry over
+//     verbatim so a future re-parse of the same source PNG on the new
+//     profile is a no-op.
 //  2. Hard-delete the rows on the source. Per-key HardDeleteMatch
 //     so a single bad key doesn't strand the rest.
 //
@@ -71,6 +74,9 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 		return err
 	}
 	if err := movePhase1Sidecars(targetStore, matchKeys, annotations, hidden); err != nil {
+		return err
+	}
+	if err := a.movePhase1Overrides(targetStore, matchKeys); err != nil {
 		return err
 	}
 	return a.movePhase2DeleteSource(matchKeys)
@@ -249,6 +255,43 @@ func movePhase1Sidecars(targetStore db.Store, matchKeys []string, annotations ma
 		if hidden[k] {
 			if err := targetStore.HideMatch(k); err != nil {
 				return fmt.Errorf("move: copy hidden flag for %q: %w", k, err)
+			}
+		}
+	}
+	return nil
+}
+
+// movePhase1Overrides copies the user-override layer (the user_match_data row
+// plus the queue / play-mode aux rows) into the target. A manual match — or an
+// edited OCR match — lives entirely here, so without this the move would delete
+// it from the source and write nothing to the target.
+func (a *App) movePhase1Overrides(targetStore db.Store, matchKeys []string) error {
+	userData, err := a.store.LoadAllUserMatchData()
+	if err != nil {
+		return fmt.Errorf("move: load user data: %w", err)
+	}
+	queues, err := a.store.LoadMatchQueues()
+	if err != nil {
+		return fmt.Errorf("move: load queues: %w", err)
+	}
+	playModes, err := a.store.LoadMatchPlayModes()
+	if err != nil {
+		return fmt.Errorf("move: load play modes: %w", err)
+	}
+	for _, k := range matchKeys {
+		if d, ok := userData[k]; ok {
+			if err := targetStore.UpsertUserMatchData(d); err != nil {
+				return fmt.Errorf("move: copy user data for %q: %w", k, err)
+			}
+		}
+		if q, ok := queues[k]; ok && q.QueueType != "" {
+			if err := targetStore.SetMatchQueue(k, q.QueueType); err != nil {
+				return fmt.Errorf("move: copy queue for %q: %w", k, err)
+			}
+		}
+		if pm, ok := playModes[k]; ok && pm.PlayMode != "" {
+			if err := targetStore.SetMatchPlayMode(k, pm.PlayMode); err != nil {
+				return fmt.Errorf("move: copy play mode for %q: %w", k, err)
 			}
 		}
 	}
