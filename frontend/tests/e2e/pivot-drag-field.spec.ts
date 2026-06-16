@@ -83,13 +83,22 @@ test('a Filters-shelf value checklist slices the crosstab', async ({ page }) => 
   await expect(filterChip).toBeVisible()
 
   await filterChip.click() // open the menu → value checklist
-  const checks = page.locator('.pivot-chip-check input[type="checkbox"]')
-  await expect(checks).toHaveCount(2) // rialto + busan, both checked by default
+  const checks = page.locator('[role="menuitemcheckbox"]')
+  await expect(checks).toHaveCount(2) // rialto + busan, both included by default
   await expect(page.locator('.pivot-count')).toContainText('3 matches')
 
-  // Uncheck busan → only the rialto match (m-1) survives the filter.
-  await page.locator('.pivot-chip-check', { hasText: 'busan' }).locator('input').click()
+  // Uncheck busan → its tick must visually flip (the reported bug was a
+  // stuck checkbox) AND only the rialto match (m-1) survives the filter.
+  const busan = page.locator('[role="menuitemcheckbox"]', { hasText: 'busan' })
+  await expect(busan).toHaveAttribute('aria-checked', 'true')
+  await busan.click()
+  await expect(busan).toHaveAttribute('aria-checked', 'false')
   await expect(page.locator('.pivot-count')).toContainText('1 match')
+
+  // Re-checking it restores every value (Excel-style include-by-default).
+  await busan.click()
+  await expect(busan).toHaveAttribute('aria-checked', 'true')
+  await expect(page.locator('.pivot-count')).toContainText('3 matches')
 })
 
 test('changing a value aggregation re-folds the crosstab', async ({ page }) => {
