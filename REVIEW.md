@@ -272,6 +272,34 @@ matching the shipped `schema.sql` or existing installs mis-migrate.
 
 ---
 
+### Q19. Integration (e2e) coverage never reaches the PR comment
+
+**Where:** the `pr-report` job in `.github/workflows/ci.yml` vs the
+`go-e2e-coverage` / `frontend-e2e-coverage` artifacts produced by
+`.github/workflows/e2e.yml`.
+
+**What:** the combined PR comment's *Integration (e2e)* column reads "—
+pending" on **every** PR — verified on a code PR (#406) whose branch *did* have
+both e2e-coverage artifacts uploaded. Root cause is a parallel-workflow race:
+`pr-report` lives in `ci.yml` and renders the comment after only `ci.yml`'s
+coverage/lint jobs (~3–5 min), while the e2e coverage is produced by the separate
+`e2e.yml` run (~8–13 min, Playwright). At render time the current commit's e2e
+artifact doesn't exist yet, the cross-workflow `dawidd6` download (keyed on
+`branch`, defaulting to *successful* runs) finds nothing, and `pr-report` is never
+re-triggered when `e2e.yml` later finishes — so the column stays "pending" for the
+life of the commit. The renderer + artifact paths are correct; only the timing is.
+
+**Fix:** render the sticky comment from a workflow triggered
+`on: workflow_run: [CI, E2E] completed` instead of inline in `ci.yml`. By the time
+that job runs both workflows' artifacts exist for the head SHA; it downloads them
+(keyed on `commit`, not just `branch`) and updates the one comment. Removes the
+race entirely; the renderer (`scripts/ci/render-pr-report.py`) is unchanged.
+
+**Size:** S. **Risk:** Low — CI-only; `workflow_run` triggers run from the default
+branch so the fix can only be validated on PRs *after* it merges (note in the PR).
+
+---
+
 ## Healthy — principles already followed
 
 Recorded so the audit isn't misleadingly negative; do **not** "fix" these.
