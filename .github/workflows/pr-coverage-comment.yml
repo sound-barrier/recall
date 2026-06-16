@@ -1,0 +1,181 @@
+name: PR coverage comment
+
+# Renders the single sticky PR comment (unit-test results + Unit/Integration
+# coverage table) AFTER the CI and E2E workflows finish, instead of inline in
+# ci.yml. ci.yml's old `pr-report` job rendered while e2e.yml was still running
+# in parallel, so the Integration (e2e) column was always "—/pending" — the
+# e2e-coverage artifact for the commit didn't exist yet and nothing re-triggered
+# the render once it did (REVIEW.md Q19). A `workflow_run` trigger fixes that:
+# by the time this runs, both workflows have completed and uploaded their
+# artifacts for the head SHA, so we download both (keyed on commit, not branch)
+# and the renderer sees real numbers.
+#
+# Triggers on BOTH workflows completing: whichever finishes last produces the
+# complete comment; earlier renders update the same sticky in place
+# (recreate: false → silent edit, one notification). e2e.yml always runs to
+# completion (docs/release PRs short-circuit its heavy steps but still finish),
+# so this fires for every PR.
+#
+# NOTE: `workflow_run` workflows execute the definition from the DEFAULT branch,
+# so this only takes effect for PRs opened AFTER it merges to main.
+
+on:
+  workflow_run:
+    workflows: [CI, E2E]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read         # dawidd6 reads artifacts from the triggering runs
+  pull-requests: write  # post/update the sticky comment
+
+jobs:
+  comment:
+    # Only PR-originated runs carry a PR to comment on; skip push-to-main.
+    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+
+      # Resolve the PR number for this commit. The workflow_run payload usually
+      # carries it; fall back to a head-branch lookup for the rare empty case.
+      - name: Resolve PR number
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PR_FROM_EVENT: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          num="$PR_FROM_EVENT"
+          if [ -z "$num" ] || [ "$num" = "null" ]; then
+            num=$(gh pr list --repo "${{ github.repository }}" --head "$HEAD_BRANCH" \
+              --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          fi
+          echo "number=$num" >> "$GITHUB_OUTPUT"
+          if [ -z "$num" ]; then
+            echo "::notice::No open PR for ${HEAD_BRANCH} — nothing to comment on."
+          fi
+
+      # This commit's UNIT coverage + JUnit, downloaded cross-run from the CI
+      # run for the head SHA (same-run download can't reach another workflow).
+      # `workflow_conclusion: completed` so a partially-red CI run (whose
+      # coverage/junit still uploaded) is still found.
+      - name: Download unit coverage (Go)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: ci.yml
+          commit: ${{ github.event.workflow_run.head_sha }}
+          workflow_conclusion: completed
+          name: go-coverage
+          path: pr-cov/go/
+          if_no_artifact_found: warn
+
+      - name: Download unit coverage (frontend)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: ci.yml
+          commit: ${{ github.event.workflow_run.head_sha }}
+          workflow_conclusion: completed
+          name: frontend-coverage
+          path: pr-cov/frontend/
+          if_no_artifact_found: warn
+
+      - name: Download unit-test results (JUnit)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: ci.yml
+          commit: ${{ github.event.workflow_run.head_sha }}
+          workflow_conclusion: completed
+          name: unit-test-results
+          path: pr-tests/
+          if_no_artifact_found: warn
+
+      # main's most-recent coverage as the Δ baseline (latest CI run on main).
+      - name: Download main's coverage baseline (Go)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: ci.yml
+          branch: main
+          name: go-coverage
+          path: main-cov/go/
+          if_no_artifact_found: warn
+
+      - name: Download main's coverage baseline (frontend)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: ci.yml
+          branch: main
+          name: frontend-coverage
+          path: main-cov/frontend/
+          if_no_artifact_found: warn
+
+      # Integration (e2e) coverage for THIS commit — now guaranteed present
+      # because e2e.yml has completed (this workflow ran on its completion).
+      - name: Download integration coverage (Go)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: e2e.yml
+          commit: ${{ github.event.workflow_run.head_sha }}
+          workflow_conclusion: completed
+          name: go-e2e-coverage
+          path: pr-cov-e2e/go/
+          if_no_artifact_found: warn
+
+      - name: Download integration coverage (frontend)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: e2e.yml
+          commit: ${{ github.event.workflow_run.head_sha }}
+          workflow_conclusion: completed
+          name: frontend-e2e-coverage
+          path: pr-cov-e2e/frontend/
+          if_no_artifact_found: warn
+
+      - name: Render combined PR report
+        if: steps.pr.outputs.number != ''
+        run: python3 scripts/ci/render-pr-report.py > pr-report.md
+
+      # Sweep stale CI-authored comments from the earlier two-comment era so the
+      # PR carries exactly one CI comment. Idempotent.
+      - name: Sweep legacy CI-authored comments
+        if: steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh api --paginate \
+            "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '.[]
+              | select(.user.login == "github-actions[bot]")
+              | select(
+                  (.body | startswith("# Unit test results"))
+                  or (.body | startswith("# Unit Test Results"))
+                  or (.body | contains("<!-- Sticky Pull Request Commentcoverage -->"))
+                )
+              | .id' \
+            | while read -r id; do
+                [ -n "$id" ] || continue
+                echo "Deleting legacy CI comment $id"
+                gh api -X DELETE \
+                  "repos/${{ github.repository }}/issues/comments/${id}"
+              done
+
+      # One sticky on the `pr-report` header. recreate:false → update in place
+      # (no double-notification) since this can render up to twice per push as
+      # CI and E2E each complete; the later render fills in the column the
+      # earlier one left "pending".
+      - name: Post combined PR report
+        if: steps.pr.outputs.number != ''
+        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0  # v2
+        with:
+          header: pr-report
+          recreate: false
+          number: ${{ steps.pr.outputs.number }}
+          path: pr-report.md
