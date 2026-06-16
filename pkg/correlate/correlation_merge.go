@@ -56,6 +56,13 @@ func MergeMatchResult(dst, src *parser.MatchResult) {
 	}
 	dst.RankProgress = FirstNonEmpty(dst.RankProgress, src.RankProgress)
 	dst.ChangePercent = FirstNonEmpty(dst.ChangePercent, src.ChangePercent)
+	mergeSR(dst, src)
+	mergeHeroesPlayed(dst, src)
+}
+
+// mergeSR folds src's per-hero SR rows into dst — first-non-zero wins per
+// (hero, field), and an unseen hero is appended.
+func mergeSR(dst, src *parser.MatchResult) {
 	for _, srcSR := range src.SR {
 		exists := false
 		for i := range dst.SR {
@@ -74,6 +81,12 @@ func MergeMatchResult(dst, src *parser.MatchResult) {
 			dst.SR = append(dst.SR, srcSR)
 		}
 	}
+}
+
+// mergeHeroesPlayed folds src's heroes-played list into dst — first-non-empty
+// wins per hero for percent/playtime, stat cells fill in where absent, and an
+// unseen hero is appended.
+func mergeHeroesPlayed(dst, src *parser.MatchResult) {
 	for _, srcHp := range src.HeroesPlayed {
 		var match *parser.HeroPlay
 		for i := range dst.HeroesPlayed {
