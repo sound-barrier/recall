@@ -182,6 +182,11 @@ type Context = 'always' | 'matches-no-panel' | 'panel' | TabId
 interface Binding {
   keys: readonly string[]
   action: string
+  // How the multiple keys relate: a SEQUENCE you press in order (vim
+  // `g` then `m`) → joined with "then"; otherwise the keys are
+  // interchangeable ALTERNATIVES (`j` or `↓`) → joined with "or".
+  // Defaults to alternatives.
+  seq?: boolean
 }
 
 interface BindingGroup {
@@ -198,10 +203,10 @@ const groups: readonly BindingGroup[] = [
       { keys: ['/'],            action: 'Focus the match-search input' },
       { keys: ['Esc'],          action: 'Clear & blur the match-search input (when focused)' },
       { keys: ['Enter'],        action: 'Open first hit in the detail panel (from match-search)' },
-      { keys: ['g', 'm'],       action: 'Go to Matches view' },
-      { keys: ['g', 'i'],       action: 'Go to Parse view' },
-      { keys: ['g', 's'],       action: 'Go to Settings view' },
-      { keys: ['g', 'u'],       action: 'Go to Unknown view' },
+      { keys: ['g', 'm'],       action: 'Go to Matches view', seq: true },
+      { keys: ['g', 'i'],       action: 'Go to Parse view', seq: true },
+      { keys: ['g', 's'],       action: 'Go to Settings view', seq: true },
+      { keys: ['g', 'u'],       action: 'Go to Unknown view', seq: true },
       { keys: ['?'],            action: 'Show this cheatsheet' },
     ],
   },
@@ -209,10 +214,25 @@ const groups: readonly BindingGroup[] = [
     scope: 'Matches view',
     context: 'matches-no-panel',
     bindings: [
-      { keys: ['j'],            action: 'Focus the next match card' },
-      { keys: ['k'],            action: 'Focus the previous match card' },
-      { keys: ['e'],            action: 'Open the detail panel for the focused card' },
+      { keys: ['j', '↓'],       action: 'Focus the next match card' },
+      { keys: ['k', '↑'],       action: 'Focus the previous match card' },
+      { keys: ['g', 'g'],       action: 'Focus the first card', seq: true },
+      { keys: ['G'],            action: 'Focus the last card' },
+      { keys: ['n'],            action: 'Jump to the next group section' },
+      { keys: ['N'],            action: 'Jump to the previous group section' },
+      { keys: ['l', '→'],       action: 'Open the detail panel for the focused card' },
+      { keys: ['e'],            action: 'Open / close the detail panel for the focused card' },
       { keys: ['t'],            action: 'Focus the tags editor (auto-opens the detail panel)' },
+    ],
+  },
+  {
+    scope: 'Narrow panel (filters)',
+    context: 'matches-no-panel',
+    bindings: [
+      { keys: ['/'],            action: 'Open the panel & focus search' },
+      { keys: ['Tab'],          action: 'From an empty field, jump to the next toggle' },
+      { keys: ['⇧', 'Tab'],     action: 'From an empty field, jump to the previous toggle', seq: true },
+      { keys: ['Esc'],          action: 'Close the panel' },
     ],
   },
   {
@@ -319,7 +339,7 @@ const visibleGroups = computed(() =>
                     v-if="j < b.keys.length - 1"
                     class="kbd-sep"
                     aria-hidden="true"
-                  >then</span>
+                  >{{ b.seq ? 'then' : 'or' }}</span>
                 </template>
               </dt>
               <dd class="kbd-action">

@@ -46,8 +46,16 @@ export interface GlobalKeyboardDeps {
   // Vertical move helper from App.vue — j/k delegate here so the
   // scroll-into-view + aria-current bookkeeping lives in one place.
   focusCardByRenderedDelta: (delta: 1 | -1) => void | Promise<void>
-  // Opens the detail panel for a match key. Reused by `e` (open) and
-  // `t` (open + focus tags input).
+  // Jump card focus to the first / last rendered leaf-row. Backs the
+  // vim `gg` (first) and `G` (last) motions.
+  focusCardByRenderedEnd: (which: 'first' | 'last') => void | Promise<void>
+  // Jump card focus to the first row of the next / previous grouped
+  // section (the `.section-divider` boundaries in the cozy/compact
+  // list). Backs the vim `n` / `N` motions. No-op when the list is
+  // ungrouped (groupBy='none' → no dividers).
+  focusSectionByRenderedDelta: (delta: 1 | -1) => void | Promise<void>
+  // Opens the detail panel for a match key. Reused by `e` (open),
+  // `t` (open + focus tags input), and `l` / → (drill into the card).
   toggleExpand: (matchKey: string) => void | Promise<void>
 }
 
@@ -62,8 +70,14 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
     narrowedRecords,
     goToView,
     focusCardByRenderedDelta,
+    focusCardByRenderedEnd,
+    focusSectionByRenderedDelta,
     toggleExpand,
   } = deps
+
+  // Shared gate: a Matches-list motion only fires on the Matches view
+  // with no detail panel open (the panel owns j/k/h/l while up).
+  const onMatchesList = () => view.value === 'matches' && !selectionIsOpen.value
 
   useKeyboardShortcuts([
     // Global: open the Narrow panel and focus its search input. The
@@ -111,18 +125,55 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
     }),
     // Matches view: j/k move card focus, no wrap, in RENDERED order
     // (so flipping Sort=Oldest still has j advance down the visible
-    // list). Suppressed when the detail panel is open; the panel's
-    // own keydown listener takes over (j/k paginates within the
+    // list). ArrowDown/ArrowUp alias j/k so non-vim users get the same
+    // navigation. Suppressed when the detail panel is open; the panel's
+    // own keydown listener takes over (j/k/arrows paginate within the
     // open panel).
     {
-      key: 'j',
-      when: () => view.value === 'matches' && !selectionIsOpen.value,
+      key: ['j', 'ArrowDown'],
+      when: onMatchesList,
       handler: () => { void focusCardByRenderedDelta(1) },
     },
     {
-      key: 'k',
-      when: () => view.value === 'matches' && !selectionIsOpen.value,
+      key: ['k', 'ArrowUp'],
+      when: onMatchesList,
       handler: () => { void focusCardByRenderedDelta(-1) },
+    },
+    // Matches view: gg → first card, G → last card (vim list ends).
+    {
+      key: 'g',
+      prefix: 'g',
+      when: onMatchesList,
+      handler: () => { void focusCardByRenderedEnd('first') },
+    },
+    {
+      key: 'G',
+      when: onMatchesList,
+      handler: () => { void focusCardByRenderedEnd('last') },
+    },
+    // Matches view: n / N jump to the next / previous grouped-section
+    // header (Edited / User-entered / OCR, or the Y/M/W/D date groups) —
+    // distinct from j/k card-stepping. No-op when the list is ungrouped.
+    {
+      key: 'n',
+      when: onMatchesList,
+      handler: () => { void focusSectionByRenderedDelta(1) },
+    },
+    {
+      key: 'N',
+      when: onMatchesList,
+      handler: () => { void focusSectionByRenderedDelta(-1) },
+    },
+    // Matches view: l / → drill into the focused card (open its detail
+    // panel) — the vim "move right / into" motion. h / ← / Esc back out
+    // via the panel's own handlers once it's open.
+    {
+      key: ['l', 'ArrowRight'],
+      when: () => onMatchesList() && focusedCardIndex.value >= 0,
+      handler: () => {
+        const rec = narrowedRecords.value[focusedCardIndex.value]
+        if (rec) void toggleExpand(rec.match_key)
+      },
     },
     // Matches view: open / close the detail panel for the focused card.
     // From the closed state this is the keyboard alternative to clicking

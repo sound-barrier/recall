@@ -10,6 +10,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useNarrowTabNav } from '@/composables/matches/useNarrowTabNav'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import NarrowPresets from '@/components/matches/NarrowPresets.vue'
 import type { MatchRecord } from '@/api'
@@ -131,6 +132,10 @@ useModalFocusTrap(focusTrapOpen, {
   onClose: () => { isOpen.value = false },
   keepOpenOnFieldEscape: true,
 })
+
+// Tab from an empty text input jumps to the next toggle (Shift+Tab to
+// the previous) — see useNarrowTabNav. Scoped to this panel's root.
+useNarrowTabNav(popoverRef)
 
 function onDocumentMousedown(e: MouseEvent) {
   const tgt = e.target as HTMLElement | null
