@@ -26,6 +26,11 @@ var (
 	ErrMatchKeyExists = errors.New("a match already exists for that time; pick a different minute")
 	// ErrInvalidPlayedAt maps to 400 — played_at wasn't valid RFC 3339.
 	ErrInvalidPlayedAt = errors.New("invalid played_at: must be RFC 3339")
+	// ErrInvalidRank maps to 400 — a manual rank value falls outside the bounds
+	// the MatchResult response promises (level 0-5, rank_progress 0-100,
+	// change_percent ±1_000_000). The create path echoes these straight back, so
+	// an out-of-range input would emit a schema-violating response.
+	ErrInvalidRank = errors.New("invalid rank: division, progress, or change_percent out of range")
 )
 
 // UpdateMatchData replaces the user override set for a match (inline edits send
@@ -128,6 +133,12 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 		return "", db.UserMatchData{}, ErrInvalidLeaver
 	}
 
+	if input.Rank != nil {
+		if err := validateManualRank(*input.Rank); err != nil {
+			return "", db.UserMatchData{}, err
+		}
+	}
+
 	played := time.Now().UTC()
 	if input.PlayedAt != "" {
 		parsed, err := time.Parse(time.RFC3339, input.PlayedAt)
@@ -157,6 +168,22 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 		applyManualRank(&data, *input.Rank)
 	}
 	return key, data, nil
+}
+
+// validateManualRank rejects rank values outside the bounds the MatchResult
+// response documents (level 0-5, rank_progress 0-100, change_percent
+// ±1_000_000). applyManualRank echoes the input straight into the response, so
+// an unchecked value would otherwise produce a schema-violating record.
+func validateManualRank(rank match.ManualRankInput) error {
+	switch {
+	case rank.Progress < 0 || rank.Progress > 100:
+		return ErrInvalidRank
+	case rank.Division < 0 || rank.Division > 5:
+		return ErrInvalidRank
+	case rank.ChangePercent < -1_000_000 || rank.ChangePercent > 1_000_000:
+		return ErrInvalidRank
+	}
+	return nil
 }
 
 func applyManualRank(data *db.UserMatchData, rank match.ManualRankInput) {
