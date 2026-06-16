@@ -62,8 +62,9 @@ describe('MatchesTableSortPopover', () => {
       await add.trigger('click')
     }
     // One sort level per sortable column (TABLE_SORT_COLUMNS): When,
-    // Map, Mode, Hero, Role, E/A/D, Tags, Edited, User entered, Result.
-    expect(w.findAll('[data-sort-level]')).toHaveLength(10)
+    // Map, Mode, Queue, Hero, Role, E, A, D, Tags, Edited, User entered,
+    // Result.
+    expect(w.findAll('[data-sort-level]')).toHaveLength(13)
     expect(isDisabled(w.find('[data-add-level]').element)).toBe(true)
   })
 
