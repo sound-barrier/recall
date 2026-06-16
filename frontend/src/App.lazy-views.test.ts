@@ -38,7 +38,7 @@ describe('App.vue lazy-loaded components', () => {
     // Update-check modal — only mounted when the user runs a check.
     { name: 'UpdateCheckModal',       path: '@/components/shared/UpdateCheckModal.vue' },
     // Manual-entry modal — only mounted when the user clicks "Add match".
-    { name: 'ManualMatchModal',       path: '@/components/matches/ManualMatchModal.vue' },
+    { name: 'ManualMatchModal',       path: '@/components/matches/manual/ManualMatchModal.vue' },
   ]
 
   for (const { name, path } of views) {

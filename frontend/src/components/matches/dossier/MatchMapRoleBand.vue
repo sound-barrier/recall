@@ -7,7 +7,7 @@ import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import { winrateVolumeFill } from '@/match/match-heatmap-helpers'
 import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
-import MapRoleConfigPopover from '@/components/matches/MapRoleConfigPopover.vue'
+import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopover.vue'
 
 // GEOGRAPHY — Map × Role performance band.
 //
