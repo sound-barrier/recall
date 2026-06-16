@@ -13,24 +13,17 @@
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-defined-purple)](CODE_OF_CONDUCT.md)
 [![Backlog](https://img.shields.io/badge/backlog-public-orange)](REVIEW.md)
 
-**Recall** is a desktop app for Overwatch players who want to understand
-their performance trends over time. It watches a folder of OW post-match
-screenshots, reads them with Tesseract OCR, and stores per-match data in a
-local database. Optionally it exposes the match history as Prometheus metrics
-so a bundled Grafana dashboard can chart win rates, SR trends, and per-hero stats.
+**Recall** turns your Overwatch match history into a clear picture of how you're
+actually playing — on your own machine, with no account and nothing uploaded.
+Point it at the folder where your post-match screenshots land and it reads each
+game (result, map, heroes, eliminations/deaths, rank, SR) into a private,
+searchable history. Don't want to screenshot every game? Type a match in by hand.
+Then explore your win rate, SR trend, hero pool, and exactly what you're strong
+and weak at — by hero, map, role, time of day, however you want to slice it.
 
-```mermaid
-flowchart LR
-  A[OW screenshots<br/>SUMMARY · TEAMS<br/>PERSONAL · RANK] -->|fsnotify watcher<br/>or manual Parse| B(Tesseract OCR<br/>+ per-screenshot<br/>parsers)
-  B --> C[Correlation pass<br/>resolves match_key<br/>by timestamp or E/A/D]
-  C --> D[(SQLite<br/>5 per-type tables<br/>+ 5 child tables)]
-  D --> E[Read-time<br/>aggregator<br/>folds by match_key]
-  E --> F[Vue UI<br/>Wails desktop<br/>or browser]
-  D -.->|optional| G[Prometheus<br/>collector<br/>:9091/metrics]
-  G -.-> H[Grafana<br/>dashboard]
-  classDef opt stroke-dasharray: 4 3
-  class G,H opt
-```
+The browser / headless mode, Docker, and the bundled Grafana dashboard are all
+optional power-user extras (see [Advanced](#advanced)). Curious how it works under
+the hood? See **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## What it looks like
 
@@ -72,6 +65,7 @@ flowchart LR
 
 **Project**
 
+- [Architecture](ARCHITECTURE.md) — how the pipeline works under the hood (OCR → SQLite → UI / Grafana)
 - [Review](REVIEW.md) — outstanding work: features, bugs, tech debt, and what we will not build
 - [Contributing](#contributing)
 - [License](#license)

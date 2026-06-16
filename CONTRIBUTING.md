@@ -1,9 +1,9 @@
 # Contributing
 
 This guide covers setting up a local development environment, building the
-project for all target platforms, and maintaining code quality. For an
-overview of the architecture and internal conventions, see
-[`CLAUDE.md`](CLAUDE.md).
+project for all target platforms, and maintaining code quality. For a
+high-level architecture overview see [`ARCHITECTURE.md`](ARCHITECTURE.md); for
+the detailed internal conventions see [`CLAUDE.md`](CLAUDE.md).
 
 > Before opening an issue or PR, please read the
 > [Code of Conduct](CODE_OF_CONDUCT.md). TL;DR: be kind, and respect that
