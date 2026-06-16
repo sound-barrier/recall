@@ -162,3 +162,41 @@ test('role queue requires a single role and constrains the hero list', async ({ 
   await page.locator('[data-role="support"]').click()
   await expect(heroCombo.locator('.combo-pill')).toHaveCount(0)
 })
+
+test('an out-of-range rank progress blocks submit with an inline error', async ({ page }) => {
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }))
+  await page.route('**/api/v1/matches', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }))
+
+  await page.goto('/')
+  await page.locator('#tab-matches').click()
+  await page.locator('[data-add-match]').click()
+  await expect(page.locator('.mm-modal')).toBeVisible()
+
+  await page.locator('[data-mode="competitive"]').click()
+  await page.locator('[data-queue="role"]').click()
+  await page.locator('[data-role="support"]').click()
+  await page.locator('[data-result="victory"]').click()
+  const mapCombo = page.locator('[data-combo-id="mm-map"]')
+  await mapCombo.locator('.combo-input').click()
+  await mapCombo.locator('.combo-input').fill('ili')
+  await page.keyboard.press('Enter')
+  await expect(mapCombo.locator('.combo-pill')).toContainText('ilios')
+  const heroCombo = page.locator('[data-combo-id="mm-hero"]')
+  await heroCombo.locator('.combo-input').click()
+  await heroCombo.locator('.combo-list li:has-text("ana")').click()
+  await page.locator('#mm-title').click()
+  await expect(page.locator('[data-mm-submit]')).toBeEnabled()
+
+  // Pick a tier so rank is sent, then push progress out of range.
+  await page.locator('.mm-sublabel').filter({ hasText: 'Tier' }).locator('select').selectOption('Platinum')
+  const progress = page.locator('.mm-sublabel').filter({ hasText: 'Progress' }).locator('input')
+  await progress.fill('150')
+  await expect(page.locator('.mm-rank-error')).toBeVisible()
+  await expect(page.locator('[data-mm-submit]')).toBeDisabled()
+
+  await progress.fill('50')
+  await expect(page.locator('.mm-rank-error')).toBeHidden()
+  await expect(page.locator('[data-mm-submit]')).toBeEnabled()
+})

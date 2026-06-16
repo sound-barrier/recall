@@ -87,7 +87,22 @@ export function useManualMatchForm() {
     return out
   })
 
-  const canSubmit = computed(() => missingRequired.value.length === 0)
+  // Rank is only sent for a competitive match with a tier picked (see toInput).
+  // When it is, progress and RR change are free-typed numbers, so validate them
+  // against the bounds the server enforces (the selects already constrain tier
+  // and division). An invalid rank blocks submit and surfaces rankError.
+  const rankActive = computed(() => isCompetitive.value && rankTier.value.trim() !== '')
+  const rankError = computed(() => {
+    if (!rankActive.value) return ''
+    const p = rankProgress.value
+    const c = rankChange.value
+    if (Number.isNaN(p) || p < 0 || p > 100) return 'Progress must be between 0 and 100.'
+    if (Number.isNaN(c) || c < -1_000_000 || c > 1_000_000) return 'RR change must be within ±1,000,000.'
+    return ''
+  })
+  const rankValid = computed(() => rankError.value === '')
+
+  const canSubmit = computed(() => missingRequired.value.length === 0 && rankValid.value)
 
   // Assemble the wire payload. Pre-condition: canSubmit (the casts below are
   // safe once the required enums are non-empty).
@@ -128,6 +143,6 @@ export function useManualMatchForm() {
     rankTier, rankDivision, rankProgress, rankChange, demotionProtection,
     isCompetitive, isRoleQueue, primaryHero,
     addHero, removeHero, addTag, removeTag, addMember, removeMember,
-    canSubmit, missingRequired, toInput,
+    canSubmit, missingRequired, rankActive, rankError, rankValid, toInput,
   }
 }

@@ -374,10 +374,13 @@ async function submit() {
                 <input v-model.number="f.rankProgress.value" class="mm-input" type="number" min="0" max="100">
               </label>
               <label class="mm-sublabel">RR change %
-                <input v-model.number="f.rankChange.value" class="mm-input" type="number">
+                <input v-model.number="f.rankChange.value" class="mm-input" type="number" min="-1000000" max="1000000">
               </label>
             </div>
             <label class="mm-check"><input v-model="f.demotionProtection.value" type="checkbox">Demotion protection</label>
+            <p v-if="f.rankError.value" class="mm-rank-error" role="alert">
+              {{ f.rankError.value }}
+            </p>
           </section>
 
           <p v-if="errorMsg" class="mm-error" role="alert">
@@ -640,6 +643,12 @@ async function submit() {
 .mm-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .mm-rank-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+
+.mm-rank-error {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: var(--loss);
+}
 
 .mm-sublabel {
   display: flex;

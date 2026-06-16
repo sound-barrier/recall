@@ -73,6 +73,31 @@ test.describe('inline match-data editing', () => {
     await expect(page.locator('button[aria-label^="Damage"]')).toContainText('9,999')
   })
 
+  test('a negative stat shows an inline error and never fires the PUT', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([record({})]) })
+    })
+    let putFired = false
+    await page.route('**/api/v1/matches/m1/data', async (route: Route) => {
+      if (route.request().method() === 'PUT') putFired = true
+      await route.fulfill({ status: 204, body: '' })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await page.locator('.leaf-row').first().click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    await page.locator('button[aria-label^="Damage"]').click()
+    const input = page.locator('.stat-input')
+    await input.fill('-9999')
+    await input.press('Enter')
+
+    await expect(page.locator('.stat-error')).toBeVisible()
+    await expect(input).toBeVisible() // stays open to correct
+    expect(putFired).toBe(false)
+  })
+
   test('the ✎ revert on the only edit sends a DELETE back to pure OCR', async ({ page }) => {
     const state: { damage?: number } = { damage: 9999 }
     await page.route('**/api/v1/matches', async (route: Route) => {
