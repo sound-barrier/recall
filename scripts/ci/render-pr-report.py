@@ -206,20 +206,22 @@ def build_coverage_section(
     main_fe: float | None,
     e2e_go: float | None,
     e2e_fe: float | None,
+    main_e2e_go: float | None,
+    main_e2e_fe: float | None,
 ) -> list[str]:
-    """The "Coverage" heading + Unit (this-PR-vs-main) + Integration table.
+    """The "Coverage" heading + Unit + Integration (e2e) table.
 
-    Unit columns carry the main-baseline Δ. The Integration (e2e) column is
-    informational and baseline-free — it comes from the separate E2E workflow,
-    whose artifacts may not be ready when this renders (then "—")."""
+    Both Unit and Integration (e2e) carry a main-baseline Δ so a PR's effect on
+    either is visible. The e2e figures come from the separate E2E workflow, whose
+    artifacts may not be ready when this renders (then "—")."""
     out: list[str] = ["### 📊 Coverage", ""]
-    out.append("| Component | Unit | main | Δ | Integration (e2e) |")
-    out.append("|---|---:|---:|---:|---:|")
+    out.append("| Component | Unit | main | Δ | Integration (e2e) | main | Δ |")
+    out.append("|---|---:|---:|---:|---:|---:|---:|")
     out.append(
-        f"| Go       | {fmt_pct(pr_go)} | {fmt_pct(main_go)} | {fmt_delta(pr_go, main_go)}{delta_emoji(pr_go, main_go)} | {fmt_pct(e2e_go)} |"
+        f"| Go       | {fmt_pct(pr_go)} | {fmt_pct(main_go)} | {fmt_delta(pr_go, main_go)}{delta_emoji(pr_go, main_go)} | {fmt_pct(e2e_go)} | {fmt_pct(main_e2e_go)} | {fmt_delta(e2e_go, main_e2e_go)}{delta_emoji(e2e_go, main_e2e_go)} |"
     )
     out.append(
-        f"| Frontend | {fmt_pct(pr_fe)} | {fmt_pct(main_fe)} | {fmt_delta(pr_fe, main_fe)}{delta_emoji(pr_fe, main_fe)} | {fmt_pct(e2e_fe)} |"
+        f"| Frontend | {fmt_pct(pr_fe)} | {fmt_pct(main_fe)} | {fmt_delta(pr_fe, main_fe)}{delta_emoji(pr_fe, main_fe)} | {fmt_pct(e2e_fe)} | {fmt_pct(main_e2e_fe)} | {fmt_delta(e2e_fe, main_e2e_fe)}{delta_emoji(e2e_fe, main_e2e_fe)} |"
     )
     out.append("")
     if main_go is None or main_fe is None:
@@ -230,6 +232,11 @@ def build_coverage_section(
     if e2e_go is None and e2e_fe is None:
         out.append(
             "_Integration (e2e) coverage pending — the E2E workflow runs in parallel and may not have finished for this commit yet. It populates from the latest E2E run on the branch._"
+        )
+        out.append("")
+    elif main_e2e_go is None or main_e2e_fe is None:
+        out.append(
+            "_Integration (e2e) baseline missing for at least one component — main has had no recent e2e-relevant run, or the artifact aged out. The e2e Δ will populate after the next push to main._"
         )
         out.append("")
     return out
@@ -261,9 +268,19 @@ def main() -> int:
             "pr-cov-e2e/frontend/**/cobertura-coverage.xml",
         )
     )
+    # main's e2e baseline, for the Integration Δ (mirrors the unit baseline).
+    main_e2e_go = parse_cobertura_line_rate("main-cov-e2e/go/cobertura.xml")
+    main_e2e_fe = parse_cobertura_line_rate(
+        find_one(
+            "main-cov-e2e/frontend/cobertura-coverage.xml",
+            "main-cov-e2e/frontend/**/cobertura-coverage.xml",
+        )
+    )
 
     out = build_tests_section(pr_tests)
-    out += build_coverage_section(pr_go, main_go, pr_fe, main_fe, e2e_go, e2e_fe)
+    out += build_coverage_section(
+        pr_go, main_go, pr_fe, main_fe, e2e_go, e2e_fe, main_e2e_go, main_e2e_fe
+    )
 
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     out.append(f"<sub>Updated {ts} · sticky comment</sub>")
