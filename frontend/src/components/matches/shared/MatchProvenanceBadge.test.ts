@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect } from 'vitest'
-import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
+import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 
 describe('MatchProvenanceBadge', () => {
   it('defaults to OCR when source is absent', () => {
