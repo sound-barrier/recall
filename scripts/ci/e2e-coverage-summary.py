@@ -28,7 +28,8 @@ def go_total(path: str) -> str:
                     if m:
                         return f"{float(m.group(1)):.1f}%"
     except OSError:
-        pass
+        # Coverage input is optional in CI; unreadable/missing file maps to "—".
+        return "—"
     return "—"
 
 
