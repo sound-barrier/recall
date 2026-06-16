@@ -47,9 +47,6 @@ import {
   ImportData,
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
-  UnignoreScreenshot,
-  ClearIgnoredScreenshots,
-  GetIgnoredScreenshots,
   SetMatchAnnotation,
   UpdateMatchData,
   ResetMatchData,
@@ -64,7 +61,7 @@ import {
   SeedTestProfile,
   SwitchProfile,
 } from '@/api'
-import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
+import type { MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
 import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
@@ -83,6 +80,7 @@ import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/s
 import { useTheme } from '@/composables/settings/useTheme'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useCardFocus } from '@/composables/matches/useCardFocus'
+import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/matches/useMatchesNarrow'
@@ -1172,66 +1170,22 @@ async function onIgnoreScreenshot(filename: string) {
   }
 }
 
-// Ignored-screenshot management (Settings → Advanced → Manage panel).
-// `ignoredScreenshots` is the rich list (filename + ignored_at) the
-// panel renders; the count drives the SettingsAdvanced Manage button
-// + the Clear-Database opt-out checkbox visibility. Refreshed on app
-// mount, after every Ignore / Unignore / ClearIgnored / ClearDatabase
-// call so callers don't have to wait for a full record reload to see
-// the count tick.
-const ignoredScreenshots = ref<IgnoredScreenshot[]>([])
-const ignoredCount = computed(() => ignoredScreenshots.value.length)
-const ignoredPanelOpen = ref(false)
-
-async function loadIgnored() {
-  try {
-    ignoredScreenshots.value = await GetIgnoredScreenshots()
-  } catch (e) {
-    // Best-effort — failing to refresh the count shouldn't block the
-    // primary record reload that triggered us.
-    console.warn('GetIgnoredScreenshots failed:', e)
-  }
-}
-
-function openIgnoredPanel() {
-  ignoredPanelOpen.value = true
-}
-
-function closeIgnoredPanel() {
-  ignoredPanelOpen.value = false
-}
-
-// Per-row Restore from the panel. Removes the file from the
-// suppress-list and refreshes the list — the next Parse run will
-// re-discover the file from disk.
-async function onUnignoreScreenshot(filename: string) {
-  try {
-    await UnignoreScreenshot(filename)
-    await loadIgnored()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Bulk Re-enable all from the panel — truncates the suppress-list in
-// one call. Same downstream as per-file restore: the panel re-renders
-// empty and the user can Run Parse to re-discover everything.
-async function onClearIgnoredScreenshots() {
-  try {
-    await ClearIgnoredScreenshots()
-    await loadIgnored()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// "Run Parse now" link inside the panel — close the modal, switch to
-// the Parse tab, and kick the existing manual-parse flow.
-function onRunParseFromIgnored() {
-  closeIgnoredPanel()
-  goToView('ingest')
-  void parse()
-}
+// Ignored-screenshot management (Settings → Advanced → Manage panel) lives in
+// useIgnoredScreenshots — the suppress-list + count chip + restore/clear/
+// re-parse actions. loadIgnored is called from the record-reload, clear-DB, and
+// ignore flows; the panel's actions need App.vue's error surface + view nav +
+// the manual-parse kick.
+const {
+  ignoredScreenshots,
+  ignoredCount,
+  ignoredPanelOpen,
+  loadIgnored,
+  openIgnoredPanel,
+  closeIgnoredPanel,
+  onUnignoreScreenshot,
+  onClearIgnoredScreenshots,
+  onRunParseFromIgnored,
+} = useIgnoredScreenshots({ onError: setErrorFromRaw, goToView, parse })
 
 // SettingsAdvanced fires `clear-database` with `{ keepIgnored }`;
 // stash the opt and forward to the composable so its in-flight state
