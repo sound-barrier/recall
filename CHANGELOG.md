@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.0.16](https://github.com/sound-barrier/recall/compare/v0.15.0...v0.0.16) (2026-06-16)
+## [0.16.0](https://github.com/sound-barrier/recall/compare/v0.15.0...v0.16.0) (2026-06-16)
 
 
 ### Features
