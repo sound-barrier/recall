@@ -286,6 +286,11 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// /api/v1/events registers in server_events.go.
 	registerEventsRoutes(apiMux, a)
 
+	// ── Test-harness-only routes ────────────────────────────────────
+	// No-op unless RECALL_E2E=1 (the Playwright e2e harness). Never in
+	// production. See server_test_reset.go.
+	registerE2ERoutes(apiMux, a)
+
 	// Mount the API sub-mux. Subtree pattern (`/api/v1/`) wins over
 	// `/` for any request whose path starts with the prefix, so the
 	// SPA fallback never sees these requests; method-mismatched calls
