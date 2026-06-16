@@ -354,7 +354,7 @@ func TestServerMux_DeleteSingleMatch_DelegatesToStore(t *testing.T) {
 func TestServerMux_BulkSetMatchQueue_AppliesValueToEveryKey(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := put(t, mux, "/api/v1/matches/queue-type", map[string]any{
+	rec := put(t, mux, "/api/v1/matches/queue", map[string]any{
 		"match_keys": []string{"m1", "m2", "m3"}, "queue_type": "role",
 	})
 	if rec.Code != http.StatusNoContent {
@@ -373,7 +373,7 @@ func TestServerMux_BulkSetMatchQueue_EmptyValueClearsRows(t *testing.T) {
 	_ = fs.SetMatchQueue("m1", "role")
 	_ = fs.SetMatchQueue("m2", "open")
 	_, mux := newTestApp(t, fs)
-	rec := put(t, mux, "/api/v1/matches/queue-type", map[string]any{
+	rec := put(t, mux, "/api/v1/matches/queue", map[string]any{
 		"match_keys": []string{"m1"}, "queue_type": "",
 	})
 	if rec.Code != http.StatusNoContent {
@@ -390,7 +390,7 @@ func TestServerMux_BulkSetMatchQueue_EmptyValueClearsRows(t *testing.T) {
 
 func TestServerMux_BulkSetMatchQueue_400OnInvalidValue(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := put(t, mux, "/api/v1/matches/queue-type", map[string]any{
+	rec := put(t, mux, "/api/v1/matches/queue", map[string]any{
 		"match_keys": []string{"m1"}, "queue_type": "ranked",
 	})
 	if rec.Code != http.StatusBadRequest {

@@ -540,7 +540,7 @@ export function BulkSetMatchQueue(matchKeys: string[], queueType: QueueType): Pr
   if (IS_WAILS) {
     return _wails('BulkSetMatchQueue', matchKeys, queueType)
   }
-  return _send('PUT', '/api/v1/matches/queue-type', {
+  return _send('PUT', '/api/v1/matches/queue', {
     match_keys: matchKeys, queue_type: queueType,
   }).then(() => undefined)
 }

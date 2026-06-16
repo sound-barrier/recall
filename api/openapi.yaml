@@ -637,7 +637,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/queue-type:
+  /api/v1/matches/queue:
     put:
       operationId: BulkSetMatchQueue
       tags: [Matches]
@@ -691,7 +691,7 @@ paths:
       description: |
         Sets `play_mode` to the same value on every key in
         `match_keys` inside one SQLite transaction. Same shape as
-        `PUT /api/v1/matches/queue-type` — see that endpoint for the
+        `PUT /api/v1/matches/queue` — see that endpoint for the
         bulk-toolbar rationale.
 
         Empty `play_mode` (string `""`) clears the rows (bulk

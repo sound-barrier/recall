@@ -46,7 +46,7 @@ func TestHardening_OversizeBodyRejected(t *testing.T) {
 	body := `{"match_keys":["` + huge + `"],"queue_type":"role"}`
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/matches/queue-type", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/matches/queue", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rec, req)
 
@@ -80,7 +80,7 @@ func TestMaxBodyForPath(t *testing.T) {
 	if got := cmd.MaxBodyForPath("/api/v1/imports"); got != cmd.ImportMaxBodyBytes {
 		t.Errorf("imports cap = %d, want %d", got, cmd.ImportMaxBodyBytes)
 	}
-	if got := cmd.MaxBodyForPath("/api/v1/matches/queue-type"); got != cmd.DefaultMaxBodyBytes {
+	if got := cmd.MaxBodyForPath("/api/v1/matches/queue"); got != cmd.DefaultMaxBodyBytes {
 		t.Errorf("default cap = %d, want %d", got, cmd.DefaultMaxBodyBytes)
 	}
 }

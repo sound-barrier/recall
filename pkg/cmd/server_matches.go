@@ -36,9 +36,9 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/matches/play-mode", methodNotAllowed("PUT"))
 	apiMux.HandleFunc("POST /api/v1/matches/play-mode", methodNotAllowed("PUT"))
 	apiMux.HandleFunc("DELETE /api/v1/matches/play-mode", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("GET /api/v1/matches/queue-type", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("POST /api/v1/matches/queue-type", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("DELETE /api/v1/matches/queue-type", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("GET /api/v1/matches/queue", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("POST /api/v1/matches/queue", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("DELETE /api/v1/matches/queue", methodNotAllowed("PUT"))
 
 	// Per-{match_key} sub-resource handlers live in server_matches_item.go.
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", handleHardDeleteMatch(a))
@@ -55,7 +55,7 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/play-mode", handleSetMatchPlayMode(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/play-mode", handleClearMatchPlayMode(a))
 
-	apiMux.HandleFunc("PUT /api/v1/matches/queue-type", handleBulkSetMatchQueue(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/queue", handleBulkSetMatchQueue(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/play-mode", handleBulkSetMatchPlayMode(a))
 }
 
