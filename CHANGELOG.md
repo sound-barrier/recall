@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.17.0](https://github.com/sound-barrier/recall/compare/v0.16.1...v0.17.0) (2026-06-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** `PUT /api/v1/matches/queue-type` is now `PUT /api/v1/matches/queue`.
+
+### Refactors
+
+* **aggregate:** extract fold sort + derived fields (gocyclo 17→8) ([a80a7a1](https://github.com/sound-barrier/recall/commit/a80a7a1c3107e1ad2eb80232deee699867e34140))
+* **api:** rename bulk queue route to /matches/queue ([e48787b](https://github.com/sound-barrier/recall/commit/e48787bf3dd8ddbdbbc4eeb4325b5eab560c03ad))
+* **app:** extract card-focus into useCardFocus (Q13) ([124272a](https://github.com/sound-barrier/recall/commit/124272a2d809e662223d3322d9b4df8251f84f62))
+* **app:** extract useExportBundle (Q13) ([cda93c8](https://github.com/sound-barrier/recall/commit/cda93c873d2b18b13c808a37c82f36fc209e5a11))
+* **app:** extract useIgnoredScreenshots (Q13) ([f8cfa46](https://github.com/sound-barrier/recall/commit/f8cfa4648705eaecfc522b06e6e88ffc1f3e73b1))
+* **correlate:** extract closest-per-key scan (gocyclo 16→9) ([0a0b2e4](https://github.com/sound-barrier/recall/commit/0a0b2e4e9a50e957d5d567b48bf5d1462eafa0f5))
+* **correlate:** extract SR + heroes-played merges (gocyclo 17→2) ([7ffa6c3](https://github.com/sound-barrier/recall/commit/7ffa6c391840c68e79f4566c7f8b9581d69a011b))
+* **db:** extract re-aggregation helpers (gocyclo 16→6) ([298b707](https://github.com/sound-barrier/recall/commit/298b707b5fb0877b09c5563ceada4e0bd52aec4a))
+* **db:** extract user-match child inserts (gocyclo 18→8) ([8623b1e](https://github.com/sound-barrier/recall/commit/8623b1ec641dba6f254ae32eef669bba543a00dd))
+* **db:** split domain types into store_types.go (Q16) ([6c30f0e](https://github.com/sound-barrier/recall/commit/6c30f0e930d01bb2d5b5d8b7628dea04de43e528))
+* **matches:** collect cross-cluster leaves into shared/ ([cbd840d](https://github.com/sound-barrier/recall/commit/cbd840d4e794e454c8b5e7f710cc0d5dd14295d1))
+* **matches:** sub-group manual match entry into manual/ ([9b7bca1](https://github.com/sound-barrier/recall/commit/9b7bca1862141384ca15226e89e36da883c3e695))
+* **matches:** sub-group the Campaign Log into timeline/ ([bb0cea4](https://github.com/sound-barrier/recall/commit/bb0cea431daf00c6a218fa2c38e9a8c67e67d55e))
+* **matches:** sub-group the detail-panel cluster into detail/ ([1d3b646](https://github.com/sound-barrier/recall/commit/1d3b6461ebd90b5175d3e7830cafdda054abe6e2))
+* **matches:** sub-group the dossier cluster into dossier/ ([4f4abcc](https://github.com/sound-barrier/recall/commit/4f4abcc4e84175cf53f3e3e4d1217a3c6338f6b9))
+* **matches:** sub-group the members-list cluster into list/ ([f0417f2](https://github.com/sound-barrier/recall/commit/f0417f22ffbf9bd7d50dab839abb07b5e353cbac))
+* **matches:** sub-group the narrow panel into narrow/ ([4b8a18e](https://github.com/sound-barrier/recall/commit/4b8a18ed150b50833f81b9bd7817459017c014da))
+* **matches:** sub-group the pivot cluster into matches/pivot/ (Q14) ([f3f19f9](https://github.com/sound-barrier/recall/commit/f3f19f91c076c68855401258a89f334a0c7a6d74))
+
+
+### Documentation
+
+* make the README gamer-facing; move internals to ARCHITECTURE.md ([20401ac](https://github.com/sound-barrier/recall/commit/20401ac78c456d5cbfadf042d090ef74d2ba11de))
+* **review:** drop paid-down items, keep only open work ([796851c](https://github.com/sound-barrier/recall/commit/796851c94d5fa118c983f1291f08360c8a161cd8))
+* **review:** mark Q14 done — full matches/ carve into 8 folders ([59eb70d](https://github.com/sound-barrier/recall/commit/59eb70d434226540fdd1a1412e16d50a86a5e9ab))
+* **review:** record Q13 (3 composables) + Q14 (pivot/) partial paydown ([bb6e4db](https://github.com/sound-barrier/recall/commit/bb6e4dba2d112c03a8d23c124c514eb6cfefb8c9))
+* **review:** record Q15 engine-complexity + Q16 store-split paydown ([6c0d143](https://github.com/sound-barrier/recall/commit/6c0d1437a1a95cd0902bc3193cf04a6045086a27))
+
+
+### CI
+
+* render PR coverage comment after CI+E2E via workflow_run ([c1f7db3](https://github.com/sound-barrier/recall/commit/c1f7db3dc03b379dbf566bd81849e02ee0b6c42e))
+
 ## [0.16.1](https://github.com/sound-barrier/recall/compare/v0.16.0...v0.16.1) (2026-06-16)
 
 
