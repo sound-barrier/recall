@@ -653,6 +653,27 @@ jobs:
           path: main-cov/frontend/
           if_no_artifact_found: warn
 
+      # Integration (e2e) coverage from the SEPARATE e2e.yml workflow's latest
+      # run on this PR's branch. Cross-workflow + parallel, so it may not be
+      # ready yet — `warn` keeps the job green and the renderer prints "—".
+      - name: Download this branch's integration coverage (Go)
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: e2e.yml
+          branch: ${{ github.head_ref }}
+          name: go-e2e-coverage
+          path: pr-cov-e2e/go/
+          if_no_artifact_found: warn
+
+      - name: Download this branch's integration coverage (frontend)
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: e2e.yml
+          branch: ${{ github.head_ref }}
+          name: frontend-e2e-coverage
+          path: pr-cov-e2e/frontend/
+          if_no_artifact_found: warn
+
       - name: Render combined PR report
         run: python3 scripts/ci/render-pr-report.py > pr-report.md
 
