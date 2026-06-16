@@ -3,8 +3,10 @@ import { computed, ref, watch } from 'vue'
 import type { MatchRecord } from '@/api'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/useTableSort'
+import { useTableMode } from '@/composables/matches/useTableMode'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/MatchTableRow.vue'
+import PivotTable from '@/components/matches/PivotTable.vue'
 
 // Data-density view of the matches list: a real <table> with sortable
 // column headers over the whole narrowed set (no D/W/M/Y grouping), the
@@ -29,6 +31,7 @@ const emit = defineEmits<{
   'hover-enter':   [rec: MatchRecord, e: MouseEvent]
   'hover-move':    [e: MouseEvent]
   'hover-leave':   []
+  'export-csv':    []
 }>()
 
 // The render columns: the non-sortable checkbox gutter, then the shared
@@ -41,6 +44,7 @@ const TABLE_COLUMNS: ReadonlyArray<{ col: TableSortCol | null; label: string }> 
 const TABLE_ROW_HEIGHT = 30
 
 const { sortKeys, cycleSort, ariaSort, sortRows, sortLevelOf } = useTableSort()
+const { tableMode, setTableMode } = useTableMode()
 
 // Null-safe header-chrome adapters (the checkbox gutter column is col:
 // null): the 1-based sort level for the badge, and the direction caret.
@@ -73,102 +77,209 @@ watch(() => props.resetCounter, () => {
 </script>
 
 <template>
-  <div ref="tableScrollRef" class="leaves-table-scroll">
-    <table class="leaves-table">
-      <thead class="leaves-thead">
-        <tr>
-          <th
-            v-for="column in TABLE_COLUMNS"
-            :key="column.label || 'select'"
-            scope="col"
-            class="th"
-            :class="{ 'th-sortable': !!column.col, 'th-active': headerLevel(column.col) > 0 }"
-            :data-sort-col="column.col || undefined"
-            :aria-sort="column.col ? ariaSort(column.col) : undefined"
-            :title="column.col ? 'Click to sort · Shift+click to add a level' : undefined"
-            @click="column.col && cycleSort(column.col, { append: $event.shiftKey })"
-          >
-            <span v-if="column.label" class="th-inner">
-              {{ column.label }}
-              <span
-                v-if="headerLevel(column.col) > 0 && sortKeys.length > 1"
-                class="th-level"
-                aria-hidden="true"
-              >{{ headerLevel(column.col) }}</span>
-              <span
-                v-if="headerCaret(column.col)"
-                class="th-caret"
-                aria-hidden="true"
-              >{{ headerCaret(column.col) }}</span>
-            </span>
-          </th>
-        </tr>
-      </thead>
+  <div class="leaves-table-wrap">
+    <div class="tablemode-bar">
+      <div class="seg" role="group" aria-label="Table view mode">
+        <button
+          type="button"
+          class="seg-btn"
+          :class="{ 'seg-btn--active': tableMode === 'flat' }"
+          :aria-pressed="tableMode === 'flat'"
+          data-table-mode-pick="flat"
+          @click="setTableMode('flat')"
+        >
+          Flat
+        </button>
+        <button
+          type="button"
+          class="seg-btn"
+          :class="{ 'seg-btn--active': tableMode === 'pivot' }"
+          :aria-pressed="tableMode === 'pivot'"
+          data-table-mode-pick="pivot"
+          @click="setTableMode('pivot')"
+        >
+          Pivot
+        </button>
+      </div>
+      <button
+        type="button"
+        class="export-csv-btn"
+        data-testid="export-csv"
+        @click="emit('export-csv')"
+      >
+        Export CSV
+      </button>
+    </div>
 
-      <!-- Always flat in Data density: one virtualized body, sorted by the
+    <div v-if="tableMode === 'flat'" ref="tableScrollRef" class="leaves-table-scroll">
+      <table class="leaves-table">
+        <thead class="leaves-thead">
+          <tr>
+            <th
+              v-for="column in TABLE_COLUMNS"
+              :key="column.label || 'select'"
+              scope="col"
+              class="th"
+              :class="{ 'th-sortable': !!column.col, 'th-active': headerLevel(column.col) > 0 }"
+              :data-sort-col="column.col || undefined"
+              :aria-sort="column.col ? ariaSort(column.col) : undefined"
+              :title="column.col ? 'Click to sort · Shift+click to add a level' : undefined"
+              @click="column.col && cycleSort(column.col, { append: $event.shiftKey })"
+            >
+              <span v-if="column.label" class="th-inner">
+                {{ column.label }}
+                <span
+                  v-if="headerLevel(column.col) > 0 && sortKeys.length > 1"
+                  class="th-level"
+                  aria-hidden="true"
+                >{{ headerLevel(column.col) }}</span>
+                <span
+                  v-if="headerCaret(column.col)"
+                  class="th-caret"
+                  aria-hidden="true"
+                >{{ headerCaret(column.col) }}</span>
+              </span>
+            </th>
+          </tr>
+        </thead>
+
+        <!-- Always flat in Data density: one virtualized body, sorted by the
        active column header. Spacer <tr>s above + below the rendered
        slice hold the pane's scroll height stable. -->
-      <tbody>
-        <tr
-          v-if="tableTopSpacer > 0"
-          class="table-spacer"
-          aria-hidden="true"
-          :style="{ height: tableTopSpacer + 'px' }"
-          data-virt-top-spacer
-        >
-          <td :colspan="TABLE_COLUMNS.length" />
-        </tr>
-        <MatchTableRow
-          v-for="rec in tableFlatRows"
-          :key="rec.match_key"
-          :rec="rec"
-          :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
-          :focused-card-index="props.focusedCardIndex"
-          :selected="selectedKeys.has(rec.match_key)"
-          :has-selection="selectedKeys.size > 0"
-          :is-anchor="rec.match_key === anchorKey"
-          :search-clauses="searchClauses"
-          @open-match="emit('open-match', $event)"
-          @toggle-select="emit('toggle-select', $event)"
-          @row-context="(e, k) => emit('row-context', e, k)"
-          @hover-enter="(r, e) => emit('hover-enter', r, e)"
-          @hover-move="(e) => emit('hover-move', e)"
-          @hover-leave="emit('hover-leave')"
-        />
-        <tr
-          v-if="tableBottomSpacer > 0"
-          class="table-spacer"
-          aria-hidden="true"
-          :style="{ height: tableBottomSpacer + 'px' }"
-          data-virt-bottom-spacer
-        >
-          <td :colspan="TABLE_COLUMNS.length" />
-        </tr>
-      </tbody>
+        <tbody>
+          <tr
+            v-if="tableTopSpacer > 0"
+            class="table-spacer"
+            aria-hidden="true"
+            :style="{ height: tableTopSpacer + 'px' }"
+            data-virt-top-spacer
+          >
+            <td :colspan="TABLE_COLUMNS.length" />
+          </tr>
+          <MatchTableRow
+            v-for="rec in tableFlatRows"
+            :key="rec.match_key"
+            :rec="rec"
+            :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+            :focused-card-index="props.focusedCardIndex"
+            :selected="selectedKeys.has(rec.match_key)"
+            :has-selection="selectedKeys.size > 0"
+            :is-anchor="rec.match_key === anchorKey"
+            :search-clauses="searchClauses"
+            @open-match="emit('open-match', $event)"
+            @toggle-select="emit('toggle-select', $event)"
+            @row-context="(e, k) => emit('row-context', e, k)"
+            @hover-enter="(r, e) => emit('hover-enter', r, e)"
+            @hover-move="(e) => emit('hover-move', e)"
+            @hover-leave="emit('hover-leave')"
+          />
+          <tr
+            v-if="tableBottomSpacer > 0"
+            class="table-spacer"
+            aria-hidden="true"
+            :style="{ height: tableBottomSpacer + 'px' }"
+            data-virt-bottom-spacer
+          >
+            <td :colspan="TABLE_COLUMNS.length" />
+          </tr>
+        </tbody>
 
-      <!-- Tail: honest count. Data density is fully virtualized (the whole
+        <!-- Tail: honest count. Data density is fully virtualized (the whole
        set is scrollable in the pane), so there's no infinite-scroll
        paging here — just the end marker. -->
-      <tfoot class="leaves-tfoot">
-        <tr
-          class="leaves-foot-row"
-          role="status"
-          aria-live="polite"
-          data-testid="leaves-foot"
-        >
-          <td :colspan="TABLE_COLUMNS.length">
-            <span class="leaves-foot-end">
-              End · {{ records.length }}
-              {{ records.length === 1 ? 'match' : 'matches' }}
-            </span>
-          </td>
-        </tr>
-      </tfoot>
-    </table>
+        <tfoot class="leaves-tfoot">
+          <tr
+            class="leaves-foot-row"
+            role="status"
+            aria-live="polite"
+            data-testid="leaves-foot"
+          >
+            <td :colspan="TABLE_COLUMNS.length">
+              <span class="leaves-foot-end">
+                End · {{ records.length }}
+                {{ records.length === 1 ? 'match' : 'matches' }}
+              </span>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <PivotTable v-else :records="records" />
   </div>
 </template>
 
 <style scoped>
+.leaves-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.tablemode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.seg-btn {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border: none;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.seg-btn + .seg-btn {
+  border-left: 1px solid var(--border);
+}
+
+.seg-btn:hover {
+  color: var(--accent);
+}
+
+.seg-btn--active {
+  color: var(--primary-text-on-accent);
+  background: var(--accent);
+}
+
+.export-csv-btn {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.export-csv-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg-btn,
+  .export-csv-btn { transition: none; }
+}
+
 .leaves-table-scroll {
   position: relative;
   overflow: auto;
