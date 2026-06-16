@@ -11,6 +11,7 @@ export type ChipActPayload =
   | { type: 'move'; delta: number }
   | { type: 'setAgg'; agg: AggFn }
   | { type: 'toggleFilter'; value: string }
+  | { type: 'filterReset' }
 
 export interface ChipAction {
   label: string
@@ -24,7 +25,7 @@ export interface FilterOption {
 </script>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 // A draggable field tile. Mouse users drag it between shelves; keyboard
 // and screen-reader users press it to open a menu of the same moves
@@ -53,6 +54,7 @@ const menuRef = ref<HTMLElement | null>(null)
 const menuOpen = ref(false)
 
 const hasMenu = () => props.actions.length > 0 || (props.filterOptions?.length ?? 0) > 0
+const shownCount = computed(() => props.filterOptions?.filter((o) => o.checked).length ?? 0)
 
 function onDragStart(e: DragEvent) {
   const payload = JSON.stringify({ fieldId: props.fieldId, from: props.location, index: props.index })
@@ -116,9 +118,12 @@ watch(menuOpen, async (open) => {
 
     <div v-if="menuOpen" ref="menuRef" class="pivot-chip-menu" role="menu">
       <template v-if="filterOptions?.length">
-        <p class="pivot-chip-menu-head">
-          Show values · uncheck to hide
-        </p>
+        <div class="pivot-chip-menu-head">
+          <span>{{ shownCount }} of {{ filterOptions.length }} shown</span>
+          <button type="button" class="pivot-chip-reset" @click="emit('act', { type: 'filterReset' })">
+            All
+          </button>
+        </div>
         <!-- Rendered as menuitemcheckbox buttons rather than native
              <input> so the tick is driven entirely by our model
              (opt.checked) — a native checkbox toggles its own DOM state on
@@ -134,8 +139,8 @@ watch(menuOpen, async (open) => {
           class="pivot-chip-check"
           @click="emit('act', { type: 'toggleFilter', value: opt.value })"
         >
-          <span class="pivot-chip-tick" aria-hidden="true">{{ opt.checked ? '☑' : '☐' }}</span>
-          <span>{{ opt.value }}</span>
+          <span class="pivot-chip-box" aria-hidden="true">{{ opt.checked ? '✓' : '' }}</span>
+          <span class="pivot-chip-cklabel">{{ opt.value }}</span>
         </button>
         <hr v-if="actions.length" class="pivot-chip-rule">
       </template>
@@ -244,12 +249,33 @@ watch(menuOpen, async (open) => {
 }
 
 .pivot-chip-menu-head {
-  margin: 0.1rem 0.3rem 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.1rem 0.3rem 0.3rem;
   font-family: var(--mono);
   font-size: 0.5rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
+}
+
+.pivot-chip-reset {
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border));
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.pivot-chip-reset:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .pivot-chip-menuitem {
@@ -299,14 +325,31 @@ watch(menuOpen, async (open) => {
   outline: none;
 }
 
-.pivot-chip-tick {
-  color: var(--accent);
+/* A real checkbox face: filled accent square + ✓ when included, an empty
+   outlined box when excluded. The label strikes through + dims on exclude,
+   so the state reads at a glance even across a long value list. */
+.pivot-chip-box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
   font-size: 0.7rem;
   line-height: 1;
+  color: var(--primary-text-on-accent);
 }
 
-.pivot-chip-check[aria-checked="false"] .pivot-chip-tick {
+.pivot-chip-check[aria-checked="true"] .pivot-chip-box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.pivot-chip-check[aria-checked="false"] .pivot-chip-cklabel {
   color: var(--text-dim);
+  text-decoration: line-through;
 }
 
 .pivot-chip-rule {

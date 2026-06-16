@@ -129,6 +129,7 @@ function onDimAct(fieldId: string, zone: PivotZone | 'tray', payload: ChipActPay
     case 'remove': pivot.removeField(fieldId); announce(`${labelOf(fieldId)} removed`); break
     case 'move': if (zone === 'rows' || zone === 'columns') pivot.moveField(fieldId, zone, payload.delta); break
     case 'toggleFilter': toggleFilterValue(fieldId, payload.value); break
+    case 'filterReset': pivot.setFilterAllowed(fieldId, []); break
     default: break
   }
 }

@@ -86,17 +86,22 @@ test('a Filters-shelf value checklist slices the crosstab', async ({ page }) => 
   const checks = page.locator('[role="menuitemcheckbox"]')
   await expect(checks).toHaveCount(2) // rialto + busan, both included by default
   await expect(page.locator('.pivot-count')).toContainText('3 matches')
+  await expect(page.locator('.pivot-chip-menu-head')).toContainText('2 of 2 shown')
 
-  // Uncheck busan → its tick must visually flip (the reported bug was a
-  // stuck checkbox) AND only the rialto match (m-1) survives the filter.
+  // Uncheck busan: the tick must visually flip (the reported bug was a
+  // stuck checkbox), the label strikes through so exclusion is obvious,
+  // the "N of M shown" counter ticks down, and only the rialto match
+  // (m-1) survives the filter.
   const busan = page.locator('[role="menuitemcheckbox"]', { hasText: 'busan' })
   await expect(busan).toHaveAttribute('aria-checked', 'true')
   await busan.click()
   await expect(busan).toHaveAttribute('aria-checked', 'false')
+  await expect(busan.locator('.pivot-chip-cklabel')).toHaveCSS('text-decoration-line', 'line-through')
+  await expect(page.locator('.pivot-chip-menu-head')).toContainText('1 of 2 shown')
   await expect(page.locator('.pivot-count')).toContainText('1 match')
 
-  // Re-checking it restores every value (Excel-style include-by-default).
-  await busan.click()
+  // The "All" reset re-includes every value (Excel-style include-by-default).
+  await page.locator('.pivot-chip-reset').click()
   await expect(busan).toHaveAttribute('aria-checked', 'true')
   await expect(page.locator('.pivot-count')).toContainText('3 matches')
 })
