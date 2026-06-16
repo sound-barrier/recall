@@ -31,6 +31,7 @@ const emit = defineEmits<{
   selectAll:    []
   hide:         []
   exportBundle: []
+  exportCsv:    []
   moveBegin:    []
   moveCommit:   [target: string]
   moveCancel:   []
@@ -109,6 +110,15 @@ function pickTag(v: string) {
       >
         <span class="bab-btn-glyph" aria-hidden="true">📦</span>
         Export bundle…
+      </button>
+      <button
+        type="button"
+        class="bulk-export"
+        data-testid="bulk-export-csv"
+        @click="emit('exportCsv')"
+      >
+        <span class="bab-btn-glyph" aria-hidden="true">▦</span>
+        Export CSV
       </button>
       <!-- Set play-mode menu — bulk write to the new
            PUT /api/v1/matches/play-mode collection endpoint. -->

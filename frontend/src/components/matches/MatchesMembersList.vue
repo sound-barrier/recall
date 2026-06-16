@@ -48,6 +48,7 @@ const emit = defineEmits<{
   'hover-move': [event: MouseEvent]
   'hover-leave': []
   'reset-narrow': []
+  'export-csv': []
 }>()
 
 const records = toRef(props, 'records')
@@ -418,6 +419,7 @@ defineExpose({ expandWindowToAll })
     @hover-enter="(r, e) => emit('hover-enter', r, e)"
     @hover-move="(e) => emit('hover-move', e)"
     @hover-leave="emit('hover-leave')"
+    @export-csv="emit('export-csv')"
   />
 
   <p v-else class="leaves-empty">

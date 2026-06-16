@@ -152,6 +152,37 @@ func (a *App) SaveExportToFileCSV() (string, error) {
 	return path, nil
 }
 
+// SaveTextToFile writes caller-supplied text (the flat one-row-per-match
+// CSV the matches view assembles client-side) to a user-chosen path via a
+// native save dialog. Generic on purpose — it takes the bytes already
+// built in the frontend rather than regenerating from the store like the
+// SaveExportToFile* family. Returns the chosen path, or "" if the user
+// cancelled.
+func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
+	if defaultName == "" {
+		defaultName = "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".csv"
+	}
+	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
+		Title:                "Save match data (CSV)",
+		DefaultFilename:      defaultName,
+		CanCreateDirectories: true,
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "CSV (Excel / Sheets)", Pattern: "*.csv"},
+			{DisplayName: "All files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		return "", fmt.Errorf("write text file: %w", err)
+	}
+	return path, nil
+}
+
 // SaveBundleToFile is the bundle-export sibling of SaveExportToFile.
 // Pops a native SaveFileDialog defaulting to `recall-bundle-<ts>.zip`,
 // then writes the ExportBundle payload to the chosen path. Returns

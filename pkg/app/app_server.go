@@ -56,6 +56,13 @@ func (a *App) SaveBundleToFile(_ []string, _, _ bool) (string, error) {
 	return "", fmt.Errorf("native dialogs unavailable in server mode; use POST /api/v1/exports/bundle")
 }
 
+// SaveTextToFile is not available in server mode (no native dialogs). The
+// browser builds the CSV Blob and triggers a download client-side, so no
+// server round-trip is needed.
+func (a *App) SaveTextToFile(_, _ string) (string, error) {
+	return "", fmt.Errorf("native dialogs unavailable in server mode; the browser downloads the CSV client-side")
+}
+
 // LoadImportFromFile is not available in server mode (no native dialogs).
 // The HTTP API exposes POST /api/v1/imports which accepts the same payload.
 func (a *App) LoadImportFromFile() (string, error) {

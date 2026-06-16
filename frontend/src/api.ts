@@ -805,6 +805,27 @@ export function ExportDataCSV(): Promise<string> {
   return downloadExport('csv')
 }
 
+// ExportMatchesCSV saves a flat, one-row-per-match sheet the caller has
+// already assembled (matchesToCSV) — distinct from ExportDataCSV's
+// whole-database zip backup. Wails writes the string through a native
+// save dialog (SaveTextToFile, "" on cancel); server/browser mode builds
+// a Blob and triggers a transient <a download>. Resolves with the saved
+// filename ("" on a Wails cancel).
+export async function ExportMatchesCSV(csv: string, defaultName: string): Promise<string> {
+  if (IS_WAILS) return _wails<string>('SaveTextToFile', defaultName, csv)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const blobURL = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = blobURL
+  a.download = defaultName
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(blobURL)
+  return defaultName
+}
+
 // ExportBundle is the selection-aware variant of ExportData. The
 // caller passes the explicit match_keys the user ticked plus optional
 // `includeUnknown` / `includeHidden` toggles that UNION extra records
