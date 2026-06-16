@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref, type Ref } from 'vue'
 import { mountWidget } from '@/test-utils/mountWidget'
-import MatchHeroModeBand from '@/components/matches/MatchHeroModeBand.vue'
+import MatchHeroModeBand from '@/components/matches/dossier/MatchHeroModeBand.vue'
 
 // Mock useOWData to avoid the singleton's GetOWData() side-effect.
 vi.mock('@/composables/shared/useOWData', () => ({
