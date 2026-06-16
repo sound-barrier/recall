@@ -191,6 +191,19 @@ fi
 #                                     not a contract bug. Handler's
 #                                     sentinel→status mapping is covered
 #                                     by pkg/app/apply_data_update_test.go.
+#   --exclude-path /api/v1/profiles/test/seed — dev-only (x-internal)
+#                                     onboarding helper. The handler
+#                                     ignores the request body and seeds
+#                                     ~500 synthetic matches on the first
+#                                     call; that one-time write is slow
+#                                     enough to race schemathesis's
+#                                     request timeout on a loaded runner,
+#                                     surfacing as an intermittent
+#                                     "Network Error" (green on PR runs,
+#                                     red on back-to-back main pushes).
+#                                     Nothing to fuzz — it takes no
+#                                     params — and SeedProfile is covered
+#                                     by pkg/app/seed_test.go.
 # DELETE methods are no longer excluded — the test server runs in an
 # isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
@@ -204,6 +217,7 @@ schemathesis run \
   --exclude-path /api/v1/events \
   --exclude-path '/api/v1/profiles/{name}' \
   --exclude-path '/api/v1/system/data-update' \
+  --exclude-path '/api/v1/profiles/test/seed' \
   api/openapi.yaml
 
 echo "[ recall ] ✓  API spec ↔ server in sync"
