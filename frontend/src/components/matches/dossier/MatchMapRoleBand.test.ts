@@ -26,7 +26,7 @@ vi.mock('@/composables/shared/useOWData', async () => {
 })
 
 // Import AFTER the mock so the component picks up the stub.
-const { default: MatchMapRoleBand } = await import('@/components/matches/MatchMapRoleBand.vue')
+const { default: MatchMapRoleBand } = await import('@/components/matches/dossier/MatchMapRoleBand.vue')
 
 const CELLS: MapRoleCell[] = [
   // Rialto/support is the volume anchor (maxTotal = 12).
