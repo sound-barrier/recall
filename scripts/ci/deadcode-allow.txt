@@ -17,13 +17,15 @@
 # and the server-mode REST endpoints replace the Wails dialog calls.
 App\.Pick
 
-# App.SaveExportToFile / App.SaveBundleToFile / App.LoadImportFromFile:
-# same pattern as the Pick* pair — Wails dialogs in app_wails.go;
-# server-mode stubs in app_server.go return errors directing callers
-# to GET /api/v1/exports, POST /api/v1/exports/bundle, and POST
-# /api/v1/imports respectively.
+# App.SaveExportToFile / App.SaveBundleToFile / App.SaveTextToFile /
+# App.LoadImportFromFile: same pattern as the Pick* pair — Wails dialogs
+# in app_wails.go; server-mode stubs in app_server.go return errors
+# directing callers to GET /api/v1/exports, POST /api/v1/exports/bundle,
+# and POST /api/v1/imports respectively. SaveTextToFile (flat match CSV)
+# has no server stub target — the browser builds the Blob client-side.
 App\.SaveExportToFile
 App\.SaveBundleToFile
+App\.SaveTextToFile
 App\.LoadImportFromFile
 
 # App.ReParseAll: the desktop "Re-parse all" button drives this
