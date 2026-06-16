@@ -8,10 +8,14 @@ import { useTableSort, type TableSortCol } from '@/composables/matches/useTableS
 interface RecOpts {
   map?: string
   playlist?: string
+  playMode?: 'quickplay' | 'competitive'
+  queueType?: 'role' | 'open'
   hero?: string
   role?: string
   result?: string
   elims?: number
+  assists?: number
+  deaths?: number
   tags?: string[]
   parsedAt?: string
   date?: string
@@ -31,11 +35,15 @@ function rec(key: string, o: RecOpts = {}): MatchRecord {
       role: o.role ?? 'support',
       result: o.result ?? 'victory',
       eliminations: o.elims ?? 10,
+      ...(o.assists !== undefined ? { assists: o.assists } : {}),
+      ...(o.deaths !== undefined ? { deaths: o.deaths } : {}),
       ...(o.date ? { date: o.date } : {}),
       ...(o.finishedAt ? { finished_at: o.finishedAt } : {}),
       ...(o.heroesPlayed ? { heroes_played: o.heroesPlayed } : {}),
     },
     parsed_at: o.parsedAt ?? '2026-05-10T20:00:00Z',
+    ...(o.playMode ? { play_mode: o.playMode } : {}),
+    ...(o.queueType ? { queue_type: o.queueType } : {}),
     ...(o.tags ? { annotation: { tags: o.tags } } : {}),
     ...(o.source ? { source: o.source } : {}),
   } as unknown as MatchRecord
@@ -123,6 +131,46 @@ describe('useTableSort — single level (default + per-column)', () => {
       rec('c', { elims: 20 }),
     ]
     expect(keysAfterSort(corpus, 'eliminations', 1)).toEqual(['a', 'c', 'b'])
+  })
+
+  it('sorts the assists column numerically on its own key', () => {
+    const corpus = [
+      rec('a', { assists: 9 }),
+      rec('b', { assists: 100 }),
+      rec('c', { assists: 20 }),
+    ]
+    expect(keysAfterSort(corpus, 'assists', 1)).toEqual(['a', 'c', 'b'])
+  })
+
+  it('sorts the deaths column numerically on its own key', () => {
+    const corpus = [
+      rec('a', { deaths: 9 }),
+      rec('b', { deaths: 2 }),
+      rec('c', { deaths: 20 }),
+    ]
+    expect(keysAfterSort(corpus, 'deaths', 1)).toEqual(['b', 'a', 'c'])
+  })
+
+  it('sorts the Mode column by the EFFECTIVE play-mode label (override wins)', () => {
+    // Labels: Competitive < Quickplay < Unknown mode (localeCompare).
+    // The "unknown" row sets neither play_mode nor a playlist, so it
+    // falls to the "Unknown mode" label and sorts last ascending.
+    const corpus = [
+      rec('qp', { playMode: 'quickplay', playlist: 'quickplay' }),
+      rec('unknown', { playlist: '' }),
+      rec('comp', { playMode: 'competitive', playlist: 'competitive' }),
+    ]
+    expect(keysAfterSort(corpus, 'playMode', 1)).toEqual(['comp', 'qp', 'unknown'])
+  })
+
+  it('sorts the Queue column by the effective queue label on its own key', () => {
+    // Labels: Open Queue < Role Queue < Unknown mode type (localeCompare).
+    const corpus = [
+      rec('role', { queueType: 'role' }),
+      rec('unknown', {}),
+      rec('open', { queueType: 'open' }),
+    ]
+    expect(keysAfterSort(corpus, 'queue', 1)).toEqual(['open', 'role', 'unknown'])
   })
 
   it('ranks results victory → draw → defeat when ascending', () => {
@@ -340,6 +388,15 @@ describe('useTableSort — persistence', () => {
 
   it('ignores a corrupt persisted value and falls back to the default', () => {
     localStorage.setItem('recall.matchesTableSort', '[{"col":"not-a-column","dir":"asc"}]')
+    const api = mountSort()
+    expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
+  })
+
+  it('rejects a stack referencing the dropped legacy "mode" column', () => {
+    // The combined Mode column was split into playMode + queue; a stack
+    // persisted by an older build still naming "mode" fails the guard
+    // and falls back to the date-desc default (no migration shim).
+    localStorage.setItem('recall.matchesTableSort', '[{"col":"mode","dir":"asc"}]')
     const api = mountSort()
     expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
   })

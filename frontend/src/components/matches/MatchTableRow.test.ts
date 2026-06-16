@@ -68,12 +68,24 @@ describe('MatchTableRow', () => {
     expect(tr.attributes('data-card-index')).toBe('3')
   })
 
-  it('renders the map, E/A/D, and a result chip tinted by outcome', () => {
+  it('renders the map, split E/A/D cells, and a result chip tinted by outcome', () => {
     const w = mountRow({ rec: rec({ result: 'defeat' }) })
     expect(w.find('.tc-map').text()).toContain('rialto')
-    expect(w.find('.tc-stats').text().replace(/\s+/g, '')).toBe('20/10/8')
+    // E/A/D each own a column now, not one slash-joined cell.
+    expect(w.find('.tc-elim').text()).toBe('20')
+    expect(w.find('.tc-assist').text()).toBe('10')
+    expect(w.find('.tc-death').text()).toBe('8')
+    expect(w.find('.tc-stats').exists()).toBe(false)
     const chip = w.find('.tc-result-chip')
     expect(chip.classes()).toContain('result-defeat')
+  })
+
+  it('splits play-mode and queue into their own cells', () => {
+    const w = mountRow({
+      rec: { ...rec(), play_mode: 'competitive', queue_type: 'role' } as MatchRecord,
+    })
+    expect(w.find('.tc-mode .tc-chip').text()).toBe('Competitive')
+    expect(w.find('.tc-queue .tc-chip').text()).toBe('Role Queue')
   })
 
   it('emits open-match with the key when the row is clicked', async () => {

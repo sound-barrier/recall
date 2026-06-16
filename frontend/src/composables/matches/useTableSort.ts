@@ -5,6 +5,7 @@ import {
   serializeJsonRecord,
 } from '@/composables/shared/usePersistedRef'
 import { heroesForHeader, isEditedMatch, isManualMatch } from '@/match/match-helpers'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 
 // Multi-column ("Excel-style") sort for the `data`-density match table.
@@ -17,10 +18,13 @@ import { matchTime } from '@/match/match-time-helpers'
 export type TableSortCol =
   | 'date'
   | 'map'
-  | 'mode'
+  | 'playMode'
+  | 'queue'
   | 'hero'
   | 'role'
   | 'eliminations'
+  | 'assists'
+  | 'deaths'
   | 'result'
   | 'tags'
   | 'edited'
@@ -39,10 +43,13 @@ export interface SortLevel {
 export const TABLE_SORT_COLUMNS: ReadonlyArray<{ col: TableSortCol; label: string }> = [
   { col: 'date', label: 'When' },
   { col: 'map', label: 'Map' },
-  { col: 'mode', label: 'Mode' },
+  { col: 'playMode', label: 'Mode' },
+  { col: 'queue', label: 'Queue' },
   { col: 'hero', label: 'Hero' },
   { col: 'role', label: 'Role' },
-  { col: 'eliminations', label: 'E / A / D' },
+  { col: 'eliminations', label: 'E' },
+  { col: 'assists', label: 'A' },
+  { col: 'deaths', label: 'D' },
   { col: 'tags', label: 'Tags' },
   { col: 'edited', label: 'Edited' },
   { col: 'manual', label: 'User entered' },
@@ -66,12 +73,19 @@ function compareCol(col: TableSortCol, a: MatchRecord, b: MatchRecord): number {
     // was ingested. matchTime() returns a sortable ISO key.
     case 'date':         return matchTime(a).localeCompare(matchTime(b))
     case 'map':          return (da?.map ?? '').localeCompare(db?.map ?? '')
-    case 'mode':         return (da?.playlist ?? '').localeCompare(db?.playlist ?? '')
+    // Mode + Queue sort by the EFFECTIVE label the cell shows, not the
+    // raw data.playlist / queue_type — playMode prefers the user's
+    // play_mode override, queue resolves the auto-detected value — so a
+    // header click orders rows the way the user reads them.
+    case 'playMode':     return formatPlayModeLabel(a).localeCompare(formatPlayModeLabel(b))
+    case 'queue':        return formatQueueTypeLabel(a).localeCompare(formatQueueTypeLabel(b))
     // The MOST-PLAYED hero (heroesForHeader sorts by percent_played
     // desc), not the primary data.hero.
     case 'hero':         return (heroesForHeader(a)[0]?.hero ?? '').localeCompare(heroesForHeader(b)[0]?.hero ?? '')
     case 'role':         return (da?.role ?? '').localeCompare(db?.role ?? '')
     case 'eliminations': return (da?.eliminations ?? 0) - (db?.eliminations ?? 0)
+    case 'assists':      return (da?.assists ?? 0) - (db?.assists ?? 0)
+    case 'deaths':       return (da?.deaths ?? 0) - (db?.deaths ?? 0)
     case 'result':       return (RESULT_RANK[da?.result ?? ''] ?? 9) - (RESULT_RANK[db?.result ?? ''] ?? 9)
     case 'tags':         return (a.annotation?.tags?.[0] ?? '').localeCompare(b.annotation?.tags?.[0] ?? '')
     // Boolean provenance columns: unticked (false→0) sorts before
