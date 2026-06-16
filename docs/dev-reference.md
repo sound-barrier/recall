@@ -44,8 +44,9 @@ Two binary flavors, selected by the `serveronly` Go build tag:
 | `make pages-build` / `pages-preview` | Build docs book + Swagger UI under `dist/pages/`. |
 | `make lint-openapi` | Spectral (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). |
 | `make test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI uses `-short` to skip the golden test. |
-| `make cover` / `cover-go` / `cover-frontend` | Coverage → `coverage/go/` + `frontend/coverage/`. Go fails below `GO_COVERAGE_MIN`; frontend below `vitest.config.ts` `coverage.thresholds`. |
-| `make test-e2e` | Playwright. Builds frontend + `serveronly` into `/tmp/recall-e2e/recall-server`, installs Chromium, runs with `HOME=/tmp/recall-e2e` on `127.0.0.1:7099`. |
+| `make cover` / `cover-go` / `cover-frontend` | **Unit** coverage → `coverage/go/` + `frontend/coverage/`. Go fails below `GO_COVERAGE_MIN`; frontend below `vitest.config.ts` `coverage.thresholds`. |
+| `make cover-e2e` | **Integration** coverage from one Playwright run → `coverage/e2e/` (`go/` + `frontend/`). Builds an instrumented frontend (`E2E_COVERAGE=1` inline maps) + server (`go build -cover`); Go counters flush on the server's graceful SIGTERM shutdown, frontend V8 coverage is remapped to source by monocart (Chromium only). Informational — no floor gate; kept out of the `cover` umbrella so pre-push stays fast. |
+| `make test-e2e` | Playwright. Builds frontend + `serveronly` into `/tmp/recall-e2e/recall-server`, installs Chromium + WebKit, runs with `HOME=/tmp/recall-e2e` on `127.0.0.1:7099`. |
 | `make test-all` | `make test` + `make test-e2e`. |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
 | `make typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
