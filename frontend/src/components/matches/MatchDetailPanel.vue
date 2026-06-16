@@ -413,6 +413,17 @@ function onBackdropClick(e: MouseEvent) {
   flex-direction: column;
   box-shadow: -28px 0 60px -24px rgb(0 0 0 / 65%);
   overflow: hidden;
+
+  /* Pin the panel to its own compositing layer. The slide-in animates
+     `transform`, so the panel paints on its own layer DURING the
+     transition; once `transform` settles to none, older WebKit (the
+     macOS Wails WKWebView) can fold it back into the backdrop's layer,
+     and the backdrop-filter behind the always-present dossier heatmap
+     then drops the whole fixed overlay — so the header flashes in, then
+     vanishes. A persistent translateZ(0) keeps the layer alive after the
+     transition. Chromium / Firefox / newer WebKit don't need it; it
+     costs nothing there. */
+  transform: translateZ(0);
 }
 
 /* Result-tinted left strip so the panel echoes the card's bar.

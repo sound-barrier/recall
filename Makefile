@@ -520,8 +520,8 @@ test-e2e: ## E2E browser tests via Playwright (boots server in $(E2E_HOME) on :7
 	@echo "[ recall ] Building serveronly binary → $(E2E_HOME)/recall-server…"
 	@mkdir -p $(E2E_HOME)
 	@go build -tags serveronly -o $(E2E_HOME)/recall-server .
-	@echo "[ recall ] Installing Playwright chromium (skipped if cached)…"
-	@cd frontend && npx playwright install chromium
+	@echo "[ recall ] Installing Playwright chromium + webkit (skipped if cached)…"
+	@cd frontend && npx playwright install chromium webkit
 	@echo "[ recall ] Running Playwright E2E suite…"
 	cd frontend && npx playwright test
 	@echo "[ recall ] ✓  E2E tests passed"

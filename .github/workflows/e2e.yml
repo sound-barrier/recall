@@ -101,10 +101,13 @@ jobs:
           mkdir -p /tmp/recall-e2e
           go build -tags serveronly -o /tmp/recall-e2e/recall-server .
 
-      - name: Install Playwright chromium (with system deps)
+      - name: Install Playwright chromium + webkit (with system deps)
         if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        # webkit = the macOS Wails WKWebView engine; the `webkit` project
+        # (scoped to *-webkit.spec.ts) guards engine-specific regressions the
+        # chromium suite can't see. See playwright.config.ts.
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run Playwright E2E suite
         if: steps.changes.outputs.relevant == 'true'
