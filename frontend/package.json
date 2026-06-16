@@ -34,6 +34,7 @@
     "happy-dom": "^20.10.2",
     "htmlhint": "^1.9.2",
     "knip": "^6.16.1",
+    "monocart-coverage-reports": "^2.12.12",
     "openapi-typescript": "^7.13.0",
     "postcss-html": "^1.8.1",
     "stylelint": "^17.13.0",

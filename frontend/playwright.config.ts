@@ -43,6 +43,13 @@ export default defineConfig({
   // for the JSON-snapshot pattern.
   snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
 
+  // E2E coverage plumbing (active only when E2E_COVERAGE=1, otherwise both
+  // are cheap no-ops): globalSetup wipes the stale V8-coverage cache,
+  // globalTeardown folds the per-test coverage the page fixture collected
+  // into coverage/e2e/frontend/. See tests/e2e/coverage-options.ts.
+  globalSetup: './tests/e2e/coverage-setup.ts',
+  globalTeardown: './tests/e2e/coverage-teardown.ts',
+
   use: {
     baseURL: `http://127.0.0.1:${E2E_PORT}`,
     trace: 'on-first-retry',
@@ -79,11 +86,19 @@ export default defineConfig({
       // the tests and breaking the "fresh empty server" assumption
       // the a11y + match-* specs depend on.
       RECALL_DATA_DIR: `${E2E_HOME}/data`,
+      // Go binary-coverage output dir (e2e-coverage run only). The
+      // `-cover` server flushes its counters here on graceful shutdown;
+      // an uninstrumented binary ignores it. Absent → not forwarded.
+      ...(process.env.GOCOVERDIR ? { GOCOVERDIR: process.env.GOCOVERDIR } : {}),
     },
     // Locally, keep an already-running server alive across re-runs
     // (saves the ~5s boot per iteration). CI gets a fresh server.
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
+    // Stop the server with SIGTERM (not the default SIGKILL) so it runs
+    // its graceful shutdown — which is what flushes Go binary-coverage
+    // counters to GOCOVERDIR. Harmless for non-coverage runs.
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
     stdout: 'ignore',
     stderr: 'pipe',
   },

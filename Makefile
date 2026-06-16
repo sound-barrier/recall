@@ -590,6 +590,31 @@ cover-frontend: ## Generate JS/TS coverage report (Vitest + V8; output → front
 	cd frontend && npm run test:coverage
 	@echo "[ recall ] ✓  Coverage report written to frontend/coverage/"
 
+# Integration (e2e) coverage. ONE Playwright run measures BOTH layers: the Go
+# HTTP handlers (native `go build -cover`, flushed when the server runs its
+# graceful SIGTERM shutdown) AND the Vue/TS bundle (Playwright's V8 coverage →
+# monocart → lcov/cobertura, remapped to source via the inline maps the
+# E2E_COVERAGE build emits). Chromium only — V8 coverage is a CDP feature; the
+# two *-webkit specs are regression guards, not coverage drivers. Informational
+# (no floor gate); kept OUT of the unit `cover` umbrella so pre-push stays fast.
+E2E_GOCOVERDIR := $(CURDIR)/coverage/e2e/go-covdata
+cover-e2e: ## Generate integration coverage (Go + frontend) from the Playwright suite → coverage/e2e/
+	@command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
+	@echo "[ recall ] Building instrumented frontend (inline maps) + server (-cover)…"
+	@rm -rf coverage/e2e && mkdir -p coverage/e2e/go "$(E2E_GOCOVERDIR)" $(E2E_HOME)
+	@cd frontend && E2E_COVERAGE=1 npm run build >/dev/null
+	@go build -cover -coverpkg=./... -tags serveronly -o $(E2E_HOME)/recall-server .
+	@cd frontend && npx playwright install chromium >/dev/null
+	@# Drop any reused (uninstrumented) server so the -cover binary boots fresh.
+	@lsof -ti :7099 2>/dev/null | xargs -r kill 2>/dev/null || true
+	@echo "[ recall ] Running Playwright (chromium) with coverage collection…"
+	cd frontend && E2E_COVERAGE=1 GOCOVERDIR="$(E2E_GOCOVERDIR)" npx playwright test --project=chromium
+	@echo "[ recall ] Converting Go e2e coverage profile…"
+	@go tool covdata textfmt -i="$(E2E_GOCOVERDIR)" -o coverage/e2e/go/coverage.out
+	@go tool cover -func=coverage/e2e/go/coverage.out | tee coverage/e2e/go/coverage.txt | tail -1
+	@go tool cover -html=coverage/e2e/go/coverage.out -o coverage/e2e/go/coverage.html
+	@echo "[ recall ] ✓  Integration coverage written to coverage/e2e/ (go/ + frontend/)"
+
 # Sync the app icon. Source of truth: assets/icon.png. Wails reads
 # build/appicon.png at 1024x1024 and auto-generates iconfile.icns (macOS)
 # + icon.ico (Windows) during `wails build`, so clearing the cached .ico
