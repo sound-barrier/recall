@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
-import MatchHeatmapHeader from '@/components/matches/MatchHeatmapHeader.vue'
-import MatchSparklineBrush from '@/components/matches/MatchSparklineBrush.vue'
+import MatchHeatmapHeader from '@/components/matches/timeline/MatchHeatmapHeader.vue'
+import MatchSparklineBrush from '@/components/matches/timeline/MatchSparklineBrush.vue'
 
 // CAMPAIGN LOG — the temporal header for the Matches view.
 //
