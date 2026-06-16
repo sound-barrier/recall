@@ -69,7 +69,7 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
             :colspan="r.values.length"
             scope="colgroup"
             class="ct-group"
-            :class="{ 'ct-group--total': g.col === 'total' }"
+            :class="{ 'ct-group-total': g.col === 'total' }"
           >
             {{ g.label }}
           </th>
@@ -84,7 +84,7 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
               :key="`v-${gi}-${v}`"
               scope="col"
               class="ct-vlabel"
-              :class="{ 'ct-vlabel--total': g.col === 'total' }"
+              :class="{ 'ct-vlabel-total': g.col === 'total' }"
             >
               {{ vlbl }}
             </th>
@@ -102,7 +102,7 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
               v-for="(_v, v) in r.values"
               :key="`c-${ri}-${gi}-${v}`"
               class="ct-cell"
-              :class="{ 'ct-cell--total': g.col === 'total' }"
+              :class="{ 'ct-cell-total': g.col === 'total' }"
               :style="cellStyle(cellAt(ri, g.col, v), v)"
             >
               {{ fmt(cellAt(ri, g.col, v), v) }}
@@ -120,8 +120,8 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
             <td
               v-for="(_v, v) in r.values"
               :key="`gc-${gi}-${v}`"
-              class="ct-cell ct-cell--grand"
-              :class="{ 'ct-cell--total': g.col === 'total' }"
+              class="ct-cell ct-cell-grand"
+              :class="{ 'ct-cell-total': g.col === 'total' }"
               :style="cellStyle(grandAt(g.col, v), v)"
             >
               {{ fmt(grandAt(g.col, v), v) }}
@@ -175,10 +175,10 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
 }
 
 .ct-group { text-align: center; color: var(--identity-accent); }
-.ct-group--total { color: var(--text); }
+.ct-group-total { color: var(--text); }
 .ct-rowlabel { text-align: left; color: var(--text-faint); }
 .ct-vlabel { text-align: right; }
-.ct-vlabel--total { color: var(--text); }
+.ct-vlabel-total { color: var(--text); }
 
 .ct-rowhead {
   text-align: left;
@@ -192,7 +192,7 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
   color: var(--text);
 }
 
-.ct-cell--total { font-weight: 700; }
+.ct-cell-total { font-weight: 700; }
 
 .ct-row:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 

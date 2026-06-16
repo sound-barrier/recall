@@ -99,7 +99,7 @@ watch(menuOpen, async (open) => {
       ref="chipRef"
       type="button"
       class="pivot-chip"
-      :class="`pivot-chip--${location}`"
+      :class="`pivot-chip-${location}`"
       draggable="true"
       :aria-haspopup="hasMenu() ? 'menu' : undefined"
       :aria-expanded="hasMenu() ? (menuOpen ? 'true' : 'false') : undefined"
@@ -180,14 +180,14 @@ watch(menuOpen, async (open) => {
 
 /* Placed chips read in the burnt-amber identity tone of the data they
    carry; tray chips stay neutral until used. */
-.pivot-chip--rows,
-.pivot-chip--columns,
-.pivot-chip--filters {
+.pivot-chip-rows,
+.pivot-chip-columns,
+.pivot-chip-filters {
   color: var(--identity-accent);
   border-color: color-mix(in srgb, var(--identity-accent) 45%, var(--border));
 }
 
-.pivot-chip--values {
+.pivot-chip-values {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }

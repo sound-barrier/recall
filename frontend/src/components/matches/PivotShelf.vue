@@ -28,7 +28,7 @@ function onDrop(e: DragEvent) {
 <template>
   <section
     class="pivot-shelf"
-    :class="[`pivot-shelf--${zone}`, { 'pivot-shelf--over': over }]"
+    :class="[`pivot-shelf-${zone}`, { 'pivot-shelf-over': over }]"
     :data-pivot-zone="zone"
     :aria-label="label"
     @dragover.prevent="over = true"
@@ -63,13 +63,13 @@ function onDrop(e: DragEvent) {
 
 /* The active drop target lifts with the app's accent wash — the same
    hover idiom used on rows + sortable headers. */
-.pivot-shelf--over {
+.pivot-shelf-over {
   border-color: var(--accent);
   border-style: solid;
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
 }
 
-.pivot-shelf--tray {
+.pivot-shelf-tray {
   border-style: solid;
   border-color: color-mix(in srgb, var(--border) 60%, transparent);
 }
