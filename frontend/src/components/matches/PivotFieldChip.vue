@@ -117,7 +117,7 @@ watch(menuOpen, async (open) => {
     <div v-if="menuOpen" ref="menuRef" class="pivot-chip-menu" role="menu">
       <template v-if="filterOptions?.length">
         <p class="pivot-chip-menu-head">
-          Include values
+          Show values · uncheck to hide
         </p>
         <label v-for="opt in filterOptions" :key="opt.value" class="pivot-chip-check">
           <input

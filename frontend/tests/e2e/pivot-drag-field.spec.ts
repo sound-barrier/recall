@@ -76,6 +76,22 @@ test('the chip menu removes a placed field from its shelf', async ({ page }) => 
   await expect(page.locator('[data-pivot-zone="tray"] [data-pivot-chip="hero"]')).toBeVisible()
 })
 
+test('a Filters-shelf value checklist slices the crosstab', async ({ page }) => {
+  await mountPivot(page)
+  await page.locator('[data-pivot-zone="tray"] [data-pivot-chip="map"]').dragTo(page.locator('[data-pivot-zone="filters"]'))
+  const filterChip = page.locator('[data-pivot-zone="filters"] [data-pivot-chip="map"]')
+  await expect(filterChip).toBeVisible()
+
+  await filterChip.click() // open the menu → value checklist
+  const checks = page.locator('.pivot-chip-check input[type="checkbox"]')
+  await expect(checks).toHaveCount(2) // rialto + busan, both checked by default
+  await expect(page.locator('.pivot-count')).toContainText('3 matches')
+
+  // Uncheck busan → only the rialto match (m-1) survives the filter.
+  await page.locator('.pivot-chip-check', { hasText: 'busan' }).locator('input').click()
+  await expect(page.locator('.pivot-count')).toContainText('1 match')
+})
+
 test('changing a value aggregation re-folds the crosstab', async ({ page }) => {
   await mountPivot(page)
   // The Values shelf shows Matches (count) + Matches (Win rate). Open the
