@@ -141,7 +141,7 @@ const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsV
 // stays under the bundle-size budget. Same defineAsyncComponent
 // pattern the views use; the brief load-on-first-open delay is
 // invisible at LAN/local speeds.
-const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches/MatchDetailPanel.vue'))
+const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
 // Anchor confirmation toast — small, eagerly loaded so it can fire
 // on the very first anchor-set transition without a chunk fetch.
 const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/MatchAnchorToast.vue'))
@@ -150,7 +150,7 @@ const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches
 // initial-bundle saving at the cost of a render-blocking flash on
 // every first paint.
 import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
-const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/MatchScreenshotLightbox.vue'))
+const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/ManualMatchModal.vue'))
 
