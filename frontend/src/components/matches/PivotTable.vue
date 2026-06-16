@@ -224,7 +224,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
   padding: 0;
   margin: -1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
@@ -275,7 +275,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
   color: var(--accent);
 }
 
-@media (max-width: 52rem) {
+@media (width <= 52rem) {
   .pivot-builder { grid-template-columns: 1fr; }
 }
 </style>

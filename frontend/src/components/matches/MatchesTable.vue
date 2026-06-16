@@ -83,7 +83,7 @@ watch(() => props.resetCounter, () => {
         <button
           type="button"
           class="seg-btn"
-          :class="{ 'seg-btn--active': tableMode === 'flat' }"
+          :class="{ 'seg-btn-active': tableMode === 'flat' }"
           :aria-pressed="tableMode === 'flat'"
           data-table-mode-pick="flat"
           @click="setTableMode('flat')"
@@ -93,7 +93,7 @@ watch(() => props.resetCounter, () => {
         <button
           type="button"
           class="seg-btn"
-          :class="{ 'seg-btn--active': tableMode === 'pivot' }"
+          :class="{ 'seg-btn-active': tableMode === 'pivot' }"
           :aria-pressed="tableMode === 'pivot'"
           data-table-mode-pick="pivot"
           @click="setTableMode('pivot')"
@@ -251,7 +251,7 @@ watch(() => props.resetCounter, () => {
   color: var(--accent);
 }
 
-.seg-btn--active {
+.seg-btn-active {
   color: var(--primary-text-on-accent);
   background: var(--accent);
 }
@@ -340,6 +340,7 @@ watch(() => props.resetCounter, () => {
 .leaves-thead .th[data-sort-col="eliminations"],
 .leaves-thead .th[data-sort-col="assists"],
 .leaves-thead .th[data-sort-col="deaths"] { text-align: right; }
+
 .leaves-thead .th[data-sort-col="eliminations"] .th-inner,
 .leaves-thead .th[data-sort-col="assists"] .th-inner,
 .leaves-thead .th[data-sort-col="deaths"] .th-inner { flex-direction: row-reverse; }
