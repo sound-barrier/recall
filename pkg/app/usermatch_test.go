@@ -160,6 +160,18 @@ func TestCreateManualMatch_Validates(t *testing.T) {
 		{"bad leaver", func(m *match.ManualMatchInput) { m.Leaver = "afk" }, app.ErrInvalidLeaver},
 		{"bad play_mode", func(m *match.ManualMatchInput) { m.PlayMode = "ranked" }, app.ErrInvalidPlayMode},
 		{"bad queue", func(m *match.ManualMatchInput) { m.QueueType = "5v5" }, app.ErrInvalidQueueType},
+		{"rank progress too high", func(m *match.ManualMatchInput) {
+			m.Rank = &match.ManualRankInput{Division: 3, Progress: 101}
+		}, app.ErrInvalidRank},
+		{"rank progress negative", func(m *match.ManualMatchInput) {
+			m.Rank = &match.ManualRankInput{Division: 3, Progress: -1}
+		}, app.ErrInvalidRank},
+		{"division too high", func(m *match.ManualMatchInput) {
+			m.Rank = &match.ManualRankInput{Division: 6, Progress: 50}
+		}, app.ErrInvalidRank},
+		{"change_percent out of range", func(m *match.ManualMatchInput) {
+			m.Rank = &match.ManualRankInput{Division: 3, Progress: 50, ChangePercent: 2_000_000}
+		}, app.ErrInvalidRank},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
