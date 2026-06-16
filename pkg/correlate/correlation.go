@@ -295,24 +295,10 @@ func corroborated(cand Candidate, e existing) bool {
 // match.
 const TieToleranceWindow = 5 * time.Second
 
-// MatchByTimestampWindow looks for an existing screenshot within
-// MergeWindow of cand and with no signature conflicts. Returns:
-//
-//	key, nil, true    — single distinct match_key wins by a clear
-//	                    margin (> TieToleranceWindow ahead of any
-//	                    other match's closest screenshot); auto-adopt.
-//	"",  cands, true  — two or more distinct match_keys tie within
-//	                    TieToleranceWindow; caller mints
-//	                    "ambiguous:<filename>".
-//	"",  nil, false   — no candidates within MergeWindow.
-//
-// Candidates are deduped by match_key (closest screenshot per key
-// wins) and the returned Candidate slice is sorted by distance
-// ascending.
-func MatchByTimestampWindow(cand Candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
-	if !cand.hasTS {
-		return "", nil, false
-	}
+// closestPerKey returns, for each existing match key, the smallest absolute
+// timestamp gap to cand among its in-window, non-conflicting screenshots.
+// Keys with no qualifying screenshot are absent from the map.
+func closestPerKey(cand Candidate, snap db.Screenshots) map[string]time.Duration {
 	closestByKey := map[string]time.Duration{}
 	for _, e := range snapshotExisting(snap) {
 		if !e.c.hasTS {
@@ -332,6 +318,28 @@ func MatchByTimestampWindow(cand Candidate, snap db.Screenshots) (string, []db.A
 			closestByKey[e.key] = d
 		}
 	}
+	return closestByKey
+}
+
+// MatchByTimestampWindow looks for an existing screenshot within
+// MergeWindow of cand and with no signature conflicts. Returns:
+//
+//	key, nil, true    — single distinct match_key wins by a clear
+//	                    margin (> TieToleranceWindow ahead of any
+//	                    other match's closest screenshot); auto-adopt.
+//	"",  cands, true  — two or more distinct match_keys tie within
+//	                    TieToleranceWindow; caller mints
+//	                    "ambiguous:<filename>".
+//	"",  nil, false   — no candidates within MergeWindow.
+//
+// Candidates are deduped by match_key (closest screenshot per key
+// wins) and the returned Candidate slice is sorted by distance
+// ascending.
+func MatchByTimestampWindow(cand Candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
+	if !cand.hasTS {
+		return "", nil, false
+	}
+	closestByKey := closestPerKey(cand, snap)
 	if len(closestByKey) == 0 {
 		return "", nil, false
 	}
