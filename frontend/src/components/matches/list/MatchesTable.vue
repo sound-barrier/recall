@@ -5,7 +5,7 @@ import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/useTableSort'
 import { useTableMode } from '@/composables/matches/useTableMode'
 import type { SearchClause } from '@/match/search-query'
-import MatchTableRow from '@/components/matches/MatchTableRow.vue'
+import MatchTableRow from '@/components/matches/list/MatchTableRow.vue'
 import PivotTable from '@/components/matches/pivot/PivotTable.vue'
 
 // Data-density view of the matches list: a real <table> with sortable

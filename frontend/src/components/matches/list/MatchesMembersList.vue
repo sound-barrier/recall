@@ -8,9 +8,9 @@ import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import type { Density } from '@/composables/matches/useDensity'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import type { SearchClause } from '@/match/search-query'
-import MatchLeafRow from '@/components/matches/MatchLeafRow.vue'
-import MatchesTable from '@/components/matches/MatchesTable.vue'
-import MatchesEmptySuggestions from '@/components/matches/MatchesEmptySuggestions.vue'
+import MatchLeafRow from '@/components/matches/list/MatchLeafRow.vue'
+import MatchesTable from '@/components/matches/list/MatchesTable.vue'
+import MatchesEmptySuggestions from '@/components/matches/list/MatchesEmptySuggestions.vue'
 
 type NarrowApi = ReturnType<typeof useMatchesNarrow>
 
