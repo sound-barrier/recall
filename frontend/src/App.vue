@@ -152,7 +152,7 @@ const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches
 import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
 const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
-const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/ManualMatchModal.vue'))
+const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/manual/ManualMatchModal.vue'))
 
 // OnboardingTour lives in its own chunk. The redesigned tour pulled
 // in TourSpotlight + TourCallout + demo-match data + the controller
