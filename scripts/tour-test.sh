@@ -61,11 +61,11 @@
 #
 # Usage:
 #
-#   scripts/stack/tour-test.sh                       # wails, fresh WebView
-#   scripts/stack/tour-test.sh --keep-webview-state  # wails, retain WebView
-#   scripts/stack/tour-test.sh --mode=server         # serveronly + browser
-#   scripts/stack/tour-test.sh --mode=server --port=7102
-#   scripts/stack/tour-test.sh --keep                # retain isolated data dir
+#   scripts/tour-test.sh                       # wails, fresh WebView
+#   scripts/tour-test.sh --keep-webview-state  # wails, retain WebView
+#   scripts/tour-test.sh --mode=server         # serveronly + browser
+#   scripts/tour-test.sh --mode=server --port=7102
+#   scripts/tour-test.sh --keep                # retain isolated data dir
 #
 # `set -u` so unset env references fail loudly. Not `-e`; the
 # trap-based cleanup needs the script to keep running through a
@@ -73,10 +73,10 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# This script lives at scripts/stack/, so the repo root is two levels
-# up — not one. Getting this wrong sends `cd "$REPO_ROOT"` into
-# scripts/, where `wails dev` can't find wails.json.
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# This script lives at scripts/, so the repo root is one level up.
+# Getting this wrong sends `cd "$REPO_ROOT"` somewhere `wails dev`
+# can't find wails.json.
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 MODE="wails"
 PORT=7100

@@ -62,9 +62,9 @@ func (a *App) CreateProfile(name string) error {
 }
 
 // SwitchProfile activates an existing profile. The full App teardown
-// + reload sequence runs so settings, the SQLite connection, the
-// watcher, and the metrics endpoint all swap atomically to the new
-// profile's state. Returns ErrProfileNotFound for unknown names.
+// + reload sequence runs so settings, the SQLite connection, and the
+// watcher all swap atomically to the new profile's state. Returns
+// ErrProfileNotFound for unknown names.
 func (a *App) SwitchProfile(name string) error {
 	if a.profiles == nil {
 		return fmt.Errorf("profiles: not initialized")
@@ -122,8 +122,8 @@ func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
 
 // RenameProfile changes a profile's name. The on-disk directory
 // renames atomically via os.Rename; if the profile being renamed is
-// the active one, the store + watcher + metrics endpoint all get
-// torn down before the rename and re-stood-up afterward so they
+// the active one, the store + watcher both get torn down before the
+// rename and re-stood-up afterward so they
 // point at the new path (the SQLite handle's open file is invalid
 // once the directory moves out from under it). Idempotent when
 // new == old.
@@ -141,7 +141,6 @@ func (a *App) RenameProfile(old, newName string) error {
 		// .db file mapped.
 		a.saveSettingsBestEffort()
 		a.stopWatching()
-		a.stopMetrics()
 		if a.store != nil {
 			if closer, ok := a.store.(interface{ Close() error }); ok {
 				_ = closer.Close()
@@ -180,9 +179,6 @@ func (a *App) reopenActiveStore() error {
 		return fmt.Errorf("profiles: open db: %w", err)
 	}
 	a.store = s
-	if a.settings.PrometheusEnabled {
-		a.startMetrics()
-	}
 	if a.settings.WatchEnabled {
 		a.startWatching()
 	}
@@ -216,7 +212,6 @@ func (a *App) activateAndReload(name string) error {
 
 	// Tear down the background services tied to the OLD profile.
 	a.stopWatching()
-	a.stopMetrics()
 	if a.store != nil {
 		if closer, ok := a.store.(interface{ Close() error }); ok {
 			_ = closer.Close()
@@ -253,9 +248,6 @@ func (a *App) activateAndReload(name string) error {
 	}
 	a.store = s
 
-	if a.settings.PrometheusEnabled {
-		a.startMetrics()
-	}
 	if a.settings.WatchEnabled {
 		a.startWatching()
 	}

@@ -14,10 +14,9 @@ import (
 // (missing fields unmarshal to their zero value — which is exactly the
 // default for the boolean toggles).
 type Settings struct {
-	ScreenshotsDir    string `json:"screenshots_dir"`
-	TesseractPath     string `json:"tesseract_path"`
-	PrometheusEnabled bool   `json:"prometheus_enabled"`
-	WatchEnabled      bool   `json:"watch_enabled"`
+	ScreenshotsDir string `json:"screenshots_dir"`
+	TesseractPath  string `json:"tesseract_path"`
+	WatchEnabled   bool   `json:"watch_enabled"`
 }
 
 // appBaseDir returns the install-wide base directory. Used by the

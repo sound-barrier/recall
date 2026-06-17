@@ -21,9 +21,9 @@ searchable history. Don't want to screenshot every game? Type a match in by hand
 Then explore your win rate, SR trend, hero pool, and exactly what you're strong
 and weak at — by hero, map, role, time of day, however you want to slice it.
 
-The browser / headless mode, Docker, and the bundled Grafana dashboard are all
-optional power-user extras (see [Advanced](#advanced)). Curious how it works under
-the hood? See **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+The browser / headless mode and Docker are optional power-user extras
+(see [Advanced](#advanced)). Curious how it works under the hood? See
+**[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## What it looks like
 
@@ -61,11 +61,10 @@ the hood? See **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 - [🖥️ Use without the desktop app](docs/server.md) — browser access, headless mode, run on startup
 - [🐳 Run in Docker](docs/docker.md) — containers, home lab, NAS
-- [📊 Charts & Dashboards](docs/grafana.md) — Grafana, SR over time, win-rate charts
 
 **Project**
 
-- [Architecture](ARCHITECTURE.md) — how the pipeline works under the hood (OCR → SQLite → UI / Grafana)
+- [Architecture](ARCHITECTURE.md) — how the pipeline works under the hood (OCR → SQLite → UI)
 - [Review](REVIEW.md) — outstanding work: features, bugs, tech debt, and what we will not build
 - [Contributing](#contributing)
 - [License](#license)
@@ -84,7 +83,7 @@ Recall recognises four capture-tool filename shapes automatically: **Nvidia Over
 
 The masthead's **Check for updates** button compares your installed Recall against the latest release on GitHub AND surfaces any new heroes / maps / capture-tool grammars added since your build shipped — apply them in-place without reinstalling. The app also shows a quiet "you haven't checked in a while" banner roughly every 90 days so a stale install gets nudged. See [Updates & game data](docs/settings-reference.md#updates--game-data) for the full flow.
 
-That's all most users need. The [Advanced](#advanced) sections below cover running Recall headless and streaming matches into a local Grafana dashboard — neither is required for everyday use.
+That's all most users need. The [Advanced](#advanced) sections below cover running Recall headless and inside a container — neither is required for everyday use. (Trends over time — SR, win-rate, per-match stats — now live right in the Matches tab.)
 
 ## Installation
 
@@ -254,7 +253,6 @@ A softer in-app option exists too (when the app still opens): **Settings → Adv
 
 Two ports matter, both `localhost`-only:
 
-- **`:9091` (Prometheus metrics)** — only opens when you flip **Settings → Advanced → Stream to Grafana** on. If another process is on `:9091`, the toggle silently fails. Free the port (`lsof -iTCP:9091 -sTCP:LISTEN` / Windows `Get-NetTCPConnection -LocalPort 9091`) and toggle again.
 - **`:34115` (Wails IPC, dev only)** — only used by `make dev`; the production app uses an OS-allocated port. If `make dev` errors with "bind: address already in use", another `wails dev` is already running — kill it.
 - **`:7000` (server mode)** — only when you run `recall-server --server` per [docs/server.md](docs/server.md). Override with `--addr 127.0.0.1:7099` if `:7000` is busy.
 
@@ -274,7 +272,6 @@ reading here — the desktop app is all you need.
 |---|---|
 | [🖥️ Use without the desktop app](docs/server.md) | You want browser access, or to run Recall on a headless machine. |
 | [🐳 Run in Docker](docs/docker.md) | You run containers on a home lab or NAS. |
-| [📊 Charts & Dashboards](docs/grafana.md) | You want SR-over-time graphs and win-rate charts in Grafana. |
 | [📘 API reference](https://sound-barrier.github.io/recall/api/) | You want to read or try the HTTP API — Swagger UI rendering of the OpenAPI spec, auto-deployed from `main`. |
 
 ## Contributing

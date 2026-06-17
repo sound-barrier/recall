@@ -234,13 +234,13 @@ The same YAML rides the live-data channel that pushes new heroes/maps
 between Recall releases — see
 [Updates & game data](settings-reference.md#updates--game-data).
 
-### Optional: time-series charts
+### Time-series charts
 
-The **Settings → Advanced → Stream to Grafana** toggle exposes match
-history on `localhost:9091/metrics` so the bundled Prometheus +
-Grafana stack can scrape it. See
-[Charts & Dashboards](grafana.md) and
-[Run in Docker](docker.md) for the wiring.
+The **Matches** tab has a collapsible **Trends** section that charts
+your history over time — SR by hero, a selectable per-match stat
+(KDA, eliminations, damage, …), a rolling win-rate, and per-10
+performance. The charts honour whatever filters you've narrowed the
+set to, so you can scope a trend to one hero, map, or date range.
 
 ## What Recall doesn't do
 

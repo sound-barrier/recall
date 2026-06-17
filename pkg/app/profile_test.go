@@ -62,7 +62,7 @@ func TestLoadProfiles_DoesNotMigratePreExistingLayout(t *testing.T) {
 	base := t.TempDir()
 
 	stalSettings := filepath.Join(base, "settings.json")
-	if err := os.WriteFile(stalSettings, []byte(`{"prometheus_enabled":true}`), 0o600); err != nil {
+	if err := os.WriteFile(stalSettings, []byte(`{"watch_enabled":true}`), 0o600); err != nil {
 		t.Fatalf("seed settings.json: %v", err)
 	}
 	staleDBDir := filepath.Join(base, "db")

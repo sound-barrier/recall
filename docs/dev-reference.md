@@ -75,7 +75,6 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `pkg/app` | `App` struct + file-per-concern under `pkg/app/*.go`. Production / test files are 1:1 (`watcher.go` ↔ `watch_events_test.go`). Build-tag pair `app_wails.go` / `app_server.go`. `ls pkg/app/*.go` is the source of truth. |
 | `pkg/cmd` | `RunWails` (Wails init) and `RunServer` (HTTP server + REST API). |
 | `pkg/db` | SQLite `Init()` + `DB` variable. |
-| `pkg/metrics` | Prometheus `Collector` + `Server`. |
 | `pkg/parser` | OCR pipeline split per concern. `ls pkg/parser/*.go` is the source of truth. |
 
 `.devcontainer/devcontainer.json` + `postCreate.sh` mirror the Brewfile on a
@@ -117,7 +116,6 @@ only on URL.
 | `RECALL_DATA_DIR` | platform user-config dir | Install-wide base directory. Each profile gets `<base>/profiles/<name>/{settings.json,db/recall.db}`. mise.toml `[env]` sets this to `<repo>/data` when mise is active. |
 | `RECALL_PROFILE` | *(unset — script-only)* | Forces `scripts/db/db-*.sh` to operate on a specific profile. Mirrors the app's `--profile=<name>` CLI flag. Not read by the app binaries. |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; also dumps raw Tesseract `.txt` output per OCR call when set. |
-| `RECALL_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address. |
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` inside Docker. |
 | `DOCKER` | `docker` | Container runtime binary for `task build-*`. Set to `podman` for Podman. |
 | `RECALL_PPROF` | *(off)* | Mounts `net/http/pprof` under `/debug/pprof/` in server mode. Never expose publicly. |
@@ -127,10 +125,6 @@ only on URL.
 
 | Script | What it does |
 |---|---|
-| `stack-up.sh` | Start podman VM if needed, slam VM clock to host time, apply gcloud-cred-helper workaround, `podman-compose up -d`. |
-| `stack-down.sh` | `podman-compose down`. `--machine` also stops the VM. |
-| `prometheus-clear.sh` | Tears down stack, removes the `*_prometheus_data` volume (preserves Grafana state), restarts. |
-| `verify-stack.sh` | Layer-by-layer diagnostic: SQLite → /metrics → container → Prometheus scrape state → TSDB sample count. Read-only. Run first when Grafana shows no data. |
 | `db-list.sh` / `db-show.sh` / `db-delete.sh` / `db-export.sh` / `clear-db.sh` / `db-stats.sh` / `db-where.sh` / `db-orphans.sh` / `db-reparse.sh` | SQLite CRUD + diagnostics. `db-show` accepts id/match_key/filename substring; `db-orphans` finds child rows whose parent vanished; `db-reparse` queues a re-parse. |
 | `_lib.sh` | Shared `docker_config_aside()` helper for the gcloud cred-helper trap. |
 | `check-deps.sh` | Compares pinned tool versions vs latest GitHub releases. |

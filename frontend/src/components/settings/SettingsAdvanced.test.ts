@@ -1,7 +1,7 @@
 // SettingsAdvanced — Manage-ignored row + Clear-Database opt-out
-// checkbox. The Grafana big-switch + the arm/confirm two-step on
-// Clear were already covered by SettingsView.test.ts; the cases
-// below pin behavior the new props/emits introduced.
+// checkbox. The arm/confirm two-step on Clear is covered by
+// SettingsView.test.ts; the cases below pin behavior the
+// Manage-ignored + re-parse-progress props/emits introduced.
 
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi } from 'vitest'
@@ -22,7 +22,6 @@ vi.mock('@/api', () => ({
 import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
 
 function mountAdvanced(overrides: Partial<{
-  prometheusEnabled: boolean
   clearConfirm:      boolean
   matchedCount:      number
   unknownCount:      number
@@ -30,7 +29,6 @@ function mountAdvanced(overrides: Partial<{
 }> = {}) {
   return mount(SettingsAdvanced, {
     props: {
-      prometheusEnabled: overrides.prometheusEnabled ?? false,
       clearConfirm:      overrides.clearConfirm ?? false,
       matchedCount:      overrides.matchedCount ?? 5,
       unknownCount:      overrides.unknownCount ?? 0,
@@ -118,7 +116,6 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
   it('renders nothing when parseProgress carries no re-parse counters', () => {
     const wrapper = mount(SettingsAdvanced, {
       props: {
-        prometheusEnabled: false,
         parseProgress: { done: 5, total: 47, filename: 'x.png' },
       },
     })
@@ -128,7 +125,6 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
   it('renders the cumulative counters when the SSE event carries them', async () => {
     const wrapper = mount(SettingsAdvanced, {
       props: {
-        prometheusEnabled: false,
         reparsing: true,
         parseProgress: {
           done: 47,
@@ -149,7 +145,6 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
   it('omits the corrections suffix when neither hero nor map fields changed', () => {
     const wrapper = mount(SettingsAdvanced, {
       props: {
-        prometheusEnabled: false,
         reparsing: true,
         parseProgress: {
           done: 47,

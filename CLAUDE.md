@@ -9,16 +9,16 @@ automatically when you touch matching files) and in `docs/dev-reference.md`
 ## What this project is
 
 Recall is a Wails v2 desktop app that watches a folder of Overwatch screenshots,
-OCRs them with Tesseract, merges per-match data into SQLite, and optionally
-exposes the match history as Prometheus metrics so a bundled Grafana dashboard
-can chart trends. Stack: Go backend + Vue 3 frontend (Vite) +
-`modernc.org/sqlite` (pure-Go, no CGo) + Tesseract CLI shelled out to. The user
-is a competitive OW player who wants the tool to surface what they're good/bad
-at by hero/map/type.
+OCRs them with Tesseract, merges per-match data into SQLite, and surfaces the
+match history in-app — a filterable dossier plus a "Trends" section of ECharts
+time-series charts (SR, win-rate, per-match stats). Stack: Go backend + Vue 3
+frontend (Vite) + `modernc.org/sqlite` (pure-Go, no CGo) + Tesseract CLI shelled
+out to. The user is a competitive OW player who wants the tool to surface what
+they're good/bad at by hero/map/type.
 
 Data flow at a glance: `screenshots/*.png` → Tesseract/parser → SQLite per-type
 tables (source of truth) → read-time aggregation into `MatchRecord` → Wails/Vue
-UI **and** Prometheus → Grafana. Full pipeline + write/read paths live in
+UI (dossier + Trends charts). Full pipeline + write/read paths live in
 `.claude/rules/database.md`.
 
 The GitHub repo is `sound-barrier/recall` — used for
@@ -70,8 +70,7 @@ without agreement on direction.
   distant call site (the k8s convention): `var _ Store = (*SQLStore)(nil)`. Use
   the form that matches the receiver — `(*T)(nil)` for pointer-receiver methods,
   `T{}` for value-receiver — never both (the wrong one won't compile). Canonical
-  in-repo: `pkg/db/store.go` (`*SQLStore`), `pkg/db/dbtest/fake.go` (`*Fake`),
-  `pkg/metrics/metrics.go` (`*Collector` vs `prometheus.Collector`). New
+  in-repo: `pkg/db/store.go` (`*SQLStore`), `pkg/db/dbtest/fake.go` (`*Fake`). New
   implementations — including any leaf packages carved out of `pkg/app` — add the
   assertion in the same file as the type.
 
@@ -298,7 +297,6 @@ These load automatically when you open a matching file:
 | HTTP / REST API surface | `.claude/rules/api-design.md` | `api/**`, `pkg/cmd/**`, `frontend/src/api.ts` |
 | Database, schema, migrations | `.claude/rules/database.md` | `pkg/db/**` |
 | OCR parsers | `.claude/rules/parser.md` | `pkg/parser/**` |
-| Prometheus metrics + Grafana | `.claude/rules/metrics.md` | `pkg/metrics/**`, `pkg/app/inference.go` |
 | App shell | `.claude/rules/app-shell.md` | `pkg/app/**` |
 | Frontend (Vue) | `frontend/CLAUDE.md` (nested; auto-loads when you read files in `frontend/`) | `frontend/**` |
 | Accessibility | `.claude/rules/a11y.md` | `frontend/src/App.vue`, `frontend/src/components/**`, `frontend/src/styles/**`, `frontend/tests/**` |

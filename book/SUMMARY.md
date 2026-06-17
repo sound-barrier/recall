@@ -19,7 +19,6 @@
 
 * [Run without the desktop app](server.md)
 * [Run in Docker](docker.md)
-* [Charts & Dashboards](grafana.md)
 
 ## Getting help
 

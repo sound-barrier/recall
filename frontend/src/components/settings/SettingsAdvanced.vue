@@ -3,20 +3,19 @@ import { ref, watch, computed } from 'vue'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 import SupportedSourcesRow from '@/components/settings/SupportedSourcesRow.vue'
 
-// Advanced collapsible at the bottom of Settings — Grafana streaming
-// toggle + destructive Clear Database flow + Manage ignored files
-// (the Unknown-tab "Delete forever" recovery surface). Native
-// <details> gives free keyboard support; the styled <summary> mirrors
-// a section header for visual continuity.
+// Advanced collapsible at the bottom of Settings — destructive Clear
+// Database flow + Manage ignored files (the Unknown-tab "Delete
+// forever" recovery surface). Native <details> gives free keyboard
+// support; the styled <summary> mirrors a section header for visual
+// continuity.
 //
 // Extracted from SettingsView so the section-specific styles
-// (.advanced-*, .big-switch) live with the component that owns the
-// markup. The destructive-row styles (`.setting-row.danger-row` +
+// (.advanced-*) live with the component that owns the markup. The
+// destructive-row styles (`.setting-row.danger-row` +
 // `.clear-confirm-group`) stay in SettingsView because they're
 // shared with the Backup/Restore section's Import-arm flow.
 
 const props = defineProps<{
-  prometheusEnabled: boolean
   clearingDB?:       boolean
   clearConfirm?:     boolean
   matchedCount?:     number
@@ -36,7 +35,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'toggle-prometheus':  []
   'arm-clear':          []
   'cancel-clear':       []
   'clear-database':     [opts: { keepIgnored: boolean }]
@@ -139,31 +137,6 @@ watch(
       <span class="advanced-chev" aria-hidden="true">›</span>
     </summary>
     <div class="setting-rows advanced-rows">
-      <div class="setting-row">
-        <div class="setting-info">
-          <h4 class="setting-label">
-            Stream to Grafana
-            <span class="setting-help" tabindex="0" role="note">
-              <span class="setting-help-mark" aria-hidden="true">?</span>
-              <span class="setting-help-label">About Grafana streaming</span>
-              <span class="setting-help-pop" role="tooltip">
-                Exposes Prometheus metrics on <code>localhost:9091/metrics</code> so the bundled Grafana dashboard can chart your trends. Requires the docker-compose stack to be running locally.
-              </span>
-            </span>
-          </h4>
-          <p class="setting-desc">
-            Expose match history on <code>localhost:9091/metrics</code> so the bundled Prometheus container can scrape it. Off by default — no port is opened until you enable this.
-          </p>
-        </div>
-        <div class="setting-control">
-          <label class="big-switch" :class="{ on: prometheusEnabled }">
-            <input type="checkbox" :checked="prometheusEnabled" @change="emit('toggle-prometheus')">
-            <span class="big-switch-track"><span class="big-switch-knob" /></span>
-            <span class="big-switch-state">{{ prometheusEnabled ? 'Live' : 'Off' }}</span>
-          </label>
-        </div>
-      </div>
-
       <div class="setting-row">
         <div class="setting-info">
           <h4 class="setting-label">
@@ -400,81 +373,6 @@ watch(
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* ─── Big-switch (Grafana toggle) ────────────────────────── */
-
-.big-switch {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.85rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.big-switch input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.big-switch-track {
-  position: relative;
-  width: 56px;
-  height: 30px;
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
-}
-
-.big-switch-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 24px;
-  height: 24px;
-  background: var(--text-faint);
-  border-radius: 50%;
-  transition:
-    transform 260ms cubic-bezier(0.4, 0, 0.2, 1),
-    background 240ms ease,
-    box-shadow 240ms ease;
-}
-
-.big-switch.on .big-switch-track {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  box-shadow: 0 0 18px -2px var(--accent-glow);
-}
-
-.big-switch.on .big-switch-track .big-switch-knob {
-  background: var(--accent);
-  box-shadow: 0 0 14px var(--accent-glow);
-  transform: translateX(26px);
-}
-
-.big-switch-state {
-  min-width: 3.6rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-  color: var(--text-faint);
-  transition: color 220ms ease;
-}
-
-.big-switch.on .big-switch-state {
-  color: var(--accent);
-}
-
-.big-switch:focus-within .big-switch-track {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 18px -2px var(--accent-glow);
 }
 
 /* "Keep suppress-list" opt-out checkbox — sits inside the Clear-arm

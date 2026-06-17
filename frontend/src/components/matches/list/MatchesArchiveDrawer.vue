@@ -56,8 +56,8 @@ const {
 <template>
   <!-- Collapsed by default. Surfaces a count chip in the header. Body
        lists every record whose `hidden` flag is set on the parent
-       props.records (which the dossier / heatmap / sparkline /
-       scrapeReader all already drop). Each row offers Unhide (returns it
+       props.records (which the dossier / heatmap /
+       sparkline all already drop). Each row offers Unhide (returns it
        to the active set) and Delete forever (two-step affordance; second
        click hard-deletes from DB). -->
   <section

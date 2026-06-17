@@ -8,7 +8,6 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
-	"recall/pkg/parser"
 )
 
 // fakeStore is the shared in-memory db.Store from pkg/db/dbtest.
@@ -264,70 +263,6 @@ func TestApp_GetMatchResults_ExposesParsedAtFields(t *testing.T) {
 	}
 }
 
-func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
-	// scrapeReader returns every row in the DB — competitive filtering is
-	// the metrics layer's job.
-	// Hero/playlist live on the post-match SUMMARY now (the in-game teams
-	// scoreboard is combat-stats only); use summary rows so the projected
-	// hero is non-empty.
-	fs := &fakeStore{
-		Summaries: []db.SummaryRow{
-			{Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Hero: "lucio"},
-			{Filename: "b.png", MatchKey: "m2", Playlist: "quickplay", Hero: "kiriko"},
-		},
-	}
-	a := app.NewWithStore(fs)
-	got, err := app.ScrapeReader(a)
-	if err != nil {
-		t.Fatalf("scrapeReader: %v", err)
-	}
-	if len(got) != 2 {
-		t.Errorf("expected scrapeReader to return all rows (filtering happens at metrics layer), got %d", len(got))
-	}
-	// Make sure aggregator-supplied Hero/MatchKey are preserved through
-	// scrapeReader's projection.
-	heroes := map[string]string{}
-	for _, r := range got {
-		heroes[r.MatchKey] = r.Data.Hero
-	}
-	if heroes["m1"] != "lucio" || heroes["m2"] != "kiriko" {
-		t.Errorf("hero lost in scrapeReader projection: %+v", heroes)
-	}
-	_ = parser.MatchResult{} // import used for cross-file types
-}
-
-func TestApp_ScrapeReader_ThreadsMatchRecordContext(t *testing.T) {
-	// queue override, leaver, and review status live on MatchRecord (not
-	// parser.MatchResult); scrapeReader threads them onto the ScrapeRow so they
-	// become Prometheus labels. (The queue override takes precedence over the
-	// parser's Data.QueueType — the fallback is the trivial empty-check in
-	// scrapeReader.)
-	fs := &fakeStore{
-		Summaries:   []db.SummaryRow{{Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Hero: "lucio"}},
-		Queues:      map[string]db.QueueState{"m1": {QueueType: "role"}},
-		Annotations: map[string]db.Annotation{"m1": {Leaver: "team"}},
-		Reviews:     map[string]db.ReviewState{"m1": {ReviewedBy: "self"}},
-	}
-	a := app.NewWithStore(fs)
-	got, err := app.ScrapeReader(a)
-	if err != nil {
-		t.Fatalf("scrapeReader: %v", err)
-	}
-	if len(got) != 1 {
-		t.Fatalf("expected 1 row, got %d", len(got))
-	}
-	r := got[0]
-	if r.QueueType != "role" {
-		t.Errorf("QueueType = %q, want \"role\" (threaded from the queue override)", r.QueueType)
-	}
-	if r.Leaver != "team" {
-		t.Errorf("Leaver = %q, want \"team\"", r.Leaver)
-	}
-	if r.ReviewedBy != "self" {
-		t.Errorf("ReviewedBy = %q, want \"self\"", r.ReviewedBy)
-	}
-}
-
 // ──────────────────────────────────────────────────────────────────────────
 // Soft-delete (hide / unhide) surface.
 // ──────────────────────────────────────────────────────────────────────────
@@ -431,33 +366,5 @@ func TestApp_HideMatch_PreservesSourceFilenamesSoReparseSkipsThem(t *testing.T) 
 	}
 	if len(got) != 2 {
 		t.Errorf("expected 2 filenames, got %d (%+v)", len(got), got)
-	}
-}
-
-func TestApp_ScrapeReader_DropsHiddenMatches(t *testing.T) {
-	// Pinning test: the Prometheus reader (scrapeReader) drops hidden
-	// matches. Hidden is the user's "this match shouldn't count toward
-	// my stats" signal — the dossier / heatmap / sparkline already
-	// honor it, and Grafana trend data must agree so the long-term
-	// curves reconcile with the in-app totals. The metrics-layer
-	// filter for competitive-only still lives in
-	// pkg/metrics/metrics.go::Collect.
-	fs := &fakeStore{
-		Teams: []db.TeamsRow{
-			{ID: 1, Filename: "a.png", MatchKey: "m1", Eliminations: 1},
-			{ID: 2, Filename: "b.png", MatchKey: "m2", Eliminations: 2},
-		},
-		Hidden: map[string]bool{"m2": true},
-	}
-	a := app.NewWithStore(fs)
-	got, err := app.ScrapeReader(a)
-	if err != nil {
-		t.Fatalf("scrapeReader: %v", err)
-	}
-	if len(got) != 1 {
-		t.Fatalf("scrapeReader should drop hidden matches, got %d rows (expected 1)", len(got))
-	}
-	if got[0].MatchKey != "m1" {
-		t.Errorf("expected the surviving row to be m1, got %q", got[0].MatchKey)
 	}
 }

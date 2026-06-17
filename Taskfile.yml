@@ -39,7 +39,7 @@ vars:
   # The exact shell-script set the old Makefile's $(wildcard …) produced
   # (NOT all of scripts/ — gen-goldens.sh at the scripts/ root is excluded).
   SHELL_SCRIPTS:
-    sh: ls scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/stack/*.sh scripts/release/*.sh scripts/release/smoke/*.sh initialize.sh .devcontainer/postCreate.sh 2>/dev/null | tr '\n' ' '
+    sh: ls scripts/*.sh scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/release/*.sh scripts/release/smoke/*.sh initialize.sh .devcontainer/postCreate.sh 2>/dev/null | tr '\n' ' '
   GO_COVERAGE_MIN: '{{.GO_COVERAGE_MIN | default "67"}}'
   E2E_HOME: '{{.E2E_HOME | default "/tmp/recall-e2e"}}'
   # seed-dev knobs.
@@ -627,7 +627,6 @@ tasks:
       - cp docs/unknown-screenshots.md dist/pages-stage/unknown-screenshots.md
       - cp docs/server.md dist/pages-stage/server.md
       - cp docs/docker.md dist/pages-stage/docker.md
-      - cp docs/grafana.md dist/pages-stage/grafana.md
       - cp docs/feedback.md dist/pages-stage/feedback.md
       - cp docs/faq.md dist/pages-stage/faq.md
       - mkdir -p dist/pages-stage/testdata

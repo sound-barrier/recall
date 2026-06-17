@@ -6,7 +6,6 @@ by concern:
 - **`lib/`** — shared bash libraries (sourced, not run directly).
 - **`db/`** — local SQLite inspection + maintenance.
 - **`ci/`** — quality gates run by Make / lefthook / CI.
-- **`stack/`** — the Prometheus + Grafana observability stack.
 - **`release/`** — release packaging + signing.
 - **`windows/`** — file-ops maintenance for Windows desktop users
   (PowerShell + double-clickable `.cmd`, no dependencies). See
@@ -17,10 +16,6 @@ resolve paths relative to their own location.
 
 | Script | Purpose |
 |---|---|
-| [`stack-up.sh`](#stack-upsh) | Start the Prometheus + Grafana stack (starts Podman VM, syncs clock, runs compose up). |
-| [`stack-down.sh`](#stack-downsh) | Stop the stack; pass `--machine` to also stop the Podman VM. |
-| [`prometheus-clear.sh`](#prometheus-clearsh) | Wipe Prometheus's TSDB volume and restart clean; Grafana state is untouched. |
-| [`verify-stack.sh`](#verify-stacksh) | Read-only layer-by-layer diagnostic: SQLite → /metrics → containers → scrape state → TSDB. |
 | [`db-where.sh`](#db-wheresh) | Print the platform-canonical DB path (or `RECALL_DB` override). |
 | [`db-list.sh`](#db-listsh) | One-line summary of every match with a per-type coverage chip. |
 | [`db-show.sh`](#db-showsh) | Dump every per-screenshot-type row contributing to one match, children attached. |
@@ -31,80 +26,7 @@ resolve paths relative to their own location.
 | [`db-export.sh`](#db-exportsh) | Dump every match as newline-delimited JSON (per-type rows preserved). |
 | [`clear-db.sh`](#clear-dbsh) | Wipe every parent table + VACUUM; equivalent to the UI's Clear Database button. |
 | [`check-deps.sh`](#check-depssh) | Compare pinned tool versions (Wails, hadolint, lefthook, trivy) against latest GitHub releases. |
-| [`_lib.sh`](#_libsh) | Internal library sourced by `stack-up.sh` and `prometheus-clear.sh`; not run directly. |
 | [`_db.sh`](#_dbsh) | Internal library sourced by `db-*.sh` (DB-path resolution + schema-version detection); not run directly. |
-
----
-
-## Observability stack
-
-These scripts manage the Prometheus + Grafana stack defined in
-`docker-compose.yml`. They use `podman-compose` by default; set
-`DOCKER=docker` in your environment (e.g. via mise.toml `[env]`) to swap
-the runtime.
-
-### `stack-up.sh`
-
-Start the Prometheus + Grafana stack.
-
-```sh
-bash scripts/stack/stack-up.sh
-```
-
-- Starts the Podman VM if it is not already running
-- Slams the VM clock to host UTC time (guards against the ~77 s NTP
-  drift that some Podman machine images ship with)
-- Applies the `docker_config_aside` workaround if `docker-credential-gcloud`
-  is referenced in `~/.docker/config.json` but is no longer on PATH
-- Runs `podman-compose up -d` and prints the running service URLs
-
-After the stack is up:
-
-| Service    | URL                              |
-|------------|----------------------------------|
-| Prometheus | <http://localhost:9090>          |
-| Grafana    | <http://localhost:3000> (admin / admin) |
-
-### `stack-down.sh`
-
-Stop the stack. Container volumes are preserved so history survives the
-next `stack-up.sh`.
-
-```sh
-bash scripts/stack/stack-down.sh             # stop containers, leave VM running
-bash scripts/stack/stack-down.sh --machine   # also stop the Podman VM
-```
-
-### `prometheus-clear.sh`
-
-Wipe Prometheus's TSDB volume and restart with a clean slate. Grafana
-state (dashboards, datasource config) is untouched.
-
-```sh
-bash scripts/stack/prometheus-clear.sh
-```
-
-Prompts for confirmation before deleting. Use this when you have
-accumulated noisy or wrongly-timestamped samples during testing.
-
-### `verify-stack.sh`
-
-Read-only layer-by-layer diagnostic. Run this first whenever Grafana
-shows no data.
-
-```sh
-bash scripts/stack/verify-stack.sh
-```
-
-Checks in order:
-
-1. SQLite — can the DB be read and does it have rows?
-2. `/metrics` endpoint — is the Recall app exposing Prometheus metrics?
-3. Podman containers — are the stack containers running?
-4. Prometheus scrape state — is Prometheus reaching the app?
-5. TSDB sample count — has Prometheus actually ingested data?
-
-Exits with a summary of passed / failed layers.
 
 ---
 
@@ -286,19 +208,6 @@ Requires `curl` and `jq`.
 ---
 
 ## Internal libraries
-
-### `_lib.sh`
-
-Shared helper library. Not executable on its own — sourced by
-`stack-up.sh` and `prometheus-clear.sh`.
-
-Provides `docker_config_aside()`, which temporarily moves
-`~/.docker/config.json` out of the way when it references
-`docker-credential-gcloud` but that binary is no longer on PATH (a
-common leftover after removing gcloud). Without this workaround,
-`podman-compose` fails to pull images because it falls through to the
-Docker credential helper chain. The original config is restored on
-script exit via a `trap`.
 
 ### `_db.sh`
 

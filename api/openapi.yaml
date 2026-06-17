@@ -1116,43 +1116,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/settings/prometheus:
-    get:
-      operationId: GetPrometheusEnabled
-      tags: [Settings]
-      summary: Get the Prometheus metrics-endpoint toggle
-      description: |
-        `true` iff the `:9091/metrics` listener is currently bound and
-        the Prometheus collector is registered.
-      responses:
-        "200":
-          description: Current state.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EnabledFlag"
-    put:
-      operationId: SetPrometheusEnabled
-      tags: [Settings]
-      summary: Toggle the Prometheus metrics endpoint
-      description: |
-        Enabling binds `:9091/metrics` (override via
-        `RECALL_METRICS_ADDR`). Disabling shuts the listener down
-        with a 2s grace period.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnabledFlag"
-      responses:
-        "204":
-          description: Toggle applied.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /api/v1/settings/watcher:
     get:
       operationId: GetWatchEnabled

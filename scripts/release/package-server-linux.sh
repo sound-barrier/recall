@@ -34,6 +34,6 @@ tar -czf "recall-server-${PKG_VERSION}-linux-amd64.tar.gz" -C _tar "recall-serve
 mkdir -p _deb-server/DEBIAN _deb-server/usr/local/bin
 cp dist/server-linux/Recall-server _deb-server/usr/local/bin/recall-server
 chmod 755 _deb-server/usr/local/bin/recall-server
-printf 'Package: recall-server\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall server - Overwatch match history HTTP server\n Headless HTTP server that serves match history data and optional Prometheus metrics.\n' \
+printf 'Package: recall-server\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall server - Overwatch match history HTTP server\n Headless HTTP server that serves match history data.\n' \
   "${PKG_VERSION}" >_deb-server/DEBIAN/control
 dpkg-deb --build _deb-server "recall-server-${PKG_VERSION}-linux-amd64.deb"

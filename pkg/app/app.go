@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package app holds the Recall application core: the App struct that
-// ties together settings, persistence, the parser pipeline, the
-// Prometheus metrics lifecycle, and the screenshot file watcher.
+// ties together settings, persistence, the parser pipeline, and the
+// screenshot file watcher.
 //
 // The package is intentionally split into per-concern files instead of
 // one monolith:
@@ -34,7 +34,6 @@ import (
 
 	"recall/pkg/applog"
 	"recall/pkg/db"
-	"recall/pkg/metrics"
 	"recall/pkg/parser"
 )
 
@@ -60,11 +59,6 @@ type App struct {
 	// binding the frontend polls; mutated only on the same goroutine
 	// that responds to the bound calls (no lock needed).
 	tessStatus TesseractStatus
-	// metricsServer is non-nil only while the Prometheus endpoint is
-	// running. SetPrometheusEnabled toggles between nil and a fresh
-	// *metrics.Server (http.Server can't be reused after Shutdown, so
-	// each enable creates a new one).
-	metricsServer *metrics.Server
 	// File-watch state. watcher is non-nil while the directory is being
 	// observed; watchTimer holds the debounce timer that fires
 	// ParseScreenshots after no new files have appeared for
@@ -336,13 +330,10 @@ func (a *App) bootReAggregate() {
 	}
 }
 
-// startEnabledServices starts the Prometheus endpoint + file watcher only
-// when the user has explicitly enabled them (both default off so the
-// desktop app doesn't open a network port or watch without consent).
+// startEnabledServices starts the file watcher only when the user has
+// explicitly enabled it (off by default so the desktop app doesn't watch
+// without consent).
 func (a *App) startEnabledServices() {
-	if a.settings.PrometheusEnabled {
-		a.startMetrics()
-	}
 	if a.settings.WatchEnabled {
 		a.startWatching()
 	}

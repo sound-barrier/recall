@@ -67,7 +67,6 @@ var (
 	StopWatching        = (*App).stopWatching
 	LoadSettings        = (*App).loadSettings
 	SaveSettings        = (*App).saveSettings
-	ScrapeReader        = (*App).scrapeReader
 	DataDir             = (*App).dataDir
 	AutoProbeOnFirstRun = (*App).autoProbeOnFirstRun
 )

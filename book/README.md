@@ -113,8 +113,6 @@ That's it. You're using Recall.
 - [Run without the desktop app](server.md) — browser access on a
   remote machine.
 - [Run in Docker](docker.md) — containers, home lab, NAS.
-- [Charts & Dashboards](grafana.md) — SR over time + win-rate
-  charts via Grafana.
 
 ## Getting help
 

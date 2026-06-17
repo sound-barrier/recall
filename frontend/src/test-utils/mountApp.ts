@@ -21,7 +21,6 @@ export interface MountOverrides {
   screenshotsDir?: string
   tesseract?:      Partial<TesseractStatus>
   update?:         Partial<UpdateInfo>
-  prometheusEnabled?: boolean
   watchEnabled?:      boolean
   newScreenshotCount?: number
   // Seeds localStorage['recall.includeUndated'] so useIncludeUndated
@@ -91,8 +90,6 @@ function mockApi(overrides: MountOverrides = {}) {
     GetScreenshotsFolderCandidates: vi.fn(async () => []),
     RevealScreenshotsDir: vi.fn(async () => undefined),
     SetMatchAnnotation:    vi.fn(async () => undefined),
-    GetPrometheusEnabled: vi.fn(async () => overrides.prometheusEnabled ?? false),
-    SetPrometheusEnabled: vi.fn(async () => undefined),
     GetWatchEnabled:     vi.fn(async () => overrides.watchEnabled ?? false),
     SetWatchEnabled:     vi.fn(async () => undefined),
     GetTesseractStatus:  vi.fn(async () => defaultTesseract(overrides.tesseract)),

@@ -4,11 +4,14 @@ import (
 	"recall/pkg/parser"
 )
 
-// scrapeReader returns every non-hidden match in the DB as a slice of
-// metrics.ScrapeRow. Called by the Prometheus collector on every scrape;
-// the read is the same SELECT that backs GetMatchResults, then hidden
-// matches are filtered out so Grafana trends reconcile with the in-app
-// dossier / heatmap / sparkline (which also drop hidden).
+// InferSoleHeroPercent fills percent_played for matches where only one hero
+// is on record. Teams-only rows (no SUMMARY screenshot captured) have a
+// single HeroesPlayed entry with PercentPlayed=0 because that field only
+// comes from the SUMMARY tab — if there's just one hero, they were played
+// for the whole match.
+//
+// READ-TIME ONLY: applied via GetMatchResults, never inside the merge path,
+// so a later SUMMARY screenshot's real percentage isn't shadowed.
 func InferSoleHeroPercent(d *parser.MatchResult) {
 	if len(d.HeroesPlayed) != 1 {
 		return
@@ -25,8 +28,8 @@ func InferSoleHeroPercent(d *parser.MatchResult) {
 // piece of the rank screen — when it fails, the signed SR delta on the same
 // screenshot is the next-best signal.
 //
-// READ-TIME ONLY (load-bearing). Applied via GetMatchResults / scrapeReader,
-// never inside the merge path. If a later SUMMARY screenshot's authoritative
+// READ-TIME ONLY (load-bearing). Applied via GetMatchResults, never inside
+// the merge path. If a later SUMMARY screenshot's authoritative
 // Result is "defeat" but an earlier rank screenshot's positive SR change
 // triggered an inferred "victory", the SUMMARY value must win — which it
 // does because nothing inferred ever reaches the store. The invariant is

@@ -98,7 +98,7 @@ Once the prerequisites are in place, the container installs:
 - `cd frontend && npm ci` for the Vue/Vite toolchain
 - `lefthook install` to wire the pre-commit hooks
 
-The forwarded ports (5173, 7000, 8080, 9090, 9091, 34115, 3000) cover Vite, the Recall server, Swagger UI, Prometheus, the metrics endpoint, Wails IPC, and Grafana — all surface in the VS Code "Ports" tab.
+The forwarded ports (5173, 7000, 8080, 34115) cover Vite, the Recall server, Swagger UI, and Wails IPC — all surface in the VS Code "Ports" tab.
 
 **Caveats:**
 

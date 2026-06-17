@@ -19,7 +19,7 @@ func TestLoadSettingsFrom_DefaultsWhenEmpty(t *testing.T) {
 	if got.ScreenshotsDir != "" {
 		t.Errorf("empty input must yield empty ScreenshotsDir so auto-probe fires; got %q", got.ScreenshotsDir)
 	}
-	if got.PrometheusEnabled || got.WatchEnabled {
+	if got.WatchEnabled {
 		t.Errorf("empty input must yield false toggles, got %+v", got)
 	}
 }
@@ -47,10 +47,9 @@ func TestLoadSettingsFrom_EmptyScreenshotsDirRoundTrips(t *testing.T) {
 
 func TestLoadSettingsFrom_RoundTripPreservesFields(t *testing.T) {
 	in := app.Settings{
-		ScreenshotsDir:    "/srv/recall",
-		TesseractPath:     "/usr/bin/tesseract",
-		PrometheusEnabled: true,
-		WatchEnabled:      true,
+		ScreenshotsDir: "/srv/recall",
+		TesseractPath:  "/usr/bin/tesseract",
+		WatchEnabled:   true,
 	}
 	raw, err := app.MarshalSettings(in)
 	if err != nil {
@@ -63,7 +62,7 @@ func TestLoadSettingsFrom_RoundTripPreservesFields(t *testing.T) {
 }
 
 func TestMarshalSettings_IndentedShape(t *testing.T) {
-	in := app.Settings{ScreenshotsDir: "screenshots", PrometheusEnabled: true}
+	in := app.Settings{ScreenshotsDir: "screenshots", WatchEnabled: true}
 	raw, err := app.MarshalSettings(in)
 	if err != nil {
 		t.Fatalf("marshalSettings: %v", err)
@@ -76,8 +75,8 @@ func TestMarshalSettings_IndentedShape(t *testing.T) {
 	if out["screenshots_dir"] != "screenshots" {
 		t.Errorf("screenshots_dir lost: %+v", out)
 	}
-	if out["prometheus_enabled"] != true {
-		t.Errorf("prometheus_enabled lost: %+v", out)
+	if out["watch_enabled"] != true {
+		t.Errorf("watch_enabled lost: %+v", out)
 	}
 	// MarshalIndent uses 2-space indent — the file is meant to be human-
 	// editable, so the indentation matters.
