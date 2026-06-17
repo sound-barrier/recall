@@ -61,6 +61,31 @@ async function runAxe(page: import('@playwright/test').Page) {
     .analyze()
 }
 
+// Wait for a freshly-mounted lazy view to finish its entrance fade before
+// axe samples colors. The views are `defineAsyncComponent`s, so clicking a
+// tab flips its `aria-selected` synchronously but the panel mounts a beat
+// later and runs the `view-fade-in` keyframes (opacity 0→1). Playwright
+// treats an opacity:0 element as "visible", so `toBeVisible()` can return
+// mid-fade — axe then reads the ramped alpha and reports dozens of false
+// color-contrast violations (observed: ~42 on the settings view, an
+// intermittent CI red). Awaiting the panel subtree's finite animations
+// settles that deterministically; the `iterations !== Infinity` filter
+// skips looping animations (e.g. the `pulse-dot` spinner) so the wait can
+// never hang, and views that don't fade (matches) simply have nothing to
+// await.
+async function settleView(page: import('@playwright/test').Page, tabId: string) {
+  const panel = page.locator(`#${tabId.replace('tab-', 'panel-')}`)
+  await expect(panel).toBeVisible()
+  await panel.evaluate((el) =>
+    Promise.all(
+      el
+        .getAnimations({ subtree: true })
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  )
+}
+
 // Loop 1: every view × dark theme.
 for (const view of VIEWS) {
   test(`a11y: ${view.name} view (dark theme) has no axe violations`, async ({ page }) => {
@@ -68,6 +93,7 @@ for (const view of VIEWS) {
     await page.goto('/')
     await page.locator(`#${view.tabId}`).click()
     await expect(page.locator(`#${view.tabId}`)).toHaveAttribute('aria-selected', 'true')
+    await settleView(page, view.tabId)
 
     const results = await runAxe(page)
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
@@ -82,6 +108,7 @@ for (const theme of THEMES) {
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+    await settleView(page, 'tab-matches')
 
     const results = await runAxe(page)
     expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
