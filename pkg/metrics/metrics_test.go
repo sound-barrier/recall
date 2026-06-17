@@ -295,6 +295,123 @@ func TestCollector_EmitsPerHeroStatsAndSR(t *testing.T) {
 	mustContain(`} 30`)
 }
 
+// parseClockSeconds turns an OW "MM:SS" (or "H:MM:SS") game-length string into
+// seconds for the recall_match_game_length_seconds metric.
+func TestParseClockSeconds(t *testing.T) {
+	cases := []struct {
+		in   string
+		want float64
+		ok   bool
+	}{
+		{"08:30", 510, true},
+		{"0:45", 45, true},
+		{"12:00", 720, true},
+		{"1:02:03", 3723, true}, // H:MM:SS
+		{"", 0, false},
+		{"12", 0, false}, // no colon
+		{"not:aclock", 0, false},
+	}
+	for _, c := range cases {
+		got, ok := metrics.ParseClockSeconds(c.in)
+		if ok != c.ok || (ok && got != c.want) {
+			t.Errorf("ParseClockSeconds(%q) = %v, %v; want %v, %v", c.in, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+// recall_match_win encodes the outcome as a number (1/0/0.5) so a single
+// avg(recall_match_win) by (…) gives win rate on any dimension.
+func TestCollector_WinMetricEncodesOutcome(t *testing.T) {
+	mk := func(key, result, fa string) metrics.ScrapeRow {
+		return metrics.ScrapeRow{MatchKey: key, Data: parser.MatchResult{
+			Playlist: "competitive", Hero: "ana", Result: result,
+			Date: "2026-05-10", FinishedAt: fa,
+		}}
+	}
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{
+			mk("match-2026-05-10T20-00-00", "victory", "20:00"),
+			mk("match-2026-05-10T20-30-00", "defeat", "20:30"),
+			mk("match-2026-05-10T21-00-00", "draw", "21:00"),
+		}, nil
+	}
+	out := scrape(t, reader)
+
+	winValue := func(result string) (string, bool) {
+		for line := range strings.SplitSeq(out, "\n") {
+			if strings.HasPrefix(line, "recall_match_win{") && strings.Contains(line, `result="`+result+`"`) {
+				// `name{labels} VALUE TIMESTAMP` — every sample is timestamped,
+				// so the value is the second-to-last field.
+				fields := strings.Fields(line)
+				return fields[len(fields)-2], true
+			}
+		}
+		return "", false
+	}
+	for _, c := range []struct{ result, want string }{
+		{"victory", "1"},
+		{"defeat", "0"},
+		{"draw", "0.5"},
+	} {
+		got, ok := winValue(c.result)
+		if !ok {
+			t.Errorf("no recall_match_win sample for result=%q", c.result)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("recall_match_win for %q = %s, want %s", c.result, got, c.want)
+		}
+	}
+}
+
+// New match-level dimensions surface as labels, and the rank-progress,
+// game-length, and per-10 performance metrics emit when their source data
+// is present.
+func TestCollector_EmitsEnrichedMetricsAndLabels(t *testing.T) {
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{{
+			MatchKey:   "match-2026-05-10T21-29-28",
+			QueueType:  "role",
+			Leaver:     "team",
+			ReviewedBy: "self",
+			Data: parser.MatchResult{
+				Playlist: "competitive", Map: "rialto", GameMode: "control",
+				Result: "victory", Hero: "lucio", Role: "support",
+				Date: "2026-05-10", FinishedAt: "21:29",
+				Rank: "diamond", RankProgress: 42, GameLength: "08:30",
+				Performance: &parser.Performance{
+					Eliminations: parser.PerformanceStat{AvgPer10Min: 21.5},
+					Assists:      parser.PerformanceStat{AvgPer10Min: 18},
+					Deaths:       parser.PerformanceStat{AvgPer10Min: 6},
+				},
+			},
+		}}, nil
+	}
+	out := scrape(t, reader)
+
+	for _, want := range []string{
+		// New labels on the core metrics.
+		`queue_type="role"`,
+		`rank="diamond"`,
+		`leaver="team"`,
+		`reviewed_by="self"`,
+		// New metrics + values.
+		`recall_match_win{`,
+		`recall_match_rank_progress{`,
+		`} 42`,
+		`recall_match_game_length_seconds{`,
+		`} 510`,
+		`recall_match_perf_eliminations_per10{`,
+		`} 21.5`,
+		`recall_match_perf_assists_per10{`,
+		`recall_match_perf_deaths_per10{`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in exposition, not found.\nFull output:\n%s", want, out)
+		}
+	}
+}
+
 func TestCollector_ReaderErrorIsNonFatal(t *testing.T) {
 	reader := func() ([]metrics.ScrapeRow, error) {
 		return nil, errors.New("boom")

@@ -1,0 +1,145 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [{"title": "Recall dashboards", "type": "dashboards", "tags": ["recall"], "asDropdown": true, "includeVars": true, "keepTime": true}],
+  "templating": {"list": [
+    {
+      "name": "queue_type", "label": "Queue", "type": "query",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "definition": "label_values(recall_match_win, queue_type)",
+      "query": {"qryType": 1, "query": "label_values(recall_match_win, queue_type)", "refId": "queue_type"},
+      "includeAll": true, "allValue": ".*", "multi": true, "refresh": 2,
+      "current": {"text": "All", "value": "$__all"}, "sort": 1
+    },
+    {
+      "name": "rank", "label": "Rank tier", "type": "query",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "definition": "label_values(recall_match_win, rank)",
+      "query": {"qryType": 1, "query": "label_values(recall_match_win, rank)", "refId": "rank"},
+      "includeAll": true, "allValue": ".*", "multi": true, "refresh": 2,
+      "current": {"text": "All", "value": "$__all"}, "sort": 1
+    }
+  ]},
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Win rate by hero — sorted worst → best",
+      "description": "avg(recall_match_win) per hero over the selected queue / rank. Focus on the red rows. Filter with the Queue / Rank tier variables above.",
+      "gridPos": {"h": 11, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (count_over_time(recall_match_win{hero!=\"\",queue_type=~\"$queue_type\",rank=~\"$rank\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "avg by (hero) (avg_over_time(recall_match_win{hero!=\"\",queue_type=~\"$queue_type\",rank=~\"$rank\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+      ],
+      "transformations": [
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {
+          "excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "__name__": true},
+          "indexByName": {"hero": 0, "Value #Matches": 1, "Value #WinRate": 2},
+          "renameByName": {"hero": "Hero", "Value #Matches": "Matches", "Value #WinRate": "Win Rate"}
+        }}
+      ],
+      "options": {"showHeader": true, "sortBy": [{"desc": false, "displayName": "Win Rate"}]},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "displayMode": "auto", "filterable": true}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Hero"}, "properties": [{"id": "custom.width", "value": 120}]},
+          {"matcher": {"id": "byName", "options": "Win Rate"}, "properties": [
+            {"id": "unit", "value": "percentunit"}, {"id": "decimals", "value": 0},
+            {"id": "max", "value": 1}, {"id": "min", "value": 0},
+            {"id": "custom.displayMode", "value": "gradient-gauge"},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.4}, {"color": "green", "value": 0.55}]}}
+          ]}
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Hero × Map — where to specialize",
+      "description": "Your best (and worst) pocket picks for the selected queue / rank. Sort Win Rate desc for comfort picks, asc for what to drill.",
+      "gridPos": {"h": 11, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero, map) (count_over_time(recall_match_win{hero!=\"\",map!=\"\",queue_type=~\"$queue_type\",rank=~\"$rank\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "avg by (hero, map) (avg_over_time(recall_match_win{hero!=\"\",map!=\"\",queue_type=~\"$queue_type\",rank=~\"$rank\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+      ],
+      "transformations": [
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {
+          "excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "__name__": true},
+          "indexByName": {"hero": 0, "map": 1, "Value #Matches": 2, "Value #WinRate": 3},
+          "renameByName": {"hero": "Hero", "map": "Map", "Value #Matches": "Matches", "Value #WinRate": "Win Rate"}
+        }}
+      ],
+      "options": {"showHeader": true, "sortBy": [{"desc": true, "displayName": "Matches"}]},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "displayMode": "auto", "filterable": true}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Win Rate"}, "properties": [
+            {"id": "unit", "value": "percentunit"}, {"id": "decimals", "value": 0},
+            {"id": "max", "value": 1}, {"id": "min", "value": 0},
+            {"id": "custom.displayMode", "value": "gradient-gauge"},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.4}, {"color": "green", "value": 0.55}]}}
+          ]}
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "KDA per match (by hero)",
+      "description": "(eliminations + assists) / max(deaths, 1)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 11},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero) (recall_match_eliminations{queue_type=~\"$queue_type\",rank=~\"$rank\"}) + sum by (hero) (recall_match_assists{queue_type=~\"$queue_type\",rank=~\"$rank\"})) / clamp_min(sum by (hero) (recall_match_deaths{queue_type=~\"$queue_type\",rank=~\"$rank\"}), 1)", "legendFormat": "{{hero}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}, "decimals": 2}},
+      "options": {"legend": {"calcs": ["mean"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Hero playtime % per match",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 11},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "max by (hero) (recall_match_percent_played{queue_type=~\"$queue_type\",rank=~\"$rank\"})", "legendFormat": "{{hero}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 10, "pointSize": 6, "showPoints": "always", "spanNulls": true}, "unit": "percent", "min": 0, "max": 100}},
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Eliminations per 10 min (by hero)",
+      "description": "Length-normalized output — comparable across a 6-min stomp and a 15-min slog.",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "max by (hero) (recall_match_perf_eliminations_per10{queue_type=~\"$queue_type\",rank=~\"$rank\"})", "legendFormat": "{{hero}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}, "decimals": 1}},
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Deaths per 10 min (by hero)",
+      "description": "Length-normalized deaths — lower is better; spot the heroes you over-die on.",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "max by (hero) (recall_match_perf_deaths_per10{queue_type=~\"$queue_type\",rank=~\"$rank\"})", "legendFormat": "{{hero}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}, "decimals": 1}},
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["overwatch", "recall"],
+  "time": {"from": "now-90d", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "Recall — Heroes",
+  "uid": "recall-heroes",
+  "version": 1,
+  "weekStart": ""
+}

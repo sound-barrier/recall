@@ -22,7 +22,24 @@ func (a *App) scrapeReader() ([]metrics.ScrapeRow, error) {
 		}
 		aggregate.InferSoleHeroPercent(&r.Data)
 		aggregate.InferResultFromRank(&r.Data)
-		out = append(out, metrics.ScrapeRow{MatchKey: r.MatchKey, Data: r.Data})
+		// Thread the match-level dimensions that live on MatchRecord (not
+		// parser.MatchResult) so they become Prometheus labels. Queue type
+		// prefers the user override, falling back to the parser's inference.
+		queueType := r.QueueType
+		if queueType == "" {
+			queueType = r.Data.QueueType
+		}
+		leaver := ""
+		if r.Annotation != nil {
+			leaver = r.Annotation.Leaver
+		}
+		out = append(out, metrics.ScrapeRow{
+			MatchKey:   r.MatchKey,
+			Data:       r.Data,
+			QueueType:  queueType,
+			Leaver:     leaver,
+			ReviewedBy: r.ReviewedBy,
+		})
 	}
 	return out, nil
 }

@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +29,12 @@ import (
 type ScrapeRow struct {
 	MatchKey string
 	Data     parser.MatchResult
+	// Match-level context that lives on the outer MatchRecord, not in
+	// parser.MatchResult. scrapeReader fills these; they become labels so
+	// dashboards can slice every metric by queue, leaver, and review status.
+	QueueType  string // "role" (5v5) | "open" (6v6) | "" — user override wins, else parser
+	Leaver     string // "" | self | team | enemy
+	ReviewedBy string // "" | self | coach
 }
 
 // Reader is the callback the collector uses to fetch current state on every
@@ -37,8 +44,17 @@ type Reader func() ([]ScrapeRow, error)
 // matchLabels is the shared label set on every match-level metric. Putting
 // `hero`/`role` on core metrics (not just per-hero ones) lets dashboards
 // correlate the played hero with match outcome, damage, healing, etc.
-// hero_stat metrics extend this with an additional `stat` label.
-var matchLabels = []string{"match_key", "map", "game_mode", "playlist", "result", "hero", "role"}
+// `queue_type`/`rank`/`leaver`/`reviewed_by` are match-level dimensions (same
+// value for every hero in the match) so dashboards can split any metric by
+// 5v5-vs-6v6, rank tier, thrown-game, or review status. hero_stat metrics
+// extend this with an additional `stat` label.
+//
+// Order MUST match labelsFor's return slice. Cardinality is bounded: match_key
+// already makes every match a unique series, so these add no new series.
+var matchLabels = []string{
+	"match_key", "map", "game_mode", "playlist", "result", "hero", "role",
+	"queue_type", "rank", "leaver", "reviewed_by",
+}
 
 // Collector implements prometheus.Collector. Each Collect() call reads all
 // matches via the Reader and emits one sample per (metric, labels, timestamp)
@@ -58,8 +74,15 @@ type Collector struct {
 	healing      *prometheus.Desc
 	mitigation   *prometheus.Desc
 
-	matchResult *prometheus.Desc // 1, label "result" carries victory/defeat/draw
-	rankLevel   *prometheus.Desc // 1-5
+	matchResult  *prometheus.Desc // 1, label "result" carries victory/defeat/draw
+	win          *prometheus.Desc // 1 victory / 0 defeat / 0.5 draw — avg() = win rate
+	rankLevel    *prometheus.Desc // 1-5
+	rankProgress *prometheus.Desc // 0-100 % into the current tier level
+	gameLength   *prometheus.Desc // match duration in seconds
+
+	perfElims   *prometheus.Desc // per-10-min averages from the SUMMARY perf card
+	perfAssists *prometheus.Desc
+	perfDeaths  *prometheus.Desc
 
 	percentPlayed *prometheus.Desc // hero playtime as % of match (per hero in heroes_played)
 	heroSR        *prometheus.Desc
@@ -84,7 +107,13 @@ func New(read Reader) *Collector {
 		healing:       desc("match_healing", "Healing done in the match."),
 		mitigation:    desc("match_mitigation", "Damage mitigated in the match."),
 		matchResult:   desc("match_result", "Always 1; the `result` label carries victory/defeat/draw."),
+		win:           desc("match_win", "Match outcome as a number: 1 victory, 0 defeat, 0.5 draw. avg() over any label set = win rate."),
 		rankLevel:     desc("match_rank_level", "Competitive rank sub-division (1-5)."),
+		rankProgress:  desc("match_rank_progress", "Percent progress into the current competitive tier level (0-100)."),
+		gameLength:    desc("match_game_length_seconds", "Match duration in seconds."),
+		perfElims:     desc("match_perf_eliminations_per10", "Eliminations per 10 minutes (length-normalized SUMMARY performance average)."),
+		perfAssists:   desc("match_perf_assists_per10", "Assists per 10 minutes (length-normalized SUMMARY performance average)."),
+		perfDeaths:    desc("match_perf_deaths_per10", "Deaths per 10 minutes (length-normalized SUMMARY performance average)."),
 		percentPlayed: desc("match_percent_played", "Percentage of the match's playtime spent on this hero."),
 		heroSR:        desc("match_sr", "Per-hero SR at the end of the match."),
 		heroSRChange:  desc("match_sr_change", "Per-hero SR delta from this match."),
@@ -100,7 +129,13 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.healing
 	ch <- c.mitigation
 	ch <- c.matchResult
+	ch <- c.win
 	ch <- c.rankLevel
+	ch <- c.rankProgress
+	ch <- c.gameLength
+	ch <- c.perfElims
+	ch <- c.perfAssists
+	ch <- c.perfDeaths
 	ch <- c.percentPlayed
 	ch <- c.heroSR
 	ch <- c.heroSRChange
@@ -148,7 +183,9 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 		}
 		ch <- prometheus.NewMetricWithTimestamp(ts, m)
 	}
-	// Helper that builds matchLabels with a given (hero, role) override.
+	// Helper that builds matchLabels with a given (hero, role) override. The
+	// trailing four are match-level (constant across the match's heroes).
+	// Order MUST match the matchLabels slice.
 	labelsFor := func(hero, role string) []string {
 		return []string{
 			row.MatchKey,
@@ -158,6 +195,10 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 			row.Data.Result,
 			hero,
 			role,
+			row.QueueType,
+			row.Data.Rank,
+			row.Leaver,
+			row.ReviewedBy,
 		}
 	}
 
@@ -172,9 +213,23 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 
 	if row.Data.Result != "" {
 		emit(c.matchResult, 1, primary)
+		emit(c.win, winValue(row.Data.Result), primary)
 	}
 	if row.Data.Level != 0 {
 		emit(c.rankLevel, float64(row.Data.Level), primary)
+	}
+	// rank_progress only means something when a RANK screenshot set the tier.
+	if row.Data.Rank != "" {
+		emit(c.rankProgress, float64(row.Data.RankProgress), primary)
+	}
+	if secs, ok := parseClockSeconds(row.Data.GameLength); ok {
+		emit(c.gameLength, secs, primary)
+	}
+	// Length-normalized per-10 averages from the SUMMARY performance card.
+	if p := row.Data.Performance; p != nil {
+		emit(c.perfElims, p.Eliminations.AvgPer10Min, primary)
+		emit(c.perfAssists, p.Assists.AvgPer10Min, primary)
+		emit(c.perfDeaths, p.Deaths.AvgPer10Min, primary)
 	}
 
 	// Per-hero SR.
@@ -230,6 +285,41 @@ func parseMatchTimestamp(date, finishedAt, matchKey string) (time.Time, bool) {
 // Prometheus accepts empty label values.
 func roleOf(hero string) string {
 	return parser.HeroRole(hero)
+}
+
+// winValue maps an outcome to a number so avg(recall_match_win) is win rate:
+// victory=1, draw=0.5, anything else (defeat) =0. Only called when Result != "".
+func winValue(result string) float64 {
+	switch result {
+	case "victory":
+		return 1
+	case "draw":
+		return 0.5
+	default:
+		return 0
+	}
+}
+
+// parseClockSeconds parses an OW clock string ("MM:SS" or "H:MM:SS") into
+// seconds. ok=false for empty or malformed input so the caller skips the
+// metric rather than emitting a misleading 0.
+func parseClockSeconds(s string) (float64, bool) {
+	if s == "" {
+		return 0, false
+	}
+	parts := strings.Split(s, ":")
+	if len(parts) < 2 || len(parts) > 3 {
+		return 0, false
+	}
+	total := 0
+	for _, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil || n < 0 {
+			return 0, false
+		}
+		total = total*60 + n
+	}
+	return float64(total), true
 }
 
 // Server is the runtime container for the Prometheus metrics endpoint.

@@ -1,0 +1,105 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [{"title": "Recall dashboards", "type": "dashboards", "tags": ["recall"], "asDropdown": true, "includeVars": true, "keepTime": true}],
+  "templating": {"list": [
+    {
+      "name": "queue_type", "label": "Queue", "type": "query",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "definition": "label_values(recall_match_sr, queue_type)",
+      "query": {"qryType": 1, "query": "label_values(recall_match_sr, queue_type)", "refId": "queue_type"},
+      "includeAll": true, "allValue": ".*", "multi": true, "refresh": 2,
+      "current": {"text": "All", "value": "$__all"}, "sort": 1
+    }
+  ]},
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "SR over time (by hero)",
+      "description": "Per-hero SR at each ranked match. The climb (or slide) over the selected queue.",
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "max by (hero) (recall_match_sr{queue_type=~\"$queue_type\"})", "legendFormat": "{{hero}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}}},
+      "options": {"legend": {"calcs": ["last", "max", "min"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Win rate by rank tier — sorted worst → best",
+      "description": "How you perform at each tier you've played. avg(recall_match_win) grouped by rank tier.",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (rank) (count_over_time(recall_match_win{rank!=\"\",queue_type=~\"$queue_type\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "avg by (rank) (avg_over_time(recall_match_win{rank!=\"\",queue_type=~\"$queue_type\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+      ],
+      "transformations": [
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {
+          "excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "__name__": true},
+          "indexByName": {"rank": 0, "Value #Matches": 1, "Value #WinRate": 2},
+          "renameByName": {"rank": "Rank", "Value #Matches": "Matches", "Value #WinRate": "Win Rate"}
+        }}
+      ],
+      "options": {"showHeader": true, "sortBy": [{"desc": false, "displayName": "Win Rate"}]},
+      "fieldConfig": {
+        "defaults": {"custom": {"align": "auto", "displayMode": "auto", "filterable": false}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Rank"}, "properties": [{"id": "custom.width", "value": 140}]},
+          {"matcher": {"id": "byName", "options": "Win Rate"}, "properties": [
+            {"id": "unit", "value": "percentunit"}, {"id": "decimals", "value": 0},
+            {"id": "max", "value": 1}, {"id": "min", "value": 0},
+            {"id": "custom.displayMode", "value": "gradient-gauge"},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.4}, {"color": "green", "value": 0.55}]}}
+          ]}
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Rank progress (% into current tier level)",
+      "description": "0–100 climb within the current division, straight off the rank screen.",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "max(recall_match_rank_progress{queue_type=~\"$queue_type\"})", "legendFormat": "rank progress", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "orange"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 12, "pointSize": 7, "showPoints": "always", "spanNulls": true}, "unit": "percent", "min": 0, "max": 100}},
+      "options": {"legend": {"calcs": ["last"], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}}
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "SR change per match (by hero)",
+      "description": "Per-match SR delta — green gains, red losses.",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (recall_match_sr_change{queue_type=~\"$queue_type\"})", "legendFormat": "{{hero}}", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60, "pointSize": 5, "showPoints": "auto", "spanNulls": true, "gradientMode": "scheme"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 0}]}}},
+      "options": {"legend": {"calcs": ["sum", "mean"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Rank level (division 1–5) over time",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "max(recall_match_rank_level{queue_type=~\"$queue_type\"})", "legendFormat": "division", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "purple"}, "custom": {"drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 8, "pointSize": 7, "showPoints": "always", "spanNulls": true}, "min": 1, "max": 5, "decimals": 0}},
+      "options": {"legend": {"calcs": ["last"], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "single", "sort": "none"}}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["overwatch", "recall"],
+  "time": {"from": "now-90d", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "Recall — Rank",
+  "uid": "recall-rank",
+  "version": 1,
+  "weekStart": ""
+}

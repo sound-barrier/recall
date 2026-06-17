@@ -14,13 +14,22 @@ machine alongside Recall.
 
 ## What you'll get
 
-The bundled Grafana dashboard includes:
+The bundled stack provisions **four dashboards** — switch between them with the
+**Recall dashboards** dropdown at the top-left of any of them:
 
-- **Eliminations per match** over time
-- **SR over time** per hero
-- **Win rate** grouped by hero, map, or mode
-- **Damage vs. healing** scatter
-- **"Worst maps"** table sorted by win rate
+- **Recall — Overview** — totals, win rate, SR-over-time, and the worst
+  maps/heroes/game-types tables.
+- **Recall — Heroes** — per-hero win rate, KDA, **per-10-min** output (length-
+  normalized), playtime, and hero×map specialization. Filter by **queue** or
+  **rank tier**.
+- **Recall — Rank** — SR climb, per-match SR change, rank progress within a
+  tier, division (1–5), and **win rate by rank tier**.
+- **Recall — Maps & Queue** — win rate by map / game type / **queue (5v5 role
+  vs 6v6 open)**, and your pocket pick per map.
+
+Every match is sliceable by hero, role, map, game type, **queue type**, **rank
+tier**, **leaver**, and **review status** — so you can ask "how's my Tracer in
+6v6 at Diamond?" or "what's my win rate excluding thrown games?".
 
 Each data point is stamped with the actual time the match ended — not when
 Recall scanned the screenshot — so the timeline stays accurate even if you
@@ -140,7 +149,8 @@ winget install Grafana.Grafana
 # Start both services
 ```
 
-> **Grafana datasource UID:** every panel in `grafana/provisioning/dashboards/recall.json`
+> **Grafana datasource UID:** every panel in the bundled dashboards
+> (`grafana/provisioning/dashboards/*.json`)
 > hardcodes `"datasource": {"uid": "prometheus"}`. The provisioning file sets
 > this automatically. If you add the datasource manually via the Grafana UI,
 > set the **UID** field to exactly `prometheus` — otherwise all panels show
@@ -202,10 +212,19 @@ podman-compose down && podman-compose up -d
 
 ## Metric reference
 
-| Metric | Labels | What it measures |
+Every metric carries the **base label set**:
+`match_key, map, game_mode, playlist, result, hero, role, queue_type, rank,
+leaver, reviewed_by` (the last four are match-level). Only competitive matches
+reach Prometheus.
+
+| Metric | Extra labels | What it measures |
 |---|---|---|
-| `recall_match_eliminations` (+ `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result, hero, role` | Core teams stats per match |
-| `recall_match_result` | …, `result` | Always `1`; use `count()` in Grafana to count matches by outcome |
-| `recall_match_rank_level` | … | Competitive rank subdivision (1–5) |
-| `recall_match_sr` / `recall_match_sr_change` | …, `hero`, `role` | Per-hero SR and delta per match |
-| `recall_hero_stat` | …, `hero`, `role`, `stat` | Per-hero extended stats (`weapon_accuracy`, `players_saved`, …) |
+| `recall_match_eliminations` (+ `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | — | Core teams stats per match (primary hero) |
+| `recall_match_result` | — | Always `1`; the `result` label carries victory/defeat/draw |
+| `recall_match_win` | — | Outcome as a number: 1 victory / 0 defeat / 0.5 draw — `avg()` by any label = win rate |
+| `recall_match_rank_level` / `recall_match_rank_progress` | — | Competitive division (1–5) / % progress into the current tier |
+| `recall_match_game_length_seconds` | — | Match duration in seconds |
+| `recall_match_perf_eliminations_per10` (+ `_assists_per10`, `_deaths_per10`) | — | Length-normalized per-10-minute averages from the SUMMARY card |
+| `recall_match_sr` / `recall_match_sr_change` | — (per hero) | Per-hero SR and delta per match |
+| `recall_match_percent_played` | — (per hero) | Hero playtime as % of the match |
+| `recall_hero_stat` | `stat` | Per-hero extended stats (`weapon_accuracy`, `players_saved`, …) |
