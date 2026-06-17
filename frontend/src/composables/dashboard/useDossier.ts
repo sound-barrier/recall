@@ -5,7 +5,7 @@ import type { MatchesDossier } from '@/composables/matches/useMatchesDossier'
 // threading 18 props through DashboardWidget. MatchesView provides
 // the dossier once with `provideDossier(...)`; each widget calls
 // `useDossier()` in its own `<script setup>` block and pulls only
-// the slice it renders. Mirrors the Grafana panel pattern of
+// the slice it renders. Mirrors the dashboard-panel pattern of
 // "self-contained widgets querying a shared data source."
 //
 // Exported so widget tests can provide a mock dossier via vue-test-
