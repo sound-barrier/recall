@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"slices"
 	"testing"
 
 	"recall/pkg/parser"
@@ -41,6 +42,19 @@ func TestRoster_RecognizesNewHeroShion(t *testing.T) {
 	}
 	if got := parser.HeroRole("shion"); got != "dps" {
 		t.Errorf(`HeroRole("shion") = %q, want "dps"`, got)
+	}
+}
+
+// TestRoster_RecognizesNewMapNeonFunction guards the Neon Function roster
+// addition: the new hybrid map must resolve as known and register under the
+// hybrid game mode (so map validation accepts it and the dossier groups it
+// correctly).
+func TestRoster_RecognizesNewMapNeonFunction(t *testing.T) {
+	if !parser.IsKnownMap("neon function") {
+		t.Error(`IsKnownMap("neon function") = false, want true`)
+	}
+	if hybrid := parser.MapsByGameMode()["hybrid"]; !slices.Contains(hybrid, "Neon Function") {
+		t.Errorf(`MapsByGameMode()["hybrid"] = %v, want it to contain "Neon Function"`, hybrid)
 	}
 }
 
