@@ -310,6 +310,11 @@ const updateCheckBusy = ref(false)
 // programmatic focus without entering the natural tab order.
 async function goToView(next: string) {
   view.value = next as TabId
+  // Entering Parse: re-read how many screenshots are pending so the "Run
+  // Parse · N" count reflects the folder NOW, not whatever was fetched in
+  // the initial-load batch (new captures may have landed since). Fire-and-
+  // forget — the count ref updates reactively when it resolves.
+  if (next === 'ingest') void refreshNewCount()
   await nextTick()
   const panel = document.getElementById(`panel-${next}`)
   if (panel) panel.focus({ preventScroll: true })
