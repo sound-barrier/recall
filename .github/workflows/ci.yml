@@ -146,9 +146,13 @@ jobs:
         run: bash scripts/ci/check-test-skips.sh
 
       - name: Run Go unit tests
-        # continue-on-error keeps the workflow going so the JUnit XML is
-        # uploaded + the EnricoMi step gets a chance to comment. The
-        # EnricoMi step then fails the workflow if any test failed.
+        id: gotest
+        # continue-on-error so BOTH test steps run and the JUnit XML always
+        # uploads + EnricoMi always posts the "Unit test results" check. The
+        # real pass/fail is enforced by the "Fail the job on any unit-test
+        # failure" gate at the end of this job (reads `.outcome`) — so a
+        # failure, including a -race-only one, reds the workflow run, not just
+        # the check-run.
         continue-on-error: true
         run: |
           set -o pipefail
@@ -163,6 +167,7 @@ jobs:
       # scopes the path to the junit reporter only, so the default
       # reporter still writes to stdout.
       - name: Run frontend unit tests
+        id: fetest
         continue-on-error: true
         run: |
           cd frontend
@@ -188,12 +193,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      # EnricoMi remains the workflow gate (it flips status to failure
-      # via `fail_on: test failures` based on the JUnit XML), but its
-      # own commenter is OFF — the coverage-comment job below renders
-      # one combined sticky comment so the PR doesn't carry two
-      # separate ones for tests and coverage.
-      - name: Gate workflow on unit-test failures
+      # EnricoMi posts the "Unit test results" check (red via `fail_on:
+      # test failures` when the JUnit XML carries a failure) — that's the
+      # per-PR/commit status + the detailed breakdown. It does NOT fail the
+      # workflow run itself, so the explicit `.outcome` gate at the end of
+      # this job is what reds CI. Its own commenter is OFF — the
+      # coverage-comment job renders one combined sticky comment.
+      - name: Publish unit-test results check
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040  # v2
         with:
@@ -220,6 +226,22 @@ jobs:
             git diff frontend/src/api.gen.d.ts | head -50
             exit 1
           fi
+
+      # Hard-fail CI on any unit-test failure. The two test steps are
+      # continue-on-error (so JUnit always uploads + EnricoMi always posts its
+      # check), which means their failure alone only reds the "Unit test
+      # results" check — the workflow run stays green. Gate on their real
+      # `.outcome` here so a failing test, including one that only fails under
+      # `-race`, turns this job (and the CI run) red directly. Last step in the
+      # job so every other check still runs first.
+      - name: Fail the job on any unit-test failure
+        if: always() && (steps.gotest.outcome == 'failure' || steps.fetest.outcome == 'failure')
+        env:
+          GO_OUTCOME: ${{ steps.gotest.outcome }}
+          FE_OUTCOME: ${{ steps.fetest.outcome }}
+        run: |
+          echo "::error::Unit tests failed (Go=${GO_OUTCOME}, frontend=${FE_OUTCOME}). See the 'Unit test results' check and the test-run step logs."
+          exit 1
 
   # ── Job 2: Linux/amd64 Wails app ────────────────────────────────────────
   build-linux:
