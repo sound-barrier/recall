@@ -16,8 +16,8 @@ import {
   DAY_OF_WEEK_LABELS,
 } from '@/composables/matches/useMatchesDossier.types'
 
-// The dossier's parameterized query-helper tier (the Grafana
-// panel-options side). Each helper takes a MaybeRefOrGetter<Opts> and
+// The dossier's parameterized query-helper tier (the panel-options
+// side). Each helper takes a MaybeRefOrGetter<Opts> and
 // opens its own computed() so widgets can wire reactive config through
 // and share Vue's reactive cache. Split out of useMatchesDossier so the
 // composable file holds the bedrock refs and this one holds the

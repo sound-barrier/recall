@@ -30,7 +30,7 @@ export * from '@/composables/matches/useMatchesDossier.types'
 // exclusion) is testable in isolation. No DOM, no Vue components —
 // just `Ref<MatchRecord[]>` in, `ComputedRef` out.
 //
-// Shape: two-tier surface modeled on Grafana's data-source +
+// Shape: two-tier surface modeled on a dashboard's data-source +
 // panel-options vocabulary. Bedrock values that have no user-tunable
 // knobs (W/L/D, winrate, total time played, etc.) ship as
 // `ComputedRef<T>`. Knob-bearing surfaces (top-N breakdowns,

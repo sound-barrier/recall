@@ -472,9 +472,9 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
       />
 
       <!-- ─── TRENDS ──────────────────────────────────────────────
-         In-app time-series line charts over the narrowed set (the
-         replacement for the old Grafana dashboards). Collapsed by
-         default so ECharts stays in its own lazily-loaded chunk. -->
+         In-app time-series line charts over the narrowed set.
+         Collapsed by default so ECharts stays in its own
+         lazily-loaded chunk. -->
       <TrendsSection />
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->

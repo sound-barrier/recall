@@ -1,8 +1,7 @@
 /**
  * Matches — "Trends" time-series section.
  *
- * The in-app replacement for the (removed) Grafana line charts. A
- * collapsible section below the dossier renders four ECharts line
+ * A collapsible section below the dossier renders four ECharts line
  * charts over the *narrowed* match set: SR by hero, a selectable
  * per-match stat, a rolling win-rate (windowed), and per-10
  * performance. ECharts is lazy-loaded, so the canvases only appear
