@@ -2,37 +2,30 @@
 import { computed, defineAsyncComponent, ref } from 'vue'
 
 import { useDossier } from '@/composables/dashboard/useDossier'
-import { STAT_LABELS, type StatKey } from '@/match/match-trends-helpers'
-import { multiLineOption, statOption, winrateOption } from '@/components/matches/trends/trend-options'
+import { rankLadderOption, winrateOption } from '@/components/matches/trends/trend-options'
 
 // ECharts is heavy; defer it to its own chunk that only loads when the
 // user opens the section (the v-if below gates the mount).
 const TrendChart = defineAsyncComponent(() => import('@/components/matches/trends/TrendChart.vue'))
 
 // Time-series come from the dossier, so the charts track the same
-// narrowed set as the rest of the workspace.
+// narrowed set as the rest of the workspace. Both split by role bucket
+// (role queue → per-role lines, open queue → one line).
 const dossier = useDossier()
 
 const expanded = ref(false)
-const stat = ref<StatKey>('kda')
 const windowSize = ref<number>(20)
 
-const statSeries = dossier.statTrend(stat)
+const rankSeries = dossier.rankLadder
 const winrateSeries = dossier.rollingWinrate(windowSize)
 
-const srChartOption = computed(() => multiLineOption(dossier.srTrends.value, 'SR'))
-const per10ChartOption = computed(() => multiLineOption(dossier.per10Trends.value, 'per 10'))
-const statChartOption = computed(() => statOption(statSeries.value))
+const rankChartOption = computed(() => rankLadderOption(rankSeries.value))
 const winrateChartOption = computed(() => winrateOption(winrateSeries.value))
 
-const srHasData = computed(() => dossier.srTrends.value.some((series) => series.points.length > 0))
-const per10HasData = computed(() => dossier.per10Trends.value.some((series) => series.points.length > 0))
-const statHasData = computed(() => statSeries.value.points.length > 0)
-const winrateHasData = computed(() => winrateSeries.value.points.length > 0)
-const anyData = computed(() => srHasData.value || per10HasData.value || statHasData.value || winrateHasData.value)
+const rankHasData = computed(() => rankSeries.value.some((s) => s.points.length > 0))
+const winrateHasData = computed(() => winrateSeries.value.some((s) => s.points.length > 0))
+const anyData = computed(() => rankHasData.value || winrateHasData.value)
 
-const statLabel = computed(() => STAT_LABELS[stat.value])
-const STAT_OPTIONS = Object.entries(STAT_LABELS) as [StatKey, string][]
 const WINDOW_OPTIONS = [10, 20, 50] as const
 </script>
 
@@ -46,12 +39,12 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
     >
       <span class="chev" :class="{ open: expanded }" aria-hidden="true">▸</span>
       <span class="trends-title">Trends</span>
-      <span class="trends-hint">SR, per-match stats, win-rate &amp; per-10 over time</span>
+      <span class="trends-hint">Rank progression &amp; win-rate over time, by role</span>
     </button>
 
     <div v-if="expanded" id="trends-body" class="trends-body">
       <p v-if="!anyData" class="trends-empty">
-        No dated matches in this set. Trends chart matches with a known date and time —
+        No matches with a known date in this set. Trends chart matches with a date and time —
         narrow to a range that includes timestamped matches.
       </p>
 
@@ -59,40 +52,19 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
         <div class="trend-card">
           <div class="trend-card-head">
             <h4 class="trend-card-title">
-              SR by hero
+              Rank over time
             </h4>
           </div>
-          <TrendChart v-if="srHasData" :option="srChartOption" caption="SR by hero over time" />
+          <TrendChart v-if="rankHasData" :option="rankChartOption" caption="Rank progression over time, by role" />
           <p v-else class="trend-card-empty">
-            No SR readings — capture a rank screenshot to track SR.
+            No rank readings — capture a competitive rank screenshot to track your climb.
           </p>
         </div>
 
         <div class="trend-card">
           <div class="trend-card-head">
             <h4 class="trend-card-title">
-              Per-match stat
-            </h4>
-            <select v-model="stat" class="trend-stat-select" aria-label="Stat to chart">
-              <option v-for="[key, label] in STAT_OPTIONS" :key="key" :value="key">
-                {{ label }}
-              </option>
-            </select>
-          </div>
-          <TrendChart
-            v-if="statHasData"
-            :option="statChartOption"
-            :caption="`Per-match ${statLabel} over time`"
-          />
-          <p v-else class="trend-card-empty">
-            No data for this stat in the set.
-          </p>
-        </div>
-
-        <div class="trend-card">
-          <div class="trend-card-head">
-            <h4 class="trend-card-title">
-              Rolling win-rate
+              Rolling win-rate (%)
             </h4>
             <select v-model.number="windowSize" class="trend-window-select" aria-label="Win-rate window">
               <option v-for="size in WINDOW_OPTIONS" :key="size" :value="size">
@@ -103,26 +75,10 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
           <TrendChart
             v-if="winrateHasData"
             :option="winrateChartOption"
-            :caption="`Rolling win rate over the last ${windowSize} matches`"
+            :caption="`Rolling win rate over the last ${windowSize} matches, by role`"
           />
           <p v-else class="trend-card-empty">
             No decisive matches in the set.
-          </p>
-        </div>
-
-        <div class="trend-card">
-          <div class="trend-card-head">
-            <h4 class="trend-card-title">
-              Per-10 performance
-            </h4>
-          </div>
-          <TrendChart
-            v-if="per10HasData"
-            :option="per10ChartOption"
-            caption="Eliminations, assists and deaths per 10 minutes over time"
-          />
-          <p v-else class="trend-card-empty">
-            No performance data in the set.
           </p>
         </div>
       </div>
@@ -210,7 +166,6 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
   color: var(--text);
 }
 
-.trend-stat-select,
 .trend-window-select {
   background: var(--surface-2);
   color: var(--text);
