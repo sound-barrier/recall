@@ -1,124 +1,129 @@
 import { describe, it, expect } from 'vitest'
 
-import type { MatchResult } from '@/api'
+import type { MatchResult, MatchRecord } from '@/api'
 import {
-  matchEpoch,
-  srTrendSeries,
-  statTrendSeries,
+  ladderScore,
+  roleBucket,
+  rankLadderSeries,
   rollingWinrateSeries,
-  per10TrendSeries,
+  matchEpoch,
   type TrendInput,
 } from '@/match/match-trends-helpers'
 
-// Build a record at a given date/time. match_key carries the same
-// stamp so matchTime() resolves even when SUMMARY date is omitted.
-function rec(date: string, time: string, data: Partial<MatchResult> = {}): TrendInput {
+type QueueType = MatchRecord['queue_type']
+
+interface Stub {
+  rank?: string
+  level?: number
+  progress?: number
+  change?: number
+  role?: 'tank' | 'dps' | 'support'
+  queue?: QueueType
+  result?: 'victory' | 'defeat' | 'draw'
+}
+
+function rec(date: string, time: string, s: Stub = {}): TrendInput {
+  const data: Partial<MatchResult> = { date, finished_at: time }
+  if (s.rank != null) data.rank = s.rank
+  if (s.level != null) data.level = s.level
+  if (s.progress != null) data.rank_progress = s.progress
+  if (s.change != null) data.change_percent = s.change
+  if (s.role != null) data.role = s.role
+  if (s.result != null) data.result = s.result
   return {
     match_key: `match-${date}T${time.replace(':', '-')}-00`,
-    data: { date, finished_at: time, ...data },
+    queue_type: s.queue,
+    data,
   }
 }
 
-describe('matchEpoch', () => {
-  it('returns null when no SUMMARY time and the match_key has no timestamp', () => {
-    expect(matchEpoch({ match_key: 'unmatched-foo.png', data: {} })).toBeNull()
+describe('ladderScore', () => {
+  it('rises monotonically up the tier ladder', () => {
+    const scores = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'champion']
+      .map((tier) => ladderScore(tier, 5, 0)!)
+    for (let i = 1; i < scores.length; i++) {
+      expect(scores[i]!).toBeGreaterThan(scores[i - 1]!)
+    }
   })
 
-  it('falls back to the match_key timestamp when SUMMARY date is absent', () => {
-    const t = matchEpoch({ match_key: 'match-2026-05-10T22-21-11-extra', data: {} })
-    expect(t).not.toBeNull()
+  it('treats division 1 as the top of a tier (above division 5)', () => {
+    expect(ladderScore('gold', 1, 0)!).toBeGreaterThan(ladderScore('gold', 5, 0)!)
+  })
+
+  it('orders progress within a division and dips below 0 on a demotion screen', () => {
+    expect(ladderScore('gold', 3, 60)!).toBeGreaterThan(ladderScore('gold', 3, 10)!)
+    expect(ladderScore('gold', 1, -19)!).toBeLessThan(ladderScore('gold', 1, 0)!)
+  })
+
+  it('lands the top of a tier at 100% exactly on the next tier boundary', () => {
+    expect(ladderScore('diamond', 1, 100)).toBe(ladderScore('master', 5, 0))
+  })
+
+  it('returns null for an unknown tier', () => {
+    expect(ladderScore('wood', 3, 0)).toBeNull()
   })
 })
 
-describe('srTrendSeries', () => {
-  it('emits one chronologically-sorted line per hero, ignoring input order', () => {
-    const series = srTrendSeries([
-      rec('2026-05-10', '20:00', { sr: [{ hero: 'ana', sr: 2500, change: 0 }] }),
-      rec('2026-05-09', '20:00', { sr: [{ hero: 'ana', sr: 2470, change: 0 }, { hero: 'kiriko', sr: 2600, change: 0 }] }),
-      rec('2026-05-11', '20:00', { sr: [{ hero: 'ana', sr: 2540, change: 0 }] }),
+describe('roleBucket', () => {
+  it('splits role queue by the played role', () => {
+    expect(roleBucket(rec('2026-05-10', '20:00', { queue: 'role', role: 'tank' }))).toEqual({ key: 'tank', label: 'Tank' })
+    expect(roleBucket(rec('2026-05-10', '20:00', { queue: 'role', role: 'dps' }))).toEqual({ key: 'dps', label: 'DPS' })
+  })
+
+  it('collapses open queue to one line regardless of role', () => {
+    expect(roleBucket(rec('2026-05-10', '20:00', { queue: 'open', role: 'support' }))).toEqual({ key: 'open', label: 'Open queue' })
+  })
+
+  it('falls back to the role when the queue is unknown, else one combined line', () => {
+    expect(roleBucket(rec('2026-05-10', '20:00', { role: 'dps' })).key).toBe('dps')
+    expect(roleBucket(rec('2026-05-10', '20:00', {}))).toEqual({ key: 'all', label: 'All' })
+  })
+})
+
+describe('rankLadderSeries', () => {
+  it('emits one line per role bucket, only for rank-bearing matches, sorted by time', () => {
+    const series = rankLadderSeries([
+      rec('2026-05-11', '20:00', { queue: 'role', role: 'tank', rank: 'platinum', level: 3, progress: 40, change: 22 }),
+      rec('2026-05-10', '20:00', { queue: 'role', role: 'tank', rank: 'platinum', level: 4, progress: 10, change: -15 }),
+      rec('2026-05-10', '21:00', { queue: 'role', role: 'dps', rank: 'gold', level: 2, progress: 80, change: 25 }),
+      rec('2026-05-12', '20:00', { queue: 'role', role: 'support', result: 'victory' }), // no rank → skipped
     ])
-
-    // Heroes sorted by name → ana, kiriko.
-    expect(series.map((s) => s.name)).toEqual(['ana', 'kiriko'])
-    const ana = series[0]!
-    expect(ana.points.map((p) => p.v)).toEqual([2470, 2500, 2540])
-    // Points ascend in time.
-    expect(ana.points[0]!.t).toBeLessThan(ana.points[1]!.t)
-    expect(ana.points[1]!.t).toBeLessThan(ana.points[2]!.t)
+    expect(series.map((s) => s.key)).toEqual(['tank', 'dps'])
+    const tank = series[0]!
+    // Sorted oldest-first; carries the tooltip fields.
+    expect(tank.points.map((p) => p.level)).toEqual([4, 3])
+    expect(tank.points[0]).toMatchObject({ tier: 'platinum', level: 4, progress: 10, change: -15 })
+    // Platinum 3 ranks above Platinum 4 (division 1 is the top).
+    expect(tank.points[1]!.score).toBeGreaterThan(tank.points[0]!.score)
   })
 
-  it('is empty when no record carries an SR reading', () => {
-    expect(srTrendSeries([rec('2026-05-10', '20:00', { result: 'victory' })])).toEqual([])
-  })
-})
-
-describe('statTrendSeries', () => {
-  it('derives KDA as (elims + assists) / max(deaths, 1)', () => {
-    const series = statTrendSeries(
-      [rec('2026-05-10', '20:00', { eliminations: 20, assists: 10, deaths: 5 })],
-      'kda',
-    )
-    expect(series.name).toBe('KDA')
-    expect(series.points[0]!.v).toBe(6) // (20 + 10) / 5
-  })
-
-  it('treats zero deaths as one to avoid divide-by-zero', () => {
-    const series = statTrendSeries(
-      [rec('2026-05-10', '20:00', { eliminations: 4, assists: 0, deaths: 0 })],
-      'kda',
-    )
-    expect(series.points[0]!.v).toBe(4)
-  })
-
-  it('reads a raw stat straight off the record and skips missing matches', () => {
-    const series = statTrendSeries(
-      [
-        rec('2026-05-10', '20:00', { damage: 9000 }),
-        rec('2026-05-11', '20:00', {}), // no damage → skipped, not plotted as 0
-      ],
-      'damage',
-    )
-    expect(series.name).toBe('Damage')
-    expect(series.points.map((p) => p.v)).toEqual([9000])
+  it('is empty when no record carries rank data', () => {
+    expect(rankLadderSeries([rec('2026-05-10', '20:00', { result: 'victory' })])).toEqual([])
   })
 })
 
 describe('rollingWinrateSeries', () => {
-  it('averages over a trailing window of decisive matches, excluding draws', () => {
-    const series = rollingWinrateSeries(
-      [
-        rec('2026-05-10', '20:00', { result: 'victory' }),
-        rec('2026-05-10', '21:00', { result: 'defeat' }),
-        rec('2026-05-10', '22:00', { result: 'draw' }), // excluded entirely
-        rec('2026-05-10', '23:00', { result: 'victory' }),
-      ],
-      2,
-    )
-    // 3 decisive points: [V] = 100, [V,D] = 50, [D,V] = 50.
-    expect(series.points.map((p) => p.v)).toEqual([100, 50, 50])
+  it('computes a trailing win-rate per role bucket, excluding draws', () => {
+    const series = rollingWinrateSeries([
+      rec('2026-05-10', '20:00', { queue: 'role', role: 'tank', result: 'victory' }),
+      rec('2026-05-10', '21:00', { queue: 'role', role: 'tank', result: 'defeat' }),
+      rec('2026-05-10', '22:00', { queue: 'role', role: 'tank', result: 'draw' }), // excluded
+      rec('2026-05-10', '20:30', { queue: 'role', role: 'dps', result: 'victory' }),
+    ], 5)
+    expect(series.map((s) => s.key)).toEqual(['tank', 'dps'])
+    const tank = series[0]!
+    expect(tank.points.map((p) => p.v)).toEqual([100, 50]) // [V]=100, [V,D]=50
+    const dps = series[1]!
+    expect(dps.points.map((p) => p.v)).toEqual([100])
   })
 
-  it('returns no points when there are no decisive matches', () => {
-    expect(rollingWinrateSeries([rec('2026-05-10', '20:00', { result: 'draw' })], 10).points).toEqual([])
+  it('is empty when there are no decisive matches', () => {
+    expect(rollingWinrateSeries([rec('2026-05-10', '20:00', { result: 'draw' })], 10)).toEqual([])
   })
 })
 
-describe('per10TrendSeries', () => {
-  it('emits elims/assists/deaths-per-10 lines and drops lines with no data', () => {
-    const series = per10TrendSeries([
-      rec('2026-05-10', '20:00', {
-        performance: {
-          eliminations: { total: 20, avg_per_10min: 8.5 },
-          deaths: { total: 5, avg_per_10min: 2.1 },
-          // no assists → that line is dropped
-        },
-      }),
-    ])
-    expect(series.map((s) => s.name)).toEqual(['Elims / 10', 'Deaths / 10'])
-    expect(series[0]!.points[0]!.v).toBe(8.5)
-  })
-
-  it('is empty when no record carries a performance block', () => {
-    expect(per10TrendSeries([rec('2026-05-10', '20:00', {})])).toEqual([])
+describe('matchEpoch', () => {
+  it('returns null when no time can be derived', () => {
+    expect(matchEpoch({ match_key: 'unmatched-foo.png', data: {} })).toBeNull()
   })
 })
