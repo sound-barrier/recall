@@ -34,7 +34,7 @@ under the grid opens the native folder picker for everything else.
 
 | Card | Path expansion | Filename shape |
 |---|---|---|
-| **Nvidia Overlay** | `%USERPROFILE%\Videos\Overwatch` | `Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png` |
+| **Nvidia Overlay** | `%USERPROFILE%\Videos\NVIDIA\Overwatch 2` | `Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png` |
 | **OW PrntScn default** | `%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch` (and the OneDrive variant) | `ScreenShot_YY-MM-DD_HH-MM-SS-fff.jpg` |
 | **Win Snip tool** | `%USERPROFILE%\Pictures\Screenshots` (and the OneDrive variant) | `Screenshot YYYY-MM-DD HHMMSS.png` |
 | **Steam install** | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` (resolved via the `HKCU\Software\Valve\Steam` registry) | (Steam's own F12 captures) |

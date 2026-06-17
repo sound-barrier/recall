@@ -98,7 +98,7 @@ func TestProbeScreenshotsCandidates_WindowsReportsAllFour(t *testing.T) {
 			t.Fatalf("mkdir %s: %v", p, err)
 		}
 	}
-	must(filepath.Join(home, "Videos", "Overwatch"))
+	must(filepath.Join(home, "Videos", "NVIDIA", "Overwatch 2"))
 	must(filepath.Join(home, "Documents", "Overwatch", "ScreenShots", "Overwatch"))
 	must(filepath.Join(home, "Pictures", "Screenshots"))
 
@@ -141,7 +141,7 @@ func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognised(t *testi
 	// Materialise the Nvidia candidate dir + drop three files: two
 	// canonical Nvidia-format names, one stray PDF that should NOT
 	// count as recognised.
-	nvidiaDir := filepath.Join(home, "Videos", "Overwatch")
+	nvidiaDir := filepath.Join(home, "Videos", "NVIDIA", "Overwatch 2")
 	if err := os.MkdirAll(nvidiaDir, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", nvidiaDir, err)
 	}

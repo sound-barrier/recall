@@ -85,7 +85,7 @@ watched directory.
 
 | Card | Path | Filename shape |
 |---|---|---|
-| **Nvidia Overlay** | `%USERPROFILE%\Videos\Overwatch` | `Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png` |
+| **Nvidia Overlay** | `%USERPROFILE%\Videos\NVIDIA\Overwatch 2` | `Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png` |
 | **OW PrntScn default** | `%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch` (+ OneDrive variant) | `ScreenShot_YY-MM-DD_HH-MM-SS-fff.jpg` |
 | **Win Snip tool** | `%USERPROFILE%\Pictures\Screenshots` (+ OneDrive variant) | `Screenshot YYYY-MM-DD HHMMSS.png` |
 | **Steam install** | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` | `YYYYMMDDHHMMSS_N.jpg` (Steam's in-game F12) |
