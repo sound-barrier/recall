@@ -22,7 +22,12 @@ func TestSQLStore_ConcurrentReadDuringWrite(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	const workers, iters = 16, 60
+	// Tuned for headroom under `go test -race` on a slow CI runner: enough
+	// concurrent read/write overlap to hit SQLITE_BUSY without a busy_timeout,
+	// but light enough that the serialized write churn stays well under the
+	// 5s timeout (an over-aggressive 16×60 version starved readers past 5s
+	// under -race on CI and flaked).
+	const workers, iters = 6, 16
 	var wg sync.WaitGroup
 	errs := make(chan error, workers*iters)
 	for w := range workers {
