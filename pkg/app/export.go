@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"time"
 
@@ -71,6 +72,15 @@ type exportV1 struct {
 	Personals      []db.PersonalRow  `json:"personals"`
 	Ranks          []db.RankRow      `json:"ranks"`
 	Unknowns       []db.UnknownRow   `json:"unknowns"`
+	// User-override + sidecar layer. Manual matches and inline edits live in
+	// user_match_data, not the OCR parent tables; annotations, hidden flags, and
+	// queue / play-mode overrides live in their own tables too. All must be
+	// carried or a backup silently drops every hand-entered match + every edit.
+	UserMatchData map[string]db.UserMatchData `json:"user_match_data,omitempty"`
+	Annotations   map[string]db.Annotation    `json:"annotations,omitempty"`
+	Hidden        []string                    `json:"hidden,omitempty"`
+	Queues        map[string]string           `json:"queues,omitempty"`
+	PlayModes     map[string]string           `json:"play_modes,omitempty"`
 }
 
 // ExportData snapshots the current store and returns the export
@@ -80,6 +90,10 @@ func (a *App) ExportData() ([]byte, error) {
 	snap, err := a.store.LoadAll()
 	if err != nil {
 		return nil, fmt.Errorf("export: load: %w", err)
+	}
+	ul, err := a.snapshotUserLayer()
+	if err != nil {
+		return nil, err
 	}
 	dirs := make(map[string]string, len(snap.ScreenshotsDirs))
 	for id, path := range snap.ScreenshotsDirs {
@@ -95,8 +109,102 @@ func (a *App) ExportData() ([]byte, error) {
 		Personals:      snap.Personals,
 		Ranks:          snap.Ranks,
 		Unknowns:       snap.Unknowns,
+		UserMatchData:  ul.userData,
+		Annotations:    ul.annots,
+		Hidden:         ul.hidden,
+		Queues:         ul.queues,
+		PlayModes:      ul.playModes,
 	}
 	return json.MarshalIndent(doc, "", "  ")
+}
+
+// userLayerExport bundles the override + sidecar tables for the export payload.
+type userLayerExport struct {
+	userData  map[string]db.UserMatchData
+	annots    map[string]db.Annotation
+	hidden    []string
+	queues    map[string]string
+	playModes map[string]string
+}
+
+// snapshotUserLayer loads the user-override + sidecar tables for export.
+func (a *App) snapshotUserLayer() (userLayerExport, error) {
+	userData, err := a.store.LoadAllUserMatchData()
+	if err != nil {
+		return userLayerExport{}, fmt.Errorf("export: load user data: %w", err)
+	}
+	annots, err := a.store.LoadAnnotations()
+	if err != nil {
+		return userLayerExport{}, fmt.Errorf("export: load annotations: %w", err)
+	}
+	hidden, err := a.store.LoadHiddenKeys()
+	if err != nil {
+		return userLayerExport{}, fmt.Errorf("export: load hidden: %w", err)
+	}
+	queues, err := a.store.LoadMatchQueues()
+	if err != nil {
+		return userLayerExport{}, fmt.Errorf("export: load queues: %w", err)
+	}
+	playModes, err := a.store.LoadMatchPlayModes()
+	if err != nil {
+		return userLayerExport{}, fmt.Errorf("export: load play modes: %w", err)
+	}
+	out := userLayerExport{
+		userData:  userData,
+		annots:    annots,
+		hidden:    make([]string, 0, len(hidden)),
+		queues:    make(map[string]string, len(queues)),
+		playModes: make(map[string]string, len(playModes)),
+	}
+	for k := range hidden {
+		out.hidden = append(out.hidden, k)
+	}
+	sort.Strings(out.hidden) // deterministic export ordering
+	for k, q := range queues {
+		out.queues[k] = q.QueueType
+	}
+	for k, pm := range playModes {
+		out.playModes[k] = pm.PlayMode
+	}
+	return out, nil
+}
+
+// applyUserLayer writes the override + sidecar tables from an import payload.
+// Runs after the parent rows + after the Clear in clearAndRemapDirs, so the
+// destination starts empty.
+func (a *App) applyUserLayer(doc exportV1) error {
+	for _, d := range doc.UserMatchData {
+		if err := a.store.UpsertUserMatchData(d); err != nil {
+			return fmt.Errorf("import: user data %q: %w", d.MatchKey, err)
+		}
+	}
+	for _, ann := range doc.Annotations {
+		if err := a.store.SetAnnotation(ann); err != nil {
+			return fmt.Errorf("import: annotation: %w", err)
+		}
+	}
+	for _, k := range doc.Hidden {
+		if err := a.store.HideMatch(k); err != nil {
+			return fmt.Errorf("import: hidden %q: %w", k, err)
+		}
+	}
+	for k, qt := range doc.Queues {
+		if qt == "" {
+			continue
+		}
+		if err := a.store.SetMatchQueue(k, qt); err != nil {
+			return fmt.Errorf("import: queue %q: %w", k, err)
+		}
+	}
+	for k, pm := range doc.PlayModes {
+		if pm == "" {
+			continue
+		}
+		if err := a.store.SetMatchPlayMode(k, pm); err != nil {
+			return fmt.Errorf("import: play mode %q: %w", k, err)
+		}
+	}
+	return nil
 }
 
 // ImportData replaces the entire local database with the contents of
@@ -161,13 +269,16 @@ func (a *App) importJSONv1(payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return importAllParentTables(a.store, "import", parentTables{
+	if err := importAllParentTables(a.store, "import", parentTables{
 		summaries: doc.Summaries,
 		teams:     doc.Teams,
 		personals: doc.Personals,
 		ranks:     doc.Ranks,
 		unknowns:  doc.Unknowns,
-	}, remapID)
+	}, remapID); err != nil {
+		return err
+	}
+	return a.applyUserLayer(doc)
 }
 
 // requireFilenames fails if any row has an empty filename — the UNIQUE
