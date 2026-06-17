@@ -216,7 +216,7 @@ detected default folders on Windows:
 
 | Source | Example filename | Auto-detect path (Windows) |
 |---|---|---|
-| **Nvidia Overlay** | `Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png` | `Videos\Overwatch` |
+| **Nvidia Overlay** | `Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png` | `Videos\NVIDIA\Overwatch 2` |
 | **OW default PrntScn** | `ScreenShot_26-06-07_22-59-52-000.jpg` | `Documents\Overwatch\ScreenShots\Overwatch` |
 | **Windows Snip tool** | `Screenshot 2026-06-07 224855.png` | `Pictures\Screenshots` |
 | **Steam in-game F12** | `20260609000031_1.jpg` | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` |

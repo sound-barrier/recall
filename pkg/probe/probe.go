@@ -209,7 +209,7 @@ func ScreenshotsCandidateStats() []NamedCandidateStats {
 func WalkSourceDir(dir string) ([]string, time.Time) {
 	// #nosec G304 -- `dir` comes from CandidateSources() which builds
 	// paths from os.UserHomeDir() + a hard-coded per-source suffix
-	// (Videos/Overwatch, Documents/Overwatch/ScreenShots/Overwatch,
+	// (Videos/NVIDIA/Overwatch 2, Documents/Overwatch/ScreenShots/Overwatch,
 	// etc.) plus the Steam-registry resolver. None of it is user
 	// input; the value is the same shape ProbeScreenshotsCandidates
 	// surfaces and the user already trusted at first-run pick time.
@@ -287,7 +287,7 @@ func firstExisting(paths []string) (string, bool) {
 //
 // Windows paths:
 //
-//	Nvidia:  %USERPROFILE%\Videos\Overwatch
+//	Nvidia:  %USERPROFILE%\Videos\NVIDIA\Overwatch 2
 //	PrntScn: %USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch
 //	          + OneDrive variant
 //	Snip:    %USERPROFILE%\Pictures\Screenshots
@@ -308,7 +308,11 @@ func CandidateSources() []sourceSpec {
 			name:  "nvidia",
 			label: "Nvidia Overlay",
 			paths: []string{
-				filepath.Join(home, "Videos", "Overwatch"),
+				// NVIDIA's instant-replay/ShadowPlay default is
+				// %USERPROFILE%\Videos\NVIDIA\<GameName>; for OW2 that's
+				// "Overwatch 2" (note the space). Built from os.UserHomeDir(),
+				// never a hard-coded username.
+				filepath.Join(home, "Videos", "NVIDIA", "Overwatch 2"),
 			},
 		},
 		{
