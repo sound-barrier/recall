@@ -13,6 +13,7 @@ export interface Match {
   source?: string
   hidden?: boolean
   queue_type?: string
+  reviewed_by?: string
   annotation?: { note?: string; tags?: string[] }
   data?: {
     map?: string
