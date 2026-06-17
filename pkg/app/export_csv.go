@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"recall/pkg/db"
 )
 
 // ExportDataCSV produces a zip-of-CSVs equivalent of ExportData's JSON.
@@ -78,10 +80,35 @@ func (a *App) ExportDataCSV() ([]byte, error) {
 		return nil, err
 	}
 
+	// user_layer.json — the override + sidecar tables (manual matches, edits,
+	// annotations, hidden flags, queue/play-mode). Nested children make a flat
+	// CSV awkward, so this rides as JSON alongside manifest.json; the parent
+	// rows stay in their .csv files.
+	ul, err := a.snapshotUserLayer()
+	if err != nil {
+		return nil, err
+	}
+	if err := zipWriteJSON(zw, "user_layer.json", csvUserLayer{
+		UserMatchData: ul.userData, Annotations: ul.annots,
+		Hidden: ul.hidden, Queues: ul.queues, PlayModes: ul.playModes,
+	}); err != nil {
+		return nil, fmt.Errorf("export csv: user layer: %w", err)
+	}
+
 	if err := zw.Close(); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// csvUserLayer is the user_layer.json entry inside the CSV-ZIP bundle — the same
+// override/sidecar fields the JSON exportV1 carries inline.
+type csvUserLayer struct {
+	UserMatchData map[string]db.UserMatchData `json:"user_match_data,omitempty"`
+	Annotations   map[string]db.Annotation    `json:"annotations,omitempty"`
+	Hidden        []string                    `json:"hidden,omitempty"`
+	Queues        map[string]string           `json:"queues,omitempty"`
+	PlayModes     map[string]string           `json:"play_modes,omitempty"`
 }
 
 // importDataCSV reads a zip-of-CSVs payload, rebuilds a Screenshots
@@ -107,7 +134,39 @@ func (a *App) importDataCSV(payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return importAllParentTables(a.store, "import csv", tables, remapID)
+	if err := importAllParentTables(a.store, "import csv", tables, remapID); err != nil {
+		return err
+	}
+	return a.importCSVUserLayer(zr)
+}
+
+// importCSVUserLayer applies the bundle's user_layer.json if present. Older CSV
+// exports predate it, so absence is a clean no-op — but a present-yet-unreadable
+// entry is a real error (hence the presence check rather than swallowing it).
+func (a *App) importCSVUserLayer(zr *zip.Reader) error {
+	const name = "user_layer.json"
+	present := false
+	for _, f := range zr.File {
+		if f.Name == name {
+			present = true
+			break
+		}
+	}
+	if !present {
+		return nil // pre-user-layer bundle
+	}
+	b, err := readZipFile(zr, name)
+	if err != nil {
+		return fmt.Errorf("import csv: read user layer: %w", err)
+	}
+	var cul csvUserLayer
+	if err := json.Unmarshal(b, &cul); err != nil {
+		return fmt.Errorf("import csv: user layer: %w", err)
+	}
+	return a.applyUserLayer(exportV1{
+		UserMatchData: cul.UserMatchData, Annotations: cul.Annotations,
+		Hidden: cul.Hidden, Queues: cul.Queues, PlayModes: cul.PlayModes,
+	})
 }
 
 // validateCSVManifest fails fast on a missing or wrong-schema manifest.json.
