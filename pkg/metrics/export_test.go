@@ -9,6 +9,7 @@ var (
 	RoleOf              = roleOf
 	IsLoopbackBind      = isLoopbackBind
 	NewMux              = newMux
+	ParseClockSeconds   = parseClockSeconds
 )
 
 // ServerAddr exposes the resolved bind address (after RECALL_METRICS_ADDR

@@ -296,6 +296,38 @@ func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
 	_ = parser.MatchResult{} // import used for cross-file types
 }
 
+func TestApp_ScrapeReader_ThreadsMatchRecordContext(t *testing.T) {
+	// queue override, leaver, and review status live on MatchRecord (not
+	// parser.MatchResult); scrapeReader threads them onto the ScrapeRow so they
+	// become Prometheus labels. (The queue override takes precedence over the
+	// parser's Data.QueueType — the fallback is the trivial empty-check in
+	// scrapeReader.)
+	fs := &fakeStore{
+		Summaries:   []db.SummaryRow{{Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Hero: "lucio"}},
+		Queues:      map[string]db.QueueState{"m1": {QueueType: "role"}},
+		Annotations: map[string]db.Annotation{"m1": {Leaver: "team"}},
+		Reviews:     map[string]db.ReviewState{"m1": {ReviewedBy: "self"}},
+	}
+	a := app.NewWithStore(fs)
+	got, err := app.ScrapeReader(a)
+	if err != nil {
+		t.Fatalf("scrapeReader: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(got))
+	}
+	r := got[0]
+	if r.QueueType != "role" {
+		t.Errorf("QueueType = %q, want \"role\" (threaded from the queue override)", r.QueueType)
+	}
+	if r.Leaver != "team" {
+		t.Errorf("Leaver = %q, want \"team\"", r.Leaver)
+	}
+	if r.ReviewedBy != "self" {
+		t.Errorf("ReviewedBy = %q, want \"self\"", r.ReviewedBy)
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Soft-delete (hide / unhide) surface.
 // ──────────────────────────────────────────────────────────────────────────
