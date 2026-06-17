@@ -23,6 +23,7 @@ import type { components } from '@/api.gen'
 // Re-exported types — consumers (App.vue) import these instead of
 // reaching into api.gen directly.
 export type MatchRecord       = components['schemas']['MatchRecord']
+export type MatchResult       = components['schemas']['MatchResult']
 export type HeroPlay          = components['schemas']['HeroPlay']
 export type TesseractStatus   = components['schemas']['TesseractStatus']
 export type ScreenshotType    = components['schemas']['ScreenshotType']
