@@ -80,6 +80,17 @@ jobs:
         with:
           install_args: go node
 
+      - name: Install Tesseract (the parser shells out to it)
+        if: steps.changes.outputs.relevant == 'true'
+        # golden-parse.spec.ts drives the real OCR → parser → store pipeline (the
+        # single biggest lever for Go integration coverage). The server
+        # auto-detects tesseract via exec.LookPath, so it just needs to be on
+        # PATH. No version-match gate here: the spec asserts loosely (a record was
+        # produced), tolerant of OCR drift; golden-fidelity is enforced in ci.yml.
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends tesseract-ocr
+
       - name: Install frontend deps
         if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
