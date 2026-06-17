@@ -4,6 +4,10 @@
  * isolated by the RECALL_E2E-gated reset seam. Not a *.spec.ts file, so the test
  * runner ignores it (it's a helper module, like _fixtures.ts).
  */
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { type APIRequestContext, expect } from '@playwright/test'
 
 export const RESET = '/api/v1/system/test-reset'
@@ -66,4 +70,46 @@ export async function getProfiles(request: APIRequestContext): Promise<Profiles>
 export async function switchProfile(request: APIRequestContext, name: string) {
   const r = await request.put('/api/v1/profiles/active', { data: { name } })
   expect(r.status()).toBe(200)
+}
+
+// ─── Real OCR parse (Tesseract pipeline) ────────────────────────────────────
+// Several specs need a genuine ocr / ocr_edited match, which can only be minted
+// by parsing a real screenshot (OCR rows can't be injected via the API). These
+// keep the slow, fiddly staging in one place: stage the committed golden, run
+// the pipeline, hand back the parsed record.
+
+const TESTDATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../testdata')
+const GOLDEN = 'Overwatch 2 Screenshot 2026.05.10 - 21.49.34.41.png'
+
+// Scratch folder the server watches during a parse. Safe to share across specs:
+// the suite runs workers: 1 and every parse spec resets + unstages per test.
+export const GOLDEN_SHOTS_DIR = '/tmp/recall-e2e-golden'
+
+// stageGolden drops a clean copy of the golden screenshot into `dir`.
+export function stageGolden(dir: string = GOLDEN_SHOTS_DIR) {
+  fs.rmSync(dir, { recursive: true, force: true })
+  fs.mkdirSync(dir, { recursive: true })
+  fs.copyFileSync(path.join(TESTDATA, GOLDEN), path.join(dir, GOLDEN))
+}
+
+// unstageGolden un-bleeds the folder setting and removes the scratch dir.
+export async function unstageGolden(request: APIRequestContext, dir: string = GOLDEN_SHOTS_DIR) {
+  await request.delete('/api/v1/settings/screenshots-folder')
+  fs.rmSync(dir, { recursive: true, force: true })
+}
+
+// parseGolden points the server at `dir`, runs the real Tesseract → parser →
+// store pipeline, and returns the parsed (non-manual) match. OCR output drifts
+// across Tesseract versions, so callers assert only on fields they subsequently
+// edit — never on what the golden happened to OCR to. Generous timeout: OCR
+// shells out per image.
+export async function parseGolden(request: APIRequestContext, dir: string = GOLDEN_SHOTS_DIR): Promise<Match> {
+  expect([200, 204]).toContain((await request.put('/api/v1/settings/screenshots-folder', { data: { path: dir } })).status())
+  expect([200, 202]).toContain((await request.post('/api/v1/parses')).status())
+  await expect
+    .poll(async () => (await listMatches(request)).length, { timeout: 90_000, intervals: [1000] })
+    .toBeGreaterThan(0)
+  const parsed = (await listMatches(request)).find((m) => m.source !== 'manual')
+  expect(parsed, 'a parsed (non-manual) match should exist after the OCR run').toBeTruthy()
+  return parsed!
 }

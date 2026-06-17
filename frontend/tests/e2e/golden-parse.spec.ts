@@ -1,59 +1,39 @@
 /**
- * Real Tesseract → parser → store pipeline. A committed golden screenshot is
- * copied into a watched folder, parsed by the actual `serveronly` binary via
- * POST /parses, and we assert a match record landed. This is the single biggest
- * lever for Go *integration* coverage (pkg/parser is ~0% otherwise) — the rest
- * of the suite mocks or never reaches the OCR path.
+ * Real Tesseract → parser → store pipeline: the canonical proof that a committed
+ * golden screenshot parses into a stored match record through the actual
+ * serveronly binary. The shared `parseGolden` helper (reused by the CSV-export
+ * and backup-roundtrip specs) owns the staging + parse; this spec is its
+ * dedicated assertion that the pipeline produces a real OCR record. It's the
+ * single biggest lever for Go *integration* coverage (pkg/parser is ~0%
+ * otherwise).
  *
- * OCR output drifts across Tesseract versions, so the assertions stay LOOSE:
- * we check that the parse produced a stored, non-manual record — not its exact
- * parsed fields (those are pinned by the Go golden tests at the matching
- * Tesseract version, not here).
+ * Assertions stay LOOSE — OCR output drifts across Tesseract versions, so we
+ * check provenance (a non-manual record carrying parsed screenshot rows), not
+ * exact parsed fields (those are pinned by the Go golden tests at the matching
+ * Tesseract version).
  *
  * Requires Tesseract on PATH (the server auto-detects via exec.LookPath); the
- * e2e CI job installs it (see e2e.yml), and `task test-e2e` relies on the local
- * install.
+ * e2e CI job installs it, and `task test-e2e` relies on the local install.
  */
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 import { expect, test } from './_fixtures'
-import { listMatches, reset } from './_real-server'
-
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const TESTDATA = path.resolve(HERE, '../../../testdata')
-const GOLDEN = 'Overwatch 2 Screenshot 2026.05.10 - 21.49.34.41.png'
-const SHOTS_DIR = '/tmp/recall-e2e-parse'
+import { parseGolden, reset, stageGolden, unstageGolden } from './_real-server'
 
 test.describe('golden screenshot parse (real server + Tesseract)', () => {
   test.beforeEach(async ({ request }) => {
     await reset(request)
-    fs.rmSync(SHOTS_DIR, { recursive: true, force: true })
-    fs.mkdirSync(SHOTS_DIR, { recursive: true })
-    fs.copyFileSync(path.join(TESTDATA, GOLDEN), path.join(SHOTS_DIR, GOLDEN))
+    stageGolden()
   })
 
   test.afterEach(async ({ request }) => {
     await reset(request)
-    await request.delete('/api/v1/settings/screenshots-folder') // un-bleed the folder setting
-    fs.rmSync(SHOTS_DIR, { recursive: true, force: true })
+    await unstageGolden(request)
   })
 
-  test('parses a golden screenshot into a stored match record', async ({ request }) => {
-    // Point the server at the folder holding the golden.
-    expect([200, 204]).toContain((await request.put('/api/v1/settings/screenshots-folder', { data: { path: SHOTS_DIR } })).status())
-
-    // Kick the parse (async — 202).
-    expect([200, 202]).toContain((await request.post('/api/v1/parses')).status())
-
-    // The Tesseract → parser → store pipeline lands a record. Generous timeout
-    // (OCR shells out per image, several passes).
-    await expect
-      .poll(async () => (await listMatches(request)).length, { timeout: 90_000, intervals: [1000] })
-      .toBeGreaterThan(0)
-
-    // It came from the parse, not a manual entry.
-    expect((await listMatches(request)).every((m) => m.source !== 'manual')).toBe(true)
+  test('parses a golden screenshot into a stored OCR match record', async ({ request }) => {
+    const parsed = await parseGolden(request)
+    // Provenance, not exact fields: a parsed, unedited record with real
+    // screenshot rows behind it.
+    expect(parsed.source).toBe('ocr')
+    expect((parsed.source_files ?? []).length).toBeGreaterThan(0)
   })
 })

@@ -28,16 +28,9 @@
  * what the golden happened to OCR to.
  */
 import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { expect, test } from './_fixtures'
-import { createMatch, listMatches, manual, reset } from './_real-server'
-
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const TESTDATA = path.resolve(HERE, '../../../testdata')
-const GOLDEN = 'Overwatch 2 Screenshot 2026.05.10 - 21.49.34.41.png'
-const SHOTS_DIR = '/tmp/recall-e2e-csv-edit'
+import { createMatch, manual, parseGolden, reset, stageGolden, unstageGolden } from './_real-server'
 
 // The export's column contract (matchesToCSV / MATCH_CSV_HEADERS), in order.
 // Pinned here so a reorder/rename is a deliberate, reviewed change.
@@ -133,30 +126,17 @@ function sheetByKey(rows: string[][]) {
 test.describe('flat CSV export of a mixed match set (real server)', () => {
   test.beforeEach(async ({ request }) => {
     await reset(request)
-    fs.rmSync(SHOTS_DIR, { recursive: true, force: true })
-    fs.mkdirSync(SHOTS_DIR, { recursive: true })
-    fs.copyFileSync(path.join(TESTDATA, GOLDEN), path.join(SHOTS_DIR, GOLDEN))
+    stageGolden()
   })
 
   test.afterEach(async ({ request }) => {
     await reset(request)
-    await request.delete('/api/v1/settings/screenshots-folder')
-    fs.rmSync(SHOTS_DIR, { recursive: true, force: true })
+    await unstageGolden(request)
   })
 
   test('exports the selected set with edited fields, not the OCR originals', async ({ page, request }) => {
     // ── Mint a genuine OCR match by parsing a real screenshot ──────────────
-    expect([200, 204]).toContain(
-      (await request.put('/api/v1/settings/screenshots-folder', { data: { path: SHOTS_DIR } })).status(),
-    )
-    expect([200, 202]).toContain((await request.post('/api/v1/parses')).status())
-    await expect
-      .poll(async () => (await listMatches(request)).length, { timeout: 90_000, intervals: [1000] })
-      .toBeGreaterThan(0)
-
-    const parsed = (await listMatches(request)).find((m) => m.source !== 'manual')
-    expect(parsed, 'a parsed (non-manual) match should exist after the OCR run').toBeTruthy()
-    const ocrKey = parsed!.match_key
+    const ocrKey = (await parseGolden(request)).match_key
 
     // ── Edit many fields on it (the override layer) ────────────────────────
     expect([200, 204]).toContain(
