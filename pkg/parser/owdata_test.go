@@ -31,6 +31,19 @@ func TestEmbeddedYAML_LoadsCleanly(t *testing.T) {
 	}
 }
 
+// TestRoster_RecognizesNewHeroShion guards the Shion roster addition: the new
+// damage hero must resolve as known with the "dps" role label (the string
+// aggregation + the role filter key off, shared by every heroes.yaml `dps:`
+// entry).
+func TestRoster_RecognizesNewHeroShion(t *testing.T) {
+	if !parser.IsKnownHero("shion") {
+		t.Error(`IsKnownHero("shion") = false, want true`)
+	}
+	if got := parser.HeroRole("shion"); got != "dps" {
+		t.Errorf(`HeroRole("shion") = %q, want "dps"`, got)
+	}
+}
+
 // SnapHeroStatKey corrects OCR-mangled stat keys to the hero's canonical roster
 // (hero_stats.yaml). The PERSONAL parser's short-word trim drops a legit prefix
 // ("RIP-TIRE KILL" → tire_kill) and the italic font inserts a stray letter
