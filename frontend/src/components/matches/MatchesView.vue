@@ -29,6 +29,10 @@ import { matchesToCSV } from '@/match/match-csv'
 // user clicks "Narrow this set", so the deferred fetch is invisible
 // in practice. Regression covered by MatchesView.lazy-views.test.ts.
 const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/narrow/NarrowPopover.vue'))
+// Statically imported (it's tiny and renders collapsed): the heavy
+// ECharts dependency stays lazy because the <TrendChart> *inside*
+// TrendsSection is the defineAsyncComponent, loaded only on expand.
+import TrendsSection from '@/components/matches/trends/TrendsSection.vue'
 import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.vue'
 import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
 import { useMatchesRowContext } from '@/composables/matches/useMatchesRowContext'
@@ -466,6 +470,12 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
         @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
         @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
       />
+
+      <!-- ─── TRENDS ──────────────────────────────────────────────
+         In-app time-series line charts over the narrowed set (the
+         replacement for the old Grafana dashboards). Collapsed by
+         default so ECharts stays in its own lazily-loaded chunk. -->
+      <TrendsSection />
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->
       <section ref="leavesSectionRef" class="leaves" aria-label="Set members">

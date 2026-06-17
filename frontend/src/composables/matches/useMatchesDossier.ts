@@ -3,6 +3,7 @@ import type { MatchRecord } from '@/api'
 import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
 import { formatToHundredths } from '@/match/match-stats-helpers'
 import { useDossierQueries } from '@/composables/matches/useMatchesDossierQueries'
+import { useMatchesTrends } from '@/composables/matches/useMatchesTrends'
 import {
   type LeaverHandling,
   type WinLossDraw,
@@ -376,6 +377,11 @@ export function useMatchesDossier(
   // closes over the same narrowed records via the args passed here.
   const queries = useDossierQueries(records, tallyRecords, heroRole, weekStart)
 
+  // Time-series over the same narrowed records, surfaced through the
+  // dossier so the Trends charts honour the active filters like every
+  // other consumer.
+  const trends = useMatchesTrends(records)
+
   return {
     // ─── Bedrock — no per-widget config, precomputed refs ─────
     wld,
@@ -392,6 +398,8 @@ export function useMatchesDossier(
     playModeBreakdown,
     // ─── Query helpers — config-driven, return reactive results
     ...queries,
+    // ─── Time-series — reactive trend lines over the narrowed set ─
+    ...trends,
   }
 }
 

@@ -34,7 +34,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=162000}"
 : "${MAX_INITIAL_CSS_BYTES:=64000}"
-: "${MAX_TOTAL_JS_BYTES:=575000}"
+# The Matches "Trends" charts pull in ECharts (~500KB raw, tree-shaken
+# to line-chart + canvas only). It rides in its own lazily-loaded chunk
+# (TrendChart-*.js), loaded only when the user expands the Trends
+# section, so INITIAL JS is unaffected — but it counts toward the TOTAL.
+: "${MAX_TOTAL_JS_BYTES:=1120000}"
 : "${MAX_TOTAL_CSS_BYTES:=300000}"
 
 if [[ "${1:-}" == "--build" ]]; then
