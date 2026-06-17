@@ -1413,7 +1413,7 @@ main#main-content {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.settings, .matches-view, .unknown-view {
+.settings, .unknown-view {
   animation: view-fade-in var(--duration-med) var(--easing-out) both;
 }
 
