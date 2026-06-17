@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"embed"
 	"net/http"
 	"strings"
@@ -25,7 +26,13 @@ func RunWails(a *app.App, assets embed.FS) {
 			Middleware: screenshotsMiddleware(a.ScreenshotHandler()),
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        a.Startup,
+		// Creation size is a safe minimum; OnStartup grows it to a share of
+		// the actual display once the runtime can report screen dimensions
+		// (the fixed 1024×768 felt cramped on 1440p+ monitors).
+		OnStartup: func(ctx context.Context) {
+			a.Startup(ctx)
+			sizeWindowToScreen(ctx)
+		},
 		Bind: []any{
 			a,
 		},
