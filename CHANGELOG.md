@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.17.1](https://github.com/sound-barrier/recall/compare/v0.17.0...v0.17.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **api:** reject out-of-range manual-match rank values ([5b5967d](https://github.com/sound-barrier/recall/commit/5b5967d5e8c379cbd80748adcdb2e973d1065144))
+* **api:** validate match-input numeric ranges and map/hero roster ([6f54da0](https://github.com/sound-barrier/recall/commit/6f54da04c5ce0e45c2f258c8790f4feb2c426c30))
+* **export:** include the user-override + sidecar layer in backups ([02682ab](https://github.com/sound-barrier/recall/commit/02682ab92b456d0afb8817064258dacec7af90ac))
+* **export:** include the user-override layer in CSV-ZIP backups ([d3bf06e](https://github.com/sound-barrier/recall/commit/d3bf06e4f7dc0fa95eb3da7206b554fbed21f757))
+* **matches:** client-side validation for stat edits and manual rank ([e08a19d](https://github.com/sound-barrier/recall/commit/e08a19d3d335bcb2fcd026918ec4c4bdfec495fc))
+* **profile:** move the user-override layer across profiles ([a8cb871](https://github.com/sound-barrier/recall/commit/a8cb8717d45ac7415c598e34377e72c33a4d639e))
+
+
+### CI
+
+* **coverage:** show the Integration (e2e) coverage delta vs main ([94e1713](https://github.com/sound-barrier/recall/commit/94e1713b5786a91e76206eca1fb974bb20956ec5))
+* **schemathesis:** exclude the dev-only seed endpoint from fuzzing ([e4db150](https://github.com/sound-barrier/recall/commit/e4db1503992f81f1a9aca45d765e0ffcc59b4a71))
+
+
+### Tests
+
+* **e2e:** drive the real Tesseract parse pipeline (golden screenshot) ([c77e4bf](https://github.com/sound-barrier/recall/commit/c77e4bfa1b4f219fb15121ffcbd6c767cd2204e5))
+* **e2e:** real-server export/import backup round-trip ([7c5ac00](https://github.com/sound-barrier/recall/commit/7c5ac00440a7a62bd5f2aee47122526658e92975))
+* **e2e:** real-server input-validation paths (400/409) ([6e64dd2](https://github.com/sound-barrier/recall/commit/6e64dd299249e4f986cef10f1ec54454424dd6f8))
+* **e2e:** real-server match round-trips behind a dev-only reset seam ([7e3e801](https://github.com/sound-barrier/recall/commit/7e3e80165abe9490a292e681bd5deaa91e1d2ee0))
+* **e2e:** real-server profile lifecycle + cross-profile move ([919d7b1](https://github.com/sound-barrier/recall/commit/919d7b1e18232d43f51503556ec7232d240665e2))
+* **e2e:** real-server system flows (review, ignored, exports) ([c5d8bb8](https://github.com/sound-barrier/recall/commit/c5d8bb8de702967e574b91ef87d4a77e15513e9b))
+
 ## [0.17.0](https://github.com/sound-barrier/recall/compare/v0.16.1...v0.17.0) (2026-06-16)
 
 
