@@ -225,13 +225,28 @@ var _ Store = (*SQLStore)(nil)
 // enables foreign-key enforcement so ON DELETE CASCADE fires for child
 // rows. path may be ":memory:" for tests.
 func NewSQLStore(path string) (*SQLStore, error) {
-	d, err := sql.Open("sqlite", path)
+	// Pragmas ride the DSN so modernc applies them to EVERY pooled
+	// connection — a one-off d.Exec only configures whichever single
+	// connection ran it, leaving the rest of the pool on SQLite defaults.
+	// The load-bearing one is busy_timeout: its default of 0 means a read
+	// racing the parse's write fails immediately with SQLITE_BUSY, which
+	// surfaced as an intermittent 500 on GET /matches mid-parse. A non-zero
+	// timeout makes the loser wait for the lock instead. foreign_keys(1)
+	// likewise reaches every connection (CASCADE was only enforced on one).
+	// :memory: stays bare — it's single-connection by reuse, so the Exec
+	// below is the reliable setter there; the query-string DSN isn't worth
+	// the shared-cache complexity for tests.
+	dsn := path
+	if path != ":memory:" {
+		dsn += "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+	}
+	d, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
-	// SQLite ships with FK enforcement OFF by default — without this
-	// PRAGMA, the ON DELETE CASCADE rules in the schema are parsed and
-	// silently ignored.
+	// Reliable for :memory: (and a harmless re-assert on file paths, where
+	// the DSN already enabled it). SQLite ships FK enforcement OFF — without
+	// it the schema's ON DELETE CASCADE rules are parsed and silently ignored.
 	if _, err := d.Exec(`PRAGMA foreign_keys = ON`); err != nil {
 		_ = d.Close()
 		return nil, err
