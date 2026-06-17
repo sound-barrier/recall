@@ -127,15 +127,12 @@
   // Service ports the project listens on during development. VS Code
   // forwards these to the host automatically; Codespaces gives each a
   // public URL the maintainer can flip private/public.
-  "forwardPorts": [5173, 7000, 8080, 9090, 9091, 34115, 3000],
+  "forwardPorts": [5173, 7000, 8080, 34115],
   "portsAttributes": {
     "5173":  {"label": "Vite dev server"},
     "7000":  {"label": "Recall server"},
     "8080":  {"label": "Swagger UI (task swagger)"},
-    "9090":  {"label": "Prometheus (stack)"},
-    "9091":  {"label": "Recall Prometheus metrics"},
-    "34115": {"label": "Wails IPC dev"},
-    "3000":  {"label": "Grafana (stack)"}
+    "34115": {"label": "Wails IPC dev"}
   },
 
   // The `vscode` user is created by the common-utils feature; using a

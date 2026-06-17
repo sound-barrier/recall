@@ -2,8 +2,8 @@ package aggregate_test
 
 // Tests in this file lock the load-bearing invariant that the read-time
 // inference helpers (inferSoleHeroPercent, inferResultFromRank) run on
-// the way OUT of the DB — via GetMatchResults and scrapeReader — never
-// inside the write path that persists per-screenshot rows.
+// the way OUT of the DB — via GetMatchResults — never inside the write
+// path that persists per-screenshot rows.
 //
 // Why this matters: mergeMatchResult (now invoked at read time by the
 // aggregator) uses first-non-empty-wins for scalars. If inference fired

@@ -169,10 +169,10 @@ describe('SettingsView', () => {
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     // Screenshots Folder, Data Location, Engine, Theme, First Day
-    // of Week, Profiles, Export, Import, Grafana stream, Manage
-    // ignored screenshots, Re-parse All, Clear DB. The last six
-    // live inside the closed <details> but are still in the DOM.
-    expect(wrapper.findAll('.setting-help')).toHaveLength(12)
+    // of Week, Profiles, Export, Import, Manage ignored screenshots,
+    // Re-parse All, Clear DB. The last five live inside the closed
+    // <details> but are still in the DOM.
+    expect(wrapper.findAll('.setting-help')).toHaveLength(11)
   })
 })
 
@@ -491,7 +491,7 @@ describe('SettingsView — Backup & Restore', () => {
   })
 })
 
-// ── Advanced collapsible (Grafana + Clear DB) ────────────────────────────
+// ── Advanced collapsible (Clear DB) ──────────────────────────────────────
 
 describe('SettingsView — Advanced section', () => {
   const baseProps = {
@@ -503,20 +503,6 @@ describe('SettingsView — Advanced section', () => {
     const det = wrapper.find('details.advanced-section')
     expect(det.exists()).toBe(true)
     expect((det.element as HTMLDetailsElement).open).toBe(false)
-  })
-
-  it('renders the Grafana toggle inside the Advanced section', () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
-    const det = wrapper.find('details.advanced-section')
-    expect(det.text()).toContain('Stream to Grafana')
-  })
-
-  it('emits toggle-prometheus when the Grafana switch changes', async () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
-    // The big-switch checkbox is inside the (closed but rendered) <details>.
-    const cb = wrapper.find('details.advanced-section input[type="checkbox"]')
-    await cb.trigger('change')
-    expect(wrapper.emitted('toggle-prometheus')).toBeTruthy()
   })
 
   it('arms Clear Database, confirms delete, then cancels', async () => {

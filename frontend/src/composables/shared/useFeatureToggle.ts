@@ -2,11 +2,11 @@ import { ref, type Ref } from 'vue'
 
 // Generic on/off feature toggle backed by a server round-trip.
 //
-// Used by both `watchEnabled` and `prometheusEnabled` in App.vue —
-// each was an identical eight-line block (next = !ref, optional
-// guard, call setter, on success commit the ref, on failure surface
-// the error). This factory replaces both with one parameterised
-// composable.
+// Backs `watchEnabled` in App.vue — an eight-line block (next = !ref,
+// optional guard, call setter, on success commit the ref, on failure
+// surface the error) factored into one parameterised composable. (It
+// once also drove a Prometheus toggle; the generic shape stays so a
+// future second feature toggle reuses it.)
 //
 // `canEnable?` lets a caller short-circuit the "off → on" transition
 // with an explanatory message (e.g. "Configure Tesseract before

@@ -807,33 +807,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/settings/prometheus": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the Prometheus metrics-endpoint toggle
-         * @description `true` iff the `:9091/metrics` listener is currently bound and
-         *     the Prometheus collector is registered.
-         */
-        get: operations["GetPrometheusEnabled"];
-        /**
-         * Toggle the Prometheus metrics endpoint
-         * @description Enabling binds `:9091/metrics` (override via
-         *     `RECALL_METRICS_ADDR`). Disabling shuts the listener down
-         *     with a 2s grace period.
-         */
-        put: operations["SetPrometheusEnabled"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/settings/watcher": {
         parameters: {
             query?: never;
@@ -3496,50 +3469,6 @@ export interface operations {
                     "application/json": components["schemas"]["TesseractStatus"];
                 };
             };
-            500: components["responses"]["InternalError"];
-        };
-    };
-    GetPrometheusEnabled: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Current state. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EnabledFlag"];
-                };
-            };
-        };
-    };
-    SetPrometheusEnabled: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EnabledFlag"];
-            };
-        };
-        responses: {
-            /** @description Toggle applied. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
         };
     };

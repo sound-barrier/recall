@@ -628,18 +628,6 @@ export function GetActiveParse(): Promise<ActiveParse> {
   return _get<ActiveParse>('/api/v1/parses/active')
 }
 
-export function GetPrometheusEnabled(): Promise<boolean> {
-  if (IS_WAILS) return _wails('GetPrometheusEnabled')
-  return _get<{ enabled: boolean }>('/api/v1/settings/prometheus').then(d => d.enabled)
-}
-
-export const SetPrometheusEnabled = _dualVoid<[enabled: boolean]>(
-  'SetPrometheusEnabled',
-  'PUT',
-  '/api/v1/settings/prometheus',
-  (enabled) => ({ enabled }),
-)
-
 export function GetWatchEnabled(): Promise<boolean> {
   if (IS_WAILS) return _wails('GetWatchEnabled')
   return _get<{ enabled: boolean }>('/api/v1/settings/watcher').then(d => d.enabled)

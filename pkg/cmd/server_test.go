@@ -443,22 +443,6 @@ func TestServerMux_WatchEnabled_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestServerMux_PrometheusEnabled_RoundTrip(t *testing.T) {
-	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/v1/settings/prometheus")
-	if rec.Code != 200 {
-		t.Fatalf("GET status %d", rec.Code)
-	}
-	rec = put(t, mux, "/api/v1/settings/prometheus", map[string]bool{"enabled": false})
-	if rec.Code != http.StatusNoContent {
-		t.Errorf("PUT status %d body=%s", rec.Code, rec.Body.String())
-	}
-	rec = put(t, mux, "/api/v1/settings/prometheus", "not-json-at-all")
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("PUT with bad body should 400, got %d", rec.Code)
-	}
-}
-
 func TestServerMux_WatchEnabled_PUTBadJSON(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	rec := put(t, mux, "/api/v1/settings/watcher", "not json")
@@ -1080,14 +1064,6 @@ func TestMatchVisibility_RejectsMissingHidden(t *testing.T) {
 	rec := putRaw(t, mux, visibilityPath("k1"), `{}`)
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("missing hidden field must 400, got %d (%s)", rec.Code, rec.Body.String())
-	}
-}
-
-func TestPrometheusEnabled_RejectsNull(t *testing.T) {
-	_, mux := newTestApp(t, nil)
-	rec := putRaw(t, mux, "/api/v1/settings/prometheus", `{"enabled": null}`)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("null enabled must 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 

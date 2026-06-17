@@ -71,7 +71,6 @@ docker run --entrypoint /recall-server \
 |---|---|---|
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Bind address. Set to `0.0.0.0:7000` inside a container so the port is reachable from the host. |
 | `RECALL_PPROF` | *(off)* | When set to any non-empty value, mounts `net/http/pprof` handlers under `/debug/pprof/`. Never expose publicly. |
-| `RECALL_METRICS_ADDR` | `:9091` | Prometheus metrics endpoint address (when the Prometheus toggle is on). The default `:9091` binds **all interfaces** so the bundled Grafana stack's Prometheus container can scrape the host over the docker-bridge gateway. `/metrics` has no auth and serves your match data, so on a shared network set `127.0.0.1:9091` to restrict it to localhost if you scrape from the same host instead of the bundled stack. The app logs a notice at startup when it binds non-loopback. |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files. |
 
 ## Verifying the image

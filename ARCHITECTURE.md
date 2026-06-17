@@ -16,11 +16,7 @@ flowchart LR
   C --> D[(SQLite<br/>5 per-type tables<br/>+ child tables)]
   M[Manual entry /<br/>edits] -->|user override layer| D
   D --> E[Read-time<br/>aggregator<br/>folds by match_key]
-  E --> F[Vue UI<br/>Wails desktop<br/>or browser]
-  D -.->|optional| G[Prometheus<br/>collector<br/>:9091/metrics]
-  G -.-> H[Grafana<br/>dashboard]
-  classDef opt stroke-dasharray: 4 3
-  class G,H opt
+  E --> F[Vue UI<br/>dossier + Trends charts<br/>Wails desktop or browser]
 ```
 
 1. **Capture** — a folder watcher (`fsnotify`) or a manual *Parse* run feeds new
@@ -49,8 +45,8 @@ flowchart LR
    are computed on the fly from the shipped reference data — **never stored** (a
    3NF discipline, so a reference-data update can't leave a stale derived value).
 7. **Surfaces** — the same aggregator feeds the Vue UI (Wails desktop window or
-   the headless server-mode browser app) and an **optional** Prometheus collector
-   on `:9091/metrics`, which a bundled Grafana dashboard charts.
+   the headless server-mode browser app): a filterable dossier plus a **Trends**
+   section of in-app time-series charts (SR, win-rate, per-match stats, per-10).
 
 ## Stack
 
@@ -60,8 +56,8 @@ flowchart LR
   shell or served as a static SPA in server mode.
 - **OCR:** the [Tesseract](https://github.com/tesseract-ocr/tesseract) 5.x CLI,
   invoked per screenshot.
-- **Optional metrics:** Prometheus + a bundled Grafana dashboard (a plain
-  `docker-compose.yml` stack).
+- **Charts:** in-app time-series via [ECharts](https://echarts.apache.org/)
+  (tree-shaken, lazy-loaded), rendered in the Matches → Trends section.
 
 ## Where data lives
 

@@ -8,13 +8,12 @@ import (
 )
 
 // registerSettingsRoutes attaches every /api/v1/settings/...
-// handler. Four user-facing settings: screenshots-folder,
-// tesseract path, prometheus-enabled, watcher-enabled. The
-// screenshots-folder + tesseract pair carry a 409 conflict status
-// for "syntactically well-formed input but the path doesn't
-// resolve to a usable resource on disk." The boolean toggles
-// require `*bool` body shape so missing / null is distinguishable
-// from `false` (pinned by TestPrometheusEnabled_RejectsNull +
+// handler. Three user-facing settings: screenshots-folder,
+// tesseract path, watcher-enabled. The screenshots-folder +
+// tesseract pair carry a 409 conflict status for "syntactically
+// well-formed input but the path doesn't resolve to a usable
+// resource on disk." The watcher toggle requires `*bool` body shape
+// so missing / null is distinguishable from `false` (pinned by
 // TestWatchEnabled_RejectsNull).
 func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/settings/screenshots-folder", handleGetScreenshotsFolder(a))
@@ -24,9 +23,6 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/settings/tesseract", handleGetTesseract(a))
 	apiMux.HandleFunc("PUT /api/v1/settings/tesseract", handleSetTesseract(a))
 	apiMux.HandleFunc("DELETE /api/v1/settings/tesseract", handleResetTesseract(a))
-
-	apiMux.HandleFunc("GET /api/v1/settings/prometheus", handleGetPrometheus(a))
-	apiMux.HandleFunc("PUT /api/v1/settings/prometheus", handleSetPrometheus(a))
 
 	apiMux.HandleFunc("GET /api/v1/settings/watcher", handleGetWatcher(a))
 	apiMux.HandleFunc("PUT /api/v1/settings/watcher", handleSetWatcher(a))
@@ -104,31 +100,6 @@ func handleResetTesseract(a *app.App) http.HandlerFunc {
 	}
 }
 
-func handleGetPrometheus(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]bool{"enabled": a.GetPrometheusEnabled()}, nil)
-	}
-}
-
-func handleSetPrometheus(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// `*bool` so missing / null decodes to nil — see the visibility
-		// handler's comment for the rationale (Pinned by
-		// TestPrometheusEnabled_RejectsNull).
-		var body struct {
-			Enabled *bool `json:"enabled"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Enabled == nil {
-			http.Error(w, "body must be {\"enabled\":<bool>}", http.StatusBadRequest)
-			return
-		}
-		if writeError(w, a.SetPrometheusEnabled(*body.Enabled)) {
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
 func handleGetWatcher(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]bool{"enabled": a.GetWatchEnabled()}, nil)
@@ -137,7 +108,7 @@ func handleGetWatcher(a *app.App) http.HandlerFunc {
 
 func handleSetWatcher(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// `*bool` — see the prometheus / visibility handlers' comments.
+		// `*bool` — see the visibility handler's comment for the rationale.
 		// Pinned by TestWatchEnabled_RejectsNull.
 		var body struct {
 			Enabled *bool `json:"enabled"`

@@ -21,8 +21,9 @@ import type { NamedCandidate } from '@/api'
 //   04 Calendar         — First Day of Week
 //   05 Profiles         — Delete non-active profiles
 //   06 Backup & Restore — Export JSON/CSV + Import Backup
-//   07 Advanced         — Stream to Grafana + Clear Database
-//                          (collapsed behind a <details> by default)
+//   07 Advanced         — Manage ignored screenshots + Re-parse All
+//                          + Clear Database (collapsed behind a
+//                          <details> by default)
 //
 // Engine, Backup & Restore, and Advanced used to live on the Ingest
 // tab — moved here so casual users see a single config destination
@@ -80,8 +81,7 @@ const props = defineProps<{
   importing?:    boolean
   importArmed?:  boolean
   exportStatus?: { ok: boolean; message: string } | null
-  // Advanced section — Grafana stream toggle + destructive Clear DB.
-  prometheusEnabled?: boolean
+  // Advanced section — destructive Clear DB.
   clearConfirm?:      boolean
   clearingDB?:        boolean
   // Suppress-list size (Unknown-tab "Delete forever"). Drives the
@@ -119,7 +119,6 @@ const emit = defineEmits<{
   'cancel-import':          []
   'import-data':            []
   // Advanced
-  'toggle-prometheus':      []
   'arm-clear':              []
   'clear-database':         [opts: { keepIgnored: boolean }]
   'cancel-clear':           []
@@ -275,14 +274,12 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
     />
 
     <SettingsAdvanced
-      :prometheus-enabled="prometheusEnabled"
       :clearing-d-b="clearingDB"
       :clear-confirm="clearConfirm"
       :matched-count="matchedCount"
       :unknown-count="unknownCount"
       :ignored-count="ignoredCount"
       :reparsing="reparsing"
-      @toggle-prometheus="() => emit('toggle-prometheus')"
       @arm-clear="() => emit('arm-clear')"
       @cancel-clear="() => emit('cancel-clear')"
       @clear-database="(opts) => emit('clear-database', opts)"

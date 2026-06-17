@@ -79,10 +79,9 @@ Out of scope:
 - Vulnerabilities in third-party dependencies — please file with the
   upstream project. We track CVEs via `make trivy` and `govulncheck`
   and bump on the next dep-update cycle (see `.github/dependabot.yml`).
-- Optional integrations the user explicitly enables (the Prometheus
-  endpoint at `:9091`, pprof under `RECALL_PPROF`). These are
-  documented as "off by default — never expose publicly without your
-  own access control."
+- Optional integrations the user explicitly enables (pprof under
+  `RECALL_PPROF`). These are documented as "off by default — never
+  expose publicly without your own access control."
 - Misconfiguration on the user's host (e.g. exposing
   `RECALL_SERVER_ADDR=0.0.0.0:7000` on a public network without a
   reverse proxy).
@@ -99,10 +98,6 @@ runs entirely on-device:
   Windows).
 - The screenshots watcher reads the configured directory; it
   does not upload anywhere.
-- The optional Prometheus endpoint (`localhost:9091/metrics`)
-  is opt-in via Settings → Advanced and binds to loopback by
-  default — no external scraper can reach it without an
-  explicit reverse-proxy or `RECALL_PROMETHEUS_ADDR` override.
 - The **Check for updates** button performs the only
   network call the app ever initiates on its own behalf: a
   single GET to `api.github.com/repos/sound-barrier/recall/
@@ -117,8 +112,7 @@ vulnerability (Reporting a vulnerability above).
 
 This is a deliberate design choice, not an accident of being
 small. Adding telemetry would require an opt-in flag, a
-visible privacy notice, and an off-by-default state — same as
-the Prometheus endpoint already does.
+visible privacy notice, and an off-by-default state.
 
 ## Past advisories
 

@@ -156,37 +156,6 @@ out without touching anything.
 A collapsible section, closed by default. Contains power-user
 controls most players never need to touch.
 
-#### Stream to Grafana
-
-Expose match history as Prometheus metrics on `localhost:9091/metrics`
-so the bundled Prometheus container can scrape it and Grafana can
-chart it. **Off** by default — no port is opened until you flip
-this.
-
-Toggle states:
-
-- **Off**: no HTTP listener.
-- **Live**: HTTP server bound to `127.0.0.1:9091` (loopback only —
-  not exposed to your network). Hit
-  [`http://localhost:9091/metrics`](http://localhost:9091/metrics)
-  in a browser to see the raw output.
-
-What's exposed: per-match samples for eliminations, assists, deaths,
-damage, healing, mitigation, result (1/0/0.5 for win/loss/draw),
-rank level + SR per hero, percent_played per hero, plus a handful of
-hero-specific stats lifted from PERSONAL screens. Every sample
-carries the match's `finished_at` timestamp, so Prometheus stores it
-at the time the match actually ended (not when it was scraped).
-
-The full Grafana setup — Docker compose stack, dashboards, scrape
-config — is in [Charts & Dashboards](grafana.md).
-
-> **Privacy:** the metrics only contain *your* stats — Recall doesn't
-> extract other players' names or stats from teams. Even so,
-> the port is loopback-only and only a process on your machine can
-> reach it. Nothing leaves your computer unless you add a remote
-> Prometheus scrape target yourself.
-
 #### Clear Parse Database
 
 Permanently delete every parsed match record from the local SQLite

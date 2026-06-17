@@ -63,4 +63,4 @@ echo "[playwright-smoke] Running smoke subset…"
 # honors the env override.
 cd frontend
 CI=1 E2E_PORT=7098 npx playwright test \
-  --grep '@smoke|update-check|unknown-delete|onboarding-tour-spotlight|leaf-virtualization|keyboard-shortcuts|smoke|a11y|first-run-modal|profile-delete-and-first-run|multiple-profiles|match-search|match-tags|narrow-rail|export-bundle|prometheus-scrape|match-bulk-hide-drawer|ambiguous-attribution|ux-first-run-and-error-states'
+  --grep '@smoke|update-check|unknown-delete|onboarding-tour-spotlight|leaf-virtualization|keyboard-shortcuts|smoke|a11y|first-run-modal|profile-delete-and-first-run|multiple-profiles|match-search|match-tags|narrow-rail|export-bundle|match-bulk-hide-drawer|ambiguous-attribution|ux-first-run-and-error-states'

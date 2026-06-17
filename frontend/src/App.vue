@@ -28,8 +28,6 @@ import {
   ResetScreenshotsDir,
   RevealScreenshotsDir,
   SetScreenshotsDir,
-  GetPrometheusEnabled,
-  SetPrometheusEnabled,
   GetWatchEnabled,
   SetWatchEnabled,
   GetTesseractStatus,
@@ -289,7 +287,7 @@ const newScreenshotCount = ref<number | null>(null)
 
 // Which top-level view is shown: 'matches' (default — filter rail +
 // match cards) or 'settings' (config sections — directory, watch,
-// parse, Grafana export). Switched via the masthead nav tabs.
+// engine, backup/restore). Switched via the masthead nav tabs.
 const view = ref<TabId>('matches')
 
 // appVersion drives the masthead "v0.3.0" version label.
@@ -471,19 +469,10 @@ async function pickDetectedSource(path: string) {
   }
 }
 
-// Prometheus + Watch feature toggles. Each calls a Go setter that
-// owns the actual side effect (server bind / fsnotify watcher) and
-// rolls back the UI on round-trip failure. Watch is gated on
-// Tesseract being ready — turning it on with a broken OCR setup
-// would queue silent failures.
-const {
-  enabled: prometheusEnabled,
-  setEnabled: setPrometheusEnabled,
-  toggle: togglePrometheus,
-} = useFeatureToggle({
-  set: SetPrometheusEnabled,
-  onError: (m) => { setErrorFromRaw(m) },
-})
+// Watch feature toggle. Calls a Go setter that owns the actual side
+// effect (fsnotify watcher) and rolls back the UI on round-trip
+// failure. Gated on Tesseract being ready — turning it on with a
+// broken OCR setup would queue silent failures.
 const {
   enabled: watchEnabled,
   setEnabled: setWatchEnabled,
@@ -524,13 +513,12 @@ async function load() {
   const results = await Promise.allSettled([
     GetMatchResults(),
     GetScreenshotsDir(),
-    GetPrometheusEnabled(),
     GetWatchEnabled(),
     GetTesseractStatus(),
     GetNewScreenshotCount(),
     GetDataLocation(),
   ])
-  const [recs, dir, promOn, watchOn, tess, newCount, loc] = results
+  const [recs, dir, watchOn, tess, newCount, loc] = results
   if (recs.status === 'fulfilled') {
     // While the tour is active, the records ref carries the demo
     // corpus — stash the real records for restore-on-close but don't
@@ -552,7 +540,6 @@ async function load() {
     )
   }
   if (dir.status === 'fulfilled')      setScreenshotsDir(dir.value || '')
-  if (promOn.status === 'fulfilled')   setPrometheusEnabled(!!promOn.value)
   if (watchOn.status === 'fulfilled')  setWatchEnabled(!!watchOn.value)
   if (tess.status === 'fulfilled')     setTesseractStatus(tess.value)
   else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
@@ -1881,7 +1868,6 @@ useEventStream({
           :importing="importing"
           :import-armed="importArmed"
           :export-status="exportStatus"
-          :prometheus-enabled="prometheusEnabled"
           :clear-confirm="clearConfirm"
           :clearing-d-b="clearingDB"
           :ignored-count="ignoredCount"
@@ -1903,7 +1889,6 @@ useEventStream({
           @arm-import="armImport"
           @cancel-import="cancelImport"
           @import-data="importData"
-          @toggle-prometheus="togglePrometheus"
           @arm-clear="armClear"
           @clear-database="onClearDatabase"
           @cancel-clear="cancelClear"
