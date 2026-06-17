@@ -113,4 +113,31 @@ test.describe('Settings — first-run screenshot source picker', () => {
     // Custom-pick tile still renders so the Mac user can pick their folder.
     await expect(page.locator('[data-src-pick-custom]')).toBeVisible()
   })
+
+  test('the source grid shrinks its cards to fit a narrow window — no clipped/overflowing column', async ({ page }) => {
+    // A narrow window with the real, long Windows capture paths. The 1fr-1fr
+    // tracks took each card's min-content from its no-wrap path, so the cards
+    // held their full path width instead of shrinking — the second column was
+    // clipped off the panel edge ("not scaled properly... past the screen").
+    await page.setViewportSize({ width: 480, height: 800 })
+    await mockBoot(page, {
+      platform: 'windows',
+      candidates: [
+        { name: 'nvidia', label: 'Nvidia Overlay', path: 'C:\\Users\\a-long-windows-account-name\\Videos\\NVIDIA\\Overwatch 2', exists: true },
+        { name: 'prntscn', label: 'OW default', path: 'C:\\Users\\a-long-windows-account-name\\Documents\\Overwatch\\ScreenShots\\Overwatch', exists: true },
+        { name: 'snip', label: 'Snip tool', path: 'C:\\Users\\a-long-windows-account-name\\OneDrive\\Pictures\\Screenshots', exists: true },
+        { name: 'steam', label: 'Steam install', path: 'C:\\Program Files (x86)\\Steam\\userdata\\123456789\\760\\remote\\2357570\\screenshots', exists: true },
+      ],
+    })
+
+    await page.goto('/')
+    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    const grid = page.locator('[data-src-grid]')
+    await expect(grid).toBeVisible()
+
+    // The grid's content must fit its box — cards shrink + paths ellipsis,
+    // rather than the content overflowing the tracks and being clipped/cut off.
+    const overflow = await grid.evaluate((el) => el.scrollWidth - el.clientWidth)
+    expect(overflow).toBeLessThanOrEqual(1)
+  })
 })

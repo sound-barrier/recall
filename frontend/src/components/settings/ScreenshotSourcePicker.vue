@@ -209,12 +209,22 @@ void ({} as NamedCandidateStats)
 
 .src-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+
+  /* minmax(0, 1fr), not 1fr: a bare 1fr track floors at the card's
+     min-content, which a no-wrap path inflates to its full length — so on
+     a narrow window the cards kept their full width and the second column
+     was clipped off the panel. minmax(0, …) lets the tracks (and cards)
+     shrink so the paths ellipsis-truncate instead. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.75rem;
 }
 
 .src-card {
   appearance: none;
+
+  /* Allow the grid track to shrink the card below its no-wrap content so
+     the `.src-path` ellipsis engages instead of widening the card. */
+  min-width: 0;
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--border-strong);
