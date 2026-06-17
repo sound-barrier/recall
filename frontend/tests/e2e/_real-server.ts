@@ -11,6 +11,7 @@ export const RESET = '/api/v1/system/test-reset'
 export interface Match {
   match_key: string
   source?: string
+  source_files?: string[]
   hidden?: boolean
   queue_type?: string
   reviewed_by?: string
@@ -18,7 +19,15 @@ export interface Match {
   data?: {
     map?: string
     result?: string
+    final_score?: string
+    finished_at?: string
+    game_length?: string
+    eliminations?: number
+    assists?: number
+    deaths?: number
     damage?: number
+    healing?: number
+    mitigation?: number
     heroes_played?: { hero: string; percent_played?: number }[]
   }
 }
