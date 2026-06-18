@@ -1,8 +1,10 @@
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { CheckForUpdate, GetVersion, type UpdateInfo, type DataLocation } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
+import type { TabId } from '@/composables/shared/useTabKeyboardNav'
+import { useMatchesStore } from '@/stores/matches'
 
 // App-shell cross-cutting state: the global error banner, the app version,
 // the user-pulled GitHub update check, and the data-location used by
@@ -10,6 +12,21 @@ import { plainLanguageError } from '@/error-helpers'
 // stops owning + prop-drilling it. View/nav and the UI-overlay state move in
 // later commits of the Pinia migration.
 export const useAppStore = defineStore('app', () => {
+  // ── Nav ───────────────────────────────────────────────────────────
+  // Which top-level tab is shown. goToView switches it AND moves focus into
+  // the newly-visible panel (each <section> has tabindex="-1") so keyboard
+  // users land in the new content, not on the nav button.
+  const view = ref<TabId>('matches')
+  async function goToView(next: string) {
+    view.value = next as TabId
+    // Entering Parse: re-read the pending-screenshot count so "Run Parse · N"
+    // reflects the folder now, not the initial-load batch. Fire-and-forget.
+    if (next === 'ingest') void useMatchesStore().refreshNewCount()
+    await nextTick()
+    const panel = document.getElementById(`panel-${next}`)
+    if (panel) panel.focus({ preventScroll: true })
+  }
+
   // ── Global error banner ───────────────────────────────────────────
   // `errorRetry` carries the function the banner's Retry button invokes
   // when the failed action is replayable (currently the initial load());
@@ -70,6 +87,8 @@ export const useAppStore = defineStore('app', () => {
   const dataLocation = ref<DataLocation | null>(null)
 
   return {
+    view,
+    goToView,
     error,
     errorRetry,
     setError,
