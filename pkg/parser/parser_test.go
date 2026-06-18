@@ -416,7 +416,7 @@ KIRIKO
 
 // ──────────────────────────────────────────────────────────────────────────
 // parsePerformance — pulls (total, avg-per-10-min) for each labeled
-// performance card. Per parser.go:1023 the total is the LAST pure-integer
+// performance card. Per parsePerformance, the total is the LAST pure-integer
 // line before the label, ignoring noise like "S 4" (skull-X icon misread).
 // The avg is anchored on "MIN" so the "10" in "AVG PER 10 MIN" isn't
 // picked up.

@@ -55,7 +55,7 @@ sources:
   # horizon as prntscn's year_offset=2000); the 14-digit regex
   # anchor rejects any other filename starting with "20". Steam also
   # auto-writes a `thumbnails/` subdir alongside the captures —
-  # ParseScreenshotsDir skips directory entries (parser.go:135) and
+  # ParseScreenshotsDir skips directory entries and
   # the fsnotify watcher is non-recursive, so thumbnails never reach
   # the pipeline.
   - name: steam
