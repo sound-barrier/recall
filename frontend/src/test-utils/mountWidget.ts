@@ -21,6 +21,7 @@ import type {
   WLDSinceLastReview,
 } from '@/composables/matches/useMatchesDossier'
 import type { RankNow } from '@/match/match-trends-helpers'
+import type { RateSample, LeaverRate } from '@/match/match-momentum-helpers'
 
 // Per-widget test helper that:
 //   1. Stubs localStorage so useWidgetConfig hydrates cleanly (the
@@ -73,6 +74,14 @@ type DossierOverride = {
   winrateBy?:          BreakdownEntry[]
   // Bedrock — current rank per role.
   currentRank?:        RankNow[]
+  // Bedrock — behavioural KPIs (tilt/momentum + climb/session).
+  winrateAfterLoss?:   RateSample
+  winrateAfterWin?:    RateSample
+  firstGameWinrate?:   RateSample
+  netRankWeek?:        number
+  avgGameLength?:      number | null
+  leaverStats?:        LeaverRate
+  sessions?:           number
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -99,6 +108,13 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     topByCount:          wrapQuery(over.topByCount, [] as BreakdownEntry[]),
     winrateBy:           wrapQuery(over.winrateBy, [] as BreakdownEntry[]),
     currentRank:         wrap(over.currentRank, [] as RankNow[]),
+    winrateAfterLoss:    wrap(over.winrateAfterLoss, { winrate: null, sample: 0 } as RateSample),
+    winrateAfterWin:     wrap(over.winrateAfterWin, { winrate: null, sample: 0 } as RateSample),
+    firstGameWinrate:    wrap(over.firstGameWinrate, { winrate: null, sample: 0 } as RateSample),
+    netRankWeek:         wrap(over.netRankWeek, 0),
+    avgGameLength:       wrap(over.avgGameLength, null as number | null),
+    leaverStats:         wrap(over.leaverStats, { rate: null, leaverCount: 0, total: 0 } as LeaverRate),
+    sessions:            wrap(over.sessions, 0),
     withWhomBreakdown:   wrapQuery(over.withWhomBreakdown, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),
     mostPlayedHero:      wrapQuery(over.mostPlayedHero, null),

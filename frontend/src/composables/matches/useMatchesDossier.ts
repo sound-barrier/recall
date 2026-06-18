@@ -4,6 +4,7 @@ import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/mat
 import { formatToHundredths } from '@/match/match-stats-helpers'
 import { useDossierQueries } from '@/composables/matches/useMatchesDossierQueries'
 import { useMatchesTrends } from '@/composables/matches/useMatchesTrends'
+import { useMatchesMomentum } from '@/composables/matches/useMatchesMomentum'
 import {
   type LeaverHandling,
   type WinLossDraw,
@@ -382,6 +383,10 @@ export function useMatchesDossier(
   // other consumer.
   const trends = useMatchesTrends(records)
 
+  // Behavioural aggregates (tilt/momentum + climb/session) for the
+  // opt-in KPI widgets, over the same narrowed records.
+  const momentum = useMatchesMomentum(records)
+
   return {
     // ─── Bedrock — no per-widget config, precomputed refs ─────
     wld,
@@ -400,6 +405,8 @@ export function useMatchesDossier(
     ...queries,
     // ─── Time-series — reactive trend lines over the narrowed set ─
     ...trends,
+    // ─── Behavioural KPIs — tilt/momentum + climb/session ─────────
+    ...momentum,
   }
 }
 
