@@ -37,8 +37,13 @@ const CORPUS = [
   match(5, { result: 'victory', rank: 'platinum', leaver: 'team', modifiers: ['calibration', 'victory'] }),
 ]
 
-function pickChip(page: import('@playwright/test').Page, section: string, chip: string) {
-  return page.locator('.np-section', { hasText: section }).locator('.np-chip', { hasText: chip }).first().click()
+async function pickChip(page: import('@playwright/test').Page, section: string, chip: string) {
+  const sectionLocator = page.locator('.np-section', {
+    has: page.locator('.np-section-title', { hasText: new RegExp(`^${section}$`) }),
+  })
+  const chipLocator = sectionLocator.locator('.np-chip', { hasText: new RegExp(`^${chip}$`) })
+  await expect(chipLocator).toHaveCount(1)
+  await chipLocator.click()
 }
 
 test.describe('Matches narrow — leaver / modifier / rank', () => {
