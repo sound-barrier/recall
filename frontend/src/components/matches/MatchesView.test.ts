@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 
 import MatchesView from '@/components/matches/MatchesView.vue'
+import { useMatchesStore } from '@/stores/matches'
 import { GetProfiles } from '@/api'
 import type { MatchRecord } from '@/api'
 
@@ -52,11 +54,15 @@ function makeRecord(over: Partial<MatchRecord> = {}, dataOver: Partial<MatchReco
 }
 
 function mountView(records: MatchRecord[]) {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  useMatchesStore().records = records
   const recordsRef = ref(records)
   const state = createMatchesNarrowState()
   const narrow = useMatchesNarrow(recordsRef, state)
   return mount(MatchesView, {
-    props: { records, narrow },
+    props: { narrow },
+    global: { plugins: [pinia] },
     attachTo: document.body,
   })
 }

@@ -1594,7 +1594,6 @@ useEventStream({
         />
         <MatchesView
           v-else-if="view === 'matches'"
-          :records="records"
           :narrow="matchesNarrow"
           :focused-card-index="focusedCardIndex"
           @open-match="(k: string) => selection.open(k)"
