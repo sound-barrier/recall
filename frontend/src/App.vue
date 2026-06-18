@@ -14,7 +14,6 @@ import { storeToRefs } from 'pinia'
 import type { MatchRecord, NamedCandidate } from '@/api'
 import {
   GetStartupError,
-  GetActiveParse,
   GetScreenshotsFolderCandidates,
   SetScreenshotsDir,
   ClearDatabase,
@@ -47,8 +46,6 @@ import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
-import { useEventStream } from '@/composables/shared/useEventStream'
-import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
@@ -167,6 +164,8 @@ const {
   tourActive,
   parseProgressOpen,
   showUnsupportedModal,
+  parseAnnouncement,
+  parseConnectionState,
 } = storeToRefs(matchesStore)
 const {
   refreshNewCount,
@@ -176,6 +175,7 @@ const {
   onReParseAll,
   onCancelParse,
   confirmUnsupportedParse,
+  refreshParse,
 } = matchesStore
 
 // Onboarding tour demo-records swap (tourActive / savedRecords /
@@ -1050,58 +1050,8 @@ onMounted(() => {
 // at the end of the run — screen-reader users got no signal for
 // "parse complete." Setting + clearing this ref drives an sr-only
 // status region so the announcement fires once per terminal state.
-const parseAnnouncement = ref('')
-function announceParse(msg: string) {
-  parseAnnouncement.value = msg
-  setTimeout(() => {
-    if (parseAnnouncement.value === msg) parseAnnouncement.value = ''
-  }, 2000)
-}
-
-// SSE / Wails event subscriptions for the ingest lifecycle.
-// parse-progress drives the inline log + counter; parse-complete is
-// the authoritative reload after a batch; match-updated upserts a
-// single record by match_key for live streaming during a long parse.
-// Server-mode parse-stream recovery: detect a mid-parse SSE drop, resync
-// against GET /parses/active on reconnect / reload, and surface a manual
-// Refresh when the connection stays down. No-op in Wails mode.
-const { connectionState: parseConnectionState, refresh: refreshParse } = useParseRecovery({
-  parseBusy,
-  parseProgress,
-  reload: load,
-  getActiveParse: GetActiveParse,
-})
-
-useEventStream({
-  records,
-  parseProgress,
-  parseLog,
-  // parse-complete is now the authoritative completion signal for EVERY
-  // parse path (user click, watcher, re-parse) — the server emits it
-  // from the OCR loop, so this handler owns clearing parseBusy + the
-  // reload (runParse no longer waits on the POST to do it).
-  onParseComplete: async () => {
-    await load()
-    lastParsedAt.value = Date.now()
-    try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
-    parseBusy.value = false
-    parseProgress.value = null
-    cancellingParse.value = false
-    const n = records.value.length
-    announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
-  },
-  // SSE confirmation of a Stop click. Records ref already reflects
-  // whatever made it into SQLite before the cancellation point —
-  // call load() so the matches list rebinds, then clear the busy +
-  // cancelling flags so IngestView's Stop button flips back to Run.
-  onParseCancelled: async () => {
-    await load()
-    parseBusy.value = false
-    cancellingParse.value = false
-    parseProgress.value = null
-    announceParse('Parse cancelled.')
-  },
-})
+// The ingest event stream (parse-complete/cancelled handlers + sr-only
+// announce) + parse-recovery live in the matches store.
 </script>
 
 <template>
