@@ -485,10 +485,13 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           :sort-group-label="sortGroupLabel"
           :density="density"
           :undated-count="undatedCount"
+          :grouped="groupBy !== 'none'"
           @toggle-sort-group="onSortGroupTriggerClick"
           @set-density="setDensity"
           @jump-to-undated="onJumpToUndated"
           @add-match="emit('add-match')"
+          @expand-all="membersListRef?.expandAllSections()"
+          @collapse-all="membersListRef?.collapseAllSections()"
         />
 
         <!-- Bulk action bar — appears as soon as any row is ticked. No

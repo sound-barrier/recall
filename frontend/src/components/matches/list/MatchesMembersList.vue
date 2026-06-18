@@ -78,6 +78,17 @@ function toggleSection(key: string): void {
   collapsedKeys.value = next
 }
 
+// Bulk collapse / expand every group section at once (driven by the
+// toolbar control). Bulk-setting the Set is safe under the section-based
+// virtualization — collapsed dividers render zero rows and the window
+// reflows; rows that scroll in later read the new state.
+function collapseAllSections(): void {
+  collapsedKeys.value = new Set(groupedSections.value.map((s) => s.key))
+}
+function expandAllSections(): void {
+  collapsedKeys.value = new Set()
+}
+
 // True (pre-window) record count per section, so a collapsed divider —
 // whose rendered `records` is empty — can still report how many rows it
 // hides, and an expanded-but-paginated divider shows its real total.
@@ -307,7 +318,7 @@ onBeforeUnmount(() => {
   sentinelObserver = null
 })
 
-defineExpose({ expandWindowToAll })
+defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 </script>
 
 <template>
