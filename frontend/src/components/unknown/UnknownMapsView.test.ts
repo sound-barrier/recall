@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 
 import UnknownMapsView from '@/components/unknown/UnknownMapsView.vue'
+import { useMatchesStore } from '@/stores/matches'
 import type { CardStateApi } from '@/types/cardState'
 import type { MatchRecord, UpdateInfo } from '@/api'
 
@@ -39,17 +41,34 @@ function makeCardState(_records: MatchRecord[]) {
 }
 
 function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: MatchRecord[]; referenceGapRecords: MatchRecord[]; allRecords: MatchRecord[]; updateInfo: UpdateInfo | null }> = {}) {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  // The view reads unknown / ambiguous / reference-gap from the matches
+  // store's getters (derived off one records array), and allRecords (the
+  // candidate lookup) from records itself. Seed the union, deduped by key —
+  // the fixtures are well-shaped (unknown = no-map non-ambiguous, ambiguous
+  // = ambiguous:true, reference-gap = hero_raw/map_raw) so the predicate
+  // getters partition them back out exactly as the props used to.
+  const union = [
+    ...records,
+    ...(extras.ambiguousRecords ?? []),
+    ...(extras.referenceGapRecords ?? []),
+    ...(extras.allRecords ?? []),
+  ]
+  const seen = new Set<string>()
+  useMatchesStore().records = union.filter((r) => {
+    if (seen.has(r.match_key)) return false
+    seen.add(r.match_key)
+    return true
+  })
   const { api: cardState, calls } = makeCardState(records)
   const wrapper = mount(UnknownMapsView, {
     props: {
-      unknownRecords: records,
-      ambiguousRecords: extras.ambiguousRecords ?? [],
-      referenceGapRecords: extras.referenceGapRecords ?? [],
-      allRecords: extras.allRecords ?? [],
       cardState,
       preloadScreenshot: () => undefined,
       updateInfo: extras.updateInfo ?? null,
     },
+    global: { plugins: [pinia] },
   })
   return { wrapper, calls }
 }
@@ -327,17 +346,17 @@ describe('UnknownMapsView', () => {
   // each test ending).
   describe('hover thumbnail on collapsed cards', () => {
     function mountAttached(records: MatchRecord[]) {
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      useMatchesStore().records = records
       const { api: cardState, calls } = makeCardState(records)
       const wrapper = mount(UnknownMapsView, {
         props: {
-          unknownRecords: records,
-          ambiguousRecords: [],
-          referenceGapRecords: [],
-          allRecords: [],
           cardState,
           preloadScreenshot: () => undefined,
           updateInfo: null,
         },
+        global: { plugins: [pinia] },
         attachTo: document.body,
       })
       return { wrapper, calls }
@@ -445,18 +464,18 @@ describe('UnknownMapsView', () => {
   //    visible record's first source file.
   describe('screenshot preload on view mount', () => {
     function mountWithPreloadCapture(records: MatchRecord[]) {
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      useMatchesStore().records = records
       const { api: cardState } = makeCardState(records)
       const calls: string[] = []
       mount(UnknownMapsView, {
         props: {
-          unknownRecords: records,
-          ambiguousRecords: [],
-          referenceGapRecords: [],
-          allRecords: [],
           cardState,
           preloadScreenshot: (url: string) => { calls.push(url) },
           updateInfo: null,
         },
+        global: { plugins: [pinia] },
       })
       return calls
     }

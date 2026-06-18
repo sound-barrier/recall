@@ -9,6 +9,11 @@ import ContextualCallout from '@/components/shared/ContextualCallout.vue'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import { filenameFromMatchKey } from '@/match/match-key'
 import type { CardStateApi } from '@/types/cardState'
+import { useMatchesStore } from '@/stores/matches'
+
+// The triage record lists come straight from the matches store's getters
+// (derived off one records array); no longer prop-drilled from App.
+const matchesStore = useMatchesStore()
 
 // UnknownMapsView is the triage tab for records the user needs to
 // take action on:
@@ -28,18 +33,6 @@ import type { CardStateApi } from '@/types/cardState'
 // only consumer.
 
 const props = defineProps<{
-  unknownRecords:   MatchRecord[]
-  ambiguousRecords: MatchRecord[]
-  // Records whose parser captured an OCR'd hero or map name but
-  // couldn't match it to the canonical YAML rosters (e.g. Miyazaki
-  // before heroes.yaml was updated). Surfaces as a new "Reference
-  // data gaps" section so the user knows what's awaiting the next
-  // YAML release. Cannot be edited; cannot have its hero/map
-  // manually set. Required — the parent ALWAYS knows the
-  // reference-gap subset, and tests need to supply it explicitly
-  // so the assertion shape stays unambiguous.
-  referenceGapRecords: MatchRecord[]
-  allRecords:       MatchRecord[]
   cardState:        CardStateApi
   // Cache-warm helper from `useScreenshotPreview` (item 12). The
   // hover-thumb path warms the same URL the in-card source-preview
@@ -75,7 +68,11 @@ const emit = defineEmits<{
   'open-lightbox':      [filename: string, files: readonly string[], dirIDs: Record<string, number>]
 }>()
 
-const ambiguousList = computed(() => props.ambiguousRecords)
+const ambiguousList = computed(() => matchesStore.ambiguousRecords)
+// Template-facing aliases for the store getters (the template referenced the
+// former props by bare name).
+const unknownRecords = computed(() => matchesStore.unknownRecords)
+const referenceGapRecords = computed(() => matchesStore.referenceGapRecords)
 
 // Contextual callout for the Reference data gaps section. Fires
 // the first time any record carries the gap signal — most users
@@ -85,7 +82,7 @@ const ambiguousList = computed(() => props.ambiguousRecords)
 // the surface back to its meaning the first time it appears.
 const refdataGapCallout = useContextualCallout({
   id:   'unknown.refdata',
-  gate: () => props.referenceGapRecords.length > 0,
+  gate: () => matchesStore.referenceGapRecords.length > 0,
 })
 
 // Reference-data-gap CTA helper. Returns the upgrade tip for a
@@ -120,7 +117,7 @@ function recognisingRelease(rec: MatchRecord): { version: string; url: string; n
 // undefined when the candidate is no longer in `records` (e.g. it
 // was hidden + the user has show-hidden off).
 function findRecord(matchKey: string): MatchRecord | undefined {
-  return props.allRecords.find(r => r.match_key === matchKey)
+  return matchesStore.records.find(r => r.match_key === matchKey)
 }
 
 function formatDistance(seconds: number): string {
@@ -261,7 +258,7 @@ const {
   isVisible: () => true,
   srcFor: (key) => {
     // Hover lives only on the unmatched cards, so resolve against that list.
-    const rec = props.unknownRecords.find((r) => r.match_key === key)
+    const rec = matchesStore.unknownRecords.find((r) => r.match_key === key)
     const first = rec?.source_files?.[0]
     return first ? screenshotURL(first, rec.source_dir_ids?.[first] ?? 0) : ''
   },
@@ -278,7 +275,7 @@ function onMoveUnknown(rec: MatchRecord, e: MouseEvent) { onMove(rec.match_key, 
 // URLs across consumers, so the in-card source-preview <img>'s
 // later request reads from the same cached response.
 function preloadVisibleScreenshots() {
-  for (const rec of props.unknownRecords) {
+  for (const rec of matchesStore.unknownRecords) {
     const first = rec.source_files?.[0]
     if (!first) continue
     props.preloadScreenshot(screenshotURL(first, rec.source_dir_ids?.[first] ?? 0))
@@ -286,7 +283,7 @@ function preloadVisibleScreenshots() {
 }
 
 onMounted(preloadVisibleScreenshots)
-watch(() => props.unknownRecords, preloadVisibleScreenshots, { deep: false })
+watch(() => matchesStore.unknownRecords, preloadVisibleScreenshots, { deep: false })
 
 // Touch-pointer long-press fallback for the hover thumbnail. Mouse
 // users get instant peek on hover; touch users have no hover, so a
