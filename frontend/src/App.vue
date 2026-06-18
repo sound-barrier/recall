@@ -51,8 +51,6 @@ import {
   SetMatchReview,
   SetMatchQueue,
   SetMatchPlayMode,
-  HardDeleteMatch,
-  MoveMatches,
   SeedTestProfile,
   SwitchProfile,
 } from '@/api'
@@ -79,6 +77,7 @@ import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
+import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/matches/useMatchesNarrow'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
@@ -936,149 +935,9 @@ async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
 // once at the end. Idempotent: re-tagging an already-tagged record
 // is a no-op (the API dedupes lowercase server-side, see
 // SetMatchAnnotation).
-// ─── Right-click context menu fast-tracks ───────────────────────
-//
-// Each handler does one job — opens the detail panel + focuses a
-// field, writes to clipboard, or shells the screenshots folder
-// open. Failures surface as a soft error string; the menu itself
-// is already closed by the time we land here (the menu emits
-// close before the action emit, so the user sees the action,
-// not the menu, fail).
-
-// Pending focus target — read by MatchDetailPanel on mount and
-// cleared via clearPendingFocus(). Lives at App.vue scope because
-// the panel might not be mounted at the moment of right-click
-// (closed selection); we set the target, open the selection,
-// then the panel's onMounted picks the target up.
-const pendingFocusTarget = ref<'note' | 'tag' | ''>('')
-function clearPendingFocus() { pendingFocusTarget.value = '' }
-
-function onOpenMatchAndFocus(matchKey: string, target: 'note' | 'tag') {
-  pendingFocusTarget.value = target
-  selection.open(matchKey)
-}
-
-async function onCopyReplayCode(matchKey: string) {
-  const r = records.value.find(x => x.match_key === matchKey)
-  const code = (r?.annotation?.replay_code ?? '').trim()
-  if (!code) {
-    setError('No replay code on this match.')
-    return
-  }
-  try {
-    await navigator.clipboard.writeText(code)
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-async function onCopyMatchLink(matchKey: string) {
-  // The "match link" is just the key today — the desktop app
-  // doesn't have a deep-link URL scheme yet (recall://) so the
-  // pasted text is what the user can drop into a Discord message
-  // for a teammate to grep against their own corpus. Once a
-  // canonical URL exists, swap this body to format it.
-  try {
-    await navigator.clipboard.writeText(matchKey)
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-async function onOpenSourceFolder(_matchKey: string) {
-  // Today we reveal the configured screenshots dir — every match's
-  // source files live there for new users. Per-record dir resolution
-  // (when a match was ingested from a different folder than the
-  // currently-watched one) is a follow-up; we keep _matchKey in
-  // the signature so the API is forward-compatible.
-  try {
-    await RevealScreenshotsDir()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-async function onBulkTag(matchKeys: string[], tag: string) {
-  if (matchKeys.length === 0 || !tag) return
-  const norm = tag.trim().toLowerCase()
-  if (!norm) return
-  try {
-    // Snapshot the records lookup by key so each PUT carries the
-    // existing annotation fields (note / replay_code / members /
-    // leaver) along with the new tag — the PUT replaces the whole
-    // annotation row, so a slim body would clear those fields.
-    const byKey = new Map(records.value.map((r) => [r.match_key, r] as const))
-    await Promise.all(matchKeys.map(async (key) => {
-      const r = byKey.get(key)
-      const existing = r?.annotation
-      const existingTags = existing?.tags ?? []
-      if (existingTags.includes(norm)) return // already tagged
-      await SetMatchAnnotation(key, {
-        leaver:      (existing?.leaver ?? '') as MatchAnnotationInput['leaver'],
-        note:        existing?.note ?? undefined,
-        replay_code: existing?.replay_code ?? undefined,
-        members:     existing?.members ?? undefined,
-        tags:        [...existingTags, norm],
-      })
-    }))
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Hard-delete handler — drawer "Delete forever" affordance after
-// the user confirms the two-step. Idempotent on the server so a
-// double-fire from a stale UI is safe.
-async function onHardDeleteMatch(matchKey: string) {
-  try {
-    await HardDeleteMatch(matchKey)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Bulk unhide — Archive drawer's bulk-action bar. Fans out
-// SetMatchVisibility(false) in parallel, single reload when all
-// PUTs settle. Same shape as onHideMatches.
-async function onUnhideMatches(matchKeys: string[]) {
-  if (matchKeys.length === 0) return
-  try {
-    await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, false)))
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Bulk hard-delete — Archive drawer's bulk "Delete forever" after
-// the action-bar two-step confirm. Fans out HardDeleteMatch in
-// parallel.
-async function onHardDeleteMatches(matchKeys: string[]) {
-  if (matchKeys.length === 0) return
-  try {
-    await Promise.all(matchKeys.map((k) => HardDeleteMatch(k)))
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Bulk move-to-profile — MatchesView emits this from either action
-// bar after the user picks a target profile. Server handles the
-// two-phase transfer (write target, delete source); we reload the
-// active profile's data after so the moved rows disappear from the
-// current dossier.
-async function onMoveMatches(matchKeys: string[], targetProfile: string) {
-  if (matchKeys.length === 0) return
-  try {
-    await MoveMatches(matchKeys, targetProfile)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
+// Match-mutation handlers (context-menu fast-tracks + archive-drawer bulk
+// actions) + the pending detail-panel focus target live in useMatchActions
+// — wired below via `useMatchActions(...)` once `selection` exists.
 
 // ── Export-bundle + CSV flow ─────────────────────────────────────────
 // The Matches bulk-action bar emits `export-bundle` / `export-csv` with the
@@ -1199,6 +1058,28 @@ function toggleFilter(field: string, value: string) {
 const anchorToast = ref<{ kind: 'set' | 'cleared'; label: string; token: number } | null>(null)
 let anchorToastToken = 0
 const selection = useSelectedMatch(matchesNarrow.narrowedRecords)
+
+// Match-mutation handlers (context-menu fast-tracks + archive-drawer bulk
+// actions) + the pending detail-panel focus target.
+const {
+  pendingFocusTarget,
+  clearPendingFocus,
+  onOpenMatchAndFocus,
+  onCopyReplayCode,
+  onCopyMatchLink,
+  onOpenSourceFolder,
+  onBulkTag,
+  onHardDeleteMatch,
+  onUnhideMatches,
+  onHardDeleteMatches,
+  onMoveMatches,
+} = useMatchActions({
+  records,
+  openMatch: selection.open,
+  reload: load,
+  setError,
+  onError: setErrorFromRaw,
+})
 
 // Tour-driven narrow popover + filter handlers. The tour fires
 // these via emits on <OnboardingTour /> so a step can demonstrate
