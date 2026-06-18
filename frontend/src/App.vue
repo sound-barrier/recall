@@ -58,7 +58,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
-import { useTabKeyboardNav, TAB_ORDER, type TabId } from '@/composables/shared/useTabKeyboardNav'
+import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
 import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
@@ -168,7 +168,8 @@ const {
   updateCheckModalOpen,
   dataLocation,
 } = storeToRefs(appStore)
-const { setError, setErrorFromRaw, clearError, checkForUpdates } = appStore
+const { setError, setErrorFromRaw, clearError, checkForUpdates, goToView } = appStore
+const { view } = storeToRefs(appStore)
 
 // Matches domain: records (source of truth) + the derived triage lists live
 // in the matches store. App's load() boot coordinator writes `records`;
@@ -248,28 +249,7 @@ async function onTourSeedAndSwitch(resumeStepIndex: number): Promise<void> {
   window.location.reload()
 }
 
-// Which top-level view is shown: 'matches' (default — filter rail +
-// match cards) or 'settings' (config sections — directory, watch,
-// engine, backup/restore). Switched via the masthead nav tabs.
-const view = ref<TabId>('matches')
-
-
-// goToView switches the active tab AND moves focus into the newly visible
-// panel so keyboard users land in the new content rather than staying on
-// the nav button. Each <section> has tabindex="-1" so it can receive
-// programmatic focus without entering the natural tab order.
-async function goToView(next: string) {
-  view.value = next as TabId
-  // Entering Parse: re-read how many screenshots are pending so the "Run
-  // Parse · N" count reflects the folder NOW, not whatever was fetched in
-  // the initial-load batch (new captures may have landed since). Fire-and-
-  // forget — the count ref updates reactively when it resolves.
-  if (next === 'ingest') void refreshNewCount()
-  await nextTick()
-  const panel = document.getElementById(`panel-${next}`)
-  if (panel) panel.focus({ preventScroll: true })
-}
-
+// view + goToView live in the app store; useTabKeyboardNav drives them.
 const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
 
 // ── Keyboard-shortcut + card-focus state ──────────────────────
