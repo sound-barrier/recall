@@ -10,12 +10,10 @@
 import '@/styles/app.css'
 
 import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent, type Component } from 'vue'
-import type { MatchRecord, DataLocation, NamedCandidate } from '@/api'
+import { storeToRefs } from 'pinia'
+import type { MatchRecord, NamedCandidate } from '@/api'
 import {
-  GetVersion,
   GetStartupError,
-  CheckForUpdate,
-  type UpdateInfo,
   ParseScreenshots,
   ReParseAll,
   CancelParse,
@@ -56,6 +54,7 @@ import {
 } from '@/api'
 import type { MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
+import { useAppStore } from '@/stores/app'
 import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from '@/composables/shared/useTabKeyboardNav'
@@ -160,29 +159,20 @@ const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches
 const OnboardingTour = defineAsyncComponent(() => import('@/components/shared/OnboardingTour.vue'))
 
 const records = ref<MatchRecord[]>([])
-const error = ref('')
-// When the current error came from a retryable path (currently:
-// the initial load() call), `errorRetry` carries the function the
-// banner's Retry button should invoke. Cleared whenever `error`
-// is cleared or set from a non-retryable path.
-const errorRetry = ref<(() => void) | null>(null)
-// `setError` is the single error-setting seam. Pass the raw Go
-// error (most paths) or a pre-canned message (the typed-string
-// app-level cases like "Tesseract is not configured"). For the
-// raw-Go paths the message is run through `plainLanguageError`
-// before display so first-time users see a CTA instead of a
-// "stat /Users/x: permission denied" diagnostic.
-function setError(message: string, retry: (() => void) | null = null) {
-  error.value = message
-  errorRetry.value = retry
-}
-function setErrorFromRaw(raw: string, retry: (() => void) | null = null) {
-  setError(plainLanguageError(raw), retry)
-}
-function clearError() {
-  error.value = ''
-  errorRetry.value = null
-}
+// App-shell cross-cutting state (error banner, version, update check, data
+// location) lives in the Pinia app store. Destructure with the same local
+// names so the existing call sites in this file stay unchanged.
+const appStore = useAppStore()
+const {
+  error,
+  errorRetry,
+  appVersion,
+  updateInfo,
+  updateCheckBusy,
+  updateCheckModalOpen,
+  dataLocation,
+} = storeToRefs(appStore)
+const { setError, setErrorFromRaw, clearError, checkForUpdates } = appStore
 // `parseBusy` flips true during runParse(); used to disable the
 // manual Parse button and its peers in IngestView / SettingsView.
 const parseBusy = ref(false)
@@ -281,17 +271,6 @@ const newScreenshotCount = ref<number | null>(null)
 // engine, backup/restore). Switched via the masthead nav tabs.
 const view = ref<TabId>('matches')
 
-// appVersion drives the masthead "v0.3.0" version label.
-const appVersion = ref('')
-const updateInfo = ref<UpdateInfo | null>(null)
-// updateCheckBusy gates the "Check for updates" button while the
-// GitHub releases roundtrip is in flight. The check is user-
-// triggered (NOT on mount) so users on metered connections or
-// stricter network postures don't pay for a release lookup they
-// didn't ask for. Pre-rename this fired automatically on mount and
-// the "↑ update available" pill rendered silently — regressed when
-// the masthead got rewired; this is the deliberate-pull restoration.
-const updateCheckBusy = ref(false)
 
 // goToView switches the active tab AND moves focus into the newly visible
 // panel so keyboard users land in the new content rather than staying on
@@ -424,10 +403,6 @@ const {
   onError: (m) => { setErrorFromRaw(m) },
 })
 
-// Platform-resolved data paths — surfaced read-only in Settings →
-// Directories so the user can see where the DB lives. Null until the
-// first load() completes.
-const dataLocation = ref<DataLocation | null>(null)
 
 // First-run picker candidates — four canonical Windows capture
 // sources (Nvidia Overlay / OW PrntScn / Snip tool / Steam). Empty
@@ -558,27 +533,6 @@ const {
 // "Check for updates" button (which simultaneously fires
 // checkForUpdates so the modal renders the result the moment the
 // network roundtrip lands). Apply Update runs inside the modal.
-const updateCheckModalOpen = ref(false)
-
-// User-triggered GitHub release check. Idempotent — re-clicks while
-// in flight are no-ops; re-clicks after a result silently replace
-// the cached updateInfo. Opens the modal so the result is visible
-// regardless of which branch (dev/available/up-to-date) lands.
-async function checkForUpdates() {
-  updateCheckModalOpen.value = true
-  if (updateCheckBusy.value) return
-  updateCheckBusy.value = true
-  try {
-    const u = await CheckForUpdate()
-    if (u.checked) updateInfo.value = u
-  } catch (_) {
-    // Silent — the modal shows the cached result or a network-failure
-    // message via the !info branch.
-  } finally {
-    updateCheckBusy.value = false
-  }
-}
-
 // Refresh local matches when Apply Data Update swaps the parser —
 // the new dataset can resolve previously-unknown heroes/maps.
 function onDataApplied() {
@@ -1405,7 +1359,7 @@ onMounted(() => {
     if (v) lastParsedAt.value = Number(v) || null
   } catch (_) {}
 
-  GetVersion().then(v => { appVersion.value = v }).catch(() => {})
+  void appStore.loadVersion()
   // CheckForUpdate is no longer called on mount — it's gated behind
   // the "Check for updates" button in the masthead's ver-block. See
   // checkForUpdates() below + the v-if chain on .ver-block.

@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { createPinia } from 'pinia'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { MatchRecord, TesseractStatus, UpdateInfo } from '@/api'
 
@@ -202,7 +203,10 @@ export async function mountApp(overrides: MountOverrides = {}) {
     import('@/components/unknown/UnknownMapsView.vue'),
   ])
   const App = (await import('@/App.vue')).default
-  const wrapper = mount(App, { attachTo: document.body })
+  const wrapper = mount(App, {
+    attachTo: document.body,
+    global: { plugins: [createPinia()] },
+  })
   // First flush: App.vue's onMounted load() chain
   // (CheckForUpdate, GetVersion, GetMatchResults). Second: the async
   // view component's now-cached loader resolves and the post-import
