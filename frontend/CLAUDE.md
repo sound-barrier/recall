@@ -9,14 +9,37 @@ read it before adding or changing any `/api/v1/...` call.
 
 ## Architecture
 
-Vue 3 + composition API. No router, no Vuex/Pinia — `App.vue` is a
-router-shell: masthead + modals + cross-cutting state, then
-`<XxxView v-if="view === '…'" />` mounts one of four view SFCs:
-`SettingsView`, `IngestView`, `MatchesView`, `UnknownMapsView`
-(each in its feature folder under `frontend/src/components/`). Per-card UI state (expand,
-sources, preview) lives in App.vue and is passed to MatchesView +
-UnknownMapsView via the `CardStateApi` bundle exported from
-MatchesView.vue so both views share it without forking.
+Vue 3 + composition API. No router. Cross-cutting state lives in **Pinia**
+domain stores under `frontend/src/stores/` — `useAppStore` (view/nav, error
+banner, version, update-check, dataLocation), `useMatchesStore` (records +
+derived triage lists, parse lifecycle, the narrow/anchor filter cluster, the
+dossier-feeding narrowedRecords), `useSettingsStore` (Tesseract/OCR engine,
+folder-watch, screenshots-dir, theme), and `useUiStore` (detail-panel
+selection, screenshot preview/lightbox, card focus). `App.vue` is the
+router-shell that reads those stores and mounts one of four view SFCs via
+`<XxxView v-if="appStore.view === '…'" />`: `SettingsView`, `IngestView`,
+`MatchesView`, `UnknownMapsView` (each in its feature folder under
+`frontend/src/components/`). It still owns the boot coordinator (`load()`'s
+`Promise.allSettled` fan-out into the stores' setters) + the SSE event stream +
+clear-DB/backup (coordinator-level ops).
+
+**Store conventions (mirror the existing stores):** setup-style stores
+(`defineStore('x', () => {…})`) ARE composables with a global instance — migrate
+a *global* state composable by wrapping its body; consumers read state via
+`storeToRefs(store)` and actions off the store directly (the SAME local names
+keep call sites stable). Two gotchas, both load-bearing: (1) **`markRaw` any
+composable *bundle* you expose** (the narrow API, `selection`, etc.) — Pinia's
+`reactive()` store deep-unwraps nested refs and would turn `narrow.narrowedRecords`
+(a Ref) into a bare value; `markRaw` keeps the inner refs intact + reactive. (2)
+**Composables that use component lifecycle** (`usePersistedRef` → `onMounted`)
+only work in a store because it binds to App's lifecycle on first use — fragile
+for isolated tests, and the reason the **dossier stays in MatchesView** (it
+needs `useWeekStart`) rather than the matches store. Per-instance/utility
+composables (`useModalFocusTrap`, `useDragReorder`, `useWidgetConfig`, the
+per-row/table view state) STAY composables — a singleton store would break them.
+Tests seed stores via `setActivePinia(createPinia())` (+ `mountApp`/`mountWidget`
+install a Pinia). Per-card UI state still flows to MatchesView + UnknownMapsView
+via the `CardStateApi` bundle exported from MatchesView.vue.
 
 **File layout — group by feature, not flat.** `components/` and `composables/`
 are organized into feature subfolders, not one giant flat directory:
@@ -126,7 +149,9 @@ Palette + contrast reasoning is in the A11y section below.
 
 ## App.vue concerns
 
-State concerns owned by App.vue and passed down via props/emits:
+State concerns — now owned by the Pinia domain stores (see Architecture) and
+read directly by App.vue + the views; the notes below describe the behaviour,
+not the wiring:
 
 - **Nav** — 4 tabs: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
 - **Matches view layout** — `MatchesView.vue` is a *set workspace*: dossier (active-clause chips + W/L/D + customizable widget grid via `useMatchesDossier` + per-widget config) at top, Campaign Log (heatmap + brushable sparkline via `MatchTimelineHeader`) in the middle, compact `.leaf-row` list below with sort + Y/M/W/D grouping via `useMatchesGroup`. The left-side *"Narrow this set"* panel mirrors `MatchDetailPanel`'s modal contract (focus trap, Esc, backdrop, `inert` + `aria-hidden` on the background container while open) and consolidates every filter dimension into one place — search, date range (preset + custom), map/map-type/hero/role/result/tags, leaver handling, dual min-play thresholds, include-unknown toggle. State lives in `useMatchesNarrow`; the Map + Hero pickers reuse the `FilterCombobox` component (typeahead + selected-pill row + dropdown listbox with role="option" + aria-selected). Hero filter is **broad match** against the primary `data.hero` AND every `data.heroes_played[]` entry.
