@@ -1,9 +1,12 @@
-import { computed, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import type { MatchRecord } from '@/api'
 import { GetNewScreenshotCount } from '@/api'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
+import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 
 // The matches domain: the parsed-match records (source of truth for the
 // dossier + all four views) and the derived triage lists. Migrated out of
@@ -68,7 +71,28 @@ export const useMatchesStore = defineStore('matches', () => {
     recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
   }
 
+  // ── Narrow filter + anchor cluster ────────────────────────────────
+  // The Matches-view filter state lives here so `selection` (the detail
+  // panel) + the dossier paginate/aggregate against the same narrowedRecords
+  // the view shows. The "since this match" anchor persists per-OS-profile;
+  // narrowState borrows its ref so the filter sees detail-panel mutations
+  // without a round-trip. Exposed as composable bundles (their inner refs
+  // don't auto-unwrap at object depth — consumers destructure them into
+  // top-level vars, the same CardStateApi convention used elsewhere).
+  const matchAnchor = useMatchAnchor()
+  const matchesNarrowState = createMatchesNarrowState({ anchorKey: matchAnchor.anchorKey })
+  const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
+  const { searchClauses } = useSearchClauses(matchesNarrowState.searchText)
+
   return {
+    // markRaw the composable bundles: Pinia's reactive() store deep-unwraps
+    // nested refs, which would turn matchesNarrow.narrowedRecords (a Ref) into
+    // a bare value and break every `.value` consumer. markRaw keeps the bundle
+    // raw so its inner refs stay refs (and stay reactive on their own).
+    matchAnchor: markRaw(matchAnchor),
+    matchesNarrowState: markRaw(matchesNarrowState),
+    matchesNarrow: markRaw(matchesNarrow),
+    searchClauses,
     records,
     unknownRecords,
     referenceGapRecords,
