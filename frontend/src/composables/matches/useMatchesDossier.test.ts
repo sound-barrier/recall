@@ -54,6 +54,7 @@ function rec(opts: {
   hero?: string
   leaver?: '' | 'self' | 'team' | 'enemy'
   members?: string[]
+  modifiers?: string[]
   reviewedBy?: 'self' | 'coach'
   reviewedAt?: string
   parsedAt?: string
@@ -68,6 +69,7 @@ function rec(opts: {
       result: opts.result ?? 'victory',
       date: '2026-05-10', finished_at: '14:00',
       playlist: 'competitive',
+      ...(opts.modifiers ? { modifiers: opts.modifiers } : {}),
     },
     annotation: (opts.leaver || opts.members) ? { leaver: opts.leaver ?? '', members: opts.members ?? [] } : undefined,
     parsed_at: opts.parsedAt ?? '2026-05-10T14:00:00Z',
@@ -1151,6 +1153,56 @@ describe('useMatchesDossier', () => {
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
       const result = dossier.winrateBy({ getter: (r) => r.data?.hero, minMatches: 3, limit: 2 })
       expect(result.value.map((e) => e.key)).toEqual(['a', 'b']) // c dropped by the limit
+    })
+  })
+
+  describe('modifierBreakdown', () => {
+    it('counts each non-result modifier with its win-rate, ranked by frequency', () => {
+      const records = ref<MatchRecord[]>([
+        rec({ result: 'victory', modifiers: ['uphill battle', 'victory'] }),
+        rec({ result: 'victory', modifiers: ['uphill battle', 'victory'] }),
+        rec({ result: 'defeat', modifiers: ['reversal', 'defeat'] }),
+        rec({ result: 'victory', modifiers: ['calibration', 'victory'] }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const rows = dossier.modifierBreakdown({ limit: 10 })
+      // victory/defeat excluded; uphill battle (2) leads calibration (1) + reversal (1).
+      expect(rows.value.map((e) => e.key)).toEqual(['uphill battle', 'reversal', 'calibration'])
+      const uphill = rows.value[0]!
+      expect(uphill.total).toBe(2)
+      expect(uphill.winrate).toBe(100) // both uphill games were wins
+      expect(rows.value.find((e) => e.key === 'reversal')!.winrate).toBe(0)
+    })
+
+    it('respects the limit', () => {
+      const records = ref<MatchRecord[]>([
+        rec({ modifiers: ['uphill battle'] }),
+        rec({ modifiers: ['reversal'] }),
+        rec({ modifiers: ['calibration'] }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dossier.modifierBreakdown({ limit: 2 }).value).toHaveLength(2)
+    })
+  })
+
+  describe('modifierRecord', () => {
+    it('returns the count + win-rate for one modifier', () => {
+      const records = ref<MatchRecord[]>([
+        rec({ result: 'victory', modifiers: ['uphill battle'] }),
+        rec({ result: 'victory', modifiers: ['uphill battle'] }),
+        rec({ result: 'defeat', modifiers: ['reversal'] }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const uphill = dossier.modifierRecord({ modifier: 'uphill battle' })
+      expect(uphill.value).toEqual({ total: 2, winrate: 100 })
+      const reversal = dossier.modifierRecord({ modifier: 'reversal' })
+      expect(reversal.value).toEqual({ total: 1, winrate: 0 })
+    })
+
+    it('returns null when the modifier never appears', () => {
+      const records = ref<MatchRecord[]>([rec({ modifiers: ['calibration'] })])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dossier.modifierRecord({ modifier: 'uphill battle' }).value).toBeNull()
     })
   })
 

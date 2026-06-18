@@ -13,10 +13,17 @@ var knownRanks = []string{
 	"master", "grandmaster", "champion",
 }
 
-// knownModifiers is the OW competitive match-outcome modifier list. These
-// label the small pills under the rank progress bar.
+// knownModifiers is the OW2 competitive rank-update modifier list — the
+// small pills under the rank-progress bar that explain the SR change.
+// The expectation-vs-outcome quartet (favoured×won = expected, favoured×lost
+// = reversal, underdog×won = uphill battle, underdog×lost = consolation),
+// the streak/calibration adjustments, and the result pill itself. Matched
+// as substrings (multi-word labels included), so "win streak" and "loss
+// streak" stay distinct. "demotion protection" is detected separately in
+// parseRank (its OCR drops the trailing letters).
 var knownModifiers = []string{
-	"expected", "unexpected", "underdog", "overcharge",
+	"expected", "uphill battle", "reversal", "consolation",
+	"win streak", "loss streak", "calibration", "volatile",
 	"victory", "defeat", "draw",
 }
 

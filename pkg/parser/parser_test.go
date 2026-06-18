@@ -136,12 +136,30 @@ func TestExtractModifiers(t *testing.T) {
 			want: []string{"expected", "victory"},
 		},
 		{
-			// "unexpected" contains "expected" as a substring, and
-			// extractModifiers uses substring search, so both match.
-			// Listed in order of the parser.KnownModifiers slice.
-			name: "single unexpected matches both expected + unexpected",
-			text: "UNEXPECTED",
-			want: []string{"expected", "unexpected"},
+			name: "uphill battle win (underdog who won)",
+			text: "UPHILL BATTLE VICTORY",
+			want: []string{"uphill battle", "victory"},
+		},
+		{
+			name: "reversal loss (favoured who lost)",
+			text: "REVERSAL DEFEAT",
+			want: []string{"reversal", "defeat"},
+		},
+		{
+			name: "consolation loss (underdog who lost)",
+			text: "CONSOLATION DEFEAT",
+			want: []string{"consolation", "defeat"},
+		},
+		{
+			// Both end in "streak"; the full label keeps them distinct.
+			name: "win streak stays distinct from loss streak",
+			text: "WIN STREAK",
+			want: []string{"win streak"},
+		},
+		{
+			name: "calibration + volatile",
+			text: "CALIBRATION VOLATILE",
+			want: []string{"calibration", "volatile"},
 		},
 		{
 			name: "mixed case is normalized",
