@@ -17,6 +17,8 @@ import { useTheme } from '@/composables/settings/useTheme'
 const props = defineProps<{
   option: TrendOption
   caption: string
+  // Bumped by the parent's "Reset view" button to reset this chart's zoom.
+  resetSignal?: number
 }>()
 
 const emit = defineEmits<{
@@ -157,9 +159,13 @@ function onPointerDown(e: PointerEvent): void {
 function onPointerUp(e: PointerEvent): void {
   if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return
   const inst = chart.value
-  if (!inst?.convertFromPixel) return
+  if (!inst?.convertFromPixel || !inst.containPixel) return
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  const coord = inst.convertFromPixel({ gridIndex: 0 }, [e.clientX - rect.left, e.clientY - rect.top]) as number[]
+  const px: [number, number] = [e.clientX - rect.left, e.clientY - rect.top]
+  // Only clicks inside the plot grid open a match — a click on the legend
+  // (which toggles the line) or the zoom slider must not.
+  if (!inst.containPixel({ gridIndex: 0 }, px)) return
+  const coord = inst.convertFromPixel({ gridIndex: 0 }, px) as number[]
   const t = Array.isArray(coord) ? coord[0] : undefined
   if (typeof t !== 'number') return
   const key = nearestMatchKey(t)
@@ -175,6 +181,10 @@ onMounted(() => {
   nextTick(enableBrush)
 })
 watch(themedOption, () => nextTick(enableBrush))
+// Parent "Reset view" → snap the zoom window back to the full range.
+watch(() => props.resetSignal, () => {
+  chart.value?.dispatchAction?.({ type: 'dataZoom', start: 0, end: 100 })
+})
 onBeforeUnmount(() => motionQuery?.removeEventListener('change', syncMotion))
 </script>
 
