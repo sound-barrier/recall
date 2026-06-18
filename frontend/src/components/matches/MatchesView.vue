@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import type { MatchRecord } from '@/api'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { provideDossier } from '@/composables/dashboard/useDossier'
 import { provideNarrow } from '@/composables/matches/useNarrow'
@@ -37,6 +36,7 @@ import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.v
 import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
 import { useMatchesRowContext } from '@/composables/matches/useMatchesRowContext'
 import { useNarrowMode } from '@/composables/matches/useNarrowMode'
+import { useMatchesStore } from '@/stores/matches'
 
 // Matches page — "set workspace" layout.
 //
@@ -67,7 +67,6 @@ import { useNarrowMode } from '@/composables/matches/useNarrowMode'
 // useSelectedMatch → MatchDetailPanel (right-side slide-out).
 
 const props = defineProps<{
-  records: MatchRecord[]
   // The narrow API bundle, constructed in App.vue so its selection
   // composable can track the same narrowedRecords this view shows.
   // Refs inside the object don't auto-unwrap (Vue 3 caveat), so we
@@ -144,6 +143,11 @@ const emit = defineEmits<{
   // because the narrowed set + heroRole live in this view.
   'export-csv': [csv: string, defaultName: string]
 }>()
+
+// Match records come from the matches store (no longer prop-drilled from
+// App). The narrow bundle App passes in is built on the same store records,
+// so narrowedRecords and the raw list stay consistent.
+const matchesStore = useMatchesStore()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
 //
@@ -236,7 +240,7 @@ const {
 // useArchiveSelection. Destructured to top-level refs so the
 // template auto-unwraps them.
 const archive = useArchiveSelection({
-  records: computed(() => props.records),
+  records: computed(() => matchesStore.records),
   onUnhideMatches: (keys) => emit('unhide-matches', keys),
   onHardDeleteMatches: (keys) => emit('hard-delete-matches', keys),
 })
@@ -439,7 +443,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
       mode="rail"
       :open="true"
       :narrow="props.narrow"
-      :records="props.records"
+      :records="matchesStore.records"
       @open-match="(k: string) => emit('open-match', k)"
       @clear-anchor="emit('clear-anchor')"
     />
@@ -451,7 +455,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
          the shared dossier provided above. -->
       <MatchesDossierHead
         :narrow="props.narrow"
-        :records="props.records"
+        :records="matchesStore.records"
         :narrow-mode="narrowMode"
         @open-match="(k: string) => emit('open-match', k)"
         @clear-anchor="emit('clear-anchor')"
