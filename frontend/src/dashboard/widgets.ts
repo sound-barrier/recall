@@ -28,6 +28,12 @@ import CurrentRankWidget from '@/components/dashboard/widgets/CurrentRankWidget.
 import WinrateByHeroWidget from '@/components/dashboard/widgets/WinrateByHeroWidget.vue'
 import WinrateByMapWidget from '@/components/dashboard/widgets/WinrateByMapWidget.vue'
 import WinrateByRoleWidget from '@/components/dashboard/widgets/WinrateByRoleWidget.vue'
+import TiltCheckWidget from '@/components/dashboard/widgets/TiltCheckWidget.vue'
+import FirstGameWinrateWidget from '@/components/dashboard/widgets/FirstGameWinrateWidget.vue'
+import NetRankWeekWidget from '@/components/dashboard/widgets/NetRankWeekWidget.vue'
+import AvgGameLengthWidget from '@/components/dashboard/widgets/AvgGameLengthWidget.vue'
+import LeaverRateWidget from '@/components/dashboard/widgets/LeaverRateWidget.vue'
+import SessionsWidget from '@/components/dashboard/widgets/SessionsWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -244,6 +250,12 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'winrate-by-hero',     eyebrow: 'Win-rate by hero',       shape: 'breakdown', defaultRow: 2, component: WinrateByHeroWidget,  config: winrateBySchema       },
   { id: 'winrate-by-map',      eyebrow: 'Win-rate by map',        shape: 'breakdown', defaultRow: 2, component: WinrateByMapWidget,   config: winrateBySchema       },
   { id: 'winrate-by-role',     eyebrow: 'Win-rate by role',       shape: 'breakdown', defaultRow: 2, component: WinrateByRoleWidget,  config: winrateBySchema       },
+  { id: 'tilt-check',          eyebrow: 'Win-rate after a loss',  shape: 'kpi',       defaultRow: 1, component: TiltCheckWidget,       config: EMPTY_SCHEMA          },
+  { id: 'first-game-winrate',  eyebrow: 'First game of session',  shape: 'kpi',       defaultRow: 1, component: FirstGameWinrateWidget, config: EMPTY_SCHEMA          },
+  { id: 'net-rank-week',       eyebrow: 'Net rank (7 days)',      shape: 'kpi',       defaultRow: 1, component: NetRankWeekWidget,     config: EMPTY_SCHEMA          },
+  { id: 'avg-game-length',     eyebrow: 'Avg game length',        shape: 'kpi',       defaultRow: 1, component: AvgGameLengthWidget,    config: EMPTY_SCHEMA          },
+  { id: 'leaver-rate',         eyebrow: 'Leaver rate',            shape: 'kpi',       defaultRow: 1, component: LeaverRateWidget,      config: EMPTY_SCHEMA          },
+  { id: 'sessions',            eyebrow: 'Play sessions',          shape: 'kpi',       defaultRow: 1, component: SessionsWidget,        config: EMPTY_SCHEMA          },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add
