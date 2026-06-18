@@ -165,9 +165,7 @@ const matchesStore = useMatchesStore()
 const {
   records,
   unknownRecords,
-  referenceGapRecords,
   hiddenRecords,
-  ambiguousRecords,
   parseBusy,
   cancellingParse,
   firstLoadPending,
@@ -1440,10 +1438,6 @@ useEventStream({
         <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
         <UnknownMapsView
           v-if="view === 'unknown'"
-          :unknown-records="unknownRecords"
-          :ambiguous-records="ambiguousRecords"
-          :reference-gap-records="referenceGapRecords"
-          :all-records="records"
           :card-state="cardState"
           :preload-screenshot="screenshotPreview.preload"
           :update-info="updateInfo"
