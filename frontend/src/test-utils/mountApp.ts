@@ -151,6 +151,12 @@ export function fireEvent(name: string, data: unknown = undefined): boolean {
 // runs `flushPromises` to let the onMounted load() / Promise.all settle
 // before tests assert on the rendered DOM.
 export async function mountApp(overrides: MountOverrides = {}) {
+  // Reset the module registry FIRST so the dynamic import of App (and the
+  // Pinia stores it pulls in) re-evaluates against the fresh vi.doMock('@/api')
+  // below. Without this, a prior test that imported a store — which statically
+  // imports '@/api' for its load()/parse actions — leaves '@/api' cached with
+  // the real module, and the doMock never reaches the store.
+  vi.resetModules()
   mockApi(overrides)
   // happy-dom's localStorage is a noop without `--localstorage-file`
   // (vitest's default config doesn't pass it), so any test that
