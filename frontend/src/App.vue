@@ -48,7 +48,6 @@ import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
-import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
@@ -166,6 +165,9 @@ const {
   showUnsupportedModal,
   parseAnnouncement,
   parseConnectionState,
+  ignoredScreenshots,
+  ignoredCount,
+  ignoredPanelOpen,
 } = storeToRefs(matchesStore)
 const {
   refreshNewCount,
@@ -176,6 +178,12 @@ const {
   onCancelParse,
   confirmUnsupportedParse,
   refreshParse,
+  loadIgnored,
+  openIgnoredPanel,
+  closeIgnoredPanel,
+  onUnignoreScreenshot,
+  onClearIgnoredScreenshots,
+  onRunParseFromIgnored,
 } = matchesStore
 
 // Onboarding tour demo-records swap (tourActive / savedRecords /
@@ -641,17 +649,7 @@ async function onIgnoreScreenshot(filename: string) {
 // re-parse actions. loadIgnored is called from the record-reload, clear-DB, and
 // ignore flows; the panel's actions need App.vue's error surface + view nav +
 // the manual-parse kick.
-const {
-  ignoredScreenshots,
-  ignoredCount,
-  ignoredPanelOpen,
-  loadIgnored,
-  openIgnoredPanel,
-  closeIgnoredPanel,
-  onUnignoreScreenshot,
-  onClearIgnoredScreenshots,
-  onRunParseFromIgnored,
-} = useIgnoredScreenshots({ onError: setErrorFromRaw, goToView, parse })
+// Ignored screenshots (triage surface) live in the matches store.
 
 // SettingsAdvanced fires `clear-database` with `{ keepIgnored }`;
 // stash the opt and forward to the composable so its in-flight state

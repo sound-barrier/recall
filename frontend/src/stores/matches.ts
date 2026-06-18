@@ -24,6 +24,7 @@ import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
+import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -231,6 +232,25 @@ export const useMatchesStore = defineStore('matches', () => {
     await runParse()
   }
 
+  // ── Ignored screenshots ───────────────────────────────────────────
+  // The "Delete forever" / un-ignore triage surface; onRunParseFromIgnored
+  // re-runs the parse (this store's own `parse`) so re-included files land.
+  const {
+    ignoredScreenshots,
+    ignoredCount,
+    ignoredPanelOpen,
+    loadIgnored,
+    openIgnoredPanel,
+    closeIgnoredPanel,
+    onUnignoreScreenshot,
+    onClearIgnoredScreenshots,
+    onRunParseFromIgnored,
+  } = useIgnoredScreenshots({
+    onError: (m) => useAppStore().setErrorFromRaw(m),
+    goToView: (v) => useAppStore().goToView(v),
+    parse,
+  })
+
   // ── Narrow filter + anchor cluster ────────────────────────────────
   // The Matches-view filter state lives here so `selection` (the detail
   // panel) + the dossier paginate/aggregate against the same narrowedRecords
@@ -344,5 +364,14 @@ export const useMatchesStore = defineStore('matches', () => {
     parseAnnouncement,
     parseConnectionState,
     refreshParse,
+    ignoredScreenshots,
+    ignoredCount,
+    ignoredPanelOpen,
+    loadIgnored,
+    openIgnoredPanel,
+    closeIgnoredPanel,
+    onUnignoreScreenshot,
+    onClearIgnoredScreenshots,
+    onRunParseFromIgnored,
   }
 })
