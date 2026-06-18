@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, ref } from 'vue'
 
 import { useDossier } from '@/composables/dashboard/useDossier'
+import { useDragReorder } from '@/composables/dashboard/useDragReorder'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useTrendsLayout, type TrendChartId } from '@/composables/matches/useTrendsLayout'
 import type { TrendOption } from '@/components/matches/trends/echarts'
@@ -29,7 +30,25 @@ function onNarrowRange(from: string, to: string): void {
   narrow.pickedRange.value = 'custom'
 }
 
-const { isVisible, hide, show } = useTrendsLayout()
+const { visibleIds, hiddenIds, hide, show, move } = useTrendsLayout()
+
+// Drag/keyboard reorder of the visible charts. One logical row — the
+// 2-col grid just wraps the linear order — so ArrowLeft/Right + Home/End
+// reorder and Up/Down are no-ops (adjacentRow returns null). Only the ⠿
+// grip is draggable; the card body stays free for the canvas brush.
+const { dragging, dropHint, onDragStart, onDragEnd, onDragOver, onDrop, onRowDragOver, onRowDrop, onHandleKeydown } =
+  useDragReorder({
+    onMove: (_id, _fromRow, fromIdx, _toRow, toIdx) => move(fromIdx, toIdx),
+    rowSize: () => visibleIds.value.length,
+    adjacentRow: () => null,
+  })
+
+function onGripDragStart(id: TrendChartId, idx: number, e: DragEvent): void {
+  onDragStart(id, 0, idx, e)
+  // Drag the whole card, not the tiny grip glyph.
+  const card = (e.currentTarget as HTMLElement).closest('.trend-card')
+  if (card instanceof HTMLElement && e.dataTransfer) e.dataTransfer.setDragImage(card, 24, 16)
+}
 
 const expanded = ref(false)
 const windowSize = ref<number>(20)
@@ -62,37 +81,37 @@ interface ChartCard {
   windowSelector: boolean
 }
 
-const allCards = computed<ChartCard[]>(() => [
-  {
+const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
+  'rank-ladder': {
     id: 'rank-ladder', title: 'Rank over time', windowSelector: false,
     caption: 'Rank progression over time, by role', option: rankLadderOption(rankSeries.value), hasData: someData(rankSeries.value),
     empty: 'No rank readings — capture a competitive rank screenshot to track your climb.',
   },
-  {
+  'rolling-winrate': {
     id: 'rolling-winrate', title: 'Rolling win-rate (%)', windowSelector: true,
     caption: `Rolling win rate over the last ${windowSize.value} matches, by role`, option: winrateOption(winrateSeries.value), hasData: someData(winrateSeries.value),
     empty: 'No decisive matches in the set.',
   },
-  {
+  'rank-delta': {
     id: 'rank-delta', title: 'Rank delta per match', windowSelector: false,
     caption: 'Per-match rank change, by role', option: rankDeltaOption(rankDeltaSeries.value), hasData: someData(rankDeltaSeries.value),
     empty: 'No rank readings — capture a competitive rank screenshot.',
   },
-  {
+  'cumulative-net': {
     id: 'cumulative-net', title: 'Cumulative net record', windowSelector: false,
     caption: 'Running wins minus losses over time, by role', option: lineOption(cumulativeNetSeries.value), hasData: someData(cumulativeNetSeries.value),
     empty: 'No decisive matches in the set.',
   },
-  {
+  'modifiers': {
     id: 'modifiers', title: 'Modifiers over time', windowSelector: false,
     caption: 'Cumulative count of each match modifier over time', option: lineOption(modifierFreqSeries.value), hasData: someData(modifierFreqSeries.value),
     empty: 'No modifiers recorded — they come from competitive rank screenshots.',
   },
-])
+}))
 
-const visibleCards = computed(() => allCards.value.filter((c) => isVisible(c.id)))
-const hiddenCards = computed(() => allCards.value.filter((c) => !isVisible(c.id)))
-const anyData = computed(() => allCards.value.some((c) => c.hasData))
+const visibleCards = computed(() => visibleIds.value.map((id) => cardsById.value[id]))
+const hiddenCards = computed(() => hiddenIds.value.map((id) => cardsById.value[id]))
+const anyData = computed(() => Object.values(cardsById.value).some((c) => c.hasData))
 
 const WINDOW_OPTIONS = [10, 20, 50] as const
 </script>
@@ -131,12 +150,43 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
         <p v-if="!visibleCards.length" class="trends-empty">
           All charts hidden — add one below.
         </p>
-        <div v-else class="trends-grid">
-          <div v-for="card in visibleCards" :key="card.id" class="trend-card">
+        <div
+          v-else
+          class="trends-grid"
+          @dragover="onRowDragOver(0, $event)"
+          @drop="onRowDrop(0, $event)"
+        >
+          <div
+            v-for="(card, idx) in visibleCards"
+            :key="card.id"
+            class="trend-card"
+            :data-trend-card="card.id"
+            :class="{
+              'trend-card-drop-target': dropHint?.idx === idx,
+              'trend-card-dragging': dragging?.idx === idx,
+            }"
+            @dragover="onDragOver(0, idx, $event)"
+            @drop="onDrop(0, idx, $event)"
+          >
             <div class="trend-card-head">
-              <h4 class="trend-card-title">
-                {{ card.title }}
-              </h4>
+              <div class="trend-card-lead">
+                <button
+                  type="button"
+                  class="trend-card-grip"
+                  draggable="true"
+                  :aria-label="`Reorder the ${card.title} chart. Use arrow keys to move it.`"
+                  :data-drag-handle="card.id"
+                  @click.stop
+                  @dragstart="onGripDragStart(card.id, idx, $event)"
+                  @dragend="onDragEnd"
+                  @keydown="onHandleKeydown(card.id, 0, idx, $event)"
+                >
+                  <span aria-hidden="true">⠿</span>
+                </button>
+                <h4 class="trend-card-title">
+                  {{ card.title }}
+                </h4>
+              </div>
               <div class="trend-card-actions">
                 <select
                   v-if="card.windowSelector"
@@ -275,6 +325,17 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
   border-radius: 8px;
   padding: 0.75rem;
   min-width: 0;
+  transition: box-shadow 140ms ease, opacity 140ms ease;
+}
+
+/* The card being dragged dims; the card it will land in front of gets an
+   inset accent ring (active-drag feedback, not a resting hover). */
+.trend-card-dragging {
+  opacity: 0.4;
+}
+
+.trend-card-drop-target {
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .trend-card-head {
@@ -283,6 +344,31 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.25rem;
+}
+
+.trend-card-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.trend-card-grip {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  cursor: grab;
+}
+
+.trend-card-grip:active {
+  cursor: grabbing;
+}
+
+.trend-card-grip:hover {
+  color: var(--text);
 }
 
 .trend-card-title {
