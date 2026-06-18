@@ -12,6 +12,10 @@ import type { Route } from '@playwright/test'
 
 const RECENT = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toISOString().slice(0, 10) })()
 
+// Layout assertions allow a couple px of slack for subpixel rounding /
+// per-browser rendering differences.
+const MAX_SPACING_DIFFERENCE_PX = 2
+
 function singleMatch() {
   return {
     match_key: 'm1',
@@ -175,6 +179,6 @@ test.describe('dossier customize — no edit mode', () => {
     const dossierToCampaign = r.campaign!.top - r.dossier!.bottom
     const campaignToGeo = r.geo!.top - r.campaign!.bottom
     // Uniform rhythm — the dossier→first-band gap matches the band→band gap.
-    expect(Math.abs(dossierToCampaign - campaignToGeo)).toBeLessThanOrEqual(2)
+    expect(Math.abs(dossierToCampaign - campaignToGeo)).toBeLessThanOrEqual(MAX_SPACING_DIFFERENCE_PX)
   })
 })

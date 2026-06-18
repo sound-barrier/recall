@@ -71,10 +71,18 @@ test.describe('Matches — Trends reorder', () => {
       grip.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
       target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
       target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      // Complete the drag lifecycle (drop already clears the cursor; dragend
+      // mirrors what a real drag fires).
+      grip.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }))
     })
 
     // rank-ladder dropped in front of rank-delta (idx 2) → lands at idx 1
     // after the source splice (was idx 0, before the target).
     await expect.poll(() => order(page).then((o) => o.indexOf('rank-ladder'))).toBe(1)
+
+    // The drag path persists too (same setOrder write as the keyboard path).
+    await page.reload()
+    await openTrends(page)
+    expect((await order(page)).indexOf('rank-ladder')).toBe(1)
   })
 })
