@@ -13,6 +13,10 @@ import {
   ReParseAll,
   CancelParse,
   GetActiveParse,
+  ClearDatabase,
+  ExportData,
+  ExportDataCSV,
+  ImportData,
 } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
@@ -25,6 +29,8 @@ import { useOWData } from '@/composables/shared/useOWData'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
+import { useClearDatabase } from '@/composables/settings/useClearDatabase'
+import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -325,6 +331,44 @@ export const useMatchesStore = defineStore('matches', () => {
     },
   })
 
+  // ── Clear-DB + backup/restore (data ops, surfaced in Settings) ────
+  // After a wipe/import, reload records + the ignored list. pendingClearOpts
+  // carries SettingsAdvanced's "Keep suppress-list" choice into the api seam.
+  const pendingClearOpts = ref<{ keepIgnored: boolean }>({ keepIgnored: false })
+  const { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear } = useClearDatabase({
+    clearDatabase: () => ClearDatabase(pendingClearOpts.value.keepIgnored),
+    afterClear: async () => {
+      await load()
+      await loadIgnored()
+    },
+    resetLastParsedAt: () => {
+      lastParsedAt.value = null
+      try { localStorage.removeItem('recall.lastParsedAt') } catch (_) { /* non-fatal */ }
+    },
+    onError: (m) => useAppStore().setErrorFromRaw(m),
+  })
+  function onClearDatabase(opts: { keepIgnored: boolean }) {
+    pendingClearOpts.value = opts
+    return clearDatabase()
+  }
+
+  const {
+    exporting,
+    importing,
+    importArmed,
+    exportStatus,
+    exportData,
+    exportDataCSV,
+    armImport,
+    cancelImport,
+    importData,
+  } = useBackupRestore({
+    exportJSON: ExportData,
+    exportCSV: ExportDataCSV,
+    importJSON: ImportData,
+    afterImport: () => load(),
+  })
+
   return {
     // markRaw the composable bundles: Pinia's reactive() store deep-unwraps
     // nested refs, which would turn matchesNarrow.narrowedRecords (a Ref) into
@@ -373,5 +417,19 @@ export const useMatchesStore = defineStore('matches', () => {
     onUnignoreScreenshot,
     onClearIgnoredScreenshots,
     onRunParseFromIgnored,
+    clearingDB,
+    clearConfirm,
+    armClear,
+    cancelClear,
+    onClearDatabase,
+    exporting,
+    importing,
+    importArmed,
+    exportStatus,
+    exportData,
+    exportDataCSV,
+    armImport,
+    cancelImport,
+    importData,
   }
 })
