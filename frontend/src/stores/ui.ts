@@ -33,6 +33,15 @@ export const useUiStore = defineStore('ui', () => {
     selection.open(matchKey)
   }
 
+  // Per-match "Source Screenshots" expand state, keyed by match_key. Shared by
+  // the detail panel AND UnknownMapsView (both consult one owner via the
+  // CardStateApi bundle App assembles), so it survives a tab swap.
+  const sourcesExpanded = ref<Record<string, boolean>>({})
+  function toggleSources(id: string) {
+    sourcesExpanded.value = { ...sourcesExpanded.value, [id]: !sourcesExpanded.value[id] }
+  }
+  function isSourcesOpen(id: string) { return !!sourcesExpanded.value[id] }
+
   return {
     selection: markRaw(selection),
     preview: markRaw(preview),
@@ -40,5 +49,7 @@ export const useUiStore = defineStore('ui', () => {
     pendingFocusTarget,
     clearPendingFocus,
     onOpenMatchAndFocus,
+    toggleSources,
+    isSourcesOpen,
   }
 })
