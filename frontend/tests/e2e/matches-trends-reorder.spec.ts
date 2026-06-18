@@ -76,5 +76,10 @@ test.describe('Matches — Trends reorder', () => {
     // rank-ladder dropped in front of rank-delta (idx 2) → lands at idx 1
     // after the source splice (was idx 0, before the target).
     await expect.poll(() => order(page).then((o) => o.indexOf('rank-ladder'))).toBe(1)
+
+    // Persisted: a reload keeps the dragged order as well.
+    await page.reload()
+    await openTrends(page)
+    expect((await order(page)).indexOf('rank-ladder')).toBe(1)
   })
 })
