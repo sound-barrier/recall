@@ -28,10 +28,6 @@ import {
   GetWatchEnabled,
   SetWatchEnabled,
   GetTesseractStatus,
-  PickTesseractBinary,
-  ProbeTesseractBinary,
-  ResetTesseractPath,
-  SetTesseractPath,
   ClearDatabase,
   GetNewScreenshotCount,
   GetDataLocation,
@@ -56,6 +52,7 @@ import type { MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDa
 import { plainLanguageError } from '@/error-helpers'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useSettingsStore } from '@/stores/settings'
 import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
@@ -63,7 +60,6 @@ import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
-import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
 import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
 import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
 import { useEventStream } from '@/composables/shared/useEventStream'
@@ -269,6 +265,7 @@ const openCheatsheet = ref(false)
 // Tesseract status (path / found / version / supported flag) + the
 // "Browse for binary…" + "Reset to default" pickers + the System Alert
 // CTA that deep-links into Settings → Engine.
+const settingsStore = useSettingsStore()
 const {
   tesseractStatus,
   tesseractReady,
@@ -278,24 +275,14 @@ const {
   tesseractProbeMessage,
   tesseractProbeStatus,
   tesseractProbeTried,
+} = storeToRefs(settingsStore)
+const {
   setTesseractStatus,
   pickTesseractBinary,
   resetTesseractPath,
   detectTesseractBinary,
   gotoEngineSettings,
-} = useTesseractStatus({
-  pickTesseractBinary: PickTesseractBinary,
-  resetTesseractPath: ResetTesseractPath,
-  probeTesseractBinary: ProbeTesseractBinary,
-  setTesseractPath: SetTesseractPath,
-  onError: (m) => { setErrorFromRaw(m) },
-  navigateToEngine: async () => {
-    view.value = 'settings'
-    await nextTick()
-    const el = document.getElementById('sec-engine')
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  },
-})
+} = settingsStore
 
 // Confirmation modal for parsing with an unsupported Tesseract version.
 const showUnsupportedModal = ref(false)
