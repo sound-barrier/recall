@@ -461,9 +461,9 @@ AVG PER 10 MIN: 8.2`
 	})
 
 	t.Run("icon-noise lines before total are ignored", func(t *testing.T) {
-		// Per parser.go:1023 — "S 4" (Tesseract's misread of the skull-X
-		// icon next to "17") must be ignored; only the pure-integer line
-		// "17" wins.
+		// Per ParsePerformance's OCR-noise handling, "S 4" (Tesseract's
+		// misread of the skull-X icon next to "17") must be ignored; only
+		// the pure-integer line "17" wins.
 		text := `S 4
 17
 ELIMINATIONS`
