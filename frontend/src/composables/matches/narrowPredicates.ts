@@ -131,6 +131,17 @@ export function matchesMembers(r: MatchRecord, pickedMembers: Set<string>): bool
   return [...pickedMembers].every((m) => members.has(m))
 }
 
+// matchesModifiers narrows to matches carrying ANY of the picked rank-
+// update modifiers (OR, like tags). A match lists several modifiers at
+// once, so picking {uphill battle, reversal} surfaces every game that was
+// either. The picks come from the non-result modifier vocabulary
+// (victory/defeat/draw live on the separate result filter).
+export function matchesModifiers(r: MatchRecord, picked: Set<string>): boolean {
+  if (!picked.size) return true
+  const mods = new Set(r.data?.modifiers ?? [])
+  return [...picked].some((m) => mods.has(m))
+}
+
 export function matchesReviewedBy(r: MatchRecord, picked: Set<ReviewedByPick>): boolean {
   if (!picked.size) return true
   const bucket: ReviewedByPick = r.reviewed_by ?? 'unreviewed'

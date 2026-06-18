@@ -66,16 +66,24 @@ const {
   searchText,
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
   pickedQueues, pickedPlayModes, pickedSources,
+  pickedLeavers, pickedModifiers, pickedRanks,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
   pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource, pickRange,
+  pickLeaver, pickModifier, pickRank,
   resetNarrow,
   activeClauseCount, anyNarrow,
   availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
+  availableLeaverSides, availableModifiers, availableRanks,
   narrowedRecords,
 } = props.narrow
 void activeClauseCount; void anyNarrow
+
+// Friendlier labels for the leaver-side chips (the raw enum is terse).
+const LEAVER_LABELS: Record<'self' | 'team' | 'enemy', string> = {
+  self: 'You left', team: 'Teammate', enemy: 'Enemy',
+}
 
 
 const popoverRef     = ref<HTMLElement | null>(null)
@@ -404,6 +412,46 @@ onUnmounted(() => {
                 </div>
               </section>
 
+              <!-- Rank / tier — multi-select; only ranks present show. -->
+              <section v-if="availableRanks.length" class="np-section">
+                <div class="np-section-head">
+                  <span class="np-section-eyebrow">Rank</span>
+                  <span class="np-section-meta">{{ pickedRanks.size ? `${pickedRanks.size} picked` : 'any' }}</span>
+                </div>
+                <div class="np-chips">
+                  <button
+                    v-for="rank in availableRanks"
+                    :key="rank"
+                    class="np-chip"
+                    :class="{ picked: pickedRanks.has(rank) }"
+                    @click="pickRank(rank)"
+                  >
+                    {{ rank }}
+                  </button>
+                </div>
+              </section>
+
+              <!-- Modifiers — multi-select OR; a match carries several
+                   rank-update pills, so a pick surfaces every game that
+                   had any of them. -->
+              <section v-if="availableModifiers.length" class="np-section">
+                <div class="np-section-head">
+                  <span class="np-section-eyebrow">Modifiers</span>
+                  <span class="np-section-meta">{{ pickedModifiers.size ? `${pickedModifiers.size} picked` : 'any' }}</span>
+                </div>
+                <div class="np-chips">
+                  <button
+                    v-for="m in availableModifiers"
+                    :key="m"
+                    class="np-chip"
+                    :class="{ picked: pickedModifiers.has(m) }"
+                    @click="pickModifier(m)"
+                  >
+                    {{ m }}
+                  </button>
+                </div>
+              </section>
+
               <!-- Queue type — multi-select OR across role/open.
                    Empty selection = no filter; either pick excludes
                    matches whose queue_type hasn't been set. -->
@@ -537,6 +585,27 @@ onUnmounted(() => {
                   </button>
                   <button class="np-chip" :class="{ picked: leaverHandling === 'hide' }" @click="leaverHandling = 'hide'">
                     Hide entirely
+                  </button>
+                </div>
+              </section>
+
+              <!-- With a leaver — scope the SET to matches that carried a
+                   leaver, by side. Distinct from the handling control
+                   above (which only governs the W/L tally). -->
+              <section v-if="availableLeaverSides.length" class="np-section">
+                <div class="np-section-head">
+                  <span class="np-section-eyebrow">With a leaver</span>
+                  <span class="np-section-meta">{{ pickedLeavers.size ? `${pickedLeavers.size} picked` : 'any' }}</span>
+                </div>
+                <div class="np-chips">
+                  <button
+                    v-for="side in availableLeaverSides"
+                    :key="side"
+                    class="np-chip"
+                    :class="{ picked: pickedLeavers.has(side) }"
+                    @click="pickLeaver(side)"
+                  >
+                    {{ LEAVER_LABELS[side] }}
                   </button>
                 </div>
               </section>
