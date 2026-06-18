@@ -49,6 +49,7 @@ import { plainLanguageError } from '@/error-helpers'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
+import { useUiStore } from '@/stores/ui'
 import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
@@ -58,13 +59,10 @@ import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
-import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
 import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
-import { useCardFocus } from '@/composables/matches/useCardFocus'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
-import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
@@ -246,12 +244,15 @@ const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
 // which owns focusedCardIndex + the rendered-DOM-order walk helpers
 // App.vue threads into useGlobalKeyboard. `openCheatsheet` toggles the
 // `?` cheatsheet modal.
+// Detail-panel selection, screenshot preview/lightbox, and card focus live
+// in the UI store (markRaw bundles — destructure into top-level vars).
+const uiStore = useUiStore()
 const {
   focusedCardIndex,
   focusCardByRenderedDelta,
   focusCardByRenderedEnd,
   focusSectionByRenderedDelta,
-} = useCardFocus()
+} = uiStore.cardFocus
 const openCheatsheet = ref(false)
 
 
@@ -900,7 +901,7 @@ function toggleFilter(field: string, value: string) {
 // so back-to-back changes reset the auto-dismiss window.
 const anchorToast = ref<{ kind: 'set' | 'cleared'; label: string; token: number } | null>(null)
 let anchorToastToken = 0
-const selection = useSelectedMatch(matchesNarrow.narrowedRecords)
+const selection = uiStore.selection
 
 // Match-mutation handlers (context-menu fast-tracks + archive-drawer bulk
 // actions) + the pending detail-panel focus target.
@@ -1109,7 +1110,7 @@ function isSourcesOpen(id: string) {
 // Go ScreenshotHandler at /_screenshot/<filename>; the lightbox
 // snapshot of files/dirIDs protects ←/→ navigation against the
 // underlying record refreshing mid-view (e.g. SSE-driven reload).
-const screenshotPreview = useScreenshotPreview()
+const screenshotPreview = uiStore.preview
 const {
   isPreviewOpen,
   hasPreviewError,
