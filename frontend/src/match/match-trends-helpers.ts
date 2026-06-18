@@ -230,3 +230,63 @@ export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
   }
   return orderBuckets([...latest.values()].map(({ t: _t, ...rank }) => rank))
 }
+
+// The W/L/D outcome modifiers are already the win-rate chart's job —
+// exclude them from the modifier-frequency lines so only the *qualitative*
+// modifiers (underdog, unexpected, overcharge, demotion protection, …) show.
+const RESULT_MODIFIERS: ReadonlySet<string> = new Set(['victory', 'defeat', 'draw'])
+
+// Per-match rank delta — the signed ±change% the rank meter moved, one
+// series per role bucket (rank-bearing matches only). Drives the rank-
+// delta bar chart; the rank-ladder line shows this only on hover.
+export function rankDeltaSeries(records: readonly TrendInput[]): TrendSeries[] {
+  const byBucket = new Map<string, { label: string; points: TrendPoint[] }>()
+  for (const { rec, t } of timedRecords(records)) {
+    const data = rec.data
+    const tier = data?.rank
+    if (!tier || !(TIER_ORDER as readonly string[]).includes(tier) || typeof data?.change_percent !== 'number') continue
+    const bucket = roleBucket(rec)
+    const entry = byBucket.get(bucket.key) ?? { label: bucket.label, points: [] }
+    entry.points.push({ t, v: data.change_percent, matchKey: rec.match_key })
+    byBucket.set(bucket.key, entry)
+  }
+  return orderBuckets([...byBucket.entries()].map(([key, e]) => ({ name: e.label, key, points: e.points })))
+}
+
+// Cumulative net record — a running Σ(win +1 / loss −1) over decisive
+// matches, one line per role bucket. Rises while you're net-winning,
+// falls while net-losing; a smoother climb signal than rolling win-rate.
+export function cumulativeNetRecordSeries(records: readonly TrendInput[]): TrendSeries[] {
+  const byBucket = new Map<string, { label: string; points: TrendPoint[]; net: number }>()
+  for (const { rec, t } of timedRecords(records)) {
+    const result = rec.data?.result
+    let delta: number
+    if (result === 'victory') delta = 1
+    else if (result === 'defeat') delta = -1
+    else continue
+    const bucket = roleBucket(rec)
+    const entry = byBucket.get(bucket.key) ?? { label: bucket.label, points: [], net: 0 }
+    entry.net += delta
+    entry.points.push({ t, v: entry.net, matchKey: rec.match_key })
+    byBucket.set(bucket.key, entry)
+  }
+  return orderBuckets([...byBucket.entries()].map(([key, e]) => ({ name: e.label, key, points: e.points })))
+}
+
+// Modifier frequency over time — a cumulative-count line per non-result
+// modifier. One line per modifier that appears (most-frequent first).
+export function modifierFrequencySeries(records: readonly TrendInput[]): TrendSeries[] {
+  const byModifier = new Map<string, { points: TrendPoint[]; count: number }>()
+  for (const { rec, t } of timedRecords(records)) {
+    for (const modifier of rec.data?.modifiers ?? []) {
+      if (!modifier || RESULT_MODIFIERS.has(modifier)) continue
+      const entry = byModifier.get(modifier) ?? { points: [], count: 0 }
+      entry.count += 1
+      entry.points.push({ t, v: entry.count, matchKey: rec.match_key })
+      byModifier.set(modifier, entry)
+    }
+  }
+  return [...byModifier.entries()]
+    .map(([name, e]) => ({ name, key: name, points: e.points }))
+    .sort((a, b) => b.points.length - a.points.length || a.name.localeCompare(b.name))
+}
