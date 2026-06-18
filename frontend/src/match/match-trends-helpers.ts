@@ -238,6 +238,16 @@ export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
 // the modifier dossier widgets.
 export const RESULT_MODIFIERS: ReadonlySet<string> = new Set(['victory', 'defeat', 'draw'])
 
+// The non-result rank-update modifiers, in canonical order — the parser's
+// knownModifiers minus victory/defeat/draw, plus demotion protection.
+// Drives the narrow panel's modifier filter chips (ordered, complete) so
+// the user can scope to "show my uphill battles / reversals / …".
+export const FILTERABLE_MODIFIERS = [
+  'expected', 'uphill battle', 'reversal', 'consolation',
+  'win streak', 'loss streak', 'calibration', 'volatile',
+  'demotion protection',
+] as const
+
 // Per-match rank delta — the signed ±change% the rank meter moved, one
 // series per role bucket (rank-bearing matches only). Drives the rank-
 // delta bar chart; the rank-ladder line shows this only on hover.

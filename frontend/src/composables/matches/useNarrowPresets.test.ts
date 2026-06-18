@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { ref, computed } from 'vue'
 import { useNarrowPresets } from '@/composables/matches/useNarrowPresets'
-import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, PresetRange } from '@/composables/matches/useMatchesNarrow'
+import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, PresetRange } from '@/composables/matches/useMatchesNarrow'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier'
 
 function buildState(): MatchesNarrowState {
@@ -18,6 +18,9 @@ function buildState(): MatchesNarrowState {
     pickedQueues:      ref(new Set<QueuePick>()),
     pickedPlayModes:   ref(new Set<PlayModePick>()),
     pickedSources:     ref(new Set<SourcePick>()),
+    pickedLeavers:     ref(new Set<LeaverPick>()),
+    pickedModifiers:   ref(new Set<string>()),
+    pickedRanks:       ref(new Set<string>()),
     pickedRange:       ref<PresetRange>('all'),
     customFrom:        ref(''),
     customTo:          ref(''),

@@ -9,6 +9,7 @@ import {
   matchesHero,
   matchesTags,
   matchesMembers,
+  matchesModifiers,
   matchesReviewedBy,
   matchesQueueType,
   matchesPlayMode,
@@ -87,6 +88,21 @@ describe('matchesHero', () => {
   it('with a threshold, primary-hero-only no longer qualifies', () => {
     const r = rec({ data: { hero: 'lucio' } as MatchRecord['data'] })
     expect(matchesHero(r, new Set(['lucio']), 5, 0)).toBe(false)
+  })
+})
+
+describe('matchesModifiers', () => {
+  const r = rec({ data: { modifiers: ['uphill battle', 'victory'] } as MatchRecord['data'] })
+  it('OR semantics — surfaces a match carrying ANY picked modifier', () => {
+    expect(matchesModifiers(r, new Set(['uphill battle']))).toBe(true)
+    expect(matchesModifiers(r, new Set(['reversal', 'uphill battle']))).toBe(true)
+    expect(matchesModifiers(r, new Set(['reversal']))).toBe(false)
+  })
+  it('empty pick set is inert', () => {
+    expect(matchesModifiers(r, new Set())).toBe(true)
+  })
+  it('a match with no modifiers drops out when any pick is active', () => {
+    expect(matchesModifiers(rec(), new Set(['uphill battle']))).toBe(false)
   })
 })
 
