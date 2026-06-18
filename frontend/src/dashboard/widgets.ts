@@ -24,6 +24,10 @@ import Recent5MatchesWidget from '@/components/dashboard/widgets/Recent5MatchesW
 import QuickplayVsCompetitiveWidget from '@/components/dashboard/widgets/QuickplayVsCompetitiveWidget.vue'
 import WinrateByPlayModeWidget from '@/components/dashboard/widgets/WinrateByPlayModeWidget.vue'
 import WithWhomWidget from '@/components/dashboard/widgets/WithWhomWidget.vue'
+import CurrentRankWidget from '@/components/dashboard/widgets/CurrentRankWidget.vue'
+import WinrateByHeroWidget from '@/components/dashboard/widgets/WinrateByHeroWidget.vue'
+import WinrateByMapWidget from '@/components/dashboard/widgets/WinrateByMapWidget.vue'
+import WinrateByRoleWidget from '@/components/dashboard/widgets/WinrateByRoleWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -138,6 +142,17 @@ export const bestWinrateHeroSchema = makeSchema<BestWinrateHeroConfig>([
   },
 ])
 
+// Shared by the win-rate-by-hero / -map / -role widgets: a sample-size
+// floor (so noise doesn't top the list) + a Top-N cap.
+export interface WinrateByConfig extends Record<string, unknown> {
+  minMatches: number
+  limit:      number
+}
+export const winrateBySchema = makeSchema<WinrateByConfig>([
+  { kind: 'integer-choice', key: 'minMatches', label: 'Min decisive matches', choices: [3, 5, 10], default: 5 },
+  { kind: 'integer-choice', key: 'limit',      label: 'Top N',                choices: [3, 5, 10], default: 5 },
+])
+
 export interface TimeOfDayConfig extends Record<string, unknown> {
   bucketCount: 6 | 12 | 24
 }
@@ -225,6 +240,10 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'play-mode-share',     eyebrow: 'Quickplay vs Competitive', shape: 'breakdown', defaultRow: 2, component: QuickplayVsCompetitiveWidget, config: EMPTY_SCHEMA },
   { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
   { id: 'with-whom',           eyebrow: 'Win rate by teammate',   shape: 'breakdown', defaultRow: 2, component: WithWhomWidget,        config: withWhomSchema       },
+  { id: 'current-rank',        eyebrow: 'Current rank',           shape: 'breakdown', defaultRow: 2, component: CurrentRankWidget,     config: EMPTY_SCHEMA          },
+  { id: 'winrate-by-hero',     eyebrow: 'Win-rate by hero',       shape: 'breakdown', defaultRow: 2, component: WinrateByHeroWidget,  config: winrateBySchema       },
+  { id: 'winrate-by-map',      eyebrow: 'Win-rate by map',        shape: 'breakdown', defaultRow: 2, component: WinrateByMapWidget,   config: winrateBySchema       },
+  { id: 'winrate-by-role',     eyebrow: 'Win-rate by role',       shape: 'breakdown', defaultRow: 2, component: WinrateByRoleWidget,  config: winrateBySchema       },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add

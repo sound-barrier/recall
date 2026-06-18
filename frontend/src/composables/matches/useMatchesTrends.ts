@@ -2,8 +2,10 @@ import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } 
 
 import type { MatchRecord } from '@/api'
 import {
+  currentRankByRole,
   rankLadderSeries,
   rollingWinrateSeries,
+  type RankNow,
   type RankSeries,
   type TrendSeries,
 } from '@/match/match-trends-helpers'
@@ -15,10 +17,11 @@ import {
 // reach it via useDossier.
 export function useMatchesTrends(records: Readonly<Ref<MatchRecord[]>>) {
   const rankLadder = computed<RankSeries[]>(() => rankLadderSeries(records.value))
+  const currentRank = computed<RankNow[]>(() => currentRankByRole(records.value))
 
   function rollingWinrate(window: MaybeRefOrGetter<number>): ComputedRef<TrendSeries[]> {
     return computed(() => rollingWinrateSeries(records.value, toValue(window)))
   }
 
-  return { rankLadder, rollingWinrate }
+  return { rankLadder, currentRank, rollingWinrate }
 }

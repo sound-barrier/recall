@@ -20,6 +20,7 @@ import type {
   WinLossDraw,
   WLDSinceLastReview,
 } from '@/composables/matches/useMatchesDossier'
+import type { RankNow } from '@/match/match-trends-helpers'
 
 // Per-widget test helper that:
 //   1. Stubs localStorage so useWidgetConfig hydrates cleanly (the
@@ -68,6 +69,10 @@ type DossierOverride = {
   heroGameModeCounts?: Array<{ hero: string; gameMode: string; wins: number; losses: number; draws: number; total: number; winrate: number }>
   mapCounts?:          Array<{ map: string; wins: number; losses: number; draws: number; total: number; winrate: number }>
   recentMatches?:      Array<{ matchKey: string; date: string; finishedAt: string; result: string; map: string }>
+  // Query helper — win-rate-by-X widgets.
+  winrateBy?:          BreakdownEntry[]
+  // Bedrock — current rank per role.
+  currentRank?:        RankNow[]
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -92,6 +97,8 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     playModeBreakdown:   wrap(over.playModeBreakdown, [] as BreakdownEntry[]),
     // Query helpers — return functions matching the dossier's signature.
     topByCount:          wrapQuery(over.topByCount, [] as BreakdownEntry[]),
+    winrateBy:           wrapQuery(over.winrateBy, [] as BreakdownEntry[]),
+    currentRank:         wrap(over.currentRank, [] as RankNow[]),
     withWhomBreakdown:   wrapQuery(over.withWhomBreakdown, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),
     mostPlayedHero:      wrapQuery(over.mostPlayedHero, null),

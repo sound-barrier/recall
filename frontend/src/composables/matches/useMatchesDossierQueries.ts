@@ -73,6 +73,43 @@ export function useDossierQueries(
     })
   }
 
+  // Win rate by an arbitrary dimension (hero / map / role), ranked
+  // best → worst. Only decisive matches count (draws excluded, as in
+  // the headline winrate); `total` is the decisive sample behind each
+  // rate and doubles as the `minMatches` qualification gate so a 100%
+  // rate over one game doesn't top the list. Uses tallyRecords so the
+  // leaver-handling preference is honoured. Drives the opt-in
+  // win-rate-by-hero / -map / -role widgets — each passes its getter.
+  function winrateBy(
+    opts: MaybeRefOrGetter<{ getter: (r: MatchRecord) => string | undefined; minMatches: number; limit: number }>,
+  ): ComputedRef<BreakdownEntry[]> {
+    return computed(() => {
+      const { getter, minMatches, limit } = toValue(opts)
+      const buckets = new Map<string, { w: number; l: number }>()
+      for (const r of tallyRecords.value) {
+        const result = r.data?.result
+        if (result !== 'victory' && result !== 'defeat') continue
+        const key = getter(r)
+        if (!key) continue
+        const bucket = buckets.get(key) ?? { w: 0, l: 0 }
+        if (result === 'victory') bucket.w++
+        else bucket.l++
+        buckets.set(key, bucket)
+      }
+      return [...buckets.entries()]
+        .map(([key, { w, l }]) => {
+          const total = w + l
+          const winrate = Math.round((w / total) * 100)
+          // share === winrate so the shared breakdown bar renders the
+          // win-rate; the widgets read `winrate` directly regardless.
+          return { key, total, winrate, share: winrate }
+        })
+        .filter((e) => e.total >= minMatches)
+        .sort((a, b) => b.winrate - a.winrate || b.total - a.total)
+        .slice(0, limit)
+    })
+  }
+
   // Win rate by teammate — buckets the set by who you played WITH
   // (annotation.members), plus a "Solo" bucket for matches with no
   // teammates recorded. A match with members {A, B} counts toward BOTH
@@ -582,6 +619,7 @@ export function useDossierQueries(
 
   return {
     topByCount,
+    winrateBy,
     withWhomBreakdown,
     heroGameModeCounts,
     mapRoleCounts,
