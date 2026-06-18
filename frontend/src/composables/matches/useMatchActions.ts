@@ -3,11 +3,24 @@ import { ref, type Ref } from 'vue'
 import {
   type MatchRecord,
   type MatchAnnotationInput,
+  type UserMatchDataInput,
+  type ReviewedBy,
+  type QueueType,
+  type PlayMode,
   RevealScreenshotsDir,
   SetMatchAnnotation,
   HardDeleteMatch,
   SetMatchVisibility,
   MoveMatches,
+  UpdateMatchData,
+  ResetMatchData,
+  SetMatchReview,
+  SetMatchQueue,
+  SetMatchPlayMode,
+  BulkSetMatchPlayMode,
+  BulkSetMatchQueue,
+  ResolveAmbiguousMatch,
+  IgnoreScreenshot,
 } from '@/api'
 
 // Match-mutation handlers shared by the row context menu and the archive
@@ -24,12 +37,13 @@ export interface MatchActionsDeps {
   records: Ref<MatchRecord[]>
   openMatch: (matchKey: string) => void
   reload: () => Promise<void> | void
+  reloadIgnored: () => Promise<void> | void
   setError: (message: string) => void
   onError: (raw: string) => void
 }
 
 export function useMatchActions(deps: MatchActionsDeps) {
-  const { records, openMatch, reload, setError, onError } = deps
+  const { records, openMatch, reload, reloadIgnored, setError, onError } = deps
 
   // Read by MatchDetailPanel on mount and cleared via clearPendingFocus().
   // Lives here (not the panel) because the panel may be unmounted at the
@@ -153,6 +167,68 @@ export function useMatchActions(deps: MatchActionsDeps) {
     }
   }
 
+  // ── Annotation + per-match data edits (detail panel / cards) ──────
+  async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'team' | 'enemy') {
+    try {
+      const rec = records.value.find(r => r.match_key === matchKey)
+      const prev = rec?.annotation
+      await SetMatchAnnotation(matchKey, {
+        leaver:      leaver as MatchAnnotationInput['leaver'],
+        note:        prev?.note ?? '',
+        replay_code: prev?.replay_code ?? '',
+        members:     prev?.members ?? [],
+        tags:        prev?.tags ?? [],
+      })
+      await reload()
+    } catch (e) { onError(String(e)) }
+  }
+  async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput) {
+    try { await SetMatchAnnotation(matchKey, input); await reload() } catch (e) { onError(String(e)) }
+  }
+  async function onUpdateMatchData(matchKey: string, overrides: UserMatchDataInput) {
+    try { await UpdateMatchData(matchKey, overrides); await reload() } catch (e) { onError(String(e)) }
+  }
+  async function onResetMatchData(matchKey: string) {
+    try { await ResetMatchData(matchKey); await reload() } catch (e) { onError(String(e)) }
+  }
+
+  // ── Per-match status (hide / review / queue / play-mode) ──────────
+  async function onSetMatchHidden(matchKey: string, hidden: boolean) {
+    try { await SetMatchVisibility(matchKey, hidden); await reload() } catch (e) { onError(String(e)) }
+  }
+  async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
+    try { await SetMatchReview(matchKey, reviewedBy); await reload() } catch (e) { onError(String(e)) }
+  }
+  async function onSetMatchQueue(matchKey: string, queueType: QueueType) {
+    try { await SetMatchQueue(matchKey, queueType); await reload() } catch (e) { onError(String(e)) }
+  }
+  async function onSetMatchPlayMode(matchKey: string, playMode: PlayMode) {
+    try { await SetMatchPlayMode(matchKey, playMode); await reload() } catch (e) { onError(String(e)) }
+  }
+
+  // ── Bulk (archive drawer) ─────────────────────────────────────────
+  async function onHideMatches(matchKeys: string[]) {
+    if (matchKeys.length === 0) return
+    try { await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, true))); await reload() } catch (e) { onError(String(e)) }
+  }
+  async function onBulkPlayMode(matchKeys: string[], playMode: PlayMode) {
+    if (matchKeys.length === 0) return
+    try { await BulkSetMatchPlayMode(matchKeys, playMode); await reload() } catch (e) { onError(String(e)) }
+  }
+  async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
+    if (matchKeys.length === 0) return
+    try { await BulkSetMatchQueue(matchKeys, queueType); await reload() } catch (e) { onError(String(e)) }
+  }
+
+  // ── Unknown-tab resolution ────────────────────────────────────────
+  async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
+    try { await ResolveAmbiguousMatch(ambiguousKey, resolvedTo); await reload() } catch (e) { onError(String(e)) }
+  }
+  // "Delete forever" — suppress the filename + wipe the unmatched row.
+  async function onIgnoreScreenshot(filename: string) {
+    try { await IgnoreScreenshot(filename); await reloadIgnored(); await reload() } catch (e) { onError(String(e)) }
+  }
+
   return {
     pendingFocusTarget,
     clearPendingFocus,
@@ -165,5 +241,18 @@ export function useMatchActions(deps: MatchActionsDeps) {
     onUnhideMatches,
     onHardDeleteMatches,
     onMoveMatches,
+    onSetLeaverAnnotation,
+    onSetMatchAnnotation,
+    onUpdateMatchData,
+    onResetMatchData,
+    onSetMatchHidden,
+    onSetMatchReview,
+    onSetMatchQueue,
+    onSetMatchPlayMode,
+    onHideMatches,
+    onBulkPlayMode,
+    onBulkQueue,
+    onResolveAmbiguous,
+    onIgnoreScreenshot,
   }
 }
