@@ -43,6 +43,20 @@ export interface MountOverrides {
 // stubs just exercise the subscribe/unsubscribe code path.
 let eventHandlers: Map<string, (data: unknown) => void> = new Map()
 
+// The exact mock object the most recent mockApi() install handed to
+// vi.doMock('@/api') — i.e. the SAME object App's stores bind their api
+// functions from. Tests that assert on call counts (GetMatchResults, …) read it
+// via mockedApi() instead of `await import('@/api')`, which can resolve to a
+// different module instance under low fork counts and makes the assertion flaky.
+let lastMockedApi: Record<string, unknown> | null = null
+
+// The mocked '@/api' the current mount is wired against. Throws if called before
+// mountApp() so a misuse fails loudly rather than reading a stale mock.
+export function mockedApi(): Record<string, ReturnType<typeof vi.fn>> {
+  if (!lastMockedApi) throw new Error('mockedApi() called before mountApp()')
+  return lastMockedApi as Record<string, ReturnType<typeof vi.fn>>
+}
+
 function defaultTesseract(overrides: Partial<TesseractStatus> = {}): TesseractStatus {
   return {
     path:      '/usr/local/bin/tesseract',
@@ -73,7 +87,7 @@ function mockApi(overrides: MountOverrides = {}) {
   eventHandlers = new Map()
 
   const records = overrides.records ?? []
-  vi.doMock('@/api', () => ({
+  const mocked = {
     GetVersion:          vi.fn(async () => 'dev'),
     GetStartupError:     vi.fn(async () => overrides.startupError ?? ''),
     CheckForUpdate:      vi.fn(async () => defaultUpdate(overrides.update)),
@@ -142,7 +156,9 @@ function mockApi(overrides: MountOverrides = {}) {
     EventsOff: vi.fn((name: string) => {
       eventHandlers.delete(name)
     }),
-  }))
+  }
+  lastMockedApi = mocked
+  vi.doMock('@/api', () => mocked)
 }
 
 // fireEvent reaches into the captured EventsOn handler map and invokes
@@ -165,6 +181,13 @@ export function fireEvent(name: string, data: unknown = undefined): boolean {
 // runs `flushPromises` to let the onMounted load() / Promise.all settle
 // before tests assert on the rendered DOM.
 export async function mountApp(overrides: MountOverrides = {}) {
+  // Drop any '@/api' mock left registered by a *prior test file* — several
+  // composable/SFC tests register a HOISTED vi.mock('@/api') whose factory
+  // survives across files under low fork counts (CI's coverage run). A leaked
+  // hoisted mock outranks the per-test vi.doMock below, so App's store would
+  // bind the wrong (or incomplete) GetMatchResults and load() would miss the
+  // mock (0 calls). doUnmock clears it so mockApi's doMock is authoritative.
+  vi.doUnmock('@/api')
   // Reset the module registry so the dynamic import of App + its Pinia stores
   // re-evaluates against the fresh vi.doMock('@/api') below (and resets any
   // module-level subscription guards, e.g. useEventStream). Without this a
