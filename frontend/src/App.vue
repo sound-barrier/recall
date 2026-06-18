@@ -60,7 +60,6 @@ import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
 import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
-import { useTheme } from '@/composables/settings/useTheme'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useCardFocus } from '@/composables/matches/useCardFocus'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
@@ -275,8 +274,10 @@ const {
   probeMessage,
   probeStatus,
   probeTried,
+  themeMode,
 } = storeToRefs(settingsStore)
 const {
+  setTheme,
   setTesseractStatus,
   pickTesseractBinary,
   resetTesseractPath,
@@ -1208,8 +1209,6 @@ void TAB_ORDER
 // auto-refreshes when an auto-parse runs in the background. Without
 // this the user would have to click Parse manually to see new matches
 // land in the UI even though the data is already in SQLite.
-
-const { themeMode, setTheme } = useTheme()
 
 onMounted(() => {
   // Restore last-parse timestamp so the Settings page shows the right
