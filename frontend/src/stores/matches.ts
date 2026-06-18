@@ -2,6 +2,8 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import type { MatchRecord } from '@/api'
+import { GetNewScreenshotCount } from '@/api'
+import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 
 // The matches domain: the parsed-match records (source of truth for the
 // dossier + all four views) and the derived triage lists. Migrated out of
@@ -36,11 +38,51 @@ export const useMatchesStore = defineStore('matches', () => {
     records.value.filter(r => r.ambiguous),
   )
 
+  // ── Parse lifecycle state ─────────────────────────────────────────
+  // parseBusy gates the manual Parse button + peers; cancellingParse spans
+  // the Stop click → SSE parse-cancelled confirmation; firstLoadPending
+  // drives the Matches skeleton from boot until the first load() resolves.
+  const parseBusy = ref(false)
+  const cancellingParse = ref(false)
+  const firstLoadPending = ref(true)
+  // parseProgress: most-recent completed file during an active parse (null
+  // when idle). parseLog: rolling completed-file log. newScreenshotCount:
+  // image files in the dir not yet in the DB (null = not yet fetched).
+  const parseProgress = ref<ParseProgressEvent | null>(null)
+  const parseLog = ref<ParseProgressEvent[]>([])
+  const newScreenshotCount = ref<number | null>(null)
+  // Wall-clock of the last successful manual parse → Settings "Last run · X".
+  const lastParsedAt = ref<number | null>(null)
+
+  async function refreshNewCount() {
+    try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) { /* keep last */ }
+  }
+
+  // Brief scoreboard pulse when the watcher / a manual parse brings in
+  // additional records — otherwise the auto-refresh is silent.
+  const recordsPulse = ref(false)
+  let recordsPulseTimer: ReturnType<typeof setTimeout> | null = null
+  function flashRecordsPulse() {
+    recordsPulse.value = true
+    if (recordsPulseTimer) clearTimeout(recordsPulseTimer)
+    recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
+  }
+
   return {
     records,
     unknownRecords,
     referenceGapRecords,
     hiddenRecords,
     ambiguousRecords,
+    parseBusy,
+    cancellingParse,
+    firstLoadPending,
+    parseProgress,
+    parseLog,
+    newScreenshotCount,
+    lastParsedAt,
+    refreshNewCount,
+    recordsPulse,
+    flashRecordsPulse,
   }
 })
