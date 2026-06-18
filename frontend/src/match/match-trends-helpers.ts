@@ -19,10 +19,12 @@ import { matchTime } from '@/match/match-time-helpers'
 export type TrendInput = Pick<MatchRecord, 'match_key' | 'data' | 'queue_type'>
 
 // One point on a plain trend line: `t` is epoch milliseconds (an ECharts
-// time-axis value), `v` the metric reading at that match.
+// time-axis value), `v` the metric reading at that match. `matchKey` is
+// the match the point came from, so a chart click can open it.
 interface TrendPoint {
   t: number
   v: number
+  matchKey: string
 }
 
 // A named line: legend label + its points in ascending time order.
@@ -112,6 +114,7 @@ export interface RankPoint {
   level: number
   progress: number
   change: number
+  matchKey: string
 }
 
 export interface RankSeries {
@@ -148,6 +151,7 @@ export function rankLadderSeries(records: readonly TrendInput[]): RankSeries[] {
       level: data.level,
       progress,
       change: data.change_percent ?? 0,
+      matchKey: rec.match_key,
     })
     byBucket.set(bucket.key, entry)
   }
@@ -160,7 +164,7 @@ export function rankLadderSeries(records: readonly TrendInput[]): RankSeries[] {
 // match, so early points average over a shorter prefix than the window.
 export function rollingWinrateSeries(records: readonly TrendInput[], window: number): TrendSeries[] {
   const span = Math.max(1, Math.floor(window))
-  const byBucket = new Map<string, { label: string; decisive: boolean[]; times: number[] }>()
+  const byBucket = new Map<string, { label: string; decisive: boolean[]; times: number[]; keys: string[] }>()
   for (const { rec, t } of timedRecords(records)) {
     const result = rec.data?.result
     let win: boolean
@@ -168,9 +172,10 @@ export function rollingWinrateSeries(records: readonly TrendInput[], window: num
     else if (result === 'defeat') win = false
     else continue
     const bucket = roleBucket(rec)
-    const entry = byBucket.get(bucket.key) ?? { label: bucket.label, decisive: [], times: [] }
+    const entry = byBucket.get(bucket.key) ?? { label: bucket.label, decisive: [], times: [], keys: [] }
     entry.decisive.push(win)
     entry.times.push(t)
+    entry.keys.push(rec.match_key)
     byBucket.set(bucket.key, entry)
   }
 
@@ -184,7 +189,7 @@ export function rollingWinrateSeries(records: readonly TrendInput[], window: num
         if (entry.decisive[j]) wins++
       }
       const n = i - start + 1
-      points.push({ t: entry.times[i]!, v: Math.round((wins / n) * 100) })
+      points.push({ t: entry.times[i]!, v: Math.round((wins / n) * 100), matchKey: entry.keys[i]! })
     }
     series.push({ name: entry.label, key, points })
   }

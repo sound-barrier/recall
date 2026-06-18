@@ -18,11 +18,30 @@ function colorFor(key: string | undefined): string | undefined {
   return key ? ROLE_SERIES_COLOR[key] : undefined
 }
 
-// Reserve enough top room for the (centered) scroll legend so it never
-// sits over the plot, and keep the y-axis NAME out of the options entirely
-// — units live in the card title — so it can't collide with the legend.
-const GRID = { left: 8, right: 18, top: 44, bottom: 6, containLabel: true } as const
+// Reserve top room for the (centered) scroll legend so it never sits over
+// the plot, and bottom room for the zoom slider. Units live in the card
+// title (no y-axis name to collide with the legend).
+const GRID = { left: 8, right: 18, top: 44, bottom: 34, containLabel: true } as const
 const LEGEND = { type: 'scroll' as const, top: 8, left: 'center' as const }
+
+// Shared interactions across every trends chart: a bottom zoom/pan slider
+// (its handles zoom, its body pans — no wheel zoom, so page scroll isn't
+// hijacked and body-drag stays free for the brush), and an always-on
+// lineX brush (TrendChart arms the cursor) whose selection narrows the set.
+const INTERACTION = {
+  dataZoom: [
+    { type: 'slider' as const, bottom: 4, height: 16 },
+  ],
+  brush: {
+    xAxisIndex: 0,
+    brushType: 'lineX' as const,
+    brushMode: 'single' as const,
+    throttleType: 'debounce' as const,
+    throttleDelay: 250,
+    removeOnClick: false,
+    brushStyle: { color: 'rgba(245, 166, 35, 0.12)', borderColor: 'rgba(245, 166, 35, 0.55)' },
+  },
+}
 
 function tierLabel(tier: Tier | string): string {
   return tier.charAt(0).toUpperCase() + tier.slice(1)
@@ -45,6 +64,7 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
   const max = Number.isFinite(hi) ? Math.ceil(hi / 5) * 5 : 40
 
   return {
+    ...INTERACTION,
     grid: GRID,
     legend: { ...LEGEND, show: series.length > 1 },
     tooltip: {
@@ -76,7 +96,7 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
       connectNulls: true,
       emphasis: { focus: 'series' as const },
       ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
-      data: s.points.map((p) => ({ value: [p.t, p.score] as [number, number], rank: p })),
+      data: s.points.map((p) => ({ value: [p.t, p.score] as [number, number], rank: p, matchKey: p.matchKey })),
     })),
   }
 }
@@ -85,6 +105,7 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
 // reference line.
 export function winrateOption(series: TrendSeries[]): TrendOption {
   return {
+    ...INTERACTION,
     grid: GRID,
     legend: { ...LEGEND, show: series.length > 1 },
     tooltip: { trigger: 'axis', valueFormatter: (v: unknown) => `${String(v)}%` },
@@ -98,7 +119,7 @@ export function winrateOption(series: TrendSeries[]): TrendOption {
       connectNulls: true,
       emphasis: { focus: 'series' as const },
       ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
-      data: s.points.map((p) => [p.t, p.v] as [number, number]),
+      data: s.points.map((p) => ({ value: [p.t, p.v] as [number, number], matchKey: p.matchKey })),
       // Draw the reference line once (on the first series).
       ...(i === 0
         ? {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { registerTheme } from 'echarts/core'
 
@@ -7,14 +7,21 @@ import '@/components/matches/trends/echarts'
 import type { TrendOption } from '@/components/matches/trends/echarts'
 import { useTheme } from '@/composables/settings/useTheme'
 
-// Wraps vue-echarts with the three cross-cutting concerns every trend
-// chart needs: app-theme colours (canvas can't inherit CSS, so we read
-// the custom properties and register a matching ECharts theme, rebuilt
-// on every theme switch), a screen-reader label (the canvas is opaque
-// to AT), and motion that respects prefers-reduced-motion.
+// Wraps vue-echarts with the cross-cutting concerns every trend chart
+// needs: app-theme colours (canvas can't inherit CSS, so we read the
+// custom properties and register a matching ECharts theme, rebuilt on
+// every theme switch), a screen-reader label (the canvas is opaque to
+// AT), motion that respects prefers-reduced-motion, and the shared
+// interactions — click a point to open its match, drag to brush a time
+// range (emitted up to narrow the set), wheel/slider to zoom.
 const props = defineProps<{
   option: TrendOption
   caption: string
+}>()
+
+const emit = defineEmits<{
+  'open-match': [matchKey: string]
+  'narrow-range': [from: string, to: string]
 }>()
 
 const { themeMode } = useTheme()
@@ -84,19 +91,109 @@ const themedOption = computed<TrendOption>(() => ({
 registerThemeFromCss()
 watch(themeMode, registerThemeFromCss)
 
+// ─── Interactions ──────────────────────────────────────────────
+const chart = ref<InstanceType<typeof VChart> | null>(null)
+
+// Arm an always-on lineX brush (no toolbox button) so a drag selects a
+// range. The chart re-inits on theme / option change, which resets the
+// global cursor, so re-arm after each.
+function enableBrush(): void {
+  chart.value?.dispatchAction?.({
+    type: 'takeGlobalCursor',
+    key: 'brush',
+    brushOption: { brushType: 'lineX', brushMode: 'single' },
+  })
+}
+
+// Format an epoch ms to the `YYYY-MM-DDTHH:MM` shape the narrow's
+// customFrom/customTo expect.
+function epochToLocalInput(ms: number): string {
+  const d = new Date(ms)
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// The match_key nearest a given epoch across every plotted series — used
+// to turn a click (a near-zero brush span) into "open that match".
+interface ChartPoint { value?: [number, number]; matchKey?: string }
+function nearestMatchKey(t: number): string | undefined {
+  const series = props.option.series
+  const list = (Array.isArray(series) ? series : series ? [series] : []) as unknown as { data?: ChartPoint[] }[]
+  let best: { d: number; key: string } | undefined
+  for (const s of list) {
+    for (const item of s.data ?? []) {
+      if (!Array.isArray(item?.value) || !item.matchKey) continue
+      const d = Math.abs(item.value[0] - t)
+      if (!best || d < best.d) best = { d, key: item.matchKey }
+    }
+  }
+  return best?.key
+}
+
+// A drag brushes a range → narrow the set to it. (A plain click doesn't
+// fire brushEnd; it's handled by the pointer tracking below, because the
+// always-on brush cursor swallows ECharts' own @click.)
+function onBrushEnd(params: unknown): void {
+  const range = (params as { areas?: { coordRange?: [number, number] }[] }).areas?.[0]?.coordRange
+  if (!range || range.length !== 2) return
+  const from = Math.min(range[0], range[1])
+  const to = Math.max(range[0], range[1])
+  if (to - from < 60_000) return
+  emit('narrow-range', epochToLocalInput(from), epochToLocalInput(to))
+  // Clear the selection rectangle — the re-narrow makes it stale.
+  chart.value?.dispatchAction?.({ type: 'brush', areas: [] })
+}
+
+// Click-to-open: track pointer down→up at the DOM level (the brush eats
+// ECharts' @click). A near-stationary release is a click → map its pixel
+// to a time via convertFromPixel and open the nearest match; a drag is
+// left to the brush.
+let downX = 0
+let downY = 0
+function onPointerDown(e: PointerEvent): void {
+  downX = e.clientX
+  downY = e.clientY
+}
+function onPointerUp(e: PointerEvent): void {
+  if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return
+  const inst = chart.value
+  if (!inst?.convertFromPixel) return
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const coord = inst.convertFromPixel({ gridIndex: 0 }, [e.clientX - rect.left, e.clientY - rect.top]) as number[]
+  const t = Array.isArray(coord) ? coord[0] : undefined
+  if (typeof t !== 'number') return
+  const key = nearestMatchKey(t)
+  if (key) emit('open-match', key)
+}
+
 onMounted(() => {
   if (typeof window !== 'undefined' && window.matchMedia) {
     motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     syncMotion()
     motionQuery.addEventListener('change', syncMotion)
   }
+  nextTick(enableBrush)
 })
+watch(themedOption, () => nextTick(enableBrush))
 onBeforeUnmount(() => motionQuery?.removeEventListener('change', syncMotion))
 </script>
 
 <template>
-  <div class="trend-chart" role="img" :aria-label="caption">
-    <VChart class="trend-chart-canvas" :option="themedOption" :theme="themeName" autoresize />
+  <div
+    class="trend-chart"
+    role="img"
+    :aria-label="caption"
+    @pointerdown="onPointerDown"
+    @pointerup="onPointerUp"
+  >
+    <VChart
+      ref="chart"
+      class="trend-chart-canvas"
+      :option="themedOption"
+      :theme="themeName"
+      autoresize
+      @brush-end="onBrushEnd"
+    />
   </div>
 </template>
 

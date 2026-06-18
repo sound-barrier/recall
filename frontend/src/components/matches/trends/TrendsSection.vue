@@ -2,16 +2,31 @@
 import { computed, defineAsyncComponent, ref } from 'vue'
 
 import { useDossier } from '@/composables/dashboard/useDossier'
+import { useNarrow } from '@/composables/matches/useNarrow'
 import { rankLadderOption, winrateOption } from '@/components/matches/trends/trend-options'
 
 // ECharts is heavy; defer it to its own chunk that only loads when the
 // user opens the section (the v-if below gates the mount).
 const TrendChart = defineAsyncComponent(() => import('@/components/matches/trends/TrendChart.vue'))
 
+// Open a match's detail panel when a chart point is clicked — forwarded
+// up to App.vue's selection.open (same path as a leaf-row click).
+const emit = defineEmits<{ 'open-match': [matchKey: string] }>()
+
 // Time-series come from the dossier, so the charts track the same
 // narrowed set as the rest of the workspace. Both split by role bucket
 // (role queue → per-role lines, open queue → one line).
 const dossier = useDossier()
+
+// Brushing a time range on a chart sets the narrow's custom date range —
+// the same field the Campaign Log sparkline drives — so the whole
+// workspace (list + dossier + charts) scopes to the selection.
+const narrow = useNarrow()
+function onNarrowRange(from: string, to: string): void {
+  narrow.customFrom.value = from
+  narrow.customTo.value = to
+  narrow.pickedRange.value = 'custom'
+}
 
 const expanded = ref(false)
 const windowSize = ref<number>(20)
@@ -55,7 +70,13 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
               Rank over time
             </h4>
           </div>
-          <TrendChart v-if="rankHasData" :option="rankChartOption" caption="Rank progression over time, by role" />
+          <TrendChart
+            v-if="rankHasData"
+            :option="rankChartOption"
+            caption="Rank progression over time, by role"
+            @open-match="(k) => emit('open-match', k)"
+            @narrow-range="onNarrowRange"
+          />
           <p v-else class="trend-card-empty">
             No rank readings — capture a competitive rank screenshot to track your climb.
           </p>
@@ -76,6 +97,8 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
             v-if="winrateHasData"
             :option="winrateChartOption"
             :caption="`Rolling win rate over the last ${windowSize} matches, by role`"
+            @open-match="(k) => emit('open-match', k)"
+            @narrow-range="onNarrowRange"
           />
           <p v-else class="trend-card-empty">
             No decisive matches in the set.
