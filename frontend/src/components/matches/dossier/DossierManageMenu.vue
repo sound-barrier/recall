@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, toRef, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 
 import { useDashboardLayout } from '@/composables/dashboard/useDashboardLayout'
-import { useScrollLock } from '@/composables/shared/useScrollLock'
 import { useSectionLayout, type SectionDef } from '@/composables/matches/useSectionLayout'
 import { WIDGET_REGISTRY, type WidgetDef, type WidgetShape } from '@/dashboard/widgets'
 
@@ -24,9 +23,11 @@ const emit = defineEmits<{ close: [] }>()
 const layout = useDashboardLayout()
 const sections = useSectionLayout()
 
-// Freeze the page behind the menu so it can't scroll out from under the
-// anchored dropdown (consistent with every other overlay).
-useScrollLock(toRef(props, 'open'))
+// NOTE: deliberately NO useScrollLock here — this is the one overlay that
+// leaves the page scrollable. The Add button is anchored at the bottom of
+// the dossier and can open near the viewport's bottom edge, so the user
+// must be able to scroll the page to bring the menu (and its "Reset
+// dossier" footer) into view. Outside-click + Escape still close it.
 
 interface WidgetCategory {
   title: string

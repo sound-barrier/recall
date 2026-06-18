@@ -41,6 +41,16 @@ test.describe('dossier customize — no edit mode', () => {
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
+  test('the "+ Add" menu does NOT lock page scroll (the one overlay exception)', async ({ page }) => {
+    // Every other overlay freezes the page, but the Add menu is anchored
+    // and can sit near the viewport bottom — the page must stay scrollable
+    // so the user can bring the menu (and its "Reset dossier") into view.
+    await page.locator('[data-dossier-add]').click()
+    await expect(page.locator('.dossier-manage')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.style.overflow)).not.toBe('hidden')
+    expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden')
+  })
+
   test('a widget carries an always-present trash; clicking it removes the widget; reload persists', async ({ page }) => {
     await expect(page.locator('[data-widget-id="winrate"]')).toBeVisible()
     // No edit mode — the trash is in the DOM already (CSS hover-reveals it).
