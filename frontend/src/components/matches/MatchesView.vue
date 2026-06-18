@@ -475,7 +475,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
          In-app time-series line charts over the narrowed set.
          Collapsed by default so ECharts stays in its own
          lazily-loaded chunk. -->
-      <TrendsSection />
+      <TrendsSection @open-match="emit('open-match', $event)" />
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->
       <section ref="leavesSectionRef" class="leaves" aria-label="Set members">
