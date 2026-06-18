@@ -17,6 +17,7 @@ import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
 import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
 import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
 import { useTheme } from '@/composables/settings/useTheme'
+import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 
@@ -115,9 +116,16 @@ export const useSettingsStore = defineStore('settings', () => {
   // ── Appearance ────────────────────────────────────────────────────
   const { themeMode, setTheme } = useTheme()
 
+  // ── Calendar — first day of week ──────────────────────────────────
+  // Owned here (not a per-component useWeekStart) so App, SettingsView, and
+  // the matches-store dossier all read ONE instance.
+  const { weekStart, setWeekStart } = useWeekStart()
+
   return {
     themeMode,
     setTheme,
+    weekStart,
+    setWeekStart,
     tesseractStatus,
     tesseractReady,
     tesseractSupported,

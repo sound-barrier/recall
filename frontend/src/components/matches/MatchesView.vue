@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { provideDossier } from '@/composables/dashboard/useDossier'
 import { provideNarrow } from '@/composables/matches/useNarrow'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
 import MatchesTableSortPopover from '@/components/matches/list/MatchesTableSortPopover.vue'
-import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useDensity } from '@/composables/matches/useDensity'
 import { useSortGroupMenu } from '@/composables/matches/useSortGroupMenu'
 import { useScrollAffordance } from '@/composables/matches/useScrollAffordance'
@@ -157,7 +155,6 @@ const matchesStore = useMatchesStore()
 // bundle and destructures the picker callbacks itself.
 const {
   pickedRange, customFrom, customTo,
-  leaverHandling,
   anchorKey,
   resetNarrow,
   anyNarrow,
@@ -289,9 +286,6 @@ function requestCsvExport(keys: string[]) {
   emit('export-csv', matchesToCSV(rows, ow.heroRole), `recall-matches-${stamp}.csv`)
 }
 
-// PR B: weekStart drives the day-of-week breakdown's rotation so the
-// row matches the user's calendar preference.
-const { weekStart } = useWeekStart()
 // Row-density preference for the leaves list. Persisted via
 // usePersistedRef so the user's choice survives reloads. Default is
 // `comfortable` (the historical render).
@@ -342,14 +336,11 @@ async function onJumpToUndated() {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   window.scrollTo({ top: targetTop, behavior: reduce ? 'auto' : 'smooth' })
 }
-// Single dossier instance per Matches view. provideDossier() makes
-// it reachable from every descendant widget via useDossier() so we
-// don't thread 18 props through DashboardWidget. Each widget pulls
-// only the bedrock refs or query helpers it needs, parameterized
-// by its own useWidgetConfig output (PR C). MatchesView's previous
-// 18-prop widgetProps bag is gone.
-const dossier = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole, weekStart)
-provideDossier(dossier)
+// The dossier is built once in the matches store; provideDossier() makes it
+// reachable from every descendant widget via useDossier() so we don't thread
+// 18 props through DashboardWidget. Each widget pulls only the bedrock refs or
+// query helpers it needs, parameterized by its own useWidgetConfig output.
+provideDossier(matchesStore.dossier)
 // Same provide/inject shape exposes the narrow handlers (pickHero,
 // pickGameMode, etc.) to widgets that need to drill into a slice of
 // the active set — the hero × game-mode heatmap is the first consumer.
