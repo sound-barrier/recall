@@ -190,3 +190,38 @@ export function rollingWinrateSeries(records: readonly TrendInput[], window: num
   }
   return orderBuckets(series as (TrendSeries & { key: string })[])
 }
+
+// The latest rank reading per role bucket — drives the "Current rank"
+// dossier widget. Each entry is the most recent rank-bearing match for
+// that role (or the single open-queue / combined line).
+export interface RankNow {
+  key: string
+  label: string
+  tier: Tier
+  level: number
+  progress: number
+}
+
+export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
+  const latest = new Map<string, { t: number } & RankNow>()
+  // timedRecords is oldest-first, so a later match with `t >= prev.t`
+  // wins — the last write per bucket is the newest reading.
+  for (const { rec, t } of timedRecords(records)) {
+    const data = rec.data
+    const tier = data?.rank
+    if (!tier || !(TIER_ORDER as readonly string[]).includes(tier) || typeof data?.level !== 'number') continue
+    const bucket = roleBucket(rec)
+    const prev = latest.get(bucket.key)
+    if (!prev || t >= prev.t) {
+      latest.set(bucket.key, {
+        t,
+        key: bucket.key,
+        label: bucket.label,
+        tier: tier as Tier,
+        level: data.level,
+        progress: data.rank_progress ?? 0,
+      })
+    }
+  }
+  return orderBuckets([...latest.values()].map(({ t: _t, ...rank }) => rank))
+}

@@ -6,6 +6,7 @@ import {
   roleBucket,
   rankLadderSeries,
   rollingWinrateSeries,
+  currentRankByRole,
   matchEpoch,
   type TrendInput,
 } from '@/match/match-trends-helpers'
@@ -119,6 +120,24 @@ describe('rollingWinrateSeries', () => {
 
   it('is empty when there are no decisive matches', () => {
     expect(rollingWinrateSeries([rec('2026-05-10', '20:00', { result: 'draw' })], 10)).toEqual([])
+  })
+})
+
+describe('currentRankByRole', () => {
+  it('returns the latest rank reading per role bucket', () => {
+    const now = currentRankByRole([
+      rec('2026-05-10', '20:00', { queue: 'role', role: 'tank', rank: 'gold', level: 3, progress: 40 }),
+      rec('2026-05-12', '20:00', { queue: 'role', role: 'tank', rank: 'platinum', level: 5, progress: 10 }), // newest tank
+      rec('2026-05-11', '20:00', { queue: 'role', role: 'dps', rank: 'silver', level: 2, progress: 80 }),
+      rec('2026-05-09', '20:00', { queue: 'role', role: 'support', result: 'victory' }), // no rank → skipped
+    ])
+    expect(now.map((r) => r.key)).toEqual(['tank', 'dps'])
+    expect(now[0]).toMatchObject({ key: 'tank', tier: 'platinum', level: 5, progress: 10 })
+    expect(now[1]).toMatchObject({ key: 'dps', tier: 'silver', level: 2 })
+  })
+
+  it('is empty when no record carries a rank', () => {
+    expect(currentRankByRole([rec('2026-05-10', '20:00', { result: 'victory' })])).toEqual([])
   })
 })
 

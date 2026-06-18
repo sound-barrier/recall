@@ -1123,6 +1123,37 @@ describe('useMatchesDossier', () => {
     })
   })
 
+  describe('winrateBy', () => {
+    it('ranks keys by winrate, gates on the decisive sample, excludes draws', () => {
+      const records = ref<MatchRecord[]>([
+        rec({ hero: 'ana', result: 'victory' }),
+        rec({ hero: 'ana', result: 'victory' }),
+        rec({ hero: 'ana', result: 'defeat' }), // ana: 2 / 3 decisive → 67%
+        rec({ hero: 'lucio', result: 'victory' }),
+        rec({ hero: 'lucio', result: 'victory' }), // lucio: only 2 decisive → filtered
+        rec({ hero: 'ana', result: 'draw' }), // draw excluded
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const result = dossier.winrateBy({ getter: (r) => r.data?.hero, minMatches: 3, limit: 5 })
+      expect(result.value.map((e) => e.key)).toEqual(['ana'])
+      expect(result.value[0]!.winrate).toBe(67)
+      expect(result.value[0]!.total).toBe(3)
+    })
+
+    it('sorts best-first and respects the Top-N limit', () => {
+      const win = (hero: string) => rec({ hero, result: 'victory' })
+      const loss = (hero: string) => rec({ hero, result: 'defeat' })
+      const records = ref<MatchRecord[]>([
+        win('a'), win('a'), win('a'), // a: 100%
+        win('b'), win('b'), loss('b'), // b: 67%
+        loss('c'), loss('c'), loss('c'), // c: 0%
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const result = dossier.winrateBy({ getter: (r) => r.data?.hero, minMatches: 3, limit: 2 })
+      expect(result.value.map((e) => e.key)).toEqual(['a', 'b']) // c dropped by the limit
+    })
+  })
+
   describe('bestWinrateHero', () => {
     it('returns null when no hero qualifies', () => {
       const records = ref<MatchRecord[]>([])
