@@ -2,13 +2,23 @@ import { computed, markRaw, ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
 
 import type { MatchRecord } from '@/api'
-import { GetNewScreenshotCount } from '@/api'
+import {
+  GetNewScreenshotCount,
+  GetMatchResults,
+  GetScreenshotsDir,
+  GetWatchEnabled,
+  GetTesseractStatus,
+  GetDataLocation,
+} from '@/api'
+import { plainLanguageError } from '@/error-helpers'
+import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 
 // The matches domain: the parsed-match records (source of truth for the
@@ -74,6 +84,68 @@ export const useMatchesStore = defineStore('matches', () => {
     recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
   }
 
+  // ── Onboarding tour — demo-records swap ───────────────────────────
+  // Seeded from the same localStorage flag the tour reads so the welcome
+  // modal stays hidden until the tour finishes (avoids a tick-0 overlay
+  // stack). While active, `records` carries DEMO_MATCHES and the real fetch
+  // is stashed in savedRecords (load() routes there too) for restore-on-close.
+  function readTourWillOpen(): boolean {
+    try { return localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== 'true' }
+    catch (_) { return false }
+  }
+  const tourActive = ref(readTourWillOpen())
+  const savedRecords = ref<MatchRecord[]>([])
+  async function onTourActiveChange(active: boolean) {
+    if (active) {
+      const { DEMO_MATCHES } = await import('@/composables/shared/useDemoMatches')
+      savedRecords.value = records.value
+      records.value = [...DEMO_MATCHES]
+      tourActive.value = true
+    } else {
+      records.value = savedRecords.value
+      savedRecords.value = []
+      tourActive.value = false
+    }
+  }
+
+  // ── Boot coordinator ──────────────────────────────────────────────
+  // Promise.allSettled (NOT all): one endpoint failing MUST NOT blank the
+  // others or flash a false "Tesseract not detected". Fans the results into
+  // this store + the app/settings stores. Errors surface through the app
+  // store's banner with `load` itself as the Retry callback.
+  async function load() {
+    const appStore = useAppStore()
+    const settingsStore = useSettingsStore()
+    const before = records.value.length
+    const results = await Promise.allSettled([
+      GetMatchResults(),
+      GetScreenshotsDir(),
+      GetWatchEnabled(),
+      GetTesseractStatus(),
+      GetNewScreenshotCount(),
+      GetDataLocation(),
+    ])
+    const [recs, dir, watchOn, tess, newCount, loc] = results
+    if (recs.status === 'fulfilled') {
+      if (tourActive.value) {
+        savedRecords.value = recs.value ?? []
+      } else {
+        records.value = recs.value ?? []
+        if (before > 0 && records.value.length > before) flashRecordsPulse()
+      }
+      if (appStore.errorRetry === load) appStore.clearError()
+    } else {
+      appStore.setError(`Could not load matches: ${plainLanguageError(String(recs.reason))}`, load)
+    }
+    if (dir.status === 'fulfilled')     settingsStore.setScreenshotsDir(dir.value || '')
+    if (watchOn.status === 'fulfilled') settingsStore.setWatchEnabled(!!watchOn.value)
+    if (tess.status === 'fulfilled')    settingsStore.setTesseractStatus(tess.value)
+    else                                settingsStore.setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
+    newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
+    appStore.dataLocation = loc.status === 'fulfilled' ? loc.value : null
+    firstLoadPending.value = false
+  }
+
   // ── Narrow filter + anchor cluster ────────────────────────────────
   // The Matches-view filter state lives here so `selection` (the detail
   // panel) + the dossier paginate/aggregate against the same narrowedRecords
@@ -129,5 +201,9 @@ export const useMatchesStore = defineStore('matches', () => {
     refreshNewCount,
     recordsPulse,
     flashRecordsPulse,
+    tourActive,
+    savedRecords,
+    onTourActiveChange,
+    load,
   }
 })
