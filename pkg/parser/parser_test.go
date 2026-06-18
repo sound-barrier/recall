@@ -83,9 +83,9 @@ func TestNormalizeDate(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// extractRank — finds the OW tier name + level. Per the parser comments
-// in parser.go:1462, the level extraction must pick the LAST digit in the
-// trailing number-run because italic fonts misread "PLATINUM 5" as
+// extractRank — finds the OW tier name + level. Per the ExtractRank
+// implementation/comments, the level extraction must pick the LAST digit in
+// the trailing number-run because italic fonts misread "PLATINUM 5" as
 // "PLATINUM 35".
 // ──────────────────────────────────────────────────────────────────────────
 
