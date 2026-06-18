@@ -16,6 +16,7 @@ export default defineConfig({
     // crashes on Playwright's test() being called outside a Playwright
     // runner.
     include: ['src/**/*.test.ts'],
+    setupFiles: ['./src/test-utils/vitest.setup.ts'],
     // Composable tests need a DOM + localStorage; all tests use happy-dom
     // so the same environment is available everywhere (pure-function tests
     // are unaffected since they don't use any browser APIs).

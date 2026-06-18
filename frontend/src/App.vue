@@ -16,21 +16,9 @@ import {
   GetStartupError,
   GetScreenshotsFolderCandidates,
   SetScreenshotsDir,
-  ResolveAmbiguousMatch,
-  IgnoreScreenshot,
-  SetMatchAnnotation,
-  UpdateMatchData,
-  ResetMatchData,
-  SetMatchVisibility,
-  BulkSetMatchPlayMode,
-  BulkSetMatchQueue,
-  SetMatchReview,
-  SetMatchQueue,
-  SetMatchPlayMode,
   SeedTestProfile,
   SwitchProfile,
 } from '@/api'
-import type { MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
@@ -372,58 +360,6 @@ function onDataApplied() {
 // unified SetMatchAnnotation writer with every other field carried
 // over from the existing record so a leaver-chip click only changes
 // the leaver bit — note / replay_code / members / tags survive.
-async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'team' | 'enemy') {
-  try {
-    const rec = records.value.find(r => r.match_key === matchKey)
-    const prev = rec?.annotation
-    await SetMatchAnnotation(matchKey, {
-      leaver:      leaver as MatchAnnotationInput['leaver'],
-      note:        prev?.note ?? '',
-      replay_code: prev?.replay_code ?? '',
-      members:     prev?.members ?? [],
-      tags:        prev?.tags ?? [],
-    })
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Unified annotation setter — used by the MatchCard "Match notes"
-// block when the user edits note / replay_code / members in one go.
-// The whole row is written in a single round-trip so partial state
-// can't strand the user mid-edit.
-async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput) {
-  try {
-    await SetMatchAnnotation(matchKey, input)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Inline match-data edit: persist the full override set, then reload so the
-// re-aggregated record (with edited_fields + the ocr_edited badge) renders.
-async function onUpdateMatchData(matchKey: string, overrides: UserMatchDataInput) {
-  try {
-    await UpdateMatchData(matchKey, overrides)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Reset a match to pure OCR — clears every override, reverting to the scanned
-// values.
-async function onResetMatchData(matchKey: string) {
-  try {
-    await ResetMatchData(matchKey)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
 // A manual match was created → close the modal, reload so it appears in the
 // list, and open it so the user can add the right-panel review / replay-code
 // details (the choosers key on match_key and work unchanged).
@@ -431,51 +367,6 @@ async function onManualMatchCreated(rec: MatchRecord) {
   showManualMatchModal.value = false
   await load()
   selection.open(rec.match_key)
-}
-
-// Hide / unhide handler. Soft-delete via SetMatchVisibility — the
-// per-screenshot rows stay in the DB so a re-parse won't re-add the
-// screenshots. After the round-trip we reload records so the dimmed
-// state + Hidden · N count both update in lock-step.
-async function onSetMatchHidden(matchKey: string, hidden: boolean) {
-  try {
-    await SetMatchVisibility(matchKey, hidden)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Per-match review-status handler. The empty-string branch clears
-// (DELETE) — a click on the active chip toggles back to "not
-// reviewed". `'self'` / `'coach'` PUT the new value. After the
-// round-trip we reload so the next render reflects reviewed_by
-// on every UI surface that reads it.
-async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
-  try {
-    await SetMatchReview(matchKey, reviewedBy)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-async function onSetMatchQueue(matchKey: string, queueType: QueueType) {
-  try {
-    await SetMatchQueue(matchKey, queueType)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-async function onSetMatchPlayMode(matchKey: string, playMode: PlayMode) {
-  try {
-    await SetMatchPlayMode(matchKey, playMode)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
 }
 
 // "Since this match" anchor handler. Empty string clears; any
@@ -524,50 +415,9 @@ function onAnchorToastDismiss(token: number) {
 // PUT settles. A single failure aborts and surfaces the error;
 // partial state is fine because each /visibility PUT is idempotent
 // and the user can retry.
-async function onHideMatches(matchKeys: string[]) {
-  if (matchKeys.length === 0) return
-  try {
-    await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, true)))
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Bulk play-mode / queue-type writers — one PUT to the
-// collection-level endpoint instead of N per-match PUTs. The
-// frontend's bulk wrapper hits PUT /api/v1/matches/play-mode (or
-// /queue-type) which writes in one SQLite transaction; a partial
-// crash leaves the table consistent.
-async function onBulkPlayMode(matchKeys: string[], playMode: PlayMode) {
-  if (matchKeys.length === 0) return
-  try {
-    await BulkSetMatchPlayMode(matchKeys, playMode)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
-  if (matchKeys.length === 0) return
-  try {
-    await BulkSetMatchQueue(matchKeys, queueType)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// Bulk-tag — append `tag` to every selected match's annotation,
-// preserving every other annotation field. No bulk endpoint exists
-// (yet); we do one read-modify-write per record in parallel. Reload
-// once at the end. Idempotent: re-tagging an already-tagged record
-// is a no-op (the API dedupes lowercase server-side, see
-// SetMatchAnnotation).
-// Match-mutation handlers (context-menu fast-tracks + archive-drawer bulk
-// actions) + the pending detail-panel focus target live in useMatchActions
-// — wired below via `useMatchActions(...)` once `selection` exists.
+// Match-mutation handlers (context-menu + drawer bulk + per-match status +
+// annotation/data edits + ambiguous-resolve + ignore) all live in
+// useMatchActions, wired below.
 
 // ── Export-bundle + CSV flow ─────────────────────────────────────────
 // The Matches bulk-action bar emits `export-bundle` / `export-csv` with the
@@ -580,34 +430,6 @@ const {
   onExportMatchesCSV,
   onExportBundleConfirm,
 } = useExportBundle({ onError: setErrorFromRaw })
-
-// Ambiguous-attribution resolver. The user picks which candidate
-// match an ambiguous screenshot belongs to from the Unknown tab's
-// "Needs your review" subsection; we PUT the resolution, then
-// reload so the row disappears + the resolved match's source-file
-// count updates.
-async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
-  try {
-    await ResolveAmbiguousMatch(ambiguousKey, resolvedTo)
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-// "Delete forever" from the Unknown tab's unmatched section.
-// Adds the screenshot's filename to the suppress-list and wipes
-// the unmatched- match row in lockstep; reload picks up the new
-// state (the row disappears from Unknown).
-async function onIgnoreScreenshot(filename: string) {
-  try {
-    await IgnoreScreenshot(filename)
-    await loadIgnored()
-    await load()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
 
 // Ignored-screenshot management (Settings → Advanced → Manage panel) lives in
 // useIgnoredScreenshots — the suppress-list + count chip + restore/clear/
@@ -680,10 +502,24 @@ const {
   onUnhideMatches,
   onHardDeleteMatches,
   onMoveMatches,
+  onSetLeaverAnnotation,
+  onSetMatchAnnotation,
+  onUpdateMatchData,
+  onResetMatchData,
+  onSetMatchHidden,
+  onSetMatchReview,
+  onSetMatchQueue,
+  onSetMatchPlayMode,
+  onHideMatches,
+  onBulkPlayMode,
+  onBulkQueue,
+  onResolveAmbiguous,
+  onIgnoreScreenshot,
 } = useMatchActions({
   records,
   openMatch: selection.open,
   reload: load,
+  reloadIgnored: loadIgnored,
   setError,
   onError: setErrorFromRaw,
 })
