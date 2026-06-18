@@ -15,13 +15,13 @@ import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
-const rankMatch = (key: string, date: string, level: number) => ({
+const rankMatch = (key: string, date: string, level: number, role = 'tank') => ({
   match_key: key,
   source_files: [`${key}.png`],
   source_types: { [`${key}.png`]: 'rank' },
   queue_type: 'role',
   data: {
-    map: 'rialto', playlist: 'competitive', role: 'tank', hero: 'ana', result: 'victory',
+    map: 'rialto', playlist: 'competitive', role, hero: 'ana', result: 'victory',
     date, finished_at: '20:00', rank: 'platinum', level, rank_progress: 40, change_percent: 24,
   },
   parsed_at: `${date}T20:00:00Z`,
@@ -74,5 +74,52 @@ test.describe('Matches — Trends interactions', () => {
     await expect(page.locator('aside.detail-panel')).toHaveCount(0)
     await page.mouse.click(box.x + box.width * 0.42, box.y + box.height * 0.46)
     await expect(page.locator('aside.detail-panel')).toBeVisible()
+  })
+
+  test('clicking the legend toggles a line, it does NOT open a match', async ({ page }) => {
+    // Two roles → the legend renders; a click on it (above the plot grid)
+    // must toggle the series, never open a match.
+    const corpus = Array.from({ length: 6 }, (_, i) =>
+      rankMatch(`m${i}`, `2026-05-${String(10 + i).padStart(2, '0')}`, 3, i % 2 === 0 ? 'tank' : 'dps'))
+    await mock(page, corpus)
+    await page.goto('/')
+    const box = await openRankChart(page)
+
+    // The legend sits at the top-centre of the chart, above the grid.
+    await page.mouse.click(box.x + box.width * 0.42, box.y + 18)
+    await page.waitForTimeout(300)
+    await expect(page.locator('aside.detail-panel')).toHaveCount(0)
+  })
+
+  test('a chart can be removed and added back', async ({ page }) => {
+    await mock(page, Array.from({ length: 4 }, (_, i) => rankMatch(`m${i}`, `2026-05-${String(10 + i).padStart(2, '0')}`, 3)))
+    await page.goto('/')
+    await openRankChart(page)
+
+    await expect(page.locator('.trend-card')).toHaveCount(5)
+    await page.locator('.trend-card', { hasText: 'Modifiers over time' }).locator('.trend-card-close').click()
+    await expect(page.locator('.trend-card')).toHaveCount(4)
+    const chip = page.locator('.trends-add-chip', { hasText: 'Modifiers over time' })
+    await expect(chip).toBeVisible()
+    await chip.click()
+    await expect(page.locator('.trend-card')).toHaveCount(5)
+  })
+
+  test('Reset view clears a brushed date range', async ({ page }) => {
+    await mock(page, Array.from({ length: 8 }, (_, i) => rankMatch(`m${i}`, `2026-05-${String(10 + i).padStart(2, '0')}`, 3)))
+    await page.goto('/')
+    const box = await openRankChart(page)
+    expect(await page.locator('.leaf-row').count()).toBe(8)
+
+    const y = box.y + box.height * 0.42
+    await page.mouse.move(box.x + box.width * 0.30, y)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width * 0.50, y)
+    await page.mouse.move(box.x + box.width * 0.62, y)
+    await page.mouse.up()
+    await expect.poll(() => page.locator('.leaf-row').count()).toBeLessThan(8)
+
+    await page.locator('.trends-reset').click()
+    await expect.poll(() => page.locator('.leaf-row').count()).toBe(8)
   })
 })
