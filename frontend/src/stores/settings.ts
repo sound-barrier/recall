@@ -6,9 +6,18 @@ import {
   ResetTesseractPath,
   ProbeTesseractBinary,
   SetTesseractPath,
+  SetWatchEnabled,
+  PickScreenshotsDir,
+  GetScreenshotsFolderCandidates,
+  SetScreenshotsDir,
+  RevealScreenshotsDir,
+  ResetScreenshotsDir,
 } from '@/api'
 import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
+import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
+import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
 import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
 
 // Settings domain: the OCR-engine (Tesseract) configuration + status. Migrated
 // out of App.vue's <script setup>; the composable's deps are wired to the
@@ -52,6 +61,56 @@ export const useSettingsStore = defineStore('settings', () => {
     },
   })
 
+  // ── Folder watch ──────────────────────────────────────────────────
+  // Calls the Go setter (owns the fsnotify watcher) + rolls back the UI on
+  // round-trip failure. Gated on Tesseract being ready — turning it on with a
+  // broken OCR setup would queue silent failures.
+  const {
+    enabled: watchEnabled,
+    setEnabled: setWatchEnabled,
+    toggle: toggleWatch,
+  } = useFeatureToggle({
+    set: SetWatchEnabled,
+    canEnable: () => tesseractReady.value
+      ? null
+      : 'Configure Tesseract in Settings → Engine before enabling Watch.',
+    onError: (m) => { appStore.setErrorFromRaw(m) },
+  })
+
+  // ── Screenshots directory ─────────────────────────────────────────
+  // Persisted Go-side, mirrored here for rendering; also owns the
+  // platform-probe state for SettingsView's "Detect Overwatch Folder".
+  const {
+    screenshotsDir,
+    probing,
+    probeMessage,
+    probeStatus,
+    probeTried,
+    setScreenshotsDir,
+    pickDir,
+    detectDir,
+    revealDir,
+    resetDir,
+  } = useScreenshotsDir({
+    pickScreenshotsDir: PickScreenshotsDir,
+    // The single-best ProbeScreenshotsDir endpoint was removed pre-1.0; the
+    // candidates list is the strict superset, first exists:true = single best.
+    probeScreenshotsDir: async () => {
+      const candidates = await GetScreenshotsFolderCandidates()
+      const tried = candidates.map(c => c.path).filter(Boolean)
+      const hit = candidates.find(c => c.exists)
+      return hit
+        ? { found: true, path: hit.path, tried }
+        : { found: false, tried }
+    },
+    setScreenshotsDir: SetScreenshotsDir,
+    revealScreenshotsDir: RevealScreenshotsDir,
+    resetScreenshotsDir: ResetScreenshotsDir,
+    refreshNewCount: () => useMatchesStore().refreshNewCount(),
+    shouldConfirmPickWhile: () => watchEnabled.value,
+    onError: (m) => { appStore.setErrorFromRaw(m) },
+  })
+
   return {
     tesseractStatus,
     tesseractReady,
@@ -66,5 +125,18 @@ export const useSettingsStore = defineStore('settings', () => {
     resetTesseractPath,
     detectTesseractBinary,
     gotoEngineSettings,
+    watchEnabled,
+    setWatchEnabled,
+    toggleWatch,
+    screenshotsDir,
+    probing,
+    probeMessage,
+    probeStatus,
+    probeTried,
+    setScreenshotsDir,
+    pickDir,
+    detectDir,
+    revealDir,
+    resetDir,
   }
 })

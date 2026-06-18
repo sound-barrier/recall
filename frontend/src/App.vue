@@ -20,13 +20,9 @@ import {
   GetActiveParse,
   GetMatchResults,
   GetScreenshotsDir,
-  PickScreenshotsDir,
   GetScreenshotsFolderCandidates,
-  ResetScreenshotsDir,
-  RevealScreenshotsDir,
   SetScreenshotsDir,
   GetWatchEnabled,
-  SetWatchEnabled,
   GetTesseractStatus,
   ClearDatabase,
   GetNewScreenshotCount,
@@ -60,8 +56,6 @@ import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
-import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
-import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
@@ -275,6 +269,12 @@ const {
   tesseractProbeMessage,
   tesseractProbeStatus,
   tesseractProbeTried,
+  watchEnabled,
+  screenshotsDir,
+  probing,
+  probeMessage,
+  probeStatus,
+  probeTried,
 } = storeToRefs(settingsStore)
 const {
   setTesseractStatus,
@@ -282,6 +282,13 @@ const {
   resetTesseractPath,
   detectTesseractBinary,
   gotoEngineSettings,
+  setWatchEnabled,
+  toggleWatch,
+  setScreenshotsDir,
+  pickDir,
+  detectDir,
+  revealDir,
+  resetDir,
 } = settingsStore
 
 // Confirmation modal for parsing with an unsupported Tesseract version.
@@ -309,45 +316,6 @@ useModalFocusTrap(showStartupErrorModal, {
   containerSelector: '.modal-box.startup-error',
   onClose: () => {},
 })
-
-// Screenshots dir — persisted on the Go side; mirrored here for
-// rendering. The composable also owns the platform-probe state
-// (probing / probeMessage / probeStatus / probeTried) consumed by
-// SettingsView's "Detect Overwatch Folder" button.
-const {
-  screenshotsDir,
-  probing,
-  probeMessage,
-  probeStatus,
-  probeTried,
-  setScreenshotsDir,
-  pickDir,
-  detectDir,
-  revealDir,
-  resetDir,
-} = useScreenshotsDir({
-  pickScreenshotsDir: PickScreenshotsDir,
-  // Adapter onto the candidates probe (the single-best ProbeScreenshotsDir
-  // endpoint was removed pre-1.0). The candidates list is the strict
-  // superset; the first exists:true entry is the single-best path. Empty
-  // on macOS / Linux — auto-detect is Windows-only, so detect surfaces
-  // a "no default found" message there (same behaviour as before).
-  probeScreenshotsDir: async () => {
-    const candidates = await GetScreenshotsFolderCandidates()
-    const tried = candidates.map(c => c.path).filter(Boolean)
-    const hit = candidates.find(c => c.exists)
-    return hit
-      ? { found: true, path: hit.path, tried }
-      : { found: false, tried }
-  },
-  setScreenshotsDir: SetScreenshotsDir,
-  revealScreenshotsDir: RevealScreenshotsDir,
-  resetScreenshotsDir: ResetScreenshotsDir,
-  refreshNewCount: () => refreshNewCount(),
-  shouldConfirmPickWhile: () => watchEnabled.value,
-  onError: (m) => { setErrorFromRaw(m) },
-})
-
 
 // First-run picker candidates — four canonical Windows capture
 // sources (Nvidia Overlay / OW PrntScn / Snip tool / Steam). Empty
@@ -379,22 +347,6 @@ async function pickDetectedSource(path: string) {
     setErrorFromRaw(String(e))
   }
 }
-
-// Watch feature toggle. Calls a Go setter that owns the actual side
-// effect (fsnotify watcher) and rolls back the UI on round-trip
-// failure. Gated on Tesseract being ready — turning it on with a
-// broken OCR setup would queue silent failures.
-const {
-  enabled: watchEnabled,
-  setEnabled: setWatchEnabled,
-  toggle: toggleWatch,
-} = useFeatureToggle({
-  set: SetWatchEnabled,
-  canEnable: () => tesseractReady.value
-    ? null
-    : 'Configure Tesseract in Settings → Engine before enabling Watch.',
-  onError: (m) => { setErrorFromRaw(m) },
-})
 
 // Filter / filter-panel / grouping composables — owned here so the
 // extracted view components (MatchesView, eventually others) receive
