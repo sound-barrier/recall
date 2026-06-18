@@ -15,7 +15,6 @@ import {
   GetVersion,
   GetStartupError,
   CheckForUpdate,
-  OpenURL,
   type UpdateInfo,
   ParseScreenshots,
   ReParseAll,
@@ -84,7 +83,7 @@ import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/matche
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
-import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
+import AppMasthead from '@/components/shared/AppMasthead.vue'
 import StartupErrorModal from '@/components/shared/StartupErrorModal.vue'
 import UnsupportedModal from '@/components/shared/UnsupportedModal.vue'
 import SystemAlertBanner from '@/components/shared/SystemAlertBanner.vue'
@@ -147,11 +146,6 @@ const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches
 // Anchor confirmation toast — small, eagerly loaded so it can fire
 // on the very first anchor-set transition without a chunk fetch.
 const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/list/MatchAnchorToast.vue'))
-// ProfileSwitcher is part of the always-visible masthead chrome, so
-// it's a static import — lazy-loading it would just buy a tiny
-// initial-bundle saving at the cost of a render-blocking flash on
-// every first paint.
-import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
 const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/manual/ManualMatchModal.vue'))
@@ -165,12 +159,6 @@ const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches
 // imperceptible against the network round-trip the load() itself is
 // already doing for /api/v1/matches.
 const OnboardingTour = defineAsyncComponent(() => import('@/components/shared/OnboardingTour.vue'))
-
-// GitHub repository URL — surfaced via the brandmark in the masthead.
-// Centralised here so the markup, hover title, and any future references
-// stay in sync. Routed through OpenURL so Wails-mode clicks open in the
-// user's system browser instead of the embedded WebView.
-const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
 
 const records = ref<MatchRecord[]>([])
 const error = ref('')
@@ -1642,148 +1630,21 @@ useEventStream({
         @fix="gotoEngineSettings"
       />
 
-      <header class="masthead">
-        <div class="masthead-left">
-          <!-- Brandmark also acts as the repo link. Use <a> so the
-               markup is semantically navigational (and middle-/right-
-               click "open in new tab" work in server mode), but route
-               left-clicks through OpenURL so Wails mode hits the OS
-               browser instead of the embedded WebView. -->
-          <a
-            class="brandmark-tile brandmark-link"
-            :href="GITHUB_REPO_URL"
-            target="_blank"
-            rel="noopener noreferrer"
-            :title="`Open Recall on GitHub — ${GITHUB_REPO_URL}`"
-            aria-label="Open the Recall project on GitHub"
-            @click.prevent="OpenURL(GITHUB_REPO_URL)"
-          >
-            <span class="brand-tick">↺</span>
-            <h1 class="brand">
-              RE<span class="brand-accent">CALL</span>
-            </h1>
-            <span class="brand-corner" aria-hidden="true" />
-            <span class="brand-extlink" aria-hidden="true">↗</span>
-          </a>
-          <p class="tagline">
-            Personal Telemetry · Match Almanac
-          </p>
-          <!-- Workflow order: configure → ingest → view → triage. Matches
-               stays the default landing tab even though it sits at position
-               03 — the numbering communicates the intended user flow. -->
-          <nav class="page-nav" role="tablist" aria-label="Primary" @keydown="onTabKeydown">
-            <button
-              id="tab-settings"
-              class="nav-tab"
-              :class="{ active: view === 'settings' }"
-              :aria-selected="view === 'settings'"
-              :aria-current="view === 'settings' ? 'page' : undefined"
-              :tabindex="view === 'settings' ? 0 : -1"
-              role="tab"
-              aria-controls="panel-settings"
-              @click="goToView('settings')"
-            >
-              <span class="nav-tab-num">01</span>
-              <span class="nav-tab-label">Settings</span>
-            </button>
-            <button
-              id="tab-ingest"
-              class="nav-tab"
-              :class="{ active: view === 'ingest' }"
-              :aria-selected="view === 'ingest'"
-              :aria-current="view === 'ingest' ? 'page' : undefined"
-              :tabindex="view === 'ingest' ? 0 : -1"
-              role="tab"
-              aria-controls="panel-ingest"
-              @click="goToView('ingest')"
-            >
-              <span class="nav-tab-num">02</span>
-              <span class="nav-tab-label">Parse</span>
-            </button>
-            <button
-              id="tab-matches"
-              class="nav-tab"
-              :class="{ active: view === 'matches' }"
-              :aria-selected="view === 'matches'"
-              :aria-current="view === 'matches' ? 'page' : undefined"
-              :tabindex="view === 'matches' ? 0 : -1"
-              role="tab"
-              aria-controls="panel-matches"
-              @click="goToView('matches')"
-            >
-              <span class="nav-tab-num">03</span>
-              <span class="nav-tab-label">
-                Matches
-                <span
-                  v-if="activeFilterCount > 0 && view !== 'matches'"
-                  class="nav-tab-filter-dot"
-                  :title="`${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} active`"
-                  aria-label="filters active"
-                />
-              </span>
-            </button>
-            <button
-              id="tab-unknown"
-              class="nav-tab"
-              :class="{ active: view === 'unknown' }"
-              :aria-selected="view === 'unknown'"
-              :aria-current="view === 'unknown' ? 'page' : undefined"
-              :tabindex="view === 'unknown' ? 0 : -1"
-              role="tab"
-              aria-controls="panel-unknown"
-              @click="goToView('unknown')"
-            >
-              <span class="nav-tab-num">04</span>
-              <span class="nav-tab-label">
-                Unknown
-                <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
-              </span>
-            </button>
-          </nav>
-        </div>
-        <div class="masthead-right">
-          <MastheadParseChip
-            :parse-progress="parseProgress"
-            @go-to-view="goToView"
-          />
-          <div
-            v-if="records.length > 0 && view === 'matches'"
-            class="scoreboard"
-            :class="{ pulse: recordsPulse }"
-            title="Wins · Losses · Draws across the currently filtered matches"
-          >
-            <div class="score-cell">
-              <span class="score-num win">{{ wld.w }}</span>
-              <span class="score-label">Won</span>
-            </div>
-            <div class="score-cell">
-              <span class="score-num loss">{{ wld.l }}</span>
-              <span class="score-label">Lost</span>
-            </div>
-            <div class="score-cell">
-              <span class="score-num draw">{{ wld.d }}</span>
-              <span class="score-label">Drew</span>
-            </div>
-          </div>
-          <ProfileSwitcher />
-          <div class="ver-block">
-            <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
-            <!-- Single trigger — the modal owns all result presentation.
-                 NOT auto-fired on mount; opting in keeps the boot path
-                 off the network. The reminder banner above main content
-                 nudges users who haven't checked in 90+ days. -->
-            <button
-              class="ver-btn ver-btn-check"
-              :disabled="updateCheckBusy && !updateInfo"
-              :title="updateCheckBusy ? 'Checking GitHub releases…' : 'Check GitHub for a newer release'"
-              data-update-check-trigger
-              @click="checkForUpdates"
-            >
-              {{ updateCheckBusy && !updateInfo ? 'Checking…' : 'Check for updates' }}
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppMasthead
+        :view="view"
+        :active-filter-count="activeFilterCount"
+        :unknown-count="unknownRecords.length"
+        :parse-progress="parseProgress"
+        :records-count="records.length"
+        :wld="wld"
+        :records-pulse="recordsPulse"
+        :app-version="appVersion"
+        :update-check-busy="updateCheckBusy"
+        :has-update-info="!!updateInfo"
+        :on-tab-keydown="onTabKeydown"
+        @go-to-view="goToView"
+        @check-updates="checkForUpdates"
+      />
 
       <UpdateReminderBanner
         :open="showUpdateReminder"
