@@ -66,5 +66,11 @@ test.describe('Matches narrow — leaver / modifier / rank', () => {
   test('Rank filter scopes to the picked tier', async ({ page }) => {
     await pickChip(page, 'Rank', 'diamond')
     await expect.poll(() => page.locator('.leaf-row').count()).toBe(2)
+    await expect(page.locator('.leaf-row', { hasText: 'm3' })).toHaveCount(1)
+    await expect(page.locator('.leaf-row', { hasText: 'm4' })).toHaveCount(1)
+    await expect(page.locator('.leaf-row', { hasText: 'm0' })).toHaveCount(0)
+    await expect(page.locator('.leaf-row', { hasText: 'm1' })).toHaveCount(0)
+    await expect(page.locator('.leaf-row', { hasText: 'm2' })).toHaveCount(0)
+    await expect(page.locator('.leaf-row', { hasText: 'm5' })).toHaveCount(0)
   })
 })
