@@ -14,9 +14,6 @@ import { storeToRefs } from 'pinia'
 import type { MatchRecord, NamedCandidate } from '@/api'
 import {
   GetStartupError,
-  ParseScreenshots,
-  ReParseAll,
-  CancelParse,
   GetActiveParse,
   GetScreenshotsFolderCandidates,
   SetScreenshotsDir,
@@ -168,8 +165,18 @@ const {
   lastParsedAt,
   recordsPulse,
   tourActive,
+  parseProgressOpen,
+  showUnsupportedModal,
 } = storeToRefs(matchesStore)
-const { refreshNewCount, load, onTourActiveChange } = matchesStore
+const {
+  refreshNewCount,
+  load,
+  onTourActiveChange,
+  parse,
+  onReParseAll,
+  onCancelParse,
+  confirmUnsupportedParse,
+} = matchesStore
 
 // Onboarding tour demo-records swap (tourActive / savedRecords /
 // onTourActiveChange) + the boot coordinator load() live in the matches store.
@@ -247,8 +254,6 @@ const {
   resetDir,
 } = settingsStore
 
-// Confirmation modal for parsing with an unsupported Tesseract version.
-const showUnsupportedModal = ref(false)
 const showManualMatchModal = ref(false)
 
 // Modal focus trap — captures the trigger, focuses the first
@@ -332,104 +337,9 @@ function onDataApplied() {
   load()
 }
 
-async function runParse() {
-  clearError()
-  parseBusy.value = true
-  parseProgress.value = null
-  parseLog.value = []
-  parseProgressOpen.value = false
-  try {
-    // POST /parses now returns 202 the instant the run is accepted (it
-    // runs as a background job server-side); in Wails the IPC blocks
-    // until done. Either way COMPLETION — load() + parseBusy=false —
-    // arrives via the parse-complete event handler (onParseComplete),
-    // not here, so a mid-parse network drop can't strand the panel.
-    await ParseScreenshots()
-  } catch (e) {
-    // The kickoff itself failed (409 already-in-flight / unset folder,
-    // or a pre-202 network error). Clear the busy state here since no
-    // parse-complete will follow.
-    setErrorFromRaw(String(e))
-    parseBusy.value = false
-    parseProgress.value = null
-    cancellingParse.value = false
-  }
-}
-
-// Stop click from IngestView's Run Parse button OR the bottom
-// status bar's ABORT tile. Sets the local cancelling flag
-// straight away so the buttons flip to "Cancelling…" / "ABORTING"
-// without waiting for the SSE round-trip; the actual flag-clear
-// happens in onParseCancelled above. Swallows 409 because the
-// only way to hit it is a race where the parse finished
-// naturally before the Stop click landed — the UI reconciles via
-// the parse-complete branch instead. Does NOT gate on parseBusy:
-// watcher-triggered parses don't flip parseBusy (it's owned by
-// runParse), but the user must still be able to abort them.
-async function onCancelParse() {
-  if (cancellingParse.value) return
-  cancellingParse.value = true
-  try {
-    await CancelParse()
-  } catch (_) {
-    // Race: parse finished between click and DELETE. The
-    // parse-complete handler already ran (or is about to), and
-    // the cancellingParse flag gets cleared in runParse's
-    // finally block or in the parse-complete onComplete handler.
-    cancellingParse.value = false
-  }
-}
-
-// "Re-parse all screenshots" — Settings → Advanced fires this after
-// its own two-step confirm. Re-uses the same parseBusy / parseLog /
-// progress wiring runParse does so the masthead status bar and any
-// open progress drawer reflect activity. Different from the normal
-// `parse()` in two ways: (1) calls ReParseAll which forces re-OCR on
-// already-parsed files, (2) skips the Tesseract-supported modal
-// because the user knows they're committing to a multi-minute run.
-async function onReParseAll() {
-  if (!tesseractReady.value) {
-    setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
-    return
-  }
-  clearError()
-  parseBusy.value = true
-  parseProgress.value = null
-  parseLog.value = []
-  try {
-    // Same async-job contract as runParse — completion + load() arrive
-    // via the parse-complete handler, not the POST resolving.
-    await ReParseAll()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-    parseBusy.value = false
-    parseProgress.value = null
-    cancellingParse.value = false
-  }
-}
-
-async function parse() {
-  if (!tesseractReady.value) {
-    setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
-    return
-  }
-  // If the detected version is unsupported, require explicit confirmation
-  // before running — parsing may produce incorrect results.
-  if (!tesseractSupported.value) {
-    showUnsupportedModal.value = true
-    return
-  }
-  await runParse()
-}
-
-async function confirmUnsupportedParse() {
-  showUnsupportedModal.value = false
-  await runParse()
-}
-
-// Whether the parse-progress detail panel (current file + log) is expanded.
-// Collapsed by default — user sees only the count row until they open it.
-const parseProgressOpen = ref(false)
+// Parse run controls (runParse / parse / onReParseAll / onCancelParse /
+// confirmUnsupportedParse) + parseProgressOpen + showUnsupportedModal live in
+// the matches store.
 
 // Clear-Database opt-out plumbing. SettingsAdvanced fires
 // `clear-database` with `{ keepIgnored: boolean }`; we stash the
