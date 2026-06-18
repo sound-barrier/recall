@@ -23,7 +23,6 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
-import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
 import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
@@ -33,8 +32,7 @@ import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
-import StartupErrorModal from '@/components/app/StartupErrorModal.vue'
-import UnsupportedModal from '@/components/app/UnsupportedModal.vue'
+import AppOverlays, { type OverlaysApi } from '@/components/app/AppOverlays.vue'
 import SystemAlertBanner from '@/components/app/SystemAlertBanner.vue'
 import ErrorBanner from '@/components/app/ErrorBanner.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
@@ -42,24 +40,8 @@ import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
 import { useFirstRunAcknowledged } from '@/composables/shared/useFirstRunAcknowledged'
 
-// Update-check modal — lazy-loaded since it ships with release-notes
-// rendering + a focus trap + the apply state machine. Only mounted
-// when the user clicks "Check for updates"; the bundle-size guard in
-// App.lazy-views.test.ts checks for this pattern across heavy
-// modals.
-const UpdateCheckModal = defineAsyncComponent(() => import('@/components/shared/UpdateCheckModal.vue'))
-// First-run modal only renders on the very first launch (or after the
-// user clears localStorage). Lazy-loaded so 99 % of session boots
-// don't pay for its bytes in the initial JS chunk.
-const FirstRunProfileModal = defineAsyncComponent(() => import('@/components/shared/FirstRunProfileModal.vue'))
-// Export-bundle confirmation modal — only mounted when the user clicks
-// "Export bundle…" on the Matches bulk-action bar. Lazy so its bytes
-// don't land in the initial chunk.
-const ExportBundleModal = defineAsyncComponent(() => import('@/components/settings/ExportBundleModal.vue'))
-// "Manage ignored files" panel — only mounted when the user opens
-// Settings → Advanced → Manage. Lazy so the panel + its 16:9
-// thumbnail styles don't land in the initial chunk.
-const IgnoredFilesPanel = defineAsyncComponent(() => import('@/components/settings/IgnoredFilesPanel.vue'))
+// The floating overlay cluster (modals, detail panel, lightbox, toasts, tour)
+// lives in AppOverlays — it owns those lazy-loaded chunks now.
 
 // View components are lazy-loaded via defineAsyncComponent so each
 // becomes a separate JS chunk emitted by Vite. The initial bundle
@@ -86,28 +68,6 @@ const IngestView = lazyView(() => import('@/components/ingest/IngestView.vue'))
 const MatchesView = lazyView(() => import('@/components/matches/MatchesView.vue'))
 const SettingsView = lazyView(() => import('@/components/settings/SettingsView.vue'))
 const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsView.vue'))
-// Modal surfaces only mount on demand — keep their (substantial)
-// scoped CSS + JS out of the initial chunk so the router shell
-// stays under the bundle-size budget. Same defineAsyncComponent
-// pattern the views use; the brief load-on-first-open delay is
-// invisible at LAN/local speeds.
-const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
-// Anchor confirmation toast — small, eagerly loaded so it can fire
-// on the very first anchor-set transition without a chunk fetch.
-const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/list/MatchAnchorToast.vue'))
-const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
-const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
-const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/manual/ManualMatchModal.vue'))
-
-// OnboardingTour lives in its own chunk. The redesigned tour pulled
-// in TourSpotlight + TourCallout + demo-match data + the controller
-// composable — eagerly importing would have lifted ~12KB into the
-// initial bundle for code only first-launch users actually see. The
-// chunk fetches in parallel with App.vue's onMounted load(); the
-// brief delay between "page paints" and "tour overlay appears" is
-// imperceptible against the network round-trip the load() itself is
-// already doing for /api/v1/matches.
-const OnboardingTour = defineAsyncComponent(() => import('@/components/shared/OnboardingTour.vue'))
 
 // App-shell cross-cutting state (error banner, version, update check, data
 // location) lives in the Pinia app store. Destructure with the same local
@@ -119,7 +79,6 @@ const {
   appVersion,
   updateInfo,
   updateCheckBusy,
-  updateCheckModalOpen,
   dataLocation,
 } = storeToRefs(appStore)
 const { setErrorFromRaw, clearError, checkForUpdates, goToView } = appStore
@@ -133,7 +92,6 @@ const matchesStore = useMatchesStore()
 const {
   records,
   unknownRecords,
-  hiddenRecords,
   parseBusy,
   cancellingParse,
   firstLoadPending,
@@ -147,9 +105,7 @@ const {
   showUnsupportedModal,
   parseAnnouncement,
   parseConnectionState,
-  ignoredScreenshots,
   ignoredCount,
-  ignoredPanelOpen,
   clearingDB,
   clearConfirm,
   exporting,
@@ -164,14 +120,9 @@ const {
   parse,
   onReParseAll,
   onCancelParse,
-  confirmUnsupportedParse,
   refreshParse,
   loadIgnored,
   openIgnoredPanel,
-  closeIgnoredPanel,
-  onUnignoreScreenshot,
-  onClearIgnoredScreenshots,
-  onRunParseFromIgnored,
   armClear,
   cancelClear,
   onClearDatabase,
@@ -331,15 +282,6 @@ const {
   dismiss: dismissUpdateReminder,
 } = useUpdateReminder(updateInfo)
 
-// Update-check modal open-state. Driven by clicking the masthead's
-// "Check for updates" button (which simultaneously fires
-// checkForUpdates so the modal renders the result the moment the
-// network roundtrip lands). Apply Update runs inside the modal.
-// Refresh local matches when Apply Data Update swaps the parser —
-// the new dataset can resolve previously-unknown heroes/maps.
-function onDataApplied() {
-  load()
-}
 
 // Parse run controls (runParse / parse / onReParseAll / onCancelParse /
 // confirmUnsupportedParse) + parseProgressOpen + showUnsupportedModal live in
@@ -669,31 +611,19 @@ const wld = computed(() => tallyWLD(
 // (shared with the detail panel); destructure for the CardStateApi bundle.
 const { toggleSources, isSourcesOpen } = uiStore
 
-// Screenshot UI state — per-filename inline expand + fullscreen
-// lightbox + cache-warm preload registry. Image bytes come from the
-// Go ScreenshotHandler at /_screenshot/<filename>; the lightbox
-// snapshot of files/dirIDs protects ←/→ navigation against the
-// underlying record refreshing mid-view (e.g. SSE-driven reload).
+// Screenshot UI state — per-filename inline expand + cache-warm preload
+// registry (the fullscreen lightbox itself lives in AppOverlays). Image bytes
+// come from the Go ScreenshotHandler at /_screenshot/<filename>. The preview
+// open/error toggles feed the CardStateApi bundle; openLightbox is the gesture
+// MatchesView / UnknownMapsView cards fire.
 const screenshotPreview = uiStore.preview
 const {
   isPreviewOpen,
   hasPreviewError,
   togglePreview,
   onPreviewError,
-  lightboxFilename,
-  lightboxFiles,
-  lightboxDirIDs,
-  lightboxIndex,
   openLightbox,
-  closeLightbox,
-  lightboxPrev,
-  lightboxNext,
 } = screenshotPreview
-const lightboxSrc = computed(() => {
-  const f = lightboxFilename.value
-  if (!f) return null
-  return screenshotURL(f, lightboxDirIDs.value[f] ?? 0)
-})
 
 // Per-card UI state for UnknownMapsView. The Unknown tab's expand/
 // collapse gesture is INLINE — clicking a card head flips the local
@@ -769,6 +699,40 @@ void TAB_ORDER
 // ./match-helpers.ts so they can be unit-tested in isolation.
 
 // fmtTime is imported from ./match-helpers.js (extracted for testing).
+
+// App-shell-local overlay state bundled for AppOverlays: the modal flags App
+// also reads for its background-freeze (`inert`) computed, plus the toast/tour
+// handlers that reach into the DOM + view nav. Everything store-backed,
+// AppOverlays reads from the stores directly.
+const overlaysApi: OverlaysApi = {
+  anchorToast,
+  onSetAnchor,
+  onAnchorToastViewFilter,
+  onAnchorToastDismiss,
+  showStartupErrorModal,
+  startupErrorMessage,
+  openCheatsheet,
+  closeCheatsheet: () => { openCheatsheet.value = false },
+  showManualMatchModal,
+  closeManualMatch: () => { showManualMatchModal.value = false },
+  onManualMatchCreated,
+  firstRunModalOpen,
+  screenshotCandidates,
+  probing,
+  onFirstRunDismiss,
+  onFirstRunPickSource,
+  onFirstRunPickCustomSource,
+  exportBundleOpen,
+  exportBundleSelectedKeys,
+  closeExportBundle: () => { exportBundleOpen.value = false },
+  onExportBundleConfirm,
+  onTourSeedAndSwitch,
+  onTourActiveChange,
+  onTourOpenNarrow,
+  onTourCloseNarrow,
+  onTourApplyHeroFilter,
+  onTourClearFilters,
+}
 
 // Subscribe to the watcher's parse-complete event so the records list
 // auto-refreshes when an auto-parse runs in the background. Without
@@ -1018,142 +982,12 @@ onMounted(() => {
       @cancel-parse="onCancelParse"
     />
 
-    <!-- Match detail panel — replaces inline expansion. Slides in
-         from the right when a match is selected; j/k paginates
-         within the panel, Esc / click-outside closes. -->
-    <!-- Reads selection / preview / narrow / mutations from the stores;
-         App still owns the anchor-confirmation toast, so set-anchor is the
-         one event it handles. -->
-    <MatchDetailPanel @set-anchor="onSetAnchor" />
-
-    <!-- Anchor confirmation toast — appears bottom-right when the
-         "since" reference is set or cleared. Sits ABOVE the
-         dashboard undo toast (different bottom offset) so both can
-         coexist if the user trashes a widget right after stamping
-         an anchor. -->
-    <MatchAnchorToast
-      :state="anchorToast"
-      @view-filter="onAnchorToastViewFilter"
-      @dismiss="onAnchorToastDismiss"
-    />
-
-    <!-- Fullscreen screenshot lightbox — stacks above the detail
-         panel via z-index. Esc / × / backdrop click close it.
-         < / > buttons + ← / → / h / l keys navigate between the
-         OWNING match's source_files (snapshotted on open). -->
-    <MatchScreenshotLightbox
-      :filename="lightboxFilename"
-      :src="lightboxSrc"
-      :files="lightboxFiles"
-      :index="lightboxIndex"
-      @close="closeLightbox"
-      @prev="lightboxPrev"
-      @next="lightboxNext"
-    />
-
-    <!-- Startup-failure modal. Filled by GetStartupError() on
-         mount; non-empty message means the Go layer captured a
-         profile-init / DB-open failure. No close affordance —
-         restart is the only recovery. -->
-    <StartupErrorModal :open="showStartupErrorModal" :message="startupErrorMessage" />
-
-    <!-- Unsupported Tesseract version confirmation modal -->
-    <UnsupportedModal
-      :open="showUnsupportedModal"
-      :version="tesseractStatus.version"
-      @cancel="showUnsupportedModal = false"
-      @confirm="confirmUnsupportedParse"
-    />
-
-    <!-- Keyboard-shortcut cheatsheet. Self-gated by `openCheatsheet`,
-         opened by the `?` binding registered in useKeyboardShortcuts
-         above and closed via Esc (focus-trap) or the modal's footer
-         button + click-outside. -->
-    <KeyboardShortcutsModal
-      :open="openCheatsheet"
-      :view="view"
-      :panel-open="selection.isOpen.value"
-      @close="openCheatsheet = false"
-    />
-
-    <ManualMatchModal
-      :open="showManualMatchModal"
-      @close="showManualMatchModal = false"
-      @created="onManualMatchCreated"
-    />
-
-    <!-- First-launch tour overlay. Self-gates via localStorage;
-         renders nothing once dismissed. Steps drive the underlying
-         app via @navigate (tab switch), @open-match / @close-match
-         (detail panel), @open-narrow / @close-narrow (filter
-         popover), and @apply-hero-filter / @clear-filters
-         (matchesNarrowState picks). @active-change flips the
-         records swap so every tour step lands on demo data. -->
-    <OnboardingTour
-      :seed-and-switch-to-test="onTourSeedAndSwitch"
-      @navigate="goToView"
-      @active-change="onTourActiveChange"
-      @open-match="(k: string) => selection.open(k)"
-      @close-match="selection.close"
-      @open-narrow="onTourOpenNarrow"
-      @close-narrow="onTourCloseNarrow"
-      @apply-hero-filter="onTourApplyHeroFilter"
-      @clear-filters="onTourClearFilters"
-    />
-
-    <!-- First-run "Main account name" modal. Forced gate — every
-         other surface is inert + aria-hidden while this is up.
-         Dismissed via Save (rename) or "Keep as main" (acknowledge
-         only). ESC + backdrop intentionally do not close it. -->
-    <FirstRunProfileModal
-      v-if="firstRunModalOpen"
-      :platform="tesseractStatus?.platform ?? ''"
-      :candidates="screenshotCandidates"
-      :picking="probing"
-      @dismiss="onFirstRunDismiss"
-      @pick-source="onFirstRunPickSource"
-      @pick-custom-source="onFirstRunPickCustomSource"
-    />
-
-    <!-- Export bundle modal — opens from the Matches bulk-action
-         bar's "Export bundle…" button. Counts the selected keys
-         (already a `string[]` arg) and shows the user the hidden +
-         unknown totals so they can decide whether to UNION them
-         into the export. Esc / backdrop / Cancel dismiss; Export
-         dispatches to api.ts ExportBundle. -->
-    <ExportBundleModal
-      :open="exportBundleOpen"
-      :selected-count="exportBundleSelectedKeys.length"
-      :hidden-count="hiddenRecords.length"
-      :unknown-count="unknownRecords.length"
-      @close="exportBundleOpen = false"
-      @export="onExportBundleConfirm"
-    />
-
-    <IgnoredFilesPanel
-      :is-open="ignoredPanelOpen"
-      :screenshots="ignoredScreenshots"
-      :screenshot-u-r-l="(filename) => screenshotURL(filename, 0)"
-      @close="closeIgnoredPanel"
-      @restore="onUnignoreScreenshot"
-      @restore-all="onClearIgnoredScreenshots"
-      @run-parse="onRunParseFromIgnored"
-      @open-lightbox="openLightbox"
-    />
-
-    <!-- Update-check modal — opens from the masthead's "Check for
-         updates" button. Renders the binary vs latest comparison
-         and a per-roster diff with an Apply Data Update CTA that
-         swaps the parser in-place. Lazy so its bundle is only paid
-         for by users who run the check. -->
-    <UpdateCheckModal
-      :open="updateCheckModalOpen"
-      :update-info="updateInfo"
-      :current-version="appVersion"
-      :checking="updateCheckBusy"
-      @close="updateCheckModalOpen = false"
-      @applied="onDataApplied"
-    />
+    <!-- Floating overlay cluster — modals, the detail panel, lightbox, toasts,
+         and the first-launch tour. AppOverlays reads its store-backed state
+         directly; the App-shell-local flags (which App also needs for its
+         background-freeze computed) + the DOM/view-nav handlers arrive as the
+         `overlaysApi` bundle. -->
+    <AppOverlays :api="overlaysApi" />
   </div>
 </template>
 
