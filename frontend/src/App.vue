@@ -1550,7 +1550,6 @@ useEventStream({
         />
         <MatchesView
           v-else-if="view === 'matches'"
-          :narrow="matchesNarrow"
           :focused-card-index="focusedCardIndex"
           @open-match="(k: string) => selection.open(k)"
           @add-match="showManualMatchModal = true"
