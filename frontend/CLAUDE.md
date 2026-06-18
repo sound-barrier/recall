@@ -22,8 +22,10 @@ MatchesView.vue so both views share it without forking.
 are organized into feature subfolders, not one giant flat directory:
 `components/<feature>/` (`matches/`, `settings/`, `unknown/`, `ingest/`,
 `dashboard/` — owning the widget set, nested under `dashboard/widgets/` —,
+`app/` — the App-shell chrome (`AppMasthead`, the app-level modals + banners) —,
 `shared/`) and the matching `composables/<feature>/`, with `shared/` holding
-cross-feature pieces (`FilterCombobox`, generic modals, the masthead). Colocate
+cross-feature pieces (`FilterCombobox`, `MastheadParseChip`, `ProfileSwitcher`,
+generic modals). Colocate
 a feature's UI with its state. Per the root `CLAUDE.md` *Package & directory
 size* rule, a flat dir past ~20–25 files wants subdividing; `ls` stays the source
 of truth — don't enumerate files here. (`composables/` has no `unknown/` — no
