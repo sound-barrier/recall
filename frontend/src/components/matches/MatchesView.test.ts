@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 
 import MatchesView from '@/components/matches/MatchesView.vue'
@@ -16,10 +15,6 @@ vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
   GetProfiles: vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
 }))
-import {
-  createMatchesNarrowState,
-  useMatchesNarrow,
-} from '@/composables/matches/useMatchesNarrow'
 
 // Unit tests for the contextual multi-select + Hidden drawer surfaces.
 // End-to-end transport chain is covered by
@@ -56,12 +51,10 @@ function makeRecord(over: Partial<MatchRecord> = {}, dataOver: Partial<MatchReco
 function mountView(records: MatchRecord[]) {
   const pinia = createPinia()
   setActivePinia(pinia)
+  // Seed the store records; the store builds matchesNarrow off them and
+  // MatchesView reads it from the store (no narrow prop any more).
   useMatchesStore().records = records
-  const recordsRef = ref(records)
-  const state = createMatchesNarrowState()
-  const narrow = useMatchesNarrow(recordsRef, state)
   return mount(MatchesView, {
-    props: { narrow },
     global: { plugins: [pinia] },
     attachTo: document.body,
   })

@@ -10,7 +10,6 @@ import { useDensity } from '@/composables/matches/useDensity'
 import { useSortGroupMenu } from '@/composables/matches/useSortGroupMenu'
 import { useScrollAffordance } from '@/composables/matches/useScrollAffordance'
 import { useOWData } from '@/composables/shared/useOWData'
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useArchiveSelection } from '@/composables/matches/useArchiveSelection'
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
 import MatchesDossierSections from '@/components/matches/dossier/MatchesDossierSections.vue'
@@ -67,12 +66,6 @@ import { useMatchesStore } from '@/stores/matches'
 // useSelectedMatch → MatchDetailPanel (right-side slide-out).
 
 const props = defineProps<{
-  // The narrow API bundle, constructed in App.vue so its selection
-  // composable can track the same narrowedRecords this view shows.
-  // Refs inside the object don't auto-unwrap (Vue 3 caveat), so we
-  // destructure into top-level setup vars below — templates then
-  // auto-unwrap them.
-  narrow: ReturnType<typeof useMatchesNarrow>
   // App.vue's j/k keyboard handlers set this index into narrowed
   // Records; the matching leaf-row carries data-card-index +
   // aria-current="true" so the keyboard nav can scroll the row into
@@ -160,7 +153,7 @@ const matchesStore = useMatchesStore()
 // active-chip strip state (anyNarrow, activeClauseCount, the
 // picked-* refs surfaced in the chips). All filter authoring
 // (combo pickers, range picker, sliders) lives inside the
-// NarrowPopover child, which receives the same `props.narrow`
+// NarrowPopover child, which receives the same `matchesStore.matchesNarrow`
 // bundle and destructures the picker callbacks itself.
 const {
   pickedRange, customFrom, customTo,
@@ -171,7 +164,7 @@ const {
   searchClauses,
   narrowedRecords,
   clauseExclusionCounts,
-} = props.narrow
+} = matchesStore.matchesNarrow
 
 // ─── View-side state owned by MatchesView ───────────────────
 // Narrow rail vs popover. At width >= 1400 px the filter panel
@@ -360,7 +353,7 @@ provideDossier(dossier)
 // Same provide/inject shape exposes the narrow handlers (pickHero,
 // pickGameMode, etc.) to widgets that need to drill into a slice of
 // the active set — the hero × game-mode heatmap is the first consumer.
-provideNarrow(props.narrow)
+provideNarrow(matchesStore.matchesNarrow)
 
 // Row right-click menu + hover-preview state machine lives in the
 // composable; the menu's *actions* stay here as the emit surface to
@@ -442,7 +435,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
       v-if="narrowMode === 'rail'"
       mode="rail"
       :open="true"
-      :narrow="props.narrow"
+      :narrow="matchesStore.matchesNarrow"
       :records="matchesStore.records"
       @open-match="(k: string) => emit('open-match', k)"
       @clear-anchor="emit('clear-anchor')"
@@ -454,7 +447,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
          narrow trigger, all in MatchesDossierHead. Its widgets inject
          the shared dossier provided above. -->
       <MatchesDossierHead
-        :narrow="props.narrow"
+        :narrow="matchesStore.matchesNarrow"
         :records="matchesStore.records"
         :narrow-mode="narrowMode"
         @open-match="(k: string) => emit('open-match', k)"
@@ -508,7 +501,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           :sorted-count="narrowedRecords.length"
           :other-profiles="otherProfiles"
           :move-picker-open="movePickerOpen"
-          :available-tags="narrow.availableTags.value"
+          :available-tags="matchesStore.matchesNarrow.availableTags.value"
           @select-all="selectAllVisible"
           @hide="hideSelected"
           @export-bundle="emit('export-bundle', [...selectedKeys])"
