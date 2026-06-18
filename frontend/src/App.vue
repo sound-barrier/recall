@@ -75,11 +75,8 @@ import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useCardFocus } from '@/composables/matches/useCardFocus'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
-import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
-import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/matches/useMatchesNarrow'
-import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
 import StartupErrorModal from '@/components/app/StartupErrorModal.vue'
@@ -948,19 +945,13 @@ function onClearDatabase(opts: { keepIgnored: boolean }) {
 // don't auto-unwrap when passed as a prop bundle, but MatchesView
 // destructures them into top-level setup vars on receipt — same
 // CardStateApi convention as elsewhere in the app.
-// "Since this match" anchor — persists across reloads (per-OS-profile
-// in localStorage). The narrow state borrows the same ref so the
-// filter sees mutations from the detail panel without a round-trip.
-const matchAnchor = useMatchAnchor()
-const matchesNarrowState = createMatchesNarrowState({ anchorKey: matchAnchor.anchorKey })
-const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
-
-// Search-clause parsing for the detail-panel hit highlighter.
-// Sources directly off the narrow panel's `searchText` so there's
-// no bridge ref to keep in sync — exactly the simplification the
-// useMatchFilters teardown enabled. The narrow filter's own
-// `activeClauseCount` is what the masthead badge reads now.
-const { searchClauses } = useSearchClauses(matchesNarrowState.searchText)
+// The narrow filter + "since this match" anchor cluster lives in the matches
+// store — it drives `selection` (detail panel) + the dossier off the same
+// narrowedRecords the view shows. matchesNarrow / matchesNarrowState /
+// matchAnchor are composable bundles (destructure directly; their inner refs
+// don't auto-unwrap at object depth); searchClauses is a ref → storeToRefs.
+const { matchAnchor, matchesNarrowState, matchesNarrow } = matchesStore
+const { searchClauses } = storeToRefs(matchesStore)
 const activeFilterCount = matchesNarrow.activeClauseCount
 
 // Adapter for the detail panel's chip toggle contract. `isActive`
