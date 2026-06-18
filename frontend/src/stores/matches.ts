@@ -1,5 +1,5 @@
 import { computed, markRaw, ref } from 'vue'
-import { defineStore } from 'pinia'
+import { defineStore, storeToRefs } from 'pinia'
 
 import type { MatchRecord } from '@/api'
 import { GetNewScreenshotCount } from '@/api'
@@ -7,6 +7,9 @@ import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
+import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
+import { useOWData } from '@/composables/shared/useOWData'
+import { useSettingsStore } from '@/stores/settings'
 
 // The matches domain: the parsed-match records (source of truth for the
 // dossier + all four views) and the derived triage lists. Migrated out of
@@ -84,6 +87,23 @@ export const useMatchesStore = defineStore('matches', () => {
   const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
   const { searchClauses } = useSearchClauses(matchesNarrowState.searchText)
 
+  // ── Dossier (KPIs + breakdowns over the narrowed set) ─────────────
+  // One aggregation over narrowedRecords, exposed to dashboard widgets via
+  // provideDossier(matchesStore.dossier) in MatchesView. weekStart comes from
+  // the settings store (lifecycle-safe there); useOWData is a session
+  // singleton with no lifecycle hooks. The settings-store import is a cycle
+  // (settings → matches for refreshNewCount) but resolves fine: both
+  // cross-calls run inside store setups/callbacks, after the modules load.
+  // storeToRefs keeps weekStart a Ref (the dossier wants Readonly<Ref>);
+  // reading settingsStore.weekStart directly would unwrap it to a value.
+  const { weekStart } = storeToRefs(useSettingsStore())
+  const dossier = useMatchesDossier(
+    matchesNarrow.narrowedRecords,
+    matchesNarrow.leaverHandling,
+    useOWData().heroRole,
+    weekStart,
+  )
+
   return {
     // markRaw the composable bundles: Pinia's reactive() store deep-unwraps
     // nested refs, which would turn matchesNarrow.narrowedRecords (a Ref) into
@@ -92,6 +112,7 @@ export const useMatchesStore = defineStore('matches', () => {
     matchAnchor: markRaw(matchAnchor),
     matchesNarrowState: markRaw(matchesNarrowState),
     matchesNarrow: markRaw(matchesNarrow),
+    dossier: markRaw(dossier),
     searchClauses,
     records,
     unknownRecords,

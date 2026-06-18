@@ -60,7 +60,6 @@ import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
-import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
@@ -276,9 +275,11 @@ const {
   probeStatus,
   probeTried,
   themeMode,
+  weekStart,
 } = storeToRefs(settingsStore)
 const {
   setTheme,
+  setWeekStart,
   setTesseractStatus,
   pickTesseractBinary,
   resetTesseractPath,
@@ -351,14 +352,6 @@ async function pickDetectedSource(path: string) {
 }
 
 // Filter / filter-panel / grouping composables — owned here so the
-// extracted view components (MatchesView, eventually others) receive
-// them as bundled props rather than re-instantiating their own state.
-// First-day-of-week preference (Settings → Calendar). The other
-// persisted prefs (leaver-handling, min-play, include-undated /
-// hidden / unknown) used to be wired in here for the deleted
-// `useMatchFilters` consumer; the narrow panel owns its own copies
-// of each dimension now, so App.vue doesn't need to read them.
-const { weekStart, setWeekStart } = useWeekStart()
 
 // (Per-card expand state replaced by the `selection` composable
 // introduced for the detail-panel pattern. See below.)
