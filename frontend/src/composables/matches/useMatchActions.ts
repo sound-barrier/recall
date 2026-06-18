@@ -1,0 +1,169 @@
+import { ref, type Ref } from 'vue'
+
+import {
+  type MatchRecord,
+  type MatchAnnotationInput,
+  RevealScreenshotsDir,
+  SetMatchAnnotation,
+  HardDeleteMatch,
+  SetMatchVisibility,
+  MoveMatches,
+} from '@/api'
+
+// Match-mutation handlers shared by the row context menu and the archive
+// drawer's bulk-action bar — copy replay/link, reveal the source folder,
+// bulk-tag, (bulk) hard-delete, bulk-unhide, bulk-move-to-profile — plus the
+// pending detail-panel focus target the context menu sets before opening a
+// match. Extracted from App.vue's inline cluster; App wires the deps and
+// threads the returned handlers to the views (provide/inject comes later).
+//
+// Each handler does one job and surfaces failures through `onError`; the
+// menu/bar is already closed by the time the action runs, so the user sees
+// the action fail, not the menu.
+export interface MatchActionsDeps {
+  records: Ref<MatchRecord[]>
+  openMatch: (matchKey: string) => void
+  reload: () => Promise<void> | void
+  setError: (message: string) => void
+  onError: (raw: string) => void
+}
+
+export function useMatchActions(deps: MatchActionsDeps) {
+  const { records, openMatch, reload, setError, onError } = deps
+
+  // Read by MatchDetailPanel on mount and cleared via clearPendingFocus().
+  // Lives here (not the panel) because the panel may be unmounted at the
+  // moment of right-click — set the target, open the selection, then the
+  // panel's onMounted picks it up.
+  const pendingFocusTarget = ref<'note' | 'tag' | ''>('')
+  function clearPendingFocus() { pendingFocusTarget.value = '' }
+
+  function onOpenMatchAndFocus(matchKey: string, target: 'note' | 'tag') {
+    pendingFocusTarget.value = target
+    openMatch(matchKey)
+  }
+
+  async function onCopyReplayCode(matchKey: string) {
+    const r = records.value.find(x => x.match_key === matchKey)
+    const code = (r?.annotation?.replay_code ?? '').trim()
+    if (!code) {
+      setError('No replay code on this match.')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  async function onCopyMatchLink(matchKey: string) {
+    // The "match link" is just the key today — no recall:// deep-link
+    // scheme yet, so the pasted text is what the user drops into Discord
+    // for a teammate to grep against their corpus. Swap to a URL once one
+    // exists.
+    try {
+      await navigator.clipboard.writeText(matchKey)
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  async function onOpenSourceFolder(_matchKey: string) {
+    // Reveals the configured screenshots dir — every match's source files
+    // live there for new users. Per-record dir resolution is a follow-up;
+    // _matchKey stays in the signature so the API is forward-compatible.
+    try {
+      await RevealScreenshotsDir()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  async function onBulkTag(matchKeys: string[], tag: string) {
+    if (matchKeys.length === 0 || !tag) return
+    const norm = tag.trim().toLowerCase()
+    if (!norm) return
+    try {
+      // Snapshot records by key so each PUT carries the existing annotation
+      // fields (the PUT replaces the whole annotation row, so a slim body
+      // would clear note / replay_code / members / leaver).
+      const byKey = new Map(records.value.map((r) => [r.match_key, r] as const))
+      await Promise.all(matchKeys.map(async (key) => {
+        const r = byKey.get(key)
+        const existing = r?.annotation
+        const existingTags = existing?.tags ?? []
+        if (existingTags.includes(norm)) return // already tagged
+        await SetMatchAnnotation(key, {
+          leaver:      (existing?.leaver ?? '') as MatchAnnotationInput['leaver'],
+          note:        existing?.note ?? undefined,
+          replay_code: existing?.replay_code ?? undefined,
+          members:     existing?.members ?? undefined,
+          tags:        [...existingTags, norm],
+        })
+      }))
+      await reload()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  // Hard-delete — drawer "Delete forever" after the two-step confirm.
+  // Idempotent server-side, so a double-fire from a stale UI is safe.
+  async function onHardDeleteMatch(matchKey: string) {
+    try {
+      await HardDeleteMatch(matchKey)
+      await reload()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  // Bulk unhide — Archive drawer's bulk-action bar. Fan out in parallel,
+  // single reload when all PUTs settle.
+  async function onUnhideMatches(matchKeys: string[]) {
+    if (matchKeys.length === 0) return
+    try {
+      await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, false)))
+      await reload()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  async function onHardDeleteMatches(matchKeys: string[]) {
+    if (matchKeys.length === 0) return
+    try {
+      await Promise.all(matchKeys.map((k) => HardDeleteMatch(k)))
+      await reload()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  // Bulk move-to-profile — server runs the two-phase transfer (write
+  // target, delete source); reload after so moved rows leave the dossier.
+  async function onMoveMatches(matchKeys: string[], targetProfile: string) {
+    if (matchKeys.length === 0) return
+    try {
+      await MoveMatches(matchKeys, targetProfile)
+      await reload()
+    } catch (e) {
+      onError(String(e))
+    }
+  }
+
+  return {
+    pendingFocusTarget,
+    clearPendingFocus,
+    onOpenMatchAndFocus,
+    onCopyReplayCode,
+    onCopyMatchLink,
+    onOpenSourceFolder,
+    onBulkTag,
+    onHardDeleteMatch,
+    onUnhideMatches,
+    onHardDeleteMatches,
+    onMoveMatches,
+  }
+}
