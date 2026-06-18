@@ -9,6 +9,9 @@ import {
   GetWatchEnabled,
   GetTesseractStatus,
   GetDataLocation,
+  ParseScreenshots,
+  ReParseAll,
+  CancelParse,
 } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
@@ -146,6 +149,85 @@ export const useMatchesStore = defineStore('matches', () => {
     firstLoadPending.value = false
   }
 
+  // ── Parse run controls ────────────────────────────────────────────
+  // Completion (load() + parseBusy=false) arrives via the parse-complete
+  // event handler, NOT the POST resolving, so a mid-parse network drop can't
+  // strand the panel. parseProgressOpen is IngestView's drawer; the
+  // unsupported-Tesseract confirm modal gates a run on an untested engine.
+  const parseProgressOpen = ref(false)
+  const showUnsupportedModal = ref(false)
+
+  async function runParse() {
+    const appStore = useAppStore()
+    appStore.clearError()
+    parseBusy.value = true
+    parseProgress.value = null
+    parseLog.value = []
+    parseProgressOpen.value = false
+    try {
+      await ParseScreenshots()
+    } catch (e) {
+      appStore.setErrorFromRaw(String(e))
+      parseBusy.value = false
+      parseProgress.value = null
+      cancellingParse.value = false
+    }
+  }
+
+  // Stop from IngestView's button OR the status-bar ABORT tile. Flips the
+  // cancelling flag immediately; the clear happens on parse-cancelled.
+  // Swallows 409 (parse finished before the Stop landed).
+  async function onCancelParse() {
+    if (cancellingParse.value) return
+    cancellingParse.value = true
+    try {
+      await CancelParse()
+    } catch (_) {
+      cancellingParse.value = false
+    }
+  }
+
+  // "Re-parse all" (Settings → Advanced) — forces re-OCR; skips the
+  // unsupported-version modal (the user committed to a multi-minute run).
+  async function onReParseAll() {
+    const appStore = useAppStore()
+    if (!useSettingsStore().tesseractReady) {
+      appStore.setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
+      return
+    }
+    appStore.clearError()
+    parseBusy.value = true
+    parseProgress.value = null
+    parseLog.value = []
+    try {
+      await ReParseAll()
+    } catch (e) {
+      appStore.setErrorFromRaw(String(e))
+      parseBusy.value = false
+      parseProgress.value = null
+      cancellingParse.value = false
+    }
+  }
+
+  async function parse() {
+    const settingsStore = useSettingsStore()
+    if (!settingsStore.tesseractReady) {
+      useAppStore().setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
+      return
+    }
+    // Unsupported version → require explicit confirmation (OCR may be wrong).
+    if (!settingsStore.tesseractSupported) {
+      showUnsupportedModal.value = true
+      return
+    }
+    await runParse()
+  }
+
+  async function confirmUnsupportedParse() {
+    showUnsupportedModal.value = false
+    await runParse()
+  }
+
   // ── Narrow filter + anchor cluster ────────────────────────────────
   // The Matches-view filter state lives here so `selection` (the detail
   // panel) + the dossier paginate/aggregate against the same narrowedRecords
@@ -205,5 +287,12 @@ export const useMatchesStore = defineStore('matches', () => {
     savedRecords,
     onTourActiveChange,
     load,
+    parseProgressOpen,
+    showUnsupportedModal,
+    runParse,
+    onCancelParse,
+    onReParseAll,
+    parse,
+    confirmUnsupportedParse,
   }
 })
