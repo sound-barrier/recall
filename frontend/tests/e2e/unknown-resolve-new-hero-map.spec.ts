@@ -28,6 +28,7 @@ const candidate = (extraSource?: string) => ({
   source_files: extraSource ? ['scoreboard-1.png', extraSource] : ['scoreboard-1.png'],
   source_types: { 'scoreboard-1.png': 'teams', ...(extraSource ? { [extraSource]: 'teams' } : {}) },
   data: {
+    // Match payloads are intentionally lowercased (API-normalized); roster/display names remain title-cased.
     map: 'proving grounds', playlist: 'competitive', hero: 'testra',
     eliminations: 17, assists: 16, deaths: 11, date: '2026-05-10', finished_at: '21:29',
   },
@@ -38,6 +39,7 @@ const ambiguous = () => ({
   match_key: AMBIG_KEY,
   source_files: ['scoreboard-2.png'],
   source_types: { 'scoreboard-2.png': 'teams' },
+  // Match payloads are intentionally lowercased (API-normalized); roster/display names remain title-cased.
   data: { playlist: 'competitive', hero: 'testra', eliminations: 17, assists: 16, deaths: 11 },
   parsed_at: '2026-05-10T21:42:00Z',
   ambiguous: true,
