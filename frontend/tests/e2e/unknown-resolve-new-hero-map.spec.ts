@@ -22,6 +22,9 @@ const AMBIG_KEY = 'ambiguous-scoreboard-2.png'
 const RESOLUTION_GLOB = `**/api/v1/matches/${encodeURIComponent(AMBIG_KEY)}/resolution`
 const CANDIDATE_KEY = 'match-2026-05-10T21-29-28'
 
+// Stored match payloads use the normalized lowercase forms ('proving grounds'
+// / 'testra') — the roster + display names (above) stay title-cased.
+//
 // Candidate match featuring the newly-added hero + map.
 const candidate = (extraSource?: string) => ({
   match_key: CANDIDATE_KEY,
