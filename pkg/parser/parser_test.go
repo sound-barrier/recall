@@ -37,7 +37,7 @@ func TestHeroRole(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestDigitize(t *testing.T) {
-	// Per parser.go:1122, the replacer maps:
+	// Per parser.Digitize behavior, the replacer maps:
 	//   O o Q q → 0
 	//   I l L   → 1
 	// So lowercase l ALSO becomes 1, and uppercase L becomes 1.
