@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -15,6 +15,12 @@ vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
   GetProfiles: vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
 }))
+
+// This file imports the matches store, which statically imports '@/api'. Reset
+// the module registry after each test so the cached store + its real '@/api'
+// binding don't leak into a later mountApp test (whose vi.doMock('@/api')
+// can't reach an already-imported store). See reference_store_api_mock_isolation.
+afterEach(() => { vi.resetModules() })
 
 // Unit tests for the contextual multi-select + Hidden drawer surfaces.
 // End-to-end transport chain is covered by

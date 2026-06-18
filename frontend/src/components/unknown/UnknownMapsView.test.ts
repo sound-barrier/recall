@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import UnknownMapsView from '@/components/unknown/UnknownMapsView.vue'
 import { useMatchesStore } from '@/stores/matches'
+
+// Imports the matches store (statically imports '@/api'); reset the module
+// registry after each test so the cached store doesn't leak its real '@/api'
+// into a later mountApp test. See reference_store_api_mock_isolation.
+afterEach(() => { vi.resetModules() })
 import type { CardStateApi } from '@/types/cardState'
 import type { MatchRecord, UpdateInfo } from '@/api'
 
