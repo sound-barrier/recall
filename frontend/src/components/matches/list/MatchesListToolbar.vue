@@ -12,6 +12,10 @@ defineProps<{
   sortGroupLabel: string
   density: Density
   undatedCount: number
+  // True when the list is grouped (date / tag dividers exist). The
+  // Expand/Collapse-all control only makes sense then — flat mode has no
+  // sections to fold.
+  grouped: boolean
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +26,9 @@ const emit = defineEmits<{
   // primary entry point for the no-Tesseract persona; always reachable since
   // the toolbar renders even with an empty set.
   'add-match': []
+  // Fold / unfold every group section at once.
+  'expand-all': []
+  'collapse-all': []
 }>()
 </script>
 
@@ -90,6 +97,29 @@ const emit = defineEmits<{
           @click="emit('set-density', 'data')"
         >
           Data
+        </button>
+      </fieldset>
+      <fieldset v-if="grouped && density !== 'data'" class="seg" aria-label="Fold all sections">
+        <legend class="seg-legend">
+          Sections
+        </legend>
+        <button
+          type="button"
+          class="seg-btn"
+          data-expand-all
+          title="Expand every group section"
+          @click="emit('expand-all')"
+        >
+          Expand all
+        </button>
+        <button
+          type="button"
+          class="seg-btn"
+          data-collapse-all
+          title="Collapse every group section"
+          @click="emit('collapse-all')"
+        >
+          Collapse all
         </button>
       </fieldset>
       <!-- Jump to the "No date" section at the bottom of the
