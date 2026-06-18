@@ -16,10 +16,6 @@ import {
   GetStartupError,
   GetScreenshotsFolderCandidates,
   SetScreenshotsDir,
-  ClearDatabase,
-  ExportData,
-  ExportDataCSV,
-  ImportData,
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
   SetMatchAnnotation,
@@ -44,8 +40,6 @@ import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
 import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
-import { useBackupRestore } from '@/composables/settings/useBackupRestore'
-import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
@@ -168,6 +162,12 @@ const {
   ignoredScreenshots,
   ignoredCount,
   ignoredPanelOpen,
+  clearingDB,
+  clearConfirm,
+  exporting,
+  importing,
+  importArmed,
+  exportStatus,
 } = storeToRefs(matchesStore)
 const {
   refreshNewCount,
@@ -184,6 +184,14 @@ const {
   onUnignoreScreenshot,
   onClearIgnoredScreenshots,
   onRunParseFromIgnored,
+  armClear,
+  cancelClear,
+  onClearDatabase,
+  exportData,
+  exportDataCSV,
+  armImport,
+  cancelImport,
+  importData,
 } = matchesStore
 
 // Onboarding tour demo-records swap (tourActive / savedRecords /
@@ -349,50 +357,7 @@ function onDataApplied() {
 // confirmUnsupportedParse) + parseProgressOpen + showUnsupportedModal live in
 // the matches store.
 
-// Clear-Database opt-out plumbing. SettingsAdvanced fires
-// `clear-database` with `{ keepIgnored: boolean }`; we stash the
-// current opt on this ref so the useClearDatabase api seam below
-// reads the latest value when the composable executes. Declared
-// before useClearDatabase so the closure binding resolves cleanly.
-const pendingClearOpts = ref<{ keepIgnored: boolean }>({ keepIgnored: false })
-
-// Two-step "Clear database" flow: arm → confirm → execute → reload.
-// The api seam reads pendingClearOpts so SettingsAdvanced's
-// "Keep suppress-list" checkbox controls whether the ignore list
-// survives the wipe (see onClearDatabase below).
-const { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear } = useClearDatabase({
-  clearDatabase: () => ClearDatabase(pendingClearOpts.value.keepIgnored),
-  afterClear: async () => {
-    await load()
-    await loadIgnored()
-  },
-  resetLastParsedAt: () => {
-    lastParsedAt.value = null
-    try { localStorage.removeItem('recall.lastParsedAt') } catch (_) {}
-  },
-  onError: (m) => { setErrorFromRaw(m) },
-})
-
-// Backup / restore (JSON export + CSV export + JSON import). Inline
-// result chip ("Saved: …" / "Imported: …" / failure) is owned by the
-// composable and auto-clears after 5s; the IngestView consumes the
-// refs as props and emits handlers that map back to these methods.
-const {
-  exporting,
-  importing,
-  importArmed,
-  exportStatus,
-  exportData,
-  exportDataCSV,
-  armImport,
-  cancelImport,
-  importData,
-} = useBackupRestore({
-  exportJSON: ExportData,
-  exportCSV: ExportDataCSV,
-  importJSON: ImportData,
-  afterImport: () => load(),
-})
+// Clear-DB + backup/restore (data ops) live in the matches store.
 
 // Open the native folder picker via Wails. The Go side persists the
 // choice so subsequent app launches pick up the same directory; we
@@ -651,13 +616,6 @@ async function onIgnoreScreenshot(filename: string) {
 // the manual-parse kick.
 // Ignored screenshots (triage surface) live in the matches store.
 
-// SettingsAdvanced fires `clear-database` with `{ keepIgnored }`;
-// stash the opt and forward to the composable so its in-flight state
-// machine still owns the loading + onError surface.
-function onClearDatabase(opts: { keepIgnored: boolean }) {
-  pendingClearOpts.value = opts
-  return clearDatabase()
-}
 
 // Selected-match panel (replaces the old inline-expansion model).
 // Clicking a card opens the right-side MatchDetailPanel and pins
