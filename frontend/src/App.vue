@@ -55,6 +55,7 @@ import {
 import type { MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
 import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
 import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from '@/composables/shared/useTabKeyboardNav'
@@ -158,7 +159,6 @@ const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches
 // already doing for /api/v1/matches.
 const OnboardingTour = defineAsyncComponent(() => import('@/components/shared/OnboardingTour.vue'))
 
-const records = ref<MatchRecord[]>([])
 // App-shell cross-cutting state (error banner, version, update check, data
 // location) lives in the Pinia app store. Destructure with the same local
 // names so the existing call sites in this file stay unchanged.
@@ -173,6 +173,19 @@ const {
   dataLocation,
 } = storeToRefs(appStore)
 const { setError, setErrorFromRaw, clearError, checkForUpdates } = appStore
+
+// Matches domain: records (source of truth) + the derived triage lists live
+// in the matches store. App's load() boot coordinator writes `records`;
+// destructure with the same local names so this file's call sites are
+// unchanged.
+const matchesStore = useMatchesStore()
+const {
+  records,
+  unknownRecords,
+  referenceGapRecords,
+  hiddenRecords,
+  ambiguousRecords,
+} = storeToRefs(matchesStore)
 // `parseBusy` flips true during runParse(); used to disable the
 // manual Parse button and its peers in IngestView / SettingsView.
 const parseBusy = ref(false)
@@ -1308,35 +1321,8 @@ useGlobalKeyboard({
 // matching g+x handler.)
 void TAB_ORDER
 
-// Records that couldn't be resolved to a named match — either the
-// screenshot filename had no parseable OW timestamp ("unmatched-…")
-// or OCR failed to determine a map name. These surface in the
-// Unknown Maps view for triage.
-const unknownRecords = computed(() =>
-  records.value.filter(r => !r.data?.map && !r.ambiguous)
-)
-// Records where the parser captured an OCR'd hero or map name but
-// couldn't pin it to the canonical YAML rosters. Surfaces in a new
-// Unknown-tab section so the user can see what's awaiting a YAML
-// release. Drives the third column on the Unknown tab.
-const referenceGapRecords = computed(() =>
-  records.value.filter(r => (!r.data?.hero && !!r.data?.hero_raw)
-    || (!r.data?.map  && !!r.data?.map_raw)),
-)
-// Records flagged hidden by the user via the Matches drawer. Used by
-// the export-bundle modal to surface the count + offer the "include
-// hidden" toggle without forcing the user to navigate the archive.
-const hiddenRecords = computed(() =>
-  records.value.filter(r => !!r.hidden),
-)
-// Records the resolver couldn't pin to a single match (EAD-bridge
-// ambiguity). Surface above unknownRecords in the Unknown tab so
-// the user can pick the correct attribution via the candidate
-// picker.
-const ambiguousRecords = computed(() =>
-  records.value.filter(r => r.ambiguous),
-)
-
+// The derived triage lists (unknown / reference-gap / hidden / ambiguous)
+// are getters on the matches store, destructured above.
 
 // Pure helpers (detectScreenshotSlots, screenshotURL, etc.) live in
 // ./match-helpers.ts so they can be unit-tested in isolation.
