@@ -12,6 +12,7 @@ import {
   ParseScreenshots,
   ReParseAll,
   CancelParse,
+  GetActiveParse,
 } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
@@ -21,6 +22,8 @@ import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matche
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useEventStream } from '@/composables/shared/useEventStream'
+import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -258,6 +261,50 @@ export const useMatchesStore = defineStore('matches', () => {
     weekStart,
   )
 
+  // ── Ingest event stream ───────────────────────────────────────────
+  // Polite sr-only announcement for parse-lifecycle terminal states (the
+  // status bar goes inert at run end, leaving screen readers no signal).
+  const parseAnnouncement = ref('')
+  function announceParse(msg: string) {
+    parseAnnouncement.value = msg
+    setTimeout(() => { if (parseAnnouncement.value === msg) parseAnnouncement.value = '' }, 2000)
+  }
+
+  // Server-mode parse-stream recovery: detect a mid-parse SSE drop, resync
+  // against GET /parses/active, surface a manual Refresh. No-op in Wails.
+  const { connectionState: parseConnectionState, refresh: refreshParse } = useParseRecovery({
+    parseBusy,
+    parseProgress,
+    reload: load,
+    getActiveParse: GetActiveParse,
+  })
+
+  // parse-complete is the authoritative completion signal for EVERY parse
+  // path (click, watcher, re-parse): the server emits it from the OCR loop,
+  // so this owns clearing parseBusy + the reload.
+  useEventStream({
+    records,
+    parseProgress,
+    parseLog,
+    onParseComplete: async () => {
+      await load()
+      lastParsedAt.value = Date.now()
+      try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
+      parseBusy.value = false
+      parseProgress.value = null
+      cancellingParse.value = false
+      const n = records.value.length
+      announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
+    },
+    onParseCancelled: async () => {
+      await load()
+      parseBusy.value = false
+      cancellingParse.value = false
+      parseProgress.value = null
+      announceParse('Parse cancelled.')
+    },
+  })
+
   return {
     // markRaw the composable bundles: Pinia's reactive() store deep-unwraps
     // nested refs, which would turn matchesNarrow.narrowedRecords (a Ref) into
@@ -294,5 +341,8 @@ export const useMatchesStore = defineStore('matches', () => {
     onReParseAll,
     parse,
     confirmUnsupportedParse,
+    parseAnnouncement,
+    parseConnectionState,
+    refreshParse,
   }
 })
