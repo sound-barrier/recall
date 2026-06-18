@@ -1,7 +1,6 @@
-import { ref, type Ref } from 'vue'
+import { computed } from 'vue'
 
 import {
-  type MatchRecord,
   type MatchAnnotationInput,
   type UserMatchDataInput,
   type ReviewedBy,
@@ -22,40 +21,29 @@ import {
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
 } from '@/api'
+import { useMatchesStore } from '@/stores/matches'
+import { useAppStore } from '@/stores/app'
 
-// Match-mutation handlers shared by the row context menu and the archive
-// drawer's bulk-action bar — copy replay/link, reveal the source folder,
-// bulk-tag, (bulk) hard-delete, bulk-unhide, bulk-move-to-profile — plus the
-// pending detail-panel focus target the context menu sets before opening a
-// match. Extracted from App.vue's inline cluster; App wires the deps and
-// threads the returned handlers to the views (provide/inject comes later).
+// Match-mutation handlers shared by the row context menu, the archive drawer's
+// bulk-action bar, and the detail panel — copy replay/link, reveal the source
+// folder, bulk-tag, (bulk) hard-delete, bulk-unhide, bulk-move-to-profile,
+// per-match annotation/data/status edits, ambiguous-resolve, ignore-screenshot.
+// Reads the matches + app stores directly and holds no state of its own, so any
+// component can call useMatchActions() and get the same handlers (the detail
+// panel does, to drop a pile of props/emits).
 //
 // Each handler does one job and surfaces failures through `onError`; the
 // menu/bar is already closed by the time the action runs, so the user sees
-// the action fail, not the menu.
-export interface MatchActionsDeps {
-  records: Ref<MatchRecord[]>
-  openMatch: (matchKey: string) => void
-  reload: () => Promise<void> | void
-  reloadIgnored: () => Promise<void> | void
-  setError: (message: string) => void
-  onError: (raw: string) => void
-}
-
-export function useMatchActions(deps: MatchActionsDeps) {
-  const { records, openMatch, reload, reloadIgnored, setError, onError } = deps
-
-  // Read by MatchDetailPanel on mount and cleared via clearPendingFocus().
-  // Lives here (not the panel) because the panel may be unmounted at the
-  // moment of right-click — set the target, open the selection, then the
-  // panel's onMounted picks it up.
-  const pendingFocusTarget = ref<'note' | 'tag' | ''>('')
-  function clearPendingFocus() { pendingFocusTarget.value = '' }
-
-  function onOpenMatchAndFocus(matchKey: string, target: 'note' | 'tag') {
-    pendingFocusTarget.value = target
-    openMatch(matchKey)
-  }
+// the action fail, not the menu. The pending detail-panel focus target lives
+// in the UI store (useUiStore) since the panel reads it on mount.
+export function useMatchActions() {
+  const matchesStore = useMatchesStore()
+  const appStore = useAppStore()
+  const records = computed(() => matchesStore.records)
+  const reload = () => matchesStore.load()
+  const reloadIgnored = () => matchesStore.loadIgnored()
+  const setError = (message: string) => appStore.setError(message)
+  const onError = (raw: string) => appStore.setErrorFromRaw(raw)
 
   async function onCopyReplayCode(matchKey: string) {
     const r = records.value.find(x => x.match_key === matchKey)
@@ -230,9 +218,6 @@ export function useMatchActions(deps: MatchActionsDeps) {
   }
 
   return {
-    pendingFocusTarget,
-    clearPendingFocus,
-    onOpenMatchAndFocus,
     onCopyReplayCode,
     onCopyMatchLink,
     onOpenSourceFolder,

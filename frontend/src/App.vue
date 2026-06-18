@@ -122,7 +122,7 @@ const {
   updateCheckModalOpen,
   dataLocation,
 } = storeToRefs(appStore)
-const { setError, setErrorFromRaw, clearError, checkForUpdates, goToView } = appStore
+const { setErrorFromRaw, clearError, checkForUpdates, goToView } = appStore
 const { view } = storeToRefs(appStore)
 
 // Matches domain: records (source of truth) + the derived triage lists live
@@ -488,12 +488,14 @@ const anchorToast = ref<{ kind: 'set' | 'cleared'; label: string; token: number 
 let anchorToastToken = 0
 const selection = uiStore.selection
 
+// Pending detail-panel focus target lives in the UI store (the panel reads it
+// on mount); pendingFocusTarget is a ref, the two actions destructure directly.
+const { pendingFocusTarget } = storeToRefs(uiStore)
+const { clearPendingFocus, onOpenMatchAndFocus } = uiStore
+
 // Match-mutation handlers (context-menu fast-tracks + archive-drawer bulk
-// actions) + the pending detail-panel focus target.
+// actions). useMatchActions reads the stores directly, so it takes no deps.
 const {
-  pendingFocusTarget,
-  clearPendingFocus,
-  onOpenMatchAndFocus,
   onCopyReplayCode,
   onCopyMatchLink,
   onOpenSourceFolder,
@@ -515,14 +517,7 @@ const {
   onBulkQueue,
   onResolveAmbiguous,
   onIgnoreScreenshot,
-} = useMatchActions({
-  records,
-  openMatch: selection.open,
-  reload: load,
-  reloadIgnored: loadIgnored,
-  setError,
-  onError: setErrorFromRaw,
-})
+} = useMatchActions()
 
 // Tour-driven narrow popover + filter handlers. The tour fires
 // these via emits on <OnboardingTour /> so a step can demonstrate
