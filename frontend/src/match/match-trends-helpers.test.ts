@@ -7,6 +7,9 @@ import {
   rankLadderSeries,
   rollingWinrateSeries,
   currentRankByRole,
+  rankDeltaSeries,
+  cumulativeNetRecordSeries,
+  modifierFrequencySeries,
   matchEpoch,
   type TrendInput,
 } from '@/match/match-trends-helpers'
@@ -21,6 +24,7 @@ interface Stub {
   role?: 'tank' | 'dps' | 'support'
   queue?: QueueType
   result?: 'victory' | 'defeat' | 'draw'
+  modifiers?: string[]
 }
 
 function rec(date: string, time: string, s: Stub = {}): TrendInput {
@@ -31,6 +35,7 @@ function rec(date: string, time: string, s: Stub = {}): TrendInput {
   if (s.change != null) data.change_percent = s.change
   if (s.role != null) data.role = s.role
   if (s.result != null) data.result = s.result
+  if (s.modifiers != null) data.modifiers = s.modifiers
   return {
     match_key: `match-${date}T${time.replace(':', '-')}-00`,
     queue_type: s.queue,
@@ -138,6 +143,44 @@ describe('currentRankByRole', () => {
 
   it('is empty when no record carries a rank', () => {
     expect(currentRankByRole([rec('2026-05-10', '20:00', { result: 'victory' })])).toEqual([])
+  })
+})
+
+describe('rankDeltaSeries', () => {
+  it('emits the signed per-match change% per role, rank-bearing matches only', () => {
+    const series = rankDeltaSeries([
+      rec('2026-05-10', '20:00', { queue: 'role', role: 'tank', rank: 'gold', level: 3, change: 22 }),
+      rec('2026-05-11', '20:00', { queue: 'role', role: 'tank', rank: 'gold', level: 3, change: -18 }),
+      rec('2026-05-10', '21:00', { queue: 'role', role: 'tank', result: 'victory' }), // no rank → skipped
+    ])
+    expect(series.map((s) => s.key)).toEqual(['tank'])
+    expect(series[0]!.points.map((p) => p.v)).toEqual([22, -18])
+    expect(series[0]!.points[0]!.matchKey).toContain('match-2026-05-10')
+  })
+})
+
+describe('cumulativeNetRecordSeries', () => {
+  it('runs a Σ(win +1 / loss −1) per role, draws ignored', () => {
+    const series = cumulativeNetRecordSeries([
+      rec('2026-05-10', '20:00', { queue: 'role', role: 'tank', result: 'victory' }),
+      rec('2026-05-10', '21:00', { queue: 'role', role: 'tank', result: 'victory' }),
+      rec('2026-05-10', '22:00', { queue: 'role', role: 'tank', result: 'defeat' }),
+      rec('2026-05-10', '23:00', { queue: 'role', role: 'tank', result: 'draw' }), // ignored
+    ])
+    expect(series[0]!.points.map((p) => p.v)).toEqual([1, 2, 1])
+  })
+})
+
+describe('modifierFrequencySeries', () => {
+  it('counts each non-result modifier cumulatively, most-frequent first', () => {
+    const series = modifierFrequencySeries([
+      rec('2026-05-10', '20:00', { modifiers: ['underdog', 'victory'] }),
+      rec('2026-05-11', '20:00', { modifiers: ['underdog', 'overcharge'] }),
+      rec('2026-05-12', '20:00', { modifiers: ['defeat'] }), // result-only → no line
+    ])
+    // victory / defeat excluded; underdog (2) before overcharge (1).
+    expect(series.map((s) => s.name)).toEqual(['underdog', 'overcharge'])
+    expect(series[0]!.points.map((p) => p.v)).toEqual([1, 2]) // cumulative
   })
 })
 

@@ -3,7 +3,7 @@ import { computed, defineAsyncComponent, ref } from 'vue'
 
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
-import { rankLadderOption, winrateOption } from '@/components/matches/trends/trend-options'
+import { rankLadderOption, winrateOption, lineOption, rankDeltaOption } from '@/components/matches/trends/trend-options'
 
 // ECharts is heavy; defer it to its own chunk that only loads when the
 // user opens the section (the v-if below gates the mount).
@@ -33,13 +33,25 @@ const windowSize = ref<number>(20)
 
 const rankSeries = dossier.rankLadder
 const winrateSeries = dossier.rollingWinrate(windowSize)
+const rankDeltaSeries = dossier.rankDelta
+const cumulativeNetSeries = dossier.cumulativeNet
+const modifierFreqSeries = dossier.modifierFrequency
 
 const rankChartOption = computed(() => rankLadderOption(rankSeries.value))
 const winrateChartOption = computed(() => winrateOption(winrateSeries.value))
+const rankDeltaChartOption = computed(() => rankDeltaOption(rankDeltaSeries.value))
+const cumulativeNetChartOption = computed(() => lineOption(cumulativeNetSeries.value))
+const modifierFreqChartOption = computed(() => lineOption(modifierFreqSeries.value))
 
-const rankHasData = computed(() => rankSeries.value.some((s) => s.points.length > 0))
-const winrateHasData = computed(() => winrateSeries.value.some((s) => s.points.length > 0))
-const anyData = computed(() => rankHasData.value || winrateHasData.value)
+const someData = (series: { points: unknown[] }[]) => series.some((s) => s.points.length > 0)
+const rankHasData = computed(() => someData(rankSeries.value))
+const winrateHasData = computed(() => someData(winrateSeries.value))
+const rankDeltaHasData = computed(() => someData(rankDeltaSeries.value))
+const cumulativeNetHasData = computed(() => someData(cumulativeNetSeries.value))
+const modifierFreqHasData = computed(() => someData(modifierFreqSeries.value))
+const anyData = computed(() =>
+  rankHasData.value || winrateHasData.value || rankDeltaHasData.value
+  || cumulativeNetHasData.value || modifierFreqHasData.value)
 
 const WINDOW_OPTIONS = [10, 20, 50] as const
 </script>
@@ -102,6 +114,60 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
           />
           <p v-else class="trend-card-empty">
             No decisive matches in the set.
+          </p>
+        </div>
+
+        <div class="trend-card">
+          <div class="trend-card-head">
+            <h4 class="trend-card-title">
+              Rank delta per match
+            </h4>
+          </div>
+          <TrendChart
+            v-if="rankDeltaHasData"
+            :option="rankDeltaChartOption"
+            caption="Per-match rank change, by role"
+            @open-match="(k) => emit('open-match', k)"
+            @narrow-range="onNarrowRange"
+          />
+          <p v-else class="trend-card-empty">
+            No rank readings — capture a competitive rank screenshot.
+          </p>
+        </div>
+
+        <div class="trend-card">
+          <div class="trend-card-head">
+            <h4 class="trend-card-title">
+              Cumulative net record
+            </h4>
+          </div>
+          <TrendChart
+            v-if="cumulativeNetHasData"
+            :option="cumulativeNetChartOption"
+            caption="Running wins minus losses over time, by role"
+            @open-match="(k) => emit('open-match', k)"
+            @narrow-range="onNarrowRange"
+          />
+          <p v-else class="trend-card-empty">
+            No decisive matches in the set.
+          </p>
+        </div>
+
+        <div class="trend-card">
+          <div class="trend-card-head">
+            <h4 class="trend-card-title">
+              Modifiers over time
+            </h4>
+          </div>
+          <TrendChart
+            v-if="modifierFreqHasData"
+            :option="modifierFreqChartOption"
+            caption="Cumulative count of each match modifier over time"
+            @open-match="(k) => emit('open-match', k)"
+            @narrow-range="onNarrowRange"
+          />
+          <p v-else class="trend-card-empty">
+            No modifiers recorded — they come from competitive rank screenshots.
           </p>
         </div>
       </div>

@@ -4,6 +4,9 @@ import type { MatchRecord } from '@/api'
 import {
   currentRankByRole,
   rankLadderSeries,
+  rankDeltaSeries,
+  cumulativeNetRecordSeries,
+  modifierFrequencySeries,
   rollingWinrateSeries,
   type RankNow,
   type RankSeries,
@@ -18,10 +21,13 @@ import {
 export function useMatchesTrends(records: Readonly<Ref<MatchRecord[]>>) {
   const rankLadder = computed<RankSeries[]>(() => rankLadderSeries(records.value))
   const currentRank = computed<RankNow[]>(() => currentRankByRole(records.value))
+  const rankDelta = computed<TrendSeries[]>(() => rankDeltaSeries(records.value))
+  const cumulativeNet = computed<TrendSeries[]>(() => cumulativeNetRecordSeries(records.value))
+  const modifierFrequency = computed<TrendSeries[]>(() => modifierFrequencySeries(records.value))
 
   function rollingWinrate(window: MaybeRefOrGetter<number>): ComputedRef<TrendSeries[]> {
     return computed(() => rollingWinrateSeries(records.value, toValue(window)))
   }
 
-  return { rankLadder, currentRank, rollingWinrate }
+  return { rankLadder, currentRank, rankDelta, cumulativeNet, modifierFrequency, rollingWinrate }
 }

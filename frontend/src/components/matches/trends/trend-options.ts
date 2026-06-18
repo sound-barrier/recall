@@ -135,3 +135,52 @@ export function winrateOption(series: TrendSeries[]): TrendOption {
     })),
   }
 }
+
+// A generic multi-line chart (cumulative net record; modifier frequency).
+// Auto value axis; role-coloured where the series key is a role bucket,
+// else the themed categorical palette (e.g. one colour per modifier).
+export function lineOption(series: TrendSeries[]): TrendOption {
+  return {
+    ...INTERACTION,
+    grid: GRID,
+    legend: { ...LEGEND, show: series.length > 1 },
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'time' },
+    yAxis: { type: 'value', scale: true },
+    series: series.map((s) => ({
+      name: s.name,
+      type: 'line' as const,
+      showSymbol: s.points.length <= 80,
+      symbolSize: 5,
+      connectNulls: true,
+      emphasis: { focus: 'series' as const },
+      ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
+      data: s.points.map((p) => ({ value: [p.t, p.v] as [number, number], matchKey: p.matchKey })),
+    })),
+  }
+}
+
+// Per-match rank delta as bars crossing zero (gains up / losses down),
+// one role-coloured series each.
+export function rankDeltaOption(series: TrendSeries[]): TrendOption {
+  return {
+    ...INTERACTION,
+    grid: GRID,
+    legend: { ...LEGEND, show: series.length > 1 },
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (v: unknown) => {
+        const n = Number(v)
+        return Number.isFinite(n) ? (n > 0 ? `+${n}%` : `${n}%`) : ''
+      },
+    },
+    xAxis: { type: 'time' },
+    yAxis: { type: 'value' },
+    series: series.map((s) => ({
+      name: s.name,
+      type: 'bar' as const,
+      ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
+      data: s.points.map((p) => ({ value: [p.t, p.v] as [number, number], matchKey: p.matchKey })),
+    })),
+  }
+}

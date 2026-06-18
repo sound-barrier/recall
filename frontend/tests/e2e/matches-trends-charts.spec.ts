@@ -27,6 +27,7 @@ interface Stub {
   progress?: number
   change?: number
   result?: 'victory' | 'defeat' | 'draw'
+  modifiers?: string[]
 }
 
 // A competitive match at a given date/time carrying a rank reading + a
@@ -48,17 +49,19 @@ const match = (key: string, date: string, time: string, s: Stub) => ({
     ...(s.level != null ? { level: s.level } : {}),
     ...(s.progress != null ? { rank_progress: s.progress } : {}),
     ...(s.change != null ? { change_percent: s.change } : {}),
+    ...(s.modifiers != null ? { modifiers: s.modifiers } : {}),
   },
   parsed_at: `${date}T${time}:00Z`,
 })
 
-// Two roles climbing over time + decisive results for the win-rate chart.
+// Two roles climbing over time + decisive results + modifiers — enough for
+// all five charts to have data.
 const CORPUS = [
-  match('m1', '2026-05-08', '20:00', { role: 'tank', rank: 'platinum', level: 4, progress: 20, change: 22, result: 'victory' }),
-  match('m2', '2026-05-09', '20:00', { role: 'tank', rank: 'platinum', level: 3, progress: 50, change: 25, result: 'victory' }),
-  match('m3', '2026-05-09', '21:00', { role: 'dps', rank: 'gold', level: 2, progress: 40, change: -15, result: 'defeat' }),
-  match('m4', '2026-05-10', '20:00', { role: 'tank', rank: 'platinum', level: 2, progress: 10, change: 24, result: 'defeat' }),
-  match('m5', '2026-05-11', '20:00', { role: 'dps', rank: 'gold', level: 1, progress: 30, change: 26, result: 'victory' }),
+  match('m1', '2026-05-08', '20:00', { role: 'tank', rank: 'platinum', level: 4, progress: 20, change: 22, result: 'victory', modifiers: ['underdog', 'victory'] }),
+  match('m2', '2026-05-09', '20:00', { role: 'tank', rank: 'platinum', level: 3, progress: 50, change: 25, result: 'victory', modifiers: ['unexpected', 'victory'] }),
+  match('m3', '2026-05-09', '21:00', { role: 'dps', rank: 'gold', level: 2, progress: 40, change: -15, result: 'defeat', modifiers: ['expected', 'defeat'] }),
+  match('m4', '2026-05-10', '20:00', { role: 'tank', rank: 'platinum', level: 2, progress: 10, change: 24, result: 'defeat', modifiers: ['underdog', 'defeat'] }),
+  match('m5', '2026-05-11', '20:00', { role: 'dps', rank: 'gold', level: 1, progress: 30, change: 26, result: 'victory', modifiers: ['overcharge', 'victory'] }),
 ]
 
 function mockMatches(page: import('@playwright/test').Page, body: unknown) {
@@ -68,7 +71,7 @@ function mockMatches(page: import('@playwright/test').Page, body: unknown) {
 }
 
 test.describe('Matches — Trends section', () => {
-  test('expands to render the two lazy-loaded trend charts', async ({ page }) => {
+  test('expands to render the five lazy-loaded trend charts', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
     await page.locator('#tab-matches').click()
@@ -82,11 +85,12 @@ test.describe('Matches — Trends section', () => {
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
-    // Two labelled chart containers (Rank + Win-rate), each with a painted
-    // canvas once the lazy ECharts chunk resolves.
-    await expect(page.locator('.trend-card')).toHaveCount(2)
-    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(2)
-    await expect(page.locator('.trend-chart canvas')).toHaveCount(2)
+    // Five labelled chart containers (Rank ladder, Win-rate, Rank delta,
+    // Cumulative net, Modifiers), each with a painted canvas once the lazy
+    // ECharts chunk resolves.
+    await expect(page.locator('.trend-card')).toHaveCount(5)
+    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(5)
+    await expect(page.locator('.trend-chart canvas')).toHaveCount(5)
     await expect(page.locator('.trend-chart[aria-label="Rank progression over time, by role"]')).toBeVisible()
   })
 
