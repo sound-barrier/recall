@@ -85,6 +85,8 @@ import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
+import StartupErrorModal from '@/components/shared/StartupErrorModal.vue'
+import UnsupportedModal from '@/components/shared/UnsupportedModal.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
 import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
@@ -2054,68 +2056,15 @@ useEventStream({
          mount; non-empty message means the Go layer captured a
          profile-init / DB-open failure. No close affordance —
          restart is the only recovery. -->
-    <transition name="modal-fade">
-      <div
-        v-if="showStartupErrorModal"
-        class="modal-overlay"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="startup-error-title"
-        aria-describedby="startup-error-message"
-        data-testid="startup-error-modal"
-      >
-        <div class="modal-box startup-error">
-          <div class="modal-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="28" height="28">
-              <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-              <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              <circle cx="12" cy="17.8" r="1.2" fill="currentColor" />
-            </svg>
-          </div>
-          <h3 id="startup-error-title" class="modal-title">
-            Recall could not start
-          </h3>
-          <p id="startup-error-message" class="modal-body">
-            {{ startupErrorMessage }}
-          </p>
-          <p class="modal-body modal-caution">
-            Recall captured a failure during boot — restart the app to try again. If the problem persists, check the application data directory for permissions issues and file a report from the Settings tab once you can re-enter the app.
-          </p>
-        </div>
-      </div>
-    </transition>
+    <StartupErrorModal :open="showStartupErrorModal" :message="startupErrorMessage" />
 
     <!-- Unsupported Tesseract version confirmation modal -->
-    <transition name="modal-fade">
-      <div v-if="showUnsupportedModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" @click.self="showUnsupportedModal = false">
-        <div class="modal-box">
-          <div class="modal-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="28" height="28">
-              <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-              <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              <circle cx="12" cy="17.8" r="1.2" fill="currentColor" />
-            </svg>
-          </div>
-          <h3 id="modal-title" class="modal-title">
-            Unsupported Tesseract Version
-          </h3>
-          <p class="modal-body">
-            Tesseract <strong>{{ tesseractStatus.version }}</strong> is detected. Only version <strong>5.x</strong> is officially tested with Recall.
-          </p>
-          <p class="modal-body modal-caution">
-            Proceed at your own caution — OCR results may be incorrect or incomplete with this version.
-          </p>
-          <div class="modal-actions">
-            <button class="btn ghost" @click="showUnsupportedModal = false">
-              Cancel
-            </button>
-            <button class="btn primary" @click="confirmUnsupportedParse">
-              Continue Anyway
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <UnsupportedModal
+      :open="showUnsupportedModal"
+      :version="tesseractStatus.version"
+      @cancel="showUnsupportedModal = false"
+      @confirm="confirmUnsupportedParse"
+    />
 
     <!-- Keyboard-shortcut cheatsheet. Self-gated by `openCheatsheet`,
          opened by the `?` binding registered in useKeyboardShortcuts
