@@ -59,7 +59,7 @@ test.describe('Matches narrow — leaver / modifier / rank', () => {
   })
 
   test('With-a-leaver filter scopes to the picked side', async ({ page }) => {
-    await pickChip(page, 'With a leaver', 'Enemy')
+    await pickChip(page, 'Leavers', 'Enemy')
     await expect.poll(() => page.locator('.leaf-row').count()).toBe(2)
   })
 
