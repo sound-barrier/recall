@@ -87,6 +87,8 @@ import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
 import StartupErrorModal from '@/components/shared/StartupErrorModal.vue'
 import UnsupportedModal from '@/components/shared/UnsupportedModal.vue'
+import SystemAlertBanner from '@/components/shared/SystemAlertBanner.vue'
+import ErrorBanner from '@/components/shared/ErrorBanner.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
 import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
@@ -1633,34 +1635,12 @@ useEventStream({
       <!-- System Alert: blocks both Matches and Settings flow when the
            OCR engine isn't usable. Renders ABOVE the masthead so it's
            the first thing a user sees on a broken install. -->
-      <div v-if="!tesseractReady" class="system-alert" role="alert">
-        <div class="system-alert-stripes" aria-hidden="true" />
-        <div class="system-alert-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="26" height="26">
-            <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-            <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            <circle cx="12" cy="17.8" r="1.2" fill="currentColor" />
-          </svg>
-        </div>
-        <div class="system-alert-body">
-          <div class="system-alert-eyebrow">
-            System Halt · OCR Engine Offline
-          </div>
-          <h3 class="system-alert-title">
-            Tesseract not detected
-            <span class="system-alert-path" :title="tesseractStatus.path">{{ tesseractStatus.path || '— no path —' }}</span>
-          </h3>
-          <p class="system-alert-desc">
-            {{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}
-          </p>
-        </div>
-        <div class="system-alert-actions">
-          <button class="btn alert-cta" @click="gotoEngineSettings">
-            <span class="alert-cta-arrow" aria-hidden="true">→</span>
-            Fix in Settings → Engine
-          </button>
-        </div>
-      </div>
+      <SystemAlertBanner
+        v-if="!tesseractReady"
+        :path="tesseractStatus.path"
+        :error="tesseractStatus.error"
+        @fix="gotoEngineSettings"
+      />
 
       <header class="masthead">
         <div class="masthead-left">
@@ -1812,28 +1792,13 @@ useEventStream({
         @dismiss="dismissUpdateReminder"
       />
 
-      <p v-if="error" class="error" data-testid="error-banner">
-        <span class="error-tick">✕</span>
-        <span class="error-msg">{{ error }}</span>
-        <button
-          v-if="errorRetry"
-          type="button"
-          class="error-retry"
-          data-testid="error-retry"
-          @click="errorRetry?.()"
-        >
-          Retry
-        </button>
-        <button
-          type="button"
-          class="error-dismiss"
-          aria-label="Dismiss error"
-          data-testid="error-dismiss"
-          @click="clearError"
-        >
-          ✕
-        </button>
-      </p>
+      <ErrorBanner
+        v-if="error"
+        :message="error"
+        :can-retry="!!errorRetry"
+        @retry="errorRetry?.()"
+        @dismiss="clearError"
+      />
 
       <!-- <main> is the page's primary landmark. The skip-link at the
            top of .app jumps focus here so keyboard users can bypass the
