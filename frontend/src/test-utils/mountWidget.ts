@@ -13,6 +13,7 @@ import type {
   HeroBreakdownEntry,
   MapRoleCell,
   MatchesDossier,
+  ModifierRecord,
   MostPlayedHero,
   ReviewedCount,
   RoleBreakdownEntry,
@@ -72,6 +73,9 @@ type DossierOverride = {
   recentMatches?:      Array<{ matchKey: string; date: string; finishedAt: string; result: string; map: string }>
   // Query helper — win-rate-by-X widgets.
   winrateBy?:          BreakdownEntry[]
+  // Query helpers — modifier widgets.
+  modifierBreakdown?:  BreakdownEntry[]
+  modifierRecord?:     ModifierRecord | null
   // Bedrock — current rank per role.
   currentRank?:        RankNow[]
   // Bedrock — behavioural KPIs (tilt/momentum + climb/session).
@@ -107,6 +111,8 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     // Query helpers — return functions matching the dossier's signature.
     topByCount:          wrapQuery(over.topByCount, [] as BreakdownEntry[]),
     winrateBy:           wrapQuery(over.winrateBy, [] as BreakdownEntry[]),
+    modifierBreakdown:   wrapQuery(over.modifierBreakdown, [] as BreakdownEntry[]),
+    modifierRecord:      wrapQuery(over.modifierRecord, null as ModifierRecord | null),
     currentRank:         wrap(over.currentRank, [] as RankNow[]),
     winrateAfterLoss:    wrap(over.winrateAfterLoss, { winrate: null, sample: 0 } as RateSample),
     winrateAfterWin:     wrap(over.winrateAfterWin, { winrate: null, sample: 0 } as RateSample),

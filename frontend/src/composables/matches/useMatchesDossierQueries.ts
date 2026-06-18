@@ -1,8 +1,10 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
 import type { MatchRecord } from '@/api'
 import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
+import { RESULT_MODIFIERS } from '@/match/match-trends-helpers'
 import {
   type BreakdownEntry,
+  type ModifierRecord,
   type HeroBreakdownEntry,
   type MostPlayedHero,
   type BestWinrateHero,
@@ -107,6 +109,63 @@ export function useDossierQueries(
         .filter((e) => e.total >= minMatches)
         .sort((a, b) => b.winrate - a.winrate || b.total - a.total)
         .slice(0, limit)
+    })
+  }
+
+  // Count + win-rate per non-result modifier — the rank-update pills
+  // (uphill battle, reversal, consolation, win/loss streak, calibration,
+  // volatile, demotion protection). A match carries several modifiers, so
+  // it counts toward each: the buckets overlap by design. Victory / defeat
+  // / draw are excluded (they're the result, already the headline W/L/D).
+  // Ranked by frequency. Drives the opt-in "Match modifiers" breakdown.
+  function modifierBreakdown(
+    opts: MaybeRefOrGetter<{ limit: number }>,
+  ): ComputedRef<BreakdownEntry[]> {
+    return computed(() => {
+      const { limit } = toValue(opts)
+      const counts = new Map<string, { total: number; w: number; l: number }>()
+      for (const r of records.value) {
+        const result = r.data?.result
+        for (const modifier of r.data?.modifiers ?? []) {
+          if (!modifier || RESULT_MODIFIERS.has(modifier)) continue
+          const entry = counts.get(modifier) ?? { total: 0, w: 0, l: 0 }
+          entry.total++
+          if (result === 'victory') entry.w++
+          else if (result === 'defeat') entry.l++
+          counts.set(modifier, entry)
+        }
+      }
+      const totalForBreakdown = [...counts.values()].reduce((sum, c) => sum + c.total, 0)
+      return [...counts.entries()]
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, limit)
+        .map(([key, c]) => ({
+          key,
+          total: c.total,
+          winrate: c.w + c.l === 0 ? 0 : Math.round((c.w / (c.w + c.l)) * 100),
+          share: totalForBreakdown === 0 ? 0 : Math.round((c.total / totalForBreakdown) * 100),
+        }))
+    })
+  }
+
+  // Count + win-rate for ONE modifier — drives the Uphill Battle / Reversal
+  // KPI tiles ("how often do I clutch as the underdog / choke when
+  // favoured"). Null when the modifier never appears in the set.
+  function modifierRecord(
+    opts: MaybeRefOrGetter<{ modifier: string }>,
+  ): ComputedRef<ModifierRecord | null> {
+    return computed(() => {
+      const { modifier } = toValue(opts)
+      let total = 0, w = 0, l = 0
+      for (const r of records.value) {
+        if (!(r.data?.modifiers ?? []).includes(modifier)) continue
+        total++
+        if (r.data?.result === 'victory') w++
+        else if (r.data?.result === 'defeat') l++
+      }
+      if (total === 0) return null
+      const decided = w + l
+      return { total, winrate: decided === 0 ? null : Math.round((w / decided) * 100) }
     })
   }
 
@@ -620,6 +679,8 @@ export function useDossierQueries(
   return {
     topByCount,
     winrateBy,
+    modifierBreakdown,
+    modifierRecord,
     withWhomBreakdown,
     heroGameModeCounts,
     mapRoleCounts,

@@ -232,9 +232,11 @@ export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
 }
 
 // The W/L/D outcome modifiers are already the win-rate chart's job —
-// exclude them from the modifier-frequency lines so only the *qualitative*
-// modifiers (underdog, unexpected, overcharge, demotion protection, …) show.
-const RESULT_MODIFIERS: ReadonlySet<string> = new Set(['victory', 'defeat', 'draw'])
+// exclude them from the modifier-frequency lines / breakdown so only the
+// *qualitative* modifiers (uphill battle, reversal, consolation, win/loss
+// streak, calibration, volatile, demotion protection, …) show. Shared with
+// the modifier dossier widgets.
+export const RESULT_MODIFIERS: ReadonlySet<string> = new Set(['victory', 'defeat', 'draw'])
 
 // Per-match rank delta — the signed ±change% the rank meter moved, one
 // series per role bucket (rank-bearing matches only). Drives the rank-

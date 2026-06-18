@@ -34,6 +34,9 @@ import NetRankWeekWidget from '@/components/dashboard/widgets/NetRankWeekWidget.
 import AvgGameLengthWidget from '@/components/dashboard/widgets/AvgGameLengthWidget.vue'
 import LeaverRateWidget from '@/components/dashboard/widgets/LeaverRateWidget.vue'
 import SessionsWidget from '@/components/dashboard/widgets/SessionsWidget.vue'
+import ModifierBreakdownWidget from '@/components/dashboard/widgets/ModifierBreakdownWidget.vue'
+import UphillBattleWidget from '@/components/dashboard/widgets/UphillBattleWidget.vue'
+import ReversalWidget from '@/components/dashboard/widgets/ReversalWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -256,6 +259,9 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'avg-game-length',     eyebrow: 'Avg game length',        shape: 'kpi',       defaultRow: 1, component: AvgGameLengthWidget,    config: EMPTY_SCHEMA          },
   { id: 'leaver-rate',         eyebrow: 'Leaver rate',            shape: 'kpi',       defaultRow: 1, component: LeaverRateWidget,      config: EMPTY_SCHEMA          },
   { id: 'sessions',            eyebrow: 'Play sessions',          shape: 'kpi',       defaultRow: 1, component: SessionsWidget,        config: EMPTY_SCHEMA          },
+  { id: 'modifier-breakdown',  eyebrow: 'Match modifiers',        shape: 'breakdown', defaultRow: 2, component: ModifierBreakdownWidget, config: EMPTY_SCHEMA       },
+  { id: 'uphill-battle',       eyebrow: 'Uphill battles',         shape: 'kpi',       defaultRow: 1, component: UphillBattleWidget,    config: EMPTY_SCHEMA          },
+  { id: 'reversal',            eyebrow: 'Reversals',              shape: 'kpi',       defaultRow: 1, component: ReversalWidget,        config: EMPTY_SCHEMA          },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add

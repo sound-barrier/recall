@@ -30,6 +30,14 @@ export interface BreakdownEntry {
   share: number
 }
 
+// One modifier's record over the set — drives the Uphill Battle /
+// Reversal KPI tiles. `winrate` is null when the modifier never decided
+// (e.g. only draws carried it); `total` is every match that carried it.
+export interface ModifierRecord {
+  total: number
+  winrate: number | null
+}
+
 // Top-hero breakdown row. Same `key` / `share` / `winrate` contract
 // as BreakdownEntry, but `total` is summed play-time minutes (not
 // match count), and `timeLabel` is the human-facing render of that
