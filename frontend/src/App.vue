@@ -18,15 +18,9 @@ import {
   ReParseAll,
   CancelParse,
   GetActiveParse,
-  GetMatchResults,
-  GetScreenshotsDir,
   GetScreenshotsFolderCandidates,
   SetScreenshotsDir,
-  GetWatchEnabled,
-  GetTesseractStatus,
   ClearDatabase,
-  GetNewScreenshotCount,
-  GetDataLocation,
   ExportData,
   ExportDataCSV,
   ImportData,
@@ -45,7 +39,6 @@ import {
   SwitchProfile,
 } from '@/api'
 import type { MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
-import { plainLanguageError } from '@/error-helpers'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
@@ -59,7 +52,7 @@ import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
-import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
+import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
@@ -174,48 +167,12 @@ const {
   newScreenshotCount,
   lastParsedAt,
   recordsPulse,
+  tourActive,
 } = storeToRefs(matchesStore)
-const { refreshNewCount, flashRecordsPulse } = matchesStore
+const { refreshNewCount, load, onTourActiveChange } = matchesStore
 
-// Onboarding tour: when the tour is active we substitute the live
-// records for the curated DEMO_MATCHES so every tour step has
-// something realistic to land on. The swap is purely in-memory — the
-// user's real records are stashed in `savedRecords` and restored the
-// moment the tour closes (finish / skip / Esc). Nothing is persisted
-// to the API or to SQLite.
-//
-// The demo dataset is dynamic-imported on activation so it lives in
-// the OnboardingTour async chunk (kept out of the initial JS budget;
-// users who never trigger the tour never download it).
-// Seed tourActive synchronously from the same localStorage flag the
-// tour reads. On a TRUE first launch both `recall.onboardingCompleted`
-// and `recall.firstRunAccountNamed` are unset; without this seed the
-// modal renders on tick 0, the tour's `active-change(true)` event
-// fires a frame later, and the two overlays stack on top of each
-// other. Seeding the ref `true` keeps the modal hidden until the
-// tour completes (or is skipped) and the parent receives
-// `active-change(false)` — then the modal can surface normally.
-function readTourWillOpen(): boolean {
-  try { return localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== 'true' }
-  catch (_) { return false }
-}
-const tourActive = ref(readTourWillOpen())
-const savedRecords = ref<MatchRecord[]>([])
-async function onTourActiveChange(active: boolean) {
-  if (active) {
-    const { DEMO_MATCHES } = await import('@/composables/shared/useDemoMatches')
-    savedRecords.value = records.value
-    records.value = [...DEMO_MATCHES]
-    tourActive.value = true
-  } else {
-    // load() routes the real fetched records into savedRecords while the
-    // tour is active — so this restores the user's data (including the
-    // seeded "test" profile after a seed+switch resume).
-    records.value = savedRecords.value
-    savedRecords.value = []
-    tourActive.value = false
-  }
-}
+// Onboarding tour demo-records swap (tourActive / savedRecords /
+// onTourActiveChange) + the boot coordinator load() live in the matches store.
 
 // Tour "Explore with real data": seed the sample "test" profile, park
 // the step to resume on, then switch into it. SwitchProfile reloads the
@@ -278,12 +235,10 @@ const {
 const {
   setTheme,
   setWeekStart,
-  setTesseractStatus,
   pickTesseractBinary,
   resetTesseractPath,
   detectTesseractBinary,
   gotoEngineSettings,
-  setWatchEnabled,
   toggleWatch,
   setScreenshotsDir,
   pickDir,
@@ -354,55 +309,6 @@ async function pickDetectedSource(path: string) {
 // (Per-card expand state replaced by the `selection` composable
 // introduced for the detail-panel pattern. See below.)
 
-async function load() {
-  const before = records.value.length
-  // Promise.allSettled, not Promise.all — one endpoint blowing up
-  // (e.g. /api/match-results returning a 500 because the DB schema
-  // is stale from a previous dev session) MUST NOT keep the rest of
-  // the boot from rendering. The previous Promise.all + missing
-  // `.catch()` would silently swallow the rejection and leave every
-  // ref at its initial value, which surfaces as a misleading
-  // "Tesseract not detected" banner even when the OCR engine is
-  // perfectly fine. allSettled lets each call land independently and
-  // we report failures through the global error banner instead of
-  // pretending unrelated subsystems are broken.
-  const results = await Promise.allSettled([
-    GetMatchResults(),
-    GetScreenshotsDir(),
-    GetWatchEnabled(),
-    GetTesseractStatus(),
-    GetNewScreenshotCount(),
-    GetDataLocation(),
-  ])
-  const [recs, dir, watchOn, tess, newCount, loc] = results
-  if (recs.status === 'fulfilled') {
-    // While the tour is active, the records ref carries the demo
-    // corpus — stash the real records for restore-on-close but don't
-    // clobber the demo data the user is looking at.
-    if (tourActive.value) {
-      savedRecords.value = recs.value ?? []
-    } else {
-      records.value = recs.value ?? []
-      if (before > 0 && records.value.length > before) flashRecordsPulse()
-    }
-    // A successful load clears any stale "Could not load matches"
-    // banner — including the one a previous failed attempt set
-    // through the Retry CTA path.
-    if (errorRetry.value === load) clearError()
-  } else {
-    setError(
-      `Could not load matches: ${plainLanguageError(String(recs.reason))}`,
-      load,
-    )
-  }
-  if (dir.status === 'fulfilled')      setScreenshotsDir(dir.value || '')
-  if (watchOn.status === 'fulfilled')  setWatchEnabled(!!watchOn.value)
-  if (tess.status === 'fulfilled')     setTesseractStatus(tess.value)
-  else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
-  newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
-  dataLocation.value      = loc.status === 'fulfilled' ? loc.value : null
-  firstLoadPending.value = false
-}
 
 
 // 90-day "haven't checked for updates in a while" reminder banner.
