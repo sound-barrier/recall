@@ -16,7 +16,12 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 describe('App.vue lazy-loaded components', () => {
-  const source = readFileSync(resolve(__dirname, 'App.vue'), 'utf-8')
+  // The four views stay in App.vue; the overlay/modal chunks moved to
+  // AppOverlays.vue. Concatenate both sources so the lazy-pattern assertions
+  // match wherever the component now lives — the bundle-size win is identical.
+  const source =
+    readFileSync(resolve(__dirname, 'App.vue'), 'utf-8') +
+    readFileSync(resolve(__dirname, 'components/app/AppOverlays.vue'), 'utf-8')
 
   const views: Array<{ name: string; path: string }> = [
     { name: 'IngestView',             path: '@/components/ingest/IngestView.vue' },
