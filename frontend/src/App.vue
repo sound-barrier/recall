@@ -460,25 +460,8 @@ const { matchAnchor, matchesNarrowState, matchesNarrow } = matchesStore
 const { searchClauses } = storeToRefs(matchesStore)
 const activeFilterCount = matchesNarrow.activeClauseCount
 
-// Adapter for the detail panel's chip toggle contract. `isActive`
-// reports whether a chip's value is currently picked in the narrow
-// filter; `toggleFilter` flips it. Unknown fields (e.g. legacy
-// 'sshot' — the screenshot-type filter useMatchFilters carried that
-// the narrow panel doesn't) read as inactive and the toggle no-ops.
-const NARROW_FIELDS: Record<string, { picked: () => Set<string>; pick: (v: string) => void }> = {
-  hero:   { picked: () => matchesNarrowState.pickedHeroes.value,   pick: matchesNarrow.pickHero },
-  role:   { picked: () => matchesNarrowState.pickedRoles.value,    pick: matchesNarrow.pickRole },
-  result: { picked: () => matchesNarrowState.pickedResults.value,  pick: matchesNarrow.pickResult },
-  map:    { picked: () => matchesNarrowState.pickedMaps.value,     pick: matchesNarrow.pickMap },
-  type:   { picked: () => matchesNarrowState.pickedGameModes.value, pick: matchesNarrow.pickGameMode },
-  tag:    { picked: () => matchesNarrowState.pickedTags.value,     pick: matchesNarrow.pickTag },
-}
-function isActive(field: string, value: string): boolean {
-  return NARROW_FIELDS[field]?.picked().has(value) ?? false
-}
-function toggleFilter(field: string, value: string) {
-  NARROW_FIELDS[field]?.pick(value)
-}
+// The detail card's narrow-chip toggle contract (isNarrowChipActive /
+// toggleNarrowChip) lives in the matches store; the panel reads it directly.
 
 // Anchor confirmation toast — fires on set + cleared transitions
 // to bridge the cause-effect gap between the detail-panel button
@@ -488,13 +471,15 @@ const anchorToast = ref<{ kind: 'set' | 'cleared'; label: string; token: number 
 let anchorToastToken = 0
 const selection = uiStore.selection
 
-// Pending detail-panel focus target lives in the UI store (the panel reads it
-// on mount); pendingFocusTarget is a ref, the two actions destructure directly.
-const { pendingFocusTarget } = storeToRefs(uiStore)
-const { clearPendingFocus, onOpenMatchAndFocus } = uiStore
+// The context menu opens a match + sets the detail-panel focus target (UI
+// store). The panel itself reads pendingFocusTarget + clears it.
+const { onOpenMatchAndFocus } = uiStore
 
-// Match-mutation handlers (context-menu fast-tracks + archive-drawer bulk
-// actions). useMatchActions reads the stores directly, so it takes no deps.
+// Match-mutation handlers still threaded to MatchesView / UnknownMapsView
+// (context-menu fast-tracks + archive-drawer bulk + Unknown-tab resolve). The
+// per-match annotation/data/review/queue/play-mode edits are handled inside
+// MatchDetailPanel via its own useMatchActions() call. useMatchActions reads
+// the stores directly, so it takes no deps.
 const {
   onCopyReplayCode,
   onCopyMatchLink,
@@ -504,14 +489,7 @@ const {
   onUnhideMatches,
   onHardDeleteMatches,
   onMoveMatches,
-  onSetLeaverAnnotation,
-  onSetMatchAnnotation,
-  onUpdateMatchData,
-  onResetMatchData,
   onSetMatchHidden,
-  onSetMatchReview,
-  onSetMatchQueue,
-  onSetMatchPlayMode,
   onHideMatches,
   onBulkPlayMode,
   onBulkQueue,
@@ -687,17 +665,9 @@ const wld = computed(() => tallyWLD(
   matchesNarrow.leaverHandling.value === 'exclude-tally',
 ))
 
-// Per-card "source screenshots" sub-panel expansion. Independent of the
-// main card expand state — most users don't care which screenshots fed
-// a row, so we keep this folded by default even when the card itself
-// is open.
-const sourcesExpanded = ref<Record<string, boolean>>({})
-function toggleSources(id: string) {
-  sourcesExpanded.value = { ...sourcesExpanded.value, [id]: !sourcesExpanded.value[id] }
-}
-function isSourcesOpen(id: string) {
-  return !!sourcesExpanded.value[id]
-}
+// Per-card "source screenshots" sub-panel expansion lives in the UI store now
+// (shared with the detail panel); destructure for the CardStateApi bundle.
+const { toggleSources, isSourcesOpen } = uiStore
 
 // Screenshot UI state — per-filename inline expand + fullscreen
 // lightbox + cache-warm preload registry. Image bytes come from the
@@ -1051,41 +1021,10 @@ onMounted(() => {
     <!-- Match detail panel — replaces inline expansion. Slides in
          from the right when a match is selected; j/k paginates
          within the panel, Esc / click-outside closes. -->
-    <MatchDetailPanel
-      :record="selection.selectedRecord.value"
-      :is-open="selection.isOpen.value"
-      :is-sources-open="isSourcesOpen(selection.selectedKey.value)"
-      :is-preview-open="isPreviewOpen"
-      :has-preview-error="hasPreviewError"
-      :is-active="isActive"
-      :search-clauses="searchClauses"
-      :can-prev="selection.canPrev.value"
-      :can-next="selection.canNext.value"
-      :position-index="selection.selectedIndex.value + 1"
-      :position-total="matchesNarrow.narrowedRecords.value.length"
-      :has-lightbox="lightboxFilename !== null"
-      :available-tags="matchesNarrow.availableTags.value"
-      :pending-focus="pendingFocusTarget"
-      :anchor-key="matchAnchor.anchorKey.value"
-      @focus-consumed="clearPendingFocus"
-      @close="selection.close"
-      @prev="selection.openPrev"
-      @next="selection.openNext"
-      @toggle-sources="toggleSources(selection.selectedKey.value)"
-      @toggle-preview="togglePreview"
-      @preview-error="onPreviewError"
-      @open-lightbox="openLightbox"
-      @filter-toggle="toggleFilter"
-      @set-leaver-annotation="onSetLeaverAnnotation"
-      @set-match-annotation="onSetMatchAnnotation"
-      @update-match-data="onUpdateMatchData"
-      @reset-match-data="onResetMatchData"
-      @set-match-hidden="onSetMatchHidden"
-      @set-match-review="onSetMatchReview"
-      @set-match-queue="onSetMatchQueue"
-      @set-match-play-mode="onSetMatchPlayMode"
-      @set-anchor="onSetAnchor"
-    />
+    <!-- Reads selection / preview / narrow / mutations from the stores;
+         App still owns the anchor-confirmation toast, so set-anchor is the
+         one event it handles. -->
+    <MatchDetailPanel @set-anchor="onSetAnchor" />
 
     <!-- Anchor confirmation toast — appears bottom-right when the
          "since" reference is set or cleared. Sits ABOVE the

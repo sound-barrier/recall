@@ -1,21 +1,40 @@
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 
 import MatchDetailPanel from '@/components/matches/detail/MatchDetailPanel.vue'
+import { useUiStore } from '@/stores/ui'
+import { useMatchesStore } from '@/stores/matches'
+import { SetMatchAnnotation, SetMatchVisibility, ResetMatchData } from '@/api'
 import type { MatchRecord } from '@/api'
 
-// Unit tests for MatchDetailPanel's rendered body — the same surfaces
-// that used to live inline inside MatchCard (annotation journal,
-// leaver chooser, stats grid, heroes-played, sources, rank, danger
-// row) but now host inside the right-edge slide-in panel. The panel
-// itself is a thin shell around <MatchCardExpanded>; these tests
-// mount the panel directly so the assertions live next to the DOM
-// they exercise.
+// Unit tests for MatchDetailPanel's rendered body — the same surfaces that used
+// to live inline inside MatchCard (annotation journal, leaver chooser, stats
+// grid, heroes-played, sources, rank, danger row), hosted inside the right-edge
+// slide-in panel. The panel now reads all of its state from the Pinia stores
+// (selection / preview / narrow) and drives its mutations through
+// useMatchActions, so these tests seed the stores and assert on the api calls /
+// store state the panel triggers, rather than on emitted events.
 //
-// e2e tests in `frontend/tests/e2e/match-detail-panel.spec.ts` cover
-// the full transport chain (open / close / paginate / scroll / etc.);
-// this file is the @vue/test-utils companion for everything inside
-// the panel body that doesn't need a real browser.
+// The panel + the matches store statically import '@/api'. Keep the module real
+// except the mutation calls the panel drives (so we can assert on them) and
+// GetMatchResults — the store's reload-after-mutation returns the seeded
+// records rather than hitting the real transport + auto-closing the panel.
+// e2e tests in frontend/tests/e2e/match-detail-panel*.spec.ts cover the full
+// open/close/paginate transport chain in a real browser.
+const h = vi.hoisted(() => ({ records: [] as unknown[] }))
+vi.mock('@/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api')>()),
+  GetMatchResults:    vi.fn(async () => h.records),
+  SetMatchAnnotation: vi.fn(async () => undefined),
+  SetMatchVisibility: vi.fn(async () => undefined),
+  ResetMatchData:     vi.fn(async () => undefined),
+}))
+
+afterEach(() => {
+  vi.clearAllMocks()
+  vi.resetModules()
+})
 
 function makeRecord(over: Partial<MatchRecord['data']> = {}, recOver: Partial<MatchRecord> = {}): MatchRecord {
   return {
@@ -48,36 +67,40 @@ function makeRecord(over: Partial<MatchRecord['data']> = {}, recOver: Partial<Ma
 
 interface PanelMountOver {
   record?:        MatchRecord
+  records?:       MatchRecord[]
+  selectKey?:     string
   isSourcesOpen?: boolean
   previewOpen?:   Record<string, boolean>
   previewError?:  Record<string, boolean>
-  isActive?:      (field: string, value: string) => boolean
 }
 
+// Seeds the matches store with the record(s), opens the selection (the panel
+// reads selectedRecord from the narrowed set), and flips the per-match
+// preview/sources UI state the panel forwards to MatchCardExpanded.
 function mountPanel(over: PanelMountOver = {}) {
+  setActivePinia(createPinia())
   const record = over.record ?? makeRecord()
-  const previewOpen  = over.previewOpen  ?? {}
-  const previewError = over.previewError ?? {}
-  return mount(MatchDetailPanel, {
-    props: {
-      record,
-      isOpen: true,
-      isSourcesOpen: over.isSourcesOpen ?? false,
-      isPreviewOpen:   (f: string) => !!previewOpen[f],
-      hasPreviewError: (f: string) => !!previewError[f],
-      isActive: over.isActive ?? (() => false),
-      canPrev: false,
-      canNext: false,
-      positionIndex: 1,
-      positionTotal: 1,
-      hasLightbox: false,
-    },
-  })
+  const records = over.records ?? [record]
+  h.records = records
+  const matches = useMatchesStore()
+  matches.records = records
+  const ui = useUiStore()
+  const key = over.selectKey ?? record.match_key
+  ui.selection.open(key)
+  if (over.isSourcesOpen) ui.toggleSources(key)
+  for (const [f, on] of Object.entries(over.previewOpen ?? {})) if (on) ui.preview.togglePreview(f)
+  for (const [f, on] of Object.entries(over.previewError ?? {})) if (on) ui.preview.onPreviewError(f)
+  const wrapper = mount(MatchDetailPanel)
+  return { wrapper, ui, matches, record, key }
 }
+
+// The 2nd argument of the most recent SetMatchAnnotation call — the merged
+// annotation row the panel's useMatchActions handler PUTs.
+const lastAnnotation = () => (SetMatchAnnotation as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1]
 
 describe('MatchDetailPanel — match stats + heroes + rank', () => {
   it('renders six stat cells in the Match Stats grid', () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     const stats = wrapper.findAll('.stat')
     expect(stats).toHaveLength(6)
     const damage = stats.find(s => s.text().includes('Damage'))!
@@ -85,7 +108,7 @@ describe('MatchDetailPanel — match stats + heroes + rank', () => {
   })
 
   it('renders the Final Score meta when present', () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     const scoreCell = wrapper.find('.meta-cell-score')
     expect(scoreCell.exists()).toBe(true)
     expect(scoreCell.find('.meta-eyebrow').text()).toBe('Final Score')
@@ -93,7 +116,7 @@ describe('MatchDetailPanel — match stats + heroes + rank', () => {
   })
 
   it('renders heroes_played list with percent + play time + stats', () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     expect(wrapper.find('.hero-pct').text()).toBe('100%')
     expect(wrapper.find('.hero-time').text()).toBe('11:25')
     expect(wrapper.text()).toContain('weapon accuracy')
@@ -109,7 +132,7 @@ describe('MatchDetailPanel — match stats + heroes + rank', () => {
         { hero: 'kiriko', sr: 3100, change: -10 },
       ],
     } as unknown as Partial<MatchRecord['data']>)
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     expect(wrapper.find('.rank-tier').text()).toContain('platinum 3')
     expect(wrapper.find('.rank-progress').text()).toBe('40% progress')
     expect(wrapper.find('.rank-change').text()).toBe('+5%')
@@ -126,38 +149,39 @@ describe('MatchDetailPanel — match stats + heroes + rank', () => {
 
 describe('MatchDetailPanel — sources panel', () => {
   it('renders the sources toggle with file count', () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     expect(wrapper.find('.sources-toggle').exists()).toBe(true)
     expect(wrapper.find('.sources-count').text()).toBe('2')
   })
 
-  it('emits toggle-sources when the sources toggle is clicked', async () => {
-    const wrapper = mountPanel()
+  it('clicking the sources toggle flips the shared sources-open state', async () => {
+    const { wrapper, ui, key } = mountPanel()
+    expect(ui.isSourcesOpen(key)).toBe(false)
     await wrapper.find('.sources-toggle').trigger('click')
-    expect(wrapper.emitted('toggle-sources')).toBeTruthy()
+    expect(ui.isSourcesOpen(key)).toBe(true)
   })
 
-  it('renders the source-file list only when isSourcesOpen=true', () => {
-    expect(mountPanel().find('.sources').exists()).toBe(false)
-    expect(mountPanel({ isSourcesOpen: true }).find('.sources').exists()).toBe(true)
+  it('renders the source-file list only when sources are open', () => {
+    expect(mountPanel().wrapper.find('.sources').exists()).toBe(false)
+    expect(mountPanel({ isSourcesOpen: true }).wrapper.find('.sources').exists()).toBe(true)
   })
 
   it('source-type chips render from source_types map', () => {
-    const wrapper = mountPanel({ isSourcesOpen: true })
+    const { wrapper } = mountPanel({ isSourcesOpen: true })
     const chips = wrapper.findAll('.source-type-chip').map(c => c.text())
     // "teams" labels as "TEAMS" everywhere in the UI.
     expect(chips).toEqual(['SUMMARY', 'TEAMS'])
   })
 
-  it('clicking a source filename emits toggle-preview', async () => {
-    const wrapper = mountPanel({ isSourcesOpen: true })
+  it('clicking a source filename opens that file in the preview state', async () => {
+    const { wrapper, ui } = mountPanel({ isSourcesOpen: true })
+    expect(ui.preview.isPreviewOpen('summary.png')).toBe(false)
     await wrapper.find('.source-name').trigger('click')
-    expect(wrapper.emitted('toggle-preview')).toBeTruthy()
-    expect(wrapper.emitted('toggle-preview')![0]).toEqual(['summary.png'])
+    expect(ui.preview.isPreviewOpen('summary.png')).toBe(true)
   })
 
   it('renders <img> when previewOpen[file]=true and no error', () => {
-    const wrapper = mountPanel({
+    const { wrapper } = mountPanel({
       isSourcesOpen: true,
       previewOpen: { 'summary.png': true },
     })
@@ -170,7 +194,7 @@ describe('MatchDetailPanel — sources panel', () => {
   })
 
   it('renders preview error message when previewError[file]=true', () => {
-    const wrapper = mountPanel({
+    const { wrapper } = mountPanel({
       isSourcesOpen: true,
       previewOpen: { 'summary.png': true },
       previewError: { 'summary.png': true },
@@ -179,14 +203,13 @@ describe('MatchDetailPanel — sources panel', () => {
     expect(wrapper.find('.source-preview-error').text()).toContain('Could not load image')
   })
 
-  it('img @error emits preview-error', async () => {
-    const wrapper = mountPanel({
+  it('img @error records a preview error in the shared state', async () => {
+    const { wrapper, ui } = mountPanel({
       isSourcesOpen: true,
       previewOpen: { 'summary.png': true },
     })
     await wrapper.find('img.source-preview').trigger('error')
-    expect(wrapper.emitted('preview-error')).toBeTruthy()
-    expect(wrapper.emitted('preview-error')![0]).toEqual(['summary.png'])
+    expect(ui.preview.hasPreviewError('summary.png')).toBe(true)
   })
 
   it('shows the "missing required" explainer when sources open and slots are absent', () => {
@@ -196,7 +219,7 @@ describe('MatchDetailPanel — sources panel', () => {
       source_files: ['summary.png'],
       source_types: { 'summary.png': 'summary' },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: rec, isSourcesOpen: true })
+    const { wrapper } = mountPanel({ record: rec, isSourcesOpen: true })
     const explain = wrapper.find('.sources-explain')
     expect(explain.exists()).toBe(true)
     expect(explain.text()).toContain('TEAMS missing')
@@ -206,7 +229,7 @@ describe('MatchDetailPanel — sources panel', () => {
 describe('MatchDetailPanel — parsed timestamps', () => {
   it('renders the match-level "Parsed" meta row when parsed_at is set', () => {
     const rec = makeRecord({}, { parsed_at: '2026-05-10T21:30:00Z' })
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     const parsedCell = wrapper.find('.meta-cell-parsed')
     expect(parsedCell.exists()).toBe(true)
     expect(parsedCell.text()).toContain('Parsed')
@@ -215,7 +238,7 @@ describe('MatchDetailPanel — parsed timestamps', () => {
 
   it('does NOT render the Parsed row when parsed_at is missing (pre-migration rows)', () => {
     const rec = makeRecord({}, { parsed_at: undefined })
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     expect(wrapper.find('.meta-cell-parsed').exists()).toBe(false)
   })
 
@@ -226,7 +249,7 @@ describe('MatchDetailPanel — parsed timestamps', () => {
         'scoreboard.png': '2026-05-10T21:30:05Z',
       },
     })
-    const wrapper = mountPanel({ record: rec, isSourcesOpen: true })
+    const { wrapper } = mountPanel({ record: rec, isSourcesOpen: true })
     const chips = wrapper.findAll('.source-parsed-chip')
     expect(chips).toHaveLength(2)
     expect(chips[0]!.attributes('title')).toContain('2026-05-10T21:30:00Z')
@@ -236,7 +259,7 @@ describe('MatchDetailPanel — parsed timestamps', () => {
     const rec = makeRecord({}, {
       source_parsed_at: { 'summary.png': '2026-05-10T21:30:00Z' },
     })
-    const wrapper = mountPanel({ record: rec, isSourcesOpen: true })
+    const { wrapper } = mountPanel({ record: rec, isSourcesOpen: true })
     expect(wrapper.findAll('.source-parsed-chip')).toHaveLength(1)
   })
 
@@ -244,7 +267,7 @@ describe('MatchDetailPanel — parsed timestamps', () => {
     const rec = makeRecord({}, {
       source_parsed_at: { 'summary.png': '2026-05-10T21:30:00Z' },
     })
-    const wrapper = mountPanel({ record: rec, isSourcesOpen: true })
+    const { wrapper } = mountPanel({ record: rec, isSourcesOpen: true })
     const chip = wrapper.find('.source-parsed-chip')
     expect(chip.classes()).not.toContain('clickable')
     expect(chip.element.tagName.toLowerCase()).toBe('span')
@@ -253,7 +276,7 @@ describe('MatchDetailPanel — parsed timestamps', () => {
 
 describe('MatchDetailPanel — leaver chooser', () => {
   it('renders the three scenario chips + no Clear when unannotated', () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     const chipTexts = wrapper.findAll('.leaver-chip').map(c => c.text())
     // Each chip's text includes its glyph prefix (⊘ / ↙ / ↗).
     expect(chipTexts.some(t => t.includes('I left'))).toBe(true)
@@ -266,47 +289,44 @@ describe('MatchDetailPanel — leaver chooser', () => {
     const annotated = makeRecord({}, {
       annotation: { leaver: 'team' },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: annotated })
+    const { wrapper } = mountPanel({ record: annotated })
     const team = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Ally left'))!
     expect(team.classes()).toContain('active')
     expect(team.attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('.leaver-chip.leaver-clear').exists()).toBe(true)
   })
 
-  it('emits set-leaver-annotation with the picked scenario', async () => {
-    const wrapper = mountPanel()
+  it('writes the picked scenario via SetMatchAnnotation', async () => {
+    const { wrapper, key } = mountPanel()
     const self = wrapper.findAll('.leaver-chip').find(c => c.text().includes('I left'))!
     await self.trigger('click')
-    const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([wrapper.props('record')!.match_key, 'self'])
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: 'self', note: '', replay_code: '', members: [], tags: [] })
   })
 
-  it('clicking the active chip emits a clear (empty leaver)', async () => {
+  it('clicking the active chip writes a clear (empty leaver)', async () => {
     const annotated = makeRecord({}, {
       annotation: { leaver: 'enemy' },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: annotated })
+    const { wrapper } = mountPanel({ record: annotated })
     const enemy = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Enemy'))!
     await enemy.trigger('click')
-    const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([wrapper.props('record')!.match_key, ''])
+    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: [], tags: [] })
   })
 
-  it('clicking Clear emits with empty leaver', async () => {
+  it('clicking Clear writes with empty leaver', async () => {
     const annotated = makeRecord({}, {
       annotation: { leaver: 'self' },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: annotated })
+    const { wrapper } = mountPanel({ record: annotated })
     const clear = wrapper.find('.leaver-chip.leaver-clear')
     await clear.trigger('click')
-    const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([wrapper.props('record')!.match_key, ''])
+    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: [], tags: [] })
   })
 })
 
 describe('MatchDetailPanel — match notes / journal block', () => {
   it('renders all four cells (note / replay / group / tags)', () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     expect(wrapper.find('.match-journal').exists()).toBe(true)
     const labels = wrapper.findAll('.journal-eyebrow').map(l => l.text().split(/\s+/)[0])
     expect(labels).toEqual(['Note', 'Replay', 'Group', 'Tags'])
@@ -316,7 +336,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     const rec = makeRecord({}, {
       annotation: { leaver: '', note: 'huge clutch', replay_code: 'A7B2C9', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     const preview = wrapper.find('.match-notes-preview')
     expect(preview.exists()).toBe(true)
     expect(preview.text()).toBe('huge clutch')
@@ -326,96 +346,82 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#1', 'Cheese#5'])
   })
 
-  it('emits set-match-annotation on note blur with the trimmed value', async () => {
-    const wrapper = mountPanel()
+  it('writes the annotation on note blur with the trimmed value', async () => {
+    const { wrapper, key } = mountPanel()
     const ta = wrapper.find('.match-notes-textarea')
     await ta.setValue('  draft text  ')
     await ta.trigger('blur')
-    const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]).toEqual([
-      wrapper.props('record')!.match_key,
-      { leaver: '', note: 'draft text', replay_code: '', members: [], tags: [] },
-    ])
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: '', note: 'draft text', replay_code: '', members: [], tags: [] })
   })
 
-  it('emits set-match-annotation on replay-code Enter', async () => {
-    const wrapper = mountPanel()
+  it('writes the annotation on replay-code Enter', async () => {
+    const { wrapper, key } = mountPanel()
     const replay = wrapper.find('.match-notes-input.mono')
     await replay.setValue('7H1K9P')
     await replay.trigger('keydown.enter')
-    const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]).toEqual([
-      wrapper.props('record')!.match_key,
-      { leaver: '', note: '', replay_code: '7H1K9P', members: [], tags: [] },
-    ])
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: '', note: '', replay_code: '7H1K9P', members: [], tags: [] })
   })
 
-  it('Enter on the member input adds a chip and emits with the new list', async () => {
-    const wrapper = mountPanel()
+  it('Enter on the member input adds a chip and writes the new list', async () => {
+    const { wrapper } = mountPanel()
     const memberInput = wrapper.find('.member-input')
     await memberInput.setValue('Apollo#11234')
     await memberInput.trigger('keydown', { key: 'Enter' })
     expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#11234'])
-    const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]).toEqual([
-      wrapper.props('record')!.match_key,
-      { leaver: '', note: '', replay_code: '', members: ['Apollo#11234'], tags: [] },
-    ])
+    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: ['Apollo#11234'], tags: [] })
   })
 
   it('comma key also commits the member chip', async () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     const memberInput = wrapper.find('.member-input')
     await memberInput.setValue('Cheese#5')
     await memberInput.trigger('keydown', { key: ',' })
     expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Cheese#5'])
   })
 
-  it('removing a chip emits set-match-annotation without that member', async () => {
+  it('removing a chip writes the annotation without that member', async () => {
     const rec = makeRecord({}, {
       annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     const xButtons = wrapper.findAll('.member-chip-remove')
     expect(xButtons).toHaveLength(2)
     await xButtons[0]!.trigger('click')
-    const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]![1]).toEqual({ leaver: '', note: '', replay_code: '', members: ['Cheese#5'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: ['Cheese#5'], tags: [] })
   })
 
   it('Backspace on empty member input removes the last chip', async () => {
     const rec = makeRecord({}, {
       annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     const memberInput = wrapper.find('.member-input')
     expect((memberInput.element as HTMLInputElement).value).toBe('')
     await memberInput.trigger('keydown', { key: 'Backspace' })
-    const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]![1]).toEqual({ leaver: '', note: '', replay_code: '', members: ['Apollo#1'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: ['Apollo#1'], tags: [] })
   })
 
   it('Backspace with text in the input does NOT remove a chip', async () => {
     const rec = makeRecord({}, {
       annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     const memberInput = wrapper.find('.member-input')
     await memberInput.setValue('part')
     await memberInput.trigger('keydown', { key: 'Backspace' })
-    expect(wrapper.emitted('set-match-annotation')).toBeUndefined()
+    expect(SetMatchAnnotation).not.toHaveBeenCalled()
     expect(wrapper.findAll('.member-chip-tag')).toHaveLength(2)
   })
 
-  it('adding a duplicate BattleTag clears the input without emitting', async () => {
+  it('adding a duplicate BattleTag clears the input without writing', async () => {
     const rec = makeRecord({}, {
       annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1'] },
     } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: rec })
+    const { wrapper } = mountPanel({ record: rec })
     const memberInput = wrapper.find('.member-input')
     await memberInput.setValue('Apollo#1')
     await memberInput.trigger('keydown', { key: 'Enter' })
-    expect(wrapper.emitted('set-match-annotation')).toBeUndefined()
+    expect(SetMatchAnnotation).not.toHaveBeenCalled()
     expect((memberInput.element as HTMLInputElement).value).toBe('')
     expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#1'])
   })
@@ -423,117 +429,92 @@ describe('MatchDetailPanel — match notes / journal block', () => {
 
 describe('MatchDetailPanel — soft-delete flow', () => {
   it('shows the Hide button on a normal record', () => {
-    const wrapper = mountPanel()
+    const { wrapper } = mountPanel()
     const hide = wrapper.findAll('.danger-btn').find(b => b.text().includes('Hide'))
     expect(hide).toBeDefined()
   })
 
-  it('first Hide click reveals Confirm + Cancel; does NOT emit yet', async () => {
-    const wrapper = mountPanel()
+  it('first Hide click reveals Confirm + Cancel; does NOT write yet', async () => {
+    const { wrapper } = mountPanel()
     const hide = wrapper.findAll('.danger-btn').find(b => b.text().includes('Hide'))!
     await hide.trigger('click')
     const buttons = wrapper.findAll('.danger-btn').map(b => b.text())
     expect(buttons.some(t => t.includes('Confirm'))).toBe(true)
     expect(buttons.some(t => t === 'Cancel')).toBe(true)
-    expect(wrapper.emitted('set-match-hidden')).toBeUndefined()
+    expect(SetMatchVisibility).not.toHaveBeenCalled()
   })
 
-  it('Confirm emits set-match-hidden(match_key, true)', async () => {
-    const wrapper = mountPanel()
+  it('Confirm hides the match via SetMatchVisibility(key, true)', async () => {
+    const { wrapper, key } = mountPanel()
     await wrapper.findAll('.danger-btn').find(b => b.text().includes('Hide'))!.trigger('click')
     await wrapper.findAll('.danger-btn').find(b => b.text().includes('Confirm'))!.trigger('click')
-    const e = wrapper.emitted('set-match-hidden')!
-    expect(e[0]).toEqual([wrapper.props('record')!.match_key, true])
+    expect(SetMatchVisibility).toHaveBeenCalledWith(key, true)
   })
 
-  it('Cancel resets the confirm state without emitting', async () => {
-    const wrapper = mountPanel()
+  it('Cancel resets the confirm state without writing', async () => {
+    const { wrapper } = mountPanel()
     await wrapper.findAll('.danger-btn').find(b => b.text().includes('Hide'))!.trigger('click')
     await wrapper.findAll('.danger-btn').find(b => b.text() === 'Cancel')!.trigger('click')
     expect(wrapper.find('.danger-btn').text()).toContain('Hide')
-    expect(wrapper.emitted('set-match-hidden')).toBeUndefined()
-  })
-
-  it('shows Unhide (not Hide) on a hidden record', () => {
-    const hidden = makeRecord({}, { hidden: true } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: hidden })
-    const buttons = wrapper.findAll('.danger-btn').map(b => b.text())
-    expect(buttons.some(t => t.includes('Unhide'))).toBe(true)
-    expect(buttons.some(t => t.includes('Hide match'))).toBe(false)
-  })
-
-  it('Unhide click emits set-match-hidden(match_key, false) — no confirm step', async () => {
-    const hidden = makeRecord({}, { hidden: true } as unknown as Partial<MatchRecord>)
-    const wrapper = mountPanel({ record: hidden })
-    await wrapper.findAll('.danger-btn').find(b => b.text().includes('Unhide'))!.trigger('click')
-    const e = wrapper.emitted('set-match-hidden')!
-    expect(e[0]).toEqual([wrapper.props('record')!.match_key, false])
+    expect(SetMatchVisibility).not.toHaveBeenCalled()
   })
 })
 
-// ── Pagination toolbar (item 6 coverage lift) ────────────────────────
-// The panel's toolbar carries ← / → buttons that emit prev / next.
-// Uses mountPanelWith to share the same default-props shape as
-// mountPanel — passing partial overrides only for pagination state.
-function mountPanelWith(overrides: { canPrev: boolean; canNext: boolean; positionIndex: number; positionTotal: number }) {
-  return mount(MatchDetailPanel, {
-    props: {
-      record: makeRecord(),
-      isOpen: true,
-      isSourcesOpen: false,
-      isPreviewOpen:   () => false,
-      hasPreviewError: () => false,
-      isActive: () => false,
-      hasLightbox: false,
-      ...overrides,
-    },
-  })
-}
-
+// ── Pagination toolbar ───────────────────────────────────────────────
+// The toolbar's ← / → buttons paginate the selection through the narrowed
+// set. Seed three records and select the middle one so both directions are
+// live; clicking moves `selection.selectedKey`.
 describe('MatchDetailPanel — pagination toolbar', () => {
-  // The nav-group is the second `<div role="group">` in the toolbar;
-  // its two `detail-icon-btn` children are ← / →.
-  const navButtonsOf = (w: ReturnType<typeof mountPanelWith>) =>
+  function threeRecords() {
+    return [
+      makeRecord({ date: '2026-05-10', finished_at: '20:00' }, { match_key: 'm-a' }),
+      makeRecord({ date: '2026-05-10', finished_at: '21:00' }, { match_key: 'm-b' }),
+      makeRecord({ date: '2026-05-10', finished_at: '22:00' }, { match_key: 'm-c' }),
+    ]
+  }
+  const navButtonsOf = (w: ReturnType<typeof mountPanel>['wrapper']) =>
     w.find('.detail-toolbar-nav').findAll('.detail-icon-btn')
 
-  it('emits "prev" when the ← button is clicked while canPrev=true', async () => {
-    const wrapper = mountPanelWith({ canPrev: true, canNext: true, positionIndex: 2, positionTotal: 3 })
-    const btns = navButtonsOf(wrapper)
-    await btns[0]!.trigger('click')
-    expect(wrapper.emitted('prev')).toBeTruthy()
-    expect(wrapper.emitted('next')).toBeFalsy()
+  it('the ← button steps the selection to the previous match', async () => {
+    const records = threeRecords()
+    const { wrapper, ui } = mountPanel({ records, selectKey: 'm-b' })
+    const before = ui.selection.selectedKey.value
+    await navButtonsOf(wrapper)[0]!.trigger('click')
+    expect(ui.selection.selectedKey.value).not.toBe(before)
+    expect(['m-a', 'm-c']).toContain(ui.selection.selectedKey.value)
   })
 
-  it('emits "next" when the → button is clicked while canNext=true', async () => {
-    const wrapper = mountPanelWith({ canPrev: true, canNext: true, positionIndex: 2, positionTotal: 3 })
-    const btns = navButtonsOf(wrapper)
-    await btns[1]!.trigger('click')
-    expect(wrapper.emitted('next')).toBeTruthy()
-    expect(wrapper.emitted('prev')).toBeFalsy()
+  it('the → button steps the selection to the next match', async () => {
+    const records = threeRecords()
+    const { wrapper, ui } = mountPanel({ records, selectKey: 'm-b' })
+    const before = ui.selection.selectedKey.value
+    await navButtonsOf(wrapper)[1]!.trigger('click')
+    expect(ui.selection.selectedKey.value).not.toBe(before)
   })
 
-  it('disables the ← / → buttons at the boundaries', () => {
-    const wrapper = mountPanelWith({ canPrev: false, canNext: false, positionIndex: 1, positionTotal: 1 })
+  it('disables the ← / → buttons at the boundaries (single record)', () => {
+    const { wrapper } = mountPanel()
     const btns = navButtonsOf(wrapper)
     expect(btns[0]!.attributes('disabled')).toBeDefined()
     expect(btns[1]!.attributes('disabled')).toBeDefined()
   })
 
   it('renders the position-of-total indicator', () => {
-    const wrapper = mountPanelWith({ canPrev: true, canNext: false, positionIndex: 47, positionTotal: 47 })
-    expect(wrapper.find('.detail-pos').text()).toContain('47')
-    expect(wrapper.find('.detail-pos-of').text()).toContain('47')
+    const records = threeRecords()
+    const { wrapper } = mountPanel({ records, selectKey: 'm-c' })
+    expect(wrapper.find('.detail-pos').text()).toContain('3')
+    expect(wrapper.find('.detail-pos-of').text()).toContain('3')
   })
 })
 
 describe('MatchDetailPanel — provenance banner', () => {
   it('shows no banner for a pure-OCR match', () => {
-    const wrapper = mountPanel({ record: makeRecord({}, { source: 'ocr' }) })
+    const { wrapper } = mountPanel({ record: makeRecord({}, { source: 'ocr' }) })
     expect(wrapper.find('[data-prov-banner]').exists()).toBe(false)
   })
 
   it('shows an "Edited" banner with the field count + a Reset-to-OCR button', () => {
-    const wrapper = mountPanel({
+    const { wrapper } = mountPanel({
       record: makeRecord({}, { source: 'ocr_edited', edited_fields: ['data.map', 'data.damage'] }),
     })
     const banner = wrapper.find('[data-prov-banner]')
@@ -545,7 +526,7 @@ describe('MatchDetailPanel — provenance banner', () => {
   })
 
   it('shows a "User entered" banner with NO reset button for a manual match', () => {
-    const wrapper = mountPanel({ record: makeRecord({}, { source: 'manual' }) })
+    const { wrapper } = mountPanel({ record: makeRecord({}, { source: 'manual' }) })
     const banner = wrapper.find('[data-prov-banner]')
     expect(banner.exists()).toBe(true)
     expect(banner.classes()).toContain('is-manual')
@@ -554,11 +535,12 @@ describe('MatchDetailPanel — provenance banner', () => {
     expect(banner.find('.detail-reset-btn').exists()).toBe(false)
   })
 
-  it('emits reset-match-data with the key when Reset to OCR is clicked', async () => {
-    const wrapper = mountPanel({
+  it('resets to OCR via ResetMatchData when Reset to OCR is clicked', async () => {
+    const { wrapper } = mountPanel({
       record: makeRecord({}, { match_key: 'match-x', source: 'ocr_edited', edited_fields: ['data.map'] }),
     })
     await wrapper.find('[data-prov-banner] .detail-reset-btn').trigger('click')
-    expect(wrapper.emitted('reset-match-data')?.[0]).toEqual(['match-x'])
+    await flushPromises()
+    expect(ResetMatchData).toHaveBeenCalledWith('match-x')
   })
 })

@@ -270,6 +270,24 @@ export const useMatchesStore = defineStore('matches', () => {
   const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
   const { searchClauses } = useSearchClauses(matchesNarrowState.searchText)
 
+  // Narrow-chip toggle contract for the detail card's inline filter chips:
+  // isNarrowChipActive reports whether a hero/role/result/map/type/tag chip is
+  // picked; toggleNarrowChip flips it. Unknown fields read inactive + no-op.
+  const narrowChipFields: Record<string, { picked: () => Set<string>; pick: (v: string) => void }> = {
+    hero:   { picked: () => matchesNarrowState.pickedHeroes.value,    pick: matchesNarrow.pickHero },
+    role:   { picked: () => matchesNarrowState.pickedRoles.value,     pick: matchesNarrow.pickRole },
+    result: { picked: () => matchesNarrowState.pickedResults.value,   pick: matchesNarrow.pickResult },
+    map:    { picked: () => matchesNarrowState.pickedMaps.value,      pick: matchesNarrow.pickMap },
+    type:   { picked: () => matchesNarrowState.pickedGameModes.value, pick: matchesNarrow.pickGameMode },
+    tag:    { picked: () => matchesNarrowState.pickedTags.value,      pick: matchesNarrow.pickTag },
+  }
+  function isNarrowChipActive(field: string, value: string): boolean {
+    return narrowChipFields[field]?.picked().has(value) ?? false
+  }
+  function toggleNarrowChip(field: string, value: string) {
+    narrowChipFields[field]?.pick(value)
+  }
+
   // ── Dossier (KPIs + breakdowns over the narrowed set) ─────────────
   // One aggregation over narrowedRecords, exposed to dashboard widgets via
   // provideDossier(matchesStore.dossier) in MatchesView. weekStart comes from
@@ -377,6 +395,8 @@ export const useMatchesStore = defineStore('matches', () => {
     matchAnchor: markRaw(matchAnchor),
     matchesNarrowState: markRaw(matchesNarrowState),
     matchesNarrow: markRaw(matchesNarrow),
+    isNarrowChipActive,
+    toggleNarrowChip,
     dossier: markRaw(dossier),
     searchClauses,
     records,

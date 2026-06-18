@@ -164,3 +164,24 @@ describe('MatchCardExpanded — since-this-match anchor toggle', () => {
     expect(w.emitted('set-anchor')![0]).toEqual([''])
   })
 })
+
+// A hidden record can't surface in the detail panel (the panel's selection
+// runs over the narrowed set, which excludes hidden), so the Unhide affordance
+// is covered here at the card level where a hidden record mounts directly.
+describe('MatchCardExpanded — soft-delete (hidden record)', () => {
+  it('shows Unhide (not Hide) on a hidden record', () => {
+    const hidden = makeRecord({}, { hidden: true } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: hidden })
+    const buttons = wrapper.findAll('.danger-btn').map(b => b.text())
+    expect(buttons.some(t => t.includes('Unhide'))).toBe(true)
+    expect(buttons.some(t => t.includes('Hide match'))).toBe(false)
+  })
+
+  it('Unhide click emits set-match-hidden(match_key, false) — no confirm step', async () => {
+    const hidden = makeRecord({}, { hidden: true } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: hidden })
+    await wrapper.findAll('.danger-btn').find(b => b.text().includes('Unhide'))!.trigger('click')
+    const e = wrapper.emitted('set-match-hidden')!
+    expect(e[0]).toEqual([hidden.match_key, false])
+  })
+})

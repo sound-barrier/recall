@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
-import type { SearchClause } from '@/match/search-query'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useSmoothScroll } from '@/composables/matches/useSmoothScroll'
+import { useUiStore } from '@/stores/ui'
+import { useMatchesStore } from '@/stores/matches'
+import { useMatchActions } from '@/composables/matches/useMatchActions'
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 
@@ -23,70 +25,49 @@ import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBad
 // match body is reused from the inline-expansion era so the editor
 // surface (annotation, sources, danger row) stays familiar.
 
-const props = defineProps<{
-  record: MatchRecord | null
-  isOpen: boolean
-  isSourcesOpen: boolean
-  isPreviewOpen:   (filename: string) => boolean
-  hasPreviewError: (filename: string) => boolean
-  isActive: (field: string, value: string) => boolean
-  searchClauses?: SearchClause[]
-  canPrev: boolean
-  canNext: boolean
-  // Position-in-list chip ("3 / 47") shown in the toolbar so the
-  // user always knows where they are within the filtered set.
-  // Both 1-based and clamped to >= 0 by the parent.
-  positionIndex: number
-  positionTotal: number
-  // True while the fullscreen screenshot lightbox is open above the
-  // panel. Drives `inert` on the panel root so Tab + click events
-  // can't bleed back into panel controls while the user is looking
-  // at the full image.
-  hasLightbox: boolean
-  // match_key of the "since this match" anchor, threaded through so
-  // the expanded card can flip its toggle's copy + style. Empty
-  // string ≡ no anchor.
-  anchorKey?: string
-  // Tag vocabulary across the narrowed set — forwarded to
-  // MatchCardExpanded for the inline tag-input autocomplete popover.
-  // Optional so older mount sites that don't have the narrow state
-  // don't have to thread an empty array.
-  availableTags?: string[]
-  // One-shot focus target — when 'note' or 'tag', the expanded card
-  // focuses the matching input on mount (set via the right-click
-  // menu's Tag / Edit annotation actions). Empty when no focus is
-  // pending. The card emits `focus-consumed` after applying so the
-  // parent can clear and avoid re-focusing on re-render.
-  pendingFocus?: '' | 'note' | 'tag'
+// The panel reads all of its state from the Pinia stores and takes no props.
+// The one remaining emit is set-anchor: App owns the anchor-confirmation toast
+// (whose "view filter" action does DOM + view-nav), so the panel reports the
+// toggle up rather than firing the toast itself.
+const emit = defineEmits<{
+  'set-anchor': [matchKey: string]
 }>()
 
-const emit = defineEmits<{
-  close:           []
-  prev:            []
-  next:            []
-  'toggle-sources': []
-  'toggle-preview': [filename: string]
-  'preview-error':  [filename: string]
-  'open-lightbox':  [filename: string, files: readonly string[], dirIDs: Record<string, number>]
-  'filter-toggle':  [field: string, value: string]
-  'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
-  'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
-  'set-match-hidden':       [matchKey: string, hidden: boolean]
-  'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
-  'set-match-queue':       [matchKey: string, queueType: QueueType]
-  'set-match-play-mode':   [matchKey: string, playMode: PlayMode]
-  // Fires once the expanded card has applied a pending focus
-  // (note / tag) so App.vue can clear its pendingFocusTarget ref
-  // — preventing a re-focus on every subsequent re-render.
-  'focus-consumed':        []
-  // User flipped the "Set as 'since' anchor" toggle. Empty string
-  // means "clear the anchor."
-  'set-anchor':            [matchKey: string]
-  // User edited a match-data field inline; carries the full override set.
-  'update-match-data':     [matchKey: string, overrides: UserMatchDataInput]
-  // User clicked "Reset to OCR" to discard every edit on this match.
-  'reset-match-data':      [matchKey: string]
-}>()
+const uiStore = useUiStore()
+const matchesStore = useMatchesStore()
+const { selection, preview } = uiStore
+const { searchClauses } = storeToRefs(matchesStore)
+const { pendingFocusTarget: pendingFocus } = storeToRefs(uiStore)
+const {
+  onSetLeaverAnnotation, onSetMatchAnnotation, onSetMatchHidden, onSetMatchReview,
+  onSetMatchQueue, onSetMatchPlayMode, onUpdateMatchData, onResetMatchData,
+} = useMatchActions()
+
+// Chrome state — same local names the template/script used as props, now
+// sourced from the stores (selection + preview bundles preserve their refs).
+const record = selection.selectedRecord
+const isOpen = selection.isOpen
+const canPrev = selection.canPrev
+const canNext = selection.canNext
+const positionIndex = computed(() => selection.selectedIndex.value + 1)
+const positionTotal = computed(() => matchesStore.matchesNarrow.narrowedRecords.value.length)
+const hasLightbox = computed(() => preview.lightboxFilename.value !== null)
+const anchorKey = computed(() => matchesStore.matchAnchor.anchorKey.value)
+const availableTags = computed(() => matchesStore.matchesNarrow.availableTags.value)
+
+// Forwarded to MatchCardExpanded — per-match boolean / per-filename + field fns.
+const isSourcesOpen = computed(() => uiStore.isSourcesOpen(selection.selectedKey.value))
+const isPreviewOpen = preview.isPreviewOpen
+const hasPreviewError = preview.hasPreviewError
+const isActive = matchesStore.isNarrowChipActive
+
+// Handlers that replace the old emits — drive the stores directly.
+const togglePreview = preview.togglePreview
+const onPreviewError = preview.onPreviewError
+const openLightbox = preview.openLightbox
+const toggleFilter = matchesStore.toggleNarrowChip
+const clearPendingFocus = uiStore.clearPendingFocus
+function toggleSources() { uiStore.toggleSources(selection.selectedKey.value) }
 
 const ow = useOWData()
 
@@ -116,9 +97,9 @@ const { nudgeScroll, setScrollAbsolute } = useSmoothScroll(bodyRef)
 // keeps the backdrop's click-to-close affordance reachable by mouse
 // while excluding it from the keyboard focus ring — there's nothing
 // to do on a backdrop with a keyboard.
-useModalFocusTrap(toRef(props, 'isOpen'), {
+useModalFocusTrap(isOpen, {
   containerSelector: '.detail-panel',
-  onClose: () => emit('close'),
+  onClose: () => selection.close(),
 })
 
 // Document-level keydown listener.
@@ -144,7 +125,7 @@ useModalFocusTrap(toRef(props, 'isOpen'), {
 // input / contenteditable, every key passes through to the native
 // editing behavior so the user can type literal arrows / j / k.
 function onKeydown(e: KeyboardEvent) {
-  if (!props.isOpen) return
+  if (!isOpen.value) return
   const target = document.activeElement as HTMLElement | null
   const tag = target?.tagName ?? ''
   const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
@@ -172,12 +153,12 @@ function onKeydown(e: KeyboardEvent) {
     case 'ArrowRight':
     case 'j':
     case 'l':
-      if (props.canNext) { e.preventDefault(); emit('next') }
+      if (canNext.value) { e.preventDefault(); selection.openNext() }
       return
     case 'ArrowLeft':
     case 'k':
     case 'h':
-      if (props.canPrev) { e.preventDefault(); emit('prev') }
+      if (canPrev.value) { e.preventDefault(); selection.openPrev() }
       return
     case 'ArrowDown':
       e.preventDefault()
@@ -225,27 +206,27 @@ onBeforeUnmount(() => {
 })
 
 const mapDisplay = computed(() =>
-  props.record?.data?.map ? ow.mapDisplayName(props.record.data.map) : '—',
+  record.value?.data?.map ? ow.mapDisplayName(record.value.data.map) : '—',
 )
 
 // One-line descriptor shown beside the provenance badge in the banner.
 // Only meaningful for the two non-OCR states the banner renders for.
 const provenanceSummary = computed(() => {
-  if (props.record?.source === 'manual') return 'Logged by hand — no screenshots to parse.'
-  const n = props.record?.edited_fields?.length ?? 0
+  if (record.value?.source === 'manual') return 'Logged by hand — no screenshots to parse.'
+  const n = record.value?.edited_fields?.length ?? 0
   if (n === 0) return 'Corrected after the OCR scan.'
   return `${n} ${n === 1 ? 'field' : 'fields'} changed from the OCR scan.`
 })
 
 const resultClass = computed(() => {
-  const r = props.record?.data?.result
+  const r = record.value?.data?.result
   return r ? `result-${r}` : 'result-unknown'
 })
 
 function onBackdropClick(e: MouseEvent) {
   // Only fire on click ON the backdrop itself, not on click
   // bubbling up from the panel content.
-  if (e.target === e.currentTarget) emit('close')
+  if (e.target === e.currentTarget) selection.close()
 }
 </script>
 
@@ -273,7 +254,7 @@ function onBackdropClick(e: MouseEvent) {
             class="detail-icon-btn detail-close"
             aria-label="Close detail panel"
             title="Close (Esc)"
-            @click="emit('close')"
+            @click="selection.close()"
           >
             <span aria-hidden="true">×</span>
           </button>
@@ -291,7 +272,7 @@ function onBackdropClick(e: MouseEvent) {
               :disabled="!canPrev"
               :aria-label="`Previous match (left arrow). Position ${positionIndex} of ${positionTotal}`"
               :title="canPrev ? 'Previous match (←)' : 'No previous match'"
-              @click="emit('prev')"
+              @click="selection.openPrev()"
             >
               <span aria-hidden="true">←</span>
             </button>
@@ -305,7 +286,7 @@ function onBackdropClick(e: MouseEvent) {
               :disabled="!canNext"
               :aria-label="`Next match (right arrow). Position ${positionIndex} of ${positionTotal}`"
               :title="canNext ? 'Next match (→)' : 'No next match'"
-              @click="emit('next')"
+              @click="selection.openNext()"
             >
               <span aria-hidden="true">→</span>
             </button>
@@ -331,7 +312,7 @@ function onBackdropClick(e: MouseEvent) {
             type="button"
             class="detail-reset-btn"
             title="Discard every edit and restore the scanned (OCR) values"
-            @click="emit('reset-match-data', record.match_key)"
+            @click="onResetMatchData(record.match_key)"
           >
             Reset to OCR
           </button>
@@ -361,21 +342,21 @@ function onBackdropClick(e: MouseEvent) {
             :anchor-key="anchorKey"
             :available-tags="availableTags"
             :pending-focus="pendingFocus"
-            @focus-consumed="emit('focus-consumed')"
-            @toggle-sources="emit('toggle-sources')"
-            @toggle-preview="(f: string) => emit('toggle-preview', f)"
-            @preview-error="(f: string) => emit('preview-error', f)"
-            @open-lightbox="(f: string, files: readonly string[], dirIDs: Record<string, number>) => emit('open-lightbox', f, files, dirIDs)"
-            @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
-            @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
-            @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
-            @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
-            @set-match-review="(k: string, by: ReviewedBy) => emit('set-match-review', k, by)"
-            @set-match-queue="(k: string, q: QueueType) => emit('set-match-queue', k, q)"
-            @set-match-play-mode="(k: string, m: PlayMode) => emit('set-match-play-mode', k, m)"
+            @focus-consumed="clearPendingFocus"
+            @toggle-sources="toggleSources"
+            @toggle-preview="togglePreview"
+            @preview-error="onPreviewError"
+            @open-lightbox="openLightbox"
+            @filter-toggle="toggleFilter"
+            @set-leaver-annotation="onSetLeaverAnnotation"
+            @set-match-annotation="onSetMatchAnnotation"
+            @set-match-hidden="onSetMatchHidden"
+            @set-match-review="onSetMatchReview"
+            @set-match-queue="onSetMatchQueue"
+            @set-match-play-mode="onSetMatchPlayMode"
             @set-anchor="(k: string) => emit('set-anchor', k)"
-            @update-match-data="(k: string, o: UserMatchDataInput) => emit('update-match-data', k, o)"
-            @reset-match-data="(k: string) => emit('reset-match-data', k)"
+            @update-match-data="onUpdateMatchData"
+            @reset-match-data="onResetMatchData"
           />
         </div>
       </aside>
