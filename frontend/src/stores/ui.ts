@@ -1,4 +1,4 @@
-import { markRaw } from 'vue'
+import { markRaw, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
@@ -22,9 +22,23 @@ export const useUiStore = defineStore('ui', () => {
   const preview = useScreenshotPreview()
   const cardFocus = useCardFocus()
 
+  // Pending detail-panel focus target: the row context menu sets it ('note' /
+  // 'tag') and opens the match; MatchDetailPanel reads it on mount to focus the
+  // right input, then clears it. Lives here (not the panel) because the panel
+  // may be unmounted at the moment of right-click.
+  const pendingFocusTarget = ref<'note' | 'tag' | ''>('')
+  function clearPendingFocus() { pendingFocusTarget.value = '' }
+  function onOpenMatchAndFocus(matchKey: string, target: 'note' | 'tag') {
+    pendingFocusTarget.value = target
+    selection.open(matchKey)
+  }
+
   return {
     selection: markRaw(selection),
     preview: markRaw(preview),
     cardFocus: markRaw(cardFocus),
+    pendingFocusTarget,
+    clearPendingFocus,
+    onOpenMatchAndFocus,
   }
 })
