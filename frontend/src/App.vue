@@ -80,7 +80,6 @@ import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/matches/useMatchesNarrow'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
-import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
 import StartupErrorModal from '@/components/app/StartupErrorModal.vue'
@@ -185,21 +184,16 @@ const {
   referenceGapRecords,
   hiddenRecords,
   ambiguousRecords,
+  parseBusy,
+  cancellingParse,
+  firstLoadPending,
+  parseProgress,
+  parseLog,
+  newScreenshotCount,
+  lastParsedAt,
+  recordsPulse,
 } = storeToRefs(matchesStore)
-// `parseBusy` flips true during runParse(); used to disable the
-// manual Parse button and its peers in IngestView / SettingsView.
-const parseBusy = ref(false)
-// `cancellingParse` flips true between the Stop click and the SSE
-// `parse-cancelled` confirmation. Drives the IngestView button copy
-// ("Cancelling…") + disabled state so a second click doesn't fire a
-// redundant DELETE. Cleared in the onParseCancelled handler below.
-const cancellingParse = ref(false)
-// `firstLoadPending` is true from boot until the first load() resolves
-// (or fails). Drives the Matches skeleton placeholder so the view
-// doesn't render its empty-state for a frame between mount and the
-// first /api/v1/matches response. Distinct from `parseBusy` because a
-// manual parse should NOT swap the real records for skeleton rows.
-const firstLoadPending = ref(true)
+const { refreshNewCount, flashRecordsPulse } = matchesStore
 
 // Onboarding tour: when the tour is active we substitute the live
 // records for the curated DEMO_MATCHES so every tour step has
@@ -257,28 +251,6 @@ async function onTourSeedAndSwitch(resumeStepIndex: number): Promise<void> {
   window.location.reload()
 }
 
-// Brief visual pulse on the scoreboard / records-count surface when
-// the watcher (or a manual parse) brings in additional records. Without
-// this the auto-refresh is silent — records simply appear and the user
-// must scan to notice. The pulse class is bound to .scoreboard and
-// auto-clears after the animation completes.
-const recordsPulse = ref(false)
-let recordsPulseTimer: ReturnType<typeof setTimeout> | null = null
-function flashRecordsPulse() {
-  recordsPulse.value = true
-  if (recordsPulseTimer) clearTimeout(recordsPulseTimer)
-  recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
-}
-
-// Parse progress: the most-recently-completed file during an active parse.
-// null when no parse is running.
-const parseProgress = ref<ParseProgressEvent | null>(null)
-// Rolling log of completed files during the current parse (up to 50).
-const parseLog = ref<ParseProgressEvent[]>([])
-// Count of image files in the screenshots dir not yet in the database.
-// null = not yet fetched; 0 = all parsed; >0 = new files waiting.
-const newScreenshotCount = ref<number | null>(null)
-
 // Which top-level view is shown: 'matches' (default — filter rail +
 // match cards) or 'settings' (config sections — directory, watch,
 // engine, backup/restore). Switched via the masthead nav tabs.
@@ -316,10 +288,6 @@ const {
 } = useCardFocus()
 const openCheatsheet = ref(false)
 
-// Wall-clock time of the last successful manual parse, used to render
-// "Last run · X ago" feedback under the Parse button on the settings
-// page. Persisted to localStorage so the timestamp survives reloads.
-const lastParsedAt = ref<number | null>(null)
 
 // Tesseract status (path / found / version / supported flag) + the
 // "Browse for binary…" + "Reset to default" pickers + the System Alert
@@ -527,9 +495,6 @@ async function load() {
   firstLoadPending.value = false
 }
 
-async function refreshNewCount() {
-  try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) {}
-}
 
 // 90-day "haven't checked for updates in a while" reminder banner.
 // Gated on updateInfo.last_checked_at (server-side persisted) +
