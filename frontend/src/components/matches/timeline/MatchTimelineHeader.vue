@@ -178,8 +178,8 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 }
 
 .window-btn.active {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
 }
 
 .timeline-legend {
