@@ -1,5 +1,140 @@
 # Changelog
 
+## [0.18.0](https://github.com/sound-barrier/recall/compare/v0.17.1...v0.18.0) (2026-06-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **metrics:** removes GET/PUT /api/v1/settings/prometheus, the Prometheus metrics endpoint (:9091), and the bundled Grafana stack. Use the in-app Matches -> Trends charts instead.
+
+### Features
+
+* **app:** probe Tesseract in the background so boot never blocks ([6cc867f](https://github.com/sound-barrier/recall/commit/6cc867f0bfdd45b256566c4ae763aaf74977857e))
+* **app:** scale the initial window to the display size ([a585b5c](https://github.com/sound-barrier/recall/commit/a585b5cfa21318ade17f696558e9f157c25f1c45))
+* **ci:** surface branch coverage for backend + frontend ([119b9a6](https://github.com/sound-barrier/recall/commit/119b9a671acccb68f7e12f92b09cfdc179731e26))
+* **ingest:** refresh the pending-screenshot count on opening Parse ([cc91f73](https://github.com/sound-barrier/recall/commit/cc91f73abe27329654700d5fcc785a5942327a0c))
+* **matches:** click a Geography cell to select it, click off to reset ([25732df](https://github.com/sound-barrier/recall/commit/25732df7b6dda5fa7aa1ec0efbd90d02cf71d826))
+* **matches:** collapse-all / expand-all the group sections ([c4fa4fe](https://github.com/sound-barrier/recall/commit/c4fa4fe1095dfad658e7c8380dedd0ac45f9b1d0))
+* **matches:** correct + complete the rank-update modifiers ([1db3796](https://github.com/sound-barrier/recall/commit/1db37967630db17eeb599127714081d7e2098a26))
+* **matches:** Current Rank + win-rate-by-hero/map/role widgets ([eac0962](https://github.com/sound-barrier/recall/commit/eac0962c583e323ec749a125f597b4d06c87774d))
+* **matches:** customizable Trends charts + interaction fixes ([6308cf0](https://github.com/sound-barrier/recall/commit/6308cf0d96a57fbd32c32022e96455a7fb1628a6))
+* **matches:** drag + keyboard reorder the Trends charts ([f1a4745](https://github.com/sound-barrier/recall/commit/f1a4745831aa44ffdf1aebbf8b679cb5ed3df672))
+* **matches:** drag-select a date range on the Campaign Log calendar ([be11471](https://github.com/sound-barrier/recall/commit/be11471e99fcadf85588e975b279e478eb939fd0))
+* **matches:** hide never-played roles + prompt to play in the Geography band ([97c32f3](https://github.com/sound-barrier/recall/commit/97c32f3274c832fbd0f8e1929ed7bbc81d0d370e))
+* **matches:** in-app ECharts time-series Trends section ([ee330d4](https://github.com/sound-barrier/recall/commit/ee330d42e6985b3ecda17a6365084009fed46fbc))
+* **matches:** interactive Trends charts — brush, click, zoom ([7726e40](https://github.com/sound-barrier/recall/commit/7726e40cb95dd78daefbf97f765a123cdccbb61f))
+* **matches:** keep the Geography grid stable when narrowing ([d4c45c7](https://github.com/sound-barrier/recall/commit/d4c45c7420178afd5ffd80117dc76d97e981e01c))
+* **matches:** MatchesView reads narrow from the store (drop the prop) ([0f5a2e9](https://github.com/sound-barrier/recall/commit/0f5a2e93c9a1d8d352d8591531ad58c421fde48c))
+* **matches:** MatchesView reads records from the store ([0f22c36](https://github.com/sound-barrier/recall/commit/0f22c36f71135c66b0ebe73f8516c538c0c4316c))
+* **matches:** move parse-lifecycle state into the matches store ([f517bd0](https://github.com/sound-barrier/recall/commit/f517bd0c966347b8fe9d43b5292a3ed04f16c9cd))
+* **matches:** move the narrow/anchor filter cluster into the store ([e61ed31](https://github.com/sound-barrier/recall/commit/e61ed3154effb235a9b40b73346c39374987920f))
+* **matches:** move the remaining match-mutation handlers into useMatchActions ([49ffc92](https://github.com/sound-barrier/recall/commit/49ffc92f0401fc15394c3d4a66eafefcb37ce0d3))
+* **matches:** per-role rank-ladder + win-rate Trends charts ([7835d79](https://github.com/sound-barrier/recall/commit/7835d79b08b7b19e7b6d6aeb47d8cd5cfb42c233))
+* **matches:** reserve top-N widget height to the real item count ([1ed6e5e](https://github.com/sound-barrier/recall/commit/1ed6e5e3e721666f67def187ca862e2b8df64465))
+* **matches:** show the play-a-match prompt in all three dossier bands ([f9a3cde](https://github.com/sound-barrier/recall/commit/f9a3cde0aa62a2b4d62963dfa069e1e9b249771b))
+* **matches:** three more Trends charts ([f7d6236](https://github.com/sound-barrier/recall/commit/f7d62363e5037feed96ead55c965d9d58ab762bd))
+* **matches:** tilt/momentum + climb/session KPI widgets ([864e4e0](https://github.com/sound-barrier/recall/commit/864e4e0a82c07c641af549bc1fce0f7360846b38))
+* **metrics:** enrich Prometheus metrics + focused Grafana dashboards ([6769bc8](https://github.com/sound-barrier/recall/commit/6769bc80b6a90471e2ce60c67f9b7ee87e7d2657))
+* **metrics:** remove the Prometheus/Grafana observability stack ([80c16bc](https://github.com/sound-barrier/recall/commit/80c16bc82aba6d56e499a79fdbffbb1415f19387))
+* **narrow:** filter by leaver side, modifiers, and rank ([e3a87df](https://github.com/sound-barrier/recall/commit/e3a87dff0a52507514dab3b832cb4f2f02131f19))
+* **parser:** add Neon Function to the map roster ([1c82f6b](https://github.com/sound-barrier/recall/commit/1c82f6b318ed106bdb34584b257bc8e5414a2efb))
+* **parser:** add Shion to the hero roster ([a5bc5b0](https://github.com/sound-barrier/recall/commit/a5bc5b03c13032a3292cbea26c92bb2eff6c27fd))
+* **store:** add a UI store for selection / preview / card-focus ([bfffab2](https://github.com/sound-barrier/recall/commit/bfffab2e809b11296120a1675ea5ebd8be9f5df0))
+* **store:** add the settings store with Tesseract/OCR-engine config ([08d935e](https://github.com/sound-barrier/recall/commit/08d935e81e2c0abb25afa11e3074a894bfb63cf8))
+* **store:** move app-shell state into a Pinia app store ([b6217ce](https://github.com/sound-barrier/recall/commit/b6217ce547f3079284b50aca3cf598310be9c0d3))
+* **store:** move clear-DB + backup/restore into the matches store ([489b159](https://github.com/sound-barrier/recall/commit/489b159ef09b4f2a312872d97a21c1ca43e417c1))
+* **store:** move folder-watch + screenshots-dir into the settings store ([b6f8764](https://github.com/sound-barrier/recall/commit/b6f8764be9a0ccbf1a9d015086bafc29deb93aa3))
+* **store:** move ignored-screenshots into the matches store ([b14dd2b](https://github.com/sound-barrier/recall/commit/b14dd2b2d451c66fba7550c6559c52dd5e1cddf8))
+* **store:** move records + derived triage lists into the matches store ([5e7ede5](https://github.com/sound-barrier/recall/commit/5e7ede5a11286ac4dd55b21e8ab455ba66402135))
+* **store:** move the dossier into the matches store (+ weekStart to settings) ([a444312](https://github.com/sound-barrier/recall/commit/a444312d881f81f689a25f7e3f165b6bc94dcaed))
+* **store:** move the ingest event stream into the matches store ([29c8632](https://github.com/sound-barrier/recall/commit/29c86320a0029654217e3de022d8ac1f5727d880))
+* **store:** move the load() boot coordinator + tour swap into the matches store ([1717ee4](https://github.com/sound-barrier/recall/commit/1717ee4d021dfee0f472c5ff02ae1df90686909f))
+* **store:** move the parse run controls into the matches store ([1646a4f](https://github.com/sound-barrier/recall/commit/1646a4fec22a093659400b1b780a1f66b96b7136))
+* **store:** move theme/appearance into the settings store ([b99721c](https://github.com/sound-barrier/recall/commit/b99721cd3c6e63fd9ec3ce16994ab56afd34fe28))
+* **store:** move view/nav into the app store ([221b041](https://github.com/sound-barrier/recall/commit/221b041e7271b881680121dbb5efbcfdf73c5c99))
+* **unknown:** UnknownMapsView reads the triage lists from the store ([0c5c8c4](https://github.com/sound-barrier/recall/commit/0c5c8c44a4f2c52613adfc5bb1dc4de53400a4ed))
+* **update:** plain-language update copy instead of commit SHAs ([7b7266b](https://github.com/sound-barrier/recall/commit/7b7266b470a40cc8494788b2878b02bdd8cb69a9))
+
+
+### Bug Fixes
+
+* **a11y:** meet AA contrast on the active band window-picker buttons ([2ca5b4d](https://github.com/sound-barrier/recall/commit/2ca5b4d90774b101927f5968367d21d6d4f53ed3))
+* **app:** don't let a cold-boot Tesseract probe stall startup ([9e42a34](https://github.com/sound-barrier/recall/commit/9e42a3466f96a98290be6c206804198bfd7acc2f))
+* **app:** only run the Tesseract probe where its emit is safe ([072b7ff](https://github.com/sound-barrier/recall/commit/072b7ffa46fcfbfe9a8ec58865aa1db0851d102f))
+* **db:** set SQLite busy_timeout so reads don't 500 during a parse ([726df92](https://github.com/sound-barrier/recall/commit/726df922041c176bb4c9aed3b4e6998c3c1538a6))
+* **dossier:** don't lock page scroll for the "+ Add" menu ([f60fc44](https://github.com/sound-barrier/recall/commit/f60fc44550d013fdfa386984aa4fe45cdaec30fe))
+* **matches:** keep top-N dossier widgets a constant height when filtering ([d3810ed](https://github.com/sound-barrier/recall/commit/d3810edfac4fd953f78d0f0e1c71df627e3f8391))
+* **matches:** restore alphabetical map order in the Hero × Game-Mode drill-down ([6517182](https://github.com/sound-barrier/recall/commit/65171829d51c499447af40b159bbd429c401ae59))
+* **probe:** correct the Nvidia default screenshots dir ([802a825](https://github.com/sound-barrier/recall/commit/802a8255bc5a8db85a019d1a12890edb5ad0dc5c))
+* **settings:** keep the source-picker grid within a narrow window ([c323c8b](https://github.com/sound-barrier/recall/commit/c323c8bdcd49c85324c4b4ea8a6f58a0d55aa845))
+
+
+### Refactors
+
+* **app:** dissolve the overlaysApi prop bundle — AppOverlays reads stores ([a7421fc](https://github.com/sound-barrier/recall/commit/a7421fc2dfe1acc19c40d51831c79f7182df77b5))
+* **app:** extract anchor-toast + onboarding-tour bridges to composables ([8930f42](https://github.com/sound-barrier/recall/commit/8930f422513f77333ddc8d9abe661433334834d5))
+* **app:** extract keyboard wiring into useAppKeyboard ([b1fd48e](https://github.com/sound-barrier/recall/commit/b1fd48ead7a3b36c3658c7eea5841ff5506a9e0c))
+* **app:** extract match-action handlers into useMatchActions ([5f94cc8](https://github.com/sound-barrier/recall/commit/5f94cc8cc59656966937f8ecb38b3433b8b9e9fb))
+* **app:** extract the boot-error + unsupported-version modals ([b505873](https://github.com/sound-barrier/recall/commit/b505873f3f3a04ce504234f40982116b3dabdb5b))
+* **app:** extract the first-run gate into useFirstRun ([de4f929](https://github.com/sound-barrier/recall/commit/de4f929afbc7825c563687ed663d9252c0b08048))
+* **app:** extract the masthead into AppMasthead ([568904b](https://github.com/sound-barrier/recall/commit/568904b5628b1c089210bb6818d47d10e85f5da2))
+* **app:** extract the overlay cluster into AppOverlays ([d283bdb](https://github.com/sound-barrier/recall/commit/d283bdb426bc2ec80bcdb50648457ee226d13ccc))
+* **app:** extract the system-alert + error banners ([0cfa4bd](https://github.com/sound-barrier/recall/commit/0cfa4bdc80628dacce46b46ee63ab269d0c373eb))
+* **app:** group App-shell components under components/app/ ([0a39824](https://github.com/sound-barrier/recall/commit/0a3982480c509fbacbb58a4bb94b495466e8a43b))
+* **app:** masthead reads stores + boot coordinator → useAppBoot ([c75e2ec](https://github.com/sound-barrier/recall/commit/c75e2ec5f943e8509f02248146d47dfd8b259208))
+* **app:** move modal open-flags into the UI store; App ≤200 lines ([9e03542](https://github.com/sound-barrier/recall/commit/9e03542c4dbac4ce3fdef760871d9c5138da897d))
+* **app:** SystemAlertBanner + ErrorBanner read stores + self-gate ([5f9a99d](https://github.com/sound-barrier/recall/commit/5f9a99d5735418ab02bfbd8af8da9fe5dcd4738e))
+* **app:** UpdateReminderBanner owns the reminder feature via the store ([22d6330](https://github.com/sound-barrier/recall/commit/22d63309f0dbb58ad9769b815071438e6f192db7))
+* **e2e:** consolidate the real-server specs ([8268e24](https://github.com/sound-barrier/recall/commit/8268e24dc155bcf54d345f094b748aafbfe90bca))
+* **e2e:** split match-detail-panel spec by concern ([8c42560](https://github.com/sound-barrier/recall/commit/8c425603e6eca887d818e1efead93cc60c091bcd))
+* **ingest:** IngestView reads stores — drop its 14 props + 6 emits ([8cf8168](https://github.com/sound-barrier/recall/commit/8cf81689d91f25f37dcc36d47bd6d0ff0d398af7))
+* **ingest:** ParseStatusBar reads the parse lifecycle from the stores ([d68bfbc](https://github.com/sound-barrier/recall/commit/d68bfbc19a9e2ac7a706af308af6708e7b0f8d9f))
+* **matches:** give the narrow filter types + state factory their own home ([b9d2d25](https://github.com/sound-barrier/recall/commit/b9d2d25df4c72692a0059af80519589bcab07c2d))
+* **matches:** make useMatchActions stateless + store-reading ([6983bbf](https://github.com/sound-barrier/recall/commit/6983bbffdb10666d55446f81b34330f4bb2c8296))
+* **matches:** MatchDetailPanel reads stores — drop 15 props + 17 emits ([e00f338](https://github.com/sound-barrier/recall/commit/e00f33870f02ac11d5296fd8b61947cd6746f0c9))
+* **matches:** MatchesView reads stores — drop its prop + 14 mutation emits ([0a586d2](https://github.com/sound-barrier/recall/commit/0a586d2ccdc335beb4d403746a82b65e87e6b6ef))
+* **matches:** type enterEditMode as MouseEvent | KeyboardEvent ([21f1ce3](https://github.com/sound-barrier/recall/commit/21f1ce34e6baa1fe0b57e8199bbc3e2503d431de))
+* **settings:** SettingsView reads stores — drop its 54 props + 25 emits ([6369f50](https://github.com/sound-barrier/recall/commit/6369f504c9c75ab0b26c2e5a36225f463146256e))
+* **styles:** drop the dead .matches-view view-fade-in selector ([c7f2ae9](https://github.com/sound-barrier/recall/commit/c7f2ae937c895db6cee4128b179265b3d33fb3e0))
+* **unknown:** UnknownMapsView reads stores — drop cardState + 3 props + 4 emits ([0aac1b4](https://github.com/sound-barrier/recall/commit/0aac1b4233e5a7f5f4037f20b3b62a2a499adb82))
+
+
+### Documentation
+
+* add TECHNICAL_DEBT.md (app.css extraction + accepted-decision log) ([81944c3](https://github.com/sound-barrier/recall/commit/81944c3c2c2ff4f8c8ad4dac2d353223a8aba67b))
+* app.css extraction likely not applicable — selectors are genuinely shared ([26d8043](https://github.com/sound-barrier/recall/commit/26d8043a8e40665df040017a1b88368251247854))
+* codify the Vue 3 + Pinia thin-shell architecture as desired ([b237dce](https://github.com/sound-barrier/recall/commit/b237dce469453b1a5ab3f098c6e482aa411cf78c))
+* **frontend:** App.vue is ~70 code lines now — chrome + overlays read stores ([3e0c5cd](https://github.com/sound-barrier/recall/commit/3e0c5cd4927ec7683405bbf6591b8cda5abba459))
+* **frontend:** note the components/app/ shell folder in the layout guide ([1cdd863](https://github.com/sound-barrier/recall/commit/1cdd8630447556b9413e0d24cae0ec9bd2b79034))
+* **frontend:** replace the "no Pinia" stance with the store architecture ([8db7166](https://github.com/sound-barrier/recall/commit/8db7166b1162f18ab2d13d50fbbb1edf8c5f5450))
+* **parser:** drop the last two brittle parser.go:NNNN comment refs ([a910adf](https://github.com/sound-barrier/recall/commit/a910adfbe941b308b4c62fcea350ae5024df4af8))
+
+
+### Build & Packaging
+
+* **deps:** override js-yaml to 4.2.0 (security) ([072be4a](https://github.com/sound-barrier/recall/commit/072be4abfc1f3e8abcf751800f6fae14dc1d18a4))
+
+
+### CI
+
+* hard-fail the CI run on any unit-test failure ([3625633](https://github.com/sound-barrier/recall/commit/36256336c91bc39c99bbcd90b74eafdf6c2e34e0))
+
+
+### Tests
+
+* **app:** make App.test '@/api' assertions fork-count robust ([d8903b6](https://github.com/sound-barrier/recall/commit/d8903b65008170de1969ca7410672fbab795a428))
+* **app:** reset modules in mountApp so store @/api mocks apply ([fd8804c](https://github.com/sound-barrier/recall/commit/fd8804cde2acada75d6f300c7ee1c329adf702c2))
+* **db:** de-flake the concurrent read/write test under -race ([2043b51](https://github.com/sound-barrier/recall/commit/2043b51b3f4d8c3695667f9bd79972fdde39c085))
+* **e2e:** a newly-added hero/map flows end-to-end via a mocked update ([f649d01](https://github.com/sound-barrier/recall/commit/f649d010a498d1846720b1ba6a3be779e58d3d25))
+* **e2e:** accept 3 AI-finding suggestions, reject the broken one ([34e6751](https://github.com/sound-barrier/recall/commit/34e6751aa782bdef0b8e41077db0c2312cac48e4))
+* **e2e:** edited OCR match survives a backup round-trip ([fb6a01e](https://github.com/sound-barrier/recall/commit/fb6a01e813888e9555a64e4ccf0eb49c5db2587f))
+* **e2e:** exclude reserved placeholder rows from top-N widget li counts ([09e9bb6](https://github.com/sound-barrier/recall/commit/09e9bb62299242894cc02f9af2a847f883e75178))
+* **e2e:** export a mixed match set to CSV (override-over-OCR) ([e1e2ddf](https://github.com/sound-barrier/recall/commit/e1e2ddf73ad9abef072a835a7307bc24bb80f0c1))
+* **e2e:** settle the view fade before axe samples (de-flake) ([595488c](https://github.com/sound-barrier/recall/commit/595488cb255aeb16055535500e0cf59e5f5c04e7))
+* **stores:** unit-test the consequential store logic the migration unlocked ([9803cd3](https://github.com/sound-barrier/recall/commit/9803cd384f9783e253c29b2ec0162152a5307455))
+* **ui:** drop the backgroundFrozen getter tests ([e3501b9](https://github.com/sound-barrier/recall/commit/e3501b9c2f63cfc166bc4bf9e6ea877e942b0dfb))
+* **ui:** restore the backgroundFrozen tests — they carry real value ([a1fedf4](https://github.com/sound-barrier/recall/commit/a1fedf4c73a62351792b338f9eeeb6cdcb1b017a))
+
 ## [0.17.1](https://github.com/sound-barrier/recall/compare/v0.17.0...v0.17.1) (2026-06-17)
 
 
