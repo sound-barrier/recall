@@ -16,15 +16,17 @@ derived triage lists, parse lifecycle, the narrow/anchor filter cluster, the
 dossier-feeding narrowedRecords), `useSettingsStore` (Tesseract/OCR engine,
 folder-watch, screenshots-dir, theme), and `useUiStore` (detail-panel
 selection, screenshot preview/lightbox, card focus, the narrow-panel +
-manual-match modal open-flags). `App.vue` is a thin **declarative shell** (~190
-lines, hard-capped at 200 — see "App.vue is the shell" below): it reads the
-stores, wires the App-shell composables (`composables/app/`), assembles the
-`overlaysApi` bundle, and renders the chrome (`AppMasthead` + banners) + one of
-four view SFCs via `<XxxView v-if="appStore.view === '…'" />` (`SettingsView`,
-`IngestView`, `MatchesView`, `UnknownMapsView`, each in its feature folder under
-`frontend/src/components/`) + `AppOverlays`. It owns **no** business logic: the
-boot coordinator lives in `useAppBoot` (on-mount fan-out into each store's
-loaders + the non-dismissible Startup-failure modal), keyboard wiring in
+manual-match modal open-flags). `App.vue` is a thin **declarative shell** (~70
+code lines, hard-capped at 200 — see "App.vue is the shell" below): it reads a
+few store refs, wires the App-shell composables (`composables/app/`), and renders
+the chrome (`AppMasthead`, the banners, `ParseStatusBar`) + one of four view SFCs
+via `<XxxView v-if="appStore.view === '…'" />` (`SettingsView`, `IngestView`,
+`MatchesView`, `UnknownMapsView`, each in its feature folder under
+`frontend/src/components/`) + `AppOverlays` — **all** of which read the stores
+directly (zero prop/emit drilling; the overlay cluster takes no prop bundle). It
+owns **no** business logic: the boot coordinator lives in `useAppBoot` (on-mount
+fan-out into each store's loaders + the non-dismissible Startup-failure modal),
+keyboard wiring in
 `useAppKeyboard`, the first-run gate in `useFirstRun`, the anchor toast in
 `useAnchorToast`, the tour bridge in `useOnboardingTourBridge`; the SSE event
 stream + parse lifecycle + clear-DB/backup live in the matches store.
