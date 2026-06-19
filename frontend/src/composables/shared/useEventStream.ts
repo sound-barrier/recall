@@ -1,5 +1,5 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
-import { EventsOn, EventsOff, type MatchRecord } from '@/api'
+import { EventsOn, EventsOff, type MatchRecord, type TesseractStatus } from '@/api'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 
 // Live-stream subscriptions for the three SSE events emitted during
@@ -26,6 +26,10 @@ export interface EventStreamApi {
   // parse-cancelled is treated the same as parse-complete (still
   // safe; the records ref reflects the partial state).
   onParseCancelled?: () => Promise<void> | void
+  // Called when the backend's background Tesseract probe publishes a fresh
+  // status (a cold-boot Defender scan finally let the binary run). Lets the
+  // engine banner self-heal without an app restart.
+  onTesseractStatus?: (status: TesseractStatus) => void
   // Maximum entries in the rolling log (default 50).
   logCap?: number
 }
@@ -76,6 +80,11 @@ export function useEventStream(api: EventStreamApi) {
     // authoritative reconciliation in case any of these events were
     // dropped on a slow SSE connection.
     EventsOn<MatchRecord>('match-updated', onMatchUpdated)
+    // Background Tesseract probe result — refresh the engine status so the
+    // System Alert clears itself once a cold-boot scan releases the binary.
+    EventsOn<TesseractStatus>('tesseract-status', (s) => {
+      if (s) api.onTesseractStatus?.(s)
+    })
   }
 
   function unsubscribe() {
@@ -83,6 +92,7 @@ export function useEventStream(api: EventStreamApi) {
     EventsOff('parse-progress')
     EventsOff('parse-cancelled')
     EventsOff('match-updated')
+    EventsOff('tesseract-status')
   }
 
   onMounted(subscribe)

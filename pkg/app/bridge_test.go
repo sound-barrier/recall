@@ -71,7 +71,14 @@ var (
 	SaveSettings        = (*App).saveSettings
 	DataDir             = (*App).dataDir
 	AutoProbeOnFirstRun = (*App).autoProbeOnFirstRun
+
+	ProbeTesseractInBackground = (*App).probeTesseractInBackground
 )
+
+// Startup's background tesseract probe goroutine would EventsEmit on the test
+// context (no Wails runtime); disable the auto-spawn so Startup tests don't
+// crash. The probe logic is exercised directly via ProbeTesseractInBackground.
+func init() { probeTesseractOnStartup = false }
 
 // ── Unexported *App field accessors ───────────────────────────────────────
 

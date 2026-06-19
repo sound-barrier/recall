@@ -358,6 +358,10 @@ export const useMatchesStore = defineStore('matches', () => {
       parseProgress.value = null
       announceParse('Parse cancelled.')
     },
+    // The backend probes Tesseract in the background after boot (so a cold-boot
+    // Defender scan can't stall startup); push each result into the settings
+    // store so the System Alert banner self-heals without an app restart.
+    onTesseractStatus: (s) => { useSettingsStore().setTesseractStatus(s) },
   })
 
   // ── Clear-DB + backup/restore (data ops, surfaced in Settings) ────

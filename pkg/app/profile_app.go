@@ -233,7 +233,7 @@ func (a *App) activateAndReload(name string) error {
 		a.settings.TesseractPath = defaultTesseractPath()
 		a.saveSettingsBestEffort()
 	}
-	a.tessStatus = checkTesseract(a.settings.TesseractPath)
+	a.setTessStatus(checkTesseract(a.settings.TesseractPath))
 	parser.SetTesseractPath(a.settings.TesseractPath)
 	a.autoProbeOnFirstRun()
 

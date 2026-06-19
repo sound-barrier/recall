@@ -25,6 +25,13 @@ func (a *App) emitMatchUpdated(rec match.MatchRecord) {
 	a.SSEHub.BroadcastData("match-updated", string(data))
 }
 
+// emitTesseractStatus broadcasts the background-probe status to SSE
+// subscribers (server mode has no Wails event bus).
+func (a *App) emitTesseractStatus(s TesseractStatus) {
+	data, _ := json.Marshal(s)
+	a.SSEHub.BroadcastData("tesseract-status", string(data))
+}
+
 // emitParseComplete is a no-op in server mode — the SSE hub handles
 // parse-complete notifications instead of the Wails event bus.
 func (a *App) emitParseComplete() {
@@ -72,7 +79,7 @@ func (a *App) LoadImportFromFile() (string, error) {
 // PickTesseractBinary is not available in server mode (no native dialogs).
 // The HTTP API exposes PUT /api/v1/settings/tesseract for the same purpose.
 func (a *App) PickTesseractBinary() (TesseractStatus, error) {
-	return a.tessStatus, fmt.Errorf("native dialogs unavailable in server mode; use PUT /api/v1/settings/tesseract")
+	return a.tessStatusSnapshot(), fmt.Errorf("native dialogs unavailable in server mode; use PUT /api/v1/settings/tesseract")
 }
 
 // PickScreenshotsDir is not available in server mode (no native dialogs).
