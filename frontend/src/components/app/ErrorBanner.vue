@@ -1,20 +1,25 @@
 <script setup lang="ts">
-// Transient error strip under the masthead — Retry (when the failed action
-// is replayable) + Dismiss. App owns the message + the retry callback.
-defineProps<{ message: string; canRetry: boolean }>()
-const emit = defineEmits<{ retry: []; dismiss: [] }>()
+// Transient error strip under the masthead — Retry (when the failed action is
+// replayable) + Dismiss. Reads the message + retry callback from the app store;
+// self-gates on a non-empty error.
+import { storeToRefs } from 'pinia'
+import { useAppStore } from '@/stores/app'
+
+const appStore = useAppStore()
+const { error, errorRetry } = storeToRefs(appStore)
+const { clearError } = appStore
 </script>
 
 <template>
-  <p class="error" data-testid="error-banner">
+  <p v-if="error" class="error" data-testid="error-banner">
     <span class="error-tick">✕</span>
-    <span class="error-msg">{{ message }}</span>
+    <span class="error-msg">{{ error }}</span>
     <button
-      v-if="canRetry"
+      v-if="errorRetry"
       type="button"
       class="error-retry"
       data-testid="error-retry"
-      @click="emit('retry')"
+      @click="errorRetry?.()"
     >
       Retry
     </button>
@@ -23,7 +28,7 @@ const emit = defineEmits<{ retry: []; dismiss: [] }>()
       class="error-dismiss"
       aria-label="Dismiss error"
       data-testid="error-dismiss"
-      @click="emit('dismiss')"
+      @click="clearError"
     >
       ✕
     </button>

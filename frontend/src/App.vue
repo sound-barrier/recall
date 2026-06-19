@@ -13,7 +13,6 @@ import { defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
-import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
@@ -60,13 +59,8 @@ const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsV
 // location) lives in the Pinia app store. Destructure with the same local
 // names so the existing call sites in this file stay unchanged.
 const appStore = useAppStore()
-const {
-  error,
-  errorRetry,
-  updateInfo,
-} = storeToRefs(appStore)
-const { clearError, checkForUpdates, goToView } = appStore
-const { view } = storeToRefs(appStore)
+const { updateInfo, view } = storeToRefs(appStore)
+const { checkForUpdates, goToView } = appStore
 
 // Matches domain: records (source of truth) + the derived triage lists live
 // in the matches store. App's load() boot coordinator writes `records`;
@@ -96,19 +90,6 @@ const { focusMain } = useAppKeyboard()
 // the background-freeze getter for its own `inert` bindings.
 const uiStore = useUiStore()
 const { backgroundFrozen } = storeToRefs(uiStore)
-
-
-// Tesseract status (path / found / version / supported flag) + the
-// "Browse for binary…" + "Reset to default" pickers + the System Alert
-// CTA that deep-links into Settings → Engine.
-const settingsStore = useSettingsStore()
-const {
-  tesseractStatus,
-  tesseractReady,
-} = storeToRefs(settingsStore)
-const {
-  gotoEngineSettings,
-} = settingsStore
 
 // Modal focus trap — captures the trigger, focuses the first
 // focusable inside `.modal-box` (markup-first = Cancel button, never
@@ -150,15 +131,8 @@ const {
     <div class="grid-lines" aria-hidden="true" />
 
     <div class="container" :inert="backgroundFrozen || undefined" :aria-hidden="backgroundFrozen ? 'true' : undefined">
-      <!-- System Alert: blocks both Matches and Settings flow when the
-           OCR engine isn't usable. Renders ABOVE the masthead so it's
-           the first thing a user sees on a broken install. -->
-      <SystemAlertBanner
-        v-if="!tesseractReady"
-        :path="tesseractStatus.path"
-        :error="tesseractStatus.error"
-        @fix="gotoEngineSettings"
-      />
+      <!-- Self-gates on a broken OCR install; renders above the masthead. -->
+      <SystemAlertBanner />
 
       <AppMasthead />
 
@@ -169,13 +143,8 @@ const {
         @dismiss="dismissUpdateReminder"
       />
 
-      <ErrorBanner
-        v-if="error"
-        :message="error"
-        :can-retry="!!errorRetry"
-        @retry="errorRetry?.()"
-        @dismiss="clearError"
-      />
+      <!-- Self-gates on a non-empty error. -->
+      <ErrorBanner />
 
       <!-- <main> is the page's primary landmark. The skip-link at the
            top of .app jumps focus here so keyboard users can bypass the
