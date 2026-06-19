@@ -100,7 +100,10 @@ function caretOffsetFromClick(
   return found ? acc : null
 }
 
-function enterEditMode(e: MouseEvent) {
+// Entered from both a mouse click (caret lands at the click point) and keyboard
+// Enter/Space (no point — the cursor falls through to the end). The union is
+// honest about that instead of casting a KeyboardEvent to MouseEvent.
+function enterEditMode(e: MouseEvent | KeyboardEvent) {
   const container = e.currentTarget as HTMLElement
   // Prefer the standard API; fall back to the WebKit-only name.
   type CaretPositionFromPoint = (x: number, y: number) => { offsetNode: Node, offset: number } | null
@@ -112,12 +115,15 @@ function enterEditMode(e: MouseEvent) {
   const doc: DocWithCaretAPIs = document
   let clickedNode: Node | null = null
   let clickedOffset = 0
-  if (typeof doc.caretPositionFromPoint === 'function') {
-    const pos = doc.caretPositionFromPoint(e.clientX, e.clientY)
-    if (pos) { clickedNode = pos.offsetNode; clickedOffset = pos.offset }
-  } else if (typeof doc.caretRangeFromPoint === 'function') {
-    const range = doc.caretRangeFromPoint(e.clientX, e.clientY)
-    if (range) { clickedNode = range.startContainer; clickedOffset = range.startOffset }
+  // Caret-at-point is mouse-only; keyboard activation skips it.
+  if ('clientX' in e) {
+    if (typeof doc.caretPositionFromPoint === 'function') {
+      const pos = doc.caretPositionFromPoint(e.clientX, e.clientY)
+      if (pos) { clickedNode = pos.offsetNode; clickedOffset = pos.offset }
+    } else if (typeof doc.caretRangeFromPoint === 'function') {
+      const range = doc.caretRangeFromPoint(e.clientX, e.clientY)
+      if (range) { clickedNode = range.startContainer; clickedOffset = range.startOffset }
+    }
   }
   pendingCaretPos = clickedNode
     ? caretOffsetFromClick(container, clickedNode, clickedOffset)
