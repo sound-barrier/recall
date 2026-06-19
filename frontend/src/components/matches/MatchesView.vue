@@ -34,6 +34,8 @@ import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
 import { useMatchesRowContext } from '@/composables/matches/useMatchesRowContext'
 import { useNarrowMode } from '@/composables/matches/useNarrowMode'
 import { useMatchesStore } from '@/stores/matches'
+import { useUiStore } from '@/stores/ui'
+import { useMatchActions } from '@/composables/matches/useMatchActions'
 
 // Matches page — "set workspace" layout.
 //
@@ -63,82 +65,45 @@ import { useMatchesStore } from '@/stores/matches'
 // drill-down still emits open-match → App.vue routes through
 // useSelectedMatch → MatchDetailPanel (right-side slide-out).
 
-const props = defineProps<{
-  // App.vue's j/k keyboard handlers set this index into narrowed
-  // Records; the matching leaf-row carries data-card-index +
-  // aria-current="true" so the keyboard nav can scroll the row into
-  // view and screen readers announce the focused row.
-  focusedCardIndex?: number
-}>()
-
 const emit = defineEmits<{
-  'open-match': [matchKey: string]
-  // Open the manual-entry modal (forwarded from the toolbar's Add match
-  // button). App.vue owns the modal + the create round-trip.
+  // Open the manual-entry modal (App owns the modal + create round-trip).
   'add-match': []
-  // Lets App.vue mirror MatchDetailPanel's parity: while the narrow
-  // panel is open, App.vue should set `inert` + `aria-hidden` on the
-  // background container and ParseStatusBar so screen readers + Tab
-  // keyboard nav don't bleed into the dimmed page.
+  // While the narrow panel is open, App sets inert + aria-hidden on the
+  // background container + ParseStatusBar.
   'narrow-open': [open: boolean]
-  // Bulk-hide pipe — emitted once with the full ticked-key list when
-  // the user clicks Hide on the bulk action bar. App.vue does
-  // Promise.all of SetMatchVisibility(true) + one reload.
-  'hide-matches': [matchKeys: string[]]
-  // Bulk-write pipes — emitted with the ticked-key list + the value
-  // to write. App.vue calls BulkSetMatchPlayMode / BulkSetMatchQueue
-  // (single transaction) then triggers one reload. Empty-string
-  // value is the bulk Clear semantic (resets every listed row to
-  // the "Unknown" bucket).
-  'bulk-play-mode': [matchKeys: string[], playMode: import('@/api').PlayMode]
-  'bulk-queue':     [matchKeys: string[], queueType: import('@/api').QueueType]
-  // Bulk-tag pipe — emitted with the ticked-key list + the chosen
-  // tag. App.vue does the read-modify-write per record via
-  // SetMatchAnnotation (preserving existing tags + appending the
-  // new one) and reloads the matches feed.
-  'bulk-tag':       [matchKeys: string[], tag: string]
-  // Right-click menu fast-tracks — App.vue does the work since the
-  // detail panel + clipboard + OS reveal all live up the tree.
-  'open-match-and-focus': [matchKey: string, target: 'note' | 'tag']
-  'copy-replay-code':     [matchKey: string]
-  'copy-match-link':      [matchKey: string]
-  'open-source-folder':   [matchKey: string]
-  // Bulk-export pipe — emitted with the ticked-key list when the
-  // user clicks "Export bundle…" on the bulk action bar. App.vue
-  // opens the ExportBundleModal to confirm filename + include
-  // toggles before calling ExportBundle in api.ts.
+  // Bulk-export pipe — App opens the ExportBundleModal to confirm.
   'export-bundle': [matchKeys: string[]]
-  // Drawer single-row Unhide — flips one hidden match back to visible.
-  'unhide-match': [matchKey: string]
-  // Drawer single-row "Delete forever" — hard-deletes one match after
-  // the user confirms the two-step inline affordance.
-  'hard-delete-match': [matchKey: string]
-  // Archive bulk Unhide — fans out across ticked archive rows.
-  'unhide-matches': [matchKeys: string[]]
-  // Archive bulk "Delete forever" — fans out after the action-bar's
-  // two-step confirm.
-  'hard-delete-matches': [matchKeys: string[]]
-  // Bulk move to another profile — emitted from either action bar
-  // after the user picks a target profile from the inline picker.
-  'move-matches': [matchKeys: string[], targetProfile: string]
-  // "Since this match" anchor cleared from the narrow panel. App.vue
-  // owns the persisted anchor state via `useMatchAnchor`, so this
-  // bubbles up rather than mutating directly.
-  'clear-anchor': []
-  // Anchor stamped from the row's right-click context menu. Empty
-  // string for "clear." Same App.vue handler the detail panel uses.
-  'set-anchor': [matchKey: string]
-  // Flat CSV export — emitted with the ready-to-save CSV string + a
-  // default filename. App.vue dispatches it to ExportMatchesCSV (Wails
-  // save dialog or browser blob download); the string is assembled here
-  // because the narrowed set + heroRole live in this view.
+  // Flat CSV export — App dispatches the ready string to ExportMatchesCSV.
   'export-csv': [csv: string, defaultName: string]
+  // Anchor cleared / stamped — App owns the persisted anchor + the toast.
+  'clear-anchor': []
+  'set-anchor': [matchKey: string]
 }>()
 
-// Match records come from the matches store (no longer prop-drilled from
-// App). The narrow bundle App passes in is built on the same store records,
-// so narrowedRecords and the raw list stay consistent.
+// Match records + the narrow bundle come from the matches store. Detail-panel
+// selection + the j/k card-focus index + the open-and-focus gesture come from
+// the UI store; the per-match / bulk mutations come from useMatchActions. The
+// App-shell-coupled events (add-match modal, narrow-open inert, the anchor
+// toast, the export-bundle/CSV flows) stay emits — App owns that state.
 const matchesStore = useMatchesStore()
+const uiStore = useUiStore()
+const { selection, onOpenMatchAndFocus } = uiStore
+const { focusedCardIndex } = uiStore.cardFocus
+const {
+  onHideMatches,
+  // Aliased — useMatchesSelection returns same-named key-binding wrappers.
+  onBulkPlayMode: applyBulkPlayMode,
+  onBulkQueue: applyBulkQueue,
+  onBulkTag: applyBulkTag,
+  onUnhideMatches,
+  onHardDeleteMatches,
+  onMoveMatches,
+  onHardDeleteMatch,
+  onCopyReplayCode,
+  onCopyMatchLink,
+  onOpenSourceFolder,
+  onSetMatchHidden,
+} = useMatchActions()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
 //
@@ -220,10 +185,10 @@ const {
   onBulkTag,
 } = useMatchesSelection({
   narrowedRecords: () => narrowedRecords.value,
-  onHide: (keys) => emit('hide-matches', keys),
-  onBulkPlayMode: (keys, playMode) => emit('bulk-play-mode', keys, playMode),
-  onBulkQueue: (keys, queueType) => emit('bulk-queue', keys, queueType),
-  onBulkTag: (keys, tag) => emit('bulk-tag', keys, tag),
+  onHide: (keys) => onHideMatches(keys),
+  onBulkPlayMode: (keys, playMode) => applyBulkPlayMode(keys, playMode),
+  onBulkQueue: (keys, queueType) => applyBulkQueue(keys, queueType),
+  onBulkTag: (keys, tag) => applyBulkTag(keys, tag),
 })
 
 // Archive-drawer state + bulk-action handlers live in
@@ -231,8 +196,8 @@ const {
 // template auto-unwraps them.
 const archive = useArchiveSelection({
   records: computed(() => matchesStore.records),
-  onUnhideMatches: (keys) => emit('unhide-matches', keys),
-  onHardDeleteMatches: (keys) => emit('hard-delete-matches', keys),
+  onUnhideMatches: (keys) => onUnhideMatches(keys),
+  onHardDeleteMatches: (keys) => onHardDeleteMatches(keys),
 })
 // MatchesArchiveDrawer consumes the rest of the api via the `archive`
 // prop; MatchesView only needs the live subset + the two handlers its
@@ -252,7 +217,7 @@ const {
   archiveKeys: () => [...archiveSelectedKeys.value],
   clearLive: clearSelection,
   clearArchive: clearArchiveSelection,
-  onMove: (keys, target) => emit('move-matches', keys, target),
+  onMove: (keys, target) => onMoveMatches(keys, target),
 })
 
 
@@ -263,7 +228,7 @@ const {
 // to the parent's DELETE handler directly.
 function commitHardDelete(key: string) {
   cancelHardDelete()
-  emit('hard-delete-match', key)
+  onHardDeleteMatch(key)
 }
 
 
@@ -365,7 +330,7 @@ const {
 } = useMatchesRowContext(narrowedRecords)
 
 function onRowContextOpenDetail(matchKey: string) {
-  emit('open-match', matchKey)
+  selection.open(matchKey)
 }
 
 function onRowContextSetAnchor(matchKey: string) {
@@ -377,7 +342,7 @@ function onRowContextHide(matchKey: string) {
   // path the bulk-action bar drives, so the existing
   // SetMatchVisibility(true) + reload + undo-via-detail-panel
   // works without a new App.vue handler.
-  emit('hide-matches', [matchKey])
+  onHideMatches([matchKey])
 }
 
 // New right-click actions added with item 7 — each forwards to App.vue
@@ -385,19 +350,19 @@ function onRowContextHide(matchKey: string) {
 // focus-on-mount). Keeping the menu thin so feature evolution lives
 // in one place at the top of the tree.
 function onRowContextFocusTag(matchKey: string) {
-  emit('open-match-and-focus', matchKey, 'tag')
+  onOpenMatchAndFocus(matchKey, 'tag')
 }
 function onRowContextFocusNote(matchKey: string) {
-  emit('open-match-and-focus', matchKey, 'note')
+  onOpenMatchAndFocus(matchKey, 'note')
 }
 function onRowContextCopyReplay(matchKey: string) {
-  emit('copy-replay-code', matchKey)
+  onCopyReplayCode(matchKey)
 }
 function onRowContextCopyLink(matchKey: string) {
-  emit('copy-match-link', matchKey)
+  onCopyMatchLink(matchKey)
 }
 function onRowContextOpenSourceFolder(matchKey: string) {
-  emit('open-source-folder', matchKey)
+  onOpenSourceFolder(matchKey)
 }
 
 // Wails-detect — duplicated as a one-liner so the menu doesn't have
@@ -428,7 +393,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
       :open="true"
       :narrow="matchesStore.matchesNarrow"
       :records="matchesStore.records"
-      @open-match="(k: string) => emit('open-match', k)"
+      @open-match="(k: string) => selection.open(k)"
       @clear-anchor="emit('clear-anchor')"
     />
 
@@ -441,7 +406,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
         :narrow="matchesStore.matchesNarrow"
         :records="matchesStore.records"
         :narrow-mode="narrowMode"
-        @open-match="(k: string) => emit('open-match', k)"
+        @open-match="(k: string) => selection.open(k)"
         @clear-anchor="emit('clear-anchor')"
         @narrow-open="(v: boolean) => emit('narrow-open', v)"
       />
@@ -463,7 +428,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
          In-app time-series line charts over the narrowed set.
          Collapsed by default so ECharts stays in its own
          lazily-loaded chunk. -->
-      <TrendsSection @open-match="emit('open-match', $event)" />
+      <TrendsSection @open-match="selection.open($event)" />
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->
       <section ref="leavesSectionRef" class="leaves" aria-label="Set members">
@@ -512,13 +477,13 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           :group-by="groupBy"
           :sort-order="sortOrder"
           :density="density"
-          :focused-card-index="props.focusedCardIndex"
+          :focused-card-index="focusedCardIndex"
           :selected-keys="selectedKeys"
           :anchor-key="anchorKey"
           :search-clauses="searchClauses"
           :any-narrow="anyNarrow"
           :clause-exclusion-counts="clauseExclusionCounts"
-          @open-match="emit('open-match', $event)"
+          @open-match="selection.open($event)"
           @toggle-select="toggleSelected"
           @row-context="onRowContext"
           @hover-enter="onLeafMouseEnter"
@@ -555,7 +520,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
         :archive="archive"
         :move-active="movePickerOpen === 'archive'"
         :other-profiles="otherProfiles"
-        @unhide-match="(k: string) => emit('unhide-match', k)"
+        @unhide-match="(k: string) => onSetMatchHidden(k, false)"
         @hard-delete-match="commitHardDelete"
         @begin-move="beginMoveArchive"
         @move-to-profile="commitMove"

@@ -24,7 +24,6 @@ import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboar
 import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
-import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useAnchorToast } from '@/composables/app/useAnchorToast'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
@@ -299,29 +298,8 @@ const activeFilterCount = matchesNarrow.activeClauseCount
 const { anchorToast, onSetAnchor, onAnchorToastViewFilter, onAnchorToastDismiss } = useAnchorToast()
 const selection = uiStore.selection
 
-// The context menu opens a match + sets the detail-panel focus target (UI
-// store). The panel itself reads pendingFocusTarget + clears it.
-const { onOpenMatchAndFocus } = uiStore
-
-// Match-mutation handlers still threaded to MatchesView / UnknownMapsView
-// (context-menu fast-tracks + archive-drawer bulk + Unknown-tab resolve). The
-// per-match annotation/data/review/queue/play-mode edits are handled inside
-// MatchDetailPanel via its own useMatchActions() call. useMatchActions reads
-// the stores directly, so it takes no deps.
-const {
-  onCopyReplayCode,
-  onCopyMatchLink,
-  onOpenSourceFolder,
-  onBulkTag,
-  onHardDeleteMatch,
-  onUnhideMatches,
-  onHardDeleteMatches,
-  onMoveMatches,
-  onSetMatchHidden,
-  onHideMatches,
-  onBulkPlayMode,
-  onBulkQueue,
-} = useMatchActions()
+// Match mutations + the open-and-focus gesture are read inside MatchesView /
+// MatchDetailPanel via their own useMatchActions() / UI-store calls now.
 
 // MatchesView's left-side "Narrow this set" panel mirrors
 // MatchDetailPanel's modal contract: while open, the background
@@ -645,25 +623,13 @@ onMounted(() => {
         <MatchesSkeleton
           v-if="view === 'matches' && firstLoadPending && records.length === 0"
         />
+        <!-- Reads records/narrow + selection + the mutations from the stores;
+             App keeps the shell-coupled events (manual-match modal, narrow-open
+             inert, the anchor toast, export-bundle/CSV flows). -->
         <MatchesView
           v-else-if="view === 'matches'"
-          :focused-card-index="focusedCardIndex"
-          @open-match="(k: string) => selection.open(k)"
           @add-match="showManualMatchModal = true"
           @narrow-open="onMatchesNarrowOpen"
-          @hide-matches="onHideMatches"
-          @bulk-play-mode="onBulkPlayMode"
-          @bulk-queue="onBulkQueue"
-          @bulk-tag="onBulkTag"
-          @open-match-and-focus="onOpenMatchAndFocus"
-          @copy-replay-code="onCopyReplayCode"
-          @copy-match-link="onCopyMatchLink"
-          @open-source-folder="onOpenSourceFolder"
-          @unhide-match="(k: string) => onSetMatchHidden(k, false)"
-          @hard-delete-match="onHardDeleteMatch"
-          @unhide-matches="onUnhideMatches"
-          @hard-delete-matches="onHardDeleteMatches"
-          @move-matches="onMoveMatches"
           @export-bundle="onExportBundleRequest"
           @export-csv="onExportMatchesCSV"
           @clear-anchor="onSetAnchor('')"
