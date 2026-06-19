@@ -16,8 +16,6 @@ import {
   GetStartupError,
   GetScreenshotsFolderCandidates,
   SetScreenshotsDir,
-  SeedTestProfile,
-  SwitchProfile,
 } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
@@ -27,9 +25,10 @@ import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
 import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
-import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
+import { useAnchorToast } from '@/composables/app/useAnchorToast'
+import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
 import AppOverlays, { type OverlaysApi } from '@/components/app/AppOverlays.vue'
@@ -136,21 +135,15 @@ const {
 // Onboarding tour demo-records swap (tourActive / savedRecords /
 // onTourActiveChange) + the boot coordinator load() live in the matches store.
 
-// Tour "Explore with real data": seed the sample "test" profile, park
-// the step to resume on, then switch into it. SwitchProfile reloads the
-// SPA, so this resolves only if it throws (the controller then falls
-// through to a plain advance). On success the tour reopens at
-// resumeStepIndex — now in the test profile — via the resume key.
-async function onTourSeedAndSwitch(resumeStepIndex: number): Promise<void> {
-  await SeedTestProfile()
-  try { localStorage.setItem(ONBOARDING_RESUME_KEY, String(resumeStepIndex)) } catch (_) { /* ignore */ }
-  await SwitchProfile('test')
-  // SwitchProfile swaps the backend's active store; reload so every
-  // composable re-fetches against the test profile (same as the
-  // ProfileSwitcher chip). On the next mount the tour resumes at the
-  // parked step, now in the test profile.
-  window.location.reload()
-}
+// Onboarding-tour bridge: the @navigate/@open-narrow/@apply-hero-filter etc.
+// handlers that drive the live surfaces per tour step (DOM + view nav).
+const {
+  onTourSeedAndSwitch,
+  onTourOpenNarrow,
+  onTourCloseNarrow,
+  onTourApplyHeroFilter,
+  onTourClearFilters,
+} = useOnboardingTourBridge()
 
 // view + goToView live in the app store; useTabKeyboardNav drives them.
 const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
@@ -317,39 +310,6 @@ async function onManualMatchCreated(rec: MatchRecord) {
 // Also fires the confirmation toast — set with the match's
 // date-and-map label so the user can verify they got the right
 // match, cleared with a simpler "filter cleared" note.
-function onSetAnchor(matchKey: string) {
-  anchorToastToken += 1
-  if (matchKey === '') {
-    matchAnchor.clearAnchor()
-    anchorToast.value = { kind: 'cleared', label: '', token: anchorToastToken }
-    return
-  }
-  matchAnchor.setAnchor(matchKey)
-  const rec = records.value.find((r) => r.match_key === matchKey)
-  const date = rec?.data?.date ?? ''
-  const map = rec?.data?.map ?? '—'
-  anchorToast.value = {
-    kind: 'set',
-    label: date ? `${date} · ${map}` : map,
-    token: anchorToastToken,
-  }
-}
-
-// "View filter" tap on the anchor toast → switch to Matches tab if
-// needed, then click the same narrow trigger a user would. Mirrors
-// the tour's openNarrow approach so the panel uses its own state
-// machine end-to-end.
-async function onAnchorToastViewFilter() {
-  if (view.value !== 'matches') await goToView('matches')
-  await nextTick()
-  const trigger = document.querySelector<HTMLButtonElement>('[data-narrow-trigger]')
-  trigger?.click()
-}
-
-function onAnchorToastDismiss(token: number) {
-  if (anchorToast.value?.token === token) anchorToast.value = null
-}
-
 // Bulk-hide handler — MatchesView emits this when the user clicks
 // Hide on the bulk action bar after ticking N rows. Fans out
 // SetMatchVisibility(true) in parallel so the request stream
@@ -398,7 +358,7 @@ const {
 // narrowedRecords the view shows. matchesNarrow / matchesNarrowState /
 // matchAnchor are composable bundles (destructure directly; their inner refs
 // don't auto-unwrap at object depth); searchClauses is a ref → storeToRefs.
-const { matchAnchor, matchesNarrowState, matchesNarrow } = matchesStore
+const { matchesNarrowState, matchesNarrow } = matchesStore
 const { searchClauses } = storeToRefs(matchesStore)
 const activeFilterCount = matchesNarrow.activeClauseCount
 
@@ -409,8 +369,8 @@ const activeFilterCount = matchesNarrow.activeClauseCount
 // to bridge the cause-effect gap between the detail-panel button
 // and the narrow-panel filter. `token` is the React-style fresh key
 // so back-to-back changes reset the auto-dismiss window.
-const anchorToast = ref<{ kind: 'set' | 'cleared'; label: string; token: number } | null>(null)
-let anchorToastToken = 0
+// Anchor "since this match" toast — set/clear + the view-filter jump.
+const { anchorToast, onSetAnchor, onAnchorToastViewFilter, onAnchorToastDismiss } = useAnchorToast()
 const selection = uiStore.selection
 
 // The context menu opens a match + sets the detail-panel focus target (UI
@@ -438,45 +398,6 @@ const {
   onResolveAmbiguous,
   onIgnoreScreenshot,
 } = useMatchActions()
-
-// Tour-driven narrow popover + filter handlers. The tour fires
-// these via emits on <OnboardingTour /> so a step can demonstrate
-// "open Narrow, filter to Lucio" without simulating clicks across
-// the MatchesView surface. openNarrow / closeNarrow click the same
-// trigger buttons a real user uses (so MatchesView's existing open
-// state stays the single source of truth); the filter mutators
-// write directly to the shared `matchesNarrowState` refs so
-// narrowedRecords + the panel UI both update in one pass. nextTick
-// gives the v-if'd popover a render frame before the close click
-// goes looking for the .np-close button.
-async function onTourOpenNarrow() {
-  if (view.value !== 'matches') await goToView('matches')
-  await nextTick()
-  const trigger = document.querySelector<HTMLButtonElement>(
-    '.dossier-actions .dossier-btn.primary',
-  )
-  trigger?.click()
-}
-async function onTourCloseNarrow() {
-  await nextTick()
-  const close = document.querySelector<HTMLButtonElement>('#narrow-popover .np-close')
-  close?.click()
-}
-function onTourApplyHeroFilter(hero: string) {
-  matchesNarrowState.pickedHeroes.value = new Set([hero])
-}
-function onTourClearFilters() {
-  matchesNarrowState.searchText.value = ''
-  matchesNarrowState.pickedMaps.value = new Set()
-  matchesNarrowState.pickedGameModes.value = new Set()
-  matchesNarrowState.pickedHeroes.value = new Set()
-  matchesNarrowState.pickedRoles.value = new Set()
-  matchesNarrowState.pickedResults.value = new Set()
-  matchesNarrowState.pickedTags.value = new Set()
-  matchesNarrowState.pickedRange.value = 'all'
-  matchesNarrowState.customFrom.value = ''
-  matchesNarrowState.customTo.value = ''
-}
 
 // MatchesView's left-side "Narrow this set" panel mirrors
 // MatchDetailPanel's modal contract: while open, the background
