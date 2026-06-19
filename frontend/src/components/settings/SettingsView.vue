@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { ThemeMode } from '@/composables/settings/useTheme'
-import type { WeekStart } from '@/composables/shared/useWeekStart'
-import type { DataLocation, TesseractStatus } from '@/api'
+import { storeToRefs } from 'pinia'
+import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
+import { useSettingsStore } from '@/stores/settings'
 import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
 import SettingsAppearance from '@/components/settings/SettingsAppearance.vue'
 import SettingsBackupRestore from '@/components/settings/SettingsBackupRestore.vue'
@@ -11,7 +12,6 @@ import SettingsEngine from '@/components/settings/SettingsEngine.vue'
 import SettingsFolders from '@/components/settings/SettingsFolders.vue'
 import SettingsProfiles from '@/components/settings/SettingsProfiles.vue'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
-import type { NamedCandidate } from '@/api'
 
 // SettingsView — every knob a user might want to touch, sorted by
 // frequency of first-time use:
@@ -30,116 +30,81 @@ import type { NamedCandidate } from '@/api'
 // and the Ingest tab can focus on one job: "run a parse." The Wails
 // runtime alert banner still deep-links to `#sec-engine` to fix a
 // missing Tesseract.
+//
+// Reads everything from the stores: folders/engine/appearance/calendar + the
+// source picker from settings, export/import/clear/reparse/ignored from matches,
+// dataLocation + nav from app. The sub-section components keep their own prop
+// contracts — this view binds them from the store values.
+const appStore = useAppStore()
+const matchesStore = useMatchesStore()
+const settingsStore = useSettingsStore()
+const { goToView } = appStore
+const { dataLocation } = storeToRefs(appStore)
+const {
+  screenshotsDir,
+  watchEnabled,
+  themeMode,
+  weekStart,
+  probing,
+  probeMessage,
+  probeStatus,
+  probeTried,
+  tesseractReady,
+  tesseractSupported,
+  tesseractStatus,
+  tesseractPickerBusy,
+  tesseractProbing,
+  tesseractProbeMessage,
+  tesseractProbeStatus,
+  tesseractProbeTried,
+  screenshotCandidates,
+} = storeToRefs(settingsStore)
+const {
+  pickDir,
+  detectDir,
+  revealDir,
+  resetDir,
+  setTheme,
+  setWeekStart,
+  pickTesseractBinary,
+  resetTesseractPath,
+  detectTesseractBinary,
+  pickDetectedSource,
+} = settingsStore
+const {
+  parseBusy,
+  exporting,
+  importing,
+  importArmed,
+  exportStatus,
+  clearConfirm,
+  clearingDB,
+  ignoredCount,
+} = storeToRefs(matchesStore)
+const {
+  exportData,
+  exportDataCSV,
+  armImport,
+  cancelImport,
+  importData,
+  armClear,
+  cancelClear,
+  onClearDatabase,
+  openIgnoredPanel,
+  onReParseAll,
+} = matchesStore
+const platform = computed(() => tesseractStatus.value?.platform ?? '')
+const matchedCount = computed(() => matchesStore.records.length)
+const unknownCount = computed(() => matchesStore.unknownRecords.length)
+const reparsing = parseBusy
 
-const props = defineProps<{
-  screenshotsDir: string
-  watchEnabled?:  boolean
-  parseBusy:        boolean
-  themeMode:      ThemeMode
-  weekStart:      WeekStart
-  // Nullable + optional: App.vue's load() is async, so the row's
-  // paths render `null` for a beat at mount time. Existing tests
-  // that don't care can omit this prop entirely.
-  dataLocation?:  DataLocation | null
-  // "Detect Overwatch Folder" state, owned by App.vue. `probing`
-  // disables the button while the probe is in flight;
-  // `probeMessage` renders the result chip; `probeStatus` drives
-  // success/blocked styling; `probeTried` populates the "Looked in"
-  // details disclosure on the blocked path. All optional so older
-  // tests / sibling mounts can ignore.
-  probing?:       boolean
-  probeMessage?:  string
-  probeStatus?:   '' | 'success' | 'blocked'
-  probeTried?:    string[]
-  // Per-source picker data — Windows-only auto-detection of the four
-  // canonical capture methods. App.vue fetches these once on the
-  // first empty-state mount via GetScreenshotsFolderCandidates();
-  // empty array on macOS / Linux hides the grid.
-  screenshotCandidates?: NamedCandidate[]
-  // Platform string from the system reference data
-  // (`'windows' | 'darwin' | 'linux'`). Drives the picker's
-  // grid-vs-CTA branch. Optional so older test mounts still pass.
-  platform?: string
-  // Engine section — moved from IngestView. All optional so the
-  // existing test cases that mount SettingsView with only the
-  // first four props still pass.
-  tesseractReady?:      boolean
-  tesseractSupported?:  boolean
-  tesseractStatus?:     TesseractStatus
-  tesseractPickerBusy?: boolean
-  // Probe state for the Detect button — mirrors the screenshots-dir
-  // probe shape so the Engine row can render the same chip + "Looked
-  // in" disclosure on hit / miss.
-  tesseractProbing?:      boolean
-  tesseractProbeMessage?: string
-  tesseractProbeStatus?:  '' | 'success' | 'blocked'
-  tesseractProbeTried?:   string[]
-  // Backup & Restore section — flash chip + arm/confirm state.
-  matchedCount?: number
-  unknownCount?: number
-  exporting?:    false | 'json' | 'csv'
-  importing?:    boolean
-  importArmed?:  boolean
-  exportStatus?: { ok: boolean; message: string } | null
-  // Advanced section — destructive Clear DB.
-  clearConfirm?:      boolean
-  clearingDB?:        boolean
-  // Suppress-list size (Unknown-tab "Delete forever"). Drives the
-  // Manage button's disabled state and the Clear-arm opt-out
-  // checkbox; 0 hides the checkbox.
-  ignoredCount?:      number
-  // True while a Re-parse-all run is in flight — disables the
-  // re-parse button + flips its label so the user sees progress
-  // without losing context.
-  reparsing?:         boolean
-}>()
-
-const emit = defineEmits<{
-  'pick-screenshots-dir':   []
-  'detect-screenshots-dir': []
-  // Empty-state picker grid emitted a card click. App.vue calls
-  // SetScreenshotsDir(path) + reloads. Distinct from
-  // `pick-screenshots-dir` (native dialog) so the parent can branch
-  // on "auto-detected source" vs "user manually picked" if it ever
-  // wants to log it.
-  'pick-detected-source':   [path: string]
-  'reveal-screenshots-dir': []
-  'reset-screenshots-dir':  []
-  'set-theme':              [mode: ThemeMode]
-  'set-week-start':         [next: WeekStart]
-  'go-to-view':             [next: 'settings' | 'ingest' | 'matches' | 'unknown']
-  // Engine
-  'pick-tesseract':         []
-  'reset-tesseract':        []
-  'detect-tesseract':       []
-  // Backup & Restore
-  'export-data':            []
-  'export-data-csv':        []
-  'arm-import':             []
-  'cancel-import':          []
-  'import-data':            []
-  // Advanced
-  'arm-clear':              []
-  'clear-database':         [opts: { keepIgnored: boolean }]
-  'cancel-clear':           []
-  'open-ignored-panel':     []
-  // Settings → Advanced → "Re-parse all screenshots" two-step
-  // confirm. App.vue calls ReParseAll() and the masthead progress
-  // panel surfaces per-file events.
-  're-parse-all':           []
-}>()
-
-
-// Probe-chip dismissal — local-only transient UI noise. Reset
-// whenever a fresh probeMessage lands so a second Detect click
-// re-opens the chip without forcing the user to scroll for it.
-// (Used by the first-run empty-hero below; the steady-state
-// Folders panel owns its own copy in SettingsFolders.vue.)
+// Probe-chip dismissal — local-only transient UI noise. Reset whenever a fresh
+// probeMessage lands so a second Detect click re-opens the chip.
 const probeDismissed = ref(false)
-watch(() => props.probeMessage, (next) => {
+watch(probeMessage, (next) => {
   if (next) probeDismissed.value = false
 })
-const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.value)
+const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.value)
 
 </script>
 
@@ -157,7 +122,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       </h2>
       <p class="settings-sub">
         Run a parse — armed watch or one-click manual — from
-        <button type="button" class="empty-link" @click="emit('go-to-view', 'ingest')">
+        <button type="button" class="empty-link" @click="goToView('ingest')">
           Parse →
         </button>.
       </p>
@@ -189,8 +154,8 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
         :platform="platform ?? ''"
         :candidates="screenshotCandidates ?? []"
         :picking="parseBusy || probing"
-        @pick="(_name, path) => emit('pick-detected-source', path)"
-        @pick-custom="() => emit('pick-screenshots-dir')"
+        @pick="(_name: string, path: string) => pickDetectedSource(path)"
+        @pick-custom="pickDir"
       />
       <div v-if="showProbeChip" class="probe-chip" :class="probeStatus" role="status">
         <span class="probe-chip-bar" aria-hidden="true" />
@@ -226,10 +191,10 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :probe-message="probeMessage"
       :probe-status="probeStatus"
       :probe-tried="probeTried"
-      @pick-screenshots-dir="() => emit('pick-screenshots-dir')"
-      @detect-screenshots-dir="() => emit('detect-screenshots-dir')"
-      @reveal-screenshots-dir="() => emit('reveal-screenshots-dir')"
-      @reset-screenshots-dir="() => emit('reset-screenshots-dir')"
+      @pick-screenshots-dir="pickDir"
+      @detect-screenshots-dir="detectDir"
+      @reveal-screenshots-dir="revealDir"
+      @reset-screenshots-dir="resetDir"
     />
 
     <SettingsEngine
@@ -241,20 +206,20 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :tesseract-probe-message="tesseractProbeMessage"
       :tesseract-probe-status="tesseractProbeStatus"
       :tesseract-probe-tried="tesseractProbeTried"
-      @pick-tesseract="() => emit('pick-tesseract')"
-      @reset-tesseract="() => emit('reset-tesseract')"
-      @detect-tesseract="() => emit('detect-tesseract')"
+      @pick-tesseract="pickTesseractBinary"
+      @reset-tesseract="resetTesseractPath"
+      @detect-tesseract="detectTesseractBinary"
     />
 
     <SettingsAppearance
       :theme-mode="themeMode"
-      @set-theme="(mode: ThemeMode) => emit('set-theme', mode)"
+      @set-theme="setTheme"
     />
 
     <SettingsCalendar
       :week-start="weekStart"
-      @set-week-start="(v: WeekStart) => emit('set-week-start', v)"
-      @go-to-view="(v: 'settings' | 'ingest' | 'matches' | 'unknown') => emit('go-to-view', v)"
+      @set-week-start="setWeekStart"
+      @go-to-view="goToView"
     />
 
     <SettingsProfiles />
@@ -266,11 +231,11 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :export-status="exportStatus"
       :matched-count="matchedCount"
       :unknown-count="unknownCount"
-      @export-data="() => emit('export-data')"
-      @export-data-csv="() => emit('export-data-csv')"
-      @arm-import="() => emit('arm-import')"
-      @import-data="() => emit('import-data')"
-      @cancel-import="() => emit('cancel-import')"
+      @export-data="exportData"
+      @export-data-csv="exportDataCSV"
+      @arm-import="armImport"
+      @import-data="importData"
+      @cancel-import="cancelImport"
     />
 
     <SettingsAdvanced
@@ -280,11 +245,11 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :unknown-count="unknownCount"
       :ignored-count="ignoredCount"
       :reparsing="reparsing"
-      @arm-clear="() => emit('arm-clear')"
-      @cancel-clear="() => emit('cancel-clear')"
-      @clear-database="(opts) => emit('clear-database', opts)"
-      @open-ignored-panel="() => emit('open-ignored-panel')"
-      @re-parse-all="() => emit('re-parse-all')"
+      @arm-clear="armClear"
+      @cancel-clear="cancelClear"
+      @clear-database="onClearDatabase"
+      @open-ignored-panel="openIgnoredPanel"
+      @re-parse-all="onReParseAll"
     />
   </section>
 </template>

@@ -11,11 +11,9 @@ import '@/styles/app.css'
 
 import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { MatchRecord, NamedCandidate } from '@/api'
+import type { MatchRecord } from '@/api'
 import {
   GetStartupError,
-  GetScreenshotsFolderCandidates,
-  SetScreenshotsDir,
 } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
@@ -78,7 +76,6 @@ const {
   appVersion,
   updateInfo,
   updateCheckBusy,
-  dataLocation,
 } = storeToRefs(appStore)
 const { setErrorFromRaw, clearError, checkForUpdates, goToView } = appStore
 const { view } = storeToRefs(appStore)
@@ -91,7 +88,6 @@ const matchesStore = useMatchesStore()
 const {
   records,
   unknownRecords,
-  parseBusy,
   cancellingParse,
   firstLoadPending,
   parseProgress,
@@ -101,30 +97,12 @@ const {
   tourActive,
   showUnsupportedModal,
   parseAnnouncement,
-  ignoredCount,
-  clearingDB,
-  clearConfirm,
-  exporting,
-  importing,
-  importArmed,
-  exportStatus,
 } = storeToRefs(matchesStore)
 const {
-  refreshNewCount,
   load,
   onTourActiveChange,
-  onReParseAll,
   onCancelParse,
   loadIgnored,
-  openIgnoredPanel,
-  armClear,
-  cancelClear,
-  onClearDatabase,
-  exportData,
-  exportDataCSV,
-  armImport,
-  cancelImport,
-  importData,
 } = matchesStore
 
 // Onboarding tour demo-records swap (tourActive / savedRecords /
@@ -167,33 +145,15 @@ const settingsStore = useSettingsStore()
 const {
   tesseractStatus,
   tesseractReady,
-  tesseractSupported,
-  tesseractPickerBusy,
-  tesseractProbing,
-  tesseractProbeMessage,
-  tesseractProbeStatus,
-  tesseractProbeTried,
-  watchEnabled,
   screenshotsDir,
   probing,
-  probeMessage,
-  probeStatus,
-  probeTried,
-  themeMode,
-  weekStart,
+  screenshotCandidates,
 } = storeToRefs(settingsStore)
 const {
-  setTheme,
-  setWeekStart,
-  pickTesseractBinary,
-  resetTesseractPath,
-  detectTesseractBinary,
   gotoEngineSettings,
-  setScreenshotsDir,
   pickDir,
-  detectDir,
-  revealDir,
-  resetDir,
+  loadScreenshotCandidates,
+  pickDetectedSource,
 } = settingsStore
 
 const showManualMatchModal = ref(false)
@@ -220,36 +180,8 @@ useModalFocusTrap(showStartupErrorModal, {
   onClose: () => {},
 })
 
-// First-run picker candidates — four canonical Windows capture
-// sources (Nvidia Overlay / OW PrntScn / Snip tool / Steam). Empty
-// on macOS / Linux so the picker component hides the grid. Loaded
-// once on mount; the user-initiated "Refresh" affordance lives
-// inside the picker (re-loads via the same endpoint).
-const screenshotCandidates = ref<NamedCandidate[]>([])
-async function loadScreenshotCandidates() {
-  try {
-    screenshotCandidates.value = await GetScreenshotsFolderCandidates()
-  } catch (_) {
-    // Non-fatal — the picker just shows the Pick custom CTA when
-    // candidates is empty.
-    screenshotCandidates.value = []
-  }
-}
-// pickDetectedSource: commits an auto-detected card's path via the
-// SetScreenshotsDir api wrapper + mirrors the new value on the
-// composable's local ref. Separate from `pickDir` (native dialog
-// flow) so error handling can be tighter — the path came from our
-// own probe so failure surfaces as a programming bug, not user
-// input.
-async function pickDetectedSource(path: string) {
-  try {
-    await SetScreenshotsDir(path)
-    setScreenshotsDir(path)
-    await refreshNewCount()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
+// First-run picker candidates + pickDetectedSource live in the settings store
+// (shared with SettingsView's source picker).
 
 // Filter / filter-panel / grouping composables — owned here so the
 
@@ -450,13 +382,7 @@ function onFirstRunDismiss(renamedTo: string | null) {
 // (same writer the Settings picker uses) — the modal emits dismiss
 // in lockstep so the localStorage gate flips on the same turn.
 async function onFirstRunPickSource(path: string) {
-  try {
-    await SetScreenshotsDir(path)
-    setScreenshotsDir(path)
-    await refreshNewCount()
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
+  await pickDetectedSource(path)
 }
 
 // Step 2 of the first-run modal: the user clicked the custom-pick
@@ -700,61 +626,8 @@ onMounted(() => {
            tab order. -->
       <main id="main-content" tabindex="-1">
         <!-- ─── SETTINGS VIEW (folder + theme — minimal config) ──── -->
-        <SettingsView
-          v-if="view === 'settings'"
-          :screenshots-dir="screenshotsDir"
-          :watch-enabled="watchEnabled"
-          :parse-busy="parseBusy"
-          :theme-mode="themeMode"
-          :week-start="weekStart"
-          :data-location="dataLocation"
-          :probing="probing"
-          :probe-message="probeMessage"
-          :probe-status="probeStatus"
-          :probe-tried="probeTried"
-          :screenshot-candidates="screenshotCandidates"
-          :platform="tesseractStatus?.platform ?? ''"
-          :tesseract-ready="tesseractReady"
-          :tesseract-supported="tesseractSupported"
-          :tesseract-status="tesseractStatus"
-          :tesseract-picker-busy="tesseractPickerBusy"
-          :tesseract-probing="tesseractProbing"
-          :tesseract-probe-message="tesseractProbeMessage"
-          :tesseract-probe-status="tesseractProbeStatus"
-          :tesseract-probe-tried="tesseractProbeTried"
-          :matched-count="records.length"
-          :unknown-count="unknownRecords.length"
-          :exporting="exporting"
-          :importing="importing"
-          :import-armed="importArmed"
-          :export-status="exportStatus"
-          :clear-confirm="clearConfirm"
-          :clearing-d-b="clearingDB"
-          :ignored-count="ignoredCount"
-          :reparsing="parseBusy"
-          :parse-progress="parseProgress"
-          @pick-screenshots-dir="pickDir"
-          @pick-detected-source="pickDetectedSource"
-          @detect-screenshots-dir="detectDir"
-          @reveal-screenshots-dir="revealDir"
-          @reset-screenshots-dir="resetDir"
-          @set-theme="setTheme"
-          @set-week-start="setWeekStart"
-          @go-to-view="goToView"
-          @pick-tesseract="pickTesseractBinary"
-          @reset-tesseract="resetTesseractPath"
-          @detect-tesseract="detectTesseractBinary"
-          @export-data="exportData"
-          @export-data-csv="exportDataCSV"
-          @arm-import="armImport"
-          @cancel-import="cancelImport"
-          @import-data="importData"
-          @arm-clear="armClear"
-          @clear-database="onClearDatabase"
-          @cancel-clear="cancelClear"
-          @open-ignored-panel="openIgnoredPanel"
-          @re-parse-all="onReParseAll"
-        />
+        <!-- Reads folders/engine/appearance/calendar + backup/clear/source-picker from the stores. -->
+        <SettingsView v-if="view === 'settings'" />
 
         <!-- ─── PARSE VIEW (Watch + Manual Parse + Progress) ─────── -->
         <!-- Reads parse state from the matches store + Tesseract/watch from

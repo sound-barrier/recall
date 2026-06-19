@@ -1,6 +1,7 @@
-import { nextTick } from 'vue'
+import { ref, nextTick } from 'vue'
 import { defineStore } from 'pinia'
 
+import type { NamedCandidate } from '@/api'
 import {
   PickTesseractBinary,
   ResetTesseractPath,
@@ -113,6 +114,29 @@ export const useSettingsStore = defineStore('settings', () => {
     onError: (m) => { appStore.setErrorFromRaw(m) },
   })
 
+  // ── Screenshots source picker (Windows auto-detect) ───────────────
+  // The four canonical capture sources (Nvidia Overlay / OW PrntScn / Snip /
+  // Steam), loaded once on the empty-state mount. pickDetectedSource commits an
+  // auto-detected card's path; separate from pickDir (native dialog) so the
+  // error path is tighter — the path came from our own probe.
+  const screenshotCandidates = ref<NamedCandidate[]>([])
+  async function loadScreenshotCandidates() {
+    try {
+      screenshotCandidates.value = await GetScreenshotsFolderCandidates()
+    } catch (_) {
+      screenshotCandidates.value = []
+    }
+  }
+  async function pickDetectedSource(path: string) {
+    try {
+      await SetScreenshotsDir(path)
+      setScreenshotsDir(path)
+      await useMatchesStore().refreshNewCount()
+    } catch (e) {
+      appStore.setErrorFromRaw(String(e))
+    }
+  }
+
   // ── Appearance ────────────────────────────────────────────────────
   const { themeMode, setTheme } = useTheme()
 
@@ -152,5 +176,8 @@ export const useSettingsStore = defineStore('settings', () => {
     detectDir,
     revealDir,
     resetDir,
+    screenshotCandidates,
+    loadScreenshotCandidates,
+    pickDetectedSource,
   }
 })
