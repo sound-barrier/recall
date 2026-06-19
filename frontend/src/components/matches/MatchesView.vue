@@ -66,11 +66,8 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // useSelectedMatch → MatchDetailPanel (right-side slide-out).
 
 const emit = defineEmits<{
-  // Open the manual-entry modal (App owns the modal + create round-trip).
-  'add-match': []
-  // While the narrow panel is open, App sets inert + aria-hidden on the
-  // background container + ParseStatusBar.
-  'narrow-open': [open: boolean]
+  // The manual-match modal + narrow-panel inert flags live in the UI store now;
+  // MatchesView flips them directly. These remaining events are App-shell flows.
   // Bulk-export pipe — App opens the ExportBundleModal to confirm.
   'export-bundle': [matchKeys: string[]]
   // Flat CSV export — App dispatches the ready string to ExportMatchesCSV.
@@ -408,7 +405,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
         :narrow-mode="narrowMode"
         @open-match="(k: string) => selection.open(k)"
         @clear-anchor="emit('clear-anchor')"
-        @narrow-open="(v: boolean) => emit('narrow-open', v)"
+        @narrow-open="uiStore.setNarrowOpen"
       />
 
       <!-- ─── DOSSIER SECTIONS (Campaign Log, Geography) ──────────
@@ -442,7 +439,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           @toggle-sort-group="onSortGroupTriggerClick"
           @set-density="setDensity"
           @jump-to-undated="onJumpToUndated"
-          @add-match="emit('add-match')"
+          @add-match="uiStore.openManualMatch"
           @expand-all="membersListRef?.expandAllSections()"
           @collapse-all="membersListRef?.collapseAllSections()"
         />

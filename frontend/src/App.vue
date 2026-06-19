@@ -9,9 +9,8 @@
 // per-SFC scoped <style> blocks.
 import '@/styles/app.css'
 
-import { ref, computed, defineAsyncComponent, type Component } from 'vue'
+import { computed, defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { MatchRecord } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
@@ -88,13 +87,9 @@ const {
   parseAnnouncement,
 } = storeToRefs(matchesStore)
 const {
-  load,
   onTourActiveChange,
   onCancelParse,
 } = matchesStore
-
-// Onboarding tour demo-records swap (tourActive / savedRecords /
-// onTourActiveChange) + the boot coordinator load() live in the matches store.
 
 // Onboarding-tour bridge: the @navigate/@open-narrow/@apply-hero-filter etc.
 // handlers that drive the live surfaces per tour step (DOM + view nav).
@@ -129,8 +124,6 @@ const {
   gotoEngineSettings,
 } = settingsStore
 
-const showManualMatchModal = ref(false)
-
 // Modal focus trap — captures the trigger, focuses the first
 // focusable inside `.modal-box` (markup-first = Cancel button, never
 // the destructive Continue Anyway), traps Tab/Shift+Tab, treats
@@ -141,77 +134,18 @@ useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
 // the non-dismissible Startup-failure modal (open-state + focus trap).
 const { showStartupErrorModal, startupErrorMessage } = useAppBoot()
 
-// First-run picker candidates + pickDetectedSource live in the settings store
-// (shared with SettingsView's source picker).
-
-// Filter / filter-panel / grouping composables — owned here so the
-
-// (Per-card expand state replaced by the `selection` composable
-// introduced for the detail-panel pattern. See below.)
-
-
-
-// 90-day "haven't checked for updates in a while" reminder banner.
-// Gated on updateInfo.last_checked_at (server-side persisted) +
-// recall.updateReminder.dismissedAt (per-cycle dismissal). Hidden
-// while updateInfo is null so we don't flash false-positive content
-// on first paint.
+// 90-day "haven't checked for updates in a while" reminder banner. Gated on
+// updateInfo.last_checked_at (server-persisted) + a per-cycle dismissal; hidden
+// while updateInfo is null so it doesn't flash false-positive on first paint.
 const {
   shouldShowBanner: showUpdateReminder,
   daysSinceLastCheck: updateReminderDays,
   dismiss: dismissUpdateReminder,
 } = useUpdateReminder(updateInfo)
 
-
-// Parse run controls (runParse / parse / onReParseAll / onCancelParse /
-// confirmUnsupportedParse) + parseProgressOpen + showUnsupportedModal live in
-// the matches store.
-
-// Clear-DB + backup/restore (data ops) live in the matches store.
-
-// Open the native folder picker via Wails. The Go side persists the
-// choice so subsequent app launches pick up the same directory; we
-// just need to refresh our local mirror.
-//
-// Guard: if Watch is currently armed, confirm before re-targeting the
-// watcher to a new folder. The watcher otherwise silently switches and
-// (if the new folder is empty or invalid) keeps running against nothing
-// with no feedback to the user.
-
-// User-curated per-match leaver annotation. Routes through the
-// unified SetMatchAnnotation writer with every other field carried
-// over from the existing record so a leaver-chip click only changes
-// the leaver bit — note / replay_code / members / tags survive.
-// A manual match was created → close the modal, reload so it appears in the
-// list, and open it so the user can add the right-panel review / replay-code
-// details (the choosers key on match_key and work unchanged).
-async function onManualMatchCreated(rec: MatchRecord) {
-  showManualMatchModal.value = false
-  await load()
-  selection.open(rec.match_key)
-}
-
-// "Since this match" anchor handler. Empty string clears; any
-// other value sets the anchor to that match. Frontend-only (no
-// API round-trip) since the anchor is persisted in localStorage.
-// Also fires the confirmation toast — set with the match's
-// date-and-map label so the user can verify they got the right
-// match, cleared with a simpler "filter cleared" note.
-// Bulk-hide handler — MatchesView emits this when the user clicks
-// Hide on the bulk action bar after ticking N rows. Fans out
-// SetMatchVisibility(true) in parallel so the request stream
-// pipelines instead of serializing, then reloads once when every
-// PUT settles. A single failure aborts and surfaces the error;
-// partial state is fine because each /visibility PUT is idempotent
-// and the user can retry.
-// Match-mutation handlers (context-menu + drawer bulk + per-match status +
-// annotation/data edits + ambiguous-resolve + ignore) all live in
-// useMatchActions, wired below.
-
-// ── Export-bundle + CSV flow ─────────────────────────────────────────
-// The Matches bulk-action bar emits `export-bundle` / `export-csv` with the
-// ticked keys (or a ready-to-save CSV string); useExportBundle owns the modal
-// state + the ExportBundle / ExportMatchesCSV dispatch.
+// Export-bundle + CSV flow — the Matches bulk-action bar emits export-bundle /
+// export-csv; useExportBundle owns the modal state + the ExportBundle /
+// ExportMatchesCSV dispatch.
 const {
   exportBundleOpen,
   exportBundleSelectedKeys,
@@ -220,59 +154,11 @@ const {
   onExportBundleConfirm,
 } = useExportBundle({ onError: setErrorFromRaw })
 
-// Ignored-screenshot management (Settings → Advanced → Manage panel) lives in
-// useIgnoredScreenshots — the suppress-list + count chip + restore/clear/
-// re-parse actions. loadIgnored is called from the record-reload, clear-DB, and
-// ignore flows; the panel's actions need App.vue's error surface + view nav +
-// the manual-parse kick.
-// Ignored screenshots (triage surface) live in the matches store.
-
-
-// Selected-match panel (replaces the old inline-expansion model).
-// Clicking a card opens the right-side MatchDetailPanel and pins
-// `selection.selectedKey` to that match_key. ← / → inside the panel
-// paginates through the filtered list. The composable auto-closes
-// when the selected match leaves the filtered set (filter change,
-// hide-toggle, re-parse drop).
-// MatchesView's filter state is owned here so the right-side
-// MatchDetailPanel (driven by `selection`) can paginate against the
-// same narrowedRecords the view shows. Refs inside `matchesNarrow`
-// don't auto-unwrap when passed as a prop bundle, but MatchesView
-// destructures them into top-level setup vars on receipt — same
-// CardStateApi convention as elsewhere in the app.
-// The narrow filter + "since this match" anchor cluster lives in the matches
-// store — it drives `selection` (detail panel) + the dossier off the same
-// narrowedRecords the view shows. matchesNarrow / matchesNarrowState /
-// The detail card's narrow-chip toggle contract (isNarrowChipActive /
-// toggleNarrowChip) lives in the matches store; the panel reads it directly.
-
-// Anchor confirmation toast — fires on set + cleared transitions
-// to bridge the cause-effect gap between the detail-panel button
-// and the narrow-panel filter. `token` is the React-style fresh key
-// so back-to-back changes reset the auto-dismiss window.
-// Anchor "since this match" toast — set/clear + the view-filter jump.
+// "Since this match" anchor confirmation toast — set/clear + the view-filter
+// jump. The detail-panel selection bundle lives in the UI store.
 const { anchorToast, onSetAnchor, onAnchorToastViewFilter, onAnchorToastDismiss } = useAnchorToast()
 const selection = uiStore.selection
 
-// Match mutations + the open-and-focus gesture are read inside MatchesView /
-// MatchDetailPanel via their own useMatchActions() / UI-store calls now.
-
-// MatchesView's left-side "Narrow this set" panel mirrors
-// MatchDetailPanel's modal contract: while open, the background
-// container + status bar go inert + aria-hidden. The view emits its
-// open/close state up here so the inert binding picks it up
-// alongside `selection.isOpen` and `showUnsupportedModal`.
-const matchesNarrowOpen = ref(false)
-function onMatchesNarrowOpen(open: boolean) {
-  matchesNarrowOpen.value = open
-}
-
-// First-run modal — asks for the user's main account name on a
-// fresh install. Forced gate: every other surface goes inert + aria-
-// hidden while the modal is up so the user can't change any setting
-// before naming their main account. ESC / backdrop intentionally do
-// NOT close it. The composable persists the dismissal in localStorage
-// so the modal never returns once acknowledged.
 // First-run "name your main account" gate + its step-2 source-pick handlers
 // live in useFirstRun; firstRunModalOpen feeds the background-freeze computed.
 const {
@@ -282,52 +168,21 @@ const {
   onFirstRunPickCustomSource,
 } = useFirstRun()
 
-// Every modal surface that should freeze the background. Used by
-// the masthead container + status bar to flip `inert` + aria-hidden
-// so screen readers + Tab nav don't bleed into the dimmed page.
-// Add to this list whenever you mount a new full-surface modal.
+// Every modal surface that should freeze the background — the masthead container
+// + status bar flip `inert` + aria-hidden off this so screen readers + Tab nav
+// don't bleed into the dimmed page. The narrow panel + manual-match flags live
+// in the UI store; add to this list whenever you mount a new full-surface modal.
 const backgroundFrozen = computed(() =>
   firstRunModalOpen.value
   || showUnsupportedModal.value
   || showStartupErrorModal.value
   || selection.isOpen.value
-  || matchesNarrowOpen.value
-  || showManualMatchModal.value,
+  || uiStore.narrowOpen
+  || uiStore.manualMatchOpen,
 )
 
-
-// Search → panel auto-track. When the panel is open AND the user
-// is actively searching (any clauses parsed), the panel selection
-// follows the first narrowed match so the highlighted content is
-// visible without an extra click. The watcher fires on every
-// searchText change while the panel is open; when the user clears
-// the search, we leave the selection where it last landed (don't
-// snap back to a previous match — that would surprise the user).
-// `narrowedRecords` IS the search-aware list now that the legacy
-// `filters.filteredSorted` is gone — same dimensions, no second
-// independent filter pipeline to keep in sync.
-// W-L-D summary that reflects the *currently narrowed* set so the user
-// can see, for instance, "support role on Aatlis: 6W 2L 0D" by setting
-// the matching filters. Sources from MatchesView's `narrowedRecords`
-// so this stays in sync with the MatchesView dossier's Record KPI
-// tile. Honors the same `leaver-exclude-tally` rule the dossier
-// applies.
-
-// Per-card source-preview/expand state (the CardStateApi bundle) + the
-// triage actions live inside UnknownMapsView now — it's the only consumer.
-
-// The derived triage lists (unknown / reference-gap / hidden / ambiguous)
-// are getters on the matches store, destructured above.
-
-// Pure helpers (detectScreenshotSlots, screenshotURL, etc.) live in
-// ./match-helpers.ts so they can be unit-tested in isolation.
-
-// fmtTime is imported from ./match-helpers.js (extracted for testing).
-
-// App-shell-local overlay state bundled for AppOverlays: the modal flags App
-// also reads for its background-freeze (`inert`) computed, plus the toast/tour
-// handlers that reach into the DOM + view nav. Everything store-backed,
-// AppOverlays reads from the stores directly.
+// App-shell overlay bundle for AppOverlays — the composable-owned + App-local
+// flags + the toast/tour handlers it can't read from a store on its own.
 const overlaysApi: OverlaysApi = {
   anchorToast,
   onSetAnchor,
@@ -337,9 +192,6 @@ const overlaysApi: OverlaysApi = {
   startupErrorMessage,
   openCheatsheet,
   closeCheatsheet: () => { openCheatsheet.value = false },
-  showManualMatchModal,
-  closeManualMatch: () => { showManualMatchModal.value = false },
-  onManualMatchCreated,
   firstRunModalOpen,
   screenshotCandidates,
   probing,
@@ -450,8 +302,6 @@ const overlaysApi: OverlaysApi = {
              inert, the anchor toast, export-bundle/CSV flows). -->
         <MatchesView
           v-else-if="view === 'matches'"
-          @add-match="showManualMatchModal = true"
-          @narrow-open="onMatchesNarrowOpen"
           @export-bundle="onExportBundleRequest"
           @export-csv="onExportMatchesCSV"
           @clear-anchor="onSetAnchor('')"
