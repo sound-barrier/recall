@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { formatRelativeTime } from '@/match/match-time-helpers'
-import type { ParseConnectionState } from '@/composables/ingest/useParseRecovery'
-import ParseProgressPanel, { type ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
+import { useSettingsStore } from '@/stores/settings'
+import ParseProgressPanel from '@/components/ingest/ParseProgressPanel.vue'
 
 // IngestView (presented to users as the "Parse" tab) — the
 // operational panel. One job: run the parse pipeline. Engine setup,
@@ -13,53 +17,27 @@ import ParseProgressPanel, { type ParseProgressEvent } from '@/components/ingest
 //   01 Watch Folder — armed-on toggle for hands-free auto-parse
 //   02 Manual Parse — one-click "do it now" button + progress panel
 //
-// Owned state stays in App.vue (tesseractReady, watchEnabled,
-// parse-progress stream); this view is a pure presentation layer.
-
-withDefaults(defineProps<{
-  // Preflight — needed for the heading state machine + Watch
-  // disable. Tesseract status itself lives on Settings.
-  tesseractReady:       boolean
-  screenshotsDir:       string
-
-  // Parse state
-  watchEnabled:         boolean
-  parseBusy:              boolean
-  // True between the Stop click and the SSE `parse-cancelled`
-  // confirmation. Drives the Stop button copy ("Cancelling…") +
-  // disabled state so a second click doesn't fire a redundant
-  // DELETE request.
-  cancellingParse:      boolean
-  newScreenshotCount:   number | null
-  lastParsedAt:         number | null
-  parseProgress:        ParseProgressEvent | null
-  parseLog:             ParseProgressEvent[]
-  parseProgressOpen:    boolean
-  // Server-mode SSE connection state for the parse stream — drives the
-  // panel's reconnecting / lost-connection recovery affordances.
-  // Optional (defaults to 'connected') so tests + Wails callers can omit.
-  parseConnectionState?: ParseConnectionState
-
-  // Record counts — drive heading copy + the "N records on record"
-  // line under Manual Parse.
-  matchedCount:         number
-  unknownCount:         number
-}>(), {
-  parseConnectionState: 'connected',
-})
-
-const emit = defineEmits<{
-  'toggle-watch':       []
-  'parse':              []
-  // Stop click on the in-flight parse. App.vue owns the actual
-  // CancelParse() call + the cancellingParse state.
-  'cancel-parse':       []
-  'toggle-progress':    []
-  // Manual recovery from the panel's lost-connection state — re-pull the
-  // run-state snapshot + reload. App.vue owns the actual resync.
-  'refresh-parse':      []
-  'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
-}>()
+// Reads its state from the stores: Tesseract preflight + watch toggle from
+// settings, the parse stream + record counts from matches, tab nav from app.
+const appStore = useAppStore()
+const matchesStore = useMatchesStore()
+const settingsStore = useSettingsStore()
+const { goToView } = appStore
+const { tesseractReady, watchEnabled, screenshotsDir } = storeToRefs(settingsStore)
+const { toggleWatch } = settingsStore
+const {
+  parseBusy,
+  cancellingParse,
+  newScreenshotCount,
+  lastParsedAt,
+  parseProgress,
+  parseLog,
+  parseProgressOpen,
+  parseConnectionState,
+} = storeToRefs(matchesStore)
+const { parse, onCancelParse, refreshParse } = matchesStore
+const matchedCount = computed(() => matchesStore.records.length)
+const unknownCount = computed(() => matchesStore.unknownRecords.length)
 </script>
 
 <template>
@@ -70,13 +48,13 @@ const emit = defineEmits<{
       </p>
       <h2 v-if="!tesseractReady" class="settings-heading missing">
         Tesseract isn't located —
-        <button type="button" class="empty-link" @click="emit('go-to-view', 'settings')">
+        <button type="button" class="empty-link" @click="goToView('settings')">
           fix it in Settings → Engine →
         </button>
       </h2>
       <h2 v-else-if="!screenshotsDir" class="settings-heading">
         Set a <em>screenshots folder</em> in
-        <button type="button" class="empty-link" @click="emit('go-to-view', 'settings')">
+        <button type="button" class="empty-link" @click="goToView('settings')">
           Settings → Folders →
         </button> first.
       </h2>
@@ -111,7 +89,7 @@ const emit = defineEmits<{
             <p v-if="!tesseractReady" class="setting-meta blocked">
               <span class="block-mark" aria-hidden="true">⛔</span>
               Blocked — needs Tesseract.
-              <button type="button" class="empty-link" @click="emit('go-to-view', 'settings')">
+              <button type="button" class="empty-link" @click="goToView('settings')">
                 Fix in Settings →
               </button>
             </p>
@@ -122,7 +100,7 @@ const emit = defineEmits<{
                 type="checkbox"
                 :checked="watchEnabled"
                 :disabled="!tesseractReady"
-                @change="emit('toggle-watch')"
+                @change="toggleWatch()"
               >
               <span class="big-switch-track"><span class="big-switch-knob" /></span>
               <span class="big-switch-state">{{ watchEnabled ? 'Armed' : 'Off' }}</span>
@@ -141,7 +119,7 @@ const emit = defineEmits<{
             <p v-if="!tesseractReady" class="setting-meta blocked">
               <span class="block-mark" aria-hidden="true">⛔</span>
               Blocked — needs Tesseract.
-              <button type="button" class="empty-link" @click="emit('go-to-view', 'settings')">
+              <button type="button" class="empty-link" @click="goToView('settings')">
                 Fix in Settings →
               </button>
             </p>
@@ -171,7 +149,7 @@ const emit = defineEmits<{
               class="btn danger big"
               data-testid="cancel-parse-btn"
               :disabled="cancellingParse"
-              @click="emit('cancel-parse')"
+              @click="onCancelParse()"
             >
               <span class="btn-dot" />
               <span v-if="cancellingParse">Cancelling…</span>
@@ -184,7 +162,7 @@ const emit = defineEmits<{
               :class="{ ghost: tesseractReady && newScreenshotCount === 0 }"
               :disabled="!tesseractReady || newScreenshotCount === 0"
               :title="!tesseractReady ? 'Locate Tesseract in Settings → Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
-              @click="emit('parse')"
+              @click="parse()"
             >
               <span class="btn-dot" />
               <span v-if="(newScreenshotCount ?? 0) > 0">Run Parse · {{ newScreenshotCount }}</span>
@@ -201,8 +179,8 @@ const emit = defineEmits<{
           :parse-log="parseLog"
           :is-open="parseProgressOpen"
           :connection-state="parseConnectionState"
-          @toggle-open="emit('toggle-progress')"
-          @refresh="emit('refresh-parse')"
+          @toggle-open="parseProgressOpen = !parseProgressOpen"
+          @refresh="refreshParse()"
         />
       </div>
     </div>
