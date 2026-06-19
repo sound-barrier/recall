@@ -34,7 +34,10 @@ defineEmits<{
 </script>
 
 <template>
-  <p v-if="belowFloor" class="heatmap-empty">
+  <p v-if="decisiveTotal === 0" class="heatmap-empty" data-hm-no-data>
+    At least 1 match must be played to display data.
+  </p>
+  <p v-else-if="belowFloor" class="heatmap-empty">
     Need {{ minMatches }}+ decisive matches in this window to
     surface patterns. You have {{ decisiveTotal }}.
   </p>
