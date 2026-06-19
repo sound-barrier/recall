@@ -315,6 +315,16 @@ export const useMatchesStore = defineStore('matches', () => {
     useOWData().heroRole,
     weekStart,
   )
+  // A second aggregation over the UNFILTERED records (ignores the narrow), so
+  // widgets/bands can size their structure stably — provided alongside the
+  // narrowed one via provideFullDossier() in MatchesView. Same lazy computeds,
+  // so only the structure queries a consumer touches actually recompute.
+  const fullDossier = useMatchesDossier(
+    records,
+    matchesNarrow.leaverHandling,
+    useOWData().heroRole,
+    weekStart,
+  )
 
   // ── Ingest event stream ───────────────────────────────────────────
   // Polite sr-only announcement for parse-lifecycle terminal states (the
@@ -414,6 +424,7 @@ export const useMatchesStore = defineStore('matches', () => {
     isNarrowChipActive,
     toggleNarrowChip,
     dossier: markRaw(dossier),
+    fullDossier: markRaw(fullDossier),
     searchClauses,
     records,
     unknownRecords,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDossier } from '@/composables/dashboard/useDossier'
+import { useDossier, useFullDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
@@ -37,6 +37,7 @@ const GAME_MODE_LABEL: Record<string, string> = {
 }
 
 const dossier = useDossier()
+const fullDossier = useFullDossier()
 const narrow = useNarrow()
 const ow = useOWData()
 const cfg = useMapRoleConfig()
@@ -62,13 +63,20 @@ const visibleRoles = computed<Role[]>(() => {
 // the Campaign Log's default.
 const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('recall.mapRoleWindowMonths')
 
+// Cell DATA + the selected-cell highlight read the NARROWED dossier, so they
+// respond to every active filter (panel picks, the band's own cell-pick).
 const cells = dossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
+// Row STRUCTURE reads the UNFILTERED dossier so the grid stays put when the
+// band's own cell-pick (or any narrow) shrinks the set — the Campaign Log
+// calendar keeps its full grid the same way. A role still drops out if it was
+// never played in the window, just not because the current narrow excluded it.
+const structureCells = fullDossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
 
-// Roles with at least one match in the current (windowed, narrowed) set.
-// Never-played roles are dropped from the rows (see visibleRoles above).
+// Roles with at least one match in the window (unfiltered) — never-played roles
+// drop from the rows (see visibleRoles above); the narrow no longer collapses them.
 const playedRoles = computed<Set<Role>>(() => {
   const s = new Set<Role>()
-  for (const c of cells.value) if (c.total > 0) s.add(c.role)
+  for (const c of structureCells.value) if (c.total > 0) s.add(c.role)
   return s
 })
 // Whether the set has ANY match — separates the "play a match first" prompt
@@ -132,6 +140,16 @@ const lookup = computed(() => {
   return m
 })
 
+// Unfiltered counterpart: which cells are SELECTABLE. A map+role played in the
+// window stays clickable (to select / switch / click-off) even when the current
+// narrow leaves it with no data — only a never-played cell is inert. Mirrors the
+// calendar, whose day cells stay selectable after a pick.
+const structureLookup = computed(() => {
+  const m = new Map<string, MapRoleCell>()
+  for (const c of structureCells.value) m.set(`${c.map}|${c.role}`, c)
+  return m
+})
+
 // Brightest cell anchors the volume saturation so one grind-heavy map
 // doesn't wash out the rest.
 const maxTotal = computed(() => {
@@ -142,6 +160,12 @@ const maxTotal = computed(() => {
 
 function cellFor(slug: string, role: Role): MapRoleCell | undefined {
   return lookup.value.get(`${slug}|${role}`)
+}
+
+// Played-in-the-window test (drives selectability), distinct from cellFor's
+// "has data under the current narrow" (drives the displayed fill).
+function structureCellFor(slug: string, role: Role): MapRoleCell | undefined {
+  return structureLookup.value.get(`${slug}|${role}`)
 }
 
 // Win-rate hue × volume saturation, blended toward the empty tone for
@@ -166,7 +190,7 @@ function isSelected(slug: string, role: Role): boolean {
 }
 
 function onCell(slug: string, role: Role) {
-  if (!cellFor(slug, role)) return
+  if (!structureCellFor(slug, role)) return
   // Single-select, mirroring the Campaign Log calendar: clicking the selected
   // cell clears it (click off to reset); clicking another replaces the pick.
   if (isSelected(slug, role)) {
@@ -286,7 +310,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
             type="button"
             class="mr-cell"
             :class="{
-              'mr-empty': !cellFor(col.slug, role),
+              'mr-empty': !structureCellFor(col.slug, role),
               'mr-group-start': col.firstInGroup,
               selected: isSelected(col.slug, role),
             }"
@@ -295,7 +319,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
               gridRow: rIdx + 3,
               background: fill(col.slug, role),
             }"
-            :disabled="!cellFor(col.slug, role)"
+            :disabled="!structureCellFor(col.slug, role)"
             :aria-pressed="isSelected(col.slug, role)"
             :title="cellLabel(col.slug, role)"
             :aria-label="cellLabel(col.slug, role)"
