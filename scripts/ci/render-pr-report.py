@@ -58,14 +58,56 @@ def find_one(*patterns: str) -> str | None:
 
 def parse_cobertura_line_rate(path: str | None) -> float | None:
     """Read the top-level <coverage line-rate="X"> attribute as a percentage."""
+    return _parse_cobertura_rate(path, "line-rate")
+
+
+def parse_cobertura_branch_rate(path: str | None) -> float | None:
+    """Read the top-level <coverage branch-rate="X"> attribute as a percentage.
+
+    Real for the frontend (V8 reports branch coverage); the Go Cobertura that
+    gocover-cobertura emits has branch-rate=0 (Go has no native branch coverage),
+    so Go branch coverage comes from parse_go_block_coverage instead.
+    """
+    return _parse_cobertura_rate(path, "branch-rate")
+
+
+def _parse_cobertura_rate(path: str | None, attr: str) -> float | None:
     if not path or not os.path.isfile(path):
         return None
     try:
         root = ET.parse(path).getroot()
-        rate = float(root.attrib.get("line-rate", "0"))
-        return rate * 100.0
+        return float(root.attrib.get(attr, "0")) * 100.0
     except (ET.ParseError, ValueError, OSError):
         return None
+
+
+def parse_go_block_coverage(path: str | None) -> float | None:
+    """Go's branch-equivalent: basic-block coverage from a coverprofile.
+
+    Go has no native branch coverage. Its coverprofile records one row per basic
+    block — a maximal run of statements with no branch in or out — as
+    `file:start.col,end.col numStmt count`. Each block sits between branch points,
+    so the fraction of blocks executed tracks branch outcomes far better than the
+    statement-weighted `go tool cover -func` total. Returns covered/total blocks
+    as a percentage.
+    """
+    if not path or not os.path.isfile(path):
+        return None
+    total = covered = 0
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for i, raw in enumerate(fh):
+                if i == 0 and raw.startswith("mode:"):
+                    continue
+                fields = raw.split()
+                if len(fields) < 3:
+                    continue
+                total += 1
+                if int(fields[-1]) > 0:
+                    covered += 1
+    except (OSError, ValueError):
+        return None
+    return 100.0 * covered / total if total else None
 
 
 def summarize_junit_files(pattern: str) -> list[SuiteSummary]:
@@ -199,31 +241,57 @@ def build_tests_section(suites: list[SuiteSummary]) -> list[str]:
     return out
 
 
-def build_coverage_section(
-    pr_go: float | None,
-    main_go: float | None,
-    pr_fe: float | None,
-    main_fe: float | None,
-    e2e_go: float | None,
-    e2e_fe: float | None,
-    main_e2e_go: float | None,
-    main_e2e_fe: float | None,
-) -> list[str]:
-    """The "Coverage" heading + Unit + Integration (e2e) table.
+Cov = tuple["float | None", "float | None", "float | None", "float | None"]
 
-    Both Unit and Integration (e2e) carry a main-baseline Δ so a PR's effect on
-    either is visible. The e2e figures come from the separate E2E workflow, whose
-    artifacts may not be ready when this renders (then "—")."""
-    out: list[str] = ["### 📊 Coverage", ""]
-    out.append("| Component | Unit | main | Δ | Integration (e2e) | main | Δ |")
-    out.append("|---|---:|---:|---:|---:|---:|---:|")
-    out.append(
-        f"| Go       | {fmt_pct(pr_go)} | {fmt_pct(main_go)} | {fmt_delta(pr_go, main_go)}{delta_emoji(pr_go, main_go)} | {fmt_pct(e2e_go)} | {fmt_pct(main_e2e_go)} | {fmt_delta(e2e_go, main_e2e_go)}{delta_emoji(e2e_go, main_e2e_go)} |"
+
+def _cov_row(
+    label: str,
+    pr: float | None,
+    base: float | None,
+    e2e: float | None,
+    base_e2e: float | None,
+) -> str:
+    return (
+        f"| {label} | {fmt_pct(pr)} | {fmt_pct(base)} | "
+        f"{fmt_delta(pr, base)}{delta_emoji(pr, base)} | "
+        f"{fmt_pct(e2e)} | {fmt_pct(base_e2e)} | "
+        f"{fmt_delta(e2e, base_e2e)}{delta_emoji(e2e, base_e2e)} |"
     )
+
+
+def _cov_table(heading: str, go_label: str, go: Cov, fe: Cov) -> list[str]:
+    """One coverage table — each component as (pr, main, e2e, main_e2e)."""
+    return [
+        heading,
+        "",
+        "| Component | Unit | main | Δ | Integration (e2e) | main | Δ |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+        _cov_row(go_label, *go),
+        _cov_row("Frontend", *fe),
+        "",
+    ]
+
+
+def build_coverage_section(
+    line_go: Cov, line_fe: Cov, branch_go: Cov, branch_fe: Cov
+) -> list[str]:
+    """The Coverage heading + a Line table and a Branch table.
+
+    Each component carries a Unit and an Integration (e2e) figure, both with a
+    main-baseline Δ. Go branch coverage is basic-block coverage — Go has no native
+    branch coverage — while the frontend figure is V8's true branch coverage. The
+    e2e figures come from the separate E2E workflow, "—" until it finishes."""
+    out: list[str] = ["## 📊 Coverage", ""]
+    out += _cov_table("### Line", "Go", line_go, line_fe)
+    out += _cov_table("### Branch", "Go (block)¹", branch_go, branch_fe)
     out.append(
-        f"| Frontend | {fmt_pct(pr_fe)} | {fmt_pct(main_fe)} | {fmt_delta(pr_fe, main_fe)}{delta_emoji(pr_fe, main_fe)} | {fmt_pct(e2e_fe)} | {fmt_pct(main_e2e_fe)} | {fmt_delta(e2e_fe, main_e2e_fe)}{delta_emoji(e2e_fe, main_e2e_fe)} |"
+        "¹ Go has no native branch coverage — this is basic-block coverage "
+        "(each block sits between branch points, so it tracks branch outcomes)."
     )
     out.append("")
+    # Baseline / pending notes keyed off the Line table's Unit + e2e figures.
+    main_go, e2e_go, main_e2e_go = line_go[1], line_go[2], line_go[3]
+    main_fe, e2e_fe, main_e2e_fe = line_fe[1], line_fe[2], line_fe[3]
     if main_go is None or main_fe is None:
         out.append(
             "_Unit baseline missing for at least one component — main has no recent successful CI run yet, or the baseline artifact has aged out. The Δ will populate after the next push to main._"
@@ -244,43 +312,50 @@ def build_coverage_section(
 
 def main() -> int:
     pr_tests = summarize_junit_files("pr-tests/*.xml")
-    pr_go = parse_cobertura_line_rate("pr-cov/go/cobertura.xml")
-    pr_fe = parse_cobertura_line_rate(
+    # Each frontend Cobertura is resolved once — it carries BOTH line-rate and
+    # branch-rate (V8 reports real branch coverage). The four sources: this PR's
+    # unit + e2e, and main's unit + e2e baselines. e2e artifacts are optional
+    # ("—" until the parallel E2E workflow finishes / a baseline exists).
+    fe_xml = (
         find_one(
             "pr-cov/frontend/cobertura-coverage.xml",
             "pr-cov/frontend/**/cobertura-coverage.xml",
-        )
-    )
-    main_go = parse_cobertura_line_rate("main-cov/go/cobertura.xml")
-    main_fe = parse_cobertura_line_rate(
+        ),
         find_one(
             "main-cov/frontend/cobertura-coverage.xml",
             "main-cov/frontend/**/cobertura-coverage.xml",
-        )
-    )
-    # Integration (e2e) coverage from the separate E2E workflow's artifacts
-    # (downloaded cross-workflow by the pr-report job). Optional — renders as
-    # "—" when the E2E run hasn't produced them yet.
-    e2e_go = parse_cobertura_line_rate("pr-cov-e2e/go/cobertura.xml")
-    e2e_fe = parse_cobertura_line_rate(
+        ),
         find_one(
             "pr-cov-e2e/frontend/cobertura-coverage.xml",
             "pr-cov-e2e/frontend/**/cobertura-coverage.xml",
-        )
-    )
-    # main's e2e baseline, for the Integration Δ (mirrors the unit baseline).
-    main_e2e_go = parse_cobertura_line_rate("main-cov-e2e/go/cobertura.xml")
-    main_e2e_fe = parse_cobertura_line_rate(
+        ),
         find_one(
             "main-cov-e2e/frontend/cobertura-coverage.xml",
             "main-cov-e2e/frontend/**/cobertura-coverage.xml",
-        )
+        ),
     )
 
-    out = build_tests_section(pr_tests)
-    out += build_coverage_section(
-        pr_go, main_go, pr_fe, main_fe, e2e_go, e2e_fe, main_e2e_go, main_e2e_fe
+    # Line coverage — Go + frontend Cobertura line-rate.
+    line_go: Cov = (
+        parse_cobertura_line_rate("pr-cov/go/cobertura.xml"),
+        parse_cobertura_line_rate("main-cov/go/cobertura.xml"),
+        parse_cobertura_line_rate("pr-cov-e2e/go/cobertura.xml"),
+        parse_cobertura_line_rate("main-cov-e2e/go/cobertura.xml"),
     )
+    line_fe: Cov = tuple(parse_cobertura_line_rate(x) for x in fe_xml)  # type: ignore[assignment]
+
+    # Branch coverage — Go from basic-block coverage of its coverprofile (no
+    # native branch coverage), frontend from the Cobertura branch-rate.
+    branch_go: Cov = (
+        parse_go_block_coverage("pr-cov/go/coverage.out"),
+        parse_go_block_coverage("main-cov/go/coverage.out"),
+        parse_go_block_coverage("pr-cov-e2e/go/coverage.out"),
+        parse_go_block_coverage("main-cov-e2e/go/coverage.out"),
+    )
+    branch_fe: Cov = tuple(parse_cobertura_branch_rate(x) for x in fe_xml)  # type: ignore[assignment]
+
+    out = build_tests_section(pr_tests)
+    out += build_coverage_section(line_go, line_fe, branch_go, branch_fe)
 
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     out.append(f"<sub>Updated {ts} · sticky comment</sub>")

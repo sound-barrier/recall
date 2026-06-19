@@ -527,6 +527,11 @@ tasks:
       - go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
       - go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
       - |
+        # Go has no native branch coverage. Basic-block coverage (covered/total
+        # blocks in the coverprofile — each block sits between branch points) is
+        # its branch-equivalent. Informational; the func total above is what gates.
+        awk 'NR>1 { t++; if ($NF+0 > 0) c++ } END { if (t) printf "[ recall ] ℹ  Go block (branch-equivalent) coverage %.1f%% (%d/%d blocks)\n", 100*c/t, c, t }' coverage/go/coverage.out
+      - |
         pct=$(awk '/^total:/ { gsub(/%/, "", $NF); print $NF }' coverage/go/coverage.txt)
         awk -v p="$pct" -v m="{{.GO_COVERAGE_MIN}}" 'BEGIN {
           if (p+0 < m+0) { printf "[ recall ] ✗  Go coverage %.1f%% is below threshold %s%%\n", p, m; exit 1 }
