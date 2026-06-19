@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
-import type { MatchRecord, UpdateInfo } from '@/api'
+import type { MatchRecord } from '@/api'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { useContextualCallout } from '@/composables/shared/useContextualCallout'
 import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
@@ -9,7 +9,10 @@ import ContextualCallout from '@/components/shared/ContextualCallout.vue'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import { filenameFromMatchKey } from '@/match/match-key'
 import type { CardStateApi } from '@/types/cardState'
+import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useUiStore } from '@/stores/ui'
+import { useMatchActions } from '@/composables/matches/useMatchActions'
 
 // The triage record lists come straight from the matches store's getters
 // (derived off one records array); no longer prop-drilled from App.
@@ -25,48 +28,29 @@ const matchesStore = useMatchesStore()
 //   2. UNKNOWN — no map could be parsed (corrupted screenshot, or a
 //      non-OW PNG in the watched folder).
 //
-// Per-card UI state comes in via the CardStateApi bundle (owned by
-// App.vue). Every field on the bundle is a function — no `.value`
-// indirection in templates, no nested-ref auto-unwrap gotchas.
-// MatchesView used to share this bundle but the new set-workspace
-// doesn't expose per-card expand state, so UnknownMapsView is the
-// only consumer.
+// Per-card UI state + the triage actions read from the stores. This tab owns
+// its own card-expand state (the set-workspace doesn't share it); the
+// source-preview/lightbox state comes from the UI store, so the CardStateApi
+// bundle is assembled here and forwarded to the cards.
+const appStore = useAppStore()
+const uiStore = useUiStore()
+const { onResolveAmbiguous, onIgnoreScreenshot } = useMatchActions()
+const goToView = appStore.goToView
+const preloadScreenshot = uiStore.preview.preload
+const openLightbox = uiStore.preview.openLightbox
+const updateInfo = computed(() => appStore.updateInfo)
 
-const props = defineProps<{
-  cardState:        CardStateApi
-  // Cache-warm helper from `useScreenshotPreview` (item 12). The
-  // hover-thumb path warms the same URL the in-card source-preview
-  // <img> later renders, so the bytes are in the browser cache by
-  // the time the thumb mounts. Idempotent inside the composable —
-  // every consumer can call it without dedup logic.
-  preloadScreenshot: (url: string) => void
-  // Latest release info from the masthead "Check for updates"
-  // button. When populated AND the running build is older than
-  // latest, each `.reference-gap-card` checks whether its
-  // hero_raw / map_raw appears in updateInfo.latest_heroes /
-  // latest_maps and surfaces a "Update to v<X> to recognise
-  // <name>" CTA so the user knows the fix is one release away.
-  // Null until the user clicks the button; UpdateInfo arrays are
-  // empty when the SHA-sidecar check rejected the YAML asset.
-  updateInfo: UpdateInfo | null
-}>()
-
-const emit = defineEmits<{
-  'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
-  'resolve-ambiguous':  [ambiguousKey: string, resolvedTo: string]
-  // Fired by the "Delete forever" affordance on an unmatched card.
-  // App.vue calls IgnoreScreenshot(filename) → reloads records.
-  // The file stays on disk; the next parse run skips it.
-  'ignore-screenshot':  [filename: string]
-  // Forwarded to App.vue's openLightbox handler — fires when the
-  // user clicks an inline source-preview thumbnail. Parity with the
-  // MatchDetailPanel side-panel sources block: click filename →
-  // thumbnail toggle, click thumbnail → fullscreen lightbox. The
-  // second arg is the owning record's source_files so the lightbox
-  // can navigate between the record's screenshots without reaching
-  // back into the Vue tree.
-  'open-lightbox':      [filename: string, files: readonly string[], dirIDs: Record<string, number>]
-}>()
+const unknownExpanded = ref<Record<string, boolean>>({})
+const cardState: CardStateApi = {
+  isSelected:      (id) => !!unknownExpanded.value[id],
+  isSourcesOpen:   uiStore.isSourcesOpen,
+  isPreviewOpen:   uiStore.preview.isPreviewOpen,
+  hasPreviewError: uiStore.preview.hasPreviewError,
+  toggleExpand:    (id) => { unknownExpanded.value = { ...unknownExpanded.value, [id]: !unknownExpanded.value[id] } },
+  toggleSources:   uiStore.toggleSources,
+  togglePreview:   uiStore.preview.togglePreview,
+  onPreviewError:  uiStore.preview.onPreviewError,
+}
 
 const ambiguousList = computed(() => matchesStore.ambiguousRecords)
 // Template-facing aliases for the store getters (the template referenced the
@@ -92,7 +76,7 @@ const refdataGapCallout = useContextualCallout({
 // the normalized raw token (we mirror the parser's normalize:
 // lowercase + strip diacritics).
 function recognisingRelease(rec: MatchRecord): { version: string; url: string; name: string; kind: 'hero' | 'map' } | null {
-  const info = props.updateInfo
+  const info = updateInfo.value
   if (!info?.checked || !info.available) return null
   const normalize = (s: string) => s
     .normalize('NFD')
@@ -139,7 +123,7 @@ function freshKeyFromAmbiguous(rec: MatchRecord): string | null {
 }
 
 function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
-  emit('resolve-ambiguous', rec.match_key, resolvedTo)
+  onResolveAmbiguous(rec.match_key, resolvedTo)
 }
 
 // Active-candidate-per-ambiguous-card state. Drives the side-by-side
@@ -180,19 +164,19 @@ function setActiveCandidate(recKey: string, candKey: string) {
 // it — without preload the pane flickered on every candidate switch
 // because the src reloaded per candidate.
 function onAmbiguousHeadClick(rec: MatchRecord) {
-  const willOpen = !props.cardState.isSelected(rec.match_key)
-  props.cardState.toggleExpand(rec.match_key)
+  const willOpen = !cardState.isSelected(rec.match_key)
+  cardState.toggleExpand(rec.match_key)
   if (!willOpen) return
   for (const cand of rec.candidates ?? []) {
     if (!cand.representative_source_file) continue
-    props.preloadScreenshot(
+    preloadScreenshot(
       screenshotURL(cand.representative_source_file, cand.representative_dir_id ?? 0),
     )
   }
   const first = rec.source_files?.[0]
   if (!first) return
-  if (!props.cardState.isPreviewOpen(first)) {
-    props.cardState.togglePreview(first)
+  if (!cardState.isPreviewOpen(first)) {
+    cardState.togglePreview(first)
   }
 }
 
@@ -230,7 +214,7 @@ function onIgnoreClick(rec: MatchRecord) {
     return
   }
   disarmIgnore(rec.match_key)
-  emit('ignore-screenshot', filename)
+  onIgnoreScreenshot(filename)
 }
 
 function isIgnoreArmed(matchKey: string): boolean {
@@ -264,7 +248,7 @@ const {
   },
   // Suppress the peek while the card is expanded (its inline previews
   // already cover that need).
-  canShow: (key) => !props.cardState.isSelected(key),
+  canShow: (key) => !cardState.isSelected(key),
 })
 function onHoverUnknown(rec: MatchRecord, e: MouseEvent) { onHover(rec.match_key, e) }
 function onMoveUnknown(rec: MatchRecord, e: MouseEvent) { onMove(rec.match_key, e) }
@@ -278,7 +262,7 @@ function preloadVisibleScreenshots() {
   for (const rec of matchesStore.unknownRecords) {
     const first = rec.source_files?.[0]
     if (!first) continue
-    props.preloadScreenshot(screenshotURL(first, rec.source_dir_ids?.[first] ?? 0))
+    preloadScreenshot(screenshotURL(first, rec.source_dir_ids?.[first] ?? 0))
   }
 }
 
@@ -318,7 +302,7 @@ function shouldEnableTouchPeek(): boolean {
 function onPointerDownUnknown(rec: MatchRecord, e: PointerEvent) {
   if (e.pointerType !== 'touch') return
   if (!shouldEnableTouchPeek()) return
-  if (props.cardState.isSelected(rec.match_key)) return
+  if (cardState.isSelected(rec.match_key)) return
   const first = rec.source_files?.[0]
   if (!first) return
 
@@ -356,7 +340,7 @@ function onCardHeadClick(rec: MatchRecord) {
     longPressFired = false
     return
   }
-  props.cardState.toggleExpand(rec.match_key)
+  cardState.toggleExpand(rec.match_key)
 }
 
 </script>
@@ -376,7 +360,7 @@ function onCardHeadClick(rec: MatchRecord) {
       </h2>
       <p v-if="unknownRecords.length > 0" class="unknown-desc">
         The slot indicators below show which screenshot types have been parsed for each record. Add the missing ones and
-        <button type="button" class="empty-link" @click="emit('go-to-view', 'ingest')">
+        <button type="button" class="empty-link" @click="goToView('ingest')">
           run Parse
         </button>
         again to resolve them.
@@ -457,7 +441,7 @@ function onCardHeadClick(rec: MatchRecord) {
                     :alt="f"
                     class="source-preview"
                     title="Click to view fullscreen"
-                    @click="emit('open-lightbox', f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
+                    @click="openLightbox(f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
                     @error="cardState.onPreviewError(f)"
                   >
                   <div v-if="cardState.isPreviewOpen(f) && cardState.hasPreviewError(f)" class="source-preview-error">
@@ -485,10 +469,10 @@ function onCardHeadClick(rec: MatchRecord) {
                         class="candidate-thumb"
                         :aria-label="`Open ${cand.match_key} screenshot in lightbox`"
                         :data-candidate-thumb="cand.match_key"
-                        @click="emit('open-lightbox',
-                                     cand.representative_source_file!,
-                                     [cand.representative_source_file!],
-                                     { [cand.representative_source_file!]: cand.representative_dir_id ?? 0 })"
+                        @click="openLightbox(
+                          cand.representative_source_file!,
+                          [cand.representative_source_file!],
+                          { [cand.representative_source_file!]: cand.representative_dir_id ?? 0 })"
                       >
                         <img
                           :src="screenshotURL(cand.representative_source_file, cand.representative_dir_id ?? 0)"
@@ -537,10 +521,10 @@ function onCardHeadClick(rec: MatchRecord) {
                       type="button"
                       class="candidate-preview-image"
                       :aria-label="`Open ${activeCandidate(rec)?.match_key} screenshot in lightbox`"
-                      @click="emit('open-lightbox',
-                                   activeCandidate(rec)!.representative_source_file!,
-                                   [activeCandidate(rec)!.representative_source_file!],
-                                   { [activeCandidate(rec)!.representative_source_file!]: activeCandidate(rec)!.representative_dir_id ?? 0 })"
+                      @click="openLightbox(
+                        activeCandidate(rec)!.representative_source_file!,
+                        [activeCandidate(rec)!.representative_source_file!],
+                        { [activeCandidate(rec)!.representative_source_file!]: activeCandidate(rec)!.representative_dir_id ?? 0 })"
                     >
                       <img
                         :src="screenshotURL(activeCandidate(rec)!.representative_source_file!, activeCandidate(rec)!.representative_dir_id ?? 0)"
@@ -661,7 +645,7 @@ function onCardHeadClick(rec: MatchRecord) {
                   :alt="f"
                   class="source-preview"
                   title="Click to view fullscreen"
-                  @click="emit('open-lightbox', f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
+                  @click="openLightbox(f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
                   @error="cardState.onPreviewError(f)"
                 >
                 <div v-if="cardState.isPreviewOpen(f) && cardState.hasPreviewError(f)" class="source-preview-error">
