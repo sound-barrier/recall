@@ -22,15 +22,29 @@ describe('TopMapsWidget', () => {
     expect(w.findAll('li:not(.bd-placeholder)')).toHaveLength(0)
   })
 
-  it('pads with invisible placeholder rows up to the configured limit (stable height)', () => {
+  it('reserves rows to the UNFILTERED count (capped at the limit), padding the filtered gap', () => {
     const w = mountWidget(TopMapsWidget, {
-      dossier: { topByCount: [entry('hanamura', 3, 38), entry('kings row', 2, 25)] },
+      // Filtered view shows 2 maps; the unfiltered set has 5 (≥ the limit).
+      dossier:     { topByCount: [entry('hanamura', 3, 38), entry('kings row', 2, 25)] },
+      fullDossier: { topByCount: [entry('a', 1, 20), entry('b', 1, 20), entry('c', 1, 20), entry('d', 1, 20), entry('e', 1, 20)] },
       configSeed: { 'top-maps': { limit: 5 } },
     })
-    // 2 real + 3 placeholder = 5 rows → the widget keeps a constant height
-    // regardless of how many maps the active filter leaves.
+    // 2 real + 3 placeholder = 5 rows → the widget keeps a constant height as the
+    // active filter trims the list down from the full five.
     expect(w.findAll('li')).toHaveLength(5)
     expect(w.findAll('li.bd-placeholder')).toHaveLength(3)
+  })
+
+  it('reserves no blank padding when the unfiltered set has fewer maps than the limit', () => {
+    const w = mountWidget(TopMapsWidget, {
+      // Only two maps were ever played; the limit is 5 but there's nothing to
+      // reserve for — no empty rows, vs the old fixed-limit padding.
+      dossier:     { topByCount: [entry('hanamura', 3, 60), entry('kings row', 2, 40)] },
+      fullDossier: { topByCount: [entry('hanamura', 3, 60), entry('kings row', 2, 40)] },
+      configSeed: { 'top-maps': { limit: 5 } },
+    })
+    expect(w.findAll('li')).toHaveLength(2)
+    expect(w.findAll('li.bd-placeholder')).toHaveLength(0)
   })
 
   it('renders the eyebrow label', () => {
