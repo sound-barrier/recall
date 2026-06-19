@@ -76,7 +76,7 @@ test.describe('dossier — Most played labels + Total time played', () => {
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const firstStats = page.locator('.breakdown', { hasText: 'Most played maps' })
-      .locator('li').nth(0).locator('.bd-stats')
+      .locator('li:not(.bd-placeholder)').nth(0).locator('.bd-stats')
     await expect(firstStats).toHaveText('33%')
     await expect(firstStats.locator('.bd-total')).toHaveCount(0)
   })
