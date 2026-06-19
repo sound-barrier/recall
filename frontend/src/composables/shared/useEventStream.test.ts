@@ -59,7 +59,7 @@ describe('useEventStream', () => {
 
   afterEach(() => { vi.clearAllMocks() })
 
-  it('subscribes to all four lifecycle events on mount', () => {
+  it('subscribes to all five lifecycle events on mount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
@@ -69,10 +69,11 @@ describe('useEventStream', () => {
       'parse-cancelled',
       'parse-complete',
       'parse-progress',
+      'tesseract-status',
     ])
   })
 
-  it('unsubscribes from all four on unmount', () => {
+  it('unsubscribes from all five on unmount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
@@ -83,7 +84,19 @@ describe('useEventStream', () => {
       'parse-cancelled',
       'parse-complete',
       'parse-progress',
+      'tesseract-status',
     ])
+  })
+
+  it('tesseract-status forwards the published status to onTesseractStatus', () => {
+    const records = ref<MatchRecord[]>([])
+    const parseProgress = ref<ParseProgressEvent | null>(null)
+    const parseLog = ref<ParseProgressEvent[]>([])
+    const onTesseractStatus = vi.fn()
+    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn(), onTesseractStatus })
+    const status = { path: '/usr/bin/tesseract', found: true, version: '5.3.0', supported: true, error: '', default: '', platform: 'linux' }
+    handlers['tesseract-status']!(status)
+    expect(onTesseractStatus).toHaveBeenCalledWith(status)
   })
 
   it('parse-cancelled fires the caller-supplied onParseCancelled when provided', () => {

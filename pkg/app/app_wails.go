@@ -39,6 +39,17 @@ func (a *App) emitMatchUpdated(rec match.MatchRecord) {
 	a.SSEHub.BroadcastData("match-updated", string(data))
 }
 
+// emitTesseractStatus notifies the frontend that the background engine probe
+// published a new status, so the System Alert / Engine row self-heals once a
+// cold-boot Defender scan releases the binary — no app restart needed.
+func (a *App) emitTesseractStatus(s TesseractStatus) {
+	data, _ := json.Marshal(s)
+	if a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "tesseract-status", s)
+	}
+	a.SSEHub.BroadcastData("tesseract-status", string(data))
+}
+
 // emitParseComplete notifies the Wails frontend that a parse run finished.
 // Called from scheduleParseDebounced; gated by the !serveronly build tag so
 // the wruntime import is absent from server-only binaries.
@@ -83,10 +94,10 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 		},
 	})
 	if err != nil {
-		return a.tessStatus, err
+		return a.tessStatusSnapshot(), err
 	}
 	if file == "" {
-		return a.tessStatus, nil
+		return a.tessStatusSnapshot(), nil
 	}
 	return a.SetTesseractPath(file)
 }

@@ -183,10 +183,11 @@ func (a *App) validateParsePreconditions() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !a.tessStatus.Found {
-		a.tessStatus = checkTesseract(a.settings.TesseractPath)
-		if !a.tessStatus.Found {
-			return "", fmt.Errorf("tesseract is not available: %s", a.tessStatus.Error)
+	if !a.tessStatusSnapshot().Found {
+		s := checkTesseract(a.settings.TesseractPath)
+		a.setTessStatus(s)
+		if !s.Found {
+			return "", fmt.Errorf("tesseract is not available: %s", s.Error)
 		}
 	}
 	return screenshotsDir, nil

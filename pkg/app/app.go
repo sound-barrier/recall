@@ -53,11 +53,13 @@ type App struct {
 	// store is the persistence layer. *db.SQLStore in production wiring,
 	// can be a fake in tests via NewWithStore.
 	store db.Store
-	// tessStatus is the last result of checkTesseract(). Refreshed on
-	// Startup, on SetTesseractPath, on PickTesseractBinary, and on
-	// ResetTesseractPath. Read-only from the Wails GetTesseractStatus
-	// binding the frontend polls; mutated only on the same goroutine
-	// that responds to the bound calls (no lock needed).
+	// tessStatus is the last result of checkTesseract(). Startup now probes
+	// in a BACKGROUND goroutine (so a cold-boot Windows Defender scan can't
+	// stall boot), which races with the GetTesseractStatus binding the
+	// frontend polls and the parse pre-flight — so every access goes through
+	// tessMu via setTessStatus / tessStatusSnapshot. Refreshed on Startup,
+	// SetTesseractPath, PickTesseractBinary, ResetTesseractPath, profile swap.
+	tessMu     sync.RWMutex
 	tessStatus TesseractStatus
 	// File-watch state. watcher is non-nil while the directory is being
 	// observed; watchTimer holds the debounce timer that fires
@@ -220,6 +222,12 @@ func (a *App) Startup(ctx context.Context) {
 	a.resolveSettings()
 	a.bootReAggregate()
 	a.startEnabledServices()
+	// Detect tesseract off the boot path — the exec can be held for seconds by
+	// a cold-boot Windows Defender scan, and it must not stall the UI. The probe
+	// publishes its result + emits "tesseract-status" so the engine self-heals.
+	if probeTesseractOnStartup {
+		go a.probeTesseractInBackground(a.settings.TesseractPath)
+	}
 }
 
 // initProfiles loads (or initializes) the profile manager — every
@@ -292,7 +300,10 @@ func (a *App) resolveSettings() {
 		a.settings.TesseractPath = defaultTesseractPath()
 		a.saveSettingsBestEffort()
 	}
-	a.tessStatus = checkTesseract(a.settings.TesseractPath)
+	// Seed a placeholder status so the path/default render on first paint; the
+	// real detection runs in the background from Startup (probeTesseractInBackground)
+	// so a cold-boot Defender scan can't block boot.
+	a.setTessStatus(TesseractStatus{Path: a.settings.TesseractPath, Default: defaultTesseractPath()})
 	parser.SetTesseractPath(a.settings.TesseractPath)
 
 	// First-run auto-probe — if the user hasn't set a screenshots

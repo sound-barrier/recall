@@ -158,16 +158,62 @@ func parseTesseractVersion(stdout, stderr string) (version string, supported boo
 	return v, major == "5", ""
 }
 
+// tesseractProbeRetries / RetryDelay bound the background re-probe. A cold-boot
+// Windows Defender scan can hold the first `tesseract --version` for seconds;
+// Startup probes off-goroutine and retries the "binary exists but didn't run"
+// case until it runs, so the engine self-heals without an app restart.
+const tesseractProbeRetries = 5
+
+var tesseractProbeRetryDelay = 2 * time.Second
+
+// probeTesseractOnStartup gates the background probe goroutine. Tests set it
+// false (bridge_test.go) so Startup doesn't spawn a goroutine that would
+// EventsEmit on a non-lifecycle context; the probe logic is covered directly.
+var probeTesseractOnStartup = true
+
+func (a *App) setTessStatus(s TesseractStatus) {
+	a.tessMu.Lock()
+	a.tessStatus = s
+	a.tessMu.Unlock()
+}
+
+func (a *App) tessStatusSnapshot() TesseractStatus {
+	a.tessMu.RLock()
+	defer a.tessMu.RUnlock()
+	return a.tessStatus
+}
+
+// probeTesseractInBackground runs detection off the Startup goroutine (so boot
+// never blocks on the exec) and retries the transient exists-but-couldn't-run
+// case, publishing the status + emitting a "tesseract-status" event each pass
+// so the frontend's System Alert clears once the binary becomes runnable.
+func (a *App) probeTesseractInBackground(path string) {
+	for attempt := 0; ; attempt++ {
+		s := checkTesseract(path)
+		a.setTessStatus(s)
+		a.emitTesseractStatus(s)
+		if s.Found || attempt >= tesseractProbeRetries {
+			return
+		}
+		// A missing path or a non-tesseract binary won't fix itself — only the
+		// "it's there but the OS wouldn't run it yet" case is worth retrying.
+		if _, err := os.Stat(path); err != nil {
+			return
+		}
+		time.Sleep(tesseractProbeRetryDelay)
+	}
+}
+
 // GetTesseractStatus returns the cached result of the last detection
 // run (refreshed on Startup + any path-changing call). Cheap — does not
 // re-shell out to tesseract.
 //
 // Platform is always populated even when no detection has run yet, so
 // the frontend's per-OS Engine description branch in SettingsEngine.vue
-// has a value to switch on during the first paint (before Startup-
-// triggered checkTesseract lands).
+// has a value to switch on during the first paint (before the Startup
+// background probe lands).
 func (a *App) GetTesseractStatus() TesseractStatus {
-	s := a.tessStatus
+	s := a.tessStatusSnapshot()
 	if s.Platform == "" {
 		s.Platform = runtime.GOOS
 	}
@@ -187,20 +233,22 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 		// Reflect the validation error in the status so the frontend's
 		// System Alert banner shows what went wrong without an extra
 		// round-trip — this mirrors how checkTesseract surfaces failures.
-		a.tessStatus = TesseractStatus{
+		s := TesseractStatus{
 			Path:    strings.TrimSpace(path),
 			Default: defaultTesseractPath(),
 			Error:   err.Error(),
 		}
-		return a.tessStatus, err
+		a.setTessStatus(s)
+		return s, err
 	}
 	a.settings.TesseractPath = cleaned
 	if err := a.saveSettings(a.settings); err != nil {
-		return a.tessStatus, err
+		return a.tessStatusSnapshot(), err
 	}
-	a.tessStatus = checkTesseract(cleaned)
+	s := checkTesseract(cleaned)
+	a.setTessStatus(s)
 	parser.SetTesseractPath(cleaned)
-	return a.tessStatus, nil
+	return s, nil
 }
 
 // ResetTesseractPath restores the platform default and re-validates.
@@ -213,11 +261,12 @@ func (a *App) ResetTesseractPath() (TesseractStatus, error) {
 	path := defaultTesseractPath()
 	a.settings.TesseractPath = path
 	if err := a.saveSettings(a.settings); err != nil {
-		return a.tessStatus, err
+		return a.tessStatusSnapshot(), err
 	}
-	a.tessStatus = checkTesseract(path)
+	s := checkTesseract(path)
+	a.setTessStatus(s)
 	parser.SetTesseractPath(path)
-	return a.tessStatus, nil
+	return s, nil
 }
 
 // validateTesseractPath enforces a strict shape on the user-supplied
