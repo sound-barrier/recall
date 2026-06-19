@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRef } from 'vue'
+import { computed, onBeforeUnmount, ref, toRef } from 'vue'
 import type { MatchRecord } from '@/api'
 import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
 
@@ -67,11 +67,19 @@ const dayLabels = computed(() => {
   }))
 })
 
-function cellFill(cell: { winRate: number; total: number; empty: boolean }): string {
+function cellBaseFill(cell: { winRate: number; total: number; empty: boolean }): string {
   if (cell.empty) return 'var(--heatmap-empty)'
   const wrPct = Math.round(cell.winRate * 100)
   const sat = Math.round(20 + Math.min(1, cell.total / Math.max(model.value.maxTotal, 1)) * 80)
   return `color-mix(in srgb, color-mix(in srgb, var(--win) ${wrPct}%, var(--loss)) ${sat}%, var(--heatmap-empty))`
+}
+
+// In-range cells blend toward the accent so the whole span reads as one
+// contiguous block (empty days included) instead of separate outlined boxes.
+function cellFill(cell: { date: string; winRate: number; total: number; empty: boolean }): string {
+  const base = cellBaseFill(cell)
+  if (isActive(cell)) return `color-mix(in srgb, var(--accent) 55%, ${base})`
+  return base
 }
 
 function cellLabel(cell: { date: string; wins: number; losses: number; draws: number; total: number; winRate: number; empty: boolean }): string {
@@ -103,37 +111,133 @@ const activeRange = computed(() => {
   }
 })
 
+const cellByDate = computed(() => {
+  const m = new Map<string, { date: string; empty: boolean }>()
+  for (const c of model.value.cells) m.set(c.date, c)
+  return m
+})
+
+// Grid position → date, so a pointer coordinate maps straight to a day.
+const cellByGrid = computed(() => {
+  const m = new Map<string, string>()
+  for (const c of model.value.cells) m.set(`${c.weekIndex}|${c.dayOfWeek}`, c.date)
+  return m
+})
+
+// ─── Drag-to-select a date range ──────────────────────────────────
+// Press-drag-release across the calendar selects the inclusive DATE span
+// from the anchor day to the release day. Because the span is computed by
+// date min/max (not a grid rectangle), a diagonal drag still yields one
+// CONTIGUOUS block — empty days inside the span are part of it. A plain
+// click (down + up on one day, no movement) picks that single day; a click
+// on an empty day clears the active range. Only a real drag makes a range,
+// and there is only ever ONE range — a new gesture replaces the last.
+const svgRef     = ref<SVGSVGElement | null>(null)
+const dragAnchor = ref<string | null>(null) // YYYY-MM-DD
+const dragHover  = ref<string | null>(null)
+const isDragging = computed(() => dragAnchor.value !== null)
+
+// The span to highlight: the live drag preview while dragging, else the
+// committed filter range. One source of truth → never two boxes.
+const highlightRange = computed(() => {
+  if (dragAnchor.value && dragHover.value) {
+    const a = dragAnchor.value
+    const b = dragHover.value
+    return a <= b ? { from: a, to: b } : { from: b, to: a }
+  }
+  return activeRange.value
+})
+
 function isActive(cell: { date: string }): boolean {
-  const range = activeRange.value
+  const range = highlightRange.value
   if (!range) return false
   return cell.date >= range.from && cell.date <= range.to
 }
 
-function onCellClick(cell: { date: string; empty: boolean }) {
-  if (cell.empty) return
-  const range = activeRange.value
-  // Toggle off only when the user clicks the *same* single-day pick
-  // that's already active. Clicking inside a multi-day brush range
-  // narrows that range to the clicked day rather than clearing —
-  // the brush is the "set a range" affordance, the click is the
-  // "set a day" affordance.
-  if (range && range.from === range.to && range.from === cell.date) {
+// Map a pointer event to the day under it via the SVG geometry. Robust to
+// pointer capture (the gesture is captured on the SVG, so per-cell enter
+// events never fire) and to any CSS scaling of the viewBox.
+function dateFromEvent(e: MouseEvent): string | null {
+  const svg = svgRef.value
+  if (!svg) return null
+  const rect = svg.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) return null
+  const sx = (e.clientX - rect.left) * (width.value / rect.width)
+  const sy = (e.clientY - rect.top) * (height.value / rect.height)
+  const wk = Math.floor((sx - LEFT_GUTTER) / STEP.value)
+  const dw = Math.floor((sy - TOP_GUTTER) / STEP.value)
+  if (wk < 0 || dw < 0 || dw > 6) return null
+  return cellByGrid.value.get(`${wk}|${dw}`) ?? null
+}
+
+function onCellDown(cell: { date: string }, e: MouseEvent) {
+  e.preventDefault() // stop the native text/drag selection that swallows mousemove
+  dragAnchor.value = cell.date
+  dragHover.value  = cell.date
+  // Mouse (not pointer) events: a pointerdown sets implicit pointer capture on
+  // the start cell, which swallows the cross-cell moves; window-level mouse
+  // listeners also keep the drag alive once the cursor leaves the grid.
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+function onMouseMove(e: MouseEvent) {
+  if (dragAnchor.value === null) return
+  const date = dateFromEvent(e)
+  if (date) dragHover.value = date
+}
+
+function onMouseUp() {
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', onMouseUp)
+  const anchor = dragAnchor.value
+  const hover  = dragHover.value
+  dragAnchor.value = null
+  dragHover.value  = null
+  if (anchor === null) return
+  if (hover === null || hover === anchor) {
+    commitClick(anchor)
+    return
+  }
+  const from = anchor <= hover ? anchor : hover
+  const to   = anchor <= hover ? hover : anchor
+  emit('update:filter-from', `${from}T00:00`)
+  emit('update:filter-to',   `${to}T23:59`)
+}
+
+function commitClick(date: string) {
+  // A bare click on an empty day clears the active range ("cancel the box").
+  if (cellByDate.value.get(date)?.empty) {
     emit('update:filter-from', '')
     emit('update:filter-to', '')
     return
   }
-  emit('update:filter-from', `${cell.date}T00:00`)
-  emit('update:filter-to',   `${cell.date}T23:59`)
+  // Re-clicking the active single day toggles it off.
+  const range = activeRange.value
+  if (range && range.from === range.to && range.from === date) {
+    emit('update:filter-from', '')
+    emit('update:filter-to', '')
+    return
+  }
+  emit('update:filter-from', `${date}T00:00`)
+  emit('update:filter-to',   `${date}T23:59`)
 }
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onMouseMove)
+  window.removeEventListener('mouseup', onMouseUp)
+})
 </script>
 
 <template>
   <div
     class="match-heatmap"
+    :class="{ 'is-dragging': isDragging }"
     role="grid"
     :aria-label="`Match calendar — ${model.start} to ${model.end}`"
   >
     <svg
+      ref="svgRef"
       class="heatmap-svg"
       :viewBox="`0 0 ${width} ${height}`"
       :width="width"
@@ -176,9 +280,9 @@ function onCellClick(cell: { date: string; empty: boolean }) {
           :aria-label="cellLabel(cell)"
           role="gridcell"
           :tabindex="cell.empty ? -1 : 0"
-          @click="onCellClick(cell)"
-          @keydown.enter.prevent="onCellClick(cell)"
-          @keydown.space.prevent="onCellClick(cell)"
+          @mousedown="onCellDown(cell, $event)"
+          @keydown.enter.prevent="commitClick(cell.date)"
+          @keydown.space.prevent="commitClick(cell.date)"
         />
       </g>
     </svg>
@@ -190,6 +294,10 @@ function onCellClick(cell: { date: string; empty: boolean }) {
   --heatmap-empty: color-mix(in srgb, var(--surface-2) 92%, var(--border));
 
   flex: 0 0 auto;
+
+  /* Drag-select must not trigger the browser's native blue selection box. */
+  user-select: none;
+  touch-action: none;
 }
 
 .heatmap-svg {
@@ -232,10 +340,20 @@ function onCellClick(cell: { date: string; empty: boolean }) {
   stroke-width: 1.8;
 }
 
+/* In-range cells carry an accent-blended fill (cellFill) + only a faint
+   stroke so the span reads as ONE contiguous block, not a row of separately
+   outlined boxes. No glow / no scale — that's what made a range look like
+   multiple boxes. */
 .heatmap-cell.active {
-  stroke: var(--accent);
-  stroke-width: 1.8;
-  filter: drop-shadow(0 0 4px var(--accent-glow, color-mix(in srgb, var(--accent) 45%, transparent)));
+  stroke: color-mix(in srgb, var(--accent) 45%, transparent);
+  stroke-width: 0.5;
+}
+
+/* While dragging out a range, suppress the per-cell hover pop so the block
+   stays visually stable as the cursor sweeps across it. */
+.match-heatmap.is-dragging .heatmap-cell:hover {
+  stroke-width: 0.5;
+  transform: none;
 }
 
 .heatmap-cell.empty {

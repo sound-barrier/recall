@@ -202,6 +202,9 @@ function sourceLabel(source: string): string {
         </button>
       </li>
     </ul>
+    <!-- Reserve the chip row's height when no filter is active so selecting a
+         date (which makes the chip row appear) never resizes the dossier. -->
+    <div v-else class="active-chips-reserve" aria-hidden="true" />
   </header>
 </template>
 
@@ -242,6 +245,17 @@ function sourceLabel(source: string): string {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
+}
+
+/* The chip row and its empty-state reserve share one min-height so the dossier
+   stays the same height whether or not a date/narrow filter is active. */
+.active-chips,
+.active-chips-reserve {
+  min-height: 1.5rem;
+}
+
+.active-chips-reserve {
+  margin: 0.4rem 0 0;
 }
 
 .active-chip {

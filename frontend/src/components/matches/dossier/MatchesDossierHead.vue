@@ -51,6 +51,17 @@ const {
   narrowedRecords,
 } = props.narrow
 
+// "Reset filter" surfaces the date-range clear on the dossier itself so the
+// user needn't open the Filter-matches panel just to drop a Campaign Log
+// selection. Scoped to the date range only — pickRange('all') clears
+// customFrom / customTo; the other narrow dimensions are left untouched.
+const hasDateRange = computed(
+  () => Boolean(customFrom.value) || Boolean(customTo.value) || pickedRange.value !== 'all',
+)
+function resetDateRange() {
+  props.narrow.pickRange('all')
+}
+
 // ─── Dashboard widget layout ────────────────────────────────────
 //
 // Dossier KPIs and breakdowns render through a registry of
@@ -393,6 +404,17 @@ function toggleNarrow() {
           @narrow-open="(v: boolean) => emit('narrow-open', v)"
         />
       </div>
+
+      <button
+        v-if="hasDateRange"
+        type="button"
+        class="dossier-btn"
+        data-reset-filter
+        title="Clear the selected date range"
+        @click="resetDateRange"
+      >
+        <span aria-hidden="true">⨯</span> Reset filter
+      </button>
     </div>
 
     <!-- Undo-after-trash toast. Itself teleports to <body> so it lives

@@ -11,7 +11,7 @@
  * of the Narrow panel + the `.active-chip.clear` rail chip.
  */
 import { test, expect } from './_fixtures'
-import type { Route } from '@playwright/test'
+import type { Route, Page } from '@playwright/test'
 
 interface Stub {
   match_key: string
@@ -190,5 +190,61 @@ test.describe('campaign-log header', () => {
     // Heatmap active state clears; the leaves list expands back.
     await expect(page.locator('.heatmap-cell.active')).toHaveCount(0)
     await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
+  })
+
+  // Press-drag-release across day cells to select a contiguous date range.
+  async function dragDays(page: Page, fromDate: string, toDate: string) {
+    const a = page.locator(`.heatmap-cell[data-date="${fromDate}"]`)
+    const b = page.locator(`.heatmap-cell[data-date="${toDate}"]`)
+    // The calendar sits below the fold; raw mouse coordinates must be on-screen.
+    await a.scrollIntoViewIfNeeded()
+    const ab = await a.boundingBox()
+    const bb = await b.boundingBox()
+    if (!ab || !bb) throw new Error('heatmap cell not found for drag')
+    await page.mouse.move(ab.x + ab.width / 2, ab.y + ab.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, { steps: 12 })
+    await page.mouse.up()
+  }
+
+  test('dragging across days selects the inclusive date range between them', async ({ page }) => {
+    await dragDays(page, daysAgo(2), daysAgo(1))
+    // [2 days ago .. 1 day ago] → m1-m3 (3 wins) + m4-m5 (2 losses) = 5 matches.
+    await expect(page.locator('.leaf-row')).toHaveCount(5)
+    await expect(page.locator('.heatmap-cell.active')).toHaveCount(2)
+  })
+
+  test('a diagonal drag over empty days still selects one contiguous block', async ({ page }) => {
+    await dragDays(page, daysAgo(7), todayISO)
+    // The whole corpus falls inside [7 days ago .. today].
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
+    // Every day in the span is part of the block — including the no-match day
+    // 6 days ago (it stays an empty cell but reads as selected, not a blue box).
+    const gapDay = page.locator(`.heatmap-cell[data-date="${daysAgo(6)}"]`)
+    await expect(gapDay).toHaveClass(/active/)
+    await expect(gapDay).toHaveAttribute('data-empty', 'true')
+    expect(await page.locator('.heatmap-cell.active').count()).toBeGreaterThan(3)
+  })
+
+  test('clicking an empty day cancels the active range', async ({ page }) => {
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+    // A bare click on a no-match day clears the selection.
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(6)}"]`).click()
+    await expect(page.locator('.heatmap-cell.active')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
+  })
+
+  test('the dossier Reset filter button clears the date range without opening the panel', async ({ page }) => {
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+
+    const reset = page.locator('[data-reset-filter]')
+    await expect(reset).toBeVisible()
+    await reset.click()
+
+    await expect(page.locator('.heatmap-cell.active')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
+    await expect(reset).toHaveCount(0)
   })
 })
