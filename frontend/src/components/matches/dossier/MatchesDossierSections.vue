@@ -32,6 +32,15 @@ const sectionLayout = useSectionLayout()
 // sectionLayout object don't).
 const visibleSectionIds = computed(() => sectionLayout.visibleIds.value)
 
+// Which sections actually render. With matches, the full visible set. With
+// none, only Geography — its "play a match" prompt is the one useful empty
+// state; the Campaign Log + Hero/Mode bands need real records to mean anything.
+const renderableSectionIds = computed(() =>
+  props.records.length > 0
+    ? visibleSectionIds.value
+    : visibleSectionIds.value.filter((id) => id === 'geography'),
+)
+
 // Section drag-reorder (mouse). Only ever 2-3 full-width rows, so a
 // lightweight id-based swap beats the widget grid's index machinery.
 const draggingSectionId = ref<string | null>(null)
@@ -79,34 +88,33 @@ function onSectionMove(id: string, dir: -1 | 1) {
 
 <template>
   <!-- Full-width bands below the dossier grid. `records` is already
-     hidden-stripped so the Campaign Log reconciles with the dossier. -->
-  <template v-if="props.records.length > 0">
-    <DossierSection
-      v-for="(sectionId, sIdx) in visibleSectionIds"
-      :id="sectionId"
-      :key="sectionId"
-      :label="sectionLayout.labelFor(sectionId)"
-      :index="sIdx"
-      :count="visibleSectionIds.length"
-      :dragging="draggingSectionId === sectionId"
-      :drop-target="sectionDropTargetId === sectionId"
-      @remove="sectionLayout.remove"
-      @move="onSectionMove"
-      @drag-start="onSectionDragStart"
-      @drag-over="onSectionDragOver"
-      @drop="onSectionDrop"
-      @drag-end="onSectionDragEnd"
-    >
-      <MatchTimelineHeader
-        v-if="sectionId === 'campaign-log'"
-        :records="props.records"
-        :filter-from="props.filterFrom"
-        :filter-to="props.filterTo"
-        @update:filter-from="(v: string) => emit('update:filterFrom', v)"
-        @update:filter-to="(v: string) => emit('update:filterTo', v)"
-      />
-      <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
-      <MatchHeroModeBand v-else-if="sectionId === 'hero-game-mode'" />
-    </DossierSection>
-  </template>
+     hidden-stripped so the Campaign Log reconciles with the dossier. With no
+     records, renderableSectionIds collapses to just Geography (its prompt). -->
+  <DossierSection
+    v-for="(sectionId, sIdx) in renderableSectionIds"
+    :id="sectionId"
+    :key="sectionId"
+    :label="sectionLayout.labelFor(sectionId)"
+    :index="sIdx"
+    :count="renderableSectionIds.length"
+    :dragging="draggingSectionId === sectionId"
+    :drop-target="sectionDropTargetId === sectionId"
+    @remove="sectionLayout.remove"
+    @move="onSectionMove"
+    @drag-start="onSectionDragStart"
+    @drag-over="onSectionDragOver"
+    @drop="onSectionDrop"
+    @drag-end="onSectionDragEnd"
+  >
+    <MatchTimelineHeader
+      v-if="sectionId === 'campaign-log'"
+      :records="props.records"
+      :filter-from="props.filterFrom"
+      :filter-to="props.filterTo"
+      @update:filter-from="(v: string) => emit('update:filterFrom', v)"
+      @update:filter-to="(v: string) => emit('update:filterTo', v)"
+    />
+    <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
+    <MatchHeroModeBand v-else-if="sectionId === 'hero-game-mode'" />
+  </DossierSection>
 </template>

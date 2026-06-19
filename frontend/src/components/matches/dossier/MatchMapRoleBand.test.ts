@@ -32,6 +32,9 @@ const CELLS: MapRoleCell[] = [
   // Rialto/support is the volume anchor (maxTotal = 12).
   { map: 'rialto', role: 'support', wins: 8, losses: 4, draws: 0, total: 12, winrate: 67 },
   { map: 'ilios', role: 'tank', wins: 2, losses: 2, draws: 0, total: 4, winrate: 50 },
+  // dorado/dps keeps all three roles "played" so the structural tests below
+  // (3 role rows) still hold now that never-played roles are hidden.
+  { map: 'dorado', role: 'dps', wins: 1, losses: 1, draws: 0, total: 2, winrate: 50 },
 ]
 
 function mountBand(narrow = {}) {
@@ -92,6 +95,24 @@ describe('MatchMapRoleBand', () => {
     await oneMonth?.trigger('click')
     expect(oneMonth?.attributes('aria-pressed')).toBe('true')
     expect(localStorage.getItem('recall.mapRoleWindowMonths')).toBe('1')
+  })
+
+  it('hides the row for a role the player has never played', () => {
+    // Only tank + support carry matches; DPS has none, so its row drops out.
+    const noDps: MapRoleCell[] = [
+      { map: 'rialto', role: 'support', wins: 8, losses: 4, draws: 0, total: 12, winrate: 67 },
+      { map: 'ilios', role: 'tank', wins: 2, losses: 2, draws: 0, total: 4, winrate: 50 },
+    ]
+    const w = mountWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: noDps } })
+    const rows = w.findAll('.mr-rowhead').map((n) => n.text())
+    expect(rows).toEqual(['Tank', 'Support'])
+    expect(rows).not.toContain('DPS')
+  })
+
+  it('prompts to play a match when there are none, instead of an empty grid', () => {
+    const w = mountWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: [] } })
+    expect(w.find('.mr-grid').exists()).toBe(false)
+    expect(w.text().toLowerCase()).toContain('at least 1 match must be played to display data')
   })
 
   // The win-rate-hue × volume-saturation math lives in

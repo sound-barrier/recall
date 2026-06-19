@@ -49,10 +49,12 @@ function toggleConfig(e: MouseEvent) {
   configOpen.value = !configOpen.value
 }
 
-// Rows = the configured role subset (empty filter = all roles).
+// Rows = the configured role subset (empty filter = all roles), minus any role
+// the player has never played — an all-empty row carries no signal.
 const visibleRoles = computed<Role[]>(() => {
   const sel = cfg.config.value.roles
-  return sel.length ? ROLES.filter((r) => sel.includes(r)) : ROLES
+  const base = sel.length ? ROLES.filter((r) => sel.includes(r)) : ROLES
+  return base.filter((r) => playedRoles.value.has(r))
 })
 
 // Trailing time-window toggle, mirroring the Campaign Log (1M/3M/6M/
@@ -61,6 +63,17 @@ const visibleRoles = computed<Role[]>(() => {
 const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('recall.mapRoleWindowMonths')
 
 const cells = dossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
+
+// Roles with at least one match in the current (windowed, narrowed) set.
+// Never-played roles are dropped from the rows (see visibleRoles above).
+const playedRoles = computed<Set<Role>>(() => {
+  const s = new Set<Role>()
+  for (const c of cells.value) if (c.total > 0) s.add(c.role)
+  return s
+})
+// Whether the set has ANY match — separates the "play a match first" prompt
+// from the "your filters hid everything" message.
+const hasMatchData = computed(() => playedRoles.value.size > 0)
 
 interface Col { slug: string; display: string; gameMode: string; firstInGroup: boolean }
 
@@ -168,7 +181,9 @@ const gridTemplateRows = computed(
 // Distinguish "no map roster at all" (reference data missing) from
 // "filtered down to nothing" so each gets the right empty message.
 const rosterEmpty = computed(() => ow.mapIndex.value.size === 0)
-const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length === 0 || visibleRoles.value.length === 0))
+// No matches played at all (vs. a roster/filter problem) — gets its own prompt.
+const noMatchesData = computed(() => !rosterEmpty.value && !hasMatchData.value)
+const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value && (columns.value.length === 0 || visibleRoles.value.length === 0))
 </script>
 
 <template>
@@ -216,7 +231,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length
 
     <div class="mr-scroll">
       <div
-        v-if="!rosterEmpty && !filteredEmpty"
+        v-if="!rosterEmpty && !noMatchesData && !filteredEmpty"
         class="mr-grid"
         role="group"
         aria-label="Map by role performance heatmap"
@@ -271,6 +286,10 @@ const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length
           />
         </template>
       </div>
+
+      <p v-else-if="noMatchesData" class="mr-loading" data-mr-no-data>
+        At least 1 match must be played to display data.
+      </p>
 
       <p v-else-if="filteredEmpty" class="mr-loading">
         No maps match your filters.

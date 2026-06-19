@@ -145,3 +145,66 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('.mr-cell[aria-label*="Support on Rialto"]')).toBeVisible()
   })
 })
+
+test.describe('Geography — never-played roles + empty state', () => {
+  async function open(page: import('@playwright/test').Page, matches: unknown[]) {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(matches) })
+    })
+    await page.route('**/api/v1/system/reference-data', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(REFERENCE_DATA) })
+    })
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('.set-dossier')).toBeVisible()
+  }
+
+  // Each role, when never played, drops out — and the remaining rows keep the
+  // canonical Tank → DPS → Support order. Parameterized so a future hardcoded
+  // role or a row-ordering regression fails loudly for the specific role.
+  const ROLE_CASES = [
+    {
+      hidden: 'Tank',
+      matches: [
+        match('m1', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:01'),
+        match('m2', 'rialto', 'escort', 'dps', 'tracer', 'victory', '10:02'),
+      ],
+      rows: ['DPS', 'Support'],
+    },
+    {
+      hidden: 'DPS',
+      matches: [
+        match('m1', 'ilios', 'control', 'tank', 'reinhardt', 'victory', '10:01'),
+        match('m2', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:02'),
+      ],
+      rows: ['Tank', 'Support'],
+    },
+    {
+      hidden: 'Support',
+      matches: [
+        match('m1', 'ilios', 'control', 'tank', 'reinhardt', 'victory', '10:01'),
+        match('m2', 'rialto', 'escort', 'dps', 'tracer', 'victory', '10:02'),
+      ],
+      rows: ['Tank', 'DPS'],
+    },
+  ] as const
+
+  for (const c of ROLE_CASES) {
+    test(`hides the ${c.hidden} row when ${c.hidden} was never played`, async ({ page }) => {
+      await open(page, [...c.matches])
+      const band = page.locator('.match-map-role')
+      await expect(band).toBeVisible()
+      await expect(band.locator('.mr-rowhead')).toHaveText([...c.rows])
+      await expect(band.locator('.mr-rowhead', { hasText: c.hidden })).toHaveCount(0)
+    })
+  }
+
+  test('prompts to play a match when there are none', async ({ page }) => {
+    await open(page, [])
+    const band = page.locator('.match-map-role')
+    await expect(band).toBeVisible()
+    await expect(band.locator('.mr-grid')).toHaveCount(0)
+    await expect(band.locator('[data-mr-no-data]'))
+      .toContainText('At least 1 match must be played to display data')
+  })
+})
