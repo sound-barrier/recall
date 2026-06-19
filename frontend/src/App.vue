@@ -59,25 +59,17 @@ const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsV
 // names so the existing call sites in this file stay unchanged.
 const appStore = useAppStore()
 const { view } = storeToRefs(appStore)
-const { goToView } = appStore
 
-// Matches domain: records (source of truth) + the derived triage lists live
-// in the matches store. App's load() boot coordinator writes `records`;
-// destructure with the same local names so this file's call sites are
-// unchanged.
+// Matches domain: the first-load skeleton gate, the unsupported-OCR modal gate
+// (focus-trapped here), the parse sr-only announcement, and the records count
+// for the skeleton. Everything else is read by the views/chrome that need it.
 const matchesStore = useMatchesStore()
 const {
   records,
-  cancellingParse,
   firstLoadPending,
-  parseProgress,
-  parseLog,
   showUnsupportedModal,
   parseAnnouncement,
 } = storeToRefs(matchesStore)
-const {
-  onCancelParse,
-} = matchesStore
 
 // All App-shell keyboard wiring — tablist Arrow/Home/End nav, the global
 // shortcut registry (j/k, g-prefix, e/t, ?), and the search→panel auto-track —
@@ -164,19 +156,9 @@ useAppBoot()
       </main>
     </div>
 
-    <!-- Persistent parse-status footer — visible from every tab while a
-         parse is in flight; slides off-bottom 1.5 s after completion.
-         Click anywhere on it to jump to the Ingest tab for the detailed
-         log view. -->
-    <ParseStatusBar
-      :parse-progress="parseProgress"
-      :parse-log="parseLog"
-      :cancelling-parse="cancellingParse"
-      :inert="backgroundFrozen || undefined"
-      :aria-hidden="backgroundFrozen ? 'true' : undefined"
-      @go-to-view="goToView"
-      @cancel-parse="onCancelParse"
-    />
+    <!-- Persistent parse-status footer — reads the parse lifecycle + the
+         background-freeze from the stores + self-applies inert. -->
+    <ParseStatusBar />
 
     <!-- Floating overlay cluster — modals, the detail panel, lightbox, toasts,
          and the first-launch tour. Reads all its state from the stores. -->
