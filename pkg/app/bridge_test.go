@@ -31,6 +31,7 @@ var (
 var (
 	TesseractProbeCandidates = tesseractProbeCandidates
 	ParseTesseractVersion    = parseTesseractVersion
+	CheckTesseract           = checkTesseract
 	RunWatchEvents           = runWatchEvents
 	ContainsProfile          = containsProfile
 	PathIsMissingOrNotADir   = pathIsMissingOrNotADir
@@ -53,8 +54,9 @@ var (
 
 // ── Other function-variable / tunable seams (pointers for save/swap/restore) ──
 var (
-	RevealCommand    = &revealCommand
-	MaxZipEntryBytes = &maxZipEntryBytes
+	RevealCommand         = &revealCommand
+	MaxZipEntryBytes      = &maxZipEntryBytes
+	TesseractProbeTimeout = &tesseractProbeTimeout
 )
 
 // ── Unexported *App methods (method expressions) ──────────────────────────

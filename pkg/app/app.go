@@ -208,10 +208,16 @@ func (a *App) Startup(ctx context.Context) {
 	if !a.initProfiles() {
 		return
 	}
-	a.resolveSettings()
+	// Open the store BEFORE resolving settings so the data path (the
+	// frontend's GetMatchResults) is never gated on the Tesseract probe.
+	// resolveSettings shells out to `tesseract --version`, which — even with
+	// its timeout — can take seconds during a cold-boot Windows Defender scan;
+	// gating the DB open behind it left the user on a loading screen with no
+	// data. openStore depends only on the active profile dir, not on settings.
 	if !a.openStore() {
 		return
 	}
+	a.resolveSettings()
 	a.bootReAggregate()
 	a.startEnabledServices()
 }
