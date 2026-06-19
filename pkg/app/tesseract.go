@@ -166,10 +166,19 @@ const tesseractProbeRetries = 5
 
 var tesseractProbeRetryDelay = 2 * time.Second
 
-// probeTesseractOnStartup gates the background probe goroutine. Tests set it
-// false (bridge_test.go) so Startup doesn't spawn a goroutine that would
-// EventsEmit on a non-lifecycle context; the probe logic is covered directly.
-var probeTesseractOnStartup = true
+// probeTesseractOnStartup gates Startup's background probe goroutine. OFF by
+// default: tests AND the HTTP server both call Startup with a plain
+// context.Background(), and the probe's "tesseract-status" emit would call
+// wruntime.EventsEmit on that — which the Wails runtime answers by FATALLY
+// exiting the process (not a recoverable panic). Only the entry points whose
+// emit path is safe opt in via EnableTesseractProbeOnStartup: the desktop
+// (RunWails, real lifecycle context) and the serveronly server (main_server,
+// SSE-only emit). The probe logic is covered directly in tests.
+var probeTesseractOnStartup = false
+
+// EnableTesseractProbeOnStartup opts this process into the cold-boot-safe
+// background engine probe. Call once, before Startup runs.
+func EnableTesseractProbeOnStartup() { probeTesseractOnStartup = true }
 
 func (a *App) setTessStatus(s TesseractStatus) {
 	a.tessMu.Lock()

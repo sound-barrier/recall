@@ -26,5 +26,8 @@ func main() {
 		}
 	}
 
+	// Server mode emits "tesseract-status" over SSE only (no Wails EventsEmit),
+	// so the cold-boot-safe background engine probe is safe to run here too.
+	app.EnableTesseractProbeOnStartup()
 	cmd.RunServer(a, assets)
 }
