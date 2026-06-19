@@ -463,6 +463,22 @@ jobs:
       - name: Generate coverage report
         run: cd frontend && npm run test:coverage
 
+      # Surface line + branch coverage (V8 reports real branch coverage) in the
+      # job summary from the Cobertura rates. Informational; the gate is
+      # vitest.config.ts coverage.thresholds.
+      - name: Coverage summary (line + branch)
+        run: |
+          xml=frontend/coverage/cobertura-coverage.xml
+          line=$(grep -oE 'line-rate="[0-9.]+"' "$xml" | head -1 | grep -oE '[0-9.]+')
+          branch=$(grep -oE 'branch-rate="[0-9.]+"' "$xml" | head -1 | grep -oE '[0-9.]+')
+          {
+            echo "### Frontend coverage (unit)"
+            echo ""
+            echo "| Metric | Coverage |"
+            echo "|---|---:|"
+            awk -v l="$line" -v b="$branch" 'BEGIN { printf "| Line | %.1f%% |\n| Branch | %.1f%% |\n", l*100, b*100 }'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
@@ -501,6 +517,25 @@ jobs:
       # both formats in a single fetch.
       - name: Convert coverage profile to Cobertura XML
         run: gocover-cobertura < coverage/go/coverage.out > coverage/go/cobertura.xml
+
+      # Surface line + branch coverage in the job summary. Go has no native
+      # branch coverage, so "branch" is basic-block coverage (covered/total
+      # blocks in the coverprofile) — its branch-equivalent. Mirrors e2e.yml's
+      # coverage summary; informational (the func total above is what gates).
+      - name: Coverage summary (line + branch)
+        run: |
+          line=$(awk '/^total:/ { gsub(/%/,"",$NF); print $NF }' coverage/go/coverage.txt)
+          block=$(awk 'NR>1 { t++; if ($NF+0>0) c++ } END { if (t) printf "%.1f", 100*c/t }' coverage/go/coverage.out)
+          {
+            echo "### Go coverage (unit)"
+            echo ""
+            echo "| Metric | Coverage |"
+            echo "|---|---:|"
+            echo "| Line (statement) | ${line}% |"
+            echo "| Branch (basic-block) | ${block}% |"
+            echo ""
+            echo "_Go has no native branch coverage; basic-block coverage is its branch-equivalent._"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
