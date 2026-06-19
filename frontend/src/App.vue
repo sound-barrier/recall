@@ -26,6 +26,7 @@ import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useAnchorToast } from '@/composables/app/useAnchorToast'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
+import { useFirstRun } from '@/composables/app/useFirstRun'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
 import AppOverlays, { type OverlaysApi } from '@/components/app/AppOverlays.vue'
@@ -34,7 +35,6 @@ import ErrorBanner from '@/components/app/ErrorBanner.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
 import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
-import { useFirstRunAcknowledged } from '@/composables/shared/useFirstRunAcknowledged'
 
 // The floating overlay cluster (modals, detail panel, lightbox, toasts, tour)
 // lives in AppOverlays — it owns those lazy-loaded chunks now.
@@ -93,7 +93,6 @@ const {
   parseLog,
   lastParsedAt,
   recordsPulse,
-  tourActive,
   showUnsupportedModal,
   parseAnnouncement,
 } = storeToRefs(matchesStore)
@@ -144,15 +143,12 @@ const settingsStore = useSettingsStore()
 const {
   tesseractStatus,
   tesseractReady,
-  screenshotsDir,
   probing,
   screenshotCandidates,
 } = storeToRefs(settingsStore)
 const {
   gotoEngineSettings,
-  pickDir,
   loadScreenshotCandidates,
-  pickDetectedSource,
 } = settingsStore
 
 const showManualMatchModal = ref(false)
@@ -317,16 +313,14 @@ function onMatchesNarrowOpen(open: boolean) {
 // before naming their main account. ESC / backdrop intentionally do
 // NOT close it. The composable persists the dismissal in localStorage
 // so the modal never returns once acknowledged.
-const { pending: firstRunPending, ack: ackFirstRun } = useFirstRunAcknowledged()
-// Gate on the tour too — `it should not appear if the tour is
-// starting or continuing on`. `tourActive` is seeded synchronously
-// from the onboarding flag (see readTourWillOpen above), so on a
-// fresh install where both flags are unset the tour wins the first
-// paint; once the user finishes / skips the tour, `tourActive`
-// flips false and the modal surfaces. `firstRunPending` itself ANDs
-// localStorage acknowledgement with the active-profile-is-default
-// check — see useFirstRunAcknowledged.
-const firstRunModalOpen = computed(() => firstRunPending.value && !tourActive.value)
+// First-run "name your main account" gate + its step-2 source-pick handlers
+// live in useFirstRun; firstRunModalOpen feeds the background-freeze computed.
+const {
+  firstRunModalOpen,
+  onFirstRunDismiss,
+  onFirstRunPickSource,
+  onFirstRunPickCustomSource,
+} = useFirstRun()
 
 // Every modal surface that should freeze the background. Used by
 // the masthead container + status bar to flip `inert` + aria-hidden
@@ -341,43 +335,6 @@ const backgroundFrozen = computed(() =>
   || showManualMatchModal.value,
 )
 
-function onFirstRunDismiss(renamedTo: string | null) {
-  ackFirstRun()
-  // If the user renamed the active profile, the server tore down +
-  // re-init'd the SQLite store at the new directory — same teardown
-  // as the masthead chip's switch/create/rename flow. Mirror that
-  // flow's window.location.reload() so every composable (including
-  // ProfileSwitcher's onMounted GetProfiles()) re-fetches against
-  // the renamed profile. A targeted refresh isn't enough: profile
-  // state is owned by the chip, not App.vue.
-  if (renamedTo !== null) {
-    window.location.reload()
-  }
-}
-
-// Step 2 of the first-run modal: the user clicked a "found" source
-// card. Commit the path through the existing setScreenshotsDir flow
-// (same writer the Settings picker uses) — the modal emits dismiss
-// in lockstep so the localStorage gate flips on the same turn.
-async function onFirstRunPickSource(path: string) {
-  await pickDetectedSource(path)
-}
-
-// Step 2 of the first-run modal: the user clicked the custom-pick
-// tile. Trigger the native folder dialog (or window.prompt in the
-// server-mode fallback) and, on a successful pick, commit + ack the
-// first-run gate so the modal unmounts. Cancel leaves the modal on
-// step 2 so the user can try again.
-async function onFirstRunPickCustomSource() {
-  try {
-    await pickDir()
-    if (screenshotsDir.value) {
-      ackFirstRun()
-    }
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
 
 // Search → panel auto-track. When the panel is open AND the user
 // is actively searching (any clauses parsed), the panel selection
