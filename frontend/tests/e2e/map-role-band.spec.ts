@@ -114,16 +114,22 @@ test.describe('Geography — Map × Role band', () => {
     expect(rialto).toBeGreaterThan(dorado)
   })
 
-  test('clicking a populated cell narrows to that (map, role)', async ({ page }) => {
+  test('a cell single-selects + highlights; clicking it again resets (click off)', async ({ page }) => {
     const band = page.locator('.match-map-role')
-    const cell = band.locator('.mr-cell[aria-label*="Support on Rialto"]')
-    await expect(cell).toBeVisible()
-    await cell.click()
-
     const chips = page.locator('ul.active-chips')
-    await expect(chips).toBeVisible()
+    const cell = () => band.locator('.mr-cell[aria-label*="Support on Rialto"]')
+
+    // Select → narrowed to that (map, role) AND exactly one highlighted cell.
+    await cell().click()
     await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toBeVisible()
     await expect(chips.locator('.active-chip', { hasText: 'support' })).toBeVisible()
+    await expect(cell()).toHaveClass(/selected/)
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(1)
+
+    // Click the selected cell again → reset (click off), like the calendar.
+    await cell().click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(0)
+    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toHaveCount(0)
   })
 
   test('clicking a game-mode group header narrows to that game-mode', async ({ page }) => {
