@@ -21,6 +21,7 @@ async function mockVersion(page: import('@playwright/test').Page, v: string) {
 
 interface UpdateResponse {
   available: boolean
+  dev_build?: boolean
   latest: string
   game_data?: {
     commit_sha: string
@@ -43,7 +44,7 @@ async function mockUpdate(page: import('@playwright/test').Page, payload: Update
     await route.fulfill({
       status: 200, contentType: 'application/json',
       body: JSON.stringify({
-        checked: true, dev_build: false,
+        checked: true, dev_build: payload.dev_build ?? false,
         available: payload.available, latest: payload.latest,
         url: `https://example.test/release/${payload.latest}`,
         ...(payload.release_notes ? { release_notes: payload.release_notes } : {}),
@@ -85,23 +86,44 @@ test.describe('update-check modal', () => {
     await expect(page.locator('[data-update-check-manifest]')).toContainText(/Phoenix/)
   })
 
-  test('renders the from→to freshness header with applied + incoming commits', async ({ page }) => {
+  test('leads game data with a plain-language summary + age, no commit SHA', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: false, latest: '0.3.0',
       game_data: {
         commit_sha: 'def5678',
         applied_commit: 'abc1234',
+        applied_at: new Date(Date.now() - 14 * 86_400_000).toISOString(),  // 14 days ago
         has_update: true,
         added_heroes: ['Phoenix'],
+        added_maps: ['Cascade'],
       },
     })
     await page.goto('/')
 
     await page.locator('[data-update-check-trigger]').click()
-    const freshness = page.locator('[data-update-check-freshness]')
-    await expect(freshness).toContainText(/MAIN @ abc1234/)
-    await expect(freshness).toContainText(/MAIN @ def5678/)
+    // Plain headline naming the kind/counts; the manifest names the items.
+    await expect(page.locator('[data-update-check-summary]')).toContainText('1 new hero, 1 new map available')
+    await expect(page.locator('[data-update-check-freshness]')).toContainText('Your roster data is 14 days old')
+    // The meaningless commit SHAs are gone from the entire modal.
+    await expect(page.locator('[role="dialog"][aria-modal="true"]')).not.toContainText('MAIN @')
+    await expect(page.locator('[role="dialog"][aria-modal="true"]')).not.toContainText('abc1234')
+  })
+
+  test('frames a dev build as ahead of the latest release', async ({ page }) => {
+    await mockVersion(page, '0.5.0-dev')
+    await mockUpdate(page, {
+      dev_build: true, available: false, latest: '0.4.0',
+      game_data: { commit_sha: 'abc1234', applied_commit: 'abc1234', has_update: false },
+    })
+    await page.goto('/')
+
+    await page.locator('[data-update-check-trigger]').click()
+    const dev = page.locator('[data-update-check-devbuild]')
+    await expect(dev).toContainText('Development build')
+    await expect(dev).toContainText('v0.5.0-dev')
+    await expect(dev).toContainText('Ahead of the latest release')
+    await expect(dev).toContainText('v0.4.0')
   })
 
   test('Apply button calls POST /system/data-update and shows success state', async ({ page }) => {
