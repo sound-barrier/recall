@@ -384,8 +384,8 @@ const levelTitle = computed(() => {
 }
 
 .hm-window-btn.active {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
 }
 
 /* Gear — root-level config popover. Accent dot when non-default. */

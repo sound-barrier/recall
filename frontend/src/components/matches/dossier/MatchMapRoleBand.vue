@@ -384,8 +384,8 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 }
 
 .mr-window-btn.active {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
 }
 
 /* Gear — opens the band's display-filter popover. An accent dot in the
