@@ -12,9 +12,10 @@ Recall is a Wails v2 desktop app that watches a folder of Overwatch screenshots,
 OCRs them with Tesseract, merges per-match data into SQLite, and surfaces the
 match history in-app — a filterable dossier plus a "Trends" section of ECharts
 time-series charts (SR, win-rate, per-match stats). Stack: Go backend + Vue 3
-frontend (Vite) + `modernc.org/sqlite` (pure-Go, no CGo) + Tesseract CLI shelled
-out to. The user is a competitive OW player who wants the tool to surface what
-they're good/bad at by hero/map/type.
+frontend (Vite, Pinia domain stores + a thin declarative `App.vue` shell —
+see `frontend/CLAUDE.md`) + `modernc.org/sqlite` (pure-Go, no CGo) + Tesseract
+CLI shelled out to. The user is a competitive OW player who wants the tool to
+surface what they're good/bad at by hero/map/type.
 
 Data flow at a glance: `screenshots/*.png` → Tesseract/parser → SQLite per-type
 tables (source of truth) → read-time aggregation into `MatchRecord` → Wails/Vue

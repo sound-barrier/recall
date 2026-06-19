@@ -15,13 +15,19 @@ banner, version, update-check, dataLocation), `useMatchesStore` (records +
 derived triage lists, parse lifecycle, the narrow/anchor filter cluster, the
 dossier-feeding narrowedRecords), `useSettingsStore` (Tesseract/OCR engine,
 folder-watch, screenshots-dir, theme), and `useUiStore` (detail-panel
-selection, screenshot preview/lightbox, card focus). `App.vue` is the
-router-shell that reads those stores and mounts one of four view SFCs via
-`<XxxView v-if="appStore.view === '…'" />`: `SettingsView`, `IngestView`,
-`MatchesView`, `UnknownMapsView` (each in its feature folder under
-`frontend/src/components/`). It still owns the boot coordinator (`load()`'s
-`Promise.allSettled` fan-out into the stores' setters) + the SSE event stream +
-clear-DB/backup (coordinator-level ops).
+selection, screenshot preview/lightbox, card focus, the narrow-panel +
+manual-match modal open-flags). `App.vue` is a thin **declarative shell** (~190
+lines, hard-capped at 200 — see "App.vue is the shell" below): it reads the
+stores, wires the App-shell composables (`composables/app/`), assembles the
+`overlaysApi` bundle, and renders the chrome (`AppMasthead` + banners) + one of
+four view SFCs via `<XxxView v-if="appStore.view === '…'" />` (`SettingsView`,
+`IngestView`, `MatchesView`, `UnknownMapsView`, each in its feature folder under
+`frontend/src/components/`) + `AppOverlays`. It owns **no** business logic: the
+boot coordinator lives in `useAppBoot` (on-mount fan-out into each store's
+loaders + the non-dismissible Startup-failure modal), keyboard wiring in
+`useAppKeyboard`, the first-run gate in `useFirstRun`, the anchor toast in
+`useAnchorToast`, the tour bridge in `useOnboardingTourBridge`; the SSE event
+stream + parse lifecycle + clear-DB/backup live in the matches store.
 
 **Store conventions (mirror the existing stores):** setup-style stores
 (`defineStore('x', () => {…})`) ARE composables with a global instance — migrate
@@ -40,6 +46,37 @@ per-row/table view state) STAY composables — a singleton store would break the
 Tests seed stores via `setActivePinia(createPinia())` (+ `mountApp`/`mountWidget`
 install a Pinia). Per-card UI state still flows to MatchesView + UnknownMapsView
 via the `CardStateApi` bundle exported from MatchesView.vue.
+
+**Vue 3 + Pinia thin-shell is the desired architecture — keep it that way.** This
+is the target for all new work, not just a description of today's state. **App.vue
+is the shell**: ≤200 *code* lines (comments excluded), no business logic, no
+`onMounted`, no orchestration. New cross-cutting state goes in a store; new
+App-shell wiring (lifecycle, keyboard, boot, a gated modal) goes in a
+`composables/app/` composable App calls; a new view affordance is wired by the
+view reading the store directly. Choose a **composable over a store action** when
+the logic uses component lifecycle (`onMounted`) or would create an app↔domain
+store import cycle — `useAppBoot` fans into the matches/settings stores' loaders
+without coupling their modules; a `boot()` action on the app store would have.
+
+**Migrate a component off props/emits by having it read the stores** (proven
+across all four views + `AppMasthead`): read the stores into locals with the SAME
+names the template uses (top-level refs auto-unwrap, so the template is
+untouched), replace each `emit('x', …)` with the matching store action or
+UI-store flag, then delete `defineProps`/`defineEmits`. Components read stores
+**directly** — App does not prop-drill data down or wire mutation emits back up.
+**UI open-state** (the detail-panel `selection`, screenshot `preview`,
+`cardFocus`, the narrow-panel + manual-match flags) lives in `useUiStore`; App's
+`backgroundFrozen` reads the flags and the owning view flips them.
+
+**Testing a store-reading component**: `vi.mock('@/api', …)` with `importOriginal`
+overriding only the calls the test drives, `setActivePinia(createPinia())`, seed
+the stores via their setters / direct state mutation, `vi.spyOn(store, 'action')`
+BEFORE mount, then assert the spies / api mock / store state — never
+`wrapper.emitted(...)`. For App-level tests through `mountApp`, the isolation
+triad is load-bearing (it root-caused the App.test 0-GetMatchResults flake):
+`mountApp` does `vi.resetModules()` + `vi.doUnmock('@/api')` and exposes
+`mockedApi()` so the test inspects the exact mock the store bound; verify locally
+with `vitest run --no-file-parallelism` (single fork ≈ CI's low core count).
 
 **File layout — group by feature, not flat.** `components/` and `composables/`
 are organized into feature subfolders, not one giant flat directory:
