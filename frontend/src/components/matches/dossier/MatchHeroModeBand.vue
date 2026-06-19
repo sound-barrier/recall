@@ -102,10 +102,11 @@ const belowFloor = computed(() => decisiveTotal.value < config.value.minMatches)
 const mapCells = dossier.mapCounts(() => ({ windowMonths: windowMonths.value }))
 const mapTiles = computed(() => {
   if (depth.value !== 1) return []
+  // Alphabetical by display name (mirrors the Geography band's column order),
+  // NOT by volume — the dossier refactor regressed this to total-desc.
   return mapCells.value
-    .slice()
-    .sort((a, b) => b.total - a.total || a.map.localeCompare(b.map))
     .map((c) => ({ slug: c.map, display: mapLabel(c.map), cell: c }))
+    .sort((a, b) => a.display.localeCompare(b.display))
 })
 
 // ── Level 2 (matches): the drilled map's recent games ──

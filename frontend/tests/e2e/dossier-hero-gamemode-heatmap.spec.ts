@@ -219,8 +219,14 @@ test.describe('dossier — Hero × Game-Mode drill-down', () => {
     await expect(band.locator('.hm-title')).toContainText('Control maps')
     await expect(chips).toHaveCount(2) // Hero + Type
 
-    // L1 → L2: click the most-played map tile (route66, 6 matches).
-    await band.locator('.hm-map-tile').first().click()
+    // Maps are sorted ALPHABETICALLY, not by volume — havana (4 games) comes
+    // before route66 (6 games).
+    const mapNames = await band.locator('.hm-map-tile .hm-map-name').allInnerTexts()
+    expect(mapNames[0]!.toLowerCase()).toContain('havana')
+    expect(mapNames[1]!.toLowerCase()).toContain('route')
+
+    // L1 → L2: click route66 specifically (it's second now, not first).
+    await band.locator('.hm-map-tile').filter({ hasText: /route/i }).click()
     await expect(band.locator('[data-hero-mode-matches]')).toBeVisible()
     await expect(band.locator('.hm-match-row')).toHaveCount(6)
     await expect(band.locator('.hm-title')).toContainText('recent matches')

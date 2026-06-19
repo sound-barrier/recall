@@ -102,10 +102,23 @@ describe('MatchHeroModeBand', () => {
     expect(wrapper.find('[data-hero-mode-maps]').exists()).toBe(true)
     const tiles = wrapper.findAll('.hm-map-tile')
     expect(tiles.length).toBe(2)
-    expect(tiles[0]!.text()).toContain('route66')
-    expect(tiles[0]!.text()).toContain('60%')
+    const tileText = tiles.map((t) => t.text()).join(' ')
+    expect(tileText).toContain('route66')
+    expect(tileText).toContain('60%')
     expect(wrapper.find('.hm-title').text()).toContain('lucio × Control maps')
     expect(wrapper.find('[data-hero-mode-back]').exists()).toBe(true)
+  })
+
+  it('sorts the drilled-down maps alphabetically by name, not by volume', async () => {
+    const wrapper = mountWidget(MatchHeroModeBand, {
+      narrow: makeNarrow(),
+      configSeed: FLOOR_CONFIG,
+      dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
+    })
+    await wrapper.find('.heatmap-cell.cell-win').trigger('click')
+    // route66 has more games (10 vs 4) but havana sorts first alphabetically.
+    const names = wrapper.findAll('.hm-map-tile .hm-map-name').map((n) => n.text())
+    expect(names).toEqual(['havana', 'route66'])
   })
 
   it('Go back pops to the root and reverts only the picks the band applied', async () => {
@@ -150,7 +163,9 @@ describe('MatchHeroModeBand', () => {
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS, recentMatches: RECENT },
     })
     await wrapper.find('.heatmap-cell.cell-win').trigger('click')
-    await wrapper.find('.hm-map-tile').trigger('click') // route66 (most-played first)
+    // Maps now sort alphabetically (havana before route66), so target route66 by name.
+    const route66Tile = wrapper.findAll('.hm-map-tile').find((t) => t.text().includes('route66'))
+    await route66Tile!.trigger('click')
     expect(narrow.pickMap).toHaveBeenCalledWith('route66')
     expect(wrapper.find('[data-hero-mode-matches]').exists()).toBe(true)
     const matchRows = wrapper.findAll('.hm-match-row')
