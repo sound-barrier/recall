@@ -160,10 +160,22 @@ function cellLabel(slug: string, role: Role): string {
   return `${ROLE_LABEL[role]} on ${disp}: ${c.wins}-${c.losses}-${c.draws} · ${c.winrate}% win rate over ${c.total} ${games}`
 }
 
+// A cell reads as selected when its map AND role are the active pick.
+function isSelected(slug: string, role: Role): boolean {
+  return narrow.pickedMaps.value.has(slug) && narrow.pickedRoles.value.has(role)
+}
+
 function onCell(slug: string, role: Role) {
   if (!cellFor(slug, role)) return
-  narrow.pickMap(slug)
-  narrow.pickRole(role)
+  // Single-select, mirroring the Campaign Log calendar: clicking the selected
+  // cell clears it (click off to reset); clicking another replaces the pick.
+  if (isSelected(slug, role)) {
+    narrow.pickedMaps.value  = new Set()
+    narrow.pickedRoles.value = new Set()
+  } else {
+    narrow.pickedMaps.value  = new Set([slug])
+    narrow.pickedRoles.value = new Set([role])
+  }
 }
 
 // Inline track template — CSS repeat() can't take a custom-property
@@ -273,13 +285,18 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
             :key="`${role}-${col.slug}`"
             type="button"
             class="mr-cell"
-            :class="{ 'mr-empty': !cellFor(col.slug, role), 'mr-group-start': col.firstInGroup }"
+            :class="{
+              'mr-empty': !cellFor(col.slug, role),
+              'mr-group-start': col.firstInGroup,
+              selected: isSelected(col.slug, role),
+            }"
             :style="{
               gridColumn: i + 2,
               gridRow: rIdx + 3,
               background: fill(col.slug, role),
             }"
             :disabled="!cellFor(col.slug, role)"
+            :aria-pressed="isSelected(col.slug, role)"
             :title="cellLabel(col.slug, role)"
             :aria-label="cellLabel(col.slug, role)"
             @click="onCell(col.slug, role)"
@@ -558,6 +575,15 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 .mr-cell:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+  z-index: 1;
+}
+
+/* The active map × role pick — a solid accent ring + glow so the one selected
+   cell stands out; clicking it again clears the pick (click off to reset). */
+.mr-cell.selected {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 6px var(--accent-glow, color-mix(in srgb, var(--accent) 45%, transparent));
   z-index: 1;
 }
 
