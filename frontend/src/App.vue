@@ -389,8 +389,6 @@ const {
   onHideMatches,
   onBulkPlayMode,
   onBulkQueue,
-  onResolveAmbiguous,
-  onIgnoreScreenshot,
 } = useMatchActions()
 
 // MatchesView's left-side "Narrow this set" panel mirrors
@@ -522,63 +520,8 @@ const wld = computed(() => tallyWLD(
   matchesNarrow.leaverHandling.value === 'exclude-tally',
 ))
 
-// Per-card "source screenshots" sub-panel expansion lives in the UI store now
-// (shared with the detail panel); destructure for the CardStateApi bundle.
-const { toggleSources, isSourcesOpen } = uiStore
-
-// Screenshot UI state — per-filename inline expand + cache-warm preload
-// registry (the fullscreen lightbox itself lives in AppOverlays). Image bytes
-// come from the Go ScreenshotHandler at /_screenshot/<filename>. The preview
-// open/error toggles feed the CardStateApi bundle; openLightbox is the gesture
-// MatchesView / UnknownMapsView cards fire.
-const screenshotPreview = uiStore.preview
-const {
-  isPreviewOpen,
-  hasPreviewError,
-  togglePreview,
-  onPreviewError,
-  openLightbox,
-} = screenshotPreview
-
-// Per-card UI state for UnknownMapsView. The Unknown tab's expand/
-// collapse gesture is INLINE — clicking a card head flips the local
-// `unknownExpanded` map without touching `selection`. Pre-fix this
-// reused App.vue's `toggleExpand` which calls `selection.open(id)`
-// + scrolls the Matches detail panel into view, but the outer
-// `.container` becomes `inert` whenever `selection.isOpen` is true.
-// Result: the user clicked an unknown card, the empty detail panel
-// dragged itself open over a non-Matches record, and the entire
-// container locked down. Only Esc (which closes the panel) restored
-// interactivity. The user-reported "page gets hyperfocused, only
-// Esc unlocks" symptom is exactly this state. Local state keeps the
-// Unknown tab self-contained.
-const unknownExpanded = ref<Record<string, boolean>>({})
-function isUnknownExpanded(id: string) {
-  return !!unknownExpanded.value[id]
-}
-function toggleUnknownExpand(id: string) {
-  unknownExpanded.value = {
-    ...unknownExpanded.value,
-    [id]: !unknownExpanded.value[id],
-  }
-}
-
-// CardStateApi: all-function shape post item-8; the underlying
-// preview state lives inside the `useScreenshotPreview` composable
-// (item 12) so MatchDetailPanel + UnknownMapsView + the fullscreen
-// lightbox all consult one owner. The composable persists for the
-// life of App.vue so the same preview-open state survives a tab
-// swap from Unknown → Matches → Unknown.
-const cardState = {
-  isSelected: isUnknownExpanded,
-  isSourcesOpen,
-  isPreviewOpen,
-  hasPreviewError,
-  toggleExpand: toggleUnknownExpand,
-  toggleSources,
-  togglePreview,
-  onPreviewError,
-}
+// Per-card source-preview/expand state (the CardStateApi bundle) + the
+// triage actions live inside UnknownMapsView now — it's the only consumer.
 
 // ── Keyboard shortcuts — full registry ─────────────────────────
 // Hoisted to useGlobalKeyboard so App.vue stops carrying the
@@ -819,16 +762,8 @@ onMounted(() => {
         <IngestView v-if="view === 'ingest'" />
 
         <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
-        <UnknownMapsView
-          v-if="view === 'unknown'"
-          :card-state="cardState"
-          :preload-screenshot="screenshotPreview.preload"
-          :update-info="updateInfo"
-          @go-to-view="goToView"
-          @resolve-ambiguous="onResolveAmbiguous"
-          @ignore-screenshot="onIgnoreScreenshot"
-          @open-lightbox="openLightbox"
-        />
+        <!-- Reads its triage lists + card state + actions from the stores. -->
+        <UnknownMapsView v-if="view === 'unknown'" />
 
         <!-- ─── MATCHES VIEW ───────────────────────────────────── -->
         <!-- First paint: render skeleton leaf-rows until the initial
