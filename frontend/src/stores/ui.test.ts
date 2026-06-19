@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { useUiStore } from '@/stores/ui'
+import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import type { MatchRecord } from '@/api'
 
-// onManualMatchCreated's close→reload→open ordering + the markRaw-bundle
-// survival. (backgroundFrozen is a computed getter, and its inert/aria-hidden
-// behaviour is covered by the a11y e2e, so it isn't unit-tested here.) Wails
-// event-stream + reference-data + profiles fetch no-op'd so the store stays
-// offline.
+// backgroundFrozen is an OR across six modal flags spanning three stores — the
+// kind of cross-store wiring where a dropped flag silently regresses the
+// inert/aria-hidden a11y contract, so it earns a test per flag (not coverage
+// padding — a failure pinpoints which flag was dropped). Plus onManualMatch
+// Created's ordering and the markRaw-bundle survival. Wails event-stream +
+// reference-data + profiles fetch no-op'd so creating the store stays offline.
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
   EventsOn:       vi.fn(),
@@ -21,9 +23,60 @@ vi.mock('@/api', async (importOriginal) => ({
 
 const rec = (key: string): MatchRecord => ({ match_key: key, source_files: [], data: { map: 'rialto', date: '2026-05-10' } })
 
+// The first-run gate is part of backgroundFrozen and is "pending" on a fresh
+// install (no localStorage in this env), so it dominates by default. Switch the
+// tour on (a plain ref set) to neutralize it + isolate the OTHER flags.
+async function neutralized() {
+  const matches = useMatchesStore()
+  await matches.onTourActiveChange(true) // tourActive=true → firstRunModalOpen=false
+  return { matches, app: useAppStore(), ui: useUiStore() }
+}
+
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
+})
+
+describe('ui store — backgroundFrozen', () => {
+  it('freezes the background for the first-run gate by default (fresh install)', () => {
+    expect(useUiStore().backgroundFrozen).toBe(true)
+  })
+
+  it('is false when no modal surface is up (first-run neutralized)', async () => {
+    const { ui } = await neutralized()
+    expect(ui.backgroundFrozen).toBe(false)
+  })
+
+  it('flips true for the narrow panel', async () => {
+    const { ui } = await neutralized()
+    ui.setNarrowOpen(true)
+    expect(ui.backgroundFrozen).toBe(true)
+  })
+
+  it('flips true for the manual-match modal', async () => {
+    const { ui } = await neutralized()
+    ui.openManualMatch()
+    expect(ui.backgroundFrozen).toBe(true)
+  })
+
+  it('flips true for the app store’s startup-error gate', async () => {
+    const { ui, app } = await neutralized()
+    app.setStartupError('SQLite init failed')
+    expect(ui.backgroundFrozen).toBe(true)
+  })
+
+  it('flips true for the matches store’s unsupported-OCR modal', async () => {
+    const { ui, matches } = await neutralized()
+    matches.showUnsupportedModal = true
+    expect(ui.backgroundFrozen).toBe(true)
+  })
+
+  it('flips true when the detail-panel selection opens', async () => {
+    const { ui, matches } = await neutralized()
+    matches.records = [rec('m-1')]
+    ui.selection.open('m-1')
+    expect(ui.backgroundFrozen).toBe(true)
+  })
 })
 
 describe('ui store — onManualMatchCreated', () => {
