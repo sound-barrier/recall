@@ -32,6 +32,7 @@ import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshot
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useAppStore } from '@/stores/app'
+import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useSettingsStore } from '@/stores/settings'
 
 // The matches domain: the parsed-match records (source of truth for the
@@ -85,6 +86,16 @@ export const useMatchesStore = defineStore('matches', () => {
 
   async function refreshNewCount() {
     try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) { /* keep last */ }
+  }
+
+  // Restore the persisted last-parse timestamp on boot so Settings shows
+  // "Last run · …" immediately, not just after a fresh parse this session. This
+  // store owns lastParsedAt, so it owns its hydration too.
+  function restoreLastParsedAt() {
+    try {
+      const v = localStorage.getItem('recall.lastParsedAt')
+      if (v) lastParsedAt.value = Number(v) || null
+    } catch (_) { /* private-mode localStorage */ }
   }
 
   // Brief scoreboard pulse when the watcher / a manual parse brings in
@@ -387,6 +398,11 @@ export const useMatchesStore = defineStore('matches', () => {
     afterImport: () => load(),
   })
 
+  // Export flows for the Matches set — the bundle-export modal + the flat CSV
+  // export. Delegated to useExportBundle; AppOverlays reads the modal state +
+  // the dispatch handlers straight off this store.
+  const exportBundle = useExportBundle({ onError: (m) => useAppStore().setErrorFromRaw(m) })
+
   return {
     // markRaw the composable bundles: Pinia's reactive() store deep-unwraps
     // nested refs, which would turn matchesNarrow.narrowedRecords (a Ref) into
@@ -412,6 +428,7 @@ export const useMatchesStore = defineStore('matches', () => {
     newScreenshotCount,
     lastParsedAt,
     refreshNewCount,
+    restoreLastParsedAt,
     recordsPulse,
     flashRecordsPulse,
     tourActive,
@@ -451,5 +468,12 @@ export const useMatchesStore = defineStore('matches', () => {
     armImport,
     cancelImport,
     importData,
+    // Export-bundle modal + dispatch (delegated to useExportBundle)
+    exportBundleOpen: exportBundle.exportBundleOpen,
+    exportBundleSelectedKeys: exportBundle.exportBundleSelectedKeys,
+    onExportBundleRequest: exportBundle.onExportBundleRequest,
+    closeExportBundle: exportBundle.closeExportBundle,
+    onExportMatchesCSV: exportBundle.onExportMatchesCSV,
+    onExportBundleConfirm: exportBundle.onExportBundleConfirm,
   }
 })

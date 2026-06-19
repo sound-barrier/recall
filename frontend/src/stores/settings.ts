@@ -124,6 +124,9 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       screenshotCandidates.value = await GetScreenshotsFolderCandidates()
     } catch (_) {
+      // Best-effort hint for the empty-state + first-run pickers — on failure
+      // (server mode / probe error) fall back to an empty list so the manual
+      // "Choose folder…" path still shows; nothing here is user-blocking.
       screenshotCandidates.value = []
     }
   }

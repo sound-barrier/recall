@@ -9,22 +9,18 @@
 // per-SFC scoped <style> blocks.
 import '@/styles/app.css'
 
-import { computed, defineAsyncComponent, type Component } from 'vue'
+import { defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
-import { useExportBundle } from '@/composables/matches/useExportBundle'
-import { useAnchorToast } from '@/composables/app/useAnchorToast'
-import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
-import { useFirstRun } from '@/composables/app/useFirstRun'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
 import { useAppBoot } from '@/composables/app/useAppBoot'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
-import AppOverlays, { type OverlaysApi } from '@/components/app/AppOverlays.vue'
+import AppOverlays from '@/components/app/AppOverlays.vue'
 import SystemAlertBanner from '@/components/app/SystemAlertBanner.vue'
 import ErrorBanner from '@/components/app/ErrorBanner.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
@@ -69,7 +65,7 @@ const {
   errorRetry,
   updateInfo,
 } = storeToRefs(appStore)
-const { setErrorFromRaw, clearError, checkForUpdates, goToView } = appStore
+const { clearError, checkForUpdates, goToView } = appStore
 const { view } = storeToRefs(appStore)
 
 // Matches domain: records (source of truth) + the derived triage lists live
@@ -87,27 +83,19 @@ const {
   parseAnnouncement,
 } = storeToRefs(matchesStore)
 const {
-  onTourActiveChange,
   onCancelParse,
 } = matchesStore
 
-// Onboarding-tour bridge: the @navigate/@open-narrow/@apply-hero-filter etc.
-// handlers that drive the live surfaces per tour step (DOM + view nav).
-const {
-  onTourSeedAndSwitch,
-  onTourOpenNarrow,
-  onTourCloseNarrow,
-  onTourApplyHeroFilter,
-  onTourClearFilters,
-} = useOnboardingTourBridge()
-
 // All App-shell keyboard wiring — tablist Arrow/Home/End nav, the global
-// shortcut registry (j/k, g-prefix, e/t, ?), the cheatsheet flag, and the
-// search→panel auto-track — lives in useAppKeyboard.
-const { focusMain, openCheatsheet } = useAppKeyboard()
+// shortcut registry (j/k, g-prefix, e/t, ?), and the search→panel auto-track —
+// lives in useAppKeyboard.
+const { focusMain } = useAppKeyboard()
 
-// Detail-panel selection lives in the UI store (markRaw bundle).
+// The overlay cluster (modals, detail panel, toasts, tour, export/first-run)
+// reads its state straight from the stores via AppOverlays now; App only needs
+// the background-freeze getter for its own `inert` bindings.
 const uiStore = useUiStore()
+const { backgroundFrozen } = storeToRefs(uiStore)
 
 
 // Tesseract status (path / found / version / supported flag) + the
@@ -117,8 +105,6 @@ const settingsStore = useSettingsStore()
 const {
   tesseractStatus,
   tesseractReady,
-  probing,
-  screenshotCandidates,
 } = storeToRefs(settingsStore)
 const {
   gotoEngineSettings,
@@ -131,8 +117,9 @@ const {
 useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
 
 // Boot coordinator: on mount it fans out into each domain store's loaders + owns
-// the non-dismissible Startup-failure modal (open-state + focus trap).
-const { showStartupErrorModal, startupErrorMessage } = useAppBoot()
+// the non-dismissible Startup-failure modal's focus trap (the gate state lives
+// in the app store, read by AppOverlays).
+useAppBoot()
 
 // 90-day "haven't checked for updates in a while" reminder banner. Gated on
 // updateInfo.last_checked_at (server-persisted) + a per-cycle dismissal; hidden
@@ -142,87 +129,6 @@ const {
   daysSinceLastCheck: updateReminderDays,
   dismiss: dismissUpdateReminder,
 } = useUpdateReminder(updateInfo)
-
-// Export-bundle + CSV flow — the Matches bulk-action bar emits export-bundle /
-// export-csv; useExportBundle owns the modal state + the ExportBundle /
-// ExportMatchesCSV dispatch.
-const {
-  exportBundleOpen,
-  exportBundleSelectedKeys,
-  onExportBundleRequest,
-  onExportMatchesCSV,
-  onExportBundleConfirm,
-} = useExportBundle({ onError: setErrorFromRaw })
-
-// "Since this match" anchor confirmation toast — set/clear + the view-filter
-// jump. The detail-panel selection bundle lives in the UI store.
-const { anchorToast, onSetAnchor, onAnchorToastViewFilter, onAnchorToastDismiss } = useAnchorToast()
-const selection = uiStore.selection
-
-// First-run "name your main account" gate + its step-2 source-pick handlers
-// live in useFirstRun; firstRunModalOpen feeds the background-freeze computed.
-const {
-  firstRunModalOpen,
-  onFirstRunDismiss,
-  onFirstRunPickSource,
-  onFirstRunPickCustomSource,
-} = useFirstRun()
-
-// Every modal surface that should freeze the background — the masthead container
-// + status bar flip `inert` + aria-hidden off this so screen readers + Tab nav
-// don't bleed into the dimmed page. The narrow panel + manual-match flags live
-// in the UI store; add to this list whenever you mount a new full-surface modal.
-const backgroundFrozen = computed(() =>
-  firstRunModalOpen.value
-  || showUnsupportedModal.value
-  || showStartupErrorModal.value
-  || selection.isOpen.value
-  || uiStore.narrowOpen
-  || uiStore.manualMatchOpen,
-)
-
-// App-shell overlay bundle for AppOverlays — the composable-owned + App-local
-// flags + the toast/tour handlers it can't read from a store on its own.
-const overlaysApi: OverlaysApi = {
-  anchorToast,
-  onSetAnchor,
-  onAnchorToastViewFilter,
-  onAnchorToastDismiss,
-  showStartupErrorModal,
-  startupErrorMessage,
-  openCheatsheet,
-  closeCheatsheet: () => { openCheatsheet.value = false },
-  firstRunModalOpen,
-  screenshotCandidates,
-  probing,
-  onFirstRunDismiss,
-  onFirstRunPickSource,
-  onFirstRunPickCustomSource,
-  exportBundleOpen,
-  exportBundleSelectedKeys,
-  closeExportBundle: () => { exportBundleOpen.value = false },
-  onExportBundleConfirm,
-  onTourSeedAndSwitch,
-  onTourActiveChange,
-  onTourOpenNarrow,
-  onTourCloseNarrow,
-  onTourApplyHeroFilter,
-  onTourClearFilters,
-}
-
-// Subscribe to the watcher's parse-complete event so the records list
-// auto-refreshes when an auto-parse runs in the background. Without
-// this the user would have to click Parse manually to see new matches
-// land in the UI even though the data is already in SQLite.
-
-// Polite live-region announcement for the parse lifecycle. The
-// ParseStatusBar already lights up an aria-live region during a
-// run (counter + filename), but it goes inert when the bar hides
-// at the end of the run — screen-reader users got no signal for
-// "parse complete." Setting + clearing this ref drives an sr-only
-// status region so the announcement fires once per terminal state.
-// The ingest event stream (parse-complete/cancelled handlers + sr-only
-// announce) + parse-recovery live in the matches store.
 </script>
 
 <template>
@@ -297,16 +203,9 @@ const overlaysApi: OverlaysApi = {
         <MatchesSkeleton
           v-if="view === 'matches' && firstLoadPending && records.length === 0"
         />
-        <!-- Reads records/narrow + selection + the mutations from the stores;
-             App keeps the shell-coupled events (manual-match modal, narrow-open
-             inert, the anchor toast, export-bundle/CSV flows). -->
-        <MatchesView
-          v-else-if="view === 'matches'"
-          @export-bundle="onExportBundleRequest"
-          @export-csv="onExportMatchesCSV"
-          @clear-anchor="onSetAnchor('')"
-          @set-anchor="onSetAnchor"
-        />
+        <!-- Reads records/narrow + selection + mutations + the export/anchor
+             flows from the stores — zero props, zero emits. -->
+        <MatchesView v-else-if="view === 'matches'" />
       </main>
     </div>
 
@@ -325,11 +224,8 @@ const overlaysApi: OverlaysApi = {
     />
 
     <!-- Floating overlay cluster — modals, the detail panel, lightbox, toasts,
-         and the first-launch tour. AppOverlays reads its store-backed state
-         directly; the App-shell-local flags (which App also needs for its
-         background-freeze computed) + the DOM/view-nav handlers arrive as the
-         `overlaysApi` bundle. -->
-    <AppOverlays :api="overlaysApi" />
+         and the first-launch tour. Reads all its state from the stores. -->
+    <AppOverlays />
   </div>
 </template>
 

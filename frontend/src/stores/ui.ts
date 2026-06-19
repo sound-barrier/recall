@@ -1,10 +1,13 @@
-import { markRaw, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import type { MatchRecord } from '@/api'
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
 import { useCardFocus } from '@/composables/matches/useCardFocus'
+import { useAnchorToast } from '@/composables/app/useAnchorToast'
+import { useFirstRun } from '@/composables/app/useFirstRun'
+import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 
 // App-shell UI state: the right-side detail-panel selection, the
@@ -15,6 +18,7 @@ import { useMatchesStore } from '@/stores/matches'
 // refs intact and reactive. Consumers destructure the bundle into top-level
 // vars, same CardStateApi convention used across the app.
 export const useUiStore = defineStore('ui', () => {
+  const appStore = useAppStore()
   const matchesStore = useMatchesStore()
 
   // Detail-panel selection paginates against the SAME narrowedRecords the
@@ -22,6 +26,17 @@ export const useUiStore = defineStore('ui', () => {
   const selection = useSelectedMatch(matchesStore.matchesNarrow.narrowedRecords)
   const preview = useScreenshotPreview()
   const cardFocus = useCardFocus()
+
+  // The "since this match" anchor toast + the first-run "name your main
+  // account" gate are App-shell overlay state; they live here so AppOverlays
+  // reads them straight from the store (no App-assembled prop bundle).
+  const anchor = useAnchorToast()
+  const firstRun = useFirstRun()
+
+  // The `?` keyboard cheatsheet flag (useAppKeyboard's shortcut registry
+  // toggles it; KeyboardShortcutsModal reads it).
+  const cheatsheetOpen = ref(false)
+  function closeCheatsheet() { cheatsheetOpen.value = false }
 
   // Pending detail-panel focus target: the row context menu sets it ('note' /
   // 'tag') and opens the match; MatchDetailPanel reads it on mount to focus the
@@ -61,6 +76,20 @@ export const useUiStore = defineStore('ui', () => {
     selection.open(rec.match_key)
   }
 
+  // Every full-surface modal that should freeze the background — App's
+  // `.container` + ParseStatusBar flip `inert` + aria-hidden off this so screen
+  // readers + Tab nav don't bleed into the dimmed page. Reads the startup-error
+  // gate from the app store + the unsupported-OCR gate from the matches store;
+  // the rest are this store's own flags. Add to it when a new modal mounts.
+  const backgroundFrozen = computed(() =>
+    firstRun.firstRunModalOpen.value
+    || appStore.showStartupErrorModal
+    || matchesStore.showUnsupportedModal
+    || selection.isOpen.value
+    || narrowOpen.value
+    || manualMatchOpen.value,
+  )
+
   return {
     selection: markRaw(selection),
     preview: markRaw(preview),
@@ -76,5 +105,18 @@ export const useUiStore = defineStore('ui', () => {
     openManualMatch,
     closeManualMatch,
     onManualMatchCreated,
+    cheatsheetOpen,
+    closeCheatsheet,
+    backgroundFrozen,
+    // Anchor toast (delegated to useAnchorToast)
+    anchorToast: anchor.anchorToast,
+    onSetAnchor: anchor.onSetAnchor,
+    onAnchorToastViewFilter: anchor.onAnchorToastViewFilter,
+    onAnchorToastDismiss: anchor.onAnchorToastDismiss,
+    // First-run gate (delegated to useFirstRun)
+    firstRunModalOpen: firstRun.firstRunModalOpen,
+    onFirstRunDismiss: firstRun.onFirstRunDismiss,
+    onFirstRunPickSource: firstRun.onFirstRunPickSource,
+    onFirstRunPickCustomSource: firstRun.onFirstRunPickCustomSource,
   }
 })
