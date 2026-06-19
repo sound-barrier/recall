@@ -1,16 +1,137 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 
 import SettingsView from '@/components/settings/SettingsView.vue'
+import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
+import { useSettingsStore } from '@/stores/settings'
+import type { ThemeMode } from '@/composables/settings/useTheme'
+import type { WeekStart } from '@/composables/shared/useWeekStart'
+import type { MatchRecord, TesseractStatus, DataLocation, NamedCandidate } from '@/api'
 
-// Common probs the test suite reuses. Tests run under happy-dom which
-// has no Wails runtime, so IS_WAILS is false and the Open buttons
-// never render — that's the contract; an Open-button test would have
-// to stub window.go.app.App first.
+// SettingsView reads everything from the stores now + distributes to its
+// sub-section components, so these tests seed the stores (the same shape the
+// old props had) + spy on the actions the buttons drive, instead of passing
+// props + asserting emits. The store mounts the matches store (statically
+// imports '@/api'); keep it real except GetMatchResults (so the boot reload
+// doesn't hit the transport). e2e covers the full settings transport chain.
+vi.mock('@/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api')>()),
+  GetMatchResults: vi.fn(async () => []),
+}))
+
+afterEach(() => {
+  vi.clearAllMocks()
+  vi.resetModules()
+})
+
+function defaultTess(o: Partial<TesseractStatus> = {}): TesseractStatus {
+  return { path: '/t', found: true, version: '5.5.0', supported: true, error: '', default: '/t', platform: 'darwin', ...o }
+}
+
+function makeRecords(matched: number, unknown: number): MatchRecord[] {
+  const recs: MatchRecord[] = []
+  for (let i = 0; i < matched; i++) recs.push({ match_key: `m-${i}`, source_files: [], data: { map: 'rialto', date: '2026-05-10' } })
+  for (let i = 0; i < unknown; i++) recs.push({ match_key: `u-${i}`, source_files: [`u-${i}.png`], data: {} })
+  return recs
+}
+
+interface SettingsOver {
+  screenshotsDir?:       string
+  parseBusy?:            boolean
+  themeMode?:            ThemeMode
+  weekStart?:            WeekStart
+  dataLocation?:         DataLocation | null
+  probing?:              boolean
+  probeMessage?:         string
+  probeStatus?:          '' | 'success' | 'blocked'
+  probeTried?:           string[]
+  screenshotCandidates?: NamedCandidate[]
+  platform?:             string
+  tesseractReady?:       boolean
+  tesseractSupported?:   boolean
+  tesseractStatus?:      TesseractStatus
+  tesseractPickerBusy?:  boolean
+  matchedCount?:         number
+  unknownCount?:         number
+  exporting?:            false | 'json' | 'csv'
+  importing?:            boolean
+  importArmed?:          boolean
+  exportStatus?:         { ok: boolean; message: string } | null
+  clearConfirm?:         boolean
+  clearingDB?:           boolean
+  ignoredCount?:         number
+}
+
+// Seeds the three stores from the old prop shape (theme/week-start are seeded
+// via the real setters BEFORE the spies are installed so the seed isn't counted
+// as a click), then spies on every action a sub-section button drives.
+function mountSettings(opts: { props?: SettingsOver } = {}) {
+  const over = opts.props ?? {}
+  setActivePinia(createPinia())
+  const app = useAppStore()
+  const matches = useMatchesStore()
+  const settings = useSettingsStore()
+
+  settings.setTesseractStatus(over.tesseractStatus ?? defaultTess({
+    found:     over.tesseractReady ?? true,
+    supported: over.tesseractSupported ?? true,
+    platform:  over.platform ?? 'darwin',
+  }))
+  settings.setScreenshotsDir(over.screenshotsDir ?? '/srv/recall')
+  settings.setTheme(over.themeMode ?? 'dark')
+  settings.setWeekStart(over.weekStart ?? 0)
+  settings.screenshotCandidates = over.screenshotCandidates ?? []
+  settings.probing = over.probing ?? false
+  settings.probeMessage = over.probeMessage ?? ''
+  settings.probeStatus = over.probeStatus ?? ''
+  settings.probeTried = over.probeTried ?? []
+  settings.tesseractPickerBusy = over.tesseractPickerBusy ?? false
+
+  matches.parseBusy = over.parseBusy ?? false
+  matches.exporting = over.exporting ?? false
+  matches.importing = over.importing ?? false
+  matches.importArmed = over.importArmed ?? false
+  matches.exportStatus = over.exportStatus ?? null
+  matches.clearConfirm = over.clearConfirm ?? false
+  matches.clearingDB = over.clearingDB ?? false
+  matches.records = makeRecords(over.matchedCount ?? 0, over.unknownCount ?? 0)
+  if (over.ignoredCount != null) {
+    matches.ignoredScreenshots = Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' }))
+  }
+
+  app.dataLocation = over.dataLocation ?? null
+
+  const spies = {
+    pickDir:               vi.spyOn(settings, 'pickDir').mockResolvedValue(undefined),
+    detectDir:             vi.spyOn(settings, 'detectDir').mockResolvedValue(undefined),
+    revealDir:             vi.spyOn(settings, 'revealDir').mockResolvedValue(undefined),
+    resetDir:              vi.spyOn(settings, 'resetDir').mockResolvedValue(undefined),
+    setTheme:              vi.spyOn(settings, 'setTheme'),
+    setWeekStart:          vi.spyOn(settings, 'setWeekStart'),
+    pickTesseractBinary:   vi.spyOn(settings, 'pickTesseractBinary').mockResolvedValue(undefined),
+    resetTesseractPath:    vi.spyOn(settings, 'resetTesseractPath').mockResolvedValue(undefined),
+    detectTesseractBinary: vi.spyOn(settings, 'detectTesseractBinary').mockResolvedValue(undefined),
+    pickDetectedSource:    vi.spyOn(settings, 'pickDetectedSource').mockResolvedValue(undefined),
+    exportData:            vi.spyOn(matches, 'exportData').mockResolvedValue(undefined),
+    exportDataCSV:         vi.spyOn(matches, 'exportDataCSV').mockResolvedValue(undefined),
+    armImport:             vi.spyOn(matches, 'armImport'),
+    cancelImport:          vi.spyOn(matches, 'cancelImport'),
+    importData:            vi.spyOn(matches, 'importData').mockResolvedValue(undefined),
+    armClear:              vi.spyOn(matches, 'armClear'),
+    cancelClear:           vi.spyOn(matches, 'cancelClear'),
+    onClearDatabase:       vi.spyOn(matches, 'onClearDatabase').mockResolvedValue(undefined),
+  }
+
+  const wrapper = mount(SettingsView)
+  return { wrapper, app, matches, settings, spies }
+}
 
 describe('SettingsView', () => {
   it('shows the empty-state hero when no folder is selected', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Choose a')
@@ -23,7 +144,7 @@ describe('SettingsView', () => {
   })
 
   it('shows the "where Recall reads from" heading once a folder is configured', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv/recall', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Where Recall reads from')
@@ -32,17 +153,17 @@ describe('SettingsView', () => {
   })
 
   it('emits pick-screenshots-dir when the Change… button is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))
     expect(btn).toBeDefined()
     await btn!.trigger('click')
-    expect(wrapper.emitted('pick-screenshots-dir')).toBeTruthy()
+    expect(spies.pickDir).toHaveBeenCalled()
   })
 
   it('disables the Change… button while parseBusy=true', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: true, themeMode: 'dark', weekStart: 0 },
     })
     const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))!
@@ -50,30 +171,30 @@ describe('SettingsView', () => {
   })
 
   it('emits set-theme with the picked mode when a swatch is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     await wrapper.find('.day-swatch').trigger('click')
-    expect(wrapper.emitted('set-theme')).toBeTruthy()
-    expect(wrapper.emitted('set-theme')![0]).toEqual(['day'])
+    expect(spies.setTheme).toHaveBeenCalled()
+    expect(spies.setTheme).toHaveBeenCalledWith('day')
   })
 
   it('emits set-theme with "high-contrast" when the Contrast swatch is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     await wrapper.find('.contrast-swatch').trigger('click')
-    expect(wrapper.emitted('set-theme')![0]).toEqual(['high-contrast'])
+    expect(spies.setTheme).toHaveBeenCalledWith('high-contrast')
   })
 
   it('marks the active theme swatch per themeMode prop', () => {
-    const dark = mount(SettingsView, {
+    const { wrapper: dark } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(dark.find('.dark-swatch').classes()).toContain('active')
     expect(dark.find('.day-swatch').classes()).not.toContain('active')
 
-    const light = mount(SettingsView, {
+    const { wrapper: light } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'day', weekStart: 0 },
     })
     expect(light.find('.day-swatch').classes()).toContain('active')
@@ -81,7 +202,7 @@ describe('SettingsView', () => {
   })
 
   it('aria-checked mirrors themeMode on each swatch', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.find('.dark-swatch').attributes('aria-checked')).toBe('true')
@@ -89,29 +210,27 @@ describe('SettingsView', () => {
   })
 
   it('emits go-to-view ingest when the "Parse →" link is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, app } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Parse'))!
     await link.trigger('click')
-    expect(wrapper.emitted('go-to-view')).toBeTruthy()
-    expect(wrapper.emitted('go-to-view')![0]).toEqual(['ingest'])
+    expect(app.view).toBe('ingest')
   })
 
   it('emits go-to-view matches when the "Week of" cross-reference is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, app } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Week of'))!
     await link.trigger('click')
-    expect(wrapper.emitted('go-to-view')).toBeTruthy()
-    expect(wrapper.emitted('go-to-view')![0]).toEqual(['matches'])
+    expect(app.view).toBe('matches')
   })
 
   // ── Calendar section: 7-cell first-day picker ─────────────────
 
   it('renders the Calendar section with seven day cells', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Calendar')
@@ -122,7 +241,7 @@ describe('SettingsView', () => {
 
   it('marks the active weekstart cell per weekStart prop (any day 0-6)', () => {
     for (let day = 0; day <= 6; day++) {
-      const wrapper = mount(SettingsView, {
+      const { wrapper } = mountSettings({
         props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: day as 0 | 1 | 2 | 3 | 4 | 5 | 6 },
       })
       const cells = wrapper.findAll('.weekstart-cell')
@@ -134,7 +253,7 @@ describe('SettingsView', () => {
   })
 
   it('aria-checked mirrors weekStart for assistive tech', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 3 },
     })
     const cells = wrapper.findAll('.weekstart-cell')
@@ -144,20 +263,20 @@ describe('SettingsView', () => {
   })
 
   it('emits set-week-start with the numeric day index on cell click', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const cells = wrapper.findAll('.weekstart-cell')
     // Friday (index 5)
     await cells[5]!.trigger('click')
-    expect(wrapper.emitted('set-week-start')![0]).toEqual([5])
+    expect(spies.setWeekStart).toHaveBeenCalledWith(5)
     // Saturday (index 6)
     await cells[6]!.trigger('click')
-    expect(wrapper.emitted('set-week-start')![1]).toEqual([6])
+    expect(spies.setWeekStart).toHaveBeenCalledWith(6)
   })
 
   it('shows the resolved day name in the weekstart caption', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 3 },
     })
     const cap = wrapper.find('.weekstart-caption')
@@ -165,7 +284,7 @@ describe('SettingsView', () => {
   })
 
   it('renders a help affordance for every setting label', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     // Screenshots Folder, Data Location, Engine, Theme, First Day
@@ -178,7 +297,6 @@ describe('SettingsView', () => {
 
 // ── Engine section (Tesseract) ───────────────────────────────────────────
 
-import type { TesseractStatus } from '@/api'
 
 function readyTesseract(over: Partial<TesseractStatus> = {}): TesseractStatus {
   return {
@@ -206,7 +324,7 @@ describe('SettingsView — Engine section', () => {
   }
 
   it('shows the engine-status panel as "Detected" when Tesseract is ready', () => {
-    const wrapper = mount(SettingsView, { props: baseEngineProps })
+    const { wrapper } = mountSettings({ props: baseEngineProps })
     const status = wrapper.find('.engine-status')
     expect(status.exists()).toBe(true)
     expect(status.classes()).toContain('ok')
@@ -214,7 +332,7 @@ describe('SettingsView — Engine section', () => {
   })
 
   it('marks the row as alert + status fail when Tesseract is not ready', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...baseEngineProps,
         tesseractReady: false,
@@ -227,7 +345,7 @@ describe('SettingsView — Engine section', () => {
   })
 
   it('renders engine-unsupported warning with role="status" for non-5.x Tesseract', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...baseEngineProps,
         tesseractSupported: false,
@@ -240,10 +358,10 @@ describe('SettingsView — Engine section', () => {
   })
 
   it('emits pick-tesseract from the Change Binary button', async () => {
-    const wrapper = mount(SettingsView, { props: baseEngineProps })
+    const { wrapper, spies } = mountSettings({ props: baseEngineProps })
     const btn = wrapper.findAll('button').find(b => b.text().includes('Change Binary'))!
     await btn.trigger('click')
-    expect(wrapper.emitted('pick-tesseract')).toBeTruthy()
+    expect(spies.pickTesseractBinary).toHaveBeenCalled()
   })
 
   // Detect-button gating mirrors the screenshots-dir Detect: enabled
@@ -263,7 +381,7 @@ describe('SettingsView — Engine section', () => {
   }
 
   it('renders Detect as the primary CTA when Tesseract is not ready', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...baseEngineProps,
         tesseractReady: false,
@@ -277,7 +395,7 @@ describe('SettingsView — Engine section', () => {
   })
 
   it('disables Detect when Tesseract is already detected', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: baseEngineProps,
     })
     const btn = findEngineBtn(wrapper, 'Detect')!
@@ -286,7 +404,7 @@ describe('SettingsView — Engine section', () => {
   })
 
   it('emits detect-tesseract when the Detect button is clicked while not ready', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: {
         ...baseEngineProps,
         tesseractReady: false,
@@ -295,11 +413,11 @@ describe('SettingsView — Engine section', () => {
     })
     const btn = findEngineBtn(wrapper, 'Detect')!
     await btn.trigger('click')
-    expect(wrapper.emitted('detect-tesseract')).toBeTruthy()
+    expect(spies.detectTesseractBinary).toHaveBeenCalled()
   })
 
   it('emits reset-tesseract when the Reset button is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: {
         ...baseEngineProps,
         tesseractStatus: readyTesseract({
@@ -310,11 +428,11 @@ describe('SettingsView — Engine section', () => {
     })
     const btn = findEngineBtn(wrapper, 'Reset')!
     await btn.trigger('click')
-    expect(wrapper.emitted('reset-tesseract')).toBeTruthy()
+    expect(spies.resetTesseractPath).toHaveBeenCalled()
   })
 
   it('disables Reset when the configured path is already the platform default', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...baseEngineProps,
         tesseractStatus: readyTesseract({
@@ -344,7 +462,7 @@ describe('SettingsView — Engine description per platform', () => {
   }
 
   it('shows only the macOS Homebrew paths when platform=darwin', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'darwin' }) },
     })
     const desc = wrapper.find('.engine-row .setting-desc')
@@ -355,7 +473,7 @@ describe('SettingsView — Engine description per platform', () => {
   })
 
   it('shows only the Linux apt path when platform=linux', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'linux' }) },
     })
     const desc = wrapper.find('.engine-row .setting-desc')
@@ -365,7 +483,7 @@ describe('SettingsView — Engine description per platform', () => {
   })
 
   it('shows only the Windows Program Files path when platform=windows', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'windows' }) },
     })
     const desc = wrapper.find('.engine-row .setting-desc')
@@ -379,7 +497,7 @@ describe('SettingsView — Engine description per platform', () => {
   // against a newer server) should still see the lead sentence so the
   // panel doesn't look broken. We just won't promise specific paths.
   it('falls back to a generic sentence when platform is unknown', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'plan9' }) },
     })
     const desc = wrapper.find('.engine-row .setting-desc')
@@ -397,7 +515,7 @@ describe('SettingsView — Backup & Restore', () => {
   }
 
   it('renders both JSON and CSV format buttons', () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
+    const { wrapper } = mountSettings({ props: baseProps })
     const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')
     const csv  = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')
     expect(json).toBeDefined()
@@ -405,21 +523,21 @@ describe('SettingsView — Backup & Restore', () => {
   })
 
   it('emits export-data when the JSON button is clicked', async () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
+    const { wrapper, spies } = mountSettings({ props: baseProps })
     const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')!
     await json.trigger('click')
-    expect(wrapper.emitted('export-data')).toBeTruthy()
+    expect(spies.exportData).toHaveBeenCalled()
   })
 
   it('emits export-data-csv when the CSV button is clicked', async () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
+    const { wrapper, spies } = mountSettings({ props: baseProps })
     const csv = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')!
     await csv.trigger('click')
-    expect(wrapper.emitted('export-data-csv')).toBeTruthy()
+    expect(spies.exportDataCSV).toHaveBeenCalled()
   })
 
   it('shows "Saving…" on the JSON button while exporting="json" and disables both', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, exporting: 'json' },
     })
     const saving = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
@@ -429,7 +547,7 @@ describe('SettingsView — Backup & Restore', () => {
   })
 
   it('renders the success chip when exportStatus.ok is true', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...baseProps,
         exportStatus: { ok: true, message: 'Saved: /tmp/recall.json' },
@@ -440,7 +558,7 @@ describe('SettingsView — Backup & Restore', () => {
   })
 
   it('renders the failure chip when exportStatus.ok is false', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...baseProps,
         exportStatus: { ok: false, message: 'Export failed: boom' },
@@ -451,39 +569,41 @@ describe('SettingsView — Backup & Restore', () => {
   })
 
   it('shows the unarmed "Import Backup…" button by default', () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
+    const { wrapper } = mountSettings({ props: baseProps })
     const btn = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
     expect(btn).toBeDefined()
     expect(btn.classes()).toContain('danger-outline')
   })
 
   it('arms / confirms / cancels the Import flow', async () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
+    const { wrapper, spies, matches } = mountSettings({ props: baseProps })
     const arm = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
     await arm.trigger('click')
-    expect(wrapper.emitted('arm-import')).toBeTruthy()
+    expect(spies.armImport).toHaveBeenCalled()
 
-    await wrapper.setProps({ importArmed: true, matchedCount: 5 })
+    matches.importArmed = true
+    matches.records = makeRecords(5, 0)
+    await nextTick()
     const choose = wrapper.findAll('button').find(b => b.text().includes('Choose File'))!
     expect(choose).toBeDefined()
     expect(wrapper.text()).toMatch(/wipes 5 record/)
 
     await choose.trigger('click')
-    expect(wrapper.emitted('import-data')).toBeTruthy()
+    expect(spies.importData).toHaveBeenCalled()
 
     const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
     await cancel.trigger('click')
-    expect(wrapper.emitted('cancel-import')).toBeTruthy()
+    expect(spies.cancelImport).toHaveBeenCalled()
   })
 
   it('disables Import while exporting (and vice versa)', () => {
-    const exporting = mount(SettingsView, {
+    const { wrapper: exporting } = mountSettings({
       props: { ...baseProps, exporting: 'json' },
     })
     const importBtn = exporting.findAll('button').find(b => b.text().includes('Import Backup'))!
     expect(importBtn.attributes('disabled')).toBeDefined()
 
-    const importing = mount(SettingsView, {
+    const { wrapper: importing } = mountSettings({
       props: { ...baseProps, importing: true },
     })
     const json = importing.findAll('button').find(b => b.text().trim() === 'JSON')!
@@ -499,33 +619,35 @@ describe('SettingsView — Advanced section', () => {
   }
 
   it('renders the Advanced <details> closed by default', () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
+    const { wrapper } = mountSettings({ props: baseProps })
     const det = wrapper.find('details.advanced-section')
     expect(det.exists()).toBe(true)
     expect((det.element as HTMLDetailsElement).open).toBe(false)
   })
 
   it('arms Clear Database, confirms delete, then cancels', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies, matches } = mountSettings({
       props: { ...baseProps, matchedCount: 4, unknownCount: 0 },
     })
     const arm = wrapper.findAll('button').find(b => b.text().includes('Clear Database'))!
     await arm.trigger('click')
-    expect(wrapper.emitted('arm-clear')).toBeTruthy()
+    expect(spies.armClear).toHaveBeenCalled()
 
-    await wrapper.setProps({ clearConfirm: true, matchedCount: 4, unknownCount: 0 })
+    matches.clearConfirm = true
+    matches.records = makeRecords(4, 0)
+    await nextTick()
     const del = wrapper.findAll('button').find(b => b.text().includes('Delete 4 Records'))!
     expect(del).toBeDefined()
     await del.trigger('click')
-    expect(wrapper.emitted('clear-database')).toBeTruthy()
+    expect(spies.onClearDatabase).toHaveBeenCalled()
 
     const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
     await cancel.trigger('click')
-    expect(wrapper.emitted('cancel-clear')).toBeTruthy()
+    expect(spies.cancelClear).toHaveBeenCalled()
   })
 
   it('disables Clear Database when no records exist', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, matchedCount: 0, unknownCount: 0 },
     })
     const btn = wrapper.findAll('button').find(b => b.text().includes('Clear Database'))!
@@ -547,7 +669,7 @@ describe('SettingsView — Data Location row', () => {
   }
 
   it('renders both paths when dataLocation is populated', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
     const grid = wrapper.find('.data-loc-grid')
@@ -557,7 +679,7 @@ describe('SettingsView — Data Location row', () => {
   })
 
   it('hides the path grid when dataLocation is null but still shows the label', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, dataLocation: null },
     })
     expect(wrapper.text()).toContain('Data Location')
@@ -565,7 +687,7 @@ describe('SettingsView — Data Location row', () => {
   })
 
   it('renders a Copy button per path row', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
     // Two .data-loc-actions clusters — one per path — each with a Copy.
@@ -584,7 +706,7 @@ describe('SettingsView — Data Location row', () => {
       configurable: true,
     })
 
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
     const clusters = wrapper.findAll('.data-loc-actions')
@@ -600,7 +722,7 @@ describe('SettingsView — Data Location row', () => {
       configurable: true,
     })
 
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
     const clusters = wrapper.findAll('.data-loc-actions')
@@ -616,7 +738,7 @@ describe('SettingsView — Data Location row', () => {
         value: { writeText: vi.fn().mockResolvedValue(undefined) },
         configurable: true,
       })
-      const wrapper = mount(SettingsView, {
+      const { wrapper } = mountSettings({
         props: { ...baseProps, dataLocation: sampleLoc },
       })
       const dbCopy = wrapper.findAll('.data-loc-actions')[0]!
@@ -643,7 +765,7 @@ describe('SettingsView — Data Location row', () => {
     const promptSpy = vi.fn().mockReturnValue(null)
     vi.stubGlobal('prompt', promptSpy)
 
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
     const dbCopy = wrapper.findAll('.data-loc-actions')[0]!
@@ -667,13 +789,13 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
   }
 
   it('mounts the ScreenshotSourcePicker inside the empty-hero', () => {
-    const wrapper = mount(SettingsView, { props: emptyProps })
+    const { wrapper } = mountSettings({ props: emptyProps })
     expect(wrapper.find('.empty-hero').exists()).toBe(true)
     expect(wrapper.find('.src-picker').exists()).toBe(true)
   })
 
   it('renders the picker grid when platform=windows and candidates supplied', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...emptyProps,
         platform: 'windows',
@@ -690,7 +812,7 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
   })
 
   it('emits pick-detected-source with the path when a found card is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: {
         ...emptyProps,
         platform: 'windows',
@@ -703,19 +825,19 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
       },
     })
     await wrapper.find('[data-src-name="nvidia"]').trigger('click')
-    expect(wrapper.emitted('pick-detected-source')![0]).toEqual(['C:\\v\\OW'])
+    expect(spies.pickDetectedSource).toHaveBeenCalledWith('C:\\v\\OW')
   })
 
   it('emits pick-screenshots-dir when the custom-pick tile is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, spies } = mountSettings({
       props: { ...emptyProps, platform: 'darwin', screenshotCandidates: [] },
     })
     await wrapper.find('[data-src-pick-custom]').trigger('click')
-    expect(wrapper.emitted('pick-screenshots-dir')).toBeTruthy()
+    expect(spies.pickDir).toHaveBeenCalled()
   })
 
   it('hides the grid on macOS', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: { ...emptyProps, platform: 'darwin', screenshotCandidates: [] },
     })
     expect(wrapper.find('[data-src-grid]').exists()).toBe(false)
@@ -729,7 +851,7 @@ describe('SettingsView — steady-state row affordances', () => {
   }
 
   it('renders a Detect button alongside Change… in the steady-state row', () => {
-    const wrapper = mount(SettingsView, { props: setProps })
+    const { wrapper } = mountSettings({ props: setProps })
     const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')
     expect(detect).toBeDefined()
   })
@@ -738,23 +860,23 @@ describe('SettingsView — steady-state row affordances', () => {
   // user must Reset first to re-enable auto-detection. Confirmed
   // emit-side: a click on a disabled button produces no event.
   it('keeps the steady-state Detect button disabled', () => {
-    const wrapper = mount(SettingsView, { props: setProps })
+    const { wrapper } = mountSettings({ props: setProps })
     const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')!
     expect(detect.attributes('disabled')).toBeDefined()
   })
 
   it('emits reveal-screenshots-dir when Reveal is clicked', async () => {
-    const wrapper = mount(SettingsView, { props: setProps })
+    const { wrapper, spies } = mountSettings({ props: setProps })
     const reveal = wrapper.findAll('button').find(b => b.text().trim() === 'Reveal')!
     await reveal.trigger('click')
-    expect(wrapper.emitted('reveal-screenshots-dir')).toBeTruthy()
+    expect(spies.revealDir).toHaveBeenCalled()
   })
 
   it('emits reset-screenshots-dir when Reset is clicked', async () => {
-    const wrapper = mount(SettingsView, { props: setProps })
+    const { wrapper, spies } = mountSettings({ props: setProps })
     const reset = wrapper.findAll('button').find(b => b.text().trim() === 'Reset')!
     await reset.trigger('click')
-    expect(wrapper.emitted('reset-screenshots-dir')).toBeTruthy()
+    expect(spies.resetDir).toHaveBeenCalled()
   })
 })
 
@@ -764,7 +886,7 @@ describe('SettingsView — Probe chip', () => {
   }
 
   it('renders the success chip when probeStatus=success', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...emptyProps,
         probeStatus: 'success',
@@ -779,7 +901,7 @@ describe('SettingsView — Probe chip', () => {
   })
 
   it('renders the blocked chip + Looked-in disclosure when probeStatus=blocked', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...emptyProps,
         probeStatus: 'blocked',
@@ -799,7 +921,7 @@ describe('SettingsView — Probe chip', () => {
   })
 
   it('hides the Looked-in disclosure when probeTried is empty on the blocked path', () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...emptyProps,
         probeStatus: 'blocked',
@@ -811,12 +933,12 @@ describe('SettingsView — Probe chip', () => {
   })
 
   it('renders no chip at all when probeMessage is empty', () => {
-    const wrapper = mount(SettingsView, { props: emptyProps })
+    const { wrapper } = mountSettings({ props: emptyProps })
     expect(wrapper.find('.probe-chip').exists()).toBe(false)
   })
 
   it('dismisses the chip when the close × is clicked', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper } = mountSettings({
       props: {
         ...emptyProps,
         probeStatus: 'success',
@@ -829,7 +951,7 @@ describe('SettingsView — Probe chip', () => {
   })
 
   it('re-opens the chip when a new probeMessage lands after dismissal', async () => {
-    const wrapper = mount(SettingsView, {
+    const { wrapper, settings } = mountSettings({
       props: {
         ...emptyProps,
         probeStatus: 'blocked',
@@ -839,10 +961,9 @@ describe('SettingsView — Probe chip', () => {
     await wrapper.find('.probe-chip-close').trigger('click')
     expect(wrapper.find('.probe-chip').exists()).toBe(false)
 
-    await wrapper.setProps({
-      probeStatus: 'success',
-      probeMessage: 'Detected · /path',
-    })
+    settings.probeStatus = 'success'
+    settings.probeMessage = 'Detected · /path'
+    await nextTick()
     expect(wrapper.find('.probe-chip').exists()).toBe(true)
   })
 })
