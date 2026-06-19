@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,9 +10,17 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"recall/pkg/parser"
 )
+
+// tesseractProbeTimeout bounds the `tesseract --version` exec so a held or
+// badly-slow probe can never stall Startup. On Windows, Defender real-time-scans
+// a freshly-accessed .exe the first time it runs after a cold boot, which used
+// to hang the whole app boot (the exec had no deadline). A package var so tests
+// can shorten it.
+var tesseractProbeTimeout = 10 * time.Second
 
 // TesseractStatus describes whether the configured tesseract binary
 // resolves to a working executable. The frontend renders the System
@@ -90,12 +99,21 @@ func checkTesseract(path string) TesseractStatus {
 		s.Error = "Tesseract path is empty — pick the binary in Settings → Engine."
 		return s
 	}
-	cmd := exec.Command(path, "--version")
+	ctx, cancel := context.WithTimeout(context.Background(), tesseractProbeTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, path, "--version")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	parser.HideWindow(cmd) // no-op off Windows; suppresses console flash on Windows
 	if err := cmd.Run(); err != nil {
+		// A deadline almost always means the OS is holding the exec — on
+		// Windows, Defender scans a freshly-accessed .exe after a cold boot.
+		// Surface it as a transient, retryable state, NOT "broken binary".
+		if ctx.Err() == context.DeadlineExceeded {
+			s.Error = fmt.Sprintf("Verifying Tesseract at %s timed out after %s — your OS may be scanning the binary after a restart. Re-open Settings → Engine to retry.", path, tesseractProbeTimeout)
+			return s
+		}
 		// Distinguish "file doesn't exist" from "ran but failed".
 		if _, statErr := os.Stat(path); statErr != nil {
 			s.Error = fmt.Sprintf("Nothing exists at %s. Install Tesseract or change the path in Settings → Engine.", path)
