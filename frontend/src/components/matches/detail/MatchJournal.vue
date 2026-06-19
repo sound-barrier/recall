@@ -108,8 +108,8 @@ onMounted(() => {
           tabindex="0"
           title="Click to edit"
           @click="enterEditMode"
-          @keydown.enter.prevent="enterEditMode($event as unknown as MouseEvent)"
-          @keydown.space.prevent="enterEditMode($event as unknown as MouseEvent)"
+          @keydown.enter.prevent="enterEditMode"
+          @keydown.space.prevent="enterEditMode"
         >
           <template v-for="(seg, i) in noteHighlightSegments" :key="i">
             <mark v-if="seg.hit" class="note-hit">{{ seg.text }}</mark>
