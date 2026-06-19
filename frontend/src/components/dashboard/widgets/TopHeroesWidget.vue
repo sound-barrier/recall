@@ -21,5 +21,11 @@ const topHeroes = dossier.topHeroesByMinutes(() => ({ limit: config.value.limit 
       </span>
       <span class="bd-stats">{{ h.share }}%</span>
     </li>
+    <li
+      v-for="i in Math.max(0, config.limit - topHeroes.length)"
+      :key="`ph-${i}`"
+      class="bd-placeholder"
+      aria-hidden="true"
+    />
   </ul>
 </template>

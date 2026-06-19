@@ -27,5 +27,11 @@ const topMaps = dossier.topByCount(() => ({
       </span>
       <span class="bd-stats">{{ m.share }}%</span>
     </li>
+    <li
+      v-for="i in Math.max(0, config.limit - topMaps.length)"
+      :key="`ph-${i}`"
+      class="bd-placeholder"
+      aria-hidden="true"
+    />
   </ul>
 </template>

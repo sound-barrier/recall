@@ -24,5 +24,11 @@ const topGameModes = dossier.topByCount(() => ({
       </span>
       <span class="bd-stats">{{ t.share }}%</span>
     </li>
+    <li
+      v-for="i in Math.max(0, config.limit - topGameModes.length)"
+      :key="`ph-${i}`"
+      class="bd-placeholder"
+      aria-hidden="true"
+    />
   </ul>
 </template>

@@ -5,7 +5,7 @@ import { mountWidget } from '@/test-utils/mountWidget'
 describe('TopGameModesWidget', () => {
   it('renders no rows for an empty list', () => {
     const w = mountWidget(TopGameModesWidget, { dossier: { topByCount: [] } })
-    expect(w.findAll('li')).toHaveLength(0)
+    expect(w.findAll('li:not(.bd-placeholder)')).toHaveLength(0)
   })
 
   it('renders each game mode with count + share', () => {
@@ -17,7 +17,7 @@ describe('TopGameModesWidget', () => {
         ],
       },
     })
-    const rows = w.findAll('li')
+    const rows = w.findAll('li:not(.bd-placeholder)')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.find('.bd-name').text()).toBe('control')
     expect(rows[0]!.find('.bd-time').text()).toBe('8x')
