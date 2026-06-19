@@ -24,7 +24,6 @@ import SystemAlertBanner from '@/components/app/SystemAlertBanner.vue'
 import ErrorBanner from '@/components/app/ErrorBanner.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
 import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
-import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
 
 // The floating overlay cluster (modals, detail panel, lightbox, toasts, tour)
 // lives in AppOverlays — it owns those lazy-loaded chunks now.
@@ -59,8 +58,8 @@ const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsV
 // location) lives in the Pinia app store. Destructure with the same local
 // names so the existing call sites in this file stay unchanged.
 const appStore = useAppStore()
-const { updateInfo, view } = storeToRefs(appStore)
-const { checkForUpdates, goToView } = appStore
+const { view } = storeToRefs(appStore)
+const { goToView } = appStore
 
 // Matches domain: records (source of truth) + the derived triage lists live
 // in the matches store. App's load() boot coordinator writes `records`;
@@ -101,15 +100,6 @@ useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
 // the non-dismissible Startup-failure modal's focus trap (the gate state lives
 // in the app store, read by AppOverlays).
 useAppBoot()
-
-// 90-day "haven't checked for updates in a while" reminder banner. Gated on
-// updateInfo.last_checked_at (server-persisted) + a per-cycle dismissal; hidden
-// while updateInfo is null so it doesn't flash false-positive on first paint.
-const {
-  shouldShowBanner: showUpdateReminder,
-  daysSinceLastCheck: updateReminderDays,
-  dismiss: dismissUpdateReminder,
-} = useUpdateReminder(updateInfo)
 </script>
 
 <template>
@@ -136,12 +126,8 @@ const {
 
       <AppMasthead />
 
-      <UpdateReminderBanner
-        :open="showUpdateReminder"
-        :days-since-last-check="updateReminderDays"
-        @check="checkForUpdates"
-        @dismiss="dismissUpdateReminder"
-      />
+      <!-- Self-gates on the 90-day overdue check (reads updateInfo itself). -->
+      <UpdateReminderBanner />
 
       <!-- Self-gates on a non-empty error. -->
       <ErrorBanner />

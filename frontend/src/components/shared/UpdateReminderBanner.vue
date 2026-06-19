@@ -8,21 +8,23 @@
 // type + slide enter/leave + reduced-motion collapse). role="status"
 // + aria-live="polite" so SR users hear the new state without an
 // interrupt.
+//
+// Owns the whole reminder feature: useUpdateReminder derives the gate +
+// day-count from the app store's updateInfo, and "Check now" drives the app
+// store's user-pulled update check (which resets the cycle).
+import { storeToRefs } from 'pinia'
+import { useAppStore } from '@/stores/app'
+import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
 
-defineProps<{
-  open:             boolean
-  daysSinceLastCheck: number | null
-}>()
-
-defineEmits<{
-  check:   []
-  dismiss: []
-}>()
+const appStore = useAppStore()
+const { updateInfo } = storeToRefs(appStore)
+const { checkForUpdates } = appStore
+const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(updateInfo)
 </script>
 
 <template>
   <Transition name="update-reminder-banner">
-    <div v-if="open" class="update-reminder-banner" role="status" aria-live="polite">
+    <div v-if="shouldShowBanner" class="update-reminder-banner" role="status" aria-live="polite">
       <span class="update-reminder-banner-pulse" aria-hidden="true" />
       <div class="update-reminder-banner-copy">
         <span class="update-reminder-banner-label">Update check overdue</span>
@@ -39,7 +41,7 @@ defineEmits<{
         type="button"
         class="update-reminder-banner-check"
         data-update-reminder-check
-        @click="$emit('check')"
+        @click="checkForUpdates"
       >
         Check now
       </button>
@@ -48,7 +50,7 @@ defineEmits<{
         class="update-reminder-banner-dismiss"
         aria-label="Dismiss update reminder"
         data-update-reminder-dismiss
-        @click="$emit('dismiss')"
+        @click="dismiss"
       >
         ×
       </button>
