@@ -65,23 +65,11 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // drill-down still emits open-match → App.vue routes through
 // useSelectedMatch → MatchDetailPanel (right-side slide-out).
 
-const emit = defineEmits<{
-  // The manual-match modal + narrow-panel inert flags live in the UI store now;
-  // MatchesView flips them directly. These remaining events are App-shell flows.
-  // Bulk-export pipe — App opens the ExportBundleModal to confirm.
-  'export-bundle': [matchKeys: string[]]
-  // Flat CSV export — App dispatches the ready string to ExportMatchesCSV.
-  'export-csv': [csv: string, defaultName: string]
-  // Anchor cleared / stamped — App owns the persisted anchor + the toast.
-  'clear-anchor': []
-  'set-anchor': [matchKey: string]
-}>()
-
-// Match records + the narrow bundle come from the matches store. Detail-panel
-// selection + the j/k card-focus index + the open-and-focus gesture come from
-// the UI store; the per-match / bulk mutations come from useMatchActions. The
-// App-shell-coupled events (add-match modal, narrow-open inert, the anchor
-// toast, the export-bundle/CSV flows) stay emits — App owns that state.
+// MatchesView reads everything from the stores — zero props, zero emits. Records
+// + the narrow bundle + the export/CSV dispatch come from the matches store;
+// detail-panel selection + card focus + the anchor toast + the narrow-panel /
+// manual-match open-flags from the UI store; per-match + bulk mutations from
+// useMatchActions.
 const matchesStore = useMatchesStore()
 const uiStore = useUiStore()
 const { selection, onOpenMatchAndFocus } = uiStore
@@ -245,7 +233,7 @@ function requestCsvExport(keys: string[]) {
   const wanted = keys.length > 0 ? new Set(keys) : null
   const rows = wanted ? narrowedRecords.value.filter((r) => wanted.has(r.match_key)) : narrowedRecords.value
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  emit('export-csv', matchesToCSV(rows, ow.heroRole), `recall-matches-${stamp}.csv`)
+  matchesStore.onExportMatchesCSV(matchesToCSV(rows, ow.heroRole), `recall-matches-${stamp}.csv`)
 }
 
 // Row-density preference for the leaves list. Persisted via
@@ -331,7 +319,7 @@ function onRowContextOpenDetail(matchKey: string) {
 }
 
 function onRowContextSetAnchor(matchKey: string) {
-  emit('set-anchor', matchKey)
+  uiStore.onSetAnchor(matchKey)
 }
 
 function onRowContextHide(matchKey: string) {
@@ -391,7 +379,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
       :narrow="matchesStore.matchesNarrow"
       :records="matchesStore.records"
       @open-match="(k: string) => selection.open(k)"
-      @clear-anchor="emit('clear-anchor')"
+      @clear-anchor="uiStore.onSetAnchor('')"
     />
 
     <div class="matches-content-column">
@@ -404,7 +392,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
         :records="matchesStore.records"
         :narrow-mode="narrowMode"
         @open-match="(k: string) => selection.open(k)"
-        @clear-anchor="emit('clear-anchor')"
+        @clear-anchor="uiStore.onSetAnchor('')"
         @narrow-open="uiStore.setNarrowOpen"
       />
 
@@ -457,7 +445,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           :available-tags="matchesStore.matchesNarrow.availableTags.value"
           @select-all="selectAllVisible"
           @hide="hideSelected"
-          @export-bundle="emit('export-bundle', [...selectedKeys])"
+          @export-bundle="matchesStore.onExportBundleRequest([...selectedKeys])"
           @export-csv="requestCsvExport([...selectedKeys])"
           @bulk-tag="onBulkTag"
           @move-begin="beginMoveLive"

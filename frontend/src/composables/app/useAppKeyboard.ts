@@ -1,4 +1,4 @@
-import { ref, watch, nextTick } from 'vue'
+import { watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useAppStore } from '@/stores/app'
@@ -28,8 +28,9 @@ export function useAppKeyboard() {
   } = uiStore.cardFocus
   const { matchesNarrow, matchesNarrowState } = matchesStore
   const { searchClauses } = storeToRefs(matchesStore)
-
-  const openCheatsheet = ref(false)
+  // The `?` cheatsheet flag lives in the UI store (KeyboardShortcutsModal reads
+  // it); the registry below toggles it + suppresses shortcuts while it's open.
+  const { cheatsheetOpen } = storeToRefs(uiStore)
 
   // Tablist Arrow/Home/End automatic-activation nav.
   const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
@@ -57,7 +58,7 @@ export function useAppKeyboard() {
 
   useGlobalKeyboard({
     view,
-    openCheatsheet,
+    openCheatsheet: cheatsheetOpen,
     selectionIsOpen: selection.isOpen,
     selectedKey: selection.selectedKey,
     closeSelection: selection.close,
@@ -73,5 +74,5 @@ export function useAppKeyboard() {
   // coverage (each TAB_ORDER entry needs a matching g+x handler).
   void TAB_ORDER
 
-  return { onTabKeydown, focusMain, openCheatsheet }
+  return { onTabKeydown, focusMain }
 }

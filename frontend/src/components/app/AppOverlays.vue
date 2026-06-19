@@ -1,20 +1,19 @@
 <script setup lang="ts">
 // App-shell overlay cluster — every modal / toast / lightbox / tour surface
 // that floats above the routed views. Extracted from App.vue's template to keep
-// the shell navigable. Reads its store-backed state directly (selection +
-// preview from the UI store, ignored-list + parse-gate + record buckets from
-// the matches store, update-check from the app store, Tesseract from settings);
-// the genuinely App-local state — modal flags App also needs for its
-// background-freeze (`inert`) computed, plus the toast/tour handlers that do DOM
-// + view-nav — arrives as one typed `api` bundle. Refs in that bundle don't
-// auto-unwrap in the template, so they're read with `.value`.
-import { computed, defineAsyncComponent, type Ref } from 'vue'
+// the shell navigable. Reads ALL of its state from the stores (selection +
+// preview + anchor toast + first-run gate + cheatsheet from the UI store;
+// records/parse/export/tour from the matches store; update-check + startup-error
+// from the app store; Tesseract + source candidates from settings) plus its own
+// onboarding-tour bridge (a stateless DOM/nav helper) — so App mounts it with no
+// props.
+import { computed, defineAsyncComponent } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { NamedCandidate } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
+import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
 import { screenshotURL } from '@/match/match-helpers'
 import StartupErrorModal from '@/components/app/StartupErrorModal.vue'
 import UnsupportedModal from '@/components/app/UnsupportedModal.vue'
@@ -32,53 +31,42 @@ const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/s
 const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/manual/ManualMatchModal.vue'))
 const OnboardingTour = defineAsyncComponent(() => import('@/components/shared/OnboardingTour.vue'))
 
-interface AnchorToastState { kind: 'set' | 'cleared'; label: string; token: number }
-
-// App-shell-local overlay state — flags App also reads for its background-freeze
-// computed, plus the toast/tour handlers that reach into the DOM / view nav.
-export interface OverlaysApi {
-  anchorToast: Ref<AnchorToastState | null>
-  onSetAnchor: (matchKey: string) => void
-  onAnchorToastViewFilter: () => void
-  onAnchorToastDismiss: (token: number) => void
-  showStartupErrorModal: Ref<boolean>
-  startupErrorMessage: Ref<string>
-  openCheatsheet: Ref<boolean>
-  closeCheatsheet: () => void
-  firstRunModalOpen: Ref<boolean>
-  screenshotCandidates: Ref<NamedCandidate[]>
-  probing: Ref<boolean>
-  onFirstRunDismiss: (renamedTo: string | null) => void
-  onFirstRunPickSource: (path: string) => void
-  onFirstRunPickCustomSource: () => void
-  exportBundleOpen: Ref<boolean>
-  exportBundleSelectedKeys: Ref<string[]>
-  closeExportBundle: () => void
-  onExportBundleConfirm: (filename: string, includeHidden: boolean, includeUnknown: boolean) => void
-  onTourSeedAndSwitch: (resumeStepIndex: number) => Promise<void>
-  onTourActiveChange: (active: boolean) => void
-  onTourOpenNarrow: () => void
-  onTourCloseNarrow: () => void
-  onTourApplyHeroFilter: (hero: string) => void
-  onTourClearFilters: () => void
-}
-
-defineProps<{ api: OverlaysApi }>()
-
 const appStore = useAppStore()
 const matchesStore = useMatchesStore()
 const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
-const { selection, preview, closeManualMatch, onManualMatchCreated } = uiStore
-const { manualMatchOpen } = storeToRefs(uiStore)
-const { view, appVersion, updateInfo, updateCheckBusy, updateCheckModalOpen } = storeToRefs(appStore)
-const { tesseractStatus } = storeToRefs(settingsStore)
+// Stateless DOM/nav bridge — its own instance is fine (no shared state).
+const tourBridge = useOnboardingTourBridge()
+
+// UI store — selection/preview + the manual-match modal + anchor toast +
+// cheatsheet + first-run gate (all overlay state).
+const {
+  selection, preview,
+  closeManualMatch, onManualMatchCreated,
+  onSetAnchor, onAnchorToastViewFilter, onAnchorToastDismiss,
+  closeCheatsheet,
+  onFirstRunDismiss, onFirstRunPickSource, onFirstRunPickCustomSource,
+} = uiStore
+const { manualMatchOpen, anchorToast, cheatsheetOpen, firstRunModalOpen } = storeToRefs(uiStore)
+
+// App store — update-check + the non-dismissible startup-error gate.
+const {
+  view, appVersion, updateInfo, updateCheckBusy, updateCheckModalOpen,
+  startupError, showStartupErrorModal,
+} = storeToRefs(appStore)
+
+// Settings — Tesseract + the first-run source candidates.
+const { tesseractStatus, screenshotCandidates, probing } = storeToRefs(settingsStore)
+
+// Matches — record buckets + ignored panel + parse gate + export-bundle modal.
 const {
   showUnsupportedModal,
   ignoredPanelOpen,
   ignoredScreenshots,
   hiddenRecords,
   unknownRecords,
+  exportBundleOpen,
+  exportBundleSelectedKeys,
 } = storeToRefs(matchesStore)
 const {
   confirmUnsupportedParse,
@@ -87,6 +75,9 @@ const {
   onClearIgnoredScreenshots,
   onRunParseFromIgnored,
   load,
+  onTourActiveChange,
+  closeExportBundle,
+  onExportBundleConfirm,
 } = matchesStore
 
 const lightboxSrc = computed(() => {
@@ -100,14 +91,14 @@ const lightboxSrc = computed(() => {
   <!-- Reads selection / preview / narrow / mutations from the stores;
        App still owns the anchor-confirmation toast, so set-anchor is the
        one event it handles. -->
-  <MatchDetailPanel @set-anchor="api.onSetAnchor" />
+  <MatchDetailPanel @set-anchor="onSetAnchor" />
 
   <!-- Anchor confirmation toast — appears bottom-right when the "since"
        reference is set or cleared. -->
   <MatchAnchorToast
-    :state="api.anchorToast.value"
-    @view-filter="api.onAnchorToastViewFilter"
-    @dismiss="api.onAnchorToastDismiss"
+    :state="anchorToast"
+    @view-filter="onAnchorToastViewFilter"
+    @dismiss="onAnchorToastDismiss"
   />
 
   <!-- Fullscreen screenshot lightbox — stacks above the detail panel via
@@ -125,7 +116,7 @@ const lightboxSrc = computed(() => {
 
   <!-- Startup-failure modal. Non-empty message means the Go layer captured a
        profile-init / DB-open failure. No close affordance — restart recovers. -->
-  <StartupErrorModal :open="api.showStartupErrorModal.value" :message="api.startupErrorMessage.value" />
+  <StartupErrorModal :open="showStartupErrorModal" :message="startupError" />
 
   <!-- Unsupported Tesseract version confirmation modal -->
   <UnsupportedModal
@@ -138,10 +129,10 @@ const lightboxSrc = computed(() => {
   <!-- Keyboard-shortcut cheatsheet. Opened by the `?` binding, closed via Esc
        / footer button / click-outside. -->
   <KeyboardShortcutsModal
-    :open="api.openCheatsheet.value"
+    :open="cheatsheetOpen"
     :view="view"
     :panel-open="selection.isOpen.value"
-    @close="api.closeCheatsheet"
+    @close="closeCheatsheet"
   />
 
   <ManualMatchModal
@@ -154,38 +145,38 @@ const lightboxSrc = computed(() => {
        app via @navigate / @open-match / @open-narrow / @apply-hero-filter etc.;
        @active-change swaps in demo data so every step lands on something. -->
   <OnboardingTour
-    :seed-and-switch-to-test="api.onTourSeedAndSwitch"
+    :seed-and-switch-to-test="tourBridge.onTourSeedAndSwitch"
     @navigate="(v: string) => appStore.goToView(v as Parameters<typeof appStore.goToView>[0])"
-    @active-change="api.onTourActiveChange"
+    @active-change="onTourActiveChange"
     @open-match="(k: string) => selection.open(k)"
     @close-match="selection.close"
-    @open-narrow="api.onTourOpenNarrow"
-    @close-narrow="api.onTourCloseNarrow"
-    @apply-hero-filter="api.onTourApplyHeroFilter"
-    @clear-filters="api.onTourClearFilters"
+    @open-narrow="tourBridge.onTourOpenNarrow"
+    @close-narrow="tourBridge.onTourCloseNarrow"
+    @apply-hero-filter="tourBridge.onTourApplyHeroFilter"
+    @clear-filters="tourBridge.onTourClearFilters"
   />
 
   <!-- First-run "Main account name" modal. Forced gate — every other surface
        is inert + aria-hidden while this is up. ESC + backdrop don't close it. -->
   <FirstRunProfileModal
-    v-if="api.firstRunModalOpen.value"
+    v-if="firstRunModalOpen"
     :platform="tesseractStatus?.platform ?? ''"
-    :candidates="api.screenshotCandidates.value"
-    :picking="api.probing.value"
-    @dismiss="api.onFirstRunDismiss"
-    @pick-source="api.onFirstRunPickSource"
-    @pick-custom-source="api.onFirstRunPickCustomSource"
+    :candidates="screenshotCandidates"
+    :picking="probing"
+    @dismiss="onFirstRunDismiss"
+    @pick-source="onFirstRunPickSource"
+    @pick-custom-source="onFirstRunPickCustomSource"
   />
 
   <!-- Export bundle modal — opens from the Matches bulk-action bar's
        "Export bundle…" button. -->
   <ExportBundleModal
-    :open="api.exportBundleOpen.value"
-    :selected-count="api.exportBundleSelectedKeys.value.length"
+    :open="exportBundleOpen"
+    :selected-count="exportBundleSelectedKeys.length"
     :hidden-count="hiddenRecords.length"
     :unknown-count="unknownRecords.length"
-    @close="api.closeExportBundle"
-    @export="api.onExportBundleConfirm"
+    @close="closeExportBundle"
+    @export="onExportBundleConfirm"
   />
 
   <IgnoredFilesPanel

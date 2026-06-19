@@ -1,4 +1,4 @@
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { CheckForUpdate, GetVersion, type UpdateInfo, type DataLocation } from '@/api'
@@ -83,8 +83,16 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // ── Data location (Settings → Backup) ─────────────────────────────
-  // Set by App's boot coordinator (load()'s allSettled fan-out).
+  // Set by the boot coordinator (load()'s allSettled fan-out).
   const dataLocation = ref<DataLocation | null>(null)
+
+  // ── Startup failure ───────────────────────────────────────────────
+  // Filled by useAppBoot from GetStartupError(); the modal is open iff the
+  // message is non-empty. Non-dismissible (restart is the only recovery), so
+  // the only mutation is set-once on boot.
+  const startupError = ref('')
+  const showStartupErrorModal = computed(() => startupError.value !== '')
+  function setStartupError(message: string) { startupError.value = message }
 
   return {
     view,
@@ -101,5 +109,8 @@ export const useAppStore = defineStore('app', () => {
     loadVersion,
     checkForUpdates,
     dataLocation,
+    startupError,
+    showStartupErrorModal,
+    setStartupError,
   }
 })

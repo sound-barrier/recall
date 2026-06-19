@@ -20,6 +20,8 @@ export function useExportBundle(deps: ExportBundleDeps) {
     exportBundleOpen.value = true
   }
 
+  function closeExportBundle() { exportBundleOpen.value = false }
+
   // Flat CSV — MatchesView hands up the ready-to-save string; we just dispatch.
   async function onExportMatchesCSV(csv: string, defaultName: string) {
     try {
@@ -52,6 +54,7 @@ export function useExportBundle(deps: ExportBundleDeps) {
     exportBundleOpen,
     exportBundleSelectedKeys,
     onExportBundleRequest,
+    closeExportBundle,
     onExportMatchesCSV,
     onExportBundleConfirm,
   }
