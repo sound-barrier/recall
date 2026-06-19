@@ -9,23 +9,20 @@
 // per-SFC scoped <style> blocks.
 import '@/styles/app.css'
 
-import { ref, computed, onMounted, defineAsyncComponent, type Component } from 'vue'
+import { ref, computed, defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { MatchRecord } from '@/api'
-import {
-  GetStartupError,
-} from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
-import { tallyWLD } from '@/match/match-stats-helpers'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useAnchorToast } from '@/composables/app/useAnchorToast'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
 import { useFirstRun } from '@/composables/app/useFirstRun'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
+import { useAppBoot } from '@/composables/app/useAppBoot'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
 import AppOverlays, { type OverlaysApi } from '@/components/app/AppOverlays.vue'
@@ -71,9 +68,7 @@ const appStore = useAppStore()
 const {
   error,
   errorRetry,
-  appVersion,
   updateInfo,
-  updateCheckBusy,
 } = storeToRefs(appStore)
 const { setErrorFromRaw, clearError, checkForUpdates, goToView } = appStore
 const { view } = storeToRefs(appStore)
@@ -85,13 +80,10 @@ const { view } = storeToRefs(appStore)
 const matchesStore = useMatchesStore()
 const {
   records,
-  unknownRecords,
   cancellingParse,
   firstLoadPending,
   parseProgress,
   parseLog,
-  lastParsedAt,
-  recordsPulse,
   showUnsupportedModal,
   parseAnnouncement,
 } = storeToRefs(matchesStore)
@@ -99,7 +91,6 @@ const {
   load,
   onTourActiveChange,
   onCancelParse,
-  loadIgnored,
 } = matchesStore
 
 // Onboarding tour demo-records swap (tourActive / savedRecords /
@@ -118,7 +109,7 @@ const {
 // All App-shell keyboard wiring — tablist Arrow/Home/End nav, the global
 // shortcut registry (j/k, g-prefix, e/t, ?), the cheatsheet flag, and the
 // search→panel auto-track — lives in useAppKeyboard.
-const { onTabKeydown, focusMain, openCheatsheet } = useAppKeyboard()
+const { focusMain, openCheatsheet } = useAppKeyboard()
 
 // Detail-panel selection lives in the UI store (markRaw bundle).
 const uiStore = useUiStore()
@@ -136,7 +127,6 @@ const {
 } = storeToRefs(settingsStore)
 const {
   gotoEngineSettings,
-  loadScreenshotCandidates,
 } = settingsStore
 
 const showManualMatchModal = ref(false)
@@ -147,21 +137,9 @@ const showManualMatchModal = ref(false)
 // Escape as cancel, restores focus to the trigger on close.
 useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
 
-// Startup-failure modal. `startupErrorMessage` is filled by the
-// onMounted GetStartupError() call below; the modal is open
-// iff the message is non-empty. Unlike showUnsupportedModal it has
-// no Cancel — the only recovery is restart, because Startup
-// failures mean SQLite or profile init didn't happen and the rest
-// of the app can't function. Driven by a computed so the focus
-// trap composable can watch a Ref<boolean>.
-const startupErrorMessage = ref('')
-const showStartupErrorModal = computed(() => startupErrorMessage.value !== '')
-// Non-dismissible: Escape becomes a no-op so the user can't
-// trap-fail into a half-broken app. Restart is the only recovery.
-useModalFocusTrap(showStartupErrorModal, {
-  containerSelector: '.modal-box.startup-error',
-  onClose: () => {},
-})
+// Boot coordinator: on mount it fans out into each domain store's loaders + owns
+// the non-dismissible Startup-failure modal (open-state + focus trap).
+const { showStartupErrorModal, startupErrorMessage } = useAppBoot()
 
 // First-run picker candidates + pickDetectedSource live in the settings store
 // (shared with SettingsView's source picker).
@@ -265,11 +243,6 @@ const {
 // The narrow filter + "since this match" anchor cluster lives in the matches
 // store — it drives `selection` (detail panel) + the dossier off the same
 // narrowedRecords the view shows. matchesNarrow / matchesNarrowState /
-// matchAnchor are composable bundles (destructure directly; their inner refs
-// don't auto-unwrap at object depth); searchClauses is a ref → storeToRefs.
-const { matchesNarrow } = matchesStore
-const activeFilterCount = matchesNarrow.activeClauseCount
-
 // The detail card's narrow-chip toggle contract (isNarrowChipActive /
 // toggleNarrowChip) lives in the matches store; the panel reads it directly.
 
@@ -339,10 +312,6 @@ const backgroundFrozen = computed(() =>
 // so this stays in sync with the MatchesView dossier's Record KPI
 // tile. Honors the same `leaver-exclude-tally` rule the dossier
 // applies.
-const wld = computed(() => tallyWLD(
-  matchesNarrow.narrowedRecords.value,
-  matchesNarrow.leaverHandling.value === 'exclude-tally',
-))
 
 // Per-card source-preview/expand state (the CardStateApi bundle) + the
 // triage actions live inside UnknownMapsView now — it's the only consumer.
@@ -394,32 +363,6 @@ const overlaysApi: OverlaysApi = {
 // this the user would have to click Parse manually to see new matches
 // land in the UI even though the data is already in SQLite.
 
-onMounted(() => {
-  // Restore last-parse timestamp so the Settings page shows the right
-  // "Last run · …" hint immediately on launch, not just after a fresh
-  // parse in the current session.
-  try {
-    const v = localStorage.getItem('recall.lastParsedAt')
-    if (v) lastParsedAt.value = Number(v) || null
-  } catch (_) {}
-
-  void appStore.loadVersion()
-  // CheckForUpdate is no longer called on mount — it's gated behind
-  // the "Check for updates" button in the masthead's ver-block. See
-  // checkForUpdates() below + the v-if chain on .ver-block.
-  load()
-  void loadIgnored()
-  void loadScreenshotCandidates()
-  // Surface any captured Startup failure. The Wails wrapper used to
-  // log.Fatal on profile / DB-init errors, which manifested as a
-  // window flash with no user-visible reason. Startup now records
-  // the failure on the App; we pull it here on mount and flip the
-  // blocking modal so the user sees a real message.
-  GetStartupError()
-    .then(msg => { if (msg) startupErrorMessage.value = msg })
-    .catch(() => {})
-})
-
 // Polite live-region announcement for the parse lifecycle. The
 // ParseStatusBar already lights up an aria-live region during a
 // run (counter + filename), but it goes inert when the bar hides
@@ -459,21 +402,7 @@ onMounted(() => {
         @fix="gotoEngineSettings"
       />
 
-      <AppMasthead
-        :view="view"
-        :active-filter-count="activeFilterCount"
-        :unknown-count="unknownRecords.length"
-        :parse-progress="parseProgress"
-        :records-count="records.length"
-        :wld="wld"
-        :records-pulse="recordsPulse"
-        :app-version="appVersion"
-        :update-check-busy="updateCheckBusy"
-        :has-update-info="!!updateInfo"
-        :on-tab-keydown="onTabKeydown"
-        @go-to-view="goToView"
-        @check-updates="checkForUpdates"
-      />
+      <AppMasthead />
 
       <UpdateReminderBanner
         :open="showUpdateReminder"

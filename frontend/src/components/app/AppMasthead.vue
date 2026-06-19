@@ -1,34 +1,40 @@
 <script setup lang="ts">
 // The app masthead: brand/repo link, the primary tablist, the parse chip,
 // the W/L/D scoreboard, profile switcher, and the version + update-check
-// control. Presentational — App owns the state and passes it in; the tab
-// keyboard-nav handler is threaded as `onTabKeydown` so focus management
-// stays in App's useTabKeyboardNav. (Props will become injects in the
-// state→provide/inject stage of the App thin-shell refactor.)
+// control. Reads its state from the stores (view/version/update-check from app,
+// records/parse/narrow from matches) and owns its own tablist keyboard-nav +
+// the narrowed-set scoreboard tally — App just mounts `<AppMasthead />`.
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import { OpenURL } from '@/api'
-import type { TabId } from '@/composables/shared/useTabKeyboardNav'
-import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
+import { tallyWLD } from '@/match/match-stats-helpers'
+import { useTabKeyboardNav } from '@/composables/shared/useTabKeyboardNav'
 import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
 import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
 
-defineProps<{
-  view: TabId
-  activeFilterCount: number
-  unknownCount: number
-  parseProgress: ParseProgressEvent | null
-  recordsCount: number
-  wld: { w: number; l: number; d: number }
-  recordsPulse: boolean
-  appVersion: string
-  updateCheckBusy: boolean
-  hasUpdateInfo: boolean
-  onTabKeydown: (e: KeyboardEvent) => void
-}>()
+const appStore = useAppStore()
+const matchesStore = useMatchesStore()
+const { view, appVersion, updateCheckBusy, updateInfo } = storeToRefs(appStore)
+const { goToView, checkForUpdates } = appStore
+const { records, unknownRecords, parseProgress, recordsPulse } = storeToRefs(matchesStore)
+const { matchesNarrow } = matchesStore
 
-const emit = defineEmits<{
-  'go-to-view': [view: TabId]
-  'check-updates': []
-}>()
+// Tablist Arrow/Home/End nav — owned here (App keeps useAppKeyboard for the
+// global registry + skip-link). The handler factory installs no document
+// listener, so a second instance is free.
+const { onTabKeydown } = useTabKeyboardNav(view, goToView)
+
+const activeFilterCount = matchesNarrow.activeClauseCount
+const hasUpdateInfo = computed(() => !!updateInfo.value)
+// W/L/D across the currently-narrowed set — same source + leaver rule the
+// MatchesView dossier's Record KPI tile uses, so the two stay in lockstep.
+const wld = computed(() => tallyWLD(
+  matchesNarrow.narrowedRecords.value,
+  matchesNarrow.leaverHandling.value === 'exclude-tally',
+))
 
 const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
 </script>
@@ -73,7 +79,7 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
           :tabindex="view === 'settings' ? 0 : -1"
           role="tab"
           aria-controls="panel-settings"
-          @click="emit('go-to-view', 'settings')"
+          @click="goToView('settings')"
         >
           <span class="nav-tab-num">01</span>
           <span class="nav-tab-label">Settings</span>
@@ -87,7 +93,7 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
           :tabindex="view === 'ingest' ? 0 : -1"
           role="tab"
           aria-controls="panel-ingest"
-          @click="emit('go-to-view', 'ingest')"
+          @click="goToView('ingest')"
         >
           <span class="nav-tab-num">02</span>
           <span class="nav-tab-label">Parse</span>
@@ -101,7 +107,7 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
           :tabindex="view === 'matches' ? 0 : -1"
           role="tab"
           aria-controls="panel-matches"
-          @click="emit('go-to-view', 'matches')"
+          @click="goToView('matches')"
         >
           <span class="nav-tab-num">03</span>
           <span class="nav-tab-label">
@@ -123,12 +129,12 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
           :tabindex="view === 'unknown' ? 0 : -1"
           role="tab"
           aria-controls="panel-unknown"
-          @click="emit('go-to-view', 'unknown')"
+          @click="goToView('unknown')"
         >
           <span class="nav-tab-num">04</span>
           <span class="nav-tab-label">
             Unknown
-            <span v-if="unknownCount > 0" class="nav-tab-badge">{{ unknownCount }}</span>
+            <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
           </span>
         </button>
       </nav>
@@ -136,10 +142,10 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
     <div class="masthead-right">
       <MastheadParseChip
         :parse-progress="parseProgress"
-        @go-to-view="emit('go-to-view', $event)"
+        @go-to-view="goToView($event)"
       />
       <div
-        v-if="recordsCount > 0 && view === 'matches'"
+        v-if="records.length > 0 && view === 'matches'"
         class="scoreboard"
         :class="{ pulse: recordsPulse }"
         title="Wins · Losses · Draws across the currently filtered matches"
@@ -169,7 +175,7 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
           :disabled="updateCheckBusy && !hasUpdateInfo"
           :title="updateCheckBusy ? 'Checking GitHub releases…' : 'Check GitHub for a newer release'"
           data-update-check-trigger
-          @click="emit('check-updates')"
+          @click="checkForUpdates()"
         >
           {{ updateCheckBusy && !hasUpdateInfo ? 'Checking…' : 'Check for updates' }}
         </button>
