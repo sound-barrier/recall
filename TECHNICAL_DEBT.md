@@ -13,18 +13,30 @@ matches that component, leaving `app.css` for genuinely cross-cutting tokens +
 families (`.btn` / `.badge` / `.section-*` / `.setting-*`) and **all** theme
 overrides.
 
-**Why this is a careful audit, not a quick sweep** (findings from the first pass):
+**This may not be worth pursuing — the substantive families are genuinely
+shared** (findings from a four-family audit; verify before investing more):
 
-- The "obvious" candidates the frontend CLAUDE.md names are NOT single-component:
-  `.slot-chip` / `.slot-dot` are used by `MatchCardExpanded` + `MatchSources` +
-  `UnknownMapsView`; the `.source-*` family by those plus `SupportedSourcesRow`.
-  Per the rule ("if more than one component references it, keep it in app.css")
-  they stay put.
-- Most families carry `[data-theme="day"]` overrides, which MUST stay in app.css
-  under a parent id — the scoped-style `:global` miscompile gotcha documented in
-  the frontend CLAUDE.md "Styles" section. So a single-component family that has
-  theme rules splits: base → the SFC's scoped block; theme → app.css rewritten
-  under `[data-theme="day"] #panel-x .y`.
+- Every substantial family checked is multi-component, so the per-SFC scoped
+  premise mostly fails: `.slot-*` → MatchCardExpanded + MatchSources +
+  UnknownMapsView; `.source-*` → those + SupportedSourcesRow; `.system-alert-*` →
+  SystemAlertBanner + MatchCardExpanded; `.probe-*` → SettingsEngine +
+  SettingsFolders + SettingsView. Per the rule ("if more than one component
+  references it, keep it in app.css") they all stay.
+- The only families that came back theme-free AND plausibly single-component are
+  tiny App/AppMasthead chrome (`.scoreboard`, `.skip-link`, `.atmos`,
+  `.grid-lines`, `.masthead-left/right` — 1–3 rules each); extracting them yields
+  almost nothing, and App.vue intentionally has no `<style>` block.
+- Families with `[data-theme="day"]` overrides must keep those in app.css under a
+  parent id regardless — the scoped-style `:global` miscompile gotcha (frontend
+  CLAUDE.md "Styles").
+
+Net: the large app.css is a real navigability cost, but the "extract to scoped"
+fix is largely **not applicable** because the selectors are genuinely
+cross-cutting. Before doing more here, re-audit the remaining families; if they're
+all multi-component too, the better move is to *organize* app.css (section
+headers / split into a few topical `@import`ed files) rather than chase scoped
+blocks. Then this section becomes "split app.css into topical files", not the
+method below.
 
 **Method — one selector-family per commit:**
 
