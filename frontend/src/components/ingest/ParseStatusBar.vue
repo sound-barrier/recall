@@ -1,24 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import { storeToRefs } from 'pinia'
+import { useAppStore } from '@/stores/app'
+import { useMatchesStore } from '@/stores/matches'
+import { useUiStore } from '@/stores/ui'
 
-const props = defineProps<{
-  parseProgress: ParseProgressEvent | null
-  parseLog: ParseProgressEvent[]
-  // True between the Stop click and the SSE parse-cancelled
-  // confirmation. Drives the ABORT tile's "ABORTING…" copy +
-  // disabled state so a second click can't fire a redundant
-  // DELETE. Mirrors IngestView's local Stop button so a user on
-  // any tab can kill the run without navigating.
-  cancellingParse?: boolean
-}>()
-
-const emit = defineEmits<{
-  'go-to-view': [next: 'settings' | 'ingest' | 'matches' | 'unknown']
-  // ABORT click. App.vue owns the actual CancelParse() call +
-  // cancellingParse state machine.
-  'cancel-parse': []
-}>()
+// Persistent parse-status footer. Reads the parse lifecycle from the matches
+// store: parseProgress drives the counter / ticks / visibility state machine,
+// cancellingParse drives the ABORT tile's "ABORTING…" state. The ABORT click +
+// the click-to-jump-to-Parse gesture go straight to the stores. Self-applies
+// `inert` while hidden OR while a modal has frozen the background.
+const matchesStore = useMatchesStore()
+const { parseProgress, cancellingParse } = storeToRefs(matchesStore)
+const { onCancelParse } = matchesStore
+const { goToView } = useAppStore()
+const { backgroundFrozen } = storeToRefs(useUiStore())
 
 // Tactical-status-bar gist:
 //   - visible when a parse is in flight (parseProgress non-null AND
@@ -37,11 +33,13 @@ const armed = ref(false)
 let dismissTimer: ReturnType<typeof setTimeout> | null = null
 
 const inFlight = computed(() => {
-  const p = props.parseProgress
+  const p = parseProgress.value
   return !!p && p.total > 0 && p.done < p.total
 })
 
 const visible = computed(() => inFlight.value || armed.value)
+// Tabbable + visible to SR only when shown AND not behind a frozen modal.
+const interactive = computed(() => visible.value && !backgroundFrozen.value)
 
 watch(inFlight, (now, was) => {
   if (now) {
@@ -59,10 +57,10 @@ watch(inFlight, (now, was) => {
   }
 })
 
-const done = computed(() => props.parseProgress?.done ?? 0)
-const total = computed(() => props.parseProgress?.total ?? 0)
-const currentFile = computed(() => props.parseProgress?.filename ?? '')
-const currentType = computed(() => props.parseProgress?.screenshot_type ?? '')
+const done = computed(() => parseProgress.value?.done ?? 0)
+const total = computed(() => parseProgress.value?.total ?? 0)
+const currentFile = computed(() => parseProgress.value?.filename ?? '')
+const currentType = computed(() => parseProgress.value?.screenshot_type ?? '')
 
 // Zero-padded counter so digit width doesn't bounce as the count grows.
 const counterPad = computed(() => Math.max(2, String(total.value).length))
@@ -120,7 +118,7 @@ const lastTickLabel = computed(() => {
 function onJumpToIngest(e: MouseEvent) {
   // Don't intercept clicks on the dismiss affordance if added later.
   if ((e.target as HTMLElement | null)?.closest('[data-no-jump]')) return
-  emit('go-to-view', 'ingest')
+  goToView('ingest')
 }
 </script>
 
@@ -128,8 +126,8 @@ function onJumpToIngest(e: MouseEvent) {
   <aside
     class="status-bar"
     :class="{ 'status-bar-hidden': !visible }"
-    :aria-hidden="visible ? undefined : 'true'"
-    :inert="visible ? undefined : true"
+    :aria-hidden="interactive ? undefined : 'true'"
+    :inert="interactive ? undefined : true"
     role="status"
     aria-live="polite"
     @click="onJumpToIngest"
@@ -198,7 +196,7 @@ function onJumpToIngest(e: MouseEvent) {
         data-testid="status-bar-cancel-btn"
         :disabled="cancellingParse"
         :aria-label="cancellingParse ? 'Aborting parse' : 'Abort parse'"
-        @click.stop="emit('cancel-parse')"
+        @click.stop="onCancelParse"
       >
         <span class="abort-glyph" aria-hidden="true">■</span>
         <span class="abort-label">{{ cancellingParse ? 'ABORTING' : 'ABORT' }}</span>
