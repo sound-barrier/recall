@@ -9,7 +9,7 @@
 // per-SFC scoped <style> blocks.
 import '@/styles/app.css'
 
-import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent, type Component } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { MatchRecord } from '@/api'
 import {
@@ -20,13 +20,12 @@ import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { tallyWLD } from '@/match/match-stats-helpers'
-import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
-import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useAnchorToast } from '@/composables/app/useAnchorToast'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
 import { useFirstRun } from '@/composables/app/useFirstRun'
+import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
 import AppOverlays, { type OverlaysApi } from '@/components/app/AppOverlays.vue'
@@ -116,24 +115,13 @@ const {
   onTourClearFilters,
 } = useOnboardingTourBridge()
 
-// view + goToView live in the app store; useTabKeyboardNav drives them.
-const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
+// All App-shell keyboard wiring — tablist Arrow/Home/End nav, the global
+// shortcut registry (j/k, g-prefix, e/t, ?), the cheatsheet flag, and the
+// search→panel auto-track — lives in useAppKeyboard.
+const { onTabKeydown, focusMain, openCheatsheet } = useAppKeyboard()
 
-// ── Keyboard-shortcut + card-focus state ──────────────────────
-// Card focus (the j/k/gg/G/n/N + e/t targets) lives in useCardFocus,
-// which owns focusedCardIndex + the rendered-DOM-order walk helpers
-// App.vue threads into useGlobalKeyboard. `openCheatsheet` toggles the
-// `?` cheatsheet modal.
-// Detail-panel selection, screenshot preview/lightbox, and card focus live
-// in the UI store (markRaw bundles — destructure into top-level vars).
+// Detail-panel selection lives in the UI store (markRaw bundle).
 const uiStore = useUiStore()
-const {
-  focusedCardIndex,
-  focusCardByRenderedDelta,
-  focusCardByRenderedEnd,
-  focusSectionByRenderedDelta,
-} = uiStore.cardFocus
-const openCheatsheet = ref(false)
 
 
 // Tesseract status (path / found / version / supported flag) + the
@@ -279,8 +267,7 @@ const {
 // narrowedRecords the view shows. matchesNarrow / matchesNarrowState /
 // matchAnchor are composable bundles (destructure directly; their inner refs
 // don't auto-unwrap at object depth); searchClauses is a ref → storeToRefs.
-const { matchesNarrowState, matchesNarrow } = matchesStore
-const { searchClauses } = storeToRefs(matchesStore)
+const { matchesNarrow } = matchesStore
 const activeFilterCount = matchesNarrow.activeClauseCount
 
 // The detail card's narrow-chip toggle contract (isNarrowChipActive /
@@ -346,30 +333,6 @@ const backgroundFrozen = computed(() =>
 // `narrowedRecords` IS the search-aware list now that the legacy
 // `filters.filteredSorted` is gone — same dimensions, no second
 // independent filter pipeline to keep in sync.
-watch(
-  () => matchesNarrowState.searchText.value,
-  () => {
-    if (!selection.isOpen.value) return
-    if (searchClauses.value.length === 0) return
-    const first = matchesNarrow.narrowedRecords.value[0]
-    if (first && first.match_key !== selection.selectedKey.value) {
-      selection.open(first.match_key)
-    }
-  },
-)
-
-
-// Open the Matches detail panel for a given match key + scroll the
-// source row into view behind it so the user doesn't lose their
-// place. Used by Matches-view keyboard shortcuts ('e' / 't'); the
-// Unknown tab uses its own local toggleUnknownExpand below.
-async function toggleExpand(id: string) {
-  selection.open(id)
-  await nextTick()
-  const el = document.getElementById(`match-${id}`)
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-}
-
 // W-L-D summary that reflects the *currently narrowed* set so the user
 // can see, for instance, "support role on Aatlis: 6W 2L 0D" by setting
 // the matching filters. Sources from MatchesView's `narrowedRecords`
@@ -383,33 +346,6 @@ const wld = computed(() => tallyWLD(
 
 // Per-card source-preview/expand state (the CardStateApi bundle) + the
 // triage actions live inside UnknownMapsView now — it's the only consumer.
-
-// ── Keyboard shortcuts — full registry ─────────────────────────
-// Hoisted to useGlobalKeyboard so App.vue stops carrying the
-// ~100-line registry inline. The composable still installs a
-// single capture-phase document listener via useKeyboardShortcuts;
-// per-binding `when` predicates gate view-specific shortcuts.
-// `suppressed: openCheatsheet` is wired inside the composable.
-// See FEATURES.md for the cheatsheet contract.
-useGlobalKeyboard({
-  view,
-  openCheatsheet,
-  selectionIsOpen: selection.isOpen,
-  selectedKey: selection.selectedKey,
-  closeSelection: selection.close,
-  focusedCardIndex,
-  narrowedRecords: matchesNarrow.narrowedRecords,
-  goToView,
-  focusCardByRenderedDelta,
-  focusCardByRenderedEnd,
-  focusSectionByRenderedDelta,
-  toggleExpand,
-})
-
-// Keep TAB_ORDER referenced so a future tab addition can lint-check
-// the g-prefix coverage above. (Each entry in TAB_ORDER must have a
-// matching g+x handler.)
-void TAB_ORDER
 
 // The derived triage lists (unknown / reference-gap / hidden / ambiguous)
 // are getters on the matches store, destructured above.
