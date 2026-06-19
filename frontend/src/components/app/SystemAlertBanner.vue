@@ -1,13 +1,17 @@
 <script setup lang="ts">
-// Full-width "OCR engine offline" halt banner, rendered above the masthead
-// on a broken install. App gates it on !tesseractReady and owns the
-// deep-link to Settings → Engine.
-defineProps<{ path: string; error: string }>()
-const emit = defineEmits<{ fix: [] }>()
+// Full-width "OCR engine offline" halt banner, rendered above the masthead on a
+// broken install. Reads the Tesseract status from the settings store + owns the
+// deep-link to Settings → Engine; self-gates on !tesseractReady.
+import { storeToRefs } from 'pinia'
+import { useSettingsStore } from '@/stores/settings'
+
+const settingsStore = useSettingsStore()
+const { tesseractStatus, tesseractReady } = storeToRefs(settingsStore)
+const { gotoEngineSettings } = settingsStore
 </script>
 
 <template>
-  <div class="system-alert" role="alert">
+  <div v-if="!tesseractReady" class="system-alert" role="alert">
     <div class="system-alert-stripes" aria-hidden="true" />
     <div class="system-alert-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="26" height="26">
@@ -22,14 +26,14 @@ const emit = defineEmits<{ fix: [] }>()
       </div>
       <h3 class="system-alert-title">
         Tesseract not detected
-        <span class="system-alert-path" :title="path">{{ path || '— no path —' }}</span>
+        <span class="system-alert-path" :title="tesseractStatus.path">{{ tesseractStatus.path || '— no path —' }}</span>
       </h3>
       <p class="system-alert-desc">
-        {{ error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}
+        {{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}
       </p>
     </div>
     <div class="system-alert-actions">
-      <button class="btn alert-cta" @click="emit('fix')">
+      <button class="btn alert-cta" @click="gotoEngineSettings">
         <span class="alert-cta-arrow" aria-hidden="true">→</span>
         Fix in Settings → Engine
       </button>
