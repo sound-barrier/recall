@@ -96,14 +96,11 @@ const {
   firstLoadPending,
   parseProgress,
   parseLog,
-  newScreenshotCount,
   lastParsedAt,
   recordsPulse,
   tourActive,
-  parseProgressOpen,
   showUnsupportedModal,
   parseAnnouncement,
-  parseConnectionState,
   ignoredCount,
   clearingDB,
   clearConfirm,
@@ -116,10 +113,8 @@ const {
   refreshNewCount,
   load,
   onTourActiveChange,
-  parse,
   onReParseAll,
   onCancelParse,
-  refreshParse,
   loadIgnored,
   openIgnoredPanel,
   armClear,
@@ -194,7 +189,6 @@ const {
   resetTesseractPath,
   detectTesseractBinary,
   gotoEngineSettings,
-  toggleWatch,
   setScreenshotsDir,
   pickDir,
   detectDir,
@@ -820,28 +814,9 @@ onMounted(() => {
         />
 
         <!-- ─── PARSE VIEW (Watch + Manual Parse + Progress) ─────── -->
-        <IngestView
-          v-if="view === 'ingest'"
-          :tesseract-ready="tesseractReady"
-          :screenshots-dir="screenshotsDir"
-          :watch-enabled="watchEnabled"
-          :parse-busy="parseBusy"
-          :cancelling-parse="cancellingParse"
-          :new-screenshot-count="newScreenshotCount"
-          :last-parsed-at="lastParsedAt"
-          :parse-progress="parseProgress"
-          :parse-log="parseLog"
-          :parse-progress-open="parseProgressOpen"
-          :parse-connection-state="parseConnectionState"
-          :matched-count="records.length"
-          :unknown-count="unknownRecords.length"
-          @toggle-watch="toggleWatch"
-          @parse="parse"
-          @cancel-parse="onCancelParse"
-          @toggle-progress="parseProgressOpen = !parseProgressOpen"
-          @refresh-parse="refreshParse"
-          @go-to-view="goToView"
-        />
+        <!-- Reads parse state from the matches store + Tesseract/watch from
+             settings directly. -->
+        <IngestView v-if="view === 'ingest'" />
 
         <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
         <UnknownMapsView
