@@ -10,7 +10,7 @@
 // auto-unwrap in the template, so they're read with `.value`.
 import { computed, defineAsyncComponent, type Ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import type { MatchRecord, NamedCandidate } from '@/api'
+import type { NamedCandidate } from '@/api'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
@@ -45,9 +45,6 @@ export interface OverlaysApi {
   startupErrorMessage: Ref<string>
   openCheatsheet: Ref<boolean>
   closeCheatsheet: () => void
-  showManualMatchModal: Ref<boolean>
-  closeManualMatch: () => void
-  onManualMatchCreated: (rec: MatchRecord) => void
   firstRunModalOpen: Ref<boolean>
   screenshotCandidates: Ref<NamedCandidate[]>
   probing: Ref<boolean>
@@ -72,7 +69,8 @@ const appStore = useAppStore()
 const matchesStore = useMatchesStore()
 const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
-const { selection, preview } = uiStore
+const { selection, preview, closeManualMatch, onManualMatchCreated } = uiStore
+const { manualMatchOpen } = storeToRefs(uiStore)
 const { view, appVersion, updateInfo, updateCheckBusy, updateCheckModalOpen } = storeToRefs(appStore)
 const { tesseractStatus } = storeToRefs(settingsStore)
 const {
@@ -147,9 +145,9 @@ const lightboxSrc = computed(() => {
   />
 
   <ManualMatchModal
-    :open="api.showManualMatchModal.value"
-    @close="api.closeManualMatch"
-    @created="api.onManualMatchCreated"
+    :open="manualMatchOpen"
+    @close="closeManualMatch"
+    @created="onManualMatchCreated"
   />
 
   <!-- First-launch tour overlay. Self-gates via localStorage. Steps drive the

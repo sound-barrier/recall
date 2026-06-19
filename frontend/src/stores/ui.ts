@@ -1,6 +1,7 @@
 import { markRaw, ref } from 'vue'
 import { defineStore } from 'pinia'
 
+import type { MatchRecord } from '@/api'
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
 import { useCardFocus } from '@/composables/matches/useCardFocus'
@@ -42,6 +43,24 @@ export const useUiStore = defineStore('ui', () => {
   }
   function isSourcesOpen(id: string) { return !!sourcesExpanded.value[id] }
 
+  // App-shell modal open-flags. MatchesView's "Narrow this set" panel + the
+  // manual-match modal both freeze the background while up (App reads these in
+  // its backgroundFrozen computed). They live here so MatchesView flips them
+  // directly + App/AppOverlays read them without prop/emit drilling.
+  const narrowOpen = ref(false)
+  function setNarrowOpen(open: boolean) { narrowOpen.value = open }
+
+  const manualMatchOpen = ref(false)
+  function openManualMatch() { manualMatchOpen.value = true }
+  function closeManualMatch() { manualMatchOpen.value = false }
+  // A manual match was created → close the modal, reload so it lands in the
+  // feed, and open it so the user can add the right-panel review / replay-code.
+  async function onManualMatchCreated(rec: MatchRecord) {
+    manualMatchOpen.value = false
+    await matchesStore.load()
+    selection.open(rec.match_key)
+  }
+
   return {
     selection: markRaw(selection),
     preview: markRaw(preview),
@@ -51,5 +70,11 @@ export const useUiStore = defineStore('ui', () => {
     onOpenMatchAndFocus,
     toggleSources,
     isSourcesOpen,
+    narrowOpen,
+    setNarrowOpen,
+    manualMatchOpen,
+    openManualMatch,
+    closeManualMatch,
+    onManualMatchCreated,
   }
 })
