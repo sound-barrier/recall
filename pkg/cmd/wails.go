@@ -17,6 +17,10 @@ import (
 
 // RunWails launches the full Wails native-window desktop application.
 func RunWails(a *app.App, assets embed.FS) {
+	// The desktop's OnStartup hands Startup a real Wails lifecycle context, so
+	// the background engine probe's "tesseract-status" emit is safe here. This is
+	// where the cold-boot-doesn't-block-the-UI win actually matters.
+	app.EnableTesseractProbeOnStartup()
 	err := wails.Run(&options.App{
 		Title:  "Recall",
 		Width:  1024,
