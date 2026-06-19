@@ -61,6 +61,26 @@ describe('MatchMapRoleBand', () => {
     expect(w.findAll('.mr-cell')).toHaveLength(3 * 3) // 3 roles × 3 maps
   })
 
+  it('takes rows + selectable cells from the UNFILTERED dossier so a narrow never collapses the grid', () => {
+    // Narrowed view = a single map+role (as if that cell were picked); the
+    // unfiltered view still has all three roles played. The grid must stay at
+    // three rows — the calendar-consistent "structure stays put" contract.
+    const w = mountWidget(MatchMapRoleBand, {
+      dossier:     { mapRoleCounts: [CELLS[0]!] }, // narrowed → only rialto/support has data
+      fullDossier: { mapRoleCounts: CELLS },        // unfiltered → all 3 roles played
+      narrow: makeNarrow({
+        pickedMaps:  ref(new Set(['rialto'])),
+        pickedRoles: ref(new Set(['support'])),
+      }),
+    })
+    // Rows come from the full structure (3 roles), not the one the narrow leaves.
+    expect(w.findAll('.mr-rowhead')).toHaveLength(3)
+    // All three cells played in the window stay selectable (enabled), even though
+    // only one has data under the narrow — calendar-style switching / click-off.
+    const enabled = w.findAll('.mr-cell').filter((c) => c.attributes('disabled') === undefined)
+    expect(enabled).toHaveLength(3)
+  })
+
   it('orders maps alphabetically within a type group', () => {
     const w = mountBand()
     const labels = w.findAll('.mr-collabel').map((n) => n.text())

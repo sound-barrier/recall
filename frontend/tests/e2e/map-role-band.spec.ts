@@ -132,6 +132,27 @@ test.describe('Geography — Map × Role band', () => {
     await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toHaveCount(0)
   })
 
+  test('keeps the full role grid after a cell-pick instead of collapsing to the selected row', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    // Three role rows before any pick (Tank/DPS/Support all played).
+    await expect(band.locator('.mr-rowhead')).toHaveCount(3)
+
+    // Pick Support on Rialto → narrows the active set to that (map, role)…
+    await band.locator('.mr-cell[aria-label*="Support on Rialto"]').click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(1)
+    // …but the grid keeps ALL three role rows — the calendar-style stable
+    // structure, not a collapse to just the Support row (the reported bug).
+    await expect(band.locator('.mr-rowhead')).toHaveCount(3)
+
+    // Cells played in the window stay selectable even with no data under the
+    // current narrow, so you can switch picks directly (like the calendar).
+    await band.locator('.mr-cell[aria-label*="Tank on Ilios"]').click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(1)
+    const chips = page.locator('ul.active-chips')
+    await expect(chips.locator('.active-chip', { hasText: 'ilios' })).toBeVisible()
+    await expect(band.locator('.mr-rowhead')).toHaveCount(3)
+  })
+
   test('clicking a game-mode group header narrows to that game-mode', async ({ page }) => {
     const band = page.locator('.match-map-role')
     await band.locator('.mr-modehead', { hasText: 'Escort' }).click()

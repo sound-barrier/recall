@@ -37,3 +37,22 @@ export function useDossier(): MatchesDossier {
 export function provideDossier(dossier: MatchesDossier): void {
   provide(DOSSIER_KEY, dossier)
 }
+
+// The dossier built over the UNFILTERED record set (it ignores the active
+// narrow), so a widget/band can size its STRUCTURE — which rows to show, how
+// many rows to reserve — stably while its DATA stays on the narrowed
+// useDossier(). This is what keeps the Geography grid from collapsing when its
+// own cell-pick narrows the set, and what lets the top-N widgets reserve to the
+// real item count instead of a fixed limit.
+export const FULL_DOSSIER_KEY: InjectionKey<MatchesDossier> = Symbol('recall.dossier.full')
+
+// Falls back to the narrowed dossier when no full one is provided (widget tests
+// that stub only DOSSIER_KEY, or any non-MatchesView host) — callers that read
+// only data are unaffected.
+export function useFullDossier(): MatchesDossier {
+  return inject(FULL_DOSSIER_KEY) ?? useDossier()
+}
+
+export function provideFullDossier(dossier: MatchesDossier): void {
+  provide(FULL_DOSSIER_KEY, dossier)
+}

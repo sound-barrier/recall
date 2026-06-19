@@ -1,7 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { computed, type Component, type ComputedRef } from 'vue'
 import { vi } from 'vitest'
-import { DOSSIER_KEY } from '@/composables/dashboard/useDossier'
+import { DOSSIER_KEY, FULL_DOSSIER_KEY } from '@/composables/dashboard/useDossier'
 import { NARROW_KEY, type NarrowApi } from '@/composables/matches/useNarrow'
 import type {
   AverageKDA,
@@ -154,6 +154,10 @@ export interface MountWidgetOptions {
   // Subset of the dossier to expose to the widget. Fields the widget
   // doesn't read can be omitted.
   dossier?: DossierOverride
+  // Optional UNFILTERED dossier (FULL_DOSSIER_KEY). Widgets that size their
+  // structure off useFullDossier() read it; omit and useFullDossier() falls back
+  // to the narrowed `dossier` above (so most widget tests need only `dossier`).
+  fullDossier?: DossierOverride
   // Optional config seed for widgets that read useWidgetConfig. Keyed
   // on widget id; localStorage is stubbed fresh per mount so the seed
   // hydrates cleanly.
@@ -179,6 +183,9 @@ export function mountWidget(
     }
   }
   const dossier = fakeDossier(options.dossier ?? {})
+  // Falls back to the narrowed dossier when no full one is given — matching
+  // useFullDossier()'s own production fallback.
+  const fullDossier = options.fullDossier ? fakeDossier(options.fullDossier) : dossier
   const narrow = options.narrow ?? {}
   // Cast the component reference through `unknown` because mount's
   // typed overloads can't see the SFC instance type without an
@@ -187,8 +194,9 @@ export function mountWidget(
   return mount(Component as unknown as Parameters<typeof mount>[0], {
     global: {
       provide: {
-        [DOSSIER_KEY as symbol]: dossier,
-        [NARROW_KEY  as symbol]: narrow,
+        [DOSSIER_KEY as symbol]:      dossier,
+        [FULL_DOSSIER_KEY as symbol]: fullDossier,
+        [NARROW_KEY  as symbol]:      narrow,
       },
     },
   }) as VueWrapper

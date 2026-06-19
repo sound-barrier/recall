@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import { provideDossier } from '@/composables/dashboard/useDossier'
+import { provideDossier, provideFullDossier } from '@/composables/dashboard/useDossier'
 import { provideNarrow } from '@/composables/matches/useNarrow'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
 import MatchesTableSortPopover from '@/components/matches/list/MatchesTableSortPopover.vue'
@@ -291,6 +291,9 @@ async function onJumpToUndated() {
 // 18 props through DashboardWidget. Each widget pulls only the bedrock refs or
 // query helpers it needs, parameterized by its own useWidgetConfig output.
 provideDossier(matchesStore.dossier)
+// The unfiltered companion — bands/widgets read STRUCTURE (stable rows, reserve
+// counts) from it while their DATA stays on the narrowed dossier above.
+provideFullDossier(matchesStore.fullDossier)
 // Same provide/inject shape exposes the narrow handlers (pickHero,
 // pickGameMode, etc.) to widgets that need to drill into a slice of
 // the active set — the hero × game-mode heatmap is the first consumer.
