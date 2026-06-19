@@ -56,29 +56,40 @@ export function useGameDataUpdate(
     return rows
   })
 
-  // "MAIN @ abc1234 · 14 d ago" — relative age, ISO date past 365 d.
-  function relativeAge(iso?: string): string {
+  // Plain-language age of the user's currently-applied roster data. Commit SHAs
+  // mean nothing to a player deciding whether to update, so we never show them.
+  function ageInWords(iso?: string): string {
     if (!iso) return ''
     const then = Date.parse(iso)
     if (Number.isNaN(then)) return ''
-    const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000))
-    if (seconds < 60)                 return 'just now'
-    if (seconds < 60 * 60)            return `${Math.floor(seconds / 60)} m ago`
-    if (seconds < 60 * 60 * 24)       return `${Math.floor(seconds / 3600)} h ago`
-    if (seconds < 60 * 60 * 24 * 365) return `${Math.floor(seconds / 86400)} d ago`
-    return new Date(then).toISOString().slice(0, 10)
+    const days = Math.floor((Date.now() - then) / 86_400_000)
+    if (days <= 0)  return 'less than a day old'
+    if (days === 1) return '1 day old'
+    if (days < 30)  return `${days} days old`
+    const months = Math.floor(days / 30)
+    return months === 1 ? '1 month old' : `${months} months old`
   }
 
-  const appliedLabel = computed(() => {
+  // "2 new heroes, 1 new map available" — the headline a player actually reads,
+  // built from the added-name lists (additions are the common, interesting case;
+  // retirements stay in the manifest below).
+  const changeSummary = computed(() => {
     const g = gameData.value
-    return g.applied_commit ? `MAIN @ ${g.applied_commit}` : 'EMBEDDED'
+    const seg = (n: number, one: string, many: string) => (n > 0 ? `${n} new ${n === 1 ? one : many}` : '')
+    const parts = [
+      seg(g.added_heroes?.length ?? 0, 'hero', 'heroes'),
+      seg(g.added_maps?.length ?? 0, 'map', 'maps'),
+      seg(g.added_sources?.length ?? 0, 'screenshot source', 'screenshot sources'),
+    ].filter(Boolean)
+    return parts.length ? `${parts.join(', ')} available` : ''
   })
-  const appliedAgeLabel = computed(() => relativeAge(gameData.value.applied_at))
-  const incomingLabel = computed(() => {
+
+  const dataFreshnessLabel = computed(() => {
     const g = gameData.value
-    return g.commit_sha ? `MAIN @ ${g.commit_sha}` : ''
+    if (!g.applied_commit) return 'Currently using the built-in roster'
+    const age = ageInWords(g.applied_at)
+    return age ? `Your roster data is ${age}` : 'Your roster data is up to date'
   })
-  const incomingAgeLabel = computed(() => relativeAge(gameData.value.committed_at) || 'live')
 
   const canApply = computed(() => {
     const g = gameData.value
@@ -108,10 +119,8 @@ export function useGameDataUpdate(
     removedCount,
     changeCount,
     diffRows,
-    appliedLabel,
-    appliedAgeLabel,
-    incomingLabel,
-    incomingAgeLabel,
+    changeSummary,
+    dataFreshnessLabel,
     canApply,
     onApply,
   }

@@ -55,14 +55,53 @@ describe('UpdateCheckModal', () => {
     expect(wrapper.text()).toContain('New hero: Phoenix')
   })
 
-  it('renders the freshness from→to line with applied + incoming commits', () => {
+  it('leads with a plain-language change summary + data age, never a commit SHA', () => {
     const wrapper = mount(UpdateCheckModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
-    const freshness = wrapper.find('[data-update-check-freshness]')
-    expect(freshness.exists()).toBe(true)
-    expect(freshness.text()).toContain('MAIN @ abc1234')
-    expect(freshness.text()).toContain('MAIN @ def5678')
+    // 2 added heroes, 0 added maps → "2 new heroes available".
+    expect(wrapper.find('[data-update-check-summary]').text()).toContain('2 new heroes available')
+    expect(wrapper.find('[data-update-check-freshness]').text()).toContain('Your roster data is 14 days old')
+    // The meaningless commit SHAs are gone.
+    expect(wrapper.text()).not.toContain('MAIN @')
+    expect(wrapper.text()).not.toContain('abc1234')
+    expect(wrapper.text()).not.toContain('def5678')
+  })
+
+  it('flags an available binary update with the latest version', () => {
+    const wrapper = mount(UpdateCheckModal, {
+      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
+    })
+    const row = wrapper.find('[data-update-check-available]')
+    expect(row.exists()).toBe(true)
+    expect(row.text()).toContain('v1.2.3')
+    expect(row.text()).toContain('update available')
+  })
+
+  it('frames a dev build as ahead of the latest release, not behind it', () => {
+    const devInfo: UpdateInfo = { ...baseInfo, dev_build: true, available: false }
+    const wrapper = mount(UpdateCheckModal, {
+      props: { open: true, updateInfo: devInfo, currentVersion: '1.3.0-dev', checking: false },
+    })
+    const dev = wrapper.find('[data-update-check-devbuild]')
+    expect(dev.exists()).toBe(true)
+    expect(dev.text()).toContain('Development build')
+    expect(dev.text()).toContain('v1.3.0-dev')
+    expect(dev.text()).toContain('Ahead of the latest release')
+    expect(dev.text()).toContain('v1.2.3')
+    // No misleading Current/Latest comparison on a dev build.
+    expect(wrapper.find('[data-update-check-available]').exists()).toBe(false)
+  })
+
+  it('shows up-to-date copy on the latest release build', () => {
+    const currentInfo: UpdateInfo = { ...baseInfo, dev_build: false, available: false }
+    const wrapper = mount(UpdateCheckModal, {
+      props: { open: true, updateInfo: currentInfo, currentVersion: '1.2.3', checking: false },
+    })
+    const uptodate = wrapper.find('[data-update-check-uptodate]')
+    expect(uptodate.exists()).toBe(true)
+    expect(uptodate.text()).toContain('latest release')
+    expect(uptodate.text()).toContain('v1.2.3')
   })
 
   it('renders the counts headline with added + retired counts', () => {

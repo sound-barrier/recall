@@ -52,10 +52,8 @@ const {
   removedCount,
   changeCount,
   diffRows,
-  appliedLabel,
-  appliedAgeLabel,
-  incomingLabel,
-  incomingAgeLabel,
+  changeSummary,
+  dataFreshnessLabel,
   canApply,
   onApply,
 } = useGameDataUpdate(
@@ -109,16 +107,35 @@ function openReleasePage() {
             <h3 id="recall-app-heading" class="update-check-modal-section-title">
               Recall app
             </h3>
-            <div class="update-check-modal-rows">
+            <!-- Dev build: the running version is HIGHER than the latest
+                 release (release-please names the next version on main), so
+                 frame it as a development build — not a misleading "behind". -->
+            <div v-if="info.dev_build" class="update-check-modal-devbuild" data-update-check-devbuild>
+              <p class="update-check-modal-devbuild-current">
+                Development build · {{ currentVersion ? `v${currentVersion}` : 'unknown' }}
+              </p>
+              <p class="update-check-modal-devbuild-note">
+                Ahead of the latest release (v{{ info.latest }})
+              </p>
+            </div>
+            <!-- Release build with a newer release published. -->
+            <div v-else-if="info.available" class="update-check-modal-rows" data-update-check-available>
               <div class="update-check-modal-row">
                 <span class="update-check-modal-row-label">Current</span>
                 <span class="update-check-modal-row-value">{{ currentVersion ? `v${currentVersion}` : 'unknown' }}</span>
               </div>
               <div class="update-check-modal-row">
                 <span class="update-check-modal-row-label">Latest</span>
-                <span class="update-check-modal-row-value">v{{ info.latest }}</span>
+                <span class="update-check-modal-row-value">
+                  v{{ info.latest }}
+                  <span class="update-check-modal-update-flag">↑ update available</span>
+                </span>
               </div>
             </div>
+            <!-- Release build, up to date. -->
+            <p v-else class="update-check-modal-uptodate" data-update-check-uptodate>
+              v{{ currentVersion || info.latest }} · You're on the latest release
+            </p>
             <p v-if="info.release_notes" class="update-check-modal-notes">
               {{ info.release_notes }}
             </p>
@@ -150,15 +167,17 @@ function openReleasePage() {
             </p>
 
             <template v-else>
-              <!-- Freshness line: where you are → where you'd land. -->
+              <!-- Plain-language headline + data age. No commit SHAs — the
+                   named manifest below carries the per-name detail. -->
+              <p
+                v-if="changeSummary"
+                class="update-check-modal-summary"
+                data-update-check-summary
+              >
+                {{ changeSummary }}
+              </p>
               <p class="update-check-modal-freshness" data-update-check-freshness>
-                <span class="update-check-modal-freshness-from">
-                  {{ appliedLabel }}<template v-if="appliedAgeLabel"> · {{ appliedAgeLabel }}</template>
-                </span>
-                <span class="update-check-modal-freshness-arrow" aria-hidden="true">→</span>
-                <span class="update-check-modal-freshness-to">
-                  {{ incomingLabel }} · {{ incomingAgeLabel }}
-                </span>
+                {{ dataFreshnessLabel }}
               </p>
 
               <UpdateDiffManifest
@@ -324,6 +343,30 @@ function openReleasePage() {
   color: var(--text);
 }
 
+.update-check-modal-update-flag {
+  color: var(--accent);
+  font-weight: 700;
+  margin-left: 0.4rem;
+}
+
+.update-check-modal-devbuild-current {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  margin: 0 0 0.15rem;
+}
+
+.update-check-modal-devbuild-note,
+.update-check-modal-uptodate {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 0.45rem;
+}
+
 .update-check-modal-notes {
   font-size: 0.75rem;
   color: var(--text-dim);
@@ -440,34 +483,22 @@ function openReleasePage() {
   flex-direction: column;
 }
 
+.update-check-modal-summary {
+  font-family: var(--display);
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  color: var(--text);
+  margin: 0.1rem 0 0.25rem;
+}
+
 .update-check-modal-freshness {
   font-family: var(--mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
   color: var(--text-dim);
-  margin: 0 0 0.6rem;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.update-check-modal-freshness-from,
-.update-check-modal-freshness-to {
-  white-space: nowrap;
-}
-
-.update-check-modal-freshness-from {
-  color: var(--text-dim);
-}
-
-.update-check-modal-freshness-arrow {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.update-check-modal-freshness-to {
-  color: var(--text);
+  margin: 0 0 0.7rem;
 }
 
 
