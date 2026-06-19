@@ -199,12 +199,24 @@ test.describe('Geography — never-played roles + empty state', () => {
     })
   }
 
-  test('prompts to play a match when there are none', async ({ page }) => {
+  test('prompts to play a match in all three bands when there are none', async ({ page }) => {
     await open(page, [])
-    const band = page.locator('.match-map-role')
-    await expect(band).toBeVisible()
-    await expect(band.locator('.mr-grid')).toHaveCount(0)
-    await expect(band.locator('[data-mr-no-data]'))
-      .toContainText('At least 1 match must be played to display data')
+    const prompt = 'At least 1 match must be played to display data'
+
+    // Geography — no grid, the prompt instead.
+    const geography = page.locator('.match-map-role')
+    await expect(geography).toBeVisible()
+    await expect(geography.locator('.mr-grid')).toHaveCount(0)
+    await expect(geography.locator('[data-mr-no-data]')).toContainText(prompt)
+
+    // Campaign Log — prompt instead of the heatmap + sparkline.
+    const campaignLog = page.locator('.match-timeline')
+    await expect(campaignLog).toBeVisible()
+    await expect(campaignLog.locator('[data-timeline-no-data]')).toContainText(prompt)
+
+    // Hero × Game-Mode — prompt instead of the floor message.
+    const heroMode = page.locator('.hero-mode-band')
+    await expect(heroMode).toBeVisible()
+    await expect(heroMode.locator('[data-hm-no-data]')).toContainText(prompt)
   })
 })

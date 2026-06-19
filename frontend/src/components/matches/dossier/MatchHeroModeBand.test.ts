@@ -65,6 +65,16 @@ describe('MatchHeroModeBand', () => {
     expect(wrapper.find('.heatmap-grid').exists()).toBe(false)
   })
 
+  it('prompts to play a match when there are none at all (not the floor message)', () => {
+    const wrapper = mountWidget(MatchHeroModeBand, {
+      narrow: makeNarrow(),
+      dossier: { heroGameModeCounts: [] },
+    })
+    expect(wrapper.text()).toContain('At least 1 match must be played to display data')
+    expect(wrapper.text()).not.toContain('decisive matches')
+    expect(wrapper.find('.heatmap-grid').exists()).toBe(false)
+  })
+
   it('renders the root hero × game-mode grid above the floor', () => {
     const wrapper = mountWidget(MatchHeroModeBand, {
       narrow: makeNarrow(),

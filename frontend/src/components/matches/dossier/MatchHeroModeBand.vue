@@ -242,7 +242,7 @@ const levelTitle = computed(() => {
           <span class="hm-map-vol">{{ t.cell.wins }}–{{ t.cell.losses }}<template v-if="t.cell.draws">–{{ t.cell.draws }}</template></span>
         </button>
         <p v-if="mapTiles.length === 0" class="hm-drill-empty">
-          No maps in this window.
+          At least 1 match must be played to display data.
         </p>
       </div>
 

@@ -78,24 +78,29 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
     </header>
 
     <div class="timeline-body">
-      <MatchHeatmapHeader
-        :records="records"
-        :filter-from="filterFrom"
-        :filter-to="filterTo"
-        :window-weeks="windowWeeks"
-        :week-starts-on="weekStartsOn"
-        @update:filter-from="(v: string) => emit('update:filter-from', v)"
-        @update:filter-to="(v: string) => emit('update:filter-to', v)"
-      />
-      <MatchSparklineBrush
-        :records="records"
-        :filter-from="filterFrom"
-        :filter-to="filterTo"
-        :window-weeks="windowWeeks"
-        :week-starts-on="weekStartsOn"
-        @update:filter-from="(v: string) => emit('update:filter-from', v)"
-        @update:filter-to="(v: string) => emit('update:filter-to', v)"
-      />
+      <p v-if="records.length === 0" class="timeline-empty" data-timeline-no-data>
+        At least 1 match must be played to display data.
+      </p>
+      <template v-else>
+        <MatchHeatmapHeader
+          :records="records"
+          :filter-from="filterFrom"
+          :filter-to="filterTo"
+          :window-weeks="windowWeeks"
+          :week-starts-on="weekStartsOn"
+          @update:filter-from="(v: string) => emit('update:filter-from', v)"
+          @update:filter-to="(v: string) => emit('update:filter-to', v)"
+        />
+        <MatchSparklineBrush
+          :records="records"
+          :filter-from="filterFrom"
+          :filter-to="filterTo"
+          :window-weeks="windowWeeks"
+          :week-starts-on="weekStartsOn"
+          @update:filter-from="(v: string) => emit('update:filter-from', v)"
+          @update:filter-to="(v: string) => emit('update:filter-to', v)"
+        />
+      </template>
     </div>
   </section>
 </template>
@@ -108,6 +113,13 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 40%),
     var(--surface);
   border-radius: 2px;
+}
+
+.timeline-empty {
+  margin: 0.4rem 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
 }
 
 .timeline-head {
