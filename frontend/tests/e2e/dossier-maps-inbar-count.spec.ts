@@ -61,7 +61,7 @@ test.describe('dossier — Most played maps in-bar count', () => {
   })
 
   test('renders the play-count as `Nx` inside each .bd-bar', async ({ page }) => {
-    const rows = page.locator('.breakdown', { hasText: 'Most played maps' }).locator('li')
+    const rows = page.locator('.breakdown', { hasText: 'Most played maps' }).locator('li:not(.bd-placeholder)')
     await expect(rows).toHaveCount(3)
 
     await expect(rows.nth(0).locator('.bd-name')).toHaveText('rialto')
@@ -75,7 +75,7 @@ test.describe('dossier — Most played maps in-bar count', () => {
   })
 
   test('keeps the share percentage in .bd-stats on the right', async ({ page }) => {
-    const rows = page.locator('.breakdown', { hasText: 'Most played maps' }).locator('li')
+    const rows = page.locator('.breakdown', { hasText: 'Most played maps' }).locator('li:not(.bd-placeholder)')
     // 3 / 6 = 50%, 2 / 6 = 33%, 1 / 6 = 17% (Math.round).
     await expect(rows.nth(0).locator('.bd-stats')).toHaveText('50%')
     await expect(rows.nth(1).locator('.bd-stats')).toHaveText('33%')
