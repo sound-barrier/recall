@@ -16,7 +16,7 @@ describe('TopHeroesWidget', () => {
         ],
       },
     })
-    const rows = w.findAll('li')
+    const rows = w.findAll('li:not(.bd-placeholder)')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.find('.bd-name').text()).toBe('lucio')
     expect(rows[0]!.find('.bd-time').text()).toBe('7h32min')

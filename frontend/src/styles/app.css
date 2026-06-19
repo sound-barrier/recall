@@ -2813,6 +2813,16 @@ main#main-content {
   grid-template-columns: minmax(80px, 110px) 1fr auto;
   align-items: center;
   gap: 0.5rem;
+
+  /* Fixed row height so reserved placeholder rows match real ones exactly,
+     keeping each top-N widget (and thus the dossier) a constant height
+     regardless of how many rows the active filter leaves. */
+  min-height: 1.1rem;
+}
+
+/* Invisible filler rows padding a top-N list up to its configured limit. */
+.breakdown li.bd-placeholder {
+  visibility: hidden;
 }
 
 .bd-name {
