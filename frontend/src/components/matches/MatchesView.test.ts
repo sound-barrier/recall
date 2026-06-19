@@ -4,23 +4,29 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import MatchesView from '@/components/matches/MatchesView.vue'
 import { useMatchesStore } from '@/stores/matches'
-import { GetProfiles } from '@/api'
+import { useUiStore } from '@/stores/ui'
+import { GetProfiles, SetMatchVisibility, HardDeleteMatch, MoveMatches } from '@/api'
 import type { MatchRecord } from '@/api'
 
-// The move-to-profile picker fetches the profile list on mount (via
-// useMatchesMovePicker → GetProfiles). Mock just that one api call so the
-// picker tests can choose how many other profiles exist; everything else
-// stays the real module.
+// MatchesView reads its mutations from useMatchActions (→ the api) + selection
+// from the UI store now, instead of emitting. Mock GetProfiles (the move picker
+// fetches it on mount) + the mutation calls these tests assert on + GetMatch
+// Results (so the store's reload-after-mutation doesn't hit the transport);
+// everything else stays the real module.
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
-  GetProfiles: vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+  GetProfiles:        vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+  GetMatchResults:    vi.fn(async () => []),
+  SetMatchVisibility: vi.fn(async () => undefined),
+  HardDeleteMatch:    vi.fn(async () => undefined),
+  MoveMatches:        vi.fn(async () => undefined),
 }))
 
 // This file imports the matches store, which statically imports '@/api'. Reset
 // the module registry after each test so the cached store + its real '@/api'
 // binding don't leak into a later mountApp test (whose vi.doMock('@/api')
 // can't reach an already-imported store). See reference_store_api_mock_isolation.
-afterEach(() => { vi.resetModules() })
+afterEach(() => { vi.clearAllMocks(); vi.resetModules() })
 
 // Unit tests for the contextual multi-select + Hidden drawer surfaces.
 // End-to-end transport chain is covered by
@@ -91,7 +97,7 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
     expect(wrapper.find('.bulk-action-bar').exists()).toBe(true)
     expect(wrapper.find('.bab-count').text()).toContain('1 selected')
     // The checkbox click must NOT have bubbled into the row's open-match handler.
-    expect(wrapper.emitted('open-match')).toBeFalsy()
+    expect(useUiStore().selection.isOpen.value).toBe(false)
   })
 
   it('row body click still opens the detail panel even while a selection exists', async () => {
@@ -107,7 +113,7 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
 
     // Row click opens the detail; the second row should NOT have been
     // ticked, and the existing selection should still be 1.
-    expect(wrapper.emitted('open-match')?.[0]).toBeTruthy()
+    expect(useUiStore().selection.isOpen.value).toBe(true)
     expect(wrapper.findAll('.leaf-row')[1]!.classes()).not.toContain('is-ticked')
     expect(wrapper.find('.bab-count').text()).toContain('1 selected')
   })
@@ -143,9 +149,9 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
 
     await wrapper.find('.bulk-hide').trigger('click')
 
-    const emitted = wrapper.emitted('hide-matches')
-    expect(emitted).toBeTruthy()
-    expect([...(emitted![0]![0] as string[])].sort()).toEqual(['k1', 'k2'])
+    await flushPromises()
+    expect(SetMatchVisibility).toHaveBeenCalledWith('k1', true)
+    expect(SetMatchVisibility).toHaveBeenCalledWith('k2', true)
     expect(wrapper.find('.bulk-action-bar').exists()).toBe(false)
     expect(wrapper.findAll('.leaf-row.is-ticked')).toHaveLength(0)
   })
@@ -159,7 +165,7 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
 
     expect(wrapper.find('.bulk-action-bar').exists()).toBe(false)
     expect(wrapper.find('.leaf-row').classes()).not.toContain('is-ticked')
-    expect(wrapper.emitted('hide-matches')).toBeFalsy()
+    expect(SetMatchVisibility).not.toHaveBeenCalled()
   })
 
   it('un-ticking the last row removes the action bar', async () => {
@@ -225,7 +231,8 @@ describe('MatchesView — Hidden drawer', () => {
     await wrapper.find('.archive-toggle').trigger('click')
     await wrapper.find('.archive-unhide').trigger('click')
 
-    expect(wrapper.emitted('unhide-match')).toEqual([['k1']])
+    await flushPromises()
+    expect(SetMatchVisibility).toHaveBeenCalledWith('k1', false)
   })
 
   it('per-row Delete forever is a two-step inline confirm', async () => {
@@ -237,10 +244,11 @@ describe('MatchesView — Hidden drawer', () => {
     expect(wrapper.find('.archive-confirm').exists()).toBe(true)
     expect(wrapper.find('.archive-cancel').exists()).toBe(true)
     expect(wrapper.find('.archive-delete').exists()).toBe(false)
-    expect(wrapper.emitted('hard-delete-match')).toBeFalsy()
+    expect(HardDeleteMatch).not.toHaveBeenCalled()
 
     await wrapper.find('.archive-confirm').trigger('click')
-    expect(wrapper.emitted('hard-delete-match')).toEqual([['k1']])
+    await flushPromises()
+    expect(HardDeleteMatch).toHaveBeenCalledWith('k1')
   })
 
   it('per-row Delete forever Cancel reverts to action buttons without emitting', async () => {
@@ -252,7 +260,7 @@ describe('MatchesView — Hidden drawer', () => {
 
     expect(wrapper.find('.archive-delete').exists()).toBe(true)
     expect(wrapper.find('.archive-confirm').exists()).toBe(false)
-    expect(wrapper.emitted('hard-delete-match')).toBeFalsy()
+    expect(HardDeleteMatch).not.toHaveBeenCalled()
   })
 })
 
@@ -303,9 +311,9 @@ describe('MatchesView — Archive bulk selection', () => {
 
     await wrapper.find('.bulk-unhide').trigger('click')
 
-    const emitted = wrapper.emitted('unhide-matches')
-    expect(emitted).toBeTruthy()
-    expect([...(emitted![0]![0] as string[])].sort()).toEqual(['k1', 'k2'])
+    await flushPromises()
+    expect(SetMatchVisibility).toHaveBeenCalledWith('k1', false)
+    expect(SetMatchVisibility).toHaveBeenCalledWith('k2', false)
     expect(wrapper.find('.archive-action-bar').exists()).toBe(false)
   })
 
@@ -326,12 +334,12 @@ describe('MatchesView — Archive bulk selection', () => {
     expect(wrapper.find('.bulk-confirm').exists()).toBe(true)
     expect(wrapper.find('.bulk-delete').exists()).toBe(false)
     expect(wrapper.find('.bulk-unhide').exists()).toBe(false)
-    expect(wrapper.emitted('hard-delete-matches')).toBeFalsy()
+    expect(HardDeleteMatch).not.toHaveBeenCalled()
 
     await wrapper.find('.bulk-confirm').trigger('click')
-    const emitted = wrapper.emitted('hard-delete-matches')
-    expect(emitted).toBeTruthy()
-    expect([...(emitted![0]![0] as string[])].sort()).toEqual(['k1', 'k2'])
+    await flushPromises()
+    expect(HardDeleteMatch).toHaveBeenCalledWith('k1')
+    expect(HardDeleteMatch).toHaveBeenCalledWith('k2')
     // Selection cleared.
     expect(wrapper.find('.archive-action-bar').exists()).toBe(false)
   })
@@ -366,7 +374,7 @@ describe('MatchesView — Archive bulk selection', () => {
     expect(wrapper.find('.bulk-confirm').exists()).toBe(false)
     // Selection survives the cancel — user can revise it before retrying.
     expect(wrapper.findAll('.archive-row.is-ticked')).toHaveLength(1)
-    expect(wrapper.emitted('hard-delete-matches')).toBeFalsy()
+    expect(HardDeleteMatch).not.toHaveBeenCalled()
   })
 
   it('toggling the selection while in bulk-confirm aborts the confirm state', async () => {
@@ -429,11 +437,10 @@ describe('MatchesView — Move to profile picker', () => {
     await wrapper.find('.bulk-move').trigger('click')
     await wrapper.find('.bulk-move-target').trigger('click')
 
-    const emitted = wrapper.emitted('move-matches')
-    expect(emitted).toBeTruthy()
-    const [keys, target] = emitted![0]!
-    expect([...(keys as string[])].sort()).toEqual(['k1', 'k2'])
-    expect(target).toBe('alt')
+    await flushPromises()
+    const call = vi.mocked(MoveMatches).mock.calls[0]!
+    expect([...(call[0] as string[])].sort()).toEqual(['k1', 'k2'])
+    expect(call[1]).toBe('alt')
     // Picker resets after commit.
     expect(wrapper.find('.bab-prompt').exists()).toBe(false)
   })
@@ -450,7 +457,7 @@ describe('MatchesView — Move to profile picker', () => {
 
     expect(wrapper.find('.bab-prompt').exists()).toBe(false)
     expect(wrapper.find('.bulk-move').exists()).toBe(true)
-    expect(wrapper.emitted('move-matches')).toBeFalsy()
+    expect(MoveMatches).not.toHaveBeenCalled()
   })
 })
 
