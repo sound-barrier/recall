@@ -45,9 +45,11 @@ export interface MapRoleSelectionApi {
   // Pointer: a press that becomes a drag-box on move or a click on release. Call
   // from the cell's mousedown.
   onCellPointerDown: (map: string, role: string, e: MouseEvent) => void
-  // Header clicks — whole row / whole column (Ctrl/Cmd adds to the selection).
+  // Header clicks — whole row / column(s) (Ctrl/Cmd adds to the selection).
+  // selectColumns drives the game-mode group header (a run of map columns).
   selectRow: (role: string, mods?: Partial<PointerMods>) => void
   selectColumn: (map: string, mods?: Partial<PointerMods>) => void
+  selectColumns: (maps: readonly string[], mods?: Partial<PointerMods>) => void
   // WAI-ARIA grid keyboard: arrows move focus, Space/Ctrl-Space toggle, Enter
   // selects only the focused cell, Shift+arrow extends a box from the anchor.
   onCellKeydown: (map: string, role: string, e: KeyboardEvent) => void
@@ -190,12 +192,20 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
     const firstMap = opts.columns().find((m) => opts.isSelectable(m, role))
     if (firstMap) { anchor.value = { map: firstMap, role }; focused.value = { map: firstMap, role } }
   }
-  function selectColumn(map: string, mods: Partial<PointerMods> = {}) {
-    const keys = colKeys(map)
+  // Select one or more whole columns (a single map, or a game-mode group's maps).
+  function selectColumns(maps: readonly string[], mods: Partial<PointerMods> = {}) {
+    const keys: CellKey[] = []
+    for (const m of maps) keys.push(...colKeys(m))
     if (!keys.length) return
     if (mods.ctrl) add(keys); else replace(keys)
-    const firstRole = opts.roles().find((r) => opts.isSelectable(map, r))
-    if (firstRole) { anchor.value = { map, role: firstRole }; focused.value = { map, role: firstRole } }
+    // Anchor on the first selectable cell across the columns (column-major).
+    for (const m of maps) {
+      const r = opts.roles().find((ro) => opts.isSelectable(m, ro))
+      if (r) { anchor.value = { map: m, role: r }; focused.value = { map: m, role: r }; break }
+    }
+  }
+  function selectColumn(map: string, mods: Partial<PointerMods> = {}) {
+    selectColumns([map], mods)
   }
 
   // ── rectangular hull (what the narrow filters to) ─────────────────
@@ -271,6 +281,6 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
     isSelected, isFocused, isInDragBox,
     keyFor: key,
     clickCell,
-    onCellPointerDown, selectRow, selectColumn, onCellKeydown, clear,
+    onCellPointerDown, selectRow, selectColumn, selectColumns, onCellKeydown, clear,
   }
 }

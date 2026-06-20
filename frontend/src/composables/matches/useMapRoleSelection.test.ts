@@ -106,6 +106,16 @@ describe('useMapRoleSelection — row / column headers', () => {
     expect(keys(s)).toEqual(['nepal|dps', 'nepal|support', 'nepal|tank'])
   })
 
+  it('selectColumns picks every selectable cell across a group of columns', () => {
+    const s = make()
+    s.selectColumns(['ilios', 'oasis']) // a game-mode group's maps
+    expect(keys(s)).toEqual([
+      'ilios|dps', 'ilios|support', 'ilios|tank',
+      'oasis|dps', 'oasis|support', 'oasis|tank',
+    ])
+    expect(s.isRectangular.value).toBe(true)
+  })
+
   it('Ctrl+row adds the row to an existing selection', () => {
     const s = make()
     s.selectColumn('nepal')
