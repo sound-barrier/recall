@@ -17,6 +17,7 @@ import NarrowPresets from '@/components/matches/narrow/NarrowPresets.vue'
 import type { MatchRecord } from '@/api-client'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 import NarrowChipFacet from '@/components/matches/narrow/NarrowChipFacet.vue'
+import NarrowTimeScope from '@/components/matches/narrow/NarrowTimeScope.vue'
 // Shared np-section / np-chip chrome for the panel + its facet children.
 import './narrow.css'
 
@@ -71,10 +72,9 @@ const {
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
   pickedQueues, pickedPlayModes, pickedSources,
   pickedLeavers, pickedModifiers, pickedRanks,
-  pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
-  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource, pickRange,
+  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource,
   pickLeaver, pickModifier, pickRank,
   resetNarrow,
   activeClauseCount, anyNarrow,
@@ -278,55 +278,7 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <!-- Time scope — preset + custom dates side-by-side. -->
-          <section class="np-section">
-            <div class="np-section-head">
-              <span class="np-section-eyebrow">Time scope</span>
-              <span class="np-section-meta">
-                <template v-if="customFrom || customTo">{{ customFrom || '…' }} → {{ customTo || '…' }}</template>
-                <template v-else-if="pickedRange !== 'all'">last {{ pickedRange }}</template>
-                <template v-else>all time</template>
-              </span>
-            </div>
-            <div class="np-chips">
-              <button
-                v-for="opt in (['all', '7d', '30d', '90d'] as const)"
-                :key="opt"
-                class="np-chip"
-                :class="{ picked: pickedRange === opt && !customFrom && !customTo }"
-                @click="pickRange(opt)"
-              >
-                {{ opt === 'all' ? 'All time' : `Last ${opt}` }}
-              </button>
-            </div>
-            <div class="np-daterange">
-              <label class="np-date-label">
-                <span>From</span>
-                <input
-                  type="date"
-                  class="np-date"
-                  :value="customFrom"
-                  @input="customFrom = ($event.target as HTMLInputElement).value; pickedRange = 'custom'"
-                >
-              </label>
-              <label class="np-date-label">
-                <span>To</span>
-                <input
-                  type="date"
-                  class="np-date"
-                  :value="customTo"
-                  @input="customTo = ($event.target as HTMLInputElement).value; pickedRange = 'custom'"
-                >
-              </label>
-              <button
-                v-if="customFrom || customTo"
-                class="np-date-clear"
-                @click="customFrom = ''; customTo = ''; pickedRange = 'all'"
-              >
-                Clear dates
-              </button>
-            </div>
-          </section>
+          <NarrowTimeScope :narrow="narrow" />
 
           <!-- Two-column body — match context (left) + outcome / refinement (right). -->
           <div class="np-cols">
@@ -811,55 +763,6 @@ onUnmounted(() => {
 
 .np-search-input:focus + .np-search-kbd,
 .np-search-row:focus-within { border-color: var(--accent); }
-
-.np-daterange {
-  display: flex;
-  gap: 0.4rem;
-  align-items: end;
-  flex-wrap: wrap;
-}
-
-.np-date-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.np-date {
-  appearance: none;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 0.25rem 0.4rem;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text);
-  outline: 0;
-  color-scheme: dark light;
-}
-
-.np-date:focus { border-color: var(--accent); }
-
-.np-date-clear {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 0.25rem 0.5rem;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.np-date-clear:hover { color: var(--accent); border-color: var(--accent); }
 
 .np-cols {
   display: flex;
