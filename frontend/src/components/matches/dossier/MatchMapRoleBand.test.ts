@@ -190,6 +190,21 @@ describe('MatchMapRoleBand', () => {
     expect(w.find('[aria-label^="Support on Rialto"]').classes()).toContain('selected')
   })
 
+  it('keeps the selected map / role / game-mode headers highlighted', async () => {
+    const w = mountBand()
+    await w.find('[data-mr-col="rialto"]').trigger('click')
+    expect(w.find('[data-mr-col="rialto"]').classes()).toContain('header-selected')
+    expect(w.find('[data-mr-col="rialto"]').attributes('aria-pressed')).toBe('true')
+    // Narrow to a role within Rialto → the role header lights, Rialto stays lit.
+    await w.find('[data-mr-row="support"]').trigger('click')
+    expect(w.find('[data-mr-row="support"]').classes()).toContain('header-selected')
+    expect(w.find('[data-mr-col="rialto"]').classes()).toContain('header-selected')
+    // A game-mode group header lights when all its maps are selected.
+    const escort = w.findAll('.mr-modehead').find((n) => n.text() === 'Escort')
+    await escort?.trigger('click')
+    expect(escort?.classes()).toContain('header-selected')
+  })
+
   it('Ctrl-clicking a second cell live-filters to the rectangular hull', async () => {
     const narrow = makeNarrow()
     const w = mountBand(narrow)

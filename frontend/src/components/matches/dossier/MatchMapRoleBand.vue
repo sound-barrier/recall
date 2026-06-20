@@ -292,6 +292,17 @@ function headerMods(e: MouseEvent): { ctrl: boolean; shift: boolean } {
   return { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey }
 }
 
+// Headers stay highlighted while their dimension is in the selection — a map / role
+// header lights when that map / role is in the hull; a game-mode header when ALL
+// its maps are. (Selecting a column thus also marks the role headers it spans,
+// Excel-style.)
+const selectedMaps  = computed(() => new Set(sel.hullMaps.value))
+const selectedRoles = computed(() => new Set(sel.hullRoles.value))
+function isGroupSelected(gameMode: string): boolean {
+  const maps = groupMaps(gameMode)
+  return maps.length > 0 && maps.every((m) => selectedMaps.value.has(m))
+}
+
 // A press directly on the grid gutters (between cells) clears the selection.
 // Using mousedown.self — not click — so the synthetic click a drag-box emits on
 // the grid (the down/up cells' common ancestor) can't wipe the fresh selection.
@@ -388,8 +399,10 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
           :key="`g-${g.gameMode}`"
           type="button"
           class="mr-modehead"
+          :class="{ 'header-selected': isGroupSelected(g.gameMode) }"
           :style="{ gridColumn: `${g.colStart} / span ${g.colSpan}`, gridRow: 1 }"
           :aria-label="`Select all ${g.label} maps`"
+          :aria-pressed="isGroupSelected(g.gameMode)"
           @click="sel.selectColumns(groupMaps(g.gameMode), headerMods($event))"
         >
           {{ g.label }}
@@ -400,11 +413,12 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
           :key="`c-${col.slug}`"
           type="button"
           class="mr-collabel"
-          :class="{ 'mr-group-start': col.firstInGroup }"
+          :class="{ 'mr-group-start': col.firstInGroup, 'header-selected': selectedMaps.has(col.slug) }"
           :style="{ gridColumn: i + 2, gridRow: 2 }"
           :data-mr-col="col.slug"
           :title="`Select the ${col.display} column`"
           :aria-label="`Select all roles on ${col.display}`"
+          :aria-pressed="selectedMaps.has(col.slug)"
           @click="sel.selectColumn(col.slug, headerMods($event))"
         >
           {{ col.display }}
@@ -414,9 +428,11 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
           <button
             type="button"
             class="mr-rowhead"
+            :class="{ 'header-selected': selectedRoles.has(role) }"
             :style="{ gridColumn: 1, gridRow: rIdx + 3 }"
             :data-mr-row="role"
             :aria-label="`Select all maps for ${ROLE_LABEL[role]}`"
+            :aria-pressed="selectedRoles.has(role)"
             @click="sel.selectRow(role, headerMods($event))"
           >
             {{ ROLE_LABEL[role] }}
@@ -736,6 +752,16 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   font-size: 0.95rem;
   letter-spacing: 0.03em;
   color: var(--text);
+}
+
+/* A header whose map / role / game-mode is part of the current selection — stays
+   lit so the active dimensions read at a glance. */
+.mr-modehead.header-selected,
+.mr-collabel.header-selected,
+.mr-rowhead.header-selected {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-radius: 2px;
 }
 
 .mr-cell {
