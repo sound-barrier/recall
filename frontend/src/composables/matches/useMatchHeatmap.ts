@@ -1,5 +1,5 @@
 import { computed, isRef, type Ref } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 
 type MaybeRef<T> = T | Ref<T>
 function unref<T>(v: MaybeRef<T>): T {

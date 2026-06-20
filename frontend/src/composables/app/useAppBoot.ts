@@ -1,7 +1,7 @@
 import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import { GetStartupError } from '@/api'
+import { GetStartupError } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'

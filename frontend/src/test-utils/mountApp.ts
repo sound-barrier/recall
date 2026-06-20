@@ -82,7 +82,7 @@ function defaultUpdate(overrides: Partial<UpdateInfo> = {}): UpdateInfo {
   }
 }
 
-function mockApi(overrides: MountOverrides = {}) {
+function buildMock(overrides: MountOverrides = {}) {
   // Reset event handlers each mock install so tests don't leak state.
   eventHandlers = new Map()
 
@@ -157,8 +157,7 @@ function mockApi(overrides: MountOverrides = {}) {
       eventHandlers.delete(name)
     }),
   }
-  lastMockedApi = mocked
-  vi.doMock('@/api', () => mocked)
+  return mocked
 }
 
 // fireEvent reaches into the captured EventsOn handler map and invokes
@@ -176,25 +175,15 @@ export function fireEvent(name: string, data: unknown = undefined): boolean {
   return true
 }
 
-// mountApp installs the API mock, dynamically imports App.vue (so the
-// mock is in place before App's static `import '@/api'` resolves), and
-// runs `flushPromises` to let the onMounted load() / Promise.all settle
-// before tests assert on the rendered DOM.
+// mountApp installs the api mock via the api-client seam (no module-mock
+// dance), dynamically imports App.vue, and flushes so the onMounted load()
+// chain settles before tests assert on the rendered DOM.
 export async function mountApp(overrides: MountOverrides = {}) {
-  // Drop any '@/api' mock left registered by a *prior test file* — several
-  // composable/SFC tests register a HOISTED vi.mock('@/api') whose factory
-  // survives across files under low fork counts (CI's coverage run). A leaked
-  // hoisted mock outranks the per-test vi.doMock below, so App's store would
-  // bind the wrong (or incomplete) GetMatchResults and load() would miss the
-  // mock (0 calls). doUnmock clears it so mockApi's doMock is authoritative.
-  vi.doUnmock('@/api')
-  // Reset the module registry so the dynamic import of App + its Pinia stores
-  // re-evaluates against the fresh vi.doMock('@/api') below (and resets any
-  // module-level subscription guards, e.g. useEventStream). Without this a
-  // prior store-importing test leaves '@/api' cached with the real module.
-  // See reference_store_api_mock_isolation.
+  // Fresh module graph each mount so module-level composable state
+  // (useEventStream's subscription guard, useOWData's session cache) starts
+  // clean — and so the api-client instance we install the mock on below is the
+  // SAME one App's stores import.
   vi.resetModules()
-  mockApi(overrides)
   // happy-dom's localStorage is a noop without `--localstorage-file`
   // (vitest's default config doesn't pass it), so any test that
   // relies on App.vue reading a persisted preference needs a real
@@ -227,9 +216,17 @@ export async function mountApp(overrides: MountOverrides = {}) {
   // traps focus + makes the rest of the app inert. Unit tests that
   // want to exercise the modal can delete this key before mounting.
   localStorage.setItem('recall.firstRunAccountNamed', 'true')
-  // Reset modules so a stale cached App.vue from a prior test doesn't
-  // bypass the freshly-installed mock.
-  vi.resetModules()
+
+  // Install the api mock on THIS mount's api-client instance (imported
+  // post-resetModules, the same one App's stores bind below). setApiBacking's
+  // runtime swap is leak-immune: even if a prior test FILE leaked a hoisted
+  // '@/api' mock, our explicit mock functions win — no vi.doMock/doUnmock
+  // dance, no cross-fork flake.
+  const mocked = buildMock(overrides)
+  const { setApiBacking } = await import('@/api-client')
+  setApiBacking(mocked)
+  lastMockedApi = mocked
+
   // Pre-warm the dynamic-import cache for the four view components.
   // App.vue loads each via defineAsyncComponent(() => import(...));
   // in production the bundler emits a separate chunk fetched on first

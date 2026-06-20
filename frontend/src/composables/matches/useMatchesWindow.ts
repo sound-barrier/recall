@@ -1,5 +1,5 @@
 import { computed, ref, watch, type ComputedRef, type Ref, type WatchSource } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 
 // Client-side windowing for the Matches leaves list. Renders only
 // the first `pageSize` rows of the narrowed/sorted/grouped set; an

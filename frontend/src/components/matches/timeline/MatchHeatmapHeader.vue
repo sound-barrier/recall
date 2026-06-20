@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, toRef } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
 
 // Calendar heatmap viz — 7 rows × N week columns of one cell per day.

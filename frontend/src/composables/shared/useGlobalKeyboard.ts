@@ -1,5 +1,5 @@
 import { nextTick, type Ref } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { useKeyboardShortcuts, type Shortcut } from '@/composables/shared/useKeyboardShortcuts'
 import { type TabId } from '@/composables/shared/useTabKeyboardNav'
 

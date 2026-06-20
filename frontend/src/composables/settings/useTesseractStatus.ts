@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-import type { TesseractStatus, ProbeResult } from '@/api'
+import type { TesseractStatus, ProbeResult } from '@/api-client'
 
 // Tesseract OCR engine status — the current path / version /
 // supported flag plus pickers for "Browse for the binary…" and

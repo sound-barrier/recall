@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { NamedCandidate, NamedCandidateStats } from '@/api'
+import type { NamedCandidate, NamedCandidateStats } from '@/api-client'
 import { useScreenshotFolderStats } from '@/composables/settings/useScreenshotFolderStats'
 import { useContextualCallout } from '@/composables/shared/useContextualCallout'
 import ContextualCallout from '@/components/shared/ContextualCallout.vue'

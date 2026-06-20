@@ -1,4 +1,4 @@
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import type { SearchClause } from '@/match/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/useMatchesNarrow'

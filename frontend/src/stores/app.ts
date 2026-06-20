@@ -1,7 +1,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { CheckForUpdate, GetVersion, type UpdateInfo, type DataLocation } from '@/api'
+import { CheckForUpdate, GetVersion, type UpdateInfo, type DataLocation } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import type { TabId } from '@/composables/shared/useTabKeyboardNav'
 import { useMatchesStore } from '@/stores/matches'

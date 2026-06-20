@@ -1,5 +1,5 @@
 import { ref, computed, type ComputedRef, type Ref } from 'vue'
-import { GetOWData, type OWData } from '@/api'
+import { GetOWData, type OWData } from '@/api-client'
 
 // useOWData exposes the static Overwatch reference data
 // (heroes-by-role + maps-by-game-mode) fetched once per session from

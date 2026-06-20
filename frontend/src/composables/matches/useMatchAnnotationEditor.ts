@@ -1,5 +1,5 @@
 import { ref, computed, watch, nextTick } from 'vue'
-import type { MatchRecord, MatchAnnotationInput } from '@/api'
+import type { MatchRecord, MatchAnnotationInput } from '@/api-client'
 import { highlightSubstrings } from '@/match/match-helpers'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 

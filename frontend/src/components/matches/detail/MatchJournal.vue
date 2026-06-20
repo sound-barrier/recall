@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, nextTick } from 'vue'
-import type { MatchRecord, MatchAnnotationInput } from '@/api'
+import type { MatchRecord, MatchAnnotationInput } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
 import { useMatchAnnotationEditor } from '@/composables/matches/useMatchAnnotationEditor'
 

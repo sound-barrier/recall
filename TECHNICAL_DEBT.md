@@ -50,21 +50,6 @@ method below.
 multi-component ones): `.system-*` (SystemAlertBanner), `.brandmark-*` / `.ver-*` /
 `.nav-tab-*` (AppMasthead), `.probe-*` (Settings → Engine).
 
-## 2. `mountApp` `@/api` mock isolation — multi-fork flake
-
-`App.test.ts` intermittently fails a single assertion (seen: "switching tabs
-swaps the visible view panel") only under multi-fork Vitest; it passes in
-isolation and under `--no-file-parallelism`. Root cause: the Pinia stores
-statically `import` value functions from `@/api`, and a hoisted
-`vi.mock('@/api')` in another test file can leak across files under low fork
-counts, so App's store binds the wrong mock. `mountApp` already mitigates with
-`vi.doUnmock('@/api')` + `vi.resetModules()` + a `mockedApi()` capture — the
-correct Vitest pattern for a per-test-configurable mock of a statically-imported
-module. This is **not** "fixable" by ripping the triad out; a dependency-injected
-api seam threaded through all four stores would be disproportionate. **Mitigation
-today:** re-run the job, or run single-fork. Only pay this down (add a store-level
-api seam) if the flake becomes frequent in CI.
-
 ## 3. Consciously accepted — do NOT "fix" these without a new reason
 
 Recorded so a future pass doesn't burn effort churning them (each was reviewed

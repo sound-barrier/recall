@@ -1,7 +1,7 @@
 import { ref, nextTick } from 'vue'
 import { defineStore } from 'pinia'
 
-import type { NamedCandidate } from '@/api'
+import type { NamedCandidate } from '@/api-client'
 import {
   PickTesseractBinary,
   ResetTesseractPath,
@@ -13,7 +13,7 @@ import {
   SetScreenshotsDir,
   RevealScreenshotsDir,
   ResetScreenshotsDir,
-} from '@/api'
+} from '@/api-client'
 import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
 import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
 import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'

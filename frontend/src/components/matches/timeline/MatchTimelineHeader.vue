@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import MatchHeatmapHeader from '@/components/matches/timeline/MatchHeatmapHeader.vue'
 import MatchSparklineBrush from '@/components/matches/timeline/MatchSparklineBrush.vue'

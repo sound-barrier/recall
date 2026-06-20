@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { summaryThumbnailURL } from '@/composables/shared/useSummaryThumbnail'
 
 // View-local state for the members-list row interactions that aren't

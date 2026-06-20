@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { TesseractStatus } from '@/api'
+import type { TesseractStatus } from '@/api-client'
 
 // Engine panel — Tesseract status display + Detect / Change / Reset
 // button cluster mirroring the screenshots-dir affordances. Extracted

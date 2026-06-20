@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { RenameProfile, type NamedCandidate, type ProfilesResponse } from '@/api'
+import { RenameProfile, type NamedCandidate, type ProfilesResponse } from '@/api-client'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
 

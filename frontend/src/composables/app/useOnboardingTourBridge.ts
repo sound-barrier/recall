@@ -1,6 +1,6 @@
 import { nextTick } from 'vue'
 
-import { SeedTestProfile, SwitchProfile } from '@/api'
+import { SeedTestProfile, SwitchProfile } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'

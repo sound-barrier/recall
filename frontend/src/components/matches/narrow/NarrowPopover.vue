@@ -13,7 +13,7 @@ import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useNarrowTabNav } from '@/composables/matches/useNarrowTabNav'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import NarrowPresets from '@/components/matches/narrow/NarrowPresets.vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 
 type MatchesNarrowApi = ReturnType<typeof useMatchesNarrow>

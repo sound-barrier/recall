@@ -7,7 +7,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import { OpenURL } from '@/api'
+import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { tallyWLD } from '@/match/match-stats-helpers'

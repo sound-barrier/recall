@@ -1,4 +1,4 @@
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import {
   usePersistedRef,
   parseJsonRecord,

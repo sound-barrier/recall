@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import type { ManualMatchInput } from '@/api'
+import type { ManualMatchInput } from '@/api-client'
 
 // Form state + light validation for hand-entering a match (no OCR). Required:
 // map, play mode, queue, result, ≥1 hero (heroes[0] is the primary). Rank is

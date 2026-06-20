@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { useContextualCallout } from '@/composables/shared/useContextualCallout'
 import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
