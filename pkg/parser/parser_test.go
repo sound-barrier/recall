@@ -345,7 +345,7 @@ func TestBestKnownMapInText(t *testing.T) {
 }
 
 func TestExtractSR(t *testing.T) {
-	t.Run("single hero with positive change", func(t *testing.T) {
+	t.Run("single hero with change", func(t *testing.T) {
 		got := parser.ExtractSR("LUCIO HERO SR 2754 +30")
 		want := []parser.HeroSR{{Hero: "lucio", SR: 2754, Change: 30}}
 		if !reflect.DeepEqual(got, want) {
@@ -353,9 +353,36 @@ func TestExtractSR(t *testing.T) {
 		}
 	})
 
-	t.Run("negative change", func(t *testing.T) {
+	// The card shows the change as a coloured arrow, not a sign, so extractSR
+	// returns the magnitude; parseRank applies the direction from the match
+	// result. A stray "-" in the OCR therefore doesn't flip the sign here.
+	t.Run("change is a magnitude (sign comes from the result)", func(t *testing.T) {
 		got := parser.ExtractSR("LUCIO HERO SR 2700 -25")
-		want := []parser.HeroSR{{Hero: "lucio", SR: 2700, Change: -25}}
+		want := []parser.HeroSR{{Hero: "lucio", SR: 2700, Change: 25}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	// Regression: the panel stacks one card per hero, each with its OWN SR. The
+	// old code grabbed the first 4-digit run in the whole blob and copied it onto
+	// every hero, so two cards reported one (wrong) SR.
+	t.Run("two cards get distinct SRs, not the first repeated", func(t *testing.T) {
+		got := parser.ExtractSR("BRIGITTE SR 2778 ^102\nANA SR 1896 ^8")
+		want := []parser.HeroSR{
+			{Hero: "brigitte", SR: 2778, Change: 102},
+			{Hero: "ana", SR: 1896, Change: 8},
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	// digitize recovers the SR's letter-shaped digits (O/Q/I/l/L) but must not
+	// mint a phantom change out of the card's stray trailing letters.
+	t.Run("digit-lookalike SR recovered, trailing letters are not a change", func(t *testing.T) {
+		got := parser.ExtractSR("KIRIKO SR 17O0 Le")
+		want := []parser.HeroSR{{Hero: "kiriko", SR: 1700, Change: 0}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
