@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
   formatHeroes,

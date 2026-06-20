@@ -1,6 +1,6 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import {
   currentRankByRole,
   rankLadderSeries,

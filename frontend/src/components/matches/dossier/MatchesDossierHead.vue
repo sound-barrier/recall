@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import type { NarrowMode } from '@/composables/matches/useNarrowMode'
 import { useDashboardLayout } from '@/composables/dashboard/useDashboardLayout'

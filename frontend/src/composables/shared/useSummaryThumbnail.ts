@@ -1,4 +1,4 @@
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { screenshotURL } from '@/match/match-helpers'
 
 // Resolve the URL of a match record's SUMMARY screenshot — the

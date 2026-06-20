@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { isEditedMatch, isManualMatch } from '@/match/match-helpers'
 
 // Sort + group-by state for the Matches workspace leaves list.

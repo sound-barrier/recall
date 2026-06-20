@@ -1,4 +1,4 @@
-import type { MatchRecord, UserMatchDataInput } from '@/api'
+import type { MatchRecord, UserMatchDataInput } from '@/api-client'
 
 // Reconstructs and mutates a match's user-override set for the inline editor.
 //

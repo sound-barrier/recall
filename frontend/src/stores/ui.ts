@@ -1,7 +1,7 @@
 import { computed, markRaw, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
 import { useCardFocus } from '@/composables/matches/useCardFocus'

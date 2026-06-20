@@ -4,7 +4,7 @@
 // MatchesView's action handlers (hideSelected, beginMoveLive, etc.)
 // stay where they wire to App.vue's API.
 import { ref } from 'vue'
-import type { PlayMode, QueueType } from '@/api'
+import type { PlayMode, QueueType } from '@/api-client'
 import TypeaheadDropdown from '@/components/shared/TypeaheadDropdown.vue'
 
 defineProps<{

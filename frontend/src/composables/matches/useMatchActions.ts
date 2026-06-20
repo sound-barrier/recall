@@ -20,7 +20,7 @@ import {
   BulkSetMatchQueue,
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
-} from '@/api'
+} from '@/api-client'
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
 

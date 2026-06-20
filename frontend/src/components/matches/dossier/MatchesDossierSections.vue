@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { useSectionLayout } from '@/composables/matches/useSectionLayout'
 import DossierSection from '@/components/matches/dossier/DossierSection.vue'
 import MatchTimelineHeader from '@/components/matches/timeline/MatchTimelineHeader.vue'

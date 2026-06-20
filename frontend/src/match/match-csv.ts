@@ -12,7 +12,7 @@
 // aggregated MatchRecord the user sees in the data view, every field its
 // own column, ready to pivot in a spreadsheet.
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { heroesForHeader, rolesForHeader } from '@/match/match-helpers'
 
 type HeroRole = (hero: string | null | undefined) => string

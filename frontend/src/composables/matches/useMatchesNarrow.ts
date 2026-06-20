@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import type {
   MatchesNarrowState,
   PresetRange,

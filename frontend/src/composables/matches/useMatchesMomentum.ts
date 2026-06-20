@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { avgGameLengthMinutes } from '@/match/match-stats-helpers'
 import {
   firstGameOfSessionWinrate,

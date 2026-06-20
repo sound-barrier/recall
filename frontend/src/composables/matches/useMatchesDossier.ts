@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
 import { formatToHundredths } from '@/match/match-stats-helpers'
 import { useDossierQueries } from '@/composables/matches/useMatchesDossierQueries'

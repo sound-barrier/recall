@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
+import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api-client'
 import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 import { formatParsedAt, fmtTime } from '@/match/match-time-helpers'
 import { type SearchClause } from '@/match/search-query'

@@ -23,7 +23,7 @@ import { toRef, computed } from 'vue'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useGameDataUpdate } from '@/composables/shared/useGameDataUpdate'
 import UpdateDiffManifest from '@/components/shared/UpdateDiffManifest.vue'
-import { OpenURL, type UpdateInfo, type DataUpdateResult } from '@/api'
+import { OpenURL, type UpdateInfo, type DataUpdateResult } from '@/api-client'
 
 const props = defineProps<{
   open:           boolean

@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { GetProfiles } from '@/api'
+import { GetProfiles } from '@/api-client'
 
 // Persisted flag for the first-run "Main account name" modal. Two
 // signals decide whether the modal shows on launch:

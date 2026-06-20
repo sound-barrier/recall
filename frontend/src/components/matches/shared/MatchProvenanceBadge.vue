@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 
 // Small provenance chip shown on match cards + the detail-panel header.
 // Three states: OCR (parsed from screenshots), Edited (parsed then

@@ -8,7 +8,7 @@
 // Sibling helpers: match-time-helpers.ts (match time + clock formats),
 // match-stats-helpers.ts (W/L/D tally + numeric formats).
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { matchTime } from '@/match/match-time-helpers'
 
 // The slice of a match record the trend builders read. Narrowed so

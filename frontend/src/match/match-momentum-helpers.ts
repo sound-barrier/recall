@@ -6,7 +6,7 @@
 // Sibling helpers: match-trends-helpers.ts (matchEpoch + role/rank),
 // match-time-helpers.ts (game-length parsing).
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { matchEpoch } from '@/match/match-trends-helpers'
 
 // A gap longer than this between consecutive matches starts a new play

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { useOWData } from '@/composables/shared/useOWData'
 
 // The expanded card's Rank Update block — the "rare" milestone surface

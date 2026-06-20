@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
-import { ApiError, CreateManualMatch, type MatchRecord } from '@/api'
+import { ApiError, CreateManualMatch, type MatchRecord } from '@/api-client'
 import { useManualMatchForm } from '@/composables/matches/useManualMatchForm'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'

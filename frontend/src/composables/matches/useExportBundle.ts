@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-import { ExportBundle, ExportMatchesCSV } from '@/api'
+import { ExportBundle, ExportMatchesCSV } from '@/api-client'
 
 // Export flows for the Matches set — the bundle-export modal (selected match
 // keys + include-hidden/unknown toggles → ExportBundle) and the flat CSV export

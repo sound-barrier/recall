@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 
 // The expanded card's leaver-annotation chooser — three scenario chips
 // (self / team / enemy left) + a Clear chip, an ARIA radiogroup. Extracted

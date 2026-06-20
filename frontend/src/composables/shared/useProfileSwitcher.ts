@@ -1,5 +1,5 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } from '@/api'
+import { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } from '@/api-client'
 
 // Stateful logic for the masthead profile chip + dropdown: the profile
 // list, the open/creating/rename UI state, and the create / rename / switch

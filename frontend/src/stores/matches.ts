@@ -1,7 +1,7 @@
 import { computed, markRaw, ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import {
   GetNewScreenshotCount,
   GetMatchResults,
@@ -17,7 +17,7 @@ import {
   ExportData,
   ExportDataCSV,
   ImportData,
-} from '@/api'
+} from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'

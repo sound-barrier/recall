@@ -5,7 +5,7 @@ import {
   GetIgnoredScreenshots,
   UnignoreScreenshot,
   type IgnoredScreenshot,
-} from '@/api'
+} from '@/api-client'
 import type { TabId } from '@/composables/shared/useTabKeyboardNav'
 
 // Ignored-screenshots panel state + actions — the suppress-list a user builds

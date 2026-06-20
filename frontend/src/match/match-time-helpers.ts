@@ -3,7 +3,7 @@
 // fall back to '—' or '' on null / unparseable inputs so the
 // templates never have to special-case missing data.
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 
 // Single source of truth for month-name rendering. Shared with
 // match-group-helpers.ts (the grouping tree's UPPER + SHORT

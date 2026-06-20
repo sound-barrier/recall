@@ -1,5 +1,5 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
-import { EventsOn, EventsOff, type MatchRecord, type TesseractStatus } from '@/api'
+import { EventsOn, EventsOff, type MatchRecord, type TesseractStatus } from '@/api-client'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 
 // Live-stream subscriptions for the three SSE events emitted during

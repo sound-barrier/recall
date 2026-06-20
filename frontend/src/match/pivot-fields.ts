@@ -10,7 +10,7 @@
 // which is why pivot counts over hero/tag/role won't sum to the match
 // total. Measures return a single numeric value (or null = not counted).
 
-import type { MatchRecord } from '@/api'
+import type { MatchRecord } from '@/api-client'
 import { rolesForHeader } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { WEEKDAYS_FULL } from '@/match/match-time-helpers'
