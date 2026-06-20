@@ -253,6 +253,11 @@ function groupMaps(gameMode: string): string[] {
   return columns.value.filter((c) => c.gameMode === gameMode).map((c) => c.slug)
 }
 
+// Excel modifier vocabulary off a header click: Ctrl/⌘ = add, Shift = range.
+function headerMods(e: MouseEvent): { ctrl: boolean; shift: boolean } {
+  return { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey }
+}
+
 // A press directly on the grid gutters (between cells) clears the selection.
 // Using mousedown.self — not click — so the synthetic click a drag-box emits on
 // the grid (the down/up cells' common ancestor) can't wipe the fresh selection.
@@ -340,7 +345,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
           class="mr-modehead"
           :style="{ gridColumn: `${g.colStart} / span ${g.colSpan}`, gridRow: 1 }"
           :aria-label="`Select all ${g.label} maps`"
-          @click="sel.selectColumns(groupMaps(g.gameMode), { ctrl: $event.ctrlKey || $event.metaKey })"
+          @click="sel.selectColumns(groupMaps(g.gameMode), headerMods($event))"
         >
           {{ g.label }}
         </button>
@@ -355,7 +360,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
           :data-mr-col="col.slug"
           :title="`Select the ${col.display} column`"
           :aria-label="`Select all roles on ${col.display}`"
-          @click="sel.selectColumn(col.slug, { ctrl: $event.ctrlKey || $event.metaKey })"
+          @click="sel.selectColumn(col.slug, headerMods($event))"
         >
           {{ col.display }}
         </button>
@@ -367,7 +372,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
             :style="{ gridColumn: 1, gridRow: rIdx + 3 }"
             :data-mr-row="role"
             :aria-label="`Select all maps for ${ROLE_LABEL[role]}`"
-            @click="sel.selectRow(role, { ctrl: $event.ctrlKey || $event.metaKey })"
+            @click="sel.selectRow(role, headerMods($event))"
           >
             {{ ROLE_LABEL[role] }}
           </button>

@@ -222,6 +222,29 @@ test.describe('Geography — Map × Role band', () => {
     await expect(page.locator('ul.active-chips .active-chip', { hasText: 'escort' })).toHaveCount(0)
   })
 
+  test('facet model: a group spans all roles, then a role narrows within it', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await band.locator('.mr-modehead', { hasText: 'Escort' }).click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(3) // Escort × all roles
+    // Click Support → narrow to Support within Escort (rialto + dorado support).
+    await band.locator('[data-mr-row="support"]').click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(2)
+    await expect(band.locator('.mr-cell[aria-label*="Support on Rialto"]')).toHaveClass(/selected/)
+    // Ctrl+DPS → add DPS within Escort (rialto|dps) → 3.
+    await band.locator('[data-mr-row="dps"]').click({ modifiers: ['ControlOrMeta'] })
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(3)
+  })
+
+  test('Shift+click a map header selects a contiguous column range', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    // Column order: Ilios (control), Dorado, Rialto (escort).
+    await band.locator('[data-mr-col="ilios"]').click() // anchor
+    await band.locator('[data-mr-col="rialto"]').click({ modifiers: ['Shift'] })
+    // Ilios..Rialto = 3 columns × all roles; played: ilios|tank, ilios|support,
+    // dorado|support, rialto|support, rialto|dps = 5.
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(5)
+  })
+
   test('offers a 1M/3M/6M/12M window toggle, defaulting to 6M', async ({ page }) => {
     const band = page.locator('.match-map-role')
     await expect(band.locator('.mr-window-btn')).toHaveText(['1M', '3M', '6M', '12M'])
