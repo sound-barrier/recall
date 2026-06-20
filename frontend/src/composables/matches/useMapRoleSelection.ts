@@ -178,34 +178,60 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
     return boxKeys(dragStart.value, dragHover.value).includes(key(map, role))
   }
 
-  // ── header (row / column) selection ───────────────────────────────
-  function rowKeys(role: string): CellKey[] {
-    return opts.columns().filter((m) => opts.isSelectable(m, role)).map((m) => key(m, role))
+  // ── Header selection — a maps × roles "facet" model ────────────────
+  // Game-mode + map headers set the MAPS dimension (spanning all roles); a role
+  // header narrows the ROLES dimension within the currently-selected maps. Each
+  // header carries the Excel modifier vocabulary: plain = replace that dimension,
+  // Ctrl/⌘ = add to it, Shift = range from the last header clicked. Re-clicking
+  // the lone selected role un-narrows back to all roles.
+  const colAnchor = ref<string | null>(null)
+  const roleAnchor = ref<string | null>(null)
+
+  function product(maps: readonly string[], roles: readonly string[]): CellKey[] {
+    const out: CellKey[] = []
+    for (const m of maps) for (const r of roles) if (opts.isSelectable(m, r)) out.push(key(m, r))
+    return out
   }
-  function colKeys(map: string): CellKey[] {
-    return opts.roles().filter((r) => opts.isSelectable(map, r)).map((r) => key(map, r))
+  function rangeBetween(list: readonly string[], from: string | null, to: string): string[] {
+    const a = from == null ? list.indexOf(to) : list.indexOf(from)
+    const b = list.indexOf(to)
+    if (a < 0 || b < 0) return [to]
+    const [lo, hi] = a <= b ? [a, b] : [b, a]
+    return list.slice(lo, hi + 1)
   }
-  function selectRow(role: string, mods: Partial<PointerMods> = {}) {
-    const keys = rowKeys(role)
+  function commitFacet(maps: readonly string[], roles: readonly string[]) {
+    const keys = product(maps, roles)
     if (!keys.length) return
-    if (mods.ctrl) add(keys); else replace(keys)
-    const firstMap = opts.columns().find((m) => opts.isSelectable(m, role))
-    if (firstMap) { anchor.value = { map: firstMap, role }; focused.value = { map: firstMap, role } }
+    replace(keys)
+    const first = keys[0]!; const i = first.lastIndexOf('|')
+    anchor.value = { map: first.slice(0, i), role: first.slice(i + 1) }
+    focused.value = anchor.value
   }
-  // Select one or more whole columns (a single map, or a game-mode group's maps).
+
+  // Game-mode group / single map → set the MAPS dimension (× all roles).
   function selectColumns(maps: readonly string[], mods: Partial<PointerMods> = {}) {
-    const keys: CellKey[] = []
-    for (const m of maps) keys.push(...colKeys(m))
-    if (!keys.length) return
-    if (mods.ctrl) add(keys); else replace(keys)
-    // Anchor on the first selectable cell across the columns (column-major).
-    for (const m of maps) {
-      const r = opts.roles().find((ro) => opts.isSelectable(m, ro))
-      if (r) { anchor.value = { map: m, role: r }; focused.value = { map: m, role: r }; break }
-    }
+    const last = maps[maps.length - 1] ?? maps[0]!
+    let next: string[]
+    if (mods.shift) next = rangeBetween(opts.columns(), colAnchor.value, last)
+    else if (mods.ctrl) next = [...new Set([...hullMaps.value, ...maps])]
+    else next = [...maps]
+    commitFacet(next, opts.roles())
+    if (!mods.shift) colAnchor.value = last
   }
   function selectColumn(map: string, mods: Partial<PointerMods> = {}) {
     selectColumns([map], mods)
+  }
+
+  // Role header → narrow the ROLES dimension within the currently-selected maps.
+  function selectRow(role: string, mods: Partial<PointerMods> = {}) {
+    const maps = hullMaps.value.length ? hullMaps.value : [...opts.columns()]
+    const cur = hullRoles.value
+    let next: string[]
+    if (mods.shift) next = rangeBetween(opts.roles(), roleAnchor.value, role)
+    else if (mods.ctrl) next = [...new Set([...cur, role])]
+    else next = (cur.length === 1 && cur[0] === role) ? [...opts.roles()] : [role]
+    commitFacet(maps, next)
+    if (!mods.shift) roleAnchor.value = role
   }
 
   // ── rectangular hull (what the narrow filters to) ─────────────────

@@ -116,19 +116,71 @@ describe('useMapRoleSelection — row / column headers', () => {
     expect(s.isRectangular.value).toBe(true)
   })
 
-  it('Ctrl+row adds the row to an existing selection', () => {
-    const s = make()
-    s.selectColumn('nepal')
-    s.selectRow('tank', { ctrl: true })
-    expect(s.isSelected('nepal', 'support')).toBe(true)
-    expect(s.isSelected('kings-row', 'tank')).toBe(true)
-  })
-
   it('a row skips inert cells', () => {
     const s = make(['nepal|support'])
     s.selectRow('support')
     expect(s.isSelected('nepal', 'support')).toBe(false)
     expect(s.count.value).toBe(3)
+  })
+})
+
+// The "facet" model: game-mode/map headers set the MAPS dimension (× all roles);
+// a role header narrows the ROLES dimension within the currently-selected maps.
+// Plain replaces a dimension, Ctrl/Cmd adds, Shift ranges — Excel vocabulary.
+describe('useMapRoleSelection — facet (maps × roles) headers', () => {
+  it('a role narrows to that role within the selected maps (keeps the maps)', () => {
+    const s = make()
+    s.selectColumns(['ilios', 'oasis']) // 2 maps × all roles (6)
+    s.selectRow('tank')                 // narrow → 2 maps × tank
+    expect(keys(s)).toEqual(['ilios|tank', 'oasis|tank'])
+  })
+
+  it('plain-clicking the lone selected role un-narrows back to all roles', () => {
+    const s = make()
+    s.selectColumn('ilios')
+    s.selectRow('tank')   // ilios × tank
+    s.selectRow('tank')   // toggle → ilios × all roles
+    expect(keys(s)).toEqual(['ilios|dps', 'ilios|support', 'ilios|tank'])
+  })
+
+  it('clicking a different role switches the narrow (never empties)', () => {
+    const s = make()
+    s.selectColumn('ilios')
+    s.selectRow('tank')      // ilios × tank
+    s.selectRow('support')   // ilios × support
+    expect(keys(s)).toEqual(['ilios|support'])
+  })
+
+  it('Ctrl+role adds a second role within the current maps', () => {
+    const s = make()
+    s.selectColumn('ilios')
+    s.selectRow('tank')
+    s.selectRow('support', { ctrl: true })
+    expect(keys(s)).toEqual(['ilios|support', 'ilios|tank'])
+  })
+
+  it('Shift+role selects a contiguous range of roles within the maps', () => {
+    const s = make()
+    s.selectColumn('nepal')
+    s.selectRow('tank')                     // anchor = tank
+    s.selectRow('support', { shift: true }) // tank..support = all 3 roles
+    expect(keys(s)).toEqual(['nepal|dps', 'nepal|support', 'nepal|tank'])
+  })
+
+  it('Ctrl+column adds another map column, keeping all roles', () => {
+    const s = make()
+    s.selectColumn('ilios')
+    s.selectColumn('nepal', { ctrl: true })
+    expect(s.hullMaps.value).toEqual(['ilios', 'nepal'])
+    expect(s.count.value).toBe(6)
+  })
+
+  it('Shift+column selects a contiguous range of columns', () => {
+    const s = make()
+    s.selectColumn('kings-row')              // anchor column
+    s.selectColumn('oasis', { shift: true }) // kings-row..oasis = 3 cols × 3 roles
+    expect(s.hullMaps.value).toEqual(['kings-row', 'ilios', 'oasis'])
+    expect(s.count.value).toBe(9)
   })
 })
 
