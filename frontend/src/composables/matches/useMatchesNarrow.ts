@@ -27,6 +27,15 @@ import {
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { TIER_ORDER, FILTERABLE_MODIFIERS, RESULT_MODIFIERS } from '@/match/match-trends-helpers'
 
+// One narrow clause per filter dimension — the unit `passesNarrow` gates each on,
+// and `narrowExcluding` / `matchesNarrowExcept` / the smart-empty suggestions skip.
+type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
+  | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
+  | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'modifiers' | 'ranks'
+  | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
+
+const NO_SKIP: ReadonlySet<ClauseId> = new Set()
+
 // Owns every filter dimension for the Matches set-workspace narrow
 // panel. Extracted from MatchesView so the filter math is testable
 // in isolation — the integrated UI tests can then focus on layout +
@@ -258,76 +267,53 @@ export function useMatchesNarrow(
   })
 
   // ── Filtering ──────────────────────────────────────────
+  // ONE shared narrow predicate. `passesNarrow(r, skip, anchorFloor)` gates each
+  // dimension on `!skip.has(clause)`, so narrowedRecords (skip nothing),
+  // narrowExcluding (skip a band's own dims for cross-band data), and
+  // matchesNarrowExcept (skip one, for the smart-empty suggestions) all run the
+  // SAME chain — a new dimension is one line here + one helper in
+  // narrowPredicates.ts. Soft-deletes + the include-unknown gate live in narrowBase.
+  function narrowBase(): MatchRecord[] {
+    // Hidden rows drop out unconditionally so `selection` auto-closes when the
+    // open match gets hidden (narrowedRecords stops containing it).
+    const base = records.value.filter((r) => !r.hidden)
+    return includeUnknown.value ? base : base.filter((r) => !!r.data?.map)
+  }
+
+  // Resolve the "since this anchor match" floor ONCE per pass — a per-row anchor
+  // lookup would be O(n²). An unset/stale anchor disables the filter.
+  function resolveAnchorFloor(skip: ReadonlySet<ClauseId>): string | null {
+    if (skip.has('sinceAnchor') || !sinceAnchorActive.value || anchorKey.value === '') return null
+    return records.value.find((r) => r.match_key === anchorKey.value)?.parsed_at ?? null
+  }
+
+  function passesNarrow(r: MatchRecord, skip: ReadonlySet<ClauseId>, anchorFloor: string | null): boolean {
+    if (!r.data) return false
+    if (!skip.has('search')      && !matchesSearch(r, searchClauses.value)) return false
+    if (!skip.has('dateRange')   && !matchesDateRange(r, customFrom.value, customTo.value)) return false
+    if (!skip.has('maps')        && !matchesPickedSet(r.data.map, pickedMaps.value)) return false
+    if (!skip.has('gameModes')   && !matchesPickedSet(r.data.game_mode, pickedGameModes.value)) return false
+    if (!skip.has('roles')       && !matchesPickedSet(r.data.role, pickedRoles.value)) return false
+    if (!skip.has('results')     && !matchesPickedSet(r.data.result, pickedResults.value)) return false
+    if (!skip.has('heroes') && !skip.has('minPlay')
+      && !matchesHero(r, pickedHeroes.value, minPlayMinutes.value, minPlayPercent.value)) return false
+    if (!skip.has('tags')        && !matchesTags(r, pickedTags.value)) return false
+    if (!skip.has('members')     && !matchesMembers(r, pickedMembers.value)) return false
+    if (!skip.has('reviewedBy')  && !matchesReviewedBy(r, pickedReviewedBy.value)) return false
+    if (!skip.has('queues')      && !matchesQueueType(r, pickedQueues.value)) return false
+    if (!skip.has('playModes')   && !matchesPlayMode(r, pickedPlayModes.value)) return false
+    if (!skip.has('sources')     && !matchesSource(r, pickedSources.value)) return false
+    if (!skip.has('sinceAnchor') && !matchesSinceAnchor(r, anchorFloor)) return false
+    if (!skip.has('leaver')      && !matchesLeaverHandling(r, leaverHandling.value)) return false
+    if (!skip.has('leaverSide')  && !matchesPickedSet(r.annotation?.leaver, pickedLeavers.value as Set<string>)) return false
+    if (!skip.has('modifiers')   && !matchesModifiers(r, pickedModifiers.value)) return false
+    if (!skip.has('ranks')       && !matchesPickedSet(r.data.rank, pickedRanks.value)) return false
+    return true
+  }
+
   const narrowedRecords = computed(() => {
-    // Soft-deleted (hidden) records drop out unconditionally. The
-    // new MatchesView doesn't surface a "show hidden" toggle —
-    // users unhide via the detail panel. Filtering here lets
-    // `selection` auto-close when the open match gets hidden,
-    // since narrowedRecords stops containing it.
-    let base = records.value.filter((r) => !r.hidden)
-    if (!includeUnknown.value) {
-      base = base.filter((r) => !!r.data?.map)
-    }
-
-    // Resolve the "since this anchor match" floor ONCE — looking up
-    // the anchor record per-row would be O(n²). The floor is an ISO
-    // parsed_at string (lexicographic compare = chronological).
-    // Unset / stale anchor (anchor key not found in the corpus)
-    // disables the filter — same end-state as if the user hadn't
-    // checked it. Tests pin both cases.
-    let anchorFloor: string | null = null
-    if (sinceAnchorActive.value && anchorKey.value !== '') {
-      const anchor = records.value.find((r) => r.match_key === anchorKey.value)
-      if (anchor && anchor.parsed_at) {
-        anchorFloor = anchor.parsed_at
-      }
-    }
-
-    const heroMin = minPlayMinutes.value
-    const heroPct = minPlayPercent.value
-    const fromBound = customFrom.value
-    const toBound = customTo.value
-    const maps = pickedMaps.value
-    const gameModes = pickedGameModes.value
-    const roles = pickedRoles.value
-    const results = pickedResults.value
-    const heroes = pickedHeroes.value
-    const tags = pickedTags.value
-    const members = pickedMembers.value
-    const reviewed = pickedReviewedBy.value
-    const queues = pickedQueues.value
-    const playModes = pickedPlayModes.value
-    const sources = pickedSources.value
-    const leaver = leaverHandling.value
-    const leavers = pickedLeavers.value as Set<string>
-    const modifiers = pickedModifiers.value
-    const ranks = pickedRanks.value
-
-    // Each predicate gates its own dimension; `every` short-circuits.
-    // Adding a new dimension is one more line here + one helper in
-    // narrowPredicates.ts — the giant monolithic arrow this replaces
-    // was 85-complexity and impossible to unit-test in isolation.
-    return base.filter((r) => {
-      if (!r.data) return false
-      return matchesSearch(r, searchClauses.value)
-        && matchesDateRange(r, fromBound, toBound)
-        && matchesPickedSet(r.data.map, maps)
-        && matchesPickedSet(r.data.game_mode, gameModes)
-        && matchesPickedSet(r.data.role, roles)
-        && matchesPickedSet(r.data.result, results)
-        && matchesHero(r, heroes, heroMin, heroPct)
-        && matchesTags(r, tags)
-        && matchesMembers(r, members)
-        && matchesReviewedBy(r, reviewed)
-        && matchesQueueType(r, queues)
-        && matchesPlayMode(r, playModes)
-        && matchesSource(r, sources)
-        && matchesSinceAnchor(r, anchorFloor)
-        && matchesLeaverHandling(r, leaver)
-        && matchesPickedSet(r.annotation?.leaver, leavers)
-        && matchesModifiers(r, modifiers)
-        && matchesPickedSet(r.data.rank, ranks)
-    })
+    const anchorFloor = resolveAnchorFloor(NO_SKIP)
+    return narrowBase().filter((r) => passesNarrow(r, NO_SKIP, anchorFloor))
   })
 
   // ── Smart-empty suggestions ──────────────────────────────────
@@ -343,11 +329,6 @@ export function useMatchesNarrow(
   //   - the user has no active clauses (nothing to suggest), or
   //   - dropping any one clause STILL leaves zero records (no
   //     single clause is the culprit; the suggestion would be a lie).
-  type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
-                | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
-                | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'modifiers' | 'ranks'
-                | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
-
   interface ClauseSuggestion {
     clauseId: ClauseId
     label: string         // "search 'clutch'" / "map filter (3 picks)"
@@ -355,89 +336,21 @@ export function useMatchesNarrow(
     clear: () => void     // single-click reset for this clause only
   }
 
+  // Does r pass the narrow with one clause omitted? Single-omit wrapper over the
+  // shared predicate, used by the smart-empty suggestions below.
   function matchesNarrowExcept(r: MatchRecord, omit: ClauseId | null): boolean {
-    if (!r.data) return false
-    const fromBound = customFrom.value
-    const toBound   = customTo.value
-    const maps      = pickedMaps.value
-    const gameModes  = pickedGameModes.value
-    const roles     = pickedRoles.value
-    const results   = pickedResults.value
-    const heroes    = pickedHeroes.value
-    const heroMin   = minPlayMinutes.value
-    const heroPct   = minPlayPercent.value
-    const tags      = pickedTags.value
-    const members   = pickedMembers.value
-    const reviewed  = pickedReviewedBy.value
-    const queues    = pickedQueues.value
-    const playModes = pickedPlayModes.value
-    const sources   = pickedSources.value
-    const leaver    = leaverHandling.value
-    const leavers   = pickedLeavers.value as Set<string>
-    const modifiers = pickedModifiers.value
-    const ranks     = pickedRanks.value
-    let anchorFloor: string | null = null
-    if (omit !== 'sinceAnchor' && sinceAnchorActive.value && anchorKey.value !== '') {
-      const anchor = records.value.find((x) => x.match_key === anchorKey.value)
-      if (anchor?.parsed_at) anchorFloor = anchor.parsed_at
-    }
-    if (omit !== 'search'         && !matchesSearch(r, searchClauses.value)) return false
-    if (omit !== 'dateRange'      && !matchesDateRange(r, fromBound, toBound)) return false
-    if (omit !== 'maps'           && !matchesPickedSet(r.data.map, maps)) return false
-    if (omit !== 'gameModes'       && !matchesPickedSet(r.data.game_mode, gameModes)) return false
-    if (omit !== 'roles'          && !matchesPickedSet(r.data.role, roles)) return false
-    if (omit !== 'results'        && !matchesPickedSet(r.data.result, results)) return false
-    if (omit !== 'heroes'         && omit !== 'minPlay' && !matchesHero(r, heroes, heroMin, heroPct)) return false
-    if (omit !== 'tags'           && !matchesTags(r, tags)) return false
-    if (omit !== 'members'        && !matchesMembers(r, members)) return false
-    if (omit !== 'reviewedBy'     && !matchesReviewedBy(r, reviewed)) return false
-    if (omit !== 'queues'         && !matchesQueueType(r, queues)) return false
-    if (omit !== 'playModes'      && !matchesPlayMode(r, playModes)) return false
-    if (omit !== 'sources'        && !matchesSource(r, sources)) return false
-    if (omit !== 'sinceAnchor'    && !matchesSinceAnchor(r, anchorFloor)) return false
-    if (omit !== 'leaver'         && !matchesLeaverHandling(r, leaver)) return false
-    if (omit !== 'leaverSide'     && !matchesPickedSet(r.annotation?.leaver, leavers)) return false
-    if (omit !== 'modifiers'      && !matchesModifiers(r, modifiers)) return false
-    if (omit !== 'ranks'          && !matchesPickedSet(r.data.rank, ranks)) return false
-    return true
+    const skip: ReadonlySet<ClauseId> = omit == null ? NO_SKIP : new Set([omit])
+    return passesNarrow(r, skip, resolveAnchorFloor(skip))
   }
 
-  // ── Cross-widget "narrow minus self" record sets ─────────────────
+  // ── Cross-band "narrow minus self" record sets ───────────────────
   // A dossier band (Geography / Hero×Game-Mode) reads everything EXCEPT its own
   // filter dimensions, so it reflects the OTHER bands' picks — they indirectly
-  // affect each other — without collapsing from its own selection. Same predicate
-  // chain as narrowedRecords with the named dimensions skipped (mirrors
-  // matchesNarrowExcept, but gates on a Set so two dimensions can drop at once).
+  // affect each other — without collapsing from its own selection. Runs the same
+  // `passesNarrow` chain with the named dimensions skipped.
   function narrowExcluding(skip: ReadonlySet<ClauseId>): MatchRecord[] {
-    let base = records.value.filter((r) => !r.hidden)
-    if (!includeUnknown.value) base = base.filter((r) => !!r.data?.map)
-    let anchorFloor: string | null = null
-    if (!skip.has('sinceAnchor') && sinceAnchorActive.value && anchorKey.value !== '') {
-      const anchor = records.value.find((r) => r.match_key === anchorKey.value)
-      if (anchor?.parsed_at) anchorFloor = anchor.parsed_at
-    }
-    return base.filter((r) => {
-      if (!r.data) return false
-      if (!skip.has('search')      && !matchesSearch(r, searchClauses.value)) return false
-      if (!skip.has('dateRange')   && !matchesDateRange(r, customFrom.value, customTo.value)) return false
-      if (!skip.has('maps')        && !matchesPickedSet(r.data.map, pickedMaps.value)) return false
-      if (!skip.has('gameModes')   && !matchesPickedSet(r.data.game_mode, pickedGameModes.value)) return false
-      if (!skip.has('roles')       && !matchesPickedSet(r.data.role, pickedRoles.value)) return false
-      if (!skip.has('results')     && !matchesPickedSet(r.data.result, pickedResults.value)) return false
-      if (!skip.has('heroes')      && !matchesHero(r, pickedHeroes.value, minPlayMinutes.value, minPlayPercent.value)) return false
-      if (!skip.has('tags')        && !matchesTags(r, pickedTags.value)) return false
-      if (!skip.has('members')     && !matchesMembers(r, pickedMembers.value)) return false
-      if (!skip.has('reviewedBy')  && !matchesReviewedBy(r, pickedReviewedBy.value)) return false
-      if (!skip.has('queues')      && !matchesQueueType(r, pickedQueues.value)) return false
-      if (!skip.has('playModes')   && !matchesPlayMode(r, pickedPlayModes.value)) return false
-      if (!skip.has('sources')     && !matchesSource(r, pickedSources.value)) return false
-      if (!skip.has('sinceAnchor') && !matchesSinceAnchor(r, anchorFloor)) return false
-      if (!skip.has('leaver')      && !matchesLeaverHandling(r, leaverHandling.value)) return false
-      if (!skip.has('leaverSide')  && !matchesPickedSet(r.annotation?.leaver, pickedLeavers.value as Set<string>)) return false
-      if (!skip.has('modifiers')   && !matchesModifiers(r, pickedModifiers.value)) return false
-      if (!skip.has('ranks')       && !matchesPickedSet(r.data.rank, pickedRanks.value)) return false
-      return true
-    })
+    const anchorFloor = resolveAnchorFloor(skip)
+    return narrowBase().filter((r) => passesNarrow(r, skip, anchorFloor))
   }
   const narrowedExceptMapsRoles = computed(() => narrowExcluding(new Set<ClauseId>(['maps', 'roles'])))
   const narrowedExceptHeroesGameModes = computed(() => narrowExcluding(new Set<ClauseId>(['heroes', 'gameModes'])))
