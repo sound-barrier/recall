@@ -1,0 +1,29 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "juno",
+    "role": "support",
+    "rank": "gold",
+    "level": 1,
+    "rank_progress": -19,
+    "change_percent": 0,
+    "modifiers": [
+      "defeat",
+      "demotion protection"
+    ],
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2239,
+        "change": 0
+      },
+      {
+        "hero": "kiriko",
+        "sr": 1799,
+        "change": 0
+      }
+    ]
+  }
+}

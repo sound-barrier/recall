@@ -1,0 +1,28 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "victory",
+    "hero": "brigitte",
+    "role": "support",
+    "rank": "gold",
+    "level": 1,
+    "rank_progress": 34,
+    "change_percent": 26,
+    "modifiers": [
+      "victory"
+    ],
+    "sr": [
+      {
+        "hero": "brigitte",
+        "sr": 2778,
+        "change": 102
+      },
+      {
+        "hero": "ana",
+        "sr": 1896,
+        "change": 0
+      }
+    ]
+  }
+}
