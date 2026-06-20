@@ -6,8 +6,8 @@
  * game-mode and alphabetical within each group. Cells are tinted by
  * win rate (green→red) and dimmed by volume. Cells / role labels / map
  * names are spreadsheet-style selectable (click / Ctrl-toggle / drag-box);
- * the selection feeds a combined readout + a "Filter to selection" button.
- * A game-mode group header selects that group's columns.
+ * selecting feeds a combined readout AND live-filters the set (no button); the
+ * grid stays a stable full-window surface. A group header selects its columns.
  *
  * Unlike the opt-in dossier widgets, the band needs no layout seeding —
  * it's fixed chrome. We DO mock /api/v1/system/reference-data so the
@@ -33,10 +33,12 @@ const REFERENCE_DATA = {
     support: ['Lucio'],
   },
   // Two game-mode groups; Escort has two maps so we can assert alpha order
-  // (Dorado before Rialto).
+  // (Dorado before Rialto). Clash is in the roster but the corpus has no Clash
+  // matches, so it must stay hidden (non-competitive — data-gated).
   maps_by_game_mode: {
     control: ['Ilios'],
     escort: ['Dorado', 'Rialto'],
+    clash: ['Throne of Anubis'],
   },
 }
 
@@ -118,7 +120,15 @@ test.describe('Geography — Map × Role band', () => {
     expect(rialto).toBeGreaterThan(dorado)
   })
 
-  test('selecting a cell highlights only it (no live-narrow); "Filter to selection" applies it', async ({ page }) => {
+  test('hides Clash maps until there is data (Clash is not competitive)', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    // Throne of Anubis is in the roster, but the corpus has no Clash matches —
+    // so it gets neither a column nor a Clash game-mode group.
+    await expect(band.locator('.mr-collabel', { hasText: 'Throne' })).toHaveCount(0)
+    await expect(band.locator('.mr-modehead', { hasText: 'Clash' })).toHaveCount(0)
+  })
+
+  test('selecting a cell highlights it AND live-filters the set (no button)', async ({ page }) => {
     const band = page.locator('.match-map-role')
     const chips = page.locator('ul.active-chips')
     const cell = () => band.locator('.mr-cell[aria-label*="Support on Rialto"]')
@@ -126,22 +136,19 @@ test.describe('Geography — Map × Role band', () => {
     await cell().click()
     await expect(cell()).toHaveClass(/selected/)
     await expect(band.locator('.mr-cell.selected')).toHaveCount(1)
-    // Selecting no longer narrows — no active chip yet.
-    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toHaveCount(0)
-    // The combined readout shows this cell's record (rialto|support = 2-1, 67% over 3).
+    // Selecting narrows immediately — the chips appear with no extra step.
+    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toBeVisible()
+    await expect(chips.locator('.active-chip', { hasText: 'support' })).toBeVisible()
+    // The combined readout shows the cell's full-window record (rialto|support = 2-1, 67% over 3).
     const stats = band.locator('[data-mr-selection-stats]')
     await expect(stats).toContainText(/2.1.0/)
     await expect(stats).toContainText('67% WR')
     await expect(stats).toContainText('3 games')
 
-    // The button pushes the pick into the set.
-    await band.locator('[data-mr-filter-selection]').click()
-    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toBeVisible()
-    await expect(chips.locator('.active-chip', { hasText: 'support' })).toBeVisible()
-
-    // Re-clicking the lone selected cell clears it (click off).
+    // Re-clicking the lone cell clears it → the narrow drops.
     await cell().click()
     await expect(band.locator('.mr-cell.selected')).toHaveCount(0)
+    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toHaveCount(0)
   })
 
   test('selecting a cell does not grow the band (reserved readout slot)', async ({ page }) => {
@@ -181,11 +188,14 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('.mr-cell.selected')).toHaveCount(2)
   })
 
-  test('the Clear button empties the selection', async ({ page }) => {
+  test('Esc empties the selection + drops the live filter', async ({ page }) => {
     const band = page.locator('.match-map-role')
-    await band.locator('[data-mr-row="support"]').click()
+    const row = band.locator('[data-mr-row="support"]')
+    await row.click()
     await expect(band.locator('.mr-cell.selected')).toHaveCount(3)
-    await band.locator('[data-mr-selection-clear]').click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'support' })).toBeVisible()
+    // Esc on a focused cell clears the selection (and the live filter with it).
+    await band.locator('.mr-cell.selected').first().press('Escape')
     await expect(band.locator('.mr-cell.selected')).toHaveCount(0)
     await expect(band.locator('[data-mr-selection-bar]')).toHaveCount(0)
   })
@@ -234,8 +244,7 @@ test.describe('Geography — Map × Role band', () => {
 
   test('clicking an empty cell resets the filter (no scroll needed)', async ({ page }) => {
     const band = page.locator('.match-map-role')
-    await band.locator('.mr-cell[data-mr-cell="rialto|support"]').click()
-    await band.locator('[data-mr-filter-selection]').click()
+    await band.locator('.mr-cell[data-mr-cell="rialto|support"]').click() // live-filters
     await expect(page.locator('ul.active-chips .active-chip', { hasText: 'rialto' })).toBeVisible()
     // Click an empty (unplayed) cell → the band's filter is cleared.
     await band.locator('.mr-cell[data-mr-empty]').first().click()
@@ -245,8 +254,7 @@ test.describe('Geography — Map × Role band', () => {
   test('the header Reset clears the filter without scrolling to the chips', async ({ page }) => {
     const band = page.locator('.match-map-role')
     await expect(band.locator('[data-mr-reset]')).toHaveCount(0) // hidden when no filter
-    await band.locator('.mr-cell[data-mr-cell="rialto|support"]').click()
-    await band.locator('[data-mr-filter-selection]').click()
+    await band.locator('.mr-cell[data-mr-cell="rialto|support"]').click() // live-filters
     await expect(band.locator('[data-mr-reset]')).toBeVisible()
     await band.locator('[data-mr-reset]').click()
     await expect(page.locator('ul.active-chips .active-chip', { hasText: 'rialto' })).toHaveCount(0)
@@ -266,15 +274,15 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('.mr-rowhead')).toHaveCount(3)
   })
 
-  test("clicking a game-mode group header selects that group's columns", async ({ page }) => {
+  test("clicking a game-mode group header selects + live-filters that group's columns", async ({ page }) => {
     const band = page.locator('.match-map-role')
     await band.locator('.mr-modehead', { hasText: 'Escort' }).click()
     // Escort = Dorado + Rialto; played cells there: rialto|support, rialto|dps,
-    // dorado|support = 3. Selecting (no live-narrow) shows the combined bar.
+    // dorado|support = 3 → selected + the combined bar shows.
     await expect(band.locator('.mr-cell.selected')).toHaveCount(3)
     await expect(band.locator('[data-mr-selection-bar]')).toBeVisible()
-    // No active chip — the group header now selects, it doesn't filter.
-    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'escort' })).toHaveCount(0)
+    // Selecting the group live-filters to its maps → chips appear.
+    await expect(page.locator('ul.active-chips .active-chip')).not.toHaveCount(0)
   })
 
   test('facet model: a group spans all roles, then a role narrows within it', async ({ page }) => {
