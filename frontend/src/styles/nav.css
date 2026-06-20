@@ -1,0 +1,81 @@
+/* ─── Page Nav (Settings / Ingest / Matches / Unknown) ──── */
+
+.page-nav {
+  margin-top: 1.1rem;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 1.8rem;
+  position: relative;
+}
+
+.page-nav::before {
+  /* Faint baseline that the active tab's underline sits on. */
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: var(--hairline);
+}
+
+/* Tab typesetting commits to the numbered-workflow aesthetic — the
+   numeral is the hero (large display weight 800), the label drops
+   to a mono caption beneath it. The previous treatment ran them
+   inline with the numeral as a tiny prefix to the label; that
+   lived in agency-portfolio territory of 2016–2019 without
+   committing fully. This version reads as editorial / numbered
+   chapter heads — the workflow order (configure → ingest →
+   view → triage) earns the eye real estate it didn't have before. */
+.nav-tab {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0.15rem 0 0.65rem;
+  cursor: pointer;
+  color: var(--text-faint);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  transition: color var(--duration-med) ease;
+}
+
+.nav-tab-num {
+  font-family: var(--display);
+  font-size: var(--type-display-sm);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.9;
+  color: var(--text-mute);
+  transition: color var(--duration-med) ease;
+  font-feature-settings: "tnum";
+}
+
+.nav-tab-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.nav-tab:hover { color: var(--text-dim); }
+.nav-tab:hover .nav-tab-num { color: var(--text-faint); }
+.nav-tab.active { color: var(--text); }
+.nav-tab.active .nav-tab-num { color: var(--accent); }
+
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: nav-underline var(--duration-slow) var(--easing-out);
+}
+
+@keyframes nav-underline {
+  from { transform: scaleX(0); transform-origin: left; opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+

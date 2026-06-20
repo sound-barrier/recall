@@ -1,0 +1,86 @@
+/* Skip-link: first focusable in the DOM, visually hidden until it
+   takes focus, then snaps in over the top-left corner. Gives keyboard
+   users a one-key bypass past the masthead and tablist on every load. */
+
+/* Visually hidden but still announced by screen readers + reachable
+   via aria-live updates. Standard a11y utility — the !important
+   widths are load-bearing (some user agents try to "respect" the
+   element's intrinsic dimensions otherwise). clip-path replaces the
+   long-deprecated `clip: rect(...)`. */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  padding: 0.6rem 1rem;
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 0 0 2px;
+  box-shadow: 0 4px 16px -4px rgb(0 0 0 / 40%);
+  transform: translateY(-110%);
+  transition: transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+main#main-content {
+  outline: none;
+}
+
+/* Single corner radial of accent warmth. Anchors the eye against
+   the off-black ground without the multi-hue ambient lighting that
+   dates dashboards (the prior orange / blue / coral trio read very
+   2019-Vercel). One accent radial keeps the brand warmth without
+   the showroom feel. */
+.atmos {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 50% at 8% -10%, var(--atmos-orange), transparent 60%);
+  transition: opacity var(--duration-slow) ease;
+}
+
+/* Hairline grid pattern, very faint. Tactical/blueprint texture. */
+.grid-lines {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / 90%), transparent 75%);
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 2.4rem 1.6rem 4rem;
+}
+

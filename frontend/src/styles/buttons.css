@@ -1,0 +1,155 @@
+/* ─── Buttons ────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 0.55rem 0.95rem;
+  cursor: pointer;
+  user-select: none;
+  text-transform: uppercase;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 200ms ease;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn.primary {
+  background: var(--accent);
+  color: #1a0a00;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset;
+  transform: translateY(-1px);
+}
+
+.btn.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* .btn-dot moved to IngestView.vue */
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--border-strong);
+}
+
+.btn.ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-faint);
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.btn.ghost.tiny {
+  padding: 0.38rem 0.65rem;
+  font-size: 0.7rem;
+}
+
+.btn.ghost.danger:hover:not(:disabled) {
+  color: var(--loss);
+  border-color: var(--loss-line);
+}
+
+.btn.danger-outline {
+  background: transparent;
+  color: var(--loss);
+  border-color: var(--loss-line);
+}
+
+.btn.danger-outline:hover:not(:disabled) {
+  background: var(--loss-soft);
+  border-color: var(--loss);
+  transform: translateY(-1px);
+}
+
+.btn.danger {
+  background: var(--loss);
+  color: #fff;
+  border-color: var(--loss);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 30%) inset, 0 4px 22px -8px var(--loss-line);
+}
+
+.btn.danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 30%) inset, 0 4px 30px -6px var(--loss-line);
+}
+
+.btn.danger:active:not(:disabled) { transform: translateY(0); }
+
+/* .setting-row.danger-row, .clear-confirm-group, and the matching
+   light-theme override moved to IngestView.vue */
+
+[data-theme="day"] .btn.danger { color: #fff; }
+[data-theme="day"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
+
+[data-theme="day"] .btn.danger-outline:hover:not(:disabled) {
+  background: var(--loss-soft);
+  border-color: var(--loss);
+}
+
+/* ─── Switch toggle ──────────────────────────────────────── */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.45rem 0.7rem 0.45rem 0.55rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: transparent;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.switch:hover { border-color: var(--text-faint); }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+
+.switch-track {
+  position: relative;
+  width: 26px; height: 14px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  transition: background 200ms ease, border-color 200ms ease;
+  flex-shrink: 0;
+}
+
+.switch-knob {
+  position: absolute;
+  top: 1px; left: 1px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: transform 200ms cubic-bezier(0.4, 0.0, 0.2, 1), background 200ms ease;
+}
+
+.switch input:checked ~ .switch-track {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.switch input:checked ~ .switch-track .switch-knob {
+  transform: translateX(12px);
+  background: var(--accent);
+}
+.switch input:checked ~ .switch-label { color: var(--text); }
+
+.switch-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
