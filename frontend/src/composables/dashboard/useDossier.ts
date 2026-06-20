@@ -56,3 +56,25 @@ export function useFullDossier(): MatchesDossier {
 export function provideFullDossier(dossier: MatchesDossier): void {
   provide(FULL_DOSSIER_KEY, dossier)
 }
+
+// "Narrow minus self" dossiers — a band's DATA reads everything EXCEPT its own
+// filter dimension, so the bands indirectly affect each other (selecting in one
+// updates the other) without a band collapsing from its own selection. Geography
+// drops its maps/roles; Hero×Game-Mode drops its heroes/game-modes. Both fall back
+// to the full dossier when not provided (widget tests / non-MatchesView hosts).
+const GEOGRAPHY_DOSSIER_KEY: InjectionKey<MatchesDossier> = Symbol('recall.dossier.geography')
+const HERO_MODE_DOSSIER_KEY: InjectionKey<MatchesDossier> = Symbol('recall.dossier.heroMode')
+
+export function useGeographyDossier(): MatchesDossier {
+  return inject(GEOGRAPHY_DOSSIER_KEY) ?? useFullDossier()
+}
+export function provideGeographyDossier(dossier: MatchesDossier): void {
+  provide(GEOGRAPHY_DOSSIER_KEY, dossier)
+}
+
+export function useHeroModeDossier(): MatchesDossier {
+  return inject(HERO_MODE_DOSSIER_KEY) ?? useFullDossier()
+}
+export function provideHeroModeDossier(dossier: MatchesDossier): void {
+  provide(HERO_MODE_DOSSIER_KEY, dossier)
+}

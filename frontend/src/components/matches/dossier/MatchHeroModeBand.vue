@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useDossier, useFullDossier } from '@/composables/dashboard/useDossier'
+import { useDossier, useHeroModeDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
@@ -36,10 +36,10 @@ import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 // picker feeds every level's aggregate, and an inline gear (root only)
 // opens the shared WidgetConfigPopover (heroes-to-show + min-matches).
 
-const dossier     = useDossier()
-const fullDossier = useFullDossier()
-const narrow      = useNarrow()
-const ow          = useOWData()
+const dossier        = useDossier()
+const heroModeDossier = useHeroModeDossier()
+const narrow         = useNarrow()
+const ow             = useOWData()
 const { config } = useWidgetConfig<HeroGameModeHeatmapConfig>(
   'hero-game-mode-heatmap',
   heroGameModeHeatmapSchema,
@@ -77,10 +77,11 @@ const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('re
 const { drillStack, depth, topFrame, drillToMaps, drillToMatches, goBack, goToDepth } = useDrillNav(narrow)
 
 // ── Level 0 (root): hero × game-mode ──
-// Reads the FULL dossier so the root grid is a STABLE surface (like the Campaign
-// Log heatmap + the Geography band): a Ctrl/Shift selection live-filters the match
-// list without collapsing the grid. The drill levels below stay narrowed.
-const cells = fullDossier.heroGameModeCounts(() => ({
+// Reads the "narrow minus self" dossier — every filter EXCEPT this band's own
+// heroes/game-modes. So a Ctrl/Shift selection here doesn't collapse the root grid
+// (its own picks are excluded), but a filter from Geography (or the panel) DOES
+// update it. The drill levels below stay fully narrowed.
+const cells = heroModeDossier.heroGameModeCounts(() => ({
   heroLimit:    config.value.heroLimit,
   minMatches:   config.value.minMatches,
   windowMonths: windowMonths.value,
