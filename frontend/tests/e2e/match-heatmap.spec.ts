@@ -172,6 +172,24 @@ test.describe('campaign-log header', () => {
     await expect(page.locator('.heatmap-cell.active')).toHaveCount(2)
   })
 
+  test('clicking an empty day resets the date filter', async ({ page }) => {
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+    // 6 days ago has no match → clicking it clears the filter (back to all).
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(6)}"]`).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
+  })
+
+  test('the Campaign Log header Reset clears the date filter without scrolling', async ({ page }) => {
+    await expect(page.locator('[data-timeline-reset]')).toHaveCount(0) // hidden when no filter
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+    await expect(page.locator('[data-timeline-reset]')).toBeVisible()
+    await page.locator('[data-timeline-reset]').click()
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
+    await expect(page.locator('[data-timeline-reset]')).toHaveCount(0)
+  })
+
   test('only one heatmap cell stays active when the user clicks through different days', async ({ page }) => {
     const day1 = page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`)
     const day2 = page.locator(`.heatmap-cell[data-date="${daysAgo(1)}"]`)
