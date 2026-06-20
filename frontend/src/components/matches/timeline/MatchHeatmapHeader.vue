@@ -201,8 +201,21 @@ function dateFromEvent(e: MouseEvent): string | null {
   return cellByGrid.value.get(`${wk}|${dw}`) ?? null
 }
 
+// Shift+click / Shift+Enter extends the date range from the anchor (the active
+// range's start, else this day) to the activated day — the Excel range gesture,
+// alongside drag. Ctrl/Cmd is intentionally unused: the filter is one from→to
+// range, so non-contiguous days can't be expressed.
+function extendRangeTo(date: string) {
+  const from = activeRange.value?.from ?? date
+  const a = from <= date ? from : date
+  const b = from <= date ? date : from
+  emit('update:filter-from', `${a}T00:00`)
+  emit('update:filter-to',   `${b}T23:59`)
+}
+
 function onCellDown(cell: { date: string }, e: MouseEvent) {
   e.preventDefault() // stop the native text/drag selection that swallows mousemove
+  if (e.shiftKey) { extendRangeTo(cell.date); return }
   dragAnchor.value = cell.date
   dragHover.value  = cell.date
   // Mouse (not pointer) events: a pointerdown sets implicit pointer capture on
@@ -332,8 +345,8 @@ onBeforeUnmount(() => {
           role="gridcell"
           :tabindex="cell.empty ? -1 : 0"
           @mousedown="onCellDown(cell, $event)"
-          @keydown.enter.prevent="commitClick(cell.date)"
-          @keydown.space.prevent="commitClick(cell.date)"
+          @keydown.enter.prevent="$event.shiftKey ? extendRangeTo(cell.date) : commitClick(cell.date)"
+          @keydown.space.prevent="$event.shiftKey ? extendRangeTo(cell.date) : commitClick(cell.date)"
         />
       </g>
     </svg>
