@@ -82,6 +82,19 @@ describe('useMatchesNarrow', () => {
     })
   })
 
+  describe('smart-empty suggestions', () => {
+    it('suggests lifting the unknown-map exclusion when it empties the set', () => {
+      // Every record is unknown-map → the default exclusion empties the set.
+      const records = ref([rec({ key: 'a', map: null }), rec({ key: 'b', map: null })])
+      const { narrowedRecords, clauseExclusionCounts } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(narrowedRecords.value).toHaveLength(0)
+      const s = clauseExclusionCounts.value.find((x) => x.clauseId === 'includeUnknown')
+      expect(s?.wouldSurface).toBe(2)
+      s?.clear() // lifting it (includeUnknown = true) surfaces them
+      expect(narrowedRecords.value).toHaveLength(2)
+    })
+  })
+
   describe('free-text search', () => {
     it('matches map name', () => {
       const records = ref([rec({ key: 'a', map: 'rialto' }), rec({ key: 'b', map: 'numbani' })])
