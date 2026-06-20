@@ -12,6 +12,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useNarrowTabNav } from '@/composables/matches/useNarrowTabNav'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import type { QueuePick, PlayModePick, ReviewedByPick, SourcePick } from '@/composables/matches/matchesNarrow.types'
 import NarrowPresets from '@/components/matches/narrow/NarrowPresets.vue'
 import type { MatchRecord } from '@/api-client'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
@@ -87,6 +88,28 @@ void activeClauseCount; void anyNarrow
 const LEAVER_LABELS: Record<'self' | 'team' | 'enemy', string> = {
   self: 'You left', team: 'Teammate', enemy: 'Enemy',
 }
+
+// Fixed-enum facet options (value = the *Pick union member, label = display
+// text). The @pick handler casts the chip's string value back to its union.
+const QUEUE_OPTIONS = [
+  { value: 'role', label: 'Role Queue' },
+  { value: 'open', label: 'Open Queue' },
+  { value: 'unknown', label: 'Unknown mode type' },
+]
+const PLAY_MODE_OPTIONS = [
+  { value: 'quickplay', label: 'Quickplay' },
+  { value: 'competitive', label: 'Competitive' },
+  { value: 'unknown', label: 'Unknown mode' },
+]
+const REVIEWED_BY_OPTIONS = [
+  { value: 'self', label: 'Self' },
+  { value: 'coach', label: 'Coach' },
+  { value: 'unreviewed', label: 'Unreviewed' },
+]
+const PROVENANCE_OPTIONS = [
+  { value: 'ocr_edited', label: 'Edited' },
+  { value: 'manual', label: 'User entered' },
+]
 
 
 const popoverRef     = ref<HTMLElement | null>(null)
@@ -402,82 +425,29 @@ onUnmounted(() => {
                 @pick="pickModifier"
               />
 
-              <!-- Queue type — multi-select OR across role/open.
-                   Empty selection = no filter; either pick excludes
-                   matches whose queue_type hasn't been set. -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Queue</span>
-                  <span class="np-section-meta">
-                    {{ pickedQueues.size === 0 ? 'any' : `${pickedQueues.size} selected` }}
-                  </span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedQueues.has('role') }"
-                    data-queue-type="role"
-                    @click="pickQueue('role')"
-                  >
-                    Role Queue
-                  </button>
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedQueues.has('open') }"
-                    data-queue-type="open"
-                    @click="pickQueue('open')"
-                  >
-                    Open Queue
-                  </button>
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedQueues.has('unknown') }"
-                    data-queue-type="unknown"
-                    @click="pickQueue('unknown')"
-                  >
-                    Unknown mode type
-                  </button>
-                </div>
-              </section>
+              <!-- Queue type — multi-select OR across role/open. Empty selection
+                   = no filter; either pick excludes matches whose queue_type
+                   hasn't been set. -->
+              <NarrowChipFacet
+                eyebrow="Queue"
+                :options="QUEUE_OPTIONS"
+                :picked="pickedQueues"
+                :meta="pickedQueues.size === 0 ? 'any' : `${pickedQueues.size} selected`"
+                data-attr="data-queue-type"
+                @pick="(v) => pickQueue(v as QueuePick)"
+              />
 
-              <!-- Play mode — multi-select OR across quickplay /
-                   competitive. Same semantics as Queue. Matches with
-                   no play_mode (after the aggregator's fallback
-                   chain) drop out when any pick is active. -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Play mode</span>
-                  <span class="np-section-meta">
-                    {{ pickedPlayModes.size === 0 ? 'any' : `${pickedPlayModes.size} selected` }}
-                  </span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedPlayModes.has('quickplay') }"
-                    data-play-mode="quickplay"
-                    @click="pickPlayMode('quickplay')"
-                  >
-                    Quickplay
-                  </button>
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedPlayModes.has('competitive') }"
-                    data-play-mode="competitive"
-                    @click="pickPlayMode('competitive')"
-                  >
-                    Competitive
-                  </button>
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedPlayModes.has('unknown') }"
-                    data-play-mode="unknown"
-                    @click="pickPlayMode('unknown')"
-                  >
-                    Unknown mode
-                  </button>
-                </div>
-              </section>
+              <!-- Play mode — multi-select OR across quickplay / competitive.
+                   Same semantics as Queue. Matches with no play_mode (after the
+                   aggregator's fallback chain) drop out when any pick is active. -->
+              <NarrowChipFacet
+                eyebrow="Play mode"
+                :options="PLAY_MODE_OPTIONS"
+                :picked="pickedPlayModes"
+                :meta="pickedPlayModes.size === 0 ? 'any' : `${pickedPlayModes.size} selected`"
+                data-attr="data-play-mode"
+                @pick="(v) => pickPlayMode(v as PlayModePick)"
+              />
 
               <!-- Tags -->
               <NarrowChipFacet
@@ -536,73 +506,28 @@ onUnmounted(() => {
                 </template>
               </NarrowChipFacet>
 
-              <!-- Reviewed by — multi-select OR across self, coach,
-                   and unreviewed. Empty selection = no filter. -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Reviewed by</span>
-                  <span class="np-section-meta">
-                    {{ pickedReviewedBy.size === 0 ? 'any' : `${pickedReviewedBy.size} selected` }}
-                  </span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedReviewedBy.has('self') }"
-                    data-reviewed-by="self"
-                    @click="pickReviewedBy('self')"
-                  >
-                    Self
-                  </button>
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedReviewedBy.has('coach') }"
-                    data-reviewed-by="coach"
-                    @click="pickReviewedBy('coach')"
-                  >
-                    Coach
-                  </button>
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedReviewedBy.has('unreviewed') }"
-                    data-reviewed-by="unreviewed"
-                    @click="pickReviewedBy('unreviewed')"
-                  >
-                    Unreviewed
-                  </button>
-                </div>
-              </section>
+              <!-- Reviewed by — multi-select OR across self, coach, and
+                   unreviewed. Empty selection = no filter. -->
+              <NarrowChipFacet
+                eyebrow="Reviewed by"
+                :options="REVIEWED_BY_OPTIONS"
+                :picked="pickedReviewedBy"
+                :meta="pickedReviewedBy.size === 0 ? 'any' : `${pickedReviewedBy.size} selected`"
+                data-attr="data-reviewed-by"
+                @pick="(v) => pickReviewedBy(v as ReviewedByPick)"
+              />
 
-              <!-- Provenance — narrow to records the user touched.
-                   Empty = any source. "Edited" = parsed then
-                   corrected; "User entered" = hand-logged, no
-                   screenshots. Picking either drops pure-OCR rows. -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Provenance</span>
-                  <span class="np-section-meta">
-                    {{ pickedSources.size === 0 ? 'any' : `${pickedSources.size} selected` }}
-                  </span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedSources.has('ocr_edited') }"
-                    data-source="ocr_edited"
-                    @click="pickSource('ocr_edited')"
-                  >
-                    Edited
-                  </button>
-                  <button
-                    class="np-chip"
-                    :class="{ picked: pickedSources.has('manual') }"
-                    data-source="manual"
-                    @click="pickSource('manual')"
-                  >
-                    User entered
-                  </button>
-                </div>
-              </section>
+              <!-- Provenance — narrow to records the user touched. Empty = any
+                   source. "Edited" = parsed then corrected; "User entered" =
+                   hand-logged, no screenshots. Picking either drops pure-OCR rows. -->
+              <NarrowChipFacet
+                eyebrow="Provenance"
+                :options="PROVENANCE_OPTIONS"
+                :picked="pickedSources"
+                :meta="pickedSources.size === 0 ? 'any' : `${pickedSources.size} selected`"
+                data-attr="data-source"
+                @pick="(v) => pickSource(v as SourcePick)"
+              />
 
               <!-- Since this match — anchor checkbox. The anchor
                    itself is set/cleared from the match detail panel;
