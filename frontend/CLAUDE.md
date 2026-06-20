@@ -70,15 +70,22 @@ UI-store flag, then delete `defineProps`/`defineEmits`. Components read stores
 `cardFocus`, the narrow-panel + manual-match flags) lives in `useUiStore`; App's
 `backgroundFrozen` reads the flags and the owning view flips them.
 
+**The `@/api-client` seam**: every store / composable / SFC imports its api
+*functions* from `@/api-client`, NOT `@/api`. `api-client.ts` wraps `@/api` and
+delegates each call to a runtime `backing` (default = the real `@/api`), so a
+test swaps the whole api with `setApiBacking(mock)` instead of a module mock.
+Types still come from `@/api` (re-exported by `@/api-client` too). New api
+function → call it via `@/api-client`. (This replaced the multi-fork App.test
+`@/api` flake + the `vi.doMock`/`resetModules`/`doUnmock` dance.)
+
 **Testing a store-reading component**: `vi.mock('@/api', …)` with `importOriginal`
 overriding only the calls the test drives, `setActivePinia(createPinia())`, seed
 the stores via their setters / direct state mutation, `vi.spyOn(store, 'action')`
 BEFORE mount, then assert the spies / api mock / store state — never
-`wrapper.emitted(...)`. For App-level tests through `mountApp`, the isolation
-triad is load-bearing (it root-caused the App.test 0-GetMatchResults flake):
-`mountApp` does `vi.resetModules()` + `vi.doUnmock('@/api')` and exposes
-`mockedApi()` so the test inspects the exact mock the store bound; verify locally
-with `vitest run --no-file-parallelism` (single fork ≈ CI's low core count).
+`wrapper.emitted(...)`. (A hoisted `vi.mock('@/api')` still works — it flows
+through `api-client`'s real import.) App-level tests through `mountApp` install
+the mock with `setApiBacking()` on the seam — leak-immune, no module-mock dance;
+`mockedApi()` returns the installed mock for call-count assertions.
 
 **File layout — group by feature, not flat.** `components/` and `composables/`
 are organized into feature subfolders, not one giant flat directory:
@@ -163,7 +170,7 @@ Component-specific styles live in each leaf SFC's own `<style scoped>`
 block (Vue rewrites every selector with a `[data-v-<hash>]` attribute
 so the rule only matches that component's template).
 
-Cross-cutting styles in `frontend/src/styles/app.css` (large — confirm the size with `wc -l`, don't trust a hard-coded count): custom properties, font-faces, theme overrides, `.btn` / `.badge` / `.chev` / `.length` / `.clickable` families, shared empty-state selectors, `.section-*` / `.setting-*` / `.settings-*` (across Settings/Ingest/Unknown), `.slot-chip` / `.slot-dot` (UnknownMapsView), `.source-name` / `.source-file` / `.source-preview` family.
+Cross-cutting styles live under `frontend/src/styles/`. `app.css` is a thin `@import` index over topical files (`tokens`, `themes`, `chrome`, `masthead`, `buttons`, `states`, `badges`, `nav`, `settings`, `system-alert`, `responsive`, `overrides`, `components`) — **the `@import` order IS the cascade order; keep it.** These hold custom properties, font-faces, theme overrides, the `.btn` / `.badge` / `.chev` / `.length` / `.clickable` families, shared empty-state selectors, `.section-*` / `.setting-*` / `.settings-*` (across Settings/Ingest/Unknown), `.slot-chip` / `.slot-dot` (UnknownMapsView), the `.source-*` family, etc. Add a global rule to the matching topical file; create a new one + `@import` it (in cascade position) for a genuinely new family.
 
 When migrating a rule to scoped, check all eight component templates first — if more than one references it, keep it in `app.css`. `@keyframes` in scoped blocks get their NAME hashed, so animations used by multiple components must live in `app.css` (`pulse-dot` is canonical — used by ParseProgressPanel + IngestView).
 
@@ -205,7 +212,7 @@ not the wiring:
 
 ## Tests
 
-SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in `frontend/src/test-utils/mountApp.ts` (which `vi.doMock`s `./api`, so the Wails/fetch shim never fires). Pattern: `await mountApp({ records: [...] })` then assert on the wrapper's DOM. `mountApp` also exports `fireEvent(name, data?)` for driving captured `EventsOn` handlers (simulating `parse-complete` / `parse-progress`) — pair with `await flushPromises()` for async handlers.
+SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in `frontend/src/test-utils/mountApp.ts` (which installs an api mock via `setApiBacking()` on the `@/api-client` seam, so the Wails/fetch shim never fires). Pattern: `await mountApp({ records: [...] })` then assert on the wrapper's DOM. `mountApp` also exports `fireEvent(name, data?)` for driving captured `EventsOn` handlers (simulating `parse-complete` / `parse-progress`) — pair with `await flushPromises()` for async handlers.
 
 **Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via `mount()`). Playwright → `frontend/tests/e2e/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 
