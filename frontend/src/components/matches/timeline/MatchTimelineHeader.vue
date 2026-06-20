@@ -19,7 +19,7 @@ import MatchSparklineBrush from '@/components/matches/timeline/MatchSparklineBru
 // filter state (wired in MatchesView's template) so flipping one
 // updates the other's selection band.
 
-defineProps<{
+const props = defineProps<{
   records: MatchRecord[]
   filterFrom: string
   filterTo: string
@@ -30,6 +30,14 @@ const emit = defineEmits<{
   'update:filter-from': [value: string]
   'update:filter-to':   [value: string]
 }>()
+
+// A header Reset so the date filter can be cleared without scrolling to the
+// active-chips rail. Clicking an empty heatmap cell already does the same.
+const dateFilterActive = computed(() => !!props.filterFrom || !!props.filterTo)
+function resetRange() {
+  emit('update:filter-from', '')
+  emit('update:filter-to', '')
+}
 
 const { windowMonths, pickWindow } = useWindowMonths('recall.timelineWindowMonths')
 
@@ -69,6 +77,17 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
           {{ m }}M
         </button>
       </div>
+
+      <button
+        v-if="dateFilterActive"
+        type="button"
+        class="timeline-reset"
+        data-timeline-reset
+        title="Clear the date filter"
+        @click="resetRange"
+      >
+        ⟲ Reset
+      </button>
 
       <ul class="timeline-legend" aria-label="Cell-color legend">
         <li><span class="legend-swatch legend-loss" /> Losing</li>
@@ -181,6 +200,26 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   background: var(--accent);
   color: var(--primary-text-on-accent);
 }
+
+/* Reset — clears the date filter without a scroll to the active-chips rail. */
+.timeline-reset {
+  appearance: none;
+  margin-left: 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.22rem 0.5rem;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.timeline-reset:hover { background: var(--accent); color: var(--primary-text-on-accent); }
+.timeline-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .timeline-legend {
   display: flex;
