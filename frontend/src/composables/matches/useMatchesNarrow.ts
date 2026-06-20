@@ -275,9 +275,10 @@ export function useMatchesNarrow(
   // narrowPredicates.ts. Soft-deletes + the include-unknown gate live in narrowBase.
   function narrowBase(): MatchRecord[] {
     // Hidden rows drop out unconditionally so `selection` auto-closes when the
-    // open match gets hidden (narrowedRecords stops containing it).
-    const base = records.value.filter((r) => !r.hidden)
-    return includeUnknown.value ? base : base.filter((r) => !!r.data?.map)
+    // open match gets hidden (narrowedRecords stops containing it). The
+    // include-unknown gate is a real clause now (in passesNarrow) so the
+    // smart-empty suggestions can credit it per-clause.
+    return records.value.filter((r) => !r.hidden)
   }
 
   // Resolve the "since this anchor match" floor ONCE per pass — a per-row anchor
@@ -289,6 +290,7 @@ export function useMatchesNarrow(
 
   function passesNarrow(r: MatchRecord, skip: ReadonlySet<ClauseId>, anchorFloor: string | null): boolean {
     if (!r.data) return false
+    if (!skip.has('includeUnknown') && !includeUnknown.value && !r.data.map) return false
     if (!skip.has('search')      && !matchesSearch(r, searchClauses.value)) return false
     if (!skip.has('dateRange')   && !matchesDateRange(r, customFrom.value, customTo.value)) return false
     if (!skip.has('maps')        && !matchesPickedSet(r.data.map, pickedMaps.value)) return false
@@ -376,6 +378,8 @@ export function useMatchesNarrow(
     if (pickedRanks.value.size > 0)                                 out.push('ranks')
     if (sinceAnchorActive.value && anchorKey.value !== '')          out.push('sinceAnchor')
     if (minPlayMinutes.value > 0 || minPlayPercent.value > 0)       out.push('minPlay')
+    // Excluding unknown-map rows is itself a restriction the smart-empty can lift.
+    if (!includeUnknown.value)                                      out.push('includeUnknown')
     return out
   }
 
