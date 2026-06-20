@@ -3,10 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
-import { useContextualCallout } from '@/composables/shared/useContextualCallout'
 import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
-import ContextualCallout from '@/components/shared/ContextualCallout.vue'
 import UnknownCandidatePicker from '@/components/unknown/UnknownCandidatePicker.vue'
+import UnknownReferenceGapSection from '@/components/unknown/UnknownReferenceGapSection.vue'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import type { CardStateApi } from '@/types/cardState'
 import { useAppStore } from '@/stores/app'
@@ -41,7 +40,6 @@ const { onResolveAmbiguous, onIgnoreScreenshot } = useMatchActions()
 const goToView = appStore.goToView
 const preloadScreenshot = uiStore.preview.preload
 const openLightbox = uiStore.preview.openLightbox
-const updateInfo = computed(() => appStore.updateInfo)
 
 const unknownExpanded = ref<Record<string, boolean>>({})
 const cardState: CardStateApi = {
@@ -59,45 +57,6 @@ const ambiguousList = computed(() => matchesStore.ambiguousRecords)
 // Template-facing aliases for the store getters (the template referenced the
 // former props by bare name).
 const unknownRecords = computed(() => matchesStore.unknownRecords)
-const referenceGapRecords = computed(() => matchesStore.referenceGapRecords)
-
-// Contextual callout for the Reference data gaps section. Fires
-// the first time any record carries the gap signal — most users
-// never hit one, so a static tour step would mis-time. The
-// callout explains the "wait for the YAML update" flow + the
-// per-card "Fixed in v<X>" CTA the user just lit up so they map
-// the surface back to its meaning the first time it appears.
-const refdataGapCallout = useContextualCallout({
-  id:   'unknown.refdata',
-  gate: () => matchesStore.referenceGapRecords.length > 0,
-})
-
-// Reference-data-gap CTA helper. Returns the upgrade tip for a
-// given gap-card record IF the upcoming release would recognise
-// its OCR'd name; null otherwise. Match is case-insensitive
-// (OCR captures lowercase, YAML lists Title Case) and against
-// the normalized raw token (we mirror the parser's normalize:
-// lowercase + strip diacritics).
-function recognisingRelease(rec: MatchRecord): { version: string; url: string; name: string; kind: 'hero' | 'map' } | null {
-  const info = updateInfo.value
-  if (!info?.checked || !info.available) return null
-  const normalize = (s: string) => s
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .trim()
-  const heroRaw = rec.data?.hero_raw ?? ''
-  if (heroRaw) {
-    const hit = (info.latest_heroes ?? []).find((h) => normalize(h) === normalize(heroRaw))
-    if (hit) return { version: info.latest, url: info.url, name: hit, kind: 'hero' }
-  }
-  const mapRaw = rec.data?.map_raw ?? ''
-  if (mapRaw) {
-    const hit = (info.latest_maps ?? []).find((m) => normalize(m) === normalize(mapRaw))
-    if (hit) return { version: info.latest, url: info.url, name: hit, kind: 'map' }
-  }
-  return null
-}
 
 // Resolve an ambiguous record to a candidate (or a freshly-minted "new match"
 // key); the UnknownCandidatePicker child owns the picker UI + emits the key.
@@ -582,72 +541,7 @@ function onCardHeadClick(rec: MatchRecord) {
       </article>
     </div>
 
-    <!-- ─── REFERENCE-DATA GAPS: Unknown heroes / maps ──────────
-         Records the parser captured but couldn't pin to the
-         canonical YAML rosters (e.g. Miyazaki before heroes.yaml
-         was updated). No edit affordance — the only path to fix
-         is a new Recall release with an updated YAML. -->
-    <div v-if="referenceGapRecords.length > 0" id="section-reference-gaps" class="unknown-list reference-gap-section">
-      <h3 class="needs-review-heading" data-refgap-heading>
-        Reference data gaps — {{ referenceGapRecords.length }}
-      </h3>
-      <p class="needs-review-desc">
-        The parser captured an OCR'd hero or map name in these records but couldn't match it to the canonical roster shipped with this Recall release. They'll be picked up automatically on the next launch after a YAML update.
-        <a class="unknown-section-link" href="https://github.com/sound-barrier/recall/releases/latest" target="_blank" rel="noopener noreferrer">View latest release ↗</a>
-      </p>
-      <article
-        v-for="rec in referenceGapRecords"
-        :key="rec.match_key"
-        class="unknown-card reference-gap-card"
-        :data-reference-gap-key="rec.match_key"
-      >
-        <div class="unknown-card-head">
-          <div class="unknown-head-lhs">
-            <span class="unknown-key-block">
-              <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
-              <span class="unknown-src-count">
-                <template v-if="rec.data?.hero_raw">Unknown hero: <code>{{ rec.data.hero_raw }}</code></template>
-                <template v-if="rec.data?.hero_raw && rec.data?.map_raw">  ·  </template>
-                <template v-if="rec.data?.map_raw">Unknown map: <code>{{ rec.data.map_raw }}</code></template>
-              </span>
-            </span>
-          </div>
-        </div>
-        <p
-          v-if="recognisingRelease(rec)"
-          class="reference-gap-fix"
-          :data-fix-cta-key="rec.match_key"
-        >
-          <span class="fix-eyebrow">Fixed in</span>
-          <a
-            class="fix-link"
-            :href="recognisingRelease(rec)!.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            :title="`Open release page for v${recognisingRelease(rec)!.version}`"
-          >v{{ recognisingRelease(rec)!.version }} ↗</a>
-          <span class="fix-copy">
-            — will recognise
-            <code>{{ recognisingRelease(rec)!.name }}</code>
-          </span>
-        </p>
-      </article>
-    </div>
-
-    <!-- Just-in-time hint on the first appearance of a gap card.
-         Most users never hit one — a static tour step would
-         mis-time. The callout fires when the section materialises;
-         dismisses on Esc / close / Got it. -->
-    <ContextualCallout
-      v-if="refdataGapCallout.active()"
-      target="[data-refgap-heading]"
-      heading="Reference data gaps"
-      body="Recall captured a hero or map name but couldn't match it to the canonical roster shipped with this release. They'll be picked up automatically once you update — every card below tells you if the fix is one release away."
-      action-label="Got it"
-      placement="top"
-      @dismiss="refdataGapCallout.dismiss()"
-      @action="refdataGapCallout.dismiss()"
-    />
+    <UnknownReferenceGapSection />
 
     <!-- Hover-only floating thumbnail anchored to the cursor.
          Teleport'd to body so the fixed-position thumb sits above
