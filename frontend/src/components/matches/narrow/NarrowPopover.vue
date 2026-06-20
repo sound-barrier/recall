@@ -15,6 +15,9 @@ import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import NarrowPresets from '@/components/matches/narrow/NarrowPresets.vue'
 import type { MatchRecord } from '@/api-client'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
+import NarrowChipFacet from '@/components/matches/narrow/NarrowChipFacet.vue'
+// Shared np-section / np-chip chrome for the panel + its facet children.
+import './narrow.css'
 
 type MatchesNarrowApi = ReturnType<typeof useMatchesNarrow>
 
@@ -329,24 +332,13 @@ onUnmounted(() => {
               </section>
 
               <!-- Game Mode -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Game Mode</span>
-                  <span class="np-section-meta">{{ pickedGameModes.size ? `${pickedGameModes.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="t in availableGameModes"
-                    :key="t"
-                    class="np-chip"
-                    :class="{ picked: pickedGameModes.has(t) }"
-                    @click="pickGameMode(t)"
-                  >
-                    {{ t }}
-                  </button>
-                  <span v-if="!availableGameModes.length" class="np-empty">none in corpus</span>
-                </div>
-              </section>
+              <NarrowChipFacet
+                eyebrow="Game Mode"
+                :options="availableGameModes"
+                :picked="pickedGameModes"
+                empty-message="none in corpus"
+                @pick="pickGameMode"
+              />
 
               <!-- Hero — combobox (51 heroes, broad-match against heroes_played) -->
               <section class="np-section">
@@ -372,85 +364,43 @@ onUnmounted(() => {
               </section>
 
               <!-- Role -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Role</span>
-                  <span class="np-section-meta">{{ pickedRoles.size ? `${pickedRoles.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="r in availableRoles"
-                    :key="r"
-                    class="np-chip"
-                    :class="{ picked: pickedRoles.has(r) }"
-                    @click="pickRole(r)"
-                  >
-                    {{ r }}
-                  </button>
-                  <span v-if="!availableRoles.length" class="np-empty">none in corpus</span>
-                </div>
-              </section>
+              <NarrowChipFacet
+                eyebrow="Role"
+                :options="availableRoles"
+                :picked="pickedRoles"
+                empty-message="none in corpus"
+                @pick="pickRole"
+              />
             </div>
 
             <div class="np-col">
               <!-- Result -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Result</span>
-                  <span class="np-section-meta">{{ pickedResults.size ? `${pickedResults.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="r in availableResults"
-                    :key="r"
-                    class="np-chip"
-                    :class="{ picked: pickedResults.has(r) }"
-                    @click="pickResult(r)"
-                  >
-                    {{ r }}
-                  </button>
-                </div>
-              </section>
+              <NarrowChipFacet
+                eyebrow="Result"
+                :options="availableResults"
+                :picked="pickedResults"
+                @pick="pickResult"
+              />
 
               <!-- Rank / tier — multi-select; only ranks present show. -->
-              <section v-if="availableRanks.length" class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Rank</span>
-                  <span class="np-section-meta">{{ pickedRanks.size ? `${pickedRanks.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="rank in availableRanks"
-                    :key="rank"
-                    class="np-chip"
-                    :class="{ picked: pickedRanks.has(rank) }"
-                    @click="pickRank(rank)"
-                  >
-                    {{ rank }}
-                  </button>
-                </div>
-              </section>
+              <NarrowChipFacet
+                v-if="availableRanks.length"
+                eyebrow="Rank"
+                :options="availableRanks"
+                :picked="pickedRanks"
+                @pick="pickRank"
+              />
 
               <!-- Modifiers — multi-select OR; a match carries several
                    rank-update pills, so a pick surfaces every game that
                    had any of them. -->
-              <section v-if="availableModifiers.length" class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Modifiers</span>
-                  <span class="np-section-meta">{{ pickedModifiers.size ? `${pickedModifiers.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="m in availableModifiers"
-                    :key="m"
-                    class="np-chip"
-                    :class="{ picked: pickedModifiers.has(m) }"
-                    @click="pickModifier(m)"
-                  >
-                    {{ m }}
-                  </button>
-                </div>
-              </section>
+              <NarrowChipFacet
+                v-if="availableModifiers.length"
+                eyebrow="Modifiers"
+                :options="availableModifiers"
+                :picked="pickedModifiers"
+                @pick="pickModifier"
+              />
 
               <!-- Queue type — multi-select OR across role/open.
                    Empty selection = no filter; either pick excludes
@@ -918,35 +868,6 @@ onUnmounted(() => {
 
 .np-close:hover { color: var(--accent); }
 
-.np-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.np-section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.np-section-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 700;
-}
-
-.np-section-meta {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  color: var(--text-dim);
-  margin-left: auto;
-  text-transform: lowercase;
-}
-
 .np-search-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -1049,46 +970,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-}
-
-.np-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-
-.np-chip {
-  appearance: none;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 0.22rem 0.5rem;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  color: var(--text-dim);
-  cursor: pointer;
-  letter-spacing: 0.04em;
-  text-transform: lowercase;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-
-.np-chip:hover {
-  border-color: var(--accent-soft, var(--accent));
-  color: var(--text);
-}
-
-.np-chip.picked {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.np-empty {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  color: var(--text-faint);
-  font-style: italic;
 }
 
 .np-refine-row {
