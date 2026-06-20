@@ -15,10 +15,10 @@ and deliberately left):
   each — exactly what the file-size rule exempts. The narrow file's shared types +
   state factory were already split out (`matchesNarrow.types` / `.state`);
   fragmenting the remaining filter/query math would hurt cohesion for a number.
-- **Report-only cyclomatic-complexity warnings** (`load()` 14, `parseSearchQuery`
-  18, `valueLabel` 11): the complexity lefthook step is REPORT-ONLY for a reason —
-  these are branchy by nature (an `allSettled` boot coordinator, a search-query
-  parser). Refactor only if a real readability/bug problem surfaces.
+- **Report-only cyclomatic-complexity warnings** (`load()` 14, `valueLabel` 11):
+  the complexity lefthook step is REPORT-ONLY for a reason — these are branchy by
+  nature (an `allSettled` boot coordinator). Refactor only if a real
+  readability/bug problem surfaces.
 - **The remaining `as unknown as` casts** (`mountWidget` partial-dossier fixture +
   the `mount()` overload cast, the ECharts series union) are legitimate
   type-boundary casts. The one genuine type-lie (`enterEditMode` cast from
