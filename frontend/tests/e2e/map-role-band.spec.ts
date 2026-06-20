@@ -177,6 +177,27 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('[data-mr-selection-bar]')).toHaveCount(0)
   })
 
+  test('dragging a box across cells selects every playable cell in the rectangle', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    const drag = async (fromKey: string, toKey: string) => {
+      const a = band.locator(`.mr-cell[data-mr-cell="${fromKey}"]`)
+      const b = band.locator(`.mr-cell[data-mr-cell="${toKey}"]`)
+      await a.scrollIntoViewIfNeeded()
+      const ab = await a.boundingBox()
+      const bb = await b.boundingBox()
+      if (!ab || !bb) throw new Error('mr-cell not found for drag')
+      await page.mouse.move(ab.x + ab.width / 2, ab.y + ab.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, { steps: 12 })
+      await page.mouse.up()
+    }
+    // Drag down the Ilios column (Tank → Support): ilios|tank + ilios|support play
+    // (ilios|dps is inert and skipped) → a 2-cell box, mirroring the heatmap drag.
+    await drag('ilios|tank', 'ilios|support')
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(2)
+    await expect(band.locator('.mr-cell[aria-label*="Support on Ilios"]')).toHaveClass(/selected/)
+  })
+
   test('keeps the full role grid after a selection instead of collapsing to the selected row', async ({ page }) => {
     const band = page.locator('.match-map-role')
     await expect(band.locator('.mr-rowhead')).toHaveCount(3)
