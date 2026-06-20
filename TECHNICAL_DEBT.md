@@ -24,22 +24,22 @@ does not), then re-verify the dist theme-leak grep stays 0 and the a11y/axe e2e
 are green. (This is why the byte-identical guarantee that made the app.css split
 safe does NOT apply here.)
 
-**Worked example — `src/components/unknown/` (done):** `unknown.css` holds the
-shared card chrome (moved global, `.field-label` anchored to `.field-cell` to
-dodge the ExportBundleModal collision); `UnknownCandidatePicker` /
-`UnknownReferenceGapSection` / `UnknownUnmatchedSection` are the section children
-(the last takes the shared `cardState` as a prop); `UnknownMapsView` is the thin
-shell. Mirror this for the rest.
+**Worked examples — `src/components/unknown/` + `src/components/matches/narrow/`
+(both done):** unknown/ → `unknown.css` (shared card chrome global, `.field-label`
+anchored to `.field-cell` to dodge the ExportBundleModal collision) + three section
+children + a thin `UnknownMapsView` shell. narrow/ → `narrow.css` (the np-section /
+np-chip + panel-content chrome global; `.np-btn` kept scoped so it can't leak into
+NarrowPresets) + `NarrowChipFacet` (one parameterized component for all 12
+multi-select facets, string or `{value,label}` options) + `NarrowTimeScope` /
+`NarrowSinceAnchor` / `NarrowRefinement` / `NarrowLeaverHandling` section children
+
++ a `NarrowPopover` coordinator (1283 → 573; the residual is the irreducible
+popover machinery — focus trap, outside-click, `/` shortcut, `comboOpen`, bundle
+wiring — so it's a cohesive-shell exemption, not a further split). Mirror these.
 
 **Split (clear multi-concern seams):**
 
-- `NarrowPopover.vue` (1283) → one child per `<section class="np-section">` group
-  (or a parameterized facet component for the repetitive chip-pickers). **Heads-up:**
-  `.np-btn` is defined scoped here but *used* in `NarrowPresets.vue` too, so moving
-  the `.np-*` chrome global is behaviour-changing for NarrowPresets — verify its
-  buttons render identically (or anchor/keep that rule). The `.lp-fade` /
-  `.lp-slide` transitions + `.left-panel*` container are NarrowPopover-only (safe).
-- `ManualMatchModal.vue` (728), `MatchDetailPanel.vue` (685), `MatchJournal.vue`
++ `ManualMatchModal.vue` (728), `MatchDetailPanel.vue` (685), `MatchJournal.vue`
   (626), `MatchesMembersList.vue` (634), `MatchesArchiveDrawer.vue` (591),
   `IgnoredFilesPanel.vue` (566), `MatchesDossierHead.vue` (584).
 
@@ -53,19 +53,19 @@ CSS), `MatchStatusChoosers.vue` (712, mostly irreducible chooser markup + style)
 Recorded so a future pass doesn't burn effort churning them (each was reviewed
 and deliberately left):
 
-- **`useMatchesDossierQueries.ts` (~696 lines) and `useMatchesNarrow.ts` (~539)**
++ **`useMatchesDossierQueries.ts` (~696 lines) and `useMatchesNarrow.ts` (~539)**
   exceed the 500-line soft cap, but the bulk is a single cohesive dense function
   each — exactly what the file-size rule exempts. The narrow file's shared types +
   state factory were already split out (`matchesNarrow.types` / `.state`);
   fragmenting the remaining filter/query math would hurt cohesion for a number.
-- **Report-only cyclomatic-complexity warnings** (`load()` 14, `valueLabel` 11):
++ **Report-only cyclomatic-complexity warnings** (`load()` 14, `valueLabel` 11):
   the complexity lefthook step is REPORT-ONLY for a reason — these are branchy by
   nature (an `allSettled` boot coordinator). Refactor only if a real
   readability/bug problem surfaces.
-- **The remaining `as unknown as` casts** (`mountWidget` partial-dossier fixture +
++ **The remaining `as unknown as` casts** (`mountWidget` partial-dossier fixture +
   the `mount()` overload cast, the ECharts series union) are legitimate
   type-boundary casts. The one genuine type-lie (`enterEditMode` cast from
   KeyboardEvent to MouseEvent) was fixed.
-- **External CI flakes** — the schemathesis random-seed failures on the PUT
++ **External CI flakes** — the schemathesis random-seed failures on the PUT
   settings endpoints and the WebKit `match-detail-panel` timeout are
   non-deterministic and not fixable in code; re-run the job.
