@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { useMapRoleSelection, type MapRoleSelectionOptions } from '@/composables/matches/useMapRoleSelection'
 
 // Grid fixture: 4 maps × 3 roles. By default every cell is selectable; pass an
@@ -6,12 +6,13 @@ import { useMapRoleSelection, type MapRoleSelectionOptions } from '@/composables
 const COLS = ['kings-row', 'ilios', 'oasis', 'nepal']
 const ROLES = ['tank', 'dps', 'support']
 
-function make(unselectable: string[] = []) {
+function make(unselectable: string[] = [], onClear?: () => void) {
   const inert = new Set(unselectable)
   const opts: MapRoleSelectionOptions = {
     columns: () => COLS,
     roles: () => ROLES,
     isSelectable: (m, r) => !inert.has(`${m}|${r}`),
+    onClear,
   }
   return useMapRoleSelection(opts)
 }
@@ -226,5 +227,15 @@ describe('useMapRoleSelection — clear', () => {
     // a subsequent shift-click has no anchor → falls back to a plain select
     s.clickCell('oasis', 'dps', { ctrl: false, shift: true })
     expect(keys(s)).toEqual(['oasis|dps'])
+  })
+
+  it('Enter on an empty cell clears the selection AND calls onClear (reset)', () => {
+    const onClear = vi.fn()
+    const s = make(['ilios|tank'], onClear) // ilios|tank inert (empty)
+    s.selectColumn('nepal')
+    expect(s.count.value).toBe(3)
+    s.onCellKeydown('ilios', 'tank', key({ key: 'Enter' }))
+    expect(s.count.value).toBe(0)
+    expect(onClear).toHaveBeenCalledTimes(1)
   })
 })

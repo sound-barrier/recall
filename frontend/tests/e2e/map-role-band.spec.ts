@@ -198,6 +198,48 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('.mr-cell[aria-label*="Support on Ilios"]')).toHaveClass(/selected/)
   })
 
+  test('a box drag can START on an empty cell (like the Campaign Log)', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    const drag = async (fromKey: string, toKey: string) => {
+      const a = band.locator(`.mr-cell[data-mr-cell="${fromKey}"]`)
+      const b = band.locator(`.mr-cell[data-mr-cell="${toKey}"]`)
+      await a.scrollIntoViewIfNeeded()
+      const ab = await a.boundingBox(); const bb = await b.boundingBox()
+      if (!ab || !bb) throw new Error('cell not found')
+      await page.mouse.move(ab.x + ab.width / 2, ab.y + ab.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, { steps: 12 })
+      await page.mouse.up()
+    }
+    // rialto|tank is EMPTY (unplayed) — drag DOWN its column to rialto|support.
+    // Box = rialto × all roles; played: rialto|dps, rialto|support = 2. Proves the
+    // rubber-band can start on a blank square (previously impossible — empty cells
+    // were :disabled and swallowed the mousedown).
+    await drag('rialto|tank', 'rialto|support')
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(2)
+  })
+
+  test('clicking an empty cell resets the filter (no scroll needed)', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await band.locator('.mr-cell[data-mr-cell="rialto|support"]').click()
+    await band.locator('[data-mr-filter-selection]').click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'rialto' })).toBeVisible()
+    // Click an empty (unplayed) cell → the band's filter is cleared.
+    await band.locator('.mr-cell[data-mr-empty]').first().click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'rialto' })).toHaveCount(0)
+  })
+
+  test('the header Reset clears the filter without scrolling to the chips', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await expect(band.locator('[data-mr-reset]')).toHaveCount(0) // hidden when no filter
+    await band.locator('.mr-cell[data-mr-cell="rialto|support"]').click()
+    await band.locator('[data-mr-filter-selection]').click()
+    await expect(band.locator('[data-mr-reset]')).toBeVisible()
+    await band.locator('[data-mr-reset]').click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'rialto' })).toHaveCount(0)
+    await expect(band.locator('[data-mr-reset]')).toHaveCount(0)
+  })
+
   test('keeps the full role grid after a selection instead of collapsing to the selected row', async ({ page }) => {
     const band = page.locator('.match-map-role')
     await expect(band.locator('.mr-rowhead')).toHaveCount(3)
