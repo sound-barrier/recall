@@ -148,6 +148,20 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     await expect(page.locator('ul.active-chips .active-chip', { hasText: 'control' })).toBeVisible()
   })
 
+  test('the readout slot is reserved — a prompt holds it, no shift on select', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // A faint prompt holds the slot before any Ctrl/Shift selection.
+    await expect(band.locator('[data-hm-selection-empty]')).toBeVisible()
+    await expect(band.locator('[data-hm-selection-bar]')).toHaveCount(0)
+    const before = await band.boundingBox()
+    // Ctrl-click → the stats bar swaps into the same slot; the band doesn't grow.
+    await band.locator('.heatmap-cell[data-hm-cell="control|lucio"]').click({ modifiers: ['ControlOrMeta'] })
+    await expect(band.locator('[data-hm-selection-bar]')).toBeVisible()
+    await expect(band.locator('[data-hm-selection-empty]')).toHaveCount(0)
+    const after = await band.boundingBox()
+    expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(2)
+  })
+
   test('the header Reset clears the filter (drill + selection) without scrolling', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
     await expect(band.locator('[data-hero-mode-reset]')).toHaveCount(0) // hidden with no filter

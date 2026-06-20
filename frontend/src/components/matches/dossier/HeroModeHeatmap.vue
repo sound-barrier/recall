@@ -195,7 +195,9 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
       </div>
     </div>
 
-    <!-- Ctrl/Shift selection readout (stats only — selecting live-filters, no button). -->
+    <!-- Selection readout (stats only — selecting live-filters, no button). The
+         slot is reserved (active stats or a faint prompt) so it never shifts the
+         match list below — consistent with Geography + the Campaign Log. -->
     <div v-if="sel.count.value > 0" class="hm-selection" data-hm-selection-bar>
       <span class="hm-sel-stats" data-hm-selection-stats>
         <strong>{{ sel.count.value }}</strong> cell{{ sel.count.value === 1 ? '' : 's' }}
@@ -208,6 +210,9 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
         filtering every hero × mode in your selection
       </span>
     </div>
+    <p v-else class="hm-selection hm-selection-empty" data-hm-selection-empty>
+      Ctrl/Shift-click a cell, hero, or mode to compare — plain click drills in
+    </p>
   </template>
 </template>
 
@@ -354,23 +359,47 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   line-height: 1;
 }
 
-/* ─── Selection bar (mirrors the Geography band) ─────────────────── */
+/* ─── Selection readout (mirrors the Geography band + Campaign Log) ── */
 .hm-selection {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.9rem;
-  margin-top: 0.5rem;
+  margin: 0.6rem 0 0;
+  /* Reserve the active row's height so the empty ↔ active swap never shifts the
+     match list below. */
+  min-height: 2.1rem;
+  box-sizing: border-box;
   padding: 0.4rem 0.55rem;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: 3px;
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
+/* The reserved-but-empty slot: same box, dashed + faint, a single-line prompt. */
+.hm-selection-empty {
+  justify-content: center;
+  border-style: dashed;
+  border-color: var(--border);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  font-style: italic;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .hm-sel-stats {
+  flex: 1 1 auto;
+  min-width: 0;
   font-family: var(--mono);
   font-size: 0.72rem;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .hm-sel-stats strong { color: var(--accent); font-weight: 700; }
