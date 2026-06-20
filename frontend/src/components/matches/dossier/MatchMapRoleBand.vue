@@ -248,10 +248,9 @@ function filterToSelection() {
   narrow.pickedRoles.value = new Set(sel.hullRoles.value)
 }
 
-// Clicking the grid gutters (between cells) clears, mirroring the calendar.
-function onGridClick(e: MouseEvent) {
-  if (e.target === gridRef.value) sel.clear()
-}
+// A press directly on the grid gutters (between cells) clears the selection.
+// Using mousedown.self — not click — so the synthetic click a drag-box emits on
+// the grid (the down/up cells' common ancestor) can't wipe the fresh selection.
 
 // Inline track template — CSS repeat() can't take a custom-property
 // count, so the literal column count is interpolated here.
@@ -324,7 +323,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
         role="group"
         aria-label="Map × role performance — click a cell, role label, or map name to select; drag to box-select"
         :style="{ gridTemplateColumns, gridTemplateRows }"
-        @click="onGridClick"
+        @mousedown.self="sel.clear()"
         @keydown.esc.prevent="sel.clear()"
       >
         <span class="mr-corner" />
