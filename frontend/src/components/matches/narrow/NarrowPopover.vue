@@ -480,45 +480,27 @@ onUnmounted(() => {
               </section>
 
               <!-- Tags -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Tags</span>
-                  <span class="np-section-meta">{{ pickedTags.size ? `${pickedTags.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="t in availableTags"
-                    :key="t"
-                    class="np-chip"
-                    :class="{ picked: pickedTags.has(t) }"
-                    @click="pickTag(t)"
-                  >
-                    #{{ t }}
-                  </button>
-                  <span v-if="!availableTags.length" class="np-empty">no tags yet — add via match annotation</span>
-                </div>
-              </section>
+              <NarrowChipFacet
+                eyebrow="Tags"
+                :options="availableTags"
+                :picked="pickedTags"
+                empty-message="no tags yet — add via match annotation"
+                @pick="pickTag"
+              >
+                <template #label="{ option }">
+                  #{{ option }}
+                </template>
+              </NarrowChipFacet>
 
               <!-- Teammates — picking >1 is AND (the exact stack) -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Teammates</span>
-                  <span class="np-section-meta">{{ pickedMembers.size ? `${pickedMembers.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="m in availableMembers"
-                    :key="m"
-                    class="np-chip"
-                    :class="{ picked: pickedMembers.has(m) }"
-                    :data-member="m"
-                    @click="pickMember(m)"
-                  >
-                    {{ m }}
-                  </button>
-                  <span v-if="!availableMembers.length" class="np-empty">no teammates yet — tag them via match annotation</span>
-                </div>
-              </section>
+              <NarrowChipFacet
+                eyebrow="Teammates"
+                :options="availableMembers"
+                :picked="pickedMembers"
+                data-attr="data-member"
+                empty-message="no teammates yet — tag them via match annotation"
+                @pick="pickMember"
+              />
 
               <!-- Leavers -->
               <section class="np-section">
@@ -542,23 +524,17 @@ onUnmounted(() => {
               <!-- With a leaver — scope the SET to matches that carried a
                    leaver, by side. Distinct from the handling control
                    above (which only governs the W/L tally). -->
-              <section v-if="availableLeaverSides.length" class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">With a leaver</span>
-                  <span class="np-section-meta">{{ pickedLeavers.size ? `${pickedLeavers.size} picked` : 'any' }}</span>
-                </div>
-                <div class="np-chips">
-                  <button
-                    v-for="side in availableLeaverSides"
-                    :key="side"
-                    class="np-chip"
-                    :class="{ picked: pickedLeavers.has(side) }"
-                    @click="pickLeaver(side)"
-                  >
-                    {{ LEAVER_LABELS[side] }}
-                  </button>
-                </div>
-              </section>
+              <NarrowChipFacet
+                v-if="availableLeaverSides.length"
+                eyebrow="With a leaver"
+                :options="availableLeaverSides"
+                :picked="pickedLeavers"
+                @pick="(v) => pickLeaver(v as 'self' | 'team' | 'enemy')"
+              >
+                <template #label="{ option }">
+                  {{ LEAVER_LABELS[option as 'self' | 'team' | 'enemy'] }}
+                </template>
+              </NarrowChipFacet>
 
               <!-- Reviewed by — multi-select OR across self, coach,
                    and unreviewed. Empty selection = no filter. -->
