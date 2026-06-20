@@ -172,6 +172,25 @@ test.describe('campaign-log header', () => {
     await expect(page.locator('.heatmap-cell.active')).toHaveCount(2)
   })
 
+  test('shows a combined-stats readout for the selected range (consistent with Geography)', async ({ page }) => {
+    // A faint prompt holds the slot before any selection (no shift of the list).
+    await expect(page.locator('[data-timeline-selection-empty]')).toBeVisible()
+    await expect(page.locator('[data-timeline-selection-bar]')).toHaveCount(0)
+    // Single day: 3 victories 2 days ago → 1 day · 3-0-0 · 100% WR · 3 games.
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`).click()
+    const stats = page.locator('[data-timeline-selection-stats]')
+    await expect(stats).toContainText('1 day')
+    await expect(stats).toContainText(/3.0.0/)
+    await expect(stats).toContainText('100% WR')
+    await expect(stats).toContainText('3 games')
+    // Extend to a 2-day range → recomputes over both days (3 wins + 2 losses).
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(1)}"]`).click({ modifiers: ['Shift'] })
+    await expect(stats).toContainText('2 days')
+    await expect(stats).toContainText(/3.2.0/)
+    await expect(stats).toContainText('60% WR')
+    await expect(stats).toContainText('5 games')
+  })
+
   test('clicking an empty day resets the date filter', async ({ page }) => {
     await page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
