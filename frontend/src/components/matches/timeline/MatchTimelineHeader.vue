@@ -39,6 +39,28 @@ function resetRange() {
   emit('update:filter-to', '')
 }
 
+// Combined readout over the selected date range — mirrors the Geography band's
+// "N cells · W–L–D · X% WR · N games", with days as the unit (heatmap cells are
+// days). null when no range is active (the slot shows a prompt instead).
+const selectionStats = computed(() => {
+  if (!dateFilterActive.value) return null
+  const from = props.filterFrom.slice(0, 10)
+  const to = props.filterTo.slice(0, 10)
+  const days = new Set<string>()
+  let wins = 0; let losses = 0; let draws = 0; let total = 0
+  for (const r of props.records) {
+    const d = r.data?.date
+    if (!d || (from && d < from) || (to && d > to)) continue
+    days.add(d); total++
+    const result = r.data?.result
+    if (result === 'victory') wins++
+    else if (result === 'defeat') losses++
+    else if (result === 'draw') draws++
+  }
+  const decided = wins + losses
+  return { days: days.size, wins, losses, draws, total, winrate: decided ? Math.round((wins / decided) * 100) : null }
+})
+
 const { windowMonths, pickWindow } = useWindowMonths('recall.timelineWindowMonths')
 
 const windowWeeks = computed((): number => {
@@ -121,6 +143,26 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
         />
       </template>
     </div>
+
+    <!-- Combined readout for the selected range — consistent with the Geography
+         band. The slot is always present (active stats or a faint prompt) so
+         selecting a range never shifts the match list below. -->
+    <div v-if="selectionStats" class="tl-selection" data-timeline-selection-bar>
+      <span class="tl-sel-stats" data-timeline-selection-stats>
+        <strong>{{ selectionStats.days }}</strong> day{{ selectionStats.days === 1 ? '' : 's' }}
+        <span aria-hidden="true">·</span>
+        {{ selectionStats.wins }}–{{ selectionStats.losses }}–{{ selectionStats.draws }}
+        <template v-if="selectionStats.winrate !== null"> · {{ selectionStats.winrate }}% WR</template>
+        · {{ selectionStats.total }} game{{ selectionStats.total === 1 ? '' : 's' }}
+      </span>
+    </div>
+    <p
+      v-else-if="records.length > 0"
+      class="tl-selection tl-selection-empty"
+      data-timeline-selection-empty
+    >
+      Click a day, drag a range, or pick a month to compare combined stats
+    </p>
   </section>
 </template>
 
@@ -267,4 +309,46 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
     gap: 0.8rem;
   }
 }
+
+/* Combined readout — visually consistent with the Geography band's bar. The slot
+   is reserved (active stats or a faint prompt) so selecting never shifts the
+   match list below. */
+.tl-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  margin: 0.6rem 0 0;
+  min-height: 2.1rem;
+  box-sizing: border-box;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.tl-selection-empty {
+  justify-content: center;
+  border-style: dashed;
+  border-color: var(--border);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  font-style: italic;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-sel-stats {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-sel-stats strong { color: var(--accent); font-weight: 700; }
 </style>
