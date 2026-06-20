@@ -18,6 +18,7 @@ import type { MatchRecord } from '@/api-client'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 import NarrowChipFacet from '@/components/matches/narrow/NarrowChipFacet.vue'
 import NarrowTimeScope from '@/components/matches/narrow/NarrowTimeScope.vue'
+import NarrowRefinement from '@/components/matches/narrow/NarrowRefinement.vue'
 // Shared np-section / np-chip chrome for the panel + its facet children.
 import './narrow.css'
 
@@ -72,7 +73,7 @@ const {
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
   pickedQueues, pickedPlayModes, pickedSources,
   pickedLeavers, pickedModifiers, pickedRanks,
-  leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
+  leaverHandling,
   anchorKey, sinceAnchorActive,
   pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource,
   pickLeaver, pickModifier, pickRank,
@@ -529,58 +530,7 @@ onUnmounted(() => {
                 </p>
               </section>
 
-              <!-- Min play threshold (both minutes + percent; OR semantics) + unknown toggle -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Refinement</span>
-                  <span class="np-section-meta">applies to picked heroes</span>
-                </div>
-                <div class="np-refine-row">
-                  <p class="np-refine-hint">
-                    Picked hero must meet at least one threshold in a match's heroes-played row.
-                  </p>
-                  <div class="np-thresholds">
-                    <label class="np-num-label">
-                      <span>Min play time</span>
-                      <div class="np-num-input">
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          class="np-num"
-                          :value="minPlayMinutes"
-                          @input="minPlayMinutes = parseInt(($event.target as HTMLInputElement).value || '0', 10) || 0"
-                        >
-                        <span class="np-num-unit">min</span>
-                      </div>
-                    </label>
-                    <span class="np-thresholds-or">or</span>
-                    <label class="np-num-label">
-                      <span>Min played %</span>
-                      <div class="np-num-input">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="5"
-                          class="np-num"
-                          :value="minPlayPercent"
-                          @input="minPlayPercent = Math.max(0, Math.min(100, parseInt(($event.target as HTMLInputElement).value || '0', 10) || 0))"
-                        >
-                        <span class="np-num-unit">%</span>
-                      </div>
-                    </label>
-                  </div>
-                  <label class="np-toggle-label">
-                    <input
-                      type="checkbox"
-                      :checked="includeUnknown"
-                      @change="includeUnknown = ($event.target as HTMLInputElement).checked"
-                    >
-                    <span>Show unknown-map matches</span>
-                  </label>
-                </div>
-              </section>
+              <NarrowRefinement :narrow="narrow" />
             </div>
           </div>
 
