@@ -7,10 +7,10 @@ import { computed, type ComputedRef, onScopeDispose, type Ref, ref } from 'vue'
 // a point→cell resolver), so every selection path is unit-testable without a
 // browser. Stats + filtering live in the SFC; this only answers "what's selected".
 
-export type CellKey = string
+type CellKey = string
 export interface MapRoleCoord { map: string; role: string }
 
-export interface PointerMods { ctrl: boolean; shift: boolean }
+interface PointerMods { ctrl: boolean; shift: boolean }
 
 export interface MapRoleSelectionOptions {
   // Ordered map slugs (grid columns, left → right) — drives range + drag boxes.
