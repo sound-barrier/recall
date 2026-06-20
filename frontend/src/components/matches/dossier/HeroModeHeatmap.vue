@@ -365,6 +365,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   align-items: center;
   gap: 0.5rem 0.9rem;
   margin: 0.6rem 0 0;
+
   /* Reserve the active row's height so the empty ↔ active swap never shifts the
      match list below. */
   min-height: 2.1rem;
