@@ -95,6 +95,19 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
 - [x] post-match PERSONAL tab — Wuyang; pins the AVG-anchored stat fix (Players Saved 5, Tidal Blast Kills 0 — the hero-ability icon OCRs as a spurious leading/trailing single digit)
 - [x] PERSONAL "All Heroes" aggregate view — recognized as `all_heroes` but deliberately NOT parsed (its totals duplicate the TEAMS screen; its stat-card icons defeat the OCR). The golden pins detection + the recognized-skip classification that keeps it off the Unknown tab without a garbage row.
 - [x] rank screen — competitive ladder badge + per-hero SR card (×2: a Platinum 5 **win** with positive progress + SR gain, AND a Gold 1 **loss** with DEMOTION PROTECTION and a negative −19% progress; the pair pins the digitize-level fix, the raw-pass negative-progress read, the lower-card SR crop, and the demotion-protection modifier)
+- [x] rank screen — **multi-card SR panel** (×5 owleague Gold captures): a
+      two-hero **win** with per-hero gains (Lúcio 2621 / Mizuki 2481), a two-hero
+      **loss** (Juno 2239 / Kiriko 1799), a single-hero win (Lúcio 2689 +68), a
+      two-hero win pinning the verified change arrow (Brigitte 2778 **^102** /
+      Ana 1896), and a card the sparse pass mangled to SR 0 that a digit-whitelist
+      re-OCR backfills (Kiriko 1799). Together they pin the **per-card SR pairing
+      fix** — each card carries its OWN SR, where the old code copied the first
+      4-digit run in the panel onto every hero, so two cards reported one wrong SR
+      — plus the result-derived change sign (the card shows a green/red arrow, not
+      a `±`) and the digit-whitelist backfill. **Known limitation:** when 3+ cards
+      stack tightly the whitelist re-OCR can merge or drop the lower cards' digits
+      (and occasionally the hero name itself), leaving those SRs at 0; single- and
+      two-card panels read reliably.
 - [ ] in-game TAB screenshot (different layout, right panel populated)
 - [x] non-match screen → `unknown` — the career **HISTORY / Game Reports**
       browser (a list of past matches). Guards that the classifier leaves
