@@ -1,0 +1,77 @@
+/* Shared chrome for the "Narrow this set" panel + its facet sub-components
+   (NarrowPopover, NarrowChipFacet). Imported once by NarrowPopover; the
+   np-section + np-chip families are narrow-panel-specific, so global scope is
+   safe and lets the facet children share them with no duplication.
+
+   NOTE: .np-btn deliberately STAYS scoped in NarrowPopover — the child
+   NarrowPresets renders a .np-btn it does not style itself, and a global .np-btn
+   would silently restyle it. Keep it scoped to preserve that. */
+
+.np-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.np-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.np-section-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+
+.np-section-meta {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  margin-left: auto;
+  text-transform: lowercase;
+}
+
+.np-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.np-chip {
+  appearance: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0.22rem 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.np-chip:hover {
+  border-color: var(--accent-soft, var(--accent));
+  color: var(--text);
+}
+
+.np-chip.picked {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.np-empty {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  font-style: italic;
+}
