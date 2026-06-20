@@ -20,6 +20,7 @@ import NarrowChipFacet from '@/components/matches/narrow/NarrowChipFacet.vue'
 import NarrowTimeScope from '@/components/matches/narrow/NarrowTimeScope.vue'
 import NarrowRefinement from '@/components/matches/narrow/NarrowRefinement.vue'
 import NarrowSinceAnchor from '@/components/matches/narrow/NarrowSinceAnchor.vue'
+import NarrowLeaverHandling from '@/components/matches/narrow/NarrowLeaverHandling.vue'
 // Shared np-section / np-chip chrome for the panel + its facet children.
 import './narrow.css'
 
@@ -74,7 +75,6 @@ const {
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
   pickedQueues, pickedPlayModes, pickedSources,
   pickedLeavers, pickedModifiers, pickedRanks,
-  leaverHandling,
   pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource,
   pickLeaver, pickModifier, pickRank,
   resetNarrow,
@@ -407,24 +407,7 @@ onUnmounted(() => {
                 @pick="pickMember"
               />
 
-              <!-- Leavers -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Leavers</span>
-                  <span class="np-section-meta">{{ leaverHandling }}</span>
-                </div>
-                <div class="np-chips">
-                  <button class="np-chip" :class="{ picked: leaverHandling === 'include' }" @click="leaverHandling = 'include'">
-                    Include
-                  </button>
-                  <button class="np-chip" :class="{ picked: leaverHandling === 'exclude-tally' }" @click="leaverHandling = 'exclude-tally'">
-                    Drop from tally
-                  </button>
-                  <button class="np-chip" :class="{ picked: leaverHandling === 'hide' }" @click="leaverHandling = 'hide'">
-                    Hide entirely
-                  </button>
-                </div>
-              </section>
+              <NarrowLeaverHandling :narrow="narrow" />
 
               <!-- With a leaver — scope the SET to matches that carried a
                    leaver, by side. Distinct from the handling control
