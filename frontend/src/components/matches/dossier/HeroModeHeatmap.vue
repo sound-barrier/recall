@@ -99,6 +99,9 @@ const selectionStats = computed(() => {
 function filterToSelection() {
   emit('filter', { heroes: sel.hullRoles.value, gameModes: sel.hullMaps.value })
 }
+
+// The band's header Reset clears the pending selection here too.
+defineExpose({ clearSelection: () => sel.clear() })
 </script>
 
 <template>

@@ -143,6 +143,20 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     await expect(page.locator('ul.active-chips .active-chip', { hasText: 'control' })).toBeVisible()
   })
 
+  test('the header Reset clears the filter (drill + selection) without scrolling', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('[data-hero-mode-reset]')).toHaveCount(0) // hidden with no filter
+    // Drill into Lucio × Control → narrows + descends to the maps level.
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'lucio' })).toBeVisible()
+    await expect(band.locator('[data-hero-mode-reset]')).toBeVisible()
+    // Reset → chips cleared, drill back at the root grid, button gone.
+    await band.locator('[data-hero-mode-reset]').click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'lucio' })).toHaveCount(0)
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    await expect(band.locator('[data-hero-mode-reset]')).toHaveCount(0)
+  })
+
   test('the trailing-window picker filters — 1M drops the 45-day-old corpus', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
     // Default 6M renders the grid.
