@@ -179,3 +179,12 @@ export function formatParsedAt(iso: string | null | undefined): string {
   const timePart = formatHourMinute(d.getHours(), d.getMinutes())
   return `${datePart} @ ${timePart}`
 }
+
+// monthDateRange maps a 'YYYY-MM' month key to its full calendar span as
+// YYYY-MM-DD strings — first day to last day, handling 30/31-day months and
+// leap-year February. Drives the campaign-log heatmap's "pick the whole month".
+export function monthDateRange(month: string): { from: string; to: string } {
+  const [y, m] = month.split('-').map(Number)
+  const last = new Date(y!, m!, 0).getDate() // day 0 of next month = this month's last day
+  return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, '0')}` }
+}

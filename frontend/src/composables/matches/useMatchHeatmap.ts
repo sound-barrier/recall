@@ -38,6 +38,7 @@ interface HeatmapCell {
 interface MonthLabel {
   weekIndex: number     // column where the month label anchors
   label: string         // 'Jan' / 'Feb' / …
+  month: string         // 'YYYY-MM' — the calendar month it labels (for month-pick)
 }
 
 export interface HeatmapModel {
@@ -129,7 +130,7 @@ export function useMatchHeatmap(
       if (c.dayOfWeek !== 0) continue
       const m = parseLocalDate(c.date).getMonth()
       if (m !== lastMonth) {
-        monthLabels.push({ weekIndex: c.weekIndex, label: MONTHS[m]! })
+        monthLabels.push({ weekIndex: c.weekIndex, label: MONTHS[m]!, month: c.date.slice(0, 7) })
         lastMonth = m
       }
     }

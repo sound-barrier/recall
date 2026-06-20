@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, toRef } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
+import { monthDateRange } from '@/match/match-time-helpers'
 
 // Calendar heatmap viz — 7 rows × N week columns of one cell per day.
 // Win-rate drives hue (green → red via --win / --loss); volume drives
@@ -110,6 +111,36 @@ const activeRange = computed(() => {
     to:   props.filterTo.slice(0, 10),
   }
 })
+
+// ─── Click a month label → pick the WHOLE calendar month ──────────────
+// The user selects a month (not a day-of-week row): it sets the filter to that
+// month's full 1st→last span — even when the window only shows part of the month
+// — and toggles off if that month is already the active range. Same emit
+// vocabulary as the day cells, so a month pick + a day brush read consistently.
+function isMonthActive(month: string): boolean {
+  const r = activeRange.value
+  if (!r) return false
+  const { from, to } = monthDateRange(month)
+  return r.from === from && r.to === to
+}
+
+function pickMonth(month: string) {
+  if (isMonthActive(month)) {
+    emit('update:filter-from', '')
+    emit('update:filter-to', '')
+    return
+  }
+  const { from, to } = monthDateRange(month)
+  emit('update:filter-from', `${from}T00:00`)
+  emit('update:filter-to',   `${to}T23:59`)
+}
+
+// A month's clickable hit-width: span to the next month label, or the grid edge.
+function monthHitWidth(label: { weekIndex: number }): number {
+  const next = model.value.monthLabels.find((x) => x.weekIndex > label.weekIndex)
+  const endWeek = next ? next.weekIndex : model.value.weeks
+  return Math.max((endWeek - label.weekIndex) * STEP.value, STEP.value)
+}
 
 const cellByDate = computed(() => {
   const m = new Map<string, { date: string; empty: boolean }>()
@@ -244,13 +275,33 @@ onBeforeUnmount(() => {
       :height="height"
       role="presentation"
     >
-      <g class="month-labels" aria-hidden="true">
-        <text
+      <g class="month-labels">
+        <g
           v-for="m in model.monthLabels"
-          :key="`${m.weekIndex}-${m.label}`"
-          :x="LEFT_GUTTER + m.weekIndex * STEP"
-          :y="TOP_GUTTER - 4"
-        >{{ m.label }}</text>
+          :key="`${m.weekIndex}-${m.month}`"
+          class="month-label"
+          :class="{ active: isMonthActive(m.month) }"
+          role="button"
+          tabindex="0"
+          :data-month="m.month"
+          :aria-label="`Filter to ${m.label} ${m.month.slice(0, 4)}`"
+          :aria-pressed="isMonthActive(m.month)"
+          @click="pickMonth(m.month)"
+          @keydown.enter.prevent="pickMonth(m.month)"
+          @keydown.space.prevent="pickMonth(m.month)"
+        >
+          <rect
+            class="month-hit"
+            :x="LEFT_GUTTER + m.weekIndex * STEP - 2"
+            y="0"
+            :width="monthHitWidth(m)"
+            :height="TOP_GUTTER"
+          />
+          <text
+            :x="LEFT_GUTTER + m.weekIndex * STEP"
+            :y="TOP_GUTTER - 4"
+          >{{ m.label }}</text>
+        </g>
       </g>
 
       <g class="day-labels" aria-hidden="true">
@@ -310,6 +361,28 @@ onBeforeUnmount(() => {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   fill: var(--text-faint);
+}
+
+/* Each month label is a button — click it to filter to the whole calendar month. */
+.month-label { cursor: pointer; }
+
+.month-hit {
+  fill: transparent;
+  transition: fill 140ms ease;
+}
+
+.month-label:hover .month-hit { fill: color-mix(in srgb, var(--accent) 10%, transparent); }
+.month-label.active .month-hit { fill: color-mix(in srgb, var(--accent) 15%, transparent); }
+
+.month-label:hover text,
+.month-label.active text { fill: var(--accent); }
+
+.month-label:focus-visible { outline: none; }
+
+.month-label:focus-visible .month-hit {
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1;
 }
 
 .day-labels text {
