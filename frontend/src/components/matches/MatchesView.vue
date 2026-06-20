@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import { provideDossier, provideFullDossier } from '@/composables/dashboard/useDossier'
+import { provideDossier, provideFullDossier, provideGeographyDossier, provideHeroModeDossier } from '@/composables/dashboard/useDossier'
 import { provideNarrow } from '@/composables/matches/useNarrow'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
 import MatchesTableSortPopover from '@/components/matches/list/MatchesTableSortPopover.vue'
@@ -294,6 +294,11 @@ provideDossier(matchesStore.dossier)
 // The unfiltered companion — bands/widgets read STRUCTURE (stable rows, reserve
 // counts) from it while their DATA stays on the narrowed dossier above.
 provideFullDossier(matchesStore.fullDossier)
+// "Narrow minus self" companions — Geography + Hero×Game-Mode read DATA from
+// these (each excludes its own filter dimension) so the bands indirectly affect
+// each other without collapsing from their own selection.
+provideGeographyDossier(matchesStore.geographyDossier)
+provideHeroModeDossier(matchesStore.heroModeDossier)
 // Same provide/inject shape exposes the narrow handlers (pickHero,
 // pickGameMode, etc.) to widgets that need to drill into a slice of
 // the active set — the hero × game-mode heatmap is the first consumer.

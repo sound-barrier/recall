@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { useFullDossier } from '@/composables/dashboard/useDossier'
+import { useFullDossier, useGeographyDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
@@ -41,6 +41,7 @@ const GAME_MODE_LABEL: Record<string, string> = {
 }
 
 const fullDossier = useFullDossier()
+const geographyDossier = useGeographyDossier()
 const narrow = useNarrow()
 const ow = useOWData()
 const cfg = useMapRoleConfig()
@@ -66,11 +67,11 @@ const visibleRoles = computed<Role[]>(() => {
 // the Campaign Log's default.
 const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('recall.mapRoleWindowMonths')
 
-// Cell DATA reads the UNFILTERED dossier: the grid is a STABLE comparison surface
-// (like the Campaign Log heatmap) — it always shows the full window's win-rates and
-// never collapses to the current narrow. Selecting a cell highlights it + live-
-// filters the match list below (the watch on the selection, further down).
-const cells = fullDossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
+// Cell DATA reads the "narrow minus self" dossier: it reflects every filter EXCEPT
+// this band's own maps/roles picks. So selecting here doesn't collapse the grid
+// (its own picks are excluded), but a filter from the Hero×Game-Mode band (or the
+// panel) DOES update it — the bands indirectly affect each other.
+const cells = geographyDossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
 // Row STRUCTURE reads the UNFILTERED dossier so the grid stays put when the
 // band's own cell-pick (or any narrow) shrinks the set — the Campaign Log
 // calendar keeps its full grid the same way. A role still drops out if it was

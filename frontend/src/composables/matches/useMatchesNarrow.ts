@@ -402,6 +402,46 @@ export function useMatchesNarrow(
     return true
   }
 
+  // ── Cross-widget "narrow minus self" record sets ─────────────────
+  // A dossier band (Geography / Hero×Game-Mode) reads everything EXCEPT its own
+  // filter dimensions, so it reflects the OTHER bands' picks — they indirectly
+  // affect each other — without collapsing from its own selection. Same predicate
+  // chain as narrowedRecords with the named dimensions skipped (mirrors
+  // matchesNarrowExcept, but gates on a Set so two dimensions can drop at once).
+  function narrowExcluding(skip: ReadonlySet<ClauseId>): MatchRecord[] {
+    let base = records.value.filter((r) => !r.hidden)
+    if (!includeUnknown.value) base = base.filter((r) => !!r.data?.map)
+    let anchorFloor: string | null = null
+    if (!skip.has('sinceAnchor') && sinceAnchorActive.value && anchorKey.value !== '') {
+      const anchor = records.value.find((r) => r.match_key === anchorKey.value)
+      if (anchor?.parsed_at) anchorFloor = anchor.parsed_at
+    }
+    return base.filter((r) => {
+      if (!r.data) return false
+      if (!skip.has('search')      && !matchesSearch(r, searchClauses.value)) return false
+      if (!skip.has('dateRange')   && !matchesDateRange(r, customFrom.value, customTo.value)) return false
+      if (!skip.has('maps')        && !matchesPickedSet(r.data.map, pickedMaps.value)) return false
+      if (!skip.has('gameModes')   && !matchesPickedSet(r.data.game_mode, pickedGameModes.value)) return false
+      if (!skip.has('roles')       && !matchesPickedSet(r.data.role, pickedRoles.value)) return false
+      if (!skip.has('results')     && !matchesPickedSet(r.data.result, pickedResults.value)) return false
+      if (!skip.has('heroes')      && !matchesHero(r, pickedHeroes.value, minPlayMinutes.value, minPlayPercent.value)) return false
+      if (!skip.has('tags')        && !matchesTags(r, pickedTags.value)) return false
+      if (!skip.has('members')     && !matchesMembers(r, pickedMembers.value)) return false
+      if (!skip.has('reviewedBy')  && !matchesReviewedBy(r, pickedReviewedBy.value)) return false
+      if (!skip.has('queues')      && !matchesQueueType(r, pickedQueues.value)) return false
+      if (!skip.has('playModes')   && !matchesPlayMode(r, pickedPlayModes.value)) return false
+      if (!skip.has('sources')     && !matchesSource(r, pickedSources.value)) return false
+      if (!skip.has('sinceAnchor') && !matchesSinceAnchor(r, anchorFloor)) return false
+      if (!skip.has('leaver')      && !matchesLeaverHandling(r, leaverHandling.value)) return false
+      if (!skip.has('leaverSide')  && !matchesPickedSet(r.annotation?.leaver, pickedLeavers.value as Set<string>)) return false
+      if (!skip.has('modifiers')   && !matchesModifiers(r, pickedModifiers.value)) return false
+      if (!skip.has('ranks')       && !matchesPickedSet(r.data.rank, pickedRanks.value)) return false
+      return true
+    })
+  }
+  const narrowedExceptMapsRoles = computed(() => narrowExcluding(new Set<ClauseId>(['maps', 'roles'])))
+  const narrowedExceptHeroesGameModes = computed(() => narrowExcluding(new Set<ClauseId>(['heroes', 'gameModes'])))
+
   function activeClauses(): ClauseId[] {
     const out: ClauseId[] = []
     if (searchText.value.trim())                                    out.push('search')
@@ -533,6 +573,8 @@ export function useMatchesNarrow(
     availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
     availableLeaverSides, availableModifiers, availableRanks,
     narrowedRecords,
+    narrowedExceptMapsRoles,
+    narrowedExceptHeroesGameModes,
     clauseExclusionCounts,
   }
 }

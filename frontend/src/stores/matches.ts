@@ -325,6 +325,22 @@ export const useMatchesStore = defineStore('matches', () => {
     useOWData().heroRole,
     weekStart,
   )
+  // Per-band "narrow minus self" aggregations: each reads everything EXCEPT its
+  // own filter dimension, so a band reflects the OTHER bands' picks (they
+  // indirectly affect each other) but doesn't collapse from its own selection.
+  // Geography drops its maps/roles; Hero×Game-Mode drops its heroes/game-modes.
+  const geographyDossier = useMatchesDossier(
+    matchesNarrow.narrowedExceptMapsRoles,
+    matchesNarrow.leaverHandling,
+    useOWData().heroRole,
+    weekStart,
+  )
+  const heroModeDossier = useMatchesDossier(
+    matchesNarrow.narrowedExceptHeroesGameModes,
+    matchesNarrow.leaverHandling,
+    useOWData().heroRole,
+    weekStart,
+  )
 
   // ── Ingest event stream ───────────────────────────────────────────
   // Polite sr-only announcement for parse-lifecycle terminal states (the
@@ -429,6 +445,8 @@ export const useMatchesStore = defineStore('matches', () => {
     toggleNarrowChip,
     dossier: markRaw(dossier),
     fullDossier: markRaw(fullDossier),
+    geographyDossier: markRaw(geographyDossier),
+    heroModeDossier: markRaw(heroModeDossier),
     searchClauses,
     records,
     unknownRecords,
