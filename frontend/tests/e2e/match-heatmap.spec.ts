@@ -248,3 +248,53 @@ test.describe('campaign-log header', () => {
     await expect(reset).toHaveCount(0)
   })
 })
+
+// ── Month select ─────────────────────────────────────────────────────
+// Clicking a MONTH label (not a day-of-week) picks that whole calendar month.
+// Its own corpus + describe so the recent-day tests above stay undisturbed.
+test.describe('campaign-log header — month select', () => {
+  // 40 days ago is reliably a PRIOR calendar month (months are ≤31 days) and
+  // well inside the default 6M window, so its month label always renders.
+  const ANCHOR = daysAgo(40)
+  const ANCHOR_MONTH = ANCHOR.slice(0, 7) // YYYY-MM
+  const MONTH_CORPUS = [
+    record({ match_key: 'a1', date: ANCHOR, result: 'victory' }, 0),
+    record({ match_key: 'a2', date: ANCHOR, result: 'defeat' }, 1),
+    record({ match_key: 'r1', date: daysAgo(2), result: 'victory' }, 2),
+    record({ match_key: 'r2', date: todayISO, result: 'defeat' }, 3),
+  ]
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try { localStorage.removeItem('recall.timelineWindowMonths') } catch (_) { /* ignore */ }
+    })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MONTH_CORPUS) })
+    })
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('.leaf-row')).toHaveCount(MONTH_CORPUS.length)
+  })
+
+  test('clicking a month label filters to that whole calendar month; clicking it again clears', async ({ page }) => {
+    const monthBtn = page.locator(`.match-heatmap [data-month="${ANCHOR_MONTH}"]`)
+    await expect(monthBtn).toHaveCount(1)
+
+    await monthBtn.click()
+    await expect(monthBtn).toHaveClass(/active/)
+    // Only the two matches that fall in that month survive (the recent ones drop).
+    await expect(page.locator('.leaf-row')).toHaveCount(2)
+    await expect(page.locator('.active-chip.range')).toBeVisible()
+
+    // Toggle the same month off → back to the full corpus.
+    await monthBtn.click()
+    await expect(monthBtn).not.toHaveClass(/active/)
+    await expect(page.locator('.leaf-row')).toHaveCount(MONTH_CORPUS.length)
+  })
+
+  test('only month labels are pick targets — the day-of-week labels are not', async ({ page }) => {
+    // Month labels carry data-month; the Mon/Wed/Fri day labels carry none.
+    await expect(page.locator('.match-heatmap .month-labels [data-month]').first()).toBeVisible()
+    await expect(page.locator('.match-heatmap .day-labels [data-month]')).toHaveCount(0)
+  })
+})

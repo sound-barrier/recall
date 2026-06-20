@@ -7,6 +7,7 @@ import {
   formatParsedAt,
   formatMinutesAsClock,
   formatPlayMinutes,
+  monthDateRange,
 } from '@/match/match-time-helpers'
 
 // ─── matchTime ───────────────────────────────────────────────────────
@@ -286,5 +287,27 @@ describe('formatPlayMinutes', () => {
     expect(formatPlayMinutes(undefined)).toBe('—')
     expect(formatPlayMinutes(NaN)).toBe('—')
     expect(formatPlayMinutes(-1)).toBe('—')
+  })
+})
+
+describe('monthDateRange', () => {
+  it('spans the first to the last day of a 31-day month', () => {
+    expect(monthDateRange('2026-01')).toEqual({ from: '2026-01-01', to: '2026-01-31' })
+  })
+
+  it('spans a 30-day month', () => {
+    expect(monthDateRange('2026-04')).toEqual({ from: '2026-04-01', to: '2026-04-30' })
+  })
+
+  it('handles February in a non-leap year (28 days)', () => {
+    expect(monthDateRange('2026-02')).toEqual({ from: '2026-02-01', to: '2026-02-28' })
+  })
+
+  it('handles February in a leap year (29 days)', () => {
+    expect(monthDateRange('2024-02')).toEqual({ from: '2024-02-01', to: '2024-02-29' })
+  })
+
+  it('zero-pads single-digit months in the output', () => {
+    expect(monthDateRange('2026-09')).toEqual({ from: '2026-09-01', to: '2026-09-30' })
   })
 })
