@@ -445,6 +445,9 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
       </p>
     </div>
 
+    <!-- Selection readout. The slot is ALWAYS present (active bar or a faint
+         prompt) at a fixed height, so selecting a cell swaps content in place and
+         never shifts the widget or the content below it. -->
     <div v-if="sel.count.value > 0" class="mr-selection" data-mr-selection-bar>
       <span class="mr-sel-stats" data-mr-selection-stats>
         <strong>{{ sel.count.value }}</strong> cell{{ sel.count.value === 1 ? '' : 's' }}
@@ -465,6 +468,9 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
         </button>
       </span>
     </div>
+    <p v-else class="mr-selection mr-selection-empty" data-mr-selection-empty>
+      Select a cell, role, or map to compare combined stats
+    </p>
 
     <MapRoleConfigPopover
       :open="configOpen"
@@ -818,20 +824,48 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 
 .mr-selection {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem 0.9rem;
-  margin-top: 0.5rem;
+  margin: 0.5rem 0 0;
+
+  /* Reserve the active row's height so the empty ↔ active swap never shifts the
+     widget or the content below it. */
+  min-height: 2.4rem;
+  box-sizing: border-box;
   padding: 0.4rem 0.55rem;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   border-radius: 3px;
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
+/* The reserved-but-empty slot: same box, dashed + faint, a centered prompt. Kept
+   to a single line (nowrap + ellipsis) so it stays exactly the active bar's height
+   on narrow widths — a wrapped 2-line prompt would re-introduce the shift. */
+.mr-selection-empty {
+  justify-content: center;
+  border-style: dashed;
+  border-color: var(--border);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  font-style: italic;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .mr-sel-stats {
+  flex: 1 1 auto;
+  min-width: 0;
   font-family: var(--mono);
   font-size: 0.72rem;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mr-sel-stats strong { color: var(--accent); font-weight: 700; }
@@ -848,7 +882,10 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   font-size: 0.58rem;
   color: var(--text-faint);
   font-style: italic;
-  max-width: 18rem;
+  max-width: 14rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mr-sel-filter,

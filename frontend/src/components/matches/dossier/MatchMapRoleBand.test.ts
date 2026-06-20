@@ -195,6 +195,17 @@ describe('MatchMapRoleBand', () => {
     expect(stats.text()).toContain('12 games')
   })
 
+  it('reserves the readout slot — an empty prompt shows until a cell is selected', async () => {
+    const w = mountBand()
+    // Nothing selected: the prompt fills the slot, the active bar is absent.
+    expect(w.find('[data-mr-selection-empty]').exists()).toBe(true)
+    expect(w.find('[data-mr-selection-bar]').exists()).toBe(false)
+    // Selecting swaps the prompt for the active bar in the same slot (no shift).
+    await press(w.find('[aria-label^="Support on Rialto"]'))
+    expect(w.find('[data-mr-selection-bar]').exists()).toBe(true)
+    expect(w.find('[data-mr-selection-empty]').exists()).toBe(false)
+  })
+
   it("clicking a game-mode group header selects that group's columns", async () => {
     const w = mountBand()
     const escort = w.findAll('.mr-modehead').find((n) => n.text() === 'Escort')

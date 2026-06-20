@@ -144,6 +144,19 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('.mr-cell.selected')).toHaveCount(0)
   })
 
+  test('selecting a cell does not grow the band (reserved readout slot)', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    // A prompt holds the slot before any selection, so the bar swaps in place.
+    await expect(band.locator('[data-mr-selection-empty]')).toBeVisible()
+    const before = await band.boundingBox()
+    await band.locator('.mr-cell[aria-label*="Support on Rialto"]').click()
+    await expect(band.locator('[data-mr-selection-bar]')).toBeVisible()
+    const after = await band.boundingBox()
+    // The band's height (scroll-invariant) must not change — no shift of the
+    // widget or anything below it when the readout appears.
+    expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(2)
+  })
+
   test('Ctrl/Cmd-click adds non-contiguous cells; the readout sums them + flags a non-rectangular filter', async ({ page }) => {
     const band = page.locator('.match-map-role')
     await band.locator('.mr-cell[aria-label*="Tank on Ilios"]').click()
