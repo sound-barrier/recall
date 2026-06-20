@@ -33,58 +33,48 @@ const FIELD_ALIASES: Record<string, SearchField> = {
   tags:    'tag',
 }
 
-// parseSearchQuery turns the raw input string into a list of clauses.
-// Empty input returns an empty array (no filter active).
+// Detect a `<field>:` prefix at `i` — the run of non-space/colon/quote chars up
+// to the first colon, if it maps to a known field. Returns the canonical field
+// (or null for a bare token) and the index where the value starts.
+function detectField(raw: string, i: number, len: number): { field: SearchField | null; valueStart: number } {
+  let scan = i
+  while (scan < len && raw[scan] !== ' ' && raw[scan] !== ':' && raw[scan] !== '"') scan++
+  if (scan < len && raw[scan] === ':' && scan > i) {
+    const mapped = FIELD_ALIASES[raw.slice(i, scan).toLowerCase()]
+    if (mapped) return { field: mapped, valueStart: scan + 1 }
+  }
+  return { field: null, valueStart: i }
+}
+
+// Consume the value starting at `valueStart`: a `"..."` quoted run (internal
+// whitespace preserved, up to the closing quote or end of input) or a bare run
+// up to the next space. Returns the value + the index to resume scanning from.
+function consumeValue(raw: string, valueStart: number, len: number): { value: string; nextIndex: number } {
+  if (raw[valueStart] === '"') {
+    const end = raw.indexOf('"', valueStart + 1)
+    if (end < 0) return { value: raw.slice(valueStart + 1), nextIndex: len }
+    return { value: raw.slice(valueStart + 1, end), nextIndex: end + 1 }
+  }
+  let end = valueStart
+  while (end < len && raw[end] !== ' ') end++
+  return { value: raw.slice(valueStart, end), nextIndex: end }
+}
+
+// parseSearchQuery turns the raw input string into a list of clauses. Empty
+// input returns an empty array (no filter active). Multiple tokens AND together.
 export function parseSearchQuery(raw: string): SearchClause[] {
   const out: SearchClause[] = []
   const len = raw.length
   let i = 0
   while (i < len) {
-    // Skip leading whitespace between tokens.
-    while (i < len && raw[i] === ' ') i++
+    while (i < len && raw[i] === ' ') i++ // skip whitespace between tokens
     if (i >= len) break
-
-    // Try to detect a `<field>:` prefix BEFORE the value starts. The
-    // field name is the run of alphanumerics up to the first colon.
-    // If there's no colon before the next space (or no recognised
-    // field name) the whole token is bare.
-    let field: SearchField | null = null
-    let valueStart = i
-    let scan = i
-    while (scan < len && raw[scan] !== ' ' && raw[scan] !== ':' && raw[scan] !== '"') scan++
-    if (scan < len && raw[scan] === ':' && scan > i) {
-      const candidate = raw.slice(i, scan).toLowerCase()
-      const mapped = FIELD_ALIASES[candidate]
-      if (mapped) {
-        field = mapped
-        valueStart = scan + 1
-      }
-    }
-
-    // Consume the value. Quoted strings preserve internal whitespace
-    // and consume up to the closing quote (or end of input).
-    let value = ''
-    if (raw[valueStart] === '"') {
-      const end = raw.indexOf('"', valueStart + 1)
-      if (end < 0) {
-        value = raw.slice(valueStart + 1)
-        i = len
-      } else {
-        value = raw.slice(valueStart + 1, end)
-        i = end + 1
-      }
-    } else {
-      let end = valueStart
-      while (end < len && raw[end] !== ' ') end++
-      value = raw.slice(valueStart, end)
-      i = end
-    }
-
-    // Empty values are useless — e.g. a trailing `note:` with no
-    // following text is the user mid-typing. Drop them so the filter
-    // stays inert until the user gives us something to match against.
-    if (!value) continue
-    out.push({ field, value: value.toLowerCase() })
+    const { field, valueStart } = detectField(raw, i, len)
+    const { value, nextIndex } = consumeValue(raw, valueStart, len)
+    i = nextIndex
+    // Empty values (e.g. a trailing `note:` while the user is mid-typing) stay
+    // inert — drop them so the filter waits for something to match against.
+    if (value) out.push({ field, value: value.toLowerCase() })
   }
   return out
 }
