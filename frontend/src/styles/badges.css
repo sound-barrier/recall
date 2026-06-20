@@ -1,0 +1,242 @@
+/* ─── Tag row (badges) ───────────────────────────────────── */
+
+/* .match-tag-row moved to MatchCard.vue */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  line-height: 1.4;
+  font-feature-settings: "tnum";
+}
+
+.badge.mode {
+  background: rgb(255 255 255 / 4%);
+  border-color: var(--border-strong);
+}
+
+.badge.type {
+  background: rgb(255 255 255 / 2.5%);
+  color: var(--text-faint);
+  letter-spacing: 0.12em;
+}
+
+.badge.role { font-weight: 700; }
+.badge.role.dps     { background: var(--dps-soft);     color: var(--dps);     border-color: rgb(255 122 90 / 40%); }
+.badge.role.tank    { background: var(--tank-soft);    color: var(--tank);    border-color: rgb(106 184 255 / 40%); }
+.badge.role.support { background: var(--support-soft); color: var(--support); border-color: rgb(125 255 172 / 40%); }
+
+.badge.hero {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border-color: rgb(245 166 35 / 40%);
+  font-weight: 600;
+}
+
+/* .hero-name-inline, .hero-pct-inline moved to MatchCard.vue */
+
+.badge.result { font-weight: 800; padding: 0.18rem 0.6rem; }
+.badge.result.victory { background: var(--win-soft);  color: var(--win);  border-color: var(--win-line); }
+.badge.result.defeat  { background: var(--loss-soft); color: var(--loss); border-color: var(--loss-line); }
+.badge.result.draw    { background: var(--draw-soft); color: var(--draw); border-color: var(--draw-line); }
+
+/* .incomplete-badge family lives in MatchCardHeader.vue. Light-mode
+   theme override has to be a global rule because Vue scoped CSS
+   miscompiles `:global([data-theme="day"]) .x`. */
+[data-theme="day"] .incomplete-badge {
+  background: rgb(245 166 35 / 12%);
+  color: var(--accent-text);
+}
+
+[data-theme="day"] .incomplete-badge strong { color: var(--accent-text); }
+
+/* Light-mode pinpoint overrides for MatchCard-owned selectors —
+   live here because Vue scoped CSS miscompiles the
+   `:global([data-theme="day"]) .x` form. The selectors all hit
+   markup rendered by MatchCardHeader.vue or MatchCardExpanded.vue. */
+[data-theme="day"] .match-map:hover,
+[data-theme="day"] .match-map.active {
+  color: var(--accent-text);
+  text-shadow: none;
+}
+[data-theme="day"] .hero-name { color: var(--accent-text); }
+
+[data-theme="day"] .hero-name:hover,
+[data-theme="day"] .hero-name.active {
+  color: var(--accent-text);
+  text-shadow: none;
+}
+[data-theme="day"] .length-mark { color: var(--accent-text); }
+[data-theme="day"] .match.selected { background: var(--surface-2); }
+[data-theme="day"] .sources { background: var(--surface-2); border-color: var(--border); }
+[data-theme="day"] .source-type-summary { color: var(--accent-text); }
+
+[data-theme="day"] .coverage-line.required .coverage-line-tag,
+[data-theme="day"] .coverage-line.required .coverage-line-text strong {
+  color: var(--accent-text);
+}
+
+/* Clickable interactions */
+.clickable {
+  cursor: pointer;
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 200ms ease, border-color 160ms ease;
+  user-select: none;
+}
+.badge.clickable:hover { filter: brightness(1.2); transform: translateY(-1px); }
+
+.badge.clickable.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
+/* .match-expanded, .meta-row, .meta-eyebrow, .meta-value moved to MatchCard.vue */
+
+.block-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  margin-bottom: 0.55rem;
+}
+
+/* Orphan .coverage-block / .coverage-header / .coverage-count /
+   .coverage-explain rules deleted — those classes are no longer in any
+   template (the diagnostic HUD strip was retired in favor of the
+   .sources-coverage chip strip on the sources toggle row). The still-
+   used .coverage-line family moved to MatchCard.vue. */
+
+/* Stats grid: big mono numbers, tiny tracked labels */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.7rem 0.85rem 0.65rem;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.stat:last-child { border-right: none; }
+
+.stat::before {
+  content: '';
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-soft), transparent);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.stat:hover::before { opacity: 1; }
+
+.stat-value {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+
+.stat-label {
+  margin-top: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+/* MatchCard expanded body: rank-*, sr-*, heroes-played-items, hero-block,
+   hero-header, hero-name, hero-pct, hero-time, personal-*, sources-block,
+   sources-toggle, sources-count, sources-coverage, sources, source-row —
+   moved to MatchCard.vue.
+   .source-* below are shared between MatchCard and UnknownMapsView (both
+   render the per-source-file row with a clickable filename + sshot-type
+   chip + parsed-at chip + preview image), so they stay here in the
+   global cascade rather than being scope-duplicated. */
+
+.source-file + .source-file { margin-top: 0.45rem; }
+
+.source-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-decoration: none;
+  padding: 0.25rem 0.4rem;
+  border-radius: 2px;
+  transition: color 160ms ease, background 160ms ease;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+.source-name:hover { background: var(--surface-2); color: var(--accent-bright); }
+.source-name-text { font-size: 0.72rem; }
+
+/* Per-source-file "first inserted" timestamp chip — sits next to the
+   sshot-type chip in the Sources panel. Italic + dimmed so it reads
+   as ambient metadata rather than an interactive control (it's
+   intentionally not clickable; users cannot filter by parse date). */
+.source-parsed-chip {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-style: italic;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  margin-left: 0.35rem;
+  opacity: 0.78;
+}
+
+.source-preview {
+  display: block;
+  margin: 0.5rem 0 0.25rem 1.1rem;
+  max-width: calc(100% - 1.1rem);
+  max-height: 460px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: #000;
+  box-shadow: 0 8px 30px -8px rgb(0 0 0 / 50%);
+  cursor: zoom-in;
+  transition: box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.source-preview:hover {
+  border-color: var(--accent-soft);
+  box-shadow: 0 8px 30px -6px rgb(0 0 0 / 60%);
+}
+
+.source-preview-error {
+  margin: 0.5rem 0 0.25rem 1.1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+
+/* .source-type-chip family + .sources-explain are MatchCard-only
+   (UnknownMapsView renders a slot-row instead of a per-file chip);
+   they stay in MatchCard.vue. */
+

@@ -1,0 +1,751 @@
+/* ─── Nav tab notification badge ─────────────────────────── */
+.nav-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  background: var(--draw);
+  color: #1a1100;
+  font-size: 0.58rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  border-radius: 8px;
+  line-height: 1;
+  vertical-align: middle;
+  margin-left: 0.2rem;
+  letter-spacing: 0;
+}
+
+/* Small accent dot beside the Matches tab label when filters are
+   active on another view — reminds the user that the list they'll
+   see when they return is filtered. */
+.nav-tab-filter-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+}
+
+[data-theme="day"] .nav-tab-filter-dot {
+  background: var(--accent-text);
+}
+
+/* ─── Per-row "?" help affordance ─────────────────────────────
+   Lived in SettingsView.vue's scoped block until the Settings
+   panels (Folders/Engine/Appearance/Calendar/BackupRestore/Advanced)
+   were extracted into their own SFCs. Vue scoped styles don't
+   cascade into child components — the data-v hash differs — so
+   every child SFC's `.setting-help` got positioned static, its
+   `.setting-help-label` SR-only span rendered as visible text,
+   and the `.setting-help-pop` tooltip body flowed inline (and
+   inherited `.setting-label`'s `text-transform: uppercase`,
+   producing the all-caps "?ABOUT SCREENSHOTS FOLDER RECALL
+   WATCHES THIS DIRECTORY..." run-on bug). Multi-consumer rule per
+   the layering rule in frontend/CLAUDE.md → lives here.
+
+   Small "?" mark to the right of each setting label. Hovering or
+   focusing it pops a tooltip with deeper context. Pure CSS — no
+   JS popover. The hidden span carrying the accessible label keeps
+   the icon screen-reader-meaningful even when the tooltip is
+   hidden. */
+.setting-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  margin-left: 0.45rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  vertical-align: middle;
+}
+
+.setting-help:hover,
+.setting-help:focus-visible {
+  outline: none;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.setting-help-mark { line-height: 1; }
+
+.setting-help-label {
+  /* Visible-to-screen-readers-only. */
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.setting-help-pop {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+
+  /* Anchor the tooltip's LEFT edge to the icon's left edge so it
+     opens rightward, not centred. Centring with translateX(-50%)
+     used to clip the tooltip off the left edge of the viewport
+     whenever the `?` icon sat near the page's left margin — which is
+     every Settings row, because labels are in the left column. The
+     icons in this app are always in the left half of the row, so a
+     rightward-opening tooltip is robust against narrow windows too.
+     max-width caps the width against the viewport so even a tiny
+     window can still see the whole tooltip (text wraps to extra
+     lines instead of overflowing). */
+  left: 0;
+  transform: translateY(-4px);
+  width: max-content;
+  max-width: min(280px, calc(100vw - 2rem));
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-3);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  font-family: var(--body);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 5;
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%);
+}
+
+.setting-help-pop::before {
+  /* Pointer triangle lined up under the `?` icon — sits at the
+     tooltip's left edge now that the body itself is left-anchored. */
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 0.4rem;
+  width: 0; height: 0;
+  border: 5px solid transparent;
+  border-bottom-color: var(--accent);
+}
+
+.setting-help-pop code {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  background: var(--surface);
+  padding: 0.05rem 0.3rem;
+  border-radius: 2px;
+  color: var(--accent-text);
+}
+
+.setting-help:hover .setting-help-pop,
+.setting-help:focus-visible .setting-help-pop {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* ─── Probe chip + "Looked in" disclosure ─────────────────
+   Two-state pill with a fat coloured bar on the left, a mark
+   glyph, the body text, and a × dismiss. Reused both inside
+   SettingsView's empty-state hero (parent SFC) and inside the
+   steady-state Screenshots Folder row in SettingsFolders.vue
+   (child SFC), so the rules live globally rather than scoped to
+   either. */
+.probe-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 0.65rem;
+  padding-right: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  color: var(--text-dim);
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.probe-chip.success {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--accent-text);
+}
+
+.probe-chip.blocked {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.probe-chip-bar {
+  flex: 0 0 4px;
+  background: var(--border-strong);
+}
+
+.probe-chip.success .probe-chip-bar { background: var(--accent); }
+.probe-chip.blocked .probe-chip-bar { background: var(--text-faint); }
+
+.probe-chip-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.55rem 0 0.6rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.probe-chip.success .probe-chip-mark { color: var(--accent); }
+.probe-chip.blocked .probe-chip-mark { color: var(--text); }
+
+.probe-chip-text {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.6rem 0.42rem 0;
+  word-break: break-all;
+  flex: 1;
+}
+
+.probe-chip-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: currentcolor;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0 0.45rem;
+  cursor: pointer;
+  align-self: center;
+  border-radius: 1px;
+  transition: background 140ms ease;
+}
+
+.probe-chip-close:hover  { background: color-mix(in srgb, currentcolor 12%, transparent); }
+
+.probe-chip-close:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, currentcolor 18%, transparent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.probe-tried {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.probe-tried > summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.probe-tried-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.probe-tried-list li + li {
+  margin-top: 0.2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setting-help,
+  .setting-help-pop,
+  .probe-chip-close {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Match tags ──────────────────────────────────────────
+   User-applied labels on a match annotation (`stack`, `stream`,
+   `placement`, plus free-form custom). Renders in three places:
+
+     1. Inline editor on the expanded match card — toggle buttons +
+        a free-form input feed the same backing list.
+     2. Compact chip row on the collapsed card header so tags are
+        visible without expanding.
+     3. FilterRail multi-select (Tags) — the rendered chip is the
+        same class the card uses, so the picker reads visually as
+        "pick from the same chip family that's on the card".
+
+   Leading colored square (`.match-tag-mark`) is the brand gesture.
+   Named tags map to existing role tokens (--tank / --dps /
+   --accent) so the palette doesn't fork; custom tags keep a
+   neutral mute. */
+
+.match-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.18rem 0.5rem 0.18rem 0.42rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+  white-space: nowrap;
+}
+
+.match-tag-mark {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  background: var(--text-faint);
+
+  /* Diamond rotation reads as a "tactical marker" rather than a
+     generic dot — same gesture the settings-section accent ticks
+     use. */
+  transform: rotate(45deg);
+  transition: background 160ms ease;
+}
+
+.match-tag[data-tag="stack"]     .match-tag-mark { background: var(--tank); }
+.match-tag[data-tag="stream"]    .match-tag-mark { background: var(--dps); }
+.match-tag[data-tag="placement"] .match-tag-mark { background: var(--accent); }
+
+.match-tag.removable {
+  padding-right: 0.32rem;
+}
+
+.match-tag-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 0.05rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 1px;
+  transition: color 140ms ease, background 140ms ease;
+}
+.match-tag-x:hover         { color: var(--loss); background: var(--loss-soft); }
+.match-tag-x:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
+
+.match-tag-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.18rem 0.55rem 0.18rem 0.42rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.match-tag-toggle:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.match-tag-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.match-tag-toggle.active {
+  background: var(--surface-2);
+  border-style: solid;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+.match-tag-toggle .match-tag-mark { opacity: 0.55; }
+.match-tag-toggle.active .match-tag-mark { opacity: 1; }
+.match-tag-toggle[data-tag="stack"]     .match-tag-mark { background: var(--tank); }
+.match-tag-toggle[data-tag="stream"]    .match-tag-mark { background: var(--dps); }
+.match-tag-toggle[data-tag="placement"] .match-tag-mark { background: var(--accent); }
+
+.match-tag-input {
+  flex: 1 1 12ch;
+  min-width: 10ch;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  letter-spacing: 0.06em;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.match-tag-input::placeholder {
+  color: var(--text-faint);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+
+.match-tag-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+/* Inline tag autocomplete — suggestions popover anchored beneath
+   the tag input. The wrap is the positioning context so the
+   absolutely-positioned listbox sits flush under the input. */
+.match-tag-input-wrap {
+  position: relative;
+  flex: 1 1 12ch;
+  min-width: 10ch;
+}
+
+.match-tag-input-wrap .match-tag-input {
+  width: 100%;
+  flex: none;
+  min-width: 0;
+}
+
+.match-tag-suggestions {
+  position: absolute;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  list-style: none;
+  margin: 0;
+  padding: 0.2rem 0;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  max-height: 12rem;
+  overflow-y: auto;
+  box-shadow: 0 10px 22px -14px rgb(0 0 0 / 50%);
+}
+
+.match-tag-suggestions li {
+  padding: 0.3rem 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.match-tag-suggestions li:hover,
+.match-tag-suggestions li.cursor {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.match-tags-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.match-tags-editor-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-right: 0.2rem;
+}
+
+.match-tags-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+
+[data-theme="day"] .match-tag {
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+
+[data-theme="day"] .match-tag-toggle.active {
+  background: var(--surface-3);
+}
+
+/* ─── Unknown view responsive ────────────────────────────── */
+@media (width <= 880px) {
+  .unknown-fields { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (width <= 680px) {
+  /* Unknown-card header is horizontally tight — hide all but the first
+     two slot chips there. The coverage-block in expanded match cards
+     gets its own stacked layout, so it isn't scoped here. */
+  .unknown-card-head .slot-chip { display: none; }
+  .unknown-card-head .slot-chip:nth-child(-n+2) { display: inline-flex; }
+}
+
+@media (width <= 580px) {
+  .unknown-fields {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 1rem;
+  }
+  .unknown-card-head { padding: 0.7rem 1rem; }
+  .unknown-expanded { padding: 0.85rem 1rem; }
+}
+
+/* ─── Dashboard widget inner content ──────────────────────────────
+   These rules style the inner DOM of widget SFCs under components/
+   widgets/. They were originally scoped to MatchesView but moved here
+   when the dossier was refactored into a registry-driven set of
+   per-widget SFCs — Vue's scoped CSS would no longer match elements
+   emitted by other components' templates. Class names are
+   widget-specific (`.kpi-eyebrow` not `.eyebrow`) so promoting to
+   global is leak-safe. */
+.kpi-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.kpi-value {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+.kpi-value.kpi-text { font-size: 1.15rem; text-transform: uppercase; }
+
+/* Supporting metadata under a headline kpi-value. Used by two
+   tiles: the Total time played tile discloses partial coverage
+   ("2 of 4 matches" when game_length is missing on some records),
+   and the Most played hero tile surfaces the 20%-threshold win
+   rate ("67% in 3 matches"). Faint mono so the sub-label reads
+   as secondary, never competing with the headline. */
+.kpi-sub {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-feature-settings: "tnum";
+}
+
+/* K/D/A label is six glyphs + two delimiters at minimum
+   ("99.99 / 99.99 / 99.99" is the realistic ceiling); the headline
+   display-italic at 1.45rem is too wide for the kpi-tile minmax.
+   Drop a notch so the row reads compactly without truncation. */
+.kpi-value.kda-value {
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.breakdown-head { margin-bottom: 0.3rem; }
+
+.breakdown-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.breakdown ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.breakdown li {
+  display: grid;
+  grid-template-columns: minmax(80px, 110px) 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+
+  /* Fixed row height so reserved placeholder rows match real ones exactly,
+     keeping each top-N widget (and thus the dossier) a constant height
+     regardless of how many rows the active filter leaves. */
+  min-height: 1.1rem;
+}
+
+/* Invisible filler rows padding a top-N list up to its configured limit. */
+.breakdown li.bd-placeholder {
+  visibility: hidden;
+}
+
+.bd-name {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.bd-bar {
+  background: var(--surface-2);
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+.bd-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--win)));
+}
+
+/* In-bar volume label for the Most-played-heroes + Most-played-maps
+   breakdowns. The heroes row carries summed play-time ("7h32min" /
+   "32min"); the maps row carries the play-count ("3x" / "1x"). Both
+   sit centred over the bar so the label reads against either the
+   filled or empty portion depending on share; tabular-nums keeps it
+   from jittering as values change. The bar gets extra height (and
+   slightly tighter monospaced letter-spacing) so a four- or five-
+   glyph label fits without crowding the gradient. The right-side
+   .bd-stats column carries the share-percent for both breakdowns. */
+.breakdown li:has(.bd-time) .bd-bar {
+  height: 18px;
+}
+
+.bd-time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+  font-feature-settings: "tnum";
+  letter-spacing: 0.01em;
+
+  /* Multi-offset outline so the label stays legible against either
+     the rust-gradient fill or the surface-2 empty portion. text-
+     shadow's stacked offsets paint a 1px halo in the surface colour
+     without forcing a paint-cost backdrop-filter. */
+  text-shadow:
+    0 0 2px var(--surface-2),
+    1px 0 0 var(--surface-2),
+    -1px 0 0 var(--surface-2),
+    0 1px 0 var(--surface-2),
+    0 -1px 0 var(--surface-2);
+  pointer-events: none;
+}
+
+.bd-stats {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+}
+.bd-total { color: var(--text-faint); font-size: 0.6rem; }
+
+/* Contextual multi-select checkbox — shared by the live leaf row
+   (MatchesView) and the archive row (MatchesArchiveDrawer), so it
+   lives here rather than in either component's scoped block. */
+
+/* ─── Contextual multi-select ──────────────────────────────────
+   No mode toggle. A faint checkbox always sits at the start of each
+   row; it brightens on row hover, when the row is ticked, or when
+   ANY row in the section is ticked. The Gmail / Linear pattern. */
+
+.leaf-checkbox,
+.archive-checkbox {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  appearance: none;
+  opacity: 0.32;
+  transition:
+    background-color 80ms ease,
+    border-color 80ms ease,
+    opacity 120ms ease;
+}
+
+.leaf-row:hover .leaf-checkbox,
+.leaf-row.has-selection .leaf-checkbox,
+.leaf-row.is-ticked .leaf-checkbox,
+.leaf-checkbox:focus-visible,
+.archive-row:hover .archive-checkbox,
+.archive-row.has-selection .archive-checkbox,
+.archive-row.is-ticked .archive-checkbox,
+.archive-checkbox:focus-visible {
+  opacity: 1;
+}
+
+.leaf-row.is-ticked .leaf-checkbox,
+.archive-row.is-ticked .archive-checkbox {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.leaf-checkbox-glyph,
+.archive-checkbox-glyph {
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: var(--primary-text-on-accent, #111);
+  line-height: 1;
+}
+
+/* Search-match highlight — HighlightedText.vue wraps matched substrings
+   in <mark class="search-hl"> inside the leaf rows. A faint accent wash
+   + a hairline accent underline; the surface keeps its own text colour
+   (override the <mark> UA black) so map / hero / tag legibility holds. */
+.search-hl {
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 0.06em;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--accent) 62%, transparent);
+}

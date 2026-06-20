@@ -1,0 +1,123 @@
+:root {
+  /* NIGHT (the default cascade target) — the editorial
+     photographer's-darkroom palette. Variables here are overridden
+     by [data-theme="day"] / [data-theme="dark"] /
+     [data-theme="high-contrast"] below. data-theme="night" is set
+     by useTheme.applyTheme but doesn't have a scoped override —
+     this :root block IS the Night palette, so the cascade lands
+     here intentionally. */
+  --bg: #0a0b0d;
+  --surface: #13151a;
+  --surface-2: #181b22;
+  --surface-3: #1d2029;
+  --border: #2c2f38;
+  --border-soft: #1a1d24;
+  --border-strong: #3a3e49;
+  --hairline: rgb(255 255 255 / 7%);
+  --text: #ecedf0;
+  --text-dim: #9ca0ac;
+  --text-faint: #878a96;
+
+  /* --text-mute was #44474f → 1.85:1 on --surface-2 (fails WCAG AA
+     "color-contrast" — axe flagged .match-index, .mf-placeholder-meta).
+     Bumped to a value that meets 4.5:1 on every dark surface
+     (bg=5.33:1, surface=4.96:1, surface-2=4.72:1, surface-3=4.55:1)
+     while staying slightly dimmer than --text-faint so the
+     hierarchy is preserved. */
+  --text-mute: #838690;
+
+  /* Overwatch signature grays. Used as a structural brand element —
+     the masthead branding tile, strong borders, divider blocks. */
+  --brand-gray: #4A4A4A;
+  --brand-gray-soft: rgb(74 74 74 / 55%);
+
+  /* Overwatch signature orange. Single hero accent across the UI. */
+  --accent: #F5A623;
+  --accent-bright: #ffbf4d;
+  --accent-soft: rgb(245 166 35 / 16%);
+  --accent-glow: rgb(245 166 35 / 38%);
+
+  /* OW-identity warmth — a deeper burnt-amber that tints the in-game
+     IDENTITY typography (hero/map display names) distinctly from the
+     brighter --accent used for interactive affordances (buttons, focus,
+     links). Tuned per theme to clear WCAG-AA (4.5:1) on every surface so
+     even the smaller hero/map labels stay legible. */
+  --identity-accent: #c9762e;
+  --win: #4dff8e;
+  --win-soft: rgb(77 255 142 / 12%);
+  --win-line: rgb(77 255 142 / 55%);
+  --loss: #ff5a73;
+  --loss-soft: rgb(255 90 115 / 12%);
+  --loss-line: rgb(255 90 115 / 55%);
+  --draw: #ffc94d;
+  --draw-soft: rgb(255 201 77 / 12%);
+  --draw-line: rgb(255 201 77 / 55%);
+  --unknown-line: rgb(120 124 134 / 40%);
+  --tank: #6ab8ff;
+  --tank-soft: rgb(106 184 255 / 14%);
+  --dps: #ff7a5a;
+  --dps-soft: rgb(255 122 90 / 14%);
+  --support: #7dffac;
+  --support-soft: rgb(125 255 172 / 14%);
+
+  /* Theme atmosphere tunables — overridden in light mode. */
+  --atmos-orange: rgb(245 166 35 / 10%);
+  --atmos-blue:   rgb(106 184 255 / 6%);
+  --atmos-coral:  rgb(255 90 115 / 5%);
+  --grid-line:    rgb(255 255 255 / 1.8%);
+  --primary-text-on-accent: #1a0a00;
+  --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
+
+  /* In-game display font for hero/map names and the big card scores. Big
+     Noodle Too Oblique is intrinsically oblique — consumers pair this with
+     `font-style: italic` so the Barlow Condensed fallback also renders in
+     its italic cut. */
+  --display: 'Big Noodle Too Oblique', 'Barlow Condensed', 'Impact', 'Oswald', sans-serif;
+  --body: 'Geist', -apple-system, blinkmacsystemfont, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', menlo, monospace;
+
+  /* Wordmark face — wide geometric sans inspired by the OW logo (Bank Sans
+     Caps Bold EF / Agency FB Extended Black / Zekton). Used only for the
+     RECALL masthead title. Russo One is the free visual fallback. */
+  --brand: 'OW Wordmark', 'Russo One', 'Industry Black', 'Impact', sans-serif;
+
+  /* ─── System tokens — spacing / type / motion ──────────────────
+     Theme-independent scale tokens that sit alongside the palette
+     tokens above. New components reach for these instead of
+     inlining raw rem / ms values; existing ad-hoc usage is
+     intentionally NOT swept in this PR — the token values match
+     the historical defaults so introducing them is a no-op at
+     paint time.
+
+     - Spacing scale: 4px → 48px in seven stops, roughly 1.5× per
+       step from --space-3 up.
+     - Type scale: 0.75rem → 1.5rem in five body stops on a
+       ~1.2 (minor-third) ratio; three display stops tuned to the
+       OW Wordmark + Big Noodle pair, NOT on the body ratio.
+       --type-md is the body baseline; consumers inherit.
+     - Motion: four canonical durations + two easings. Most
+       transitions should reach for --duration-med + --easing-out;
+       reserve --duration-hero for the rare page-level reveal. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --type-xs: 0.75rem;
+  --type-sm: 0.875rem;
+  --type-md: 1rem;
+  --type-lg: 1.25rem;
+  --type-xl: 1.5rem;
+  --type-display-sm: 1.85rem;
+  --type-display-md: 2.5rem;
+  --type-display-lg: 3.5rem;
+  --duration-fast: 140ms;
+  --duration-med:  200ms;
+  --duration-slow: 280ms;
+  --duration-hero: 360ms;
+  --easing-out:  cubic-bezier(0.16, 1, 0.3, 1);
+  --easing-emph: cubic-bezier(0.4, 0, 0.2, 1);
+}
+

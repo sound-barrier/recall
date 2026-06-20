@@ -1,0 +1,260 @@
+/* DAY — light family member, grounded on Overwatch white #EFEDE6
+   (the warm cream that fills the post-match summary screen behind
+   the heroes panel). The brand-gray #4A4A4A becomes the structural
+   border / dim-text token so dividers, plates, and borders carry
+   the same heft the in-game scoreboard does. Orange accent stays
+   #FA9C1B — Blizzard's OW logo orange, AAA-safe on every cream
+   surface for both fill and text.
+
+   Was the "OW Light" theme; renamed to "day" so the picker reads
+   Day / Dark / Night / High contrast. The pre-rename editorial
+   "light" palette (cream paper with rust accent) was removed in
+   the same rename — useTheme migrates old "light" picks to "day"
+   so the user's "I want a light theme" intent survives. */
+[data-theme="day"] {
+  --bg: #efede6;
+  --surface: #f5f3ed;
+  --surface-2: #e8e5dd;
+  --surface-3: #dcd8cd;
+  --border: #4a4a4a;
+  --border-soft: #b9b3a5;
+  --border-strong: #2a2a2a;
+  --hairline: rgb(74 74 74 / 20%);
+  --text: #1a1a1a;
+  --text-dim: #4a4a4a;
+  --text-faint: #5c5a52;
+  --text-mute: #6a675c;
+  --brand-gray: #4a4a4a;
+  --brand-gray-soft: rgb(74 74 74 / 78%);
+
+  /* OW signature orange straight from the logo. Stays the same hue
+     across both OW variants — it's the cross-family identity. */
+  --accent: #fa9c1b;
+  --accent-bright: #fa3;
+
+  /* Deeper rust — clears WCAG AA (~6.0:1) on the cream --surface so
+     small uppercase callouts (.leaves-eyebrow, .hero-name etc.)
+     stay legible. The prior #b8650a sat at ~3.85:1 — over AA Large
+     but under AA Normal for 14px body text. */
+  --accent-text: #9e4d00;
+  --accent-soft: rgb(250 156 27 / 22%);
+  --accent-glow: rgb(250 156 27 / 45%);
+  --identity-accent: #9c4012; /* redder sienna — clears AA on the cream surfaces */
+  --win: #0f7a3a;
+  --win-soft: rgb(15 122 58 / 14%);
+  --win-line: rgb(15 122 58 / 60%);
+  --loss: #c0354a;
+  --loss-soft: rgb(192 53 74 / 12%);
+  --loss-line: rgb(192 53 74 / 55%);
+  --draw: #8b5c14;
+  --draw-soft: rgb(139 92 20 / 14%);
+  --draw-line: rgb(139 92 20 / 55%);
+  --unknown-line: rgb(74 74 74 / 40%);
+  --tank: #1f5491;
+  --tank-soft: rgb(31 84 145 / 14%);
+  --dps: #c4451f;
+  --dps-soft: rgb(196 69 31 / 13%);
+  --support: #1e6f3a;
+  --support-soft: rgb(30 111 58 / 13%);
+  --atmos-orange: rgb(250 156 27 / 12%);
+  --atmos-blue:   rgb(31 84 145 / 5%);
+  --atmos-coral:  rgb(192 53 74 / 4%);
+  --grid-line:    rgb(74 74 74 / 5%);
+
+  /* Dark brown text on the orange accent fill — matches the other
+     themes' "dark text on bright accent" pattern. The historical
+     value here (#fff8ef cream) fell to ~1.92:1 on the orange,
+     well below AA. #1a0a00 on #fa9c1b clears AA + AAA at ~6.3:1. */
+  --primary-text-on-accent: #1a0a00;
+}
+
+/* DARK — sits between Day's cream and Night's near-black. Grounds
+   on the OW brand gray #4A4A4A — the same gray Blizzard uses for
+   the in-game scoreboard plate and the post-match heroes-played
+   panel. Surfaces step UP in luminance from the bg rather than
+   down (the gray is mid-tone, not near-black), so cards "rise"
+   off the page the way the OW UI's plate stack does. Borders are
+   tinted with the OW orange so the chrome reads as "game UI"
+   rather than "muted dashboard." Distinct from the deeper "night"
+   palette in :root (deep blue-charcoal photographer's-darkroom):
+   Night leans cinematic; Dark leans game-UI structural.
+
+   Was the "OW Dark" theme; renamed to "dark" so the picker reads
+   Day / Dark / Night / High contrast. The original editorial
+   "dark" palette moved to "night"; useTheme intentionally does
+   NOT migrate stored "dark" picks (the string is reused). */
+[data-theme="dark"] {
+  /* The OW brand gray #4A4A4A is the structural plate level — the
+     same gray Blizzard uses for the in-game scoreboard panel and
+     the post-match heroes-played plate. Setting it as the page bg
+     directly would cap the accent contrast at ~3.8:1 (the OW
+     orange #fa9c1b just doesn't have the luminance headroom over
+     a mid-tone gray). Instead bg lands at #2a2a2a — a darker shade
+     of OW gray that the OW menu screens use as their canvas — and
+     the brand gray rises into the upper surface tiers via
+     --brand-gray (used by the brandmark plate) so the structural
+     identity reads. Surfaces step up modestly so dim text still
+     clears AA on every tier.
+     Verified pairings (per WCAG 2 contrast):
+       text       #fff on surface-3 #3a3a3a → 12.6:1 (AAA)
+       text-dim   #e0ddd6 on surface-3      → 9.6:1  (AAA)
+       text-faint #c5c2bb on surface-3      → 7.1:1  (AAA-small)
+       text-mute  #b0ada6 on surface-3      → 5.6:1  (AA-small)
+       accent     #fa9c1b on bg #2a2a2a     → 6.5:1  (AAA-small)
+       accent     #fa9c1b on surface-3      → 4.9:1  (AA-small) */
+  --bg: #2a2a2a;
+  --surface: #303030;
+  --surface-2: #353535;
+  --surface-3: #3a3a3a;
+  --border: #fa9c1b;
+  --border-soft: #4a4a4a;
+  --border-strong: #fa3;
+  --hairline: rgb(255 255 255 / 14%);
+  --text: #fff;
+  --text-dim: #e0ddd6;
+  --text-faint: #c5c2bb;
+  --text-mute: #b0ada6;
+
+  /* The brandmark plate rises to the OW brand gray #4A4A4A — the
+     in-game scoreboard plate value. Sits above the #2a2a2a page
+     ground as a structural anchor, surfacing the brand identity
+     even though the bg dropped a step to give the accent contrast
+     headroom. */
+  --brand-gray: #4a4a4a;
+  --brand-gray-soft: rgb(74 74 74 / 80%);
+  --accent: #fa9c1b;
+  --accent-bright: #fa3;
+  --accent-text: #fa9c1b;
+  --accent-soft: rgb(250 156 27 / 22%);
+  --accent-glow: rgb(250 156 27 / 50%);
+  --identity-accent: #e59a45; /* softer tan-amber — clears AA on the #2a2a2a plate */
+  --win: #4dff8e;
+  --win-soft: rgb(77 255 142 / 14%);
+  --win-line: rgb(77 255 142 / 60%);
+
+  /* --loss bumps lighter (#ff99aa) and --loss-soft drops to 8%
+     opacity because the OW Dark bg (#2a2a2a) lifts the composite
+     ground higher than the editorial darkroom does. Loss chips in
+     "danger" cards get tinted TWICE (the card's loss-soft bg +
+     internal chip's loss-soft bg) — at 14% that double-layered
+     composite reaches #613a40 which the saturated #ff6680 can't
+     clear at AA. Lighter pink + lower tint keeps the loss read
+     semantically while every text-on-tinted-bg pair clears AA. */
+  --loss: #f9a;
+  --loss-soft: rgb(255 102 128 / 8%);
+  --loss-line: rgb(255 102 128 / 60%);
+  --draw: #ffd34d;
+  --draw-soft: rgb(255 211 77 / 14%);
+  --draw-line: rgb(255 211 77 / 60%);
+  --unknown-line: rgb(255 255 255 / 35%);
+  --tank: #6ab8ff;
+  --tank-soft: rgb(106 184 255 / 16%);
+  --dps: #ff8a66;
+  --dps-soft: rgb(255 138 102 / 16%);
+  --support: #7dffac;
+  --support-soft: rgb(125 255 172 / 16%);
+  --atmos-orange: rgb(250 156 27 / 10%);
+  --atmos-blue:   rgb(106 184 255 / 7%);
+  --atmos-coral:  rgb(255 102 128 / 5%);
+  --grid-line:    rgb(255 255 255 / 4%);
+  --primary-text-on-accent: #2a1a00;
+}
+
+/* HIGH-CONTRAST — opt-in tournament-booth / low-vision mode. Strips
+   every soft surface gradient and intermediate text tone in favour
+   of a pure-black ground, pure-white text, and a boosted gold accent
+   (#ffbf4d, the same hue as --accent-bright in dark mode but used as
+   the primary). Win / loss / draw colours go fully saturated so they
+   read from across a room — useful when streaming a session or
+   sharing the screen with a coach. Every surface still passes WCAG
+   AAA; the previous AA verification continues to hold (verified by
+   axe-core in the a11y e2e). */
+[data-theme="high-contrast"] {
+  --bg: #000;
+  --surface: #000;
+  --surface-2: #0a0a0a;
+  --surface-3: #141414;
+  --border: #fff;
+  --border-soft: #888;
+  --border-strong: #fff;
+  --hairline: rgb(255 255 255 / 30%);
+  --text: #fff;
+
+  /* No dim hierarchy in this mode — secondary text is the same
+     white as primary, but at slightly tighter letter-spacing in the
+     places that visually segment via spacing rather than colour.
+     This is the high-contrast bargain: every typographic level
+     reads at the SAME luminance step, with hierarchy carried by
+     weight / case / spacing. */
+  --text-dim: #fff;
+  --text-faint: #e6e6e6;
+  --text-mute: #d0d0d0;
+  --brand-gray: #fff;
+  --brand-gray-soft: rgb(255 255 255 / 80%);
+
+  /* Accent boosted from the dark-mode burnt orange (#F5A623) to the
+     warmer gold #ffbf4d — same hue as dark-mode --accent-bright but
+     used as the primary here so every accent-touched surface gains
+     a couple of contrast steps over standard dark. */
+  --accent: #ffbf4d;
+  --accent-bright: #ffd066;
+  --accent-text: #ffbf4d;
+  --accent-soft: rgb(255 191 77 / 30%);
+  --accent-glow: rgb(255 191 77 / 60%);
+  --identity-accent: #ffbf4d; /* HC keeps the boosted gold for AAA legibility */
+  --win: #0f6;
+  --win-soft: rgb(0 255 102 / 25%);
+  --win-line: rgb(0 255 102 / 80%);
+  --loss: #f35;
+  --loss-soft: rgb(255 51 85 / 25%);
+  --loss-line: rgb(255 51 85 / 80%);
+  --draw: #ffd700;
+  --draw-soft: rgb(255 215 0 / 25%);
+  --draw-line: rgb(255 215 0 / 80%);
+  --unknown-line: rgb(255 255 255 / 60%);
+  --tank: #6df;
+  --tank-soft: rgb(102 221 255 / 25%);
+  --dps: #f86;
+  --dps-soft: rgb(255 136 102 / 25%);
+  --support: #8fa;
+  --support-soft: rgb(136 255 170 / 25%);
+  --atmos-orange: rgb(255 191 77 / 10%);
+  --atmos-blue:   rgb(102 221 255 / 6%);
+  --atmos-coral:  rgb(255 51 85 / 5%);
+  --grid-line:    rgb(255 255 255 / 4%);
+  --primary-text-on-accent: #000;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Honor the OS-level reduced-motion preference. We have a lot of
+   motion (view fade-ins, panel scaleY, chip overshoot, nav underline,
+   theme transitions) — vestibular-sensitive users get all of it
+   collapsed to a sub-frame so the visual state still settles, but
+   without the animation. Scroll-behaviour: auto avoids the smooth-
+   scroll variant when a panel programmatically focuses on tab switch. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-feature-settings: "ss01", "cv11";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+

@@ -1,0 +1,326 @@
+/* ─── Masthead ───────────────────────────────────────────── */
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2rem;
+  padding-bottom: 1.4rem;
+  margin-bottom: 1.6rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* The brandmark sits inside a solid Overwatch-gray tile — a small
+   "spec plate" that anchors the wordmark and surfaces the brand gray
+   #4A4A4A as a deliberate structural element in BOTH themes. The OW
+   orange wordmark pops on it; the tile becomes the page's brand stamp
+   even when the rest of the page goes light. */
+.brandmark-tile {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 1.15rem 0.55rem 1rem;
+  background: var(--brand-gray);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 25%) inset,
+    0 14px 36px -14px rgb(0 0 0 / 55%);
+  isolation: isolate;
+}
+
+/* When the tile carries `.brandmark-link` it doubles as the GitHub
+   repo anchor. Anchor reset + hover lift + accent-rail brightening
+   communicate "this opens something" without disturbing the static
+   visual identity of the tile when at rest. The `↗` glyph stays
+   collapsed by default and slides in on hover/focus — restrained
+   affordance that doesn't compete with the wordmark itself. */
+
+.brandmark-link {
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 180ms ease,
+    box-shadow 200ms ease,
+    filter 200ms ease;
+}
+
+.brandmark-link:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 30%) inset,
+    0 18px 40px -14px rgb(0 0 0 / 65%);
+  filter: brightness(1.06);
+}
+
+.brandmark-link:active {
+  transform: translateY(0);
+  filter: brightness(0.96);
+}
+
+.brandmark-link:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 25%) inset,
+    0 0 0 2px var(--accent-bright),
+    0 14px 36px -14px rgb(0 0 0 / 55%);
+}
+
+/* Hover the tile → the accent rail brightens; no chroma halo. */
+
+.brandmark-link:hover::before { background: var(--accent-bright); }
+
+.brand-extlink {
+  position: absolute;
+  right: 10px;
+  bottom: 4px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--accent-bright);
+  letter-spacing: 0;
+  opacity: 0;
+  transform: translate(-2px, 2px);
+  transition: opacity var(--duration-med) ease, transform var(--duration-med) ease;
+  pointer-events: none;
+}
+
+.brandmark-link:hover .brand-extlink,
+.brandmark-link:focus-visible .brand-extlink {
+  opacity: 0.85;
+  transform: translate(0, 0);
+}
+
+[data-theme="day"] .brand-extlink {
+  color: var(--accent-text);
+}
+
+.brandmark-tile::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent-bright);
+}
+
+/* The left-rail accent glow reads as a hard halo on the cream background.
+   Drop the box-shadow in light mode and use the deeper accent-text color
+   for the rail itself so it still pops against the gray tile. */
+[data-theme="day"] .brandmark-tile::before {
+  background: var(--accent-text);
+  box-shadow: none;
+}
+
+/* Subtle hatch / striped corner — feels like military stencil tape. */
+.brand-corner {
+  position: absolute;
+  right: 6px; top: 6px;
+  width: 14px; height: 14px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 18%) 0 2px,
+      transparent 2px 4px
+    );
+  border-radius: 1px;
+  opacity: 0.55;
+}
+
+/* White hatch is invisible against light-mode backgrounds — swap to a
+   dark stencil so the registration mark still reads. */
+[data-theme="day"] .brand-corner {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgb(0 0 0 / 25%) 0 2px,
+      transparent 2px 4px
+    );
+  opacity: 0.7;
+}
+
+.brand-tick {
+  color: var(--accent-bright);
+  font-size: 1.05rem;
+  line-height: 1;
+  transform: translateY(-1px);
+  font-feature-settings: "tnum";
+}
+
+[data-theme="day"] .brand-tick {
+  color: var(--accent-text);
+}
+
+.brand {
+  font-family: var(--brand);
+  font-style: normal;
+  font-weight: 800;
+  font-size: 2.55rem;
+  letter-spacing: 0.04em;
+  line-height: 0.9;
+  color: #f5f3ee;
+  text-transform: uppercase;
+}
+
+.brand-accent {
+  color: var(--accent-bright);
+}
+
+/* HIGH-CONTRAST BRANDMARK
+   --------------------------------------------------------------
+   In standard themes the wordmark sits on the brand-gray plate
+   (#4A4A4A) — the cream `#f5f3ee` letters read at WCAG AAA on
+   that ground. But high-contrast overrides --brand-gray to pure
+   white (so every surface gets a white plate), which collapses
+   the cream-on-white "RE" to ~1.04:1 and makes the lead glyphs
+   invisible (only the gold "CALL" survives at ~3:1, well under
+   AA). The fix inverts the plate to pure black with a white
+   border so the wordmark reads at AAA against a HC surface,
+   and lifts the accent rail / corner stencil / external-link
+   hint to colours that pop against the inverted plate. Every
+   value stays inside the HC mode's strict palette
+   (#000 / #fff / #ffbf4d gold) — no new tokens needed.
+   -------------------------------------------------------------- */
+[data-theme="high-contrast"] .brandmark-tile {
+  background: #000;
+  box-shadow:
+    0 0 0 2px #fff inset,
+    0 0 0 1px rgb(255 255 255 / 30%);
+}
+
+[data-theme="high-contrast"] .brandmark-tile::before {
+  background: var(--accent);
+  width: 4px;
+  box-shadow: none;
+}
+
+[data-theme="high-contrast"] .brandmark-link:hover {
+  /* Brightness lift on a pure-black plate would noop — switch to
+     a luminance shift via a soft white wash inside. */
+  box-shadow:
+    0 0 0 2px #fff inset,
+    0 0 0 1px rgb(255 255 255 / 55%),
+    0 18px 40px -14px rgb(0 0 0 / 65%);
+  filter: none;
+}
+
+[data-theme="high-contrast"] .brandmark-link:focus-visible {
+  box-shadow:
+    0 0 0 2px #fff inset,
+    0 0 0 3px var(--accent),
+    0 14px 36px -14px rgb(0 0 0 / 55%);
+}
+
+[data-theme="high-contrast"] .brand {
+  /* Pure white at AAA on the inverted plate. */
+  color: #fff;
+}
+
+[data-theme="high-contrast"] .brand-accent {
+  /* The boosted gold lands ~10.7:1 on black — HC AAA territory. */
+  color: var(--accent);
+  text-shadow: none;
+}
+
+[data-theme="high-contrast"] .brand-tick {
+  color: var(--accent);
+  text-shadow: none;
+}
+
+[data-theme="high-contrast"] .brand-corner {
+  /* White stencil hatch on the inverted plate, slightly stronger
+     than the dark-mode opacity so the registration mark reads at
+     a glance — HC users get the same incidental detail dark/light
+     users do. */
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 70%) 0 2px,
+      transparent 2px 4px
+    );
+  opacity: 0.9;
+}
+
+[data-theme="high-contrast"] .brand-extlink {
+  color: var(--accent);
+  text-shadow: none;
+}
+
+.tagline {
+  margin-top: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.masthead-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1.15rem;
+}
+
+/* .theme-toggle family + .theme-seg / .theme-icon / .theme-label /
+   .theme-divider moved to SettingsView.vue */
+
+.scoreboard {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 1.4rem;
+  padding: 0.1rem 0;
+  border-radius: 2px;
+}
+
+/* Brief pulse triggered when the records list grows (parse-complete →
+   load() sees a higher count). Two beats of an accent ring + slight
+   scale so a glance catches it; auto-clears via the JS-side timer.
+   Wrapped in the standard reduced-motion guard at the top of the file
+   so it's a no-op for vestibular-sensitive users. */
+@keyframes records-pulse {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+  35%  { transform: scale(1.03); box-shadow: 0 0 0 4px var(--accent-glow, color-mix(in srgb, var(--accent) 35%, transparent)); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Day theme has a cream background where a pure transform-only pulse
+   is imperceptible. The accent ring above carries an alpha-blended
+   accent halo so the pulse reads on every theme; transform handles
+   the scale beat for users who can see it but not the color. */
+.scoreboard.pulse {
+  animation: records-pulse var(--duration-slow) var(--easing-emph);
+}
+
+.score-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 0.9;
+}
+
+.score-num {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 2.6rem;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum";
+}
+.score-num.win  { color: var(--win); }
+.score-num.loss { color: var(--loss); }
+.score-num.draw { color: var(--draw); }
+
+.score-label {
+  margin-top: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+/* Orphan .control-deck / .deck-* rules deleted — no template references.
+   The parse-row "deck" UI was replaced by .setting-row + the big-switch
+   pattern in IngestView. */
+

@@ -1,0 +1,236 @@
+/* ─── Settings View ──────────────────────────────────────── */
+
+@keyframes view-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings, .unknown-view {
+  animation: view-fade-in var(--duration-med) var(--easing-out) both;
+}
+
+/* .settings-sub moved to SettingsView.vue */
+
+.settings-intro {
+  margin-top: 1.4rem;
+  margin-bottom: 2.4rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px dashed var(--border);
+}
+
+.settings-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  margin-bottom: 0.45rem;
+}
+
+.settings-heading {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  color: var(--text);
+  text-transform: uppercase;
+  max-width: 60ch;
+}
+
+.settings-heading em {
+  font-style: normal;
+  color: var(--accent-text);
+  word-break: break-all;
+  background: var(--accent-soft);
+  padding: 0 0.25rem;
+  margin: 0 -0.05rem;
+  border-radius: 1px;
+}
+
+.settings-section {
+  margin-top: 2.6rem;
+}
+.settings-section:first-of-type { margin-top: 0; }
+
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--brand-gray);
+  position: relative;
+}
+
+.section-header::after {
+  /* Small orange tick at the right end of the section divider — a
+     decorative tactical mark, like a registration cue on a film
+     strip. Static hairline, no chroma glow. */
+  content: '';
+  position: absolute;
+  right: 0; bottom: -1px;
+  width: 24px; height: 2px;
+  background: var(--accent);
+}
+
+[data-theme="day"] .section-header::after {
+  background: var(--accent-text);
+}
+
+.section-num {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 3rem;
+  color: var(--brand-gray);
+  letter-spacing: -0.03em;
+  line-height: 0.85;
+  font-feature-settings: "tnum";
+  transform: translateY(2px);
+}
+
+.section-slash {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2.4rem;
+  color: var(--accent);
+  line-height: 0.85;
+  margin: 0 -0.15rem;
+  transform: translateY(2px) skewX(-8deg);
+}
+
+.section-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.85rem;
+  letter-spacing: -0.005em;
+  line-height: 0.85;
+  color: var(--text);
+  text-transform: uppercase;
+  transform: translateY(2px);
+}
+
+.setting-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2.6rem;
+  padding: 1.35rem 0.6rem 1.35rem 0.2rem;
+  border-bottom: 1px solid var(--hairline);
+  position: relative;
+  transition: background 200ms ease;
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row:hover { background: var(--surface); }
+
+.setting-row::before {
+  /* Subtle left tick that brightens on hover — feels like a config
+     row in an old terminal config screen. */
+  content: '';
+  position: absolute;
+  left: -10px; top: 50%;
+  transform: translateY(-50%);
+  width: 4px; height: 4px;
+  background: var(--border);
+  border-radius: 50%;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.setting-row:hover::before {
+  background: var(--accent);
+}
+
+.setting-info { min-width: 0; }
+
+.setting-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+  line-height: 1;
+}
+
+.setting-desc {
+  font-size: 0.83rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 56ch;
+}
+
+.setting-desc strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.setting-desc code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: var(--surface-3);
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+  color: var(--accent-text);
+}
+
+/* .setting-meta and .meta-dot moved to IngestView.vue.
+   @keyframes pulse-dot stays here — referenced by
+   ParseProgressPanel.vue (.pp-scan-dot, .pp-arrow) which lives in
+   its own \3c style scoped> block. Animation-name references from a
+   scoped block to a global @keyframes do not get hashed. */
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+
+.setting-control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+/* ─── Right-rail value chip in setting rows ──────────────── */
+
+/* Used by SettingsFolders (screenshots-folder path), SettingsEngine
+   (Tesseract binary path), and any future Settings panel that
+   renders a mono path/value on the right edge of a row. Lives
+   globally — multiple consumers — and was the source of an earlier
+   layout-overflow bug when scoped to SettingsView.vue only (the
+   data-v hash didn't match the children's DOM, so the cap +
+   word-break + chip styling silently dropped and a long path
+   stretched the grid column off the page). */
+.setting-value {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0;
+  text-align: right;
+  word-break: break-all;
+  max-width: min(420px, 100%);
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+
+/* .big-switch family + .btn.primary.big .btn-dot descendant moved to
+   IngestView.vue. .btn.primary.big base size kept here as a button
+   variant — used by IngestView's parse CTA but stays in the .btn
+   family for consistency. */
+
+.btn.primary.big,
+.btn.danger.big {
+  padding: 0.85rem 1.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+

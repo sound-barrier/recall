@@ -1,0 +1,149 @@
+/* ─── Light-mode pinpoint overrides ──────────────────────────
+   Spots where the OW orange appears as readable type on a light
+   surface need the darker `--accent-text` variant to clear AA contrast.
+   Everything else in light mode flows through the variable swap. */
+
+/* .match-map / .hero-name / .length-mark / .match.expanded / .sources /
+   .source-preview light-mode overrides moved to MatchCard.vue. */
+[data-theme="day"] .empty-sub strong { color: var(--accent-text); }
+[data-theme="day"] .count strong { color: var(--accent-text); }
+[data-theme="day"] .chev.open { color: var(--accent-text); }
+[data-theme="day"] .stats { background: var(--surface); }
+[data-theme="day"] .stat { background: var(--surface); }
+
+/* The sources block is dim/console-y in dark mode; in light mode soften
+   the inner dark background to a clean tonal step that still reads
+   "monospace dossier" without the harsh black-on-light contrast.
+   .source-name is shared with UnknownMapsView so its override stays here. */
+[data-theme="day"] .source-name { color: var(--text-dim); }
+[data-theme="day"] .source-name:hover { color: var(--accent-text); background: var(--surface-3); }
+[data-theme="day"] .source-preview { background: var(--surface-3); }
+
+/* Brand wordmark on the gray tile stays white-on-gray in both modes —
+   the tile is dark in both themes, so no override needed. The corner
+   tape stays subtle. */
+[data-theme="day"] .brand { color: #f5f3ee; }
+
+/* Theme toggle reads on light surface too. The .active state already
+   uses --accent-soft + --accent which both adapt to the theme. */
+
+[data-theme="day"] .btn.primary {
+  /* In light mode the dark text on bright orange still works (OW chip).
+     Solid inset border, no chroma halo. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 20%) inset;
+}
+
+[data-theme="day"] .btn.primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(0.95);
+}
+
+/* Multi-filter light-mode polish. The hazard strip in the panel head
+   stays dark in both themes (industrial sticker feel). Trigger surface
+   needs slightly more contrast against the cream page background. */
+[data-theme="day"] .mf-trigger { background: var(--surface); }
+
+[data-theme="day"] .mf-trigger:hover,
+[data-theme="day"] .multi-filter.open .mf-trigger { background: var(--surface-2); }
+[data-theme="day"] .mf-placeholder { color: var(--text-faint); }
+[data-theme="day"] .mf-row.checked { background: var(--accent-soft); color: var(--text); }
+[data-theme="day"] .mf-row-mark { background: #fff; }
+
+[data-theme="day"] .mf-panel {
+  box-shadow:
+    0 24px 60px -18px rgb(74 74 74 / 45%),
+    0 0 0 1px var(--accent-soft);
+}
+[data-theme="day"] .mf-search { background: var(--surface-3); }
+[data-theme="day"] .mf-panel-foot { background: var(--surface-3); }
+[data-theme="day"] .eyebrow-count { color: var(--accent-text); }
+
+
+/* All .unknown-* rules + .field-cell/.field-label/.field-value moved to
+   UnknownMapsView.vue. Shared .slot-row, .slot-chip family, .slot-dot,
+   .slot-optional-tag stay below — MatchCard's sources-coverage strip
+   uses the same chips. */
+
+/* Screenshot type slot chips: SUMMARY · TEAMS · PERSONAL · RANK */
+.slot-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+}
+
+.slot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 2px;
+  font-size: 0.62rem;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  cursor: default;
+  transition: opacity 150ms ease;
+}
+
+.slot-chip.present {
+  background: var(--win-soft);
+  border-color: var(--win-line);
+  color: var(--win);
+}
+
+.slot-chip.absent {
+  background: transparent;
+  border-color: var(--border);
+  border-style: dashed;
+  color: var(--text-faint);
+}
+
+/* A required screenshot type that wasn't captured — louder than `absent` so
+   the user notices the diagnostic at a glance in the expanded panel. */
+.slot-chip.absent-required {
+  background: rgb(245 166 35 / 6%);
+  border-color: rgb(245 166 35 / 50%);
+  color: var(--accent-bright);
+}
+
+/* The RANK slot is optional; even when missing it shouldn't read as a
+   warning. Greyed out, no urgency. */
+.slot-chip.optional.absent {
+  background: transparent;
+  border-color: var(--border-soft);
+  color: var(--text-mute);
+}
+
+.slot-optional-tag {
+  margin-left: 0.25rem;
+  padding: 0 0.25rem;
+  border-radius: 1px;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  background: rgb(255 255 255 / 5%);
+  color: var(--text-mute);
+  text-transform: uppercase;
+}
+
+.slot-chip.present .slot-optional-tag {
+  background: rgb(77 255 142 / 12%);
+  color: var(--win);
+}
+
+[data-theme="day"] .slot-chip.present { color: var(--win); }
+[data-theme="day"] .slot-chip.absent { color: var(--text-faint); }
+[data-theme="day"] .slot-chip.absent-required { color: var(--accent-text); }
+
+.slot-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentcolor;
+  flex-shrink: 0;
+}
+
+/* .unknown-fields / .field-cell family / .unknown-expanded /
+   .unknown-sources / .unknown-stats moved to UnknownMapsView.vue */
+
