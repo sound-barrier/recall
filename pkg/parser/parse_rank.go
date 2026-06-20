@@ -3,6 +3,7 @@ package parser
 import (
 	"image"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -116,6 +117,14 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*66/100)
 	srText, _ := ocrInverted(img, srRect, work, "rank_sr", "11", "")
 	res.SR = extractSR(srText)
+	// The sparse pass occasionally OCRs a clean 4-digit SR into letter-shapes it
+	// can't recover ("1799" → "OI7 7a"). When a card came back 0, re-OCR the panel
+	// forcing digits: PSM 6 reads the stacked numbers cleanly, top-to-bottom in
+	// hero order, so we backfill the zeroed cards by position.
+	if anyZeroSR(res.SR) {
+		digits, _ := ocrInverted(img, srRect, work, "rank_sr_digits", "6", "0123456789")
+		backfillSR(res.SR, digits)
+	}
 	if len(res.SR) > 0 {
 		res.Hero = res.SR[0].Hero
 		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
@@ -136,6 +145,16 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// to the win/loss/draw modifier pill when the banner didn't classify.
 	if res.Result == "" {
 		res.Result = resultFromModifiers(res.Modifiers)
+	}
+
+	// Per-hero SR change: extractSR captured the magnitude; the card's arrow
+	// (green up = gain, red down = loss) tracks the match result, which isn't in
+	// the OCR text. Apply the sign once res.Result is finalized so a defeat's
+	// losses read negative.
+	if res.Result == "defeat" {
+		for i := range res.SR {
+			res.SR[i].Change = -res.SR[i].Change
+		}
 	}
 
 	return res, nil
@@ -194,30 +213,85 @@ func extractModifiers(text string) []string {
 	return found
 }
 
-// extractSR pulls (hero, SR, change) from the right-side SR panel OCR. SR is
-// the first 4-digit integer; change is the first 1-3 digit integer (with
-// optional sign) after the SR. Heroes use the existing extractHeroes fuzzy
-// matcher.
+var (
+	srValueRe  = regexp.MustCompile(`\b(\d{4})\b`)
+	srChangeRe = regexp.MustCompile(`\d{1,3}`)
+)
+
+// extractSR pulls (hero, SR, change-magnitude) from the right-side SR panel OCR.
+// The panel stacks one card per hero — "<HERO> SR <4-digit SR> <change>" — so a
+// hero's numbers sit between its name and the next hero's. We walk heroes in the
+// order they appear and read each one's SR + change from its OWN text window.
+//
+// (The old code grabbed the FIRST 4-digit run in the whole blob for EVERY hero,
+// so leading noise — e.g. "4100" bleeding in from the role-SR area, or the first
+// card's value — was copied onto all of them, collapsing two distinct cards to a
+// single wrong SR.) The change's sign (green up-arrow vs red down-arrow) isn't in
+// the OCR text; parseRank derives it from the match result, so we capture the
+// magnitude here. digitize() recovers the OW font's O/Q/I/l/L → digit confusion.
 func extractSR(text string) []HeroSR {
 	heroes := extractHeroes(text)
 	if len(heroes) == 0 {
 		return nil
 	}
-	out := make([]HeroSR, 0, len(heroes))
+	lower := strings.ToLower(text)
+	type card struct {
+		hero string
+		at   int
+	}
+	cards := make([]card, 0, len(heroes))
 	for _, h := range heroes {
-		entry := HeroSR{Hero: h}
-		if m := regexp.MustCompile(`\b(\d{4})\b`).FindStringSubmatchIndex(text); m != nil {
-			entry.SR, _ = strconv.Atoi(text[m[2]:m[3]])
-			rest := text[m[1]:]
-			if m2 := regexp.MustCompile(`([+\-]?)\s*(\d{1,3})`).FindStringSubmatch(rest); m2 != nil {
-				v, _ := strconv.Atoi(m2[2])
-				if m2[1] == "-" {
-					v = -v
-				}
-				entry.Change = v
+		at := strings.Index(lower, h)
+		if at < 0 {
+			at = len(lower) // unmatched name → sort last, claims the trailing window
+		}
+		cards = append(cards, card{h, at})
+	}
+	sort.SliceStable(cards, func(i, j int) bool { return cards[i].at < cards[j].at })
+
+	out := make([]HeroSR, 0, len(cards))
+	for i, c := range cards {
+		end := len(text)
+		if i+1 < len(cards) {
+			end = cards[i+1].at
+		}
+		orig := text[min(c.at, len(text)):end]
+		// digitize (length-preserving) recovers O/Q/I/l/L → digit confusion so the
+		// 4-digit SR run reads; the change reads from the ORIGINAL slice at the same
+		// offsets, since digitizing there would mint false digits out of the card's
+		// stray letters (an "Le" decoration becoming "1e" → a phantom change of 1).
+		seg := digitize(orig)
+		entry := HeroSR{Hero: c.hero}
+		if m := srValueRe.FindStringSubmatchIndex(seg); m != nil {
+			entry.SR, _ = strconv.Atoi(seg[m[2]:m[3]])
+			if m2 := srChangeRe.FindString(orig[m[1]:]); m2 != "" {
+				entry.Change, _ = strconv.Atoi(m2)
 			}
 		}
 		out = append(out, entry)
 	}
 	return out
+}
+
+func anyZeroSR(srs []HeroSR) bool {
+	for _, s := range srs {
+		if s.SR == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// backfillSR fills cards the sparse pass zeroed using a digit-forced re-OCR of
+// the same panel. The forced pass reads the SR column top-to-bottom, so its
+// 4-digit values line up by position with the (text-ordered) hero cards. Only
+// zeroed slots are touched — a correctly-read SR is never overwritten, and a
+// merged/blank value (no clean 4-digit) simply leaves the card zero.
+func backfillSR(srs []HeroSR, digitsText string) {
+	nums := srValueRe.FindAllString(digitsText, -1)
+	for i := range srs {
+		if srs[i].SR == 0 && i < len(nums) {
+			srs[i].SR, _ = strconv.Atoi(nums[i])
+		}
+	}
 }
