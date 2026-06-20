@@ -162,6 +162,16 @@ test.describe('campaign-log header', () => {
     await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   })
 
+  test('Shift+click extends the date range from the anchor (Excel range)', async ({ page }) => {
+    // Anchor on 2 days ago (single day → 3 matches)…
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+    // …Shift+click 1 day ago → range [2d ago .. 1d ago] = m1-m3 + m4-m5 = 5.
+    await page.locator(`.heatmap-cell[data-date="${daysAgo(1)}"]`).click({ modifiers: ['Shift'] })
+    await expect(page.locator('.leaf-row')).toHaveCount(5)
+    await expect(page.locator('.heatmap-cell.active')).toHaveCount(2)
+  })
+
   test('only one heatmap cell stays active when the user clicks through different days', async ({ page }) => {
     const day1 = page.locator(`.heatmap-cell[data-date="${daysAgo(2)}"]`)
     const day2 = page.locator(`.heatmap-cell[data-date="${daysAgo(1)}"]`)
