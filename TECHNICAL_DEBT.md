@@ -14,21 +14,31 @@ the same rendered node so the e2e specs need **no** edits. One commit per file;
 verify each with `task test` + `task test-e2e` and confirm it renders identically.
 
 **The shared-scoped-style gotcha (the reason this is per-file work, not a quick
-extract):** sibling sections usually share scoped card chrome — e.g.
-`UnknownMapsView`'s `.unknown-card` / `.unknown-card-head` / `.needs-review-*` are
-used by all three sections. A clean split must move the genuinely-shared families
-to a global topical file under `styles/` (they're view-specific, so global is
-safe) or a shared base component — do **not** flip scoped→global blindly: it drops
-the `[data-v]` attribute, so re-verify the dist theme-leak grep stays 0 and the
-a11y/axe e2e are green for each move. (This is why the byte-identical guarantee
-that made the app.css split safe does NOT apply here.)
+extract):** sibling sections usually share scoped card chrome. A clean split must
+move the genuinely-shared families to a co-located global CSS file (view-specific
+classes, so global is safe) or a shared base component — do **not** flip
+scoped→global blindly: it drops the `[data-v]` attribute, so first check no other
+component uses the class (a global rule then leaks into it; a scoped `[data-v]`
+override still wins by specificity, but a sibling using the *global* version
+does not), then re-verify the dist theme-leak grep stays 0 and the a11y/axe e2e
+are green. (This is why the byte-identical guarantee that made the app.css split
+safe does NOT apply here.)
+
+**Worked example — `src/components/unknown/` (done):** `unknown.css` holds the
+shared card chrome (moved global, `.field-label` anchored to `.field-cell` to
+dodge the ExportBundleModal collision); `UnknownCandidatePicker` /
+`UnknownReferenceGapSection` / `UnknownUnmatchedSection` are the section children
+(the last takes the shared `cardState` as a prop); `UnknownMapsView` is the thin
+shell. Mirror this for the rest.
 
 **Split (clear multi-concern seams):**
 
-- `UnknownMapsView.vue` (1392) → Ambiguous / Unmatched / Reference-gap section
-  children + an ignore-arming + a candidate-picker composable; the shared
-  `.unknown-*` card chrome → a global `styles/unknown.css`.
-- `NarrowPopover.vue` (1283) → one child per `<section class="np-section">` group.
+- `NarrowPopover.vue` (1283) → one child per `<section class="np-section">` group
+  (or a parameterized facet component for the repetitive chip-pickers). **Heads-up:**
+  `.np-btn` is defined scoped here but *used* in `NarrowPresets.vue` too, so moving
+  the `.np-*` chrome global is behaviour-changing for NarrowPresets — verify its
+  buttons render identically (or anchor/keep that rule). The `.lp-fade` /
+  `.lp-slide` transitions + `.left-panel*` container are NarrowPopover-only (safe).
 - `ManualMatchModal.vue` (728), `MatchDetailPanel.vue` (685), `MatchJournal.vue`
   (626), `MatchesMembersList.vue` (634), `MatchesArchiveDrawer.vue` (591),
   `IgnoredFilesPanel.vue` (566), `MatchesDossierHead.vue` (584).
