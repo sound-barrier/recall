@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useDossier } from '@/composables/dashboard/useDossier'
+import { computed, ref, watch } from 'vue'
+import { useDossier, useFullDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
@@ -36,9 +36,10 @@ import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 // picker feeds every level's aggregate, and an inline gear (root only)
 // opens the shared WidgetConfigPopover (heroes-to-show + min-matches).
 
-const dossier = useDossier()
-const narrow  = useNarrow()
-const ow      = useOWData()
+const dossier     = useDossier()
+const fullDossier = useFullDossier()
+const narrow      = useNarrow()
+const ow          = useOWData()
 const { config } = useWidgetConfig<HeroGameModeHeatmapConfig>(
   'hero-game-mode-heatmap',
   heroGameModeHeatmapSchema,
@@ -76,7 +77,10 @@ const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('re
 const { drillStack, depth, topFrame, drillToMaps, drillToMatches, goBack, goToDepth } = useDrillNav(narrow)
 
 // ── Level 0 (root): hero × game-mode ──
-const cells = dossier.heroGameModeCounts(() => ({
+// Reads the FULL dossier so the root grid is a STABLE surface (like the Campaign
+// Log heatmap + the Geography band): a Ctrl/Shift selection live-filters the match
+// list without collapsing the grid. The drill levels below stay narrowed.
+const cells = fullDossier.heroGameModeCounts(() => ({
   heroLimit:    config.value.heroLimit,
   minMatches:   config.value.minMatches,
   windowMonths: windowMonths.value,
@@ -141,6 +145,14 @@ function resetFilter() {
   narrow.pickedGameModes.value = new Set()
   rootHeatmap.value?.clearSelection()
 }
+
+// Drop the root grid's hybrid highlight if the narrow is cleared elsewhere (chip ×,
+// panel reset) while at the root level. clearSelection is a no-op when nothing's
+// selected, so this can't loop with the child's live-filter emit.
+watch(
+  () => narrow.pickedHeroes.value.size + narrow.pickedGameModes.value.size,
+  (n) => { if (n === 0 && depth.value === 0) rootHeatmap.value?.clearSelection() },
+)
 
 // ── Header: breadcrumb + per-level title ──
 const breadcrumb = computed(() => {

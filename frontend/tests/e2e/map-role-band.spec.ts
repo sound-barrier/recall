@@ -283,6 +283,18 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('[data-mr-selection-bar]')).toBeVisible()
     // Selecting the group live-filters to its maps → chips appear.
     await expect(page.locator('ul.active-chips .active-chip')).not.toHaveCount(0)
+    // The group header stays lit to show it's selected.
+    await expect(band.locator('.mr-modehead', { hasText: 'Escort' })).toHaveClass(/header-selected/)
+  })
+
+  test('selecting keeps the map / role headers highlighted', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await band.locator('[data-mr-col="rialto"]').click()
+    await expect(band.locator('[data-mr-col="rialto"]')).toHaveClass(/header-selected/)
+    // Narrow to a role within Rialto → the role header lights, Rialto stays lit.
+    await band.locator('[data-mr-row="support"]').click()
+    await expect(band.locator('[data-mr-row="support"]')).toHaveClass(/header-selected/)
+    await expect(band.locator('[data-mr-col="rialto"]')).toHaveClass(/header-selected/)
   })
 
   test('facet model: a group spans all roles, then a role narrows within it', async ({ page }) => {

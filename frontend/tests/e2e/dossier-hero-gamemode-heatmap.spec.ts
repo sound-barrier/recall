@@ -121,25 +121,30 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     await expect(band.locator('[data-hero-mode-back]')).toBeVisible()
   })
 
-  test('Ctrl/Cmd-click SELECTS a cell instead of drilling (Excel hybrid)', async ({ page }) => {
+  test('Ctrl/Cmd-click SELECTS + live-filters a cell instead of drilling (Excel hybrid)', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
     await band.locator('.heatmap-cell[data-hm-cell="control|lucio"]').click({ modifiers: ['ControlOrMeta'] })
     // Selected, NOT drilled — the root grid stays, no maps level, a stats bar shows.
     await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(1)
     await expect(band.locator('[data-hero-mode-maps]')).toHaveCount(0)
-    await expect(band.locator('[data-hm-selection-stats]')).toContainText('6–4–0')
+    await expect(band.locator('[data-hm-selection-stats]')).toContainText(/6.4.0/)
+    // Live-filters immediately (no button), and the headers stay lit.
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'lucio' })).toBeVisible()
+    await expect(band.locator('[data-hm-col="control"]')).toHaveClass(/header-selected/)
+    await expect(band.locator('[data-hm-row="lucio"]')).toHaveClass(/header-selected/)
   })
 
-  test('hero row + game-mode column headers select; Filter to selection narrows', async ({ page }) => {
+  test('hero row + game-mode column headers select + live-filter (highlighted)', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
-    // Ana's row → her 3 played cells (escort, flashpoint, hybrid).
+    // Ana's row → her 3 played cells; the Ana row header lights + the set narrows.
     await band.locator('[data-hm-row="ana"]').click()
     await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(3)
+    await expect(band.locator('[data-hm-row="ana"]')).toHaveClass(/header-selected/)
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'ana' })).toBeVisible()
     // A game-mode column (plain) replaces it: Control × all heroes = lucio|control only.
     await band.locator('[data-hm-col="control"]').click()
     await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(1)
-    // Filter to the selection → narrows the set to Control.
-    await band.locator('[data-hm-filter-selection]').click()
+    await expect(band.locator('[data-hm-col="control"]')).toHaveClass(/header-selected/)
     await expect(page.locator('ul.active-chips .active-chip', { hasText: 'control' })).toBeVisible()
   })
 

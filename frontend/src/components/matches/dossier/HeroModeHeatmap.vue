@@ -94,14 +94,23 @@ const selectionStats = computed(() => {
   return { wins, losses, draws, total, winrate: decided ? Math.round((wins / decided) * 100) : null }
 })
 
-// Push the selection's rectangular hull (heroes × game-modes) up to the band,
-// which owns the narrow.
-function filterToSelection() {
-  emit('filter', { heroes: sel.hullRoles.value, gameModes: sel.hullMaps.value })
-}
+// Headers stay lit while their dimension is in the selection (Excel-style): a
+// game-mode column header when that mode is in the hull, a hero row header when
+// that hero is.
+const selectedModes  = computed(() => new Set(sel.hullMaps.value))
+const selectedHeroes = computed(() => new Set(sel.hullRoles.value))
 
-// The band's header Reset clears the pending selection here too.
-defineExpose({ clearSelection: () => sel.clear() })
+// A Ctrl/Shift selection LIVE-filters (no button) — push the selection's
+// rectangular hull (heroes × game-modes) up to the band, which owns the narrow.
+// The root grid reads the full dossier, so this only narrows the match list (the
+// grid stays a stable surface, like Geography + the Campaign Log heatmap).
+watch(() => sel.selected.value, () => {
+  emit('filter', { heroes: sel.hullRoles.value, gameModes: sel.hullMaps.value })
+})
+
+// The band's header Reset / external-clear sync clears the pending selection here.
+// Guarded so clearing an already-empty selection can't loop with the watch above.
+defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 </script>
 
 <template>
@@ -128,10 +137,12 @@ defineExpose({ clearSelection: () => sel.clear() })
           :key="t"
           type="button"
           class="heatmap-colhead"
+          :class="{ 'header-selected': selectedModes.has(t) }"
           role="columnheader"
           :data-hm-col="t"
           :title="`Select the ${t} column`"
           :aria-label="`Select all heroes on ${t}`"
+          :aria-pressed="selectedModes.has(t)"
           @click="sel.selectColumn(t, headerMods($event))"
         >
           {{ t }}
@@ -146,9 +157,11 @@ defineExpose({ clearSelection: () => sel.clear() })
         <button
           type="button"
           class="heatmap-rowhead"
+          :class="{ 'header-selected': selectedHeroes.has(row.hero) }"
           role="rowheader"
           :data-hm-row="row.hero"
           :aria-label="`Select all game modes for ${heroLabel(row.hero)}`"
+          :aria-pressed="selectedHeroes.has(row.hero)"
           @click="sel.selectRow(row.hero, headerMods($event))"
         >
           {{ heroLabel(row.hero) }}
@@ -182,6 +195,7 @@ defineExpose({ clearSelection: () => sel.clear() })
       </div>
     </div>
 
+    <!-- Ctrl/Shift selection readout (stats only — selecting live-filters, no button). -->
     <div v-if="sel.count.value > 0" class="hm-selection" data-hm-selection-bar>
       <span class="hm-sel-stats" data-hm-selection-stats>
         <strong>{{ sel.count.value }}</strong> cell{{ sel.count.value === 1 ? '' : 's' }}
@@ -190,16 +204,8 @@ defineExpose({ clearSelection: () => sel.clear() })
         <template v-if="selectionStats.winrate !== null"> · {{ selectionStats.winrate }}% WR</template>
         · {{ selectionStats.total }} game{{ selectionStats.total === 1 ? '' : 's' }}
       </span>
-      <span class="hm-sel-actions">
-        <span v-if="!sel.isRectangular.value" class="hm-sel-hint" data-hm-hull-note>
-          filters to every hero × mode in your selection
-        </span>
-        <button type="button" class="hm-sel-filter" data-hm-filter-selection @click="filterToSelection">
-          Filter set to selection
-        </button>
-        <button type="button" class="hm-sel-clear" data-hm-selection-clear @click="sel.clear()">
-          Clear
-        </button>
+      <span v-if="!sel.isRectangular.value" class="hm-sel-hint" data-hm-hull-note>
+        filtering every hero × mode in your selection
       </span>
     </div>
   </template>
@@ -276,6 +282,14 @@ defineExpose({ clearSelection: () => sel.clear() })
   outline: 2px solid var(--accent);
   outline-offset: 1px;
   color: var(--accent);
+}
+
+/* A header whose hero / game-mode is part of the current selection — stays lit. */
+.heatmap-colhead.header-selected,
+.heatmap-rowhead.header-selected {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-radius: 2px;
 }
 
 .heatmap-cell {
@@ -361,50 +375,15 @@ defineExpose({ clearSelection: () => sel.clear() })
 
 .hm-sel-stats strong { color: var(--accent); font-weight: 700; }
 
-.hm-sel-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-left: auto;
-}
-
 .hm-sel-hint {
+  margin-left: auto;
   font-family: var(--mono);
   font-size: 0.58rem;
   color: var(--text-faint);
   font-style: italic;
   max-width: 18rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-.hm-sel-filter,
-.hm-sel-clear {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.22rem 0.6rem;
-  border-radius: 2px;
-  cursor: pointer;
-}
-
-.hm-sel-filter {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--primary-text-on-accent, var(--bg));
-  font-weight: 700;
-}
-
-.hm-sel-filter:hover { background: color-mix(in srgb, var(--accent) 85%, var(--text)); }
-
-.hm-sel-clear {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-}
-
-.hm-sel-clear:hover { border-color: var(--accent); color: var(--text); }
-
-.hm-sel-filter:focus-visible,
-.hm-sel-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 </style>
