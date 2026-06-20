@@ -4,9 +4,10 @@
  * An always-shown full-width band rendered after the Campaign Log: 3
  * role rows (Tank / DPS / Support) × every map as a column, grouped by
  * game-mode and alphabetical within each group. Cells are tinted by
- * win rate (green→red) and dimmed by volume. Clicking a cell narrows
- * the active set to that (map, role) pair; clicking a game-mode group
- * header narrows to that game-mode.
+ * win rate (green→red) and dimmed by volume. Cells / role labels / map
+ * names are spreadsheet-style selectable (click / Ctrl-toggle / drag-box);
+ * the selection feeds a combined readout + a "Filter to selection" button.
+ * A game-mode group header still narrows to that game-mode.
  *
  * Unlike the opt-in dossier widgets, the band needs no layout seeding —
  * it's fixed chrome. We DO mock /api/v1/system/reference-data so the
@@ -67,14 +68,17 @@ const match = (
   parsed_at: `${RECENT}T${finished}:00Z`,
 })
 
-// Support has a real record on Rialto (2-1 → 67%); Tank wins on Ilios;
-// DPS loses on Rialto. The rest of the 3×3 grid stays empty.
+// Support: Rialto 2-1 (67%), plus Dorado + Ilios so a row-select spans 3 cells;
+// Tank wins on Ilios; DPS loses on Rialto. Five played cells in the 3×3 grid —
+// enough that ilios|tank + rialto|support is a genuinely non-rectangular pick.
 const CORPUS = [
   match('m1', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:01'),
   match('m2', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:02'),
   match('m3', 'rialto', 'escort', 'support', 'lucio', 'defeat', '10:03'),
   match('m4', 'ilios', 'control', 'tank', 'reinhardt', 'victory', '10:04'),
   match('m5', 'rialto', 'escort', 'dps', 'tracer', 'defeat', '10:05'),
+  match('m6', 'dorado', 'escort', 'support', 'lucio', 'victory', '10:06'),
+  match('m7', 'ilios', 'control', 'support', 'lucio', 'victory', '10:07'),
 ]
 
 test.describe('Geography — Map × Role band', () => {
@@ -114,42 +118,75 @@ test.describe('Geography — Map × Role band', () => {
     expect(rialto).toBeGreaterThan(dorado)
   })
 
-  test('a cell single-selects + highlights; clicking it again resets (click off)', async ({ page }) => {
+  test('selecting a cell highlights only it (no live-narrow); "Filter to selection" applies it', async ({ page }) => {
     const band = page.locator('.match-map-role')
     const chips = page.locator('ul.active-chips')
     const cell = () => band.locator('.mr-cell[aria-label*="Support on Rialto"]')
 
-    // Select → narrowed to that (map, role) AND exactly one highlighted cell.
     await cell().click()
-    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toBeVisible()
-    await expect(chips.locator('.active-chip', { hasText: 'support' })).toBeVisible()
     await expect(cell()).toHaveClass(/selected/)
     await expect(band.locator('.mr-cell.selected')).toHaveCount(1)
+    // Selecting no longer narrows — no active chip yet.
+    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toHaveCount(0)
+    // The combined readout shows this cell's record (rialto|support = 2-1, 67% over 3).
+    const stats = band.locator('[data-mr-selection-stats]')
+    await expect(stats).toContainText(/2.1.0/)
+    await expect(stats).toContainText('67% WR')
+    await expect(stats).toContainText('3 games')
 
-    // Click the selected cell again → reset (click off), like the calendar.
+    // The button pushes the pick into the set.
+    await band.locator('[data-mr-filter-selection]').click()
+    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toBeVisible()
+    await expect(chips.locator('.active-chip', { hasText: 'support' })).toBeVisible()
+
+    // Re-clicking the lone selected cell clears it (click off).
     await cell().click()
     await expect(band.locator('.mr-cell.selected')).toHaveCount(0)
-    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toHaveCount(0)
   })
 
-  test('keeps the full role grid after a cell-pick instead of collapsing to the selected row', async ({ page }) => {
+  test('Ctrl/Cmd-click adds non-contiguous cells; the readout sums them + flags a non-rectangular filter', async ({ page }) => {
     const band = page.locator('.match-map-role')
-    // Three role rows before any pick (Tank/DPS/Support all played).
-    await expect(band.locator('.mr-rowhead')).toHaveCount(3)
+    await band.locator('.mr-cell[aria-label*="Tank on Ilios"]').click()
+    await band.locator('.mr-cell[aria-label*="Support on Rialto"]').click({ modifiers: ['ControlOrMeta'] })
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(2)
+    // ilios|tank 1-0-0 + rialto|support 2-1-0 = 3-1-0.
+    await expect(band.locator('[data-mr-selection-stats]')).toContainText(/3.1.0/)
+    // The hull {ilios,rialto}×{tank,support} has ilios|support selectable + unpicked
+    // → filtering would be a superset → the note shows.
+    await expect(band.locator('[data-mr-hull-note]')).toBeVisible()
+  })
 
-    // Pick Support on Rialto → narrows the active set to that (map, role)…
+  test('clicking a role label selects the whole row, a map name the whole column', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    // Support played on Rialto, Dorado, Ilios → 3 cells.
+    await band.locator('[data-mr-row="support"]').click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(3)
+    await expect(band.locator('[data-mr-selection-bar]')).toBeVisible()
+
+    // Rialto column → support + dps played = 2 cells (replaces the row pick).
+    await band.locator('[data-mr-col="rialto"]').click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(2)
+  })
+
+  test('the Clear button empties the selection', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await band.locator('[data-mr-row="support"]').click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(3)
+    await band.locator('[data-mr-selection-clear]').click()
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(0)
+    await expect(band.locator('[data-mr-selection-bar]')).toHaveCount(0)
+  })
+
+  test('keeps the full role grid after a selection instead of collapsing to the selected row', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await expect(band.locator('.mr-rowhead')).toHaveCount(3)
     await band.locator('.mr-cell[aria-label*="Support on Rialto"]').click()
     await expect(band.locator('.mr-cell.selected')).toHaveCount(1)
-    // …but the grid keeps ALL three role rows — the calendar-style stable
-    // structure, not a collapse to just the Support row (the reported bug).
     await expect(band.locator('.mr-rowhead')).toHaveCount(3)
-
-    // Cells played in the window stay selectable even with no data under the
-    // current narrow, so you can switch picks directly (like the calendar).
+    // Cells stay selectable → switch picks directly (calendar-style).
     await band.locator('.mr-cell[aria-label*="Tank on Ilios"]').click()
+    await expect(band.locator('.mr-cell[aria-label*="Tank on Ilios"]')).toHaveClass(/selected/)
     await expect(band.locator('.mr-cell.selected')).toHaveCount(1)
-    const chips = page.locator('ul.active-chips')
-    await expect(chips.locator('.active-chip', { hasText: 'ilios' })).toBeVisible()
     await expect(band.locator('.mr-rowhead')).toHaveCount(3)
   })
 

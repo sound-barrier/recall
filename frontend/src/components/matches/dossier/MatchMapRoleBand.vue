@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useDossier, useFullDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
+import { useMapRoleSelection, type MapRoleCoord } from '@/composables/matches/useMapRoleSelection'
 import { winrateVolumeFill } from '@/match/match-heatmap-helpers'
 import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopover.vue'
@@ -16,8 +17,11 @@ import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopov
 // alphabetical within each group. Each cell's hue reads win rate
 // (green → red) and its saturation reads volume, so faint cells carry
 // little weight — same `cellFill` model as the Campaign Log calendar.
-// Clicking a cell narrows the active set to that (map, role) pair;
-// clicking a game-mode group header narrows to that game-mode.
+// Cells, role labels, and map names are spreadsheet-style selectable
+// (click / Ctrl-toggle / Shift-range / drag-box, keyboard grid); the selection
+// feeds a combined-stats readout + a "Filter to selection" button rather than
+// live-narrowing (see useMapRoleSelection). A game-mode group header still
+// narrows the set to that game-mode.
 //
 // Data comes from the dossier (the narrowed record set, so the band
 // responds to every filter) joined against the full canonical map
@@ -184,22 +188,69 @@ function cellLabel(slug: string, role: Role): string {
   return `${ROLE_LABEL[role]} on ${disp}: ${c.wins}-${c.losses}-${c.draws} · ${c.winrate}% win rate over ${c.total} ${games}`
 }
 
-// A cell reads as selected when its map AND role are the active pick.
-function isSelected(slug: string, role: Role): boolean {
-  return narrow.pickedMaps.value.has(slug) && narrow.pickedRoles.value.has(role)
+// ── Spreadsheet-style cell selection. The engine owns the state machine; the
+// band supplies the grid order, the selectability gate, and a point→cell resolver
+// for drag. Selecting NO LONGER live-narrows — it highlights + drives the combined
+// readout; the "Filter to selection" button applies it to the set.
+const gridRef = ref<HTMLElement | null>(null)
+
+function cellFromPoint(x: number, y: number): MapRoleCoord | null {
+  const el = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>('[data-mr-cell]')
+  const k = el?.dataset.mrCell
+  if (!k) return null
+  const i = k.lastIndexOf('|')
+  return { map: k.slice(0, i), role: k.slice(i + 1) }
 }
 
-function onCell(slug: string, role: Role) {
-  if (!structureCellFor(slug, role)) return
-  // Single-select, mirroring the Campaign Log calendar: clicking the selected
-  // cell clears it (click off to reset); clicking another replaces the pick.
-  if (isSelected(slug, role)) {
-    narrow.pickedMaps.value  = new Set()
-    narrow.pickedRoles.value = new Set()
-  } else {
-    narrow.pickedMaps.value  = new Set([slug])
-    narrow.pickedRoles.value = new Set([role])
+const sel = useMapRoleSelection({
+  columns: () => columns.value.map((c) => c.slug),
+  roles:   () => visibleRoles.value,
+  isSelectable: (m, r) => !!structureCellFor(m, r as Role),
+  cellFromPoint,
+})
+
+// Keyboard moves the roving focus in the engine; mirror it onto DOM focus.
+watch(() => sel.focused.value, (f) => {
+  if (!f) return
+  nextTick(() => gridRef.value?.querySelector<HTMLElement>(`[data-mr-cell="${f.map}|${f.role}"]`)?.focus())
+})
+
+// One roving tabstop (WAI-ARIA grid): the focused cell, else the first playable one.
+const firstSelectable = computed(() => {
+  for (const role of visibleRoles.value)
+    for (const col of columns.value)
+      if (structureCellFor(col.slug, role)) return `${col.slug}|${role}`
+  return ''
+})
+function cellTabindex(slug: string, role: Role): number {
+  if (sel.focused.value) return sel.isFocused(slug, role) ? 0 : -1
+  return firstSelectable.value === `${slug}|${role}` ? 0 : -1
+}
+
+// Combined W/L/D + win-rate over the EXACT selected cells (always exact, even when
+// a non-rectangular selection's filter would be a superset).
+const selectionStats = computed(() => {
+  let wins = 0; let losses = 0; let draws = 0; let total = 0
+  for (const k of sel.selected.value) {
+    const i = k.lastIndexOf('|')
+    const c = cellFor(k.slice(0, i), k.slice(i + 1) as Role)
+    if (c) { wins += c.wins; losses += c.losses; draws += c.draws; total += c.total }
   }
+  const decided = wins + losses
+  return { wins, losses, draws, total, winrate: decided ? Math.round((wins / decided) * 100) : null }
+})
+
+// "Filter to selection" → push the rectangular hull (maps × roles) into the narrow:
+// exact for a single cell / row / column / drag-box, a superset for a non-contiguous
+// pick (flagged by the hint next to the button).
+function filterToSelection() {
+  narrow.pickedMaps.value  = new Set(sel.hullMaps.value)
+  narrow.pickedRoles.value = new Set(sel.hullRoles.value)
+}
+
+// Clicking the grid gutters (between cells) clears, mirroring the calendar.
+function onGridClick(e: MouseEvent) {
+  if (e.target === gridRef.value) sel.clear()
 }
 
 // Inline track template — CSS repeat() can't take a custom-property
@@ -268,10 +319,13 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
     <div class="mr-scroll">
       <div
         v-if="!rosterEmpty && !noMatchesData && !filteredEmpty"
+        ref="gridRef"
         class="mr-grid"
         role="group"
-        aria-label="Map by role performance heatmap"
+        aria-label="Map × role performance — click a cell, role label, or map name to select; drag to box-select"
         :style="{ gridTemplateColumns, gridTemplateRows }"
+        @click="onGridClick"
+        @keydown.esc.prevent="sel.clear()"
       >
         <span class="mr-corner" />
 
@@ -287,22 +341,32 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
           {{ g.label }}
         </button>
 
-        <span
+        <button
           v-for="(col, i) in columns"
           :key="`c-${col.slug}`"
+          type="button"
           class="mr-collabel"
           :class="{ 'mr-group-start': col.firstInGroup }"
           :style="{ gridColumn: i + 2, gridRow: 2 }"
-          :title="col.display"
+          :data-mr-col="col.slug"
+          :title="`Select the ${col.display} column`"
+          :aria-label="`Select all roles on ${col.display}`"
+          @click="sel.selectColumn(col.slug, { ctrl: $event.ctrlKey || $event.metaKey })"
         >
           {{ col.display }}
-        </span>
+        </button>
 
         <template v-for="(role, rIdx) in visibleRoles" :key="`row-${role}`">
-          <span
+          <button
+            type="button"
             class="mr-rowhead"
             :style="{ gridColumn: 1, gridRow: rIdx + 3 }"
-          >{{ ROLE_LABEL[role] }}</span>
+            :data-mr-row="role"
+            :aria-label="`Select all maps for ${ROLE_LABEL[role]}`"
+            @click="sel.selectRow(role, { ctrl: $event.ctrlKey || $event.metaKey })"
+          >
+            {{ ROLE_LABEL[role] }}
+          </button>
 
           <button
             v-for="(col, i) in columns"
@@ -312,7 +376,8 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
             :class="{
               'mr-empty': !structureCellFor(col.slug, role),
               'mr-group-start': col.firstInGroup,
-              selected: isSelected(col.slug, role),
+              selected: sel.isSelected(col.slug, role),
+              'in-drag-box': sel.isInDragBox(col.slug, role),
             }"
             :style="{
               gridColumn: i + 2,
@@ -320,10 +385,13 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
               background: fill(col.slug, role),
             }"
             :disabled="!structureCellFor(col.slug, role)"
-            :aria-pressed="isSelected(col.slug, role)"
+            :data-mr-cell="`${col.slug}|${role}`"
+            :aria-pressed="sel.isSelected(col.slug, role)"
+            :tabindex="cellTabindex(col.slug, role)"
             :title="cellLabel(col.slug, role)"
             :aria-label="cellLabel(col.slug, role)"
-            @click="onCell(col.slug, role)"
+            @mousedown="sel.onCellPointerDown(col.slug, role, $event)"
+            @keydown="sel.onCellKeydown(col.slug, role, $event)"
           />
         </template>
       </div>
@@ -342,6 +410,27 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
       <p v-else class="mr-loading">
         Map reference data unavailable.
       </p>
+    </div>
+
+    <div v-if="sel.count.value > 0" class="mr-selection" data-mr-selection-bar>
+      <span class="mr-sel-stats" data-mr-selection-stats>
+        <strong>{{ sel.count.value }}</strong> cell{{ sel.count.value === 1 ? '' : 's' }}
+        <span aria-hidden="true">·</span>
+        {{ selectionStats.wins }}–{{ selectionStats.losses }}–{{ selectionStats.draws }}
+        <template v-if="selectionStats.winrate !== null"> · {{ selectionStats.winrate }}% WR</template>
+        · {{ selectionStats.total }} game{{ selectionStats.total === 1 ? '' : 's' }}
+      </span>
+      <span class="mr-sel-actions">
+        <span v-if="!sel.isRectangular.value" class="mr-sel-hint" data-mr-hull-note>
+          filters to every map × role in your selection
+        </span>
+        <button type="button" class="mr-sel-filter" data-mr-filter-selection @click="filterToSelection">
+          Filter set to selection
+        </button>
+        <button type="button" class="mr-sel-clear" data-mr-selection-clear @click="sel.clear()">
+          Clear
+        </button>
+      </span>
     </div>
 
     <MapRoleConfigPopover
@@ -602,12 +691,20 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   z-index: 1;
 }
 
-/* The active map × role pick — a solid accent ring + glow so the one selected
-   cell stands out; clicking it again clears the pick (click off to reset). */
+/* A selected cell — solid accent ring + glow. Selecting a cell / row / column /
+   box highlights it and feeds the combined readout; the "Filter to selection"
+   button applies it (selecting no longer live-narrows the set). */
 .mr-cell.selected {
   box-shadow:
     0 0 0 2px var(--accent),
     0 0 6px var(--accent-glow, color-mix(in srgb, var(--accent) 45%, transparent));
+  z-index: 1;
+}
+
+/* Live drag-box preview — a lighter inset ring than a committed selection so the
+   sweep reads as "about to select" without competing with the solid ring. */
+.mr-cell.in-drag-box {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
   z-index: 1;
 }
 
@@ -644,4 +741,94 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 @media (width <= 720px) {
   .mr-legend { display: none; }
 }
+
+/* ─── Selection: row/column label buttons + the combined-stats bar ─── */
+
+/* The col + row labels became selection buttons; strip UA chrome (the existing
+   .mr-collabel / .mr-rowhead type rules keep their look) and add a hover cue. */
+:where(button.mr-collabel, button.mr-rowhead) {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mr-collabel:hover,
+.mr-rowhead:hover { color: var(--accent); }
+
+.mr-collabel:focus-visible,
+.mr-rowhead:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  color: var(--accent);
+}
+
+.mr-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.mr-sel-stats {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.mr-sel-stats strong { color: var(--accent); font-weight: 700; }
+
+.mr-sel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.mr-sel-hint {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--text-faint);
+  font-style: italic;
+  max-width: 18rem;
+}
+
+.mr-sel-filter,
+.mr-sel-clear {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.6rem;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.mr-sel-filter {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--primary-text-on-accent, var(--bg));
+  font-weight: 700;
+}
+
+.mr-sel-filter:hover { background: color-mix(in srgb, var(--accent) 85%, var(--text)); }
+
+.mr-sel-clear {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.mr-sel-clear:hover { border-color: var(--accent); color: var(--text); }
+
+.mr-sel-filter:focus-visible,
+.mr-sel-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 </style>

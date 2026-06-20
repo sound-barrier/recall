@@ -1,4 +1,4 @@
-import { computed, type ComputedRef, type Ref, ref } from 'vue'
+import { computed, type ComputedRef, onScopeDispose, type Ref, ref } from 'vue'
 
 // Spreadsheet-style selection engine for the Geography (map × role) band. Owns
 // WHICH cells are selected — a Set of `${map}|${role}` keys — plus the range
@@ -258,6 +258,12 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
     selected.value = new Set()
     anchor.value = null
   }
+
+  // Drop the window drag listeners if the host unmounts mid-gesture.
+  onScopeDispose(() => {
+    window.removeEventListener('mousemove', onWindowMove)
+    window.removeEventListener('mouseup', onWindowUp)
+  })
 
   return {
     selected, focused, count,

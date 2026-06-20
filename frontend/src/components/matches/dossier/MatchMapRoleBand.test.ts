@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
+import type { VueWrapper } from '@vue/test-utils'
 import { mountWidget } from '@/test-utils/mountWidget'
 import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 
@@ -52,6 +53,14 @@ function mountBand(narrow: ReturnType<typeof makeNarrow> = makeNarrow()) {
   return mountWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: CELLS }, narrow })
 }
 
+// A bare cell press: mousedown begins the gesture (the engine arms window
+// listeners), a window mouseup with no movement commits it as a click.
+async function press(cell: ReturnType<VueWrapper['find']>) {
+  await cell.trigger('mousedown')
+  window.dispatchEvent(new MouseEvent('mouseup'))
+  await nextTick()
+}
+
 describe('MatchMapRoleBand', () => {
   it('renders 3 role rows × all map columns grouped by game mode', () => {
     const w = mountBand()
@@ -95,36 +104,68 @@ describe('MatchMapRoleBand', () => {
     expect(empty.attributes('disabled')).toBeDefined()
   })
 
-  it('selecting a cell single-selects that (map, role) and highlights it', async () => {
+  it('selecting a cell highlights only that cell — without live-narrowing', async () => {
     const narrow = makeNarrow()
     const w = mountBand(narrow)
     const cell = () => w.find('[aria-label^="Support on Rialto"]')
-    await cell().trigger('click')
-    expect([...narrow.pickedMaps.value]).toEqual(['rialto'])
-    expect([...narrow.pickedRoles.value]).toEqual(['support'])
+    await press(cell())
     expect(cell().classes()).toContain('selected')
     expect(cell().attributes('aria-pressed')).toBe('true')
-  })
-
-  it('clicking the selected cell again clears it (click off to reset)', async () => {
-    const narrow = makeNarrow()
-    const w = mountBand(narrow)
-    const cell = () => w.find('[aria-label^="Support on Rialto"]')
-    await cell().trigger('click')
-    await cell().trigger('click')
+    expect(w.findAll('.mr-cell.selected')).toHaveLength(1)
+    // Selecting no longer touches the narrow — the "Filter to selection" button does.
     expect(narrow.pickedMaps.value.size).toBe(0)
     expect(narrow.pickedRoles.value.size).toBe(0)
-    expect(cell().classes()).not.toContain('selected')
   })
 
-  it('selecting another cell replaces the pick — never two highlighted cells', async () => {
+  it('clicking the selected cell again clears it (click off)', async () => {
+    const w = mountBand()
+    const cell = () => w.find('[aria-label^="Support on Rialto"]')
+    await press(cell())
+    await press(cell())
+    expect(cell().classes()).not.toContain('selected')
+    expect(w.find('[data-mr-selection-bar]').exists()).toBe(false)
+  })
+
+  it('clicking another cell replaces the selection — never two highlighted cells', async () => {
+    const w = mountBand()
+    await press(w.find('[aria-label^="Support on Rialto"]'))
+    await press(w.find('[aria-label^="Tank on Ilios"]'))
+    expect(w.findAll('.mr-cell.selected')).toHaveLength(1)
+    expect(w.find('[aria-label^="Tank on Ilios"]').classes()).toContain('selected')
+  })
+
+  it('clicking a role label selects the whole row', async () => {
+    const w = mountBand()
+    await w.find('[data-mr-row="support"]').trigger('click')
+    // The two played support cells (rialto, dorado/ilios are inert for support) light up.
+    expect(w.find('[aria-label^="Support on Rialto"]').classes()).toContain('selected')
+    expect(w.find('[data-mr-selection-bar]').exists()).toBe(true)
+  })
+
+  it('clicking a map name selects the whole column', async () => {
+    const w = mountBand()
+    await w.find('[data-mr-col="rialto"]').trigger('click')
+    expect(w.find('[aria-label^="Support on Rialto"]').classes()).toContain('selected')
+  })
+
+  it('"Filter to selection" pushes the selection hull into the narrow', async () => {
     const narrow = makeNarrow()
     const w = mountBand(narrow)
-    await w.find('[aria-label^="Support on Rialto"]').trigger('click')
-    await w.find('[aria-label^="Tank on Ilios"]').trigger('click')
-    expect([...narrow.pickedMaps.value]).toEqual(['ilios'])
-    expect([...narrow.pickedRoles.value]).toEqual(['tank'])
-    expect(w.findAll('.mr-cell.selected')).toHaveLength(1)
+    await press(w.find('[aria-label^="Support on Rialto"]'))
+    await w.find('[data-mr-filter-selection]').trigger('click')
+    expect([...narrow.pickedMaps.value]).toEqual(['rialto'])
+    expect([...narrow.pickedRoles.value]).toEqual(['support'])
+  })
+
+  it('shows the combined-stats readout for the selection', async () => {
+    const w = mountBand()
+    await press(w.find('[aria-label^="Support on Rialto"]'))
+    const stats = w.find('[data-mr-selection-stats]')
+    expect(stats.exists()).toBe(true)
+    // rialto/support = 8-4-0, 67% WR over 12 games
+    expect(stats.text()).toContain('8–4–0')
+    expect(stats.text()).toContain('67% WR')
+    expect(stats.text()).toContain('12 games')
   })
 
   it('clicking a game-mode group header narrows to that game-mode', async () => {
