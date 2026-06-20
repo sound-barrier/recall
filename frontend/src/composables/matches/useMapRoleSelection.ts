@@ -22,6 +22,9 @@ export interface MapRoleSelectionOptions {
   // Resolve a viewport point to the cell under it (the SFC implements this with
   // document.elementFromPoint + data-* attrs). Required only for drag.
   cellFromPoint?: (x: number, y: number) => MapRoleCoord | null
+  // Called when the user clicks an empty (non-selectable) cell with no drag —
+  // the calendar-style "click nothing to reset". The SFC clears its filter here.
+  onClear?: () => void
 }
 
 export interface MapRoleSelectionApi {
@@ -154,14 +157,23 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
       focused.value = hover
       return
     }
-    clickCell(start.map, start.role, { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey })
+    const mods = { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey }
+    if (opts.isSelectable(start.map, start.role)) {
+      clickCell(start.map, start.role, mods)
+    } else if (!mods.ctrl && !mods.shift) {
+      // A plain click on an empty cell resets — clears the selection + the SFC's
+      // filter (the calendar-style "click nothing to reset").
+      clear()
+      opts.onClear?.()
+    }
   }
 
   function onCellPointerDown(map: string, role: string, e: MouseEvent) {
-    if (!opts.isSelectable(map, role)) return
     e.preventDefault() // suppress native text/drag selection that swallows mousemove
-    // Shift-click resolves immediately (no drag) so a range never starts a box.
-    if (e.shiftKey && anchor.value) {
+    // Shift-click on a played cell resolves immediately (no drag) so a range never
+    // starts a box. Empty cells fall through to the drag arm below, so a rubber-band
+    // can start/stop on a blank square (mirrors the Campaign Log heatmap).
+    if (e.shiftKey && anchor.value && opts.isSelectable(map, role)) {
       clickCell(map, role, { ctrl: false, shift: true })
       return
     }
@@ -282,9 +294,10 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
         e.preventDefault()
         if (opts.isSelectable(map, role)) { toggle(map, role); anchor.value = { map, role } }
         break
-      case 'Enter': // collapse to just the focused cell
+      case 'Enter': // collapse to just the focused cell; empty cell → reset
         e.preventDefault()
-        clickCell(map, role, { ctrl: false, shift: false })
+        if (opts.isSelectable(map, role)) clickCell(map, role, { ctrl: false, shift: false })
+        else { clear(); opts.onClear?.() }
         break
       case 'Escape': e.preventDefault(); clear(); break
     }

@@ -84,10 +84,10 @@ describe('MatchMapRoleBand', () => {
     })
     // Rows come from the full structure (3 roles), not the one the narrow leaves.
     expect(w.findAll('.mr-rowhead')).toHaveLength(3)
-    // All three cells played in the window stay selectable (enabled), even though
-    // only one has data under the narrow — calendar-style switching / click-off.
-    const enabled = w.findAll('.mr-cell').filter((c) => c.attributes('disabled') === undefined)
-    expect(enabled).toHaveLength(3)
+    // All three cells played in the window stay playable (not flagged empty), even
+    // though only one has data under the narrow — calendar-style switching / click-off.
+    const playable = w.findAll('.mr-cell').filter((c) => c.attributes('data-mr-empty') === undefined)
+    expect(playable).toHaveLength(3)
   })
 
   it('orders maps alphabetically within a type group', () => {
@@ -97,11 +97,38 @@ describe('MatchMapRoleBand', () => {
     expect(labels.indexOf('Dorado')).toBeLessThan(labels.indexOf('Rialto'))
   })
 
-  it('disables unplayed cells and labels them as having no matches', () => {
+  it('flags unplayed cells empty (clickable to reset) and labels them no matches', () => {
     const w = mountBand()
     const empty = w.find('[aria-label="Support on Ilios: no matches"]')
     expect(empty.exists()).toBe(true)
-    expect(empty.attributes('disabled')).toBeDefined()
+    expect(empty.attributes('data-mr-empty')).toBeDefined()
+    // No longer :disabled — an empty cell is clickable so a click can reset.
+    expect(empty.attributes('disabled')).toBeUndefined()
+  })
+
+  it('clicking an empty cell resets this band\'s filter', async () => {
+    const narrow = makeNarrow({
+      pickedMaps:  ref(new Set(['rialto'])),
+      pickedRoles: ref(new Set(['support'])),
+    })
+    const w = mountBand(narrow)
+    await press(w.find('[aria-label="Support on Ilios: no matches"]')) // empty cell
+    expect(narrow.pickedMaps.value.size).toBe(0)
+    expect(narrow.pickedRoles.value.size).toBe(0)
+  })
+
+  it('shows a header Reset when the filter is active; clicking it clears the filter', async () => {
+    const narrow = makeNarrow({
+      pickedMaps:  ref(new Set(['rialto'])),
+      pickedRoles: ref(new Set(['support'])),
+    })
+    const w = mountBand(narrow)
+    const reset = w.find('[data-mr-reset]')
+    expect(reset.exists()).toBe(true)
+    await reset.trigger('click')
+    expect(narrow.pickedMaps.value.size).toBe(0)
+    expect(narrow.pickedRoles.value.size).toBe(0)
+    expect(w.find('[data-mr-reset]').exists()).toBe(false) // hides once cleared
   })
 
   it('selecting a cell highlights only that cell — without live-narrowing', async () => {

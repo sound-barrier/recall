@@ -207,6 +207,7 @@ const sel = useMapRoleSelection({
   roles:   () => visibleRoles.value,
   isSelectable: (m, r) => !!structureCellFor(m, r as Role),
   cellFromPoint,
+  onClear: resetFilter,
 })
 
 // Keyboard moves the roving focus in the engine; mirror it onto DOM focus.
@@ -246,6 +247,18 @@ const selectionStats = computed(() => {
 function filterToSelection() {
   narrow.pickedMaps.value  = new Set(sel.hullMaps.value)
   narrow.pickedRoles.value = new Set(sel.hullRoles.value)
+}
+
+// This band's filter contribution: the maps × roles narrow it pushed. A header
+// Reset button + a click on any empty cell both call this, so the filter can be
+// cleared without scrolling to the active-chips rail.
+const filterActive = computed(() =>
+  narrow.pickedMaps.value.size > 0 || narrow.pickedRoles.value.size > 0,
+)
+function resetFilter() {
+  narrow.pickedMaps.value  = new Set()
+  narrow.pickedRoles.value = new Set()
+  sel.clear()
 }
 
 // The map slugs in a game-mode group → the group header selects all its columns.
@@ -306,6 +319,17 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
       </div>
 
       <button
+        v-if="filterActive"
+        type="button"
+        class="mr-reset"
+        data-mr-reset
+        title="Clear the maps × roles filter this band applied"
+        @click="resetFilter"
+      >
+        ⟲ Reset
+      </button>
+
+      <button
         type="button"
         class="mr-gear"
         :class="{ 'mr-gear-active': !cfg.isDefault.value }"
@@ -331,7 +355,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
         ref="gridRef"
         class="mr-grid"
         role="group"
-        aria-label="Map × role performance — click a cell, role label, or map name to select; drag to box-select"
+        aria-label="Map × role performance — click a cell, role label, or map name to select; drag to box-select; click an empty cell to reset the filter"
         :style="{ gridTemplateColumns, gridTemplateRows }"
         @mousedown.self="sel.clear()"
         @keydown.esc.prevent="sel.clear()"
@@ -393,7 +417,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
               gridRow: rIdx + 3,
               background: fill(col.slug, role),
             }"
-            :disabled="!structureCellFor(col.slug, role)"
+            :data-mr-empty="!structureCellFor(col.slug, role) || undefined"
             :data-mr-cell="`${col.slug}|${role}`"
             :aria-pressed="sel.isSelected(col.slug, role)"
             :tabindex="cellTabindex(col.slug, role)"
@@ -516,6 +540,26 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 }
 .mr-window-btn:last-child { border-right: 0; }
 .mr-window-btn:hover { color: var(--text); }
+
+/* Reset — clears this band's maps × roles filter without a scroll to the chips. */
+.mr-reset {
+  appearance: none;
+  margin-left: 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.22rem 0.5rem;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.mr-reset:hover { background: var(--accent); color: var(--primary-text-on-accent, var(--bg)); }
+.mr-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .mr-window-btn:focus-visible {
   outline: 2px solid var(--accent);
@@ -684,11 +728,9 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.mr-cell.mr-empty {
-  cursor: default;
-}
-
-.mr-cell:not(:disabled):hover {
+/* Empty cells are still clickable (a click resets the filter, drag can start /
+   stop on them) — they just don't get the data-cell hover pop. */
+.mr-cell:not(.mr-empty):hover {
   transform: scale(1.12);
   box-shadow: 0 0 0 1px var(--accent);
   z-index: 1;
