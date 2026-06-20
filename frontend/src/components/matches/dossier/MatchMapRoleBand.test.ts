@@ -13,6 +13,7 @@ vi.mock('@/composables/shared/useOWData', async () => {
     ['ilios', { display: 'Ilios', gameMode: 'control' }],
     ['dorado', { display: 'Dorado', gameMode: 'escort' }],
     ['rialto', { display: 'Rialto', gameMode: 'escort' }],
+    ['hanaoka', { display: 'Hanaoka', gameMode: 'clash' }], // non-competitive — data-gated
   ])
   return {
     useOWData: () => ({
@@ -65,9 +66,23 @@ describe('MatchMapRoleBand', () => {
   it('renders 3 role rows × all map columns grouped by game mode', () => {
     const w = mountBand()
     expect(w.findAll('.mr-rowhead')).toHaveLength(3)
-    expect(w.findAll('.mr-collabel')).toHaveLength(3) // ilios + dorado + rialto
-    expect(w.findAll('.mr-modehead')).toHaveLength(2) // control + escort
+    expect(w.findAll('.mr-collabel')).toHaveLength(3) // ilios + dorado + rialto (Hanaoka/clash hidden)
+    expect(w.findAll('.mr-modehead')).toHaveLength(2) // control + escort (no clash group)
     expect(w.findAll('.mr-cell')).toHaveLength(3 * 3) // 3 roles × 3 maps
+  })
+
+  it('hides Clash maps (non-competitive) until there is data for them', () => {
+    // No Clash data → Hanaoka gets no column.
+    expect(mountBand().findAll('.mr-collabel').map((n) => n.text())).not.toContain('Hanaoka')
+    // A Clash match → the column (and its game-mode group) appears.
+    const withClash = mountWidget(MatchMapRoleBand, {
+      dossier: { mapRoleCounts: [
+        ...CELLS,
+        { map: 'hanaoka', role: 'tank', wins: 1, losses: 0, draws: 0, total: 1, winrate: 100 },
+      ] },
+      narrow: makeNarrow(),
+    })
+    expect(withClash.findAll('.mr-collabel').map((n) => n.text())).toContain('Hanaoka')
   })
 
   it('takes rows + selectable cells from the UNFILTERED dossier so a narrow never collapses the grid', () => {
@@ -131,7 +146,7 @@ describe('MatchMapRoleBand', () => {
     expect(w.find('[data-mr-reset]').exists()).toBe(false) // hides once cleared
   })
 
-  it('selecting a cell highlights only that cell — without live-narrowing', async () => {
+  it('selecting a cell highlights it AND live-filters the set (no button)', async () => {
     const narrow = makeNarrow()
     const w = mountBand(narrow)
     const cell = () => w.find('[aria-label^="Support on Rialto"]')
@@ -139,9 +154,9 @@ describe('MatchMapRoleBand', () => {
     expect(cell().classes()).toContain('selected')
     expect(cell().attributes('aria-pressed')).toBe('true')
     expect(w.findAll('.mr-cell.selected')).toHaveLength(1)
-    // Selecting no longer touches the narrow — the "Filter to selection" button does.
-    expect(narrow.pickedMaps.value.size).toBe(0)
-    expect(narrow.pickedRoles.value.size).toBe(0)
+    // Selecting now narrows immediately — no "Filter to selection" step.
+    expect([...narrow.pickedMaps.value]).toEqual(['rialto'])
+    expect([...narrow.pickedRoles.value]).toEqual(['support'])
   })
 
   it('clicking the selected cell again clears it (click off)', async () => {
@@ -175,13 +190,18 @@ describe('MatchMapRoleBand', () => {
     expect(w.find('[aria-label^="Support on Rialto"]').classes()).toContain('selected')
   })
 
-  it('"Filter to selection" pushes the selection hull into the narrow', async () => {
+  it('Ctrl-clicking a second cell live-filters to the rectangular hull', async () => {
     const narrow = makeNarrow()
     const w = mountBand(narrow)
     await press(w.find('[aria-label^="Support on Rialto"]'))
-    await w.find('[data-mr-filter-selection]').trigger('click')
-    expect([...narrow.pickedMaps.value]).toEqual(['rialto'])
-    expect([...narrow.pickedRoles.value]).toEqual(['support'])
+    const tank = w.find('[aria-label^="Tank on Ilios"]')
+    await tank.trigger('mousedown', { ctrlKey: true })
+    window.dispatchEvent(new MouseEvent('mouseup', { ctrlKey: true }))
+    await nextTick()
+    expect(w.findAll('.mr-cell.selected')).toHaveLength(2)
+    // The narrow tracks the selection's hull (maps × roles) live, no button.
+    expect([...narrow.pickedMaps.value].sort()).toEqual(['ilios', 'rialto'])
+    expect([...narrow.pickedRoles.value].sort()).toEqual(['support', 'tank'])
   })
 
   it('shows the combined-stats readout for the selection', async () => {

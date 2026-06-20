@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { useDossier, useFullDossier } from '@/composables/dashboard/useDossier'
+import { useFullDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
@@ -18,10 +18,10 @@ import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopov
 // (green → red) and its saturation reads volume, so faint cells carry
 // little weight — same `cellFill` model as the Campaign Log calendar.
 // Cells, role labels, and map names are spreadsheet-style selectable
-// (click / Ctrl-toggle / Shift-range / drag-box, keyboard grid); the selection
-// feeds a combined-stats readout + a "Filter to selection" button rather than
-// live-narrowing (see useMapRoleSelection). A game-mode group header selects all
-// that group's map columns.
+// (click / Ctrl-toggle / Shift-range / drag-box, keyboard grid); selecting
+// highlights, drives a combined-stats readout, and LIVE-filters the match list
+// (no button — the grid itself stays a stable full-window surface, like the
+// Campaign Log heatmap). A game-mode group header selects all its map columns.
 //
 // Data comes from the dossier (the narrowed record set, so the band
 // responds to every filter) joined against the full canonical map
@@ -40,7 +40,6 @@ const GAME_MODE_LABEL: Record<string, string> = {
   hybrid: 'Hybrid', push: 'Push', clash: 'Clash',
 }
 
-const dossier = useDossier()
 const fullDossier = useFullDossier()
 const narrow = useNarrow()
 const ow = useOWData()
@@ -67,9 +66,11 @@ const visibleRoles = computed<Role[]>(() => {
 // the Campaign Log's default.
 const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('recall.mapRoleWindowMonths')
 
-// Cell DATA + the selected-cell highlight read the NARROWED dossier, so they
-// respond to every active filter (panel picks, the band's own cell-pick).
-const cells = dossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
+// Cell DATA reads the UNFILTERED dossier: the grid is a STABLE comparison surface
+// (like the Campaign Log heatmap) — it always shows the full window's win-rates and
+// never collapses to the current narrow. Selecting a cell highlights it + live-
+// filters the match list below (the watch on the selection, further down).
+const cells = fullDossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
 // Row STRUCTURE reads the UNFILTERED dossier so the grid stays put when the
 // band's own cell-pick (or any narrow) shrinks the set — the Campaign Log
 // calendar keeps its full grid the same way. A role still drops out if it was
@@ -86,6 +87,15 @@ const playedRoles = computed<Set<Role>>(() => {
 // Whether the set has ANY match — separates the "play a match first" prompt
 // from the "your filters hid everything" message.
 const hasMatchData = computed(() => playedRoles.value.size > 0)
+
+// Map slugs the player has actually played (any role) in the window. Clash isn't a
+// competitive mode, so its maps are hidden from the atlas unless there's data here.
+const mapsWithData = computed(() => {
+  const s = new Set<string>()
+  for (const c of cells.value) if (c.total > 0) s.add(c.map)
+  return s
+})
+const NON_COMPETITIVE_MODES = new Set(['clash'])
 
 interface Col { slug: string; display: string; gameMode: string; firstInGroup: boolean }
 
@@ -104,6 +114,8 @@ const columns = computed<Col[]>(() => {
   for (const [slug, { display, gameMode }] of ow.mapIndex.value) {
     if (gameModeSet.size && !gameModeSet.has(gameMode)) continue
     if (mapSet.size && !mapSet.has(display)) continue
+    // Non-competitive modes (Clash) only earn a column once they have data.
+    if (NON_COMPETITIVE_MODES.has(gameMode) && !mapsWithData.value.has(slug)) continue
     const arr = byGameMode.get(gameMode) ?? []
     arr.push({ slug, display })
     byGameMode.set(gameMode, arr)
@@ -190,8 +202,8 @@ function cellLabel(slug: string, role: Role): string {
 
 // ── Spreadsheet-style cell selection. The engine owns the state machine; the
 // band supplies the grid order, the selectability gate, and a point→cell resolver
-// for drag. Selecting NO LONGER live-narrows — it highlights + drives the combined
-// readout; the "Filter to selection" button applies it to the set.
+// for drag. Selecting highlights + drives the combined readout AND live-filters the
+// match list (the watch below); the grid itself stays full (stable surface).
 const gridRef = ref<HTMLElement | null>(null)
 
 function cellFromPoint(x: number, y: number): MapRoleCoord | null {
@@ -241,17 +253,26 @@ const selectionStats = computed(() => {
   return { wins, losses, draws, total, winrate: decided ? Math.round((wins / decided) * 100) : null }
 })
 
-// "Filter to selection" → push the rectangular hull (maps × roles) into the narrow:
-// exact for a single cell / row / column / drag-box, a superset for a non-contiguous
-// pick (flagged by the hint next to the button).
-function filterToSelection() {
+// Selecting LIVE-filters the set — no button. The narrow tracks the selection's
+// rectangular hull (maps × roles): exact for a single cell / row / column / drag-
+// box, a superset for a non-contiguous pick (flagged by the hint in the readout).
+// The grid itself stays put (it reads the full dossier), so this only narrows the
+// match list below — the Campaign Log heatmap's select→filter model.
+watch(() => sel.selected.value, () => {
   narrow.pickedMaps.value  = new Set(sel.hullMaps.value)
   narrow.pickedRoles.value = new Set(sel.hullRoles.value)
-}
+})
 
-// This band's filter contribution: the maps × roles narrow it pushed. A header
-// Reset button + a click on any empty cell both call this, so the filter can be
-// cleared without scrolling to the active-chips rail.
+// Keep the highlight honest if the narrow is cleared elsewhere (chip ×, panel
+// reset): drop the selection so the grid doesn't show a stale highlight.
+watch(
+  () => narrow.pickedMaps.value.size + narrow.pickedRoles.value.size,
+  (n) => { if (n === 0 && sel.count.value > 0) sel.clear() },
+)
+
+// This band's filter contribution: the maps × roles narrow it drives. A header
+// Reset button + a click on any empty cell both clear it, so the filter can be
+// dropped without scrolling to the active-chips rail.
 const filterActive = computed(() =>
   narrow.pickedMaps.value.size > 0 || narrow.pickedRoles.value.size > 0,
 )
@@ -445,9 +466,9 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
       </p>
     </div>
 
-    <!-- Selection readout. The slot is ALWAYS present (active bar or a faint
-         prompt) at a fixed height, so selecting a cell swaps content in place and
-         never shifts the widget or the content below it. -->
+    <!-- Selection readout (stats only — selecting live-filters, no button). The
+         slot is ALWAYS present (active stats or a faint prompt) at a fixed height,
+         so selecting swaps content in place and never shifts the widget below. -->
     <div v-if="sel.count.value > 0" class="mr-selection" data-mr-selection-bar>
       <span class="mr-sel-stats" data-mr-selection-stats>
         <strong>{{ sel.count.value }}</strong> cell{{ sel.count.value === 1 ? '' : 's' }}
@@ -456,20 +477,12 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
         <template v-if="selectionStats.winrate !== null"> · {{ selectionStats.winrate }}% WR</template>
         · {{ selectionStats.total }} game{{ selectionStats.total === 1 ? '' : 's' }}
       </span>
-      <span class="mr-sel-actions">
-        <span v-if="!sel.isRectangular.value" class="mr-sel-hint" data-mr-hull-note>
-          filters to every map × role in your selection
-        </span>
-        <button type="button" class="mr-sel-filter" data-mr-filter-selection @click="filterToSelection">
-          Filter set to selection
-        </button>
-        <button type="button" class="mr-sel-clear" data-mr-selection-clear @click="sel.clear()">
-          Clear
-        </button>
+      <span v-if="!sel.isRectangular.value" class="mr-sel-hint" data-mr-hull-note>
+        filtering every map × role in your selection
       </span>
     </div>
     <p v-else class="mr-selection mr-selection-empty" data-mr-selection-empty>
-      Select a cell, role, or map to compare combined stats
+      Select a cell, role, or map to filter — combined stats appear here
     </p>
 
     <MapRoleConfigPopover
@@ -749,8 +762,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 }
 
 /* A selected cell — solid accent ring + glow. Selecting a cell / row / column /
-   box highlights it and feeds the combined readout; the "Filter to selection"
-   button applies it (selecting no longer live-narrows the set). */
+   box highlights it, feeds the combined readout, and live-filters the match list. */
 .mr-cell.selected {
   box-shadow:
     0 0 0 2px var(--accent),
@@ -870,53 +882,15 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 
 .mr-sel-stats strong { color: var(--accent); font-weight: 700; }
 
-.mr-sel-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-left: auto;
-}
-
 .mr-sel-hint {
+  margin-left: auto;
   font-family: var(--mono);
   font-size: 0.58rem;
   color: var(--text-faint);
   font-style: italic;
-  max-width: 14rem;
+  max-width: 16rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.mr-sel-filter,
-.mr-sel-clear {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.22rem 0.6rem;
-  border-radius: 2px;
-  cursor: pointer;
-}
-
-.mr-sel-filter {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--primary-text-on-accent, var(--bg));
-  font-weight: 700;
-}
-
-.mr-sel-filter:hover { background: color-mix(in srgb, var(--accent) 85%, var(--text)); }
-
-.mr-sel-clear {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-}
-
-.mr-sel-clear:hover { border-color: var(--accent); color: var(--text); }
-
-.mr-sel-filter:focus-visible,
-.mr-sel-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 </style>
