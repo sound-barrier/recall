@@ -125,6 +125,23 @@ function onHeroModeFilter(payload: { heroes: string[]; gameModes: string[] }) {
   narrow.pickedGameModes.value = new Set(payload.gameModes)
 }
 
+// Header Reset — clears this band's filter (the drill path + any Ctrl/Shift
+// "Filter to selection" hero/mode picks + the root grid's pending selection)
+// without scrolling to the active-chips rail. goToDepth(0) surgically reverts the
+// drill's own picks; the wholesale clears drop a hybrid-select filter.
+const rootHeatmap = ref<{ clearSelection: () => void } | null>(null)
+const filterActive = computed(() =>
+  depth.value > 0
+  || narrow.pickedHeroes.value.size > 0
+  || narrow.pickedGameModes.value.size > 0,
+)
+function resetFilter() {
+  goToDepth(0)
+  narrow.pickedHeroes.value = new Set()
+  narrow.pickedGameModes.value = new Set()
+  rootHeatmap.value?.clearSelection()
+}
+
 // ── Header: breadcrumb + per-level title ──
 const breadcrumb = computed(() => {
   const crumbs: { label: string; depth: number }[] = [{ label: 'Hero × Game-Mode', depth: 0 }]
@@ -196,6 +213,17 @@ const levelTitle = computed(() => {
       </div>
 
       <button
+        v-if="filterActive"
+        type="button"
+        class="hm-reset"
+        data-hero-mode-reset
+        title="Clear the Hero × Game-Mode filter (drill + selection)"
+        @click="resetFilter"
+      >
+        ⟲ Reset
+      </button>
+
+      <button
         v-if="depth === 0"
         type="button"
         class="hm-gear"
@@ -224,6 +252,7 @@ const levelTitle = computed(() => {
       <!-- Level 0 — root hero × game-mode grid (keeps the floor gate). -->
       <HeroModeHeatmap
         v-if="depth === 0"
+        ref="rootHeatmap"
         :rows="rows"
         :column-headers="columnHeaders"
         :below-floor="belowFloor"
@@ -397,6 +426,26 @@ const levelTitle = computed(() => {
   background: var(--accent);
   color: var(--primary-text-on-accent);
 }
+
+/* Reset — clears the band's filter (drill + selection) without a scroll to chips. */
+.hm-reset {
+  appearance: none;
+  margin-left: 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.22rem 0.5rem;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.hm-reset:hover { background: var(--accent); color: var(--primary-text-on-accent); }
+.hm-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Gear — root-level config popover. Accent dot when non-default. */
 .hm-gear {
