@@ -19,6 +19,7 @@ import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 import NarrowChipFacet from '@/components/matches/narrow/NarrowChipFacet.vue'
 import NarrowTimeScope from '@/components/matches/narrow/NarrowTimeScope.vue'
 import NarrowRefinement from '@/components/matches/narrow/NarrowRefinement.vue'
+import NarrowSinceAnchor from '@/components/matches/narrow/NarrowSinceAnchor.vue'
 // Shared np-section / np-chip chrome for the panel + its facet children.
 import './narrow.css'
 
@@ -74,7 +75,6 @@ const {
   pickedQueues, pickedPlayModes, pickedSources,
   pickedLeavers, pickedModifiers, pickedRanks,
   leaverHandling,
-  anchorKey, sinceAnchorActive,
   pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource,
   pickLeaver, pickModifier, pickRank,
   resetNarrow,
@@ -131,27 +131,9 @@ const isOpen = computed({
   },
 })
 
-// Anchor lookup. `props.records` (full corpus) is the source, NOT
-// `narrowedRecords`, because once `sinceAnchorActive` is true the
-// anchor itself is excluded from narrowedRecords — we'd never find
-// it. anchorChipLabel is the "date · map" form rendered next to the
-// toggle.
-const anchorRecord = computed(() => {
-  if (anchorKey.value === '') return null
-  return props.records.find((r) => r.match_key === anchorKey.value) ?? null
-})
-
-const anchorChipLabel = computed(() => {
-  const r = anchorRecord.value
-  if (!r) return ''
-  const d = r.data?.date ?? ''
-  const map = r.data?.map ?? '—'
-  return d ? `${d} · ${map}` : map
-})
-
-function onOpenAnchor() {
-  const key = anchorKey.value
-  if (key === '') return
+// Open the anchor match in the detail panel — close the popover first, then
+// re-emit to App. NarrowSinceAnchor owns the anchor lookup + emits the key.
+function onOpenAnchor(key: string) {
   isOpen.value = false
   emit('open-match', key)
 }
@@ -482,53 +464,12 @@ onUnmounted(() => {
                 @pick="(v) => pickSource(v as SourcePick)"
               />
 
-              <!-- Since this match — anchor checkbox. The anchor
-                   itself is set/cleared from the match detail panel;
-                   this section is the on-off switch for the filter. -->
-              <section class="np-section">
-                <div class="np-section-head">
-                  <span class="np-section-eyebrow">Since this match</span>
-                  <span class="np-section-meta">
-                    {{ anchorRecord ? 'anchor set' : 'pick a match in the detail panel' }}
-                  </span>
-                </div>
-                <div v-if="anchorRecord" class="np-since-anchor">
-                  <label class="np-toggle-label">
-                    <input
-                      type="checkbox"
-                      data-since-anchor-toggle
-                      :checked="sinceAnchorActive"
-                      @change="sinceAnchorActive = ($event.target as HTMLInputElement).checked"
-                    >
-                    <span>Only matches after</span>
-                  </label>
-                  <p class="np-since-anchor-meta" data-since-anchor-label>
-                    <span class="np-since-anchor-date">{{ anchorChipLabel }}</span>
-                    <span class="np-since-anchor-actions">
-                      <button
-                        type="button"
-                        class="np-since-anchor-open"
-                        data-since-anchor-open
-                        title="Open the anchor's match in the detail panel."
-                        @click="onOpenAnchor"
-                      >
-                        ↗ open
-                      </button>
-                      <button
-                        type="button"
-                        class="np-since-anchor-clear"
-                        data-since-anchor-clear
-                        @click="emit('clear-anchor')"
-                      >
-                        Clear anchor
-                      </button>
-                    </span>
-                  </p>
-                </div>
-                <p v-else class="np-empty">
-                  Open a match → "Filter from this match" to mark a reference point, then return here to apply.
-                </p>
-              </section>
+              <NarrowSinceAnchor
+                :narrow="narrow"
+                :records="records"
+                @open-match="onOpenAnchor"
+                @clear-anchor="emit('clear-anchor')"
+              />
 
               <NarrowRefinement :narrow="narrow" />
             </div>
