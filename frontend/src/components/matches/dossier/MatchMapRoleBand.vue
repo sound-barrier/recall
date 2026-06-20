@@ -20,8 +20,8 @@ import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopov
 // Cells, role labels, and map names are spreadsheet-style selectable
 // (click / Ctrl-toggle / Shift-range / drag-box, keyboard grid); the selection
 // feeds a combined-stats readout + a "Filter to selection" button rather than
-// live-narrowing (see useMapRoleSelection). A game-mode group header still
-// narrows the set to that game-mode.
+// live-narrowing (see useMapRoleSelection). A game-mode group header selects all
+// that group's map columns.
 //
 // Data comes from the dossier (the narrowed record set, so the band
 // responds to every filter) joined against the full canonical map
@@ -248,6 +248,11 @@ function filterToSelection() {
   narrow.pickedRoles.value = new Set(sel.hullRoles.value)
 }
 
+// The map slugs in a game-mode group → the group header selects all its columns.
+function groupMaps(gameMode: string): string[] {
+  return columns.value.filter((c) => c.gameMode === gameMode).map((c) => c.slug)
+}
+
 // A press directly on the grid gutters (between cells) clears the selection.
 // Using mousedown.self — not click — so the synthetic click a drag-box emits on
 // the grid (the down/up cells' common ancestor) can't wipe the fresh selection.
@@ -334,8 +339,8 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
           type="button"
           class="mr-modehead"
           :style="{ gridColumn: `${g.colStart} / span ${g.colSpan}`, gridRow: 1 }"
-          :aria-label="`Narrow to ${g.label} maps`"
-          @click="narrow.pickGameMode(g.gameMode)"
+          :aria-label="`Select all ${g.label} maps`"
+          @click="sel.selectColumns(groupMaps(g.gameMode), { ctrl: $event.ctrlKey || $event.metaKey })"
         >
           {{ g.label }}
         </button>

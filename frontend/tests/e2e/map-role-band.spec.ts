@@ -7,7 +7,7 @@
  * win rate (green→red) and dimmed by volume. Cells / role labels / map
  * names are spreadsheet-style selectable (click / Ctrl-toggle / drag-box);
  * the selection feeds a combined readout + a "Filter to selection" button.
- * A game-mode group header still narrows to that game-mode.
+ * A game-mode group header selects that group's columns.
  *
  * Unlike the opt-in dossier widgets, the band needs no layout seeding —
  * it's fixed chrome. We DO mock /api/v1/system/reference-data so the
@@ -211,12 +211,15 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band.locator('.mr-rowhead')).toHaveCount(3)
   })
 
-  test('clicking a game-mode group header narrows to that game-mode', async ({ page }) => {
+  test("clicking a game-mode group header selects that group's columns", async ({ page }) => {
     const band = page.locator('.match-map-role')
     await band.locator('.mr-modehead', { hasText: 'Escort' }).click()
-
-    const chips = page.locator('ul.active-chips')
-    await expect(chips.locator('.active-chip', { hasText: 'escort' })).toBeVisible()
+    // Escort = Dorado + Rialto; played cells there: rialto|support, rialto|dps,
+    // dorado|support = 3. Selecting (no live-narrow) shows the combined bar.
+    await expect(band.locator('.mr-cell.selected')).toHaveCount(3)
+    await expect(band.locator('[data-mr-selection-bar]')).toBeVisible()
+    // No active chip — the group header now selects, it doesn't filter.
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'escort' })).toHaveCount(0)
   })
 
   test('offers a 1M/3M/6M/12M window toggle, defaulting to 6M', async ({ page }) => {

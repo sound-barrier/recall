@@ -168,12 +168,13 @@ describe('MatchMapRoleBand', () => {
     expect(stats.text()).toContain('12 games')
   })
 
-  it('clicking a game-mode group header narrows to that game-mode', async () => {
-    const pickGameMode = vi.fn()
-    const w = mountBand(makeNarrow({ pickGameMode }))
+  it("clicking a game-mode group header selects that group's columns", async () => {
+    const w = mountBand()
     const escort = w.findAll('.mr-modehead').find((n) => n.text() === 'Escort')
     await escort?.trigger('click')
-    expect(pickGameMode).toHaveBeenCalledWith('escort')
+    // Escort = Dorado + Rialto; played cells there: dorado|dps + rialto|support.
+    expect(w.findAll('.mr-cell.selected')).toHaveLength(2)
+    expect(w.find('[data-mr-selection-bar]').exists()).toBe(true)
   })
 
   it('offers a 1M/3M/6M/12M window toggle defaulting to 6M', () => {
