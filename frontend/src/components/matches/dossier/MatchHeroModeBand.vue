@@ -117,6 +117,14 @@ function onRootCell(hero: string, gameMode: string) {
   drillToMaps(hero, gameMode)
 }
 
+// "Filter to selection" from the root heatmap's Ctrl/Shift selection → narrow the
+// set to the selection's rectangular hull (heroes × game modes). Distinct from the
+// drill path (onRootCell), which dives into one hero×mode's maps.
+function onHeroModeFilter(payload: { heroes: string[]; gameModes: string[] }) {
+  narrow.pickedHeroes.value = new Set(payload.heroes)
+  narrow.pickedGameModes.value = new Set(payload.gameModes)
+}
+
 // ── Header: breadcrumb + per-level title ──
 const breadcrumb = computed(() => {
   const crumbs: { label: string; depth: number }[] = [{ label: 'Hero × Game-Mode', depth: 0 }]
@@ -223,6 +231,7 @@ const levelTitle = computed(() => {
         :decisive-total="decisiveTotal"
         :hero-label="heroLabel"
         @cell="onRootCell"
+        @filter="onHeroModeFilter"
       />
 
       <!-- Level 1 — the drilled hero across the game-mode's maps. -->

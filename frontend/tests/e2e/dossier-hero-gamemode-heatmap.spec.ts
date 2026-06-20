@@ -121,6 +121,28 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     await expect(band.locator('[data-hero-mode-back]')).toBeVisible()
   })
 
+  test('Ctrl/Cmd-click SELECTS a cell instead of drilling (Excel hybrid)', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await band.locator('.heatmap-cell[data-hm-cell="control|lucio"]').click({ modifiers: ['ControlOrMeta'] })
+    // Selected, NOT drilled — the root grid stays, no maps level, a stats bar shows.
+    await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(1)
+    await expect(band.locator('[data-hero-mode-maps]')).toHaveCount(0)
+    await expect(band.locator('[data-hm-selection-stats]')).toContainText('6–4–0')
+  })
+
+  test('hero row + game-mode column headers select; Filter to selection narrows', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // Ana's row → her 3 played cells (escort, flashpoint, hybrid).
+    await band.locator('[data-hm-row="ana"]').click()
+    await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(3)
+    // A game-mode column (plain) replaces it: Control × all heroes = lucio|control only.
+    await band.locator('[data-hm-col="control"]').click()
+    await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(1)
+    // Filter to the selection → narrows the set to Control.
+    await band.locator('[data-hm-filter-selection]').click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'control' })).toBeVisible()
+  })
+
   test('the trailing-window picker filters — 1M drops the 45-day-old corpus', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
     // Default 6M renders the grid.
