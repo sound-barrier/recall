@@ -6,6 +6,8 @@ import { useMatchesGroup, type GroupBy, type GroupedSection, type SortOrder } fr
 import { useMatchesWindow } from '@/composables/matches/useMatchesWindow'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useNarrow } from '@/composables/matches/useNarrow'
+import type { PlayModePick, QueuePick } from '@/composables/matches/matchesNarrow.types'
 import type { Density } from '@/composables/matches/useDensity'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import type { SearchClause } from '@/match/search-query'
@@ -56,6 +58,16 @@ const records = toRef(props, 'records')
 const groupBy = toRef(props, 'groupBy')
 const sortOrder = toRef(props, 'sortOrder')
 const ow = useOWData()
+const narrow = useNarrow()
+
+// Click-to-filter from a leaf-row cell (cozy/compact): map / mode / queue toggle
+// that narrow dimension, the same Excel-autofilter pattern as the data table.
+function onFilterCell(field: 'map' | 'mode' | 'queue', value: string) {
+  if (!value) return
+  if (field === 'map') narrow.pickMap(value)
+  else if (field === 'mode') narrow.pickPlayMode(value as PlayModePick)
+  else narrow.pickQueue(value as QueuePick)
+}
 
 // Hero / role pivot: clicking a hero or role chip floats matching matches to the
 // top of each section (most-played first); clicking the same chip again clears
@@ -391,6 +403,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
           :pivot-role="pivotRole"
           @pivot-hero="onPivotHero"
           @pivot-role="onPivotRole"
+          @filter-cell="onFilterCell"
           @open-match="emit('open-match', $event)"
           @toggle-select="emit('toggle-select', $event)"
           @row-context="(e, k) => emit('row-context', e, k)"
