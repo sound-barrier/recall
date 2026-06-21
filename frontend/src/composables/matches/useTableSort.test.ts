@@ -401,3 +401,46 @@ describe('useTableSort — persistence', () => {
     expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
   })
 })
+
+describe('useTableSort — hero pivot (chip)', () => {
+  const corpus = [
+    rec('a', { date: '2026-05-10', heroesPlayed: [{ hero: 'lucio', percent_played: 100 }] }),
+    rec('b', { date: '2026-05-11', heroesPlayed: [{ hero: 'ana', percent_played: 60 }, { hero: 'wuyang', percent_played: 40 }] }),
+    rec('c', { date: '2026-05-12', heroesPlayed: [{ hero: 'wuyang', percent_played: 90 }] }),
+  ]
+
+  it('pivots the Hero level on a specific hero (most-played first, non-players last)', () => {
+    const api = mountSort()
+    api.pivotHero('wuyang')
+    expect(api.sortKeys.value).toEqual([{ col: 'hero', dir: 'desc', pivotHero: 'wuyang' }])
+    expect(api.pivotedHero.value).toBe('wuyang')
+    // c (90%) then b (40%) then a (no wuyang → tail).
+    expect(api.sortRows(corpus).map((r) => r.match_key)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('plain-clicking the same hero again clears the pivot (back to date-desc)', () => {
+    const api = mountSort()
+    api.pivotHero('wuyang')
+    api.pivotHero('wuyang')
+    expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
+    expect(api.pivotedHero.value).toBe('')
+  })
+
+  it('Shift+click folds the Hero pivot in as a tie-break level', () => {
+    const api = mountSort()
+    api.cycleSort('result')
+    api.pivotHero('wuyang', { append: true })
+    expect(api.sortKeys.value).toEqual([
+      { col: 'result', dir: 'asc' },
+      { col: 'hero', dir: 'desc', pivotHero: 'wuyang' },
+    ])
+  })
+
+  it('clicking the Hero header reverts a pivot to the most-played-hero sort', () => {
+    const api = mountSort()
+    api.pivotHero('wuyang')
+    api.cycleSort('hero')
+    expect(api.sortKeys.value).toEqual([{ col: 'hero', dir: 'asc' }])
+    expect(api.pivotedHero.value).toBe('')
+  })
+})

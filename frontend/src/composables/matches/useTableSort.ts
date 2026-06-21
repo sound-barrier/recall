@@ -1,10 +1,11 @@
+import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import {
   usePersistedRef,
   parseJsonRecord,
   serializeJsonRecord,
 } from '@/composables/shared/usePersistedRef'
-import { heroesForHeader, isEditedMatch, isManualMatch } from '@/match/match-helpers'
+import { heroesForHeader, isEditedMatch, isManualMatch, sortedHeroPlays } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 
@@ -35,6 +36,10 @@ export type SortDir = 'asc' | 'desc'
 export interface SortLevel {
   col: TableSortCol
   dir: SortDir
+  // Only on the 'hero' level: when set, the level sorts by THIS hero's
+  // percent-played (the chip "pivot") instead of the most-played hero's name —
+  // so you can float, say, wuyang's games up even when wuyang isn't primary.
+  pivotHero?: string
 }
 
 // The sortable columns in render order, with their header labels. Shared
@@ -97,12 +102,22 @@ function compareCol(col: TableSortCol, a: MatchRecord, b: MatchRecord): number {
   }
 }
 
-// Fold the sort stack: the first level that separates a and b wins;
-// when every level ties, fall back to newest-ingested-first so the order
-// stays deterministic.
+// Percent the given hero was played in a match; -1 when the hero wasn't played,
+// so a 'desc' hero pivot floats players (high %) up and non-players to the tail.
+function heroPercent(hero: string, r: MatchRecord): number {
+  return sortedHeroPlays(r).find((h) => h.hero === hero)?.percent ?? -1
+}
+
+// Fold the sort stack: the first level that separates a and b wins; when every
+// level ties, fall back to newest-ingested-first so the order stays
+// deterministic. A 'hero' level with a pivotHero compares that hero's
+// percent-played instead of the most-played hero's name.
 function compareMulti(levels: readonly SortLevel[], a: MatchRecord, b: MatchRecord): number {
-  for (const { col, dir } of levels) {
-    const c = compareCol(col, a, b) * (dir === 'asc' ? 1 : -1)
+  for (const level of levels) {
+    const base = level.col === 'hero' && level.pivotHero
+      ? heroPercent(level.pivotHero, a) - heroPercent(level.pivotHero, b)
+      : compareCol(level.col, a, b)
+    const c = base * (level.dir === 'asc' ? 1 : -1)
     if (c !== 0) return c
   }
   return (b.parsed_at ?? '').localeCompare(a.parsed_at ?? '')
@@ -116,9 +131,10 @@ function isSortStack(decoded: unknown): decoded is SortLevel[] {
   const seen = new Set<string>()
   for (const level of decoded) {
     if (!level || typeof level !== 'object') return false
-    const { col, dir } = level as Record<string, unknown>
+    const { col, dir, pivotHero } = level as Record<string, unknown>
     if (typeof col !== 'string' || !SORT_COLS.has(col as TableSortCol)) return false
     if (dir !== 'asc' && dir !== 'desc') return false
+    if (pivotHero !== undefined && typeof pivotHero !== 'string') return false
     if (seen.has(col)) return false
     seen.add(col)
   }
@@ -202,6 +218,29 @@ export function useTableSort() {
     set(freshDefault())
   }
 
+  // Pivot the Hero sort level on a specific hero (a chip click). Plain click
+  // pivots it as the sole sort, or toggles off when it's already the lone pivot
+  // on this hero; Shift+click folds the Hero level in as a tie-break level
+  // (dropping it when it already pivots this hero). Clicking the Hero header
+  // instead (cycleSort) reverts to the most-played-hero sort.
+  function pivotHero(hero: string, opts?: { append?: boolean }): void {
+    const cur = sortKeys.value
+    const idx = cur.findIndex((l) => l.col === 'hero')
+    const level: SortLevel = { col: 'hero', dir: 'desc', pivotHero: hero }
+    if (opts?.append) {
+      if (idx >= 0 && cur[idx]?.pivotHero === hero) set(cur.filter((_, i) => i !== idx))
+      else if (idx >= 0) set(cur.map((l, i) => (i === idx ? level : l)))
+      else set([...cur, level])
+      return
+    }
+    if (cur.length === 1 && idx === 0 && cur[0]?.pivotHero === hero) clearSort()
+    else set([level])
+  }
+
+  // The hero the Hero level is currently pivoting on, or '' — drives the active
+  // chip highlight in the rows.
+  const pivotedHero = computed(() => sortKeys.value.find((l) => l.col === 'hero')?.pivotHero ?? '')
+
   // 1-based position of `col` in the stack (for header level badges);
   // 0 when the column isn't sorted.
   function sortLevelOf(col: TableSortCol): number {
@@ -225,6 +264,8 @@ export function useTableSort() {
   return {
     sortKeys,
     cycleSort,
+    pivotHero,
+    pivotedHero,
     addLevel,
     removeLevel,
     setLevelDir,

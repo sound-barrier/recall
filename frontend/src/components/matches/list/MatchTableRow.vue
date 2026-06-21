@@ -4,7 +4,6 @@ import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
-  formatHeroes,
   formatRoles,
   formatRowDate,
   formatFinishedAt,
@@ -12,6 +11,7 @@ import {
   isHeroUnknown,
   isManualMatch,
   isMapUnknown,
+  sortedHeroPlays,
 } from '@/match/match-helpers'
 import {
   formatPlayModeLabel,
@@ -36,10 +36,13 @@ const props = defineProps<{
   hasSelection: boolean
   isAnchor: boolean
   searchClauses: SearchClause[]
+  // The hero the table is currently pivot-sorting on — highlights its chip.
+  pivotHero?: string
 }>()
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
+  'pivot-hero': [hero: string, append: boolean]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -114,7 +117,18 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         class="tc-unknown"
         :title="`OCR read: ${rec.data?.hero_raw ?? '—'}`"
       >{{ formatUnknownHeroLabel(rec) }}</span>
-      <HighlightedText v-else :text="formatHeroes(rec)" :terms="bareTerms" />
+      <span v-else class="tc-hero-chips">
+        <button
+          v-for="h in sortedHeroPlays(rec)"
+          :key="h.hero"
+          type="button"
+          class="tc-hero-chip"
+          :class="{ 'is-pivot': h.hero === pivotHero }"
+          :aria-pressed="h.hero === pivotHero ? 'true' : 'false'"
+          :title="`Sort by ${h.hero} (Shift+click to add as a sort level)`"
+          @click.stop="emit('pivot-hero', h.hero, $event.shiftKey)"
+        ><HighlightedText :text="h.hero" :terms="bareTerms" /></button>
+      </span>
     </td>
     <td class="tc tc-role">
       {{ formatRoles(rec, ow.heroRole) }}
@@ -227,10 +241,26 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   font-weight: 700;
   text-transform: lowercase;
   max-width: 12rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--identity-accent);
 }
+
+/* Each hero is a clickable chip — click pivots the Hero sort level on it. */
+.tc-hero-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 2px; }
+.tc-hero-chip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 0.2rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.tc-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
+.tc-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tc-hero-chip.is-pivot { background: var(--identity-accent); color: var(--primary-text-on-accent); }
+
 .tc-role { color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.58rem; }
 
 .tc-chip {

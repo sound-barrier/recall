@@ -112,7 +112,8 @@ test.describe('data density — sortable spreadsheet table', () => {
 
   test('a row click opens the detail panel (interaction parity)', async ({ page }) => {
     await toDataDensity(page)
-    await page.locator('tr.table-row[data-match-key="m-rialto"] .tc-hero').click()
+    // Click a non-interactive cell — the Hero cell is now clickable pivot chips.
+    await page.locator('tr.table-row[data-match-key="m-rialto"] .tc-date').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
   })
 

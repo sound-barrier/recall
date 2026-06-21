@@ -43,7 +43,7 @@ const TABLE_COLUMNS: ReadonlyArray<{ col: TableSortCol | null; label: string }> 
 ]
 const TABLE_ROW_HEIGHT = 30
 
-const { sortKeys, cycleSort, ariaSort, sortRows, sortLevelOf } = useTableSort()
+const { sortKeys, cycleSort, pivotHero, pivotedHero, ariaSort, sortRows, sortLevelOf } = useTableSort()
 const { tableMode, setTableMode } = useTableMode()
 
 // Null-safe header-chrome adapters (the checkbox gutter column is col:
@@ -166,6 +166,8 @@ watch(() => props.resetCounter, () => {
             :has-selection="selectedKeys.size > 0"
             :is-anchor="rec.match_key === anchorKey"
             :search-clauses="searchClauses"
+            :pivot-hero="pivotedHero"
+            @pivot-hero="(h: string, append: boolean) => pivotHero(h, { append })"
             @open-match="emit('open-match', $event)"
             @toggle-select="emit('toggle-select', $event)"
             @row-context="(e, k) => emit('row-context', e, k)"
