@@ -158,4 +158,27 @@ test.describe('value-click filtering', () => {
     await expect(page.locator('.leaf-row')).toHaveCount(1)
     await expect(page.locator('.leaf-row[data-match-key="m1"]')).toHaveCount(1)
   })
+
+  test('cozy: clicking the result strip filters by result + lights up', async ({ page }) => {
+    await page.route('**/api/v1/matches', (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { ...record('m1', 'lucio', 'support', 'competitive'), data: { ...record('m1', 'lucio', 'support', 'competitive').data, result: 'victory' } },
+          { ...record('m2', 'ana', 'tank', 'quickplay'), data: { ...record('m2', 'ana', 'tank', 'quickplay').data, result: 'defeat', finished_at: '21:00' } },
+        ]),
+      }),
+    )
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('.leaf-row')).toHaveCount(2)
+
+    await page.locator('.leaf-row[data-match-key="m1"] .leaf-strip').click()
+    // victory → m1 stays, m2 (defeat) drops.
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+    await expect(page.locator('.leaf-row[data-match-key="m1"]')).toHaveCount(1)
+    await expect(page.locator('.leaf-strip.is-filtered')).toBeVisible()
+    await expect(page.locator('aside.detail-panel')).toHaveCount(0)
+  })
 })

@@ -489,6 +489,24 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .tc-filter-cell:disabled { cursor: default; }
 .tc-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* Funnel cue (mirrors the leaf rows) — faint on hover, lit when the value is the
+   active filter; small so it doesn't crowd the fixed-width columns. */
+.tc-filter-cell::after {
+  content: '';
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-left: 0.15em;
+  vertical-align: -0.03em;
+  background-color: currentcolor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3h12l-4.5 5.5V13l-3 1.5V8.5z'/%3E%3C/svg%3E") no-repeat center / contain;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.tc-filter-cell:hover:not(:disabled)::after,
+.tc-filter-cell.is-filtered::after { opacity: 0.6; }
+
 .tc-map .tc-filter-cell {
   padding: 0 0.25rem;
   margin-inline: -0.25rem;

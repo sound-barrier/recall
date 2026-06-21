@@ -60,13 +60,14 @@ const narrow = useNarrow()
 
 // Click-to-filter from a leaf-row cell (cozy/compact): every value cell toggles
 // its narrow dimension. Sorting is the sort/group toolbar's job, not a click.
-function onFilterCell(field: 'map' | 'mode' | 'queue' | 'hero' | 'role', value: string) {
+function onFilterCell(field: 'map' | 'mode' | 'queue' | 'hero' | 'role' | 'result', value: string) {
   if (!value) return
   if (field === 'map') narrow.pickMap(value)
   else if (field === 'mode') narrow.pickPlayMode(value as PlayModePick)
   else if (field === 'queue') narrow.pickQueue(value as QueuePick)
   else if (field === 'hero') narrow.pickHero(value)
-  else narrow.pickRole(value)
+  else if (field === 'role') narrow.pickRole(value)
+  else narrow.pickResult(value)
 }
 
 // The active narrow picks — passed to each row so a value cell whose value is
@@ -77,6 +78,7 @@ const activeFilters = computed(() => ({
   queues: narrow.pickedQueues.value as ReadonlySet<string>,
   heroes: narrow.pickedHeroes.value as ReadonlySet<string>,
   roles: narrow.pickedRoles.value as ReadonlySet<string>,
+  results: narrow.pickedResults.value as ReadonlySet<string>,
 }))
 
 // ─── Sort + group via useMatchesGroup composable ───────────
