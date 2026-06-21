@@ -1,5 +1,25 @@
 import { afterAll, vi } from 'vitest'
 
+// Short-circuit ONLY the reference-data fetch (useOWData) so it can't slip past
+// the @/api-client mock and hang on a real http://localhost:3000 connection
+// under the low-fork coverage run — the App.test "mounts without throwing"
+// ECONNREFUSED timeout. Every other request passes through unchanged, so
+// endpoint-specific test mocks (e.g. the profiles list) keep their own shapes.
+// Set on globalThis directly (NOT via vi.stubGlobal) so api.test's per-test
+// vi.stubGlobal('fetch') still overrides + restores this on unstub.
+const realFetch = globalThis.fetch
+globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+  if (String(input).includes('/system/reference-data')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ heroes_by_role: {}, maps_by_game_mode: {} }),
+      text: async () => '{}',
+    }
+  }
+  return realFetch(input, init)
+}) as unknown as typeof fetch
+
 // Cross-file '@/api' isolation. After each test FILE, drop both the module
 // cache AND any '@/api' mock registration so the next file starts clean:
 //
