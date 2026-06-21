@@ -121,6 +121,20 @@ screenshot key and press it once on each post-game tab: SUMMARY first
 (always), then TEAMS, then PERSONAL × however many heroes you played,
 optionally RANK at the end if it's a comp game.
 
+Two capture settings make the biggest difference to how reliably the
+parser reads your screenshots:
+
+- **Use a high-quality PNG source.** The Nvidia overlay and the Windows
+  Snipping Tool save PNG (lossless, the most reliable to OCR); the
+  Overwatch PrntScn default and Steam's F12 save JPG, and heavy JPG
+  compression blurs the small stat numbers — that's a common cause of a
+  misread or an Unknown record.
+- **Keep Overwatch's default UI colours.** The parser is tuned to the
+  stock colour scheme — it finds your scoreboard row by its blue
+  highlight and detects the magenta COMPETITIVE badge — so non-default
+  colourblind palettes can break detection. Only default colours are
+  known to work.
+
 ### Verify the SUMMARY actually parsed
 
 Click into the Unknown card and look at the source file list. If

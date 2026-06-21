@@ -143,6 +143,11 @@ The in-game screenshot key is **F12** by default (rebindable under *Options → 
 
 Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on Windows by default — but the Settings first-run picker also supports **Nvidia Overlay** (`~\Videos\Overwatch`), **Win Snip tool** (`~\Pictures\Screenshots`), and **Steam-installed OW** (`<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots`). Point Recall at whichever you use; the watcher (enabled under **Parse → Watch Folder**) auto-parses any new `.png` / `.jpg` that lands in it.
 
+> **Capture quality matters.** For the most reliable parsing, prefer a **high-quality PNG** source and keep Overwatch's **default UI colours**:
+>
+> - **PNG over JPG.** PNG is lossless and parses most reliably. The **Nvidia overlay** and **Windows Snipping Tool** save PNG; the **Overwatch PrntScn default** and **Steam's F12** save JPG, whose compression blurs the small stat numbers and can misread (e.g. over-counting eliminations) or land a record in the **Unknown** tab. If you can, capture with a PNG tool.
+> - **Default colours only.** The parser is tuned to Overwatch's **stock colour scheme** — it keys off specific colours (your scoreboard row's blue highlight, the magenta COMPETITIVE badge). Non-default **colourblind palettes** recolour these and can break detection. Only the default colours are known to work.
+
 **What if a screenshot type is missing?** Each match row has a *Data Coverage* strip in the detail panel (click any row to open) that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage — alongside any record whose hero or map text didn't match the canonical roster shipped with this release (see [Reference data gaps](docs/unknown-screenshots.md#reference-data-gaps) for what to do).
 
 ### Bulk-set play mode + queue type
