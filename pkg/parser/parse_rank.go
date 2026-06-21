@@ -18,13 +18,15 @@ var knownRanks = []string{
 // small pills under the rank-progress bar that explain the SR change.
 // The expectation-vs-outcome quartet (favoured×won = expected, favoured×lost
 // = reversal, underdog×won = uphill battle, underdog×lost = consolation),
-// the streak/calibration adjustments, and the result pill itself. Matched
-// as substrings (multi-word labels included), so "win streak" and "loss
-// streak" stay distinct. "demotion protection" is detected separately in
-// parseRank (its OCR drops the trailing letters).
+// the streak/calibration adjustments, the match-condition pills (new-map bonus,
+// leaver compensation), and the result pill itself. Matched as substrings
+// (multi-word labels included), so "win streak" and "loss streak" stay
+// distinct. "demotion protection" is detected separately in parseRank (its OCR
+// drops the trailing letters).
 var knownModifiers = []string{
 	"expected", "uphill battle", "reversal", "consolation",
 	"win streak", "loss streak", "calibration", "volatile",
+	"new map", "leaver compensation",
 	"victory", "defeat", "draw",
 }
 
@@ -67,9 +69,12 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 		res.Result = "draw"
 	}
 
-	// Tier label: "PLATINUM 5" text sits just below the badge in the center
-	// (Y≈60-68% of H — the badge itself takes the band above it).
-	tierRect := image.Rect(W*30/100, H*58/100, W*70/100, H*70/100)
+	// Tier label "PLATINUM 5" sits just below the badge. Read it from the same
+	// wide band the detector probes (10-70% W, down to 78% H, which also holds the
+	// "RANK PROGRESS" caption extractRank ignores): a tighter center crop garbles
+	// the tier on some captures ("GOLD" → "GOD" / "6010" / "solo"), so extractRank
+	// returns no rank and the whole screen is misclassified as summary/unknown.
+	tierRect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
 	tierText, _ := ocrInverted(img, tierRect, work, "rank_tier", "11", "")
 	res.Rank, res.Level = extractRank(tierText)
 

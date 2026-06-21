@@ -162,6 +162,12 @@ func TestExtractModifiers(t *testing.T) {
 			want: []string{"calibration", "volatile"},
 		},
 		{
+			// Match-condition pills order before the result in knownModifiers.
+			name: "new map + leaver compensation",
+			text: "DEFEAT NEW MAP LEAVER COMPENSATION",
+			want: []string{"new map", "leaver compensation", "defeat"},
+		},
+		{
 			name: "mixed case is normalized",
 			text: "Expected Defeat",
 			want: []string{"expected", "defeat"},
