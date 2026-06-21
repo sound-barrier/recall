@@ -51,11 +51,11 @@ function rec(key: string, o: RecOpts = {}): MatchRecord {
 
 // Mount the composable inside a throwaway component so usePersistedRef's
 // lifecycle hooks (onMounted / onBeforeUnmount) bind to a real instance.
-function mountSort() {
+function mountSort(heroRole?: (hero: string | null | undefined) => string) {
   let api!: ReturnType<typeof useTableSort>
   mount(defineComponent({
     setup() {
-      api = useTableSort()
+      api = useTableSort(heroRole)
       return () => h('div')
     },
   }))
@@ -442,5 +442,42 @@ describe('useTableSort — hero pivot (chip)', () => {
     api.cycleSort('hero')
     expect(api.sortKeys.value).toEqual([{ col: 'hero', dir: 'asc' }])
     expect(api.pivotedHero.value).toBe('')
+  })
+})
+
+describe('useTableSort — role pivot (chip)', () => {
+  const ROLES: Record<string, string> = { lucio: 'support', ana: 'support', reaper: 'dps', dva: 'tank' }
+  const heroRole = (h: string | null | undefined) => ROLES[h ?? ''] ?? ''
+  const corpus = [
+    rec('a', { heroesPlayed: [{ hero: 'lucio', percent_played: 100 }] }), // support
+    rec('b', { heroesPlayed: [{ hero: 'reaper', percent_played: 60 }, { hero: 'dva', percent_played: 40 }] }), // dps + tank
+    rec('c', { heroesPlayed: [{ hero: 'dva', percent_played: 90 }] }), // tank
+  ]
+
+  it('pivots the Role level on a role (by summed percent, non-players last)', () => {
+    const api = mountSort(heroRole)
+    api.pivotRole('tank')
+    expect(api.sortKeys.value).toEqual([{ col: 'role', dir: 'desc', pivotRole: 'tank' }])
+    expect(api.pivotedRole.value).toBe('tank')
+    // c (tank 90%) then b (tank 40%) then a (no tank → tail).
+    expect(api.sortRows(corpus).map((r) => r.match_key)).toEqual(['c', 'b', 'a'])
+  })
+
+  it('plain-clicking the same role again clears the pivot (back to date-desc)', () => {
+    const api = mountSort(heroRole)
+    api.pivotRole('tank')
+    api.pivotRole('tank')
+    expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
+    expect(api.pivotedRole.value).toBe('')
+  })
+
+  it('Shift+click folds the Role pivot in as a tie-break level', () => {
+    const api = mountSort(heroRole)
+    api.cycleSort('result')
+    api.pivotRole('support', { append: true })
+    expect(api.sortKeys.value).toEqual([
+      { col: 'result', dir: 'asc' },
+      { col: 'role', dir: 'desc', pivotRole: 'support' },
+    ])
   })
 })

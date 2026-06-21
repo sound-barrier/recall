@@ -158,6 +158,36 @@ export function rolesForHeader(
   return out
 }
 
+// rolePlays is the role-level analogue of sortedHeroPlays: it aggregates the
+// heroes_played percentages by their resolved role (via the heroRole lookup),
+// most-played role first. Drives the role pivot chips + the role pivot sort.
+// Open-queue matches can touch several roles; a scoreboard-only match folds in
+// the single derived role at 0%.
+export function rolePlays(
+  rec: Pick<MatchRecord, 'data'>,
+  heroRole: (hero: string | null | undefined) => string,
+): { role: string; percent: number }[] {
+  const byRole = new Map<string, number>()
+  for (const h of heroesForHeader(rec)) {
+    const role = heroRole(h.hero)
+    if (!role) continue
+    byRole.set(role, (byRole.get(role) ?? 0) + (h.percent_played ?? 0))
+  }
+  if (byRole.size === 0 && rec.data?.role) byRole.set(rec.data.role, 0)
+  return [...byRole].map(([role, percent]) => ({ role, percent })).sort((a, b) => b.percent - a.percent)
+}
+
+// rolePercent is the percent of a match spent in `role` (summed across that
+// role's heroes), or -1 when the role wasn't played — so a 'desc' role pivot
+// floats players up and non-players to the tail (mirrors heroPercent).
+export function rolePercent(
+  role: string,
+  rec: Pick<MatchRecord, 'data'>,
+  heroRole: (hero: string | null | undefined) => string,
+): number {
+  return rolePlays(rec, heroRole).find((r) => r.role === role)?.percent ?? -1
+}
+
 // ── Leaf / archive row formatters ──────────────────────────────────
 // Shared by the compact match rows (the live leaf row + the archive
 // row). Pure given a record (formatRoles also takes the heroRole

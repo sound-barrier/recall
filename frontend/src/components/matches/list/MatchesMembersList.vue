@@ -5,6 +5,7 @@ import type { MatchRecord } from '@/api-client'
 import { useMatchesGroup, type GroupBy, type GroupedSection, type SortOrder } from '@/composables/matches/useMatchesGroup'
 import { useMatchesWindow } from '@/composables/matches/useMatchesWindow'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
+import { useOWData } from '@/composables/shared/useOWData'
 import type { Density } from '@/composables/matches/useDensity'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import type { SearchClause } from '@/match/search-query'
@@ -54,17 +55,27 @@ const emit = defineEmits<{
 const records = toRef(props, 'records')
 const groupBy = toRef(props, 'groupBy')
 const sortOrder = toRef(props, 'sortOrder')
+const ow = useOWData()
 
-// Hero pivot: clicking a hero chip floats that hero's matches to the top of each
-// section (most-played first); clicking the same chip again clears it. A
-// view-local sort overlay that leaves the date grouping intact.
+// Hero / role pivot: clicking a hero or role chip floats matching matches to the
+// top of each section (most-played first); clicking the same chip again clears
+// it. One pivot at a time — setting one clears the other. A view-local sort
+// overlay that leaves the date grouping intact.
 const pivotHero = ref('')
+const pivotRole = ref('')
 function onPivotHero(hero: string) {
+  pivotRole.value = ''
   pivotHero.value = pivotHero.value === hero ? '' : hero
+}
+function onPivotRole(role: string) {
+  pivotHero.value = ''
+  pivotRole.value = pivotRole.value === role ? '' : role
 }
 
 // ─── Sort + group via useMatchesGroup composable ───────────
-const { sortedRecords, groupedSections } = useMatchesGroup(records, groupBy, sortOrder, pivotHero)
+const { sortedRecords, groupedSections } = useMatchesGroup(
+  records, groupBy, sortOrder, pivotHero, pivotRole, ow.heroRole,
+)
 
 // ─── Collapsible group sections ────────────────────────────
 //
@@ -377,7 +388,9 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
           :is-anchor="rec.match_key === anchorKey"
           :search-clauses="searchClauses"
           :pivot-hero="pivotHero"
+          :pivot-role="pivotRole"
           @pivot-hero="onPivotHero"
+          @pivot-role="onPivotRole"
           @open-match="emit('open-match', $event)"
           @toggle-select="emit('toggle-select', $event)"
           @row-context="(e, k) => emit('row-context', e, k)"

@@ -4,13 +4,13 @@ import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
-  formatRoles,
   formatRowDate,
   formatFinishedAt,
   isEditedMatch,
   isHeroUnknown,
   isManualMatch,
   isMapUnknown,
+  rolePlays,
   sortedHeroPlays,
 } from '@/match/match-helpers'
 import {
@@ -36,13 +36,15 @@ const props = defineProps<{
   hasSelection: boolean
   isAnchor: boolean
   searchClauses: SearchClause[]
-  // The hero the table is currently pivot-sorting on — highlights its chip.
+  // The hero / role the table is currently pivot-sorting on — highlights its chip.
   pivotHero?: string
+  pivotRole?: string
 }>()
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
   'pivot-hero': [hero: string, append: boolean]
+  'pivot-role': [role: string, append: boolean]
   'filter-cell': [field: 'map' | 'result', value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
@@ -140,7 +142,18 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
       </span>
     </td>
     <td class="tc tc-role">
-      {{ formatRoles(rec, ow.heroRole) }}
+      <span class="tc-role-chips">
+        <button
+          v-for="r in rolePlays(rec, ow.heroRole)"
+          :key="r.role"
+          type="button"
+          class="tc-role-chip"
+          :class="{ 'is-pivot': r.role === pivotRole }"
+          :aria-pressed="r.role === pivotRole ? 'true' : 'false'"
+          :title="`Sort by ${r.role} (Shift+click to add as a sort level)`"
+          @click.stop="emit('pivot-role', r.role, $event.shiftKey)"
+        >{{ r.role }}</button>
+      </span>
     </td>
     <td class="tc tc-stat-cell tc-elim">
       {{ rec.data?.eliminations ?? '—' }}
@@ -302,7 +315,27 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .tc-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tc-hero-chip.is-pivot { background: var(--identity-accent); color: var(--primary-text-on-accent); }
 
-.tc-role { color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.58rem; }
+/* Each role is a clickable chip — click pivots the Role sort level on it
+   (open-queue matches can show several). Keeps the faint uppercase look. */
+.tc-role-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 3px; }
+
+.tc-role-chip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 0.2rem;
+  font: inherit;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.58rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.tc-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.tc-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tc-role-chip.is-pivot { background: var(--accent); color: var(--primary-text-on-accent); }
 
 .tc-chip {
   font-size: 0.52rem;
