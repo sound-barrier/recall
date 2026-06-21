@@ -3,12 +3,12 @@ import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
-  formatHeroes,
   formatRoles,
   formatRowDate,
   formatFinishedAt,
   isHeroUnknown,
   isMapUnknown,
+  sortedHeroPlays,
 } from '@/match/match-helpers'
 import {
   formatPlayModeLabel,
@@ -41,10 +41,13 @@ const props = defineProps<{
   // Parsed narrow-search clauses — drives highlighting of matched
   // substrings in the visible free-text surfaces (map / hero / tags).
   searchClauses: SearchClause[]
+  // The active hero pivot — this hero's chip renders pressed/highlighted.
+  pivotHero?: string
 }>()
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
+  'pivot-hero': [hero: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -154,7 +157,18 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         :data-unknown-hero="rec.data?.hero_raw || true"
         :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
       >{{ formatUnknownHeroLabel(rec) }}</span>
-      <span v-else class="leaf-hero"><HighlightedText :text="formatHeroes(rec)" :terms="bareTerms" /></span>
+      <span v-else class="leaf-hero">
+        <button
+          v-for="h in sortedHeroPlays(rec)"
+          :key="h.hero"
+          type="button"
+          class="leaf-hero-chip"
+          :class="{ 'is-pivot': h.hero === pivotHero }"
+          :aria-pressed="h.hero === pivotHero ? 'true' : 'false'"
+          :title="`Sort ${h.hero} matches to the top of each group`"
+          @click.stop="emit('pivot-hero', h.hero)"
+        ><HighlightedText :text="h.hero" :terms="bareTerms" /></button>
+      </span>
       <span v-if="formatRoles(rec, ow.heroRole)" class="leaf-role">{{ formatRoles(rec, ow.heroRole) }}</span>
     </div>
 
@@ -342,15 +356,38 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 }
 
 .leaf-hero {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1px 2px;
+  min-width: 0;
+  line-height: 1;
+}
+
+/* Each hero is a clickable pivot chip — click sorts that hero's matches to the
+   top of each section; the active one renders filled. Resets the button's UA
+   chrome and inherits the hero-name look. */
+.leaf-hero-chip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0.05rem 0.2rem;
   font-family: var(--mono);
   font-size: 0.85rem;
-  color: var(--identity-accent);
   font-weight: 700;
+  color: var(--identity-accent);
   text-transform: lowercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   line-height: 1;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.leaf-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
+.leaf-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.leaf-hero-chip.is-pivot {
+  background: var(--identity-accent);
+  color: var(--primary-text-on-accent);
 }
 
 .leaf-role {

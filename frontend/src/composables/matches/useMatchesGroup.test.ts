@@ -223,4 +223,48 @@ describe('useMatchesGroup', () => {
       expect(groupedSections.value.map((s) => s.header)).toEqual(['OCR generated'])
     })
   })
+
+  describe('hero pivot', () => {
+    function heroRec(date: string, key: string, plays: { hero: string; percent: number }[]): MatchRecord {
+      return {
+        match_key: key,
+        source_files: [`${key}.png`],
+        source_types: { [`${key}.png`]: 'summary' },
+        data: {
+          date, finished_at: '12:00', map: 'rialto', playlist: 'competitive',
+          hero: plays[0]!.hero,
+          heroes_played: plays.map((p) => ({ hero: p.hero, percent_played: p.percent })),
+        },
+        parsed_at: `${date}T12:00:00Z`,
+      } as unknown as MatchRecord
+    }
+
+    const corpus = [
+      heroRec('2026-05-10', 'a', [{ hero: 'wuyang', percent: 100 }]),
+      heroRec('2026-05-11', 'b', [{ hero: 'lucio', percent: 100 }]),
+      heroRec('2026-05-12', 'c', [{ hero: 'ana', percent: 70 }, { hero: 'wuyang', percent: 30 }]),
+      heroRec('2026-06-02', 'e', [{ hero: 'wuyang', percent: 50 }, { hero: 'kiriko', percent: 50 }]),
+      heroRec('2026-06-03', 'f', [{ hero: 'lucio', percent: 100 }]),
+    ]
+
+    it('floats the pivot hero to the top of each section, most-played first', () => {
+      const { groupedSections } = useMatchesGroup(
+        ref(corpus), ref<GroupBy>('month'), ref<SortOrder>('newest'), ref('wuyang'),
+      )
+      const sections = groupedSections.value
+      expect(sections.map((s) => s.key)).toEqual(['2026-06', '2026-05'])
+      // June: e (wuyang 50%) floats above f (no wuyang), reversing date order.
+      expect(sections[0]!.records.map((r) => r.match_key)).toEqual(['e', 'f'])
+      // May: a (wuyang 100%) then c (wuyang 30%) then b (no wuyang).
+      expect(sections[1]!.records.map((r) => r.match_key)).toEqual(['a', 'c', 'b'])
+    })
+
+    it('an empty pivot leaves the date order untouched', () => {
+      const { groupedSections } = useMatchesGroup(
+        ref(corpus), ref<GroupBy>('month'), ref<SortOrder>('newest'), ref(''),
+      )
+      // Pure newest-first date order within May.
+      expect(groupedSections.value[1]!.records.map((r) => r.match_key)).toEqual(['c', 'b', 'a'])
+    })
+  })
 })

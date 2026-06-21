@@ -55,8 +55,16 @@ const records = toRef(props, 'records')
 const groupBy = toRef(props, 'groupBy')
 const sortOrder = toRef(props, 'sortOrder')
 
+// Hero pivot: clicking a hero chip floats that hero's matches to the top of each
+// section (most-played first); clicking the same chip again clears it. A
+// view-local sort overlay that leaves the date grouping intact.
+const pivotHero = ref('')
+function onPivotHero(hero: string) {
+  pivotHero.value = pivotHero.value === hero ? '' : hero
+}
+
 // ─── Sort + group via useMatchesGroup composable ───────────
-const { sortedRecords, groupedSections } = useMatchesGroup(records, groupBy, sortOrder)
+const { sortedRecords, groupedSections } = useMatchesGroup(records, groupBy, sortOrder, pivotHero)
 
 // ─── Collapsible group sections ────────────────────────────
 //
@@ -368,6 +376,8 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
           :has-selection="selectedKeys.size > 0"
           :is-anchor="rec.match_key === anchorKey"
           :search-clauses="searchClauses"
+          :pivot-hero="pivotHero"
+          @pivot-hero="onPivotHero"
           @open-match="emit('open-match', $event)"
           @toggle-select="emit('toggle-select', $event)"
           @row-context="(e, k) => emit('row-context', e, k)"

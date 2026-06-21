@@ -85,10 +85,36 @@ function bucketFor(date: string, bucket: GroupBy): { key: string; label: string 
   }
 }
 
+// pivotPercent returns how much `hero` was played in a match, or -1 when the
+// hero wasn't played (so those matches sort below the pivot group).
+function pivotPercent(r: MatchRecord, hero: string): number {
+  const hp = r.data?.heroes_played?.find((h) => h.hero === hero)
+  if (hp) return hp.percent_played ?? 0
+  return r.data?.hero === hero ? 0 : -1
+}
+
+// pivotSort floats the matches that played `hero` to the top (most-played
+// first); every other match keeps its existing (date) order. JS sort is stable,
+// so returning 0 preserves the section's sort for the non-pivot tail.
+function pivotSort(records: MatchRecord[], hero: string): MatchRecord[] {
+  return [...records].sort((a, b) => {
+    const pa = pivotPercent(a, hero)
+    const pb = pivotPercent(b, hero)
+    const aHas = pa >= 0
+    const bHas = pb >= 0
+    if (aHas !== bHas) return aHas ? -1 : 1
+    if (aHas && pb !== pa) return pb - pa
+    return 0
+  })
+}
+
 export function useMatchesGroup(
   records: Readonly<Ref<MatchRecord[]>>,
   groupBy: Readonly<Ref<GroupBy>>,
   sortOrder: Readonly<Ref<SortOrder>>,
+  // When set, the hero whose matches float to the top of each section (the
+  // leaf-row chip pivot). Empty string = no pivot.
+  pivotHero?: Readonly<Ref<string>>,
 ) {
   const sortedRecords = computed(() => {
     return [...records.value].sort((a, b) => {
@@ -98,7 +124,7 @@ export function useMatchesGroup(
     })
   })
 
-  const groupedSections = computed<GroupedSection[]>(() => {
+  const baseSections = computed<GroupedSection[]>(() => {
     if (groupBy.value === 'none') {
       return [{ key: 'all', header: null, records: sortedRecords.value }]
     }
@@ -136,6 +162,14 @@ export function useMatchesGroup(
     }
     if (noDateSection) sections.push(noDateSection)
     return sections
+  })
+
+  // The displayed sections, with the hero pivot applied within each one (so the
+  // date grouping stays intact — the user's chosen behaviour).
+  const groupedSections = computed<GroupedSection[]>(() => {
+    const hero = pivotHero?.value ?? ''
+    if (!hero) return baseSections.value
+    return baseSections.value.map((s) => ({ ...s, records: pivotSort(s.records, hero) }))
   })
 
   return { sortedRecords, groupedSections }
