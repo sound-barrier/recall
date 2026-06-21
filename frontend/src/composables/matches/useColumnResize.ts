@@ -17,7 +17,7 @@ const MIN_WIDTH = 36
 // so these seed the colgroup until the user drags one.
 export const DEFAULT_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
   select: 34,
-  date: 96,
+  date: 132,
   map: 132,
   playMode: 96,
   queue: 96,
