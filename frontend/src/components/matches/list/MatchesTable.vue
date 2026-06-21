@@ -4,6 +4,7 @@ import type { MatchRecord } from '@/api-client'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/useTableSort'
 import { useTableMode } from '@/composables/matches/useTableMode'
+import { useNarrow } from '@/composables/matches/useNarrow'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/list/MatchTableRow.vue'
 import PivotTable from '@/components/matches/pivot/PivotTable.vue'
@@ -45,6 +46,16 @@ const TABLE_ROW_HEIGHT = 30
 
 const { sortKeys, cycleSort, pivotHero, pivotedHero, ariaSort, sortRows, sortLevelOf } = useTableSort()
 const { tableMode, setTableMode } = useTableMode()
+const narrow = useNarrow()
+
+// Click-to-filter: a categorical cell value toggles that narrow dimension
+// (Excel autofilter, on top of the narrow panel). Hero is the pivot, not a
+// filter — so only the map + result cells route here.
+function onFilterCell(field: 'map' | 'result', value: string) {
+  if (!value) return
+  if (field === 'map') narrow.pickMap(value)
+  else narrow.pickResult(value)
+}
 
 // Null-safe header-chrome adapters (the checkbox gutter column is col:
 // null): the 1-based sort level for the badge, and the direction caret.
@@ -168,6 +179,7 @@ watch(() => props.resetCounter, () => {
             :search-clauses="searchClauses"
             :pivot-hero="pivotedHero"
             @pivot-hero="(h: string, append: boolean) => pivotHero(h, { append })"
+            @filter-cell="onFilterCell"
             @open-match="emit('open-match', $event)"
             @toggle-select="emit('toggle-select', $event)"
             @row-context="(e, k) => emit('row-context', e, k)"

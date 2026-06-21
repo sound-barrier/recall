@@ -43,6 +43,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'open-match': [matchKey: string]
   'pivot-hero': [hero: string, append: boolean]
+  'filter-cell': [field: 'map' | 'result', value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -103,7 +104,15 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         class="tc-unknown"
         :title="`OCR read: ${rec.data?.map_raw ?? '—'}`"
       >{{ formatUnknownMapLabel(rec) }}</span>
-      <HighlightedText v-else :text="rec.data?.map || 'unknown'" :terms="bareTerms" />
+      <button
+        v-else
+        type="button"
+        class="tc-filter-cell"
+        :title="`Filter the set to ${rec.data?.map}`"
+        @click.stop="emit('filter-cell', 'map', rec.data?.map ?? '')"
+      >
+        <HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" />
+      </button>
     </td>
     <td class="tc tc-mode">
       <span class="tc-chip">{{ formatPlayModeLabel(rec) }}</span>
@@ -173,7 +182,16 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
       >
     </td>
     <td class="tc tc-result">
-      <span class="tc-result-chip" :class="`result-${rec.data?.result || 'unknown'}`">{{ rec.data?.result || '—' }}</span>
+      <button
+        type="button"
+        class="tc-result-chip tc-filter-cell"
+        :class="`result-${rec.data?.result || 'unknown'}`"
+        :disabled="!rec.data?.result"
+        :title="rec.data?.result ? `Filter the set to ${rec.data.result}` : undefined"
+        @click.stop="rec.data?.result && emit('filter-cell', 'result', rec.data.result)"
+      >
+        {{ rec.data?.result || '—' }}
+      </button>
     </td>
   </tr>
 </template>
@@ -345,4 +363,27 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   border-color: var(--text-mute);
   color: var(--text);
 }
+
+/* Cells promoted to filter buttons (click → narrow the set to that value). The
+   reset is at specificity 0 (:where) so the result chip's own tint/border still
+   wins; the bare map button gets a transparent bg + hover wash. */
+:where(.tc-filter-cell) {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.tc-filter-cell:disabled { cursor: default; }
+.tc-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tc-map .tc-filter-cell {
+  padding: 0 0.25rem;
+  margin-inline: -0.25rem;
+  border-radius: 3px;
+}
+.tc-map .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.tc-result .tc-filter-cell:hover:not(:disabled) { filter: brightness(1.12); }
 </style>
