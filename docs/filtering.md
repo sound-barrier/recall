@@ -179,6 +179,40 @@ determines where the week boundary lands — see
 [Settings reference → Calendar](settings-reference.md#first-day-of-week)
 for the regional defaults.
 
+## Filter straight from a row
+
+Every value shown in a match row is also a one-click filter — no need to open
+the Filter matches panel for the common case. Click a **Map**, **Mode**, **Queue
+type**, **Hero**, **Role**, or **Result** in any row and the set narrows to
+matches carrying that value; click it again to clear. It toggles the same picks
+the panel does, so they stack (Rialto **and** Competitive) and surface as the
+active-clause chips on the dossier.
+
+The value you're filtering by **lights up** across every visible row — an accent
+outline, with a small funnel mark in the cozy / compact rows — so the live
+filters read at a glance. Hero and Role are *broad*: clicking a role on an
+open-queue match filters to every match that played that role, not only the ones
+where it was primary.
+
+> Sorting is separate — it lives in the Sort + group controls (cozy / compact)
+> and the column headers (Data view). A value-click only ever filters.
+
+### Spreadsheet data view
+
+Switch the leaves to **Data** density (the density control above the list) for a
+real table — one row per match, the same value-cells filtering on click — plus a
+few spreadsheet conveniences:
+
+- **Sort by column** — click a header to sort by it; **Shift+click** another to
+  add a numbered tie-break level. Click again to flip direction.
+- **Resize columns** — drag a header's right edge; double-click to reset. Widths
+  persist per profile.
+- **Frozen leading columns** — the select + **When** columns stay pinned while
+  the wider columns scroll.
+- **Copy a range** — drag-select a rectangle of cells and **Ctrl / Cmd + C**
+  copies it as tab-separated text that pastes straight into Excel or Google
+  Sheets. **Esc** clears the selection.
+
 ## Customizing the dossier
 
 The dossier isn't fixed — every KPI and breakdown is a **widget** you
