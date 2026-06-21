@@ -237,9 +237,31 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   color: var(--text);
   white-space: nowrap;
 }
-.tc-check { width: 1.6rem; padding-right: 0; }
 
-.tc-date { line-height: 1.15; }
+/* Frozen leading columns (mirror the header freeze in MatchesTable): select +
+   Date stay pinned-left during horizontal scroll. They need an opaque bg so the
+   scrolling cells pass UNDER them — the row's own bg is transparent and would
+   let content show through — so the row's hover/ticked tints are replicated. */
+.tc-check,
+.tc-date {
+  position: sticky;
+  z-index: 1;
+  background: var(--surface-2);
+}
+
+.table-row:hover .tc-check,
+.table-row:hover .tc-date { background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); }
+
+.table-row.is-ticked .tc-check,
+.table-row.is-ticked .tc-date { background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
+
+.tc-check { width: 1.6rem; padding-right: 0; left: 0; }
+
+.tc-date {
+  line-height: 1.15;
+  left: 34px;
+  border-right: 1px solid var(--border-strong);
+}
 .tc-date-d { color: var(--text); font-weight: 700; letter-spacing: 0.03em; }
 .tc-date-t { color: var(--text-faint); margin-left: 0.35rem; font-size: 0.62rem; }
 

@@ -168,6 +168,7 @@ watch(() => props.resetCounter, () => {
                 >{{ headerCaret(column.col) }}</span>
               </span>
               <span
+                v-if="column.col"
                 class="th-resize"
                 aria-hidden="true"
                 title="Drag to resize · double-click to reset"
@@ -368,6 +369,19 @@ watch(() => props.resetCounter, () => {
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   user-select: none;
+}
+
+/* Frozen leading columns: select + Date stay pinned-left while the wider
+   columns scroll under them. select has no resize handle, so its width is the
+   fixed 34px default and Date's offset is a constant 34px. The header cells are
+   already sticky-top; adding `left` makes them sticky in both axes, and the
+   bumped z-index keeps the frozen corner above the rest of the sticky header. */
+.leaves-thead .th:first-child { left: 0; z-index: 3; }
+
+.leaves-thead .th[data-sort-col="date"] {
+  left: 34px;
+  z-index: 3;
+  border-right: 1px solid var(--border-strong);
 }
 .leaves-thead .th[data-sort-col="result"] { text-align: right; }
 .leaves-thead .th[data-sort-col="result"] .th-inner { flex-direction: row-reverse; }
