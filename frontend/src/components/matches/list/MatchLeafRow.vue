@@ -41,19 +41,20 @@ const props = defineProps<{
   // Parsed narrow-search clauses — drives highlighting of matched
   // substrings in the visible free-text surfaces (map / hero / tags).
   searchClauses: SearchClause[]
-  // The active hero / role pivot — that chip renders pressed/highlighted.
-  pivotHero?: string
-  pivotRole?: string
-  // The active map/mode/queue narrow picks — a cell whose value is in its set
-  // renders as an active filter (distinct from the sort pivots).
-  activeFilters?: { maps: ReadonlySet<string>; modes: ReadonlySet<string>; queues: ReadonlySet<string> }
+  // The active narrow picks — a value cell whose value is in its set renders as
+  // an active filter (every value cell filters; sorting is the toolbar's job).
+  activeFilters?: {
+    maps: ReadonlySet<string>
+    modes: ReadonlySet<string>
+    queues: ReadonlySet<string>
+    heroes: ReadonlySet<string>
+    roles: ReadonlySet<string>
+  }
 }>()
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
-  'pivot-hero': [hero: string]
-  'pivot-role': [role: string]
-  'filter-cell': [field: 'map' | 'mode' | 'queue', value: string]
+  'filter-cell': [field: 'map' | 'mode' | 'queue' | 'hero' | 'role', value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -87,6 +88,8 @@ const queuePick = computed(() => {
 const mapFiltered = computed(() => props.activeFilters?.maps.has(props.rec.data?.map ?? '') ?? false)
 const modeFiltered = computed(() => props.activeFilters?.modes.has(playModePick.value) ?? false)
 const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.value) ?? false)
+const heroFiltered = (hero: string) => props.activeFilters?.heroes.has(hero) ?? false
+const roleFiltered = (role: string) => props.activeFilters?.roles.has(role) ?? false
 </script>
 
 <template>
@@ -205,11 +208,11 @@ const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.v
           v-for="h in sortedHeroPlays(rec)"
           :key="h.hero"
           type="button"
-          class="leaf-hero-chip"
-          :class="{ 'is-pivot': h.hero === pivotHero }"
-          :aria-pressed="h.hero === pivotHero ? 'true' : 'false'"
-          :title="`Sort ${h.hero} matches to the top of each group`"
-          @click.stop="emit('pivot-hero', h.hero)"
+          class="leaf-hero-chip leaf-filter-cell"
+          :class="{ 'is-filtered': heroFiltered(h.hero) }"
+          :aria-pressed="heroFiltered(h.hero) ? 'true' : 'false'"
+          :title="heroFiltered(h.hero) ? `Filtering by ${h.hero} — click to clear` : `Filter the set to ${h.hero}`"
+          @click.stop="emit('filter-cell', 'hero', h.hero)"
         ><HighlightedText :text="h.hero" :terms="bareTerms" /></button>
       </span>
       <span v-if="rolePlays(rec, ow.heroRole).length" class="leaf-role">
@@ -217,11 +220,11 @@ const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.v
           v-for="r in rolePlays(rec, ow.heroRole)"
           :key="r.role"
           type="button"
-          class="leaf-role-chip"
-          :class="{ 'is-pivot': r.role === pivotRole }"
-          :aria-pressed="r.role === pivotRole ? 'true' : 'false'"
-          :title="`Sort ${r.role} matches to the top of each group`"
-          @click.stop="emit('pivot-role', r.role)"
+          class="leaf-role-chip leaf-filter-cell"
+          :class="{ 'is-filtered': roleFiltered(r.role) }"
+          :aria-pressed="roleFiltered(r.role) ? 'true' : 'false'"
+          :title="roleFiltered(r.role) ? `Filtering by ${r.role} — click to clear` : `Filter the set to ${r.role}`"
+          @click.stop="emit('filter-cell', 'role', r.role)"
         >{{ r.role }}</button>
       </span>
     </div>
@@ -481,19 +484,14 @@ const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.v
 .leaf-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
 .leaf-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.leaf-hero-chip.is-pivot {
-  background: var(--identity-accent);
-  color: var(--primary-text-on-accent);
-}
-
 .leaf-role {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 1px 3px;
 }
 
-/* Each role is a clickable chip — click pivots that role's matches to the top
-   (open-queue matches show several). Keeps the faint uppercase mono look. */
+/* Each role is a clickable filter chip (open-queue matches show several). Keeps
+   the faint uppercase mono look. */
 .leaf-role-chip {
   appearance: none;
   border: 0;
@@ -511,7 +509,6 @@ const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.v
 }
 .leaf-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
 .leaf-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.leaf-role-chip.is-pivot { background: var(--accent); color: var(--primary-text-on-accent); }
 
 /* 5. How — E/A/D, big bold tabular numerals with thin separators. */
 .leaf-stats-block {

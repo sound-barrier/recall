@@ -8,6 +8,7 @@ import { useNarrow } from '@/composables/matches/useNarrow'
 import { useColumnResize } from '@/composables/matches/useColumnResize'
 import { useCellSelection } from '@/composables/matches/useCellSelection'
 import { useOWData } from '@/composables/shared/useOWData'
+import type { PlayModePick, QueuePick } from '@/composables/matches/matchesNarrow.types'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/list/MatchTableRow.vue'
 import PivotTable from '@/components/matches/pivot/PivotTable.vue'
@@ -48,19 +49,30 @@ const TABLE_COLUMNS: ReadonlyArray<{ col: TableSortCol | null; label: string }> 
 const TABLE_ROW_HEIGHT = 30
 
 const ow = useOWData()
-const { sortKeys, cycleSort, pivotHero, pivotedHero, pivotRole, pivotedRole, ariaSort, sortRows, sortLevelOf } =
-  useTableSort(ow.heroRole)
+const { sortKeys, cycleSort, ariaSort, sortRows, sortLevelOf } = useTableSort()
 const { tableMode, setTableMode } = useTableMode()
 const narrow = useNarrow()
 
-// Click-to-filter: a categorical cell value toggles that narrow dimension
-// (Excel autofilter, on top of the narrow panel). Hero is the pivot, not a
-// filter — so only the map + result cells route here.
-function onFilterCell(field: 'map' | 'result', value: string) {
+// Click-to-filter: every value cell toggles its narrow dimension (sorting is the
+// column headers' job). The active picks light the matching cells up.
+function onFilterCell(field: 'map' | 'result' | 'mode' | 'queue' | 'hero' | 'role', value: string) {
   if (!value) return
   if (field === 'map') narrow.pickMap(value)
-  else narrow.pickResult(value)
+  else if (field === 'result') narrow.pickResult(value)
+  else if (field === 'mode') narrow.pickPlayMode(value as PlayModePick)
+  else if (field === 'queue') narrow.pickQueue(value as QueuePick)
+  else if (field === 'hero') narrow.pickHero(value)
+  else narrow.pickRole(value)
 }
+
+const activeFilters = computed(() => ({
+  maps: narrow.pickedMaps.value as ReadonlySet<string>,
+  modes: narrow.pickedPlayModes.value as ReadonlySet<string>,
+  queues: narrow.pickedQueues.value as ReadonlySet<string>,
+  heroes: narrow.pickedHeroes.value as ReadonlySet<string>,
+  roles: narrow.pickedRoles.value as ReadonlySet<string>,
+  results: narrow.pickedResults.value as ReadonlySet<string>,
+}))
 
 // Column resize: persisted per-column widths drive a <colgroup> over a
 // fixed-layout table; the total feeds the table's own width so the pane scrolls
@@ -282,11 +294,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onCellKeydown))
             :has-selection="selectedKeys.size > 0"
             :is-anchor="rec.match_key === anchorKey"
             :search-clauses="searchClauses"
-            :pivot-hero="pivotedHero"
-            :pivot-role="pivotedRole"
+            :active-filters="activeFilters"
             :selected-cols="cellSel.selectedColsFor(rec.match_key)"
-            @pivot-hero="(h: string, append: boolean) => pivotHero(h, { append })"
-            @pivot-role="(r: string, append: boolean) => pivotRole(r, { append })"
             @filter-cell="onFilterCell"
             @open-match="onRowOpen"
             @toggle-select="emit('toggle-select', $event)"

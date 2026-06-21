@@ -5,7 +5,6 @@ import type { MatchRecord } from '@/api-client'
 import { useMatchesGroup, type GroupBy, type GroupedSection, type SortOrder } from '@/composables/matches/useMatchesGroup'
 import { useMatchesWindow } from '@/composables/matches/useMatchesWindow'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
-import { useOWData } from '@/composables/shared/useOWData'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import type { PlayModePick, QueuePick } from '@/composables/matches/matchesNarrow.types'
 import type { Density } from '@/composables/matches/useDensity'
@@ -57,45 +56,31 @@ const emit = defineEmits<{
 const records = toRef(props, 'records')
 const groupBy = toRef(props, 'groupBy')
 const sortOrder = toRef(props, 'sortOrder')
-const ow = useOWData()
 const narrow = useNarrow()
 
-// Click-to-filter from a leaf-row cell (cozy/compact): map / mode / queue toggle
-// that narrow dimension, the same Excel-autofilter pattern as the data table.
-function onFilterCell(field: 'map' | 'mode' | 'queue', value: string) {
+// Click-to-filter from a leaf-row cell (cozy/compact): every value cell toggles
+// its narrow dimension. Sorting is the sort/group toolbar's job, not a click.
+function onFilterCell(field: 'map' | 'mode' | 'queue' | 'hero' | 'role', value: string) {
   if (!value) return
   if (field === 'map') narrow.pickMap(value)
   else if (field === 'mode') narrow.pickPlayMode(value as PlayModePick)
-  else narrow.pickQueue(value as QueuePick)
+  else if (field === 'queue') narrow.pickQueue(value as QueuePick)
+  else if (field === 'hero') narrow.pickHero(value)
+  else narrow.pickRole(value)
 }
 
-// The active map/mode/queue narrow picks — passed to each row so a cell whose
-// value is currently filtered lights up (the active-filter state).
+// The active narrow picks — passed to each row so a value cell whose value is
+// currently filtered lights up (the active-filter state).
 const activeFilters = computed(() => ({
   maps: narrow.pickedMaps.value as ReadonlySet<string>,
   modes: narrow.pickedPlayModes.value as ReadonlySet<string>,
   queues: narrow.pickedQueues.value as ReadonlySet<string>,
+  heroes: narrow.pickedHeroes.value as ReadonlySet<string>,
+  roles: narrow.pickedRoles.value as ReadonlySet<string>,
 }))
 
-// Hero / role pivot: clicking a hero or role chip floats matching matches to the
-// top of each section (most-played first); clicking the same chip again clears
-// it. One pivot at a time — setting one clears the other. A view-local sort
-// overlay that leaves the date grouping intact.
-const pivotHero = ref('')
-const pivotRole = ref('')
-function onPivotHero(hero: string) {
-  pivotRole.value = ''
-  pivotHero.value = pivotHero.value === hero ? '' : hero
-}
-function onPivotRole(role: string) {
-  pivotHero.value = ''
-  pivotRole.value = pivotRole.value === role ? '' : role
-}
-
 // ─── Sort + group via useMatchesGroup composable ───────────
-const { sortedRecords, groupedSections } = useMatchesGroup(
-  records, groupBy, sortOrder, pivotHero, pivotRole, ow.heroRole,
-)
+const { sortedRecords, groupedSections } = useMatchesGroup(records, groupBy, sortOrder)
 
 // ─── Collapsible group sections ────────────────────────────
 //
@@ -407,11 +392,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
           :has-selection="selectedKeys.size > 0"
           :is-anchor="rec.match_key === anchorKey"
           :search-clauses="searchClauses"
-          :pivot-hero="pivotHero"
-          :pivot-role="pivotRole"
           :active-filters="activeFilters"
-          @pivot-hero="onPivotHero"
-          @pivot-role="onPivotRole"
           @filter-cell="onFilterCell"
           @open-match="emit('open-match', $event)"
           @toggle-select="emit('toggle-select', $event)"
