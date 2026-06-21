@@ -1,0 +1,35 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "moira",
+    "role": "support",
+    "rank": "gold",
+    "level": 1,
+    "rank_progress": -20,
+    "change_percent": 0,
+    "modifiers": [
+      "consolation",
+      "defeat",
+      "demotion protection"
+    ],
+    "sr": [
+      {
+        "hero": "moira",
+        "sr": 2157,
+        "change": 0
+      },
+      {
+        "hero": "zenyatta",
+        "sr": 1777,
+        "change": 0
+      },
+      {
+        "hero": "wuyang",
+        "sr": 2144,
+        "change": 0
+      }
+    ]
+  }
+}

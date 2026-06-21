@@ -1,0 +1,28 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "victory",
+    "hero": "brigitte",
+    "role": "support",
+    "rank": "gold",
+    "level": 2,
+    "rank_progress": 71,
+    "change_percent": 0,
+    "modifiers": [
+      "victory"
+    ],
+    "sr": [
+      {
+        "hero": "brigitte",
+        "sr": 2851,
+        "change": 3
+      },
+      {
+        "hero": "kiriko",
+        "sr": 1878,
+        "change": 0
+      }
+    ]
+  }
+}

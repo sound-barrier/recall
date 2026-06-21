@@ -1,0 +1,29 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "victory",
+    "hero": "juno",
+    "role": "support",
+    "rank": "gold",
+    "level": 2,
+    "rank_progress": 45,
+    "change_percent": 29,
+    "modifiers": [
+      "uphill battle",
+      "victory"
+    ],
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2397,
+        "change": 35
+      },
+      {
+        "hero": "wuyang",
+        "sr": 2213,
+        "change": 69
+      }
+    ]
+  }
+}
