@@ -3,7 +3,7 @@
  *
  * Each column header carries a drag handle on its right edge; dragging it
  * resizes the column (a fixed-layout colgroup), and the width persists across
- * reloads. Double-click resets a column to its natural width.
+ * reloads. Double-click auto-fits a column to its widest content.
  */
 import type { Page, Route } from '@playwright/test'
 
@@ -78,11 +78,23 @@ test.describe('data table — column resize', () => {
     expect(Math.abs((await mapWidth(page)) - after)).toBeLessThan(8)
   })
 
-  test('double-clicking a handle resets the column to its natural width', async ({ page }) => {
-    const natural = await mapWidth(page)
-    await dragHandle(page, 'map', 80)
-    expect(await mapWidth(page)).toBeGreaterThan(natural + 50)
+  test('double-clicking a handle auto-fits the column to its content', async ({ page }) => {
+    const cell = page.locator('tr.table-row[data-match-key="m1"] .tc-map')
+    const isClipped = () => cell.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
+
+    // Shrink Map well below its content width so "rialto" clips.
+    await dragHandle(page, 'map', -90)
+    expect(await isClipped()).toBe(true)
+
+    // Double-click the handle → the column grows to fit its widest content.
     await page.locator('.leaves-thead th[data-sort-col="map"] .th-resize').dblclick()
-    expect(Math.abs((await mapWidth(page)) - natural)).toBeLessThan(6)
+    expect(await isClipped()).toBe(false)
+
+    // And it shrinks an over-wide column back down to the content too.
+    await dragHandle(page, 'map', 160)
+    const wide = await mapWidth(page)
+    await page.locator('.leaves-thead th[data-sort-col="map"] .th-resize').dblclick()
+    expect(await mapWidth(page)).toBeLessThan(wide - 60)
+    expect(await isClipped()).toBe(false)
   })
 })

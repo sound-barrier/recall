@@ -74,12 +74,11 @@ export function useColumnResize() {
     document.addEventListener('pointerup', up)
   }
 
-  // Double-click a handle to drop that column back to its natural width.
-  function resetWidth(col: string): void {
-    const next = { ...stored.value }
-    delete next[col]
-    set(next)
+  // Persist an explicit width — the double-click auto-fit measures the column's
+  // widest rendered content and commits it here. Clamped to the drag minimum.
+  function setWidth(col: string, px: number): void {
+    set({ ...stored.value, [col]: Math.max(MIN_WIDTH, Math.round(px)) })
   }
 
-  return { colWidth, onResizeStart, resetWidth, dragging: computed(() => dragging.value) }
+  return { colWidth, onResizeStart, setWidth, dragging: computed(() => dragging.value) }
 }

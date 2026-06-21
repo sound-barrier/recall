@@ -77,9 +77,38 @@ const activeFilters = computed(() => ({
 // Column resize: persisted per-column widths drive a <colgroup> over a
 // fixed-layout table; the total feeds the table's own width so the pane scrolls
 // horizontally once the columns outgrow it.
-const { colWidth, onResizeStart, resetWidth } = useColumnResize()
+const { colWidth, onResizeStart, setWidth } = useColumnResize()
 function colKey(column: { col: TableSortCol | null }): string {
   return column.col ?? 'select'
+}
+
+// Double-click a resize handle to size the column to its widest content — the
+// rendered cells plus the header label — so nothing clips. A DOM Range measures
+// the laid-out content width (correct even when the cell doesn't clip via
+// overflow, unlike scrollWidth). The handle (7px, absolute) sits outside the
+// measured content, so HANDLE_CLEARANCE keeps the text off it; MAX_AUTO_FIT caps
+// a runaway (e.g. a long tag list).
+const HANDLE_CLEARANCE = 12
+const MAX_AUTO_FIT = 520
+function measuredContentWidth(el: Element): number {
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  return range.getBoundingClientRect().width
+}
+function autoFitColumn(col: TableSortCol): void {
+  const pane = tableScrollRef.value
+  if (!pane) return
+  const dataCol = TABLE_SORT_COLUMNS.findIndex((c) => c.col === col)
+  let content = 0
+  let pad = 0
+  pane.querySelectorAll<HTMLElement>(`td[data-col="${dataCol}"]`).forEach((td) => {
+    content = Math.max(content, measuredContentWidth(td))
+    const cs = getComputedStyle(td)
+    pad = Math.max(pad, parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight))
+  })
+  const inner = pane.querySelector(`th[data-sort-col="${col}"] .th-inner`)
+  if (inner) content = Math.max(content, measuredContentWidth(inner))
+  if (content > 0) setWidth(col, Math.min(Math.ceil(content + pad) + HANDLE_CLEARANCE, MAX_AUTO_FIT))
 }
 const tableWidth = computed(() => TABLE_COLUMNS.reduce((sum, c) => sum + colWidth(colKey(c)), 0))
 
@@ -295,9 +324,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onCellKeydown))
                 v-if="column.col"
                 class="th-resize"
                 aria-hidden="true"
-                title="Drag to resize · double-click to reset"
+                title="Drag to resize · double-click to fit contents"
                 @pointerdown="onResizeStart(colKey(column), $event)"
-                @dblclick.stop="resetWidth(colKey(column))"
+                @dblclick.stop="column.col && autoFitColumn(column.col)"
                 @click.stop
               />
             </th>
