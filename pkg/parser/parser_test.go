@@ -395,6 +395,28 @@ func TestExtractSR(t *testing.T) {
 	})
 }
 
+// srFromRun reduces an OCR digit run to a plausible SR, dropping a stray edge
+// digit from a 5-digit run but refusing to guess when a merge is ambiguous.
+func TestSRFromRun(t *testing.T) {
+	cases := []struct {
+		run  string
+		want int
+	}{
+		{"2754", 2754},  // clean 4-digit
+		{"500", 0},      // too short
+		{"0500", 0},     // 4-digit but below the 1000 floor
+		{"91777", 1777}, // 5-digit: leading change-arrow digit dropped
+		{"02144", 2144}, // 5-digit: leading icon digit dropped
+		{"21579", 0},    // 5-digit merge: both edge-drops in range → ambiguous, reject
+		{"123456", 0},   // 6-digit, out of scope
+	}
+	for _, c := range cases {
+		if got := parser.SRFromRun(c.run); got != c.want {
+			t.Errorf("SRFromRun(%q) = %d, want %d", c.run, got, c.want)
+		}
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // parseHeroesPlayed — slices the heroes column into per-hero blocks and
 // extracts percent + play time. Heroes with 0% AND no play time are

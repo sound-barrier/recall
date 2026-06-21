@@ -105,25 +105,25 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 		res.ChangePercent, _ = strconv.Atoi(m[1])
 	}
 
-	// Modifier pills below the progress bar.
-	modifierRect := image.Rect(W*10/100, H*78/100, W*55/100, H*90/100)
+	// Modifier pills below the progress bar. The right edge reaches 72% (not 55%):
+	// the pills are centered under the bar and drift right-of-center as rank
+	// progress climbs, so a 55% cut clipped a lone "VICTORY" pill (and the tail of
+	// multi-pill rows like the truncated "CONSOLAT[ION]") entirely. 72% stops short
+	// of the right-hand rank-tier badge (~78%+), so no icon noise bleeds in.
+	modifierRect := image.Rect(W*10/100, H*78/100, W*72/100, H*90/100)
 	modifierText, _ := ocrInverted(img, modifierRect, work, "rank_modifiers", "11", "")
 	res.Modifiers = extractModifiers(modifierText)
 
 	// Right-side per-hero SR card: hero portrait + "HERO SR" + 4-digit SR +
-	// signed change. The card sits ~85-99% across, mid-height.
-	// Bottom extends to 66% (not 55%): the demotion screen's extra Drive-Score
-	// row pushes the per-hero SR card lower than the standard layout.
-	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*66/100)
+	// signed change. The card sits ~85-99% across, mid-height. The panel holds up
+	// to three stacked cards; the bottom reaches 75% (not 55/66%) so the third card
+	// — pushed down by a demotion screen's extra row — is still inside the crop and
+	// its hero is recognised at all.
+	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*75/100)
 	srText, _ := ocrInverted(img, srRect, work, "rank_sr", "11", "")
 	res.SR = extractSR(srText)
-	// The sparse pass occasionally OCRs a clean 4-digit SR into letter-shapes it
-	// can't recover ("1799" → "OI7 7a"). When a card came back 0, re-OCR the panel
-	// forcing digits: PSM 6 reads the stacked numbers cleanly, top-to-bottom in
-	// hero order, so we backfill the zeroed cards by position.
 	if anyZeroSR(res.SR) {
-		digits, _ := ocrInverted(img, srRect, work, "rank_sr_digits", "6", "0123456789")
-		backfillSR(res.SR, digits)
+		backfillSRDigits(res.SR, img, work, W, H)
 	}
 	if len(res.SR) > 0 {
 		res.Hero = res.SR[0].Hero
@@ -216,6 +216,7 @@ func extractModifiers(text string) []string {
 var (
 	srValueRe  = regexp.MustCompile(`\b(\d{4})\b`)
 	srChangeRe = regexp.MustCompile(`\d{1,3}`)
+	srRunRe    = regexp.MustCompile(`\d{4,5}`)
 )
 
 // extractSR pulls (hero, SR, change-magnitude) from the right-side SR panel OCR.
@@ -282,16 +283,65 @@ func anyZeroSR(srs []HeroSR) bool {
 	return false
 }
 
-// backfillSR fills cards the sparse pass zeroed using a digit-forced re-OCR of
-// the same panel. The forced pass reads the SR column top-to-bottom, so its
-// 4-digit values line up by position with the (text-ordered) hero cards. Only
-// zeroed slots are touched — a correctly-read SR is never overwritten, and a
-// merged/blank value (no clean 4-digit) simply leaves the card zero.
-func backfillSR(srs []HeroSR, digitsText string) {
-	nums := srValueRe.FindAllString(digitsText, -1)
-	for i := range srs {
-		if srs[i].SR == 0 && i < len(nums) {
-			srs[i].SR, _ = strconv.Atoi(nums[i])
+// backfillSRDigits recovers cards the sparse pass zeroed by digit-forcing a
+// re-OCR of the card region — starting below the rank-progress caption to skip
+// its "100" noise — under two page-segmentation modes. Stacked cards read
+// differently under each mode (one card's digits surface under PSM 6 while a
+// neighbour's only appear under PSM 3), so the union recovers more than either
+// alone. Recovered SR-range values are assigned, in reading order, to the
+// still-zero cards; a value already read from the card text is kept and excluded
+// from the candidate pool so it can't be double-assigned.
+func backfillSRDigits(srs []HeroSR, img image.Image, work string, W, H int) {
+	region := image.Rect(W*82/100, H*28/100, W*99/100, H*75/100)
+	assigned := map[int]bool{}
+	for _, s := range srs {
+		if s.SR != 0 {
+			assigned[s.SR] = true
 		}
 	}
+	seen := map[int]bool{}
+	var cands []int
+	for _, psm := range []string{"6", "3"} {
+		text, _ := ocrInverted(img, region, work, "rank_sr_digits_"+psm, psm, "0123456789")
+		for _, run := range srRunRe.FindAllString(text, -1) {
+			v := srFromRun(run)
+			if v == 0 || assigned[v] || seen[v] {
+				continue
+			}
+			seen[v] = true
+			cands = append(cands, v)
+		}
+	}
+	ci := 0
+	for i := range srs {
+		if srs[i].SR == 0 && ci < len(cands) {
+			srs[i].SR = cands[ci]
+			ci++
+		}
+	}
+}
+
+// srFromRun reduces an OCR digit run to a plausible 4-digit SR (1000-4999). A
+// 5-digit run is a 4-digit SR with one stray edge digit (the change-arrow glyph
+// or the SR icon read as a digit); accept it only when exactly one edge-drop
+// lands in range — if both do (e.g. a "2157"+"94" merge reading "21579") it's
+// ambiguous and rejected rather than guessed.
+func srFromRun(run string) int {
+	inRange := func(v int) bool { return v >= 1000 && v < 5000 }
+	switch len(run) {
+	case 4:
+		if v, _ := strconv.Atoi(run); inRange(v) {
+			return v
+		}
+	case 5:
+		lead, _ := strconv.Atoi(run[1:])
+		trail, _ := strconv.Atoi(run[:4])
+		switch {
+		case inRange(lead) && !inRange(trail):
+			return lead
+		case inRange(trail) && !inRange(lead):
+			return trail
+		}
+	}
+	return 0
 }
