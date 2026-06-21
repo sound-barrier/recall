@@ -1,4 +1,5 @@
 import type { MatchRecord } from '@/api-client'
+import { rolesForHeader } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import type { SearchClause } from '@/match/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/useMatchesNarrow'
@@ -112,6 +113,18 @@ export function matchesHero(
         || (minPlayPercent > 0 && pct >= minPlayPercent)
     })
   })
+}
+
+// Broad match: ANY role the match played (open-queue matches mix dps/support/
+// tank), not just the primary data.role — so clicking a secondary-role chip
+// keeps the match instead of hiding it. heroRole resolves heroes_played to roles.
+export function matchesRole(
+  r: MatchRecord,
+  pickedRoles: Set<string>,
+  heroRole: (hero: string | null | undefined) => string,
+): boolean {
+  if (!pickedRoles.size) return true
+  return rolesForHeader(r, heroRole).some((role) => pickedRoles.has(role))
 }
 
 export function matchesTags(r: MatchRecord, pickedTags: Set<string>): boolean {
