@@ -39,7 +39,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
 # loaded only when the user expands the Trends section, so INITIAL JS is
 # unaffected — but it counts toward the TOTAL.
-: "${MAX_TOTAL_JS_BYTES:=1217000}"
+: "${MAX_TOTAL_JS_BYTES:=1219000}"
 : "${MAX_TOTAL_CSS_BYTES:=306000}"
 
 if [[ "${1:-}" == "--build" ]]; then

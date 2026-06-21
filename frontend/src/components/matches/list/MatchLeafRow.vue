@@ -49,12 +49,13 @@ const props = defineProps<{
     queues: ReadonlySet<string>
     heroes: ReadonlySet<string>
     roles: ReadonlySet<string>
+    results: ReadonlySet<string>
   }
 }>()
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
-  'filter-cell': [field: 'map' | 'mode' | 'queue' | 'hero' | 'role', value: string]
+  'filter-cell': [field: 'map' | 'mode' | 'queue' | 'hero' | 'role' | 'result', value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -90,6 +91,7 @@ const modeFiltered = computed(() => props.activeFilters?.modes.has(playModePick.
 const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.value) ?? false)
 const heroFiltered = (hero: string) => props.activeFilters?.heroes.has(hero) ?? false
 const roleFiltered = (role: string) => props.activeFilters?.roles.has(role) ?? false
+const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec.data?.result ?? '') ?? false)
 </script>
 
 <template>
@@ -142,7 +144,15 @@ const roleFiltered = (role: string) => props.activeFilters?.roles.has(role) ?? f
     </button>
 
     <!-- 1. Result-tinted color strip — instant scan target. -->
-    <span class="leaf-strip" aria-hidden="true" />
+    <button
+      type="button"
+      class="leaf-strip"
+      :class="{ 'is-filtered': resultFiltered }"
+      :disabled="!rec.data?.result"
+      :title="!rec.data?.result ? undefined : resultFiltered ? `Filtering by ${rec.data.result} — click to clear` : `Filter the set to ${rec.data.result}`"
+      :aria-label="rec.data?.result ? `Filter by ${rec.data.result}` : 'Result'"
+      @click.stop="rec.data?.result && emit('filter-cell', 'result', rec.data.result)"
+    />
 
     <!-- 2. When — date over time. -->
     <div class="leaf-when">
@@ -295,10 +305,19 @@ const roleFiltered = (role: string) => props.activeFilters?.roles.has(role) ?? f
 }
 
 .leaf-strip {
+  appearance: none;
+  border: 0;
+  padding: 0;
   width: 4px; height: 36px;
   background: var(--text-faint);
   border-radius: 2px;
+  cursor: pointer;
+  transition: width 100ms ease, box-shadow 120ms ease;
 }
+.leaf-strip:disabled { cursor: default; }
+.leaf-strip:hover:not(:disabled) { width: 6px; }
+.leaf-strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.leaf-strip.is-filtered { width: 6px; box-shadow: 0 0 0 1px var(--accent); }
 .leaf-row.result-victory .leaf-strip { background: var(--win); }
 .leaf-row.result-defeat  .leaf-strip { background: var(--loss); }
 .leaf-row.result-draw    .leaf-strip { background: var(--draw, var(--text-mute)); }

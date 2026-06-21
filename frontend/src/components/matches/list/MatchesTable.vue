@@ -130,6 +130,36 @@ function cellAt(e: MouseEvent): { key: string; col: number } | null {
   return Number.isNaN(col) ? null : { key, col }
 }
 
+// Re-resolve the cell at a viewport point — used by the auto-scroll to extend
+// the selection to whatever scrolled under the held pointer.
+function cellFromPoint(x: number, y: number): { key: string; col: number } | null {
+  const el = document.elementFromPoint(x, y) as HTMLElement | null
+  if (!el || el.closest('button, input, a')) return null
+  const td = el.closest<HTMLElement>('td[data-col]')
+  const key = el.closest<HTMLElement>('tr[data-match-key]')?.dataset.matchKey
+  if (!td || key == null) return null
+  const col = Number(td.dataset.col)
+  return Number.isNaN(col) ? null : { key, col }
+}
+
+// Auto-scroll the pane while dragging near its top/bottom edge, so a selection
+// can extend past the viewport (it stops on its own when the pointer leaves the
+// edge or the drag ends).
+let dragPoint = { x: 0, y: 0 }
+let scrollRAF = 0
+function autoScrollTick() {
+  const pane = tableScrollRef.value
+  if (!pane || !cellSel.dragging.value) { scrollRAF = 0; return }
+  const rect = pane.getBoundingClientRect()
+  const EDGE = 32
+  const dir = dragPoint.y < rect.top + EDGE ? -1 : dragPoint.y > rect.bottom - EDGE ? 1 : 0
+  if (dir === 0) { scrollRAF = 0; return }
+  pane.scrollTop += dir * 14
+  const cell = cellFromPoint(dragPoint.x, dragPoint.y)
+  if (cell) cellSel.extendTo(cell.key, cell.col)
+  scrollRAF = requestAnimationFrame(autoScrollTick)
+}
+
 // Only commit a selection once the pointer moves past a small threshold, so a
 // click still falls through to the row's open-detail handler.
 let pendingStart: { key: string; col: number; x: number; y: number } | null = null
@@ -148,6 +178,8 @@ function onCellMouseMove(e: MouseEvent) {
   if (cellSel.dragging.value) {
     const cell = cellAt(e)
     if (cell) cellSel.extendTo(cell.key, cell.col)
+    dragPoint = { x: e.clientX, y: e.clientY }
+    if (!scrollRAF) scrollRAF = requestAnimationFrame(autoScrollTick)
     return
   }
   if (!pendingStart) return
@@ -158,6 +190,7 @@ function onCellMouseMove(e: MouseEvent) {
 }
 function onCellMouseUp() {
   document.removeEventListener('mousemove', onCellMouseMove)
+  if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = 0 }
   if (cellSel.dragging.value) suppressNextOpen = true
   pendingStart = null
   cellSel.endDrag()
