@@ -39,7 +39,14 @@ const props = defineProps<{
   // The hero / role the table is currently pivot-sorting on — highlights its chip.
   pivotHero?: string
   pivotRole?: string
+  // Column indices selected for this row by the cell range-select (empty = none).
+  selectedCols?: number[]
 }>()
+
+// Is the data cell at `col` (index into TABLE_SORT_COLUMNS) in the range-select?
+function sel(col: number): boolean {
+  return props.selectedCols?.includes(col) ?? false
+}
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
@@ -96,11 +103,11 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selected ? '✓' : '' }}</span>
       </button>
     </td>
-    <td class="tc tc-date">
+    <td class="tc tc-date" :data-col="0" :class="{ 'is-cell-selected': sel(0) }">
       <span class="tc-date-d">{{ formatRowDate(rec) }}</span>
       <span class="tc-date-t">{{ formatFinishedAt(rec) }}</span>
     </td>
-    <td class="tc tc-map">
+    <td class="tc tc-map" :data-col="1" :class="{ 'is-cell-selected': sel(1) }">
       <span
         v-if="isMapUnknown(rec)"
         class="tc-unknown"
@@ -116,13 +123,13 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         <HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" />
       </button>
     </td>
-    <td class="tc tc-mode">
+    <td class="tc tc-mode" :data-col="2" :class="{ 'is-cell-selected': sel(2) }">
       <span class="tc-chip">{{ formatPlayModeLabel(rec) }}</span>
     </td>
-    <td class="tc tc-queue">
+    <td class="tc tc-queue" :data-col="3" :class="{ 'is-cell-selected': sel(3) }">
       <span class="tc-chip">{{ formatQueueTypeLabel(rec) }}</span>
     </td>
-    <td class="tc tc-hero">
+    <td class="tc tc-hero" :data-col="4" :class="{ 'is-cell-selected': sel(4) }">
       <span
         v-if="isHeroUnknown(rec)"
         class="tc-unknown"
@@ -141,7 +148,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         ><HighlightedText :text="h.hero" :terms="bareTerms" /></button>
       </span>
     </td>
-    <td class="tc tc-role">
+    <td class="tc tc-role" :data-col="5" :class="{ 'is-cell-selected': sel(5) }">
       <span class="tc-role-chips">
         <button
           v-for="r in rolePlays(rec, ow.heroRole)"
@@ -155,16 +162,16 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         >{{ r.role }}</button>
       </span>
     </td>
-    <td class="tc tc-stat-cell tc-elim">
+    <td class="tc tc-stat-cell tc-elim" :data-col="6" :class="{ 'is-cell-selected': sel(6) }">
       {{ rec.data?.eliminations ?? '—' }}
     </td>
-    <td class="tc tc-stat-cell tc-assist">
+    <td class="tc tc-stat-cell tc-assist" :data-col="7" :class="{ 'is-cell-selected': sel(7) }">
       {{ rec.data?.assists ?? '—' }}
     </td>
-    <td class="tc tc-stat-cell tc-death">
+    <td class="tc tc-stat-cell tc-death" :data-col="8" :class="{ 'is-cell-selected': sel(8) }">
       {{ rec.data?.deaths ?? '—' }}
     </td>
-    <td class="tc tc-tags">
+    <td class="tc tc-tags" :data-col="9" :class="{ 'is-cell-selected': sel(9) }">
       <span
         v-if="rec.annotation?.leaver"
         class="tc-leaver"
@@ -176,7 +183,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         class="tc-tag"
       >#<HighlightedText :text="t" :terms="tagTerms" /></span>
     </td>
-    <td class="tc tc-prov">
+    <td class="tc tc-prov" :data-col="10" :class="{ 'is-cell-selected': sel(10) }">
       <input
         type="checkbox"
         class="tc-prov-box"
@@ -185,7 +192,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         :aria-label="isEditedMatch(rec) ? 'Edited after parsing' : 'Not edited'"
       >
     </td>
-    <td class="tc tc-prov">
+    <td class="tc tc-prov" :data-col="11" :class="{ 'is-cell-selected': sel(11) }">
       <input
         type="checkbox"
         class="tc-prov-box"
@@ -194,7 +201,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         :aria-label="isManualMatch(rec) ? 'Hand-entered match' : 'Not hand-entered'"
       >
     </td>
-    <td class="tc tc-result">
+    <td class="tc tc-result" :data-col="12" :class="{ 'is-cell-selected': sel(12) }">
       <button
         type="button"
         class="tc-result-chip tc-filter-cell"
@@ -249,6 +256,13 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   font-size: 0.7rem;
   color: var(--text);
   white-space: nowrap;
+}
+
+/* Cell range-select highlight. Specificity beats the row hover/ticked + frozen
+   cell backgrounds so a selected cell always reads as selected. */
+.table-row .tc.is-cell-selected {
+  background: color-mix(in srgb, var(--accent) 25%, var(--surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 /* Frozen leading columns (mirror the header freeze in MatchesTable): select +
