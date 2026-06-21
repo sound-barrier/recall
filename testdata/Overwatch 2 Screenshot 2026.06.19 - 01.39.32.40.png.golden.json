@@ -1,0 +1,30 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "juno",
+    "role": "support",
+    "rank": "gold",
+    "level": 2,
+    "rank_progress": 45,
+    "change_percent": 0,
+    "modifiers": [
+      "new map",
+      "leaver compensation",
+      "defeat"
+    ],
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2362,
+        "change": 0
+      },
+      {
+        "hero": "moira",
+        "sr": 2157,
+        "change": 0
+      }
+    ]
+  }
+}

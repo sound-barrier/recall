@@ -1,0 +1,30 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "juno",
+    "role": "support",
+    "rank": "gold",
+    "level": 2,
+    "rank_progress": 55,
+    "change_percent": 0,
+    "modifiers": [
+      "consolation",
+      "defeat",
+      "demotion protection"
+    ],
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2382,
+        "change": 0
+      },
+      {
+        "hero": "lucio",
+        "sr": 2683,
+        "change": 0
+      }
+    ]
+  }
+}
