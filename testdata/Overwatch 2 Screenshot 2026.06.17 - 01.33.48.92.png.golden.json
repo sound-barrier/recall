@@ -1,0 +1,23 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "victory",
+    "hero": "juno",
+    "role": "support",
+    "rank": "gold",
+    "level": 1,
+    "rank_progress": 33,
+    "change_percent": 27,
+    "modifiers": [
+      "victory"
+    ],
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2312,
+        "change": 73
+      }
+    ]
+  }
+}
