@@ -95,10 +95,10 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
 - [x] post-match PERSONAL tab — Wuyang; pins the AVG-anchored stat fix (Players Saved 5, Tidal Blast Kills 0 — the hero-ability icon OCRs as a spurious leading/trailing single digit)
 - [x] PERSONAL "All Heroes" aggregate view — recognized as `all_heroes` but deliberately NOT parsed (its totals duplicate the TEAMS screen; its stat-card icons defeat the OCR). The golden pins detection + the recognized-skip classification that keeps it off the Unknown tab without a garbage row.
 - [x] rank screen — competitive ladder badge + per-hero SR card (×2: a Platinum 5 **win** with positive progress + SR gain, AND a Gold 1 **loss** with DEMOTION PROTECTION and a negative −19% progress; the pair pins the digitize-level fix, the raw-pass negative-progress read, the lower-card SR crop, and the demotion-protection modifier)
-- [x] rank screen — **multi-card SR panel** (×17 owleague Gold captures, one
+- [x] rank screen — **multi-card SR panel** (×20 owleague Gold captures, one
       competitive session) spanning one-, two-, and three-card panels across wins,
       losses, and every modifier family (expected / uphill battle / reversal /
-      consolation / demotion protection). They pin three fixes:
+      consolation / demotion protection / new map / leaver compensation). They pin:
   - **Per-card SR pairing** — each card carries its OWN SR (Lúcio 2621 / Mizuki
     2481, not both 4100), where the old code copied the first 4-digit run in the
     panel onto every hero. Change is the card's arrow magnitude with the sign
@@ -111,7 +111,11 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
     `VICTORY` pill or a truncated `CONSOLAT[ION]` that drifts right-of-center as
     rank progress climbs is still captured; this also restores the match result
     on captures whose banner OCR'd too poorly (the result falls back to the
-    modifier pill).
+    modifier pill). The `new map` + `leaver compensation` pills are in the list.
+  - **Tier read from the detector band** — a tight center crop garbled the tier
+    on some captures (`GOLD` → `GOD` / `6010`), so `extractRank` returned no rank
+    and the whole screen mis-classified as summary/unknown; the tier now reads
+    from the same wide band the rank detector probes.
 - [ ] in-game TAB screenshot (different layout, right panel populated)
 - [x] non-match screen → `unknown` — the career **HISTORY / Game Reports**
       browser (a list of past matches). Guards that the classifier leaves

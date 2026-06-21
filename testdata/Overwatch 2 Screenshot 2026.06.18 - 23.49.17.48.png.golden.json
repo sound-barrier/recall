@@ -1,0 +1,28 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "juno",
+    "role": "support",
+    "rank": "gold",
+    "level": 2,
+    "rank_progress": 57,
+    "change_percent": 0,
+    "modifiers": [
+      "defeat"
+    ],
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2389,
+        "change": -1
+      },
+      {
+        "hero": "mizuki",
+        "sr": 2481,
+        "change": 0
+      }
+    ]
+  }
+}
