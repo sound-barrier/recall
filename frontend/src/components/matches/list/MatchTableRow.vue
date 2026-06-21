@@ -36,9 +36,16 @@ const props = defineProps<{
   hasSelection: boolean
   isAnchor: boolean
   searchClauses: SearchClause[]
-  // The hero / role the table is currently pivot-sorting on — highlights its chip.
-  pivotHero?: string
-  pivotRole?: string
+  // The active narrow picks — a value cell whose value is in its set renders as
+  // an active filter (every value cell filters; sorting is the column headers').
+  activeFilters?: {
+    maps: ReadonlySet<string>
+    modes: ReadonlySet<string>
+    queues: ReadonlySet<string>
+    heroes: ReadonlySet<string>
+    roles: ReadonlySet<string>
+    results: ReadonlySet<string>
+  }
   // Column indices selected for this row by the cell range-select (empty = none).
   selectedCols?: number[]
 }>()
@@ -50,9 +57,7 @@ function sel(col: number): boolean {
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
-  'pivot-hero': [hero: string, append: boolean]
-  'pivot-role': [role: string, append: boolean]
-  'filter-cell': [field: 'map' | 'result', value: string]
+  'filter-cell': [field: 'map' | 'result' | 'mode' | 'queue' | 'hero' | 'role', value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -61,6 +66,25 @@ const emit = defineEmits<{
 }>()
 
 const ow = useOWData()
+
+// Click-to-filter pick values for the mode + queue cells (the narrow's
+// PlayModePick / QueuePick unions), derived the same way the labels are.
+const playModePick = computed(() => {
+  const m = props.rec.play_mode ?? props.rec.data?.playlist
+  return m === 'quickplay' || m === 'competitive' ? m : 'unknown'
+})
+const queuePick = computed(() => {
+  const q = props.rec.queue_type
+  return q === 'role' || q === 'open' ? q : 'unknown'
+})
+
+// Whether each value cell is currently an active narrow filter (lights it up).
+const mapFiltered = computed(() => props.activeFilters?.maps.has(props.rec.data?.map ?? '') ?? false)
+const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec.data?.result ?? '') ?? false)
+const modeFiltered = computed(() => props.activeFilters?.modes.has(playModePick.value) ?? false)
+const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.value) ?? false)
+const heroFiltered = (hero: string) => props.activeFilters?.heroes.has(hero) ?? false
+const roleFiltered = (role: string) => props.activeFilters?.roles.has(role) ?? false
 
 const isFocused = computed(
   () => props.focusedCardIndex !== undefined && props.cardIndex === props.focusedCardIndex,
@@ -117,17 +141,34 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         v-else
         type="button"
         class="tc-filter-cell"
-        :title="`Filter the set to ${rec.data?.map}`"
+        :class="{ 'is-filtered': mapFiltered }"
+        :title="mapFiltered ? `Filtering by ${rec.data?.map} — click to clear` : `Filter the set to ${rec.data?.map}`"
         @click.stop="emit('filter-cell', 'map', rec.data?.map ?? '')"
       >
         <HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" />
       </button>
     </td>
     <td class="tc tc-mode" :data-col="2" :class="{ 'is-cell-selected': sel(2) }">
-      <span class="tc-chip">{{ formatPlayModeLabel(rec) }}</span>
+      <button
+        type="button"
+        class="tc-chip tc-filter-cell"
+        :class="{ 'is-filtered': modeFiltered }"
+        :title="modeFiltered ? `Filtering by ${formatPlayModeLabel(rec)} — click to clear` : `Filter the set to ${formatPlayModeLabel(rec)}`"
+        @click.stop="emit('filter-cell', 'mode', playModePick)"
+      >
+        {{ formatPlayModeLabel(rec) }}
+      </button>
     </td>
     <td class="tc tc-queue" :data-col="3" :class="{ 'is-cell-selected': sel(3) }">
-      <span class="tc-chip">{{ formatQueueTypeLabel(rec) }}</span>
+      <button
+        type="button"
+        class="tc-chip tc-filter-cell"
+        :class="{ 'is-filtered': queueFiltered }"
+        :title="queueFiltered ? `Filtering by ${formatQueueTypeLabel(rec)} — click to clear` : `Filter the set to ${formatQueueTypeLabel(rec)}`"
+        @click.stop="emit('filter-cell', 'queue', queuePick)"
+      >
+        {{ formatQueueTypeLabel(rec) }}
+      </button>
     </td>
     <td class="tc tc-hero" :data-col="4" :class="{ 'is-cell-selected': sel(4) }">
       <span
@@ -140,11 +181,11 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
           v-for="h in sortedHeroPlays(rec)"
           :key="h.hero"
           type="button"
-          class="tc-hero-chip"
-          :class="{ 'is-pivot': h.hero === pivotHero }"
-          :aria-pressed="h.hero === pivotHero ? 'true' : 'false'"
-          :title="`Sort by ${h.hero} (Shift+click to add as a sort level)`"
-          @click.stop="emit('pivot-hero', h.hero, $event.shiftKey)"
+          class="tc-hero-chip tc-filter-cell"
+          :class="{ 'is-filtered': heroFiltered(h.hero) }"
+          :aria-pressed="heroFiltered(h.hero) ? 'true' : 'false'"
+          :title="heroFiltered(h.hero) ? `Filtering by ${h.hero} — click to clear` : `Filter the set to ${h.hero}`"
+          @click.stop="emit('filter-cell', 'hero', h.hero)"
         ><HighlightedText :text="h.hero" :terms="bareTerms" /></button>
       </span>
     </td>
@@ -154,11 +195,11 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
           v-for="r in rolePlays(rec, ow.heroRole)"
           :key="r.role"
           type="button"
-          class="tc-role-chip"
-          :class="{ 'is-pivot': r.role === pivotRole }"
-          :aria-pressed="r.role === pivotRole ? 'true' : 'false'"
-          :title="`Sort by ${r.role} (Shift+click to add as a sort level)`"
-          @click.stop="emit('pivot-role', r.role, $event.shiftKey)"
+          class="tc-role-chip tc-filter-cell"
+          :class="{ 'is-filtered': roleFiltered(r.role) }"
+          :aria-pressed="roleFiltered(r.role) ? 'true' : 'false'"
+          :title="roleFiltered(r.role) ? `Filtering by ${r.role} — click to clear` : `Filter the set to ${r.role}`"
+          @click.stop="emit('filter-cell', 'role', r.role)"
         >{{ r.role }}</button>
       </span>
     </td>
@@ -205,9 +246,9 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
       <button
         type="button"
         class="tc-result-chip tc-filter-cell"
-        :class="`result-${rec.data?.result || 'unknown'}`"
+        :class="[`result-${rec.data?.result || 'unknown'}`, { 'is-filtered': resultFiltered }]"
         :disabled="!rec.data?.result"
-        :title="rec.data?.result ? `Filter the set to ${rec.data.result}` : undefined"
+        :title="!rec.data?.result ? undefined : resultFiltered ? `Filtering by ${rec.data.result} — click to clear` : `Filter the set to ${rec.data.result}`"
         @click.stop="rec.data?.result && emit('filter-cell', 'result', rec.data.result)"
       >
         {{ rec.data?.result || '—' }}
@@ -311,7 +352,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   color: var(--identity-accent);
 }
 
-/* Each hero is a clickable chip — click pivots the Hero sort level on it. */
+/* Each hero is a clickable filter chip — click filters the set by that hero. */
 .tc-hero-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 2px; }
 
 .tc-hero-chip {
@@ -327,9 +368,8 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 }
 .tc-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
 .tc-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.tc-hero-chip.is-pivot { background: var(--identity-accent); color: var(--primary-text-on-accent); }
 
-/* Each role is a clickable chip — click pivots the Role sort level on it
+/* Each role is a clickable filter chip — click filters the set by that role
    (open-queue matches can show several). Keeps the faint uppercase look. */
 .tc-role-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 3px; }
 
@@ -349,7 +389,6 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 }
 .tc-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
 .tc-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.tc-role-chip.is-pivot { background: var(--accent); color: var(--primary-text-on-accent); }
 
 .tc-chip {
   font-size: 0.52rem;
@@ -457,4 +496,16 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 }
 .tc-map .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .tc-result .tc-filter-cell:hover:not(:disabled) { filter: brightness(1.12); }
+
+/* Mode / Queue cells are filter buttons now — give them padding + a hover wash. */
+.tc-mode .tc-filter-cell,
+.tc-queue .tc-filter-cell { padding: 0.05rem 0.3rem; border-radius: 3px; }
+
+.tc-mode .tc-filter-cell:hover,
+.tc-queue .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* Active filter — an accent outline (+ a soft fill on the non-result cells,
+   which keep their result tint) so the live filters read at a glance. */
+.tc-filter-cell.is-filtered { box-shadow: inset 0 0 0 1px var(--accent); border-radius: 3px; }
+.tc-filter-cell.is-filtered:not(.tc-result-chip) { background: var(--accent-soft); }
 </style>

@@ -1,10 +1,6 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { isEditedMatch, isManualMatch, rolePercent } from '@/match/match-helpers'
-
-// Resolves a hero to its role (useOWData().heroRole) — threaded in so the role
-// pivot can sum percent-played by role.
-type HeroRole = (hero: string | null | undefined) => string
+import { isEditedMatch, isManualMatch } from '@/match/match-helpers'
 
 // Sort + group-by state for the Matches workspace leaves list.
 // Extracted from MatchesView so the bucketing logic has its own
@@ -89,41 +85,10 @@ function bucketFor(date: string, bucket: GroupBy): { key: string; label: string 
   }
 }
 
-// pivotPercent returns how much `hero` was played in a match, or -1 when the
-// hero wasn't played (so those matches sort below the pivot group).
-function pivotPercent(r: MatchRecord, hero: string): number {
-  const hp = r.data?.heroes_played?.find((h) => h.hero === hero)
-  if (hp) return hp.percent_played ?? 0
-  return r.data?.hero === hero ? 0 : -1
-}
-
-// pivotSort floats the matches matching the pivot (highest percent first) to the
-// top; every other match keeps its existing (date) order. JS sort is stable, so
-// returning 0 preserves the section's sort for the non-pivot tail. `percentOf`
-// is the hero or role percent resolver (-1 = didn't play it).
-function pivotSort(records: MatchRecord[], percentOf: (r: MatchRecord) => number): MatchRecord[] {
-  return [...records].sort((a, b) => {
-    const pa = percentOf(a)
-    const pb = percentOf(b)
-    const aHas = pa >= 0
-    const bHas = pb >= 0
-    if (aHas !== bHas) return aHas ? -1 : 1
-    if (aHas && pb !== pa) return pb - pa
-    return 0
-  })
-}
-
 export function useMatchesGroup(
   records: Readonly<Ref<MatchRecord[]>>,
   groupBy: Readonly<Ref<GroupBy>>,
   sortOrder: Readonly<Ref<SortOrder>>,
-  // When set, the hero whose matches float to the top of each section (the
-  // leaf-row chip pivot). Empty string = no pivot.
-  pivotHero?: Readonly<Ref<string>>,
-  // The role analogue (mutually exclusive with pivotHero — the caller clears one
-  // when setting the other). heroRole resolves a hero to its role for the sum.
-  pivotRole?: Readonly<Ref<string>>,
-  heroRole: HeroRole = () => '',
 ) {
   const sortedRecords = computed(() => {
     return [...records.value].sort((a, b) => {
@@ -133,7 +98,7 @@ export function useMatchesGroup(
     })
   })
 
-  const baseSections = computed<GroupedSection[]>(() => {
+  const groupedSections = computed<GroupedSection[]>(() => {
     if (groupBy.value === 'none') {
       return [{ key: 'all', header: null, records: sortedRecords.value }]
     }
@@ -171,20 +136,6 @@ export function useMatchesGroup(
     }
     if (noDateSection) sections.push(noDateSection)
     return sections
-  })
-
-  // The displayed sections, with the hero pivot applied within each one (so the
-  // date grouping stays intact — the user's chosen behaviour).
-  const groupedSections = computed<GroupedSection[]>(() => {
-    const role = pivotRole?.value ?? ''
-    const hero = pivotHero?.value ?? ''
-    const percentOf = role
-      ? (r: MatchRecord) => rolePercent(role, r, heroRole)
-      : hero
-        ? (r: MatchRecord) => pivotPercent(r, hero)
-        : null
-    if (!percentOf) return baseSections.value
-    return baseSections.value.map((s) => ({ ...s, records: pivotSort(s.records, percentOf) }))
   })
 
   return { sortedRecords, groupedSections }
