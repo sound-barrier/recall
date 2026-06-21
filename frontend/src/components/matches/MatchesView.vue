@@ -415,6 +415,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
         :filter-to="customTo"
         @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
         @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
+        @open-match="(k: string) => selection.open(k)"
       />
 
       <!-- ─── TRENDS ──────────────────────────────────────────────

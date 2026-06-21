@@ -105,6 +105,36 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     await expect(band.locator('.heatmap-cell')).toHaveCount(3 * 6)
   })
 
+  test('hides the Clash column when no Clash was played in the window (it is quickplay-only)', async ({ page }) => {
+    await page.unrouteAll({ behavior: 'wait' })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      // 22 decisive matches across five modes, NO clash → the Clash column drops.
+      const corpus = [
+        ...Array.from({ length: 10 }, (_, i) =>
+          match(`c${i}`, 'lucio', 'control', i < 6 ? 'victory' : 'defeat', `10:${String(i + 1).padStart(2, '0')}`)),
+        match('e1', 'ana', 'escort', 'victory', '11:01'),
+        match('e2', 'ana', 'escort', 'defeat', '11:02'),
+        match('f1', 'ana', 'flashpoint', 'victory', '11:03'),
+        match('f2', 'ana', 'flashpoint', 'defeat', '11:04'),
+        match('h1', 'ana', 'hybrid', 'victory', '11:05'),
+        match('h2', 'ana', 'hybrid', 'defeat', '11:06'),
+        match('p1', 'kiriko', 'push', 'victory', '11:07'),
+        match('p2', 'kiriko', 'push', 'defeat', '11:08'),
+        match('p3', 'kiriko', 'push', 'victory', '11:09'),
+        match('p4', 'kiriko', 'push', 'defeat', '11:10'),
+        match('p5', 'kiriko', 'push', 'victory', '11:11'),
+        match('p6', 'kiriko', 'push', 'defeat', '11:12'),
+      ]
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
+    })
+    await page.reload()
+    await page.locator('#tab-matches').click()
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    await expect(band.locator('.heatmap-colhead')).toHaveCount(5)
+    await expect(band.locator('[data-hm-col="clash"]')).toHaveCount(0)
+  })
+
   test('clicking a cell narrows the page AND drills the band into the maps level', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
     const lucioControl = band.locator('.heatmap-cell', { hasText: '60%' }).first()
@@ -286,6 +316,22 @@ test.describe('dossier — Hero × Game-Mode drill-down', () => {
     await expect(band.locator('.hm-match-row')).toHaveCount(6)
     await expect(band.locator('.hm-title')).toContainText('recent matches')
     await expect(chips).toHaveCount(3) // + Map
+  })
+
+  test('depth-2 rows show mode + queue and open the detail panel on click', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // Drill L0 → L1 → L2 on lucio × control (the default corpus is all rialto).
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    await band.locator('.hm-map-tile').first().click()
+    await expect(band.locator('[data-hero-mode-matches]')).toBeVisible()
+    // Each row carries the play mode (the corpus is competitive) + a queue cell.
+    const row = band.locator('[data-hero-mode-match-row]').first()
+    await expect(row.locator('.hm-match-mode')).toHaveText('Competitive')
+    await expect(row.locator('.hm-match-queue')).toBeVisible()
+    // Clicking a row opens the right-side detail panel.
+    await row.click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
   })
 
   test('Go back pops one level at a time and clears the picks it added', async ({ page }) => {
