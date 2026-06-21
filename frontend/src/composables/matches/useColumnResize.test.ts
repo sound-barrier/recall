@@ -36,12 +36,14 @@ describe('useColumnResize', () => {
     expect(api.colWidth('hero')).toBe(DEFAULT_COLUMN_WIDTHS.hero)
   })
 
-  it('reads a persisted width, and resetWidth drops it back to the default', () => {
+  it('reads a persisted width, and setWidth overrides it (clamped to the minimum)', () => {
     storage['recall.matchesTableColWidths'] = JSON.stringify({ map: 240 })
     const api = mountResize()
     expect(api.colWidth('map')).toBe(240)
-    api.resetWidth('map')
-    expect(api.colWidth('map')).toBe(DEFAULT_COLUMN_WIDTHS.map)
+    api.setWidth('map', 88)
+    expect(api.colWidth('map')).toBe(88)
+    api.setWidth('map', 5) // below MIN_WIDTH (36) → clamped
+    expect(api.colWidth('map')).toBe(36)
   })
 
   it('ignores a corrupt persisted value (falls back to defaults)', () => {
