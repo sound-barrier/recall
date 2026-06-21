@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/useTableSort'
 import { useTableMode } from '@/composables/matches/useTableMode'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useColumnResize } from '@/composables/matches/useColumnResize'
+import { useCellSelection } from '@/composables/matches/useCellSelection'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/list/MatchTableRow.vue'
@@ -98,6 +99,75 @@ const tableBottomSpacer = computed(() => tableVirtual.bottomSpacer.value)
 watch(() => props.resetCounter, () => {
   tableScrollRef.value?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
 })
+
+// ─── Cell range-select + copy (TSV) ────────────────────────
+// Drag a rectangle of cells, Ctrl/Cmd+C copies it as TSV for Excel/Sheets. A
+// plain click (no drag) still opens the row; a drag selects the range.
+const tableCols = TABLE_SORT_COLUMNS.map((c) => c.col)
+const cellSel = useCellSelection(tableFlatRecords, tableCols, ow.heroRole)
+
+// Resolve the cell under a pointer event — null on interactive children (so
+// their own click still fires) or off-grid.
+function cellAt(e: MouseEvent): { key: string; col: number } | null {
+  const el = e.target as HTMLElement
+  if (el.closest('button, input, a')) return null
+  const td = el.closest<HTMLElement>('td[data-col]')
+  const key = el.closest<HTMLElement>('tr[data-match-key]')?.dataset.matchKey
+  if (!td || key == null) return null
+  const col = Number(td.dataset.col)
+  return Number.isNaN(col) ? null : { key, col }
+}
+
+// Only commit a selection once the pointer moves past a small threshold, so a
+// click still falls through to the row's open-detail handler.
+let pendingStart: { key: string; col: number; x: number; y: number } | null = null
+let suppressNextOpen = false
+
+function onCellMouseDown(e: MouseEvent) {
+  if (e.button !== 0) return
+  suppressNextOpen = false
+  const cell = cellAt(e)
+  if (!cell) return
+  pendingStart = { ...cell, x: e.clientX, y: e.clientY }
+  document.addEventListener('mousemove', onCellMouseMove)
+  document.addEventListener('mouseup', onCellMouseUp, { once: true })
+}
+function onCellMouseMove(e: MouseEvent) {
+  if (cellSel.dragging.value) {
+    const cell = cellAt(e)
+    if (cell) cellSel.extendTo(cell.key, cell.col)
+    return
+  }
+  if (!pendingStart) return
+  if (Math.abs(e.clientX - pendingStart.x) + Math.abs(e.clientY - pendingStart.y) < 4) return
+  cellSel.startAt(pendingStart.key, pendingStart.col)
+  const cell = cellAt(e)
+  if (cell) cellSel.extendTo(cell.key, cell.col)
+}
+function onCellMouseUp() {
+  document.removeEventListener('mousemove', onCellMouseMove)
+  if (cellSel.dragging.value) suppressNextOpen = true
+  pendingStart = null
+  cellSel.endDrag()
+}
+function onRowOpen(key: string) {
+  if (suppressNextOpen) { suppressNextOpen = false; return }
+  emit('open-match', key)
+}
+
+function isEditable(el: EventTarget | null): boolean {
+  return el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+}
+function onCellKeydown(e: KeyboardEvent) {
+  if (!cellSel.hasSelection.value) return
+  if (e.key === 'Escape') { cellSel.clear(); return }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !isEditable(document.activeElement)) {
+    e.preventDefault()
+    void cellSel.copy()
+  }
+}
+onMounted(() => document.addEventListener('keydown', onCellKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', onCellKeydown))
 </script>
 
 <template>
@@ -135,7 +205,13 @@ watch(() => props.resetCounter, () => {
       </button>
     </div>
 
-    <div v-if="tableMode === 'flat'" ref="tableScrollRef" class="leaves-table-scroll">
+    <div
+      v-if="tableMode === 'flat'"
+      ref="tableScrollRef"
+      class="leaves-table-scroll"
+      :class="{ 'is-cell-dragging': cellSel.dragging.value }"
+      @mousedown="onCellMouseDown"
+    >
       <table class="leaves-table" :style="{ width: tableWidth + 'px' }">
         <colgroup>
           <col
@@ -208,10 +284,11 @@ watch(() => props.resetCounter, () => {
             :search-clauses="searchClauses"
             :pivot-hero="pivotedHero"
             :pivot-role="pivotedRole"
+            :selected-cols="cellSel.selectedColsFor(rec.match_key)"
             @pivot-hero="(h: string, append: boolean) => pivotHero(h, { append })"
             @pivot-role="(r: string, append: boolean) => pivotRole(r, { append })"
             @filter-cell="onFilterCell"
-            @open-match="emit('open-match', $event)"
+            @open-match="onRowOpen"
             @toggle-select="emit('toggle-select', $event)"
             @row-context="(e, k) => emit('row-context', e, k)"
             @hover-enter="(r, e) => emit('hover-enter', r, e)"
@@ -324,6 +401,9 @@ watch(() => props.resetCounter, () => {
   .seg-btn,
   .export-csv-btn { transition: none; }
 }
+
+/* No text selection while drag-selecting a cell range. */
+.leaves-table-scroll.is-cell-dragging { user-select: none; }
 
 .leaves-table-scroll {
   position: relative;
