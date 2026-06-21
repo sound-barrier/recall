@@ -3,11 +3,11 @@ import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
-  formatRoles,
   formatRowDate,
   formatFinishedAt,
   isHeroUnknown,
   isMapUnknown,
+  rolePlays,
   sortedHeroPlays,
 } from '@/match/match-helpers'
 import {
@@ -41,13 +41,15 @@ const props = defineProps<{
   // Parsed narrow-search clauses — drives highlighting of matched
   // substrings in the visible free-text surfaces (map / hero / tags).
   searchClauses: SearchClause[]
-  // The active hero pivot — this hero's chip renders pressed/highlighted.
+  // The active hero / role pivot — that chip renders pressed/highlighted.
   pivotHero?: string
+  pivotRole?: string
 }>()
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
   'pivot-hero': [hero: string]
+  'pivot-role': [role: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -169,7 +171,18 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
           @click.stop="emit('pivot-hero', h.hero)"
         ><HighlightedText :text="h.hero" :terms="bareTerms" /></button>
       </span>
-      <span v-if="formatRoles(rec, ow.heroRole)" class="leaf-role">{{ formatRoles(rec, ow.heroRole) }}</span>
+      <span v-if="rolePlays(rec, ow.heroRole).length" class="leaf-role">
+        <button
+          v-for="r in rolePlays(rec, ow.heroRole)"
+          :key="r.role"
+          type="button"
+          class="leaf-role-chip"
+          :class="{ 'is-pivot': r.role === pivotRole }"
+          :aria-pressed="r.role === pivotRole ? 'true' : 'false'"
+          :title="`Sort ${r.role} matches to the top of each group`"
+          @click.stop="emit('pivot-role', r.role)"
+        >{{ r.role }}</button>
+      </span>
     </div>
 
     <!-- 5. How — eliminations / assists / deaths, big + bold. -->
@@ -391,13 +404,31 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 }
 
 .leaf-role {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 1px 3px;
+}
+
+/* Each role is a clickable chip — click pivots that role's matches to the top
+   (open-queue matches show several). Keeps the faint uppercase mono look. */
+.leaf-role-chip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 0.2rem;
   font-family: var(--mono);
   font-size: 0.55rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
   font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 120ms ease, color 120ms ease;
 }
+.leaf-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.leaf-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.leaf-role-chip.is-pivot { background: var(--accent); color: var(--primary-text-on-accent); }
 
 /* 5. How — E/A/D, big bold tabular numerals with thin separators. */
 .leaf-stats-block {

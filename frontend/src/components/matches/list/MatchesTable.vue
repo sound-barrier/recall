@@ -6,6 +6,7 @@ import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composabl
 import { useTableMode } from '@/composables/matches/useTableMode'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useColumnResize } from '@/composables/matches/useColumnResize'
+import { useOWData } from '@/composables/shared/useOWData'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/list/MatchTableRow.vue'
 import PivotTable from '@/components/matches/pivot/PivotTable.vue'
@@ -45,7 +46,9 @@ const TABLE_COLUMNS: ReadonlyArray<{ col: TableSortCol | null; label: string }> 
 ]
 const TABLE_ROW_HEIGHT = 30
 
-const { sortKeys, cycleSort, pivotHero, pivotedHero, ariaSort, sortRows, sortLevelOf } = useTableSort()
+const ow = useOWData()
+const { sortKeys, cycleSort, pivotHero, pivotedHero, pivotRole, pivotedRole, ariaSort, sortRows, sortLevelOf } =
+  useTableSort(ow.heroRole)
 const { tableMode, setTableMode } = useTableMode()
 const narrow = useNarrow()
 
@@ -204,7 +207,9 @@ watch(() => props.resetCounter, () => {
             :is-anchor="rec.match_key === anchorKey"
             :search-clauses="searchClauses"
             :pivot-hero="pivotedHero"
+            :pivot-role="pivotedRole"
             @pivot-hero="(h: string, append: boolean) => pivotHero(h, { append })"
+            @pivot-role="(r: string, append: boolean) => pivotRole(r, { append })"
             @filter-cell="onFilterCell"
             @open-match="emit('open-match', $event)"
             @toggle-select="emit('toggle-select', $event)"
