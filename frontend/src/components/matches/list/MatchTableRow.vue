@@ -264,6 +264,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 
 /* Each hero is a clickable chip — click pivots the Hero sort level on it. */
 .tc-hero-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 2px; }
+
 .tc-hero-chip {
   appearance: none;
   border: 0;
@@ -379,6 +380,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 }
 .tc-filter-cell:disabled { cursor: default; }
 .tc-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 .tc-map .tc-filter-cell {
   padding: 0 0.25rem;
   margin-inline: -0.25rem;
