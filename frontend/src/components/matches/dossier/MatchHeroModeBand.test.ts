@@ -82,8 +82,23 @@ describe('MatchHeroModeBand', () => {
       dossier: { heroGameModeCounts: ROOT_CELLS },
     })
     expect(wrapper.find('.heatmap-grid').exists()).toBe(true)
-    expect(wrapper.findAll('.heatmap-colhead')).toHaveLength(6)
+    // Five columns: clash (quickplay-only, 0 data in ROOT_CELLS) is gated out.
+    expect(wrapper.findAll('.heatmap-colhead')).toHaveLength(5)
+    expect(wrapper.find('[data-hm-col="clash"]').exists()).toBe(false)
     expect(wrapper.find('.heatmap-rowhead').text()).toContain('lucio')
+  })
+
+  it('shows the Clash column once there is Clash data', () => {
+    const cells = ROOT_CELLS.map((c) =>
+      c.gameMode === 'clash' ? { ...c, wins: 2, losses: 1, draws: 0, total: 3, winrate: 67 } : c,
+    )
+    const wrapper = mountWidget(MatchHeroModeBand, {
+      narrow: makeNarrow(),
+      configSeed: FLOOR_CONFIG,
+      dossier: { heroGameModeCounts: cells },
+    })
+    expect(wrapper.findAll('.heatmap-colhead')).toHaveLength(6)
+    expect(wrapper.find('[data-hm-col="clash"]').exists()).toBe(true)
   })
 
   it('clicking a root cell narrows (hero, mode) and drills into the maps level', async () => {

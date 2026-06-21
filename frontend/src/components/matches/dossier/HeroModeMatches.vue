@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Level 2 of the Hero × Game-Mode band: the drilled map's most-recent
-// games as a compact date / result / map list. Extracted from
+// Level 2 of the Hero × Game-Mode band: the drilled map's most-recent games as
+// a compact date / result / mode / queue / map list. Each row is a button that
+// opens the match in the right-side detail panel. Extracted from
 // MatchHeroModeBand; the band passes the rows + map-name lookup down.
 interface MatchRow {
   matchKey: string
@@ -8,11 +9,17 @@ interface MatchRow {
   finishedAt: string
   result: string
   map: string
+  mode: string      // "Quickplay" / "Competitive" / "" when unset
+  queueType: string // "Role Queue" / "Open Queue" / "" when unset
 }
 
 defineProps<{
   matchRows: MatchRow[]
   mapLabel: (map: string) => string
+}>()
+
+const emit = defineEmits<{
+  'open-match': [matchKey: string]
 }>()
 
 // Short "Jun 5 · 7:42 PM" label; bare date when there's no finish time.
@@ -28,10 +35,20 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
 <template>
   <div class="hm-matches" data-hero-mode-matches>
     <ol v-if="matchRows.length > 0" class="hm-match-list">
-      <li v-for="m in matchRows" :key="m.matchKey" class="hm-match-row">
-        <span class="hm-match-date">{{ matchDateLabel(m) }}</span>
-        <span class="hm-match-result" :class="`res-${m.result}`">{{ m.result || '—' }}</span>
-        <span class="hm-match-map">{{ mapLabel(m.map) }}</span>
+      <li v-for="m in matchRows" :key="m.matchKey">
+        <button
+          type="button"
+          class="hm-match-row"
+          data-hero-mode-match-row
+          :title="`Open ${mapLabel(m.map)} — ${matchDateLabel(m)}`"
+          @click="emit('open-match', m.matchKey)"
+        >
+          <span class="hm-match-date">{{ matchDateLabel(m) }}</span>
+          <span class="hm-match-result" :class="`res-${m.result}`">{{ m.result || '—' }}</span>
+          <span class="hm-match-mode">{{ m.mode || '—' }}</span>
+          <span class="hm-match-queue">{{ m.queueType || '—' }}</span>
+          <span class="hm-match-map">{{ mapLabel(m.map) }}</span>
+        </button>
       </li>
     </ol>
     <p v-else class="hm-drill-empty">
@@ -52,19 +69,29 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
   gap: 2px;
 }
 
+/* Row is a button — reset the UA chrome the element brings, keep the grid. */
 .hm-match-row {
+  appearance: none;
+  width: 100%;
+  border: 0;
+  text-align: left;
   display: grid;
-  grid-template-columns: 9rem 5rem 1fr;
+  grid-template-columns: 8rem 4.5rem 6rem 6rem 1fr;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
   padding: 0.32rem 0.5rem;
   background: var(--surface-2);
   border-radius: 2px;
   font-family: var(--mono);
   font-size: 0.68rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 120ms ease;
 }
+.hm-match-row:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
+.hm-match-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.hm-match-date { color: var(--text); letter-spacing: 0.03em; }
+.hm-match-date { letter-spacing: 0.03em; }
 
 .hm-match-result {
   justify-self: start;
@@ -79,6 +106,17 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
 .res-defeat  { background: color-mix(in srgb, var(--loss) 22%, transparent); color: var(--loss); }
 .res-draw    { background: color-mix(in srgb, var(--draw) 22%, transparent); color: var(--draw); }
 
+.hm-match-mode,
+.hm-match-queue {
+  color: var(--text-faint);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .hm-match-map {
   color: var(--text-faint);
   letter-spacing: 0.03em;
@@ -87,7 +125,6 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
   white-space: nowrap;
   text-transform: capitalize;
 }
-
 
 .hm-drill-empty {
   margin: 0.6rem 0 0.1rem;

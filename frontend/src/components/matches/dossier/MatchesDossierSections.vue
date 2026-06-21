@@ -24,6 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:filterFrom': [value: string]
   'update:filterTo': [value: string]
+  'open-match': [matchKey: string]
 }>()
 
 const sectionLayout = useSectionLayout()
@@ -107,6 +108,9 @@ function onSectionMove(id: string, dir: -1 | 1) {
       @update:filter-to="(v: string) => emit('update:filterTo', v)"
     />
     <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
-    <MatchHeroModeBand v-else-if="sectionId === 'hero-game-mode'" />
+    <MatchHeroModeBand
+      v-else-if="sectionId === 'hero-game-mode'"
+      @open-match="(k: string) => emit('open-match', k)"
+    />
   </DossierSection>
 </template>

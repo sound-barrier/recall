@@ -40,6 +40,10 @@ const dossier        = useDossier()
 const heroModeDossier = useHeroModeDossier()
 const narrow         = useNarrow()
 const ow             = useOWData()
+
+// Depth-2 rows open the match in the shared right-side detail panel — emitted up
+// (through MatchesDossierSections) to MatchesView, which owns the selection.
+const emit = defineEmits<{ 'open-match': [matchKey: string] }>()
 const { config } = useWidgetConfig<HeroGameModeHeatmapConfig>(
   'hero-game-mode-heatmap',
   heroGameModeHeatmapSchema,
@@ -86,9 +90,22 @@ const cells = heroModeDossier.heroGameModeCounts(() => ({
   minMatches:   config.value.minMatches,
   windowMonths: windowMonths.value,
 }))
+
+// Clash is quickplay-only, so drop its column unless the player actually has
+// Clash data in the selected window (mirrors the Geography band's clash gate).
+// The other five modes always show — a 0-cell competitive column is meaningful.
+const NON_COMPETITIVE_MODES = new Set(['clash'])
+const playedGameModes = computed(
+  () => new Set(cells.value.filter((c) => c.total > 0).map((c) => c.gameMode)),
+)
+const visibleCells = computed(() =>
+  cells.value.filter(
+    (c) => !NON_COMPETITIVE_MODES.has(c.gameMode) || playedGameModes.value.has(c.gameMode),
+  ),
+)
 const rows = computed(() => {
-  const byHero = new Map<string, typeof cells.value>()
-  for (const c of cells.value) {
+  const byHero = new Map<string, typeof visibleCells.value>()
+  for (const c of visibleCells.value) {
     const arr = byHero.get(c.hero) ?? []
     arr.push(c)
     byHero.set(c.hero, arr)
@@ -298,8 +315,13 @@ const levelTitle = computed(() => {
         </p>
       </div>
 
-      <!-- Level 2 — the drilled map's recent matches. -->
-      <HeroModeMatches v-else :match-rows="matchRows" :map-label="mapLabel" />
+      <!-- Level 2 — the drilled map's recent matches; a row opens the panel. -->
+      <HeroModeMatches
+        v-else
+        :match-rows="matchRows"
+        :map-label="mapLabel"
+        @open-match="(k: string) => emit('open-match', k)"
+      />
     </div>
 
     <WidgetConfigPopover

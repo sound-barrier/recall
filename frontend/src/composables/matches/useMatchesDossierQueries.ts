@@ -1,6 +1,7 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { RESULT_MODIFIERS } from '@/match/match-trends-helpers'
 import {
   type BreakdownEntry,
@@ -517,7 +518,7 @@ export function useDossierQueries(
   // scopes to a trailing window.
   function recentMatches(
     opts?: MaybeRefOrGetter<{ count?: number; windowMonths?: number }>,
-  ): ComputedRef<Array<{ matchKey: string; date: string; finishedAt: string; result: string; map: string }>> {
+  ): ComputedRef<Array<{ matchKey: string; date: string; finishedAt: string; result: string; map: string; mode: string; queueType: string }>> {
     return computed(() => {
       const { count = 8, windowMonths = 0 } = opts ? toValue(opts) ?? {} : {}
       const cutoff = windowMonths > 0 ? monthsAgoISO(windowMonths) : ''
@@ -538,6 +539,10 @@ export function useDossierQueries(
           finishedAt: r.data?.finished_at ?? '',
           result:     r.data?.result ?? '',
           map:        r.data?.map ?? '',
+          // Play mode + queue type read like the leaf-row chips; empty string
+          // when unset so the drill row can render a "—" placeholder.
+          mode:       (r.play_mode ?? r.data?.playlist) ? formatPlayModeLabel(r) : '',
+          queueType:  r.queue_type ? formatQueueTypeLabel(r) : '',
         }))
     })
   }
