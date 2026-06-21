@@ -37,6 +37,18 @@ const CORPUS = [
 ]
 
 async function mount(page: Page) {
+  // Deterministic hero→role map so the broad role filter doesn't depend on the
+  // server's bundled reference data (lucio = support, ana = tank).
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        heroes_by_role: { support: ['lucio'], tank: ['ana'], dps: ['reaper'] },
+        maps_by_game_mode: {},
+      }),
+    }),
+  )
   await page.route('**/api/v1/matches', (route: Route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
   )
@@ -84,5 +96,66 @@ test.describe('value-click filtering', () => {
     await page.locator('tr.table-row[data-match-key="m1"] .tc-mode .tc-filter-cell').click()
     await expect(page.locator('tr.table-row')).toHaveCount(1)
     await expect(page.locator('tr.table-row[data-match-key="m1"]')).toHaveCount(1)
+  })
+
+  // Regression guard: open-queue matches play several roles, so the role filter
+  // is BROAD — clicking a secondary role must keep the clicked match, not hide
+  // it (the old primary-only filter would have dropped it).
+  test('cozy: clicking a SECONDARY open-queue role keeps the clicked match', async ({ page }) => {
+    await page.route('**/api/v1/system/reference-data', (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          heroes_by_role: { support: ['lucio'], tank: ['dva'], dps: ['reaper'] },
+          maps_by_game_mode: {},
+        }),
+      }),
+    )
+    await page.route('**/api/v1/matches', (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          // m1: primary role support, but also played dva (tank) — open queue.
+          {
+            match_key: 'm1',
+            source_files: ['m1.png'],
+            data: {
+              map: 'rialto', playlist: 'competitive', role: 'support', hero: 'lucio',
+              result: 'victory', date: '2026-05-10', finished_at: '22:00',
+              eliminations: 15, assists: 10, deaths: 8,
+              heroes_played: [
+                { hero: 'lucio', percent_played: 60, play_time: '10:00' },
+                { hero: 'dva', percent_played: 40, play_time: '06:00' },
+              ],
+            },
+            parsed_at: '2026-05-10T22:30:00Z',
+          },
+          {
+            match_key: 'm2',
+            source_files: ['m2.png'],
+            data: {
+              map: 'busan', playlist: 'competitive', role: 'dps', hero: 'reaper',
+              result: 'victory', date: '2026-05-10', finished_at: '21:00',
+              eliminations: 20, assists: 5, deaths: 9,
+              heroes_played: [{ hero: 'reaper', percent_played: 100, play_time: '10:00' }],
+            },
+            parsed_at: '2026-05-10T21:30:00Z',
+          },
+        ]),
+      }),
+    )
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('.leaf-row')).toHaveCount(2)
+
+    // The tank chip only exists once the reference data resolves the roles.
+    const tankChip = page.locator('.leaf-row[data-match-key="m1"] .leaf-role-chip', { hasText: 'tank' })
+    await expect(tankChip).toBeVisible()
+    await tankChip.click()
+    // Broad role filter: m1 (plays tank) stays; m2 (dps only) drops.
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+    await expect(page.locator('.leaf-row[data-match-key="m1"]')).toHaveCount(1)
   })
 })

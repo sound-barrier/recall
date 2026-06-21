@@ -19,11 +19,13 @@ import {
   matchesReviewedBy,
   matchesQueueType,
   matchesPlayMode,
+  matchesRole,
   matchesSearch,
   matchesSinceAnchor,
   matchesSource,
   matchesTags,
 } from '@/composables/matches/narrowPredicates'
+import { useOWData } from '@/composables/shared/useOWData'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { TIER_ORDER, FILTERABLE_MODIFIERS, RESULT_MODIFIERS } from '@/match/match-trends-helpers'
 
@@ -109,6 +111,10 @@ export function useMatchesNarrow(
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
   } = state
+
+  // Resolves heroes_played to roles for the broad role match (so a secondary
+  // open-queue role still filters to the matches that played it).
+  const { heroRole } = useOWData()
 
   // Parse the raw search box into scoped clauses once. The narrow
   // filter gates on these, and they're re-exposed so the leaf rows can
@@ -295,7 +301,7 @@ export function useMatchesNarrow(
     if (!skip.has('dateRange')   && !matchesDateRange(r, customFrom.value, customTo.value)) return false
     if (!skip.has('maps')        && !matchesPickedSet(r.data.map, pickedMaps.value)) return false
     if (!skip.has('gameModes')   && !matchesPickedSet(r.data.game_mode, pickedGameModes.value)) return false
-    if (!skip.has('roles')       && !matchesPickedSet(r.data.role, pickedRoles.value)) return false
+    if (!skip.has('roles')       && !matchesRole(r, pickedRoles.value, heroRole)) return false
     if (!skip.has('results')     && !matchesPickedSet(r.data.result, pickedResults.value)) return false
     if (!skip.has('heroes') && !skip.has('minPlay')
       && !matchesHero(r, pickedHeroes.value, minPlayMinutes.value, minPlayPercent.value)) return false

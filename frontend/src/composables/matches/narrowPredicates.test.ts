@@ -7,6 +7,7 @@ import {
   matchesDateRange,
   matchesPickedSet,
   matchesHero,
+  matchesRole,
   matchesTags,
   matchesMembers,
   matchesModifiers,
@@ -88,6 +89,33 @@ describe('matchesHero', () => {
   it('with a threshold, primary-hero-only no longer qualifies', () => {
     const r = rec({ data: { hero: 'lucio' } as MatchRecord['data'] })
     expect(matchesHero(r, new Set(['lucio']), 5, 0)).toBe(false)
+  })
+})
+
+describe('matchesRole', () => {
+  const heroRole = (h: string | null | undefined) =>
+    ({ lucio: 'support', dva: 'tank', reaper: 'dps' } as Record<string, string>)[h ?? ''] ?? ''
+
+  it('is inert with no picked roles', () => {
+    expect(matchesRole(rec(), new Set(), heroRole)).toBe(true)
+  })
+
+  it('broad-matches a SECONDARY open-queue role, not just the primary data.role', () => {
+    // Primary role is support, but the match also played D.Va (tank).
+    const r = rec({
+      data: {
+        role: 'support',
+        heroes_played: [{ hero: 'lucio', percent_played: 60 }, { hero: 'dva', percent_played: 40 }],
+      } as MatchRecord['data'],
+    })
+    expect(matchesRole(r, new Set(['tank']), heroRole)).toBe(true) // the bug: tank is secondary
+    expect(matchesRole(r, new Set(['support']), heroRole)).toBe(true)
+    expect(matchesRole(r, new Set(['dps']), heroRole)).toBe(false)
+  })
+
+  it('falls back to the primary role when heroes_played is empty', () => {
+    const r = rec({ data: { role: 'support' } as MatchRecord['data'] })
+    expect(matchesRole(r, new Set(['support']), heroRole)).toBe(true)
   })
 })
 
