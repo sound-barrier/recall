@@ -227,6 +227,17 @@ The filename shape — not the folder — is what the parser uses to
 correlate the timestamp, so the same matcher fires regardless of
 platform.
 
+**For the cleanest parse, capture high-quality PNG screenshots with
+Overwatch's default colours.** Of the sources above, the **Nvidia overlay** and the
+**Windows Snipping Tool** save PNG (lossless); the **Overwatch PrntScn
+default** and **Steam's F12** save JPG, and heavy JPG compression blurs the
+small stat numbers — the performance card can over-read eliminations, and a
+badly-compressed capture can miss classification and land in the **Unknown**
+tab. The OCR is also tuned to Overwatch's **stock UI colours** (it locates
+your scoreboard row by its blue highlight and detects the magenta COMPETITIVE
+badge), so non-default **colourblind palettes** can break detection — only the
+default colours are known to work.
+
 A fifth source can be added by editing
 `pkg/parser/screenshot_sources.yaml` (see the file's header
 comments for the regex + capture-group rules); no Go edits required.
