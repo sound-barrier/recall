@@ -10,6 +10,7 @@
     "rank_progress": -19,
     "change_percent": 0,
     "modifiers": [
+      "consolation",
       "defeat",
       "demotion protection"
     ],
@@ -22,6 +23,11 @@
       {
         "hero": "kiriko",
         "sr": 1799,
+        "change": 0
+      },
+      {
+        "hero": "zenyatta",
+        "sr": 1777,
         "change": 0
       }
     ]

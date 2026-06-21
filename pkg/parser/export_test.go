@@ -13,6 +13,7 @@ var (
 	ExtractModifiers      = extractModifiers
 	ExtractRank           = extractRank
 	ExtractSR             = extractSR
+	SRFromRun             = srFromRun
 	NormalizeDate         = normalizeDate
 	SnapToKnownMap        = snapToKnownMap
 	BestKnownMapInText    = bestKnownMapInText
