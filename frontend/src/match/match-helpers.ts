@@ -168,18 +168,24 @@ export function rolesForHeader(
 // primary (data.hero) when an OCR mismatch left it out of a non-empty
 // heroes_played, so the row always surfaces the primary. '—' when
 // there's neither a heroes_played entry nor a primary.
-export function formatHeroes(rec: Pick<MatchRecord, 'data'>): string {
+// The match's heroes in percent-played order (the primary folded in at 0% when
+// it isn't already in heroes_played). Shared by formatHeroes (the joined label)
+// and the leaf-row's per-hero pivot chips, so both read the same list + order.
+export function sortedHeroPlays(rec: Pick<MatchRecord, 'data'>): { hero: string; percent: number }[] {
   const played = [...(rec.data?.heroes_played ?? [])]
   const primary = rec.data?.hero
   if (primary && !played.some((h) => h.hero === primary)) {
     played.push({ hero: primary, percent_played: 0 })
   }
-  if (played.length === 0) return '—'
   return played
+    .filter((h) => h.hero)
     .sort((a, b) => (b.percent_played ?? 0) - (a.percent_played ?? 0))
-    .map((h) => h.hero)
-    .filter(Boolean)
-    .join(', ')
+    .map((h) => ({ hero: h.hero, percent: h.percent_played ?? 0 }))
+}
+
+export function formatHeroes(rec: Pick<MatchRecord, 'data'>): string {
+  const heroes = sortedHeroPlays(rec).map((h) => h.hero)
+  return heroes.length ? heroes.join(', ') : '—'
 }
 
 // Comma-separated role list, deduped in play-order via rolesForHeader.
