@@ -69,6 +69,14 @@ function onFilterCell(field: 'map' | 'mode' | 'queue', value: string) {
   else narrow.pickQueue(value as QueuePick)
 }
 
+// The active map/mode/queue narrow picks — passed to each row so a cell whose
+// value is currently filtered lights up (the active-filter state).
+const activeFilters = computed(() => ({
+  maps: narrow.pickedMaps.value as ReadonlySet<string>,
+  modes: narrow.pickedPlayModes.value as ReadonlySet<string>,
+  queues: narrow.pickedQueues.value as ReadonlySet<string>,
+}))
+
 // Hero / role pivot: clicking a hero or role chip floats matching matches to the
 // top of each section (most-played first); clicking the same chip again clears
 // it. One pivot at a time — setting one clears the other. A view-local sort
@@ -401,6 +409,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
           :search-clauses="searchClauses"
           :pivot-hero="pivotHero"
           :pivot-role="pivotRole"
+          :active-filters="activeFilters"
           @pivot-hero="onPivotHero"
           @pivot-role="onPivotRole"
           @filter-cell="onFilterCell"
