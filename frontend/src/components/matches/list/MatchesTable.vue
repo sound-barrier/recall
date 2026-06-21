@@ -5,6 +5,7 @@ import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/useTableSort'
 import { useTableMode } from '@/composables/matches/useTableMode'
 import { useNarrow } from '@/composables/matches/useNarrow'
+import { useColumnResize } from '@/composables/matches/useColumnResize'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/list/MatchTableRow.vue'
 import PivotTable from '@/components/matches/pivot/PivotTable.vue'
@@ -56,6 +57,15 @@ function onFilterCell(field: 'map' | 'result', value: string) {
   if (field === 'map') narrow.pickMap(value)
   else narrow.pickResult(value)
 }
+
+// Column resize: persisted per-column widths drive a <colgroup> over a
+// fixed-layout table; the total feeds the table's own width so the pane scrolls
+// horizontally once the columns outgrow it.
+const { colWidth, onResizeStart, resetWidth } = useColumnResize()
+function colKey(column: { col: TableSortCol | null }): string {
+  return column.col ?? 'select'
+}
+const tableWidth = computed(() => TABLE_COLUMNS.reduce((sum, c) => sum + colWidth(colKey(c)), 0))
 
 // Null-safe header-chrome adapters (the checkbox gutter column is col:
 // null): the 1-based sort level for the badge, and the direction caret.
@@ -123,7 +133,14 @@ watch(() => props.resetCounter, () => {
     </div>
 
     <div v-if="tableMode === 'flat'" ref="tableScrollRef" class="leaves-table-scroll">
-      <table class="leaves-table">
+      <table class="leaves-table" :style="{ width: tableWidth + 'px' }">
+        <colgroup>
+          <col
+            v-for="column in TABLE_COLUMNS"
+            :key="colKey(column) + '-col'"
+            :style="{ width: colWidth(colKey(column)) + 'px' }"
+          >
+        </colgroup>
         <thead class="leaves-thead">
           <tr>
             <th
@@ -150,6 +167,14 @@ watch(() => props.resetCounter, () => {
                   aria-hidden="true"
                 >{{ headerCaret(column.col) }}</span>
               </span>
+              <span
+                class="th-resize"
+                aria-hidden="true"
+                title="Drag to resize · double-click to reset"
+                @pointerdown="onResizeStart(colKey(column), $event)"
+                @dblclick.stop="resetWidth(colKey(column))"
+                @click.stop
+              />
             </th>
           </tr>
         </thead>
@@ -319,13 +344,11 @@ watch(() => props.resetCounter, () => {
 .leaves-table-scroll::-webkit-scrollbar-track { background: transparent; }
 
 .leaves-table {
-  width: 100%;
-
-  /* Below this the pane scrolls horizontally instead of crushing the
-     columns; nowrap cells + the map/hero/tags ellipsis do the rest.
-     Wider than the pre-split table — Mode/Queue and E/A/D each own a
-     column now. */
-  min-width: 64rem;
+  /* Width is the sum of the (resizable) column widths, set inline from the
+     colgroup; fixed layout makes each <col> width authoritative so the pane
+     scrolls horizontally once the columns outgrow it. nowrap cells + the
+     map/hero/tags ellipsis clip overflow within each column. */
+  table-layout: fixed;
   border-collapse: collapse;
   font-family: var(--mono);
 }
@@ -369,6 +392,20 @@ watch(() => props.resetCounter, () => {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
 }
 .th-active { color: var(--accent); }
+
+/* Drag handle on each column's right edge (sits in the sticky th's containing
+   block). Drag to resize, double-click to reset to the natural width. */
+.th-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+.th-resize:hover { background: color-mix(in srgb, var(--accent) 45%, transparent); }
 
 .th-inner {
   display: inline-flex;
