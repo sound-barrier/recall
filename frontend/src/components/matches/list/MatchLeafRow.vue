@@ -50,6 +50,7 @@ const emit = defineEmits<{
   'open-match': [matchKey: string]
   'pivot-hero': [hero: string]
   'pivot-role': [role: string]
+  'filter-cell': [field: 'map' | 'mode' | 'queue', value: string]
   'toggle-select': [matchKey: string]
   'row-context': [event: MouseEvent, matchKey: string]
   'hover-enter': [rec: MatchRecord, event: MouseEvent]
@@ -67,6 +68,17 @@ const isFocused = computed(
 // The tag surface additionally honours `tag:`-scoped clauses.
 const bareTerms = computed(() => props.searchClauses.filter((c) => c.field === null).map((c) => c.value))
 const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
+
+// Click-to-filter pick values for the mode + queue chips (the narrow's
+// PlayModePick / QueuePick unions), derived the same way the labels are.
+const playModePick = computed(() => {
+  const m = props.rec.play_mode ?? props.rec.data?.playlist
+  return m === 'quickplay' || m === 'competitive' ? m : 'unknown'
+})
+const queuePick = computed(() => {
+  const q = props.rec.queue_type
+  return q === 'role' || q === 'open' ? q : 'unknown'
+})
 </script>
 
 <template>
@@ -139,10 +151,28 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         :data-unknown-map="rec.data?.map_raw || true"
         :title="`The parser couldn't match the OCR'd map text to maps.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.map_raw ?? '—'})`"
       >{{ formatUnknownMapLabel(rec) }}</span>
-      <span v-else class="leaf-map"><HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" /></span>
+      <button
+        v-else
+        type="button"
+        class="leaf-map leaf-filter-cell"
+        :title="`Filter the set to ${rec.data?.map}`"
+        @click.stop="emit('filter-cell', 'map', rec.data?.map ?? '')"
+      >
+        <HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" />
+      </button>
       <span class="leaf-mode-row">
-        <span class="leaf-mode-chip">{{ formatPlayModeLabel(rec) }}</span>
-        <span class="leaf-queue-chip">{{ formatQueueTypeLabel(rec) }}</span>
+        <button
+          type="button"
+          class="leaf-mode-chip leaf-filter-cell"
+          :title="`Filter the set to ${formatPlayModeLabel(rec)}`"
+          @click.stop="emit('filter-cell', 'mode', playModePick)"
+        >{{ formatPlayModeLabel(rec) }}</button>
+        <button
+          type="button"
+          class="leaf-queue-chip leaf-filter-cell"
+          :title="`Filter the set to ${formatQueueTypeLabel(rec)}`"
+          @click.stop="emit('filter-cell', 'queue', queuePick)"
+        >{{ formatQueueTypeLabel(rec) }}</button>
       </span>
     </div>
 
@@ -314,6 +344,22 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   gap: 0.18rem;
   min-width: 0;
 }
+
+/* The map / mode / queue cells are filter buttons (click to narrow the set).
+   Reset the button chrome at 0 specificity so each keeps its own look; brighten
+   on hover as the clickable cue. */
+:where(.leaf-filter-cell) {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.leaf-filter-cell:hover { filter: brightness(1.18); }
+.leaf-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
 
 .leaf-map {
   font-family: var(--display);
