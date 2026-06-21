@@ -54,6 +54,8 @@ test.describe('leaf-row click-to-filter (cozy/compact)', () => {
     await expect(page.locator('.leaf-row')).toHaveCount(2)
     await expect(page.locator('.leaf-row[data-match-key="m2"]')).toHaveCount(0)
     await expect(page.locator('aside.detail-panel')).toHaveCount(0)
+    // The filtered map cells light up (active-filter state).
+    await expect(page.locator('.leaf-map.is-filtered')).toHaveCount(2)
 
     // Mode → competitive stacks (rialto AND competitive) → m1 alone.
     await page.locator('.leaf-row[data-match-key="m1"] .leaf-mode-chip').click()

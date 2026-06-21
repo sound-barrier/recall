@@ -44,6 +44,9 @@ const props = defineProps<{
   // The active hero / role pivot — that chip renders pressed/highlighted.
   pivotHero?: string
   pivotRole?: string
+  // The active map/mode/queue narrow picks — a cell whose value is in its set
+  // renders as an active filter (distinct from the sort pivots).
+  activeFilters?: { maps: ReadonlySet<string>; modes: ReadonlySet<string>; queues: ReadonlySet<string> }
 }>()
 
 const emit = defineEmits<{
@@ -79,6 +82,11 @@ const queuePick = computed(() => {
   const q = props.rec.queue_type
   return q === 'role' || q === 'open' ? q : 'unknown'
 })
+
+// Whether each cell's value is currently an active narrow filter (lights it up).
+const mapFiltered = computed(() => props.activeFilters?.maps.has(props.rec.data?.map ?? '') ?? false)
+const modeFiltered = computed(() => props.activeFilters?.modes.has(playModePick.value) ?? false)
+const queueFiltered = computed(() => props.activeFilters?.queues.has(queuePick.value) ?? false)
 </script>
 
 <template>
@@ -155,7 +163,8 @@ const queuePick = computed(() => {
         v-else
         type="button"
         class="leaf-map leaf-filter-cell"
-        :title="`Filter the set to ${rec.data?.map}`"
+        :class="{ 'is-filtered': mapFiltered }"
+        :title="mapFiltered ? `Filtering by ${rec.data?.map} — click to clear` : `Filter the set to ${rec.data?.map}`"
         @click.stop="emit('filter-cell', 'map', rec.data?.map ?? '')"
       >
         <HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" />
@@ -164,13 +173,15 @@ const queuePick = computed(() => {
         <button
           type="button"
           class="leaf-mode-chip leaf-filter-cell"
-          :title="`Filter the set to ${formatPlayModeLabel(rec)}`"
+          :class="{ 'is-filtered': modeFiltered }"
+          :title="modeFiltered ? `Filtering by ${formatPlayModeLabel(rec)} — click to clear` : `Filter the set to ${formatPlayModeLabel(rec)}`"
           @click.stop="emit('filter-cell', 'mode', playModePick)"
         >{{ formatPlayModeLabel(rec) }}</button>
         <button
           type="button"
           class="leaf-queue-chip leaf-filter-cell"
-          :title="`Filter the set to ${formatQueueTypeLabel(rec)}`"
+          :class="{ 'is-filtered': queueFiltered }"
+          :title="queueFiltered ? `Filtering by ${formatQueueTypeLabel(rec)} — click to clear` : `Filter the set to ${formatQueueTypeLabel(rec)}`"
           @click.stop="emit('filter-cell', 'queue', queuePick)"
         >{{ formatQueueTypeLabel(rec) }}</button>
       </span>
@@ -358,8 +369,34 @@ const queuePick = computed(() => {
   text-align: inherit;
   cursor: pointer;
 }
-.leaf-filter-cell:hover { filter: brightness(1.18); }
-.leaf-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
+.leaf-filter-cell { border-radius: 3px; }
+.leaf-filter-cell:hover { filter: brightness(1.12); }
+.leaf-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* A funnel glyph marks these as FILTERS — the sort pivots (hero/role) have none.
+   Faint on hover, lit when the value is the active filter. */
+.leaf-filter-cell::after {
+  content: '';
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  margin-left: 0.22em;
+  vertical-align: -0.05em;
+  background-color: currentcolor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3h12l-4.5 5.5V13l-3 1.5V8.5z'/%3E%3C/svg%3E") no-repeat center / contain;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.leaf-filter-cell:hover::after,
+.leaf-filter-cell.is-filtered::after { opacity: 0.7; }
+
+/* Active filter — soft/outlined accent, deliberately distinct from the sort
+   pivots' FILLED accent so "filter" never reads as "sort". */
+.leaf-filter-cell.is-filtered {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
 
 .leaf-map {
   font-family: var(--display);
