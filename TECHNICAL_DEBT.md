@@ -45,8 +45,7 @@ The PR `refactor/split-oversized-sfcs` carries four more (MatchesDossierHead →
   selection engine reaches into the grid DOM, so the split is the most delicate),
   `ManualMatchModal.vue` (728 — the form body is interwoven with the combobox
   wiring), `MatchesMembersList.vue` (662 — entangled windowing + virtualization +
-  IntersectionObserver, lifecycle-bound), `MatchJournal.vue` (626 — the
-  Note/Replay/Group/Tags cells share `.journal-cell` chrome + draft state).
+  IntersectionObserver, lifecycle-bound).
 
 **Re-evaluate, expect to KEEP (irreducible markup/CSS or cohesive shell — the
 file-size rule exempts these):** `MatchStatusChoosers.vue` (712, mostly
@@ -63,6 +62,14 @@ and deliberately left):
   each — exactly what the file-size rule exempts. The narrow file's shared types +
   state factory were already split out (`matchesNarrow.types` / `.state`);
   fragmenting the remaining filter/query math would hurt cohesion for a number.
+- **`MatchJournal.vue` (626)** — re-promoted from #4 to KEEP. The Note / Replay /
+  Group / Tags cells share `.journal-cell` chrome + the `saved`-pulse `@keyframes`,
+  and its script is already a thin call into `useMatchAnnotationEditor`. A cell
+  can't be pulled into a child without that shared chrome: promoting it to a global
+  `app.css` file (the worked-example pattern) would blow the initial-CSS budget
+  (~270 B headroom, and the journal CSS currently rides a lazy chunk), so a child
+  SFC would have to *duplicate* ~80 lines of chrome — net worse than the
+  oversized-but-cohesive single file. Cohesive-shell exemption.
 - **Report-only cyclomatic-complexity warnings** (`load()` 14, `valueLabel` 11):
   the complexity lefthook step is REPORT-ONLY for a reason — these are branchy by
   nature (an `allSettled` boot coordinator). Refactor only if a real
