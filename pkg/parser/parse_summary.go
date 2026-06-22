@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -83,58 +82,35 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 	return res, nil
 }
 
-// parseHeroesPlayed slices the heroes column into per-hero blocks by anchoring
-// on each detected hero name and grabs the first percent and MM:SS that follow
-// it. Heroes with 0% (and no play time) are skipped — those are empty card
-// slots, not actual heroes played.
+// parseHeroesPlayed reads the heroes column block by block. Each hero shows
+// NAME / XX% / MM:SS; the percent markers are the reliable anchor — digits OCR
+// cleanly even when the italic name is mangled — so we split on them and
+// fuzzy-resolve the hero name in the text leading up to each (bestHeroForName),
+// instead of requiring an exact name match that silently drops a garbled hero
+// ("BRIGITIE", "JUNG"). Heroes with no percent and no play time are empty card
+// slots, skipped.
 func parseHeroesPlayed(text string) []HeroPlay {
-	heroes := extractHeroes(text)
-	if len(heroes) == 0 {
-		return nil
-	}
-	upper := strings.ToUpper(text)
-
-	type pos struct {
-		hero string
-		idx  int
-	}
-	var positions []pos
-	seen := map[string]bool{}
-	for _, h := range heroes {
-		if seen[h] {
-			continue
-		}
-		i := strings.Index(upper, strings.ToUpper(h))
-		if i >= 0 {
-			positions = append(positions, pos{hero: h, idx: i})
-			seen[h] = true
-		}
-	}
-	sort.Slice(positions, func(i, j int) bool { return positions[i].idx < positions[j].idx })
-
 	pctRe := regexp.MustCompile(`(\d{1,3})\s*%`)
-	timeRe := regexp.MustCompile(`(\d{1,2}:\d{2})`)
+	timeRe := regexp.MustCompile(`\d{1,2}:\d{2}`)
+	marks := pctRe.FindAllStringSubmatchIndex(text, -1)
 
 	var out []HeroPlay
-	for i, p := range positions {
-		end := len(text)
-		if i+1 < len(positions) {
-			end = positions[i+1].idx
+	seen := map[string]bool{}
+	nameStart := 0
+	for k, m := range marks {
+		hero := bestHeroForName(text[nameStart:m[0]])
+		nameStart = m[1] // next block's name region starts after this percent
+		pct, _ := strconv.Atoi(text[m[2]:m[3]])
+		timeEnd := len(text)
+		if k+1 < len(marks) {
+			timeEnd = marks[k+1][0]
 		}
-		block := text[p.idx:end]
-
-		pct := 0
-		if m := pctRe.FindStringSubmatch(block); m != nil {
-			pct, _ = strconv.Atoi(m[1])
-		}
-		playTime := ""
-		if m := timeRe.FindStringSubmatch(block); m != nil {
-			playTime = m[1]
-		}
-		if pct == 0 && playTime == "" {
+		playTime := timeRe.FindString(text[m[1]:timeEnd])
+		if hero == "" || seen[hero] || (pct == 0 && playTime == "") {
 			continue
 		}
-		out = append(out, HeroPlay{Hero: p.hero, PercentPlayed: pct, PlayTime: playTime})
+		seen[hero] = true
+		out = append(out, HeroPlay{Hero: hero, PercentPlayed: pct, PlayTime: playTime})
 	}
 	return out
 }

@@ -1,0 +1,48 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "havana",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "kiriko",
+    "eliminations": 27,
+    "assists": 35,
+    "deaths": 5,
+    "result": "defeat",
+    "final_score": "3-4",
+    "date": "2026-06-19",
+    "finished_at": "01:21",
+    "game_length": "23:03",
+    "heroes_played": [
+      {
+        "hero": "kiriko",
+        "percent_played": 49,
+        "play_time": "09:10"
+      },
+      {
+        "hero": "juno",
+        "percent_played": 41,
+        "play_time": "07:44"
+      },
+      {
+        "hero": "zenyatta",
+        "percent_played": 10,
+        "play_time": "01:58"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 27,
+        "avg_per_10min": 14.3
+      },
+      "assists": {
+        "total": 35,
+        "avg_per_10min": 18.53
+      },
+      "deaths": {
+        "total": 5,
+        "avg_per_10min": 2.65
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "blizzard world",
+    "game_mode": "hybrid",
+    "role": "support",
+    "hero": "moira",
+    "eliminations": 24,
+    "assists": 15,
+    "deaths": 9,
+    "result": "defeat",
+    "final_score": "3-4",
+    "date": "2026-06-17",
+    "finished_at": "03:36",
+    "game_length": "18:35",
+    "heroes_played": [
+      {
+        "hero": "moira",
+        "percent_played": 57,
+        "play_time": "08:08"
+      },
+      {
+        "hero": "zenyatta",
+        "percent_played": 31,
+        "play_time": "04:27"
+      },
+      {
+        "hero": "wuyang",
+        "percent_played": 13,
+        "play_time": "01:48"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 24,
+        "avg_per_10min": 16.64
+      },
+      "assists": {
+        "total": 15,
+        "avg_per_10min": 10.4
+      },
+      "deaths": {
+        "total": 9,
+        "avg_per_10min": 6.24
+      }
+    }
+  }
+}

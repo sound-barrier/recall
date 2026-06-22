@@ -1,0 +1,43 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "dorado",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "brigitte",
+    "eliminations": 21,
+    "assists": 28,
+    "deaths": 5,
+    "result": "victory",
+    "final_score": "3-2",
+    "date": "2026-06-17",
+    "finished_at": "00:45",
+    "game_length": "18:40",
+    "heroes_played": [
+      {
+        "hero": "brigitte",
+        "percent_played": 88,
+        "play_time": "15:06"
+      },
+      {
+        "hero": "ana",
+        "percent_played": 12,
+        "play_time": "02:06"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 21,
+        "avg_per_10min": 12.2
+      },
+      "assists": {
+        "total": 28,
+        "avg_per_10min": 16.27
+      },
+      "deaths": {
+        "total": 5,
+        "avg_per_10min": 2.91
+      }
+    }
+  }
+}
