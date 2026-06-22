@@ -165,30 +165,60 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	return res, nil
 }
 
-func extractRank(text string) (string, int) {
-	lower := strings.ToLower(text)
-	rank := ""
+// rankFuzzyMaxPct caps the tier-snap Levenshtein distance as a percentage of the
+// tier name's length (floor of 1, mirroring snapToKnownMap). It lets a mis-OCR'd
+// tier word recover from a glyph slip — "GOD"→gold, "CHAMPON"→champion — without
+// matching unrelated words ("WIZARD" stays unmatched). This is the #499
+// generalization lever: untested tiers (Bronze/Champion/Diamond) survive
+// imperfect OCR instead of silently returning no rank.
+const rankFuzzyMaxPct = 25
+
+var rankWordRe = regexp.MustCompile(`[a-z]+`)
+
+// snapTier resolves the OCR'd tier band to a canonical tier. An exact substring
+// match wins; otherwise the nearest known tier (by Levenshtein distance, within
+// the length-scaled threshold) to any alphabetic word in the text. It also
+// returns the matched text token, so the level read can anchor on the
+// (possibly garbled) word rather than the canonical tier.
+func snapTier(lower string) (tier, word string) {
 	for _, r := range knownRanks {
 		if strings.Contains(lower, r) {
-			rank = r
-			break
+			return r, r
 		}
 	}
-	level := 0
-	// Anchor the level match on the rank name to avoid picking up unrelated
-	// digits from icon noise (e.g. Tesseract reads italic decoration as
-	// extra digits before the level). Take the LAST digit in the trailing
-	// number-run after the rank — italic fonts often misread to insert a
-	// leading digit (so "PLATINUM 5" OCRs as "PLATINUM 35"), and OW levels
-	// are always 1-5 single digits.
-	if rank != "" {
-		// Allow digit-lookalike letters after the tier ("GOLD I" — the italic
-		// "1" OCRs as the letter I) and digitize before reading the level.
-		re := regexp.MustCompile(`(?i)` + rank + `\s*([0-9OoQqIlL]+)`)
-		if m := re.FindStringSubmatch(text); m != nil {
-			d := digitize(m[1])
-			level, _ = strconv.Atoi(d[len(d)-1:])
+	bestDist := -1
+	for _, w := range rankWordRe.FindAllString(lower, -1) {
+		// 3 is the floor so a dropped-letter "GOD" can still reach the 4-char
+		// "gold"; shorter words can't clear any tier's threshold, and longer
+		// tiers exclude a 3-char word by length difference alone.
+		if len(w) < 3 {
+			continue
 		}
+		for _, r := range knownRanks {
+			threshold := max(len(r)*rankFuzzyMaxPct/100, 1)
+			if d := levenshtein(w, r); d <= threshold && (bestDist < 0 || d < bestDist) {
+				bestDist, tier, word = d, r, w
+			}
+		}
+	}
+	return tier, word
+}
+
+func extractRank(text string) (string, int) {
+	rank, word := snapTier(strings.ToLower(text))
+	if rank == "" {
+		return "", 0
+	}
+	// Anchor the level on the matched tier word (the canonical tier on an exact
+	// hit, the garbled token when fuzzy-snapped). Allow digit-lookalike letters
+	// after it ("GOLD I" — the italic "1" OCRs as the letter I) and digitize
+	// before reading. Take the LAST digit of the trailing run: italic fonts
+	// misread "PLATINUM 5" as "PLATINUM 35", and OW levels are single digits 1-5.
+	level := 0
+	re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(word) + `\s*([0-9OoQqIlL]+)`)
+	if m := re.FindStringSubmatch(text); m != nil {
+		d := digitize(m[1])
+		level, _ = strconv.Atoi(d[len(d)-1:])
 	}
 	return rank, level
 }
