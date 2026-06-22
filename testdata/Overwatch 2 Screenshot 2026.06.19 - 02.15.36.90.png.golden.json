@@ -1,0 +1,43 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "shambali monastery",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "juno",
+    "eliminations": 21,
+    "assists": 32,
+    "deaths": 7,
+    "result": "victory",
+    "final_score": "4-3",
+    "date": "2026-06-19",
+    "finished_at": "02:14",
+    "game_length": "20:25",
+    "heroes_played": [
+      {
+        "hero": "juno",
+        "percent_played": 55,
+        "play_time": "08:51"
+      },
+      {
+        "hero": "wuyang",
+        "percent_played": 45,
+        "play_time": "07:22"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 21,
+        "avg_per_10min": 12.93
+      },
+      "assists": {
+        "total": 32,
+        "avg_per_10min": 19.7
+      },
+      "deaths": {
+        "total": 7,
+        "avg_per_10min": 4.31
+      }
+    }
+  }
+}

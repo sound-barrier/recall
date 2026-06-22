@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "circuit royal",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "wuyang",
+    "eliminations": 26,
+    "assists": 53,
+    "deaths": 5,
+    "result": "defeat",
+    "final_score": "4-5",
+    "date": "2026-06-19",
+    "finished_at": "00:53",
+    "game_length": "23:44",
+    "heroes_played": [
+      {
+        "hero": "wuyang",
+        "percent_played": 100,
+        "play_time": "19:33"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 26,
+        "avg_per_10min": 13.29
+      },
+      "assists": {
+        "total": 53,
+        "avg_per_10min": 27.1
+      },
+      "deaths": {
+        "total": 5,
+        "avg_per_10min": 2.56
+      }
+    }
+  }
+}

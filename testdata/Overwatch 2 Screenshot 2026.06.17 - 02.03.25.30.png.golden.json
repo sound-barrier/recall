@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "lijiang tower",
+    "game_mode": "control",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 13,
+    "assists": 16,
+    "deaths": 3,
+    "result": "victory",
+    "final_score": "2-0",
+    "date": "2026-06-17",
+    "finished_at": "02:02",
+    "game_length": "7:58",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "07:16"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 13,
+        "avg_per_10min": 17.87
+      },
+      "assists": {
+        "total": 16,
+        "avg_per_10min": 21.99
+      },
+      "deaths": {
+        "total": 3,
+        "avg_per_10min": 4.12
+      }
+    }
+  }
+}

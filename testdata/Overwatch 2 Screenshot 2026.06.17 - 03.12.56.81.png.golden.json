@@ -1,0 +1,43 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "watchpoint gibraltar",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "kiriko",
+    "eliminations": 16,
+    "assists": 35,
+    "deaths": 9,
+    "result": "defeat",
+    "final_score": "4-5",
+    "date": "2026-06-17",
+    "finished_at": "03:12",
+    "game_length": "23:12",
+    "heroes_played": [
+      {
+        "hero": "kiriko",
+        "percent_played": 65,
+        "play_time": "12:25"
+      },
+      {
+        "hero": "mizuki",
+        "percent_played": 35,
+        "play_time": "06:36"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 16,
+        "avg_per_10min": 8.41
+      },
+      "assists": {
+        "total": 35,
+        "avg_per_10min": 18.4
+      },
+      "deaths": {
+        "total": 9,
+        "avg_per_10min": 4.73
+      }
+    }
+  }
+}

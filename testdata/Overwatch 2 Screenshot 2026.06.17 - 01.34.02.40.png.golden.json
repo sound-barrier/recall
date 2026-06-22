@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "paraiso",
+    "game_mode": "hybrid",
+    "role": "support",
+    "hero": "juno",
+    "eliminations": 15,
+    "assists": 18,
+    "deaths": 3,
+    "result": "victory",
+    "final_score": "2-1",
+    "date": "2026-06-17",
+    "finished_at": "01:32",
+    "game_length": "13:59",
+    "heroes_played": [
+      {
+        "hero": "juno",
+        "percent_played": 100,
+        "play_time": "12:31"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 15,
+        "avg_per_10min": 11.97
+      },
+      "assists": {
+        "total": 18,
+        "avg_per_10min": 14.36
+      },
+      "deaths": {
+        "total": 3,
+        "avg_per_10min": 2.39
+      }
+    }
+  }
+}

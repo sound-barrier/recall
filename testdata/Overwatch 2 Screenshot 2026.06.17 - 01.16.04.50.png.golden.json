@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "route 66",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 15,
+    "assists": 18,
+    "deaths": 13,
+    "result": "defeat",
+    "final_score": "1-2",
+    "date": "2026-06-17",
+    "finished_at": "01:15",
+    "game_length": "17:29",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "16:01"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 15,
+        "avg_per_10min": 9.36
+      },
+      "assists": {
+        "total": 18,
+        "avg_per_10min": 11.23
+      },
+      "deaths": {
+        "total": 13,
+        "avg_per_10min": 8.11
+      }
+    }
+  }
+}
