@@ -1,0 +1,14 @@
+# Local training tooling + data — never committed (per the spike's "train
+# locally, don't check in the detector" rule). Only the scripts, the resulting
+# fine-tuned .traineddata, and the writeup are tracked.
+.venv/
+.tesstrain/
+tessdata/
+data/
+_smoke/
+train/
+tmp/
+*.lstmf
+*.checkpoint
+*.box
+*.tif
