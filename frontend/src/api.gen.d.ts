@@ -55,6 +55,12 @@ export interface paths {
          *     (Settings → Advanced surfaces this as a "Keep suppress-list"
          *     checkbox). Default-off matches the historical factory-reset
          *     semantic.
+         *
+         *     `keep_ignored` covers only that suppress list — the separate
+         *     "All Heroes" recognition skip-list is always cleared, even with
+         *     `keep_ignored=true`. This is benign: those screenshots are
+         *     re-recognized and re-skipped on the next parse, so nothing is
+         *     lost.
          */
         delete: operations["ClearMatches"];
         options?: never;
