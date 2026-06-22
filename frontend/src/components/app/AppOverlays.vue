@@ -26,6 +26,7 @@ const ExportBundleModal = defineAsyncComponent(() => import('@/components/settin
 const IgnoredFilesPanel = defineAsyncComponent(() => import('@/components/settings/IgnoredFilesPanel.vue'))
 const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
 const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/list/MatchAnchorToast.vue'))
+const MatchUndoToast = defineAsyncComponent(() => import('@/components/matches/list/MatchUndoToast.vue'))
 const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/manual/ManualMatchModal.vue'))
@@ -44,10 +45,11 @@ const {
   selection, preview,
   closeManualMatch, onManualMatchCreated,
   onSetAnchor, onAnchorToastViewFilter, onAnchorToastDismiss,
+  onUndoHide, onUndoHideDismiss,
   closeCheatsheet,
   onFirstRunDismiss, onFirstRunPickSource, onFirstRunPickCustomSource,
 } = uiStore
-const { manualMatchOpen, anchorToast, cheatsheetOpen, firstRunModalOpen } = storeToRefs(uiStore)
+const { manualMatchOpen, anchorToast, undoHideToast, cheatsheetOpen, firstRunModalOpen } = storeToRefs(uiStore)
 
 // App store — update-check + the non-dismissible startup-error gate.
 const {
@@ -99,6 +101,14 @@ const lightboxSrc = computed(() => {
     :state="anchorToast"
     @view-filter="onAnchorToastViewFilter"
     @dismiss="onAnchorToastDismiss"
+  />
+
+  <!-- Undo-hide toast — appears bottom-right after hiding a match so the
+       archive move is recoverable in one click. -->
+  <MatchUndoToast
+    :state="undoHideToast"
+    @undo="onUndoHide"
+    @dismiss="onUndoHideDismiss"
   />
 
   <!-- Fullscreen screenshot lightbox — stacks above the detail panel via

@@ -24,6 +24,8 @@ import {
 } from '@/api-client'
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
+import { useUiStore } from '@/stores/ui'
+import type { MatchRecord } from '@/api-client'
 
 // Match-mutation handlers shared by the row context menu, the archive drawer's
 // bulk-action bar, and the detail panel — copy replay/link, reveal the source
@@ -52,9 +54,21 @@ async function writeAnnotation(matchKey: string, input: MatchAnnotationInput): P
   else await DeleteMatchAnnotation(matchKey)
 }
 
+// hideToastLabel describes the hidden match(es) for the undo toast — a single
+// match shows "date · map" (the anchor toast's label shape); a bulk hide shows
+// the count.
+function hideToastLabel(matchKeys: string[], records: MatchRecord[]): string {
+  if (matchKeys.length !== 1) return `${matchKeys.length} matches`
+  const rec = records.find((r) => r.match_key === matchKeys[0])
+  const date = rec?.data?.date ?? ''
+  const map = rec?.data?.map ?? '—'
+  return date ? `${date} · ${map}` : map
+}
+
 export function useMatchActions() {
   const matchesStore = useMatchesStore()
   const appStore = useAppStore()
+  const uiStore = useUiStore()
   const records = computed(() => matchesStore.records)
   const reload = () => matchesStore.load()
   const reloadIgnored = () => matchesStore.loadIgnored()
@@ -198,7 +212,13 @@ export function useMatchActions() {
 
   // ── Per-match status (hide / review / queue / play-mode) ──────────
   async function onSetMatchHidden(matchKey: string, hidden: boolean) {
-    try { await SetMatchVisibility(matchKey, hidden); await reload() } catch (e) { onError(String(e)) }
+    try {
+      // Capture the label off the still-present record before the reload drops it.
+      const label = hidden ? hideToastLabel([matchKey], records.value) : ''
+      await SetMatchVisibility(matchKey, hidden)
+      if (hidden) uiStore.showUndoHide([matchKey], label)
+      await reload()
+    } catch (e) { onError(String(e)) }
   }
   async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
     try { await SetMatchReview(matchKey, reviewedBy); await reload() } catch (e) { onError(String(e)) }
@@ -213,7 +233,12 @@ export function useMatchActions() {
   // ── Bulk (archive drawer) ─────────────────────────────────────────
   async function onHideMatches(matchKeys: string[]) {
     if (matchKeys.length === 0) return
-    try { await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, true))); await reload() } catch (e) { onError(String(e)) }
+    try {
+      const label = hideToastLabel(matchKeys, records.value)
+      await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, true)))
+      uiStore.showUndoHide(matchKeys, label)
+      await reload()
+    } catch (e) { onError(String(e)) }
   }
   async function onBulkPlayMode(matchKeys: string[], playMode: PlayMode) {
     if (matchKeys.length === 0) return
