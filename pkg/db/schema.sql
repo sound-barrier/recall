@@ -159,7 +159,16 @@ CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots(matc
 
 CREATE TABLE IF NOT EXISTS rank_modifiers (
   rank_screenshot_id INTEGER NOT NULL REFERENCES rank_screenshots(id) ON DELETE CASCADE,
-  modifier TEXT NOT NULL,
+  -- Vocabulary mirrors parser.knownModifiers + "demotion protection" (detected
+  -- separately in parseRank). Keep in sync: a new modifier in pkg/parser must be
+  -- added here too, or its insert fails. Mirrors the leaver/queue_type/play_mode
+  -- /result enum CHECK constraints on the sibling tables.
+  modifier TEXT NOT NULL CHECK (modifier IN (
+    'expected', 'uphill battle', 'reversal', 'consolation',
+    'win streak', 'loss streak', 'calibration', 'volatile',
+    'new map', 'leaver compensation', 'victory', 'defeat', 'draw',
+    'demotion protection'
+  )),
   PRIMARY KEY (rank_screenshot_id, modifier)
 );
 -- statement-end
