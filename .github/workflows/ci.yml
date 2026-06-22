@@ -24,7 +24,7 @@ jobs:
       pull-requests: write
       issues: read
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # mise provisions this job's slice of the toolchain from mise.toml —
       # go, node, task, golangci-lint (built from source with this Go so it
@@ -33,7 +33,7 @@ jobs:
       # loads mise.toml [env] (SPECTRAL_VERSION, …, GOTOOLCHAIN=local) into
       # $GITHUB_ENV regardless of install_args. Replaces setup-go + the
       # tool-versions.env grep + every per-tool `go install`/pipx step.
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: >-
             go node task ruff shfmt shellcheck jq
@@ -201,7 +201,7 @@ jobs:
       # coverage-comment job renders one combined sticky comment.
       - name: Publish unit-test results check
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040  # v2
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3  # v2
         with:
           check_name: Unit test results
           comment_mode: off
@@ -249,11 +249,11 @@ jobs:
     env:
       DOCKER_BUILDKIT: "1"
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
       # Docker does the heavy build; the host only needs task + jq (the
       # build-* tasks compute BUILD_VERSION via jq), so install just those.
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: task jq
       - name: Build Linux/amd64 Wails app
@@ -265,9 +265,9 @@ jobs:
     env:
       DOCKER_BUILDKIT: "1"
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: task jq
       - name: Build Windows/amd64 Wails app
@@ -279,9 +279,9 @@ jobs:
     env:
       DOCKER_BUILDKIT: "1"
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: task jq
       - name: Build all server binaries (Linux, Windows, macOS arm64+amd64)
@@ -293,7 +293,7 @@ jobs:
   build-mac:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # Go + Node + Wails CLI (+ task, jq) from mise.toml's pins.
       - uses: ./.github/actions/wails-build-env
@@ -310,7 +310,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
@@ -336,9 +336,9 @@ jobs:
   govulncheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       # go + govulncheck from mise.toml (govulncheck built with this Go).
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: go go:golang.org/x/vuln/cmd/govulncheck
       - name: Scan Go modules (default build tag)
@@ -353,12 +353,12 @@ jobs:
   gosec:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       # go + gosec from mise.toml. mise's go: backend compiles gosec with the
       # pinned Go 1.26.4 — the same reason the old job avoided securego/gosec's
       # docker action (it bundles a stale Go that can't load a go 1.26 module
       # under GOTOOLCHAIN=local). Version pinned in mise.toml (v2.27.1).
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: go go:github.com/securego/gosec/v2/cmd/gosec
       # gosec only needs Go source to compile, not real frontend
@@ -391,9 +391,9 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       # go (gocyclo) + node (eslint pass) from mise.toml.
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: go node go:github.com/fzipp/gocyclo/cmd/gocyclo
       # gocyclo doesn't need real frontend assets — Go source only.
@@ -421,10 +421,10 @@ jobs:
   dead-code:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # go (+ deadcode) and node (+ knip) from mise.toml.
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: go node go:golang.org/x/tools/cmd/deadcode
 
@@ -451,9 +451,9 @@ jobs:
   coverage-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: node
 
@@ -493,10 +493,10 @@ jobs:
   coverage-go:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # go + gocover-cobertura (Cobertura XML converter) from mise.toml.
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: go task go:github.com/boumenot/gocover-cobertura
 
@@ -553,11 +553,11 @@ jobs:
   schemathesis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # go (build serveronly) + schemathesis (pipx) from mise.toml; also loads
       # TESSERACT_VERSION + SCHEMATHESIS_VERSION from [env] into $GITHUB_ENV.
-      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: go task pipx:schemathesis
 
