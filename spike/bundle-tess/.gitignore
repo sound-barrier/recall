@@ -1,0 +1,3 @@
+# The built bundle (tesseract + dylibs + tessdata) is regenerable from bundle.sh
+# and ~13 MB — never committed. Only bundle.sh + the writeup are tracked.
+bundle/
