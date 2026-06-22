@@ -25,9 +25,15 @@ var validLeavers = map[string]bool{"self": true, "team": true, "enemy": true}
 // 500.
 var ErrInvalidLeaver = errors.New("invalid leaver: must be 'self', 'team', or 'enemy'")
 
+// ErrEmptyAnnotation is returned by SetMatchAnnotation when the input carries no
+// content after trimming. PUT /annotation is upsert-only; clearing an annotation
+// is the explicit DeleteMatchAnnotation (DELETE) so the verb states the intent
+// rather than an all-empty PUT meaning "delete." HTTP handlers map this to 400.
+var ErrEmptyAnnotation = errors.New("annotation has no content; use DELETE to clear it")
+
 // AnnotationInput is the App-layer DTO for SetMatchAnnotation. Each
-// field is optional; if every field is empty after trimming, the
-// annotation row is deleted entirely (cascading members + tags away).
+// field is optional, but at least one must carry content: an all-empty
+// input is rejected with ErrEmptyAnnotation (clearing is DeleteMatchAnnotation).
 type AnnotationInput struct {
 	MatchKey   string
 	Leaver     string
@@ -41,10 +47,11 @@ type AnnotationInput struct {
 	Tags []string
 }
 
-// SetMatchAnnotation upserts (or deletes) a per-match annotation. The
-// "delete on empty" policy keeps the annotation table small and the
-// FilterRail "leaver / note count" gates accurate — a row that
-// carries no user content shouldn't pretend to exist.
+// SetMatchAnnotation upserts a per-match annotation. It is upsert-only: an
+// all-empty input is rejected with ErrEmptyAnnotation rather than silently
+// deleting, so the API verb states intent (clearing is DeleteMatchAnnotation).
+// Keeping content-free rows out of the table still keeps the FilterRail
+// "leaver / note count" gates accurate.
 //
 // Validation:
 //   - match_key required.
@@ -68,10 +75,10 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 	members := normalizeMembers(in.Members)
 	tags := normalizeTags(in.Tags)
 
-	// All-empty input → delete the row entirely. Idempotent — deleting
-	// a non-existent row is a no-op.
+	// All-empty input is rejected — clearing an annotation is the explicit
+	// DeleteMatchAnnotation, not an all-empty upsert.
 	if leaver == "" && note == "" && replay == "" && len(members) == 0 && len(tags) == 0 {
-		return a.store.DeleteAnnotation(in.MatchKey)
+		return ErrEmptyAnnotation
 	}
 	return a.store.SetAnnotation(db.Annotation{
 		MatchKey:   in.MatchKey,
@@ -81,6 +88,16 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 		Members:    members,
 		Tags:       tags,
 	})
+}
+
+// DeleteMatchAnnotation removes a match's annotation row entirely (members and
+// tags cascade away with it). Idempotent — deleting a match that has no
+// annotation is a no-op, so a stale UI firing twice is safe.
+func (a *App) DeleteMatchAnnotation(matchKey string) error {
+	if matchKey == "" {
+		return fmt.Errorf("match_key required")
+	}
+	return a.store.DeleteAnnotation(matchKey)
 }
 
 // normalizeMembers trims whitespace, drops empties, and dedupes

@@ -79,15 +79,35 @@ func TestMatchAnnotations_InvalidJSON_400(t *testing.T) {
 }
 
 // Body that is the literal JSON token `null` must reject — Go's json
-// silently decodes it into the zero-value struct, after which the
-// "all-empty fields → delete annotation" rule would otherwise return
-// 204. Schemathesis's negative_data_rejection check caught this; the
-// handler now reads the body up-front and rejects null explicitly.
+// silently decodes it into the zero-value struct. The handler reads the
+// body up-front and rejects null explicitly with a clear message;
+// schemathesis's negative_data_rejection check caught the original 204.
 func TestMatchAnnotations_NullBody_400(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	rec := putRaw(t, mux, annotationPath("match-2026-05-10T22-21-11"), "null")
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400 (literal null body must reject)", rec.Code)
+	}
+}
+
+// PUT is upsert-only: an all-empty body is rejected with 409 (ErrEmptyAnnotation
+// — spec-valid body, nothing to persist) rather than the old overload that
+// deleted the row. Clearing is DELETE.
+func TestMatchAnnotations_AllEmptyBody_409(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, annotationPath("match-2026-05-10T22-21-11"), "{}")
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status = %d, want 409 (all-empty PUT must reject; clearing is DELETE)", rec.Code)
+	}
+}
+
+// DELETE /annotation removes the row and returns 204 — the explicit clear verb.
+// Idempotent: deleting a match with no annotation still returns 204.
+func TestDeleteMatchAnnotation_204(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := del(t, mux, annotationPath("match-2026-05-10T22-21-11"))
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want 204 (DELETE annotation, idempotent)", rec.Code)
 	}
 }
 

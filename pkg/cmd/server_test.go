@@ -557,14 +557,16 @@ func TestMatchAnnotations_Upsert(t *testing.T) {
 	}
 }
 
-func TestMatchAnnotations_ClearByEmptyLeaver(t *testing.T) {
+// A PUT carrying only an empty leaver (the old "clear" trigger) is now rejected
+// with 409 — PUT is upsert-only. Clearing is the explicit DELETE (TestDeleteMatchAnnotation_204).
+func TestMatchAnnotations_EmptyLeaverRejected(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, annotationPath("k1"), map[string]any{
 		"leaver": "",
 	})
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("clear status = %d, body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("empty-leaver PUT status = %d, want 409 (clearing is DELETE); body: %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -788,11 +790,11 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 		t.Errorf("annotation.members shape wrong: %v", anno["members"])
 	}
 
-	// Idempotency contract: a PUT with every field empty deletes the
-	// row; the next GET should drop the annotation field entirely.
-	rec = put(t, mux, annotationPath("match-e2e"), map[string]any{})
+	// Clearing is an explicit DELETE (PUT is upsert-only); the next GET
+	// should drop the annotation field entirely.
+	rec = del(t, mux, annotationPath("match-e2e"))
 	if rec.Code != http.StatusNoContent {
-		t.Fatalf("clear PUT status %d, body %s", rec.Code, rec.Body.String())
+		t.Fatalf("clear DELETE status %d, body %s", rec.Code, rec.Body.String())
 	}
 	// Verify the deletion landed in the store, independent of the
 	// JSON round-trip below.

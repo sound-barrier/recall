@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import MatchDetailPanel from '@/components/matches/detail/MatchDetailPanel.vue'
 import { useUiStore } from '@/stores/ui'
 import { useMatchesStore } from '@/stores/matches'
-import { SetMatchAnnotation, SetMatchVisibility, ResetMatchData } from '@/api'
+import { SetMatchAnnotation, DeleteMatchAnnotation, SetMatchVisibility, ResetMatchData } from '@/api'
 import type { MatchRecord } from '@/api'
 
 // Unit tests for MatchDetailPanel's rendered body — the same surfaces that used
@@ -25,10 +25,11 @@ import type { MatchRecord } from '@/api'
 const h = vi.hoisted(() => ({ records: [] as unknown[] }))
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
-  GetMatchResults:    vi.fn(async () => h.records),
-  SetMatchAnnotation: vi.fn(async () => undefined),
-  SetMatchVisibility: vi.fn(async () => undefined),
-  ResetMatchData:     vi.fn(async () => undefined),
+  GetMatchResults:       vi.fn(async () => h.records),
+  SetMatchAnnotation:    vi.fn(async () => undefined),
+  DeleteMatchAnnotation: vi.fn(async () => undefined),
+  SetMatchVisibility:    vi.fn(async () => undefined),
+  ResetMatchData:        vi.fn(async () => undefined),
 }))
 
 afterEach(() => {
@@ -303,24 +304,40 @@ describe('MatchDetailPanel — leaver chooser', () => {
     expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: 'self', note: '', replay_code: '', members: [], tags: [] })
   })
 
-  it('clicking the active chip writes a clear (empty leaver)', async () => {
+  // Clearing the only populated field (leaver) leaves the annotation empty, so
+  // it routes to DELETE — the explicit clear verb — not an all-empty PUT.
+  it('clicking the active chip on a leaver-only annotation deletes it', async () => {
     const annotated = makeRecord({}, {
       annotation: { leaver: 'enemy' },
     } as unknown as Partial<MatchRecord>)
-    const { wrapper } = mountPanel({ record: annotated })
+    const { wrapper, key } = mountPanel({ record: annotated })
     const enemy = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Enemy'))!
     await enemy.trigger('click')
-    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: [], tags: [] })
+    expect(DeleteMatchAnnotation).toHaveBeenCalledWith(key)
+    expect(SetMatchAnnotation).not.toHaveBeenCalled()
   })
 
-  it('clicking Clear writes with empty leaver', async () => {
+  it('clicking Clear on a leaver-only annotation deletes it', async () => {
     const annotated = makeRecord({}, {
       annotation: { leaver: 'self' },
     } as unknown as Partial<MatchRecord>)
-    const { wrapper } = mountPanel({ record: annotated })
+    const { wrapper, key } = mountPanel({ record: annotated })
     const clear = wrapper.find('.leaver-chip.leaver-clear')
     await clear.trigger('click')
-    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: [], tags: [] })
+    expect(DeleteMatchAnnotation).toHaveBeenCalledWith(key)
+    expect(SetMatchAnnotation).not.toHaveBeenCalled()
+  })
+
+  // But clearing the leaver when OTHER content remains is still an upsert.
+  it('clearing the leaver with a note present still PUTs', async () => {
+    const annotated = makeRecord({}, {
+      annotation: { leaver: 'enemy', note: 'kept' },
+    } as unknown as Partial<MatchRecord>)
+    const { wrapper, key } = mountPanel({ record: annotated })
+    const enemy = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Enemy'))!
+    await enemy.trigger('click')
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: '', note: 'kept', replay_code: '', members: [], tags: [] })
+    expect(DeleteMatchAnnotation).not.toHaveBeenCalled()
   })
 })
 

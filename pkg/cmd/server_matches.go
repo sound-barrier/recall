@@ -46,6 +46,7 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/visibility", handleSetMatchVisibility(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/resolution", handleResolveMatch(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/annotation", handleSetMatchAnnotation(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/annotation", handleDeleteMatchAnnotation(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/data", handleUpdateMatchData(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/data", handleResetMatchData(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/review", handleSetMatchReview(a))
