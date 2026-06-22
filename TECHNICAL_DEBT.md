@@ -21,10 +21,12 @@ the first-run readiness checklist + hide-undo toast, the `ClearMatches` doc note
 the oversized-SFC splits, the stale-doc + cyclomatic-complexity + discoverability
 polish all landed.
 
-**Two items remain before the tag:** activate the migration framework (§5 — the
-deliberate *last* 1.0 commit) and lift coverage off the floor onto the
-consequential gaps (§11). Everything else below is deliberately accepted (§3) or
-out of scope.
+**One item remains before the tag:** activate the migration framework (§5 — the
+deliberate *last* 1.0 commit). The pre-tag coverage lift landed on the genuinely
+consequential gap (the read-path sidecar/override attach in `pkg/aggregate`, 75% →
+~90%); the named infra packages that stay thin do so structurally, not for want of
+a test (see §3). Everything else below is deliberately accepted (§3) or out of
+scope.
 
 ## 3. Consciously accepted — do NOT "fix" these without a new reason
 
@@ -86,6 +88,15 @@ Reviewed and deliberately left, so a future pass doesn't burn effort churning th
   v1. (3) `unmatched-<filename>` / `ambiguous-<filename>` `match_key` sentinels —
   **keep**: explicit pre-resolution sentinels (a real `match-<ts>` key is minted on
   resolution), URL-safe, the filename coupling is transient.
+- **`pkg/applog` (~29%) and `pkg/probe` (~58%) stay thin structurally, not for
+  want of a test.** `applog` is logger wiring — `Init` mutates global `slog`
+  defaults against `os.Stderr` and `newHandler`/`formatFromEnv` are unexported, so
+  the public surface offers little to assert without reaching into internals (which
+  the test-public-surfaces rule forbids). `probe`'s uncovered `firstExisting` /
+  `resolveSteamScreenshots` / `CandidateSources` are Windows-only path resolution —
+  `CandidateSources()` returns `nil` on the Linux/macOS CI build, so they're
+  unreachable through the public surface there. Don't pad these for a percentage;
+  the consequential gap (the `pkg/aggregate` read-path) was the one worth lifting.
 - **External CI flakes** — the schemathesis random-seed failures on the PUT
   settings endpoints and the WebKit `match-detail-panel` timeout are
   non-deterministic and not fixable in code; re-run the job.
@@ -112,21 +123,6 @@ schema shape is final:
 
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
-
-## 11. Lift unit coverage off the floor onto the consequential gaps
-
-Both gates are met but the floor is the target, not the bar the CLAUDE.md rule
-asks for ("aim higher where the code is consequential — parser logic, aggregation,
-error paths"). Current: Go ~68.7% vs `GO_COVERAGE_MIN` 67; frontend ~61.4% branch
-/ ~60.0% functions vs the 60 `vitest.config.ts` floor — razor-thin. Lift the
-thinnest consequential paths so the headroom isn't one commit deep:
-
-- **Go:** `pkg/applog` (29.2%), `pkg/probe` (57.8%), and `tesseract.go`'s
-  `ocrThreshold` path; then the parser error branches and the aggregate folds.
-- **Frontend:** the thinnest branch paths surfaced by `task cover`.
-
-**Effort:** M. **Risk:** Low. Not a gate violation — a raise-the-bar item; do it
-before the tag so a single deleted covered path can't dip Go under 67.
 
 ## Out of scope — deliberately not building
 
