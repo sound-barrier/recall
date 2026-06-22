@@ -269,6 +269,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onCellKeydown))
           Pivot
         </button>
       </div>
+      <span v-if="tableMode === 'flat'" class="cell-copy-hint" data-cell-copy-hint>
+        Drag to select cells · <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>C</kbd> copies as TSV
+      </span>
       <button
         type="button"
         class="export-csv-btn"
@@ -414,6 +417,32 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onCellKeydown))
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+/* Discoverability hint for the otherwise-invisible drag cell-range select +
+   clipboard-TSV copy. Supplementary, so it drops on narrow widths. */
+.cell-copy-hint {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-copy-hint kbd {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  padding: 0.02rem 0.22rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+@media (width <= 720px) {
+  .cell-copy-hint { display: none; }
 }
 
 .seg {
