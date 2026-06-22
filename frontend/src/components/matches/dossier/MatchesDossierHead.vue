@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import type { NarrowMode } from '@/composables/matches/useNarrowMode'
-import { useDashboardLayout } from '@/composables/dashboard/useDashboardLayout'
-import { useDragReorder } from '@/composables/dashboard/useDragReorder'
-import { widgetById, type WidgetDef } from '@/dashboard/widgets'
+import { useDashboardGrid } from '@/composables/dashboard/useDashboardGrid'
 import MatchesDossier from '@/components/matches/dossier/MatchesDossier.vue'
 import DashboardWidget from '@/components/dashboard/DashboardWidget.vue'
 import DossierManageMenu from '@/components/matches/dossier/DossierManageMenu.vue'
@@ -63,193 +61,26 @@ function resetDateRange() {
 }
 
 // ─── Dashboard widget layout ────────────────────────────────────
-//
-// Dossier KPIs and breakdowns render through a registry of
-// `<DashboardWidget>` SFCs (see dashboard/widgets.ts). The persisted
-// row layout is the SINGLE source of truth for "is this widget
-// rendered" — membership in `layout.rows.value[*]` means visible,
-// absence means absent. Trash on a widget removes it from the layout;
-// the Add menu puts it back.
-const dashboardLayout = useDashboardLayout()
-
-// Live-reflow drag preview. Held as a plain ref so it can be referenced
-// from `dragReorder.onMove` (declared next) without a TDZ tangle — a
-// watcher below keeps it in sync with the drag state. While a drag is in
-// flight AND the cursor is over a valid drop target, this holds a layout
-// where the dragged widget sits at the prospective drop position. Other
-// widgets reflow around it via the TransitionGroup's FLIP move
-// transition. On drop the preview becomes the persisted layout in one
-// atomic setLayout write; on dragend without drop the preview clears and
-// widgets snap back.
-const previewLayout = ref<Record<number, string[]> | null>(null)
-
-// Drag-reorder primitive. Tracks `dragging` (source coords) + `dropHint`
-// (the cell the cursor is currently over) reactive refs and emits onMove
-// on a successful drop. The onMove handler uses previewLayout to choose
-// between "commit the live preview" (drag) and "traditional move"
-// (keyboard reorder).
-const dragReorder = useDragReorder({
-  onMove: (id, fromRow, fromIdx, toRow, toIdx) => {
-    const preview = previewLayout.value
-    if (preview) {
-      // Live-reflow drag: the preview IS the destination. Persist it
-      // atomically rather than re-deriving via move().
-      dashboardLayout.setLayout(preview)
-    } else {
-      // Keyboard reorder (no live preview): traditional move.
-      dashboardLayout.move(id, fromRow, fromIdx, toRow, toIdx)
-    }
-  },
-  rowSize: (row) => {
-    const r = dashboardRows.value.find((x) => x.index === row)
-    return r ? r.widgets.length : 0
-  },
-})
-
-const dashboardRows = computed(() => {
-  const layout = previewLayout.value ?? dashboardLayout.rows.value
-  return Object.keys(layout)
-    .map((k) => Number(k))
-    .sort((a, b) => a - b)
-    .map((rowIdx) => ({
-      index: rowIdx,
-      widgets: (layout[rowIdx] ?? [])
-        .map((id) => widgetById(id))
-        .filter((def): def is WidgetDef => def !== undefined),
-    }))
-})
-
-// Recompute the preview whenever the drag state changes. Watcher flush
-// order is sync→pre→post; default `flush: 'pre'` is fine — runs before
-// the next DOM update so dashboardRows sees a fresh preview on the same
-// render tick.
-watch(
-  [dragReorder.dragging, dragReorder.dropHint, dashboardLayout.rows],
-  ([dragState, hint, layout]) => {
-    if (!dragState || !hint) {
-      previewLayout.value = null
-      return
-    }
-    const next: Record<number, string[]> = {}
-    for (const [k, v] of Object.entries(layout)) {
-      next[Number(k)] = [...v]
-    }
-    // Remove the dragged widget from wherever it currently lives. Walking
-    // every row keeps this robust if the source coords on dragState went
-    // stale mid-drag.
-    for (const key of Object.keys(next)) {
-      const rowIdx = Number(key)
-      const arr = next[rowIdx]!
-      const idx = arr.indexOf(dragState.id)
-      if (idx !== -1) {
-        arr.splice(idx, 1)
-        next[rowIdx] = arr
-        break
-      }
-    }
-    // Insert at the hint position in the target row.
-    const targetRow = next[hint.row] ?? []
-    const insertAt = Math.max(0, Math.min(hint.idx, targetRow.length))
-    targetRow.splice(insertAt, 0, dragState.id)
-    next[hint.row] = targetRow
-    previewLayout.value = next
-  },
-  { deep: true },
-)
-
-// There is no edit MODE. Widgets + sections carry their own always-on
-// (hover-revealed) drag + remove chrome, so the only thing left to
-// surface is re-adding what you've removed — the Add menu, a small
-// dropdown anchored in the dossier header.
-const showManageMenu = ref(false)
-
-// Gear-popover state. configureWidgetId is the widget whose
-// schema-driven settings popover is mounted; configureAnchor is the gear
-// button's bounding rect at the time of the click so the popover
-// positions next to it. We re-capture the rect on every open so resizes
-// / scrolls between selections produce a fresh anchor.
-const configureWidgetId = ref<string | null>(null)
-const configureAnchor   = ref<DOMRect | null>(null)
-const configureDef = computed(() =>
-  configureWidgetId.value ? widgetById(configureWidgetId.value) ?? null : null,
-)
-
-function onWidgetConfigure(id: string, e: MouseEvent) {
-  const target = e.currentTarget as HTMLElement | null
-  if (!target) return
-  configureWidgetId.value = id
-  configureAnchor.value   = target.getBoundingClientRect()
-}
-
-function closeWidgetConfigure() {
-  configureWidgetId.value = null
-  configureAnchor.value   = null
-}
-
-// Undo registry — captures the widget that was just trashed so the undo
-// toast can put it back where it was. We snapshot eyebrow + row + idx
-// BEFORE the layout.removeFromRow() call because afterwards the registry
-// lookup still works (registry never loses entries) but the row/idx
-// context is gone. Token bumps on every fresh trash so the toast re-runs
-// its slide-in animation + countdown even for back-to-back removes of
-// the same id.
-const pendingUndo = ref<{ id: string; eyebrow: string; row: number; idx: number; token: number } | null>(null)
-let undoTokenSeq = 0
-
-function onWidgetRemove(id: string) {
-  const def = widgetById(id)
-  if (!def) return
-  // Walk the current layout to find where the widget lives so undo can
-  // re-add it at the right spot.
-  let foundRow = def.defaultRow
-  let foundIdx = 0
-  for (const row of dashboardRows.value) {
-    const idxInRow = row.widgets.findIndex((w) => w.id === id)
-    if (idxInRow !== -1) {
-      foundRow = row.index
-      foundIdx = idxInRow
-      break
-    }
-  }
-  dashboardLayout.removeFromRow(id)
-  undoTokenSeq++
-  pendingUndo.value = {
-    id,
-    eyebrow: def.eyebrow,
-    row: foundRow,
-    idx: foundIdx,
-    token: undoTokenSeq,
-  }
-}
-
-function onUndoRemove(token: number) {
-  const pending = pendingUndo.value
-  if (!pending || pending.token !== token) return
-  // appendToRow respects the soft-threshold spill so a row that just
-  // shed a widget and is now over-full will spill on undo too. That
-  // matches the new-add behavior so the user gets consistent mechanics.
-  dashboardLayout.appendToRow(pending.row, pending.id)
-  pendingUndo.value = null
-}
-
-function onDismissUndo(token: number) {
-  if (pendingUndo.value?.token === token) {
-    pendingUndo.value = null
-  }
-}
-
-// Three existing review-widget e2e specs key on data-kpi="..."; the
-// roles breakdown spec keys on data-breakdown="roles". Keep the legacy
-// attrs on the wrapper during Phase 1; a follow-up PR re-points the specs
-// to [data-widget-id="..."] and drops these.
-const LEGACY_DATA_KPI: Record<string, string> = {
-  'reviewed-count':    'reviewed-count',
-  'days-since-review': 'days-since-review',
-  'wld-since-review':  'wld-since-review',
-}
-const LEGACY_DATA_BREAKDOWN: Record<string, string> = {
-  'top-roles': 'roles',
-}
+// The customizable widget grid — persisted row layout, the live-reflow
+// drag-reorder preview, the trash→undo registry, and the per-widget settings
+// popover anchor — lives in useDashboardGrid. The template below renders its
+// returned state exactly as before.
+const {
+  dashboardRows,
+  dragReorder,
+  showManageMenu,
+  configureWidgetId,
+  configureAnchor,
+  configureDef,
+  onWidgetConfigure,
+  closeWidgetConfigure,
+  pendingUndo,
+  onWidgetRemove,
+  onUndoRemove,
+  onDismissUndo,
+  LEGACY_DATA_KPI,
+  LEGACY_DATA_BREAKDOWN,
+} = useDashboardGrid()
 
 // ─── Set summary headline / subline / anchor chip ──────────────
 const setHeadline = computed(() => {
