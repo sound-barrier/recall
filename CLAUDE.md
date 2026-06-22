@@ -274,6 +274,22 @@ than observable, public behavior.
   request before merging" + "Require status checks to pass") is the mechanical
   enforcement; this rule documents the convention even when the UI flip lags.
 
+- **Releases are the maintainer's trigger to pull — Claude prepares, never
+  publishes.** Cutting a release ships a GitHub Release + a signed container that
+  users pull; it can't be cleanly unpublished. "Cut / ship / release vX.Y.Z"
+  authorizes **preparation only**. Claude must **not** — without an instruction
+  naming that exact action in the moment — merge release-please's Release PR
+  (`chore(main): release …`), push a `v*` tag, run `task release-beta` /
+  `task release-fire`, fire `release.yml`, or `gh pr merge --admin` a release.
+  When prep is done, print the one command the maintainer runs to publish, then stop.
+  - **Allowed prep — the `Release-As` commit may go straight to `main`.** To force
+    a specific version, Claude MAY push the documented `Release-As:` prep commit
+    directly to `main`: the `chore: cut vX.Y.Z` subject + `Release-As: X.Y.Z`
+    footer form in `RELEASES.md` (e.g. commit `3eb065a`). It only makes
+    release-please retarget the Release PR — it publishes nothing and is
+    reversible — so it's exempt from "no direct commits to main" above. The human
+    still merges the Release PR.
+
 - **Breaking changes are fine — just declare them.** Pre-1.0 the project isn't
   contractually stable; any layer can change. Use `feat!:` (exclamation marks
   the whole commit breaking) or a `BREAKING CHANGE: <line>` footer. Both produce
