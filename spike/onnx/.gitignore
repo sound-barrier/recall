@@ -1,0 +1,6 @@
+# Local-only assets + built binary — never committed (Tier A spike).
+# The onnxruntime dylib, the PP-OCR model, and the char dict come from the
+# RapidOCR venv (spike/finetune/setup.sh); the binary is built locally.
+assets/
+onnx-rec
+*.test

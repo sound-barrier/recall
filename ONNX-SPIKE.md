@@ -16,8 +16,9 @@ brittle fields, **PP-OCR and *untuned* Tesseract are equal** (tier 100%/100%, he
 never tuned on. The production pipeline's tier brittleness is a **tight-crop
 artifact** — on the *full image*, plain Tesseract reads tier words at 100%. The
 generalization lever is the **parser's region cropping + whitelisting**, not the
-recognition engine. Shipping PP-OCR (the Tier A in-process prototype) was **not
-built** — it's moot if it doesn't help.
+recognition engine. Shipping PP-OCR in-process (Tier A) is **technically feasible
+and cheap** — the prototype below proves it (~44 MB, CGo, reads correctly) — but
+it's **moot for this concern** since the engine isn't the bottleneck.
 
 ## Data — recall by field, PP-OCR vs untuned Tesseract
 
@@ -67,17 +68,30 @@ built** — it's moot if it doesn't help.
 a wider band, loosen the per-region whitelists, make region detection layout-robust
 — **not in replacing Tesseract.**
 
-## Why Part 2 (in-process PP-OCR / Tier A) was not built
+## Part 2 — Tier A in-process prototype (built; it works)
 
-The plan gated the distribution prototype on this result. Since PP-OCR doesn't
-improve the brittle fields, shipping it isn't worth the cost. For the record, the
-Tier A distribution facts (gathered, not prototyped):
+`spike/onnx/main.go` runs the PP-OCRv3 **rec** model **in-process in Go via
+`onnxruntime_go` (CGo)** — no Python, no sidecar — on the held-out number crops
+(preprocess → infer → greedy CTC decode with the model's embedded 6623-char dict).
 
-- **Footprint:** `libonnxruntime` 29 MB + PP-OCRv3 rec model 11 MB ≈ **~40 MB/OS**.
-- **CGo:** `onnxruntime-go` links the C++ runtime — fine for the already-per-OS-CGo
-  desktop Wails builds, costlier for the pure-Go server cross-compile.
-- All Apache-2.0/MIT (no licensing blocker). The rec model embeds its 6623-char
-  dict in ONNX metadata. None of this is worth pursuing given the verdict.
+| | Result |
+|---|---|
+| Links + runs | ✓ `CGO_ENABLED=1 go build` links `libonnxruntime`; runs on macOS |
+| Reads | **12/12** crops correct — *ties* tesseract (also 12/12), consistent with the engines being equal |
+| Footprint | Go binary 3.7 MB + `libonnxruntime` **29 MB** + rec model **11 MB** = **~44 MB/OS** |
+| Licensing | all Apache-2.0 / MIT — no blocker |
+
+**Cross-build:** `onnxruntime_go` links the C++ runtime, and Microsoft ships
+prebuilt `libonnxruntime` per OS (Linux `.so` / macOS `.dylib` / Windows `.dll`).
+CGo is cheap in the already-per-OS-CGo desktop Wails builds, costlier for the
+pure-Go server cross-compile-from-Linux.
+
+So Tier A is **feasible and small (~44 MB)** — but Part 1 says it's not worth doing
+for the generalization concern, and the prototype reading 12/12 = tesseract's 12/12
+is itself one more data point that the engine isn't the differentiator.
+
+The Go module is isolated (`spike/onnx/go.mod`) so the main build is untouched; the
+dylib, model, and dict are local/gitignored (from `spike/finetune/setup.sh`).
 
 ## Caveats
 
