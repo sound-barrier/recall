@@ -35,15 +35,18 @@ multi-select facets, string or `{value,label}` options) + `NarrowTimeScope` /
 plus a `NarrowPopover` coordinator (1283 → 573; the residual is the irreducible
 popover machinery — focus trap, outside-click, `/` shortcut, `comboOpen`, bundle
 wiring — so it's a cohesive-shell exemption, not a further split). Mirror these.
+The PR `refactor/split-oversized-sfcs` carries four more (MatchesDossierHead →
+`useDashboardGrid`; MatchesArchiveDrawer → `ArchiveBulkBar`; MatchDetailPanel →
+`useDetailPanelKeyboard` + `DetailPanelHeader`; IgnoredFilesPanel → `IgnoredFileRow`).
 
-**Split (clear multi-concern seams):**
+**Still to split (clear multi-concern seams):**
 
-- `MatchMapRoleBand.vue` (**923** — grew ~280 lines since the count below was
-  taken; re-promoted from "keep" to "split": at 923 it's the single largest SFC
-  and no longer reads as one irreducible grid+heatmap), `ManualMatchModal.vue`
-  (728), `MatchDetailPanel.vue` (685), `MatchJournal.vue` (626),
-  `MatchesMembersList.vue` (662), `MatchesArchiveDrawer.vue` (591),
-  `IgnoredFilesPanel.vue` (566), `MatchesDossierHead.vue` (584).
+- `MatchMapRoleBand.vue` (**923** — the single largest SFC; the roving-focus
+  selection engine reaches into the grid DOM, so the split is the most delicate),
+  `ManualMatchModal.vue` (728 — the form body is interwoven with the combobox
+  wiring), `MatchesMembersList.vue` (662 — entangled windowing + virtualization +
+  IntersectionObserver, lifecycle-bound), `MatchJournal.vue` (626 — the
+  Note/Replay/Group/Tags cells share `.journal-cell` chrome + draft state).
 
 **Re-evaluate, expect to KEEP (irreducible markup/CSS or cohesive shell — the
 file-size rule exempts these):** `MatchStatusChoosers.vue` (712, mostly
@@ -85,87 +88,3 @@ users have data: the **first** post-1.0 schema change needs a migration path tha
 doesn't exist yet. Pay this before the 1.0 tag, not after the first bug report:
 set `user_version`, seed a baseline `0001_init` from the current `schema.sql`, and
 flip `applyMigrations` live. The scaffold is already shaped for exactly this.
-
-## 6. Schema-integrity gaps (two small, both ride the migration in #5)
-
-- **`rank_modifiers.modifier` has no `CHECK` constraint** (`pkg/db/schema.sql`,
-  the `rank_modifiers` block ~`:160`). Every sibling enum constrains its
-  vocabulary at the DB — `leaver` (`:178`), `reviewed_by` (`:233`),
-  `queue_type` (`:240`), `play_mode` (`:247`), `result` (`:290`). The modifier
-  column is unconstrained `TEXT`, so a parser bug writing an unknown modifier
-  persists silently. Add `CHECK (modifier IN (...))` with the OW2 vocabulary.
-- **No GC path for `screenshots_dirs`.** `screenshots_dir_id` is
-  `ON DELETE RESTRICT` (`schema.sql:53`, every parent table) — a deliberate,
-  documented invariant (orphan rows would render as broken thumbnails). But
-  nothing prunes a directory row once unreferenced, so changing the watched
-  folder over time leaves dead rows that can never be removed. Decide:
-  prune-on-unreferenced routine, `SET NULL` + nullable column, or
-  "documented permanent." Low urgency (benign, slow-growing), but it's a
-  product decision worth making before the schema freezes.
-
-## 7. REST contract clarity for the public 1.0 surface
-
-- **`PUT …/annotation` overloads delete into the upsert verb.**
-  `handleSetMatchAnnotation` (`pkg/cmd/server_matches_item.go:122-194`) deletes
-  the row and returns 204 when every field is empty. This is *deliberate and
-  documented* (the 204 row in `.claude/rules/api-design.md`), with careful,
-  well-tested null handling. But a third-party 1.0 consumer can't distinguish
-  "clear everything" from "PUT with all fields blank" — they're the same call,
-  and there is no explicit `DELETE …/annotation`. Either add the explicit
-  `DELETE` (PUT becomes upsert-only) or document the overload prominently in the
-  OpenAPI `description`. A decision to make while the verb set is still cheap to
-  change.
-- **Stale doc reference — non-existent migration.**
-  `.claude/rules/api-design.md` (Transport gotchas) claims
-  `db.NewSQLStore::migrateMatchKeysColonToDash` "rewrites legacy `match:` /
-  `unmatched:` / `ambiguous:` rows on startup." No such function exists
-  (`pkg/db/store.go:227-267` has no migration; a repo-wide search finds only the
-  test string at `pkg/match/match_key_test.go:44`). The rule file is gitignored
-  (dev-only), so it never ships, but it misleads anyone touching match-key code
-  and falsely implies legacy colon-format DBs self-heal. Delete or correct the
-  sentence; if legacy-key healing is actually wanted, build it (relevant to #5).
-
-## 8. Unit coverage sits close to the floor
-
-Live `task cover` (this review) — **frontend** branches **61.16%** against the
-60% gate (~1.2 pts of headroom), lines 70.81%, functions 59.88% (ungated). One
-removed covered branch can turn CI red. **Go** core packages are healthier
-(`pkg/match` 100%, `pkg/correlate` 93.1%, `pkg/parser` 91.0%, `pkg/app` 76.1%,
-`pkg/aggregate` 75.1%, `pkg/cmd` 74.4%, `pkg/db` 73.1%) — the thin Go spots are
-`pkg/applog` (29.2%) and `pkg/probe` (57.8%). Thinnest frontend spots from the
-live report: `stores/settings.ts` (0% branch / 32% stmt),
-`match/match-table-tsv.ts` (27.58% branch),
-`composables/shared/useProfileSwitcher.ts` (46.87% branch),
-`match/pivot-fields.ts` (61.11% branch). Lift the consequential ones (the
-settings store and the TSV-copy path first) so the margin isn't one commit deep.
-
-## 9. First-run & recovery UX rough edges (cold-audience launch)
-
-Shipping to a cold Reddit audience makes first-run clarity disproportionately
-valuable:
-
-- **Two independent first-run blockers, no unified checklist.** A new user must
-  satisfy both a screenshots folder AND a located Tesseract before parsing.
-  `IngestView.vue` surfaces them separately — the `!tesseractReady` heading
-  (`:49`), the "set a screenshots folder" prompt (`:56`), the disabled
-  Watch/Parse controls (`:89-128`) — so a first-timer fixes one, returns, and
-  discovers the second. A single readiness checklist (folder ✓/✗ + Tesseract
-  ✓/✗) would front-load both.
-- **Hiding a match has no inline undo.** Hide moves it to the archive drawer
-  (`MatchesArchiveDrawer.vue`); recovery is only via that drawer, which is easy
-  to miss. An "Undo" toast on hide closes the loop.
-- **Undiscoverable power feature + a magic number (polish).** `MatchesTable`
-  supports drag cell-range select + `Ctrl/Cmd+C` TSV copy
-  (`match/match-table-tsv.ts`) with no hint; and `SCROLL_STEP_PX = 80`
-  (`MatchDetailPanel.vue:81`) is a commented magic number that drifts if row
-  height changes — derive it from a row's measured height.
-
-## 10. Minor doc nit — `ClearMatches` suppress-list semantics
-
-`Clear()` unconditionally wipes `all_heroes_screenshots`
-(`pkg/db/store_bulk.go:133`); `ClearDatabase(keepIgnored)` only snapshots and
-restores `ignored_screenshots` (`pkg/app/match_record.go:93-110`). So a factory
-reset with `keep_ignored=true` still drops the "All Heroes" skip-list. This is
-**benign** (those screenshots are re-recognized and re-skipped next parse — no
-data loss) and clearly commented in code, but the `ClearMatches` OpenAPI entry
-doesn't mention it. One-line doc clarification.
