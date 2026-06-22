@@ -19,6 +19,7 @@ ignores:
   - "build/**"
   - "book/_book/**"
   - "tmp/**"        # gitignored scratch dir (PR-body drafts, scratch fixtures, etc.)
+  - "screenshots/**" # gitignored local OCR scratch (sample captures + the easyocr venv's vendored READMEs)
   - "CHANGELOG.md"  # release-please-generated
 
 config:
