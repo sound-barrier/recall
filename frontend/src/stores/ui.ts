@@ -6,6 +6,7 @@ import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
 import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
 import { useCardFocus } from '@/composables/matches/useCardFocus'
 import { useAnchorToast } from '@/composables/app/useAnchorToast'
+import { useUndoHideToast } from '@/composables/app/useUndoHideToast'
 import { useFirstRun } from '@/composables/app/useFirstRun'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
@@ -31,6 +32,7 @@ export const useUiStore = defineStore('ui', () => {
   // account" gate are App-shell overlay state; they live here so AppOverlays
   // reads them straight from the store (no App-assembled prop bundle).
   const anchor = useAnchorToast()
+  const undoHide = useUndoHideToast()
   const firstRun = useFirstRun()
 
   // The `?` keyboard cheatsheet flag (useAppKeyboard's shortcut registry
@@ -113,6 +115,11 @@ export const useUiStore = defineStore('ui', () => {
     onSetAnchor: anchor.onSetAnchor,
     onAnchorToastViewFilter: anchor.onAnchorToastViewFilter,
     onAnchorToastDismiss: anchor.onAnchorToastDismiss,
+    // Undo-hide toast (delegated to useUndoHideToast)
+    undoHideToast: undoHide.undoHideToast,
+    showUndoHide: undoHide.showUndoHide,
+    onUndoHide: undoHide.onUndoHide,
+    onUndoHideDismiss: undoHide.onUndoHideDismiss,
     // First-run gate (delegated to useFirstRun)
     firstRunModalOpen: firstRun.firstRunModalOpen,
     onFirstRunDismiss: firstRun.onFirstRunDismiss,
