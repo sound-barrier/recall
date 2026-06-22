@@ -30,3 +30,45 @@ func TestSQLStore_LookupScreenshotsDir(t *testing.T) {
 		t.Errorf("registered dir: got (%q, %v), want (%q, nil)", path, err, dir)
 	}
 }
+
+func TestSQLStore_PruneScreenshotsDirs(t *testing.T) {
+	s := openMemory(t)
+
+	idA, err := s.EnsureScreenshotsDir("/watch/folder-a")
+	if err != nil {
+		t.Fatalf("EnsureScreenshotsDir A: %v", err)
+	}
+	idB, err := s.EnsureScreenshotsDir("/watch/folder-b")
+	if err != nil {
+		t.Fatalf("EnsureScreenshotsDir B: %v", err)
+	}
+	if idA == idB {
+		t.Fatal("expected distinct dir ids")
+	}
+
+	// A screenshot references dir A; dir B is orphaned (nothing references it).
+	if err := s.UpsertRank(db.RankRow{Filename: "r.png", MatchKey: "k1", ScreenshotsDirID: idA}); err != nil {
+		t.Fatalf("UpsertRank: %v", err)
+	}
+
+	n, err := s.PruneScreenshotsDirs()
+	if err != nil {
+		t.Fatalf("PruneScreenshotsDirs: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("pruned %d, want 1 (only orphaned dir B)", n)
+	}
+
+	// Dir A (referenced) survives; B is gone.
+	if path, _ := s.LookupScreenshotsDir(idA); path != "/watch/folder-a" {
+		t.Errorf("referenced dir A should survive, got %q", path)
+	}
+	if path, _ := s.LookupScreenshotsDir(idB); path != "" {
+		t.Errorf("orphaned dir B should be pruned, got %q", path)
+	}
+
+	// Idempotent — nothing left to prune.
+	if n, err := s.PruneScreenshotsDirs(); err != nil || n != 0 {
+		t.Errorf("re-prune: got (%d, %v), want (0, nil)", n, err)
+	}
+}

@@ -261,7 +261,14 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
-	return &SQLStore{db: d}, nil
+	store := &SQLStore{db: d}
+	// Reclaim screenshots_dirs rows orphaned by deleted matches / changed watch
+	// folders (the FK is RESTRICT, so they never go on their own).
+	if _, err := store.PruneScreenshotsDirs(); err != nil {
+		_ = d.Close()
+		return nil, fmt.Errorf("prune screenshots_dirs: %w", err)
+	}
+	return store, nil
 }
 
 func (s *SQLStore) Close() error { return s.db.Close() }
