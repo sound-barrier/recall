@@ -69,8 +69,12 @@ test.describe('Matches — open-queue role label', () => {
     // The leaf rows render with the most-recently-finished match
     // first. All three matches share the same date + finished_at,
     // so the rendered order is the response order: k1, k2, k3.
-    const roles = await page.locator('.leaf-role').allTextContents()
-    expect(roles).toEqual(['support', 'support, tank', 'support, tank, dps'])
+    // Each role the player touched renders as its own clickable filter chip, in
+    // percent-played order, deduped.
+    const rows = page.locator('.leaf-row')
+    expect(await rows.nth(0).locator('.leaf-role-chip').allTextContents()).toEqual(['support'])
+    expect(await rows.nth(1).locator('.leaf-role-chip').allTextContents()).toEqual(['support', 'tank'])
+    expect(await rows.nth(2).locator('.leaf-role-chip').allTextContents()).toEqual(['support', 'tank', 'dps'])
   })
 
   test('walks heroes in percent-played order, not array order', async ({ page }) => {
@@ -89,6 +93,7 @@ test.describe('Matches — open-queue role label', () => {
     await page.goto('/')
     await expect(page.locator('#panel-matches')).toBeVisible()
 
-    await expect(page.locator('.leaf-role').first()).toHaveText('dps, tank, support')
+    expect(await page.locator('.leaf-row').first().locator('.leaf-role-chip').allTextContents())
+      .toEqual(['dps', 'tank', 'support'])
   })
 })

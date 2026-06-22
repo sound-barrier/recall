@@ -180,9 +180,10 @@ test.describe('matches — contextual multi-select + Archive bulk ops', () => {
     await page.locator('.leaf-row').nth(0).locator('.leaf-checkbox').click()
     await expect(page.locator('.bulk-action-bar')).toContainText('1 selected')
 
-    // Click row 1's body (NOT the checkbox) — detail panel opens,
+    // Click row 1's body on a NON-filter area (the date/time block — the map,
+    // mode, queue, hero + role cells now filter on click) — detail panel opens,
     // and the row should NOT have been ticked.
-    await page.locator('.leaf-row').nth(1).locator('.leaf-map-block').click()
+    await page.locator('.leaf-row').nth(1).locator('.leaf-when').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
     await expect(page.locator('.leaf-row.is-ticked')).toHaveCount(1)
   })
