@@ -1,5 +1,102 @@
 # Changelog
 
+## [0.19.0](https://github.com/sound-barrier/recall/compare/v0.18.0...v0.19.0) (2026-06-22)
+
+
+### Features
+
+* **campaign-log:** click a month label to filter to the whole calendar month ([cb10892](https://github.com/sound-barrier/recall/commit/cb10892d3db0822c520f2b58417ad76966cf1af1))
+* **campaign-log:** combined-stats readout matching Geography ([2e4c7f1](https://github.com/sound-barrier/recall/commit/2e4c7f138c6f856a4d416f0aef34ae8ea1833dca))
+* **campaign-log:** header Reset button for the date filter ([5129850](https://github.com/sound-barrier/recall/commit/5129850b39be8dc4fb5f9f3b78233db7ea5826c7))
+* **campaign-log:** Shift+click extends the date range (Excel) ([274c969](https://github.com/sound-barrier/recall/commit/274c9691611755cf7857e5e048ce1a8b8b6a00e5))
+* **dossier:** cross-band filtering via "narrow minus self" data ([539c0f2](https://github.com/sound-barrier/recall/commit/539c0f2ffb0a46afcc3c3dcfc24df4bdf456ff49))
+* **dossier:** Hero×GameMode hybrid live-filters + selected headers stay lit ([52fffab](https://github.com/sound-barrier/recall/commit/52fffab20424f1744fc9ecab07bf24034adb7e6d))
+* **geography:** add the map×role selection engine (composable) ([90fd2ab](https://github.com/sound-barrier/recall/commit/90fd2ab5a31183325bde052df45ef21d1be46ded))
+* **geography:** facet header selection (maps × roles) with Excel modifiers ([cdfb37f](https://github.com/sound-barrier/recall/commit/cdfb37fd63009da64c5f9abd397377b123c74721))
+* **geography:** game-mode group header selects the group's columns ([0a6dd72](https://github.com/sound-barrier/recall/commit/0a6dd725eb43469674a0401e33f36bb29e98e249))
+* **geography:** header Reset + click/drag empty cells (calendar parity) ([d6ae2dc](https://github.com/sound-barrier/recall/commit/d6ae2dc420a49c82e6766ac08881ff661406bdb6))
+* **geography:** live-filter on select (stable grid) + data-gate Clash maps ([30ab992](https://github.com/sound-barrier/recall/commit/30ab9929c3e0ef0fd22be0f637264fb26540f6b8))
+* **geography:** spreadsheet-style cell/row/column selection + combined stats ([78569a7](https://github.com/sound-barrier/recall/commit/78569a7048624c33102f6cb16c939694cb98f9c7))
+* **hero-mode:** Excel-hybrid selection on the root heatmap ([17a4f58](https://github.com/sound-barrier/recall/commit/17a4f58b52b9317a45cb2441d4ae255e7427b788))
+* **hero-mode:** header Reset button for the drill + selection filter ([7a35a7d](https://github.com/sound-barrier/recall/commit/7a35a7d1d8422e21b1b039dea4608a92dbc63d38))
+* **hero-mode:** hide the Clash column + open matches from the deepest drill ([44593b6](https://github.com/sound-barrier/recall/commit/44593b69fe6794322a25e302317caa788b119c1a))
+* **hero-mode:** reserve the readout slot (no shift, consistent with the bands) ([1205d47](https://github.com/sound-barrier/recall/commit/1205d473d47db3e61f6be3367052ce51040bb249))
+* **matches:** cell range-select + copy (TSV) in the data table ([7bcf05c](https://github.com/sound-barrier/recall/commit/7bcf05c206dd090131150b2a5a652a2b46f2bdd6))
+* **matches:** click a Map or Result cell to filter the data table ([4d71a88](https://github.com/sound-barrier/recall/commit/4d71a88d67897d5ebb4a5b032b5cdcf11116bb60))
+* **matches:** click Map/Mode/Queue in a cozy/compact row to filter ([f7add80](https://github.com/sound-barrier/recall/commit/f7add80173f34153875394a46bb0e02ff4a3cb38))
+* **matches:** double-click a column handle auto-fits it to content ([05ff2b3](https://github.com/sound-barrier/recall/commit/05ff2b3d754d891266d4e47c6805cbe12ad5e9f1))
+* **matches:** drag to resize data-table columns ([00c98b8](https://github.com/sound-barrier/recall/commit/00c98b84b3d54ec3903f6656d9f572ad5da84ca8))
+* **matches:** filter polish — result strip, table funnel, drag auto-scroll ([08df94d](https://github.com/sound-barrier/recall/commit/08df94d99d8b104d7ff6189ec4a62f5f41fead2e))
+* **matches:** freeze the leading data-table columns ([9a070c9](https://github.com/sound-barrier/recall/commit/9a070c9e432909497e53b734c74e1075682acab9))
+* **matches:** pivot the data table by clicking a hero chip ([9a258c2](https://github.com/sound-barrier/recall/commit/9a258c25e3015d6d26342152437213e4dd7471a8))
+* **matches:** pivot the leaf list + data table by role ([b2db768](https://github.com/sound-barrier/recall/commit/b2db7683439cd949a2900eb0b0579e091aa43aac))
+* **matches:** pivot the list by clicking a hero chip ([9a431dd](https://github.com/sound-barrier/recall/commit/9a431dd95524ecd83c4b0ac77bfd8f7faedc6955))
+* **matches:** show the active filter on cozy/compact Map/Mode/Queue cells ([53b853d](https://github.com/sound-barrier/recall/commit/53b853dbcc26cf406dd144c0369776d8c9a999de))
+* **matches:** value-click filters everywhere; sorting is columns-only ([61ca2da](https://github.com/sound-barrier/recall/commit/61ca2daca7c6d7869c6c4c21d3a5258bea5d7bf9))
+
+
+### Bug Fixes
+
+* **fixtures:** never seed competitive Clash matches ([fe2247d](https://github.com/sound-barrier/recall/commit/fe2247d5c84f1dfa556dca0c5a50825e7a5aadb9))
+* **geography:** keep a drag-box selection from being cleared by its own click ([0cc9163](https://github.com/sound-barrier/recall/commit/0cc9163292ebc373d334c977b0999ae5a9dcef1d))
+* **geography:** reserve the readout slot so selecting never shifts layout ([5786e89](https://github.com/sound-barrier/recall/commit/5786e899b01850658b0423e3af74d6f3d4a69005))
+* **matches:** broad-match the role filter (open-queue secondary roles) ([a4fae4b](https://github.com/sound-barrier/recall/commit/a4fae4ba11959883f45c09777b1673216e36b0c0))
+* **matches:** widen the data-table When column so the time isn't clipped ([670a68f](https://github.com/sound-barrier/recall/commit/670a68f084333e1d541ca3d43c889f488eb4ae85))
+* **narrow:** make the unknown-map exclusion a real smart-empty suggestion ([211ee52](https://github.com/sound-barrier/recall/commit/211ee52704ad2324d1c6137f36b73e3aca5242d9))
+* **parser:** classify garbled-tier rank screens + recognize new modifier pills ([5045586](https://github.com/sound-barrier/recall/commit/504558642cbc7ed91b5a02c10740895a871bf80f))
+* **parser:** pair each rank SR card with its own hero + SR ([24ffabc](https://github.com/sound-barrier/recall/commit/24ffabcbdf47334af8a454c221e685666c87c70a))
+* **parser:** recover 3-card rank panels + right-shifted modifier pills ([22afb18](https://github.com/sound-barrier/recall/commit/22afb1828ea68b48dd7858c416b7042e4cc1ccee))
+
+
+### Refactors
+
+* **frontend:** route @/api through a swappable api-client seam ([205a3f5](https://github.com/sound-barrier/recall/commit/205a3f52297a76eaeca718757fd871e5716a5ba0))
+* **match:** cut parseSearchQuery complexity by extracting helpers ([b90b058](https://github.com/sound-barrier/recall/commit/b90b058bfc018fd1c0a299c617e62df23d46bb06))
+* **narrow:** extract NarrowChipFacet + move np chrome to narrow.css ([c15ca58](https://github.com/sound-barrier/recall/commit/c15ca588a13fcae22261556460549b6e788343ab))
+* **narrow:** extract the Leaver-handling 3-way into its own SFC ([cb323bc](https://github.com/sound-barrier/recall/commit/cb323bc77536ee657e2527acf4b5f652f734434c))
+* **narrow:** extract the Refinement section into its own SFC ([0c5b168](https://github.com/sound-barrier/recall/commit/0c5b1686835c6ab1e26fabc4f183fd4f78831dcb))
+* **narrow:** extract the Since-anchor section into its own SFC ([9a2bf3d](https://github.com/sound-barrier/recall/commit/9a2bf3d759688ea258514bf5ce40967ab54169ad))
+* **narrow:** extract the Time-scope section into its own SFC ([c40eef6](https://github.com/sound-barrier/recall/commit/c40eef641acc4ab822886424e47482c9ceb59b38))
+* **narrow:** fold the dynamic chip facets into NarrowChipFacet ([311ebc4](https://github.com/sound-barrier/recall/commit/311ebc48a7289f62b1dfaf758e3135796027646e))
+* **narrow:** fold the fixed-enum facets into NarrowChipFacet ([1ff7f81](https://github.com/sound-barrier/recall/commit/1ff7f81a4bcb008bae3c68d93f5529731556a042))
+* **narrow:** move panel-content styles to the global narrow.css ([33ed9f1](https://github.com/sound-barrier/recall/commit/33ed9f1c2a1c15ab7e4d9d4fda6a078c5bb62d40))
+* **narrow:** unify three predicate copies behind passesNarrow ([4130d60](https://github.com/sound-barrier/recall/commit/4130d60c3e7832780b018c9fcc32cf8dc362fa82))
+* **styles:** split app.css into topical [@import](https://github.com/import) files ([39f5d62](https://github.com/sound-barrier/recall/commit/39f5d62d42577204399af0863b8b9d59637b4e2a))
+* **unknown:** extract the ambiguous candidate-picker into its own SFC ([9fa0ee6](https://github.com/sound-barrier/recall/commit/9fa0ee64d42a134246281a4a0d33e4709bde8c7f))
+* **unknown:** extract the reference-gap section into its own SFC ([0a7393b](https://github.com/sound-barrier/recall/commit/0a7393b4142f0bc2ace80679f51a9ad023a27f7b))
+* **unknown:** extract the unmatched section into its own SFC ([a410c8c](https://github.com/sound-barrier/recall/commit/a410c8c6605d35517adefbeccc742b6ab1c80521))
+* **unknown:** move shared card chrome to a global unknown.css ([b82627a](https://github.com/sound-barrier/recall/commit/b82627abf14b195d9f77c127f2b3c1e3ed9e5773))
+
+
+### Documentation
+
+* **filtering:** document row click-to-filter + the spreadsheet data view ([11c20bd](https://github.com/sound-barrier/recall/commit/11c20bdabb4a76f85ea560b4ef5f61fda25b772b))
+* fix §4 worked-example prose + restore "-" list markers ([08b4f6f](https://github.com/sound-barrier/recall/commit/08b4f6f376e7495b644787c79abf8d9e52e3782e))
+* **frontend:** document the @/api-client seam + topical app.css ([b900c15](https://github.com/sound-barrier/recall/commit/b900c155d15b4847e98abd3ba75138a46a577101))
+* mark NarrowPopover split done in §4 ([e898925](https://github.com/sound-barrier/recall/commit/e8989259e0d208c1443fe3ff62e61f969a79a40d))
+* mark UnknownMapsView split done; flag NarrowPopover np-btn coupling ([1d622e0](https://github.com/sound-barrier/recall/commit/1d622e000e0f33471aee7714ea98fca0e9b2351a))
+* recommend high-quality PNG + default UI colours for capture ([a1b19ad](https://github.com/sound-barrier/recall/commit/a1b19ad70586a52df7e6e42c49cd9f412f96a2f1))
+* track the oversized-SFC split as actionable debt (§4) ([4d1c51e](https://github.com/sound-barrier/recall/commit/4d1c51e09f57c76af8e2f0ec1cc669ad3995c44e))
+
+
+### Build & Packaging
+
+* **bundle:** bump total CSS budget for the data-table spreadsheet set ([9fbb770](https://github.com/sound-barrier/recall/commit/9fbb7701253a6426a44ea10b7eb411b6b05c7dd0))
+
+
+### Tests
+
+* **e2e:** align role-label + row-body-click specs with value-click model ([c0f6159](https://github.com/sound-barrier/recall/commit/c0f6159d9c0fe60d8f04f0ab379a1c8f49243e74))
+* **parser:** add owleague multi-card rank SR goldens ([0225986](https://github.com/sound-barrier/recall/commit/0225986b55e49bad81822c4c494a24194541cde1))
+* **parser:** add the 3 recovered rank captures (corpus now 20) ([2608631](https://github.com/sound-barrier/recall/commit/2608631209ad38471a85fd127131978be8cc13e0))
+* **parser:** expand owleague rank corpus to all 17 captures ([fac0ca0](https://github.com/sound-barrier/recall/commit/fac0ca0bd0c3c272eb9b6505b259c290a67a4788))
+* **setup:** stop the App.test :3000 flake (ref-data fetch leak) ([58e46a0](https://github.com/sound-barrier/recall/commit/58e46a0cccebf687f58bf886197b9f436ffe9642))
+
+
+### Chores
+
+* cut v0.19.0 ([3eb065a](https://github.com/sound-barrier/recall/commit/3eb065a73e35f6ea3863e5d6e87b68ca6a162562))
+
 ## [0.18.0](https://github.com/sound-barrier/recall/compare/v0.17.1...v0.18.0) (2026-06-19)
 
 
