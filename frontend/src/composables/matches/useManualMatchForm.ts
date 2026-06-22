@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, type InjectionKey } from 'vue'
 import type { ManualMatchInput } from '@/api-client'
 
 // Form state + light validation for hand-entering a match (no OCR). Required:
@@ -146,3 +146,11 @@ export function useManualMatchForm() {
     canSubmit, missingRequired, rankActive, rankError, rankValid, toInput,
   }
 }
+
+export type ManualMatchForm = ReturnType<typeof useManualMatchForm>
+
+// Provide/inject seam: ManualMatchModal owns the single form instance and shares
+// it with ManualMatchForm through this key, so the form child can mutate the
+// reactive bundle directly (vue/no-mutating-props would flag the same bundle
+// passed as a prop).
+export const manualMatchFormKey: InjectionKey<ManualMatchForm> = Symbol('manualMatchForm')
