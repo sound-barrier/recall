@@ -75,10 +75,18 @@ const closeBtnRef = ref<HTMLButtonElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 const bodyRef = ref<HTMLElement | null>(null)
 
-// How far ↑ / ↓ scroll the panel body per press. Browser-default
-// line-by-line is too slow for a tall journal; 80px is roughly two
-// stat rows / one journal cell.
-const SCROLL_STEP_PX = 80
+// How far ↑ / ↓ scroll the panel body per press. Browser-default line-by-line is
+// too slow for a tall journal, so we step ~3.5 text rows — derived from the
+// body's measured line-height rather than a fixed pixel count, so it tracks the
+// row height instead of drifting if the type scale changes. 80px fallback (the
+// prior constant) when the body isn't mounted yet.
+const SCROLL_STEP_FALLBACK_PX = 80
+function scrollStepPx(): number {
+  const lineHeight = bodyRef.value ? parseFloat(getComputedStyle(bodyRef.value).lineHeight) : NaN
+  return Number.isFinite(lineHeight) && lineHeight > 0
+    ? Math.round(lineHeight * 3.5)
+    : SCROLL_STEP_FALLBACK_PX
+}
 
 // Keyboard scroll of the panel body via a momentum scroller (see
 // useSmoothScroll). bodyRef is the scroll container.
@@ -162,11 +170,11 @@ function onKeydown(e: KeyboardEvent) {
       return
     case 'ArrowDown':
       e.preventDefault()
-      nudgeScroll(SCROLL_STEP_PX)
+      nudgeScroll(scrollStepPx())
       return
     case 'ArrowUp':
       e.preventDefault()
-      nudgeScroll(-SCROLL_STEP_PX)
+      nudgeScroll(-scrollStepPx())
       return
     case 'PageDown':
     case ' ': {
