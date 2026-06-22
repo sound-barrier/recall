@@ -188,7 +188,29 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 			ReplayCode: body.ReplayCode,
 			Members:    members,
 			Tags:       tags,
-		}), errStatus{app.ErrInvalidLeaver, http.StatusBadRequest}) {
+		}),
+			errStatus{app.ErrInvalidLeaver, http.StatusBadRequest},
+			// Spec-valid body (parses fine) but no content to upsert → 409, the
+			// codebase's "semantic validation" code. 400 would trip schemathesis's
+			// positive_data_acceptance ("spec-valid input → no 400").
+			errStatus{app.ErrEmptyAnnotation, http.StatusConflict}) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleDeleteMatchAnnotation removes a match's annotation row. This is the
+// explicit "clear" verb — PUT is upsert-only and rejects an all-empty body, so
+// erasing an annotation is a DELETE. Idempotent: deleting an absent annotation
+// still returns 204.
+func handleDeleteMatchAnnotation(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		if writeError(w, a.DeleteMatchAnnotation(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

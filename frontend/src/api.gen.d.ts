@@ -228,7 +228,7 @@ export interface paths {
         };
         get?: never;
         /**
-         * Upsert or clear a per-match user annotation
+         * Upsert a per-match user annotation
          * @description Lets the user tag a match with up to four pieces of metadata:
          *
          *       - **leaver** — `self` (user left, data incomplete) /
@@ -241,18 +241,25 @@ export interface paths {
          *       - **members** — BattleTags of group members; verbatim, no
          *         canonicalisation.
          *
-         *     Every field is optional. If *every* field is empty (or the
-         *     members array is empty) the request acts as a delete — the
-         *     annotation row is removed entirely, cascading any member rows
-         *     away. Idempotent — clearing a non-existent annotation
-         *     succeeds.
+         *     Every field is optional, but at least one must carry content:
+         *     this is an **upsert only**. An all-empty body is rejected with
+         *     409 (the body parses but there's nothing to persist) — clearing
+         *     an annotation is an explicit `DELETE` on this same path, so the
+         *     verb states the intent.
          *
-         *     Returns 204 on success, 400 on validation failure (`leaver`
-         *     outside the enum), 500 on store error.
+         *     Returns 204 on success, 400 on a malformed body or a `leaver`
+         *     outside the enum, 409 on an all-empty body, 500 on store error.
          */
         put: operations["SetMatchAnnotation"];
         post?: never;
-        delete?: never;
+        /**
+         * Clear a per-match user annotation
+         * @description Removes the match's annotation row entirely, cascading any
+         *     member and tag rows away. Idempotent — deleting a match that has
+         *     no annotation still returns 204. This is the explicit clear verb;
+         *     `PUT` is upsert-only and rejects an all-empty body.
+         */
+        delete: operations["DeleteMatchAnnotation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2746,9 +2753,8 @@ export interface operations {
                 "application/json": {
                     /**
                      * @description One of the three leaver scenarios, or `""` to leave
-                     *     untagged. Whole-row deletion happens only when *every*
-                     *     field (leaver, note, replay_code, members, tags) is
-                     *     empty.
+                     *     untagged. An all-empty body (every field blank) is
+                     *     rejected with 409 — use `DELETE` to clear the row.
                      */
                     leaver?: components["schemas"]["LeaverEnum"];
                     /** @description Free-text per-match commentary. `null` = empty. */
@@ -2779,7 +2785,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Annotation persisted or cleared. */
+            /** @description Annotation persisted. */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -2787,6 +2793,38 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    DeleteMatchAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
+                 */
+                match_key: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Annotation cleared (or already absent). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             500: components["responses"]["InternalError"];
         };
     };

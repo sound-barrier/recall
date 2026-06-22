@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"errors"
 	"testing"
 
 	"recall/pkg/aggregate"
@@ -54,18 +55,21 @@ func TestSetMatchAnnotation_AllFieldsRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSetMatchAnnotation_AllEmptyDeletes(t *testing.T) {
+// An all-empty SetMatchAnnotation is rejected (upsert-only) rather than silently
+// deleting — clearing is the explicit DeleteMatchAnnotation. The seeded row must
+// survive the rejected call.
+func TestSetMatchAnnotation_AllEmptyRejected(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
-	// First seed a row.
-	_ = a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1", Leaver: "team", Note: "x"})
-	// Then call again with everything empty.
-	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1"}); err != nil {
-		t.Fatalf("SetMatchAnnotation (empty): %v", err)
+	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1", Leaver: "team", Note: "x"}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1"}); !errors.Is(err, app.ErrEmptyAnnotation) {
+		t.Fatalf("all-empty SetMatchAnnotation: got %v, want ErrEmptyAnnotation", err)
 	}
 	got, _ := fs.LoadAnnotations()
-	if _, ok := got["k1"]; ok {
-		t.Errorf("row should be deleted on all-empty input; got %+v", got["k1"])
+	if _, ok := got["k1"]; !ok {
+		t.Errorf("seeded row must survive a rejected all-empty upsert; got %+v", got)
 	}
 }
 
@@ -134,20 +138,24 @@ func TestSetMatchAnnotation_TagsOnlyKeepsRow(t *testing.T) {
 	}
 }
 
-// And tags-cleared (alongside every other field empty) should
-// delete the row, matching the existing all-empty contract.
-func TestSetMatchAnnotation_AllEmptyDeletesIncludingTags(t *testing.T) {
+// DeleteMatchAnnotation removes the row entirely and is idempotent — the verb
+// that replaced the old all-empty-PUT-deletes overload.
+func TestDeleteMatchAnnotation(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
-	// Seed first.
-	_ = a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k", Tags: []string{"stack"}})
-	// Now clear everything.
-	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k"}); err != nil {
-		t.Fatalf("SetMatchAnnotation: %v", err)
+	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k", Tags: []string{"stack"}}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := a.DeleteMatchAnnotation("k"); err != nil {
+		t.Fatalf("DeleteMatchAnnotation: %v", err)
 	}
 	got, _ := fs.LoadAnnotations()
 	if _, present := got["k"]; present {
-		t.Errorf("row should be deleted when every field (incl. tags) is empty; got %+v", got["k"])
+		t.Errorf("row should be deleted; got %+v", got["k"])
+	}
+	// Idempotent — deleting an absent annotation is a no-op.
+	if err := a.DeleteMatchAnnotation("k"); err != nil {
+		t.Errorf("second delete should be a no-op, got %v", err)
 	}
 }
 

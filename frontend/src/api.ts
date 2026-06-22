@@ -328,8 +328,9 @@ export const RevealScreenshotsDir = _dualVoid<[]>(
   '/api/v1/system/screenshots-folder-reveal',
 )
 
-// Per-match user annotation. All four fields are optional; if every
-// field is empty the server deletes the row entirely. `leaver`
+// Per-match user annotation. All fields are optional but at least one
+// must carry content — PUT is upsert-only and rejects an all-empty body
+// (400). Clearing a row is DeleteMatchAnnotation (DELETE). `leaver`
 // ∈ {'self', 'team', 'enemy', ''}.
 type LeaverKind = 'self' | 'team' | 'enemy'
 
@@ -381,6 +382,16 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
     tags:        input.tags ?? [],
   }).then(() => undefined)
 }
+
+// Clear a match's annotation row entirely (members + tags cascade). The
+// explicit verb that replaced the old all-empty-PUT-deletes overload;
+// the frontend calls this when an edit leaves the annotation empty.
+// Idempotent — deleting an absent annotation resolves quietly.
+export const DeleteMatchAnnotation = _dualVoid<[matchKey: string]>(
+  'DeleteMatchAnnotation',
+  'DELETE',
+  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
+)
 
 // Hard-delete a single match. Every parent row + annotation + the
 // hidden_matches flag for matchKey is wiped from the database — the

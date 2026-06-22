@@ -8,6 +8,7 @@ import {
   type PlayMode,
   RevealScreenshotsDir,
   SetMatchAnnotation,
+  DeleteMatchAnnotation,
   HardDeleteMatch,
   SetMatchVisibility,
   MoveMatches,
@@ -36,6 +37,21 @@ import { useAppStore } from '@/stores/app'
 // menu/bar is already closed by the time the action runs, so the user sees
 // the action fail, not the menu. The pending detail-panel focus target lives
 // in the UI store (useUiStore) since the panel reads it on mount.
+
+// PUT /annotation is upsert-only and rejects an all-empty body, so an edit that
+// leaves the annotation with no content must clear it via DELETE instead.
+// Mirrors the server's normalization — whitespace-only members/tags don't count.
+function annotationHasContent(input: MatchAnnotationInput): boolean {
+  const hasItem = (arr?: string[]) => (arr ?? []).some((s) => s.trim() !== '')
+  return Boolean(input.leaver) || Boolean(input.note?.trim()) || Boolean(input.replay_code?.trim())
+    || hasItem(input.members) || hasItem(input.tags)
+}
+
+async function writeAnnotation(matchKey: string, input: MatchAnnotationInput): Promise<void> {
+  if (annotationHasContent(input)) await SetMatchAnnotation(matchKey, input)
+  else await DeleteMatchAnnotation(matchKey)
+}
+
 export function useMatchActions() {
   const matchesStore = useMatchesStore()
   const appStore = useAppStore()
@@ -160,7 +176,7 @@ export function useMatchActions() {
     try {
       const rec = records.value.find(r => r.match_key === matchKey)
       const prev = rec?.annotation
-      await SetMatchAnnotation(matchKey, {
+      await writeAnnotation(matchKey, {
         leaver:      leaver as MatchAnnotationInput['leaver'],
         note:        prev?.note ?? '',
         replay_code: prev?.replay_code ?? '',
@@ -171,7 +187,7 @@ export function useMatchActions() {
     } catch (e) { onError(String(e)) }
   }
   async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput) {
-    try { await SetMatchAnnotation(matchKey, input); await reload() } catch (e) { onError(String(e)) }
+    try { await writeAnnotation(matchKey, input); await reload() } catch (e) { onError(String(e)) }
   }
   async function onUpdateMatchData(matchKey: string, overrides: UserMatchDataInput) {
     try { await UpdateMatchData(matchKey, overrides); await reload() } catch (e) { onError(String(e)) }
