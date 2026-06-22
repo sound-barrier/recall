@@ -1,0 +1,9 @@
+# Spike dependencies (already installed in screenshots/easyocr-project/.venv).
+# Run the script with that interpreter:
+#   screenshots/easyocr-project/.venv/bin/python spike/ocr-compare.py --corpus testdata
+#
+# Direct imports; easyocr pulls torch/torchvision/opencv transitively (~2.5 GB,
+# CPU-only on macOS). Versions pinned to what the scaffold venv ships.
+easyocr==1.7.2
+numpy==2.5.0
+Pillow==12.2.0
