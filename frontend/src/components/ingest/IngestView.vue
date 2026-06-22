@@ -46,18 +46,33 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
       <p class="settings-eyebrow">
         Parse Pipeline
       </p>
-      <h2 v-if="!tesseractReady" class="settings-heading missing">
-        Tesseract isn't located —
-        <button type="button" class="empty-link" @click="goToView('settings')">
-          fix it in Settings → Engine →
-        </button>
-      </h2>
-      <h2 v-else-if="!screenshotsDir" class="settings-heading">
-        Set a <em>screenshots folder</em> in
-        <button type="button" class="empty-link" @click="goToView('settings')">
-          Settings → Folders →
-        </button> first.
-      </h2>
+      <div v-if="!tesseractReady || !screenshotsDir" class="readiness" data-readiness-checklist>
+        <h2 class="settings-heading missing">
+          Two things before you can parse
+        </h2>
+        <ul class="readiness-list">
+          <li class="readiness-item" :class="{ done: tesseractReady }" data-readiness-item="tesseract">
+            <span class="readiness-mark" aria-hidden="true">{{ tesseractReady ? '✓' : '✗' }}</span>
+            <span class="readiness-text">
+              <strong>Tesseract OCR engine</strong>
+              <template v-if="tesseractReady"> — located</template>
+              <button v-else type="button" class="empty-link" @click="goToView('settings')">
+                — locate it in Settings → Engine →
+              </button>
+            </span>
+          </li>
+          <li class="readiness-item" :class="{ done: !!screenshotsDir }" data-readiness-item="folder">
+            <span class="readiness-mark" aria-hidden="true">{{ screenshotsDir ? '✓' : '✗' }}</span>
+            <span class="readiness-text">
+              <strong>Screenshots folder</strong>
+              <template v-if="screenshotsDir"> — <em>{{ screenshotsDir }}</em></template>
+              <button v-else type="button" class="empty-link" @click="goToView('settings')">
+                — set it in Settings → Folders →
+              </button>
+            </span>
+          </li>
+        </ul>
+      </div>
       <h2 v-else-if="watchEnabled" class="settings-heading">
         Watching for new screenshots in <em>{{ screenshotsDir }}</em>.
       </h2>
@@ -295,6 +310,49 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   margin-right: 0.15rem;
   font-size: 0.85rem;
   filter: saturate(0.85);
+}
+
+/* ─── Readiness checklist (first-run prerequisites) ──────── */
+
+.readiness-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.readiness-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.readiness-mark {
+  flex: none;
+  width: 1.1rem;
+  font-weight: 700;
+  color: var(--loss);
+}
+
+.readiness-item.done {
+  color: var(--text-faint);
+}
+
+.readiness-item.done .readiness-mark {
+  color: var(--win);
+}
+
+.readiness-text strong {
+  font-weight: 600;
+}
+
+.readiness-text em {
+  font-style: normal;
+  color: var(--accent);
 }
 
 /* ─── Btn-dot indicator (inside .btn.primary) ────────────── */

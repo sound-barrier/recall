@@ -72,16 +72,28 @@ function mountIngest(over: IngestOver = {}) {
 }
 
 describe('IngestView (Parse tab)', () => {
-  it('renders the "Tesseract isn\'t located" heading when not ready', () => {
+  it('shows the readiness checklist with Tesseract outstanding when not ready', () => {
     const { wrapper } = mountIngest({ tesseractReady: false })
-    expect(wrapper.text()).toContain("Tesseract isn't located")
-    expect(wrapper.text()).toContain('Settings → Engine')
+    expect(wrapper.find('[data-readiness-checklist]').exists()).toBe(true)
+    const tess = wrapper.find('[data-readiness-item="tesseract"]')
+    expect(tess.classes()).not.toContain('done')
+    expect(tess.text()).toContain('Settings → Engine')
+    // The folder prerequisite (default dir) is already satisfied.
+    expect(wrapper.find('[data-readiness-item="folder"]').classes()).toContain('done')
   })
 
-  it('renders the "set a screenshots folder" heading when no dir is set', () => {
+  it('shows the readiness checklist with the folder outstanding when no dir is set', () => {
     const { wrapper } = mountIngest({ screenshotsDir: '' })
-    expect(wrapper.text()).toContain('Set a')
-    expect(wrapper.text()).toContain('Settings → Folders')
+    expect(wrapper.find('[data-readiness-checklist]').exists()).toBe(true)
+    const folder = wrapper.find('[data-readiness-item="folder"]')
+    expect(folder.classes()).not.toContain('done')
+    expect(folder.text()).toContain('Settings → Folders')
+    expect(wrapper.find('[data-readiness-item="tesseract"]').classes()).toContain('done')
+  })
+
+  it('hides the checklist once both prerequisites are satisfied', () => {
+    const { wrapper } = mountIngest()
+    expect(wrapper.find('[data-readiness-checklist]').exists()).toBe(false)
   })
 
   it('renders the "Ready to parse" heading on a clean install', () => {
