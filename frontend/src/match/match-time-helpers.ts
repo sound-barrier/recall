@@ -180,6 +180,20 @@ export function formatParsedAt(iso: string | null | undefined): string {
   return `${datePart} @ ${timePart}`
 }
 
+// formatIgnoredAt — short local form for the suppress-list timestamps, e.g.
+// "Jun 5, 12:34 PM" (no year). Empty string for a blank/unparseable value.
+export function formatIgnoredAt(ts: string | null | undefined): string {
+  if (!ts) return ''
+  const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return ts
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 // monthDateRange maps a 'YYYY-MM' month key to its full calendar span as
 // YYYY-MM-DD strings — first day to last day, handling 30/31-day months and
 // leap-year February. Drives the campaign-log heatmap's "pick the whole month".

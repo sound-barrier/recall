@@ -4,6 +4,7 @@ import { computed, ref, watch, nextTick, onBeforeUnmount, toRef } from 'vue'
 import { useScrollLock } from '@/composables/shared/useScrollLock'
 import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
 import type { IgnoredScreenshot } from '@/api-client'
+import IgnoredFileRow from '@/components/settings/IgnoredFileRow.vue'
 
 // IgnoredFilesPanel — Settings → Advanced → "Manage ignored files."
 // Modal dialog listing every row from the suppress-list with the
@@ -165,20 +166,6 @@ function onBackdropClick(e: MouseEvent) {
   if (e.target === e.currentTarget) emit('close')
 }
 
-// formatIgnoredAt — local-time short form, e.g. "Jun 5, 12:34 PM".
-// Empty `ts` shows the empty string (the SQLStore always populates
-// timestamps but seeded tests may leave the field blank).
-function formatIgnoredAt(ts: string): string {
-  if (!ts) return ''
-  const d = new Date(ts)
-  if (Number.isNaN(d.getTime())) return ts
-  return d.toLocaleString(undefined, {
-    month:  'short',
-    day:    'numeric',
-    hour:   'numeric',
-    minute: '2-digit',
-  })
-}
 </script>
 
 <template>
@@ -242,43 +229,17 @@ function formatIgnoredAt(ts: string): string {
           </div>
 
           <ul class="ignored-list">
-            <li
+            <IgnoredFileRow
               v-for="s in screenshots"
               :key="s.filename"
-              class="ignored-row"
-              @mouseenter="(e) => onHoverRow(s.filename, e)"
-              @mousemove="(e) => onMoveRow(s.filename, e)"
-              @mouseleave="onLeaveRow"
-            >
-              <button
-                type="button"
-                class="ignored-thumb-btn"
-                :aria-label="`Open ${s.filename} in fullscreen lightbox`"
-                @click="onThumbClick(s.filename)"
-              >
-                <img
-                  :src="screenshotURL(s.filename)"
-                  :alt="s.filename"
-                  class="ignored-thumb"
-                  loading="lazy"
-                >
-              </button>
-              <div class="ignored-meta">
-                <div class="ignored-filename mono">
-                  {{ s.filename }}
-                </div>
-                <div class="ignored-timestamp">
-                  {{ formatIgnoredAt(s.ignored_at) }}
-                </div>
-              </div>
-              <button
-                type="button"
-                class="btn primary ignored-restore"
-                @click="onRestoreClick(s.filename)"
-              >
-                Restore
-              </button>
-            </li>
+              :screenshot="s"
+              :thumbnail-url="screenshotURL(s.filename)"
+              @hover-enter="(e) => onHoverRow(s.filename, e)"
+              @hover-move="(e) => onMoveRow(s.filename, e)"
+              @hover-leave="onLeaveRow"
+              @thumb-click="onThumbClick(s.filename)"
+              @restore="onRestoreClick(s.filename)"
+            />
           </ul>
         </template>
 
@@ -424,47 +385,6 @@ function formatIgnoredAt(ts: string): string {
   flex: 1;
 }
 
-.ignored-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.55rem 0.5rem;
-  border-bottom: 1px solid var(--border-soft, var(--border));
-}
-
-.ignored-row:last-child {
-  border-bottom: none;
-}
-
-.ignored-thumb-btn {
-  appearance: none;
-  width: 96px;
-  height: 54px;
-  padding: 0;
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  cursor: pointer;
-  transition: border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
-}
-
-.ignored-thumb-btn:hover,
-.ignored-thumb-btn:focus-visible {
-  border-color: var(--accent);
-  outline: none;
-  transform: scale(1.02);
-}
-
-.ignored-thumb {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 /* Floating cursor-anchored hover thumb. Position is set inline from
    the script via `top` / `left`; z-index sits above the modal
    backdrop (1090). Pointer-events: none so it never blocks the row's
@@ -480,41 +400,6 @@ function formatIgnoredAt(ts: string): string {
   border-radius: 4px;
   box-shadow: 0 10px 30px rgb(0 0 0 / 50%);
   pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ignored-thumb-btn {
-    transition: none;
-  }
-
-  .ignored-thumb-btn:hover,
-  .ignored-thumb-btn:focus-visible {
-    transform: none;
-  }
-}
-
-.ignored-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.ignored-filename {
-  font-size: 0.82rem;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ignored-timestamp {
-  font-size: 0.72rem;
-  color: var(--text-faint);
-}
-
-.ignored-restore {
-  flex-shrink: 0;
 }
 
 .ignored-foot {
