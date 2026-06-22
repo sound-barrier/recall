@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "suravasa",
+    "game_mode": "flashpoint",
+    "role": "support",
+    "hero": "kiriko",
+    "eliminations": 19,
+    "assists": 21,
+    "deaths": 8,
+    "result": "defeat",
+    "final_score": "1-3",
+    "date": "2026-06-17",
+    "finished_at": "01:51",
+    "game_length": "13:26",
+    "heroes_played": [
+      {
+        "hero": "kiriko",
+        "percent_played": 100,
+        "play_time": "13:25"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 19,
+        "avg_per_10min": 14.16
+      },
+      "assists": {
+        "total": 21,
+        "avg_per_10min": 15.65
+      },
+      "deaths": {
+        "total": 8,
+        "avg_per_10min": 5.96
+      }
+    }
+  }
+}

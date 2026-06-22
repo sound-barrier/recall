@@ -1,0 +1,43 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "oasis",
+    "game_mode": "control",
+    "role": "support",
+    "hero": "juno",
+    "eliminations": 11,
+    "assists": 9,
+    "deaths": 9,
+    "result": "defeat",
+    "final_score": "1-2",
+    "date": "2026-06-18",
+    "finished_at": "23:48",
+    "game_length": "14:33",
+    "heroes_played": [
+      {
+        "hero": "juno",
+        "percent_played": 68,
+        "play_time": "08:56"
+      },
+      {
+        "hero": "mizuki",
+        "percent_played": 32,
+        "play_time": "04:14"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 11,
+        "avg_per_10min": 8.35
+      },
+      "assists": {
+        "total": 9,
+        "avg_per_10min": 6.83
+      },
+      "deaths": {
+        "total": 9,
+        "avg_per_10min": 6.83
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "colosseo",
+    "game_mode": "push",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 13,
+    "assists": 9,
+    "deaths": 0,
+    "result": "victory",
+    "final_score": "1-0",
+    "date": "2026-06-19",
+    "finished_at": "01:30",
+    "game_length": "4:30",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "04:29"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 13,
+        "avg_per_10min": 28.94
+      },
+      "assists": {
+        "total": 9,
+        "avg_per_10min": 20.03
+      },
+      "deaths": {
+        "total": 0
+      }
+    }
+  }
+}

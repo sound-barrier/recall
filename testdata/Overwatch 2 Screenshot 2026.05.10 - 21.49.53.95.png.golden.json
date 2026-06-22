@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "aatlis",
+    "game_mode": "flashpoint",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 17,
+    "assists": 14,
+    "deaths": 7,
+    "result": "victory",
+    "final_score": "3-1",
+    "date": "2026-05-10",
+    "finished_at": "21:29",
+    "game_length": "11:25",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "11:25"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 17,
+        "avg_per_10min": 14.87
+      },
+      "assists": {
+        "total": 14,
+        "avg_per_10min": 12.25
+      },
+      "deaths": {
+        "total": 7,
+        "avg_per_10min": 6.12
+      }
+    }
+  }
+}
