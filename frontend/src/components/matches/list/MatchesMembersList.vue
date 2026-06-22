@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
+import { computed, toRef } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
-import { useMatchesGroup, type GroupBy, type GroupedSection, type SortOrder } from '@/composables/matches/useMatchesGroup'
-import { useMatchesWindow } from '@/composables/matches/useMatchesWindow'
-import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
+import type { GroupBy, SortOrder } from '@/composables/matches/useMatchesGroup'
+import { useMembersListWindow } from '@/composables/matches/useMembersListWindow'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import type { PlayModePick, QueuePick } from '@/composables/matches/matchesNarrow.types'
 import type { Density } from '@/composables/matches/useDensity'
@@ -81,268 +80,34 @@ const activeFilters = computed(() => ({
   results: narrow.pickedResults.value as ReadonlySet<string>,
 }))
 
-// ─── Sort + group via useMatchesGroup composable ───────────
-const { sortedRecords, groupedSections } = useMatchesGroup(records, groupBy, sortOrder)
-
-// ─── Collapsible group sections ────────────────────────────
-//
-// Only meaningful in grouped modes (flat 'none' has no dividers). A
-// collapsed section keeps its header but renders zero rows and frees
-// its share of the render budget so the rest of the list flows up.
-// Keys are namespaced by the grouping value (a date key never collides
-// with 'ocr_edited'), so the collapse memory survives a round-trip
-// through other groupings. Session-scoped — a fresh load starts fully
-// expanded.
-const collapsedKeys = ref<Set<string>>(new Set())
-function isCollapsed(key: string): boolean {
-  return collapsedKeys.value.has(key)
-}
-function toggleSection(key: string): void {
-  const next = new Set(collapsedKeys.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  collapsedKeys.value = next
-}
-
-// Bulk collapse / expand every group section at once (driven by the
-// toolbar control). Bulk-setting the Set is safe under the section-based
-// virtualization — collapsed dividers render zero rows and the window
-// reflows; rows that scroll in later read the new state.
-function collapseAllSections(): void {
-  collapsedKeys.value = new Set(groupedSections.value.map((s) => s.key))
-}
-function expandAllSections(): void {
-  collapsedKeys.value = new Set()
-}
-
-// True (pre-window) record count per section, so a collapsed divider —
-// whose rendered `records` is empty — can still report how many rows it
-// hides, and an expanded-but-paginated divider shows its real total.
-const sectionTotals = computed(() => {
-  const totals = new Map<string, number>()
-  for (const s of groupedSections.value) totals.set(s.key, s.records.length)
-  return totals
-})
-function sectionTotal(key: string): number {
-  return sectionTotals.value.get(key) ?? 0
-}
-
-// ─── Data-density table: per-column sort ──────────────────
-// Data density is a flat spreadsheet — the active column header sorts the
-
-// ─── Infinite-scroll window over the grouped sections ──────
-//
-// Renders only the first `renderedCount` rows; an
-// IntersectionObserver sentinel below the rendered set bumps the
-// window by another page when the user scrolls into it. Reset
-// triggers (narrow change, sort change, group change, parse
-// refresh) snap back to one page + scroll the list to top via
-// the resetCounter watcher below.
-const focusedCardIndexRef = computed(() => props.focusedCardIndex ?? -1)
+// Sort/group → collapse → paginate (grouped) or virtualize (flat) → render shape,
+// plus the infinite-scroll IntersectionObserver and j/k auto-scroll, all live in
+// useMembersListWindow. The SFC keeps only props, click-to-filter, and markup.
 const {
+  sortedRecords,
+  renderSections,
+  flatVirtualization,
+  flatTopSpacerHeight,
+  flatBottomSpacerHeight,
+  leavesListRef,
+  sentinelRef,
+  isCollapsed,
+  toggleSection,
+  sectionTotal,
+  narrowedIndexByKey,
   renderedCount,
   hasMore,
-  bumpWindow,
-  expandWindowToAll,
   resetCounter,
-} = useMatchesWindow(records, [sortOrder, groupBy], focusedCardIndexRef)
-
-// Slice groupedSections at renderedCount total rows. Headers are
-// free (they don't count toward the cap); a section that runs
-// over the budget keeps only the first K rows; sections past the
-// cap drop entirely so we don't render a dangling header.
-const windowedSections = computed<GroupedSection[]>(() => {
-  const cap = renderedCount.value
-  const out: GroupedSection[] = []
-  let used = 0
-  let capReached = false
-  for (const s of groupedSections.value) {
-    // A collapsed section always shows its divider but renders no rows
-    // and spends no budget, so collapsing a big group surfaces the
-    // groups below it instead of paginating through hidden rows.
-    if (collapsedKeys.value.has(s.key)) {
-      out.push({ key: s.key, header: s.header, records: [] })
-      continue
-    }
-    if (capReached) continue
-    const remaining = cap - used
-    if (s.records.length <= remaining) {
-      out.push(s)
-      used += s.records.length
-    } else {
-      out.push({ key: s.key, header: s.header, records: s.records.slice(0, remaining) })
-      capReached = true
-    }
-  }
-  return out
-})
-
-// IntersectionObserver wiring lives in onMounted / onBeforeUnmount
-// below — keeps the DOM-touching concern co-located with the
-// leavesListRef declaration.
-const leavesListRef = ref<HTMLUListElement | null>(null)
-// Either the leaf list's <li> sentinel or the data table's <tr>
-// sentinel binds here — only one renders per density, and the single
-// IntersectionObserver re-observes whichever mounts.
-const sentinelRef   = ref<HTMLElement | null>(null)
-let sentinelObserver: IntersectionObserver | null = null
-
-// ─── Flat-mode row virtualization ──────────────────────────────
-//
-// When the user picks groupBy='none', the leaves list is one
-// uniform-height stack of rows. We render only the slice currently
-// in (or near) the viewport via useVirtualWindow; spacer divs
-// above + below the slice hold the scroll height stable so the
-// page scrollbar still represents the full corpus. Grouped modes
-// keep the existing pagination — section-divider mixed-height
-// rows would need a different model.
-const LEAF_ROW_HEIGHT_DEFAULT = 58
-const LEAF_ROW_HEIGHT_COMPACT = 38
-const leafRowHeight = ref(LEAF_ROW_HEIGHT_DEFAULT)
-
-const flatVirtualization = computed(() => props.groupBy === 'none')
-
-const flatVirtual = useVirtualWindow({
-  items:        sortedRecords,
-  containerRef: leavesListRef,
-  mode:         'window',
-  itemHeight:   LEAF_ROW_HEIGHT_DEFAULT,
-  overscan:     8,
-})
-
-// Render-time section list. Grouped: existing windowedSections
-// (paginated). Flat: a single synthetic section carrying only the
-// virtualizer's visible slice. The template iterates this shape
-// either way so the leaf-row body stays in one place.
-const renderSections = computed<GroupedSection[]>(() => {
-  if (!flatVirtualization.value) return windowedSections.value
-  return [{
-    key:     'all',
-    header:  null,
-    records: flatVirtual.visibleItems.value as MatchRecord[],
-  }]
-})
-
-// Spacer heights — non-zero only in flat virtualization.
-const flatTopSpacerHeight    = computed(() => flatVirtualization.value ? flatVirtual.topSpacer.value    : 0)
-const flatBottomSpacerHeight = computed(() => flatVirtualization.value ? flatVirtual.bottomSpacer.value : 0)
-
-// Re-measure the row height after the first virtualized render so
-// the math reflects the actual rendered geometry — density modes
-// ship different row heights, and theme-level font-size overrides
-// would otherwise leave us computing windows against a stale constant.
-function measureLeafHeight(): void {
-  if (!flatVirtualization.value) return
-  const el = leavesListRef.value?.querySelector<HTMLElement>('.leaf-row')
-  if (!el) return
-  const measured = Math.round(el.getBoundingClientRect().height) + 2 // +2 for flex gap
-  if (measured > 20 && Math.abs(measured - leafRowHeight.value) > 1) {
-    leafRowHeight.value = measured
-  }
-}
-
-// When the user toggles between virtualization-on and -off, reset
-// the constant to a sensible per-density baseline so the first paint
-// after the toggle uses the right value before the measure catches up.
-watch([flatVirtualization, () => props.density], () => {
-  leafRowHeight.value = props.density === 'compact' ? LEAF_ROW_HEIGHT_COMPACT : LEAF_ROW_HEIGHT_DEFAULT
-})
-
-// ─── Data-density table renderer ───────────────────────────────
-//
-// The `data` density swaps the leaf-row <ul> for a real <table>
-// (sortable column headers + MatchTableRow rows): a flat spreadsheet
-// where the active column header sorts the WHOLE table, virtualized
-// through its own window. Table rows are far shorter than leaf rows, so
-// this needs a dedicated itemHeight + spacer <tr>s rather than reusing
-// the leaf virtualizer.
-//
-
-// Auto-scroll an off-window focused row into view when App.vue's
-// j/k keyboard nav advances focusedCardIndex past the rendered slice.
-watch(() => props.focusedCardIndex, async (idx) => {
-  if (!flatVirtualization.value) return
-  if (idx === undefined || idx < 0) return
-  const list = leavesListRef.value
-  if (!list) return
-  const rowHeight = leafRowHeight.value
-  const listTop = list.getBoundingClientRect().top + window.scrollY
-  const rowTop  = listTop + idx * rowHeight
-  const viewTop    = window.scrollY
-  const viewBottom = window.scrollY + window.innerHeight
-  // Generous slack — only scroll when the row would otherwise be
-  // entirely above or below the viewport.
-  if (rowTop >= viewTop + 80 && rowTop + rowHeight <= viewBottom - 80) return
-  const target = rowTop - window.innerHeight / 3
-  window.scrollTo({ top: Math.max(0, target), behavior: 'auto' })
-})
-
-// Reset → scroll the leaves list back to the top. In flat
-// virtualization the list is in normal document flow, so resetting
-// the list's own scrollTop is a no-op — scroll the document up to the
-// list's top instead, with a small offset for the chrome above.
-watch(resetCounter, () => {
-  if (flatVirtualization.value) {
-    const list = leavesListRef.value
-    if (list) {
-      const top = list.getBoundingClientRect().top + window.scrollY
-      // Only pull the document up to the list when the user is already
-      // scrolled into it. A reset fired while they're ABOVE the list —
-      // drilling the dossier heatmap, clicking a Campaign Log day — must
-      // not yank them down to the list top.
-      if (window.scrollY > top - 80) {
-        window.scrollTo({ top: Math.max(0, top - 80), behavior: 'auto' })
-      }
-    }
-    return
-  }
-  leavesListRef.value?.scrollTo({ top: 0, behavior: 'auto' })
-})
-
-// Index every visible leaf-row by its position in the narrowed set so
-// App.vue's j/k keyboard nav (which walks the same set) can target the
-// matching row via `data-card-index`.
-const narrowedIndexByKey = computed(() => {
-  const m = new Map<string, number>()
-  records.value.forEach((r, i) => m.set(r.match_key, i))
-  return m
-})
-
-onMounted(() => {
-  // IntersectionObserver for the infinite-scroll sentinel. The
-  // sentinel only mounts while `hasMore` is true, so we watch the ref
-  // and re-observe on (re)mount. rootMargin pre-loads the next page
-  // just before the user reaches the tail.
-  watch(sentinelRef, (el, prev) => {
-    if (prev && sentinelObserver) sentinelObserver.unobserve(prev)
-    if (!el) return
-    if (!sentinelObserver) {
-      sentinelObserver = new IntersectionObserver(
-        (entries) => {
-          for (const e of entries) {
-            if (e.isIntersecting) bumpWindow()
-          }
-        },
-        { root: null, rootMargin: '200px' },
-      )
-    }
-    sentinelObserver.observe(el)
-  }, { immediate: true })
-
-  // Measure leaf-row height after first paint, then re-measure when the
-  // rendered slice changes (density swap, narrow apply shrinking to a
-  // single row) so the constant stays calibrated.
-  void nextTick().then(measureLeafHeight)
-  watch(
-    [() => flatVirtual.visibleItems.value.length, () => props.density],
-    () => { void nextTick().then(measureLeafHeight) },
-  )
-})
-
-onBeforeUnmount(() => {
-  sentinelObserver?.disconnect()
-  sentinelObserver = null
-})
+  expandWindowToAll,
+  collapseAllSections,
+  expandAllSections,
+} = useMembersListWindow(
+  records,
+  groupBy,
+  sortOrder,
+  toRef(props, 'density'),
+  toRef(props, 'focusedCardIndex'),
+)
 
 defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 </script>
