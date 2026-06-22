@@ -475,6 +475,29 @@ KIRIKO
 			t.Errorf("got %v, want nil", got)
 		}
 	})
+
+	// Anchoring on the percent markers + fuzzy-resolving each name recovers
+	// heroes the OCR mangles, instead of dropping them. These are the real
+	// garbles from the dorado/midtown captures.
+	t.Run("garbled name beside a clean one (BRIGITIE → brigitte)", func(t *testing.T) {
+		text := "BRIGITIE\n88%\n15:06\nANA\n12%\n02:06"
+		got := parser.ParseHeroesPlayed(text)
+		want := []parser.HeroPlay{
+			{Hero: "brigitte", PercentPlayed: 88, PlayTime: "15:06"},
+			{Hero: "ana", PercentPlayed: 12, PlayTime: "02:06"},
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+
+	t.Run("garbled short name (JUNG → juno)", func(t *testing.T) {
+		got := parser.ParseHeroesPlayed("JUNG\n100%\n16:12")
+		want := []parser.HeroPlay{{Hero: "juno", PercentPlayed: 100, PlayTime: "16:12"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
 }
 
 // ──────────────────────────────────────────────────────────────────────────

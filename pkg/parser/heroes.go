@@ -124,6 +124,38 @@ func extractHeroes(text string) []string {
 	return found
 }
 
+var heroWordRe = regexp.MustCompile(`[a-z]+`)
+
+// bestHeroForName resolves one hero from a text region known to be a hero-name
+// slot — parseHeroesPlayed anchors each region on its percent marker, so the
+// name is the dominant token there. Exact substring wins; otherwise the
+// alphabetic word closest to a known hero within a length-scaled Levenshtein
+// threshold. Because the region IS a name slot, short heroes (Juno, Echo) are
+// allowed here, unlike the global extractHeroes where they'd risk snapping to
+// stray noise. This is what recovers "BRIGITIE"→brigitte and "JUNG"→juno that
+// the panel OCR mangles.
+func bestHeroForName(region string) string {
+	norm := normalize(region)
+	for _, h := range heroNamesByLength() {
+		if strings.Contains(norm, h) {
+			return h
+		}
+	}
+	best, bestDist := "", 1<<30
+	for _, w := range heroWordRe.FindAllString(norm, -1) {
+		if len(w) < 3 {
+			continue
+		}
+		for _, h := range heroNamesByLength() {
+			threshold := max(len(h)/4, 1)
+			if d := levenshtein(w, h); d <= threshold && d < bestDist {
+				best, bestDist = h, d
+			}
+		}
+	}
+	return best
+}
+
 func heroNamesByLength() []string {
 	roles := loadDataset().heroRoles
 	names := make([]string, 0, len(roles))
