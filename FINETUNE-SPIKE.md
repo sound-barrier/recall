@@ -3,100 +3,95 @@
 Follow-on to the EasyOCR-vs-Tesseract spike (`OCR-ENGINE-SPIKE.md`), which found
 EasyOCR a few points more legible but not worth its ~2.5 GB PyTorch stack /
 loss of the pure-Go single-binary model. The cheaper hypothesis: **don't switch
-engines — fine-tune Tesseract's LSTM on the OW font.** This spike tests it.
+engines — fine-tune Tesseract's LSTM on the OW font.** This spike tested it, and
+the answer flipped once it was measured properly.
 
 ## Verdict
 
-**Fine-tuning works dramatically and is the high-ROI path.** Base Tesseract reads
-isolated OW stat-numbers as pure garbage (100% char error); a tiny 400-iteration
-fine-tune on 328 auto-labeled real crops drops CER to **2.4%** on a **leak-free
-by-image split** (18 source screenshots held entirely out of training) — and it's
-undertrained. It needs **no copyrighted font** (real crops, not synthetic), **no
-new runtime dependency**, and **no architecture change** (still a shelled
-Tesseract CLI — just ship an `ow.traineddata` beside the binary). This is the
-recommendation from the OCR-engine question: tune Tesseract, don't replace it.
+**Not worth it — and the end-to-end test reversed the spike's own apparent win.**
+A crop-level metric made fine-tuning look dramatic (char error 100% → 2.4%), but
+that compared base `eng` *without* the preprocessing and digit whitelist the
+parser actually applies. Invoke the real `tesseract -l eng` vs `-l ow` the way the
+parser does (invert/upscale + `tessedit_char_whitelist`), and **base `eng` already
+reads OW numbers at ~100% while the fine-tuned model is worse (79%).** The problem
+the fine-tune "solved" is one the production pipeline doesn't have. **Don't
+productionize it** — the existing per-region preprocessing + whitelist is already
+the right tool.
 
-## Result
+## End-to-end result (the decisive test)
 
-Held-out split — **18 source screenshots fully held out** (53 crops, **zero
-train/eval image overlap**, verified):
+`tesseract -l <model>` on the 53 held-out crops, with the parser's production
+invocation (`--psm 7` + digit whitelist). Run via `spike/finetune/eval_e2e.py`:
 
-| Model | Char error | Word error | Sample reads |
-|---|---|---|---|
-| Base `eng` (float) | **100.0%** | 100.0% | `2239`→`~Yyki` · `265`→`E13` · `527`→`Ey4` |
-| Fine-tuned `ow` (400 iters) | **2.4%** | 5.7% | `2239`→`2239` ✓ · `6477`→`647` |
+| Invocation | Exact-read accuracy |
+|---|---|
+| Base `eng`, raw crop | 96.2% (51/53) |
+| Base `eng`, **production preprocessing** (invert/3×) | **100.0% (53/53)** |
+| Fine-tuned `ow`, raw crop | 79.2% (42/53) |
 
-Training BCER fell 61% → 34% over the run and was still dropping (more iterations
-would tighten it further). Total time: a few minutes on CPU.
+`ow` beat `eng_pre` on **0** crops; `eng_pre` beat `ow` on 11 — the fine-tuned
+model hallucinates extra digits (`3474`→`308474`, `1799`→`11799`, `1007`→`11007`).
 
-A by-*crop* split (crops from one screenshot allowed on both sides) scored 2.9% —
-essentially the same — so the result is **not** an artifact of leakage: the model
-generalizes to screenshots it never saw, because the OW font renders consistently
-across captures.
+## The misleading intermediate result
 
-## Method
+`lstmeval` on the *same* held-out crops told the opposite story:
 
-The hard part of any OW fine-tune is **labeled line crops** — the parser's regions
+| Model | Char error |
+|---|---|
+| Base `eng` (float, **no preprocessing, no whitelist**) | 100.0% |
+| Fine-tuned `ow` (400 iters) | 2.4% |
+
+This is what made fine-tuning look like a slam-dunk — and it's the trap. `lstmeval`
+feeds the raw LSTM recognizer with no digit constraint, so base `eng` emits garbage
+(`2239`→`~Yyki`). The fine-tune learned to read raw OW digit crops, so it scores
+great *there*. But the parser never invokes Tesseract that way — it preprocesses
+and whitelists, which already fixes base `eng`. **A crop-level CER win means nothing
+until you measure it through the real invocation.** (Thanks to the reviewer who
+insisted on the end-to-end test — it's the whole story.)
+
+## Method (the labeling trick is the reusable part)
+
+The hard part of any OW fine-tune is **labeled line crops**: the parser's regions
 are multi-value, and the OW font is proprietary so synthetic generation is out
-(and "Big Noodle" is copyrighted, so it can't be bundled anyway). The trick reuses
-the previous spike's finding that **a neural detector localizes the OW numbers
-Tesseract can't read**:
+(and "Big Noodle" is copyrighted — can't be bundled). The trick reuses the EasyOCR
+spike's finding that a neural detector localizes OW numbers well:
 
-1. **`label.py`** runs RapidOCR (ONNX, ~150 MB, *local-only*, never committed) as
-   a pure *detector*, keeps only detections whose digits match a known-correct
-   value in the golden, and emits a tight crop of the **original** image (authentic
-   OW rendering) + a `.gt.txt`. Ground truth is **verified against the golden**, not
-   trusted to the detector.
-2. **`train.sh`** turns each crop into a Tesseract `.lstmf`, holds out ~12% of
-   source images (a **by-image** split — no screenshot in both train and eval),
-   and fine-tunes the **float** `tessdata_best` `eng` LSTM (`--continue_from`; the
-   system's fast integer model can't be trained), then `lstmeval`s base vs tuned.
-3. **`setup.sh`** provisions the local-only tooling (RapidOCR venv, the box helper,
-   the float `eng` model + `lstm.train` config).
+1. **`label.py`** runs RapidOCR (ONNX, ~150 MB, *local-only*, never committed) as a
+   pure *detector*, keeps only detections whose digits match a known-correct value
+   in the golden, and emits a tight crop of the **original** image + a `.gt.txt`.
+   Ground truth is **verified against the golden**, not trusted to the detector.
+2. **`train.sh`** turns each crop into a `.lstmf`, holds out ~12% of source images
+   (a **by-image** split — verified zero train/eval image overlap), and fine-tunes
+   the **float** `tessdata_best` `eng` LSTM (the system's fast integer model can't
+   be trained), then `lstmeval`s base vs tuned.
+3. **`eval_e2e.py`** runs the production-style `-l eng` vs `-l ow` comparison — the
+   one that actually decided the spike.
+4. **`setup.sh`** provisions the local-only tooling.
 
-**Data:** 382 GT-verified number crops from 181 images — **317 from the
-`screenshots/` corpus** (owleague 237, nvidia 36, snip 15, openqueue 10, steam 8,
-prntscreen 7, summary/rank 4) + 65 from `testdata/`. Digit lengths: 180×2, 52×3,
-135×4, 15×5 — rich in the 3-4 digit rank-SR / damage values that are the parser's
-weak spot.
+**Data:** 382 GT-verified number crops from 181 images — **317 from `screenshots/`**
+(owleague 237, nvidia 36, snip 15, …) + 65 from `testdata/`, rich in the 3-4 digit
+rank-SR / damage values.
 
-## Honest caveats
+## What we learned
 
-- **CER is on isolated tight crops, not end-to-end through the parser.** Base
-  `eng`'s 100% is the float model reading raw OW crops *without* the production
-  preprocessing (invert/upscale) + per-region PSM + char whitelists that get
-  production Tesseract to ~100% on the goldens. So 100% is not "production
-  Tesseract is broken" — it's "the OW glyphs are off-distribution for a
-  document-trained model, and fine-tuning fixes that." The end-to-end win still
-  needs measuring (next steps).
-- **Split is by image** — 18 source screenshots are held entirely out of training
-  (verified zero train/eval image overlap), so the held-out CER reflects
-  generalization, not memorization. (An earlier by-crop split scored the same,
-  confirming leakage wasn't flattering the result.)
-- **Auto-labeled GT biases toward detector-readable crops**; cases both engines
-  miss aren't represented.
-- **Digit-only** (GT is digits) and **undertrained** (400 iters). Tier words / hero
-  names would be a separate labeling pass.
-
-## If we productionize
-
-1. **End-to-end eval first:** feed the parser's existing region crops to `-l ow`
-   instead of `-l eng` and measure token-recall delta on `testdata/` (reuse the
-   `OCR-ENGINE-SPIKE.md` harness). That's the number that decides it.
-2. By-image split + more iterations for a defensible CER.
-3. Distill `ow` to a fast integer model (~smaller) and ship it beside the binary —
-   still pure-Go, still a shelled CLI, no new dependency.
-4. Optionally extend GT to tier words (the documented `GOLD`→`GOD` garble) and hero
-   names.
+- **The parser's design is already well-matched to the OW font.** Tight region
+  crops + invert/upscale + per-region digit whitelist get base Tesseract to ~100%
+  on these numbers. Fine-tuning addressed a non-problem and regressed it.
+- **Always validate a model/engine change through the real invocation.** The
+  crop-level CER (100% → 2.4%) was real but irrelevant; the production-faithful
+  number (100% vs 79%) is the opposite.
+- The auto-labeling trick (neural detector localizes, golden verifies GT) and the
+  by-image-split harness are reusable **if** a genuine OCR weakness is ever found —
+  but check the preprocessing + whitelist first; that's usually the real lever.
 
 ## Reproduce
 
 ```sh
-bash spike/finetune/setup.sh            # local tools (gitignored): rapidocr venv, float eng, box helper
-spike/finetune/.venv/bin/python spike/finetune/label.py \
-  testdata screenshots/*               # -> spike/finetune/data/*.png + *.gt.txt
-ITER=400 bash spike/finetune/train.sh   # fine-tune + before/after CER
+bash spike/finetune/setup.sh                                  # local tools (gitignored)
+spike/finetune/.venv/bin/python spike/finetune/label.py testdata screenshots/*
+ITER=400 bash spike/finetune/train.sh                        # crop-level CER (misleading)
+spike/finetune/.venv/bin/python spike/finetune/eval_e2e.py   # end-to-end -l eng vs -l ow (decisive)
 ```
 
-Everything under `spike/finetune/` except the three scripts + `.gitignore` is
-local and gitignored (venv, models, crops, checkpoints) — none of it is committed.
+Everything under `spike/finetune/` except the four scripts + `.gitignore` is local
+and gitignored (venv, models, crops, checkpoints) — none of it is committed.
