@@ -55,6 +55,30 @@ func (s *SQLStore) LookupScreenshotsDir(id int64) (string, error) {
 	return path, nil
 }
 
+// PruneScreenshotsDirs deletes screenshots_dirs rows that no screenshot row
+// references, except the sentinel (id 1, "no dir set"). The FK is ON DELETE
+// RESTRICT, so a directory row can never be removed while screenshots reference
+// it — but nothing reclaims a row once its screenshots are deleted (a cleared
+// match, a changed watch folder), leaving dead rows that accumulate forever.
+// This is the GC path: it touches only unreferenced rows, so it can't violate
+// RESTRICT. Returns the number pruned; idempotent. Runs on every store open.
+func (s *SQLStore) PruneScreenshotsDirs() (int64, error) {
+	res, err := s.db.Exec(`
+		DELETE FROM screenshots_dirs
+		WHERE id != ?
+		  AND id NOT IN (
+		    SELECT screenshots_dir_id FROM summary_screenshots
+		    UNION SELECT screenshots_dir_id FROM teams_screenshots
+		    UNION SELECT screenshots_dir_id FROM personal_screenshots
+		    UNION SELECT screenshots_dir_id FROM rank_screenshots
+		    UNION SELECT screenshots_dir_id FROM unknown_screenshots
+		  )`, SentinelScreenshotsDirID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 func (s *SQLStore) loadScreenshotsDirs() (map[int64]string, error) {
 	out := map[int64]string{}
 	rows, err := s.db.Query(`SELECT id, path FROM screenshots_dirs`)
