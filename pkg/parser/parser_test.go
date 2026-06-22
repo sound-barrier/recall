@@ -103,6 +103,14 @@ func TestExtractRank(t *testing.T) {
 		{"italic 1 OCRs as letter I (GOLD I → 1)", "GOLD I", "gold", 1},
 		{"lowercase l as the level (GOLD l → 1)", "GOLD l", "gold", 1},
 		{"diamond 4", "DIAMOND 4", "diamond", 4},
+		// Fuzzy-snap garbled tiers (the #499 generalization lever): even when the
+		// tier word is mis-OCR'd, it should resolve to the nearest known tier so
+		// untested tiers (Bronze/Champion/Diamond) don't silently fail.
+		{"GOLD garbled to GOD", "GOD 5", "gold", 5},
+		{"PLATINUM garbled to PLATNUM", "PLATNUM 2", "platinum", 2},
+		{"CHAMPION garbled to CHAMPON", "CHAMPON 3", "champion", 3},
+		{"DIAMOND garbled to DAMOND", "DAMOND 1", "diamond", 1},
+		{"BRONZE garbled to BRONZ", "BRONZ 4", "bronze", 4},
 		{"unknown rank → empty", "WIZARD 7", "", 0},
 		{"empty text", "", "", 0},
 		{"rank without level digit", "PLATINUM", "platinum", 0},
