@@ -158,8 +158,10 @@ pre-push:
     # speed, but that scope MISSES cross-file regressions — a delete
     # in one staged file can break an importer in an unstaged file,
     # and CI catches it where lefthook didn't. This whole-project
-    # sweep mirrors the CI `lint` job exactly (both build tags) so a
-    # green pre-push guarantees a green CI lint.
+    # sweep mirrors the CI `lint` job exactly (host + windows GOOS ×
+    # both build tags) so a green pre-push guarantees a green CI lint.
+    # The GOOS=windows runs lint the //go:build windows files the
+    # host-GOOS runs skip (pure-Go, so it just swaps the stdlib view).
     # Skip: LEFTHOOK_EXCLUDE=lint-go-full git push
     lint-go-full:
       glob: "*.go"
@@ -167,6 +169,8 @@ pre-push:
         set -e
         golangci-lint run ./...
         golangci-lint run --build-tags serveronly ./...
+        GOOS=windows golangci-lint run ./...
+        GOOS=windows golangci-lint run --build-tags serveronly ./...
 
     # Frontend whole-project sweep. Mirrors CI's `lint` job — eslint
     # over the full tree (not just staged files), stylelint over the
