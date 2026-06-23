@@ -350,10 +350,13 @@ jobs:
       - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: go go:golang.org/x/vuln/cmd/govulncheck
+      # Wrapped in a retry that fires ONLY on a transient vuln.go.dev fetch
+      # error (the DB download occasionally times out on the runner) — a real
+      # CVE finding still fails immediately. See scripts/ci/govulncheck-retry.sh.
       - name: Scan Go modules (default build tag)
-        run: govulncheck ./...
+        run: bash scripts/ci/govulncheck-retry.sh ./...
       - name: Scan Go modules (serveronly build tag)
-        run: govulncheck -tags serveronly ./...
+        run: bash scripts/ci/govulncheck-retry.sh -tags serveronly ./...
 
   # gosec (Go SAST) is rolled into Job 1's golangci-lint (the `gosec` linter,
   # run on both build tags). It no longer needs its own job / tool install.
