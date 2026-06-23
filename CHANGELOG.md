@@ -1,5 +1,82 @@
 # Changelog
 
+## [0.20.0](https://github.com/sound-barrier/recall/compare/v0.19.0...v0.20.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **match:** the unmatched-/ambiguous- sentinel key format changed (the filename is now base64url-encoded). These are transient pre-resolution sentinels — a re-parse regenerates them in place and the dev-DB stance is wipe-and-relaunch, so no migration. The match-<ts> form and HTTP status codes are unchanged.
+* **api:** /api/v1 error responses are now application/problem+json (RFC 9457) instead of text/plain. Clients reading the raw error string should read the problem `detail` member; the HTTP status is unchanged.
+* **api:** PUT /api/v1/matches/{match_key}/annotation no longer deletes on an all-empty body (now 409). Clear an annotation with DELETE /api/v1/matches/{match_key}/annotation.
+
+### Features
+
+* **api:** explicit DELETE for clearing a match annotation ([0c62e54](https://github.com/sound-barrier/recall/commit/0c62e54c55afdcb1005043feece4e1c7bb4283d6))
+* **api:** RFC 9457 problem+json error bodies ([18c55e1](https://github.com/sound-barrier/recall/commit/18c55e1bec4750fd6e9ac33c911659dd07f15ed4))
+* **db:** constrain rank_modifiers.modifier to the OW2 vocabulary ([09df0cb](https://github.com/sound-barrier/recall/commit/09df0cb900b6b0d54cccbdba9a4e55b2b69493c6))
+* **db:** reclaim orphaned screenshots_dirs rows ([cf0695b](https://github.com/sound-barrier/recall/commit/cf0695b64fe8b984a9922d477813741f3e58b2a7))
+* **ingest:** unify first-run prerequisites into a readiness checklist ([c439ade](https://github.com/sound-barrier/recall/commit/c439adebe8995f83bda6b0a3743ea332997d9541))
+* **matches:** surface the cell-copy hint + derive panel scroll step ([401ca87](https://github.com/sound-barrier/recall/commit/401ca87fc86f0e565a4dfaece8ff1a7218705102))
+* **matches:** undo toast when a match is hidden ([1abdac7](https://github.com/sound-barrier/recall/commit/1abdac7185d2f1b92b7a16f9eb14f620c46355f9))
+* **match:** URL-safe unmatched/ambiguous match-key sentinels ([4ab04d6](https://github.com/sound-barrier/recall/commit/4ab04d689f9fd2d62f3c58fc7cf062aba1147406))
+
+
+### Bug Fixes
+
+* **parser:** fuzzy-snap mis-OCR'd rank tiers to the known vocabulary ([049fcc9](https://github.com/sound-barrier/recall/commit/049fcc9d7e6dfc1a6e1a9c3c591218c45e0ef7eb))
+* **parser:** recover OCR-mangled hero names in the heroes panel ([d2c2a4b](https://github.com/sound-barrier/recall/commit/d2c2a4b778cabc3078a81c3be1838a299ad94e4b))
+
+
+### Refactors
+
+* **archive:** extract the bulk action bar into ArchiveBulkBar ([2cd9e66](https://github.com/sound-barrier/recall/commit/2cd9e66909a8608df4811544e428de3db9303e06))
+* **detail:** split MatchDetailPanel keyboard nav + header out ([73e7178](https://github.com/sound-barrier/recall/commit/73e7178f5ffb7586c278e55753317ef8d3c431ee))
+* **dossier:** extract the widget grid into useDashboardGrid ([ae16112](https://github.com/sound-barrier/recall/commit/ae16112edc533f80176f301f9985613440f2d006))
+* **matches:** extract the members-list window into a composable ([2b67429](https://github.com/sound-barrier/recall/commit/2b67429592d35fcf199ffd25f22140b9d64b2a47))
+* **matches:** split the manual-match form out of the modal shell ([5cd9c37](https://github.com/sound-barrier/recall/commit/5cd9c370b2896cb7e7a25bee64cc303ed65239cd))
+* **settings:** extract IgnoredFileRow from IgnoredFilesPanel ([47f887b](https://github.com/sound-barrier/recall/commit/47f887bb86d48ba768c492125a6912151c2f4ebf))
+
+
+### Documentation
+
+* add 1.0 review recommendations and technical-debt findings ([9a44be2](https://github.com/sound-barrier/recall/commit/9a44be2edffcbaf6b24ac58a8cbf04c2b409d547))
+* **api:** note ClearMatches always clears the All-Heroes skip-list ([ca694e3](https://github.com/sound-barrier/recall/commit/ca694e3f5d903b567cacef850abb36ad508ee3b1))
+* close [#4](https://github.com/sound-barrier/recall/issues/4) (split oversized SFCs) — 6 split, 2 cohesive-shell KEEPs ([ad37a99](https://github.com/sound-barrier/recall/commit/ad37a992b673ef2a1ce3fa7dc4c6e8770c979a99))
+* codify "releases are the maintainer's trigger" + Release-As carve-out ([baa56a1](https://github.com/sound-barrier/recall/commit/baa56a105f46a6886ec1e6c9e28039055319dfaf))
+* consolidate RECOMMENDATIONS + REVIEW into TECHNICAL_DEBT ([e939527](https://github.com/sound-barrier/recall/commit/e939527b9b9197b39ff55b9104713f5d03ec0199))
+* **eslint:** correct the no-unsafe-* rationale (false positives, not boundary any) ([b5e74d7](https://github.com/sound-barrier/recall/commit/b5e74d714d67aac7cb307b1e78ed3a716fe8ac64))
+* move SPIKE writeups into spike/ ([11d0b95](https://github.com/sound-barrier/recall/commit/11d0b952a76d8cbca1a7ae4782a650ec360f4a61))
+* prune paid debt items ([#6](https://github.com/sound-barrier/recall/issues/6)-[#10](https://github.com/sound-barrier/recall/issues/10)), trim [#4](https://github.com/sound-barrier/recall/issues/4) to remaining splits ([35a041c](https://github.com/sound-barrier/recall/commit/35a041cbba78ed1c7c5d70865d424cceabc70a72))
+* reclassify MatchJournal from [#4](https://github.com/sound-barrier/recall/issues/4) (split) to [#3](https://github.com/sound-barrier/recall/issues/3) (cohesive shell) ([ae2abf0](https://github.com/sound-barrier/recall/commit/ae2abf0d2c6b2b70bee2fe503e1d1c56370fe150))
+
+
+### Build & Packaging
+
+* **deps:** Bump modernc.org/sqlite in the go-deps group ([6b7fbc6](https://github.com/sound-barrier/recall/commit/6b7fbc6c30f6f6e8cc3726ea3a2b567d6604e553))
+* **deps:** Bump the actions group with 4 updates ([4b1a5a7](https://github.com/sound-barrier/recall/commit/4b1a5a7351aaeb10c0ff0ce5f441b7099e43ff81))
+* **deps:** Bump the npm-deps group in /frontend with 4 updates ([29788d9](https://github.com/sound-barrier/recall/commit/29788d94b4cf599153c027982a2084e8aa64d404))
+* raise bundle budget for the first-run UX additions ([#9](https://github.com/sound-barrier/recall/issues/9)) ([b03a9a5](https://github.com/sound-barrier/recall/commit/b03a9a53e01c3699eeeadd60b9fc932118007eab))
+* raise JS bundle budget for the [#4](https://github.com/sound-barrier/recall/issues/4) SFC splitting overhead ([26ded3f](https://github.com/sound-barrier/recall/commit/26ded3ffe460983829cc28a922082ee0c6ea8cae))
+
+
+### CI
+
+* add whitespace linter + exclude gosec G104 (errcheck covers it) ([4fc2600](https://github.com/sound-barrier/recall/commit/4fc26002de0e90698367ed633a783ca37515be1d))
+* adopt stricter golangci config, roll gosec in, fix all findings ([a07c5fb](https://github.com/sound-barrier/recall/commit/a07c5fb93b2e2c232d48f1a0f35bff2cfc88f055))
+* **eslint:** add js.configs.recommended + typed-parser consistency, fix surfaced bugs ([57685fd](https://github.com/sound-barrier/recall/commit/57685fda93295e2f79a49f7169b622cd85e1f612))
+* **eslint:** add vitest + playwright + vuejs-accessibility plugins ([a325322](https://github.com/sound-barrier/recall/commit/a32532231f48918ade55f610aca7bf1a79aad0d9))
+* **eslint:** expand type-aware rules toward recommendedTypeChecked (16/23) ([6208ff8](https://github.com/sound-barrier/recall/commit/6208ff8fc21608c2dfdd4ce97371b83548ec52cd))
+* **frontend:** add type-aware ESLint bug-catchers + reportUnusedDisableDirectives ([0f8ef5a](https://github.com/sound-barrier/recall/commit/0f8ef5a3d97002da6f769fba5be94bc7daa1ed3f))
+* lint the windows GOOS variant (close the cross-platform gap) ([8e6558f](https://github.com/sound-barrier/recall/commit/8e6558fffdd11d303f4808c3a87def603a5b1964))
+* retry govulncheck on transient vuln.go.dev fetch errors ([540c6a7](https://github.com/sound-barrier/recall/commit/540c6a78cf561d9cd1fa29c34b67e50b791e10de))
+
+
+### Tests
+
+* **aggregate:** cover the read-path sidecar + override attach ([443d5b6](https://github.com/sound-barrier/recall/commit/443d5b68fd25bcb31f0043afbd85bad6f1b586aa))
+* **frontend:** cover the settings store + TSV cell rendering ([a41abc7](https://github.com/sound-barrier/recall/commit/a41abc79d7cd28f1b771e42c91d8d9fae92bed41))
+* **parser:** add 12 new map fixtures from the screenshots corpus ([c56cf25](https://github.com/sound-barrier/recall/commit/c56cf2537e6c0800bbb23da10760973598dc093a))
+
 ## [0.19.0](https://github.com/sound-barrier/recall/compare/v0.18.0...v0.19.0) (2026-06-22)
 
 
