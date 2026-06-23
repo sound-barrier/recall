@@ -178,7 +178,7 @@ onMounted(() => {
     syncMotion()
     motionQuery.addEventListener('change', syncMotion)
   }
-  nextTick(enableBrush)
+  void nextTick(enableBrush)
 })
 watch(themedOption, () => nextTick(enableBrush))
 // Parent "Reset view" → snap the zoom window back to the full range.

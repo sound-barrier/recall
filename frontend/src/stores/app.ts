@@ -6,6 +6,10 @@ import { plainLanguageError } from '@/error-helpers'
 import type { TabId } from '@/composables/shared/useTabKeyboardNav'
 import { useMatchesStore } from '@/stores/matches'
 
+// The error banner's Retry handler. May be async (the matches store passes its
+// async load()); the banner fires it and ignores the result.
+type RetryHandler = () => void | Promise<void>
+
 // App-shell cross-cutting state: the global error banner, the app version,
 // the user-pulled GitHub update check, and the data-location used by
 // Settings → Backup. Migrated out of App.vue's <script setup> so the shell
@@ -32,17 +36,19 @@ export const useAppStore = defineStore('app', () => {
   // when the failed action is replayable (currently the initial load());
   // cleared whenever `error` is cleared or set from a non-retryable path.
   const error = ref('')
-  const errorRetry = ref<(() => void) | null>(null)
+  // The retry handler may be async (e.g. the matches store's load()) — the
+  // banner fires it and ignores the result, so void | Promise<void>.
+  const errorRetry = ref<RetryHandler | null>(null)
 
   // The single error-setting seam. Raw Go errors (most paths) go through
   // setErrorFromRaw → plainLanguageError so first-time users see a CTA, not
   // a "stat /Users/x: permission denied" diagnostic; pre-canned app-level
   // strings use setError directly.
-  function setError(message: string, retry: (() => void) | null = null) {
+  function setError(message: string, retry: RetryHandler | null = null) {
     error.value = message
     errorRetry.value = retry
   }
-  function setErrorFromRaw(raw: string, retry: (() => void) | null = null) {
+  function setErrorFromRaw(raw: string, retry: RetryHandler | null = null) {
     setError(plainLanguageError(raw), retry)
   }
   function clearError() {

@@ -198,15 +198,17 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
     {
       key: 't',
       when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
-      handler: async () => {
-        const rec = narrowedRecords.value[focusedCardIndex.value]
-        if (!rec) return
-        if (selectedKey.value !== rec.match_key) {
-          await toggleExpand(rec.match_key)
-        }
-        await nextTick()
-        const input = document.getElementById(`tags-${rec.match_key}`)
-        if (input instanceof HTMLInputElement) input.focus()
+      handler: () => {
+        void (async () => {
+          const rec = narrowedRecords.value[focusedCardIndex.value]
+          if (!rec) return
+          if (selectedKey.value !== rec.match_key) {
+            await toggleExpand(rec.match_key)
+          }
+          await nextTick()
+          const input = document.getElementById(`tags-${rec.match_key}`)
+          if (input instanceof HTMLInputElement) input.focus()
+        })()
       },
     },
   ], { suppressed: openCheatsheet })

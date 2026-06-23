@@ -57,7 +57,7 @@ function onIgnoreClick(rec: MatchRecord) {
     return
   }
   disarmIgnore(rec.match_key)
-  onIgnoreScreenshot(filename)
+  void onIgnoreScreenshot(filename)
 }
 
 function isIgnoreArmed(matchKey: string): boolean {

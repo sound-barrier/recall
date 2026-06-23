@@ -67,7 +67,7 @@ const sel = useMapRoleSelection({
 // Mirror the engine's roving focus onto the DOM (keyboard selection via headers).
 watch(() => sel.focused.value, (f) => {
   if (!f) return
-  nextTick(() => gridRef.value?.querySelector<HTMLElement>(`[data-hm-cell="${f.map}|${f.role}"]`)?.focus())
+  void nextTick(() => gridRef.value?.querySelector<HTMLElement>(`[data-hm-cell="${f.map}|${f.role}"]`)?.focus())
 })
 
 function headerMods(e: MouseEvent): { ctrl: boolean; shift: boolean } {

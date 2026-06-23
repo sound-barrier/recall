@@ -4,6 +4,12 @@ import globals from 'globals'
 
 export default tseslint.config(
   {
+    // Flag any `// eslint-disable` directive that suppresses nothing — the
+    // nolintlint twin of the Go side (allow-unused: false). Keeps suppressions
+    // honest and prevents stale ones rotting in the tree.
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+  {
     // The ONLY files exempt from linting are generated artifacts we do
     // not author. Everything else — tests, e2e specs, config files, and
     // build scripts — is linted (lint:js runs `eslint .`, not `eslint src`).
@@ -20,10 +26,43 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
-    // Tell vue-eslint-parser to hand <script lang="ts"> blocks to the TS parser.
+    // vue-eslint-parser handles the template and hands <script lang="ts"> to the
+    // TS parser. projectService + extraFileExtensions make src SFCs type-aware so
+    // the bug-catcher rules below can read types through <script setup>.
     files: ['**/*.vue'],
     languageOptions: {
-      parserOptions: { parser: tseslint.parser },
+      parserOptions: {
+        parser: tseslint.parser,
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+        extraFileExtensions: ['.vue'],
+      },
+    },
+  },
+  {
+    // .ts under src — the typed program for the type-aware rules below.
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
+  },
+  {
+    // Type-aware rules — the Go-side errcheck/staticcheck analog — scoped to the
+    // typed src program (`src/**`, exactly what tsconfig.json includes). We enable
+    // only the genuine bug-catchers: an unhandled promise is a swallowed error
+    // (no-floating-promises ≈ errcheck for async). The noisy type-aware families
+    // are deliberately left off — they fight this codebase's documented reality:
+    //   - no-unsafe-* : the `any` flows from test mocks (vi.mock), the ECharts
+    //     option union, and API boundaries — CLAUDE.md treats those boundary
+    //     casts as legitimate, so hard-failing them is churn, not safety.
+    //   - require-await : ~93 of 94 hits are async-by-convention test helpers
+    //     with no await, not bugs.
+    // Config files / e2e specs / .cjs stay on the syntactic `recommended` tier.
+    files: ['src/**/*.{ts,vue}'],
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
     },
   },
   {

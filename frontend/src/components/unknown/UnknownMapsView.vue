@@ -60,7 +60,7 @@ const unknownRecords = computed(() => matchesStore.unknownRecords)
 // Resolve an ambiguous record to a candidate (or a freshly-minted "new match"
 // key); the UnknownCandidatePicker child owns the picker UI + emits the key.
 function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
-  onResolveAmbiguous(rec.match_key, resolvedTo)
+  void onResolveAmbiguous(rec.match_key, resolvedTo)
 }
 
 // Click the ambiguous card head: expand the card AND, if expanding
