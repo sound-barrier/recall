@@ -118,7 +118,7 @@ const lastTickLabel = computed(() => {
 function onJumpToIngest(e: MouseEvent) {
   // Don't intercept clicks on the dismiss affordance if added later.
   if ((e.target as HTMLElement | null)?.closest('[data-no-jump]')) return
-  goToView('ingest')
+  void goToView('ingest')
 }
 </script>
 

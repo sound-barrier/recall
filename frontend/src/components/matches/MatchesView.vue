@@ -141,7 +141,7 @@ watch(narrowedRecords, () => {
   if (!el) return
   const before = el.getBoundingClientRect().top
   if (before <= 0) return // user is scrolled into the list — leave it
-  nextTick(() => {
+  void nextTick(() => {
     const after = el.getBoundingClientRect().top
     const delta = after - before
     if (Math.abs(delta) > 1) window.scrollBy(0, delta)
@@ -170,10 +170,10 @@ const {
   onBulkTag,
 } = useMatchesSelection({
   narrowedRecords: () => narrowedRecords.value,
-  onHide: (keys) => onHideMatches(keys),
-  onBulkPlayMode: (keys, playMode) => applyBulkPlayMode(keys, playMode),
-  onBulkQueue: (keys, queueType) => applyBulkQueue(keys, queueType),
-  onBulkTag: (keys, tag) => applyBulkTag(keys, tag),
+  onHide: (keys) => void onHideMatches(keys),
+  onBulkPlayMode: (keys, playMode) => void applyBulkPlayMode(keys, playMode),
+  onBulkQueue: (keys, queueType) => void applyBulkQueue(keys, queueType),
+  onBulkTag: (keys, tag) => void applyBulkTag(keys, tag),
 })
 
 // Archive-drawer state + bulk-action handlers live in
@@ -181,8 +181,8 @@ const {
 // template auto-unwraps them.
 const archive = useArchiveSelection({
   records: computed(() => matchesStore.records),
-  onUnhideMatches: (keys) => onUnhideMatches(keys),
-  onHardDeleteMatches: (keys) => onHardDeleteMatches(keys),
+  onUnhideMatches: (keys) => void onUnhideMatches(keys),
+  onHardDeleteMatches: (keys) => void onHardDeleteMatches(keys),
 })
 // MatchesArchiveDrawer consumes the rest of the api via the `archive`
 // prop; MatchesView only needs the live subset + the two handlers its
@@ -202,7 +202,7 @@ const {
   archiveKeys: () => [...archiveSelectedKeys.value],
   clearLive: clearSelection,
   clearArchive: clearArchiveSelection,
-  onMove: (keys, target) => onMoveMatches(keys, target),
+  onMove: (keys, target) => void onMoveMatches(keys, target),
 })
 
 
@@ -213,7 +213,7 @@ const {
 // to the parent's DELETE handler directly.
 function commitHardDelete(key: string) {
   cancelHardDelete()
-  onHardDeleteMatch(key)
+  void onHardDeleteMatch(key)
 }
 
 
@@ -335,7 +335,7 @@ function onRowContextHide(matchKey: string) {
   // path the bulk-action bar drives, so the existing
   // SetMatchVisibility(true) + reload + undo-via-detail-panel
   // works without a new App.vue handler.
-  onHideMatches([matchKey])
+  void onHideMatches([matchKey])
 }
 
 // New right-click actions added with item 7 — each forwards to App.vue
@@ -349,13 +349,13 @@ function onRowContextFocusNote(matchKey: string) {
   onOpenMatchAndFocus(matchKey, 'note')
 }
 function onRowContextCopyReplay(matchKey: string) {
-  onCopyReplayCode(matchKey)
+  void onCopyReplayCode(matchKey)
 }
 function onRowContextCopyLink(matchKey: string) {
-  onCopyMatchLink(matchKey)
+  void onCopyMatchLink(matchKey)
 }
 function onRowContextOpenSourceFolder(matchKey: string) {
-  onOpenSourceFolder(matchKey)
+  void onOpenSourceFolder(matchKey)
 }
 
 // Wails-detect — duplicated as a one-liner so the menu doesn't have

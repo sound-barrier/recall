@@ -65,7 +65,7 @@ export function useProfileSwitcher() {
     creating.value = true
     newName.value = ''
     error.value = null
-    nextTick(() => inputEl.value?.focus())
+    void nextTick(() => inputEl.value?.focus())
   }
 
   async function confirmCreate() {
@@ -105,7 +105,7 @@ export function useProfileSwitcher() {
     // The input lives inside a v-for, so a template ref would collect an
     // array. Query the rendered DOM in nextTick — only one rename form is
     // ever rendered at a time, so the first match is the right input.
-    nextTick(() => {
+    void nextTick(() => {
       const el = dropdownEl.value?.querySelector<HTMLInputElement>('.profile-rename-input')
       el?.focus()
       el?.select()
@@ -158,7 +158,7 @@ export function useProfileSwitcher() {
   }
 
   onMounted(() => {
-    refresh()
+    void refresh()
     document.addEventListener('mousedown', onDocumentMousedown)
     document.addEventListener('keydown', onKeydown)
   })

@@ -44,7 +44,7 @@ export function useTabKeyboardNav(
     // Move focus from the now-inactive tab to the newly-active one
     // so the tab pattern's "automatic activation" matches the focus
     // ring on screen.
-    nextTick(() => {
+    void nextTick(() => {
       const btn = document.getElementById(`tab-${target}`)
       btn?.focus()
     })

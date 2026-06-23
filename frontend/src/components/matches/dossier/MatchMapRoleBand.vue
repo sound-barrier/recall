@@ -226,7 +226,7 @@ const sel = useMapRoleSelection({
 // Keyboard moves the roving focus in the engine; mirror it onto DOM focus.
 watch(() => sel.focused.value, (f) => {
   if (!f) return
-  nextTick(() => gridRef.value?.querySelector<HTMLElement>(`[data-mr-cell="${f.map}|${f.role}"]`)?.focus())
+  void nextTick(() => gridRef.value?.querySelector<HTMLElement>(`[data-mr-cell="${f.map}|${f.role}"]`)?.focus())
 })
 
 // One roving tabstop (WAI-ARIA grid): the focused cell, else the first playable one.
