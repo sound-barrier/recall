@@ -175,11 +175,16 @@ tasks:
       - task: lint-semgrep
 
   lint-go:
-    desc: Lint Go source (golangci-lint, both build tags)
+    desc: Lint Go source (golangci-lint, host + windows GOOS × both build tags)
     cmds:
       - echo "[ recall ] Linting Go (golangci-lint)…"
       - golangci-lint run ./...
       - golangci-lint run --build-tags serveronly ./...
+      # GOOS=windows lints the //go:build windows files (HideWindow,
+      # probe_windows, exec_windows) that the host-GOOS runs skip. Pure-Go, so
+      # cross-GOOS analysis just swaps the stdlib view — no compilation needed.
+      - GOOS=windows golangci-lint run ./...
+      - GOOS=windows golangci-lint run --build-tags serveronly ./...
       - echo "[ recall ] ✓  Go lint clean"
 
   lint-js:

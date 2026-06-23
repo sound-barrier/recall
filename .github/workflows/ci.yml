@@ -72,6 +72,15 @@ jobs:
       - name: Lint Go (serveronly build tag)
         run: golangci-lint run --build-tags serveronly ./...
 
+      # GOOS=windows lints the //go:build windows files (HideWindow,
+      # probe_windows, exec_windows) the Linux-runner GOOS skips. Pure-Go,
+      # so cross-GOOS analysis just swaps the stdlib view — no compilation.
+      - name: Lint Go (windows GOOS, default build tags)
+        run: GOOS=windows golangci-lint run ./...
+
+      - name: Lint Go (windows GOOS, serveronly build tag)
+        run: GOOS=windows golangci-lint run --build-tags serveronly ./...
+
       # Frontend linters — deps already installed above
       - name: Lint JavaScript/Vue (ESLint)
         run: cd frontend && npm run lint:js

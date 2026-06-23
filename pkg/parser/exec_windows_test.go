@@ -21,7 +21,7 @@ import (
 const expectedCreateNoWindow uint32 = 0x08000000
 
 func TestHideWindow_SetsCreateNoWindowFlag(t *testing.T) {
-	cmd := exec.Command("dummy")
+	cmd := exec.CommandContext(t.Context(), "dummy")
 	parser.HideWindow(cmd)
 	if cmd.SysProcAttr == nil {
 		t.Fatal("SysProcAttr should be set after HideWindow")
@@ -35,7 +35,7 @@ func TestHideWindow_SetsCreateNoWindowFlag(t *testing.T) {
 }
 
 func TestHideWindow_PreservesExistingSysProcAttrFields(t *testing.T) {
-	cmd := exec.Command("dummy")
+	cmd := exec.CommandContext(t.Context(), "dummy")
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x00000010}
 	parser. // sentinel value
 		HideWindow(cmd)
