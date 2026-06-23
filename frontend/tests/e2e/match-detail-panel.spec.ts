@@ -432,8 +432,8 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await page.waitForTimeout(150)
     await expect(cheatsheet).toBeVisible()
     // And underlying view didn't change.
-    const onMatchesTab = await page.locator('#tab-matches[aria-selected="true"]').count()
-    expect(onMatchesTab).toBe(1)
+    const onMatchesTab = page.locator('#tab-matches[aria-selected="true"]')
+    await expect(onMatchesTab).toHaveCount(1)
 
     // '/' would normally focus the match-search input — should also
     // be swallowed.

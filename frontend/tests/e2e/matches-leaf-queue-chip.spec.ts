@@ -83,15 +83,13 @@ test.describe('Matches — leaf row queue-type chip', () => {
     await page.goto('/')
     await expect(page.locator('#panel-matches')).toBeVisible()
 
-    const modeChips  = await page.locator('.leaf-mode-chip').allTextContents()
-    const queueChips = await page.locator('.leaf-queue-chip').allTextContents()
-    expect(modeChips).toEqual([
+    await expect(page.locator('.leaf-mode-chip')).toHaveText([
       'Competitive',
       'Competitive',
       'Unknown mode',
       'Unknown mode',
     ])
-    expect(queueChips).toEqual([
+    await expect(page.locator('.leaf-queue-chip')).toHaveText([
       'Role Queue',
       'Open Queue',
       'Open Queue',

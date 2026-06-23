@@ -79,8 +79,8 @@ test.describe('Matches — Sort + Group dropdown', () => {
     await page.locator('[data-sort-pick="oldest"]').click()
 
     await expect(trigger).toContainText(/Oldest/i)
-    const newFirstDate = await page.locator('.leaf-row').first().textContent()
-    expect(newFirstDate).not.toBe(firstDate)
+    const newFirstDate = page.locator('.leaf-row').first()
+    await expect(newFirstDate).not.toHaveText(firstDate)
   })
 
   test('clicking outside closes the popover', async ({ page }) => {

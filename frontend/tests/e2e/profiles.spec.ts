@@ -13,6 +13,7 @@ import { createMatch, getProfiles, listMatches, manual, reset, switchProfile } f
 
 test.describe('profiles (real server)', () => {
   test.beforeEach(async ({ request }) => reset(request))
+
   test.afterEach(async ({ request }) => reset(request))
 
   test('create, switch, isolate, and delete a profile', async ({ request }) => {

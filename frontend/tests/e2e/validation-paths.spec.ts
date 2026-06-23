@@ -9,6 +9,7 @@ import { createMatch, manual, reset } from './_real-server'
 
 test.describe('input validation (real server)', () => {
   test.beforeEach(async ({ request }) => reset(request))
+
   test.afterEach(async ({ request }) => reset(request))
 
   test('manual create rejects out-of-range rank (400) and unknown map/hero (409)', async ({ request }) => {

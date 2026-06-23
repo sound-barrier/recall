@@ -23,6 +23,7 @@ import { createMatch, listMatches, manual, parseGolden, reset, stageGolden, unst
 
 test.describe('backup round-trip — manual matches + sidecars (real server)', () => {
   test.beforeEach(async ({ request }) => reset(request))
+
   test.afterEach(async ({ request }) => reset(request))
 
   test('export then import preserves rows, annotation, and hidden flag', async ({ request }) => {

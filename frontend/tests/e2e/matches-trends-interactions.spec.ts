@@ -50,8 +50,7 @@ test.describe('Matches — Trends interactions', () => {
     await page.goto('/')
     const box = await openRankChart(page)
 
-    const before = await page.locator('.leaf-row').count()
-    expect(before).toBe(8)
+    await expect(page.locator('.leaf-row')).toHaveCount(8)
 
     // Drag a middle sub-range (mid-height, above the bottom slider).
     const y = box.y + box.height * 0.42
@@ -61,7 +60,7 @@ test.describe('Matches — Trends interactions', () => {
     await page.mouse.move(box.x + box.width * 0.62, y)
     await page.mouse.up()
 
-    await expect.poll(() => page.locator('.leaf-row').count()).toBeLessThan(before)
+    await expect.poll(() => page.locator('.leaf-row').count()).toBeLessThan(8)
   })
 
   test('clicking a point opens that match in the detail panel', async ({ page }) => {
@@ -109,7 +108,7 @@ test.describe('Matches — Trends interactions', () => {
     await mock(page, Array.from({ length: 8 }, (_, i) => rankMatch(`m${i}`, `2026-05-${String(10 + i).padStart(2, '0')}`, 3)))
     await page.goto('/')
     const box = await openRankChart(page)
-    expect(await page.locator('.leaf-row').count()).toBe(8)
+    await expect(page.locator('.leaf-row')).toHaveCount(8)
 
     const y = box.y + box.height * 0.42
     await page.mouse.move(box.x + box.width * 0.30, y)

@@ -72,9 +72,9 @@ test.describe('Matches — open-queue role label', () => {
     // Each role the player touched renders as its own clickable filter chip, in
     // percent-played order, deduped.
     const rows = page.locator('.leaf-row')
-    expect(await rows.nth(0).locator('.leaf-role-chip').allTextContents()).toEqual(['support'])
-    expect(await rows.nth(1).locator('.leaf-role-chip').allTextContents()).toEqual(['support', 'tank'])
-    expect(await rows.nth(2).locator('.leaf-role-chip').allTextContents()).toEqual(['support', 'tank', 'dps'])
+    await expect(rows.nth(0).locator('.leaf-role-chip')).toHaveText(['support'])
+    await expect(rows.nth(1).locator('.leaf-role-chip')).toHaveText(['support', 'tank'])
+    await expect(rows.nth(2).locator('.leaf-role-chip')).toHaveText(['support', 'tank', 'dps'])
   })
 
   test('walks heroes in percent-played order, not array order', async ({ page }) => {
@@ -93,7 +93,7 @@ test.describe('Matches — open-queue role label', () => {
     await page.goto('/')
     await expect(page.locator('#panel-matches')).toBeVisible()
 
-    expect(await page.locator('.leaf-row').first().locator('.leaf-role-chip').allTextContents())
-      .toEqual(['dps', 'tank', 'support'])
+    await expect(page.locator('.leaf-row').first().locator('.leaf-role-chip'))
+      .toHaveText(['dps', 'tank', 'support'])
   })
 })

@@ -99,7 +99,7 @@ test.describe('settings — Engine row Detect / Reset', () => {
     // Detect button is the primary CTA on the unhealthy Engine row.
     const detect = page.locator('#sec-engine button:has-text("Detect")')
     await expect(detect).toBeVisible()
-    await expect(detect).not.toBeDisabled()
+    await expect(detect).toBeEnabled()
     await detect.click()
 
     await expect.poll(() => probeCalls).toBe(1)
@@ -157,7 +157,7 @@ test.describe('settings — Engine row Detect / Reset', () => {
     // Path is the override; Reset is enabled.
     await expect(page.locator('#sec-engine .engine-path')).toContainText('/elsewhere/tesseract')
     const reset = page.locator('#sec-engine button:has-text("Reset")')
-    await expect(reset).not.toBeDisabled()
+    await expect(reset).toBeEnabled()
 
     await reset.click()
     // After Reset the in-memory + on-disk path is the platform default;

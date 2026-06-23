@@ -118,7 +118,7 @@ test.describe('lightbox — navigate between screenshots of the same match', () 
     await expect(page.locator('.lightbox-next')).toBeVisible()
     // First file → < disabled, > enabled.
     await expect(page.locator('.lightbox-prev')).toBeDisabled()
-    await expect(page.locator('.lightbox-next')).not.toBeDisabled()
+    await expect(page.locator('.lightbox-next')).toBeEnabled()
     // Caption is positioned next to the close button. Anchors on the
     // literal "of" so we don't have to know the exact total here.
     await expect(page.locator('.lightbox-count')).toContainText('1 of 3')
