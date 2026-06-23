@@ -56,7 +56,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
       }
       // Empty path = user cancelled; stay silent.
     } catch (e) {
-      exportStatus.value = { ok: false, message: `Export failed: ${e}` }
+      exportStatus.value = { ok: false, message: `Export failed: ${String(e)}` }
     } finally {
       exporting.value = false
       scheduleAutoClear()
@@ -86,7 +86,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
         await api.afterImport()
       }
     } catch (e) {
-      exportStatus.value = { ok: false, message: `Import failed: ${e}` }
+      exportStatus.value = { ok: false, message: `Import failed: ${String(e)}` }
     } finally {
       importing.value = false
       scheduleAutoClear()

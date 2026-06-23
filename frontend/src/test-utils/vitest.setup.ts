@@ -9,7 +9,8 @@ import { afterAll, vi } from 'vitest'
 // vi.stubGlobal('fetch') still overrides + restores this on unstub.
 const realFetch = globalThis.fetch
 globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-  if (String(input).includes('/system/reference-data')) {
+  const url = input instanceof Request ? input.url : String(input)
+  if (url.includes('/system/reference-data')) {
     return {
       ok: true,
       status: 200,

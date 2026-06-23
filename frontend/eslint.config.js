@@ -82,28 +82,43 @@ export default tseslint.config(
   },
   {
     // Type-aware rules — the Go-side errcheck/staticcheck analog — scoped to the
-    // typed src program (`src/**`, exactly what tsconfig.json includes). We enable
-    // only the genuine bug-catchers: an unhandled promise is a swallowed error
-    // (no-floating-promises ≈ errcheck for async). Two families are left off:
-    //   - no-unsafe-* : investigated (≈235 src hits) and left off — they're
-    //     typescript-eslint FALSE POSITIVES, not real `any`. Almost every hit is
-    //     "type that could not be resolved" on a Pinia store access
-    //     (matchesStore.x); vue-tsc resolves those store types fully (a probe
-    //     showed matchesStore.records typed correctly), but typescript-eslint
-    //     can't resolve the large setup-store type under projectService. Ruled
-    //     out: the markRaw bundles (already explicitly typed, e.g. MatchAnchorApi),
-    //     a circular store import (breaking it didn't help), and project-vs-
-    //     projectService (both fail). Enabling would mean suppressing false
-    //     positives, not catching bugs. Genuine boundary `any` (an api/SSE edge)
-    //     is rare — type it case-by-case if it appears.
-    //   - require-await : style, not bugs (an async fn with no await just returns
-    //     an already-resolved promise); ~93 of 94 hits are test helpers.
-    // Config files / e2e specs / .cjs stay on the syntactic `recommended` tier.
+    // typed src program (`src/**`, exactly what tsconfig.json includes). 16 of
+    // tseslint's 23 type-checked rules; config / e2e / .cjs stay syntactic.
+    //
+    // THREE rules are deliberately OFF — full recommendedTypeChecked isn't
+    // cleanly attainable here, because typescript-eslint's type resolution
+    // DISAGREES with vue-tsc on this codebase's Pinia setup-store + generated
+    // (openapi) types. vue-tsc is the build's real type gate; where the two
+    // differ, eslint is wrong:
+    //   - no-unsafe-* (assignment/member-access/call/return/argument): ~374
+    //     hits, src ~90% FALSE POSITIVES — "type could not be resolved" on a
+    //     store access (matchesStore.x) that vue-tsc types fine. (markRaw
+    //     bundles already typed, circular-import + project-vs-projectService
+    //     ruled out.)
+    //   - no-unnecessary-type-assertion: its autofix REMOVES load-bearing casts —
+    //     eslint thinks `existing.leaver` is already the leaver union, vue-tsc
+    //     sees `string` and needs the narrow. Trusting it broke vue-tsc across
+    //     PivotCrosstab + others. Same resolution gap as no-unsafe-*.
+    //   - require-await: style, not bugs (async-no-await returns a resolved
+    //     promise); ~93 of 94 hits are test helpers.
     files: ['src/**/*.{ts,vue}'],
     rules: {
-      '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-array-delete': 'error',
+      '@typescript-eslint/no-base-to-string': 'error',
+      '@typescript-eslint/no-duplicate-type-constituents': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-for-in-array': 'error',
+      '@typescript-eslint/no-implied-eval': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/no-redundant-type-constituents': 'error',
+      '@typescript-eslint/no-unsafe-enum-comparison': 'error',
+      '@typescript-eslint/no-unsafe-unary-minus': 'error',
+      '@typescript-eslint/only-throw-error': 'error',
+      '@typescript-eslint/prefer-promise-reject-errors': 'error',
+      '@typescript-eslint/restrict-plus-operands': 'error',
+      '@typescript-eslint/restrict-template-expressions': 'error',
+      '@typescript-eslint/unbound-method': 'error',
     },
   },
   {
@@ -147,6 +162,10 @@ export default tseslint.config(
       // asserting the active item one way and the rest another). Opinion, not a
       // bug-catcher — off.
       'vitest/no-conditional-expect': 'off',
+      // unbound-method false-fires on `expect(mock.method).toHaveBeenCalled()` —
+      // a vi.fn() mock, not a real this-bearing method. Off in tests (stays on
+      // for src, which has zero findings).
+      '@typescript-eslint/unbound-method': 'off',
     },
   },
   {

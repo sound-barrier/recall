@@ -1,23 +1,5 @@
-<script lang="ts">
-import type { MatchRecord } from '@/api-client'
-
-export interface ParseProgressEvent {
-  done: number
-  total: number
-  filename: string
-  screenshot_type?: string
-  data?: MatchRecord['data']
-  // Cumulative re-parse counters — surfaced by the Settings →
-  // Advanced re-parse-all progress line as "X of Y matches updated".
-  // Always 0 on a regular Parse run (no diff to count), so consumers
-  // that don't read them silently ignore.
-  matches_updated?: number
-  hero_corrections?: number
-  map_corrections?: number
-}
-</script>
-
 <script setup lang="ts">
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 withDefaults(defineProps<{
   parseBusy: boolean
   parseProgress: ParseProgressEvent | null

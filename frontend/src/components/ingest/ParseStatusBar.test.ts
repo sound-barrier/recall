@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
-import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 
 // ParseStatusBar is the persistent footer that shows "ingesting N of M" across
 // every tab. It reads the parse lifecycle from the matches store now, so these

@@ -21,7 +21,7 @@ export type TabId = typeof TAB_ORDER[number]
 
 export function useTabKeyboardNav(
   view: Readonly<Ref<string>>,
-  goToView: (next: TabId) => unknown | Promise<unknown>,
+  goToView: (next: TabId) => void | Promise<void>,
 ) {
   function onTabKeydown(e: KeyboardEvent) {
     const key = e.key
