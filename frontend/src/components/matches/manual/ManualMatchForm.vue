@@ -267,6 +267,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
           autocomplete="off"
           spellcheck="false"
           placeholder="add a tag…"
+          aria-label="Add a tag"
           data-mm-tag-input
           @keydown.enter.prevent="f.addTag()"
         >
@@ -295,6 +296,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
           autocomplete="off"
           spellcheck="false"
           placeholder="add a teammate…"
+          aria-label="Add a teammate"
           data-mm-member-input
           @keydown.enter.prevent="f.addMember()"
         >

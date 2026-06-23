@@ -262,10 +262,10 @@ test.describe('keyboard shortcuts — input gating', () => {
     await page.keyboard.type('j')
 
     // The input received the `j` character; no row got aria-current.
-    const value = await page.locator('#np-search').inputValue()
-    expect(value).toBe('j')
-    const focusedRows = await page.locator('.leaf-row[aria-current="true"]').count()
-    expect(focusedRows).toBe(0)
+    const value = page.locator('#np-search')
+    await expect(value).toHaveValue('j')
+    const focusedRows = page.locator('.leaf-row[aria-current="true"]')
+    await expect(focusedRows).toHaveCount(0)
   })
 
   test('? typed in the np-search input STILL opens the cheatsheet (allowInInput)', async ({ page }) => {

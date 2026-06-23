@@ -10,6 +10,7 @@ import { createMatch, listMatches, manual, reset } from './_real-server'
 
 test.describe('system flows (real server)', () => {
   test.beforeEach(async ({ request }) => reset(request))
+
   test.afterEach(async ({ request }) => reset(request))
 
   test('mark a match reviewed, then clear it', async ({ request }) => {
@@ -33,7 +34,7 @@ test.describe('system flows (real server)', () => {
     expect(((await ignored.json()) as { filename: string }[]).some((i) => i.filename === file)).toBe(true)
 
     expect((await request.delete(`/api/v1/screenshots/${enc}/ignore`)).status()).toBe(204)
-    expect(((await (await request.get('/api/v1/screenshots/ignored')).json()) as unknown[]).length).toBe(0)
+    expect(((await (await request.get('/api/v1/screenshots/ignored')).json()) as unknown[])).toHaveLength(0)
   })
 
   test('export the corpus as both JSON and CSV', async ({ request }) => {

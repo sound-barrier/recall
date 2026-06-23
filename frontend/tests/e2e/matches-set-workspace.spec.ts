@@ -97,7 +97,7 @@ test.describe('matches set-workspace', () => {
     // second Esc, focus no longer in a field, closes via the focus trap.
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
-    await expect(panel).not.toBeVisible()
+    await expect(panel).toBeHidden()
     await expect(page.locator('.container')).not.toHaveAttribute('inert', /.*/)
   })
 
@@ -133,14 +133,16 @@ test.describe('matches set-workspace', () => {
   })
 
   test('sort toggle flips chronology', async ({ page }) => {
-    // Default sort = newest first. Verify by reading the first row's date.
+    // Default sort = newest first. Capture the first row's date — a snapshot of
+    // the before-toggle order.
     const firstDate = await page.locator('.leaf-row').first().locator('.leaf-when-date').textContent()
     // Open the Sort+Group popover and pick Oldest. (PR 6 replaced
     // the inline Sort/Group fieldsets with a single trigger + dropdown.)
     await page.locator('[data-sort-group-trigger]').click()
     await page.locator('[data-sort-pick="oldest"]').click()
-    const newFirstDate = await page.locator('.leaf-row').first().locator('.leaf-when-date').textContent()
-    expect(firstDate).not.toBe(newFirstDate)
+    // After flipping to oldest-first, the first row's date must differ from the
+    // snapshot — web-first so it retries while the list re-sorts.
+    await expect(page.locator('.leaf-row').first().locator('.leaf-when-date')).not.toHaveText(firstDate ?? '')
   })
 
   test('include-unknown toggle surfaces the unknown-map row', async ({ page }) => {

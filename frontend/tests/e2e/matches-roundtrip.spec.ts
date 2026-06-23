@@ -14,6 +14,7 @@ import { createMatch, listMatches, manual, reset } from './_real-server'
 
 test.describe('matches round-trip (real server)', () => {
   test.beforeEach(async ({ request }) => reset(request))
+
   test.afterEach(async ({ request }) => reset(request))
 
   test('manual create aggregates and infers the sole-hero percent on read', async ({ request }) => {

@@ -34,6 +34,7 @@ function onSavePreset() {
         type="text"
         class="np-presets-input"
         placeholder="Save current narrow as…"
+        aria-label="Preset name"
         data-presets-save-input
         @keydown.enter.prevent="onSavePreset"
       >

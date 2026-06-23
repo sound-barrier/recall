@@ -159,7 +159,7 @@ test.describe('matches — contextual multi-select + Archive bulk ops', () => {
 
     await page.locator('.archive-action-bar .bulk-confirm').click()
     await expect.poll(() => deleteCalls.length).toBeGreaterThanOrEqual(1)
-    expect(deleteCalls.length).toBe(1)
+    expect(deleteCalls).toHaveLength(1)
     await expect(page.locator('.leaf-row')).toHaveCount(2)
   })
 

@@ -45,7 +45,7 @@ test.describe('Matches — collapse/expand all sections', () => {
     // Collapse all → every section folds: rows gone, dividers remain.
     await page.locator('[data-collapse-all]').click()
     await expect(page.locator('.leaf-row')).toHaveCount(0)
-    expect(await page.locator('.section-divider').count()).toBe(dividerCount)
+    await expect(page.locator('.section-divider')).toHaveCount(dividerCount)
 
     // Expand all → rows come back.
     await page.locator('[data-expand-all]').click()
