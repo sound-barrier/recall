@@ -32,12 +32,12 @@ func main() {
 	profile := flag.String("profile", "", "target profile name (empty → active)")
 	seed := flag.Int64("seed", 1, "deterministic seed for fixture generation")
 	force := flag.Bool("force", false, "wipe the target profile before seeding")
-	clear := flag.Bool("clear", false, "wipe the target profile and exit (no seeding)")
+	clearOnly := flag.Bool("clear", false, "wipe the target profile and exit (no seeding)")
 	chaos := flag.Float64("chaos", 0, "fraction of matches to receive pathological data shapes (0..1, default 0)")
 	style := flag.String("style", "flex", `player style: "flex" (default; every map+hero covered), "one-trick", "one-role", or "random" (per-seed style pick)`)
 	flag.Parse()
 
-	if !*clear && *n <= 0 {
+	if !*clearOnly && *n <= 0 {
 		exitf("--n must be positive (got %d); pass --clear to wipe without seeding", *n)
 	}
 
@@ -51,7 +51,7 @@ func main() {
 		target = profiles.Active()
 	}
 
-	if *clear {
+	if *clearOnly {
 		clearProfile(profiles, target)
 		return
 	}

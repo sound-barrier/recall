@@ -94,7 +94,7 @@ func FuzzScreenshotHandler_URL(f *testing.F) {
 		// to preserve the original raw byte sequence — this matches
 		// the existing TestScreenshotHandler_RejectsMalformedURLEscape
 		// pattern.
-		req, err := http.NewRequest("GET", "http://localhost/", nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/", nil)
 		if err != nil {
 			t.Skipf("could not construct base request: %v", err)
 		}

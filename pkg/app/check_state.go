@@ -81,7 +81,7 @@ func LoadCheckState() (CheckState, error) {
 		// fallback as a missing file. The next successful
 		// TouchLastChecked overwrites it. Log for diagnosability.
 		applog.Subsystem("check_state").Warn("corrupt JSON, treating as missing", "err", err)
-		return CheckState{}, nil //nolint:nilerr // intentional fallback to "never checked"
+		return CheckState{}, nil
 	}
 	return s, nil
 }
@@ -120,7 +120,7 @@ func LoadManifest() (DataManifest, error) {
 	var m DataManifest
 	if err := json.Unmarshal(b, &m); err != nil {
 		applog.Subsystem("manifest").Warn("corrupt JSON, treating as missing", "err", err)
-		return DataManifest{}, nil //nolint:nilerr // intentional fallback to "running on embedded data"
+		return DataManifest{}, nil
 	}
 	return m, nil
 }

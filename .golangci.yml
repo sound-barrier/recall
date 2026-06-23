@@ -22,14 +22,30 @@ linters:
     - exhaustive
     - dupword
     - modernize
+    # --- Added on review (drop any you don't want) ---
+    - errorlint      # errors.Is/As + %w wrapping correctness; complements nilerr
+    - noctx          # HTTP requests issued without a context.Context
+    - usestdlibvars  # http.MethodGet / http.StatusOK instead of literals
+    - perfsprint     # fmt.Sprintf -> faster strconv equivalents
+    - nolintlint     # keeps //nolint directives specific + explained
+    - thelper        # test helpers must call t.Helper()
+    - predeclared    # flags shadowing of len/error/string/etc.
+    - gosec          # Go-idiom SAST (rolled in from the standalone gosec job)
   settings:
     errcheck:
+      # NOTE: (*os.File).Close is intentionally NOT excluded — its error is
+      # checked by default (a failed flush on a writable file is silent data
+      # loss). Silence it per-call where it's genuinely not actionable, e.g.
+      # on a read-only file:  //nolint:errcheck // read-only, close err not actionable
       exclude-functions:
         - "(*database/sql.Rows).Close"
-        - "(*os.File).Close"
         - "os.RemoveAll"
     exhaustive:
       default-signifies-exhaustive: true
+    nolintlint:
+      require-explanation: true  # every //nolint must say why
+      require-specific: true     # must name the linter, e.g. //nolint:errcheck
+      allow-unused: false        # flag //nolint directives that suppress nothing
     revive:
       rules:
         # Project style: no mandatory doc comments — conflicts with "no comments
@@ -47,27 +63,40 @@ linters:
         - name: unused-parameter
           disabled: true
   exclusions:
+    warn-unused: true  # report exclusion rules that no longer match anything
     rules:
-      # staticcheck SA5011 doesn't treat testing.T.Fatal as terminal, so the
-      # idiomatic `if x == nil { t.Fatal() }; x.Field` guard reads as a possible
-      # nil deref. The guard is the norm in tests (a real nil there panics the
-      # test immediately), so exclude SA5011 in *_test.go only.
+      # gosec is rolled in from the standalone `gosec` job, which ran with its
+      # default `-tests=false` — it never scanned test files. Mirror that: a
+      # test's 0755 fixture dir (G301), 0644 fixture file (G302/G306), or
+      # reading a fixture via a variable path (G304) is benign test scaffolding,
+      # never shipped. Production gosec coverage (both build tags) is unchanged;
+      # prod `#nosec` directives are still honored.
       - linters:
-          - staticcheck
+          - gosec
         path: _test\.go
-        text: SA5011
-    paths:
-      - frontend/node_modules
+      # noctx flags database/sql calls that have a *Context variant. pkg/db is
+      # the synchronous, local-only SQLite store (modernc.org/sqlite, no network,
+      # sub-millisecond queries) with no request-cancellation story — threading
+      # context.Background() through every Query/Exec/Begin would be pure
+      # ceremony that cancels nothing. noctx stays enforced everywhere it's real:
+      # the GitHub update HTTP client and the Tesseract subprocess (both
+      # genuinely cancellable) and all tests.
+      - linters:
+          - noctx
+        path: pkg/db/
 
 formatters:
+  # gofumpt is intentionally dropped: it re-groups imports and can't be told to
+  # leave them alone, so it would clobber gci's layout below. gofmt (with -s,
+  # default) handles general formatting and sorts within gci's groups without
+  # imposing its own grouping; gci owns import grouping.
   enable:
-    - gofumpt
+    - gofmt
+    - gci
   settings:
-    gofumpt:
-      # Tell gofumpt our module path so it understands which imports are
-      # "local" (recall/...). Without this it treats them as third-party
-      # and complains about goimports-reviser's three-group layout
-      # (stdlib / external / local) when there's no external group —
-      # e.g. pkg/cmd/server.go and pkg/metrics/metrics.go which have
-      # only stdlib + recall/... imports.
-      module-path: recall
+    gci:
+      custom-order: true
+      sections:
+        - standard            # stdlib
+        - default             # third-party
+        - prefix(recall)      # local (or use `localmodule` to read go.mod)

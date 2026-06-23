@@ -15,6 +15,7 @@ import (
 // "detect_rank", "detect_personal"). Restoration uses t.Cleanup; do NOT
 // pair these tests with t.Parallel — the var is process-global.
 func stubOCR(t *testing.T, table map[string]string) {
+	t.Helper()
 	original := *parser.RunTesseractFunc
 	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) {
 		if s, ok := table[name]; ok {
@@ -26,6 +27,7 @@ func stubOCR(t *testing.T, table map[string]string) {
 }
 
 func stubOCRError(t *testing.T, err error) {
+	t.Helper()
 	original := *parser.RunTesseractFunc
 	*parser.RunTesseractFunc = func(_ image.Image, _, _, _, _ string) (string, error) {
 		return "", err

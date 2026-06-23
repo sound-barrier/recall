@@ -187,15 +187,8 @@ pre-push:
       glob: "frontend/src/**/*.{ts,vue}"
       run: cd frontend && npm run dead:ts
 
-    # gosec — Go SAST. Whole-program; can't be scoped to staged files
-    # like the pre-commit Go hooks above. Both build tags swept so
-    # Wails-only and serveronly code paths both get covered. Same tool
-    # invocation as `task lint-gosec` and the CI security job — bypass
-    # is `LEFTHOOK_EXCLUDE=gosec git push`. The repo's CI runs gosec on
-    # every push, so skipping locally just shifts the failure point.
-    gosec:
-      glob: "*.go"
-      run: task lint-gosec
+    # gosec (Go SAST) is rolled into the lint-go-full hook's golangci-lint
+    # (the `gosec` linter, both build tags) — no separate hook needed.
 
     # Semgrep — JS/TS SAST counterpart to gosec. Sweeps frontend/src/
     # via the community rulesets (p/javascript + p/typescript +

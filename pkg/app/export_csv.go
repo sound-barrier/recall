@@ -117,7 +117,7 @@ type csvUserLayer struct {
 func (a *App) importDataCSV(payload []byte) error {
 	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
-		return fmt.Errorf("%w: open zip: %v", ErrImportMalformed, err)
+		return fmt.Errorf("%w: open zip: %w", ErrImportMalformed, err)
 	}
 	if err := validateCSVManifest(zr); err != nil {
 		return err
@@ -173,13 +173,13 @@ func (a *App) importCSVUserLayer(zr *zip.Reader) error {
 func validateCSVManifest(zr *zip.Reader) error {
 	manifestBytes, err := readZipFile(zr, "manifest.json")
 	if err != nil {
-		return fmt.Errorf("%w: missing manifest.json: %v", ErrImportMalformed, err)
+		return fmt.Errorf("%w: missing manifest.json: %w", ErrImportMalformed, err)
 	}
 	var mf struct {
 		Schema string `json:"schema"`
 	}
 	if err := json.Unmarshal(manifestBytes, &mf); err != nil {
-		return fmt.Errorf("%w: manifest decode: %v", ErrImportMalformed, err)
+		return fmt.Errorf("%w: manifest decode: %w", ErrImportMalformed, err)
 	}
 	if mf.Schema != exportSchemaV1 {
 		return fmt.Errorf("import csv: unsupported schema %q (this build expects %q)", mf.Schema, exportSchemaV1)

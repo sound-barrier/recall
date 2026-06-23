@@ -1,6 +1,7 @@
 package cmd_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -151,6 +152,6 @@ func TestParseMatchesPaginationStrict_PresentButEmptyLimit_HandlerReturns400(t *
 }
 
 func httpReq(method, url string) *http.Request {
-	r, _ := http.NewRequest(method, url, nil)
+	r, _ := http.NewRequestWithContext(context.Background(), method, url, nil)
 	return r
 }

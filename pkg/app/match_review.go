@@ -1,9 +1,6 @@
 package app
 
-import (
-	"errors"
-	"fmt"
-)
+import "errors"
 
 // validReviewers enumerates the two scenarios users can tag a match
 // review with:
@@ -26,7 +23,7 @@ var ErrInvalidReviewedBy = errors.New("invalid reviewed_by: must be 'self' or 'c
 // Use ClearMatchReview to revert to the "not reviewed" state.
 func (a *App) SetMatchReview(matchKey, reviewedBy string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	if !validReviewers[reviewedBy] {
 		return ErrInvalidReviewedBy
@@ -38,7 +35,7 @@ func (a *App) SetMatchReview(matchKey, reviewedBy string) error {
 // clearing an unreviewed match is a no-op.
 func (a *App) ClearMatchReview(matchKey string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	return a.store.ClearReview(matchKey)
 }

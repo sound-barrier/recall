@@ -72,7 +72,7 @@ func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 	*app.RevealCommand = func(name string, args ...string) *exec.Cmd {
 		gotName = name
 		gotArgs = args
-		return exec.Command("true")
+		return exec.CommandContext(context.Background(), "true")
 	}
 	t.Cleanup(func() { *app.RevealCommand = prev })
 

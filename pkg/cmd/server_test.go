@@ -44,7 +44,7 @@ func fire(t *testing.T, mux *http.ServeMux, method, path string, body any) *http
 	if body != nil {
 		_ = json.NewEncoder(&buf).Encode(body)
 	}
-	req := httptest.NewRequest(method, path, &buf)
+	req := httptest.NewRequestWithContext(t.Context(), method, path, &buf)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	return rec
@@ -1162,7 +1162,7 @@ func TestImports_RejectsNullInUnknowns(t *testing.T) {
 // raw JSON snippets verbatim (null tokens, malformed shapes, etc.).
 func putRaw(t *testing.T, mux *http.ServeMux, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPut, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -1171,7 +1171,7 @@ func putRaw(t *testing.T, mux *http.ServeMux, path, body string) *httptest.Respo
 
 func postRaw(t *testing.T, mux *http.ServeMux, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)

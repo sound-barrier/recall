@@ -2,10 +2,10 @@ name: Prepare frontend/dist
 description: >
   Ensure frontend/dist exists so the //go:embed all:frontend/dist
   directive in assets.go can satisfy any Go-source-loading tool
-  (`go build`, `go list`, gosec, deadcode, schemathesis-server, etc.).
+  (`go build`, `go list`, deadcode, schemathesis-server, etc.).
   Pick `real-assets: true` for jobs that need the actual Vite bundle
   (e2e, coverage, bundle-size budget) and `real-assets: false` for
-  Go-only jobs that just need the embed to typecheck (gosec, deadcode).
+  Go-only jobs that just need the embed to typecheck (deadcode, CodeQL).
   Centralised here so a future contributor adding a new Go-loading
   job doesn't have to remember the dance — they call this composite.
 

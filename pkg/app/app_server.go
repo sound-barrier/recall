@@ -4,7 +4,7 @@ package app
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 
 	"recall/pkg/match"
 )
@@ -48,42 +48,42 @@ func (a *App) emitParseCancelled() {
 // SaveExportToFile is not available in server mode (no native dialogs).
 // The HTTP API exposes GET /api/v1/exports which streams the same payload.
 func (a *App) SaveExportToFile() (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/v1/exports")
+	return "", errors.New("native dialogs unavailable in server mode; use GET /api/v1/exports")
 }
 
 // SaveExportToFileCSV is not available in server mode (no native dialogs).
 // The HTTP API exposes GET /api/v1/exports?format=csv for the same payload.
 func (a *App) SaveExportToFileCSV() (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/v1/exports?format=csv")
+	return "", errors.New("native dialogs unavailable in server mode; use GET /api/v1/exports?format=csv")
 }
 
 // SaveBundleToFile is not available in server mode (no native dialogs).
 // The HTTP API exposes POST /api/v1/exports/bundle for the same payload.
 func (a *App) SaveBundleToFile(_ []string, _, _ bool) (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; use POST /api/v1/exports/bundle")
+	return "", errors.New("native dialogs unavailable in server mode; use POST /api/v1/exports/bundle")
 }
 
 // SaveTextToFile is not available in server mode (no native dialogs). The
 // browser builds the CSV Blob and triggers a download client-side, so no
 // server round-trip is needed.
 func (a *App) SaveTextToFile(_, _ string) (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; the browser downloads the CSV client-side")
+	return "", errors.New("native dialogs unavailable in server mode; the browser downloads the CSV client-side")
 }
 
 // LoadImportFromFile is not available in server mode (no native dialogs).
 // The HTTP API exposes POST /api/v1/imports which accepts the same payload.
 func (a *App) LoadImportFromFile() (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; use POST /api/v1/imports")
+	return "", errors.New("native dialogs unavailable in server mode; use POST /api/v1/imports")
 }
 
 // PickTesseractBinary is not available in server mode (no native dialogs).
 // The HTTP API exposes PUT /api/v1/settings/tesseract for the same purpose.
 func (a *App) PickTesseractBinary() (TesseractStatus, error) {
-	return a.tessStatusSnapshot(), fmt.Errorf("native dialogs unavailable in server mode; use PUT /api/v1/settings/tesseract")
+	return a.tessStatusSnapshot(), errors.New("native dialogs unavailable in server mode; use PUT /api/v1/settings/tesseract")
 }
 
 // PickScreenshotsDir is not available in server mode (no native dialogs).
 // The HTTP API exposes PUT /api/v1/settings/screenshots-folder for the same purpose.
 func (a *App) PickScreenshotsDir() (string, error) {
-	return a.settings.ScreenshotsDir, fmt.Errorf("native dialogs unavailable in server mode; use PUT /api/v1/settings/screenshots-folder")
+	return a.settings.ScreenshotsDir, errors.New("native dialogs unavailable in server mode; use PUT /api/v1/settings/screenshots-folder")
 }

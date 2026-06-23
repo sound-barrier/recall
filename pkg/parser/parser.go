@@ -62,7 +62,7 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only file; close error not actionable
 
 	img, _, err := image.Decode(f)
 	if err != nil {

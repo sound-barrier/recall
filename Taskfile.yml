@@ -172,7 +172,6 @@ tasks:
       - task: lint-typos
       - task: lint-md
       - task: lint-actions
-      - task: lint-gosec
       - task: lint-semgrep
 
   lint-go:
@@ -260,15 +259,8 @@ tasks:
       - bash scripts/ci/check-action-pins.sh
       - echo "[ recall ] ✓  workflows clean + actions SHA-pinned"
 
-  lint-gosec:
-    desc: Go SAST via gosec (both build tags)
-    cmds:
-      - command -v gosec >/dev/null || { echo "[ recall ] ✗  gosec not installed — brew install gosec (or see initialize.sh for Debian)"; exit 1; }
-      - echo "[ recall ] gosec (default build tags)…"
-      - gosec -exclude-dir=frontend ./...
-      - echo "[ recall ] gosec (serveronly build tag)…"
-      - gosec -exclude-dir=frontend -tags=serveronly ./...
-      - echo "[ recall ] ✓  gosec clean"
+  # gosec (Go SAST) is rolled into lint-go's golangci-lint (the `gosec` linter,
+  # both build tags) — no separate task or `gosec` binary install needed.
 
   lint-semgrep:
     desc: JS/TS SAST via Semgrep (frontend/src/, TypeScript only — .vue handled by eslint-plugin-vue)

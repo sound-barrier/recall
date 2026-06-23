@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -299,7 +300,7 @@ func parseMatchesPaginationStrict(r *http.Request) (int, string, error) {
 	}
 	limitStr := q.Get("limit")
 	if limitStr == "" {
-		return 0, "", fmt.Errorf("limit must be an integer in [1, 1000], got empty value")
+		return 0, "", errors.New("limit must be an integer in [1, 1000], got empty value")
 	}
 	n, err := strconv.Atoi(limitStr)
 	if err != nil {

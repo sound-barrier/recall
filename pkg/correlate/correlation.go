@@ -43,7 +43,7 @@ func ParseFilenameTimestamp(f string) (time.Time, bool) {
 		month, ok1 := atoiCapture(m[2])
 		day, ok2 := atoiCapture(m[3])
 		hour, ok3 := atoiCapture(m[4])
-		min, ok4 := atoiCapture(m[5])
+		minute, ok4 := atoiCapture(m[5])
 		sec, ok5 := atoiCapture(m[6])
 		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
 			return time.Time{}, false
@@ -52,7 +52,7 @@ func ParseFilenameTimestamp(f string) (time.Time, bool) {
 		// 13 becomes January next year, day 32 rolls over). We want
 		// strict rejection: build a canonical RFC3339 string and let
 		// time.Parse refuse the invalid date.
-		s := fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", year, month, day, hour, min, sec)
+		s := fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", year, month, day, hour, minute, sec)
 		t, err := time.Parse(time.RFC3339, s)
 		if err != nil {
 			return time.Time{}, false

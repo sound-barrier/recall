@@ -40,7 +40,7 @@ func setupDirWithFile(t *testing.T, name, contents string) string {
 func fire(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
 	h.ServeHTTP(rec, req)
 	return rec
 }
@@ -173,7 +173,7 @@ func TestScreenshotHandler_RejectsMalformedURLEscape(t *testing.T) {
 	a := &app.App{}
 	app.AppSettings(a).ScreenshotsDir = t.TempDir()
 
-	req := httptest.NewRequest(http.MethodGet, "/_screenshot/0/placeholder.png", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/_screenshot/0/placeholder.png", nil)
 	req.URL.Path = "/_screenshot/0/%ZZ.png"
 	rec := httptest.NewRecorder()
 	a.ScreenshotHandler().ServeHTTP(rec, req)

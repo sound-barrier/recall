@@ -238,7 +238,7 @@ func (a *App) ImportData(payload []byte) error {
 		Schema string `json:"schema"`
 	}
 	if err := json.Unmarshal(payload, &head); err != nil {
-		return fmt.Errorf("%w: decode: %v", ErrImportMalformed, err)
+		return fmt.Errorf("%w: decode: %w", ErrImportMalformed, err)
 	}
 	switch head.Schema {
 	case exportSchemaV1:

@@ -346,32 +346,10 @@ jobs:
       - name: Scan Go modules (serveronly build tag)
         run: govulncheck -tags serveronly ./...
 
-  # gosec is a Go-idiom SAST: catches issues CodeQL and govulncheck don't
-  # (Slowloris timeouts, file-mode bugs, weak crypto, taint-tracked path/
-  # command/log injection). Mirrors `task lint-gosec`. Both build tags are
-  # swept so the Wails and serveronly code paths both get covered.
-  gosec:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      # go + gosec from mise.toml. mise's go: backend compiles gosec with the
-      # pinned Go 1.26.4 — the same reason the old job avoided securego/gosec's
-      # docker action (it bundles a stale Go that can't load a go 1.26 module
-      # under GOTOOLCHAIN=local). Version pinned in mise.toml (v2.27.1).
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
-        with:
-          install_args: go go:github.com/securego/gosec/v2/cmd/gosec
-      # gosec only needs Go source to compile, not real frontend
-      # assets — stub the embed directory rather than running a real
-      # Vite build (saves ~30s per CI run).
-      - name: Prepare frontend/dist (stub for //go:embed)
-        uses: ./.github/actions/prepare-frontend-dist
-        with:
-          real-assets: "false"
-      - name: Run gosec (default build tag)
-        run: gosec -exclude-dir=frontend ./...
-      - name: Run gosec (serveronly build tag)
-        run: gosec -exclude-dir=frontend -tags=serveronly ./...
+  # gosec (Go SAST) is rolled into Job 1's golangci-lint (the `gosec` linter,
+  # run on both build tags). It no longer needs its own job / tool install.
+  # govulncheck stays separate: it's call-graph + CVE-database driven, which
+  # golangci-lint has no equivalent for.
 
   # JS/TS SAST in CI is handled by CodeQL's javascript-typescript
   # language matrix in .github/workflows/codeql.yml. Semgrep runs

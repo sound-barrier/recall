@@ -16,7 +16,7 @@ func TestRequestID_MintsWhenAbsent(t *testing.T) {
 		seen = cmd.FromContext(r.Context())
 	}))
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/matches", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/matches", nil)
 	h.ServeHTTP(rec, req)
 
 	if seen == "" {
@@ -36,7 +36,7 @@ func TestRequestID_EchoesSafeClientID(t *testing.T) {
 		seen = cmd.FromContext(r.Context())
 	}))
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/matches", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/matches", nil)
 	req.Header.Set("X-Request-ID", "user-supplied-42")
 	h.ServeHTTP(rec, req)
 
@@ -57,7 +57,7 @@ func TestRequestID_RejectsUnsafeClientID(t *testing.T) {
 				seen = cmd.FromContext(r.Context())
 			}))
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "/x", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/x", nil)
 			req.Header.Set("X-Request-ID", bad)
 			h.ServeHTTP(rec, req)
 
