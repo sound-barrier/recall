@@ -54,11 +54,11 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/screenshots/{filename}/ignore", func(w http.ResponseWriter, r *http.Request) {
 		filename, err := validateScreenshotFilename(r.PathValue("filename"))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, err.Error())
 			return
 		}
-		if writeError(w, a.IgnoreScreenshot(filename),
-			errStatus{app.ErrIgnoreFilenameRequired, http.StatusBadRequest}) {
+		if writeError(w, r, a.IgnoreScreenshot(filename),
+			errStatus{app.ErrIgnoreFilenameRequired, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -69,11 +69,11 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("DELETE /api/v1/screenshots/{filename}/ignore", func(w http.ResponseWriter, r *http.Request) {
 		filename, err := validateScreenshotFilename(r.PathValue("filename"))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, err.Error())
 			return
 		}
-		if writeError(w, a.UnignoreScreenshot(filename),
-			errStatus{app.ErrIgnoreFilenameRequired, http.StatusBadRequest}) {
+		if writeError(w, r, a.UnignoreScreenshot(filename),
+			errStatus{app.ErrIgnoreFilenameRequired, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -84,7 +84,7 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 	// panel; also useful for support / curl users.
 	apiMux.HandleFunc("GET /api/v1/screenshots/ignored", func(w http.ResponseWriter, r *http.Request) {
 		out, err := a.GetIgnoredScreenshots()
-		writeJSON(w, out, err)
+		writeJSON(w, r, out, err)
 	})
 
 	// DELETE: bulk truncate the suppress list — Settings panel's
@@ -92,7 +92,7 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 	// already empty. The next Parse run re-discovers every file from
 	// disk (the on-disk files were never moved).
 	apiMux.HandleFunc("DELETE /api/v1/screenshots/ignored", func(w http.ResponseWriter, r *http.Request) {
-		if writeError(w, a.ClearIgnoredScreenshots()) {
+		if writeError(w, r, a.ClearIgnoredScreenshots()) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

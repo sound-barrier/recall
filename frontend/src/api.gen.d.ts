@@ -1463,6 +1463,53 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * @description RFC 9457 (Problem Details for HTTP APIs) error body, returned as
+         *     `application/problem+json` for every 4xx/5xx the API surfaces. `type`
+         *     is a stable URI under
+         *     `https://github.com/sound-barrier/recall/problems/` that clients can
+         *     switch on; `instance` is the request path. Members beyond those listed
+         *     here are RFC 9457 §3.2 extension members (the schema stays open).
+         */
+        ProblemDetails: {
+            /**
+             * Format: uri
+             * @description A URI identifying the problem class.
+             * @example https://github.com/sound-barrier/recall/problems/invalid-body
+             */
+            type: string;
+            /**
+             * @description Short, human-readable summary of the problem class.
+             * @example Bad Request
+             */
+            title: string;
+            /**
+             * @description The HTTP status code, duplicated in the body for convenience.
+             * @example 400
+             */
+            status: number;
+            /** @description Human-readable explanation specific to this occurrence. */
+            detail?: string;
+            /** @description The request path that produced the problem. */
+            instance?: string;
+            /**
+             * @description §3.2 extension — per-field validation failures, present on a
+             *     malformed request body.
+             */
+            errors?: components["schemas"]["FieldError"][];
+            /**
+             * @description §3.2 extension — the asset(s) whose SHA-256 sidecar verification
+             *     failed (the data-update 422).
+             */
+            failed_assets?: string[];
+        };
+        /** @description One offending request field and why it was rejected. */
+        FieldError: {
+            /** @description The request-body field name. */
+            field: string;
+            /** @description Why the field was rejected. */
+            detail: string;
+        };
+        /**
          * @description Snapshot of the in-flight parse run. The resync anchor for the
          *     async parse pipeline — read after an SSE reconnect or a page
          *     reload to restore the parse panel without replaying events.
@@ -2407,7 +2454,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "text/plain": string;
+                "application/problem+json": components["schemas"]["ProblemDetails"];
             };
         };
         /** @description The requested resource was not found. */
@@ -2416,7 +2463,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "text/plain": string;
+                "application/problem+json": components["schemas"]["ProblemDetails"];
             };
         };
         /**
@@ -2430,7 +2477,7 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "text/plain": string;
+                "application/problem+json": components["schemas"]["ProblemDetails"];
             };
         };
         /** @description Unhandled server-side error. */
@@ -2439,7 +2486,19 @@ export interface components {
                 [name: string]: unknown;
             };
             content: {
-                "text/plain": string;
+                "application/problem+json": components["schemas"]["ProblemDetails"];
+            };
+        };
+        /**
+         * @description An upstream fetch failed — e.g. the Pages-published data-update
+         *     channel is unreachable. No server state was modified.
+         */
+        BadGateway: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ProblemDetails"];
             };
         };
         /**
@@ -2447,14 +2506,27 @@ export interface components {
          *     Nothing was written to disk. Returned by endpoints that
          *     atomically apply downloaded reference data (e.g.
          *     `POST /api/v1/system/data-update`) when the bytes received
-         *     don't match the published sidecar.
+         *     don't match the published sidecar. The failing asset(s) are
+         *     listed in the problem's `failed_assets` extension member.
          */
         SHAVerificationFailed: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                "text/plain": string;
+                /**
+                 * @example {
+                 *       "type": "https://github.com/sound-barrier/recall/problems/data-verification-failed",
+                 *       "title": "Unprocessable Entity",
+                 *       "status": 422,
+                 *       "detail": "data update: SHA-256 verification failed: heroes.yaml",
+                 *       "instance": "/api/v1/system/data-update",
+                 *       "failed_assets": [
+                 *         "heroes.yaml"
+                 *       ]
+                 *     }
+                 */
+                "application/problem+json": components["schemas"]["ProblemDetails"];
             };
         };
     };
@@ -3704,7 +3776,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             500: components["responses"]["InternalError"];
@@ -3736,7 +3808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             500: components["responses"]["InternalError"];
@@ -3773,7 +3845,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             500: components["responses"]["InternalError"];
@@ -3935,23 +4007,8 @@ export interface operations {
                 };
             };
             422: components["responses"]["SHAVerificationFailed"];
-            /** @description I/O failure during write / rename. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /**
-             * @description Pages-published main channel is unreachable — the
-             *     FE should retry later (no parser state was modified).
-             */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            500: components["responses"]["InternalError"];
+            502: components["responses"]["BadGateway"];
         };
     };
     GetDataLocation: {
@@ -4261,29 +4318,26 @@ export interface operations {
             /**
              * @description Payload was not parseable as JSON or ZIP (decode failure,
              *     ZIP-open failure, payload neither container format).
-             *     Body is a plain-text error message safe to surface.
              */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /**
              * @description Payload was syntactically valid JSON / ZIP but failed
              *     semantic validation (missing required field on a row,
-             *     unsupported schema version, null entry in an array,
-             *     etc.). Body is a plain-text error message safe to
-             *     surface to the user.
+             *     unsupported schema version, null entry in an array, etc.).
              */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             500: components["responses"]["InternalError"];

@@ -34,8 +34,8 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 }
 
 func handleGetProfiles(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, a.GetProfiles(), nil)
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, a.GetProfiles(), nil)
 	}
 }
 
@@ -45,12 +45,12 @@ func handleCreateProfile(a *app.App) http.HandlerFunc {
 			Name string `json:"name"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.CreateProfile(body.Name),
-			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
-			errStatus{app.ErrProfileExists, http.StatusConflict}) {
+		if writeError(w, r, a.CreateProfile(body.Name),
+			errStatus{app.ErrInvalidProfileName, probInvalidBody},
+			errStatus{app.ErrProfileExists, probConflict}) {
 			return
 		}
 		// Content-Type MUST be set before WriteHeader — once the
@@ -74,9 +74,9 @@ func handleCreateProfile(a *app.App) http.HandlerFunc {
 // Does NOT switch the active profile — the client does that with
 // PUT /profiles/active.
 func handleSeedTestProfile(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		res, err := a.SeedTestProfile()
-		writeJSON(w, res, err)
+		writeJSON(w, r, res, err)
 	}
 }
 
@@ -86,15 +86,15 @@ func handleSwitchProfile(a *app.App) http.HandlerFunc {
 			Name string `json:"name"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.SwitchProfile(body.Name),
-			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
-			errStatus{app.ErrProfileNotFound, http.StatusNotFound}) {
+		if writeError(w, r, a.SwitchProfile(body.Name),
+			errStatus{app.ErrInvalidProfileName, probInvalidBody},
+			errStatus{app.ErrProfileNotFound, probNotFound}) {
 			return
 		}
-		writeJSON(w, a.GetProfiles(), nil)
+		writeJSON(w, r, a.GetProfiles(), nil)
 	}
 }
 
@@ -102,23 +102,23 @@ func handleRenameProfile(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		old := r.PathValue("name")
 		if old == "" {
-			http.Error(w, "name required in URL", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "name required in URL")
 			return
 		}
 		var body struct {
 			NewName string `json:"new_name"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.RenameProfile(old, body.NewName),
-			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
-			errStatus{app.ErrProfileNotFound, http.StatusNotFound},
-			errStatus{app.ErrProfileExists, http.StatusConflict}) {
+		if writeError(w, r, a.RenameProfile(old, body.NewName),
+			errStatus{app.ErrInvalidProfileName, probInvalidBody},
+			errStatus{app.ErrProfileNotFound, probNotFound},
+			errStatus{app.ErrProfileExists, probConflict}) {
 			return
 		}
-		writeJSON(w, a.GetProfiles(), nil)
+		writeJSON(w, r, a.GetProfiles(), nil)
 	}
 }
 
@@ -126,13 +126,13 @@ func handleDeleteProfile(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
 		if name == "" {
-			http.Error(w, "name required in URL", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "name required in URL")
 			return
 		}
-		if writeError(w, a.DeleteProfile(name),
-			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
-			errStatus{app.ErrProfileNotFound, http.StatusNotFound},
-			errStatus{app.ErrProfileActive, http.StatusConflict}) {
+		if writeError(w, r, a.DeleteProfile(name),
+			errStatus{app.ErrInvalidProfileName, probInvalidBody},
+			errStatus{app.ErrProfileNotFound, probNotFound},
+			errStatus{app.ErrProfileActive, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

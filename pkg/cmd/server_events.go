@@ -24,7 +24,7 @@ func registerEventsRoutes(apiMux *http.ServeMux, a *app.App) {
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			http.Error(w, "streaming not supported", http.StatusInternalServerError)
+			writeProblem(w, r, probInternal, "streaming not supported")
 			return
 		}
 
