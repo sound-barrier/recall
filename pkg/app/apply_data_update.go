@@ -52,6 +52,15 @@ var (
 	ErrDataUpdateMainFetchFailed = errors.New("data update: main fetch failed")
 )
 
+// ChecksumError names the asset whose SHA-256 sidecar verification failed. It
+// unwraps to ErrDataUpdateChecksum so existing errors.Is callers keep their 422
+// mapping, while the HTTP layer can errors.As it to surface the asset in the
+// problem response's failed_assets extension member.
+type ChecksumError struct{ Asset string }
+
+func (e *ChecksumError) Error() string { return ErrDataUpdateChecksum.Error() + ": " + e.Asset }
+func (e *ChecksumError) Unwrap() error { return ErrDataUpdateChecksum }
+
 // DataUpdateResult is the success-path payload returned to the FE.
 // Empty Added*/Removed* slices marshal as omitempty so the modal can
 // show "No changes" when the apply was a no-op rebuild.
@@ -188,7 +197,7 @@ func fetchAndVerifyMainAssets() (map[string]verifiedAsset, error) {
 			return nil, fmt.Errorf("%w: fetch %s.sha256: %v", ErrDataUpdateMainFetchFailed, name, err)
 		}
 		if !verifySha256(b, sum) {
-			return nil, fmt.Errorf("%w: %s", ErrDataUpdateChecksum, name)
+			return nil, &ChecksumError{Asset: name}
 		}
 		h := sha256.Sum256(b)
 		out[name] = verifiedAsset{bytes: b, sha256: hex.EncodeToString(h[:])}

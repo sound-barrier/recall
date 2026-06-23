@@ -66,7 +66,7 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 func matchKeyFromPath(w http.ResponseWriter, r *http.Request) (string, bool) {
 	matchKey := r.PathValue("match_key")
 	if matchKey == "" {
-		http.Error(w, "match_key required in URL", http.StatusBadRequest)
+		writeProblem(w, r, probInvalidBody, "match_key required in URL")
 		return "", false
 	}
 	return matchKey, true
@@ -86,23 +86,23 @@ func handleGetMatches(a *app.App) http.HandlerFunc {
 		// negative_data_rejection check stays green and clients
 		// can't silently mis-type `limit` as `Limit`.
 		if err := validateMatchesQueryParams(r.URL.Query()); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, err.Error())
 			return
 		}
 		limit, cursor, pErr := parseMatchesPaginationStrict(r)
 		if pErr != nil {
-			http.Error(w, pErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, pErr.Error())
 			return
 		}
 		rows, err := a.GetMatchResults()
 		if err != nil {
-			writeJSON(w, rows, err)
+			writeJSON(w, r, rows, err)
 			return
 		}
 		if limit > 0 || cursor != "" {
 			rows = applyMatchesPagination(rows, limit, cursor)
 		}
-		writeJSON(w, rows, nil)
+		writeJSON(w, r, rows, nil)
 	}
 }
 
@@ -119,7 +119,7 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 		// require a 204 from a malformed URL.
 		for k := range r.URL.Query() {
 			if k != "keep_ignored" {
-				http.Error(w, "unknown query parameter: "+k, http.StatusBadRequest)
+				writeProblem(w, r, probInvalidBody, "unknown query parameter: "+k)
 				return
 			}
 		}
@@ -133,11 +133,11 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 			case "false":
 				keepIgnored = false
 			default:
-				http.Error(w, "keep_ignored must be true or false", http.StatusBadRequest)
+				writeProblem(w, r, probInvalidBody, "keep_ignored must be true or false")
 				return
 			}
 		}
-		if writeError(w, a.ClearDatabase(keepIgnored)) {
+		if writeError(w, r, a.ClearDatabase(keepIgnored)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -152,22 +152,22 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input match.ManualMatchInput
 		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
 		rec, err := a.CreateManualMatch(input)
-		if writeError(w, err,
-			errStatus{app.ErrManualNeedsMap, http.StatusBadRequest},
-			errStatus{app.ErrManualNeedsHero, http.StatusBadRequest},
-			errStatus{app.ErrInvalidResult, http.StatusBadRequest},
-			errStatus{app.ErrInvalidPlayMode, http.StatusBadRequest},
-			errStatus{app.ErrInvalidQueueType, http.StatusBadRequest},
-			errStatus{app.ErrInvalidPlayedAt, http.StatusBadRequest},
-			errStatus{app.ErrInvalidLeaver, http.StatusBadRequest},
-			errStatus{app.ErrInvalidRank, http.StatusBadRequest},
-			errStatus{app.ErrUnknownMap, http.StatusConflict},
-			errStatus{app.ErrUnknownHero, http.StatusConflict},
-			errStatus{app.ErrMatchKeyExists, http.StatusConflict}) {
+		if writeError(w, r, err,
+			errStatus{app.ErrManualNeedsMap, probInvalidBody},
+			errStatus{app.ErrManualNeedsHero, probInvalidBody},
+			errStatus{app.ErrInvalidResult, probInvalidBody},
+			errStatus{app.ErrInvalidPlayMode, probInvalidBody},
+			errStatus{app.ErrInvalidQueueType, probInvalidBody},
+			errStatus{app.ErrInvalidPlayedAt, probInvalidBody},
+			errStatus{app.ErrInvalidLeaver, probInvalidBody},
+			errStatus{app.ErrInvalidRank, probInvalidBody},
+			errStatus{app.ErrUnknownMap, probConflict},
+			errStatus{app.ErrUnknownHero, probConflict},
+			errStatus{app.ErrMatchKeyExists, probConflict}) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -194,24 +194,24 @@ func handleMoveMatches(a *app.App) http.HandlerFunc {
 			TargetProfile *string   `json:"target_profile"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
 		if body.TargetProfile == nil {
-			http.Error(w, "target_profile must be a non-null string", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "target_profile must be a non-null string")
 			return
 		}
 		matchKeys, mkErr := derefStringArray("match_keys", body.MatchKeys)
 		if mkErr != nil {
-			http.Error(w, mkErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, mkErr.Error())
 			return
 		}
 		// ErrInvalidProfileName → 409: target_profile was a well-formed
 		// string but didn't pass the profile-name format validator.
-		if writeError(w, a.MoveMatches(matchKeys, *body.TargetProfile),
-			errStatus{app.ErrInvalidProfileName, http.StatusConflict},
-			errStatus{app.ErrProfileNotFound, http.StatusNotFound},
-			errStatus{app.ErrMoveTargetIsActive, http.StatusConflict}) {
+		if writeError(w, r, a.MoveMatches(matchKeys, *body.TargetProfile),
+			errStatus{app.ErrInvalidProfileName, probConflict},
+			errStatus{app.ErrProfileNotFound, probNotFound},
+			errStatus{app.ErrMoveTargetIsActive, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -232,11 +232,11 @@ func handleBulkSetMatchQueue(a *app.App) http.HandlerFunc {
 			QueueType string   `json:"queue_type"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.BulkSetMatchQueue(body.MatchKeys, body.QueueType),
-			errStatus{app.ErrInvalidQueueType, http.StatusBadRequest}) {
+		if writeError(w, r, a.BulkSetMatchQueue(body.MatchKeys, body.QueueType),
+			errStatus{app.ErrInvalidQueueType, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -253,11 +253,11 @@ func handleBulkSetMatchPlayMode(a *app.App) http.HandlerFunc {
 			PlayMode  string   `json:"play_mode"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.BulkSetMatchPlayMode(body.MatchKeys, body.PlayMode),
-			errStatus{app.ErrInvalidPlayMode, http.StatusBadRequest}) {
+		if writeError(w, r, a.BulkSetMatchPlayMode(body.MatchKeys, body.PlayMode),
+			errStatus{app.ErrInvalidPlayMode, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

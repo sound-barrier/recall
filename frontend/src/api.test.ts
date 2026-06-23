@@ -4,11 +4,13 @@ import { ApiError, GetMatchResults, GetNewScreenshotCount, ParseScreenshots, Set
 // IS_WAILS is evaluated at module load time. In the test environment
 // window.go is absent, so IS_WAILS = false and all calls go through fetch.
 
-function mockFetch(status: number, payload: unknown) {
+function mockFetch(status: number, payload: unknown, contentType?: string) {
   const body = typeof payload === 'string' ? payload : JSON.stringify(payload)
+  const ct = contentType ?? (typeof payload === 'string' ? 'text/plain' : 'application/json')
   return vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
+    headers: { get: (k: string) => (k.toLowerCase() === 'content-type' ? ct : null) },
     text: () => Promise.resolve(body),
     json: () => Promise.resolve(payload),
   })
@@ -78,6 +80,23 @@ describe('GET 4xx error', () => {
     vi.stubGlobal('fetch', mockFetch(400, 'validation error detail'))
     const err = await GetMatchResults().catch(e => e)
     expect((err as ApiError).body).toBe('validation error detail')
+  })
+
+  it('parses an RFC 9457 problem+json error into detail + structured problem', async () => {
+    const problem = {
+      type: 'https://github.com/sound-barrier/recall/problems/invalid-body',
+      title: 'Bad Request',
+      status: 400,
+      detail: 'body must be {"hidden":<bool>}',
+      errors: [{ field: 'hidden', detail: 'must be a boolean' }],
+    }
+    vi.stubGlobal('fetch', mockFetch(400, problem, 'application/problem+json'))
+    const err = await GetMatchResults().catch(e => e) as ApiError
+    expect(err.status).toBe(400)
+    // The detail is kept on .body so existing display call sites keep working.
+    expect(err.body).toBe('body must be {"hidden":<bool>}')
+    expect(err.problem?.type).toContain('invalid-body')
+    expect(err.problem?.errors?.[0]?.field).toBe('hidden')
   })
 })
 

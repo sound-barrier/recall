@@ -31,6 +31,7 @@ export type ProfilesResponse  = components['schemas']['ProfilesResponse']
 export type SeedTestProfileResponse = components['schemas']['SeedTestProfileResponse']
 export type UserMatchDataInput = components['schemas']['UserMatchDataInput']
 export type ManualMatchInput   = components['schemas']['ManualMatchInput']
+export type ProblemDetails     = components['schemas']['ProblemDetails']
 
 // Detect whether the Wails IPC bridge has been injected. The bridge is
 // only present when the page is loaded inside the native Wails webview.
@@ -73,6 +74,10 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly body: string,
+    // The parsed RFC 9457 problem object when the server replied with
+    // application/problem+json (server mode); undefined for plain-text errors
+    // and the Wails bridge's raw Go errors.
+    public readonly problem?: ProblemDetails,
   ) {
     super(`HTTP ${status}: ${body}`)
     this.name = 'ApiError'
@@ -86,11 +91,23 @@ function _wails<T>(method: string, ...args: unknown[]): Promise<T> {
   return window.go!.app!.App![method]!(...args) as Promise<T>
 }
 
+// _apiError builds an ApiError from a non-ok Response. It parses the server's
+// RFC 9457 application/problem+json body into the human-readable `detail` (kept
+// on `body` so existing call sites that read `.body` still work) plus the
+// structured `problem`; it falls back to plain text for any non-problem response
+// (the SPA file server, a proxy).
+async function _apiError(r: Response): Promise<ApiError> {
+  if ((r.headers.get('content-type') ?? '').includes('application/problem+json')) {
+    const p = (await r.json().catch(() => null)) as ProblemDetails | null
+    if (p) return new ApiError(r.status, p.detail || p.title || '', p)
+  }
+  return new ApiError(r.status, await r.text().catch(() => ''))
+}
+
 async function _fetch<T>(input: string, init?: RequestInit): Promise<T> {
   const r = await fetch(input, init)
   if (!r.ok) {
-    const body = await r.text().catch(() => '')
-    throw new ApiError(r.status, body)
+    throw await _apiError(r)
   }
   // 204 No Content (writers with no useful echo) and 202 Accepted
   // (POST /api/v1/parses) both arrive without a body. r.json() would
@@ -858,7 +875,7 @@ export async function ExportBundle(opts: {
       include_hidden:  opts.includeHidden,
     }),
   })
-  if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
+  if (!r.ok) throw await _apiError(r)
   const cd = r.headers.get('Content-Disposition') ?? ''
   const matched = /filename="([^"]+)"/.exec(cd)
   const fallback = `recall-bundle-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.zip`
@@ -882,7 +899,7 @@ async function downloadExport(format: 'json' | 'csv'): Promise<string> {
   }
   const url = `/api/v1/exports?format=${format}`
   const r = await fetch(url)
-  if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
+  if (!r.ok) throw await _apiError(r)
   // Pull the server-suggested filename out of Content-Disposition.
   const cd = r.headers.get('Content-Disposition') ?? ''
   const matched = /filename="([^"]+)"/.exec(cd)
@@ -922,7 +939,7 @@ export async function ImportData(): Promise<string> {
     headers: { 'Content-Type': isZip ? 'application/zip' : 'application/json' },
     body: buf,
   })
-  if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
+  if (!r.ok) throw await _apiError(r)
   return file.name
 }
 

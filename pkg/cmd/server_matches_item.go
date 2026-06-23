@@ -25,7 +25,7 @@ func handleHardDeleteMatch(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if writeError(w, a.HardDeleteMatch(matchKey)) {
+		if writeError(w, r, a.HardDeleteMatch(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -44,10 +44,10 @@ func handleGetMatchByKey(a *app.App) http.HandlerFunc {
 		}
 		rec, err := a.GetMatchByKey(matchKey)
 		if errors.Is(err, match.ErrMatchNotFound) {
-			http.Error(w, "match not found", http.StatusNotFound)
+			writeProblem(w, r, probNotFound, "match not found")
 			return
 		}
-		writeJSON(w, rec, err)
+		writeJSON(w, r, rec, err)
 	}
 }
 
@@ -70,11 +70,12 @@ func handleSetMatchVisibility(a *app.App) http.HandlerFunc {
 			Hidden *bool `json:"hidden"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
 		if body.Hidden == nil {
-			http.Error(w, "body must be {\"hidden\":<bool>}", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "body must be {\"hidden\":<bool>}",
+				withFieldErrors(fieldError{"hidden", "must be a boolean"}))
 			return
 		}
 		var err error
@@ -83,7 +84,7 @@ func handleSetMatchVisibility(a *app.App) http.HandlerFunc {
 		} else {
 			err = a.UnhideMatch(matchKey)
 		}
-		if writeError(w, err) {
+		if writeError(w, r, err) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -106,13 +107,13 @@ func handleResolveMatch(a *app.App) http.HandlerFunc {
 			ResolvedTo string `json:"resolved_to"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.ResolveAmbiguousMatch(matchKey, body.ResolvedTo),
-			errStatus{app.ErrInvalidAmbiguousKey, http.StatusNotFound},
-			errStatus{app.ErrAmbiguousNotFound, http.StatusNotFound},
-			errStatus{app.ErrInvalidResolution, http.StatusBadRequest}) {
+		if writeError(w, r, a.ResolveAmbiguousMatch(matchKey, body.ResolvedTo),
+			errStatus{app.ErrInvalidAmbiguousKey, probNotFound},
+			errStatus{app.ErrAmbiguousNotFound, probNotFound},
+			errStatus{app.ErrInvalidResolution, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -148,11 +149,11 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 		// schemathesis v4's negative_data_rejection catches).
 		raw, rErr := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if rErr != nil {
-			http.Error(w, "read body: "+rErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "read body: "+rErr.Error())
 			return
 		}
 		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-			http.Error(w, "body must be a JSON object, not null", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "body must be a JSON object, not null")
 			return
 		}
 		var body struct {
@@ -163,25 +164,25 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 			Tags       []*string       `json:"tags"`
 		}
 		if err := json.Unmarshal(raw, &body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
 		leaver, lErr := decodeOptionalString("leaver", body.Leaver)
 		if lErr != nil {
-			http.Error(w, lErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, lErr.Error(), withFieldErrors(fieldError{"leaver", lErr.Error()}))
 			return
 		}
 		members, mErr := derefStringArray("members", body.Members)
 		if mErr != nil {
-			http.Error(w, mErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, mErr.Error(), withFieldErrors(fieldError{"members", mErr.Error()}))
 			return
 		}
 		tags, tErr := derefStringArray("tags", body.Tags)
 		if tErr != nil {
-			http.Error(w, tErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, tErr.Error(), withFieldErrors(fieldError{"tags", tErr.Error()}))
 			return
 		}
-		if writeError(w, a.SetMatchAnnotation(app.AnnotationInput{
+		if writeError(w, r, a.SetMatchAnnotation(app.AnnotationInput{
 			MatchKey:   matchKey,
 			Leaver:     leaver,
 			Note:       body.Note,
@@ -189,11 +190,11 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 			Members:    members,
 			Tags:       tags,
 		}),
-			errStatus{app.ErrInvalidLeaver, http.StatusBadRequest},
+			errStatus{app.ErrInvalidLeaver, probInvalidBody},
 			// Spec-valid body (parses fine) but no content to upsert → 409, the
 			// codebase's "semantic validation" code. 400 would trip schemathesis's
 			// positive_data_acceptance ("spec-valid input → no 400").
-			errStatus{app.ErrEmptyAnnotation, http.StatusConflict}) {
+			errStatus{app.ErrEmptyAnnotation, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -210,7 +211,7 @@ func handleDeleteMatchAnnotation(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if writeError(w, a.DeleteMatchAnnotation(matchKey)) {
+		if writeError(w, r, a.DeleteMatchAnnotation(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -231,23 +232,23 @@ func handleUpdateMatchData(a *app.App) http.HandlerFunc {
 		// type:object schema (schemathesis negative_data_rejection).
 		raw, rErr := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if rErr != nil {
-			http.Error(w, "read body: "+rErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "read body: "+rErr.Error())
 			return
 		}
 		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-			http.Error(w, "body must be a JSON object, not null", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "body must be a JSON object, not null")
 			return
 		}
 		var input match.UserMatchDataInput
 		if err := json.Unmarshal(raw, &input); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.UpdateMatchData(matchKey, input),
-			errStatus{app.ErrInvalidResult, http.StatusBadRequest},
-			errStatus{app.ErrStatOutOfRange, http.StatusBadRequest},
-			errStatus{app.ErrUnknownMap, http.StatusConflict},
-			errStatus{app.ErrUnknownHero, http.StatusConflict}) {
+		if writeError(w, r, a.UpdateMatchData(matchKey, input),
+			errStatus{app.ErrInvalidResult, probInvalidBody},
+			errStatus{app.ErrStatOutOfRange, probInvalidBody},
+			errStatus{app.ErrUnknownMap, probConflict},
+			errStatus{app.ErrUnknownHero, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -262,7 +263,7 @@ func handleResetMatchData(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if writeError(w, a.ResetMatchData(matchKey)) {
+		if writeError(w, r, a.ResetMatchData(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -282,11 +283,11 @@ func handleSetMatchReview(a *app.App) http.HandlerFunc {
 			ReviewedBy string `json:"reviewed_by"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.SetMatchReview(matchKey, body.ReviewedBy),
-			errStatus{app.ErrInvalidReviewedBy, http.StatusBadRequest}) {
+		if writeError(w, r, a.SetMatchReview(matchKey, body.ReviewedBy),
+			errStatus{app.ErrInvalidReviewedBy, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -301,7 +302,7 @@ func handleClearMatchReview(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if writeError(w, a.ClearMatchReview(matchKey)) {
+		if writeError(w, r, a.ClearMatchReview(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -322,11 +323,11 @@ func handleSetMatchQueue(a *app.App) http.HandlerFunc {
 			QueueType string `json:"queue_type"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.SetMatchQueue(matchKey, body.QueueType),
-			errStatus{app.ErrInvalidQueueType, http.StatusBadRequest}) {
+		if writeError(w, r, a.SetMatchQueue(matchKey, body.QueueType),
+			errStatus{app.ErrInvalidQueueType, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -341,7 +342,7 @@ func handleClearMatchQueue(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if writeError(w, a.ClearMatchQueue(matchKey)) {
+		if writeError(w, r, a.ClearMatchQueue(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -361,11 +362,11 @@ func handleSetMatchPlayMode(a *app.App) http.HandlerFunc {
 			PlayMode string `json:"play_mode"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		if writeError(w, a.SetMatchPlayMode(matchKey, body.PlayMode),
-			errStatus{app.ErrInvalidPlayMode, http.StatusBadRequest}) {
+		if writeError(w, r, a.SetMatchPlayMode(matchKey, body.PlayMode),
+			errStatus{app.ErrInvalidPlayMode, probInvalidBody}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -380,7 +381,7 @@ func handleClearMatchPlayMode(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if writeError(w, a.ClearMatchPlayMode(matchKey)) {
+		if writeError(w, r, a.ClearMatchPlayMode(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

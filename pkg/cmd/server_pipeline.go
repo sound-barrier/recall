@@ -32,7 +32,7 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		force := false
 		for k, vs := range r.URL.Query() {
 			if k != "scope" {
-				http.Error(w, "unknown query parameter: "+k, http.StatusBadRequest)
+				writeProblem(w, r, probInvalidBody, "unknown query parameter: "+k)
 				return
 			}
 			switch vs[0] {
@@ -41,7 +41,7 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 			case "new", "":
 				// default semantic; force stays false
 			default:
-				http.Error(w, "scope must be 'all' or 'new'", http.StatusBadRequest)
+				writeProblem(w, r, probInvalidBody, "scope must be 'all' or 'new'")
 				return
 			}
 		}
@@ -51,9 +51,9 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		// 409: the request was well-formed but the server's runtime state
 		// conflicts — no/unreadable screenshots dir, or a parse is already
 		// in flight. Not 400 (the bytes parsed fine).
-		if writeError(w, a.StartParse(force),
-			errStatus{app.ErrInvalidScreenshotsDir, http.StatusConflict},
-			errStatus{app.ErrParseInFlight, http.StatusConflict}) {
+		if writeError(w, r, a.StartParse(force),
+			errStatus{app.ErrInvalidScreenshotsDir, probConflict},
+			errStatus{app.ErrParseInFlight, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
@@ -63,7 +63,7 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// doesn't replay, so a client that reconnects (or reloads) mid-parse
 	// reads this to restore "is a parse running, and how far along".
 	apiMux.HandleFunc("GET /api/v1/parses/active", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, a.ActiveParse(), nil)
+		writeJSON(w, r, a.ActiveParse(), nil)
 	})
 
 	// Cancel an in-flight parse. Modelled as a DELETE on the
@@ -74,8 +74,8 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// as POST /api/v1/parses for "the request was fine, the state
 	// isn't".
 	apiMux.HandleFunc("DELETE /api/v1/parses/active", func(w http.ResponseWriter, r *http.Request) {
-		if writeError(w, a.CancelParse(),
-			errStatus{app.ErrNoParseInFlight, http.StatusConflict}) {
+		if writeError(w, r, a.CancelParse(),
+			errStatus{app.ErrNoParseInFlight, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
@@ -83,6 +83,6 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 
 	apiMux.HandleFunc("GET /api/v1/screenshots/pending-count", func(w http.ResponseWriter, r *http.Request) {
 		count, err := a.GetNewScreenshotCount()
-		writeJSON(w, map[string]int{"count": count}, err)
+		writeJSON(w, r, map[string]int{"count": count}, err)
 	})
 }

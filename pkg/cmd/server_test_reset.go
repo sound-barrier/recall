@@ -21,8 +21,8 @@ func registerE2ERoutes(apiMux *http.ServeMux, a *app.App) {
 	}
 	// Wipe the install back to a single empty "main" profile — the clean slate
 	// the real-server e2e specs reset to in beforeEach/afterAll.
-	apiMux.HandleFunc("POST /api/v1/system/test-reset", func(w http.ResponseWriter, _ *http.Request) {
-		if writeError(w, a.ResetForTest()) {
+	apiMux.HandleFunc("POST /api/v1/system/test-reset", func(w http.ResponseWriter, r *http.Request) {
+		if writeError(w, r, a.ResetForTest()) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

@@ -29,8 +29,8 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 }
 
 func handleGetScreenshotsFolder(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]string{"path": a.GetScreenshotsDir()}, nil)
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, map[string]string{"path": a.GetScreenshotsDir()}, nil)
 	}
 }
 
@@ -38,17 +38,17 @@ func handleSetScreenshotsFolder(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path, err := decodeRequiredString(r, "path")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, err.Error())
 			return
 		}
 		// 409: path was syntactically well-formed but doesn't exist as a
 		// directory on disk — "the resource at this path isn't available,"
 		// a state conflict.
-		if writeError(w, a.SetScreenshotsDir(path),
-			errStatus{app.ErrInvalidScreenshotsDir, http.StatusConflict}) {
+		if writeError(w, r, a.SetScreenshotsDir(path),
+			errStatus{app.ErrInvalidScreenshotsDir, probConflict}) {
 			return
 		}
-		writeJSON(w, map[string]string{"path": path}, nil)
+		writeJSON(w, r, map[string]string{"path": path}, nil)
 	}
 }
 
@@ -59,8 +59,8 @@ func handleSetScreenshotsFolder(a *app.App) http.HandlerFunc {
 // folder configured" and the user re-picks via Detect / Change. The
 // frontend's Reset button is the only caller.
 func handleResetScreenshotsFolder(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		if writeError(w, a.ResetScreenshotsDir()) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if writeError(w, r, a.ResetScreenshotsDir()) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -68,8 +68,8 @@ func handleResetScreenshotsFolder(a *app.App) http.HandlerFunc {
 }
 
 func handleGetTesseract(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, a.GetTesseractStatus(), nil)
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, a.GetTesseractStatus(), nil)
 	}
 }
 
@@ -77,16 +77,16 @@ func handleSetTesseract(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path, err := decodeRequiredString(r, "path")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, err.Error())
 			return
 		}
 		st, err := a.SetTesseractPath(path)
 		// 409: path was syntactically well-formed but doesn't resolve to a
 		// tesseract binary. Same shape as PUT /settings/screenshots-folder.
-		if writeError(w, err, errStatus{app.ErrInvalidTesseractPath, http.StatusConflict}) {
+		if writeError(w, r, err, errStatus{app.ErrInvalidTesseractPath, probConflict}) {
 			return
 		}
-		writeJSON(w, st, nil)
+		writeJSON(w, r, st, nil)
 	}
 }
 
@@ -94,15 +94,15 @@ func handleSetTesseract(a *app.App) http.HandlerFunc {
 // default — the only "absent" state the field can have, modeled as
 // removing the user-set override.
 func handleResetTesseract(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		st, err := a.ResetTesseractPath()
-		writeJSON(w, st, err)
+		writeJSON(w, r, st, err)
 	}
 }
 
 func handleGetWatcher(a *app.App) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]bool{"enabled": a.GetWatchEnabled()}, nil)
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, map[string]bool{"enabled": a.GetWatchEnabled()}, nil)
 	}
 }
 
@@ -114,10 +114,10 @@ func handleSetWatcher(a *app.App) http.HandlerFunc {
 			Enabled *bool `json:"enabled"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Enabled == nil {
-			http.Error(w, "body must be {\"enabled\":<bool>}", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "body must be {\"enabled\":<bool>}")
 			return
 		}
-		if writeError(w, a.SetWatchEnabled(*body.Enabled)) {
+		if writeError(w, r, a.SetWatchEnabled(*body.Enabled)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

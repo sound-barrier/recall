@@ -42,7 +42,7 @@ func handleExportData(a *app.App) http.HandlerFunc {
 		switch format {
 		case "csv":
 			data, err := a.ExportDataCSV()
-			if writeError(w, err) {
+			if writeError(w, r, err) {
 				return
 			}
 			fname := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
@@ -51,7 +51,7 @@ func handleExportData(a *app.App) http.HandlerFunc {
 			_, _ = w.Write(data)
 		case "json":
 			data, err := a.ExportData()
-			if writeError(w, err) {
+			if writeError(w, r, err) {
 				return
 			}
 			fname := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".json"
@@ -59,7 +59,7 @@ func handleExportData(a *app.App) http.HandlerFunc {
 			w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
 			_, _ = w.Write(data)
 		default:
-			http.Error(w, "format must be 'json' or 'csv'", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "format must be 'json' or 'csv'")
 		}
 	}
 }
@@ -81,22 +81,22 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 			IncludeHidden  json.RawMessage `json:"include_hidden"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
 		matchKeys, mkErr := decodeRequiredStringArray("match_keys", body.MatchKeys)
 		if mkErr != nil {
-			http.Error(w, mkErr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, mkErr.Error())
 			return
 		}
 		includeUnknown, ferr := decodeOptionalBool("include_unknown", body.IncludeUnknown)
 		if ferr != nil {
-			http.Error(w, ferr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, ferr.Error())
 			return
 		}
 		includeHidden, ferr := decodeOptionalBool("include_hidden", body.IncludeHidden)
 		if ferr != nil {
-			http.Error(w, ferr.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, ferr.Error())
 			return
 		}
 		data, err := a.ExportBundle(app.ExportBundleOptions{
@@ -104,7 +104,7 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 			IncludeUnknown: includeUnknown,
 			IncludeHidden:  includeHidden,
 		})
-		if writeError(w, err) {
+		if writeError(w, r, err) {
 			return
 		}
 		fname := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
@@ -123,7 +123,7 @@ func handleImportData(a *app.App) http.HandlerFunc {
 		// guards against an accidentally-uploaded multi-GB blob.
 		body, err := io.ReadAll(io.LimitReader(r.Body, 50<<20))
 		if err != nil {
-			http.Error(w, "read body: "+err.Error(), http.StatusBadRequest)
+			writeProblem(w, r, probInvalidBody, "read body: "+err.Error())
 			return
 		}
 		if err := a.ImportData(body); err != nil {
@@ -135,10 +135,10 @@ func handleImportData(a *app.App) http.HandlerFunc {
 			// 400 for spec-valid inputs; the malformed branch only
 			// fires on spec-violating payloads.
 			if errors.Is(err, app.ErrImportMalformed) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				writeProblem(w, r, probInvalidBody, err.Error())
 				return
 			}
-			http.Error(w, err.Error(), http.StatusConflict)
+			writeProblem(w, r, probConflict, err.Error())
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

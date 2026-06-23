@@ -25,8 +25,14 @@ info:
       * Writes return `204 No Content` when there is no useful body
         to echo back; `202 Accepted` for actions whose effect is
         asynchronous (parse).
-      * Errors come back as `text/plain` from `http.Error` with the
-        appropriate 4xx/5xx status.
+      * Errors come back as `application/problem+json` (RFC 9457) with
+        the appropriate 4xx/5xx status. `type` is a stable URI under
+        `https://github.com/sound-barrier/recall/problems/{slug}` that
+        clients can switch on; body-validation problems carry a
+        per-field `errors` array, and the data-update 422 carries a
+        `failed_assets` list (RFC 9457 §3.2 extension members). The one
+        exception is `405 Method Not Allowed`, emitted plain by the
+        router.
       * Static image binaries stay at `/_screenshot/{filename}` —
         served from disk, not the JSON surface.
 
@@ -1336,9 +1342,9 @@ paths:
         "409":
           description: A profile with that new name already exists.
           content:
-            text/plain:
+            application/problem+json:
               schema:
-                type: string
+                $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -1360,9 +1366,9 @@ paths:
         "409":
           description: Profile is active; switch away first.
           content:
-            text/plain:
+            application/problem+json:
               schema:
-                type: string
+                $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1411,9 +1417,9 @@ paths:
         "409":
           description: target_profile is the active profile.
           content:
-            text/plain:
+            application/problem+json:
               schema:
-                type: string
+                $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1591,11 +1597,9 @@ paths:
         "422":
           $ref: "#/components/responses/SHAVerificationFailed"
         "500":
-          description: I/O failure during write / rename.
+          $ref: "#/components/responses/InternalError"
         "502":
-          description: |
-            Pages-published main channel is unreachable — the
-            FE should retry later (no parser state was modified).
+          $ref: "#/components/responses/BadGateway"
 
   /api/v1/system/data-location:
     get:
@@ -1975,24 +1979,19 @@ paths:
           description: |
             Payload was not parseable as JSON or ZIP (decode failure,
             ZIP-open failure, payload neither container format).
-            Body is a plain-text error message safe to surface.
           content:
-            text/plain:
+            application/problem+json:
               schema:
-                type: string
-                example: "import: malformed payload: neither JSON nor a ZIP archive"
+                $ref: "#/components/schemas/ProblemDetails"
         "409":
           description: |
             Payload was syntactically valid JSON / ZIP but failed
             semantic validation (missing required field on a row,
-            unsupported schema version, null entry in an array,
-            etc.). Body is a plain-text error message safe to
-            surface to the user.
+            unsupported schema version, null entry in an array, etc.).
           content:
-            text/plain:
+            application/problem+json:
               schema:
-                type: string
-                example: 'import: unsupported schema "recall-export/v9" (this build expects "recall-export/v1")'
+                $ref: "#/components/schemas/ProblemDetails"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -2103,6 +2102,61 @@ components:
       example: "match-2026-05-10T22-21-11"
 
   schemas:
+    ProblemDetails:
+      type: object
+      required: [type, title, status]
+      description: |
+        RFC 9457 (Problem Details for HTTP APIs) error body, returned as
+        `application/problem+json` for every 4xx/5xx the API surfaces. `type`
+        is a stable URI under
+        `https://github.com/sound-barrier/recall/problems/` that clients can
+        switch on; `instance` is the request path. Members beyond those listed
+        here are RFC 9457 §3.2 extension members (the schema stays open).
+      properties:
+        type:
+          type: string
+          format: uri
+          description: A URI identifying the problem class.
+          example: https://github.com/sound-barrier/recall/problems/invalid-body
+        title:
+          type: string
+          description: Short, human-readable summary of the problem class.
+          example: Bad Request
+        status:
+          type: integer
+          description: The HTTP status code, duplicated in the body for convenience.
+          example: 400
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+        instance:
+          type: string
+          description: The request path that produced the problem.
+        errors:
+          type: array
+          description: |
+            §3.2 extension — per-field validation failures, present on a
+            malformed request body.
+          items:
+            $ref: "#/components/schemas/FieldError"
+        failed_assets:
+          type: array
+          description: |
+            §3.2 extension — the asset(s) whose SHA-256 sidecar verification
+            failed (the data-update 422).
+          items:
+            type: string
+    FieldError:
+      type: object
+      required: [field, detail]
+      description: One offending request field and why it was rejected.
+      properties:
+        field:
+          type: string
+          description: The request-body field name.
+        detail:
+          type: string
+          description: Why the field was rejected.
     ActiveParse:
       type: object
       required: [running, done, total, scope]
@@ -3288,15 +3342,15 @@ components:
     BadRequest:
       description: Malformed request body or query parameters.
       content:
-        text/plain:
+        application/problem+json:
           schema:
-            type: string
+            $ref: "#/components/schemas/ProblemDetails"
     NotFound:
       description: The requested resource was not found.
       content:
-        text/plain:
+        application/problem+json:
           schema:
-            type: string
+            $ref: "#/components/schemas/ProblemDetails"
     Conflict:
       description: |
         The request was syntactically valid, but the resource state or
@@ -3304,24 +3358,39 @@ components:
         name, screenshots directory not configured, invalid Tesseract
         binary path, non-candidate resolution target).
       content:
-        text/plain:
+        application/problem+json:
           schema:
-            type: string
+            $ref: "#/components/schemas/ProblemDetails"
     InternalError:
       description: Unhandled server-side error.
       content:
-        text/plain:
+        application/problem+json:
           schema:
-            type: string
+            $ref: "#/components/schemas/ProblemDetails"
+    BadGateway:
+      description: |
+        An upstream fetch failed — e.g. the Pages-published data-update
+        channel is unreachable. No server state was modified.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
     SHAVerificationFailed:
       description: |
         SHA-256 sidecar verification failed on at least one asset.
         Nothing was written to disk. Returned by endpoints that
         atomically apply downloaded reference data (e.g.
         `POST /api/v1/system/data-update`) when the bytes received
-        don't match the published sidecar.
+        don't match the published sidecar. The failing asset(s) are
+        listed in the problem's `failed_assets` extension member.
       content:
-        text/plain:
+        application/problem+json:
           schema:
-            type: string
-            example: "data update: SHA-256 verification failed"
+            $ref: "#/components/schemas/ProblemDetails"
+          example:
+            type: https://github.com/sound-barrier/recall/problems/data-verification-failed
+            title: Unprocessable Entity
+            status: 422
+            detail: "data update: SHA-256 verification failed: heroes.yaml"
+            instance: /api/v1/system/data-update
+            failed_assets: [heroes.yaml]

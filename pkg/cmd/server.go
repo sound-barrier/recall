@@ -339,10 +339,87 @@ func methodNotAllowed(allow string) http.HandlerFunc {
 	}
 }
 
-// writeJSON encodes v as JSON. If err is non-nil it writes a 500 instead.
-func writeJSON(w http.ResponseWriter, v any, err error) {
+// ─── RFC 9457 problem+json errors ──────────────────────────────────────────
+//
+// Every 4xx/5xx is an application/problem+json object (RFC 9457). `type` is a
+// stable URI under problemBase that integrators can switch on; `instance` is the
+// request path. Extension members (§3.2: errors, failed_assets) carry domain
+// detail. The desktop Wails path returns Go errors directly and never reaches
+// here — this is the HTTP/server contract only.
+
+const problemBase = "https://github.com/sound-barrier/recall/problems/"
+
+// problemType is one stable problem class: a slug (→ the type URI), a
+// human-readable title, and the HTTP status it carries.
+type problemType struct {
+	slug   string
+	title  string
+	status int
+}
+
+var (
+	probInvalidBody = problemType{"invalid-body", "Bad Request", http.StatusBadRequest}
+	probNotFound    = problemType{"not-found", "Not Found", http.StatusNotFound}
+	probConflict    = problemType{"conflict", "Conflict", http.StatusConflict}
+	probDataVerify  = problemType{"data-verification-failed", "Unprocessable Entity", http.StatusUnprocessableEntity}
+	probBadGateway  = problemType{"upstream-fetch-failed", "Bad Gateway", http.StatusBadGateway}
+	probInternal    = problemType{"internal", "Internal Server Error", http.StatusInternalServerError}
+)
+
+// fieldError is one entry in the `errors` extension member — a single offending
+// request field and why it was rejected.
+type fieldError struct {
+	Field  string `json:"field"`
+	Detail string `json:"detail"`
+}
+
+// problemDetails is the RFC 9457 object. type/title/status are always present;
+// detail/instance and the extension members omit when empty.
+type problemDetails struct {
+	Type         string       `json:"type"`
+	Title        string       `json:"title"`
+	Status       int          `json:"status"`
+	Detail       string       `json:"detail,omitempty"`
+	Instance     string       `json:"instance,omitempty"`
+	Errors       []fieldError `json:"errors,omitempty"`
+	FailedAssets []string     `json:"failed_assets,omitempty"`
+}
+
+// problemOpt attaches an RFC 9457 §3.2 extension member to a problem.
+type problemOpt func(*problemDetails)
+
+func withFieldErrors(errs ...fieldError) problemOpt {
+	return func(p *problemDetails) { p.Errors = append(p.Errors, errs...) }
+}
+
+func withFailedAssets(assets ...string) problemOpt {
+	return func(p *problemDetails) { p.FailedAssets = append(p.FailedAssets, assets...) }
+}
+
+// writeProblem emits one application/problem+json response for pt, with the
+// human-readable detail and the request path as `instance`.
+func writeProblem(w http.ResponseWriter, r *http.Request, pt problemType, detail string, opts ...problemOpt) {
+	p := problemDetails{
+		Type:     problemBase + pt.slug,
+		Title:    pt.title,
+		Status:   pt.status,
+		Detail:   detail,
+		Instance: r.URL.Path,
+	}
+	for _, o := range opts {
+		o(&p)
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(pt.status)
+	if encErr := json.NewEncoder(w).Encode(p); encErr != nil {
+		applog.Subsystem("server").Error("problem encode", "err", encErr)
+	}
+}
+
+// writeJSON encodes v as JSON. If err is non-nil it writes a 500 problem instead.
+func writeJSON(w http.ResponseWriter, r *http.Request, v any, err error) {
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeProblem(w, r, probInternal, err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -351,30 +428,30 @@ func writeJSON(w http.ResponseWriter, v any, err error) {
 	}
 }
 
-// errStatus pairs an app-layer sentinel error with the HTTP status that
+// errStatus pairs an app-layer sentinel error with the problem type that
 // writeError maps it to.
 type errStatus struct {
-	is     error
-	status int
+	is error
+	pt problemType
 }
 
-// writeError writes err to w as a plain-text HTTP error and reports whether it
-// wrote anything. A nil err writes nothing and returns false, so a handler can
-// guard its happy path with `if writeError(w, a.Foo(), …) { return }`. For a
+// writeError writes err to w as an RFC 9457 problem and reports whether it wrote
+// anything. A nil err writes nothing and returns false, so a handler can guard
+// its happy path with `if writeError(w, r, a.Foo(), …) { return }`. For a
 // non-nil err, the first sentinel in cases that err matches (errors.Is) selects
-// the status; an unmatched err falls through to 500. This keeps the "known
-// sentinel → 4xx, everything else → 500" ladder in one place instead of
-// repeating it in every write handler.
-func writeError(w http.ResponseWriter, err error, cases ...errStatus) bool {
+// the problem type; an unmatched err falls through to a 500 internal problem.
+// This keeps the "known sentinel → 4xx, everything else → 500" ladder in one
+// place instead of repeating it in every write handler.
+func writeError(w http.ResponseWriter, r *http.Request, err error, cases ...errStatus) bool {
 	if err == nil {
 		return false
 	}
 	for _, c := range cases {
 		if errors.Is(err, c.is) {
-			http.Error(w, err.Error(), c.status)
+			writeProblem(w, r, c.pt, err.Error())
 			return true
 		}
 	}
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	writeProblem(w, r, probInternal, err.Error())
 	return true
 }
