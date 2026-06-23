@@ -31,6 +31,7 @@ linters:
     - thelper        # test helpers must call t.Helper()
     - predeclared    # flags shadowing of len/error/string/etc.
     - gosec          # Go-idiom SAST (rolled in from the standalone gosec job)
+    - whitespace     # no blank lines at start/end of func bodies (the gofumpt rule)
   settings:
     errcheck:
       # NOTE: (*os.File).Close is intentionally NOT excluded — its error is
@@ -42,6 +43,11 @@ linters:
         - "os.RemoveAll"
     exhaustive:
       default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        - G104  # "unhandled errors" — same check as errcheck; double-reports now both run
+        # G304 (file path from variable) and G302/G306 (file perms) will still
+        # fire in prod — review those case-by-case rather than excluding globally.
     nolintlint:
       require-explanation: true  # every //nolint must say why
       require-specific: true     # must name the linter, e.g. //nolint:errcheck
