@@ -41,7 +41,7 @@ async function mountInDataDensity(page: Page) {
 }
 
 function dataRows(content: string): string[] {
-  return content.replace(/^﻿/, '').replace(/\r\n$/, '').split('\r\n').slice(1)
+  return content.replace(/^\uFEFF/, '').replace(/\r\n$/, '').split('\r\n').slice(1)
 }
 
 test('exports every narrowed match when nothing is selected', async ({ page }) => {
@@ -55,7 +55,7 @@ test('exports every narrowed match when nothing is selected', async ({ page }) =
   const content = readFileSync((await download.path())!, 'utf8')
 
   // UTF-8 BOM so Excel/Sheets detect the encoding.
-  expect(content.startsWith('﻿')).toBe(true)
+  expect(content.startsWith('\uFEFF')).toBe(true)
   // The split-field header (the point of the feature).
   expect(content).toContain('match_key,date,finished_at,game_length,map,game_mode,playlist,play_mode,queue_type,result')
   expect(dataRows(content)).toHaveLength(3)

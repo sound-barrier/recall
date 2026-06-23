@@ -1,3 +1,4 @@
+import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import pluginVue from 'eslint-plugin-vue'
 import globals from 'globals'
@@ -23,6 +24,7 @@ export default tseslint.config(
       '**/*-snapshots/',    // Playwright snapshot fixtures
     ],
   },
+  js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
@@ -43,7 +45,7 @@ export default tseslint.config(
     // .ts under src — the typed program for the type-aware rules below.
     files: ['src/**/*.ts'],
     languageOptions: {
-      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname, extraFileExtensions: ['.vue'] },
     },
   },
   {
@@ -81,6 +83,7 @@ export default tseslint.config(
       'vue/max-attributes-per-line': 'off',
       'eol-last': 'error',
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
         varsIgnorePattern: '^_',
         argsIgnorePattern: '^_',

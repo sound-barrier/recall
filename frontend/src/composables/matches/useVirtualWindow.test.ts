@@ -20,7 +20,6 @@ function withGeometry(el: HTMLElement, scrollTop: number, clientHeight: number) 
 function makeHarness(items: number[], itemHeight = 50, overscan?: number) {
   const itemsRef = ref<readonly number[]>(items)
   let api: ReturnType<typeof useVirtualWindow<number>> | null = null
-  let container: HTMLElement | null = null
   const Comp = defineComponent({
     setup() {
       const containerRef = ref<HTMLElement | null>(null)
@@ -34,11 +33,11 @@ function makeHarness(items: number[], itemHeight = 50, overscan?: number) {
     },
   })
   const wrapper = mount(Comp, { attachTo: document.body })
-  container = wrapper.element as HTMLElement
+  const container = wrapper.element as HTMLElement
   // happy-dom defaults to 0 for both — give the harness a default
   // viewport so the first computed window isn't overscan-only.
   withGeometry(container, 0, 600)
-  return { wrapper, api: api!, itemsRef, container: container! }
+  return { wrapper, api: api!, itemsRef, container }
 }
 
 // requestAnimationFrame in happy-dom delays one tick. To keep tests

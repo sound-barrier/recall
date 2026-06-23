@@ -38,12 +38,12 @@ function rec(over: Partial<MatchRecord> = {}, data: Partial<MatchRecord['data']>
 
 // Drop the BOM and trailing CRLF, return the data rows split on CRLF.
 function lines(csv: string): string[] {
-  return csv.replace(/^﻿/, '').replace(/\r\n$/, '').split('\r\n')
+  return csv.replace(/^\uFEFF/, '').replace(/\r\n$/, '').split('\r\n')
 }
 
 describe('matchesToCSV — container', () => {
   it('prepends a UTF-8 BOM so Excel detects UTF-8', () => {
-    expect(matchesToCSV([rec()], noRole).startsWith('﻿')).toBe(true)
+    expect(matchesToCSV([rec()], noRole).startsWith('\uFEFF')).toBe(true)
   })
 
   it('terminates every row with CRLF (incl. the last)', () => {
