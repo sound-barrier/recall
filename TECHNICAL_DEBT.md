@@ -83,9 +83,10 @@ Reviewed and deliberately left, so a future pass doesn't burn effort churning th
   the split**: the columns are meaningfully different per type, a unified table
   would be wide/sparse with type-conditional NULLs (worse 3NF), and the per-type
   split enables the EAD-signature bridge cleanly. (2) `unmatched-<filename>` /
-  `ambiguous-<filename>` `match_key` sentinels — **keep**: explicit pre-resolution
-  sentinels (a real `match-<ts>` key is minted on resolution), URL-safe, the
-  filename coupling is transient. (RFC 9457 `problem+json` error bodies, previously
+  `ambiguous-<filename>` `match_key` sentinels — **keep** the filename coupling:
+  they're explicit pre-resolution sentinels (a real `match-<ts>` key is minted on
+  resolution) and transient, and the filename body is now base64url-encoded so the
+  whole key is genuinely URL-safe. (RFC 9457 `problem+json` error bodies, previously
   deferred here, shipped — every 4xx/5xx is now a problem object.)
 - **`pkg/applog` (~29%) and `pkg/probe` (~58%) stay thin structurally, not for
   want of a test.** `applog` is logger wiring — `Init` mutates global `slog`

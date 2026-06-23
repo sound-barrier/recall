@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/correlate"
 	"recall/pkg/db"
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -259,8 +260,9 @@ func TestResolveMatchKey_TiebreakClosestInTime(t *testing.T) {
 func TestResolveMatchKey_FreshKeyForUntimestamped(t *testing.T) {
 	snap := db.Screenshots{}
 	key, _ := correlate.ResolveMatchKey("manually_renamed.png", &parser.MatchResult{Hero: "lucio"}, snap)
-	if key != "unmatched-manually_renamed.png" {
-		t.Errorf("expected unmatched: prefix, got %q", key)
+	want := match.NewUnmatchedMatchKey("manually_renamed.png").String()
+	if key != want {
+		t.Errorf("got %q, want %q (URL-safe encoded unmatched key)", key, want)
 	}
 }
 

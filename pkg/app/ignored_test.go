@@ -8,6 +8,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 func TestIgnoreScreenshot_RejectsEmptyFilename(t *testing.T) {
@@ -21,10 +22,14 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 	// Seed an unmatched- row AND an ambiguous- row pointing at the
 	// same filename. IgnoreScreenshot must wipe both via
 	// HardDeleteMatch so the Unknown card disappears immediately.
+	// The sentinel keys are now base64url-encoded, so build them via the
+	// constructors rather than hand-concatenating the filename.
+	encU := match.NewUnmatchedMatchKey("sb.png").String()
+	encA := match.NewAmbiguousMatchKey("sb.png").String()
 	fs := &fakeStore{
 		Teams: []db.TeamsRow{
-			{Filename: "sb.png", MatchKey: "unmatched-sb.png"},
-			{Filename: "sb2.png", MatchKey: "ambiguous-sb.png"},
+			{Filename: "sb.png", MatchKey: encU},
+			{Filename: "sb2.png", MatchKey: encA},
 		},
 	}
 	a := app.NewWithStore(fs)
@@ -40,7 +45,7 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 	}
 
 	// Both candidate keys went through HardDeleteMatch.
-	wantCalls := []string{"unmatched-sb.png", "ambiguous-sb.png"}
+	wantCalls := []string{encU, encA}
 	if !reflect.DeepEqual(fs.HardDeleteCalls, wantCalls) {
 		t.Errorf("HardDeleteCalls = %v, want %v", fs.HardDeleteCalls, wantCalls)
 	}

@@ -67,10 +67,12 @@ type Store interface {
 	// ambiguity flag.
 	//
 	// ResolveAmbiguous returns (true, nil) on success, (false, nil)
-	// when there are no candidates to resolve (caller maps to 404).
+	// when there are no candidates to resolve (caller maps to 404). The
+	// caller passes the decoded `filename` (the candidate-table key) since
+	// the sentinel match_key now carries it base64url-encoded.
 	ApplyAmbiguity(filename string, cands []AmbiguousCandidate) error
 	LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandidate, error)
-	ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool, error)
+	ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string) (bool, error)
 
 	// Match-annotation surface — user-curated per-match notes.
 	// SetAnnotation upserts; DeleteAnnotation removes by key; LoadAnnotations

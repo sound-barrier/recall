@@ -88,13 +88,12 @@ func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandid
 	return append([]db.AmbiguousCandidate(nil), cands...), nil
 }
 
-func (f *Fake) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool, error) {
+func (f *Fake) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if !strings.HasPrefix(ambiguousMatchKey, "ambiguous-") {
 		return false, nil
 	}
-	filename := strings.TrimPrefix(ambiguousMatchKey, "ambiguous-")
 	if _, ok := f.Ambiguous[filename]; !ok {
 		return false, nil
 	}

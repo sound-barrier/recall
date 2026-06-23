@@ -3,6 +3,8 @@ package app
 import (
 	"errors"
 	"fmt"
+
+	"recall/pkg/match"
 )
 
 // ErrIgnoreFilenameRequired is the typed sentinel HTTP handlers
@@ -52,8 +54,8 @@ func (a *App) IgnoreScreenshot(filename string) error {
 	seen := map[string]bool{}
 	keys := make([]string, 0, 2+len(tracked))
 	for _, k := range append([]string{
-		"unmatched-" + filename,
-		"ambiguous-" + filename,
+		match.NewUnmatchedMatchKey(filename).String(),
+		match.NewAmbiguousMatchKey(filename).String(),
 	}, tracked...) {
 		if seen[k] {
 			continue

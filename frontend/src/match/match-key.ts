@@ -17,7 +17,8 @@ export interface MatchKey {
   // get swallowed in the parse → render cycle.
   raw: string
   // The portion after the kind prefix — the timestamp for tracked
-  // keys, the screenshot filename for unmatched / ambiguous.
+  // keys; the base64url-encoded filename for unmatched / ambiguous
+  // (the Go side decodes it; the frontend treats it as opaque).
   body: string
 }
 
@@ -72,16 +73,4 @@ export function isUnmatchedMatchKey(s: string): boolean {
 
 export function isTrackedMatchKey(s: string): boolean {
   return s.startsWith('match-')
-}
-
-/**
- * filenameFromMatchKey returns the filename body of an unmatched
- * or ambiguous key, or null otherwise. Convenience wrapper around
- * parseMatchKey for the common "give me the filename" branch.
- */
-export function filenameFromMatchKey(s: string): string | null {
-  const mk = tryParseMatchKey(s)
-  if (!mk) return null
-  if (mk.kind === 'ambiguous' || mk.kind === 'unmatched') return mk.body
-  return null
 }
