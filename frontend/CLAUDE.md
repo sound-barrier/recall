@@ -164,6 +164,23 @@ through `filterList(field)` / `filterSearchStr(field)` helpers to
 satisfy `noUncheckedIndexedAccess` without littering the template
 with `!` or `??`.
 
+**`vue-tsc` is the type-check source of truth — not typescript-eslint.**
+The type-aware ESLint rules run a *separate* TS program (`projectService`)
+that can't fully resolve this codebase's large Pinia setup-store +
+openapi-generated (`@/api`) types, so they disagree with `vue-tsc` (the
+build's real type gate) at those boundaries — reporting "type could not be
+resolved" / phantom-`any` where `vue-tsc` resolves the type correctly. **When
+a type-aware rule flags — or its `--fix` removes — something `vue-tsc`
+accepts, eslint is wrong.** Never `eslint --fix` a sweep of type-aware
+findings, or suppress one, without running `npx vue-tsc --noEmit` first; a
+`--fix` once silently stripped load-bearing `as` casts and broke the build.
+This is why `no-unsafe-*`, `no-unnecessary-type-assertion`, and `require-await`
+are deliberately off (per-rule rationale in `eslint.config.js`); the 16
+enabled type-checked rules are the ones that agree with `vue-tsc`. Corollary:
+**don't export a shared type from a `.vue` `<script>`** — typescript-eslint
+can't resolve a type across the SFC boundary (it reads as an error/`any`
+type); put it in a sibling `.ts` module (e.g. `parse-progress.ts`).
+
 ## Styles
 
 Component-specific styles live in each leaf SFC's own `<style scoped>`
