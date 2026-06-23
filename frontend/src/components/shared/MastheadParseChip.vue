@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 
 const props = defineProps<{
   parseProgress: ParseProgressEvent | null

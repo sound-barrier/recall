@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ParseProgressPanel, { type ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import ParseProgressPanel from '@/components/ingest/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 
 function progress(over: Partial<ParseProgressEvent> = {}): ParseProgressEvent {
   return {

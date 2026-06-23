@@ -30,7 +30,7 @@ export function useAppBoot() {
   onMounted(() => {
     matchesStore.restoreLastParsedAt()
     void appStore.loadVersion()
-    matchesStore.load()
+    void matchesStore.load()
     void matchesStore.loadIgnored()
     void settingsStore.loadScreenshotCandidates()
     GetStartupError()

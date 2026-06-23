@@ -233,7 +233,7 @@ function requestCsvExport(keys: string[]) {
   const wanted = keys.length > 0 ? new Set(keys) : null
   const rows = wanted ? narrowedRecords.value.filter((r) => wanted.has(r.match_key)) : narrowedRecords.value
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-  matchesStore.onExportMatchesCSV(matchesToCSV(rows, ow.heroRole), `recall-matches-${stamp}.csv`)
+  void matchesStore.onExportMatchesCSV(matchesToCSV(rows, ow.heroRole), `recall-matches-${stamp}.csv`)
 }
 
 // Row-density preference for the leaves list. Persisted via

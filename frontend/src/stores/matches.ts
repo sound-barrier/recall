@@ -20,7 +20,7 @@ import {
 } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
-import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'

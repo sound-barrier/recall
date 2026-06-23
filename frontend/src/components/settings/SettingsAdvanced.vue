@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 import SupportedSourcesRow from '@/components/settings/SupportedSourcesRow.vue'
 
 // Advanced collapsible at the bottom of Settings — destructive Clear

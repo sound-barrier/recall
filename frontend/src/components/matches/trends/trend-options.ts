@@ -43,7 +43,7 @@ const INTERACTION = {
   },
 }
 
-function tierLabel(tier: Tier | string): string {
+function tierLabel(tier: Tier): string {
   return tier.charAt(0).toUpperCase() + tier.slice(1)
 }
 
