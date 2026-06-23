@@ -1018,7 +1018,7 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed ambig: %v", err)
 	}
-	ok, err := s.ResolveAmbiguous("ambiguous-sb.png", "match-foo")
+	ok, err := s.ResolveAmbiguous("sb.png", "ambiguous-sb.png", "match-foo")
 	if err != nil {
 		t.Fatalf("ResolveAmbiguous: %v", err)
 	}
@@ -1045,7 +1045,7 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 
 func TestSQLStore_ResolveAmbiguous_MissingReturnsFalse(t *testing.T) {
 	s := openMemory(t)
-	ok, err := s.ResolveAmbiguous("ambiguous-nope.png", "match-foo")
+	ok, err := s.ResolveAmbiguous("nope.png", "ambiguous-nope.png", "match-foo")
 	if err != nil {
 		t.Fatalf("ResolveAmbiguous: %v", err)
 	}
@@ -1056,7 +1056,7 @@ func TestSQLStore_ResolveAmbiguous_MissingReturnsFalse(t *testing.T) {
 
 func TestSQLStore_ResolveAmbiguous_RejectsNonAmbiguousKey(t *testing.T) {
 	s := openMemory(t)
-	ok, err := s.ResolveAmbiguous("match-foo", "match-bar")
+	ok, err := s.ResolveAmbiguous("foo", "match-foo", "match-bar")
 	if err != nil {
 		t.Fatalf("ResolveAmbiguous: %v", err)
 	}

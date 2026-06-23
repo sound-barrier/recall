@@ -1,6 +1,7 @@
 package match
 
 import (
+	"encoding/base64"
 	"errors"
 	"strings"
 )
@@ -9,9 +10,13 @@ import (
 // identity used across the codebase. A match key is one of three
 // shapes:
 //
-//   - `match-<YYYY-MM-DDTHH-MM-SS>`  → KindTracked     (real match)
-//   - `unmatched-<filename>`         → KindUnmatched   (timestamp absent)
-//   - `ambiguous-<filename>`         → KindAmbiguous   (pending resolution)
+//   - `match-<YYYY-MM-DDTHH-MM-SS>`     → KindTracked   (real match)
+//   - `unmatched-<base64url(filename)>` → KindUnmatched (timestamp absent)
+//   - `ambiguous-<base64url(filename)>` → KindAmbiguous (pending resolution)
+//
+// The two sentinel bodies base64url-encode the filename so the whole key
+// is URL-safe (alphanumerics + `-` `_`) and needs no path escaping;
+// Filename() decodes it back.
 //
 // The legacy form used `:` instead of `-` between the kind prefix and
 // the body; a one-time migration in pkg/db.SQLStore rewrote on-disk
@@ -41,7 +46,8 @@ type MatchKey struct {
 	Raw string
 	// Body is the portion of the key past the kind prefix. For
 	// KindTracked this is the ISO-extended timestamp (with `-`
-	// separators); for the other kinds it's the original filename.
+	// separators); for the other kinds it's the base64url-encoded
+	// filename (decode via Filename()).
 	Body string
 }
 
@@ -85,10 +91,19 @@ func (k MatchKey) IsTracked() bool { return k.Kind == KindTracked }
 // not a filename. Callers branch on .Kind / .IsX() first when
 // the semantic matters.
 func (k MatchKey) Filename() string {
-	if k.Kind == KindUnmatched || k.Kind == KindAmbiguous {
+	if k.Kind != KindUnmatched && k.Kind != KindAmbiguous {
+		return ""
+	}
+	// Body is the base64url-encoded filename (URL-safe so the whole key
+	// can be pasted raw into a path). Decode it back. A decode failure
+	// means a malformed or legacy (raw-filename) key — fall back to the
+	// body verbatim so the candidate lookup degrades gracefully rather
+	// than returning empty.
+	dec, err := base64.RawURLEncoding.DecodeString(k.Body)
+	if err != nil {
 		return k.Body
 	}
-	return ""
+	return string(dec)
 }
 
 // NewAmbiguousMatchKey builds an `ambiguous-<filename>` key. The
@@ -97,12 +112,14 @@ func (k MatchKey) Filename() string {
 // wire format in one place — flip the prefix once instead of
 // hunting every call site.
 func NewAmbiguousMatchKey(filename string) MatchKey {
-	return MatchKey{Kind: KindAmbiguous, Raw: "ambiguous-" + filename, Body: filename}
+	enc := base64.RawURLEncoding.EncodeToString([]byte(filename))
+	return MatchKey{Kind: KindAmbiguous, Raw: "ambiguous-" + enc, Body: enc}
 }
 
-// NewUnmatchedMatchKey builds an `unmatched-<filename>` key.
+// NewUnmatchedMatchKey builds an `unmatched-<base64url(filename)>` key.
 func NewUnmatchedMatchKey(filename string) MatchKey {
-	return MatchKey{Kind: KindUnmatched, Raw: "unmatched-" + filename, Body: filename}
+	enc := base64.RawURLEncoding.EncodeToString([]byte(filename))
+	return MatchKey{Kind: KindUnmatched, Raw: "unmatched-" + enc, Body: enc}
 }
 
 // NewTrackedMatchKey builds a `match-<timestamp>` key. The caller

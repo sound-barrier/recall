@@ -55,7 +55,7 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 	if !validResolution(resolvedTo, cands) {
 		return fmt.Errorf("%w: %q", ErrInvalidResolution, resolvedTo)
 	}
-	ok, err := a.store.ResolveAmbiguous(ambiguousMatchKey, resolvedTo)
+	ok, err := a.store.ResolveAmbiguous(mk.Filename(), ambiguousMatchKey, resolvedTo)
 	if err != nil {
 		return err
 	}

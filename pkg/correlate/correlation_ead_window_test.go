@@ -5,6 +5,7 @@ import (
 
 	"recall/pkg/correlate"
 	"recall/pkg/db"
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -133,7 +134,7 @@ func TestResolveMatchKey_AmbiguousMintsSentinelAndReturnsCandidates(t *testing.T
 	key, cands := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}, snap)
-	wantKey := "ambiguous-Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png"
+	wantKey := match.NewAmbiguousMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png").String()
 	if key != wantKey {
 		t.Errorf("expected sentinel %q, got %q", wantKey, key)
 	}

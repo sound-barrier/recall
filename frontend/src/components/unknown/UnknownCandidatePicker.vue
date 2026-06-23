@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { screenshotURL } from '@/match/match-helpers'
-import { filenameFromMatchKey } from '@/match/match-key'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 
@@ -48,7 +47,9 @@ function formatDistance(seconds: number): string {
 // screenshot's filename timestamp (canonical OW "...YYYY.MM.DD - HH.MM.SS.NN_*"),
 // every separator `-` so the key stays URL-safe. null when no timestamp parses.
 function freshKey(): string | null {
-  const filename = filenameFromMatchKey(props.rec.match_key) ?? props.rec.source_files?.[0] ?? ''
+  // The ambiguous screenshot's filename (the key now carries it base64url-encoded,
+  // so read it from the record's source files rather than parsing the match_key).
+  const filename = props.rec.source_files?.[0] ?? ''
   const m = /(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})/.exec(filename)
   return m ? `match-${m[1]}-${m[2]}-${m[3]}T${m[4]}-${m[5]}-${m[6]}` : null
 }

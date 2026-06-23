@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 
 import {
   InvalidMatchKeyError,
-  filenameFromMatchKey,
   isAmbiguousMatchKey,
   isTrackedMatchKey,
   isUnmatchedMatchKey,
@@ -50,17 +49,5 @@ describe('kind predicates', () => {
     expect(isUnmatchedMatchKey('ambiguous-x.png')).toBe(false)
     expect(isTrackedMatchKey('match-2026-01-01T00-00-00')).toBe(true)
     expect(isTrackedMatchKey('unmatched-x.png')).toBe(false)
-  })
-})
-
-describe('filenameFromMatchKey', () => {
-  it('returns the body for ambiguous + unmatched keys', () => {
-    expect(filenameFromMatchKey('ambiguous-foo.png')).toBe('foo.png')
-    expect(filenameFromMatchKey('unmatched-bar.png')).toBe('bar.png')
-  })
-
-  it('returns null for tracked keys + unknown shapes', () => {
-    expect(filenameFromMatchKey('match-2026-01-01T00-00-00')).toBeNull()
-    expect(filenameFromMatchKey('bogus')).toBeNull()
   })
 })

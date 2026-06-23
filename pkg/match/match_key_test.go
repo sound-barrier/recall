@@ -2,6 +2,7 @@ package match_test
 
 import (
 	"errors"
+	"regexp"
 	"testing"
 
 	"recall/pkg/match"
@@ -69,11 +70,11 @@ func TestMatchKey_KindHelpers(t *testing.T) {
 }
 
 func TestMatchKey_Filename(t *testing.T) {
-	a, _ := match.ParseMatchKey("ambiguous-foo.png")
+	a := match.NewAmbiguousMatchKey("foo.png")
 	if got := a.Filename(); got != "foo.png" {
 		t.Errorf("ambiguous.Filename() = %q, want %q", got, "foo.png")
 	}
-	u, _ := match.ParseMatchKey("unmatched-bar.png")
+	u := match.NewUnmatchedMatchKey("bar.png")
 	if got := u.Filename(); got != "bar.png" {
 		t.Errorf("unmatched.Filename() = %q, want %q", got, "bar.png")
 	}
@@ -120,5 +121,37 @@ func TestNewAmbiguousMatchKey_BuildsParseable(t *testing.T) {
 	}
 	if k.Filename() != "foo bar.png" {
 		t.Errorf("Filename() = %q, want %q", k.Filename(), "foo bar.png")
+	}
+}
+
+// TestSentinelKeys_URLSafeRoundTrip is the contract for the URL-safe sentinel
+// encoding: the unmatched/ambiguous keys carry no characters that need
+// percent-encoding in a path, and any filename — spaces, parens, dots, unicode —
+// round-trips through the key via Filename().
+func TestSentinelKeys_URLSafeRoundTrip(t *testing.T) {
+	urlSafe := regexp.MustCompile(`^(unmatched|ambiguous)-[A-Za-z0-9_-]+$`)
+	filenames := []string{
+		"Overwatch 2024.png",
+		"My Screenshot (1).png",
+		"スクリーンショット.png",
+		"plain-file.png",
+	}
+	for _, fn := range filenames {
+		for _, k := range []match.MatchKey{
+			match.NewUnmatchedMatchKey(fn),
+			match.NewAmbiguousMatchKey(fn),
+		} {
+			s := k.String()
+			if !urlSafe.MatchString(s) {
+				t.Errorf("key %q is not URL-safe (want match %v)", s, urlSafe)
+			}
+			parsed, err := match.ParseMatchKey(s)
+			if err != nil {
+				t.Fatalf("re-parse %q: %v", s, err)
+			}
+			if got := parsed.Filename(); got != fn {
+				t.Errorf("Filename() round-trip = %q, want %q", got, fn)
+			}
+		}
 	}
 }

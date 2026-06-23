@@ -35,6 +35,7 @@ import (
 	"testing"
 	"time"
 
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -383,7 +384,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 		// built from; both Y rows share that sentinel because the
 		// SUMMARY adopts via timestamp window.
 		yTeamsFilename := filenameForTS(y, fmt.Sprintf("D%02dyb", i), "teams")
-		yAmbiguousKey := "ambiguous-" + yTeamsFilename
+		yAmbiguousKey := match.NewAmbiguousMatchKey(yTeamsFilename).String()
 
 		specs = append(specs, matchSpec{
 			startTime:    x,
@@ -482,7 +483,7 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 
 		// PERSONAL's filename is what the ambiguous sentinel embeds.
 		personalFilename := filenameForTS(midPersonal, fmt.Sprintf("E%02dp", i), "personal")
-		ambiguousKey := "ambiguous-" + personalFilename
+		ambiguousKey := match.NewAmbiguousMatchKey(personalFilename).String()
 
 		specs = append(specs, matchSpec{
 			startTime:   x,
@@ -848,7 +849,7 @@ func TestCorrelation_Stress_UnparseableFilenames(t *testing.T) {
 			filename:    name,
 			scrType:     "personal",
 			result:      &parser.MatchResult{Hero: hero},
-			expectedKey: "unmatched-" + name,
+			expectedKey: match.NewUnmatchedMatchKey(name).String(),
 		})
 	}
 	if got, want := len(fixtures), 15; got != want {
