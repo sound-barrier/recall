@@ -50,13 +50,20 @@ export default tseslint.config(
     // Type-aware rules — the Go-side errcheck/staticcheck analog — scoped to the
     // typed src program (`src/**`, exactly what tsconfig.json includes). We enable
     // only the genuine bug-catchers: an unhandled promise is a swallowed error
-    // (no-floating-promises ≈ errcheck for async). The noisy type-aware families
-    // are deliberately left off — they fight this codebase's documented reality:
-    //   - no-unsafe-* : the `any` flows from test mocks (vi.mock), the ECharts
-    //     option union, and API boundaries — CLAUDE.md treats those boundary
-    //     casts as legitimate, so hard-failing them is churn, not safety.
-    //   - require-await : ~93 of 94 hits are async-by-convention test helpers
-    //     with no await, not bugs.
+    // (no-floating-promises ≈ errcheck for async). Two families are left off:
+    //   - no-unsafe-* : investigated (≈235 src hits) and left off — they're
+    //     typescript-eslint FALSE POSITIVES, not real `any`. Almost every hit is
+    //     "type that could not be resolved" on a Pinia store access
+    //     (matchesStore.x); vue-tsc resolves those store types fully (a probe
+    //     showed matchesStore.records typed correctly), but typescript-eslint
+    //     can't resolve the large setup-store type under projectService. Ruled
+    //     out: the markRaw bundles (already explicitly typed, e.g. MatchAnchorApi),
+    //     a circular store import (breaking it didn't help), and project-vs-
+    //     projectService (both fail). Enabling would mean suppressing false
+    //     positives, not catching bugs. Genuine boundary `any` (an api/SSE edge)
+    //     is rare — type it case-by-case if it appears.
+    //   - require-await : style, not bugs (an async fn with no await just returns
+    //     an already-resolved promise); ~93 of 94 hits are test helpers.
     // Config files / e2e specs / .cjs stay on the syntactic `recommended` tier.
     files: ['src/**/*.{ts,vue}'],
     rules: {
