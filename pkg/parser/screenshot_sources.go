@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -46,7 +47,7 @@ func unmarshalScreenshotSources(ds *owDataset, bytes []byte) error {
 		return fmt.Errorf("unmarshal: %w", err)
 	}
 	if len(raw.Sources) == 0 {
-		return fmt.Errorf("no sources in YAML")
+		return errors.New("no sources in YAML")
 	}
 	out := make([]ScreenshotSource, 0, len(raw.Sources))
 	for i, s := range raw.Sources {

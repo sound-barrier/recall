@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image"
 	"image/png"
@@ -99,7 +100,7 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	// #nosec G204,G702 -- getTesseractPath() returns a value vetted by
 	// validateTesseractPath at the boundary (safePathChars + canonical
 	// + absolute + basename pinned to tesseract|tesseract.exe).
-	cmd := exec.Command(getTesseractPath(), args...)
+	cmd := exec.CommandContext(context.Background(), getTesseractPath(), args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	HideWindow(cmd) // no-op on macOS/Linux; suppresses console flash on Windows

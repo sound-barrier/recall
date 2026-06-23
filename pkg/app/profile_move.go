@@ -40,7 +40,7 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 // pass through as zero (null).
 func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	if a.profiles == nil {
-		return fmt.Errorf("profiles: not initialized")
+		return errors.New("profiles: not initialized")
 	}
 	proceed, err := a.validateMoveRequest(matchKeys, targetProfile)
 	if err != nil || !proceed {

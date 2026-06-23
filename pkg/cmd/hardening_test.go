@@ -26,7 +26,7 @@ func hardenedMux(t *testing.T) http.Handler {
 func TestHardening_SetsNosniffHeaderOnEveryResponse(t *testing.T) {
 	h := hardenedMux(t)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/matches", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/matches", nil)
 	h.ServeHTTP(rec, req)
 
 	if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
@@ -46,7 +46,7 @@ func TestHardening_OversizeBodyRejected(t *testing.T) {
 	body := `{"match_keys":["` + huge + `"],"queue_type":"role"}`
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/matches/queue", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/matches/queue", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rec, req)
 
@@ -66,7 +66,7 @@ func TestHardening_NormalBodyPassesThrough(t *testing.T) {
 	// rejects oversize payloads). Use a setter that returns 204 on a
 	// valid body.
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/settings/watcher",
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/api/v1/settings/watcher",
 		strings.NewReader(`{"enabled":false}`))
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rec, req)

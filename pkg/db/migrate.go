@@ -131,7 +131,7 @@ func splitVersion(key string) (int, string, error) {
 	// key shape: "NNNN_<name>"
 	idx := strings.Index(key, "_")
 	if idx <= 0 {
-		return 0, "", fmt.Errorf("missing version prefix")
+		return 0, "", errors.New("missing version prefix")
 	}
 	num, err := strconv.Atoi(key[:idx])
 	if err != nil {

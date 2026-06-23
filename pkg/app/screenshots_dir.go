@@ -172,7 +172,7 @@ func validateScreenshotsDir(path string) (string, error) {
 	}
 	info, err := os.Stat(cleaned)
 	if err != nil {
-		return "", fmt.Errorf("%w: %s: %v", ErrInvalidScreenshotsDir, cleaned, err)
+		return "", fmt.Errorf("%w: %s: %w", ErrInvalidScreenshotsDir, cleaned, err)
 	}
 	if !info.IsDir() {
 		return "", fmt.Errorf("%w: %s is not a directory", ErrInvalidScreenshotsDir, cleaned)

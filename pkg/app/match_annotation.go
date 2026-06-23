@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"recall/pkg/db"
@@ -64,7 +63,7 @@ type AnnotationInput struct {
 //     strongly enough to validate client-side.
 func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 	if in.MatchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	leaver := strings.TrimSpace(in.Leaver)
 	if leaver != "" && !validLeavers[leaver] {
@@ -95,7 +94,7 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 // annotation is a no-op, so a stale UI firing twice is safe.
 func (a *App) DeleteMatchAnnotation(matchKey string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	return a.store.DeleteAnnotation(matchKey)
 }

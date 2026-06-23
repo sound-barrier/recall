@@ -17,6 +17,7 @@ import (
 // tests can mix "good" and "bad" files in one directory without writing
 // real PNG bytes.
 func stubParseSingle(t *testing.T, fn func(path string) (*parser.MatchResult, error)) {
+	t.Helper()
 	original := *parser.ParseSingleFunc
 	*parser.ParseSingleFunc = fn
 	t.Cleanup(func() { *parser.ParseSingleFunc = original })
@@ -26,6 +27,7 @@ func stubParseSingle(t *testing.T, fn func(path string) (*parser.MatchResult, er
 // ParseScreenshotsDir's os.ReadDir + extension filter sees them. The
 // actual file contents are irrelevant because parseSingleFunc is stubbed.
 func makeFiles(t *testing.T, names ...string) string {
+	t.Helper()
 	dir := t.TempDir()
 	for _, n := range names {
 		path := filepath.Join(dir, n)

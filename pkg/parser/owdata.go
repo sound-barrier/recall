@@ -234,7 +234,7 @@ func loadInto(ds *owDataset, name string, embedded []byte, fn func(*owDataset, [
 			// User file failed parse — fall back to embedded but
 			// surface the user-side error so the UI can flag it.
 			if errEmb := fn(ds, embedded); errEmb != nil {
-				return fmt.Errorf("%s: user file invalid (%v) and embedded fallback also failed: %w", name, err, errEmb)
+				return fmt.Errorf("%s: user file invalid (%w) and embedded fallback also failed: %w", name, err, errEmb)
 			}
 			return fmt.Errorf("%s: user file invalid, fell back to embedded: %w", name, err)
 		}

@@ -98,7 +98,7 @@ func TestValidateScreenshotsDir_Rejects(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 	defer func() { _ = os.Remove(tmpFile.Name()) }()
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	cases := []struct {
 		in  string

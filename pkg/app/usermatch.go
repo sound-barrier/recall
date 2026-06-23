@@ -184,7 +184,7 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 	if input.PlayedAt != "" {
 		parsed, err := time.Parse(time.RFC3339, input.PlayedAt)
 		if err != nil {
-			return "", db.UserMatchData{}, fmt.Errorf("%w (%v)", ErrInvalidPlayedAt, err)
+			return "", db.UserMatchData{}, fmt.Errorf("%w (%w)", ErrInvalidPlayedAt, err)
 		}
 		played = parsed.UTC()
 	}

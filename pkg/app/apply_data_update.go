@@ -142,7 +142,7 @@ func (a *App) ApplyGameDataUpdate() (DataUpdateResult, error) {
 func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManifest) (DataUpdateResult, error) {
 	dataDir := filepath.Join(appBaseDir(), dataDirName)
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
-		return DataUpdateResult{}, fmt.Errorf("%w: mkdir data: %v", ErrDataUpdateIO, err)
+		return DataUpdateResult{}, fmt.Errorf("%w: mkdir data: %w", ErrDataUpdateIO, err)
 	}
 	snapshot := snapshotDataDir(dataDir)
 
@@ -165,7 +165,7 @@ func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManife
 		manifest.Files[name] = ManifestFile{SHA256: v.sha256, Size: int64(len(v.bytes))}
 	}
 	if err := SaveManifest(manifest); err != nil {
-		return DataUpdateResult{}, fmt.Errorf("%w: write manifest: %v", ErrDataUpdateIO, err)
+		return DataUpdateResult{}, fmt.Errorf("%w: write manifest: %w", ErrDataUpdateIO, err)
 	}
 
 	addedHeroes, removedHeroes := diffRosters(prevHeroes, flattenRoster(parser.HeroesByRole()))
@@ -190,11 +190,11 @@ func fetchAndVerifyMainAssets() (map[string]verifiedAsset, error) {
 	for _, name := range dataYAMLFiles {
 		b, err := getBytes(client, mainAssetURL(name))
 		if err != nil {
-			return nil, fmt.Errorf("%w: fetch %s: %v", ErrDataUpdateMainFetchFailed, name, err)
+			return nil, fmt.Errorf("%w: fetch %s: %w", ErrDataUpdateMainFetchFailed, name, err)
 		}
 		sum, err := getBytes(client, mainAssetURL(name)+".sha256")
 		if err != nil {
-			return nil, fmt.Errorf("%w: fetch %s.sha256: %v", ErrDataUpdateMainFetchFailed, name, err)
+			return nil, fmt.Errorf("%w: fetch %s.sha256: %w", ErrDataUpdateMainFetchFailed, name, err)
 		}
 		if !verifySha256(b, sum) {
 			return nil, &ChecksumError{Asset: name}
@@ -239,14 +239,14 @@ func writeAndRename(dataDir string, verified map[string]verifiedAsset) error {
 	for _, name := range dataYAMLFiles {
 		tmp := filepath.Join(dataDir, name+".tmp")
 		if err := os.WriteFile(tmp, verified[name].bytes, 0o600); err != nil {
-			return fmt.Errorf("%w: write %s.tmp: %v", ErrDataUpdateIO, name, err)
+			return fmt.Errorf("%w: write %s.tmp: %w", ErrDataUpdateIO, name, err)
 		}
 	}
 	for _, name := range dataYAMLFiles {
 		tmp := filepath.Join(dataDir, name+".tmp")
 		final := filepath.Join(dataDir, name)
 		if err := renameFunc(tmp, final); err != nil {
-			return fmt.Errorf("%w: rename %s.tmp: %v", ErrDataUpdateIO, name, err)
+			return fmt.Errorf("%w: rename %s.tmp: %w", ErrDataUpdateIO, name, err)
 		}
 	}
 	return nil

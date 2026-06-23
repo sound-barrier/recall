@@ -1,6 +1,9 @@
 package app
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // ResetForTest restores the install to a single empty "main" profile — the clean
 // slate the real-server Playwright e2e specs reset to before each test. It is
@@ -10,7 +13,7 @@ import "fmt"
 // is absent in production.
 func (a *App) ResetForTest() error {
 	if a.profiles == nil {
-		return fmt.Errorf("profiles: not initialized")
+		return errors.New("profiles: not initialized")
 	}
 	// "main" must be active before we can delete the others (Delete refuses the
 	// active profile) and so we clear the canonical DB.

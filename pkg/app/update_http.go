@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,7 +44,7 @@ func newUpdateClient() *http.Client {
 		Timeout: 5 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
-				return fmt.Errorf("update: stopped after 10 redirects")
+				return errors.New("update: stopped after 10 redirects")
 			}
 			if req.URL.Scheme != "https" {
 				return fmt.Errorf("update: refusing redirect to non-HTTPS %s", req.URL.Redacted())
@@ -60,7 +62,11 @@ func newUpdateClient() *http.Client {
 // stream-without-end. The released YAML files are ~10 KB each, so
 // 1 MB is two orders of magnitude of headroom.
 func getBytes(client *http.Client, url string) ([]byte, error) {
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

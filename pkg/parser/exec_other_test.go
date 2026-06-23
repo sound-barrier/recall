@@ -16,7 +16,7 @@ import (
 // changing behavior.
 
 func TestHideWindow_NoOpOnNonWindows(t *testing.T) {
-	cmd := exec.Command("echo", "hi")
+	cmd := exec.CommandContext(t.Context(), "echo", "hi")
 	parser.HideWindow(cmd)
 	if cmd.SysProcAttr != nil {
 		t.Errorf("HideWindow on non-Windows must not touch SysProcAttr; got %#v", cmd.SysProcAttr)

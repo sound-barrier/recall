@@ -4,7 +4,7 @@
 # Usage: task check-deps   OR   bash scripts/ci/check-deps.sh
 #
 # All pins live in mise.toml: [tools] holds the binary versions (go, node,
-# gosec, wails, typos, ruff, schemathesis) and [env] holds the version STRINGS
+# wails, typos, ruff, schemathesis) and [env] holds the version STRINGS
 # the on-demand npx/pipx invocations interpolate (SPECTRAL_VERSION,
 # HONKIT_VERSION, …). This script parses mise.toml directly — no dependency on
 # the mise binary, so it runs in minimal CI runners too.
@@ -41,7 +41,6 @@ mise_pin() {
 
 SPECTRAL_VERSION=$(mise_pin SPECTRAL_VERSION)
 TYPOS_VERSION=$(mise_pin TYPOS_VERSION)
-GOSEC_VERSION=$(mise_pin GOSEC_VERSION)
 SEMGREP_VERSION=$(mise_pin SEMGREP_VERSION)
 HONKIT_VERSION=$(mise_pin HONKIT_VERSION)
 SCHEMATHESIS_VERSION=$(mise_pin SCHEMATHESIS_VERSION)
@@ -127,9 +126,6 @@ check "Spectral" "$SPECTRAL_VERSION" "$SPECTRAL_LATEST" "mise.toml [env]"
 
 TYPOS_LATEST=$(gh_latest crate-ci/typos)
 check "typos" "$TYPOS_VERSION" "$TYPOS_LATEST" "mise.toml [env]/[tools]"
-
-GOSEC_LATEST=$(gh_latest securego/gosec)
-check "gosec" "$GOSEC_VERSION" "$GOSEC_LATEST" "mise.toml [env]/[tools]"
 
 SEMGREP_LATEST=$(gh_latest semgrep/semgrep)
 check "Semgrep" "$SEMGREP_VERSION" "$SEMGREP_LATEST" "mise.toml [env]/[tools]"

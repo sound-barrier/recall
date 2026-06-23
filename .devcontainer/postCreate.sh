@@ -94,7 +94,6 @@ log "done — tool versions:"
     printf '  lefthook       %s\n' "$(mise exec -- lefthook version)"
     printf '  trivy          %s\n' "$(mise exec -- trivy --version 2>&1 | head -1)"
     printf '  typos          %s\n' "$(mise exec -- typos --version 2>&1 | head -1)"
-    printf '  gosec          %s\n' "$(mise exec -- gosec -version 2>&1 | head -1)"
   } || true
 )
 

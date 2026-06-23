@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 )
 
 // validQueueTypes enumerates the two queue formats Overwatch matches
@@ -26,7 +25,7 @@ var ErrInvalidQueueType = errors.New("invalid queue_type: must be 'role' or 'ope
 // Use ClearMatchQueue to revert to the "queue not set" state.
 func (a *App) SetMatchQueue(matchKey, queueType string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	if !validQueueTypes[queueType] {
 		return ErrInvalidQueueType
@@ -38,7 +37,7 @@ func (a *App) SetMatchQueue(matchKey, queueType string) error {
 // an unset match is a no-op.
 func (a *App) ClearMatchQueue(matchKey string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	return a.store.ClearMatchQueue(matchKey)
 }

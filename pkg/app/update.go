@@ -1,7 +1,9 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -155,7 +157,11 @@ type releaseMeta struct {
 // empty tag — the caller collapses that to an empty UpdateInfo.
 func fetchLatestReleaseMeta() (releaseMeta, bool) {
 	client := newUpdateClient()
-	resp, err := client.Get(releasesURL)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, releasesURL, nil)
+	if err != nil {
+		return releaseMeta{}, false
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return releaseMeta{}, false
 	}

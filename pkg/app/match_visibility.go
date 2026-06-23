@@ -1,6 +1,6 @@
 package app
 
-import "fmt"
+import "errors"
 
 // HideMatch soft-deletes a match. The screenshot rows in the per-type
 // parent tables are untouched, so a re-parse of the same source files
@@ -13,7 +13,7 @@ import "fmt"
 // `hidden_at` timestamp but is otherwise a no-op.
 func (a *App) HideMatch(matchKey string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	return a.store.HideMatch(matchKey)
 }
@@ -22,7 +22,7 @@ func (a *App) HideMatch(matchKey string) error {
 // match that wasn't hidden is a no-op.
 func (a *App) UnhideMatch(matchKey string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	return a.store.UnhideMatch(matchKey)
 }
@@ -33,7 +33,7 @@ func (a *App) UnhideMatch(matchKey string) error {
 // Idempotent: unknown keys complete with no error.
 func (a *App) HardDeleteMatch(matchKey string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	return a.store.HardDeleteMatch(matchKey)
 }

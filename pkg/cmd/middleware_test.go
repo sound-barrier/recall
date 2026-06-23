@@ -33,7 +33,7 @@ func TestScreenshotsMiddleware_ShortCircuitsToHandler(t *testing.T) {
 	mw := cmd.ScreenshotsMiddleware(screenshots)
 	handler := mw(next)
 
-	req := httptest.NewRequest(http.MethodGet, "/_screenshot/match_2026-05-10T22-21-11.png", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/_screenshot/match_2026-05-10T22-21-11.png", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 
@@ -62,7 +62,7 @@ func TestScreenshotsMiddleware_PassesThroughOtherPaths(t *testing.T) {
 		"/_screenshot", // no trailing slash — must NOT match
 	} {
 		t.Run(path, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
 			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 			if got := rr.Header().Get("X-Source"); got != "vite-fallback" {
@@ -87,7 +87,7 @@ func TestScreenshotsMiddleware_PrefixMatchesNestedPaths(t *testing.T) {
 		t.Fatalf("dir-scoped screenshot path leaked to next handler")
 	})
 	handler := cmd.ScreenshotsMiddleware(screenshots)(next)
-	req := httptest.NewRequest(http.MethodGet, "/_screenshot/3/Overwatch_2026-05-10.png", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/_screenshot/3/Overwatch_2026-05-10.png", nil)
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 	if !strings.HasSuffix(got, "/3/Overwatch_2026-05-10.png") {
 		t.Errorf("screenshot handler saw path %q, want suffix /3/Overwatch_2026-05-10.png", got)

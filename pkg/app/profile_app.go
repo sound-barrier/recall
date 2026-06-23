@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -53,7 +54,7 @@ func (a *App) GetProfiles() ProfilesResponse {
 // mapping at the HTTP boundary.
 func (a *App) CreateProfile(name string) error {
 	if a.profiles == nil {
-		return fmt.Errorf("profiles: not initialized")
+		return errors.New("profiles: not initialized")
 	}
 	if err := a.profiles.Create(name); err != nil {
 		return err
@@ -67,7 +68,7 @@ func (a *App) CreateProfile(name string) error {
 // ErrProfileNotFound for unknown names.
 func (a *App) SwitchProfile(name string) error {
 	if a.profiles == nil {
-		return fmt.Errorf("profiles: not initialized")
+		return errors.New("profiles: not initialized")
 	}
 	if !containsProfile(a.profiles.List(), name) {
 		return fmt.Errorf("%w: %q", ErrProfileNotFound, name)
@@ -102,7 +103,7 @@ type SeedTestProfileResponse struct {
 // path, never the active store.
 func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
 	if a.profiles == nil {
-		return SeedTestProfileResponse{}, fmt.Errorf("profiles: not initialized")
+		return SeedTestProfileResponse{}, errors.New("profiles: not initialized")
 	}
 	res, err := SeedProfile(a.profiles, TestProfileName, SeedOptions{
 		N:     testProfileMatches,
@@ -129,7 +130,7 @@ func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
 // new == old.
 func (a *App) RenameProfile(old, newName string) error {
 	if a.profiles == nil {
-		return fmt.Errorf("profiles: not initialized")
+		return errors.New("profiles: not initialized")
 	}
 	if old == newName {
 		return nil
@@ -189,7 +190,7 @@ func (a *App) reopenActiveStore() error {
 // active profile cannot be deleted — callers must SwitchProfile first.
 func (a *App) DeleteProfile(name string) error {
 	if a.profiles == nil {
-		return fmt.Errorf("profiles: not initialized")
+		return errors.New("profiles: not initialized")
 	}
 	return a.profiles.Delete(name)
 }

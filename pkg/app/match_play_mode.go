@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 )
 
 // validPlayModes enumerates the two play-mode states a match can be
@@ -28,7 +27,7 @@ var ErrInvalidPlayMode = errors.New("invalid play_mode: must be 'quickplay' or '
 // Use ClearMatchPlayMode to revert to "follow the parser."
 func (a *App) SetMatchPlayMode(matchKey, playMode string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	if !validPlayModes[playMode] {
 		return ErrInvalidPlayMode
@@ -41,7 +40,7 @@ func (a *App) SetMatchPlayMode(matchKey, playMode string) error {
 // override is a no-op.
 func (a *App) ClearMatchPlayMode(matchKey string) error {
 	if matchKey == "" {
-		return fmt.Errorf("match_key required")
+		return errors.New("match_key required")
 	}
 	return a.store.ClearMatchPlayMode(matchKey)
 }

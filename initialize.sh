@@ -107,7 +107,7 @@ command -v mise >/dev/null 2>&1 || die "mise not on PATH after install. See http
 # ─── Toolchain via mise ──────────────────────────────────────────────
 # Reads mise.toml: go, node, task, wails, the Go/JS/shell linters and
 # formatters (golangci-lint, gofumpt, shfmt, yamllint, hadolint, actionlint,
-# typos, ruff, trivy, lefthook, jq, gosec, govulncheck, deadcode,
+# typos, ruff, trivy, lefthook, jq, govulncheck, deadcode,
 # goimports-reviser, gocyclo) and the pipx SAST/fuzz tools (semgrep,
 # schemathesis). Pinned versions live there — `task check-deps` validates them.
 log "mise trust && mise install (toolchain + linters)…"
