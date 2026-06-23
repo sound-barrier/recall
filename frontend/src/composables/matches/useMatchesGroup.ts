@@ -36,8 +36,9 @@ export interface GroupedSection {
 function sortKey(r: MatchRecord): string {
   // Compose `date + finished_at` so multi-match days break ties by
   // time-of-day, not by parse arrival order. Falls back to
-  // parsed_at when both are missing (undated rows).
-  return `${r.data?.date ?? ''}T${r.data?.finished_at ?? ''}` || (r.parsed_at ?? '')
+  // parsed_at for undated rows (no date) — without the date the time
+  // alone isn't a meaningful sort key.
+  return r.data?.date ? `${r.data.date}T${r.data.finished_at ?? ''}` : (r.parsed_at ?? '')
 }
 
 // Append the year to a short date label only when the date isn't in the

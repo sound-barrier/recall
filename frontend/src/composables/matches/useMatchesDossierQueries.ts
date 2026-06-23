@@ -523,7 +523,7 @@ export function useDossierQueries(
       const { count = 8, windowMonths = 0 } = opts ? toValue(opts) ?? {} : {}
       const cutoff = windowMonths > 0 ? monthsAgoISO(windowMonths) : ''
       const playedKey = (r: MatchRecord) =>
-        `${r.data?.date ?? ''}T${r.data?.finished_at ?? ''}` || (r.parsed_at ?? '')
+        r.data?.date ? `${r.data.date}T${r.data.finished_at ?? ''}` : (r.parsed_at ?? '')
       return records.value
         .filter((r) => {
           if (!cutoff) return true
