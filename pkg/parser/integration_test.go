@@ -16,20 +16,22 @@ import (
 // fixtures and compares both the parser output AND the screenshot-type
 // classification to a sidecar `<filename>.golden.json`.
 //
-// Defaults to scanning the repo-root `testdata/` directory (resolved via
-// the relative path `../../testdata` from this package's working
-// directory, which `go test ./pkg/parser/` sets to `pkg/parser/`).
-// Override with `RECALL_FIXTURE_DIR=/absolute/path` to point at a
-// different set — useful when curating new fixtures from a private
-// screenshot dump.
+// Images default to the recall-testdata submodule (`../../testdata/images`
+// from this package's working dir, which `go test ./pkg/parser/` sets to
+// `pkg/parser/`); their goldens default to the parent `../../testdata`.
+// RECALL_FIXTURE_DIR overrides the image dir (point it at a private
+// screenshot dump to curate new fixtures); RECALL_GOLDEN_DIR overrides the
+// golden dir. Setting RECALL_FIXTURE_DIR alone reads/writes goldens beside
+// the images (single-dir mode — scripts/gen-goldens.sh relies on this).
 //
-// Layout:
+// Layout (committed fixtures):
 //
-//	$RECALL_FIXTURE_DIR/
-//	  some-match.png
+//	$RECALL_GOLDEN_DIR/            (testdata/)
 //	  some-match.png.golden.json   ← {"screenshot_type": "...", "result": {MatchResult}}
-//	  other.png
 //	  other.png.golden.json
+//	$RECALL_FIXTURE_DIR/          (testdata/images/, the submodule)
+//	  some-match.png
+//	  other.png
 //
 // Each golden captures TWO things:
 //   - `screenshot_type` — the classification ScreenshotType(result)
@@ -50,22 +52,29 @@ import (
 //   - The directory has no .png/.jpg fixtures.
 //
 // Adding a new fixture:
-//  1. Drop the PNG into the repo-root `testdata/` directory.
-//  2. `make update-goldens` to generate the `.golden.json`.
-//  3. Eyeball the JSON, then commit both files.
+//  1. Push the PNG to the recall-testdata repo and bump the submodule
+//     (`git submodule update --remote testdata/images`).
+//  2. `task update-goldens` to generate the `.golden.json` in testdata/.
+//  3. Eyeball the JSON, then commit the submodule bump + golden together.
 func TestParseScreenshot_GoldenFiles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping golden-file parser tests in -short mode")
 	}
 
-	dir := os.Getenv("RECALL_FIXTURE_DIR")
-	if dir == "" {
-		// Default to the repo-root testdata/ dir. `go test ./pkg/parser/`
-		// runs with cwd = `pkg/parser/`, so `../../testdata` resolves
-		// to the repo root. The committed fixture set lives there
-		// (see testdata/README.md); when run against any other tree
-		// the test skips cleanly if no PNG fixtures are present.
-		dir = "../../testdata"
+	// Images come from the recall-testdata submodule; their goldens live
+	// one level up in testdata/. Setting RECALL_FIXTURE_DIR alone collapses
+	// to single-dir mode (goldens beside the images) so the ad-hoc
+	// gen-goldens.sh workflow can parse an arbitrary capture folder.
+	imageDir := os.Getenv("RECALL_FIXTURE_DIR")
+	goldenDir := os.Getenv("RECALL_GOLDEN_DIR")
+	switch {
+	case imageDir == "":
+		imageDir = "../../testdata/images"
+		if goldenDir == "" {
+			goldenDir = "../../testdata"
+		}
+	case goldenDir == "":
+		goldenDir = imageDir
 	}
 
 	// Resolve Tesseract early — ParseScreenshot will fail with a generic
@@ -77,9 +86,12 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 
 	update := os.Getenv("RECALL_FIXTURE_UPDATE") != ""
 
-	entries, err := os.ReadDir(dir)
+	entries, err := os.ReadDir(imageDir)
+	if os.IsNotExist(err) {
+		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
+	}
 	if err != nil {
-		t.Fatalf("read fixture dir %q: %v", dir, err)
+		t.Fatalf("read fixture dir %q: %v", imageDir, err)
 	}
 	var pngs []string
 	for _, e := range entries {
@@ -92,13 +104,13 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 		}
 	}
 	if len(pngs) == 0 {
-		t.Skipf("no .png/.jpg fixtures found in %q", dir)
+		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
 	}
 
 	for _, name := range pngs {
 		t.Run(name, func(t *testing.T) {
-			imgPath := filepath.Join(dir, name)
-			goldenPath := filepath.Join(dir, name+".golden.json")
+			imgPath := filepath.Join(imageDir, name)
+			goldenPath := filepath.Join(goldenDir, name+".golden.json")
 
 			got, err := parser.ParseScreenshot(imgPath)
 			if err != nil {

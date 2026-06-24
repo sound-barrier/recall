@@ -34,11 +34,12 @@ pkg/app/screenshot_handler_fuzz_test.go:80:			t.Skip()
 pkg/app/screenshot_handler_fuzz_test.go:99:			t.Skipf("could not construct base request: %v", err)
 
 # pkg/parser/integration_test.go — golden-file OCR tests are gated
-# on a real Tesseract binary + image fixtures + `go test` running
+# on a real Tesseract binary + the recall-testdata image submodule
+# (testdata/images/, via `task fetch-fixtures`) + `go test` running
 # without `-short`. CI runs `-short` so these are skipped there;
-# they run locally via `task test-golden` when contributors update
-# parsers.
-pkg/parser/integration_test.go:58:		t.Skip("skipping golden-file parser tests in -short mode")
-pkg/parser/integration_test.go:75:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
-pkg/parser/integration_test.go:95:		t.Skipf("no .png/.jpg fixtures found in %q", dir)
-pkg/parser/integration_test.go:126:				t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
+# they run locally via `task test` once the submodule is fetched.
+pkg/parser/integration_test.go:61:		t.Skip("skipping golden-file parser tests in -short mode")
+pkg/parser/integration_test.go:84:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
+pkg/parser/integration_test.go:91:		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
+pkg/parser/integration_test.go:107:		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
+pkg/parser/integration_test.go:138:				t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)

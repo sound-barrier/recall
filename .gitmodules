@@ -1,0 +1,3 @@
+[submodule "testdata/images"]
+	path = testdata/images
+	url = https://github.com/sound-barrier/recall-testdata.git

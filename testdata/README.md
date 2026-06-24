@@ -1,17 +1,28 @@
 # Parser golden-file fixtures
 
-Real Overwatch screenshots + sidecar `.golden.json` files that
+Sidecar `.golden.json` files — the expected parser output — that
 `TestParseScreenshot_GoldenFiles` in
 [`pkg/parser/integration_test.go`](../pkg/parser/integration_test.go) runs
 against to catch OCR / parser regressions.
 
+The **screenshot images** live in a separate repo,
+[`sound-barrier/recall-testdata`](https://github.com/sound-barrier/recall-testdata),
+mounted here as a git submodule at `images/` so the binary corpus can grow
+without bloating this repo's history. The goldens stay here as the test
+contract. Run `task fetch-fixtures` (or `git submodule update --init
+testdata/images`) once after cloning to populate `images/`; the golden test
+skips cleanly until you do. A few images are also kept committed at this top
+level — the ones the README, the docs site, and the e2e golden test embed by
+in-repo path (a submodule renders as a bare link on GitHub, not as files).
+
 ## How it works
 
-For each `foo.png` in this directory, the test:
+For each `foo.png` in `images/`, the test:
 
-1. Runs `ParseScreenshot("foo.png")`.
+1. Runs `ParseScreenshot("images/foo.png")`.
 2. Computes the screenshot classification via `parser.ScreenshotType(result)`.
-3. Reads `foo.png.golden.json` from the same directory.
+3. Reads `foo.png.golden.json` from this directory (goldens live here, images
+   in the `images/` submodule).
 4. Fails if either the classification OR the parsed `MatchResult`
    doesn't match.
 
@@ -45,26 +56,28 @@ reasonable.
 
 **Maintenance:** when a `parse_<type>.go` starts populating a new
 `MatchResult` field, add it to the matching `*Golden` struct in
-`pkg/parser/golden.go`, run `make update-goldens`, and commit the
+`pkg/parser/golden.go`, run `task update-goldens`, and commit the
 diff. If you forget, the new field is silently dropped from the
 golden — the test still passes, but the regression coverage on
 that field is invisible.
 
-`go test ./pkg/parser/` picks the directory up automatically (the test
-defaults to `../../testdata` relative to its package dir, which
-resolves to this dir). The test skips cleanly if the directory has no
-PNG files or Tesseract isn't installed.
+`go test ./pkg/parser/` picks the fixtures up automatically: images default to
+`../../testdata/images` (the submodule) and goldens to `../../testdata`,
+relative to the package dir. The test skips cleanly if the submodule isn't
+checked out (run `task fetch-fixtures`) or Tesseract isn't installed.
 
 ## Adding a fixture
 
-1. Drop the PNG here.
-2. From the repo root: `make update-goldens RECALL_FIXTURE_DIR="$PWD/testdata"`
-   (an explicit absolute path is required because the test binary's
-   cwd is `pkg/parser/`; `RECALL_FIXTURE_DIR=testdata` would resolve
-   relative to that and miss this dir).
+1. Add the PNG to the
+   [recall-testdata](https://github.com/sound-barrier/recall-testdata) repo and
+   push, then bump the pinned commit here:
+   `git submodule update --remote testdata/images`.
+2. From the repo root: `task update-goldens` — it reads the images from the
+   submodule and writes each `.golden.json` here (no `RECALL_FIXTURE_DIR`).
 3. **Eyeball the JSON** before committing — confirm the fields
    match what the screenshot shows.
-4. Commit both the PNG and its `.golden.json`.
+4. Commit the submodule bump (`testdata/images`) and the new
+   `.golden.json` together.
 
 ## Finding bugs in your own captures
 
@@ -73,15 +86,16 @@ copying anything into this directory first — point `gen-goldens` at a file
 or a folder and eyeball the JSON it writes next to each image:
 
 ```sh
-make goldens SRC=path/to/screenshot.png   # one file
-make goldens SRC=path/to/folder           # every image in a folder
-scripts/gen-goldens.sh path/to/folder     # same, without make
+task goldens SRC=path/to/screenshot.png   # one file
+task goldens SRC=path/to/folder           # every image in a folder
+scripts/gen-goldens.sh path/to/folder     # same, without go-task
 ```
 
 Compare each `*.golden.json` against what the screenshot shows; anything
 wrong or missing is a parser bug worth reporting. It's the same machinery
-`make update-goldens` uses, so a capture that reads cleanly is ready to be
-dropped in here as a fixture.
+`task update-goldens` uses (pointed at your folder instead of the submodule),
+so a capture that reads cleanly is ready to be added to recall-testdata as a
+fixture.
 
 ## Coverage targets
 
@@ -162,7 +176,8 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
 
 ## Privacy / licensing
 
-The committed PNG files are deliberately curated post-match captures.
+The fixture PNG files (in the recall-testdata submodule, plus the few
+kept committed here) are deliberately curated post-match captures.
 
 If you're considering adding a new fixture and you're not the
 maintainer, open an issue first describing the source. The parser
@@ -180,6 +195,6 @@ pin — a mismatch hard-fails CI with an explicit "re-baseline and
 bump" message.
 
 When that fires (Ubuntu base image rolls forward, Homebrew bumps,
-etc.): re-baseline locally with `make update-goldens
-RECALL_FIXTURE_DIR="$PWD/testdata"`, bump `TESSERACT_VERSION` to the
-new major.minor, and commit both changes together.
+etc.): re-baseline locally with `task update-goldens` (it reads the
+submodule images), bump `TESSERACT_VERSION` to the new major.minor, and
+commit both changes together.

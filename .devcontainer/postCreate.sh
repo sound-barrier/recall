@@ -71,6 +71,12 @@ eval "$(mise activate bash)"
 BASHRC
 fi
 
+# ─── Parser fixture images (recall-testdata submodule) ────────────────
+# The golden-file parser tests read PNG images from testdata/images/; without
+# the submodule they skip rather than guard against OCR regressions.
+log "git submodule update --init testdata/images (parser golden fixtures)"
+(cd "$WORKSPACE" && git submodule update --init testdata/images)
+
 # ─── Frontend deps + git hooks (via mise-managed node/lefthook) ───────
 log "frontend: npm ci"
 (cd "${WORKSPACE}" && mise exec -- bash -c 'cd frontend && npm ci --no-audit --no-fund')
