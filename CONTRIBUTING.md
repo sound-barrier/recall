@@ -131,6 +131,7 @@ echo 'eval "$(mise activate bash)"' >> ~/.bash_profile && source ~/.bash_profile
 **First clone setup:**
 
 ```sh
+git submodule update --init testdata/images   # parser golden-test fixture images (recall-testdata)
 cd frontend && npm ci && cd ..
 task dev                            # generates fresh Wails bindings on first run
 ```
@@ -201,6 +202,7 @@ echo 'eval "$(mise activate bash)"' >> ~/.bashrc && source ~/.bashrc
 **First clone setup:**
 
 ```sh
+git submodule update --init testdata/images   # parser golden-test fixture images (recall-testdata)
 cd frontend && npm ci && cd ..
 task dev                            # generates Wails bindings + opens GTK window
 ```

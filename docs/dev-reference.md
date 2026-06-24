@@ -58,7 +58,8 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task test-all` | `task test` + `task test-e2e`. |
 | `task gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
 | `task typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
-| `task update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
+| `task fetch-fixtures` | Init/update the `recall-testdata` image submodule at `testdata/images/` (the parser golden tests read PNG images from there; they skip cleanly until it's fetched). |
+| `task update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). Reads images from the submodule, writes goldens to `testdata/`; depends on `fetch-fixtures`. |
 | `task goldens SRC=<file-or-dir>` | Generate parser goldens for any screenshot file or folder (not just `testdata/`) to eyeball what the parser extracts and spot bugs. Wraps `scripts/gen-goldens.sh`; isolates a single file so it doesn't touch siblings. |
 | `task seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=…]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. `STYLE=` defaults to `flex` (covers every map + hero); also accepts `one-trick`, `one-role`, or `random`. See "Manual testing with a seeded corpus" below. |
 | `task seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
@@ -119,7 +120,8 @@ only on URL.
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` inside Docker. |
 | `DOCKER` | `docker` | Container runtime binary for `task build-*`. Set to `podman` for Podman. |
 | `RECALL_PPROF` | *(off)* | Mounts `net/http/pprof` under `/debug/pprof/` in server mode. Never expose publicly. |
-| `RECALL_FIXTURE_DIR` | `../../testdata` (from `pkg/parser/`) | `.png` fixture dir for `TestParseScreenshot_GoldenFiles`. Override with an ABSOLUTE path. |
+| `RECALL_FIXTURE_DIR` | `../../testdata/images` (from `pkg/parser/`) | `.png` image dir for `TestParseScreenshot_GoldenFiles` (the `recall-testdata` submodule). Override with an ABSOLUTE path; set alone, goldens are read/written beside the images (single-dir mode). |
+| `RECALL_GOLDEN_DIR` | `../../testdata` (from `pkg/parser/`) | `.golden.json` sidecar dir for `TestParseScreenshot_GoldenFiles`. Override with an ABSOLUTE path. |
 
 ## Helper scripts (`scripts/`)
 
