@@ -204,6 +204,28 @@ fi
 #                                     Nothing to fuzz — it takes no
 #                                     params — and SeedProfile is covered
 #                                     by pkg/app/seed_test.go.
+#   --exclude-path /api/v1/database — GET streams a native SQLite snapshot
+#                                     and PUT restores one; PUT's
+#                                     application/octet-stream body is a
+#                                     raw binary blob (format: binary), so
+#                                     schemathesis can't synthesize a valid
+#                                     .db — every fuzzed body is correctly
+#                                     rejected 422 ("not a valid Recall
+#                                     database"), tripping
+#                                     positive_data_acceptance on a body
+#                                     that's only "spec-valid" in the
+#                                     sense that any bytes match
+#                                     format: binary. Covered
+#                                     deterministically by
+#                                     pkg/cmd/server_backup_test.go.
+#   --exclude-path /api/v1/imports  — POST merges a recall-bundle/v1 ZIP
+#                                     (application/zip, format: binary).
+#                                     Same binary-body limitation —
+#                                     schemathesis reports "Serialization
+#                                     not possible" because it can't
+#                                     generate a ZIP. Covered by
+#                                     pkg/cmd/server_backup_test.go +
+#                                     the e2e bundle round-trip.
 # DELETE methods are no longer excluded — the test server runs in an
 # isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
@@ -218,6 +240,8 @@ schemathesis run \
   --exclude-path '/api/v1/profiles/{name}' \
   --exclude-path '/api/v1/system/data-update' \
   --exclude-path '/api/v1/profiles/test/seed' \
+  --exclude-path /api/v1/database \
+  --exclude-path /api/v1/imports \
   api/openapi.yaml
 
 echo "[ recall ] ✓  API spec ↔ server in sync"
