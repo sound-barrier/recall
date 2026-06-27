@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 
@@ -30,8 +30,16 @@ const props = defineProps<{
   y: number
 }>()
 
+// Defense-in-depth: the server only sends a `src` for a screenshot it verified
+// on disk, but a file can still vanish (deleted/moved) between the list load and
+// the hover. If the image 404s, drop it so the preview never shows a broken
+// thumbnail — and collapse the whole card when there's nothing else to show.
+const imgFailed = ref(false)
+watch(() => props.src, () => { imgFailed.value = false })
+
+const hasThumbnail = computed(() => !!props.src && !imgFailed.value)
 const showProvenance = computed(() => props.source === 'manual' || props.source === 'ocr_edited')
-const show = computed(() => !!props.src || showProvenance.value)
+const show = computed(() => hasThumbnail.value || showProvenance.value)
 
 const styleObj = computed(() => ({
   transform: `translate(${props.x + 18}px, ${props.y + 14}px)`,
@@ -41,7 +49,7 @@ const styleObj = computed(() => ({
 <template>
   <Teleport to="body">
     <div v-if="show" class="leaf-hover-preview" :style="styleObj" aria-hidden="true">
-      <img v-if="src" :src="src" alt="" loading="eager">
+      <img v-if="src && !imgFailed" :src="src" alt="" loading="eager" @error="imgFailed = true">
       <div v-if="showProvenance" class="leaf-hover-prov" data-hover-prov>
         <MatchProvenanceBadge :source="source" :edited-fields="editedFields" />
       </div>

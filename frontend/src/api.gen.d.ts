@@ -1959,6 +1959,17 @@ export interface components {
                 [key: string]: number;
             };
             /**
+             * @description The source filename whose image is actually present on disk and
+             *     best represents the match (SUMMARY, else TEAMS, else any source
+             *     file) — the one the leaf-row hover preview should show. Resolved
+             *     at read time against the live filesystem. Absent when no source
+             *     image exists on disk (a manual match, a data-only import, or a
+             *     screenshot that was deleted or moved); clients must not request a
+             *     `/_screenshot/...` URL for the match in that case.
+             * @example Overwatch Screenshot 2026.05.10 - 22.21.11.79.png
+             */
+            thumbnail_file?: string;
+            /**
              * Format: date-time
              * @description Match-level timestamp (ISO8601) of when the match record
              *     was first inserted into the DB. Stable across subsequent

@@ -23,9 +23,17 @@ type MatchRecord struct {
 	// profile switch). Empty / missing means the dir was unset at
 	// parse time; the client sends `0` to fall back to
 	// `a.settings.ScreenshotsDir`.
-	SourceDirIDs map[string]int64   `json:"source_dir_ids,omitempty"`
-	ParsedAt     string             `json:"parsed_at,omitempty"`
-	Data         parser.MatchResult `json:"data"`
+	SourceDirIDs map[string]int64 `json:"source_dir_ids,omitempty"`
+	// ThumbnailFile is the source filename whose image is actually present
+	// on disk and best represents the match (SUMMARY, else TEAMS, else any
+	// source file) — the one the leaf-row hover preview should show. Empty
+	// when no source image exists on disk (a manual match, a data-only
+	// import, or a screenshot that was deleted/moved), so the frontend
+	// never requests a `/_screenshot/...` URL it knows will 404. Resolved
+	// at read time against the live filesystem, never stored.
+	ThumbnailFile string             `json:"thumbnail_file,omitempty"`
+	ParsedAt      string             `json:"parsed_at,omitempty"`
+	Data          parser.MatchResult `json:"data"`
 	// Source is this record's provenance: SourceOCR (parsed from
 	// screenshots only), SourceOCREdited (parsed, then user-corrected via
 	// the override layer), or SourceManual (hand-entered; no screenshot

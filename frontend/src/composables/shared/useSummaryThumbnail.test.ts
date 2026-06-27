@@ -2,40 +2,24 @@ import { describe, it, expect } from 'vitest'
 import { summaryThumbnailURL } from '@/composables/shared/useSummaryThumbnail'
 
 describe('summaryThumbnailURL', () => {
-  it('returns null when source_files is missing or empty', () => {
+  it('returns null when there is no on-disk thumbnail file', () => {
+    // No thumbnail_file at all (manual match / data-only import / deleted file).
     expect(summaryThumbnailURL({} as never)).toBeNull()
-    expect(summaryThumbnailURL({ source_files: [] } as never)).toBeNull()
+    expect(summaryThumbnailURL({ thumbnail_file: '' } as never)).toBeNull()
+    // Source files exist but none resolved to a real image on disk.
+    expect(summaryThumbnailURL({ source_dir_ids: { 'a.png': 2 } } as never)).toBeNull()
   })
 
-  it('prefers a SUMMARY-classified file over later sources', () => {
+  it('builds the URL from the server-chosen thumbnail_file + its dir-id', () => {
     const rec = {
-      source_files: ['a.png', 'b.png', 'c.png'],
-      source_types: { 'a.png': 'teams', 'b.png': 'summary', 'c.png': 'personal' },
+      thumbnail_file: 'b.png',
       source_dir_ids: { 'a.png': 1, 'b.png': 2, 'c.png': 3 },
     }
     expect(summaryThumbnailURL(rec as never)).toBe('/_screenshot/2/b.png')
   })
 
-  it('falls back to SCOREBOARD when no SUMMARY exists', () => {
-    const rec = {
-      source_files: ['a.png', 'b.png'],
-      source_types: { 'a.png': 'personal', 'b.png': 'teams' },
-      source_dir_ids: { 'a.png': 1, 'b.png': 2 },
-    }
-    expect(summaryThumbnailURL(rec as never)).toBe('/_screenshot/2/b.png')
-  })
-
-  it('falls back to the first source file when nothing is classified', () => {
-    const rec = {
-      source_files: ['x.png', 'y.png'],
-      source_types: {},
-      source_dir_ids: { 'x.png': 7 },
-    }
-    expect(summaryThumbnailURL(rec as never)).toBe('/_screenshot/7/x.png')
-  })
-
   it('defaults dir-id to 0 when source_dir_ids is missing the file', () => {
-    const rec = { source_files: ['only.png'] }
+    const rec = { thumbnail_file: 'only.png' }
     expect(summaryThumbnailURL(rec as never)).toBe('/_screenshot/0/only.png')
   })
 })

@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
+import { nextTick } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import type { MatchRecord } from '@/api'
@@ -46,5 +47,25 @@ describe('LeafHoverPreview', () => {
     mountPreview({ src: '/_screenshot/foo.png', source: 'ocr' })
     expect(document.body.querySelector('.leaf-hover-preview')).not.toBeNull()
     expect(document.body.querySelector('[data-hover-prov]')).toBeNull()
+  })
+
+  it('drops the thumbnail and collapses when the image fails to load', async () => {
+    mountPreview({ src: '/_screenshot/vanished.png', source: 'ocr' })
+    const img = document.body.querySelector<HTMLImageElement>('.leaf-hover-preview img')
+    expect(img).not.toBeNull()
+    img!.dispatchEvent(new Event('error'))
+    await nextTick()
+    // No broken image, and nothing else to show → the whole card is gone.
+    expect(document.body.querySelector('.leaf-hover-preview img')).toBeNull()
+    expect(document.body.querySelector('.leaf-hover-preview')).toBeNull()
+  })
+
+  it('keeps the provenance badge when an edited match image fails to load', async () => {
+    mountPreview({ src: '/_screenshot/vanished.png', source: 'ocr_edited', editedFields: ['data.map'] })
+    document.body.querySelector<HTMLImageElement>('.leaf-hover-preview img')!.dispatchEvent(new Event('error'))
+    await nextTick()
+    expect(document.body.querySelector('.leaf-hover-preview img')).toBeNull()
+    // The card stays because the provenance badge still has something to show.
+    expect(document.body.querySelector('[data-hover-prov]')).not.toBeNull()
   })
 })
