@@ -56,6 +56,7 @@ func (a *App) GetMatchResults() ([]match.MatchRecord, error) {
 		aggregate.InferSoleHeroPercent(&recs[i].Data)
 		aggregate.InferResultFromRank(&recs[i].Data)
 	}
+	a.attachThumbnails(recs)
 	return recs, nil
 }
 

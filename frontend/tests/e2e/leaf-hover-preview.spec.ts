@@ -18,11 +18,22 @@ import { test, expect } from './_fixtures'
 const KEY = 'match-2026-05-10T22-00-00'
 const SUMMARY_FILE = `${KEY}_summary.png`
 
+// A real, decodable 1×1 PNG. An invalid stub (e.g. just the PNG signature)
+// makes the browser fire `error` on the <img>, which the preview now treats as
+// a missing screenshot and hides — so the bytes must actually decode.
+const STUB_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+)
+
 function record(matchKey: string) {
   return {
     match_key: matchKey,
     source_files: [SUMMARY_FILE],
     source_types: { [SUMMARY_FILE]: 'summary' },
+    // The server only sends thumbnail_file when the image exists on disk; the
+    // hover preview renders nothing without it.
+    thumbnail_file: SUMMARY_FILE,
     data: {
       map: 'rialto',
       playlist: 'competitive',
@@ -51,13 +62,14 @@ test.describe('leaf-row hover preview', () => {
         body: JSON.stringify([record(KEY)]),
       })
     })
-    // The screenshot URL is served by the host's ScreenshotHandler;
-    // a 200 with an empty PNG body is enough for the <img> to attach.
+    // The screenshot URL is served by the host's ScreenshotHandler; return a
+    // real PNG so the <img> decodes (an undecodable stub would fire `error`,
+    // which the preview now treats as a missing screenshot).
     await page.route('**/_screenshot/**', async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: 'image/png',
-        body: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        body: STUB_PNG,
       })
     })
 
@@ -73,6 +85,29 @@ test.describe('leaf-row hover preview', () => {
     await expect(img).toHaveAttribute('src', new RegExp(SUMMARY_FILE))
   })
 
+  test('a match with no on-disk screenshot shows no preview and never requests one', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      // No thumbnail_file → the server found no on-disk image for this match
+      // (a data-only import / deleted screenshot).
+      const rec = record(KEY) as Record<string, unknown>
+      delete rec.thumbnail_file
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([rec]) })
+    })
+    let screenshotRequested = false
+    await page.route('**/_screenshot/**', async (route: Route) => {
+      screenshotRequested = true
+      await route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await page.locator('.leaf-row').first().hover()
+
+    // No thumbnail appears, and the frontend never even tried to fetch one.
+    await expect(page.locator('.leaf-hover-preview img')).toHaveCount(0)
+    expect(screenshotRequested).toBe(false)
+  })
+
   test('mouseleave clears the preview', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
@@ -82,7 +117,7 @@ test.describe('leaf-row hover preview', () => {
       })
     })
     await page.route('**/_screenshot/**', async (route: Route) => {
-      await route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from([]) })
+      await route.fulfill({ status: 200, contentType: 'image/png', body: STUB_PNG })
     })
 
     await page.goto('/')
