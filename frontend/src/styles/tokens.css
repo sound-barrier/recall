@@ -113,6 +113,15 @@
   --type-display-sm: 1.85rem;
   --type-display-md: 2.5rem;
   --type-display-lg: 3.5rem;
+
+  /* Layout width. --content-max drives the page container: it stays at the
+     1140 floor at the default window size, then grows to a 1600 ceiling as the
+     window is enlarged/maximized so data-dense views use the space instead of
+     stranding a narrow column in empty gutters (≈1140 at 1440vw, ≈1532 at
+     1920, capped 1600 from ~2000 up). --content-measure caps text-heavy views
+     (Settings, Parse) back to a readable column while the container is wide. */
+  --content-max: clamp(1140px, calc(85vw - 100px), 1600px);
+  --content-measure: 1180px;
   --duration-fast: 140ms;
   --duration-med:  200ms;
   --duration-slow: 280ms;

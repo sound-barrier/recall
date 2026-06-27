@@ -79,7 +79,12 @@ main#main-content {
 .container {
   position: relative;
   z-index: 1;
-  max-width: 1140px;
+
+  /* Grows from the 1140 floor toward a 1600 ceiling on large/maximized
+     windows (see --content-max in tokens.css). Uniform across views so the
+     masthead doesn't change width when switching tabs; text-heavy views cap
+     their own inner content via --content-measure. */
+  max-width: var(--content-max);
   margin: 0 auto;
   padding: 2.4rem 1.6rem 4rem;
 }

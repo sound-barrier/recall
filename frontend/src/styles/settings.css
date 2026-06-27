@@ -9,6 +9,19 @@
   animation: view-fade-in var(--duration-med) var(--easing-out) both;
 }
 
+/* Text-heavy views (Settings + Parse) keep a readable column even when the
+   page container grows on a maximized window — labels/controls shouldn't
+   stretch to 1600. Left-aligned (not centered) so the column's left edge stays
+   flush with the masthead and doesn't drift inward as the window widens; the
+   extra width falls on the right. Scoped to these two panels by id, NOT
+   `.settings`, because the Unknown panel shares that class but is data-dense
+   and SHOULD use the full width. */
+#panel-settings,
+#panel-ingest {
+  max-width: var(--content-measure);
+  margin-inline: 0;
+}
+
 /* .settings-sub moved to SettingsView.vue */
 
 .settings-intro {
