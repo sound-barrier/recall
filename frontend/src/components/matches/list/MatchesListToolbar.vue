@@ -208,6 +208,13 @@ const emit = defineEmits<{
   display: inline-flex;
   gap: 0.5rem;
   align-items: center;
+
+  /* Wrap onto extra rows (right-aligned) when the controls can't fit beside the
+     title — otherwise this group, sitting on the right of a space-between row,
+     gets shrunk below its content width and the buttons spill past the members
+     panel's right border (visible on a maximized laptop, ~1440-1650px wide). */
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* Primary "create" affordance — accent fill so it reads as the one action
