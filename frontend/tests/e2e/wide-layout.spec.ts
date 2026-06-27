@@ -17,13 +17,22 @@ async function widthOf(page: import('@playwright/test').Page, selector: string):
 }
 
 test.describe('wide-window layout', () => {
-  test('the content container grows toward the ceiling on a wide window', async ({ page }) => {
-    await page.setViewportSize({ width: 2000, height: 1200 })
+  test('the content container grows past 1140 on a maximized 1080p window', async ({ page }) => {
+    // 1080p (the most common display) maximized — set by the clamp slope, not
+    // the ceiling: ~1532, comfortably past the 1140 floor.
+    await page.setViewportSize({ width: 1920, height: 1080 })
     await page.goto('/')
-    // Matches is the default landing view; the container fills toward 1600.
     const container = await widthOf(page, '.container')
-    expect(container).toBeGreaterThan(1400)
-    expect(container).toBeLessThanOrEqual(1620)
+    expect(container).toBeGreaterThan(1450)
+    expect(container).toBeLessThan(1600)
+  })
+
+  test('a 1440p-class window reaches the wider ceiling (not stranded at 1600)', async ({ page }) => {
+    await page.setViewportSize({ width: 2560, height: 1440 })
+    await page.goto('/')
+    const container = await widthOf(page, '.container')
+    expect(container).toBeGreaterThanOrEqual(1700)
+    expect(container).toBeLessThanOrEqual(1780)
   })
 
   test('the text-heavy Settings view stays capped at a readable measure', async ({ page }) => {
