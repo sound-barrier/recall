@@ -18,8 +18,9 @@ function mountWith(last_checked_at: string) {
   setActivePinia(pinia)
   const appStore = useAppStore()
   appStore.updateInfo = { checked: true, current: '1.0.0', latest: '1.0.0', last_checked_at } as unknown as UpdateInfo
-  // Spy before mount — the component destructures checkForUpdates at setup.
-  const checkSpy = vi.spyOn(appStore, 'checkForUpdates').mockResolvedValue(undefined)
+  // Spy before mount — the component destructures openAbout at setup. "Check
+  // now" opens About (the update hub), which runs the check.
+  const checkSpy = vi.spyOn(appStore, 'openAbout').mockImplementation(() => {})
   const wrapper = mount(UpdateReminderBanner, { global: { plugins: [pinia] } })
   return { wrapper, appStore, checkSpy }
 }
@@ -37,7 +38,7 @@ describe('UpdateReminderBanner', () => {
     expect(wrapper.text()).toContain("haven't checked")
   })
 
-  it('drives the app-store update check when "Check now" is clicked', async () => {
+  it('opens About (the update hub) when "Check now" is clicked', async () => {
     const { wrapper, checkSpy } = mountWith(isoDaysAgo(100))
     await wrapper.find('[data-update-reminder-check]').trigger('click')
     expect(checkSpy).toHaveBeenCalledOnce()

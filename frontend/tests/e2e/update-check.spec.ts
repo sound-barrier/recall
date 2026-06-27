@@ -1,11 +1,11 @@
 /**
- * Masthead update-check button.
+ * About dialog — the update hub (Chrome/Firefox model).
  *
- * The "↑ update to vX.Y.Z" pill regressed when the masthead got
- * rewired — the GitHub releases roundtrip stopped firing on mount.
- * The replacement is intentional: a user-triggered "Check for
- * updates" button. Clicking fires GET /api/v1/system/update and
- * swaps the button for the appropriate result state.
+ * There's no standalone "Check for updates" button anymore: choosing
+ * About Recall opens the dialog and runs the GitHub releases check
+ * right there. Off macOS the entry point is the masthead ⋮ menu;
+ * opening About must NOT fire on mount (the boot path stays off the
+ * network).
  *
  * Spec mocks the server endpoints via page.route() so the network
  * shape stays scripted regardless of what the local server is
@@ -14,6 +14,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { openAbout } from './_menu'
 
 async function mockVersion(page: import('@playwright/test').Page, version: string) {
   await page.route('**/api/v1/system/version', async (route: Route) => {
@@ -60,8 +61,8 @@ async function mockUpdate(page: import('@playwright/test').Page, payload: {
   })
 }
 
-test.describe('masthead — Check for updates button', () => {
-  test('renders "Check for updates" by default and does NOT auto-fire on mount', async ({ page }) => {
+test.describe('application menu — About / update check', () => {
+  test('the ⋮ menu is present and About does NOT fire the update check on mount', async ({ page }) => {
     let updateCalls = 0
     await mockVersion(page, '0.3.0')
     await page.route('**/api/v1/system/update', async (route: Route) => {
@@ -77,13 +78,17 @@ test.describe('masthead — Check for updates button', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('[data-update-check-trigger]')).toBeVisible()
-    await expect(page.locator('[data-update-check-trigger]')).toHaveText(/check for updates/i)
+    await expect(page.getByRole('button', { name: 'Application menu' })).toBeVisible()
     await page.waitForTimeout(300)
     expect(updateCalls).toBe(0)
+
+    // Opening About runs the check (Chrome's "About" auto-checks on open).
+    await openAbout(page)
+    await expect(page.locator('[data-about-modal]')).toBeVisible()
+    await expect.poll(() => updateCalls).toBeGreaterThan(0)
   })
 
-  test('clicking the trigger opens the modal and renders an ALL CURRENT result', async ({ page }) => {
+  test('About opens with an ALL CURRENT result', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       checked: true, dev_build: false, available: false,
@@ -92,13 +97,12 @@ test.describe('masthead — Check for updates button', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
-    // Modal opens with the result.
-    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await openAbout(page)
+    await expect(page.locator('[data-about-modal]')).toBeVisible()
     await expect(page.getByText(/all current/i)).toBeVisible()
   })
 
-  test('renders the diff manifest and an Apply button when game data is behind', async ({ page }) => {
+  test('About renders the diff manifest and an Apply button when game data is behind', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       checked: true, dev_build: false, available: true,
@@ -114,15 +118,15 @@ test.describe('masthead — Check for updates button', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
-    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await openAbout(page)
+    await expect(page.locator('[data-about-modal]')).toBeVisible()
     const manifest = page.locator('[data-update-check-manifest]')
     await expect(manifest).toContainText(/Phoenix/)
     await expect(manifest).toContainText(/Cascade/)
     await expect(page.locator('[data-update-check-apply]')).toBeEnabled()
   })
 
-  test('renders dev-build context with release-notes excerpt', async ({ page }) => {
+  test('About renders dev-build context with release-notes excerpt', async ({ page }) => {
     await mockVersion(page, '0.3.0-dev')
     await mockUpdate(page, {
       checked: true, dev_build: true, available: false,
@@ -132,8 +136,8 @@ test.describe('masthead — Check for updates button', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
-    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await openAbout(page)
+    await expect(page.locator('[data-about-modal]')).toBeVisible()
     await expect(page.getByText('Test release notes line')).toBeVisible()
   })
 })

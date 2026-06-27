@@ -56,32 +56,42 @@ export const useAppStore = defineStore('app', () => {
     errorRetry.value = null
   }
 
-  // ── Version + user-pulled update check ────────────────────────────
+  // ── Version + About (the update hub) ──────────────────────────────
+  // Modeled on Chrome/Firefox: the update check lives inside About, not as a
+  // standalone affordance. `openAbout` opens the dialog and kicks the check;
+  // the dialog renders version/license/links plus the result.
   const appVersion = ref('')
   const updateInfo = ref<UpdateInfo | null>(null)
-  // Gates the masthead "Check for updates" button while the GitHub
-  // releases roundtrip is in flight. The check is user-triggered (NOT on
-  // mount) so metered/locked-down setups don't pay for a lookup they
-  // didn't ask for.
+  // Gates the About dialog's update section while the GitHub releases
+  // roundtrip is in flight. The check is user-triggered (NOT on mount) so
+  // metered/locked-down setups don't pay for a lookup they didn't ask for.
   const updateCheckBusy = ref(false)
-  const updateCheckModalOpen = ref(false)
+  const aboutOpen = ref(false)
 
   async function loadVersion() {
     try { appVersion.value = await GetVersion() } catch (_) { /* leave blank */ }
   }
 
-  // User-triggered release check. Idempotent — re-clicks in flight are
-  // no-ops; re-clicks after a result silently replace updateInfo. Opens
-  // the modal so the result is visible regardless of which branch lands.
+  // Open the About dialog and run the release check (Chrome's "About" auto-
+  // checks on open). The dialog is the single entry point now that the
+  // standalone masthead button is gone.
+  function openAbout() {
+    aboutOpen.value = true
+    void checkForUpdates()
+  }
+  function closeAbout() { aboutOpen.value = false }
+
+  // GitHub release check. Idempotent — re-runs in flight are no-ops; re-runs
+  // after a result silently replace updateInfo. Does NOT open the dialog
+  // itself (openAbout owns that), so the About dialog can offer a re-check.
   async function checkForUpdates() {
-    updateCheckModalOpen.value = true
     if (updateCheckBusy.value) return
     updateCheckBusy.value = true
     try {
       const u = await CheckForUpdate()
       if (u.checked) updateInfo.value = u
     } catch (_) {
-      // Silent — the modal shows the cached result or a network-failure
+      // Silent — the dialog shows the cached result or a network-failure
       // message via its !info branch.
     } finally {
       updateCheckBusy.value = false
@@ -111,8 +121,10 @@ export const useAppStore = defineStore('app', () => {
     appVersion,
     updateInfo,
     updateCheckBusy,
-    updateCheckModalOpen,
+    aboutOpen,
     loadVersion,
+    openAbout,
+    closeAbout,
     checkForUpdates,
     dataLocation,
     startupError,

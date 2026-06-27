@@ -1,8 +1,8 @@
 /**
  * Reference-data-gap "Fixed in v<X>" CTA.
  *
- * When the user clicks "Check for updates" in the masthead and the
- * upcoming release would recognise an OCR'd hero/map name currently
+ * When the user opens About (the update hub) and the upcoming
+ * release would recognise an OCR'd hero/map name currently
  * sitting in the Unknown tab's reference-data-gaps section, each
  * gap-card surfaces a "Fixed in v<X>" CTA linking to the release.
  *
@@ -14,6 +14,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { openAbout } from './_menu'
 
 const gap = (key: string, heroRaw: string, mapRaw: string | null) => ({
   match_key:    key,
@@ -55,11 +56,9 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
     })
     await page.goto('/')
     await page.locator('#tab-unknown').click()
-    // Click the masthead "Check for updates" button so updateInfo
-    // hydrates. The button copy changes after the click — locator by
-    // a stable test ID would be cleaner, but the unique title works
-    // for this RED test.
-    await page.getByRole('button', { name: 'Check for updates' }).click()
+    // Open About (the update hub) so updateInfo hydrates — the gap CTA
+    // reads the upcoming-roster fields off that response.
+    await openAbout(page)
     // CTA surfaces on the gap card.
     const cta = page.locator('[data-fix-cta-key="miya"]')
     await expect(cta).toBeVisible()
@@ -88,7 +87,7 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
     })
     await page.goto('/')
     await page.locator('#tab-unknown').click()
-    await page.getByRole('button', { name: 'Check for updates' }).click()
+    await openAbout(page)
     // No CTA element for this card.
     await expect(page.locator('[data-fix-cta-key="miya"]')).toHaveCount(0)
     // But the section's existing "wait for the next release" copy is

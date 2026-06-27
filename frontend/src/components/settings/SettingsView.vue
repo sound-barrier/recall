@@ -4,13 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
-import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
-import SettingsAppearance from '@/components/settings/SettingsAppearance.vue'
-import SettingsBackupRestore from '@/components/settings/SettingsBackupRestore.vue'
-import SettingsCalendar from '@/components/settings/SettingsCalendar.vue'
-import SettingsEngine from '@/components/settings/SettingsEngine.vue'
-import SettingsFolders from '@/components/settings/SettingsFolders.vue'
-import SettingsProfiles from '@/components/settings/SettingsProfiles.vue'
+import SettingsSections from '@/components/settings/SettingsSections.vue'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
 
 // SettingsView — every knob a user might want to touch, sorted by
@@ -35,69 +29,24 @@ import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker
 // source picker from settings, export/import/clear/reparse/ignored from matches,
 // dataLocation + nav from app. The sub-section components keep their own prop
 // contracts — this view binds them from the store values.
+// The seven configuration sections live in SettingsSections (shared with the
+// Settings dialog). This view adds the intro hero + the first-run "point Recall
+// at your screenshots" CTA around them, so it only reads the state those need.
 const appStore = useAppStore()
-const matchesStore = useMatchesStore()
 const settingsStore = useSettingsStore()
 const { goToView } = appStore
-const { dataLocation } = storeToRefs(appStore)
 const {
   screenshotsDir,
-  watchEnabled,
-  themeMode,
-  weekStart,
   probing,
   probeMessage,
   probeStatus,
   probeTried,
-  tesseractReady,
-  tesseractSupported,
   tesseractStatus,
-  tesseractPickerBusy,
-  tesseractProbing,
-  tesseractProbeMessage,
-  tesseractProbeStatus,
-  tesseractProbeTried,
   screenshotCandidates,
 } = storeToRefs(settingsStore)
-const {
-  pickDir,
-  detectDir,
-  revealDir,
-  resetDir,
-  setTheme,
-  setWeekStart,
-  pickTesseractBinary,
-  resetTesseractPath,
-  detectTesseractBinary,
-  pickDetectedSource,
-} = settingsStore
-const {
-  parseBusy,
-  backingUp,
-  restoring,
-  restoreArmed,
-  importingMatches,
-  backupStatus,
-  clearConfirm,
-  clearingDB,
-  ignoredCount,
-} = storeToRefs(matchesStore)
-const {
-  backup,
-  armRestore,
-  cancelRestore,
-  restore,
-  importMatches,
-  armClear,
-  cancelClear,
-  onClearDatabase,
-  openIgnoredPanel,
-  onReParseAll,
-} = matchesStore
+const { pickDir, pickDetectedSource } = settingsStore
+const { parseBusy } = storeToRefs(useMatchesStore())
 const platform = computed(() => tesseractStatus.value?.platform ?? '')
-const matchedCount = computed(() => matchesStore.records.length)
-const unknownCount = computed(() => matchesStore.unknownRecords.length)
-const reparsing = parseBusy
 
 // Probe-chip dismissal — local-only transient UI noise. Reset whenever a fresh
 // probeMessage lands so a second Detect click re-opens the chip.
@@ -183,76 +132,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
       </details>
     </div>
 
-    <SettingsFolders
-      :screenshots-dir="screenshotsDir"
-      :watch-enabled="watchEnabled"
-      :parse-busy="parseBusy"
-      :data-location="dataLocation"
-      :probing="probing"
-      :probe-message="probeMessage"
-      :probe-status="probeStatus"
-      :probe-tried="probeTried"
-      @pick-screenshots-dir="pickDir"
-      @detect-screenshots-dir="detectDir"
-      @reveal-screenshots-dir="revealDir"
-      @reset-screenshots-dir="resetDir"
-    />
-
-    <SettingsEngine
-      :tesseract-ready="tesseractReady"
-      :tesseract-supported="tesseractSupported"
-      :tesseract-status="tesseractStatus"
-      :tesseract-picker-busy="tesseractPickerBusy"
-      :tesseract-probing="tesseractProbing"
-      :tesseract-probe-message="tesseractProbeMessage"
-      :tesseract-probe-status="tesseractProbeStatus"
-      :tesseract-probe-tried="tesseractProbeTried"
-      @pick-tesseract="pickTesseractBinary"
-      @reset-tesseract="resetTesseractPath"
-      @detect-tesseract="detectTesseractBinary"
-    />
-
-    <SettingsAppearance
-      :theme-mode="themeMode"
-      @set-theme="setTheme"
-    />
-
-    <SettingsCalendar
-      :week-start="weekStart"
-      @set-week-start="setWeekStart"
-      @go-to-view="goToView"
-    />
-
-    <SettingsProfiles />
-
-    <SettingsBackupRestore
-      :backing-up="backingUp"
-      :restoring="restoring"
-      :restore-armed="restoreArmed"
-      :importing-matches="importingMatches"
-      :status="backupStatus"
-      :matched-count="matchedCount"
-      :unknown-count="unknownCount"
-      @backup="backup"
-      @arm-restore="armRestore"
-      @restore="restore"
-      @cancel-restore="cancelRestore"
-      @import-matches="importMatches"
-    />
-
-    <SettingsAdvanced
-      :clearing-d-b="clearingDB"
-      :clear-confirm="clearConfirm"
-      :matched-count="matchedCount"
-      :unknown-count="unknownCount"
-      :ignored-count="ignoredCount"
-      :reparsing="reparsing"
-      @arm-clear="armClear"
-      @cancel-clear="cancelClear"
-      @clear-database="onClearDatabase"
-      @open-ignored-panel="openIgnoredPanel"
-      @re-parse-all="onReParseAll"
-    />
+    <SettingsSections />
   </section>
 </template>
 
@@ -397,44 +277,10 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
    into that SFC's own \3c style scoped> block. Theme-swatch +
    weekstart styles live with their respective Settings* panels. */
 
-/* ─── Tactical-frame motif on settings-section ────────────── */
-
-/* Tiny accent registration marks at the bottom-left of each
-   settings-section block. The orange tick at the right of the
-   section-header lives in app.css; this complements it at the
-   opposite corner without re-stating the section divider. Empty
-   gutters now carry brand presence rather than feeling sparse. */
-.settings-section {
-  position: relative;
-}
-
-/* 1px hairline above each section heading so the long Settings
-   page chunks into clear bands instead of one continuous stream
-   of rows. First section's hairline is suppressed so the page
-   doesn't double up against the top of the panel. */
-.settings-section + .settings-section {
-  margin-top: 1.4rem;
-  padding-top: 1.4rem;
-  border-top: 1px solid var(--border-soft, var(--border));
-}
-
-.settings-section::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: -10px;
-  width: 6px;
-  height: 6px;
-  background: var(--brand-gray);
-  transform: rotate(45deg);
-  opacity: 0.5;
-  transition: background 200ms ease, box-shadow 200ms ease;
-}
-
-.settings-section:hover::after {
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
-}
+/* The `.settings-section` tactical-frame motif (registration diamond +
+   inter-section hairlines) moved to SettingsSections.vue — it targets the
+   section components' roots, which now render there (shared with the Settings
+   dialog). */
 
 /* Light-mode override for the diamond corner lives in app.css under
    `#panel-settings .settings-section::after` so it stays a proper
@@ -505,7 +351,6 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
    block for the panel-specific ones. Anything that's still
    defined inside this scoped block stays here. */
 @media (prefers-reduced-motion: reduce) {
-  .settings-section::after,
   .btn,
   .empty-hero {
     transition-duration: 0.01ms !important;

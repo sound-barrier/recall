@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { useAppStore } from '@/stores/app'
@@ -22,15 +23,17 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('app store — checkForUpdates', () => {
-  it('opens the modal, sets updateInfo on a result, and clears busy', async () => {
+describe('app store — About + checkForUpdates', () => {
+  it('openAbout opens the dialog, kicks the check, and lands updateInfo', async () => {
     api.CheckForUpdate.mockResolvedValue({ checked: true, current: '1.0.0', latest: '1.1.0' })
     const app = useAppStore()
-    expect(app.updateCheckModalOpen).toBe(false)
+    expect(app.aboutOpen).toBe(false)
 
-    await app.checkForUpdates()
+    app.openAbout()
+    expect(app.aboutOpen).toBe(true)
+    await flushPromises()
 
-    expect(app.updateCheckModalOpen).toBe(true)
+    expect(api.CheckForUpdate).toHaveBeenCalledTimes(1)
     expect(app.updateInfo).toMatchObject({ latest: '1.1.0' })
     expect(app.updateCheckBusy).toBe(false)
   })
@@ -48,13 +51,14 @@ describe('app store — checkForUpdates', () => {
     expect(api.CheckForUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it('swallows a check failure: resolves, still opens the modal, clears busy, leaves updateInfo null', async () => {
+  it('swallows a check failure: openAbout still opens, clears busy, leaves updateInfo null', async () => {
     api.CheckForUpdate.mockRejectedValue(new Error('network down'))
     const app = useAppStore()
 
-    await expect(app.checkForUpdates()).resolves.toBeUndefined()
+    app.openAbout()
+    expect(app.aboutOpen).toBe(true)
+    await flushPromises()
 
-    expect(app.updateCheckModalOpen).toBe(true)
     expect(app.updateCheckBusy).toBe(false)
     expect(app.updateInfo).toBeNull()
   })

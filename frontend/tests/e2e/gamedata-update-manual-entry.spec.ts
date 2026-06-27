@@ -15,6 +15,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { openAbout } from './_menu'
 
 // Roster BEFORE the update — no Testra / Proving Grounds.
 const BASE_ROSTER = {
@@ -96,7 +97,7 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
   await page.goto('/')
 
   // 1) "Download" the new roster via the mocked update flow.
-  await page.locator('[data-update-check-trigger]').click()
+  await openAbout(page)
   await expect(page.locator('[data-update-check-manifest]')).toContainText(/Testra/)
   await page.locator('[data-update-check-apply]').click()
   await expect(page.locator('[data-update-check-apply]')).toContainText(/Applied/)

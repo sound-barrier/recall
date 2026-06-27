@@ -10,15 +10,15 @@
 // interrupt.
 //
 // Owns the whole reminder feature: useUpdateReminder derives the gate +
-// day-count from the app store's updateInfo, and "Check now" drives the app
-// store's user-pulled update check (which resets the cycle).
+// day-count from the app store's updateInfo, and "Check now" opens About (the
+// update hub), which runs the check and resets the cycle.
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
 
 const appStore = useAppStore()
 const { updateInfo } = storeToRefs(appStore)
-const { checkForUpdates } = appStore
+const { openAbout } = appStore
 const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(updateInfo)
 </script>
 
@@ -41,7 +41,7 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
         type="button"
         class="update-reminder-banner-check"
         data-update-reminder-check
-        @click="checkForUpdates"
+        @click="openAbout"
       >
         Check now
       </button>

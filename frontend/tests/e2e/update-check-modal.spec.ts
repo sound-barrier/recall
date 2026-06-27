@@ -9,6 +9,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { openAbout } from './_menu'
 
 async function mockVersion(page: import('@playwright/test').Page, v: string) {
   await page.route('**/api/v1/system/version', async (route: Route) => {
@@ -63,7 +64,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await expect(page.locator('[role="dialog"][aria-modal="true"]')).toBeVisible()
   })
 
@@ -80,7 +81,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await expect(page.getByRole('heading', { name: 'Recall app' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Game data' })).toBeVisible()
     await expect(page.locator('[data-update-check-manifest]')).toContainText(/Phoenix/)
@@ -101,7 +102,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     // Plain headline naming the kind/counts; the manifest names the items.
     await expect(page.locator('[data-update-check-summary]')).toContainText('1 new hero, 1 new map available')
     await expect(page.locator('[data-update-check-freshness]')).toContainText('Your roster data is 14 days old')
@@ -118,7 +119,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     const dev = page.locator('[data-update-check-devbuild]')
     await expect(dev).toContainText('Development build')
     await expect(dev).toContainText('v0.5.0-dev')
@@ -150,7 +151,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('[data-update-check-apply]').click()
     // Button morphs to "Applied" on success.
     await expect(page.locator('[data-update-check-apply]')).toContainText(/Applied/)
@@ -173,7 +174,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('[data-update-check-apply]').click()
     // Modal-scoped role=alert — the page also carries a System Alert
     // ("Tesseract not detected") with role=alert in the e2e harness.
@@ -190,7 +191,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await expect(page.locator('[role="dialog"]')).toBeVisible()
     await expect(page.locator('[data-update-check-main-unreachable]')).toBeVisible()
     await expect(page.locator('[data-update-check-apply]')).toHaveCount(0)
@@ -212,7 +213,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('[data-update-check-apply]').click()
     const dialog = page.locator('[role="dialog"]')
     await expect(dialog.locator('[role="alert"]')).toContainText(/main fetch failed/i)
@@ -227,7 +228,7 @@ test.describe('update-check modal', () => {
     })
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await expect(page.locator('[role="dialog"]')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.locator('[role="dialog"]')).toBeHidden()

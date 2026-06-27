@@ -20,7 +20,8 @@ import UnsupportedModal from '@/components/app/UnsupportedModal.vue'
 
 // Same lazy split App.vue had — each becomes its own Vite chunk, fetched on
 // first open. App.lazy-views.test guards the pattern (it reads this file too).
-const UpdateCheckModal = defineAsyncComponent(() => import('@/components/shared/UpdateCheckModal.vue'))
+const AboutModal = defineAsyncComponent(() => import('@/components/shared/AboutModal.vue'))
+const SettingsModal = defineAsyncComponent(() => import('@/components/settings/SettingsModal.vue'))
 const FirstRunProfileModal = defineAsyncComponent(() => import('@/components/shared/FirstRunProfileModal.vue'))
 const ExportBundleModal = defineAsyncComponent(() => import('@/components/settings/ExportBundleModal.vue'))
 const IgnoredFilesPanel = defineAsyncComponent(() => import('@/components/settings/IgnoredFilesPanel.vue'))
@@ -46,16 +47,17 @@ const {
   closeManualMatch, onManualMatchCreated,
   onSetAnchor, onAnchorToastViewFilter, onAnchorToastDismiss,
   onUndoHide, onUndoHideDismiss,
-  closeCheatsheet,
+  closeCheatsheet, closeSettingsDialog,
   onFirstRunDismiss, onFirstRunPickSource, onFirstRunPickCustomSource,
 } = uiStore
-const { manualMatchOpen, anchorToast, undoHideToast, cheatsheetOpen, firstRunModalOpen } = storeToRefs(uiStore)
+const { manualMatchOpen, anchorToast, undoHideToast, cheatsheetOpen, firstRunModalOpen, settingsDialogOpen } = storeToRefs(uiStore)
 
-// App store — update-check + the non-dismissible startup-error gate.
+// App store — About (version + update hub) + the non-dismissible startup gate.
 const {
-  view, appVersion, updateInfo, updateCheckBusy, updateCheckModalOpen,
+  view, appVersion, updateInfo, updateCheckBusy, aboutOpen,
   startupError, showStartupErrorModal,
 } = storeToRefs(appStore)
+const { closeAbout } = appStore
 
 // Settings — Tesseract + the first-run source candidates.
 const { tesseractStatus, screenshotCandidates, probing } = storeToRefs(settingsStore)
@@ -200,14 +202,19 @@ const lightboxSrc = computed(() => {
     @open-lightbox="preview.openLightbox"
   />
 
-  <!-- Update-check modal — opens from the masthead's "Check for updates"
-       button. Lazy so its bundle is only paid for by users who run the check. -->
-  <UpdateCheckModal
-    :open="updateCheckModalOpen"
+  <!-- About Recall — identity + update hub. Opens from the native menu /
+       ⋮ kebab / 90-day reminder banner. Lazy so its bundle is only paid for
+       by users who open it. -->
+  <AboutModal
+    :open="aboutOpen"
     :update-info="updateInfo"
     :current-version="appVersion"
     :checking="updateCheckBusy"
-    @close="updateCheckModalOpen = false"
+    @close="closeAbout"
     @applied="load"
   />
+
+  <!-- Settings dialog — the ⌘, / app-menu / kebab Preferences surface. Mirrors
+       the Settings tab's sections; the tab stays. Lazy-loaded. -->
+  <SettingsModal :open="settingsDialogOpen" @close="closeSettingsDialog" />
 </template>

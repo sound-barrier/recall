@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import UpdateCheckModal from '@/components/shared/UpdateCheckModal.vue'
+import AboutModal from '@/components/shared/AboutModal.vue'
 import * as api from '@/api'
 import type { UpdateInfo } from '@/api'
 
@@ -26,7 +26,7 @@ const baseInfo: UpdateInfo = {
   },
 }
 
-describe('UpdateCheckModal', () => {
+describe('AboutModal', () => {
   beforeEach(() => {
     vi.spyOn(api, 'ApplyGameDataUpdate').mockImplementation(async () => ({
       applied_commit: 'def5678',
@@ -38,8 +38,38 @@ describe('UpdateCheckModal', () => {
     vi.restoreAllMocks()
   })
 
+  it('leads with the app identity: version + the unofficial-Overwatch disclaimer + project links', () => {
+    const wrapper = mount(AboutModal, {
+      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
+    })
+    expect(wrapper.text()).toContain('About Recall')
+    expect(wrapper.find('[data-about-version]').text()).toContain('v1.0.0')
+    expect(wrapper.find('[data-about-disclaimer]').text()).toMatch(/not affiliated/i)
+    expect(wrapper.find('[data-about-github]').exists()).toBe(true)
+    expect(wrapper.find('[data-about-license]').exists()).toBe(true)
+    expect(wrapper.find('[data-about-issues]').exists()).toBe(true)
+  })
+
+  it('shows the identity + disclaimer even while the update check is still in flight', () => {
+    const wrapper = mount(AboutModal, {
+      props: { open: true, updateInfo: null, currentVersion: '1.0.0', checking: true },
+    })
+    expect(wrapper.find('[data-about-version]').text()).toContain('v1.0.0')
+    expect(wrapper.find('[data-about-disclaimer]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Checking GitHub releases…')
+  })
+
+  it('opens the GitHub repo when the source link is clicked', async () => {
+    const open = vi.spyOn(api, 'OpenURL').mockImplementation(() => {})
+    const wrapper = mount(AboutModal, {
+      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
+    })
+    await wrapper.find('[data-about-github]').trigger('click')
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('github.com/sound-barrier/recall'))
+  })
+
   it('renders both sections with current vs latest binary version', () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     expect(wrapper.text()).toContain('Recall app')
@@ -49,14 +79,14 @@ describe('UpdateCheckModal', () => {
   })
 
   it('renders the release-notes excerpt', () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     expect(wrapper.text()).toContain('New hero: Phoenix')
   })
 
   it('leads with a plain-language change summary + data age, never a commit SHA', () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     // 2 added heroes, 0 added maps → "2 new heroes available".
@@ -69,7 +99,7 @@ describe('UpdateCheckModal', () => {
   })
 
   it('flags an available binary update with the latest version', () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     const row = wrapper.find('[data-update-check-available]')
@@ -80,7 +110,7 @@ describe('UpdateCheckModal', () => {
 
   it('frames a dev build as ahead of the latest release, not behind it', () => {
     const devInfo: UpdateInfo = { ...baseInfo, dev_build: true, available: false }
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: devInfo, currentVersion: '1.3.0-dev', checking: false },
     })
     const dev = wrapper.find('[data-update-check-devbuild]')
@@ -95,7 +125,7 @@ describe('UpdateCheckModal', () => {
 
   it('shows up-to-date copy on the latest release build', () => {
     const currentInfo: UpdateInfo = { ...baseInfo, dev_build: false, available: false }
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: currentInfo, currentVersion: '1.2.3', checking: false },
     })
     const uptodate = wrapper.find('[data-update-check-uptodate]')
@@ -105,7 +135,7 @@ describe('UpdateCheckModal', () => {
   })
 
   it('renders the counts headline with added + retired counts', () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     const counts = wrapper.find('[data-update-check-counts]')
@@ -115,7 +145,7 @@ describe('UpdateCheckModal', () => {
   })
 
   it('renders the diff manifest with kind chips + signs + names', () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     const manifest = wrapper.find('[data-update-check-manifest]')
@@ -130,7 +160,7 @@ describe('UpdateCheckModal', () => {
   })
 
   it('emits applied + shows "Applied" button label after clicking Update game data', async () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     await wrapper.find('[data-update-check-apply]').trigger('click')
@@ -141,7 +171,7 @@ describe('UpdateCheckModal', () => {
 
   it('shows an inline error when ApplyGameDataUpdate throws an ApiError', async () => {
     vi.spyOn(api, 'ApplyGameDataUpdate').mockRejectedValueOnce(new api.ApiError(422, 'SHA-256 mismatch'))
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     await wrapper.find('[data-update-check-apply]').trigger('click')
@@ -155,7 +185,7 @@ describe('UpdateCheckModal', () => {
       ...baseInfo,
       game_data: { commit_sha: '', applied_commit: '', has_update: false },
     }
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: unreachable, currentVersion: '1.0.0', checking: false },
     })
     expect(wrapper.find('[data-update-check-main-unreachable]').exists()).toBe(true)
@@ -172,7 +202,7 @@ describe('UpdateCheckModal', () => {
         has_update: false,
       },
     }
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: upToDate, currentVersion: '1.2.3', checking: false },
     })
     expect(wrapper.text()).toContain('ALL CURRENT')
@@ -180,14 +210,14 @@ describe('UpdateCheckModal', () => {
   })
 
   it('does not render when open is false', () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: false, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     expect(wrapper.find('.update-check-modal-box').exists()).toBe(false)
   })
 
   it('emits close when the × button is clicked', async () => {
-    const wrapper = mount(UpdateCheckModal, {
+    const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     await wrapper.find('.update-check-modal-close').trigger('click')
