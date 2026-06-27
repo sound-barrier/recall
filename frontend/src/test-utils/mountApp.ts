@@ -134,9 +134,9 @@ function buildMock(overrides: MountOverrides = {}) {
       database_path: '/test/base/db/recall.db',
       screenshots_dir: overrides.screenshotsDir ?? '',
     })),
-    ExportData:          vi.fn(async () => ''),
-    ExportDataCSV:       vi.fn(async () => ''),
-    ImportData:          vi.fn(async () => ''),
+    BackupDatabase:      vi.fn(async () => ''),
+    RestoreDatabase:     vi.fn(async () => ''),
+    ImportMatches:       vi.fn(async () => ({ path: '', imported: 0, skipped: 0 })),
     // Profiles — single default profile is the natural test state.
     // Tests that need multi-profile state can override these with
     // their own vi.doMock before mounting.

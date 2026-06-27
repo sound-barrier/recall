@@ -102,17 +102,17 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 	return a.SetTesseractPath(file)
 }
 
-// SaveExportToFile opens a native save dialog, runs ExportData, and
-// writes the resulting JSON to the chosen path. Returns the path on
+// SaveBackupToFile opens a native save dialog and writes a complete native
+// SQLite snapshot (BackupDatabase) to the chosen path. Returns the path on
 // success; "" if the user cancelled.
-func (a *App) SaveExportToFile() (string, error) {
-	defaultName := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".json"
+func (a *App) SaveBackupToFile() (string, error) {
+	defaultName := "recall-backup-" + time.Now().UTC().Format("20060102-150405") + ".db"
 	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
-		Title:                "Save Recall export",
+		Title:                "Save Recall backup",
 		DefaultFilename:      defaultName,
 		CanCreateDirectories: true,
 		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall export (JSON)", Pattern: "*.json"},
+			{DisplayName: "Recall backup (SQLite)", Pattern: "*.db"},
 			{DisplayName: "All files", Pattern: "*"},
 		},
 	})
@@ -122,43 +122,12 @@ func (a *App) SaveExportToFile() (string, error) {
 	if path == "" {
 		return "", nil // user cancelled
 	}
-	data, err := a.ExportData()
+	data, err := a.BackupDatabase()
 	if err != nil {
 		return "", err
 	}
 	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return "", fmt.Errorf("write export: %w", err)
-	}
-	return path, nil
-}
-
-// SaveExportToFileCSV is the CSV-format sibling of SaveExportToFile:
-// opens a save dialog defaulting to `.zip` (the container that wraps
-// the per-table CSVs + manifest.json) and writes the ExportDataCSV
-// payload at the chosen path. Same return contract as the JSON variant.
-func (a *App) SaveExportToFileCSV() (string, error) {
-	defaultName := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
-	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
-		Title:                "Save Recall export (CSV)",
-		DefaultFilename:      defaultName,
-		CanCreateDirectories: true,
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall export (ZIP of CSVs)", Pattern: "*.zip"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-	if path == "" {
-		return "", nil
-	}
-	data, err := a.ExportDataCSV()
-	if err != nil {
-		return "", err
-	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return "", fmt.Errorf("write csv export: %w", err)
+		return "", fmt.Errorf("write backup: %w", err)
 	}
 	return path, nil
 }
@@ -229,15 +198,15 @@ func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden
 	return path, nil
 }
 
-// LoadImportFromFile opens a native open dialog, reads the chosen
-// file, and applies it via ImportData. Returns the path read on
-// success; "" if cancelled. Replaces the current database — caller
-// is expected to confirm before invoking.
-func (a *App) LoadImportFromFile() (string, error) {
+// LoadRestoreFromFile opens a native open dialog, reads the chosen `.db`
+// snapshot, and applies it via RestoreDatabase. Returns the path read on
+// success; "" if cancelled. REPLACES the current database — the caller is
+// expected to confirm before invoking.
+func (a *App) LoadRestoreFromFile() (string, error) {
 	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
-		Title: "Open Recall export",
+		Title: "Restore Recall backup",
 		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall export (JSON or ZIP)", Pattern: "*.json;*.zip"},
+			{DisplayName: "Recall backup (SQLite)", Pattern: "*.db"},
 			{DisplayName: "All files", Pattern: "*"},
 		},
 	})
@@ -249,12 +218,40 @@ func (a *App) LoadImportFromFile() (string, error) {
 	}
 	data, err := os.ReadFile(path) // #nosec G304 -- path returned by native dialog
 	if err != nil {
-		return "", fmt.Errorf("read import: %w", err)
+		return "", fmt.Errorf("read restore: %w", err)
 	}
-	if err := a.ImportData(data); err != nil {
+	if err := a.RestoreDatabase(data); err != nil {
 		return "", err
 	}
 	return path, nil
+}
+
+// LoadMatchImportFromFile opens a native open dialog, reads the chosen bundle
+// `.zip`, and merges it via ImportMatches. Returns the path + the merge counts;
+// Path is "" if the user cancelled. Additive — never replaces existing data.
+func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
+	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
+		Title: "Import Recall matches",
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Recall bundle (ZIP)", Pattern: "*.zip"},
+			{DisplayName: "All files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return MatchImportResult{}, err
+	}
+	if path == "" {
+		return MatchImportResult{}, nil
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path returned by native dialog
+	if err != nil {
+		return MatchImportResult{}, fmt.Errorf("read import: %w", err)
+	}
+	summary, err := a.ImportMatches(data)
+	if err != nil {
+		return MatchImportResult{}, err
+	}
+	return MatchImportResult{Path: path, Imported: summary.Imported, Skipped: summary.Skipped}, nil
 }
 
 // PickScreenshotsDir opens a native directory chooser and persists the

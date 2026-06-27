@@ -1283,7 +1283,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/exports": {
+    "/api/v1/database": {
         parameters: {
             query?: never;
             header?: never;
@@ -1291,25 +1291,26 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Download a full backup of the local parsed-match database
-         * @description Returns a snapshot of the local database in one of two formats:
-         *
-         *       * `format=json` (default) — a single JSON document containing
-         *         every per-screenshot row across all parent tables plus the
-         *         screenshots-dirs lookup, wrapped in a schema-versioned
-         *         envelope.
-         *       * `format=csv` — a ZIP archive containing one CSV file per
-         *         parent and child table plus a `manifest.json` with the
-         *         envelope metadata. Same data version as the JSON variant
-         *         (`schema = recall-export/v1`), different container chosen
-         *         by users who want to inspect or edit the data in Excel /
-         *         Sheets.
-         *
-         *     Both round-trip through `POST /api/v1/imports` — the server
-         *     sniffs the first bytes to detect the format.
+         * Download a complete native SQLite snapshot of the database
+         * @description Streams a consistent, compacted snapshot of the entire local
+         *     database (produced with `VACUUM INTO`). Unlike a per-table export
+         *     it captures every table verbatim — reviews, the ignored and
+         *     all-heroes lists, ambiguous candidates — so it is a true backup.
+         *     Restore it with `PUT /api/v1/database`.
          */
-        get: operations["ExportData"];
-        put?: never;
+        get: operations["BackupDatabase"];
+        /**
+         * Restore the local database from a native SQLite snapshot
+         * @description REPLACES the entire local database with the uploaded `.db`
+         *     snapshot (as produced by `GET /api/v1/database`). The candidate is
+         *     validated read-only before any destructive step, so an invalid
+         *     upload leaves the running database untouched.
+         *
+         *     Rejections: a file that is not a usable Recall database is `422`;
+         *     a parse in flight is `409`. Callers should surface a confirmation
+         *     step — this is a full replace.
+         */
+        put: operations["RestoreDatabase"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1342,8 +1343,8 @@ export interface paths {
          *     explicit selection — a request with `match_keys: []` and
          *     `include_hidden: true` exports every hidden match.
          *
-         *     Restore via `POST /api/v1/imports` — the `data.json` shape
-         *     is the same `recall-export/v1` envelope.
+         *     Merge into another install via `POST /api/v1/imports` — the
+         *     `data.json` shape is the `recall-export/v1` envelope.
          */
         post: operations["ExportBundle"];
         delete?: never;
@@ -1362,25 +1363,23 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Restore the local database from a previously-exported backup
-         * @description Replaces every row in the local database with the contents of
-         *     the uploaded payload. Validates the envelope's `schema` field
-         *     before touching the store; payload-level parse failures
-         *     (not JSON / not ZIP, malformed JSON, ZIP open failure) are
-         *     rejected with `400`; semantic-validation failures
-         *     (unsupported schema, missing required field, null array
-         *     entries) are rejected with `409`. The existing data is left
+         * Merge matches from a previously-exported bundle
+         * @description Merges the matches in an uploaded `recall-bundle/v1` ZIP (as
+         *     produced by `POST /api/v1/exports/bundle`) into the local
+         *     database. ADDITIVE — a match whose key already exists locally is
+         *     skipped, and nothing is ever wiped. Only the bundle's parsed rows
+         *     (`data.json`) are imported; the embedded screenshot images are
+         *     ignored (data-only).
+         *
+         *     Payload-level failures (not a ZIP, unreadable archive, missing
+         *     manifest/data.json) are rejected with `400`; semantic failures
+         *     (unsupported bundle schema) with `409`. Existing data is left
          *     untouched in both rejection paths.
          *
-         *     Accepts BOTH container formats — the server sniffs the payload's
-         *     first bytes to detect a JSON envelope (`{` ...) or a ZIP archive
-         *     (`PK\x03\x04` magic) and routes accordingly.
-         *
-         *     The operation is REPLACE, not merge: anything currently in the
-         *     store is dropped after the payload is validated and before the
-         *     import lands. Callers should surface a confirmation step.
+         *     For a full-fidelity backup/restore (every table, including edits
+         *     and review state) use `GET` / `PUT /api/v1/database` instead.
          */
-        post: operations["ImportData"];
+        post: operations["ImportMatches"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1883,168 +1882,15 @@ export interface components {
             screenshots_dir?: string;
         };
         /**
-         * @description Schema-versioned envelope for the local backup format produced
-         *     by `GET /api/v1/exports` and consumed by `POST /api/v1/imports`.
-         *     The per-row arrays mirror the SQLite parent + child tables;
-         *     the `screenshots_dirs` map carries the path-by-id reference so
-         *     FKs survive the auto-increment reset that happens during
-         *     import.
+         * @description Outcome of a merge import (`POST /api/v1/imports`): how many
+         *     matches were added versus skipped because their key already
+         *     existed locally.
          */
-        RecallExport: {
-            /**
-             * @description Envelope version. Current value `recall-export/v1`.
-             * @example recall-export/v1
-             */
-            schema: string;
-            exported_at?: string;
-            /** @example 0.1.4 */
-            recall_version?: string;
-            /**
-             * @description source-side `id` (stringified) → screenshots folder path
-             * @example {
-             *       "1": "/Users/jacob/Documents/Overwatch/Screenshots"
-             *     }
-             */
-            screenshots_dirs?: {
-                [key: string]: string;
-            };
-            summaries?: components["schemas"]["SummaryExportRow"][];
-            teams?: components["schemas"]["TeamsExportRow"][];
-            personals?: components["schemas"]["PersonalExportRow"][];
-            ranks?: components["schemas"]["RankExportRow"][];
-            unknowns?: components["schemas"]["UnknownExportRow"][];
-        };
-        /**
-         * @description One row of `summary_screenshots` plus its `summary_heroes_played`
-         *     child rows. Mirrors `pkg/db/store.go::SummaryRow`. Import-side
-         *     is permissive (extra keys ignored); export-side emits every
-         *     listed field.
-         */
-        SummaryExportRow: {
-            filename: string;
-            match_key: string;
-            parsed_at?: string;
-            /** @description FK into `screenshots_dirs.id`. Never zero — the sentinel row at id=1 stands in for 'dir unset at parse time' (e.g. a row imported with an orphan FK or a test fixture that didn't supply a path). */
-            screenshots_dir_id?: number;
-            map?: string;
-            /** @description Raw OCR text when the canonical map lookup failed. */
-            map_raw?: string;
-            playlist?: string;
-            hero?: string;
-            hero_raw?: string;
-            result?: string;
-            final_score?: string;
-            date?: string;
-            finished_at?: string;
-            game_length?: string;
-            perf_elim_total?: number;
-            perf_elim_avg_per_10min?: number;
-            perf_assists_total?: number;
-            perf_assists_avg_per_10min?: number;
-            perf_deaths_total?: number;
-            perf_deaths_avg_per_10min?: number;
-            heroes_played?: ({
-                hero?: string;
-                percent_played?: number;
-                play_time?: string;
-            } & {
-                [key: string]: unknown;
-            })[];
-        } & {
-            [key: string]: unknown;
-        };
-        /**
-         * @description One row of `teams_screenshots` plus its
-         *     `teams_hero_stats` child rows. Mirrors
-         *     `pkg/db/store.go::TeamsRow`.
-         */
-        TeamsExportRow: {
-            filename: string;
-            match_key: string;
-            parsed_at?: string;
-            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
-            screenshots_dir_id?: number;
-            map?: string;
-            map_raw?: string;
-            playlist?: string;
-            hero?: string;
-            hero_raw?: string;
-            eliminations?: number;
-            assists?: number;
-            deaths?: number;
-            damage?: number;
-            healing?: number;
-            mitigation?: number;
-            hero_stats?: components["schemas"]["HeroStatExportRow"][];
-        } & {
-            [key: string]: unknown;
-        };
-        /**
-         * @description One row of `personal_screenshots` plus its `personal_hero_stats`
-         *     child rows. Mirrors `pkg/db/store.go::PersonalRow`.
-         */
-        PersonalExportRow: {
-            filename: string;
-            match_key: string;
-            parsed_at?: string;
-            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
-            screenshots_dir_id?: number;
-            hero?: string;
-            hero_raw?: string;
-            hero_stats?: components["schemas"]["HeroStatExportRow"][];
-        } & {
-            [key: string]: unknown;
-        };
-        /**
-         * @description One row of `rank_screenshots` plus its `rank_modifiers` +
-         *     `rank_sr` child rows. Mirrors `pkg/db/store.go::RankRow`.
-         */
-        RankExportRow: {
-            filename: string;
-            match_key: string;
-            parsed_at?: string;
-            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
-            screenshots_dir_id?: number;
-            rank?: string;
-            level?: number;
-            rank_progress?: number;
-            change_percent?: number;
-            result?: string;
-            modifiers?: string[];
-            sr?: ({
-                hero?: string;
-                sr?: number;
-                change?: number;
-            } & {
-                [key: string]: unknown;
-            })[];
-        } & {
-            [key: string]: unknown;
-        };
-        /**
-         * @description One row of `unknown_screenshots`. Mirrors
-         *     `pkg/db/store.go::UnknownRow`. No domain columns — kept so
-         *     parse runs never drop a screenshot on the floor.
-         */
-        UnknownExportRow: {
-            filename: string;
-            match_key: string;
-            parsed_at?: string;
-            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
-            screenshots_dir_id?: number;
-        } & {
-            [key: string]: unknown;
-        };
-        /**
-         * @description One `(hero, stat_key, stat_value)` row from
-         *     `teams_hero_stats` or `personal_hero_stats`.
-         */
-        HeroStatExportRow: {
-            hero: string;
-            stat_key: string;
-            stat_value: number;
-        } & {
-            [key: string]: unknown;
+        ImportSummary: {
+            /** @description Matches added to the local database. */
+            imported: number;
+            /** @description Matches skipped because their key already existed. */
+            skipped: number;
         };
         /**
          * @description One match — assembled by JOINing the per-screenshot-type rows
@@ -4217,30 +4063,66 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    ExportData: {
+    BackupDatabase: {
         parameters: {
-            query?: {
-                /** @description Wire format. Defaults to JSON. */
-                format?: "json" | "csv";
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Export download. */
+            /** @description Native SQLite database snapshot. */
             200: {
                 headers: {
                     "Content-Disposition"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RecallExport"];
-                    "application/zip": string;
+                    "application/octet-stream": string;
                 };
             };
-            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    RestoreDatabase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description Database restored. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A parse is in flight; retry once it completes. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The uploaded file is not a usable Recall database. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             500: components["responses"]["InternalError"];
         };
     };
@@ -4278,9 +4160,8 @@ export interface operations {
         };
         responses: {
             /**
-             * @description ZIP bundle with the same `Content-Disposition: attachment;
-             *     filename="recall-bundle-<timestamp>.zip"` header pattern
-             *     as `GET /api/v1/exports`.
+             * @description ZIP bundle with a `Content-Disposition: attachment;
+             *     filename="recall-bundle-<timestamp>.zip"` header.
              */
             200: {
                 headers: {
@@ -4294,7 +4175,7 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    ImportData: {
+    ImportMatches: {
         parameters: {
             query?: never;
             header?: never;
@@ -4303,21 +4184,22 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RecallExport"];
                 "application/zip": string;
             };
         };
         responses: {
-            /** @description Import applied. */
-            204: {
+            /** @description Merge applied; counts of added vs skipped matches. */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ImportSummary"];
+                };
             };
             /**
-             * @description Payload was not parseable as JSON or ZIP (decode failure,
-             *     ZIP-open failure, payload neither container format).
+             * @description Payload was not a readable Recall bundle (not a ZIP, archive
+             *     open failure, missing or undecodable manifest/data.json).
              */
             400: {
                 headers: {
@@ -4328,9 +4210,8 @@ export interface operations {
                 };
             };
             /**
-             * @description Payload was syntactically valid JSON / ZIP but failed
-             *     semantic validation (missing required field on a row,
-             *     unsupported schema version, null entry in an array, etc.).
+             * @description The bundle was readable but its schema is unsupported by this
+             *     build.
              */
             409: {
                 headers: {

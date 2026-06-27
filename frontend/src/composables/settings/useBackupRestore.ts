@@ -1,107 +1,139 @@
 import { ref } from 'vue'
 
-// Backup / restore flow for the database — JSON / CSV export plus
-// JSON import (with a one-click confirm before destructive overwrite).
+// Backup / restore / import flows for the database:
+//   - Backup        — save a complete native SQLite snapshot (.db).
+//   - Restore       — REPLACE the live DB from a .db snapshot (two-step
+//                     arm/confirm, since it wipes local data).
+//   - Import matches — MERGE a shared bundle's matches (additive; existing
+//                     keys skipped; no confirm needed — it can't destroy data).
 //
-// Extracted from App.vue so the inline result chip ("Saved: …" /
-// "Import failed: …") lifecycle (5-second auto-clear, captured by
-// reference so a later flash doesn't get clobbered) lives in one
-// place. The IngestView consumes the returned refs as props and
-// emits handlers that wire back to these methods.
-//
-// `exporting` is a string discriminator ('json' | 'csv') so the UI
-// can show "Saving…" on the specific button the user clicked while
-// the other stays selectable. `false` = idle.
+// Extracted from App.vue so the inline result chip ("Saved: …" / "Restore
+// failed: …" / "Imported N…") lifecycle (5-second auto-clear, captured by
+// reference so a later flash doesn't get clobbered) lives in one place. The
+// SettingsBackupRestore panel + the Matches-view import button consume the
+// returned refs/handlers.
 
 export type ExportStatus = { ok: boolean; message: string }
 
+// MatchImportResult mirrors the api.ts return: empty path = user cancelled.
+export interface MatchImportResult {
+  path: string
+  imported: number
+  skipped: number
+}
+
 export interface BackupRestoreApi {
-  // Triggers a save-as dialog (Wails) or browser download (server).
-  exportJSON: () => Promise<string>
-  exportCSV: () => Promise<string>
-  // Triggers an open dialog (Wails) or file picker (server).
-  importJSON: () => Promise<string>
-  // Called after a successful import so the parent can reload state.
-  afterImport: () => Promise<void> | void
+  // Save a native .db snapshot (Wails dialog / browser download). "" on cancel.
+  backup: () => Promise<string>
+  // Pick a .db snapshot and REPLACE the live DB. "" on cancel.
+  restore: () => Promise<string>
+  // Pick a bundle .zip and MERGE its matches. Empty path on cancel.
+  importMatches: () => Promise<MatchImportResult>
+  // Refresh records after a restore or merge so the UI reflects the new data.
+  reload: () => Promise<void> | void
 }
 
 const AUTO_CLEAR_MS = 5000
 
 export function useBackupRestore(api: BackupRestoreApi) {
-  const exporting = ref<false | 'json' | 'csv'>(false)
-  const importing = ref(false)
-  const importArmed = ref(false)
-  const exportStatus = ref<ExportStatus | null>(null)
+  const backingUp = ref(false)
+  const restoring = ref(false)
+  const restoreArmed = ref(false)
+  const importingMatches = ref(false)
+  const status = ref<ExportStatus | null>(null)
 
-  // Capture the chip by reference and auto-clear after AUTO_CLEAR_MS
-  // ONLY if no newer chip has replaced it. Prevents a fast double-
-  // export from clobbering the second result's "Saved: …" message
-  // when the first one's timer expires.
+  // Capture the chip by reference and auto-clear after AUTO_CLEAR_MS ONLY if no
+  // newer chip has replaced it — prevents a fast second action from clobbering
+  // the later result when the first one's timer expires.
   function scheduleAutoClear() {
-    if (!exportStatus.value) return
-    const captured = exportStatus.value
+    if (!status.value) return
+    const captured = status.value
     setTimeout(() => {
-      if (exportStatus.value === captured) exportStatus.value = null
+      if (status.value === captured) status.value = null
     }, AUTO_CLEAR_MS)
   }
 
-  async function exportData(format: 'json' | 'csv') {
-    if (exporting.value) return
-    exporting.value = format
-    exportStatus.value = null
+  const anyBusy = () => backingUp.value || restoring.value || importingMatches.value
+
+  async function backup() {
+    if (anyBusy()) return
+    backingUp.value = true
+    status.value = null
     try {
-      const path = format === 'csv' ? await api.exportCSV() : await api.exportJSON()
-      if (path) {
-        exportStatus.value = { ok: true, message: `Saved: ${path}` }
-      }
+      const path = await api.backup()
+      if (path) status.value = { ok: true, message: `Saved: ${path}` }
       // Empty path = user cancelled; stay silent.
     } catch (e) {
-      exportStatus.value = { ok: false, message: `Export failed: ${String(e)}` }
+      status.value = { ok: false, message: `Backup failed: ${String(e)}` }
     } finally {
-      exporting.value = false
+      backingUp.value = false
       scheduleAutoClear()
     }
   }
 
-  function exportDataJSON() { return exportData('json') }
-  function exportDataCSV()  { return exportData('csv') }
-
-  function armImport() {
-    importArmed.value = true
-    exportStatus.value = null
+  function armRestore() {
+    restoreArmed.value = true
+    status.value = null
   }
 
-  function cancelImport() {
-    importArmed.value = false
+  function cancelRestore() {
+    restoreArmed.value = false
   }
 
-  async function importData() {
-    if (importing.value) return
-    importing.value = true
-    importArmed.value = false
+  async function restore() {
+    if (anyBusy()) return
+    restoring.value = true
+    restoreArmed.value = false
     try {
-      const path = await api.importJSON()
+      const path = await api.restore()
       if (path) {
-        exportStatus.value = { ok: true, message: `Imported: ${path}` }
-        await api.afterImport()
+        status.value = { ok: true, message: `Restored from: ${path}` }
+        await api.reload()
       }
     } catch (e) {
-      exportStatus.value = { ok: false, message: `Import failed: ${String(e)}` }
+      status.value = { ok: false, message: `Restore failed: ${String(e)}` }
     } finally {
-      importing.value = false
+      restoring.value = false
+      scheduleAutoClear()
+    }
+  }
+
+  async function importMatches() {
+    if (anyBusy()) return
+    importingMatches.value = true
+    status.value = null
+    try {
+      const result = await api.importMatches()
+      if (result.path) {
+        status.value = { ok: true, message: importMessage(result) }
+        await api.reload()
+      }
+    } catch (e) {
+      status.value = { ok: false, message: `Import failed: ${String(e)}` }
+    } finally {
+      importingMatches.value = false
       scheduleAutoClear()
     }
   }
 
   return {
-    exporting,
-    importing,
-    importArmed,
-    exportStatus,
-    exportData: exportDataJSON,
-    exportDataCSV,
-    armImport,
-    cancelImport,
-    importData,
+    backingUp,
+    restoring,
+    restoreArmed,
+    importingMatches,
+    status,
+    backup,
+    armRestore,
+    cancelRestore,
+    restore,
+    importMatches,
   }
+}
+
+// importMessage renders the merge outcome: how many matches were added and,
+// when any collided, how many were skipped as already present.
+function importMessage({ imported, skipped }: MatchImportResult): string {
+  const added = `Imported ${imported} match${imported === 1 ? '' : 'es'}`
+  if (skipped === 0) return added
+  return `${added}, skipped ${skipped} already present`
 }

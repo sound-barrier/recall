@@ -1,8 +1,8 @@
 /**
- * Real-server backup round-trip — GET /api/v1/exports?format=json then
- * POST /api/v1/imports against the actual binary, so pkg/app/export.go (the
- * recall-export/v1 payload) and the import path (importJSONv1 → DB replace) run
- * for real. No api mocking.
+ * Real-server native backup round-trip — GET /api/v1/database (a VACUUM INTO
+ * snapshot) then PUT /api/v1/database (validate → file-swap → reopen) against
+ * the actual binary, so pkg/db/backup.go and pkg/app/backup.go run for real. No
+ * api mocking.
  *
  * Two provenance cases, because they stress different layers of the same cycle:
  *   1. MANUAL matches + the annotation / hidden sidecars (the user-data rows).
@@ -10,13 +10,13 @@
  *      rows AND the user override that shadows them must BOTH survive, and the
  *      restored match must still report the edited values with source=ocr_edited
  *      (not the stale OCR originals, not a plain ocr match that dropped the
- *      edits). A regression in the export's user-layer, the import's re-apply,
- *      or the read-time fold would silently revert a user's corrections on every
- *      restore.
+ *      edits). A byte-for-byte SQLite snapshot should preserve all of it; this
+ *      proves the validate-and-swap restore actually reopens the new file.
  *
- * NB: this is the backup/restore format (recall-export/v1). The /exports/bundle
+ * NB: this is the full-fidelity backup/restore (native .db). The /exports/bundle
  * ZIP is a separate share format (recall-bundle/v1 envelope + screenshots) that
- * /imports does not unwrap.
+ * the additive POST /api/v1/imports merge consumes — see
+ * export-bundle-roundtrip.spec.ts.
  */
 import { expect, test } from './_fixtures'
 import { createMatch, listMatches, manual, parseGolden, reset, stageGolden, unstageGolden, type Match } from './_real-server'
@@ -33,18 +33,18 @@ test.describe('backup round-trip — manual matches + sidecars (real server)', (
     await createMatch(request, manual({ played_at: '2026-06-15T18:02:00Z' }))
     expect((await request.put(`/api/v1/matches/${encodeURIComponent(hiddenM.match_key)}/visibility`, { data: { hidden: true } })).status()).toBe(204)
 
-    // Export the whole DB (recall-export/v1 JSON).
-    const exp = await request.get('/api/v1/exports?format=json')
+    // Snapshot the whole DB (native .db).
+    const exp = await request.get('/api/v1/database')
     expect(exp.status()).toBe(200)
     const payload = await exp.body()
     expect(payload.byteLength).toBeGreaterThan(0)
 
-    // Wipe to a fresh install, then import the payload back.
+    // Wipe to a fresh install, then restore the snapshot.
     await reset(request)
     expect(await listMatches(request)).toHaveLength(0)
 
-    const imp = await request.post('/api/v1/imports', {
-      headers: { 'Content-Type': 'application/json' },
+    const imp = await request.put('/api/v1/database', {
+      headers: { 'Content-Type': 'application/octet-stream' },
       data: payload,
     })
     expect(imp.status(), await imp.text().catch(() => '')).toBe(204)
@@ -123,8 +123,8 @@ test.describe('backup round-trip — edited OCR match (real server)', () => {
     // Sanity: the override took effect before we touch the backup at all.
     assertEditedOcrMatch((await listMatches(request)).find((m) => m.match_key === ocrKey), 'pre-export')
 
-    // Full DB export → wipe → import.
-    const exp = await request.get('/api/v1/exports?format=json')
+    // Full DB snapshot → wipe → restore.
+    const exp = await request.get('/api/v1/database')
     expect(exp.status()).toBe(200)
     const payload = await exp.body()
     expect(payload.byteLength).toBeGreaterThan(0)
@@ -132,8 +132,8 @@ test.describe('backup round-trip — edited OCR match (real server)', () => {
     await reset(request)
     expect(await listMatches(request)).toHaveLength(0)
 
-    const imp = await request.post('/api/v1/imports', {
-      headers: { 'Content-Type': 'application/json' },
+    const imp = await request.put('/api/v1/database', {
+      headers: { 'Content-Type': 'application/octet-stream' },
       data: payload,
     })
     expect(imp.status(), await imp.text().catch(() => '')).toBe(204)

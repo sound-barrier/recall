@@ -14,9 +14,9 @@ import {
   CancelParse,
   GetActiveParse,
   ClearDatabase,
-  ExportData,
-  ExportDataCSV,
-  ImportData,
+  BackupDatabase,
+  RestoreDatabase,
+  ImportMatches,
 } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
@@ -412,20 +412,21 @@ export const useMatchesStore = defineStore('matches', () => {
   }
 
   const {
-    exporting,
-    importing,
-    importArmed,
-    exportStatus,
-    exportData,
-    exportDataCSV,
-    armImport,
-    cancelImport,
-    importData,
+    backingUp,
+    restoring,
+    restoreArmed,
+    importingMatches,
+    status: backupStatus,
+    backup,
+    armRestore,
+    cancelRestore,
+    restore,
+    importMatches,
   } = useBackupRestore({
-    exportJSON: ExportData,
-    exportCSV: ExportDataCSV,
-    importJSON: ImportData,
-    afterImport: () => load(),
+    backup: BackupDatabase,
+    restore: RestoreDatabase,
+    importMatches: ImportMatches,
+    reload: () => load(),
   })
 
   // Export flows for the Matches set — the bundle-export modal + the flat CSV
@@ -492,15 +493,16 @@ export const useMatchesStore = defineStore('matches', () => {
     armClear,
     cancelClear,
     onClearDatabase,
-    exporting,
-    importing,
-    importArmed,
-    exportStatus,
-    exportData,
-    exportDataCSV,
-    armImport,
-    cancelImport,
-    importData,
+    backingUp,
+    restoring,
+    restoreArmed,
+    importingMatches,
+    backupStatus,
+    backup,
+    armRestore,
+    cancelRestore,
+    restore,
+    importMatches,
     // Export-bundle modal + dispatch (delegated to useExportBundle)
     exportBundleOpen: exportBundle.exportBundleOpen,
     exportBundleSelectedKeys: exportBundle.exportBundleSelectedKeys,

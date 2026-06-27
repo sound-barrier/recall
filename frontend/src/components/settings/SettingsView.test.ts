@@ -56,10 +56,11 @@ interface SettingsOver {
   tesseractPickerBusy?:  boolean
   matchedCount?:         number
   unknownCount?:         number
-  exporting?:            false | 'json' | 'csv'
-  importing?:            boolean
-  importArmed?:          boolean
-  exportStatus?:         { ok: boolean; message: string } | null
+  backingUp?:            boolean
+  restoring?:            boolean
+  restoreArmed?:         boolean
+  importingMatches?:     boolean
+  backupStatus?:         { ok: boolean; message: string } | null
   clearConfirm?:         boolean
   clearingDB?:           boolean
   ignoredCount?:         number
@@ -91,10 +92,11 @@ function mountSettings(opts: { props?: SettingsOver } = {}) {
   settings.tesseractPickerBusy = over.tesseractPickerBusy ?? false
 
   matches.parseBusy = over.parseBusy ?? false
-  matches.exporting = over.exporting ?? false
-  matches.importing = over.importing ?? false
-  matches.importArmed = over.importArmed ?? false
-  matches.exportStatus = over.exportStatus ?? null
+  matches.backingUp = over.backingUp ?? false
+  matches.restoring = over.restoring ?? false
+  matches.restoreArmed = over.restoreArmed ?? false
+  matches.importingMatches = over.importingMatches ?? false
+  matches.backupStatus = over.backupStatus ?? null
   matches.clearConfirm = over.clearConfirm ?? false
   matches.clearingDB = over.clearingDB ?? false
   matches.records = makeRecords(over.matchedCount ?? 0, over.unknownCount ?? 0)
@@ -115,11 +117,11 @@ function mountSettings(opts: { props?: SettingsOver } = {}) {
     resetTesseractPath:    vi.spyOn(settings, 'resetTesseractPath').mockResolvedValue(undefined),
     detectTesseractBinary: vi.spyOn(settings, 'detectTesseractBinary').mockResolvedValue(undefined),
     pickDetectedSource:    vi.spyOn(settings, 'pickDetectedSource').mockResolvedValue(undefined),
-    exportData:            vi.spyOn(matches, 'exportData').mockResolvedValue(undefined),
-    exportDataCSV:         vi.spyOn(matches, 'exportDataCSV').mockResolvedValue(undefined),
-    armImport:             vi.spyOn(matches, 'armImport'),
-    cancelImport:          vi.spyOn(matches, 'cancelImport'),
-    importData:            vi.spyOn(matches, 'importData').mockResolvedValue(undefined),
+    backup:                vi.spyOn(matches, 'backup').mockResolvedValue(undefined),
+    armRestore:            vi.spyOn(matches, 'armRestore'),
+    cancelRestore:         vi.spyOn(matches, 'cancelRestore'),
+    restore:               vi.spyOn(matches, 'restore').mockResolvedValue(undefined),
+    importMatches:         vi.spyOn(matches, 'importMatches').mockResolvedValue(undefined),
     armClear:              vi.spyOn(matches, 'armClear'),
     cancelClear:           vi.spyOn(matches, 'cancelClear'),
     onClearDatabase:       vi.spyOn(matches, 'onClearDatabase').mockResolvedValue(undefined),
@@ -287,11 +289,11 @@ describe('SettingsView', () => {
     const { wrapper } = mountSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    // Screenshots Folder, Data Location, Engine, Theme, First Day
-    // of Week, Profiles, Export, Import, Manage ignored screenshots,
-    // Re-parse All, Clear DB. The last five live inside the closed
-    // <details> but are still in the DOM.
-    expect(wrapper.findAll('.setting-help')).toHaveLength(11)
+    // Screenshots Folder, Data Location, Engine, Theme, First Day of
+    // Week, Profiles, Backup, Import matches, Restore, Manage ignored
+    // screenshots, Re-parse All, Clear DB. The last five live inside the
+    // closed <details> but are still in the DOM.
+    expect(wrapper.findAll('.setting-help')).toHaveLength(12)
   })
 })
 
@@ -514,74 +516,74 @@ describe('SettingsView — Backup & Restore', () => {
     screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
-  it('renders both JSON and CSV format buttons', () => {
+  it('renders Backup, Import matches, and Restore controls', () => {
     const { wrapper } = mountSettings({ props: baseProps })
-    const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')
-    const csv  = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')
-    expect(json).toBeDefined()
-    expect(csv).toBeDefined()
+    const backup = wrapper.findAll('button').find(b => b.text().trim() === 'Backup (.db)')
+    const importMatches = wrapper.findAll('button').find(b => b.text().includes('Import matches'))
+    const restore = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))
+    expect(backup).toBeDefined()
+    expect(importMatches).toBeDefined()
+    expect(restore).toBeDefined()
   })
 
-  it('emits export-data when the JSON button is clicked', async () => {
+  it('emits backup when the Backup button is clicked', async () => {
     const { wrapper, spies } = mountSettings({ props: baseProps })
-    const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')!
-    await json.trigger('click')
-    expect(spies.exportData).toHaveBeenCalled()
+    const backup = wrapper.findAll('button').find(b => b.text().trim() === 'Backup (.db)')!
+    await backup.trigger('click')
+    expect(spies.backup).toHaveBeenCalled()
   })
 
-  it('emits export-data-csv when the CSV button is clicked', async () => {
+  it('emits import-matches when the Import matches button is clicked', async () => {
     const { wrapper, spies } = mountSettings({ props: baseProps })
-    const csv = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')!
-    await csv.trigger('click')
-    expect(spies.exportDataCSV).toHaveBeenCalled()
+    const importBtn = wrapper.findAll('button').find(b => b.text().includes('Import matches'))!
+    await importBtn.trigger('click')
+    expect(spies.importMatches).toHaveBeenCalled()
   })
 
-  it('shows "Saving…" on the JSON button while exporting="json" and disables both', () => {
+  it('shows "Saving…" on the Backup button while backingUp and disables it', () => {
     const { wrapper } = mountSettings({
-      props: { ...baseProps, exporting: 'json' },
+      props: { ...baseProps, backingUp: true },
     })
     const saving = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
     expect(saving.attributes('disabled')).toBeDefined()
-    const csv = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')!
-    expect(csv.attributes('disabled')).toBeDefined()
   })
 
-  it('renders the success chip when exportStatus.ok is true', () => {
+  it('renders the success chip when status.ok is true', () => {
     const { wrapper } = mountSettings({
       props: {
         ...baseProps,
-        exportStatus: { ok: true, message: 'Saved: /tmp/recall.json' },
+        backupStatus: { ok: true, message: 'Saved: /tmp/recall.db' },
       },
     })
-    expect(wrapper.text()).toContain('Saved: /tmp/recall.json')
+    expect(wrapper.text()).toContain('Saved: /tmp/recall.db')
     expect(wrapper.find('.setting-meta.success').exists()).toBe(true)
   })
 
-  it('renders the failure chip when exportStatus.ok is false', () => {
+  it('renders the failure chip when status.ok is false', () => {
     const { wrapper } = mountSettings({
       props: {
         ...baseProps,
-        exportStatus: { ok: false, message: 'Export failed: boom' },
+        backupStatus: { ok: false, message: 'Backup failed: boom' },
       },
     })
-    expect(wrapper.text()).toContain('Export failed: boom')
+    expect(wrapper.text()).toContain('Backup failed: boom')
     expect(wrapper.find('.setting-meta.blocked').exists()).toBe(true)
   })
 
-  it('shows the unarmed "Import Backup…" button by default', () => {
+  it('shows the unarmed "Restore (.db)…" button by default', () => {
     const { wrapper } = mountSettings({ props: baseProps })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))!
     expect(btn).toBeDefined()
     expect(btn.classes()).toContain('danger-outline')
   })
 
-  it('arms / confirms / cancels the Import flow', async () => {
+  it('arms / confirms / cancels the Restore flow', async () => {
     const { wrapper, spies, matches } = mountSettings({ props: baseProps })
-    const arm = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
+    const arm = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))!
     await arm.trigger('click')
-    expect(spies.armImport).toHaveBeenCalled()
+    expect(spies.armRestore).toHaveBeenCalled()
 
-    matches.importArmed = true
+    matches.restoreArmed = true
     matches.records = makeRecords(5, 0)
     await nextTick()
     const choose = wrapper.findAll('button').find(b => b.text().includes('Choose File'))!
@@ -589,25 +591,21 @@ describe('SettingsView — Backup & Restore', () => {
     expect(wrapper.text()).toMatch(/wipes 5 record/)
 
     await choose.trigger('click')
-    expect(spies.importData).toHaveBeenCalled()
+    expect(spies.restore).toHaveBeenCalled()
 
     const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
     await cancel.trigger('click')
-    expect(spies.cancelImport).toHaveBeenCalled()
+    expect(spies.cancelRestore).toHaveBeenCalled()
   })
 
-  it('disables Import while exporting (and vice versa)', () => {
-    const { wrapper: exporting } = mountSettings({
-      props: { ...baseProps, exporting: 'json' },
+  it('disables Restore + Import while a backup is in flight', () => {
+    const { wrapper } = mountSettings({
+      props: { ...baseProps, backingUp: true },
     })
-    const importBtn = exporting.findAll('button').find(b => b.text().includes('Import Backup'))!
+    const restoreBtn = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))!
+    expect(restoreBtn.attributes('disabled')).toBeDefined()
+    const importBtn = wrapper.findAll('button').find(b => b.text().includes('Import matches'))!
     expect(importBtn.attributes('disabled')).toBeDefined()
-
-    const { wrapper: importing } = mountSettings({
-      props: { ...baseProps, importing: true },
-    })
-    const json = importing.findAll('button').find(b => b.text().trim() === 'JSON')!
-    expect(json.attributes('disabled')).toBeDefined()
   })
 })
 

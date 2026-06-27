@@ -437,6 +437,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           @set-density="setDensity"
           @jump-to-undated="onJumpToUndated"
           @add-match="uiStore.openManualMatch"
+          @import-matches="matchesStore.importMatches"
           @expand-all="membersListRef?.expandAllSections()"
           @collapse-all="membersListRef?.collapseAllSections()"
         />

@@ -37,15 +37,14 @@ test.describe('system flows (real server)', () => {
     expect(((await (await request.get('/api/v1/screenshots/ignored')).json()) as unknown[])).toHaveLength(0)
   })
 
-  test('export the corpus as both JSON and CSV', async ({ request }) => {
+  test('back up the corpus as a native SQLite snapshot', async ({ request }) => {
     await createMatch(request, manual({ played_at: '2026-06-15T16:00:00Z' }))
 
-    const json = await request.get('/api/v1/exports?format=json')
-    expect(json.status()).toBe(200)
-    expect((await json.body()).byteLength).toBeGreaterThan(0)
-
-    const csv = await request.get('/api/v1/exports?format=csv')
-    expect(csv.status()).toBe(200)
-    expect((await csv.body()).byteLength).toBeGreaterThan(0)
+    const snapshot = await request.get('/api/v1/database')
+    expect(snapshot.status()).toBe(200)
+    const bytes = await snapshot.body()
+    expect(bytes.byteLength).toBeGreaterThan(0)
+    // The body is a real SQLite file — it starts with the format header.
+    expect(bytes.subarray(0, 16).toString('latin1')).toBe('SQLite format 3\0')
   })
 })
