@@ -6,9 +6,11 @@ import (
 	"context"
 	"embed"
 	"net/http"
+	"runtime"
 	"strings"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
@@ -30,6 +32,10 @@ func RunWails(a *app.App, assets embed.FS) {
 			Middleware: screenshotsMiddleware(a.ScreenshotHandler()),
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		// Native menu, per-OS (see desktopMenu): macOS gets the standard App /
+		// Edit / Window menus so the platform "maximize" (Window ▸ Zoom) and
+		// Cmd+C/V/X exist; Windows / Linux keep their native title-bar controls.
+		Menu: desktopMenu(runtime.GOOS),
 		// Creation size is a safe minimum; OnStartup grows it to a share of
 		// the actual display once the runtime can report screen dimensions
 		// (the fixed 1024×768 felt cramped on 1440p+ monitors).
@@ -44,6 +50,28 @@ func RunWails(a *app.App, assets embed.FS) {
 	if err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+// desktopMenu returns the native application menu for the given OS, following
+// each platform's window conventions:
+//
+//   - macOS has no title-bar "maximize". The native maximize is Window ▸ Zoom
+//     (the macOS performZoom action, carried by the Window menu), so a Mac app
+//     without a menu has no discoverable maximize at all. It also needs an Edit
+//     menu or Cmd+C / V / X don't work in text inputs, and an App menu for
+//     About / Hide / Quit. We provide all three standard menus.
+//   - Windows / Linux already expose minimize / maximize / close in the native
+//     title bar (and copy / paste in the webview), where a menu bar is
+//     non-idiomatic — so return nil and rely on the native controls.
+//
+// (Re-pointing the macOS green button from fullscreen to zoom would require
+// objc/CGo, which the project avoids; the native Window menu is the supported
+// CGo-free path to a real maximize.)
+func desktopMenu(goos string) *menu.Menu {
+	if goos != "darwin" {
+		return nil
+	}
+	return menu.NewMenuFromItems(menu.AppMenu(), menu.EditMenu(), menu.WindowMenu())
 }
 
 // screenshotsMiddleware short-circuits `/_screenshot/...` requests to
