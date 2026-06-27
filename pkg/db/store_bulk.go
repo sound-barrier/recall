@@ -109,8 +109,8 @@ func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
 // auxiliary tables (match_reviews, match_annotations with its
 // children cascading, hidden_matches, ambiguous_candidates, match_
 // queue, match_play_mode), AND the ignored_screenshots suppress
-// list. Used by App.ClearDatabase, bundle import, and CSV import —
-// all of which expect a "wipe everything" semantic. Callers that
+// list. Used by App.ClearDatabase, which expects a "wipe everything"
+// semantic. Callers that
 // want the suppress list to survive (App.ClearDatabase's keep-
 // ignored opt-out path) snapshot the list, call Clear, then re-
 // insert via AddIgnoredScreenshot.

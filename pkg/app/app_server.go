@@ -45,16 +45,10 @@ func (a *App) emitParseCancelled() {
 	a.SSEHub.Broadcast("parse-cancelled")
 }
 
-// SaveExportToFile is not available in server mode (no native dialogs).
-// The HTTP API exposes GET /api/v1/exports which streams the same payload.
-func (a *App) SaveExportToFile() (string, error) {
-	return "", errors.New("native dialogs unavailable in server mode; use GET /api/v1/exports")
-}
-
-// SaveExportToFileCSV is not available in server mode (no native dialogs).
-// The HTTP API exposes GET /api/v1/exports?format=csv for the same payload.
-func (a *App) SaveExportToFileCSV() (string, error) {
-	return "", errors.New("native dialogs unavailable in server mode; use GET /api/v1/exports?format=csv")
+// SaveBackupToFile is not available in server mode (no native dialogs).
+// The HTTP API exposes GET /api/v1/database which streams the same snapshot.
+func (a *App) SaveBackupToFile() (string, error) {
+	return "", errors.New("native dialogs unavailable in server mode; use GET /api/v1/database")
 }
 
 // SaveBundleToFile is not available in server mode (no native dialogs).
@@ -70,10 +64,16 @@ func (a *App) SaveTextToFile(_, _ string) (string, error) {
 	return "", errors.New("native dialogs unavailable in server mode; the browser downloads the CSV client-side")
 }
 
-// LoadImportFromFile is not available in server mode (no native dialogs).
-// The HTTP API exposes POST /api/v1/imports which accepts the same payload.
-func (a *App) LoadImportFromFile() (string, error) {
-	return "", errors.New("native dialogs unavailable in server mode; use POST /api/v1/imports")
+// LoadRestoreFromFile is not available in server mode (no native dialogs).
+// The HTTP API exposes PUT /api/v1/database which accepts the same snapshot.
+func (a *App) LoadRestoreFromFile() (string, error) {
+	return "", errors.New("native dialogs unavailable in server mode; use PUT /api/v1/database")
+}
+
+// LoadMatchImportFromFile is not available in server mode (no native dialogs).
+// The HTTP API exposes POST /api/v1/imports which accepts the same bundle.
+func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
+	return MatchImportResult{}, errors.New("native dialogs unavailable in server mode; use POST /api/v1/imports")
 }
 
 // PickTesseractBinary is not available in server mode (no native dialogs).

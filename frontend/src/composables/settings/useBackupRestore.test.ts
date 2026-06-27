@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { useBackupRestore, type BackupRestoreApi } from '@/composables/settings/useBackupRestore'
+import { useBackupRestore, type BackupRestoreApi, type MatchImportResult } from '@/composables/settings/useBackupRestore'
+
+function result(over: Partial<MatchImportResult> = {}): MatchImportResult {
+  return { path: '/tmp/bundle.zip', imported: 2, skipped: 1, ...over }
+}
 
 function makeApi(overrides: Partial<BackupRestoreApi> = {}): BackupRestoreApi {
   return {
-    exportJSON: vi.fn().mockResolvedValue('/tmp/export.json'),
-    exportCSV: vi.fn().mockResolvedValue('/tmp/export.csv'),
-    importJSON: vi.fn().mockResolvedValue('/tmp/import.json'),
-    afterImport: vi.fn(),
+    backup: vi.fn().mockResolvedValue('/tmp/recall-backup.db'),
+    restore: vi.fn().mockResolvedValue('/tmp/recall-backup.db'),
+    importMatches: vi.fn().mockResolvedValue(result()),
+    reload: vi.fn(),
     ...overrides,
   }
 }
@@ -15,129 +19,144 @@ describe('useBackupRestore', () => {
   beforeEach(() => { vi.useFakeTimers() })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
-  it('exportData(json) sets a Saved chip on success', async () => {
+  it('backup() sets a Saved chip on success', async () => {
     const api = makeApi()
-    const { exportData, exportStatus, exporting } = useBackupRestore(api)
-    const p = exportData()
-    expect(exporting.value).toBe('json')
+    const { backup, status, backingUp } = useBackupRestore(api)
+    const p = backup()
+    expect(backingUp.value).toBe(true)
     await p
-    expect(api.exportJSON).toHaveBeenCalled()
-    expect(exporting.value).toBe(false)
-    expect(exportStatus.value).toEqual({ ok: true, message: 'Saved: /tmp/export.json' })
+    expect(api.backup).toHaveBeenCalled()
+    expect(backingUp.value).toBe(false)
+    expect(status.value).toEqual({ ok: true, message: 'Saved: /tmp/recall-backup.db' })
   })
 
-  it('exportDataCSV uses the CSV path', async () => {
-    const api = makeApi()
-    const { exportDataCSV, exportStatus } = useBackupRestore(api)
-    await exportDataCSV()
-    expect(api.exportCSV).toHaveBeenCalled()
-    expect(api.exportJSON).not.toHaveBeenCalled()
-    expect(exportStatus.value?.message).toContain('export.csv')
+  it('backup() empty path (user cancel) leaves the chip silent', async () => {
+    const api = makeApi({ backup: vi.fn().mockResolvedValue('') })
+    const { backup, status } = useBackupRestore(api)
+    await backup()
+    expect(status.value).toBeNull()
   })
 
-  it('empty path (user cancel) leaves the chip silent', async () => {
-    const api = makeApi({ exportJSON: vi.fn().mockResolvedValue('') })
-    const { exportData, exportStatus } = useBackupRestore(api)
-    await exportData()
-    expect(exportStatus.value).toBeNull()
+  it('backup() failure surfaces an error chip', async () => {
+    const api = makeApi({ backup: vi.fn().mockRejectedValue(new Error('disk full')) })
+    const { backup, status, backingUp } = useBackupRestore(api)
+    await backup()
+    expect(backingUp.value).toBe(false)
+    expect(status.value?.ok).toBe(false)
+    expect(status.value?.message).toContain('disk full')
   })
 
-  it('failure surfaces an error chip', async () => {
-    const api = makeApi({ exportJSON: vi.fn().mockRejectedValue(new Error('disk full')) })
-    const { exportData, exportStatus, exporting } = useBackupRestore(api)
-    await exportData()
-    expect(exporting.value).toBe(false)
-    expect(exportStatus.value?.ok).toBe(false)
-    expect(exportStatus.value?.message).toContain('disk full')
-  })
-
-  it('concurrent export call is rejected while one is in flight', async () => {
+  it('a second backup is rejected while one is in flight', async () => {
     let resolveFirst: (s: string) => void = () => {}
     const api = makeApi({
-      exportJSON: vi.fn().mockImplementation(() => new Promise<string>(r => { resolveFirst = r })),
+      backup: vi.fn().mockImplementation(() => new Promise<string>(r => { resolveFirst = r })),
     })
-    const { exportData, exporting } = useBackupRestore(api)
-    void exportData()
-    expect(exporting.value).toBe('json')
-    void exportData() // second call: should no-op
-    expect(api.exportJSON).toHaveBeenCalledTimes(1)
-    resolveFirst('/tmp/a.json')
+    const { backup, backingUp } = useBackupRestore(api)
+    void backup()
+    expect(backingUp.value).toBe(true)
+    void backup() // second call: should no-op
+    expect(api.backup).toHaveBeenCalledTimes(1)
+    resolveFirst('/tmp/a.db')
   })
 
   it('chip auto-clears after 5s', async () => {
     const api = makeApi()
-    const { exportData, exportStatus } = useBackupRestore(api)
-    await exportData()
-    expect(exportStatus.value).not.toBeNull()
+    const { backup, status } = useBackupRestore(api)
+    await backup()
+    expect(status.value).not.toBeNull()
     vi.advanceTimersByTime(4999)
-    expect(exportStatus.value).not.toBeNull()
+    expect(status.value).not.toBeNull()
     vi.advanceTimersByTime(2)
-    expect(exportStatus.value).toBeNull()
+    expect(status.value).toBeNull()
   })
 
   it('a newer chip does not get clobbered by an older auto-clear timer', async () => {
     const api = makeApi()
-    const { exportData, exportStatus } = useBackupRestore(api)
-    await exportData()
-    const first = exportStatus.value
+    const { backup, status } = useBackupRestore(api)
+    await backup()
+    const first = status.value
     vi.advanceTimersByTime(2000)
-    // Replace with a fresh chip mid-window.
-    await exportData()
-    const second = exportStatus.value
+    await backup()
+    const second = status.value
     expect(second).not.toBe(first)
-    // Original auto-clear fires (5s after the first chip) — should
-    // see that the chip has been replaced and skip.
     vi.advanceTimersByTime(3000)
-    expect(exportStatus.value).toBe(second)
+    expect(status.value).toBe(second)
   })
 
-  it('importData arms-then-import sets a Imported chip and calls afterImport', async () => {
+  it('restore arms-then-confirms, sets a Restored chip, and reloads', async () => {
     const api = makeApi()
-    const { armImport, importData, importArmed, exportStatus, importing } = useBackupRestore(api)
-    armImport()
-    expect(importArmed.value).toBe(true)
-    const p = importData()
-    expect(importing.value).toBe(true)
-    expect(importArmed.value).toBe(false) // disarmed once import starts
+    const { armRestore, restore, restoreArmed, status, restoring } = useBackupRestore(api)
+    armRestore()
+    expect(restoreArmed.value).toBe(true)
+    const p = restore()
+    expect(restoring.value).toBe(true)
+    expect(restoreArmed.value).toBe(false) // disarmed once restore starts
     await p
-    expect(api.importJSON).toHaveBeenCalled()
-    expect(api.afterImport).toHaveBeenCalled()
-    expect(exportStatus.value?.message).toContain('Imported')
+    expect(api.restore).toHaveBeenCalled()
+    expect(api.reload).toHaveBeenCalled()
+    expect(status.value?.message).toContain('Restored from')
   })
 
-  it('cancelImport disarms without firing import', () => {
+  it('cancelRestore disarms without firing restore', () => {
     const api = makeApi()
-    const { armImport, cancelImport, importArmed } = useBackupRestore(api)
-    armImport()
-    cancelImport()
-    expect(importArmed.value).toBe(false)
-    expect(api.importJSON).not.toHaveBeenCalled()
+    const { armRestore, cancelRestore, restoreArmed } = useBackupRestore(api)
+    armRestore()
+    cancelRestore()
+    expect(restoreArmed.value).toBe(false)
+    expect(api.restore).not.toHaveBeenCalled()
   })
 
-  it('arm-import clears the chip so the previous Saved message goes away', async () => {
+  it('armRestore clears a prior chip so the Saved message goes away', async () => {
     const api = makeApi()
-    const { exportData, armImport, exportStatus } = useBackupRestore(api)
-    await exportData()
-    expect(exportStatus.value).not.toBeNull()
-    armImport()
-    expect(exportStatus.value).toBeNull()
+    const { backup, armRestore, status } = useBackupRestore(api)
+    await backup()
+    expect(status.value).not.toBeNull()
+    armRestore()
+    expect(status.value).toBeNull()
   })
 
-  it('import failure surfaces an error chip and skips afterImport', async () => {
-    const api = makeApi({ importJSON: vi.fn().mockRejectedValue(new Error('schema mismatch')) })
-    const { importData, exportStatus, importing } = useBackupRestore(api)
-    await importData()
-    expect(importing.value).toBe(false)
-    expect(exportStatus.value?.ok).toBe(false)
-    expect(exportStatus.value?.message).toContain('schema mismatch')
-    expect(api.afterImport).not.toHaveBeenCalled()
+  it('restore failure surfaces an error chip and skips reload', async () => {
+    const api = makeApi({ restore: vi.fn().mockRejectedValue(new Error('not a database')) })
+    const { restore, status, restoring } = useBackupRestore(api)
+    await restore()
+    expect(restoring.value).toBe(false)
+    expect(status.value?.ok).toBe(false)
+    expect(status.value?.message).toContain('not a database')
+    expect(api.reload).not.toHaveBeenCalled()
   })
 
-  it('importData with empty path stays silent (no chip, no afterImport)', async () => {
-    const api = makeApi({ importJSON: vi.fn().mockResolvedValue('') })
-    const { importData, exportStatus } = useBackupRestore(api)
-    await importData()
-    expect(exportStatus.value).toBeNull()
-    expect(api.afterImport).not.toHaveBeenCalled()
+  it('importMatches sets an Imported chip with the merge counts and reloads', async () => {
+    const api = makeApi()
+    const { importMatches, status, importingMatches } = useBackupRestore(api)
+    const p = importMatches()
+    expect(importingMatches.value).toBe(true)
+    await p
+    expect(api.importMatches).toHaveBeenCalled()
+    expect(api.reload).toHaveBeenCalled()
+    expect(status.value).toEqual({ ok: true, message: 'Imported 2 matches, skipped 1 already present' })
+  })
+
+  it('importMatches with no collisions omits the skipped clause', async () => {
+    const api = makeApi({ importMatches: vi.fn().mockResolvedValue(result({ imported: 1, skipped: 0 })) })
+    const { importMatches, status } = useBackupRestore(api)
+    await importMatches()
+    expect(status.value?.message).toBe('Imported 1 match')
+  })
+
+  it('importMatches with empty path stays silent (no chip, no reload)', async () => {
+    const api = makeApi({ importMatches: vi.fn().mockResolvedValue(result({ path: '' })) })
+    const { importMatches, status } = useBackupRestore(api)
+    await importMatches()
+    expect(status.value).toBeNull()
+    expect(api.reload).not.toHaveBeenCalled()
+  })
+
+  it('importMatches failure surfaces an error chip and skips reload', async () => {
+    const api = makeApi({ importMatches: vi.fn().mockRejectedValue(new Error('unsupported schema')) })
+    const { importMatches, status } = useBackupRestore(api)
+    await importMatches()
+    expect(status.value?.ok).toBe(false)
+    expect(status.value?.message).toContain('unsupported schema')
+    expect(api.reload).not.toHaveBeenCalled()
   })
 })

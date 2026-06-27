@@ -1,31 +1,31 @@
 <script setup lang="ts">
 import type { ExportStatus } from '@/composables/settings/useBackupRestore'
 
-// Backup & Restore panel — JSON / CSV export buttons + a two-step
-// arm/confirm Import flow that replaces the live DB. Extracted from
-// SettingsView so the state surface (5 props + 5 emits) and the
-// inline status messaging stay scoped to one SFC.
+// Backup & Restore panel:
+//   - Backup        — save a complete native SQLite (.db) snapshot.
+//   - Import matches — MERGE a shared bundle's matches (additive; no confirm).
+//   - Restore       — REPLACE the live DB from a .db snapshot (two-step
+//                     arm/confirm danger flow, since it wipes local data).
 //
-// `.setting-row.danger-row` + `.clear-confirm-group` are used by
-// both this panel AND the SettingsAdvanced Clear-DB row, so those
-// styles stay in SettingsView (or its parent stylesheet). Only the
-// truly Backup-specific `.export-btn-group` family lives here.
+// `.setting-row.danger-row` + `.clear-confirm-group` are shared with the
+// SettingsAdvanced Clear-DB row, so those styles stay in the parent stylesheet.
 
 defineProps<{
-  exporting?:    false | 'json' | 'csv'
-  importing?:    boolean
-  importArmed?:  boolean
-  exportStatus?: ExportStatus | null
-  matchedCount?: number
-  unknownCount?: number
+  backingUp?:        boolean
+  restoring?:        boolean
+  restoreArmed?:     boolean
+  importingMatches?: boolean
+  status?:           ExportStatus | null
+  matchedCount?:     number
+  unknownCount?:     number
 }>()
 
 const emit = defineEmits<{
-  'export-data':     []
-  'export-data-csv': []
-  'arm-import':      []
-  'import-data':     []
-  'cancel-import':   []
+  'backup':         []
+  'arm-restore':    []
+  'restore':        []
+  'cancel-restore': []
+  'import-matches': []
 }>()
 </script>
 
@@ -39,93 +39,114 @@ const emit = defineEmits<{
       </h3>
     </div>
     <div class="setting-rows">
+      <!-- Backup — save a native SQLite snapshot. -->
       <div class="setting-row">
         <div class="setting-info">
           <h4 class="setting-label">
-            Export Data
+            Backup Database
             <span class="setting-help" tabindex="0" role="note">
               <span class="setting-help-mark" aria-hidden="true">?</span>
-              <span class="setting-help-label">About Export</span>
+              <span class="setting-help-label">About Backup</span>
               <span class="setting-help-pop" role="tooltip">
-                Pick <strong>JSON</strong> for a portable single-file Recall backup. Pick <strong>CSV</strong> for a ZIP of per-table spreadsheets you can open in Excel / Sheets. Both round-trip through Import.
+                Saves a complete <strong>SQLite (.db)</strong> snapshot of your database — every match, edit, review, and override. Restore it on this or another machine. Screenshots aren't included.
               </span>
             </span>
           </h4>
           <p class="setting-desc">
-            Download a portable backup of every parsed match. <strong>JSON</strong> is the canonical Recall format (smallest, round-trips losslessly); <strong>CSV</strong> exports a ZIP archive of one CSV per table for Excel / Sheets. Settings + screenshots aren't included.
+            Download a complete <strong>.db</strong> snapshot of your database. Unlike sharing matches, this is a full-fidelity backup you can restore from later.
           </p>
-          <p v-if="exportStatus && exportStatus.ok" class="setting-meta success">
+          <p v-if="status && status.ok" class="setting-meta success">
             <span class="block-mark" aria-hidden="true">✓</span>
-            {{ exportStatus.message }}
+            {{ status.message }}
           </p>
-          <p v-else-if="exportStatus && !exportStatus.ok" class="setting-meta blocked">
+          <p v-else-if="status && !status.ok" class="setting-meta blocked">
             <span class="block-mark" aria-hidden="true">✕</span>
-            {{ exportStatus.message }}
+            {{ status.message }}
           </p>
         </div>
         <div class="setting-control">
-          <div class="export-btn-group">
-            <button
-              class="btn ghost"
-              :disabled="!!exporting || importing"
-              @click="emit('export-data')"
-            >
-              <span v-if="exporting === 'json'">Saving…</span>
-              <span v-else>JSON</span>
-            </button>
-            <button
-              class="btn ghost"
-              :disabled="!!exporting || importing"
-              @click="emit('export-data-csv')"
-            >
-              <span v-if="exporting === 'csv'">Saving…</span>
-              <span v-else>CSV</span>
-            </button>
-          </div>
+          <button
+            class="btn ghost"
+            :disabled="backingUp || restoring || importingMatches"
+            @click="emit('backup')"
+          >
+            <span v-if="backingUp">Saving…</span>
+            <span v-else>Backup (.db)</span>
+          </button>
         </div>
       </div>
 
-      <div class="setting-row" :class="{ 'danger-row': importArmed }">
+      <!-- Import matches — additive merge from a shared bundle. -->
+      <div class="setting-row">
         <div class="setting-info">
           <h4 class="setting-label">
-            Import Data
+            Import Matches
             <span class="setting-help" tabindex="0" role="note">
               <span class="setting-help-mark" aria-hidden="true">?</span>
               <span class="setting-help-label">About Import</span>
               <span class="setting-help-pop" role="tooltip">
-                Restores a previously-exported backup. <strong>Replaces</strong> the live database — local matches not in the backup are lost. Two-step arm/confirm prevents accidental wipes.
+                Merges matches from a bundle someone exported from their Matches view. <strong>Additive</strong> — matches you already have are skipped, nothing is wiped.
               </span>
             </span>
           </h4>
           <p class="setting-desc">
-            Restore from a previously-exported JSON backup. <strong>Replaces</strong> everything currently in the database — local matches that aren't in the backup will be lost.
+            Merge matches from a <strong>bundle (.zip)</strong> exported from a Matches view. Adds new matches only — anything already in your database is skipped.
           </p>
-          <p v-if="importArmed" class="setting-meta blocked">
+        </div>
+        <div class="setting-control">
+          <button
+            class="btn ghost"
+            :disabled="importingMatches || restoring || backingUp"
+            @click="emit('import-matches')"
+          >
+            <span v-if="importingMatches">Importing…</span>
+            <span v-else>Import matches…</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Restore — destructive full replace, two-step arm/confirm. -->
+      <div class="setting-row" :class="{ 'danger-row': restoreArmed }">
+        <div class="setting-info">
+          <h4 class="setting-label">
+            Restore Database
+            <span class="setting-help" tabindex="0" role="note">
+              <span class="setting-help-mark" aria-hidden="true">?</span>
+              <span class="setting-help-label">About Restore</span>
+              <span class="setting-help-pop" role="tooltip">
+                Replaces the live database with a <strong>.db</strong> backup. Everything currently stored is lost. Two-step arm/confirm prevents accidental wipes.
+              </span>
+            </span>
+          </h4>
+          <p class="setting-desc">
+            Restore from a previously-saved <strong>.db</strong> backup. <strong>Replaces</strong> everything currently in the database — local matches not in the backup are lost.
+          </p>
+          <p v-if="restoreArmed" class="setting-meta blocked">
             <span class="block-mark" aria-hidden="true">⚠</span>
             This wipes {{ (matchedCount ?? 0) + (unknownCount ?? 0) }} record{{ ((matchedCount ?? 0) + (unknownCount ?? 0)) === 1 ? '' : 's' }} before loading the backup.
           </p>
         </div>
         <div class="setting-control">
-          <template v-if="!importArmed">
+          <template v-if="!restoreArmed">
             <button
               class="btn danger-outline"
-              :disabled="importing || !!exporting"
-              @click="emit('arm-import')"
+              :disabled="restoring || backingUp || importingMatches"
+              @click="emit('arm-restore')"
             >
-              Import Backup…
+              Restore (.db)…
             </button>
           </template>
           <template v-else>
             <div class="clear-confirm-group">
               <button
                 class="btn danger"
-                :disabled="importing"
-                @click="emit('import-data')"
+                :disabled="restoring"
+                @click="emit('restore')"
               >
-                <span v-if="importing">Loading…</span>
+                <span v-if="restoring">Loading…</span>
                 <span v-else>Choose File…</span>
               </button>
-              <button class="btn ghost" :disabled="importing" @click="emit('cancel-import')">
+              <button class="btn ghost" :disabled="restoring" @click="emit('cancel-restore')">
                 Cancel
               </button>
             </div>
@@ -135,21 +156,3 @@ const emit = defineEmits<{
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Side-by-side JSON | CSV format picker. Mono labels + tight gap
-   so the pair reads as one choice rather than two actions. */
-.export-btn-group {
-  display: inline-flex;
-  gap: 0.4rem;
-  align-items: stretch;
-}
-
-.export-btn-group .btn {
-  padding: 0.4rem 0.95rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-</style>

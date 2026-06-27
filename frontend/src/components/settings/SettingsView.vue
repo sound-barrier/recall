@@ -73,20 +73,21 @@ const {
 } = settingsStore
 const {
   parseBusy,
-  exporting,
-  importing,
-  importArmed,
-  exportStatus,
+  backingUp,
+  restoring,
+  restoreArmed,
+  importingMatches,
+  backupStatus,
   clearConfirm,
   clearingDB,
   ignoredCount,
 } = storeToRefs(matchesStore)
 const {
-  exportData,
-  exportDataCSV,
-  armImport,
-  cancelImport,
-  importData,
+  backup,
+  armRestore,
+  cancelRestore,
+  restore,
+  importMatches,
   armClear,
   cancelClear,
   onClearDatabase,
@@ -225,17 +226,18 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
     <SettingsProfiles />
 
     <SettingsBackupRestore
-      :exporting="exporting"
-      :importing="importing"
-      :import-armed="importArmed"
-      :export-status="exportStatus"
+      :backing-up="backingUp"
+      :restoring="restoring"
+      :restore-armed="restoreArmed"
+      :importing-matches="importingMatches"
+      :status="backupStatus"
       :matched-count="matchedCount"
       :unknown-count="unknownCount"
-      @export-data="exportData"
-      @export-data-csv="exportDataCSV"
-      @arm-import="armImport"
-      @import-data="importData"
-      @cancel-import="cancelImport"
+      @backup="backup"
+      @arm-restore="armRestore"
+      @restore="restore"
+      @cancel-restore="cancelRestore"
+      @import-matches="importMatches"
     />
 
     <SettingsAdvanced

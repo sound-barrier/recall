@@ -807,19 +807,23 @@ export function GetDataLocation(): Promise<DataLocation> {
   return _get<DataLocation>('/api/v1/system/data-location')
 }
 
-// Export — in Wails mode, the native save dialog handles file writing
-// and the call resolves with the chosen path ("" on cancel). In server
-// mode we fetch the payload as a blob and trigger a browser download
-// using a transient <a download> click.
-export function ExportData(): Promise<string> {
-  return downloadExport('json')
+// MatchImportResult is the outcome of a merge import: where it came from
+// (empty path = user cancelled) plus how many matches were added vs skipped
+// because their key already existed locally.
+export interface MatchImportResult {
+  path:     string
+  imported: number
+  skipped:  number
 }
 
-// CSV-format export. Wraps the parsed-match tables as a ZIP of CSV
-// files + a manifest.json — same data as ExportData, different
-// container chosen by the user.
-export function ExportDataCSV(): Promise<string> {
-  return downloadExport('csv')
+// BackupDatabase saves a complete native SQLite snapshot of the database.
+// Wails delegates to a native save dialog (SaveBackupToFile, "" on cancel);
+// server mode streams GET /api/v1/database into a browser download. Resolves
+// with the saved filename ("" on a Wails cancel). Captures every table — a
+// true backup, unlike the former lossy JSON/CSV export.
+export function BackupDatabase(): Promise<string> {
+  if (IS_WAILS) return _wails<string>('SaveBackupToFile')
+  return downloadBinary('/api/v1/database', `recall-backup-${tsFilenameStamp()}.db`)
 }
 
 // ExportMatchesCSV saves a flat, one-row-per-match sheet the caller has
@@ -893,19 +897,21 @@ export async function ExportBundle(opts: {
   return name
 }
 
-async function downloadExport(format: 'json' | 'csv'): Promise<string> {
-  if (IS_WAILS) {
-    return _wails(format === 'csv' ? 'SaveExportToFileCSV' : 'SaveExportToFile')
-  }
-  const url = `/api/v1/exports?format=${format}`
+// tsFilenameStamp builds a filesystem-safe `YYYY-MM-DDTHH-MM-SS` stamp for a
+// fallback download name when the server omits Content-Disposition.
+function tsFilenameStamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+}
+
+// downloadBinary fetches a binary endpoint and triggers a browser download via
+// a transient <a download> click, resolving with the saved filename. The name
+// comes from the server's Content-Disposition, falling back to fallbackName.
+async function downloadBinary(url: string, fallbackName: string): Promise<string> {
   const r = await fetch(url)
   if (!r.ok) throw await _apiError(r)
-  // Pull the server-suggested filename out of Content-Disposition.
   const cd = r.headers.get('Content-Disposition') ?? ''
   const matched = /filename="([^"]+)"/.exec(cd)
-  const ext = format === 'csv' ? 'zip' : 'json'
-  const fallback = `recall-export-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.${ext}`
-  const name = matched?.[1] ?? fallback
+  const name = matched?.[1] ?? fallbackName
   const blob = await r.blob()
   const blobURL = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -919,28 +925,44 @@ async function downloadExport(format: 'json' | 'csv'): Promise<string> {
   return name
 }
 
-// Import — Wails opens a native file picker and runs ImportData
-// in-process; resolves with the path ("" on cancel). Server mode
-// opens a transient <input type=file> accepting either .json or
-// .zip (CSV-flavored exports are ZIP archives), reads the chosen
-// file as bytes, and POSTs to /api/v1/imports with a content-type
-// matching the format. The server sniffs the payload's first bytes
-// and routes between the JSON and CSV codepaths automatically.
-export async function ImportData(): Promise<string> {
-  if (IS_WAILS) return _wails('LoadImportFromFile')
-  const file = await pickFile('application/json,application/zip,.json,.zip')
+// RestoreDatabase REPLACES the local database with a chosen `.db` snapshot.
+// Wails opens a native picker (LoadRestoreFromFile); server mode reads the
+// chosen file and PUTs it to /api/v1/database. Resolves with the file name
+// ("" on cancel). Destructive — the caller must confirm first.
+export async function RestoreDatabase(): Promise<string> {
+  if (IS_WAILS) return _wails('LoadRestoreFromFile')
+  const file = await pickFile('.db,application/octet-stream,application/x-sqlite3')
   if (!file) return ''
-  // Read as ArrayBuffer so ZIP archives survive the round-trip — a
-  // .text() call would mangle binary bytes via UTF-8 decoding.
   const buf = await file.arrayBuffer()
-  const isZip = file.name.toLowerCase().endsWith('.zip') || file.type === 'application/zip'
-  const r = await fetch('/api/v1/imports', {
-    method: 'POST',
-    headers: { 'Content-Type': isZip ? 'application/zip' : 'application/json' },
+  const r = await fetch('/api/v1/database', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream' },
     body: buf,
   })
   if (!r.ok) throw await _apiError(r)
   return file.name
+}
+
+// ImportMatches MERGES the matches in a chosen bundle `.zip` into the local
+// database — additive, existing keys skipped, nothing wiped. Wails opens a
+// native picker (LoadMatchImportFromFile) returning the merge counts; server
+// mode reads the chosen file, POSTs it to /api/v1/imports, and reads the
+// {imported, skipped} summary. Resolves with an empty path on cancel.
+export async function ImportMatches(): Promise<MatchImportResult> {
+  if (IS_WAILS) return _wails<MatchImportResult>('LoadMatchImportFromFile')
+  const file = await pickFile('application/zip,.zip')
+  if (!file) return { path: '', imported: 0, skipped: 0 }
+  // Read as ArrayBuffer so the ZIP bytes survive — a .text() call would mangle
+  // binary content via UTF-8 decoding.
+  const buf = await file.arrayBuffer()
+  const r = await fetch('/api/v1/imports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/zip' },
+    body: buf,
+  })
+  if (!r.ok) throw await _apiError(r)
+  const summary = (await r.json()) as { imported: number; skipped: number }
+  return { path: file.name, imported: summary.imported, skipped: summary.skipped }
 }
 
 // pickFile — promise wrapper around a transient <input type=file>.

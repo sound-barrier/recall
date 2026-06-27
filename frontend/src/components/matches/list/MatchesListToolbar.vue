@@ -26,6 +26,9 @@ const emit = defineEmits<{
   // primary entry point for the no-Tesseract persona; always reachable since
   // the toolbar renders even with an empty set.
   'add-match': []
+  // Merge matches from a shared bundle (.zip). Additive — the counterpart to
+  // the selection-only "Export bundle" in the bulk action bar.
+  'import-matches': []
   // Fold / unfold every group section at once.
   'expand-all': []
   'collapse-all': []
@@ -50,6 +53,15 @@ const emit = defineEmits<{
       >
         <span class="add-match-plus" aria-hidden="true">+</span>
         Add match
+      </button>
+      <button
+        type="button"
+        class="import-matches-btn"
+        data-import-matches
+        title="Merge matches from a shared bundle (.zip) — additive, existing matches are skipped"
+        @click="emit('import-matches')"
+      >
+        Import matches…
       </button>
       <button
         type="button"
@@ -222,6 +234,40 @@ const emit = defineEmits<{
 .add-match-btn:hover { background: var(--accent-bright, var(--accent)); }
 .add-match-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .add-match-plus { font-size: 1rem; line-height: 1; }
+
+/* Neutral secondary action — same outlined shape as the sort trigger so it
+   reads as a peer control, not a second primary "create" button. */
+.import-matches-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  padding: 0.4rem 0.8rem;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration-fast) ease,
+              border-color var(--duration-fast) ease,
+              background var(--duration-fast) ease;
+}
+
+.import-matches-btn:hover {
+  color: var(--text);
+  border-color: var(--text-faint);
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.import-matches-btn:focus-visible {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  outline: none;
+}
 
 /* Combined Sort + Group trigger — single button replaces the prior
    two segmented fieldsets so the head controls fit comfortably

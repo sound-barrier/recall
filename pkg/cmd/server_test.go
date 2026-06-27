@@ -1116,48 +1116,6 @@ func TestProfiles_PostMatchTransfers_RejectsNullInMatchKeys(t *testing.T) {
 	}
 }
 
-func TestExports_RejectsEmptyFormat(t *testing.T) {
-	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/v1/exports?format=")
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("explicit empty format must 400, got %d (%s)", rec.Code, rec.Body.String())
-	}
-}
-
-func TestExports_AbsentFormatDefaultsToJSON(t *testing.T) {
-	// Spec says default: json. ?format absent should still 200 + JSON.
-	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/v1/exports")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("absent format must 200, got %d (%s)", rec.Code, rec.Body.String())
-	}
-	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
-		t.Errorf("absent format must default to application/json, got %q", ct)
-	}
-}
-
-func TestImports_RejectsNullInUnknowns(t *testing.T) {
-	_, mux := newTestApp(t, nil)
-	body := `{
-		"schema": "recall-export/v1",
-		"exported_at": "2026-06-01T00:00:00Z",
-		"recall_version": "test",
-		"screenshots_dirs": {},
-		"summaries": [],
-		"teams": [],
-		"personals": [],
-		"ranks": [],
-		"unknowns": [null]
-	}`
-	rec := postRaw(t, mux, "/api/v1/imports", body)
-	// 409: the JSON was syntactically well-formed but the import
-	// validator rejects null entries — same status as every other
-	// spec-passes-but-semantic-fails import failure.
-	if rec.Code != http.StatusConflict {
-		t.Errorf("null in unknowns[] must 409, got %d (%s)", rec.Code, rec.Body.String())
-	}
-}
-
 // putRaw / postRaw bypass fire's JSON marshalling so tests can send
 // raw JSON snippets verbatim (null tokens, malformed shapes, etc.).
 func putRaw(t *testing.T, mux *http.ServeMux, path, body string) *httptest.ResponseRecorder {

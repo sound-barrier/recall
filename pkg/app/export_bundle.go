@@ -16,6 +16,11 @@ import (
 	"recall/pkg/match"
 )
 
+// exportSchemaV1 is the wire-schema identifier the bundle's inner data.json
+// carries. It predates the bundle (it was the standalone JSON export's schema)
+// and is kept as the data.json contract the merge import validates against.
+const exportSchemaV1 = "recall-export/v1"
+
 // BundleSchemaV1 is the wire-schema identifier the bundle's
 // manifest carries. Bumping the constant is a breaking change to
 // the bundle layout; the inner `data.json` keeps `exportSchemaV1`

@@ -175,26 +175,27 @@ describe('GetDataLocation', () => {
   })
 })
 
-// ── ExportData (browser/server mode) ──────────────────────────────────────
+// ── BackupDatabase (browser/server mode) ──────────────────────────────────
 
-describe('ExportData (browser mode)', () => {
+describe('BackupDatabase (browser mode)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
-  function fetchExportOK(body: string, disposition: string) {
+  function fetchBinaryOK(disposition: string) {
     return vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       headers: { get: (k: string) => k === 'Content-Disposition' ? disposition : null },
-      blob: () => Promise.resolve(new Blob([body], { type: 'application/json' })),
+      blob: () => Promise.resolve(new Blob([new Uint8Array([0x53, 0x51, 0x4c, 0x69])], { type: 'application/octet-stream' })),
       text: () => Promise.resolve(''),
     })
   }
 
-  it('parses the filename out of Content-Disposition and returns it', async () => {
-    vi.stubGlobal('fetch', fetchExportOK('{}', 'attachment; filename="recall-export-20260526-013000.json"'))
+  it('GETs /api/v1/database and returns the Content-Disposition filename', async () => {
+    const fetchSpy = fetchBinaryOK('attachment; filename="recall-backup-20260626-013000.db"')
+    vi.stubGlobal('fetch', fetchSpy)
     vi.stubGlobal('URL', {
       ...URL,
       createObjectURL: vi.fn(() => 'blob:fake'),
@@ -202,14 +203,15 @@ describe('ExportData (browser mode)', () => {
     })
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-    const { ExportData } = await import('@/api')
-    const name = await ExportData()
-    expect(name).toBe('recall-export-20260526-013000.json')
+    const { BackupDatabase } = await import('@/api')
+    const name = await BackupDatabase()
+    expect(fetchSpy).toHaveBeenCalledWith('/api/v1/database')
+    expect(name).toBe('recall-backup-20260626-013000.db')
     expect(clickSpy).toHaveBeenCalledOnce()
   })
 
-  it('falls back to a generated filename when Content-Disposition is missing', async () => {
-    vi.stubGlobal('fetch', fetchExportOK('{}', ''))
+  it('falls back to a generated .db filename when Content-Disposition is missing', async () => {
+    vi.stubGlobal('fetch', fetchBinaryOK(''))
     vi.stubGlobal('URL', {
       ...URL,
       createObjectURL: vi.fn(() => 'blob:fake'),
@@ -217,9 +219,9 @@ describe('ExportData (browser mode)', () => {
     })
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-    const { ExportData } = await import('@/api')
-    const name = await ExportData()
-    expect(name).toMatch(/^recall-export-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.json$/)
+    const { BackupDatabase } = await import('@/api')
+    const name = await BackupDatabase()
+    expect(name).toMatch(/^recall-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
   })
 
   it('throws ApiError on a non-2xx response', async () => {
@@ -229,16 +231,16 @@ describe('ExportData (browser mode)', () => {
       headers: { get: () => null },
       text: () => Promise.resolve('server boom'),
     }))
-    const { ExportData } = await import('@/api')
-    const err = await ExportData().catch(e => e)
+    const { BackupDatabase } = await import('@/api')
+    const err = await BackupDatabase().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(500)
   })
 })
 
-// ── ImportData (browser/server mode) ──────────────────────────────────────
+// ── RestoreDatabase + ImportMatches (browser/server mode) ─────────────────
 
-describe('ImportData (browser mode)', () => {
+describe('RestoreDatabase + ImportMatches (browser mode)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
@@ -267,45 +269,58 @@ describe('ImportData (browser mode)', () => {
     })
   }
 
-  it('returns "" when the user cancels the file picker', async () => {
+  it('RestoreDatabase returns "" when the user cancels the picker', async () => {
     installFilePicker('cancel')
-    const { ImportData } = await import('@/api')
-    const result = await ImportData()
-    expect(result).toBe('')
+    const { RestoreDatabase } = await import('@/api')
+    expect(await RestoreDatabase()).toBe('')
   })
 
-  it('POSTs JSON files as application/json with the byte body', async () => {
-    const file = new File(['{"schema":"recall-export/v1"}'], 'my-backup.json', { type: 'application/json' })
+  it('RestoreDatabase PUTs the .db bytes to /api/v1/database', async () => {
+    const file = new File([new Uint8Array([0x53, 0x51, 0x4c])], 'snap.db', { type: 'application/octet-stream' })
     installFilePicker('change', file)
-    const fetchSpy = mockFetch(200, { ok: true })
+    const fetchSpy = mockFetch(204, '')
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { ImportData } = await import('@/api')
-    const result = await ImportData()
-    expect(result).toBe('my-backup.json')
-    // The shim posts an ArrayBuffer; we assert the type rather than
-    // the exact bytes (Buffer comparison is awkward in this env).
+    const { RestoreDatabase } = await import('@/api')
+    const result = await RestoreDatabase()
+    expect(result).toBe('snap.db')
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/v1/imports',
+      '/api/v1/database',
       expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/octet-stream' },
         body: expect.any(ArrayBuffer),
       }),
     )
   })
 
-  it('POSTs ZIP files as application/zip (auto-detected from .zip extension)', async () => {
-    // Fake ZIP magic so file.arrayBuffer() returns recognizable bytes.
-    const zipBytes = new Uint8Array([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00])
-    const file = new File([zipBytes], 'backup.zip', { type: 'application/zip' })
+  it('RestoreDatabase throws ApiError when the server rejects the snapshot', async () => {
+    const file = new File([new Uint8Array([0x00])], 'bad.db', { type: 'application/octet-stream' })
     installFilePicker('change', file)
-    const fetchSpy = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', mockFetch(422, 'restore: not a valid Recall database'))
+
+    const { RestoreDatabase } = await import('@/api')
+    const err = await RestoreDatabase().catch(e => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).status).toBe(422)
+  })
+
+  it('ImportMatches returns an empty-path result when the user cancels', async () => {
+    installFilePicker('cancel')
+    const { ImportMatches } = await import('@/api')
+    expect(await ImportMatches()).toEqual({ path: '', imported: 0, skipped: 0 })
+  })
+
+  it('ImportMatches POSTs the bundle and returns the merge summary', async () => {
+    const zipBytes = new Uint8Array([0x50, 0x4B, 0x03, 0x04])
+    const file = new File([zipBytes], 'bundle.zip', { type: 'application/zip' })
+    installFilePicker('change', file)
+    const fetchSpy = mockFetch(200, { imported: 2, skipped: 1 })
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { ImportData } = await import('@/api')
-    const result = await ImportData()
-    expect(result).toBe('backup.zip')
+    const { ImportMatches } = await import('@/api')
+    const result = await ImportMatches()
+    expect(result).toEqual({ path: 'bundle.zip', imported: 2, skipped: 1 })
     expect(fetchSpy).toHaveBeenCalledWith(
       '/api/v1/imports',
       expect.objectContaining({
@@ -316,13 +331,13 @@ describe('ImportData (browser mode)', () => {
     )
   })
 
-  it('throws ApiError when the server rejects the payload', async () => {
-    const file = new File(['{not json'], 'bad.json', { type: 'application/json' })
+  it('ImportMatches throws ApiError when the server rejects the bundle', async () => {
+    const file = new File([new Uint8Array([0x50, 0x4B])], 'bad.zip', { type: 'application/zip' })
     installFilePicker('change', file)
-    vi.stubGlobal('fetch', mockFetch(400, 'import: decode: invalid character'))
+    vi.stubGlobal('fetch', mockFetch(400, 'import: malformed payload'))
 
-    const { ImportData } = await import('@/api')
-    const err = await ImportData().catch(e => e)
+    const { ImportMatches } = await import('@/api')
+    const err = await ImportMatches().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(400)
   })
@@ -332,53 +347,3 @@ describe('ImportData (browser mode)', () => {
 // module-cache reset they require pollutes any later test in the
 // same file that depends on global state (e.g. happy-dom's URL),
 // so Vitest's file-level worker isolation is the cleanest fix.
-
-// ── ExportDataCSV ────────────────────────────────────────────────────────
-
-describe('ExportDataCSV (browser mode)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
-
-  it('GETs /api/v1/exports?format=csv and uses the suggested filename', async () => {
-    const fetchSpy = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: { get: (k: string) => k === 'Content-Disposition' ? 'attachment; filename="recall-export-20260526-020000.zip"' : null },
-      blob: () => Promise.resolve(new Blob([new Uint8Array([0x50, 0x4B, 0x03, 0x04])], { type: 'application/zip' })),
-      text: () => Promise.resolve(''),
-    })
-    vi.stubGlobal('fetch', fetchSpy)
-    vi.stubGlobal('URL', {
-      ...URL,
-      createObjectURL: vi.fn(() => 'blob:fake'),
-      revokeObjectURL: vi.fn(),
-    })
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-
-    const { ExportDataCSV } = await import('@/api')
-    const name = await ExportDataCSV()
-    expect(fetchSpy).toHaveBeenCalledWith('/api/v1/exports?format=csv')
-    expect(name).toBe('recall-export-20260526-020000.zip')
-  })
-
-  it('falls back to a generated .zip filename when Content-Disposition is missing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: () => null },
-      blob: () => Promise.resolve(new Blob([new Uint8Array([0x50, 0x4B])])),
-      text: () => Promise.resolve(''),
-    }))
-    vi.stubGlobal('URL', {
-      ...URL,
-      createObjectURL: vi.fn(() => 'blob:fake'),
-      revokeObjectURL: vi.fn(),
-    })
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-
-    const { ExportDataCSV } = await import('@/api')
-    const name = await ExportDataCSV()
-    expect(name).toMatch(/^recall-export-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.zip$/)
-  })
-})

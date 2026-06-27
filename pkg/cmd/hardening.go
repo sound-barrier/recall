@@ -19,10 +19,11 @@ import (
 // bounds the read so an oversize body fails fast with a decode error
 // (surfaced as 400) instead of exhausting the heap.
 //
-// The import endpoint already caps its own read at 50 MiB internally
-// (io.LimitReader in server_backup.go); we give the middleware the
-// same ceiling for that path so the internal reader stays the thing
-// that truncates a legitimately-large backup. Everything else gets a
+// The bundle-import (POST /imports) and native-restore (PUT /database)
+// endpoints each cap their own read internally (io.LimitReader in
+// server_backup.go); we give the middleware the same ceiling for those
+// paths so the internal reader stays the thing that truncates a
+// legitimately-large bundle or .db snapshot. Everything else gets a
 // generous 8 MiB — comfortably larger than the biggest real payload
 // (a select-all bulk match-key array is well under 1 MiB) while still
 // bounding memory hard.
@@ -35,15 +36,17 @@ import (
 const (
 	// defaultMaxBodyBytes caps non-import request bodies.
 	defaultMaxBodyBytes int64 = 8 << 20 // 8 MiB
-	// importMaxBodyBytes matches the import handler's own internal cap.
-	importMaxBodyBytes int64 = 50 << 20 // 50 MiB
+	// importMaxBodyBytes matches the bundle-import / native-restore handlers'
+	// own internal cap. A bundle carries screenshot bytes and a native .db
+	// snapshot carries every table, so both can dwarf the old JSON export.
+	importMaxBodyBytes int64 = 256 << 20 // 256 MiB
 )
 
-// maxBodyForPath returns the body-size ceiling for a request path.
-// The import endpoint accepts a full DB backup; everything else is
-// small JSON.
+// maxBodyForPath returns the body-size ceiling for a request path. The
+// bundle-import (POST /imports) and native-restore (PUT /database) endpoints
+// accept large binary uploads; everything else is small JSON.
 func maxBodyForPath(p string) int64 {
-	if p == "/api/v1/imports" {
+	if p == "/api/v1/imports" || p == "/api/v1/database" {
 		return importMaxBodyBytes
 	}
 	return defaultMaxBodyBytes

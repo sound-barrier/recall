@@ -66,28 +66,6 @@ func TestServerSmoke_GetVersion_Returns200(t *testing.T) {
 	}
 }
 
-func TestServerSmoke_GetExports_DefaultFormat_Returns200JSON(t *testing.T) {
-	mux := smokeMux(t)
-	rec := get(t, mux, "/api/v1/exports")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
-	}
-	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
-		t.Errorf("Content-Type = %q, want application/json", ct)
-	}
-}
-
-func TestServerSmoke_GetExportsCSV_Returns200Zip(t *testing.T) {
-	mux := smokeMux(t)
-	rec := get(t, mux, "/api/v1/exports?format=csv")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
-	}
-	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/zip") {
-		t.Errorf("Content-Type = %q, want application/zip", ct)
-	}
-}
-
 func TestServerSmoke_DeleteMatches_Returns204(t *testing.T) {
 	mux := smokeMux(t)
 	rec := del(t, mux, "/api/v1/matches")

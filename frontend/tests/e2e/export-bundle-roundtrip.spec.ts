@@ -1,126 +1,72 @@
 /**
- * Export → import roundtrip E2E.
+ * Real-server bundle → merge-import round-trip.
  *
- * The export-side flow is covered by `match-export-bundle.spec.ts` —
- * this spec covers the missing import-side leg: the
- * Settings → Backup & Restore → Import Backup… → Choose File…
- * → POST /api/v1/imports → afterImport reload contract.
+ * The export-side flow is covered by `match-export-bundle.spec.ts`; this spec
+ * covers the merge-import leg against the actual binary, so pkg/app/export_bundle.go
+ * (the recall-bundle/v1 ZIP) and pkg/app/import_matches.go (additive merge) run
+ * for real. No api mocking.
  *
- * Drives the full transport chain in a real browser:
- *   1. Settings → Advanced → Backup & Restore.
- *   2. Two-step arm/confirm: "Import Backup…" → "Choose File…".
- *   3. The transient `<input type=file>` accepts the JSON payload
- *      via Playwright's filechooser handler.
- *   4. POST /api/v1/imports fires with Content-Type:
- *      application/json and the file body bytes.
- *   5. On 200, the composable calls `afterImport()` which re-loads
- *      GET /api/v1/matches — the imported record now renders.
+ *   1. Parse a real OCR match.
+ *   2. POST /api/v1/exports/bundle → a recall-bundle/v1 ZIP (manifest +
+ *      data.json + screenshots).
+ *   3. Wipe the DB.
+ *   4. POST /api/v1/imports the ZIP → 200 {imported:1, skipped:0}; the match
+ *      reappears (data-only — the parsed rows merge back in).
+ *   5. Re-import the same bundle → {imported:0, skipped:1}; the existing key is
+ *      skipped and nothing is duplicated (additive, non-destructive).
+ *
+ * The browser-driven import UI (Settings + Matches toolbar) is covered by
+ * import-matches.spec.ts.
  */
-import { test, expect } from './_fixtures'
+import { expect, test } from './_fixtures'
+import { listMatches, parseGolden, reset, stageGolden, unstageGolden } from './_real-server'
 
-const IMPORTED_KEY = 'match-2026-05-10T22-21-11'
+type ImportSummary = { imported: number; skipped: number }
 
-const importedPayload = {
-  // Minimal-but-realistic exported-JSON envelope. The server's
-  // schema-peek decode only inspects the top-level shape; the
-  // round-trip contract is the bytes the FE sends == the bytes
-  // the server accepts, not the full pkg/app/import.go merge.
-  version: 1,
-  matches: [
-    {
-      match_key: IMPORTED_KEY,
-      source_files: [`${IMPORTED_KEY}.png`],
-      data: {
-        map:           'rialto',
-        playlist:          'competitive',
-        type:          'control',
-        role:          'support',
-        hero:          'lucio',
-        result:        'victory',
-        date:          '2026-05-10',
-        finished_at:   '22:21',
-        eliminations: 12,
-        assists:       8,
-        deaths:        3,
-        damage:     5500,
-        heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '10:00' }],
-      },
-      parsed_at: '2026-05-10T23:30:00Z',
-    },
-  ],
-}
+test.describe('bundle → merge-import round-trip (real server)', () => {
+  test.beforeEach(async ({ request }) => {
+    await reset(request)
+    stageGolden()
+  })
 
-test.describe('backup roundtrip — import side', () => {
-  test('arm → choose file → POST /imports → reload matches', async ({ page }) => {
-    let matchesCalls = 0
-    let importBody: { method: string; contentType: string; bytes: string } | null = null
+  test.afterEach(async ({ request }) => {
+    await reset(request)
+    await unstageGolden(request)
+  })
 
-    await page.route('**/api/v1/matches', async (route) => {
-      matchesCalls++
-      // First call: empty corpus. After the import, the FE's
-      // afterImport()→load() fires a second GET; return the
-      // imported row so the spec can assert it landed.
-      const records = matchesCalls === 1 ? [] : importedPayload.matches
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(records),
-      })
+  test('export a bundle, wipe, merge it back — then re-import skips the dup', async ({ request }) => {
+    const ocrKey = (await parseGolden(request)).match_key
+
+    // Export a bundle for the parsed match.
+    const bundleResp = await request.post('/api/v1/exports/bundle', {
+      data: { match_keys: [ocrKey], include_unknown: false, include_hidden: false },
     })
+    expect(bundleResp.status()).toBe(200)
+    const bundle = await bundleResp.body()
+    expect(bundle.byteLength).toBeGreaterThan(0)
 
-    await page.route('**/api/v1/imports', async (route) => {
-      const req = route.request()
-      // route.request().postData() returns a string; treat it as
-      // the JSON payload the FE sent. (We don't decode it; this
-      // spec asserts the transport shape, not the server's
-      // semantic ingestion — the latter is pkg/app/import.go's
-      // Go test surface.)
-      importBody = {
-        method:      req.method(),
-        contentType: req.headers()['content-type'] ?? '',
-        bytes:       req.postData() ?? '',
-      }
-      await route.fulfill({ status: 200, contentType: 'text/plain', body: 'ok' })
+    // Wipe, then merge the bundle back in.
+    await reset(request)
+    expect(await listMatches(request)).toHaveLength(0)
+
+    const firstImport = await request.post('/api/v1/imports', {
+      headers: { 'Content-Type': 'application/zip' },
+      data: bundle,
     })
+    expect(firstImport.status(), await firstImport.text().catch(() => '')).toBe(200)
+    expect((await firstImport.json()) as ImportSummary).toEqual({ imported: 1, skipped: 0 })
 
-    await page.goto('/')
-    await page.locator('#tab-settings').click()
+    const restored = await listMatches(request)
+    expect(restored.some((m) => m.match_key === ocrKey)).toBe(true)
 
-    // Backup & Restore section is collapsible-but-default-open;
-    // scroll into view to make sure the click target is hittable.
-    const armBtn = page.getByRole('button', { name: /Import Backup/ })
-    await armBtn.scrollIntoViewIfNeeded()
-    await armBtn.click()
-
-    // The danger-row confirm exposes the "Choose File…" button.
-    // The button text becomes "Loading…" mid-import, so match the
-    // initial label.
-    const confirmBtn = page.getByRole('button', { name: /Choose File/ })
-    await expect(confirmBtn).toBeVisible()
-
-    // The FE creates a transient `<input type=file>` and clicks it.
-    // Playwright catches that via filechooser.
-    const [chooser] = await Promise.all([
-      page.waitForEvent('filechooser'),
-      confirmBtn.click(),
-    ])
-    await chooser.setFiles({
-      name:     'recall-backup.json',
-      mimeType: 'application/json',
-      buffer:   Buffer.from(JSON.stringify(importedPayload), 'utf-8'),
+    // Re-importing the same bundle is additive: the existing key is skipped,
+    // nothing is wiped or duplicated.
+    const secondImport = await request.post('/api/v1/imports', {
+      headers: { 'Content-Type': 'application/zip' },
+      data: bundle,
     })
-
-    // POST /api/v1/imports fires with the file bytes.
-    await expect.poll(() => importBody).not.toBeNull()
-    expect(importBody?.method).toBe('POST')
-    expect(importBody?.contentType).toBe('application/json')
-    expect(importBody?.bytes).toBe(JSON.stringify(importedPayload))
-
-    // Composable's `afterImport: () => load()` re-runs GET /matches.
-    await expect.poll(() => matchesCalls).toBeGreaterThanOrEqual(2)
-
-    // Status chip surfaces success with the file name. The chip
-    // auto-clears, so assert visibility before the timer fires.
-    await expect(page.getByText(/Imported: recall-backup\.json/)).toBeVisible()
+    expect(secondImport.status()).toBe(200)
+    expect((await secondImport.json()) as ImportSummary).toEqual({ imported: 0, skipped: 1 })
+    expect(await listMatches(request)).toHaveLength(restored.length)
   })
 })
