@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.21.0](https://github.com/sound-barrier/recall/compare/v0.20.0...v0.21.0) (2026-06-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **backup:** the JSON/CSV full-database export/import is removed. Existing JSON/CSV backups can no longer be restored; re-take a native .db backup. The Matches-view bundle export is unchanged.
+
+### Features
+
+* **backup:** native SQLite backup/restore, additive bundle import ([8f4762c](https://github.com/sound-barrier/recall/commit/8f4762c15727b7720877268728a4068c0e988dee))
+* **desktop:** native menu so macOS has a maximize (Window ▸ Zoom) ([186c31b](https://github.com/sound-barrier/recall/commit/186c31bdf5e1f34184e740809aab7ef60aa8bd8d))
+* **layout:** use the window width well when large/maximized ([e938775](https://github.com/sound-barrier/recall/commit/e938775ac847da296f835fd6811fda043a5fb6a6))
+* **menu:** Chrome/Firefox-style app menu — About / Settings / Help ([7285a07](https://github.com/sound-barrier/recall/commit/7285a076309cd8e2bc9c87e3ad79b1e24f76ca05))
+
+
+### Bug Fixes
+
+* **layout:** raise the content ceiling to 1760 for 1440p displays ([20b56b5](https://github.com/sound-barrier/recall/commit/20b56b5be2b80a7d03a75567d35545c7b11aff79))
+* **matches:** don't show a hover screenshot that isn't on disk ([903895c](https://github.com/sound-barrier/recall/commit/903895cbeca9d889420e053d5f5904daf8c6adf9))
+* **matches:** wrap members-toolbar controls to stop undated overflow ([8ea3a90](https://github.com/sound-barrier/recall/commit/8ea3a90fe89ecee3b8219b7576c687a522f15e3e))
+
+
+### Documentation
+
+* **frontend:** vue-tsc is the type-check source of truth, not eslint ([396bed2](https://github.com/sound-barrier/recall/commit/396bed2e2896c3264d7443f1cd198f223a7a9a14))
+
+
+### CI
+
+* keep dead-code + schemathesis green for native backup/restore ([d7e05a4](https://github.com/sound-barrier/recall/commit/d7e05a4671457749a383f34bb679dc557d80b11d))
+
+
+### Tests
+
+* **parser:** move golden image corpus to recall-testdata submodule ([efbf81b](https://github.com/sound-barrier/recall/commit/efbf81b59f4d239452b1c2ff1dfc7364921ff9e4))
+
 ## [0.20.0](https://github.com/sound-barrier/recall/compare/v0.19.0...v0.20.0) (2026-06-23)
 
 
