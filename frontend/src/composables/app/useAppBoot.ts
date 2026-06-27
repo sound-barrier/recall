@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useNativeMenu } from '@/composables/app/useNativeMenu'
 
 // App boot coordinator. On mount it fans out into each domain store's loaders
 // (app version, the matches feed + ignored-screenshot list + last-parse stamp,
@@ -26,6 +27,9 @@ export function useAppBoot() {
     containerSelector: '.modal-box.startup-error',
     onClose: () => {},
   })
+
+  // Native menu bar (macOS) → in-app dialogs. No-op on other platforms.
+  useNativeMenu()
 
   onMounted(() => {
     matchesStore.restoreLastParsedAt()

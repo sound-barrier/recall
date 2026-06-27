@@ -12,13 +12,15 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav } from '@/composables/shared/useTabKeyboardNav'
+import { GITHUB_REPO_URL } from '@/app-links'
 import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
 import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
+import AppMenuButton from '@/components/app/AppMenuButton.vue'
 
 const appStore = useAppStore()
 const matchesStore = useMatchesStore()
-const { view, appVersion, updateCheckBusy, updateInfo } = storeToRefs(appStore)
-const { goToView, checkForUpdates } = appStore
+const { view, appVersion } = storeToRefs(appStore)
+const { goToView } = appStore
 const { records, unknownRecords, parseProgress, recordsPulse } = storeToRefs(matchesStore)
 const { matchesNarrow } = matchesStore
 
@@ -28,15 +30,12 @@ const { matchesNarrow } = matchesStore
 const { onTabKeydown } = useTabKeyboardNav(view, goToView)
 
 const activeFilterCount = matchesNarrow.activeClauseCount
-const hasUpdateInfo = computed(() => !!updateInfo.value)
 // W/L/D across the currently-narrowed set — same source + leaver rule the
 // MatchesView dossier's Record KPI tile uses, so the two stay in lockstep.
 const wld = computed(() => tallyWLD(
   matchesNarrow.narrowedRecords.value,
   matchesNarrow.leaverHandling.value === 'exclude-tally',
 ))
-
-const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
 </script>
 
 <template>
@@ -166,20 +165,11 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
       <ProfileSwitcher />
       <div class="ver-block">
         <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
-        <!-- Single trigger — the modal owns all result presentation.
-             NOT auto-fired on mount; opting in keeps the boot path
-             off the network. The reminder banner above main content
-             nudges users who haven't checked in 90+ days. -->
-        <button
-          class="ver-btn ver-btn-check"
-          :disabled="updateCheckBusy && !hasUpdateInfo"
-          :title="updateCheckBusy ? 'Checking GitHub releases…' : 'Check GitHub for a newer release'"
-          data-update-check-trigger
-          @click="checkForUpdates()"
-        >
-          {{ updateCheckBusy && !hasUpdateInfo ? 'Checking…' : 'Check for updates' }}
-        </button>
       </div>
+      <!-- ⋮ application menu (About / Settings / Help). Renders only off
+           macOS-Wails — macOS uses the native menu bar (pkg/cmd/wails.go);
+           the version + update check live in About now. -->
+      <AppMenuButton />
     </div>
   </header>
 </template>

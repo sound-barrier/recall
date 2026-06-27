@@ -12,6 +12,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { openAbout } from './_menu'
 
 const DAYS = 24 * 60 * 60 * 1000
 
@@ -46,7 +47,7 @@ test.describe('update reminder banner', () => {
 
     // The update-check needs to run at least once for updateInfo to
     // be loaded. The reminder banner reads from that response.
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('.update-check-modal-close').click()
 
     await expect(page.locator('.update-reminder-banner')).toBeVisible()
@@ -58,7 +59,7 @@ test.describe('update reminder banner', () => {
     await mockUpdate(page, recent)
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('.update-check-modal-close').click()
 
     await expect(page.locator('.update-reminder-banner')).toHaveCount(0)
@@ -70,7 +71,7 @@ test.describe('update reminder banner', () => {
     await mockUpdate(page, stale)
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('.update-check-modal-close').click()
 
     await expect(page.locator('.update-reminder-banner')).toBeVisible()
@@ -83,7 +84,7 @@ test.describe('update reminder banner', () => {
     await mockUpdate(page, stale)
     await page.goto('/')
 
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('.update-check-modal-close').click()
     await expect(page.locator('.update-reminder-banner')).toBeVisible()
 
@@ -98,7 +99,7 @@ test.describe('update reminder banner', () => {
     await page.goto('/')
 
     // Open + close once so the banner has an updateInfo to gate on.
-    await page.locator('[data-update-check-trigger]').click()
+    await openAbout(page)
     await page.locator('.update-check-modal-close').click()
 
     await page.locator('[data-update-reminder-check]').click()

@@ -33,14 +33,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=162000}"
-: "${MAX_INITIAL_CSS_BYTES:=64000}"
+: "${MAX_INITIAL_CSS_BYTES:=67000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
 # loaded only when the user expands the Trends section, so INITIAL JS is
 # unaffected — but it counts toward the TOTAL.
-: "${MAX_TOTAL_JS_BYTES:=1230000}"
-: "${MAX_TOTAL_CSS_BYTES:=311000}"
+: "${MAX_TOTAL_JS_BYTES:=1236000}"
+: "${MAX_TOTAL_CSS_BYTES:=317000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"

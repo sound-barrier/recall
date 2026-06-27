@@ -40,8 +40,10 @@ describe('App.vue lazy-loaded components', () => {
     // Anchor confirmation toast — small, but lazy so the bytes only
     // hit users who actually stamp an anchor.
     { name: 'MatchAnchorToast',       path: '@/components/matches/list/MatchAnchorToast.vue' },
-    // Update-check modal — only mounted when the user runs a check.
-    { name: 'UpdateCheckModal',       path: '@/components/shared/UpdateCheckModal.vue' },
+    // About dialog — identity + update hub, only mounted when the user opens it.
+    { name: 'AboutModal',             path: '@/components/shared/AboutModal.vue' },
+    // Settings dialog — the ⌘, / app-menu / kebab Preferences surface.
+    { name: 'SettingsModal',          path: '@/components/settings/SettingsModal.vue' },
     // Manual-entry modal — only mounted when the user clicks "Add match".
     { name: 'ManualMatchModal',       path: '@/components/matches/manual/ManualMatchModal.vue' },
   ]

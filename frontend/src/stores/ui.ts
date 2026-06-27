@@ -38,6 +38,7 @@ export const useUiStore = defineStore('ui', () => {
   // The `?` keyboard cheatsheet flag (useAppKeyboard's shortcut registry
   // toggles it; KeyboardShortcutsModal reads it).
   const cheatsheetOpen = ref(false)
+  function openCheatsheet() { cheatsheetOpen.value = true }
   function closeCheatsheet() { cheatsheetOpen.value = false }
 
   // Pending detail-panel focus target: the row context menu sets it ('note' /
@@ -70,6 +71,13 @@ export const useUiStore = defineStore('ui', () => {
   const manualMatchOpen = ref(false)
   function openManualMatch() { manualMatchOpen.value = true }
   function closeManualMatch() { manualMatchOpen.value = false }
+
+  // Settings dialog — the ⌘, / app-menu / kebab entry point. A floating
+  // Preferences-style modal that mirrors the Settings tab's sections; the tab
+  // stays. Freezes the background like every other full-surface modal.
+  const settingsDialogOpen = ref(false)
+  function openSettingsDialog() { settingsDialogOpen.value = true }
+  function closeSettingsDialog() { settingsDialogOpen.value = false }
   // A manual match was created → close the modal, reload so it lands in the
   // feed, and open it so the user can add the right-panel review / replay-code.
   async function onManualMatchCreated(rec: MatchRecord) {
@@ -89,7 +97,9 @@ export const useUiStore = defineStore('ui', () => {
     || matchesStore.showUnsupportedModal
     || selection.isOpen.value
     || narrowOpen.value
-    || manualMatchOpen.value,
+    || manualMatchOpen.value
+    || settingsDialogOpen.value
+    || appStore.aboutOpen,
   )
 
   return {
@@ -107,7 +117,11 @@ export const useUiStore = defineStore('ui', () => {
     openManualMatch,
     closeManualMatch,
     onManualMatchCreated,
+    settingsDialogOpen,
+    openSettingsDialog,
+    closeSettingsDialog,
     cheatsheetOpen,
+    openCheatsheet,
     closeCheatsheet,
     backgroundFrozen,
     // Anchor toast (delegated to useAnchorToast)
