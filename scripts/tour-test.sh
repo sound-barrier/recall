@@ -19,13 +19,13 @@
 #
 # Why this script wipes WebView storage:
 #
-#   `wails dev` runs unsandboxed, so the WebView ignores $HOME and
+#   `wails3 dev` runs unsandboxed, so the WebView ignores $HOME and
 #   reads from NSHomeDirectory() (macOS) / XDG_*_HOME (Linux). Just
 #   setting RECALL_DATA_DIR to an isolated path doesn't redirect
 #   WKWebView's WebsiteData. The actual paths used:
 #
-#     macOS:   ~/Library/WebKit/com.wails.Recall/WebsiteData/
-#     Linux:   ~/.local/share/Recall/  (webkit2gtk default)
+#     macOS:   ~/Library/WebKit/com.sound-barrier.recall/WebsiteData/
+#     Linux:   ~/.local/share/Recall/  (webkitgtk default)
 #
 #   The script removes those locations before launching so the
 #   first paint of the WebView always lands on a fresh
@@ -36,7 +36,7 @@
 # Two modes:
 #
 #   --mode=wails  (default — your primary dev path)
-#       Runs `wails dev` against an isolated RECALL_DATA_DIR + a
+#       Runs `wails3 dev` against an isolated RECALL_DATA_DIR + a
 #       just-wiped WebView. Hot-reload is on; the Wails window
 #       opens on its own. If the tour STILL doesn't pop up,
 #       open DevTools (right-click → Inspect Element), then in
@@ -74,8 +74,8 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # This script lives at scripts/, so the repo root is one level up.
-# Getting this wrong sends `cd "$REPO_ROOT"` somewhere `wails dev`
-# can't find wails.json.
+# Getting this wrong sends `cd "$REPO_ROOT"` somewhere `wails3 dev`
+# can't find build/config.yml.
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 MODE="wails"
@@ -124,7 +124,7 @@ cleanup() {
   if [ -n "$CHILD_PID" ]; then
     echo
     echo "[tour-test] stopping (pid $CHILD_PID)…"
-    # wails dev forks a chain of children (vite + go build + the
+    # wails3 dev forks a chain of children (vite + go build + the
     # WebView host). Kill the whole process group so they all go
     # together; `kill -- -PGID` would be cleaner but isn't portable
     # under bash on macOS without enabling job control upfront.
@@ -149,13 +149,13 @@ cd "$REPO_ROOT" || {
 mkdir -p "$ISOLATED_DIR"
 
 # wipe_webview_storage clears the Wails WebView's persistent storage
-# so the next `wails dev` launch hits a fresh localStorage and the
-# tour gate fires. The Wails project name "Recall" + the
-# `com.wails.<ProjectName>` convention gives the bundle id used by
-# WKWebView (macOS) and webkit2gtk (Linux).
+# so the next `wails3 dev` launch hits a fresh localStorage and the
+# tour gate fires. The bundle id (com.sound-barrier.recall, from
+# build/config.yml's productIdentifier) is the key WKWebView (macOS) /
+# webkitgtk (Linux) use to scope the WebView's persistent storage.
 #
 # WKWebView keeps storage at ~/Library/WebKit/<bundle-id>/WebsiteData/.
-# webkit2gtk under Wails dev keeps storage at
+# webkitgtk under Wails dev keeps storage at
 # ~/.local/share/<ProjectName>/ but the exact subtree depends on the
 # Wails release; we delete the whole tree and let Wails rebuild it.
 # The deletion takes localStorage AND IndexedDB AND cookies — there
@@ -174,38 +174,37 @@ wipe_webview_storage() {
 
   case "$(uname -s)" in
     Darwin)
-      local mac_path="$real_home/Library/WebKit/com.wails.Recall"
-      if [ -d "$mac_path" ]; then
-        rm -rf "$mac_path"
-        echo "[tour-test] wiped WKWebView storage: $mac_path"
-        touched=1
-      fi
-      # Older project name (com.wails.OWMetrics) — wipe defensively
-      # so a stale tree from an earlier rename doesn't shadow the
+      # The v3 dev bundle id is com.sound-barrier.recall (build/config.yml
+      # productIdentifier + build/darwin/Info.dev.plist's CFBundleIdentifier).
+      # The old v2 ids (com.wails.Recall / com.wails.OWMetrics) are wiped
+      # defensively so a stale tree from before the rename can't shadow the
       # fresh launch.
-      local mac_alt="$real_home/Library/WebKit/com.wails.OWMetrics"
-      if [ -d "$mac_alt" ]; then
-        rm -rf "$mac_alt"
-        echo "[tour-test] wiped stale WKWebView storage: $mac_alt"
-        touched=1
-      fi
+      local mac_id mac_path
+      for mac_id in com.sound-barrier.recall com.wails.Recall com.wails.OWMetrics; do
+        mac_path="$real_home/Library/WebKit/$mac_id"
+        if [ -d "$mac_path" ]; then
+          rm -rf "$mac_path"
+          echo "[tour-test] wiped WKWebView storage: $mac_path"
+          touched=1
+        fi
+      done
       ;;
     Linux)
-      # webkit2gtk + Wails on Linux: storage lives in
+      # webkitgtk + Wails on Linux: storage lives in
       # ~/.local/share/<ProjectName>/ (or $XDG_DATA_HOME if set).
       local data_root="${XDG_DATA_HOME:-$real_home/.local/share}"
       local linux_path="$data_root/Recall"
       if [ -d "$linux_path" ]; then
         rm -rf "$linux_path"
-        echo "[tour-test] wiped webkit2gtk storage: $linux_path"
+        echo "[tour-test] wiped webkitgtk storage: $linux_path"
         touched=1
       fi
-      # Cache too — some webkit2gtk builds keep localStorage under cache.
+      # Cache too — some webkitgtk builds keep localStorage under cache.
       local cache_root="${XDG_CACHE_HOME:-$real_home/.cache}"
       local linux_cache="$cache_root/Recall"
       if [ -d "$linux_cache" ]; then
         rm -rf "$linux_cache"
-        echo "[tour-test] wiped webkit2gtk cache: $linux_cache"
+        echo "[tour-test] wiped webkitgtk cache: $linux_cache"
         touched=1
       fi
       ;;
@@ -219,31 +218,31 @@ wipe_webview_storage() {
   fi
 }
 
-# ─── wails dev mode (default) ─────────────────────────────────────
+# ─── wails3 dev mode (default) ─────────────────────────────────────
 if [ "$MODE" = "wails" ]; then
-  if ! command -v wails >/dev/null 2>&1; then
+  if ! command -v wails3 >/dev/null 2>&1; then
     cat <<'EOF' >&2
-[tour-test] `wails` CLI not on PATH.
-  Install with:
-      go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+[tour-test] `wails3` CLI not on PATH.
+  Install it (the repo pins it in mise.toml):
+      mise install
+  or directly:
+      go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.107
   Then re-run, or use --mode=server for a browser-based smoke test.
 EOF
     exit 1
   fi
 
-  # Linux needs the webkit2_4_1 build tag — same dance `task dev`
-  # does. macOS doesn't take a tag.
-  WAILS_TAGS=()
+  # v3 needs no build tag — GTK4 + webkitgtk-6.0 is the default Linux webview
+  # (the v2 webkit2_4_1 tag is gone). Just gate on a host with a display surface.
   case "$(uname -s)" in
-    Linux) WAILS_TAGS=(-tags webkit2_4_1) ;;
-    Darwin) ;;
+    Darwin | Linux) ;;
     *)
-      echo "[tour-test] wails dev needs macOS or Debian/Ubuntu host (no display surface elsewhere)" >&2
+      echo "[tour-test] wails3 dev needs macOS or Debian/Ubuntu host (no display surface elsewhere)" >&2
       exit 1
       ;;
   esac
 
-  # Wipe the WebView's persistent storage BEFORE launching wails dev
+  # Wipe the WebView's persistent storage BEFORE launching wails3 dev
   # so the next first-paint of the WebView sees empty localStorage
   # and the tour gate fires. --keep-webview-state opts out for the
   # "user with the tour already dismissed" case.
@@ -256,10 +255,9 @@ EOF
   cat <<EOF
 
 ──────────────────────────────────────────────────────────────────
-[tour-test] launching wails dev against an isolated data dir
+[tour-test] launching wails3 dev against an isolated data dir
   Data dir:  $ISOLATED_DIR
-  Wails IPC: :34115  (default)
-  Vite dev:  :5173   (default)
+  Vite dev:  :9245
 ──────────────────────────────────────────────────────────────────
 
 ✓ The Wails window will open with a fresh WebView. The tour
@@ -280,7 +278,7 @@ EOF
   not literally "true", it auto-opens. Skip / Done / Esc all
   write "true". The flag lives in the WebView, never the server.
 
-Press Ctrl+C to stop wails dev and clean the isolated data dir.
+Press Ctrl+C to stop wails3 dev and clean the isolated data dir.
 
 EOF
 
@@ -288,7 +286,7 @@ EOF
   # WebView storage that ends up under the platform user-config
   # path lands inside the temp tree.
   HOME="$ISOLATED_DIR" RECALL_DATA_DIR="$ISOLATED_DIR" \
-    wails dev "${WAILS_TAGS[@]}" &
+    wails3 dev -config ./build/config.yml &
   CHILD_PID=$!
   wait "$CHILD_PID"
   exit 0
