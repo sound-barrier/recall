@@ -1,10 +1,10 @@
 // Wails-mode tests for the api.ts shim.
 //
 // IS_WAILS in api.ts is a module-level `const` evaluated at import time from
-// `navigator.userAgent` (the native Wails v3 webview carries "wails.io"). To
-// exercise the Wails branch we stub a Wails UA, vi.resetModules() so the cached
-// api module is dropped, then dynamic-import api for a fresh IS_WAILS eval. The
-// v3 runtime's Call.ByName is mocked so the dispatch is observable.
+// `window._wails.flags` (injected by the native Wails v3 webview). To exercise
+// the Wails branch we set that flag, vi.resetModules() so the cached api module
+// is dropped, then dynamic-import api for a fresh IS_WAILS eval. The v3 runtime's
+// Call.ByName is mocked so the dispatch is observable.
 //
 // Split from api.test.ts because vi.resetModules() drops every cached module —
 // vitest's file-level worker isolation keeps the Wails-on state local here.
@@ -20,16 +20,16 @@ vi.mock('@wailsio/runtime', () => ({
 }))
 
 describe('SetMatchAnnotation (Wails mode)', () => {
-  const realUA = navigator.userAgent
-
   beforeEach(() => {
-    Object.defineProperty(navigator, 'userAgent', { value: `${realUA} wails.io`, configurable: true })
+    // Real Wails injects window._wails.flags; the mocked @wailsio/runtime below
+    // doesn't self-create window._wails, so set the discriminator by hand.
+    ;(window as unknown as { _wails?: { flags?: unknown } })._wails = { flags: {} }
     callByName.mockClear()
     vi.resetModules()
   })
 
   afterEach(() => {
-    Object.defineProperty(navigator, 'userAgent', { value: realUA, configurable: true })
+    delete (window as unknown as { _wails?: unknown })._wails
   })
 
   // The Go method's signature is `SetMatchAnnotation(in AnnotationInput)` — one
