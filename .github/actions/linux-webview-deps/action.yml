@@ -1,0 +1,21 @@
+name: Linux WebKit deps (Wails v3)
+description: >
+  Install the system libraries the Wails v3 desktop code needs to build /
+  typecheck on Linux. v3's pkg/application imports a CGo WebKit2GTK webview, so
+  any Go job that builds the DEFAULT (desktop) build tags on an Ubuntu runner —
+  lint, govulncheck, coverage — must have these present or the import fails. v2's
+  app package was pure-Go and needed none of this.
+
+runs:
+  using: composite
+  steps:
+    - name: Install WebKit2GTK + GTK dev libraries
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libwebkit2gtk-4.1-dev \
+          libgtk-3-dev \
+          libayatana-appindicator3-dev \
+          pkg-config \
+          build-essential
