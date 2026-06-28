@@ -274,16 +274,17 @@ jobs:
 
   # ── Job 3: Windows/amd64 Wails app ──────────────────────────────────────
   build-windows:
+    # Native cross-compile (no Docker) — v3's Windows WebView2 loader is pure Go,
+    # so this needs wails3 + node + makensis, not buildx.
     runs-on: ubuntu-latest
-    env:
-      DOCKER_BUILDKIT: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
-        with:
-          install_args: task jq
-      - name: Build Windows/amd64 Wails app
+      - uses: ./.github/actions/wails-build-env
+      - name: Install makensis
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nsis
+      - name: Build Windows/amd64 Wails app + NSIS installer
         run: task build-windows
 
   # ── Job 4: Server binaries + container image ─────────────────────────────
