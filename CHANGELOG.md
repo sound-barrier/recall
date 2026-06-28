@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/sound-barrier/recall/compare/v0.21.0...v0.21.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **settings:** make the Settings dialog a proper fixed-height modal ([99a4c38](https://github.com/sound-barrier/recall/commit/99a4c3812729c0e0b4ab91b77f77426155c042b5))
+
 ## [0.21.0](https://github.com/sound-barrier/recall/compare/v0.20.0...v0.21.0) (2026-06-27)
 
 
