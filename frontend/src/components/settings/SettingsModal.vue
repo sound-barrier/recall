@@ -59,10 +59,9 @@ useModalFocusTrap(toRef(props, 'open'), {
   background: color-mix(in srgb, var(--bg) 70%, transparent);
   backdrop-filter: blur(6px);
   display: grid;
-  place-items: start center;
+  place-items: center;
   z-index: 1000;
-  padding: 2.5rem 1.5rem;
-  overflow-y: auto;
+  padding: 2rem 1.5rem;
 }
 
 .settings-modal-box {
@@ -74,13 +73,21 @@ useModalFocusTrap(toRef(props, 'open'), {
      detect-binary controls) lay out as they do on the Settings tab, rather than
      squeezing the label column until its help text wraps word-per-word. */
   width: min(900px, 100%);
+
+  /* Capped to the viewport as a flex column — fixed header + internally-
+     scrolling body (below). The box never outgrows the overlay, so the overlay
+     is never scrollable: the box stays put, the header is pinned, and
+     useScrollLock keeps the background frozen instead of the box sliding under a
+     sticky header. Mirrors MatchDetailPanel / AboutModal. */
+  max-height: calc(100dvh - 4rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 24px 60px color-mix(in srgb, var(--bg) 50%, transparent);
 }
 
 .settings-modal-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -118,6 +125,9 @@ useModalFocusTrap(toRef(props, 'open'), {
 }
 
 .settings-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.3rem 1.4rem 1.6rem;
 }
 
