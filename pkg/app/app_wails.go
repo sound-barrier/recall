@@ -55,10 +55,27 @@ func (a *App) emitTesseractStatus(s TesseractStatus) {
 // emitParseComplete notifies the Wails frontend that a parse run finished.
 // Gated by the !serveronly build tag so the v3 application import is absent
 // from server-only binaries.
-func (a *App) emitParseComplete() {
+func (a *App) emitParseComplete(matchCount int) {
 	emitEvent("parse-complete")
 	// Also broadcast via SSE when the Wails binary is run with --server.
 	a.SSEHub.Broadcast("parse-complete")
+	notifyParseComplete(matchCount)
+}
+
+// parseCompleteNotifier posts a native "parse complete" desktop notification.
+// The desktop runtime (pkg/cmd RunWails) sets it via SetParseCompleteNotifier;
+// it stays nil under tests + when the Wails binary runs in --server mode, so
+// emitParseComplete silently skips it there.
+var parseCompleteNotifier func(matchCount int)
+
+// SetParseCompleteNotifier wires the desktop notification sender — called once
+// from RunWails after the notifications service is registered.
+func SetParseCompleteNotifier(fn func(matchCount int)) { parseCompleteNotifier = fn }
+
+func notifyParseComplete(matchCount int) {
+	if parseCompleteNotifier != nil && matchCount > 0 {
+		parseCompleteNotifier(matchCount)
+	}
 }
 
 // emitParseCancelled notifies the frontend that a parse run was aborted via

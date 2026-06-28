@@ -4,11 +4,13 @@ package cmd
 
 import (
 	"embed"
+	"fmt"
 	"net/http"
 	"runtime"
 	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 
 	"recall/pkg/app"
 )
@@ -34,11 +36,16 @@ func RunWails(a *app.App, assets embed.FS) {
 	// window itself is created after application.New below.
 	var win *application.WebviewWindow
 
+	// Native desktop notifications (parse-complete). Registered as a v3 service
+	// for lifecycle management; the parse-complete sender is wired below.
+	notifier := notifications.New()
+
 	wailsApp := application.New(application.Options{
 		Name:        "Recall",
 		Description: "Overwatch screenshot telemetry — local match history + trends",
 		Services: []application.Service{
 			application.NewService(a),
+			application.NewService(notifier),
 		},
 		Assets: application.AssetOptions{
 			// Embedded frontend/dist, with the /_screenshot/ handler short-
@@ -80,9 +87,30 @@ func RunWails(a *app.App, assets embed.FS) {
 	// (the fixed 1024×768 felt cramped on 1440p+ monitors).
 	sizeWindowToScreen(win)
 
+	// Wire native parse-complete notifications. Authorization is requested once
+	// on a goroutine (the macOS prompt needs the run loop that Run starts below);
+	// SendNotification degrades gracefully until/unless the user grants it.
+	go func() { _, _ = notifier.RequestNotificationAuthorization() }()
+	app.SetParseCompleteNotifier(func(matchCount int) {
+		_ = notifier.SendNotification(notifications.NotificationOptions{
+			ID:    "recall-parse-complete",
+			Title: "Recall",
+			Body:  parseCompleteBody(matchCount),
+		})
+	})
+
 	if err := wailsApp.Run(); err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+// parseCompleteBody renders the parse-complete notification body, pluralising
+// "match" on the distinct-match count.
+func parseCompleteBody(matchCount int) string {
+	if matchCount == 1 {
+		return "Parsed 1 new match"
+	}
+	return fmt.Sprintf("Parsed %d new matches", matchCount)
 }
 
 // desktopMenu returns the native macOS menu bar (Chrome/Firefox style); nil off

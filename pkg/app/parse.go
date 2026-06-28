@@ -280,8 +280,9 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	}
 	// Authoritative completion signal for EVERY parse path. The frontend
 	// drives parseBusy off this (not a held-open request), and the watcher
-	// no longer emits it separately.
-	a.emitParseComplete()
+	// no longer emits it separately. The distinct-match count feeds the desktop
+	// native notification (no-op in server mode).
+	a.emitParseComplete(len(st.matchesUpdated))
 	return nil
 }
 
