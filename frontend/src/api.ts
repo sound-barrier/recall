@@ -41,13 +41,22 @@ export type ProblemDetails     = components['schemas']['ProblemDetails']
 // with no import from the generated frontend/bindings/.
 const APP_FQN = 'recall/pkg/app.App.'
 
-// Detect the native Wails v3 webview. Its user agent carries the "wails.io"
-// application name (the Options.ApplicationNameForUserAgent default); a regular
-// browser (server mode) + the test env lack it, so they take the fetch path.
-// (window._wails is unsuitable — @wailsio/runtime self-creates it on import, so
-// it's present in EVERY environment.) Stays a `const` so tree-shakers can fold
-// the dead branch at build time.
-const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails.io')
+declare global {
+  interface Window {
+    // Injected by the native Wails v3 webview BEFORE @wailsio/runtime loads. The
+    // runtime self-creates `window._wails` on import (so its bare presence means
+    // nothing), but ONLY the backend populates `flags` — the runtime just reads
+    // it — so `flags` is the reliable Wails-mode discriminator.
+    _wails?: { flags?: Record<string, unknown> }
+  }
+}
+
+// Detect the native Wails v3 webview via the backend-injected `_wails.flags`. A
+// regular browser (server mode) + the test env never have it, so they take the
+// fetch path. (A userAgent "wails.io" substring check would read the same but
+// trips CodeQL's incomplete-hostname-sanitization rule.) Stays a `const` so
+// tree-shakers can fold the dead branch at build time.
+const IS_WAILS = typeof window !== 'undefined' && !!window._wails?.flags
 
 // OpenURL opens a URL in the OS default browser. In Wails mode the WebView
 // does not route target="_blank" links to the system browser, so we call the

@@ -360,8 +360,9 @@ function onRowContextOpenSourceFolder(matchKey: string) {
 
 // Wails-detect — duplicated as a one-liner so the menu doesn't have
 // to import api.ts (keeps the leaf component's import surface narrow). The
-// native Wails v3 webview's user agent carries "wails.io"; a browser lacks it.
-const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails.io')
+// backend-injected `window._wails.flags` is the Wails-mode signal (the global
+// is declared in api.ts); a browser never has it.
+const IS_WAILS = typeof window !== 'undefined' && !!window._wails?.flags
 </script>
 
 <template>
