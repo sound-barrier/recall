@@ -3,18 +3,12 @@
 package cmd
 
 import (
-	"context"
 	"embed"
 	"net/http"
 	"runtime"
 	"strings"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/menu"
-	"github.com/wailsapp/wails/v2/pkg/menu/keys"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"recall/pkg/app"
 )
@@ -26,131 +20,125 @@ const (
 	issuesURL = "https://github.com/sound-barrier/recall/issues"
 )
 
-// RunWails launches the full Wails native-window desktop application.
+// RunWails launches the full Wails v3 native-window desktop application. The
+// App is registered as a v3 service (its exported methods become the frontend
+// bindings + its ServiceStartup runs the cold-boot init); the screenshots
+// handler rides the AssetServer middleware chain; the window auto-sizes to a
+// share of the display on first paint.
 func RunWails(a *app.App, assets embed.FS) {
-	// The desktop's OnStartup hands Startup a real Wails lifecycle context, so
-	// the background engine probe's "tesseract-status" emit is safe here. This is
-	// where the cold-boot-doesn't-block-the-UI win actually matters.
+	// The desktop's ServiceStartup hands Startup a real lifecycle context, so the
+	// background engine probe's "tesseract-status" emit is safe here.
 	app.EnableTesseractProbeOnStartup()
-	// The native menu's callbacks emit Wails events / open URLs, all of which
-	// need the lifecycle context — which doesn't exist until OnStartup. Capture
-	// it in a closure the menu reads at click time (always after startup).
-	var winCtx context.Context
-	err := wails.Run(&options.App{
-		Title:  "Recall",
-		Width:  1024,
-		Height: 768,
-		AssetServer: &assetserver.Options{
-			Assets:     assets,
+
+	wailsApp := application.New(application.Options{
+		Name:        "Recall",
+		Description: "Overwatch screenshot telemetry — local match history + trends",
+		Services: []application.Service{
+			application.NewService(a),
+		},
+		Assets: application.AssetOptions{
+			// Embedded frontend/dist, with the /_screenshot/ handler short-
+			// circuited ahead of it (same contract as the v2 AssetServer).
+			Handler:    application.AssetFileServerFS(assets),
 			Middleware: screenshotsMiddleware(a.ScreenshotHandler()),
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		// Native menu, per-OS (see desktopMenu): macOS gets the full Chrome/
-		// Firefox-style menu bar (About / Settings / View / Help wired to the
-		// in-app dialogs, plus native Edit + Window). Windows / Linux keep their
-		// title-bar controls and use the in-app ⋮ kebab instead.
-		Menu: desktopMenu(runtime.GOOS, func() context.Context { return winCtx }),
-		// Creation size is a safe minimum; OnStartup grows it to a share of
-		// the actual display once the runtime can report screen dimensions
-		// (the fixed 1024×768 felt cramped on 1440p+ monitors).
-		OnStartup: func(ctx context.Context) {
-			winCtx = ctx
-			a.Startup(ctx)
-			sizeWindowToScreen(ctx)
-		},
-		Bind: []any{
-			a,
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
-	if err != nil {
+
+	// Native menu, per-OS (see desktopMenu): macOS gets the full Chrome/Firefox-
+	// style menu bar wired to the in-app dialogs; Windows/Linux use the ⋮ kebab.
+	if m := desktopMenu(runtime.GOOS); m != nil {
+		wailsApp.Menu.Set(m)
+	}
+
+	win := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "Recall",
+		Width:            minWindowW,
+		Height:           minWindowH,
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/",
+	})
+	// Creation size is a safe minimum; grow it to a share of the actual display
+	// (the fixed 1024×768 felt cramped on 1440p+ monitors).
+	sizeWindowToScreen(win)
+
+	if err := wailsApp.Run(); err != nil {
 		println("Error:", err.Error())
 	}
 }
 
-// desktopMenu returns the native application menu for the given OS. Modeled on
-// Chrome/Firefox: macOS gets a full menu bar; Windows/Linux get nothing here
-// and use the in-app ⋮ kebab instead (a top menu bar is non-idiomatic there,
-// and they already expose minimize/maximize/close + copy/paste natively).
-//
-// The macOS bar is `Recall · Edit · View · Window · Help`:
-//   - Recall (the app menu — the first submenu, which macOS renders as such):
-//     About / Settings ⌘, → in-app dialogs; native Hide / Quit.
-//   - Edit, Window: native roles (copy/paste; Minimize + Zoom/maximize).
-//   - View: ⌘1–4 jump to the four tabs.
-//   - Help: keyboard shortcuts + Documentation / Report-an-issue links + About.
-//
-// Custom items fire `menu:*` Wails events (or open URLs); the frontend's
-// useNativeMenu opens the matching dialog. ctx supplies the lifecycle context
-// at click time (nil before startup, always set by the time a menu fires).
-func desktopMenu(goos string, ctx func() context.Context) *menu.Menu {
+// desktopMenu returns the native macOS menu bar (Chrome/Firefox style); nil off
+// macOS, where the in-app ⋮ kebab handles it. Custom items emit `menu:*` events
+// that the frontend's useNativeMenu opens the matching dialog for; Edit + Window
+// stay native roles. Callbacks reach the running app via application.Get() so
+// the builder needs no app handle (and stays nil-safe under test).
+func desktopMenu(goos string) *application.Menu {
 	if goos != "darwin" {
 		return nil
 	}
 
-	emit := func(name string, data ...any) menu.Callback {
-		return func(*menu.CallbackData) {
-			if c := ctx(); c != nil {
-				wruntime.EventsEmit(c, name, data...)
+	emit := func(name string, data ...any) func(*application.Context) {
+		return func(*application.Context) {
+			if a := application.Get(); a != nil {
+				a.Event.Emit(name, data...)
 			}
 		}
 	}
-	openURL := func(url string) menu.Callback {
-		return func(*menu.CallbackData) {
-			if c := ctx(); c != nil {
-				wruntime.BrowserOpenURL(c, url)
-			}
-		}
-	}
-	runtimeCall := func(fn func(context.Context)) menu.Callback {
-		return func(*menu.CallbackData) {
-			if c := ctx(); c != nil {
-				fn(c)
+	openURL := func(url string) func(*application.Context) {
+		return func(*application.Context) {
+			if a := application.Get(); a != nil {
+				_ = a.Browser.OpenURL(url)
 			}
 		}
 	}
 
-	appMenu := menu.SubMenu("Recall", menu.NewMenuFromItems(
-		menu.Text("About Recall", nil, emit("menu:about")),
-		menu.Separator(),
-		menu.Text("Settings…", keys.CmdOrCtrl(","), emit("menu:settings")),
-		menu.Separator(),
-		menu.Text("Hide Recall", keys.CmdOrCtrl("h"), runtimeCall(wruntime.Hide)),
-		menu.Text("Quit Recall", keys.CmdOrCtrl("q"), runtimeCall(wruntime.Quit)),
-	))
+	menu := application.NewMenu()
 
-	viewMenu := menu.SubMenu("View", menu.NewMenuFromItems(
-		menu.Text("Settings", keys.CmdOrCtrl("1"), emit("menu:view", "settings")),
-		menu.Text("Parse", keys.CmdOrCtrl("2"), emit("menu:view", "ingest")),
-		menu.Text("Matches", keys.CmdOrCtrl("3"), emit("menu:view", "matches")),
-		menu.Text("Unknown", keys.CmdOrCtrl("4"), emit("menu:view", "unknown")),
-	))
+	recall := menu.AddSubmenu("Recall")
+	recall.Add("About Recall").OnClick(emit("menu:about"))
+	recall.AddSeparator()
+	recall.Add("Settings…").SetAccelerator("CmdOrCtrl+,").OnClick(emit("menu:settings"))
+	recall.AddSeparator()
+	recall.Add("Hide Recall").SetAccelerator("CmdOrCtrl+H").OnClick(func(*application.Context) {
+		if a := application.Get(); a != nil {
+			a.Hide()
+		}
+	})
+	recall.Add("Quit Recall").SetAccelerator("CmdOrCtrl+Q").OnClick(func(*application.Context) {
+		if a := application.Get(); a != nil {
+			a.Quit()
+		}
+	})
 
-	helpMenu := menu.SubMenu("Help", menu.NewMenuFromItems(
-		menu.Text("Keyboard Shortcuts", nil, emit("menu:shortcuts")),
-		menu.Text("Recall Documentation", nil, openURL(docsURL)),
-		menu.Text("Report an Issue", nil, openURL(issuesURL)),
-		menu.Separator(),
-		menu.Text("About Recall", nil, emit("menu:about")),
-	))
+	menu.AddRole(application.EditMenu)
 
-	return menu.NewMenuFromItems(appMenu, menu.EditMenu(), viewMenu, menu.WindowMenu(), helpMenu)
+	view := menu.AddSubmenu("View")
+	view.Add("Settings").SetAccelerator("CmdOrCtrl+1").OnClick(emit("menu:view", "settings"))
+	view.Add("Parse").SetAccelerator("CmdOrCtrl+2").OnClick(emit("menu:view", "ingest"))
+	view.Add("Matches").SetAccelerator("CmdOrCtrl+3").OnClick(emit("menu:view", "matches"))
+	view.Add("Unknown").SetAccelerator("CmdOrCtrl+4").OnClick(emit("menu:view", "unknown"))
+
+	menu.AddRole(application.WindowMenu)
+
+	help := menu.AddSubmenu("Help")
+	help.Add("Keyboard Shortcuts").OnClick(emit("menu:shortcuts"))
+	help.Add("Recall Documentation").OnClick(openURL(docsURL))
+	help.Add("Report an Issue").OnClick(openURL(issuesURL))
+	help.AddSeparator()
+	help.Add("About Recall").OnClick(emit("menu:about"))
+
+	return menu
 }
 
-// screenshotsMiddleware short-circuits `/_screenshot/...` requests to
-// the provided handler before they hit the AssetServer's downstream
-// pipeline (Vite proxy in dev mode, embedded assets in production).
-//
-// This MUST be a Middleware, not the Wails `Handler` option: in
-// `wails dev` the AssetServer proxies every request to the Vite dev
-// server first, and Vite's SPA fallback returns `index.html` with a
-// 200 OK for unknown routes. The `Handler` fallback only fires on a
-// 404/405 from the proxy, so a Handler-wired ScreenshotHandler would
-// never be reached in dev and image previews would render the
-// index.html bytes (failing to decode). Middleware intercepts the
-// request before the proxy, so dev and production behave identically.
+// screenshotsMiddleware short-circuits `/_screenshot/...` requests to the
+// provided handler before they hit the AssetServer's downstream pipeline (Vite
+// proxy in dev, embedded assets in production). Wired as AssetOptions.Middleware
+// so it runs ahead of Wails's internal asset handling in both dev and prod.
 //
 // Extracted for testability — see middleware_test.go.
-func screenshotsMiddleware(screenshots http.Handler) assetserver.Middleware {
+func screenshotsMiddleware(screenshots http.Handler) application.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/_screenshot/") {

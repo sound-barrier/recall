@@ -9,33 +9,37 @@ import (
 	"path/filepath"
 	"time"
 
-	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"recall/pkg/match"
 )
 
-// emitParseProgress sends per-file progress data to the Wails event bus
-// and (when running in --server mode with the Wails binary) to the SSE hub.
-// `SSEHub.BroadcastData` is nil-safe, so the bare call replaces the prior
-// `if a.SSEHub != nil` check and removes the TOCTOU window between the
-// check and the call.
+// emitEvent fires a Wails v3 application event when the desktop app is running.
+// application.Get() returns the running *application.App; it's nil only under
+// unit tests / server mode, where the SSE hub carries the same payload instead.
+func emitEvent(name string, data ...any) {
+	if a := application.Get(); a != nil {
+		a.Event.Emit(name, data...)
+	}
+}
+
+// emitParseProgress sends per-file progress data to the Wails event bus and
+// (when the Wails binary runs in --server mode) to the SSE hub.
+// `SSEHub.BroadcastData` is nil-safe, so the bare call removes the TOCTOU window
+// a prior `if a.SSEHub != nil` check would open.
 func (a *App) emitParseProgress(p ParseProgressEvent) {
 	data, _ := json.Marshal(p)
-	if a.ctx != nil {
-		wruntime.EventsEmit(a.ctx, "parse-progress", p)
-	}
+	emitEvent("parse-progress", p)
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
 // emitMatchUpdated broadcasts a freshly-aggregated match.MatchRecord to the
-// Wails event bus and the SSE hub. Fired after each per-screenshot
-// insert resolves a match_key so the frontend can incrementally
-// render the affected card without waiting for parse-complete.
+// Wails event bus and the SSE hub. Fired after each per-screenshot insert
+// resolves a match_key so the frontend can incrementally render the affected
+// card without waiting for parse-complete.
 func (a *App) emitMatchUpdated(rec match.MatchRecord) {
 	data, _ := json.Marshal(rec)
-	if a.ctx != nil {
-		wruntime.EventsEmit(a.ctx, "match-updated", rec)
-	}
+	emitEvent("match-updated", rec)
 	a.SSEHub.BroadcastData("match-updated", string(data))
 }
 
@@ -44,32 +48,24 @@ func (a *App) emitMatchUpdated(rec match.MatchRecord) {
 // cold-boot Defender scan releases the binary — no app restart needed.
 func (a *App) emitTesseractStatus(s TesseractStatus) {
 	data, _ := json.Marshal(s)
-	if a.ctx != nil {
-		wruntime.EventsEmit(a.ctx, "tesseract-status", s)
-	}
+	emitEvent("tesseract-status", s)
 	a.SSEHub.BroadcastData("tesseract-status", string(data))
 }
 
 // emitParseComplete notifies the Wails frontend that a parse run finished.
-// Called from scheduleParseDebounced; gated by the !serveronly build tag so
-// the wruntime import is absent from server-only binaries.
+// Gated by the !serveronly build tag so the v3 application import is absent
+// from server-only binaries.
 func (a *App) emitParseComplete() {
-	if a.ctx != nil {
-		wruntime.EventsEmit(a.ctx, "parse-complete")
-	}
+	emitEvent("parse-complete")
 	// Also broadcast via SSE when the Wails binary is run with --server.
 	a.SSEHub.Broadcast("parse-complete")
 }
 
-// emitParseCancelled notifies the frontend that a parse run was
-// aborted via CancelParse. Distinct from parse-complete so the UI
-// can render "stopped" vs "done" copy. Same emission shape as the
-// other terminal lifecycle events — Wails event bus AND the SSE
-// hub when present.
+// emitParseCancelled notifies the frontend that a parse run was aborted via
+// CancelParse. Distinct from parse-complete so the UI can render "stopped" vs
+// "done" copy.
 func (a *App) emitParseCancelled() {
-	if a.ctx != nil {
-		wruntime.EventsEmit(a.ctx, "parse-cancelled")
-	}
+	emitEvent("parse-cancelled")
 	a.SSEHub.Broadcast("parse-cancelled")
 }
 
@@ -85,14 +81,12 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 	if _, err := os.Stat(dir); err != nil {
 		dir = ""
 	}
-	file, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
-		Title:            "Select Tesseract binary",
-		DefaultDirectory: dir,
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "Tesseract executable", Pattern: "tesseract*"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
+	file, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select Tesseract binary").
+		SetDirectory(dir).
+		AddFilter("Tesseract executable", "tesseract*").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
 	if err != nil {
 		return a.tessStatusSnapshot(), err
 	}
@@ -107,15 +101,12 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 // success; "" if the user cancelled.
 func (a *App) SaveBackupToFile() (string, error) {
 	defaultName := "recall-backup-" + time.Now().UTC().Format("20060102-150405") + ".db"
-	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
-		Title:                "Save Recall backup",
-		DefaultFilename:      defaultName,
-		CanCreateDirectories: true,
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall backup (SQLite)", Pattern: "*.db"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
+	path, err := application.Get().Dialog.SaveFile().
+		SetMessage("Save Recall backup").
+		SetFilename(defaultName).
+		AddFilter("Recall backup (SQLite)", "*.db").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
 	if err != nil {
 		return "", err
 	}
@@ -132,25 +123,19 @@ func (a *App) SaveBackupToFile() (string, error) {
 	return path, nil
 }
 
-// SaveTextToFile writes caller-supplied text (the flat one-row-per-match
-// CSV the matches view assembles client-side) to a user-chosen path via a
-// native save dialog. Generic on purpose — it takes the bytes already
-// built in the frontend rather than regenerating from the store like the
-// SaveExportToFile* family. Returns the chosen path, or "" if the user
-// cancelled.
+// SaveTextToFile writes caller-supplied text (the flat one-row-per-match CSV the
+// matches view assembles client-side) to a user-chosen path via a native save
+// dialog. Returns the chosen path, or "" if the user cancelled.
 func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
 	if defaultName == "" {
 		defaultName = "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".csv"
 	}
-	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
-		Title:                "Save match data (CSV)",
-		DefaultFilename:      defaultName,
-		CanCreateDirectories: true,
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "CSV (Excel / Sheets)", Pattern: "*.csv"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
+	path, err := application.Get().Dialog.SaveFile().
+		SetMessage("Save match data (CSV)").
+		SetFilename(defaultName).
+		AddFilter("CSV (Excel / Sheets)", "*.csv").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
 	if err != nil {
 		return "", err
 	}
@@ -163,21 +148,18 @@ func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
 	return path, nil
 }
 
-// SaveBundleToFile is the bundle-export sibling of SaveExportToFile.
-// Pops a native SaveFileDialog defaulting to `recall-bundle-<ts>.zip`,
-// then writes the ExportBundle payload to the chosen path. Returns
-// the path on success, empty string + nil on user cancel.
+// SaveBundleToFile is the bundle-export sibling of SaveTextToFile. Pops a native
+// save dialog defaulting to `recall-bundle-<ts>.zip`, then writes the
+// ExportBundle payload to the chosen path. Returns the path on success, "" + nil
+// on user cancel.
 func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden bool) (string, error) {
 	defaultName := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
-	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
-		Title:                "Save Recall bundle",
-		DefaultFilename:      defaultName,
-		CanCreateDirectories: true,
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall bundle (ZIP)", Pattern: "*.zip"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
+	path, err := application.Get().Dialog.SaveFile().
+		SetMessage("Save Recall bundle").
+		SetFilename(defaultName).
+		AddFilter("Recall bundle (ZIP)", "*.zip").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
 	if err != nil {
 		return "", err
 	}
@@ -203,13 +185,11 @@ func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden
 // success; "" if cancelled. REPLACES the current database — the caller is
 // expected to confirm before invoking.
 func (a *App) LoadRestoreFromFile() (string, error) {
-	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
-		Title: "Restore Recall backup",
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall backup (SQLite)", Pattern: "*.db"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
+	path, err := application.Get().Dialog.OpenFile().
+		SetTitle("Restore Recall backup").
+		AddFilter("Recall backup (SQLite)", "*.db").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
 	if err != nil {
 		return "", err
 	}
@@ -230,13 +210,11 @@ func (a *App) LoadRestoreFromFile() (string, error) {
 // `.zip`, and merges it via ImportMatches. Returns the path + the merge counts;
 // Path is "" if the user cancelled. Additive — never replaces existing data.
 func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
-	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
-		Title: "Import Recall matches",
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall bundle (ZIP)", Pattern: "*.zip"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
+	path, err := application.Get().Dialog.OpenFile().
+		SetTitle("Import Recall matches").
+		AddFilter("Recall bundle (ZIP)", "*.zip").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
 	if err != nil {
 		return MatchImportResult{}, err
 	}
@@ -255,29 +233,27 @@ func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
 }
 
 // PickScreenshotsDir opens a native directory chooser and persists the
-// selection. Returns the chosen path. If the user cancels the dialog
-// (Wails returns "" with no error), the existing setting is left alone.
+// selection. Returns the chosen path. If the user cancels (empty path), the
+// existing setting is left alone. Routed through SetScreenshotsDir so the path
+// passes the same validation as the PUT /api/v1/settings/screenshots-folder
+// HTTP endpoint.
 func (a *App) PickScreenshotsDir() (string, error) {
 	dflt := a.settings.ScreenshotsDir
 	if _, err := os.Stat(dflt); err != nil {
 		dflt = ""
 	}
-	dir, err := wruntime.OpenDirectoryDialog(a.ctx, wruntime.OpenDialogOptions{
-		Title:                "Select Overwatch screenshots folder",
-		DefaultDirectory:     dflt,
-		CanCreateDirectories: false,
-	})
+	dir, err := application.Get().Dialog.OpenFile().
+		SetTitle("Select Overwatch screenshots folder").
+		SetDirectory(dflt).
+		CanChooseDirectories(true).
+		CanChooseFiles(false).
+		PromptForSingleSelection()
 	if err != nil {
 		return a.settings.ScreenshotsDir, err
 	}
 	if dir == "" {
 		return a.settings.ScreenshotsDir, nil
 	}
-	// Route through SetScreenshotsDir so the path passes the same
-	// validation as the PUT /api/v1/settings/screenshots-folder HTTP endpoint — the
-	// native dialog is trusted but funneling everything through one
-	// validator keeps behaviour (validation + watcher restart)
-	// consistent between Wails and server mode.
 	if err := a.SetScreenshotsDir(dir); err != nil {
 		return a.settings.ScreenshotsDir, err
 	}
