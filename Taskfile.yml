@@ -88,12 +88,18 @@ tasks:
       - echo "[ recall ] ✓  dist/linux/Recall"
 
   build-windows:
-    desc: Windows/amd64 Wails v3 app via Docker → dist/windows/Recall.exe
+    desc: Windows/amd64 Wails v3 app + NSIS installer (native cross-compile) → dist/windows/
+    # Native cross-compile (CGO_ENABLED=0 — v3's WebView2 loader is pure Go), so
+    # no Docker; needs wails3 + node + makensis (nsis) on PATH. wails3 generate
+    # syso embeds the icon/version; create:nsis:installer fetches the WebView2
+    # bootstrapper + runs makensis.
     cmds:
-      - echo "[ recall ] Building windows/amd64 Wails v3 app via Docker (CGO_ENABLED=0, no mingw)…"
+      - echo "[ recall ] Building windows/amd64 Wails v3 app + NSIS installer (CGO_ENABLED=0, native)…"
+      - wails3 task windows:package ARCH=amd64 PRODUCTION=true PRODUCT_VERSION={{.BUILD_VERSION}}
       - mkdir -p {{.DIST_WINDOWS}}
-      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target windows-export --output type=local,dest={{.DIST_WINDOWS}} .'
-      - echo "[ recall ] ✓  dist/windows/Recall.exe"
+      - cp bin/recall-amd64-installer.exe {{.DIST_WINDOWS}}/
+      - cp bin/Recall.exe {{.DIST_WINDOWS}}/
+      - echo "[ recall ] ✓  dist/windows/recall-amd64-installer.exe"
 
   build-mac:
     desc: macOS arm64 Wails app → dist/mac/Recall.app (macOS host + Xcode CLT required)
@@ -103,7 +109,7 @@ tasks:
           echo "[ recall ] ✗  build-mac requires macOS (Apple SDK not redistributable)"; exit 1
         fi
       - echo "[ recall ] Building macOS Wails v3 app (arm64)…"
-      - wails3 task darwin:package PRODUCTION=true ARCH=arm64
+      - wails3 task darwin:package PRODUCTION=true ARCH=arm64 PRODUCT_VERSION={{.BUILD_VERSION}}
       - mkdir -p {{.DIST_MAC}}
       - rm -rf {{.DIST_MAC}}/Recall.app
       - cp -R bin/Recall.app {{.DIST_MAC}}/Recall.app

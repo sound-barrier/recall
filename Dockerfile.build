@@ -1,12 +1,11 @@
 # Recall — multi-stage cross-platform build
 #
-# Wails v3 desktop-app stages:
+# Wails v3 desktop-app stages (Linux only — the Windows desktop app is a native
+# CGO_ENABLED=0 cross-compile via `task build-windows`, no Docker):
 #   frontend-builder   — Node 26, runs `npm ci && vite build`
 #   go-base            — Go 1.26, downloads deps (no Wails CLI — plain go build)
 #   linux-builder      — linux/amd64 v3 app via GTK4 + WebKitGTK 6.0 (CGo)
-#   windows-builder    — windows/amd64 v3 app, CGO_ENABLED=0 (WebView2, no mingw)
 #   linux-export       — scratch image with the Linux Wails binary
-#   windows-export     — scratch image with the Windows Wails binary
 #
 # Server-only stages (pure Go, CGO_ENABLED=0, no WebView deps):
 #   server-base        — Go 1.26, module deps downloaded (no Wails CLI needed)
@@ -102,31 +101,12 @@ RUN CGO_ENABLED=1 go build -trimpath -tags production \
         -o build/bin/Recall .
 
 
-# ─── Stage 4: Windows/amd64 binary (cross-compiled from Linux) ──
-FROM go-base AS windows-builder
-
-# v3's Windows WebView is the WebView2 loader — pure Go, no CGo — so the cross
-# build is CGO_ENABLED=0 with no mingw toolchain (a major v2→v3 simplification).
-COPY . .
-COPY --from=frontend-builder /frontend/dist ./frontend/dist
-
-ARG VERSION=dev
-RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
-        go build -trimpath -tags production \
-        -ldflags "-X recall/pkg/app.Version=${VERSION}" \
-        -o build/bin/Recall.exe .
-
-
-# ─── Stage 5: Linux export (just the binary) ────────────────
+# ─── Stage 4: Linux export (just the binary) ────────────────
+# The desktop Windows app is NOT built here: v3's WebView2 loader is pure Go, so
+# `task build-windows` cross-compiles it natively (CGO_ENABLED=0) + runs makensis
+# off-Docker. Only the Linux desktop app needs the CGo/GTK4 Docker build.
 FROM scratch AS linux-export
 COPY --from=linux-builder /app/build/bin/Recall /Recall
-
-
-# ─── Stage 6: Windows export (just the binary) ──────────────
-# The NSIS installer is produced separately at release time (wails3 generates
-# the syso/installer on the packaging host); the cross build emits the raw .exe.
-FROM scratch AS windows-export
-COPY --from=windows-builder /app/build/bin/Recall.exe /Recall.exe
 
 
 # ════════════════════════════════════════════════════════════

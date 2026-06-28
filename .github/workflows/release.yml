@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   # ── Job 1: Cross-platform builds, matrix-parallel ──
-  # Improvement #1: each of the five Docker-driven targets that used to
+  # Improvement #1: each of the four Docker-driven targets that used to
   # run sequentially inside one `build-docker` job now runs on its own
   # runner. Wall-clock drops from ~5m40s (sum) to ~max(individual_build).
   #
@@ -56,12 +56,6 @@ jobs:
             artifact-glob: |
               recall-*-linux-amd64.tar.gz
               recall-*-linux-amd64.deb
-          - target: wails-windows
-            dockerfile-target: windows-export
-            output-dir: dist/windows
-            package-script: package-wails-windows.sh
-            artifact-glob: |
-              recall-*-windows-amd64-installer.exe
           - target: server-linux
             dockerfile-target: server-linux-export
             output-dir: dist/server-linux
@@ -129,7 +123,6 @@ jobs:
             recall-*-linux-amd64.deb
             recall-server-*-linux-amd64.tar.gz
             recall-server-*-linux-amd64.deb
-            recall-*-windows-amd64-installer.exe
             recall-server-*-windows-amd64.exe
             recall-server-*-darwin-arm64.tar.gz
 
@@ -142,7 +135,6 @@ jobs:
             recall-*-linux-amd64.deb
             recall-server-*-linux-amd64.tar.gz
             recall-server-*-linux-amd64.deb
-            recall-*-windows-amd64-installer.exe
             recall-server-*-windows-amd64.exe
             recall-server-*-darwin-arm64.tar.gz
           if-no-files-found: ignore
@@ -186,7 +178,47 @@ jobs:
           path: |
             recall-*-darwin-arm64.dmg
 
-  # ── Job 3: Generate SBOM from BUILT ARTIFACTS ────────────────────────
+  # ── Job 3: Windows app + NSIS installer (native cross-compile, no Docker) ──
+  # v3's WebView2 loader is pure Go, so this cross-compiles CGO_ENABLED=0 from
+  # Linux — no mingw, no Docker. wails3 generate syso embeds the icon/version;
+  # create:nsis:installer fetches the WebView2 bootstrapper + runs makensis.
+  build-windows:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - uses: ./.github/actions/wails-build-env
+
+      - name: Install makensis
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nsis
+
+      - name: Build Windows app + NSIS installer
+        run: task build-windows
+
+      - name: Package
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: bash scripts/release/package-wails-windows.sh
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
+        with:
+          subject-path: recall-*-windows-amd64-installer.exe
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: build-wails-windows
+          path: |
+            recall-*-windows-amd64-installer.exe
+
+  # ── Job 4: Generate SBOM from BUILT ARTIFACTS ────────────────────────
   # Improvement #3 (audit): SBOM now describes the shipped bits, not
   # just the source tree. Downloads every build artifact, untars the
   # tarballs so syft can scan the actual Go binaries (catches build-info
@@ -237,11 +269,11 @@ jobs:
           name: sbom
           path: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
 
-  # ── Job 4: Create GitHub Release with all binaries attached ──
+  # ── Job 5: Create GitHub Release with all binaries attached ──
   # github.ref_name is used only in an `actions/` `with:` expression, not
   # interpolated into any run: shell command — safe from injection.
   release:
-    needs: [build, build-mac, sbom]
+    needs: [build, build-mac, build-windows, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -355,7 +387,7 @@ jobs:
             recall-*.bat.sha256
             recall-*-sbom.spdx.json
 
-  # ── Job 5: Build and push Linux server container image to GHCR ──
+  # ── Job 6: Build and push Linux server container image to GHCR ──
   # Improvement #5 (audit): now depends on `release`. Previously this
   # ran in parallel with the binary builds, sometimes producing a
   # container image even when the actual GitHub Release failed
