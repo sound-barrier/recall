@@ -33,8 +33,9 @@ func (a *App) emitTesseractStatus(s TesseractStatus) {
 }
 
 // emitParseComplete is a no-op in server mode — the SSE hub handles
-// parse-complete notifications instead of the Wails event bus.
-func (a *App) emitParseComplete() {
+// parse-complete notifications instead of the Wails event bus. The match count
+// drives the desktop native notification only, so server mode ignores it.
+func (a *App) emitParseComplete(int) {
 	a.SSEHub.Broadcast("parse-complete")
 }
 
