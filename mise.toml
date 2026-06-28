@@ -26,13 +26,13 @@ RECALL_DATA_DIR = "{{config_root}}/data"
 # [tools] below; these strings drive the on-demand npx/pipx invocations and
 # the `task check-deps` upstream comparison.
 SPECTRAL_VERSION = "6.16.0"
-TYPOS_VERSION = "v1.47.0"
+TYPOS_VERSION = "v1.47.2"
 GOCYCLO_VERSION = "latest"
-SEMGREP_VERSION = "1.164.0"
-HONKIT_VERSION = "6.2.1"
-SCHEMATHESIS_VERSION = "4.21.0"
+SEMGREP_VERSION = "1.168.0"
+HONKIT_VERSION = "6.2.2"
+SCHEMATHESIS_VERSION = "4.21.10"
 TESSERACT_VERSION = "5.3.4"
-RUFF_VERSION = "0.15.17"
+RUFF_VERSION = "0.15.20"
 
 # Pin Go to the exact mise-installed toolchain so `go build`/`go test` never
 # auto-download a different one (parity with what actions/setup-go@v6 set in CI).
@@ -55,8 +55,8 @@ shfmt = "latest"
 actionlint = "latest"
 hadolint = "latest"
 yamllint = "latest"
-typos = "1.47.0"
-ruff = "0.15.17"
+typos = "1.47.2"
+ruff = "0.15.20"
 trivy = "latest"
 lefthook = "latest"
 jq = "latest"
@@ -80,5 +80,5 @@ jq = "latest"
 "go:github.com/boumenot/gocover-cobertura" = "latest"
 
 # Python tools (isolated venvs) → pipx backend.
-"pipx:semgrep" = "1.164.0"
-"pipx:schemathesis" = "4.21.0"
+"pipx:semgrep" = "1.168.0"
+"pipx:schemathesis" = "4.21.10"
