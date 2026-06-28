@@ -24,7 +24,7 @@ export function useAppMenu() {
   const menuEl = ref<HTMLElement | null>(null)
 
   // Hide on macOS-Wails (native menu bar present); show everywhere else.
-  const isWails = typeof window !== 'undefined' && !!window.go?.app?.App
+  const isWails = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails.io')
   const isMac = typeof navigator !== 'undefined'
     && /Mac/i.test(navigator.platform || navigator.userAgent || '')
   const showMenu = computed(() => !(isWails && isMac))

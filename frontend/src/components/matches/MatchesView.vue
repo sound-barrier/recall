@@ -359,11 +359,9 @@ function onRowContextOpenSourceFolder(matchKey: string) {
 }
 
 // Wails-detect — duplicated as a one-liner so the menu doesn't have
-// to import api.ts (keeps the leaf component's import surface narrow).
-// `window.go` is set by the Wails runtime at boot; types come from
-// frontend/wailsjs and are already in tsconfig's `include` so vue-tsc
-// resolves the property without an @ts-expect-error.
-const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
+// to import api.ts (keeps the leaf component's import surface narrow). The
+// native Wails v3 webview's user agent carries "wails.io"; a browser lacks it.
+const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails.io')
 </script>
 
 <template>

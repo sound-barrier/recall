@@ -18,6 +18,8 @@
  *     branch in _fetch.
  */
 
+import { Browser, Call, Events } from '@wailsio/runtime'
+
 import type { components } from '@/api.gen'
 
 // Re-exported types — consumers (App.vue) import these instead of
@@ -33,33 +35,26 @@ export type UserMatchDataInput = components['schemas']['UserMatchDataInput']
 export type ManualMatchInput   = components['schemas']['ManualMatchInput']
 export type ProblemDetails     = components['schemas']['ProblemDetails']
 
-// Detect whether the Wails IPC bridge has been injected. The bridge is
-// only present when the page is loaded inside the native Wails webview.
-declare global {
-  interface Window {
-    // Wails IPC bridge — dynamically generated, inherently untyped at this boundary.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    go?: { app?: { App?: Record<string, (...args: any[]) => Promise<unknown>> } }
-    runtime?: {
-      EventsOn: (n: string, cb: (data: unknown) => void) => void
-      EventsOff: (n: string) => void
-      BrowserOpenURL: (url: string) => void
-    }
-  }
-}
+// Fully-qualified prefix for the bound App service — the v3 runtime resolves a
+// Call.ByName against `packagePath.typeName.method` (see pkg/app's App service,
+// registered via application.NewService). Keeps api.ts a hand-maintained seam
+// with no import from the generated frontend/bindings/.
+const APP_FQN = 'recall/pkg/app.App.'
 
-// Module-internal: every dual-transport wrapper below branches on it
-// to dispatch through the Wails IPC bridge or the REST fetch path.
-// Stays a `const` rather than a function so tree-shakers can fold
+// Detect the native Wails v3 webview. Its user agent carries the "wails.io"
+// application name (the Options.ApplicationNameForUserAgent default); a regular
+// browser (server mode) + the test env lack it, so they take the fetch path.
+// (window._wails is unsuitable — @wailsio/runtime self-creates it on import, so
+// it's present in EVERY environment.) Stays a `const` so tree-shakers can fold
 // the dead branch at build time.
-const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
+const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails.io')
 
 // OpenURL opens a URL in the OS default browser. In Wails mode the WebView
-// does not route target="_blank" links to the system browser, so we must call
-// the runtime bridge explicitly. In server/browser mode window.open suffices.
+// does not route target="_blank" links to the system browser, so we call the
+// runtime explicitly. In server/browser mode window.open suffices.
 export function OpenURL(url: string): void {
-  if (IS_WAILS && window.runtime?.BrowserOpenURL) {
-    window.runtime.BrowserOpenURL(url)
+  if (IS_WAILS) {
+    void Browser.OpenURL(url)
   } else {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
@@ -87,8 +82,9 @@ export class ApiError extends Error {
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
 function _wails<T>(method: string, ...args: unknown[]): Promise<T> {
-  // Bridge is present (IS_WAILS gated callers); cast is intentional.
-  return window.go!.app!.App![method]!(...args) as Promise<T>
+  // IS_WAILS-gated callers only; the v3 runtime resolves the FQN to the bound
+  // App method. CancellablePromise is a Promise subtype, so the cast is safe.
+  return Call.ByName(APP_FQN + method, ...args) as unknown as Promise<T>
 }
 
 // _apiError builds an ApiError from a non-ok Response. It parses the server's
@@ -1032,7 +1028,10 @@ function ensureServerSource(): EventSource {
 
 export function EventsOn<T = unknown>(eventName: string, callback: (data: T) => void): void {
   if (IS_WAILS) {
-    window.runtime!.EventsOn(eventName, callback as (data: unknown) => void)
+    // v3 delivers a WailsEvent envelope; unwrap `.data` to match the server-mode
+    // payload. Off-then-On gives replace semantics (HMR double-mount guard).
+    Events.Off(eventName)
+    Events.On(eventName, (ev) => callback(ev.data as T))
     return
   }
   const es = ensureServerSource()
@@ -1051,7 +1050,7 @@ export function EventsOn<T = unknown>(eventName: string, callback: (data: T) => 
 
 export function EventsOff(eventName: string): void {
   if (IS_WAILS) {
-    window.runtime!.EventsOff(eventName)
+    Events.Off(eventName)
     return
   }
   const listener = _serverListeners[eventName]
