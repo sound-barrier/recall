@@ -615,6 +615,25 @@ tasks:
         rm -f build/windows/icon.ico
         echo "[ recall ] ✓  build/appicon.png updated · build/windows/icon.ico cleared (regenerates on next wails build)"
 
+  # Host-platform Wails v3 entry points the wails3 CLI delegates to: `wails3
+  # build`/`package` and the `task run` step inside `wails3 dev`. They dispatch
+  # to the matching build/{{OS}}/Taskfile target. (The cross-platform Docker
+  # builds + the dist-staged macOS build are build-linux/build-windows/build-mac.)
+  build:
+    desc: Build the Wails v3 app for the host platform → bin/Recall
+    cmds:
+      - task: '{{OS}}:build'
+
+  package:
+    desc: Package a production Wails v3 build for the host platform → bin/
+    cmds:
+      - task: '{{OS}}:package'
+
+  run:
+    desc: Run the built Wails v3 app (the launch step inside `wails3 dev`)
+    cmds:
+      - task: '{{OS}}:run'
+
   dev:
     desc: Start the Wails v3 hot-reload dev server (macOS or Debian)
     cmds:
