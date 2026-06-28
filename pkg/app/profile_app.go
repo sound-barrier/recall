@@ -78,13 +78,15 @@ func (a *App) SwitchProfile(name string) error {
 
 // Sample "test" profile constants — the in-app onboarding "explore with
 // real data" action seeds this and then SwitchProfile's into it. A fixed
-// seed gives a stable demo corpus; chaos guarantees a few unknown +
-// ambiguous rows so the Unknown/Ambiguous tour steps have real targets.
+// seed gives a stable demo corpus. NO chaos: the walkthrough must show only
+// real OW heroes + maps (chaos mutates matches into pathological garbage —
+// synthetic-hero-NN, zalgo map names — which belongs to the seed-dev stress
+// path, not a user-facing demo). The Unknown/Ambiguous tour targets come from
+// the dedicated unknown/ambiguous fixtures in the base generation, not chaos.
 const (
 	TestProfileName    = "test"
 	testProfileSeed    = 8
 	testProfileMatches = 500
-	testProfileChaos   = 0.1
 )
 
 // SeedTestProfileResponse is the wire shape for SeedTestProfile.
@@ -109,7 +111,7 @@ func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
 		N:     testProfileMatches,
 		Seed:  testProfileSeed,
 		Style: "flex",
-		Chaos: testProfileChaos,
+		// Chaos deliberately omitted (0) — see the const comment above.
 	})
 	if err != nil {
 		return SeedTestProfileResponse{}, err
