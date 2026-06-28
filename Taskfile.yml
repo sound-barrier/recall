@@ -88,12 +88,12 @@ tasks:
       - echo "[ recall ] ✓  dist/linux/Recall"
 
   build-windows:
-    desc: Windows/amd64 Wails app + NSIS installer via Docker → dist/windows/
+    desc: Windows/amd64 Wails v3 app via Docker → dist/windows/Recall.exe
     cmds:
-      - echo "[ recall ] Building windows/amd64 Wails app + NSIS installer via Docker (mingw-w64 + nsis)…"
+      - echo "[ recall ] Building windows/amd64 Wails v3 app via Docker (CGO_ENABLED=0, no mingw)…"
       - mkdir -p {{.DIST_WINDOWS}}
       - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target windows-export --output type=local,dest={{.DIST_WINDOWS}} .'
-      - echo "[ recall ] ✓  dist/windows/Recall.exe + dist/windows/Recall-amd64-installer.exe"
+      - echo "[ recall ] ✓  dist/windows/Recall.exe"
 
   build-mac:
     desc: macOS arm64 Wails app → dist/mac/Recall.app (macOS host + Xcode CLT required)

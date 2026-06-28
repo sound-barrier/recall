@@ -1,18 +1,18 @@
 name: Wails build environment
 description: >
-  Provision the toolchain a native `wails build` needs — Go, Node, the Wails
-  CLI, plus task + jq (the build-* tasks compute BUILD_VERSION via jq) — from
-  the pinned versions in mise.toml. Used by any job that runs `task build-mac`
-  / `wails build` natively (ci.yml + release.yml build-mac). mise.toml is the
-  single source of truth for every version; bumping a pin there propagates to
-  every consumer. Pairs with the Dockerized cross-builds (Linux/Windows Wails +
+  Provision the toolchain a native `wails3 build` needs — Go, Node, the Wails v3
+  CLI (wails3), plus task + jq (the build-* tasks compute BUILD_VERSION via jq) —
+  from the pinned versions in mise.toml. Used by any job that runs `task
+  build-mac` / `wails3 build` natively (ci.yml + release.yml build-mac). mise.toml
+  is the single source of truth for every version; bumping a pin there propagates
+  to every consumer. Pairs with the Dockerized cross-builds (Linux/Windows Wails +
   server binaries) that run entirely inside Dockerfile.build.
 
 runs:
   using: composite
   steps:
-    # Installs go, node, task, jq + the Wails CLI (go: backend, so it's built
+    # Installs go, node, task, jq + the Wails v3 CLI (go: backend, so it's built
     # with the pinned Go). Also loads mise.toml [env] into $GITHUB_ENV.
     - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
       with:
-        install_args: go node task jq go:github.com/wailsapp/wails/v2/cmd/wails
+        install_args: go node task jq go:github.com/wailsapp/wails/v3/cmd/wails3
