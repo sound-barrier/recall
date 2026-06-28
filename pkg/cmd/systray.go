@@ -4,20 +4,29 @@ package cmd
 
 import (
 	_ "embed"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-// trayIcon is the Recall app icon (assets/icon.png, scaled to 128×128) shown in
-// the system tray / macOS menu bar. macOS auto-sizes it to the menubar height
-// ([image setSize:thickness]); other platforms scale it to their tray. To
-// refresh after changing the source icon:
+// trayIcon is the full-colour Recall app icon (assets/icon.png, scaled to
+// 128×128) shown in the Windows / Linux tray. Refresh after changing the source:
 //
 //	sips -z 128 128 assets/icon.png --out pkg/cmd/tray-icon.png
 //
 //go:embed tray-icon.png
 var trayIcon []byte
+
+// trayIconTemplate is the macOS menu-bar TEMPLATE variant: a black "Re"
+// silhouette on transparency that macOS tints for light/dark menu bars (the
+// platform-native look). Derived from tray-icon.png — every pixel recoloured
+// black with alpha from a luminance ramp (opaque ≤190, transparent ≥225) so the
+// orange R + grey e read solid and the white background drops out; the source
+// icon's 1px frame border is zeroed (outer 3px).
+//
+//go:embed tray-icon-template.png
+var trayIconTemplate []byte
 
 // setupSystemTray adds a tray icon + menu and turns the window's close button
 // into a hide, so Recall keeps watching the screenshots folder in the
@@ -30,9 +39,13 @@ func setupSystemTray(wailsApp *application.App, win *application.WebviewWindow) 
 	})
 
 	tray := wailsApp.SystemTray.New()
-	// The Recall app icon, not a template — show the actual coloured mark in the
-	// menu bar rather than a monochrome silhouette.
-	tray.SetIcon(trayIcon)
+	// macOS menu bars expect a monochrome template image (auto-tinted for
+	// light/dark); Windows + Linux trays show the full-colour icon.
+	if runtime.GOOS == "darwin" {
+		tray.SetTemplateIcon(trayIconTemplate)
+	} else {
+		tray.SetIcon(trayIcon)
+	}
 	tray.SetMenu(trayMenu(win))
 }
 
