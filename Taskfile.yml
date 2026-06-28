@@ -372,6 +372,16 @@ tasks:
       - cd frontend && npm update
       - echo "[ recall ] ✓  Dependencies updated"
 
+  update-mise:
+    desc: Bump version-pinned mise tools to their latest versions
+    cmds:
+      - echo "[ recall ] Bumping version-pinned mise tools to latest…"
+      # --bump rewrites only the version-pinned [tools] (typos / ruff / semgrep
+      # / schemathesis / …) and installs them; "latest" pins stay "latest" and
+      # just refresh to the newest binary. go / node / wails are already current.
+      - mise upgrade --bump
+      - echo "[ recall ] ✓  mise [tools] bumped. Sync the matching [env] version strings + run 'task check-deps'."
+
   trivy:
     desc: Trivy vulnerability scan (fails on HIGH/CRITICAL)
     cmds:
