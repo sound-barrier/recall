@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"strings"
 
@@ -88,17 +89,20 @@ func RunWails(a *app.App, assets embed.FS) {
 	sizeWindowToScreen(win)
 	setupSystemTray(wailsApp, win)
 
-	// Wire native parse-complete notifications. Authorization is requested once
-	// on a goroutine (the macOS prompt needs the run loop that Run starts below);
-	// SendNotification degrades gracefully until/unless the user grants it.
-	go func() { _, _ = notifier.RequestNotificationAuthorization() }()
-	app.SetParseCompleteNotifier(func(matchCount int) {
-		_ = notifier.SendNotification(notifications.NotificationOptions{
-			ID:    "recall-parse-complete",
-			Title: "Recall",
-			Body:  parseCompleteBody(matchCount),
+	// Wire native parse-complete notifications — but only when notifications can
+	// initialize without aborting (see notificationsSupported). Authorization is
+	// requested once on a goroutine (the macOS prompt needs the run loop that Run
+	// starts below); SendNotification degrades gracefully until/unless granted.
+	if notificationsSupported() {
+		go func() { _, _ = notifier.RequestNotificationAuthorization() }()
+		app.SetParseCompleteNotifier(func(matchCount int) {
+			_ = notifier.SendNotification(notifications.NotificationOptions{
+				ID:    "recall-parse-complete",
+				Title: "Recall",
+				Body:  parseCompleteBody(matchCount),
+			})
 		})
-	})
+	}
 
 	if err := wailsApp.Run(); err != nil {
 		println("Error:", err.Error())
@@ -112,6 +116,22 @@ func parseCompleteBody(matchCount int) string {
 		return "Parsed 1 new match"
 	}
 	return fmt.Sprintf("Parsed %d new matches", matchCount)
+}
+
+// notificationsSupported reports whether native notifications can be wired
+// without aborting the process. macOS's UNUserNotificationCenter throws an
+// uncatchable Obj-C exception when the app has no bundle identifier — i.e. the
+// raw binary run outside a .app (e.g. `./bin/Recall` straight from a build).
+// Inside a .app bundle (every normal launch) it's fine; other OSes don't care.
+func notificationsSupported() bool {
+	if runtime.GOOS != "darwin" {
+		return true
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(exe, ".app/Contents/MacOS/")
 }
 
 // desktopMenu returns the native macOS menu bar (Chrome/Firefox style); nil off
