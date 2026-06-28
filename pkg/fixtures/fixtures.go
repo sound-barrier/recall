@@ -23,6 +23,11 @@ type Fixture struct {
 	// review row (`self` or `coach`). Empty for the vast majority of
 	// matches — fed into Store.SetReview by the seed tool.
 	Reviews []ReviewSeed
+	// Annotations carries the per-match user markup a real player adds —
+	// friends' BattleTags (Members), a Note, Tags (stack/stream/placement +
+	// custom), a ReplayCode, an occasional Leaver. Only a realistic minority
+	// of matches get one; fed into Store.SetAnnotation by the seed tool.
+	Annotations []db.Annotation
 	// Queues names every match_key whose queue_type the seed tool
 	// should upsert via Store.SetMatchQueue. ~80% role, ~20% open
 	// (matches real OW play distribution) so the new toggle + filter
@@ -230,6 +235,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	forceClashQuickplay(&fx, summaryPlayModes)
 
 	fx.appendReviewSeeds(seed)
+	fx.appendAnnotationSeeds(seed)
 	fx.appendQueueAndPlayModeSeeds(summaryQueueTypes, summaryPlayModes)
 	fx.appendUnknownScreenshots(seed, n, rangeStart, dayWeights, totalDayW)
 	fx.appendAmbiguousScreenshots(seed, n, rangeStart, dayWeights, totalDayW)

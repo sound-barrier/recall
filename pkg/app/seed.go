@@ -37,6 +37,7 @@ type SeedResult struct {
 	Matches       int  // matches now in the profile
 	AlreadySeeded bool // had data + Force was false → reused, not reseeded
 	Reviewed      int
+	Annotated     int // matches carrying a user annotation (note/tags/members/…)
 	Queues        int
 	PlayModes     int
 	Unknowns      int
@@ -118,6 +119,7 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 		Profile:   name,
 		Matches:   len(fx.Summaries),
 		Reviewed:  len(fx.Reviews),
+		Annotated: len(fx.Annotations),
 		Queues:    len(fx.Queues),
 		PlayModes: len(fx.PlayModes),
 		Unknowns:  len(fx.Unknowns),
@@ -153,6 +155,11 @@ func writeFixture(store db.Store, fx fixtures.Fixture) error {
 	for _, r := range fx.Reviews {
 		if err := store.SetReview(r.MatchKey, r.ReviewedBy); err != nil {
 			return fmt.Errorf("SetReview(%s): %w", r.MatchKey, err)
+		}
+	}
+	for _, ann := range fx.Annotations {
+		if err := store.SetAnnotation(ann); err != nil {
+			return fmt.Errorf("SetAnnotation(%s): %w", ann.MatchKey, err)
 		}
 	}
 	for _, q := range fx.Queues {
