@@ -258,7 +258,7 @@ A softer in-app option exists too (when the app still opens): **Settings → Adv
 
 Two ports matter, both `localhost`-only:
 
-- **`:34115` (Wails IPC, dev only)** — only used by `make dev`; the production app uses an OS-allocated port. If `make dev` errors with "bind: address already in use", another `wails dev` is already running — kill it.
+- **`:9245` (Vite dev server, dev only)** — only used by `task dev` (`wails3 dev`); the production app uses an OS-allocated port. If it errors with "bind: address already in use", another `wails3 dev` is already running — kill it.
 - **`:7000` (server mode)** — only when you run `recall-server --server` per [docs/server.md](docs/server.md). Override with `--addr 127.0.0.1:7099` if `:7000` is busy.
 
 The Wails desktop app does NOT open any externally-visible port by default — the IPC bridge is in-process between the Go runtime and the embedded WebKit/WebView window.

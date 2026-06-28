@@ -8,7 +8,7 @@ automatically when you touch matching files) and in `docs/dev-reference.md`
 
 ## What this project is
 
-Recall is a Wails v2 desktop app that watches a folder of Overwatch screenshots,
+Recall is a Wails v3 desktop app that watches a folder of Overwatch screenshots,
 OCRs them with Tesseract, merges per-match data into SQLite, and surfaces the
 match history in-app — a filterable dossier plus a "Trends" section of ECharts
 time-series charts (SR, win-rate, per-match stats). Stack: Go backend + Vue 3

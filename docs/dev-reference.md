@@ -26,9 +26,9 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 
 | Command | Purpose |
 |---|---|
-| `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, Wails CLI, every linter), Debian `webkit2gtk-4.0` → `4.1` shims, `npm ci`, `lefthook install`. Idempotent. |
-| `task dev` | Hot-reload dev server (macOS / Debian / Ubuntu). Vite `:5173`, Wails IPC `:34115`. Linux auto-passes `-tags webkit2_4_1`. |
-| `task build-linux` / `build-windows` | Wails app → `dist/<os>/Recall[.exe]` via Docker (mingw-w64 for Windows). |
+| `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, `wails3`, every linter), Debian GTK4 + WebKitGTK 6.0 dev libs, `npm ci`, `lefthook install`. Idempotent. |
+| `task dev` | Hot-reload Wails v3 dev server (`wails3 dev`, macOS / Debian / Ubuntu). |
+| `task build-linux` / `build-windows` | Wails v3 app → `dist/<os>/Recall[.exe]` via Docker (GTK4/WebKitGTK 6.0 for Linux; `CGO_ENABLED=0`, no mingw, for Windows). |
 | `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). Release workflow wraps it in a DMG. |
 | `task build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed. |
 | `task build-server-{linux,windows,mac}` | Server binary → `dist/server-<os>/Recall-server` via Docker. |
@@ -36,7 +36,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task build-all` | All three Wails platforms (macOS host required). |
 | `go build ./...` / `-tags serveronly ./...` | Compile-check Wails / server variant. |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
-| `brew bundle` | macOS bootstrap from `Brewfile`: mise, go-task, Tesseract, Podman, pipx, cloc. Everything else (Go/Node toolchains + all linters + Wails CLI) comes from `mise install`. |
+| `brew bundle` | macOS bootstrap from `Brewfile`: mise, go-task, Tesseract, Podman, pipx, cloc. Everything else (Go/Node toolchains + all linters + `wails3`) comes from `mise install`. |
 | `mise install` | Provision the pinned toolchain from `mise.toml` ([tools] + [env]). |
 | `eval "$(mise activate zsh)"` | One-time shell hook (or `bash`) so the toolchain + `RECALL_DATA_DIR` load automatically on `cd`. |
 | `cd frontend && npm ci` | Install frontend deps (required after clone / `task clean`). |

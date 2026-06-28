@@ -64,7 +64,7 @@ Supported dev platforms are **macOS**, **Debian/Ubuntu** (apt-based), and **Wind
 
 ### Quick start (macOS + Debian/Ubuntu)
 
-The toolchain is managed by [mise](https://mise.jdx.dev): Go, Node, the Wails CLI, `task` itself, and every linter are pinned in `mise.toml`, so you don't install them by hand. You only need Homebrew (macOS) or `curl` (Debian) for the bootstrap, then one command takes care of the rest:
+The toolchain is managed by [mise](https://mise.jdx.dev): Go, Node, the Wails v3 CLI (`wails3`), `task` itself, and every linter are pinned in `mise.toml`, so you don't install them by hand. You only need Homebrew (macOS) or `curl` (Debian) for the bootstrap, then one command takes care of the rest:
 
 ```sh
 ./initialize.sh        # then:  task init  (once task is on PATH)
@@ -94,7 +94,7 @@ Once the prerequisites are in place, the container installs:
 
 - Docker (Docker-in-Docker, for `task build-*` and `task swagger`)
 - System packages via apt: `tesseract`, `sqlite3`, `cloc`, `pipx`
-- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails CLI, `task`, and every linter (`gofumpt`, `goimports-reviser`, `govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `hadolint`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
+- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails v3 CLI (`wails3`), `task`, and every linter (`gofumpt`, `goimports-reviser`, `govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `hadolint`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
 - `cd frontend && npm ci` for the Vue/Vite toolchain
 - `lefthook install` to wire the pre-commit hooks
 
@@ -116,7 +116,7 @@ The forwarded ports (5173, 7000, 8080, 34115) cover Vite, the Recall server, Swa
 ```sh
 xcode-select --install          # Xcode Command Line Tools (required for Wails CGo builds)
 brew bundle                     # mise, go-task, Tesseract, Podman, pipx, cloc (from Brewfile)
-mise trust && mise install      # Go, Node, Wails CLI + every linter (pinned in mise.toml)
+mise trust && mise install      # Go, Node, wails3 + every linter (pinned in mise.toml)
 ```
 
 Activate mise in your shell so the toolchain + `RECALL_DATA_DIR` load on `cd`
@@ -133,10 +133,10 @@ echo 'eval "$(mise activate bash)"' >> ~/.bash_profile && source ~/.bash_profile
 ```sh
 git submodule update --init testdata/images   # parser golden-test fixture images (recall-testdata)
 cd frontend && npm ci && cd ..
-task dev                            # generates fresh Wails bindings on first run
+task dev                            # hot-reload Wails v3 dev server
 ```
 
-`frontend/wailsjs/` is gitignored — `wails build` / `wails dev` regenerates it from Go sources on every invocation. Adding a new exported `App` method? Just add it; the next `task dev` (or any desktop build) picks it up. Frontend code consumes the OpenAPI-generated `api.gen.d.ts` instead of reaching into `wailsjs/`, so devs who only run server mode (devcontainer, CI, remote box) stay in sync without ever booting the GUI.
+`frontend/bindings/` is gitignored — `wails3 generate bindings` (or any build) regenerates it from Go sources. Adding a new exported `App` method? Just add it; `api.ts` dispatches to the bound method by fully-qualified name via `@wailsio/runtime`'s `Call.ByName`, so no generated file is imported and nothing needs regenerating to call it. Frontend code consumes the OpenAPI-generated `api.gen.d.ts` for types, so devs who only run server mode (devcontainer, CI, remote box) stay in sync without ever booting the GUI.
 
 **Day-to-day:**
 
@@ -144,12 +144,12 @@ task dev                            # generates fresh Wails bindings on first ru
 task dev        # hot-reload Wails desktop app
 task lint       # all linters before pushing
 task fmt        # format Go source
-wails doctor    # verify toolchain at any time
+wails3 doctor   # verify toolchain at any time
 ```
 
 ### Debian / Ubuntu
 
-`task dev` runs natively here — the apt path installs WebKitGTK + GTK 3 + appindicator dev libraries and the same Wails CLI macOS gets. Vite HMR + live Go rebuild work the same as on macOS; only the native window chrome differs (GTK vs Cocoa).
+`task dev` runs natively here — the apt path installs GTK4 + WebKitGTK 6.0 dev libraries and the same `wails3` CLI macOS gets. Vite HMR + live Go rebuild work the same as on macOS; only the native window chrome differs (GTK vs Cocoa).
 
 > **TL;DR:** `./initialize.sh` (or `task init`) runs every step in this section automatically once Go 1.26+ and Node 22+ are on PATH. Read on if you're on a non-apt distro (the script bails fast on those) or want to understand what it installs.
 >
@@ -158,37 +158,19 @@ wails doctor    # verify toolchain at any time
 **One-time prerequisites** (Debian/Ubuntu — adapt for other distros):
 
 ```sh
-# Wails native build deps (WebKitGTK 4.1, GTK 3, appindicator). These are
-# system libraries mise can't manage; Go + Node themselves come from mise below.
+# Wails v3 native build deps: GTK4 + WebKitGTK 6.0 (the default v3 Linux
+# webview). System libraries mise can't manage; Go + Node come from mise below.
+# No pkg-config shims and no webkit2_4_1 build tag — those were a v2 workaround
+# for webkit2gtk-4.0/4.1; v3 links webkitgtk-6.0 directly (Debian trixie /
+# Ubuntu 24.04+).
 sudo apt install -y \
-  libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+  libgtk-4-dev libwebkitgtk-6.0-dev \
   pkg-config build-essential
-
-# pkg-config shims: Wails v2.12.0's webview CGo references webkit2gtk-4.0
-# but Debian bookworm+/Ubuntu 24.04+ only ship 4.1. The shims point the
-# 4.0 names at the installed 4.1 libs. Belt-and-suspenders with
-# `wails dev -tags webkit2_4_1`, which the Taskfile passes automatically.
-sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc <<'EOF'
-Name: webkit2gtk-4.0
-Description: compat shim
-Version: 4.1
-Requires: webkit2gtk-4.1
-Cflags:
-Libs:
-EOF
-sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/javascriptcoregtk-4.0.pc <<'EOF'
-Name: javascriptcoregtk-4.0
-Description: compat shim
-Version: 4.1
-Requires: javascriptcoregtk-4.1
-Cflags:
-Libs:
-EOF
 
 # System tools mise can't manage
 sudo apt install -y tesseract-ocr sqlite3 cloc pipx docker.io  # or podman
 
-# mise — provisions Go, Node, the Wails CLI, task, and every linter
+# mise — provisions Go, Node, the Wails v3 CLI (wails3), task, and every linter
 # (golangci-lint, gofumpt, goimports-reviser, hadolint, yamllint, trivy,
 # typos, ruff, gosec, semgrep, schemathesis, …) from mise.toml.
 curl -fsSL https://mise.run | sh
@@ -586,7 +568,7 @@ Treat the spec as the published contract:
 
 - When you **add or remove a route** in `pkg/cmd/server.go`, mirror the change in the spec.
 - When you **change a response shape** in `pkg/app/app.go` or `pkg/parser/parser.go`, update the relevant `components.schemas.*` entry.
-- When you **add a field to an existing Go struct** (not a new method), the update is a 2-step follow-up: (1) update the struct + OpenAPI schema, (2) `task gen-types` to refresh `api.gen.d.ts`. `frontend/wailsjs/` is a gitignored build artifact regenerated by `wails build`; `api.ts` consumes `api.gen.d.ts` for both Wails and server transports, so there's no second file to keep in sync.
+- When you **add a field to an existing Go struct** (not a new method), the update is a 2-step follow-up: (1) update the struct + OpenAPI schema, (2) `task gen-types` to refresh `api.gen.d.ts`. `frontend/bindings/` is a gitignored build artifact regenerated by `wails3 generate bindings`; `api.ts` calls bound methods by FQN via `@wailsio/runtime` and consumes `api.gen.d.ts` for types across both Wails and server transports, so there's no second file to keep in sync.
 
 ```sh
 task swagger        # serve the spec via Swagger UI in a container (default :8080)
