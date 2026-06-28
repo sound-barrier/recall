@@ -34,8 +34,13 @@ var trayIconTemplate []byte
 // of window visibility, so hiding (not quitting) is all that's needed; the tray
 // menu re-shows the window or quits for real.
 func setupSystemTray(wailsApp *application.App, win *application.WebviewWindow) {
-	win.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
+	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		// Hide AND Cancel: cancelling stops the window being destroyed, so Recall
+		// keeps running in the tray (the folder watcher runs regardless of window
+		// visibility) and the tray's "Show Recall" can bring it back. Without
+		// Cancel the close proceeds and the window is gone for good.
 		win.Hide()
+		e.Cancel()
 	})
 
 	tray := wailsApp.SystemTray.New()

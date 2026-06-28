@@ -55,7 +55,10 @@ func RunWails(a *app.App, assets embed.FS) {
 			Middleware: screenshotsMiddleware(a.ScreenshotHandler()),
 		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
+			// false so closing the window keeps Recall alive in the menu-bar tray
+			// (the background-watcher) instead of quitting; the tray's "Quit
+			// Recall" + Cmd+Q are the explicit exits.
+			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 		// A second `recall` launch focuses the running window instead of spawning
 		// a rival process that would double-watch the folder and contend on the
