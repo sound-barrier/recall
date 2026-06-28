@@ -1,5 +1,56 @@
 # Changelog
 
+## [0.22.0](https://github.com/sound-barrier/recall/compare/v0.21.1...v0.22.0) (2026-06-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* the release pipeline now requires Wails v3.
+* the desktop release pipeline now targets Wails v3.
+* **frontend:** the frontend now talks to the Wails v3 runtime.
+* **desktop:** the desktop layer now requires Wails v3.
+
+### Features
+
+* **desktop:** add a monochrome menu-bar template icon for macOS ([b0b542d](https://github.com/sound-barrier/recall/commit/b0b542dd98479d6183f82652537d62527532f234))
+* **desktop:** native parse-complete notifications ([7b99638](https://github.com/sound-barrier/recall/commit/7b996381214027665fd4d5be2f1a6cf9a9903ab7))
+* **desktop:** port the Go Wails layer to v3 ([12c5538](https://github.com/sound-barrier/recall/commit/12c553895f5784cf9c8a261dd68386e59182c874))
+* **desktop:** single-instance lock ([cfb7e71](https://github.com/sound-barrier/recall/commit/cfb7e7199004ad77f48b72141de4b42590d093dc))
+* **desktop:** system-tray background-watcher ([84d2b09](https://github.com/sound-barrier/recall/commit/84d2b094477eb78484c7526762f2df17cca6bf4b))
+* **desktop:** use the Recall icon in the system tray ([4ec793f](https://github.com/sound-barrier/recall/commit/4ec793fd653ad9289c7e72490cc4c544d07c3560))
+* **frontend:** move the transport seam to @wailsio/runtime ([b3e7d09](https://github.com/sound-barrier/recall/commit/b3e7d0937122c7be4b8ee3ded882b98c5b78b954))
+
+
+### Bug Fixes
+
+* **build:** add the build:dev npm script for wails3 dev ([da28e75](https://github.com/sound-barrier/recall/commit/da28e7543a25e80fbbf9d24b53e625fd2a841fce))
+* **build:** add top-level build/package/run Taskfile delegators ([a7f9bec](https://github.com/sound-barrier/recall/commit/a7f9bece114770c2d3a2b6c8fa720a60699c376f))
+* **desktop:** keep Recall in the tray on window close ([5492d17](https://github.com/sound-barrier/recall/commit/5492d17efb75f026f77db8d5e0f05ee7d8d0aa6d))
+* **desktop:** render the macOS Info.plist bundle identifier ([d7ba484](https://github.com/sound-barrier/recall/commit/d7ba484389daa9db6cadd758cd01b1fc97d28585))
+* **frontend:** detect Wails by UA marker, not the late _wails.flags ([94d446a](https://github.com/sound-barrier/recall/commit/94d446a9f6d45178d5c3ea44795ebf6c8a7317e7))
+* **frontend:** detect Wails via _wails.flags, not a UA substring ([cf04fc7](https://github.com/sound-barrier/recall/commit/cf04fc791789b4a550228e1726bea2949f0855ca))
+* **scripts:** port tour-test.sh to Wails v3 ([dec91f9](https://github.com/sound-barrier/recall/commit/dec91f92863f5fb5e8f42baf33bc70abdfee2396))
+
+
+### Documentation
+
+* build-windows is a native cross-compile (not Docker) ([e02ede4](https://github.com/sound-barrier/recall/commit/e02ede487233d9a72b879de7c6966be8de2c2ca9))
+* update build/dev docs for the Wails v3 migration ([a5fa4af](https://github.com/sound-barrier/recall/commit/a5fa4afea5e93cddd95a7041d28ae2c4d6d9036a))
+
+
+### Build & Packaging
+
+* cross-compile the v3 desktop app (GTK4 Linux, CGo-free Windows) ([04a5c02](https://github.com/sound-barrier/recall/commit/04a5c023985dcb7ca6871488c1c1d1401ecdd2c1))
+* port the release pipeline to Wails v3 ([5c8d615](https://github.com/sound-barrier/recall/commit/5c8d6159f0f72b173db3b6ede8a4ce946a624ab5))
+* scaffold Wails v3 toolchain + build/ Taskfiles (v2 still active) ([430750e](https://github.com/sound-barrier/recall/commit/430750e6b068ece2b2408dde86e66a5647935db2))
+* wire the wails3 build into the Taskfile + Linux webview deps ([edeebe6](https://github.com/sound-barrier/recall/commit/edeebe6f173ec5e79d1cad726645c7f293e6e43f))
+
+
+### CI
+
+* build the Windows app natively (wails3 + makensis), not via Docker ([c8e7977](https://github.com/sound-barrier/recall/commit/c8e79774ae39904057caadea9037a3fd37bbc07b))
+* install WebKit deps before building the wails3 CLI on Linux ([059ec3e](https://github.com/sound-barrier/recall/commit/059ec3e5fc40aac53a74dc7c6147f8c09d81dc58))
+
 ## [0.21.1](https://github.com/sound-barrier/recall/compare/v0.21.0...v0.21.1) (2026-06-28)
 
 
