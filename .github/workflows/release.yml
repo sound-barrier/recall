@@ -191,6 +191,11 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
+      # Building the wails3 CLI itself (mise/go install) pulls in v3's CGo GTK4
+      # webview, so the Ubuntu runner needs the WebKit dev libs — even though the
+      # Windows target is CGO_ENABLED=0.
+      - uses: ./.github/actions/linux-webview-deps
+
       - uses: ./.github/actions/wails-build-env
 
       - name: Install makensis
