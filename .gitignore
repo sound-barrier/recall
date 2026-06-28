@@ -1,3 +1,5 @@
+scripts/ci/__pycache__/
+screenshots/
 build/bin
 node_modules
 frontend/dist
