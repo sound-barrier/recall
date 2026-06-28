@@ -204,7 +204,7 @@ For headless work (CI, container shell, remote box without a display) use server
 go run -tags serveronly . --server   # browse http://127.0.0.1:7000
 ```
 
-Container builds work identically to macOS — `task build-linux` / `task build-windows` / `task build-server-*` all delegate to `Dockerfile.build` and need Docker (or Podman via `DOCKER=podman make ...`) running.
+Container builds work identically to macOS — `task build-linux` / `task build-server-*` delegate to `Dockerfile.build` and need Docker (or Podman via `DOCKER=podman make ...`) running. `task build-windows` is a **native** cross-compile (v3's WebView2 loader is pure Go) — no Docker, but it needs `wails3` + node + `makensis` on PATH.
 
 ### Windows (via WSL2)
 
@@ -223,7 +223,7 @@ The default distro matches the apt branch in [`initialize.sh`](initialize.sh), s
 
 **2. Run `task` from the WSL2 bash prompt, not PowerShell or Git Bash.** The Taskfile, lefthook hooks, and every `scripts/*.sh` assume bash with POSIX `find`/`xargs`/`grep` semantics. Open the *Ubuntu* terminal app (or `wsl` from any Windows shell), `cd` into your clone, and run `task` commands there.
 
-**3. Wire up Docker Desktop's WSL2 backend.** `task build-linux` / `task build-windows` / `task build-server-*` all delegate to `Dockerfile.build`. Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) on the Windows host, then in *Settings → General* tick **Use the WSL 2 based engine**, and in *Settings → Resources → WSL Integration* toggle on your Ubuntu distro. Verify from the WSL2 shell:
+**3. Wire up Docker Desktop's WSL2 backend.** `task build-linux` / `task build-server-*` delegate to `Dockerfile.build` (`task build-windows` is a native, Docker-free cross-compile). Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) on the Windows host, then in *Settings → General* tick **Use the WSL 2 based engine**, and in *Settings → Resources → WSL Integration* toggle on your Ubuntu distro. Verify from the WSL2 shell:
 
 ```sh
 docker info        # should print server details, not "Cannot connect…"
@@ -259,7 +259,7 @@ Recall ships two binary flavors:
 
 ```sh
 task build-linux        # Linux/amd64   → dist/linux/Recall
-task build-windows      # Windows/amd64 → dist/windows/Recall.exe
+task build-windows      # Windows/amd64 app + NSIS installer → dist/windows/ (native)
 task build-mac          # macOS arm64 .app → dist/mac/  (macOS host required)
 task build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
 task build-all          # all three (macOS host required)

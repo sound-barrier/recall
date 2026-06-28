@@ -28,7 +28,8 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 |---|---|
 | `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, `wails3`, every linter), Debian GTK4 + WebKitGTK 6.0 dev libs, `npm ci`, `lefthook install`. Idempotent. |
 | `task dev` | Hot-reload Wails v3 dev server (`wails3 dev`, macOS / Debian / Ubuntu). |
-| `task build-linux` / `build-windows` | Wails v3 app → `dist/<os>/Recall[.exe]` via Docker (GTK4/WebKitGTK 6.0 for Linux; `CGO_ENABLED=0`, no mingw, for Windows). |
+| `task build-linux` | Linux/amd64 Wails v3 app → `dist/linux/Recall` via Docker (GTK4 + WebKitGTK 6.0, CGo). |
+| `task build-windows` | Windows/amd64 Wails v3 app + NSIS installer → `dist/windows/` via a **native** cross-compile (`CGO_ENABLED=0` — v3's WebView2 loader is pure Go, no Docker; needs `wails3` + node + `makensis`). |
 | `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). Release workflow wraps it in a DMG. |
 | `task build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed. |
 | `task build-server-{linux,windows,mac}` | Server binary → `dist/server-<os>/Recall-server` via Docker. |
