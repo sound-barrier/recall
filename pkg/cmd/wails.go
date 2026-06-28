@@ -30,6 +30,10 @@ func RunWails(a *app.App, assets embed.FS) {
 	// background engine probe's "tesseract-status" emit is safe here.
 	app.EnableTesseractProbeOnStartup()
 
+	// Declared up front so the single-instance callback can focus it — the
+	// window itself is created after application.New below.
+	var win *application.WebviewWindow
+
 	wailsApp := application.New(application.Options{
 		Name:        "Recall",
 		Description: "Overwatch screenshot telemetry — local match history + trends",
@@ -45,6 +49,18 @@ func RunWails(a *app.App, assets embed.FS) {
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
+		// A second `recall` launch focuses the running window instead of spawning
+		// a rival process that would double-watch the folder and contend on the
+		// SQLite file. UniqueID matches build/config.yml's productIdentifier.
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "com.sound-barrier.recall",
+			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
+				if win != nil {
+					win.Restore()
+					win.Focus()
+				}
+			},
+		},
 	})
 
 	// Native menu, per-OS (see desktopMenu): macOS gets the full Chrome/Firefox-
@@ -53,7 +69,7 @@ func RunWails(a *app.App, assets embed.FS) {
 		wailsApp.Menu.Set(m)
 	}
 
-	win := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+	win = wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "Recall",
 		Width:            minWindowW,
 		Height:           minWindowH,
