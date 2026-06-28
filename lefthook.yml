@@ -19,14 +19,12 @@ pre-commit:
   parallel: true
   commands:
     # ── Go ────────────────────────────────────────────────────────────
-    gofumpt:
+    # golangci-lint owns the formatters (gci import groups + gofmt -s) per
+    # .golangci.yml; `fmt` applies them to the staged files, then `run --fix`
+    # lints + autofixes.
+    golangci-lint-fmt:
       glob: "*.go"
-      run: gofumpt -l -w {staged_files}
-      stage_fixed: true
-
-    goimports-reviser:
-      glob: "*.go"
-      run: goimports-reviser -use-cache -project-name recall {staged_files}
+      run: golangci-lint fmt {staged_files}
       stage_fixed: true
 
     golangci-lint:

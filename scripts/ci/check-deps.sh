@@ -11,7 +11,7 @@
 #
 # Auto-managed tools are intentionally omitted (they track @latest via mise or
 # Dependabot, so there is no fixed pin to compare):
-#   • golangci-lint, gofumpt, shfmt, govulncheck, deadcode, goimports-reviser,
+#   • golangci-lint, shfmt, govulncheck, deadcode,
 #     gocyclo, hadolint, lefthook, trivy, jq  — mise "latest"
 #   • ESLint, typescript-eslint, stylelint, htmlhint, vue-tsc — Dependabot npm
 #   • hadolint-action, trivy-action, setup-go, setup-node — Dependabot Actions
@@ -109,7 +109,7 @@ info() {
 }
 
 printf '\n%bChecking pinned tool versions against latest releases…%b\n' "$BOLD" "$RESET"
-printf '%b(golangci-lint/gofumpt/shfmt/govulncheck → @latest; package.json + Actions → Dependabot)%b\n\n' \
+printf '%b(golangci-lint/shfmt/govulncheck → @latest; package.json + Actions → Dependabot)%b\n\n' \
   "$DIM" "$RESET"
 printf '  %-14s  %-14s  %-14s\n' "Tool" "Pinned" "Latest"
 printf '  %s\n' "────────────────────────────────────────────────────────────────────"

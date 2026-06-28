@@ -363,11 +363,12 @@ tasks:
       - task: fmt-py
 
   fmt-go:
-    desc: Format Go source files (goimports-reviser + gofumpt)
+    desc: Format Go source files (golangci-lint fmt — gci import groups + gofmt -s)
     cmds:
       - echo "[ recall ] Formatting Go source files…"
-      - goimports-reviser -rm-unused -use-cache -project-name recall -output write ./...
-      - gofumpt -l -w .
+      # fmt is syntactic, so one pass covers every file regardless of build tags
+      # (serveronly-gated files included) — verified against app_server.go.
+      - golangci-lint fmt ./...
       - echo "[ recall ] ✓  Go source formatted"
 
   fmt-shell:

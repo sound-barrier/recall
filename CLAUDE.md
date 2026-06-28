@@ -38,7 +38,7 @@ pinned toolchain from `mise.toml`). `task --list` shows the full catalog.
 | `task test` | Go unit (`-race`) + Vitest. |
 | `task test-e2e` | Playwright e2e. Required for any UI feature (TDD rule below). |
 | `task lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |
-| `task fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt`). |
+| `task fmt` | Go (`golangci-lint fmt` — gci import groups + gofmt -s) + shell (`shfmt`). |
 | `task gen-types` | Regenerate `frontend/src/api.gen.d.ts` after editing `api/openapi.yaml`. |
 | `task cover` | Generate Go + frontend **unit** coverage reports (umbrella). Required before opening a PR. |
 | `task cover-e2e` | **Integration** coverage from the Playwright suite (Go `-cover` + monocart V8 frontend) → `coverage/e2e/`. Informational, not gated. |

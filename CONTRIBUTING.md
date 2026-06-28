@@ -94,7 +94,7 @@ Once the prerequisites are in place, the container installs:
 
 - Docker (Docker-in-Docker, for `task build-*` and `task swagger`)
 - System packages via apt: `tesseract`, `sqlite3`, `cloc`, `pipx`
-- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails v3 CLI (`wails3`), `task`, and every linter (`gofumpt`, `goimports-reviser`, `govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `hadolint`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
+- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails v3 CLI (`wails3`), `task`, and every linter (`govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `hadolint`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
 - `cd frontend && npm ci` for the Vue/Vite toolchain
 - `lefthook install` to wire the pre-commit hooks
 
@@ -171,7 +171,7 @@ sudo apt install -y \
 sudo apt install -y tesseract-ocr sqlite3 cloc pipx docker.io  # or podman
 
 # mise — provisions Go, Node, the Wails v3 CLI (wails3), task, and every linter
-# (golangci-lint, gofumpt, goimports-reviser, hadolint, yamllint, trivy,
+# (golangci-lint, hadolint, yamllint, trivy,
 # typos, ruff, gosec, semgrep, schemathesis, …) from mise.toml.
 curl -fsSL https://mise.run | sh
 export PATH="$HOME/.local/bin:$PATH"
@@ -293,7 +293,7 @@ go build -tags serveronly ./...  # compile-check server variant
 ## Maintenance
 
 ```sh
-task fmt            # format all Go source files (goimports-reviser for import groups, then gofumpt)
+task fmt            # format all Go source files (golangci-lint fmt — gci import groups + gofmt -s)
 task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral
 task lint-yaml      # yamllint only
 task lint-openapi   # Spectral only (api/openapi.yaml)
@@ -356,9 +356,8 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 
 | Hook | Glob | Tool(s) it invokes |
 |---|---|---|
-| `gofumpt`           | `*.go`                          | `gofumpt`            (Go formatter — from `mise install`) |
-| `goimports-reviser` | `*.go`                          | `goimports-reviser`  (from `mise install`) |
-| `golangci-lint`     | `*.go`                          | `golangci-lint`      (from `mise install`) |
+| `golangci-lint-fmt` | `*.go`                          | `golangci-lint fmt` (gci import groups + `gofmt -s` — from `mise install`) |
+| `golangci-lint`     | `*.go`                          | `golangci-lint run --fix` (linters — from `mise install`) |
 | `eslint`            | `frontend/src/**/*.{ts,vue}`    | `eslint` + `typescript-eslint` (auto-installed by `cd frontend && npm ci`) |
 | `stylelint`         | `frontend/src/**/*.{css,vue}`   | `stylelint`          (auto-installed by `cd frontend && npm ci`) |
 | `spectral`          | `api/openapi.yaml`              | `task lint-openapi` → `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
