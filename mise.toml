@@ -72,6 +72,9 @@ jq = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:github.com/fzipp/gocyclo/cmd/gocyclo" = "latest"
 "go:github.com/wailsapp/wails/v2/cmd/wails" = "v2.12.0"
+# Wails v3 CLI (alpha) — drives the v3 Taskfile-native build under build/. Pinned
+# alongside v2 during the v2→v3 migration; v2 is dropped once the port lands.
+"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-alpha2.107"
 
 # CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
 # coverage job). Devs get them too via `mise install`; CI installs them

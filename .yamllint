@@ -22,6 +22,15 @@ ignore: |
   frontend/node_modules/
   dist/
   build/bin/
+  # Wails v3 build scaffolding (per-platform Taskfiles, config.yml, nfpm) —
+  # generated/managed by the wails3 CLI (`wails3 init` /
+  # `wails3 task common:update:build-assets`), not hand-authored to this
+  # repo's YAML style.
+  build/Taskfile.yml
+  build/config.yml
+  build/darwin/
+  build/linux/
+  build/windows/
   # OpenAPI spec uses aligned flow-style mappings (a common OpenAPI idiom
   # that yamllint's default flow-mapping rules flag). The spec is linted
   # by Spectral via `task lint-openapi`, which understands OpenAPI shape
