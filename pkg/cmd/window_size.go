@@ -3,10 +3,9 @@
 package cmd
 
 import (
-	"context"
 	"math"
 
-	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 const (
@@ -21,10 +20,10 @@ const (
 )
 
 // windowSizeForScreen picks the initial window size for a screen of the given
-// LOGICAL dimensions (Wails sizes the window in logical pixels): a fraction of
-// the screen, floored at the historical default, and never larger than the
-// screen itself. A non-positive dimension (screen size unknown) falls back to
-// the default so a probe failure can't yield a degenerate window.
+// LOGICAL dimensions: a fraction of the screen, floored at the historical
+// default, and never larger than the screen itself. A non-positive dimension
+// (screen size unknown) falls back to the default so a probe failure can't
+// yield a degenerate window.
 func windowSizeForScreen(screenW, screenH int) (w, h int) {
 	return scaleDim(screenW, minWindowW), scaleDim(screenH, minWindowH)
 }
@@ -37,25 +36,15 @@ func scaleDim(screen, minimum int) int {
 	return min(scaled, screen)
 }
 
-// sizeWindowToScreen resizes the window to windowSizeForScreen of the primary
-// display and centres it. Best-effort: any runtime error leaves the window at
+// sizeWindowToScreen resizes the window to windowSizeForScreen of the display it
+// opened on and centres it. Best-effort: any runtime error leaves the window at
 // its creation size.
-func sizeWindowToScreen(ctx context.Context) {
-	screens, err := wruntime.ScreenGetAll(ctx)
-	if err != nil || len(screens) == 0 {
+func sizeWindowToScreen(win *application.WebviewWindow) {
+	screen, err := win.GetScreen()
+	if err != nil || screen == nil {
 		return
 	}
-	s := primaryScreen(screens)
-	w, h := windowSizeForScreen(s.Size.Width, s.Size.Height)
-	wruntime.WindowSetSize(ctx, w, h)
-	wruntime.WindowCenter(ctx)
-}
-
-func primaryScreen(screens []wruntime.Screen) wruntime.Screen {
-	for _, s := range screens {
-		if s.IsPrimary {
-			return s
-		}
-	}
-	return screens[0]
+	w, h := windowSizeForScreen(screen.Size.Width, screen.Size.Height)
+	win.SetSize(w, h)
+	win.Center()
 }
