@@ -60,7 +60,7 @@ Overrides (most-specific wins):
   active profile; just scopes this script invocation.
 - **`RECALL_DATA_DIR=<base>`** — override the install-wide base
   directory. mise.toml `[env]` sets this to `<repo>/data` so
-  `wails dev` and the `db-*.sh` scripts share the in-repo dev data
+  `wails3 dev` and the `db-*.sh` scripts share the in-repo dev data
   automatically when mise is active.
 
 Post-PR-#45 the schema is 3NF: five **parent** tables
