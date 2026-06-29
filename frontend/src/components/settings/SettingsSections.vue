@@ -11,6 +11,7 @@ import SettingsCalendar from '@/components/settings/SettingsCalendar.vue'
 import SettingsEngine from '@/components/settings/SettingsEngine.vue'
 import SettingsFolders from '@/components/settings/SettingsFolders.vue'
 import SettingsProfiles from '@/components/settings/SettingsProfiles.vue'
+import SettingsWindow from '@/components/settings/SettingsWindow.vue'
 
 // The seven configuration sections (Folders → Advanced), bound from the stores.
 // Extracted from SettingsView so the same blocks back both the Settings tab and
@@ -136,6 +137,8 @@ const reparsing = parseBusy
     @cancel-restore="cancelRestore"
     @import-matches="importMatches"
   />
+
+  <SettingsWindow />
 
   <SettingsAdvanced
     :clearing-d-b="clearingDB"

@@ -1180,6 +1180,45 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/settings/close-behavior:
+    get:
+      operationId: GetExitOnClose
+      tags: [Settings]
+      summary: Get the window-close behavior
+      description: |
+        `true` iff closing the window quits Recall; `false` (default) hides it
+        to the tray so the folder watcher keeps running. Desktop-only — honored
+        on Windows/Linux; macOS always stays in the menu bar.
+      responses:
+        "200":
+          description: Current state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloseBehaviorFlag"
+    put:
+      operationId: SetExitOnClose
+      tags: [Settings]
+      summary: Set the window-close behavior
+      description: |
+        When `exit_on_close` is true, closing the window quits Recall; when
+        false it hides to the tray (the folder watcher keeps running). Takes
+        effect on the next window close. macOS ignores this and always stays in
+        the menu bar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseBehaviorFlag"
+      responses:
+        "204":
+          description: Preference saved.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/profiles:
     get:
       operationId: GetProfiles
@@ -3164,6 +3203,16 @@ components:
       properties:
         enabled:
           type: boolean
+
+    CloseBehaviorFlag:
+      type: object
+      required: [exit_on_close]
+      properties:
+        exit_on_close:
+          type: boolean
+          description: |
+            true → closing the window quits Recall; false → hide to the tray
+            (folder watcher keeps running). macOS ignores this.
 
   responses:
     BadRequest:

@@ -90,7 +90,7 @@ func RunWails(a *app.App, assets embed.FS) {
 	// Creation size is a safe minimum; grow it to a share of the actual display
 	// (the fixed 1024×768 felt cramped on 1440p+ monitors).
 	sizeWindowToScreen(win)
-	setupSystemTray(wailsApp, win)
+	setupSystemTray(wailsApp, win, a)
 
 	// Wire native parse-complete notifications — but only when notifications can
 	// initialize without aborting (see notificationsSupported). Authorization is

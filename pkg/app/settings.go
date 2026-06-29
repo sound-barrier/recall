@@ -17,6 +17,10 @@ type Settings struct {
 	ScreenshotsDir string `json:"screenshots_dir"`
 	TesseractPath  string `json:"tesseract_path"`
 	WatchEnabled   bool   `json:"watch_enabled"`
+	// ExitOnClose: true quits Recall when the window closes; false (default)
+	// hides it to the tray so the folder watcher keeps running. Honored only on
+	// Windows/Linux — macOS always stays in the menu bar per platform convention.
+	ExitOnClose bool `json:"exit_on_close"`
 }
 
 // appBaseDir returns the install-wide base directory. Used by the

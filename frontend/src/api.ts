@@ -667,6 +667,18 @@ export const SetWatchEnabled = _dualVoid<[enabled: boolean]>(
   (enabled) => ({ enabled }),
 )
 
+export function GetExitOnClose(): Promise<boolean> {
+  if (IS_WAILS) return _wails('GetExitOnClose')
+  return _get<{ exit_on_close: boolean }>('/api/v1/settings/close-behavior').then(d => d.exit_on_close)
+}
+
+export const SetExitOnClose = _dualVoid<[exitOnClose: boolean]>(
+  'SetExitOnClose',
+  'PUT',
+  '/api/v1/settings/close-behavior',
+  (exitOnClose) => ({ exit_on_close: exitOnClose }),
+)
+
 export function GetTesseractStatus(): Promise<TesseractStatus> {
   if (IS_WAILS) return _wails('GetTesseractStatus')
   return _get<TesseractStatus>('/api/v1/settings/tesseract')

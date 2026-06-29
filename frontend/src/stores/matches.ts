@@ -7,6 +7,7 @@ import {
   GetMatchResults,
   GetScreenshotsDir,
   GetWatchEnabled,
+  GetExitOnClose,
   GetTesseractStatus,
   GetDataLocation,
   ParseScreenshots,
@@ -145,11 +146,12 @@ export const useMatchesStore = defineStore('matches', () => {
       GetMatchResults(),
       GetScreenshotsDir(),
       GetWatchEnabled(),
+      GetExitOnClose(),
       GetTesseractStatus(),
       GetNewScreenshotCount(),
       GetDataLocation(),
     ])
-    const [recs, dir, watchOn, tess, newCount, loc] = results
+    const [recs, dir, watchOn, exitClose, tess, newCount, loc] = results
     if (recs.status === 'fulfilled') {
       if (tourActive.value) {
         savedRecords.value = recs.value ?? []
@@ -163,6 +165,7 @@ export const useMatchesStore = defineStore('matches', () => {
     }
     if (dir.status === 'fulfilled')     settingsStore.setScreenshotsDir(dir.value || '')
     if (watchOn.status === 'fulfilled') settingsStore.setWatchEnabled(!!watchOn.value)
+    if (exitClose.status === 'fulfilled') settingsStore.setExitOnClose(!!exitClose.value)
     if (tess.status === 'fulfilled')    settingsStore.setTesseractStatus(tess.value)
     else                                settingsStore.setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
     newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null

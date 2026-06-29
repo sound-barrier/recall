@@ -847,6 +847,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/close-behavior": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the window-close behavior
+         * @description `true` iff closing the window quits Recall; `false` (default) hides it
+         *     to the tray so the folder watcher keeps running. Desktop-only — honored
+         *     on Windows/Linux; macOS always stays in the menu bar.
+         */
+        get: operations["GetExitOnClose"];
+        /**
+         * Set the window-close behavior
+         * @description When `exit_on_close` is true, closing the window quits Recall; when
+         *     false it hides to the tray (the folder watcher keeps running). Takes
+         *     effect on the next window close. macOS ignores this and always stays in
+         *     the menu bar.
+         */
+        put: operations["SetExitOnClose"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profiles": {
         parameters: {
             query?: never;
@@ -2303,6 +2332,13 @@ export interface components {
         EnabledFlag: {
             enabled: boolean;
         };
+        CloseBehaviorFlag: {
+            /**
+             * @description true → closing the window quits Recall; false → hide to the tray
+             *     (folder watcher keeps running). macOS ignores this.
+             */
+            exit_on_close: boolean;
+        };
     };
     responses: {
         /** @description Malformed request body or query parameters. */
@@ -3479,6 +3515,50 @@ export interface operations {
         };
         responses: {
             /** @description Toggle applied. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetExitOnClose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseBehaviorFlag"];
+                };
+            };
+        };
+    };
+    SetExitOnClose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseBehaviorFlag"];
+            };
+        };
+        responses: {
+            /** @description Preference saved. */
             204: {
                 headers: {
                     [name: string]: unknown;

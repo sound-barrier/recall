@@ -8,6 +8,7 @@ import {
   ProbeTesseractBinary,
   SetTesseractPath,
   SetWatchEnabled,
+  SetExitOnClose,
   PickScreenshotsDir,
   GetScreenshotsFolderCandidates,
   SetScreenshotsDir,
@@ -77,6 +78,20 @@ export const useSettingsStore = defineStore('settings', () => {
     canEnable: () => tesseractReady.value
       ? null
       : 'Configure Tesseract in Settings → Engine before enabling Watch.',
+    onError: (m) => { appStore.setErrorFromRaw(m) },
+  })
+
+  // ── Window close behavior (desktop) ───────────────────────────────
+  // false (default) hides the window to the tray so the folder watcher keeps
+  // running; true quits Recall on close. Honored on Windows/Linux only — macOS
+  // always stays in the menu bar (the SettingsWindow section hides on macOS).
+  // No canEnable gate: either direction is always allowed.
+  const {
+    enabled: exitOnClose,
+    setEnabled: setExitOnClose,
+    toggle: toggleExitOnClose,
+  } = useFeatureToggle({
+    set: SetExitOnClose,
     onError: (m) => { appStore.setErrorFromRaw(m) },
   })
 
@@ -169,6 +184,9 @@ export const useSettingsStore = defineStore('settings', () => {
     watchEnabled,
     setWatchEnabled,
     toggleWatch,
+    exitOnClose,
+    setExitOnClose,
+    toggleExitOnClose,
     screenshotsDir,
     probing,
     probeMessage,

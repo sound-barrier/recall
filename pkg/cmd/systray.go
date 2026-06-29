@@ -8,6 +8,8 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+
+	"recall/pkg/app"
 )
 
 // trayIcon is the full-colour Recall app icon (assets/icon.png, scaled to
@@ -28,17 +30,22 @@ var trayIcon []byte
 //go:embed tray-icon-template.png
 var trayIconTemplate []byte
 
-// setupSystemTray adds a tray icon + menu and turns the window's close button
-// into a hide, so Recall keeps watching the screenshots folder in the
-// background after the window is dismissed. The folder watcher runs independent
-// of window visibility, so hiding (not quitting) is all that's needed; the tray
-// menu re-shows the window or quits for real.
-func setupSystemTray(wailsApp *application.App, win *application.WebviewWindow) {
+// setupSystemTray adds a tray icon + menu and wires the window's close button to
+// a platform-aware behavior. By default closing hides the window to the tray so
+// Recall keeps watching the screenshots folder in the background; the tray menu
+// re-shows the window or quits for real.
+func setupSystemTray(wailsApp *application.App, win *application.WebviewWindow, a *app.App) {
 	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		// Hide AND Cancel: cancelling stops the window being destroyed, so Recall
-		// keeps running in the tray (the folder watcher runs regardless of window
-		// visibility) and the tray's "Show Recall" can bring it back. Without
-		// Cancel the close proceeds and the window is gone for good.
+		// Platform-aware close. macOS always keeps the app in the menu bar
+		// (window-close never quits there per the HIG; ⌘Q quits), so it ignores
+		// the preference. On Windows/Linux the user's ExitOnClose setting decides:
+		// quit outright, or hide to the tray (Hide + Cancel keeps the window alive
+		// so the folder watcher keeps running and "Show Recall" can restore it).
+		// Read live so toggling the setting takes effect without a restart.
+		if closeQuitsApp(runtime.GOOS, a.GetExitOnClose()) {
+			wailsApp.Quit()
+			return
+		}
 		win.Hide()
 		e.Cancel()
 	})
@@ -78,4 +85,12 @@ func trayMenu(win *application.WebviewWindow) *application.Menu {
 		}
 	})
 	return menu
+}
+
+// closeQuitsApp decides whether closing the window quits Recall (true) or hides
+// it to the tray (false). macOS always hides — the app stays in the menu bar per
+// the platform convention (⌘Q is the explicit quit). Elsewhere the user's
+// exitOnClose preference decides.
+func closeQuitsApp(goos string, exitOnClose bool) bool {
+	return goos != "darwin" && exitOnClose
 }
