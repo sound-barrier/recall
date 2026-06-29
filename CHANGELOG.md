@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.2](https://github.com/sound-barrier/recall/compare/v0.22.1...v0.22.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* **build:** set the real app identity in the installers ([b37230d](https://github.com/sound-barrier/recall/commit/b37230d050bb3928b9c8a39c39ca41d6eb47eadc))
+* **build:** stamp the release version into the Windows installer + .exe ([af036a2](https://github.com/sound-barrier/recall/commit/af036a251b0b3731b800d3a5c77a2960cbfe1f51))
+
 ## [0.22.1](https://github.com/sound-barrier/recall/compare/v0.22.0...v0.22.1) (2026-06-29)
 
 
