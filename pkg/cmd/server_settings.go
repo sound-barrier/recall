@@ -8,12 +8,12 @@ import (
 )
 
 // registerSettingsRoutes attaches every /api/v1/settings/...
-// handler. Three user-facing settings: screenshots-folder,
-// tesseract path, watcher-enabled. The screenshots-folder +
+// handler. Four user-facing settings: screenshots-folder,
+// tesseract path, watcher-enabled, close-behavior. The screenshots-folder +
 // tesseract pair carry a 409 conflict status for "syntactically
 // well-formed input but the path doesn't resolve to a usable
-// resource on disk." The watcher toggle requires `*bool` body shape
-// so missing / null is distinguishable from `false` (pinned by
+// resource on disk." The watcher + close-behavior toggles require a `*bool`
+// body shape so missing / null is distinguishable from `false` (pinned by
 // TestWatchEnabled_RejectsNull).
 func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/settings/screenshots-folder", handleGetScreenshotsFolder(a))
@@ -26,6 +26,9 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 
 	apiMux.HandleFunc("GET /api/v1/settings/watcher", handleGetWatcher(a))
 	apiMux.HandleFunc("PUT /api/v1/settings/watcher", handleSetWatcher(a))
+
+	apiMux.HandleFunc("GET /api/v1/settings/close-behavior", handleGetCloseBehavior(a))
+	apiMux.HandleFunc("PUT /api/v1/settings/close-behavior", handleSetCloseBehavior(a))
 }
 
 func handleGetScreenshotsFolder(a *app.App) http.HandlerFunc {
@@ -118,6 +121,30 @@ func handleSetWatcher(a *app.App) http.HandlerFunc {
 			return
 		}
 		if writeError(w, r, a.SetWatchEnabled(*body.Enabled)) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleGetCloseBehavior(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, map[string]bool{"exit_on_close": a.GetExitOnClose()}, nil)
+	}
+}
+
+func handleSetCloseBehavior(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// `*bool` so a missing / null field is rejected rather than silently
+		// treated as false (same rationale as the watcher toggle).
+		var body struct {
+			ExitOnClose *bool `json:"exit_on_close"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ExitOnClose == nil {
+			writeProblem(w, r, probInvalidBody, "body must be {\"exit_on_close\":<bool>}")
+			return
+		}
+		if writeError(w, r, a.SetExitOnClose(*body.ExitOnClose)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

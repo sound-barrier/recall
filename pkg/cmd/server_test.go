@@ -443,6 +443,37 @@ func TestServerMux_WatchEnabled_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestServerMux_CloseBehavior_RoundTrip(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	// GET initial — defaults to false (hide to tray, keep watching).
+	rec := get(t, mux, "/api/v1/settings/close-behavior")
+	if rec.Code != 200 {
+		t.Fatalf("GET status %d", rec.Code)
+	}
+	var got map[string]bool
+	_ = json.Unmarshal(rec.Body.Bytes(), &got)
+	if got["exit_on_close"] {
+		t.Errorf("close-behavior should default to tray (false), got %+v", got)
+	}
+	// PUT true → 204, then GET reflects the persisted value.
+	if rec := put(t, mux, "/api/v1/settings/close-behavior", map[string]bool{"exit_on_close": true}); rec.Code != http.StatusNoContent {
+		t.Fatalf("PUT status %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec = get(t, mux, "/api/v1/settings/close-behavior")
+	_ = json.Unmarshal(rec.Body.Bytes(), &got)
+	if !got["exit_on_close"] {
+		t.Errorf("close-behavior should be true after PUT, got %+v", got)
+	}
+}
+
+func TestCloseBehavior_RejectsNull(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, "/api/v1/settings/close-behavior", `{"exit_on_close": null}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null exit_on_close must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
 func TestServerMux_WatchEnabled_PUTBadJSON(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	rec := put(t, mux, "/api/v1/settings/watcher", "not json")

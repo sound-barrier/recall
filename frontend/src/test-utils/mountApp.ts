@@ -23,6 +23,7 @@ export interface MountOverrides {
   tesseract?:      Partial<TesseractStatus>
   update?:         Partial<UpdateInfo>
   watchEnabled?:      boolean
+  exitOnClose?:       boolean
   newScreenshotCount?: number
   // Seeds localStorage['recall.includeUndated'] so useIncludeUndated
   // picks it up on mount. Default false (the production default), so
@@ -118,6 +119,8 @@ function buildMock(overrides: MountOverrides = {}) {
     IgnoreScreenshot:      vi.fn(async () => undefined),
     GetWatchEnabled:     vi.fn(async () => overrides.watchEnabled ?? false),
     SetWatchEnabled:     vi.fn(async () => undefined),
+    GetExitOnClose:      vi.fn(async () => overrides.exitOnClose ?? false),
+    SetExitOnClose:      vi.fn(async () => undefined),
     GetTesseractStatus:  vi.fn(async () => defaultTesseract(overrides.tesseract)),
     PickTesseractBinary: vi.fn(async () => defaultTesseract(overrides.tesseract)),
     SetTesseractPath:    vi.fn(async () => defaultTesseract(overrides.tesseract)),

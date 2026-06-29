@@ -14,3 +14,25 @@ func TestTrayMenu(t *testing.T) {
 		}
 	}
 }
+
+func TestCloseQuitsApp(t *testing.T) {
+	cases := []struct {
+		goos        string
+		exitOnClose bool
+		wantQuit    bool
+	}{
+		// macOS always hides to the menu bar, regardless of the preference.
+		{"darwin", true, false},
+		{"darwin", false, false},
+		// Windows/Linux honor the preference.
+		{"windows", true, true},
+		{"windows", false, false},
+		{"linux", true, true},
+		{"linux", false, false},
+	}
+	for _, c := range cases {
+		if got := closeQuitsApp(c.goos, c.exitOnClose); got != c.wantQuit {
+			t.Errorf("closeQuitsApp(%q, %v) = %v, want %v", c.goos, c.exitOnClose, got, c.wantQuit)
+		}
+	}
+}
