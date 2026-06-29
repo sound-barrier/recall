@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/wailsapp/wails/v3 v3.0.0-alpha2.107
+	github.com/wailsapp/wails/v3 v3.0.0-alpha2.108
 	golang.org/x/sys v0.46.0
 	golang.org/x/text v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
