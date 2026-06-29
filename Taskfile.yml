@@ -34,6 +34,12 @@ vars:
   # Version stamped into the binary via -ldflags. Falls back to "dev".
   BUILD_VERSION:
     sh: jq -r '."."' .release-please-manifest.json 2>/dev/null || echo dev
+  # Numeric x.x.x form of BUILD_VERSION for the Windows version resources — NSIS's
+  # VIProductVersion + the .exe version resource require a numeric triple, so a
+  # non-numeric "dev" (or any pre-release suffix) falls back to 0.0.0. The
+  # release-please manifest is already clean semver, so releases pass through.
+  BUILD_VERSION_NUMERIC:
+    sh: v=$(jq -r '."."' .release-please-manifest.json 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1); echo "${v:-0.0.0}"
   VERSION_LDFLAG: -X recall/pkg/app.Version={{.BUILD_VERSION}}
   WAILS_FLAGS: -trimpath -ldflags "{{.VERSION_LDFLAG}}"
   # The exact shell-script set the old Makefile's $(wildcard …) produced
@@ -95,7 +101,7 @@ tasks:
     # bootstrapper + runs makensis.
     cmds:
       - echo "[ recall ] Building windows/amd64 Wails v3 app + NSIS installer (CGO_ENABLED=0, native)…"
-      - wails3 task windows:package ARCH=amd64 PRODUCTION=true PRODUCT_VERSION={{.BUILD_VERSION}}
+      - wails3 task windows:package ARCH=amd64 PRODUCTION=true PRODUCT_VERSION={{.BUILD_VERSION}} PRODUCT_VERSION_NUMERIC={{.BUILD_VERSION_NUMERIC}}
       - mkdir -p {{.DIST_WINDOWS}}
       - cp bin/recall-amd64-installer.exe {{.DIST_WINDOWS}}/
       - cp bin/Recall.exe {{.DIST_WINDOWS}}/
