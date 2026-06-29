@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.22.1](https://github.com/sound-barrier/recall/compare/v0.22.0...v0.22.1) (2026-06-29)
+
+
+### Features
+
+* **seed:** seed realistic per-match annotations in the demo ([36ee9ab](https://github.com/sound-barrier/recall/commit/36ee9abb73ffb0d3ee8b8523a0294aaf5cdf7d58))
+* **settings:** add a window-close behavior toggle ([534fe70](https://github.com/sound-barrier/recall/commit/534fe702b1dcd7c1ac4a2bdb184521724808ffcc))
+
+
+### Bug Fixes
+
+* **seed:** drop chaos from the walkthrough demo ([f0ee350](https://github.com/sound-barrier/recall/commit/f0ee35072cf7f881846378df2a998869942bff26))
+
 ## [0.22.0](https://github.com/sound-barrier/recall/compare/v0.21.1...v0.22.0) (2026-06-28)
 
 
