@@ -290,5 +290,7 @@ test-results
 .task/
 # WebView2 bootstrapper downloaded by `wails3 generate webview2bootstrapper`
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+# Transient version-stamped info.json written during generate:syso
+build/windows/info.generated.json
 # wails3 build output (bin/Recall, .app, .exe, installer)
 bin/
