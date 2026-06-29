@@ -31,6 +31,15 @@ Unicode true
 ## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
 ## !define WAILS_INSTALL_SCOPE     "user"             # Default "machine" - set to "user" for per-user install ($LOCALAPPDATA) without UAC prompt
 ####
+## Real app identity — defined here so wails_tools.nsh's !ifndef defaults (the
+## "My Company"/"My Product" placeholders) don't apply. Without these the
+## installer lands in $PROGRAMFILES64\My Company\My Product and registers a
+## "My Product" entry. Keep in sync with build/config.yml.
+####
+!define INFO_COMPANYNAME "sound-barrier"
+!define INFO_PRODUCTNAME "Recall"
+!define INFO_COPYRIGHT   "© 2026 sound-barrier"
+####
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
