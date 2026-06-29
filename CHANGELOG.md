@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.3](https://github.com/sound-barrier/recall/compare/v0.22.2...v0.22.3) (2026-06-29)
+
+
+### Build & Packaging
+
+* **deps:** Bump github.com/wailsapp/wails/v3 in the go-deps group ([3d42c87](https://github.com/sound-barrier/recall/commit/3d42c873f355c7853d82354daf452e4a954cf984))
+* **deps:** Bump the actions group with 3 updates ([fc22cb3](https://github.com/sound-barrier/recall/commit/fc22cb386377d5c6d37fb5ed1ea69be269289b94))
+
 ## [0.22.2](https://github.com/sound-barrier/recall/compare/v0.22.1...v0.22.2) (2026-06-29)
 
 
