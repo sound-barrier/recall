@@ -116,7 +116,7 @@ jobs:
       # server-mac tarball). Subject-paths below mirror each script's
       # documented outputs.
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
         with:
           subject-path: |
             recall-*-linux-amd64.tar.gz
@@ -167,7 +167,7 @@ jobs:
         run: bash scripts/release/make-dmg.sh
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
         with:
           subject-path: recall-*-darwin-arm64.dmg
 
@@ -212,7 +212,7 @@ jobs:
         run: bash scripts/release/package-wails-windows.sh
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
         with:
           subject-path: recall-*-windows-amd64-installer.exe
 
@@ -340,7 +340,7 @@ jobs:
       #   gh attestation verify recall-X.Y.Z-heroes.yaml \
       #     --repo sound-barrier/recall
       - name: Attest reference data provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
         with:
           subject-path: |
             recall-*-heroes.yaml
@@ -361,7 +361,7 @@ jobs:
       #   gh attestation verify <file>.sha256 → sha256sum --check <file>.sha256
       # This closes the loop: even the fallback verification path is signed.
       - name: Attest SHA256 checksums
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
         with:
           subject-path: |
             recall-*.tar.gz.sha256
