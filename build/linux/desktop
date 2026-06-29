@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A recall application
+Name=Recall
+Comment=Local Overwatch match history + trends
 # The Exec line includes %u to pass the URL to the application
 Exec=/usr/local/bin/recall %u
 Terminal=false

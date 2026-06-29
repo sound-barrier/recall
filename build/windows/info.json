@@ -5,11 +5,11 @@
 	"info": {
 		"0000": {
 			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "A recall application",
-			"LegalCopyright": "© 2026, My Company",
-			"ProductName": "My Product",
-			"Comments": "This is a comment"
+			"CompanyName": "sound-barrier",
+			"FileDescription": "Recall — Overwatch match telemetry",
+			"LegalCopyright": "© 2026 sound-barrier",
+			"ProductName": "Recall",
+			"Comments": "Local Overwatch match history + trends"
 		}
 	}
 }
