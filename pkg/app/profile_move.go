@@ -47,7 +47,7 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 		return err
 	}
 
-	src, annotations, hidden, err := a.loadMoveSource()
+	src, annotations, hidden, reviews, err := a.loadMoveSource()
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	if err := movePhase1Parents(targetStore, src, keep, resolveDirID); err != nil {
 		return err
 	}
-	if err := movePhase1Sidecars(targetStore, matchKeys, annotations, hidden); err != nil {
+	if err := movePhase1Sidecars(targetStore, matchKeys, annotations, hidden, reviews); err != nil {
 		return err
 	}
 	if err := a.movePhase1Overrides(targetStore, matchKeys); err != nil {
@@ -126,20 +126,24 @@ func (a *App) validateMoveRequest(matchKeys []string, targetProfile string) (pro
 // same shape; in-memory filter is fine until profile sizes get into the
 // 10k+ match range, at which point a SQL-side LoadForKeys filter is the
 // natural next step (existing read paths stay unchanged).
-func (a *App) loadMoveSource() (db.Screenshots, map[string]db.Annotation, map[string]bool, error) {
+func (a *App) loadMoveSource() (db.Screenshots, map[string]db.Annotation, map[string]bool, map[string]db.ReviewState, error) {
 	src, err := a.store.LoadAll()
 	if err != nil {
-		return db.Screenshots{}, nil, nil, fmt.Errorf("move: load source: %w", err)
+		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load source: %w", err)
 	}
 	annotations, err := a.store.LoadAnnotations()
 	if err != nil {
-		return db.Screenshots{}, nil, nil, fmt.Errorf("move: load annotations: %w", err)
+		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load annotations: %w", err)
 	}
 	hidden, err := a.store.LoadHiddenKeys()
 	if err != nil {
-		return db.Screenshots{}, nil, nil, fmt.Errorf("move: load hidden keys: %w", err)
+		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load hidden keys: %w", err)
 	}
-	return src, annotations, hidden, nil
+	reviews, err := a.store.LoadReviews()
+	if err != nil {
+		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load reviews: %w", err)
+	}
+	return src, annotations, hidden, reviews, nil
 }
 
 // dirIDResolver re-maps a source screenshots_dir_id onto the target by
@@ -244,8 +248,10 @@ func movePhase1Parents(targetStore db.Store, src db.Screenshots, keep map[string
 }
 
 // movePhase1Sidecars copies the per-key sidecar state (annotations,
-// hidden flag) into the target.
-func movePhase1Sidecars(targetStore db.Store, matchKeys []string, annotations map[string]db.Annotation, hidden map[string]bool) error {
+// hidden flag, review status) into the target. SetReview stamps a fresh
+// reviewed_at on the target — the same timestamp-refresh convention
+// HideMatch already applies to hidden_at on move.
+func movePhase1Sidecars(targetStore db.Store, matchKeys []string, annotations map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) error {
 	for _, k := range matchKeys {
 		if ann, ok := annotations[k]; ok {
 			if err := targetStore.SetAnnotation(ann); err != nil {
@@ -255,6 +261,11 @@ func movePhase1Sidecars(targetStore db.Store, matchKeys []string, annotations ma
 		if hidden[k] {
 			if err := targetStore.HideMatch(k); err != nil {
 				return fmt.Errorf("move: copy hidden flag for %q: %w", k, err)
+			}
+		}
+		if r, ok := reviews[k]; ok && r.ReviewedBy != "" {
+			if err := targetStore.SetReview(k, r.ReviewedBy); err != nil {
+				return fmt.Errorf("move: copy review for %q: %w", k, err)
 			}
 		}
 	}
