@@ -38,8 +38,13 @@ import (
 )
 
 type App struct {
-	ctx      context.Context
-	settings Settings
+	ctx context.Context
+	// settingsMu guards settings. Wails-bound calls, server-mode HTTP
+	// handlers, and the watcher/parse goroutines all touch settings
+	// concurrently — every access goes through settingsSnapshot /
+	// mutateSettings (settings.go).
+	settingsMu sync.RWMutex
+	settings   Settings
 	// profiles tracks the per-installation profile set + which one is
 	// active. Initialized in Startup; nil for tests wired via
 	// NewWithStore. When nil, dataDir() falls back to appBaseDir() so
@@ -200,7 +205,7 @@ func (a *App) captureFatal(stage string, err error) {
 // profile switches, probe results — where a write failure shouldn't abort
 // the operation but must not pass silently.
 func (a *App) saveSettingsBestEffort() {
-	if err := a.saveSettings(a.settings); err != nil {
+	if err := a.saveSettings(a.settingsSnapshot()); err != nil {
 		applog.Subsystem("settings").Warn("persist settings failed", "err", err)
 	}
 }
@@ -226,7 +231,7 @@ func (a *App) Startup(ctx context.Context) {
 	// a cold-boot Windows Defender scan, and it must not stall the UI. The probe
 	// publishes its result + emits "tesseract-status" so the engine self-heals.
 	if probeTesseractOnStartup {
-		go a.probeTesseractInBackground(a.settings.TesseractPath)
+		go a.probeTesseractInBackground(a.settingsSnapshot().TesseractPath)
 	}
 }
 
@@ -264,47 +269,53 @@ func (a *App) initProfiles() bool {
 // resolveSettings loads settings and resolves the screenshots-folder +
 // tesseract paths, persisting platform defaults / clearing stale values.
 func (a *App) resolveSettings() {
-	a.settings = a.loadSettings()
+	changed := false
+	resolved := a.mutateSettings(func(s *Settings) {
+		*s = a.loadSettings()
 
-	// Validate ScreenshotsDir against the filesystem and clear it
-	// when the path is definitively gone (or has become a file
-	// where it was a dir). Two real failure modes this catches:
-	//   1. A stale t.TempDir() path that leaked into settings.json
-	//      from an earlier test run and is now long-deleted.
-	//   2. The platform default "screenshots" (a relative path that
-	//      `defaultSettings()` returns for first-run wails-dev
-	//      ergonomics) which doesn't resolve inside the shipped
-	//      Recall.app bundle's cwd.
-	// What we DON'T clear: a configured dir that exists but the
-	// process can't enumerate (permission denied, TCC sandbox
-	// declined, removable / network volume unreachable). Pre-fix
-	// this used `isReadableDir` which lumped EPERM in with ENOENT,
-	// and a wails-dev rebuild that re-prompted macOS TCC ended up
-	// wiping a perfectly-valid configuration on every startup —
-	// the user-reported "each time I start up my app I have to
-	// change my screenshot folder" regression. Now those transient
-	// access issues surface through the layers that need access
-	// (watcher fails to start; parse handler returns 4xx; Open
-	// button no-ops) instead of silently dropping the setting.
-	if a.settings.ScreenshotsDir != "" && pathIsMissingOrNotADir(a.settings.ScreenshotsDir) {
-		a.settings.ScreenshotsDir = ""
-		a.saveSettingsBestEffort()
-	}
+		// Validate ScreenshotsDir against the filesystem and clear it
+		// when the path is definitively gone (or has become a file
+		// where it was a dir). Two real failure modes this catches:
+		//   1. A stale t.TempDir() path that leaked into settings.json
+		//      from an earlier test run and is now long-deleted.
+		//   2. The platform default "screenshots" (a relative path that
+		//      `defaultSettings()` returns for first-run wails-dev
+		//      ergonomics) which doesn't resolve inside the shipped
+		//      Recall.app bundle's cwd.
+		// What we DON'T clear: a configured dir that exists but the
+		// process can't enumerate (permission denied, TCC sandbox
+		// declined, removable / network volume unreachable). Pre-fix
+		// this used `isReadableDir` which lumped EPERM in with ENOENT,
+		// and a wails-dev rebuild that re-prompted macOS TCC ended up
+		// wiping a perfectly-valid configuration on every startup —
+		// the user-reported "each time I start up my app I have to
+		// change my screenshot folder" regression. Now those transient
+		// access issues surface through the layers that need access
+		// (watcher fails to start; parse handler returns 4xx; Open
+		// button no-ops) instead of silently dropping the setting.
+		if s.ScreenshotsDir != "" && pathIsMissingOrNotADir(s.ScreenshotsDir) {
+			s.ScreenshotsDir = ""
+			changed = true
+		}
 
-	// Resolve tesseract first — if the user hasn't configured a path,
-	// pick the platform default and persist it so the value is visible
-	// in the Settings → Engine row on first launch. The status check
-	// runs regardless; the frontend will render a System Alert banner
-	// if the path doesn't resolve to a working binary.
-	if a.settings.TesseractPath == "" {
-		a.settings.TesseractPath = defaultTesseractPath()
+		// Resolve tesseract — if the user hasn't configured a path,
+		// pick the platform default and persist it so the value is visible
+		// in the Settings → Engine row on first launch. The status check
+		// runs regardless; the frontend will render a System Alert banner
+		// if the path doesn't resolve to a working binary.
+		if s.TesseractPath == "" {
+			s.TesseractPath = defaultTesseractPath()
+			changed = true
+		}
+	})
+	if changed {
 		a.saveSettingsBestEffort()
 	}
 	// Seed a placeholder status so the path/default render on first paint; the
 	// real detection runs in the background from Startup (probeTesseractInBackground)
 	// so a cold-boot Defender scan can't block boot.
-	a.setTessStatus(TesseractStatus{Path: a.settings.TesseractPath, Default: defaultTesseractPath()})
-	parser.SetTesseractPath(a.settings.TesseractPath)
+	a.setTessStatus(TesseractStatus{Path: resolved.TesseractPath, Default: defaultTesseractPath()})
+	parser.SetTesseractPath(resolved.TesseractPath)
 
 	// First-run auto-probe — if the user hasn't set a screenshots
 	// folder yet, walk the platform-specific OW default locations
@@ -351,7 +362,7 @@ func (a *App) bootReAggregate() {
 // explicitly enabled it (off by default so the desktop app doesn't watch
 // without consent).
 func (a *App) startEnabledServices() {
-	if a.settings.WatchEnabled {
+	if a.settingsSnapshot().WatchEnabled {
 		a.startWatching()
 	}
 }

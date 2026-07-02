@@ -179,12 +179,12 @@ func (a *App) ActiveParse() ActiveParseStatus {
 // entry points fail fast BEFORE claiming the run slot or spawning a
 // goroutine. Returns the cleaned screenshots dir for the loop.
 func (a *App) validateParsePreconditions() (string, error) {
-	screenshotsDir, err := validateScreenshotsDir(a.settings.ScreenshotsDir)
+	screenshotsDir, err := validateScreenshotsDir(a.settingsSnapshot().ScreenshotsDir)
 	if err != nil {
 		return "", err
 	}
 	if !a.tessStatusSnapshot().Found {
-		s := checkTesseract(a.settings.TesseractPath)
+		s := checkTesseract(a.settingsSnapshot().TesseractPath)
 		a.setTessStatus(s)
 		if !s.Found {
 			return "", fmt.Errorf("tesseract is not available: %s", s.Error)

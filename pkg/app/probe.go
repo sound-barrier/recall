@@ -17,13 +17,13 @@ func (a *App) ProbeScreenshotsCandidateStats() []probe.NamedCandidateStats {
 // dir. Quietly applies the probe result so a fresh install finds the OW folder
 // without forcing the user through the picker.
 func (a *App) autoProbeOnFirstRun() {
-	if a.settings.ScreenshotsDir != "" {
+	if a.settingsSnapshot().ScreenshotsDir != "" {
 		return
 	}
 	path, ok := probe.FirstExistingCandidate()
 	if !ok {
 		return
 	}
-	a.settings.ScreenshotsDir = path
+	a.mutateSettings(func(s *Settings) { s.ScreenshotsDir = path })
 	a.saveSettingsBestEffort()
 }

@@ -13,14 +13,15 @@ import (
 // GetNewScreenshotCount returns the number of image files in the
 // configured screenshots directory that haven't been parsed yet.
 func (a *App) GetNewScreenshotCount() (int, error) {
-	if a.settings.ScreenshotsDir == "" {
+	dir := a.settingsSnapshot().ScreenshotsDir
+	if dir == "" {
 		return 0, nil
 	}
 	parsed, err := a.store.LoadAllFilenames()
 	if err != nil {
 		return 0, err
 	}
-	entries, err := os.ReadDir(a.settings.ScreenshotsDir)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return 0, nil

@@ -141,5 +141,5 @@ func (a *App) resolveScreenshotDir(dirID int64) string {
 			return resolved
 		}
 	}
-	return a.settings.ScreenshotsDir
+	return a.settingsSnapshot().ScreenshotsDir
 }

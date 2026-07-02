@@ -27,7 +27,7 @@ func (a *App) startWatching() {
 	if a.watcher != nil {
 		return // already watching
 	}
-	dir := a.settings.ScreenshotsDir
+	dir := a.settingsSnapshot().ScreenshotsDir
 	logger := applog.Subsystem("watch")
 	if dir == "" {
 		logger.Info("no screenshots directory configured, skipping")
@@ -137,14 +137,14 @@ func (a *App) stopWatching() {
 // GetWatchEnabled reports whether the watcher is currently active.
 // Read by the frontend on mount to seed the checkbox state.
 func (a *App) GetWatchEnabled() bool {
-	return a.settings.WatchEnabled
+	return a.settingsSnapshot().WatchEnabled
 }
 
 // SetWatchEnabled toggles the directory watcher and persists the
 // preference. Enabling/disabling takes effect immediately.
 func (a *App) SetWatchEnabled(enabled bool) error {
-	a.settings.WatchEnabled = enabled
-	if err := a.saveSettings(a.settings); err != nil {
+	snap := a.mutateSettings(func(s *Settings) { s.WatchEnabled = enabled })
+	if err := a.saveSettings(snap); err != nil {
 		return err
 	}
 	if enabled {
