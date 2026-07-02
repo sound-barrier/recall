@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // tessPath is the path or command name used to invoke Tesseract.
@@ -41,6 +42,35 @@ func getTesseractPath() string {
 	tessPathMu.RLock()
 	defer tessPathMu.RUnlock()
 	return tessPath
+}
+
+// defaultTesseractTimeout bounds a single Tesseract invocation. OCR on one
+// screenshot region takes 1-3s on ordinary hardware; without a bound, a
+// hung binary wedges the single-flight parse slot until app restart.
+const defaultTesseractTimeout = 2 * time.Minute
+
+var (
+	tessTimeoutMu sync.RWMutex
+	tessTimeout   = defaultTesseractTimeout
+)
+
+// SetTesseractTimeout bounds each Tesseract invocation for subsequent OCR
+// calls. Non-positive durations restore the default. Same concurrency
+// contract as SetTesseractPath: a torn read across a change yields either
+// the old or new value, both valid for that invocation.
+func SetTesseractTimeout(d time.Duration) {
+	if d <= 0 {
+		d = defaultTesseractTimeout
+	}
+	tessTimeoutMu.Lock()
+	tessTimeout = d
+	tessTimeoutMu.Unlock()
+}
+
+func getTesseractTimeout() time.Duration {
+	tessTimeoutMu.RLock()
+	defer tessTimeoutMu.RUnlock()
+	return tessTimeout
 }
 
 // runTesseractFunc is the indirection ocrInverted routes through.
@@ -97,14 +127,25 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 		args = append(args, "-c", "tessedit_char_whitelist="+whitelist)
 	}
 	var stdout, stderr bytes.Buffer
+	timeout := getTesseractTimeout()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	// #nosec G204,G702 -- getTesseractPath() returns a value vetted by
 	// validateTesseractPath at the boundary (safePathChars + canonical
 	// + absolute + basename pinned to tesseract|tesseract.exe).
-	cmd := exec.CommandContext(context.Background(), getTesseractPath(), args...)
+	cmd := exec.CommandContext(ctx, getTesseractPath(), args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	// The context kill only reaches the direct child. If that child spawned
+	// helpers holding the stdout/stderr pipes open, Wait would block until
+	// THEY exit — WaitDelay force-closes the pipes after the kill so the
+	// invocation stays bounded even then.
+	cmd.WaitDelay = timeout
 	HideWindow(cmd) // no-op on macOS/Linux; suppresses console flash on Windows
 	if err := cmd.Run(); err != nil {
+		if ctx.Err() != nil {
+			return "", fmt.Errorf("tesseract timed out after %s: %w", timeout, err)
+		}
 		return "", fmt.Errorf("tesseract failed: %w (%s)", err, stderr.String())
 	}
 	out := stdout.String()
