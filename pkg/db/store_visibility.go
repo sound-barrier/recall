@@ -22,9 +22,10 @@ func (s *SQLStore) UnhideMatch(matchKey string) error {
 
 // HardDeleteMatch wipes every row keyed on matchKey across all parent
 // tables (children CASCADE), plus annotations, the hidden_matches flag, the
-// review row, the user override layer (user_match_data + children), and the
-// queue / play-mode aux rows. Used by the Hidden drawer's Delete affordance —
-// once a user explicitly asks to forget a match, no trace stays in the DB.
+// review row, the user override layer (user_match_data + children), the
+// queue / play-mode aux rows, and the ambiguity surface. Used by the Hidden
+// drawer's Delete affordance — once a user explicitly asks to forget a match,
+// no trace stays in the DB.
 // Clearing user_match_data is essential for manual matches: their data lives
 // ONLY there, so leaving it would resurrect the match on the next aggregate.
 // Idempotent: unknown keys complete with no error.
@@ -34,6 +35,24 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// The ambiguity surface must forget the match too: rows where it was a
+	// resolution candidate (resolving a pending screenshot onto a deleted key
+	// would resurrect its identity), and — when matchKey IS the ambiguous
+	// sentinel — the candidate set of its source screenshots, keyed by
+	// filename. The filename lookup reads the parent rows, so both deletes
+	// run before the parent wipe below.
+	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE match_key = ?`, matchKey); err != nil {
+		return err
+	}
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := tx.Exec(
+			`DELETE FROM ambiguous_candidates WHERE filename IN
+			 (SELECT filename FROM `+t+` WHERE match_key = ?)`, matchKey,
+		); err != nil {
+			return err
+		}
+	}
 	for _, t := range parentTables {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE match_key = ?`, matchKey); err != nil {

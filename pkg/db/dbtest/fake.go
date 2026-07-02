@@ -345,6 +345,48 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.HardDeleteCalls = append(f.HardDeleteCalls, matchKey)
+	// Mirror SQLStore: the ambiguity surface forgets the match too — the
+	// candidate sets of its own screenshots (sentinel case, keyed by
+	// filename, collected before the slices are filtered) and every
+	// candidate row referencing the key.
+	doomed := map[string]bool{}
+	for _, r := range f.Summaries {
+		if r.MatchKey == matchKey {
+			doomed[r.Filename] = true
+		}
+	}
+	for _, r := range f.Teams {
+		if r.MatchKey == matchKey {
+			doomed[r.Filename] = true
+		}
+	}
+	for _, r := range f.Personals {
+		if r.MatchKey == matchKey {
+			doomed[r.Filename] = true
+		}
+	}
+	for _, r := range f.Ranks {
+		if r.MatchKey == matchKey {
+			doomed[r.Filename] = true
+		}
+	}
+	for _, r := range f.Unknowns {
+		if r.MatchKey == matchKey {
+			doomed[r.Filename] = true
+		}
+	}
+	for fn := range doomed {
+		delete(f.Ambiguous, fn)
+	}
+	for fn, cands := range f.Ambiguous {
+		kept := cands[:0]
+		for _, c := range cands {
+			if c.MatchKey != matchKey {
+				kept = append(kept, c)
+			}
+		}
+		f.Ambiguous[fn] = kept
+	}
 	sums := f.Summaries[:0]
 	for _, r := range f.Summaries {
 		if r.MatchKey != matchKey {
@@ -383,6 +425,9 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	delete(f.Hidden, matchKey)
 	delete(f.Annotations, matchKey)
 	delete(f.Reviews, matchKey)
+	delete(f.UserMatchData, matchKey)
+	delete(f.Queues, matchKey)
+	delete(f.PlayModes, matchKey)
 	return nil
 }
 
