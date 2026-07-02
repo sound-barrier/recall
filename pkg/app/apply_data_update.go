@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -40,6 +39,12 @@ var (
 	// ErrDataUpdateChecksum — SHA-256 sidecar verification failed on
 	// at least one asset. Handler maps to 422.
 	ErrDataUpdateChecksum = errors.New("data update: SHA-256 verification failed")
+
+	// ErrDataUpdateMalformed — a fetched payload's checksum was valid but
+	// its YAML does not parse. The sidecar only proves the bytes arrived
+	// intact, not that upstream published a usable file. Handler maps to
+	// 422 alongside ErrDataUpdateChecksum.
+	ErrDataUpdateMalformed = errors.New("data update: malformed YAML payload")
 
 	// ErrDataUpdateIO — disk I/O failed (mkdir, write, rename). Maps
 	// to 500.
@@ -140,6 +145,15 @@ func (a *App) ApplyGameDataUpdate() (DataUpdateResult, error) {
 // AppliedMainCommit + AppliedAt. The manifest's Files map is filled
 // in here from verified.
 func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManifest) (DataUpdateResult, error) {
+	// Reject a checksum-valid-but-unparseable payload BEFORE anything is
+	// written: past this point the files are committed and the manifest
+	// records the version as applied, while parser.Reload would silently
+	// fall back to embedded data with a permanent load-error banner.
+	for _, name := range dataYAMLFiles {
+		if err := parser.ValidateDataYAML(name, verified[name].bytes); err != nil {
+			return DataUpdateResult{}, fmt.Errorf("%w: %s: %w", ErrDataUpdateMalformed, name, err)
+		}
+	}
 	dataDir := filepath.Join(appBaseDir(), dataDirName)
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return DataUpdateResult{}, fmt.Errorf("%w: mkdir data: %w", ErrDataUpdateIO, err)
@@ -185,7 +199,10 @@ func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManife
 // fetchAndVerifyMainAssets is the main-channel sibling of
 // fetchAndVerifyAssets — same shape, different URL builder.
 func fetchAndVerifyMainAssets() (map[string]verifiedAsset, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
+	// newUpdateClient, not a bare http.Client: the apply path must enforce
+	// the same redirect-host allowlist + HTTPS guard the check path does,
+	// or a spoofed redirect could bounce the fetch to an arbitrary host.
+	client := newUpdateClient()
 	out := make(map[string]verifiedAsset, len(dataYAMLFiles))
 	for _, name := range dataYAMLFiles {
 		b, err := getBytes(client, mainAssetURL(name))

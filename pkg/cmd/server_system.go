@@ -86,6 +86,7 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		if writeError(w, r, err,
 			errStatus{app.ErrDataUpdateChecksum, probDataVerify},
+			errStatus{app.ErrDataUpdateMalformed, probDataVerify},
 			errStatus{app.ErrDataUpdateMainFetchFailed, probBadGateway}) {
 			return
 		}
