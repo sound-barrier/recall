@@ -115,9 +115,20 @@ func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
 // ignored opt-out path) snapshot the list, call Clear, then re-
 // insert via AddIgnoredScreenshot.
 func (s *SQLStore) Clear() error {
+	// One transaction for the whole wipe + sentinel reseed — the
+	// crash-consistency convention the per-concern bulk writers follow. A
+	// mid-way failure between the parent wipe and the user_match_data delete
+	// would otherwise leave override rows whose matches resurrect as manual
+	// matches on the next aggregate, and dying between the screenshots_dirs
+	// delete and the reseed would FK-fail every insert until restart.
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
 	for _, t := range parentTables {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
-		if _, err := s.db.Exec(`DELETE FROM ` + t); err != nil {
+		if _, err := tx.Exec(`DELETE FROM ` + t); err != nil {
 			return err
 		}
 	}
@@ -134,7 +145,7 @@ func (s *SQLStore) Clear() error {
 		"user_match_data", // user_match_* children cascade on the match_key FK
 	} {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
-		if _, err := s.db.Exec(`DELETE FROM ` + t); err != nil {
+		if _, err := tx.Exec(`DELETE FROM ` + t); err != nil {
 			return err
 		}
 	}
@@ -144,8 +155,8 @@ func (s *SQLStore) Clear() error {
 	// re-seed (`make seed-dev FORCE=1`) onto a profile that already exists, or
 	// any insert that relies on the default rather than EnsureScreenshotsDir.
 	// It's a config sentinel ("use the active screenshots folder"), not data.
-	if _, err := s.db.Exec(`INSERT OR IGNORE INTO screenshots_dirs (id, path) VALUES (1, '')`); err != nil {
+	if _, err := tx.Exec(`INSERT OR IGNORE INTO screenshots_dirs (id, path) VALUES (1, '')`); err != nil {
 		return err
 	}
-	return nil
+	return tx.Commit()
 }
