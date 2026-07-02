@@ -20,8 +20,9 @@ type Store interface {
 
 	// EnsureScreenshotsDir inserts a screenshots_dirs row for path if
 	// one doesn't exist and returns its id. Idempotent — repeated calls
-	// with the same path return the same id. Empty path returns
-	// (0, nil) so callers can store NULL for unset dir.
+	// with the same path return the same id. Empty path returns the
+	// id=1 sentinel row ("dir unset", seeded by schema.sql) so the
+	// NOT NULL screenshots_dir_id FK always points at a real row.
 	EnsureScreenshotsDir(path string) (int64, error)
 
 	// LookupScreenshotsDir returns the on-disk path recorded for the
@@ -109,9 +110,12 @@ type Store interface {
 
 	// HardDeleteMatch removes every trace of matchKey from the DB —
 	// rows across all five parent tables (children CASCADE), the
-	// hidden_matches flag, the annotation, and the review-status
-	// row. Surface for the "Delete forever" affordance on the Hidden
-	// drawer. Idempotent.
+	// hidden_matches flag, the annotation, the review-status row, the
+	// user override layer, the queue / play-mode aux rows, and the
+	// ambiguity surface (candidate rows referencing the key, plus the
+	// candidate sets of its own screenshots when the key is the
+	// ambiguous sentinel). Surface for the "Delete forever" affordance
+	// on the Hidden drawer. Idempotent.
 	HardDeleteMatch(matchKey string) error
 
 	// Per-match review-status surface — `'self'` (user reviewed the
