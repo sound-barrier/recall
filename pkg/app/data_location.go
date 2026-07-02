@@ -21,7 +21,7 @@ func (a *App) GetDataLocation() DataLocation {
 		BaseDir:        base,
 		SettingsPath:   a.settingsPath(),
 		DatabasePath:   dbPath(base),
-		ScreenshotsDir: a.settings.ScreenshotsDir,
+		ScreenshotsDir: a.settingsSnapshot().ScreenshotsDir,
 	}
 }
 

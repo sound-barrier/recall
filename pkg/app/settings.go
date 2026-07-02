@@ -113,6 +113,27 @@ func defaultSettings() Settings {
 	return Settings{}
 }
 
+// settingsSnapshot returns a copy of the live settings under the read
+// lock. Wails-bound calls, server-mode HTTP handlers, and the
+// watcher/parse goroutines all read settings concurrently with the
+// setters — every read goes through here so a concurrent write can't
+// tear a string header mid-read.
+func (a *App) settingsSnapshot() Settings {
+	a.settingsMu.RLock()
+	defer a.settingsMu.RUnlock()
+	return a.settings
+}
+
+// mutateSettings applies fn to the live settings under the write lock
+// and returns the resulting copy — saveSettings takes a value, so
+// callers persist the snapshot outside the lock.
+func (a *App) mutateSettings(fn func(*Settings)) Settings {
+	a.settingsMu.Lock()
+	defer a.settingsMu.Unlock()
+	fn(&a.settings)
+	return a.settings
+}
+
 func (a *App) saveSettings(s Settings) error {
 	if err := os.MkdirAll(filepath.Dir(a.settingsPath()), 0o700); err != nil {
 		return err

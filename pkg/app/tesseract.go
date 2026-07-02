@@ -250,8 +250,8 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 		a.setTessStatus(s)
 		return s, err
 	}
-	a.settings.TesseractPath = cleaned
-	if err := a.saveSettings(a.settings); err != nil {
+	snap := a.mutateSettings(func(s *Settings) { s.TesseractPath = cleaned })
+	if err := a.saveSettings(snap); err != nil {
 		return a.tessStatusSnapshot(), err
 	}
 	s := checkTesseract(cleaned)
@@ -268,8 +268,8 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 // surface a clean "not found" error to the UI.
 func (a *App) ResetTesseractPath() (TesseractStatus, error) {
 	path := defaultTesseractPath()
-	a.settings.TesseractPath = path
-	if err := a.saveSettings(a.settings); err != nil {
+	snap := a.mutateSettings(func(s *Settings) { s.TesseractPath = path })
+	if err := a.saveSettings(snap); err != nil {
 		return a.tessStatusSnapshot(), err
 	}
 	s := checkTesseract(path)

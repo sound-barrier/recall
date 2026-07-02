@@ -6,12 +6,12 @@ package app
 // hook at close-time. Ignored on macOS, which always keeps the app in the menu
 // bar per platform convention.
 func (a *App) GetExitOnClose() bool {
-	return a.settings.ExitOnClose
+	return a.settingsSnapshot().ExitOnClose
 }
 
 // SetExitOnClose persists the window-close preference. It has no immediate
 // side effect — the close hook reads the value live on the next window close.
 func (a *App) SetExitOnClose(exitOnClose bool) error {
-	a.settings.ExitOnClose = exitOnClose
-	return a.saveSettings(a.settings)
+	snap := a.mutateSettings(func(s *Settings) { s.ExitOnClose = exitOnClose })
+	return a.saveSettings(snap)
 }

@@ -231,7 +231,7 @@ func (a *App) copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Scre
 				return p
 			}
 		}
-		return a.settings.ScreenshotsDir
+		return a.settingsSnapshot().ScreenshotsDir
 	}
 	for _, batch := range [][]struct {
 		Filename string

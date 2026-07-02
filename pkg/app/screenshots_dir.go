@@ -39,7 +39,7 @@ var ErrInvalidScreenshotsDir = errors.New("screenshots directory is not configur
 var safePathChars = regexp.MustCompile(`^[\w./\\:\- ()+',]+$`)
 
 func (a *App) GetScreenshotsDir() string {
-	return a.settings.ScreenshotsDir
+	return a.settingsSnapshot().ScreenshotsDir
 }
 
 // SetScreenshotsDir updates the configured screenshots directory and
@@ -64,11 +64,11 @@ func (a *App) SetScreenshotsDir(path string) error {
 	if err != nil {
 		return err
 	}
-	a.settings.ScreenshotsDir = cleaned
-	if err := a.saveSettings(a.settings); err != nil {
+	snap := a.mutateSettings(func(s *Settings) { s.ScreenshotsDir = cleaned })
+	if err := a.saveSettings(snap); err != nil {
 		return err
 	}
-	if a.settings.WatchEnabled {
+	if snap.WatchEnabled {
 		a.stopWatching()
 		a.startWatching()
 	}
@@ -85,8 +85,8 @@ func (a *App) SetScreenshotsDir(path string) error {
 // old configured path), and stops any armed watcher so we don't
 // leak an fsnotify handle pointing at the now-orphaned dir.
 func (a *App) ResetScreenshotsDir() error {
-	a.settings.ScreenshotsDir = ""
-	if err := a.saveSettings(a.settings); err != nil {
+	snap := a.mutateSettings(func(s *Settings) { s.ScreenshotsDir = "" })
+	if err := a.saveSettings(snap); err != nil {
 		return err
 	}
 	a.stopWatching()
@@ -114,7 +114,7 @@ func (a *App) ResetScreenshotsDir() error {
 // the configured folder doesn't pass validation, so HTTP handlers
 // surface 400 instead of 500.
 func (a *App) RevealScreenshotsDir() error {
-	cleaned, err := validateScreenshotsDir(a.settings.ScreenshotsDir)
+	cleaned, err := validateScreenshotsDir(a.settingsSnapshot().ScreenshotsDir)
 	if err != nil {
 		return err
 	}

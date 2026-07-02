@@ -182,7 +182,7 @@ func (a *App) reopenActiveStore() error {
 		return fmt.Errorf("profiles: open db: %w", err)
 	}
 	a.store = s
-	if a.settings.WatchEnabled {
+	if a.settingsSnapshot().WatchEnabled {
 		a.startWatching()
 	}
 	return nil
@@ -226,18 +226,26 @@ func (a *App) activateAndReload(name string) error {
 		return err
 	}
 
-	// Re-init at the new dir.
-	a.settings = a.loadSettings()
-	if a.settings.ScreenshotsDir != "" && pathIsMissingOrNotADir(a.settings.ScreenshotsDir) {
-		a.settings.ScreenshotsDir = ""
+	// Re-init at the new dir — same resolve-under-lock shape as
+	// resolveSettings so a concurrent settings read never observes the
+	// half-swapped state.
+	changed := false
+	resolved := a.mutateSettings(func(s *Settings) {
+		*s = a.loadSettings()
+		if s.ScreenshotsDir != "" && pathIsMissingOrNotADir(s.ScreenshotsDir) {
+			s.ScreenshotsDir = ""
+			changed = true
+		}
+		if s.TesseractPath == "" {
+			s.TesseractPath = defaultTesseractPath()
+			changed = true
+		}
+	})
+	if changed {
 		a.saveSettingsBestEffort()
 	}
-	if a.settings.TesseractPath == "" {
-		a.settings.TesseractPath = defaultTesseractPath()
-		a.saveSettingsBestEffort()
-	}
-	a.setTessStatus(checkTesseract(a.settings.TesseractPath))
-	parser.SetTesseractPath(a.settings.TesseractPath)
+	a.setTessStatus(checkTesseract(resolved.TesseractPath))
+	parser.SetTesseractPath(resolved.TesseractPath)
 	a.autoProbeOnFirstRun()
 
 	dbDir := filepath.Join(a.dataDir(), "db")
@@ -251,7 +259,7 @@ func (a *App) activateAndReload(name string) error {
 	}
 	a.store = s
 
-	if a.settings.WatchEnabled {
+	if resolved.WatchEnabled {
 		a.startWatching()
 	}
 	return nil

@@ -90,7 +90,7 @@ func (a *App) emitParseCancelled() {
 // via SetTesseractPath. Returns the resulting status; on cancel the existing
 // status is returned unchanged.
 func (a *App) PickTesseractBinary() (TesseractStatus, error) {
-	dflt := a.settings.TesseractPath
+	dflt := a.settingsSnapshot().TesseractPath
 	if dflt == "" {
 		dflt = defaultTesseractPath()
 	}
@@ -255,7 +255,7 @@ func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
 // passes the same validation as the PUT /api/v1/settings/screenshots-folder
 // HTTP endpoint.
 func (a *App) PickScreenshotsDir() (string, error) {
-	dflt := a.settings.ScreenshotsDir
+	dflt := a.settingsSnapshot().ScreenshotsDir
 	if _, err := os.Stat(dflt); err != nil {
 		dflt = ""
 	}
@@ -266,13 +266,13 @@ func (a *App) PickScreenshotsDir() (string, error) {
 		CanChooseFiles(false).
 		PromptForSingleSelection()
 	if err != nil {
-		return a.settings.ScreenshotsDir, err
+		return a.settingsSnapshot().ScreenshotsDir, err
 	}
 	if dir == "" {
-		return a.settings.ScreenshotsDir, nil
+		return a.settingsSnapshot().ScreenshotsDir, nil
 	}
 	if err := a.SetScreenshotsDir(dir); err != nil {
-		return a.settings.ScreenshotsDir, err
+		return a.settingsSnapshot().ScreenshotsDir, err
 	}
-	return a.settings.ScreenshotsDir, nil
+	return a.settingsSnapshot().ScreenshotsDir, nil
 }

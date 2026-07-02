@@ -86,5 +86,5 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 // PickScreenshotsDir is not available in server mode (no native dialogs).
 // The HTTP API exposes PUT /api/v1/settings/screenshots-folder for the same purpose.
 func (a *App) PickScreenshotsDir() (string, error) {
-	return a.settings.ScreenshotsDir, errors.New("native dialogs unavailable in server mode; use PUT /api/v1/settings/screenshots-folder")
+	return a.settingsSnapshot().ScreenshotsDir, errors.New("native dialogs unavailable in server mode; use PUT /api/v1/settings/screenshots-folder")
 }
