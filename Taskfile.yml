@@ -115,7 +115,7 @@ tasks:
           echo "[ recall ] ✗  build-mac requires macOS (Apple SDK not redistributable)"; exit 1
         fi
       - echo "[ recall ] Building macOS Wails v3 app (arm64)…"
-      - wails3 task darwin:package PRODUCTION=true ARCH=arm64 PRODUCT_VERSION={{.BUILD_VERSION}}
+      - wails3 task darwin:package PRODUCTION=true ARCH=arm64 PRODUCT_VERSION={{.BUILD_VERSION}} PRODUCT_VERSION_NUMERIC={{.BUILD_VERSION_NUMERIC}}
       - mkdir -p {{.DIST_MAC}}
       - rm -rf {{.DIST_MAC}}/Recall.app
       - cp -R bin/Recall.app {{.DIST_MAC}}/Recall.app
