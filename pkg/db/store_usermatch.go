@@ -130,8 +130,12 @@ func insertUserMatchModifiers(tx *sql.Tx, matchKey string, mods []string) error 
 		if m == "" {
 			continue
 		}
+		// ON CONFLICT DO NOTHING rather than INSERT OR IGNORE: both suppress
+		// the duplicate-PK case, but OR IGNORE would also swallow the
+		// modifier-vocabulary CHECK violation this table must surface.
 		if _, err := tx.Exec(
-			`INSERT OR IGNORE INTO user_match_rank_modifiers (match_key, modifier) VALUES (?,?)`,
+			`INSERT INTO user_match_rank_modifiers (match_key, modifier) VALUES (?,?)
+			 ON CONFLICT(match_key, modifier) DO NOTHING`,
 			matchKey, m,
 		); err != nil {
 			return err

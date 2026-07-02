@@ -342,7 +342,15 @@ CREATE TABLE IF NOT EXISTS user_match_sr (
 
 CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
   match_key   TEXT NOT NULL REFERENCES user_match_data(match_key) ON DELETE CASCADE,
-  modifier    TEXT NOT NULL,
+  -- Same vocabulary as the OCR twin rank_modifiers above — keep the two
+  -- CHECK lists in sync, or a modifier the parser accepts becomes
+  -- unenterable as a user edit (and vice versa).
+  modifier    TEXT NOT NULL CHECK (modifier IN (
+    'expected', 'uphill battle', 'reversal', 'consolation',
+    'win streak', 'loss streak', 'calibration', 'volatile',
+    'new map', 'leaver compensation', 'victory', 'defeat', 'draw',
+    'demotion protection'
+  )),
   PRIMARY KEY (match_key, modifier)
 );
 -- statement-end
