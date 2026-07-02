@@ -194,15 +194,7 @@ func init() {
 // to see the embedded data so a corrupt user file can't brick the
 // parser.
 func Reload() error {
-	ds := &owDataset{
-		heroesByRole:     map[string][]string{},
-		mapsByGameMode:   map[string][]string{},
-		heroRoles:        map[string]string{},
-		mapGameModes:     map[string]string{},
-		heroDisplayNames: map[string]string{},
-		mapDisplayNames:  map[string]string{},
-		heroStatKeys:     map[string][]string{},
-	}
+	ds := emptyDataset()
 
 	var errs []error
 	if err := loadInto(ds, "heroes.yaml", embeddedHeroesYAML, unmarshalHeroes); err != nil {
