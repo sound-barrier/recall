@@ -9,6 +9,7 @@ import (
 	"recall/pkg/applog"
 	"recall/pkg/correlate"
 	"recall/pkg/db"
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -272,7 +273,22 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// after every file had been OCR'd; the UI saw `parse-progress` stream
 	// cleanly but `match-updated` arrived in a single last-instant burst, so
 	// the Matches tab stayed blank until parse-complete.
-	st := &parseRunState{app: a, dirID: dirID, matchesUpdated: map[string]struct{}{}}
+	// One snapshot + sidecar load per RUN (patched in-memory per file —
+	// see parse_snapshot.go); the loop previously re-materialized the
+	// whole store twice per screenshot. Sidecars stay best-effort like
+	// the per-file loads they replace: a failed load just mutes the
+	// correction tallies, never the parse.
+	snap, err := a.store.LoadAll()
+	if err != nil {
+		return err
+	}
+	annos, _ := a.store.LoadAnnotations()
+	hidden, _ := a.store.LoadHiddenKeys()
+	reviews, _ := a.store.LoadReviews()
+	st := &parseRunState{
+		app: a, dirID: dirID, matchesUpdated: map[string]struct{}{},
+		snap: snap, annos: annos, hidden: hidden, reviews: reviews,
+	}
 	_, err = ParseScreenshotsDirFunc(ctx, screenshotsDir, parsed, st.handleFile)
 	// User pressed Stop mid-batch. The partial state already committed to
 	// SQLite stays put (each per-file insert ran inside the callback before
@@ -337,6 +353,12 @@ type parseRunState struct {
 	matchesUpdated  map[string]struct{}
 	heroCorrections int
 	mapCorrections  int
+	// Run-scoped correlation snapshot + sidecars: loaded once at run
+	// start, patched in-memory after each insert (parse_snapshot.go).
+	snap    db.Screenshots
+	annos   map[string]db.Annotation
+	hidden  map[string]bool
+	reviews map[string]db.ReviewState
 }
 
 // handleFile is the per-file parser callback: snapshot progress, insert the
@@ -365,14 +387,11 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		return
 	}
 
-	snap, err := a.store.LoadAll()
-	if err != nil {
-		ev.Error = "load before correlation: " + err.Error()
-		a.emitParseProgress(ev)
-		return
-	}
-	key, ambigCands := correlate.ResolveMatchKey(filename, result, snap)
+	key, ambigCands := correlate.ResolveMatchKey(filename, result, st.snap)
 	ev.MatchKey = key
+	// The pre-insert aggregate for this key, from the carried snapshot —
+	// the correction tallies diff against it after the write lands.
+	beforeRec, beforeOk := aggregate.AggregateMatchKey(key, st.snap, st.annos, st.hidden, st.reviews)
 
 	if err := a.insertParsed(filename, key, ev.Type, st.dirID, result); err != nil {
 		ev.Error = "insert: " + err.Error()
@@ -387,35 +406,30 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		a.emitParseProgress(ev)
 		return
 	}
+	// Mirror both writes onto the carried snapshot so the NEXT file
+	// correlates against this one, exactly as the per-file reload did.
+	st.applyToSnapshot(filename, key, ev.Type, result)
+	st.applyAmbiguityToSnapshot(filename, ambigCands)
 
-	st.recordMatchUpdate(key, snap)
+	st.recordMatchUpdate(key, beforeRec, beforeOk)
 	ev.MatchesUpdated = len(st.matchesUpdated)
 	ev.HeroCorrections = st.heroCorrections
 	ev.MapCorrections = st.mapCorrections
 	a.emitParseProgress(ev)
 }
 
-// recordMatchUpdate diffs the pre-insert snapshot against the current store
-// for `key`, emits match-updated, and tallies hero/map corrections. New
-// matches (absent from `before`) still count as updated — they emerged from
-// this run; corrections only fire when both snapshots resolve a record and
-// the field changed.
-func (st *parseRunState) recordMatchUpdate(key string, before db.Screenshots) {
-	a := st.app
-	snapAfter, err := a.store.LoadAll()
-	if err != nil {
-		return
-	}
-	annos, _ := a.store.LoadAnnotations()
-	hidden, _ := a.store.LoadHiddenKeys()
-	reviews, _ := a.store.LoadReviews()
-	rec, ok := aggregate.AggregateMatchKey(key, snapAfter, annos, hidden, reviews)
+// recordMatchUpdate diffs the pre-insert aggregate for `key` against the
+// post-insert carried snapshot, emits match-updated, and tallies hero/map
+// corrections. New matches (no pre-insert aggregate) still count as
+// updated — they emerged from this run; corrections only fire when both
+// sides resolve a record and the field changed.
+func (st *parseRunState) recordMatchUpdate(key string, beforeRec match.MatchRecord, beforeOk bool) {
+	rec, ok := aggregate.AggregateMatchKey(key, st.snap, st.annos, st.hidden, st.reviews)
 	if !ok {
 		return
 	}
-	a.emitMatchUpdated(rec)
+	st.app.emitMatchUpdated(rec)
 	st.matchesUpdated[key] = struct{}{}
-	beforeRec, beforeOk := aggregate.AggregateMatchKey(key, before, annos, hidden, reviews)
 	if beforeOk {
 		if beforeRec.Data.Hero != rec.Data.Hero {
 			st.heroCorrections++
@@ -430,71 +444,87 @@ func (st *parseRunState) recordMatchUpdate(key string, before db.Screenshots) {
 // the store, materializing children from the parser's nested types.
 // dirID is the screenshots_dirs FK resolved once per batch by the
 // caller (0 = unset; the store renders that as SQL NULL).
+// The build*Row constructors are shared by the store write (insertParsed)
+// and the run snapshot's in-memory mirror (applyToSnapshot) — one source
+// for the row fields, so the mirror can't drift from what was written.
+func buildSummaryRow(filename, key string, dirID int64, r *parser.MatchResult) db.SummaryRow {
+	row := db.SummaryRow{
+		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
+		Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
+		Result: r.Result, FinalScore: r.FinalScore,
+		Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
+	}
+	if r.Performance != nil {
+		row.PerfElimTotal = r.Performance.Eliminations.Total
+		row.PerfElimAvgPer10Min = r.Performance.Eliminations.AvgPer10Min
+		row.PerfAssistsTotal = r.Performance.Assists.Total
+		row.PerfAssistsAvgPer10Min = r.Performance.Assists.AvgPer10Min
+		row.PerfDeathsTotal = r.Performance.Deaths.Total
+		row.PerfDeathsAvgPer10Min = r.Performance.Deaths.AvgPer10Min
+	}
+	for _, h := range r.HeroesPlayed {
+		row.HeroesPlayed = append(row.HeroesPlayed, db.SummaryHeroPlayed{
+			Hero: h.Hero, PercentPlayed: h.PercentPlayed, PlayTime: h.PlayTime,
+		})
+	}
+	return row
+}
+
+func buildTeamsRow(filename, key string, dirID int64, r *parser.MatchResult) db.TeamsRow {
+	row := db.TeamsRow{
+		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
+		Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
+		Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
+		QueueType: r.QueueType,
+	}
+	row.HeroStats = flattenHeroStats(r.HeroesPlayed)
+	return row
+}
+
+func buildPersonalRow(filename, key string, dirID int64, r *parser.MatchResult) db.PersonalRow {
+	row := db.PersonalRow{
+		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID, Hero: r.Hero,
+	}
+	row.HeroStats = flattenHeroStats(r.HeroesPlayed)
+	return row
+}
+
+func buildRankRow(filename, key string, dirID int64, r *parser.MatchResult) db.RankRow {
+	row := db.RankRow{
+		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
+		Rank: r.Rank, Level: r.Level,
+		RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
+		Result:    r.Result,
+		Modifiers: append([]string(nil), r.Modifiers...),
+	}
+	for _, sr := range r.SR {
+		row.SR = append(row.SR, db.HeroSR{Hero: sr.Hero, SR: sr.SR, Change: sr.Change})
+	}
+	return row
+}
+
+func buildUnknownRow(filename, key string, dirID int64) db.UnknownRow {
+	return db.UnknownRow{Filename: filename, MatchKey: key, ScreenshotsDirID: dirID}
+}
+
 func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.MatchResult) error {
 	switch t {
 	case "summary":
-		row := db.SummaryRow{
-			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
-			Result: r.Result, FinalScore: r.FinalScore,
-			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
-		}
-		if r.Performance != nil {
-			row.PerfElimTotal = r.Performance.Eliminations.Total
-			row.PerfElimAvgPer10Min = r.Performance.Eliminations.AvgPer10Min
-			row.PerfAssistsTotal = r.Performance.Assists.Total
-			row.PerfAssistsAvgPer10Min = r.Performance.Assists.AvgPer10Min
-			row.PerfDeathsTotal = r.Performance.Deaths.Total
-			row.PerfDeathsAvgPer10Min = r.Performance.Deaths.AvgPer10Min
-		}
-		for _, h := range r.HeroesPlayed {
-			row.HeroesPlayed = append(row.HeroesPlayed, db.SummaryHeroPlayed{
-				Hero: h.Hero, PercentPlayed: h.PercentPlayed, PlayTime: h.PlayTime,
-			})
-		}
-		return a.store.UpsertSummary(row)
-
+		return a.store.UpsertSummary(buildSummaryRow(filename, key, dirID, r))
 	case "teams":
-		row := db.TeamsRow{
-			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
-			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
-			QueueType: r.QueueType,
-		}
-		row.HeroStats = flattenHeroStats(r.HeroesPlayed)
-		return a.store.UpsertTeams(row)
-
+		return a.store.UpsertTeams(buildTeamsRow(filename, key, dirID, r))
 	case "personal":
-		row := db.PersonalRow{
-			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID, Hero: r.Hero,
-		}
-		row.HeroStats = flattenHeroStats(r.HeroesPlayed)
-		return a.store.UpsertPersonal(row)
-
+		return a.store.UpsertPersonal(buildPersonalRow(filename, key, dirID, r))
 	case "rank":
-		row := db.RankRow{
-			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-			Rank: r.Rank, Level: r.Level,
-			RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
-			Result:    r.Result,
-			Modifiers: append([]string(nil), r.Modifiers...),
-		}
-		for _, sr := range r.SR {
-			row.SR = append(row.SR, db.HeroSR{Hero: sr.Hero, SR: sr.SR, Change: sr.Change})
-		}
-		return a.store.UpsertRank(row)
-
+		return a.store.UpsertRank(buildRankRow(filename, key, dirID, r))
 	case "all_heroes":
 		// Recognized but intentionally not stored as match data: its combat
 		// totals duplicate the TEAMS screen and its card icons defeat the OCR.
 		// Record only the filename so the next parse run skips it (no re-OCR),
 		// without a garbage match row or an Unknown-tab entry.
 		return a.store.UpsertAllHeroesScreenshot(filename)
-
 	default: // unknown
-		return a.store.UpsertUnknown(db.UnknownRow{
-			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-		})
+		return a.store.UpsertUnknown(buildUnknownRow(filename, key, dirID))
 	}
 }
 
