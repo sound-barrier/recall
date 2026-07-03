@@ -29,10 +29,3 @@ var (
 func (a *App) ApplyGameDataUpdate() (DataUpdateResult, error) {
 	return gamedata.Apply(appBaseDir())
 }
-
-// LoadManifest / SaveManifest keep their historical zero-config
-// signatures for in-package callers and tests; the leaf takes the
-// install root explicitly.
-func LoadManifest() (DataManifest, error) { return gamedata.LoadManifest(appBaseDir()) }
-
-func SaveManifest(m DataManifest) error { return gamedata.SaveManifest(appBaseDir(), m) }
