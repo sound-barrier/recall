@@ -5,11 +5,6 @@ import type { MatchRecord } from '@/api-client'
 import {
   GetNewScreenshotCount,
   GetMatchResults,
-  GetScreenshotsDir,
-  GetWatchEnabled,
-  GetExitOnClose,
-  GetTesseractStatus,
-  GetDataLocation,
   ParseScreenshots,
   ReParseAll,
   CancelParse,
@@ -38,9 +33,9 @@ import { useSettingsStore } from '@/stores/settings'
 
 // The matches domain: the parsed-match records (source of truth for the
 // dossier + all four views) and the derived triage lists. Migrated out of
-// App.vue's <script setup>. App's boot coordinator (load()) still owns the
-// allSettled fan-out and writes `records` here; parse lifecycle, narrow, and
-// the dossier move into this store in later commits of the Pinia migration.
+// App.vue's <script setup>. useAppBoot fans each store's own
+// loaders out at mount (this store's load() covers records + new-count);
+// parse lifecycle, narrow, and the dossier also live here.
 export const useMatchesStore = defineStore('matches', () => {
   const records = ref<MatchRecord[]>([])
 
@@ -138,20 +133,19 @@ export const useMatchesStore = defineStore('matches', () => {
   // others or flash a false "Tesseract not detected". Fans the results into
   // this store + the app/settings stores. Errors surface through the app
   // store's banner with `load` itself as the Retry callback.
+  // Loads THIS store's domain: the match records + the new-screenshot
+  // count. Boot-time hydration of the settings store and the app store's
+  // data location lives in useAppBoot's fan-out — this used to be the
+  // de-facto boot coordinator, contradicting the documented thin-shell
+  // architecture, and every non-boot caller (parse-complete, retry,
+  // undo-hide) only ever needed the matches slice anyway.
   async function load() {
     const appStore = useAppStore()
-    const settingsStore = useSettingsStore()
     const before = records.value.length
-    const results = await Promise.allSettled([
+    const [recs, newCount] = await Promise.allSettled([
       GetMatchResults(),
-      GetScreenshotsDir(),
-      GetWatchEnabled(),
-      GetExitOnClose(),
-      GetTesseractStatus(),
       GetNewScreenshotCount(),
-      GetDataLocation(),
     ])
-    const [recs, dir, watchOn, exitClose, tess, newCount, loc] = results
     if (recs.status === 'fulfilled') {
       if (tourActive.value) {
         savedRecords.value = recs.value ?? []
@@ -163,13 +157,7 @@ export const useMatchesStore = defineStore('matches', () => {
     } else {
       appStore.setError(`Could not load matches: ${plainLanguageError(String(recs.reason))}`, load)
     }
-    if (dir.status === 'fulfilled')     settingsStore.setScreenshotsDir(dir.value || '')
-    if (watchOn.status === 'fulfilled') settingsStore.setWatchEnabled(!!watchOn.value)
-    if (exitClose.status === 'fulfilled') settingsStore.setExitOnClose(!!exitClose.value)
-    if (tess.status === 'fulfilled')    settingsStore.setTesseractStatus(tess.value)
-    else                                settingsStore.setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
     newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
-    appStore.dataLocation = loc.status === 'fulfilled' ? loc.value : null
     firstLoadPending.value = false
   }
 
