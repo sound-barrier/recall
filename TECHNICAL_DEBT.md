@@ -152,13 +152,6 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
-## 9. Read/parse-path scalability (bites at ~10k matches)
-
-- **SSE terminal events can drop** — the hub's non-blocking send drops
-  `parse-complete` on a full buffer with no client resync while connected,
-  stranding the parse spinner. Guarantee delivery for terminal events (drop
-  only progress), or poll `/parses/active` while busy. **Effort:** M.
-
 ## 10. Smaller catalogued items (do opportunistically)
 
 - Pre-push hook race: lefthook runs the pre-push commands in parallel, and
