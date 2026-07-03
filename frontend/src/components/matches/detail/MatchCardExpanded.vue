@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api-client'
+import type { MatchRecord, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api-client'
 import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 import { formatParsedAt, fmtTime } from '@/match/match-time-helpers'
 import { type SearchClause } from '@/match/search-query'
@@ -70,11 +70,6 @@ const emit = defineEmits<{
   // annotation fields preserved, and re-loads records so the new
   // Annotation reflects on the next render.
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
-  // User edits the note / replay code / members and confirms the
-  // change (debounced or on blur). App.vue calls SetMatchAnnotation
-  // which writes the whole row in a single round-trip so the three
-  // free-text fields can't drift independently.
-  'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
   // User pressed Hide (after confirming) or Unhide on the expanded
   // danger row.
   'set-match-hidden':      [matchKey: string, hidden: boolean]
@@ -282,7 +277,6 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       :search-clauses="searchClauses"
       :available-tags="availableTags"
       :pending-focus="pendingFocus"
-      @set-match-annotation="(key, input) => emit('set-match-annotation', key, input)"
       @focus-consumed="emit('focus-consumed')"
     />
 

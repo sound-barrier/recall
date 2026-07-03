@@ -200,8 +200,11 @@ export function useMatchActions() {
       await reload()
     } catch (e) { onError(String(e)) }
   }
-  async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput) {
-    try { await writeAnnotation(matchKey, input); await reload() } catch (e) { onError(String(e)) }
+  // Returns the persist outcome so the journal's "saved" pulse can be a
+  // real receipt (MatchJournal wires this straight into
+  // useMatchAnnotationEditor's emitAnnotation seam).
+  async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput): Promise<boolean> {
+    try { await writeAnnotation(matchKey, input); await reload(); return true } catch (e) { onError(String(e)); return false }
   }
   async function onUpdateMatchData(matchKey: string, overrides: UserMatchDataInput) {
     try { await UpdateMatchData(matchKey, overrides); await reload() } catch (e) { onError(String(e)) }

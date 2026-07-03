@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onMounted, nextTick } from 'vue'
-import type { MatchRecord, MatchAnnotationInput } from '@/api-client'
+import type { MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
 import { useMatchAnnotationEditor } from '@/composables/matches/useMatchAnnotationEditor'
+import { useMatchActions } from '@/composables/matches/useMatchActions'
 
 // The expanded match card's MATCH JOURNAL — note / replay / squad / tags
 // editor. Owns useMatchAnnotationEditor (the draft state + commit logic)
@@ -20,9 +21,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'set-match-annotation': [matchKey: string, input: MatchAnnotationInput]
   'focus-consumed': []
 }>()
+
+// Store-direct write (the UnknownMapsView / UnknownUnmatchedSection
+// precedent): calling the action here, instead of emitting up the panel
+// chain, lets its Promise<boolean> outcome reach the editor so the
+// "saved" pulse is a real persistence receipt.
+const { onSetMatchAnnotation } = useMatchActions()
 
 const {
   noteDraft,
@@ -55,7 +61,7 @@ const {
   onTagKeydown,
 } = useMatchAnnotationEditor(
   () => props.record,
-  (input) => emit('set-match-annotation', props.record.match_key, input),
+  (input) => onSetMatchAnnotation(props.record.match_key, input),
   () => props.searchClauses ?? [],
   () => props.availableTags ?? [],
 )

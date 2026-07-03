@@ -13,7 +13,10 @@ import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 // via emitAnnotation so a single setter round-trip can't drop a field.
 export function useMatchAnnotationEditor(
   record: () => MatchRecord,
-  emitAnnotation: (input: MatchAnnotationInput) => void,
+  // May return the persist outcome: `false` (or a promise of it) means the
+  // write failed and the "saved" pulse must not fire. A void return keeps
+  // the fire-and-forget contract for callers without outcome reporting.
+  emitAnnotation: (input: MatchAnnotationInput) => void | boolean | Promise<void | boolean>,
   searchClauses: () => SearchClause[],
   availableTags: () => string[],
 ) {
@@ -151,15 +154,22 @@ function exitNoteEditMode() {
 // something the user typed in another input. Leaver is read from the
 // existing annotation (the chooser owns that field independently).
 function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
-  emitAnnotation({
+  const outcome = emitAnnotation({
     leaver:      (record().annotation?.leaver ?? '') as MatchAnnotationInput['leaver'],
     note:        noteDraft.value.trim(),
     replay_code: replayDraft.value.trim(),
     members:     memberDraft.value,
     tags:        tagDraft.value,
   })
-  savedFlash.value = field
-  setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
+  // The pulse is a persistence receipt: it fires when the write resolves,
+  // and never on a reported failure (the action surfaces its own error).
+  void Promise.resolve(outcome)
+    .then((ok) => {
+      if (ok === false) return
+      savedFlash.value = field
+      setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
+    })
+    .catch(() => { /* rejected persist — no false receipt */ })
 }
 
 function addMember() {
