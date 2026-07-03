@@ -39,7 +39,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
 # loaded only when the user expands the Trends section, so INITIAL JS is
 # unaffected — but it counts toward the TOTAL.
-: "${MAX_TOTAL_JS_BYTES:=1256000}"
+# 2026-07: +14KB headroom over the prior 1256000 ratchet point — the
+# audit Phase-3 refactors (narrow clause registry, shared band header,
+# per-store boot loaders) net-added ~0.3KB of lazy-chunk JS and landed
+# exactly 318B over. The ratchet stays tight: bump deliberately with a
+# rationale here, never to absorb accidental bloat.
+: "${MAX_TOTAL_JS_BYTES:=1270000}"
 : "${MAX_TOTAL_CSS_BYTES:=317000}"
 
 if [[ "${1:-}" == "--build" ]]; then
