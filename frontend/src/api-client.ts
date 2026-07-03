@@ -33,6 +33,8 @@ function bind<K extends keyof Api>(name: K): Api[K] {
 
 export const ApplyGameDataUpdate = bind('ApplyGameDataUpdate')
 export const BackupDatabase = bind('BackupDatabase')
+export const GetDatabaseHealth = bind('GetDatabaseHealth')
+export const RunDatabaseMaintenance = bind('RunDatabaseMaintenance')
 export const BulkSetMatchPlayMode = bind('BulkSetMatchPlayMode')
 export const BulkSetMatchQueue = bind('BulkSetMatchQueue')
 export const CancelParse = bind('CancelParse')

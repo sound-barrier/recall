@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 import SupportedSourcesRow from '@/components/settings/SupportedSourcesRow.vue'
+import SettingsDatabaseHealth from '@/components/settings/SettingsDatabaseHealth.vue'
 
 // Advanced collapsible at the bottom of Settings — destructive Clear
 // Database flow + Manage ignored files (the Unknown-tab "Delete
@@ -137,6 +138,8 @@ watch(
       <span class="advanced-chev" aria-hidden="true">›</span>
     </summary>
     <div class="setting-rows advanced-rows">
+      <SettingsDatabaseHealth />
+
       <div class="setting-row">
         <div class="setting-info">
           <h4 class="setting-label">

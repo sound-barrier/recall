@@ -801,6 +801,21 @@ export interface MatchImportResult {
 // server mode streams GET /api/v1/database into a browser download. Resolves
 // with the saved filename ("" on a Wails cancel). Captures every table — a
 // true backup, unlike the former lossy JSON/CSV export.
+// Database health + maintenance (Settings → Advanced). Read-only
+// health report; maintenance runs optimize/vacuum and returns the
+// refreshed report in one round-trip.
+export type DBHealth = components['schemas']['DBHealth']
+
+export function GetDatabaseHealth(): Promise<DBHealth> {
+  if (IS_WAILS) return _wails<DBHealth>('GetDatabaseHealth')
+  return _get<DBHealth>('/api/v1/database/health')
+}
+
+export function RunDatabaseMaintenance(operation: 'optimize' | 'vacuum'): Promise<DBHealth> {
+  if (IS_WAILS) return _wails<DBHealth>('RunDatabaseMaintenance', operation)
+  return _send<DBHealth>('POST', '/api/v1/database/maintenance', { operation })
+}
+
 export function BackupDatabase(): Promise<string> {
   if (IS_WAILS) return _wails<string>('SaveBackupToFile')
   return downloadBinary('/api/v1/database', `recall-backup-${tsFilenameStamp()}.db`)

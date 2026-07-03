@@ -1857,6 +1857,70 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/database/health:
+    get:
+      operationId: GetDatabaseHealth
+      tags: [Backup]
+      summary: Report database integrity + size statistics
+      x-internal: true
+      description: |
+        Runs `PRAGMA integrity_check` plus the page/freelist pragmas
+        and stats the database + WAL files. Read-only — safe while a
+        parse is running. `integrity` is `ok` or the first problem
+        line SQLite reported; a non-ok value means the database needs
+        restoring from a backup.
+      responses:
+        "200":
+          description: Point-in-time health report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DBHealth"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/database/maintenance:
+    post:
+      operationId: RunDatabaseMaintenance
+      tags: [Backup]
+      summary: Run a database maintenance operation
+      x-internal: true
+      description: |
+        Executes one maintenance operation and returns the refreshed
+        health report. `optimize` runs `PRAGMA optimize` (SQLite's
+        analyze-if-useful hook, cheap); `vacuum` rebuilds the file to
+        reclaim freelist pages and truncates the WAL (takes an
+        exclusive lock — serialized against parses, `409` while one
+        is in flight).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation]
+              properties:
+                operation:
+                  type: string
+                  enum: [optimize, vacuum]
+      responses:
+        "200":
+          description: Operation completed; refreshed health report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DBHealth"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: A parse is in flight; retry once it completes.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/exports/bundle:
     post:
       operationId: ExportBundle
@@ -2097,6 +2161,33 @@ components:
       example: "match-2026-05-10T22-21-11"
 
   schemas:
+    DBHealth:
+      type: object
+      description: |
+        Point-in-time database health report. `integrity` is `ok` or
+        the first problem line `PRAGMA integrity_check` reported.
+        Sizes are bytes on disk; `wal_bytes` is 0 when no WAL sidecar
+        exists. `freelist_pages` counts reclaimable pages — `vacuum`
+        returns them to the filesystem.
+      required: [integrity, size_bytes, wal_bytes, freelist_pages, page_count, checked_at]
+      properties:
+        integrity:
+          type: string
+        size_bytes:
+          type: integer
+          format: int64
+        wal_bytes:
+          type: integer
+          format: int64
+        freelist_pages:
+          type: integer
+          format: int64
+        page_count:
+          type: integer
+          format: int64
+        checked_at:
+          type: string
+
     ProblemDetails:
       type: object
       required: [type, title, status]

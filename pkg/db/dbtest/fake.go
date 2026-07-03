@@ -274,6 +274,19 @@ func (f *Fake) UpsertUnknown(r db.UnknownRow) error {
 	return nil
 }
 
+// Health reports a canned always-ok snapshot — the Fake has no file
+// to stat and nothing to corrupt. CheckedAt is fixed so tests are
+// deterministic.
+func (f *Fake) Health() (db.DBHealth, error) {
+	return db.DBHealth{Integrity: "ok", CheckedAt: "2026-01-01T00:00:00Z"}, nil
+}
+
+// Optimize is a no-op — nothing to analyze in memory.
+func (f *Fake) Optimize() error { return nil }
+
+// Vacuum is a no-op — nothing to compact in memory.
+func (f *Fake) Vacuum() error { return nil }
+
 func (f *Fake) Clear() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
