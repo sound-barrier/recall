@@ -340,6 +340,14 @@ jobs:
           exit-code: '1'
           format: sarif
           output: trivy.sarif
+          # Without this, the action's SARIF mode DROPS the severity filter
+          # ("Building SARIF report with all severities") while keeping
+          # exit-code — so any newly published MEDIUM/LOW CVE fails a job
+          # documented (here and in `task trivy`) to gate on HIGH/CRITICAL.
+          # That is how CVE-2026-45249 (echarts, MEDIUM) turned this job red
+          # overnight with no repo change. Sub-gate findings still surface
+          # via Dependabot alerts; this job's SARIF now matches its gate.
+          limit-severities-for-sarif: true
 
       - name: Upload Trivy results to GitHub Security tab
         if: always()
