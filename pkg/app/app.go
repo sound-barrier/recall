@@ -264,7 +264,7 @@ func (a *App) initProfiles() bool {
 	// doesn't exist, then activates it. The activation persists, so a
 	// fresh launch without --profile remembers the user's last choice.
 	if name := a.profileOverride; name != "" {
-		if !containsProfile(a.profiles.List(), name) {
+		if !a.profiles.Contains(name) {
 			if cerr := a.profiles.Create(name); cerr != nil {
 				a.captureFatal("create --profile target "+name, cerr)
 				return false

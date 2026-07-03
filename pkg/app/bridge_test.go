@@ -33,7 +33,6 @@ var (
 	ParseTesseractVersion    = parseTesseractVersion
 	CheckTesseract           = checkTesseract
 	RunWatchEvents           = runWatchEvents
-	ContainsProfile          = containsProfile
 	PathIsMissingOrNotADir   = pathIsMissingOrNotADir
 	LooksLikeZIP             = looksLikeZIP
 	ReadZipFile              = readZipFile

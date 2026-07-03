@@ -50,7 +50,7 @@ func TestSeedProfile_CreatesAndSeeds(t *testing.T) {
 	}
 
 	// The profile was created and the rows actually persisted.
-	if !app.ContainsProfile(p.List(), "test") {
+	if !p.Contains("test") {
 		t.Fatalf("profile %q not in list %v", "test", p.List())
 	}
 	store := loadStore(t, p, "test")

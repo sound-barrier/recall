@@ -1,4 +1,4 @@
-package app
+package profiles
 
 import (
 	"encoding/json"
@@ -274,6 +274,21 @@ func (p *Profiles) save() error {
 		return fmt.Errorf("profiles: marshal: %w", err)
 	}
 	return os.WriteFile(p.metaPath(), enc, 0o600)
+}
+
+// Contains reports whether name is one of the managed profiles.
+// Exported for the app shell's pre-flight checks (profile switch,
+// cross-profile move) so the membership rule lives with the manager.
+func (p *Profiles) Contains(name string) bool {
+	return containsProfile(p.List(), name)
+}
+
+// ValidateName applies the profile-name rule (the same regex Create
+// and Rename enforce) without touching any state. Exported for the
+// shell's move-target validation, where the name must be sanitised
+// before it flows into path construction.
+func ValidateName(name string) error {
+	return validateProfileName(name)
 }
 
 func validateProfileName(name string) error {
