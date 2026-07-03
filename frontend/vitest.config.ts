@@ -7,6 +7,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // The real Wails runtime schedules a module-level setTimeout on
+      // import (dist/drag.js) that can fire after happy-dom tears the
+      // environment down — an uncaught "window is not defined" that
+      // fails the whole run even with every test green. Unit tests
+      // never exercise Wails IPC (IS_WAILS is false), so the module
+      // resolves to an inert stub. See wails-runtime-stub.ts.
+      '@wailsio/runtime': fileURLToPath(new URL('./src/test-utils/wails-runtime-stub.ts', import.meta.url)),
     },
   },
   test: {
