@@ -1832,6 +1832,73 @@ export interface components {
             added_sources?: string[];
             removed_sources?: string[];
         };
+        UpdateInfo: {
+            /**
+             * @description True when a GitHub API call completed successfully.
+             *     False on network failure — show nothing in that case.
+             * @example true
+             */
+            checked: boolean;
+            /**
+             * @description True when the running version is a dev build. The
+             *     latest release is then informational context, not an
+             *     upgrade prompt.
+             * @example false
+             */
+            dev_build: boolean;
+            /**
+             * @description True when the latest release is newer than the running
+             *     version (only meaningful when dev_build=false).
+             * @example true
+             */
+            available: boolean;
+            /** @example 0.0.15 */
+            latest: string;
+            /** @example https://github.com/sound-barrier/recall/releases/tag/v0.0.15 */
+            url: string;
+            /**
+             * @description Display names from the upcoming release's
+             *     `recall-<version>-heroes.yaml` asset, verified
+             *     against the published SHA-256 sidecar. Empty
+             *     when the YAML fetch fails, the sidecar
+             *     mismatches, or the upgrade isn't applicable
+             *     (current build is already the latest). The
+             *     frontend's Unknown-tab "Reference data gaps"
+             *     section pivots this into a per-card "Update to
+             *     v<X> to recognise <name>" CTA.
+             */
+            latest_heroes?: string[];
+            /**
+             * @description Display names from the upcoming release's
+             *     `recall-<version>-maps.yaml` asset — same
+             *     lifecycle as latest_heroes.
+             */
+            latest_maps?: string[];
+            /**
+             * @description Screenshot-source names extracted from the
+             *     release's `recall-<version>-screenshot_sources.yaml`
+             *     asset. Used by the update-check modal to surface
+             *     newly-supported capture tools.
+             */
+            latest_sources?: string[];
+            /**
+             * Format: date-time
+             * @description RFC3339 timestamp recording when this install
+             *     last received a successful CheckForUpdate
+             *     response. Drives the "haven't checked in a
+             *     while" banner. Empty on the very first check.
+             */
+            last_checked_at?: string;
+            /**
+             * @description First ~500 chars of the GitHub release `body`
+             *     (Markdown source), surfaced in the update-check
+             *     modal under a "more on GitHub" link. The frontend
+             *     interpolates this via Vue's default escaping —
+             *     never `v-html`.
+             */
+            release_notes?: string;
+            game_data: components["schemas"]["GameDataStatus"];
+        };
         /**
          * @description Comparison between the user's currently-loaded game data
          *     (heroes / maps / capture-tool sources) and the live main
@@ -3857,73 +3924,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /**
-                         * @description True when a GitHub API call completed successfully.
-                         *     False on network failure — show nothing in that case.
-                         * @example true
-                         */
-                        checked: boolean;
-                        /**
-                         * @description True when the running version is a dev build. The
-                         *     latest release is then informational context, not an
-                         *     upgrade prompt.
-                         * @example false
-                         */
-                        dev_build: boolean;
-                        /**
-                         * @description True when the latest release is newer than the running
-                         *     version (only meaningful when dev_build=false).
-                         * @example true
-                         */
-                        available: boolean;
-                        /** @example 0.0.15 */
-                        latest: string;
-                        /** @example https://github.com/sound-barrier/recall/releases/tag/v0.0.15 */
-                        url: string;
-                        /**
-                         * @description Display names from the upcoming release's
-                         *     `recall-<version>-heroes.yaml` asset, verified
-                         *     against the published SHA-256 sidecar. Empty
-                         *     when the YAML fetch fails, the sidecar
-                         *     mismatches, or the upgrade isn't applicable
-                         *     (current build is already the latest). The
-                         *     frontend's Unknown-tab "Reference data gaps"
-                         *     section pivots this into a per-card "Update to
-                         *     v<X> to recognise <name>" CTA.
-                         */
-                        latest_heroes?: string[];
-                        /**
-                         * @description Display names from the upcoming release's
-                         *     `recall-<version>-maps.yaml` asset — same
-                         *     lifecycle as latest_heroes.
-                         */
-                        latest_maps?: string[];
-                        /**
-                         * @description Screenshot-source names extracted from the
-                         *     release's `recall-<version>-screenshot_sources.yaml`
-                         *     asset. Used by the update-check modal to surface
-                         *     newly-supported capture tools.
-                         */
-                        latest_sources?: string[];
-                        /**
-                         * Format: date-time
-                         * @description RFC3339 timestamp recording when this install
-                         *     last received a successful CheckForUpdate
-                         *     response. Drives the "haven't checked in a
-                         *     while" banner. Empty on the very first check.
-                         */
-                        last_checked_at?: string;
-                        /**
-                         * @description First ~500 chars of the GitHub release `body`
-                         *     (Markdown source), surfaced in the update-check
-                         *     modal under a "more on GitHub" link. The frontend
-                         *     interpolates this via Vue's default escaping —
-                         *     never `v-html`.
-                         */
-                        release_notes?: string;
-                        game_data?: components["schemas"]["GameDataStatus"];
-                    };
+                    "application/json": components["schemas"]["UpdateInfo"];
                 };
             };
         };
