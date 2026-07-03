@@ -230,7 +230,11 @@ fi
 # isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
 echo "==> running schemathesis…"
+# --seed pins Hypothesis's randomness: a red run reproduces locally with
+# the same inputs instead of being re-run roulette. Bump the seed
+# deliberately when you WANT a fresh exploration of the input space.
 schemathesis run \
+  --seed 20260702 \
   --url "http://127.0.0.1:$PORT" \
   --checks all \
   --exclude-checks negative_data_rejection \
