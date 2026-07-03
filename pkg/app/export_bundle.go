@@ -16,10 +16,17 @@ import (
 	"recall/pkg/match"
 )
 
-// exportSchemaV1 is the wire-schema identifier the bundle's inner data.json
-// carries. It predates the bundle (it was the standalone JSON export's schema)
-// and is kept as the data.json contract the merge import validates against.
+// exportSchemaV1 is the original data.json wire schema: OCR parent rows
+// only. Bundles from builds ≤0.22.x carry it; the import path still
+// accepts it (their user-layer sections read as empty).
 const exportSchemaV1 = "recall-export/v1"
+
+// exportSchemaV2 adds the user layer — inline edits + manual matches
+// (user_match_data with children), annotations, review / queue /
+// play-mode state, and hidden flags — so an export→import round trip
+// preserves every hand-entered correction, and a shared bundle carries
+// the sharer's notes and manual entries.
+const exportSchemaV2 = "recall-export/v2"
 
 // BundleSchemaV1 is the wire-schema identifier the bundle's
 // manifest carries. Bumping the constant is a breaking change to
@@ -44,17 +51,17 @@ type BundleManifestV1 struct {
 	Screenshots     map[string]string `json:"screenshots"`
 }
 
-// BundleDataV1 is the on-disk shape of the bundle's `data.json`.
-// Same row tables as the standalone `recall-export/v1` payload
-// (`exportV1`), but DOES NOT carry the screenshots_dirs map —
-// those paths leak the user's filesystem and aren't needed for the
-// portable-backup / bug-report use cases. On restore via
-// `POST /api/v1/imports`, the rows' `ScreenshotsDirID` references
-// remap to 0 (use configured dir) because no entries in the
+// BundleDataV2 is the on-disk shape of the bundle's `data.json`. The five
+// OCR row tables plus the user layer (v2 additions); it DOES NOT carry
+// the screenshots_dirs map — those paths leak the user's filesystem. On
+// restore via `POST /api/v1/imports`, the rows' `ScreenshotsDirID`
+// references remap to 0 (use configured dir) because no entries in the
 // screenshots_dirs envelope mean an empty remap table.
 //
-// Exported so cmd/bug-finder can deserialize directly.
-type BundleDataV1 struct {
+// A v1 payload unmarshals into this struct with empty user-layer
+// sections — the OCR field names are unchanged — so the import path
+// handles both schemas through one type.
+type BundleDataV2 struct {
 	Schema        string           `json:"schema"`
 	ExportedAt    string           `json:"exported_at"`
 	RecallVersion string           `json:"recall_version"`
@@ -63,6 +70,16 @@ type BundleDataV1 struct {
 	Personals     []db.PersonalRow `json:"personals"`
 	Ranks         []db.RankRow     `json:"ranks"`
 	Unknowns      []db.UnknownRow  `json:"unknowns"`
+	// User layer — schema v2. Slices sort by match_key so the emitted
+	// JSON is deterministic; maps key by match_key (Go marshals map
+	// keys sorted). A manual match is a UserMatchData entry whose key
+	// has no row in any OCR table above.
+	UserMatchData []db.UserMatchData          `json:"user_match_data,omitempty"`
+	Annotations   []db.Annotation             `json:"annotations,omitempty"`
+	Reviews       map[string]db.ReviewState   `json:"reviews,omitempty"`
+	Queues        map[string]db.QueueState    `json:"queues,omitempty"`
+	PlayModes     map[string]db.PlayModeState `json:"play_modes,omitempty"`
+	Hidden        []string                    `json:"hidden,omitempty"`
 }
 
 // ExportBundleOptions controls which matches end up in the bundle.
@@ -87,9 +104,9 @@ type ExportBundleOptions struct {
 //   - manifest.json   — `recall-bundle/v1` envelope with the
 //     screenshot → match_key mapping for
 //     sanity-checking restore.
-//   - data.json       — the `recall-export/v1` JSON export shape,
-//     restricted to the included matches. The
-//     bundle restores via the existing
+//   - data.json       — the `recall-export/v2` shape: OCR rows + the
+//     user layer, restricted to the included
+//     matches. The bundle restores via the existing
 //     `POST /api/v1/imports` path.
 //   - screenshots/*   — every source file referenced by an included
 //     row. A missing-on-disk file is silently
@@ -115,6 +132,10 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 	}
 	rows := filterBundleRows(snap, include)
 	screenshots := bundleScreenshotMap(rows)
+	user, err := a.loadBundleUserLayer(include)
+	if err != nil {
+		return nil, err
+	}
 
 	// Capture one `now` for every embedded entry so manifest's
 	// `exported_at`, data.json's `exported_at`, and every ZIP
@@ -124,7 +145,7 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 
-	if err := writeBundleData(zw, rows, exportedAt, now); err != nil {
+	if err := writeBundleData(zw, rows, user, exportedAt, now); err != nil {
 		return nil, err
 	}
 	// copyBundleScreenshots prunes the screenshots map to what actually
@@ -202,9 +223,9 @@ func bundleScreenshotMap(t parentTables) map[string]string {
 // map. Stripping the map keeps the bundle free of the user's local
 // filesystem path; restore via POST /api/v1/imports remaps every row's
 // ScreenshotsDirID to 0 (use configured dir).
-func writeBundleData(zw *zip.Writer, t parentTables, exportedAt string, now time.Time) error {
-	dataDoc := BundleDataV1{
-		Schema:        exportSchemaV1,
+func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, exportedAt string, now time.Time) error {
+	dataDoc := BundleDataV2{
+		Schema:        exportSchemaV2,
 		ExportedAt:    exportedAt,
 		RecallVersion: Version,
 		Summaries:     t.summaries,
@@ -212,11 +233,105 @@ func writeBundleData(zw *zip.Writer, t parentTables, exportedAt string, now time
 		Personals:     t.personals,
 		Ranks:         t.ranks,
 		Unknowns:      t.unknowns,
+		UserMatchData: user.userData,
+		Annotations:   user.annotations,
+		Reviews:       user.reviews,
+		Queues:        user.queues,
+		PlayModes:     user.playModes,
+		Hidden:        user.hidden,
 	}
 	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
 		return fmt.Errorf("export bundle: write data.json: %w", err)
 	}
 	return nil
+}
+
+// bundleUserLayer is the include-filtered user-layer state riding in a
+// v2 bundle.
+type bundleUserLayer struct {
+	userData    []db.UserMatchData
+	annotations []db.Annotation
+	reviews     map[string]db.ReviewState
+	queues      map[string]db.QueueState
+	playModes   map[string]db.PlayModeState
+	hidden      []string
+}
+
+// loadBundleUserLayer gathers every user-layer surface for the included
+// match keys. Slices sort by match_key for deterministic bundle bytes.
+func (a *App) loadBundleUserLayer(include map[string]struct{}) (bundleUserLayer, error) {
+	var out bundleUserLayer
+	userData, err := a.store.LoadAllUserMatchData()
+	if err != nil {
+		return out, fmt.Errorf("export bundle: load user data: %w", err)
+	}
+	annotations, err := a.store.LoadAnnotations()
+	if err != nil {
+		return out, fmt.Errorf("export bundle: load annotations: %w", err)
+	}
+	reviews, err := a.store.LoadReviews()
+	if err != nil {
+		return out, fmt.Errorf("export bundle: load reviews: %w", err)
+	}
+	queues, err := a.store.LoadMatchQueues()
+	if err != nil {
+		return out, fmt.Errorf("export bundle: load queues: %w", err)
+	}
+	playModes, err := a.store.LoadMatchPlayModes()
+	if err != nil {
+		return out, fmt.Errorf("export bundle: load play modes: %w", err)
+	}
+	hidden, err := a.store.LoadHiddenKeys()
+	if err != nil {
+		return out, fmt.Errorf("export bundle: load hidden keys: %w", err)
+	}
+	included := func(k string) bool {
+		_, ok := include[k]
+		return ok
+	}
+	for k, d := range userData {
+		if included(k) {
+			out.userData = append(out.userData, d)
+		}
+	}
+	sort.Slice(out.userData, func(i, j int) bool { return out.userData[i].MatchKey < out.userData[j].MatchKey })
+	for k, ann := range annotations {
+		if included(k) {
+			out.annotations = append(out.annotations, ann)
+		}
+	}
+	sort.Slice(out.annotations, func(i, j int) bool { return out.annotations[i].MatchKey < out.annotations[j].MatchKey })
+	for k, r := range reviews {
+		if included(k) {
+			if out.reviews == nil {
+				out.reviews = map[string]db.ReviewState{}
+			}
+			out.reviews[k] = r
+		}
+	}
+	for k, q := range queues {
+		if included(k) {
+			if out.queues == nil {
+				out.queues = map[string]db.QueueState{}
+			}
+			out.queues[k] = q
+		}
+	}
+	for k, pm := range playModes {
+		if included(k) {
+			if out.playModes == nil {
+				out.playModes = map[string]db.PlayModeState{}
+			}
+			out.playModes[k] = pm
+		}
+	}
+	for k := range hidden {
+		if included(k) {
+			out.hidden = append(out.hidden, k)
+		}
+	}
+	sort.Strings(out.hidden)
+	return out, nil
 }
 
 // copyBundleScreenshots writes screenshots/<filename> raw bytes off disk.

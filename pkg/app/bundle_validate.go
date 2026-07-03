@@ -167,14 +167,14 @@ func decodeBundleManifest(manifestBytes []byte, add issueSink) (BundleManifestV1
 // decode for the residual `screenshots_dirs` field. We unmarshal twice
 // (cheap; the file is small) so we can both populate typed row slices AND
 // probe for the path-map leak.
-func decodeBundleData(dataBytes []byte, add issueSink) (BundleDataV1, error) {
-	var dataDoc BundleDataV1
+func decodeBundleData(dataBytes []byte, add issueSink) (BundleDataV2, error) {
+	var dataDoc BundleDataV2
 	if err := json.Unmarshal(dataBytes, &dataDoc); err != nil {
 		return dataDoc, fmt.Errorf("decode data.json: %w", err)
 	}
-	if dataDoc.Schema != exportSchemaV1 {
+	if dataDoc.Schema != exportSchemaV1 && dataDoc.Schema != exportSchemaV2 {
 		add(IssueWrongDataSchema,
-			fmt.Sprintf("data.schema = %q, want %q", dataDoc.Schema, exportSchemaV1))
+			fmt.Sprintf("data.schema = %q, want %q or %q", dataDoc.Schema, exportSchemaV1, exportSchemaV2))
 	}
 	var dataProbe struct {
 		ScreenshotsDirs map[string]string `json:"screenshots_dirs"`
@@ -235,7 +235,7 @@ func validateBundleScreenshotRefs(mf BundleManifestV1, screenshots, dataKeys map
 
 // validateBundleDataFilenames checks that every data.json row filename
 // appears in the manifest's screenshots map (validation 9).
-func validateBundleDataFilenames(dataDoc BundleDataV1, mf BundleManifestV1, add issueSink) {
+func validateBundleDataFilenames(dataDoc BundleDataV2, mf BundleManifestV1, add issueSink) {
 	for _, fn := range dataRowFilenames(dataDoc) {
 		if _, ok := mf.Screenshots[fn]; !ok {
 			add(IssueDataFileNotInManifest,
@@ -256,8 +256,13 @@ func readZipEntry(f *zip.File) ([]byte, error) {
 
 // dataMatchKeys returns the set of distinct match_keys referenced
 // across every row table in data.json.
-func dataMatchKeys(d BundleDataV1) map[string]struct{} {
+func dataMatchKeys(d BundleDataV2) map[string]struct{} {
 	keys := map[string]struct{}{}
+	// The user layer counts toward the distinct-key set: a manual match
+	// exists ONLY there, and the manifest's match_count includes it.
+	for _, ud := range d.UserMatchData {
+		keys[ud.MatchKey] = struct{}{}
+	}
 	for _, r := range d.Summaries {
 		keys[r.MatchKey] = struct{}{}
 	}
@@ -278,7 +283,7 @@ func dataMatchKeys(d BundleDataV1) map[string]struct{} {
 
 // dataRowFilenames returns every non-empty `Filename` value across
 // data.json's row tables.
-func dataRowFilenames(d BundleDataV1) []string {
+func dataRowFilenames(d BundleDataV2) []string {
 	out := make([]string, 0)
 	push := func(name string) {
 		if name != "" {
