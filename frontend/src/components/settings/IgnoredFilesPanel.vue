@@ -128,6 +128,23 @@ function onKeydown(e: KeyboardEvent) {
     e.preventDefault()
     e.stopPropagation()
     emit('close')
+    return
+  }
+  // aria-modal="true" promises focus can't Tab out of the dialog —
+  // cycle within it (same shape as ExportBundleModal's trap).
+  if (e.key !== 'Tab' || !dialogRef.value) return
+  const sel = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  const items = Array.from(dialogRef.value.querySelectorAll<HTMLElement>(sel))
+  if (items.length === 0) return
+  const first = items[0]!
+  const last = items[items.length - 1]!
+  const active = document.activeElement as HTMLElement | null
+  if (e.shiftKey && (active === first || active === dialogRef.value)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && active === last) {
+    e.preventDefault()
+    first.focus()
   }
 }
 
@@ -159,7 +176,9 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydown, true)
+  // Same (no-capture) flags as the addEventListener in the isOpen watch —
+  // a capture-flagged removal would be a no-op and leak the listener.
+  document.removeEventListener('keydown', onKeydown)
 })
 
 function onBackdropClick(e: MouseEvent) {
@@ -182,7 +201,7 @@ function onBackdropClick(e: MouseEvent) {
         <header class="ignored-head">
           <h2 id="ignored-panel-title" class="ignored-title">
             Ignored screenshots
-            <span class="ignored-count" aria-label="{{ screenshots.length }} ignored files">{{ screenshots.length }}</span>
+            <span class="ignored-count" :aria-label="`${screenshots.length} ignored files`">{{ screenshots.length }}</span>
           </h2>
           <button
             type="button"
