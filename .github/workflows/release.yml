@@ -54,6 +54,7 @@ jobs:
             output-dir: dist/linux
             package-script: package-wails-linux.sh
             artifact-glob: |
+              recall-*-linux-amd64
               recall-*-linux-amd64.tar.gz
               recall-*-linux-amd64.deb
           - target: server-linux
@@ -119,6 +120,7 @@ jobs:
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
         with:
           subject-path: |
+            recall-*-linux-amd64
             recall-*-linux-amd64.tar.gz
             recall-*-linux-amd64.deb
             recall-server-*-linux-amd64.tar.gz
@@ -130,7 +132,10 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: build-${{ matrix.target }}
+          # `recall-*-linux-amd64` (raw updater binary) matches only the
+          # extension-less file — the tarball/deb end in .tar.gz/.deb.
           path: |
+            recall-*-linux-amd64
             recall-*-linux-amd64.tar.gz
             recall-*-linux-amd64.deb
             recall-server-*-linux-amd64.tar.gz
@@ -214,7 +219,12 @@ jobs:
       - name: Attest build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
         with:
-          subject-path: recall-*-windows-amd64-installer.exe
+          # The raw exe (`…-windows-amd64.exe`) is the in-app updater target;
+          # the installer (`…-windows-amd64-installer.exe`) is the human
+          # download. `…-windows-amd64.exe` matches only the former.
+          subject-path: |
+            recall-*-windows-amd64-installer.exe
+            recall-*-windows-amd64.exe
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
@@ -222,6 +232,7 @@ jobs:
           name: build-wails-windows
           path: |
             recall-*-windows-amd64-installer.exe
+            recall-*-windows-amd64.exe
 
   # ── Job 4: Generate SBOM from BUILT ARTIFACTS ────────────────────────
   # Improvement #3 (audit): SBOM now describes the shipped bits, not
@@ -370,6 +381,8 @@ jobs:
             recall-*.dmg.sha256
             recall-*.yaml.sha256
             recall-*.bat.sha256
+            recall-*-linux-amd64.sha256
+            SHA256SUMS
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b  # v3
@@ -390,7 +403,10 @@ jobs:
             recall-*.yaml.sha256
             recall-*.bat
             recall-*.bat.sha256
+            recall-*-linux-amd64
+            recall-*-linux-amd64.sha256
             recall-*-sbom.spdx.json
+            SHA256SUMS
 
   # ── Job 6: Build and push Linux server container image to GHCR ──
   # Improvement #5 (audit): now depends on `release`. Previously this

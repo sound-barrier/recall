@@ -10,10 +10,17 @@
 #   dist/linux/Recall                   — Linux Wails binary
 #
 # Outputs (in the current working directory):
+#   recall-{V}-linux-amd64          — raw binary the Wails updater swaps
 #   recall-{V}-linux-amd64.tar.gz
 #   recall-{V}-linux-amd64.deb
 #
 # `{V}` is VERSION with the leading 'v' stripped.
+#
+# The extension-less raw binary is the asset the in-app self-updater downloads
+# and swaps in place. The .tar.gz is NOT usable for that: it nests the binary
+# under a top-level directory (recall-{V}-linux-amd64/recall), and the Wails
+# updater would rename that directory over the running binary path. Keep the
+# tarball for humans; the raw binary is the updater target.
 
 set -euo pipefail
 
@@ -23,6 +30,10 @@ if [ -z "${VERSION:-}" ]; then
 fi
 
 PKG_VERSION="${VERSION#v}"
+
+# ── Linux Wails app — raw binary (in-app updater target) ──
+cp dist/linux/Recall "recall-${PKG_VERSION}-linux-amd64"
+chmod 755 "recall-${PKG_VERSION}-linux-amd64"
 
 # ── Linux Wails app — tarball ─────────────────────────
 mkdir -p "_tar/recall-${PKG_VERSION}-linux-amd64"

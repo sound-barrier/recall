@@ -101,7 +101,11 @@ tasks:
     # bootstrapper + runs makensis.
     cmds:
       - echo "[ recall ] Building windows/amd64 Wails v3 app + NSIS installer (CGO_ENABLED=0, native)…"
-      - wails3 task windows:package ARCH=amd64 PRODUCTION=true PRODUCT_VERSION={{.BUILD_VERSION}} PRODUCT_VERSION_NUMERIC={{.BUILD_VERSION_NUMERIC}}
+      # INSTALL_SCOPE=user → per-user install ($LOCALAPPDATA\Programs\Recall,
+      # no UAC prompt at install time) so the in-app self-updater can swap the
+      # running exe in place (Program Files needs elevation the updater helper
+      # doesn't do). The NSIS side also removes any prior machine-wide copy.
+      - wails3 task windows:package ARCH=amd64 PRODUCTION=true INSTALL_SCOPE=user PRODUCT_VERSION={{.BUILD_VERSION}} PRODUCT_VERSION_NUMERIC={{.BUILD_VERSION_NUMERIC}}
       - mkdir -p {{.DIST_WINDOWS}}
       - cp bin/recall-amd64-installer.exe {{.DIST_WINDOWS}}/
       - cp bin/Recall.exe {{.DIST_WINDOWS}}/

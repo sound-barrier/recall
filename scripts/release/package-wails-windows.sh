@@ -8,10 +8,17 @@
 #   VERSION   — e.g. "v0.1.1" (with the leading 'v', as released by tag)
 #
 # Required inputs (paths, must already exist):
-#   dist/windows/recall-amd64-installer.exe
+#   dist/windows/recall-amd64-installer.exe   — NSIS installer (human download)
+#   dist/windows/Recall.exe                   — raw app exe (in-app updater target)
 #
-# Output (in the current working directory):
-#   recall-{V}-windows-amd64-installer.exe
+# Outputs (in the current working directory):
+#   recall-{V}-windows-amd64-installer.exe    — installer
+#   recall-{V}-windows-amd64.exe              — raw exe the Wails updater swaps
+#
+# The raw exe is the asset the in-app self-updater downloads and swaps in
+# place. It carries no MOTW/SmartScreen concern here: the updater streams the
+# bytes directly (never a browser download), and it must NOT be the NSIS
+# installer (the updater can't run an installer, only replace a single file).
 
 set -euo pipefail
 
@@ -23,3 +30,4 @@ fi
 PKG_VERSION="${VERSION#v}"
 
 cp dist/windows/recall-amd64-installer.exe "recall-${PKG_VERSION}-windows-amd64-installer.exe"
+cp dist/windows/Recall.exe "recall-${PKG_VERSION}-windows-amd64.exe"

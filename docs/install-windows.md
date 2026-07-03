@@ -9,6 +9,9 @@ run — see section 3 below for the SmartScreen approval dance.
 
 Grab `recall-{version}-windows-amd64-installer.exe` from the
 [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
+That's the file to download — the release also carries a bare
+`recall-{version}-windows-amd64.exe`, which exists only for Recall's
+in-app updater to fetch; you don't run it directly.
 
 ## 2. Install — run the installer
 
@@ -16,13 +19,23 @@ Double-click the downloaded `.exe`. NSIS walks you through:
 
 - Accept the licence (Apache-2.0).
 - Pick an install path — the default is
-  `C:\Program Files\Recall\Recall.exe`. Leave it alone unless you have
-  a specific reason to relocate it; the path is what Recall's Start
-  Menu shortcut points at.
+  `%LocalAppData%\Programs\Recall\recall.exe`
+  (e.g. `C:\Users\<you>\AppData\Local\Programs\Recall`). This is a
+  **per-user** install: no administrator prompt, and it's the location
+  Recall updates itself into (see [Staying up to date](#staying-up-to-date)).
 - Click **Install** and let it copy.
 
 When the installer finishes, Recall is available from the Start Menu
 and on the desktop (if you left the shortcut checkbox ticked).
+
+> **Upgrading from an older (pre-per-user) install?** Recall used to
+> install machine-wide under `C:\Program Files`. The new installer
+> detects that older copy and removes it automatically — Windows will
+> ask for administrator permission **once** during that first upgrade
+> so it can clear the old Program Files copy. Your data is untouched
+> (it lives under `%AppData%\Recall`, not the program folder). If you
+> decline the prompt, the install still completes; just remove the old
+> "Recall" entry from **Settings → Apps** when convenient.
 
 ## 3. First launch — approve SmartScreen
 
@@ -98,12 +111,22 @@ The **Watch Folder** toggle on the **Parse** tab makes Recall
 auto-parse new screenshots as Overwatch (or your capture tool)
 writes them.
 
-After install, the masthead's **Check for updates** button surfaces
-both Recall releases AND roster patches (new heroes / maps / capture-
-tool grammars) the parser ships separately from the binary. See
-[Updates & game data](settings-reference.md#updates--game-data) for
-the modal flow + the SHA-256 verification path. No silent on-mount
-network calls — the check only fires when you click.
+## Staying up to date
+
+Open **About Recall** (the ⋮ menu → About) to check for updates. It
+surfaces both Recall releases AND roster patches (new heroes / maps /
+capture-tool grammars) the parser ships separately from the binary.
+See [Updates & game data](settings-reference.md#updates--game-data)
+for the flow + the SHA-256 verification path. No silent on-mount
+network calls — the check only fires when you open About.
+
+When a new Recall release is available, you can install it from right
+there: Recall downloads the new build, verifies its SHA-256 against
+the release's `SHA256SUMS`, swaps itself in place under
+`%LocalAppData%\Programs\Recall`, and relaunches. (An "Open release
+page" link is always available as a fallback — and is the only path on
+a machine-wide install that predates the per-user move, where the
+program folder isn't writable without elevation.)
 
 ## Where Recall stores its data
 
@@ -146,8 +169,8 @@ A helper script does it safely — it **backs up the database first**, then
 deletes it once you confirm. Two ways to run it:
 
 - **Already installed?** Double-click
-  `C:\Program Files\recall\Reset-Database.bat` — it ships with the app.
-  This is the "clean install" path: no separate download needed.
+  `%LocalAppData%\Programs\Recall\Reset-Database.bat` — it ships with
+  the app. This is the "clean install" path: no separate download needed.
 - **Prefer to download it?** Grab `recall-{version}-Reset-Database.bat`
   from the [Releases](https://github.com/sound-barrier/recall/releases)
   page and double-click it. It's signed + attested like every other
