@@ -1,4 +1,4 @@
-package app
+package bundle
 
 import (
 	"archive/zip"
@@ -116,23 +116,19 @@ type ExportBundleOptions struct {
 // The bundle never streams to disk — it's built in-memory and
 // returned. The HTTP server uses the bytes as the response body;
 // Wails mode threads them into a SaveFileDialog → os.WriteFile.
-func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
-	// GetMatchResults() runs the same aggregator the Matches view
-	// consumes, so the "unknown" and "hidden" definitions stay in
-	// lockstep with the UI.
-	recs, err := a.GetMatchResults()
-	if err != nil {
-		return nil, fmt.Errorf("export bundle: aggregate: %w", err)
-	}
+func Export(store db.Store, opts ExportBundleOptions, recs []match.MatchRecord, screenshotsDir, version string) ([]byte, error) {
+	// recs come from the shell's GetMatchResults() — the same
+	// aggregator the Matches view consumes, so the "unknown" and
+	// "hidden" definitions stay in lockstep with the UI.
 	include := bundleIncludeSet(opts, recs)
 
-	snap, err := a.store.LoadAll()
+	snap, err := store.LoadAll()
 	if err != nil {
 		return nil, fmt.Errorf("export bundle: load: %w", err)
 	}
 	rows := filterBundleRows(snap, include)
 	screenshots := bundleScreenshotMap(rows)
-	user, err := a.loadBundleUserLayer(include)
+	user, err := loadBundleUserLayer(store, include)
 	if err != nil {
 		return nil, err
 	}
@@ -145,15 +141,15 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 
-	if err := writeBundleData(zw, rows, user, exportedAt, now); err != nil {
+	if err := writeBundleData(zw, rows, user, exportedAt, version, now); err != nil {
 		return nil, err
 	}
 	// copyBundleScreenshots prunes the screenshots map to what actually
 	// landed on disk, so the manifest (built next) stays consistent.
-	if err := a.copyBundleScreenshots(zw, rows, snap, screenshots, now); err != nil {
+	if err := copyBundleScreenshots(zw, rows, snap, screenshots, screenshotsDir, now); err != nil {
 		return nil, err
 	}
-	if err := writeBundleManifest(zw, opts, include, screenshots, exportedAt, now); err != nil {
+	if err := writeBundleManifest(zw, opts, include, screenshots, exportedAt, version, now); err != nil {
 		return nil, err
 	}
 	if err := zw.Close(); err != nil {
@@ -223,11 +219,11 @@ func bundleScreenshotMap(t parentTables) map[string]string {
 // map. Stripping the map keeps the bundle free of the user's local
 // filesystem path; restore via POST /api/v1/imports remaps every row's
 // ScreenshotsDirID to 0 (use configured dir).
-func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, exportedAt string, now time.Time) error {
+func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, exportedAt, version string, now time.Time) error {
 	dataDoc := BundleDataV2{
 		Schema:        exportSchemaV2,
 		ExportedAt:    exportedAt,
-		RecallVersion: Version,
+		RecallVersion: version,
 		Summaries:     t.summaries,
 		Teams:         t.teams,
 		Personals:     t.personals,
@@ -259,29 +255,29 @@ type bundleUserLayer struct {
 
 // loadBundleUserLayer gathers every user-layer surface for the included
 // match keys. Slices sort by match_key for deterministic bundle bytes.
-func (a *App) loadBundleUserLayer(include map[string]struct{}) (bundleUserLayer, error) {
+func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUserLayer, error) {
 	var out bundleUserLayer
-	userData, err := a.store.LoadAllUserMatchData()
+	userData, err := store.LoadAllUserMatchData()
 	if err != nil {
 		return out, fmt.Errorf("export bundle: load user data: %w", err)
 	}
-	annotations, err := a.store.LoadAnnotations()
+	annotations, err := store.LoadAnnotations()
 	if err != nil {
 		return out, fmt.Errorf("export bundle: load annotations: %w", err)
 	}
-	reviews, err := a.store.LoadReviews()
+	reviews, err := store.LoadReviews()
 	if err != nil {
 		return out, fmt.Errorf("export bundle: load reviews: %w", err)
 	}
-	queues, err := a.store.LoadMatchQueues()
+	queues, err := store.LoadMatchQueues()
 	if err != nil {
 		return out, fmt.Errorf("export bundle: load queues: %w", err)
 	}
-	playModes, err := a.store.LoadMatchPlayModes()
+	playModes, err := store.LoadMatchPlayModes()
 	if err != nil {
 		return out, fmt.Errorf("export bundle: load play modes: %w", err)
 	}
-	hidden, err := a.store.LoadHiddenKeys()
+	hidden, err := store.LoadHiddenKeys()
 	if err != nil {
 		return out, fmt.Errorf("export bundle: load hidden keys: %w", err)
 	}
@@ -337,7 +333,7 @@ func (a *App) loadBundleUserLayer(include map[string]struct{}) (bundleUserLayer,
 // copyBundleScreenshots writes screenshots/<filename> raw bytes off disk.
 // Missing files are silently skipped and pruned from the `screenshots`
 // map so the manifest stays consistent with what the ZIP contains.
-func (a *App) copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Screenshots, screenshots map[string]string, now time.Time) error {
+func copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Screenshots, screenshots map[string]string, screenshotsDir string, now time.Time) error {
 	dirByRowFn := func(dirID int64) string {
 		// dir-id 0 falls back to the live screenshots folder (same
 		// rule the screenshot handler uses for unparsed-watch files).
@@ -346,7 +342,7 @@ func (a *App) copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Scre
 				return p
 			}
 		}
-		return a.settingsSnapshot().ScreenshotsDir
+		return screenshotsDir
 	}
 	for _, batch := range [][]struct {
 		Filename string
@@ -388,11 +384,11 @@ func (a *App) copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Scre
 // writeBundleManifest writes manifest.json — assembled AFTER the
 // screenshots copy so its `screenshots` map reflects what actually landed
 // in the ZIP.
-func writeBundleManifest(zw *zip.Writer, opts ExportBundleOptions, include map[string]struct{}, screenshots map[string]string, exportedAt string, now time.Time) error {
+func writeBundleManifest(zw *zip.Writer, opts ExportBundleOptions, include map[string]struct{}, screenshots map[string]string, exportedAt, version string, now time.Time) error {
 	mf := BundleManifestV1{
 		Schema:          BundleSchemaV1,
 		ExportedAt:      exportedAt,
-		RecallVersion:   Version,
+		RecallVersion:   version,
 		MatchCount:      len(include),
 		ScreenshotCount: len(screenshots),
 		IncludeUnknown:  opts.IncludeUnknown,

@@ -1,4 +1,4 @@
-package app
+package bundle
 
 import (
 	"archive/zip"
@@ -23,15 +23,6 @@ type ImportSummary struct {
 	Skipped  int `json:"skipped"`
 }
 
-// MatchImportResult is the Wails LoadMatchImportFromFile return: the dialog
-// path the user picked (empty on cancel) plus the merge counts so the UI can
-// report "Added N, skipped M" without a second round-trip.
-type MatchImportResult struct {
-	Path     string `json:"path"`
-	Imported int    `json:"imported"`
-	Skipped  int    `json:"skipped"`
-}
-
 // ImportMatches merges a `recall-bundle/v1` ZIP into the existing database
 // WITHOUT clearing it. It reads the bundle's data.json (ignoring the embedded
 // screenshot bytes — data-only), skips any incoming match whose match_key
@@ -44,7 +35,7 @@ type MatchImportResult struct {
 // under the same skip-existing rule: an incoming key you already have is
 // skipped wholesale, so a merge can never clobber local edits. v1 bundles
 // (builds ≤0.22.x) simply have no user layer to import.
-func (a *App) ImportMatches(payload []byte) (ImportSummary, error) {
+func Import(store db.Store, payload []byte) (ImportSummary, error) {
 	payload = stripBOM(payload)
 	if !looksLikeZIP(payload) {
 		return ImportSummary{}, fmt.Errorf("%w: expected a Recall bundle (.zip)", ErrImportMalformed)
@@ -64,17 +55,17 @@ func (a *App) ImportMatches(payload []byte) (ImportSummary, error) {
 		return ImportSummary{}, err
 	}
 
-	existing, err := a.existingMatchKeys()
+	existing, err := existingMatchKeys(store)
 	if err != nil {
 		return ImportSummary{}, err
 	}
 	fresh, imported, skipped := partitionByMatchKey(incoming, existing)
 
 	toSentinel := func(int64) int64 { return db.SentinelScreenshotsDirID }
-	if err := importAllParentTables(a.store, "import", fresh, toSentinel); err != nil {
+	if err := importAllParentTables(store, "import", fresh, toSentinel); err != nil {
 		return ImportSummary{}, err
 	}
-	manualImported, err := a.importUserLayer(data, existing)
+	manualImported, err := importUserLayer(store, data, existing)
 	if err != nil {
 		return ImportSummary{}, err
 	}
@@ -85,7 +76,7 @@ func (a *App) ImportMatches(payload []byte) (ImportSummary, error) {
 // present locally (the same skip-existing rule the parent rows follow).
 // Returns how many MANUAL matches it imported — keys that exist only in
 // the user layer, which the parent-row partition can't count.
-func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (int, error) {
+func importUserLayer(store db.Store, data BundleDataV2, existing map[string]struct{}) (int, error) {
 	skip := func(k string) bool {
 		_, ok := existing[k]
 		return ok
@@ -102,7 +93,7 @@ func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (
 		if skip(ud.MatchKey) {
 			continue
 		}
-		if err := a.store.UpsertUserMatchData(ud); err != nil {
+		if err := store.UpsertUserMatchData(ud); err != nil {
 			return 0, fmt.Errorf("import: user data for %q: %w", ud.MatchKey, err)
 		}
 		if _, hasParents := incomingParents[ud.MatchKey]; !hasParents {
@@ -113,7 +104,7 @@ func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (
 		if skip(ann.MatchKey) {
 			continue
 		}
-		if err := a.store.SetAnnotation(ann); err != nil {
+		if err := store.SetAnnotation(ann); err != nil {
 			return 0, fmt.Errorf("import: annotation for %q: %w", ann.MatchKey, err)
 		}
 	}
@@ -121,7 +112,7 @@ func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (
 		if skip(k) || r.ReviewedBy == "" {
 			continue
 		}
-		if err := a.store.SetReview(k, r.ReviewedBy); err != nil {
+		if err := store.SetReview(k, r.ReviewedBy); err != nil {
 			return 0, fmt.Errorf("import: review for %q: %w", k, err)
 		}
 	}
@@ -129,7 +120,7 @@ func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (
 		if skip(k) || q.QueueType == "" {
 			continue
 		}
-		if err := a.store.SetMatchQueue(k, q.QueueType); err != nil {
+		if err := store.SetMatchQueue(k, q.QueueType); err != nil {
 			return 0, fmt.Errorf("import: queue for %q: %w", k, err)
 		}
 	}
@@ -137,7 +128,7 @@ func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (
 		if skip(k) || pm.PlayMode == "" {
 			continue
 		}
-		if err := a.store.SetMatchPlayMode(k, pm.PlayMode); err != nil {
+		if err := store.SetMatchPlayMode(k, pm.PlayMode); err != nil {
 			return 0, fmt.Errorf("import: play mode for %q: %w", k, err)
 		}
 	}
@@ -145,7 +136,7 @@ func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (
 		if skip(k) {
 			continue
 		}
-		if err := a.store.HideMatch(k); err != nil {
+		if err := store.HideMatch(k); err != nil {
 			return 0, fmt.Errorf("import: hidden flag for %q: %w", k, err)
 		}
 	}
@@ -190,8 +181,8 @@ func readBundleData(payload []byte) (BundleDataV2, error) {
 // existingMatchKeys collects every match_key already present — across the five
 // OCR parent tables and the user-data layer (manual matches live only there) —
 // so the merge can skip collisions.
-func (a *App) existingMatchKeys() (map[string]struct{}, error) {
-	snap, err := a.store.LoadAll()
+func existingMatchKeys(store db.Store) (map[string]struct{}, error) {
+	snap, err := store.LoadAll()
 	if err != nil {
 		return nil, fmt.Errorf("import: load existing: %w", err)
 	}
@@ -211,7 +202,7 @@ func (a *App) existingMatchKeys() (map[string]struct{}, error) {
 	for _, r := range snap.Unknowns {
 		keys[r.MatchKey] = struct{}{}
 	}
-	userData, err := a.store.LoadAllUserMatchData()
+	userData, err := store.LoadAllUserMatchData()
 	if err != nil {
 		return nil, fmt.Errorf("import: load user data: %w", err)
 	}
