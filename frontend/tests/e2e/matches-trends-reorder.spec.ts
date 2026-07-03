@@ -76,13 +76,14 @@ test.describe('Matches — Trends reorder', () => {
       grip.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }))
     })
 
-    // rank-ladder dropped in front of rank-delta (idx 2) → lands at idx 1
-    // after the source splice (was idx 0, before the target).
-    await expect.poll(() => order(page).then((o) => o.indexOf('rank-ladder'))).toBe(1)
+    // rank-ladder dropped in front of rank-delta (idx 3, after
+    // hero-winrate joined the default order) → lands at idx 2 after
+    // the source splice (was idx 0, before the target).
+    await expect.poll(() => order(page).then((o) => o.indexOf('rank-ladder'))).toBe(2)
 
     // The drag path persists too (same setOrder write as the keyboard path).
     await page.reload()
     await openTrends(page)
-    expect((await order(page)).indexOf('rank-ladder')).toBe(1)
+    expect((await order(page)).indexOf('rank-ladder')).toBe(2)
   })
 })

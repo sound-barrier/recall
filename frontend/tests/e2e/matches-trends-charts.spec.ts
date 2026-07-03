@@ -42,6 +42,8 @@ const match = (key: string, date: string, time: string, s: Stub) => ({
     map: 'rialto',
     playlist: 'competitive',
     role: s.role ?? 'tank',
+    // One hero per role so the win-rate-by-hero chart has series too.
+    hero: { tank: 'reinhardt', dps: 'ashe', support: 'juno' }[s.role ?? 'tank'],
     result: s.result ?? 'victory',
     date,
     finished_at: time,
@@ -55,7 +57,7 @@ const match = (key: string, date: string, time: string, s: Stub) => ({
 })
 
 // Two roles climbing over time + decisive results + modifiers — enough for
-// all five charts to have data.
+// all six charts to have data.
 const CORPUS = [
   match('m1', '2026-05-08', '20:00', { role: 'tank', rank: 'platinum', level: 4, progress: 20, change: 22, result: 'victory', modifiers: ['underdog', 'victory'] }),
   match('m2', '2026-05-09', '20:00', { role: 'tank', rank: 'platinum', level: 3, progress: 50, change: 25, result: 'victory', modifiers: ['unexpected', 'victory'] }),
@@ -71,7 +73,7 @@ function mockMatches(page: import('@playwright/test').Page, body: unknown) {
 }
 
 test.describe('Matches — Trends section', () => {
-  test('expands to render the five lazy-loaded trend charts', async ({ page }) => {
+  test('expands to render the six lazy-loaded trend charts', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
     await page.locator('#tab-matches').click()
@@ -88,9 +90,9 @@ test.describe('Matches — Trends section', () => {
     // Five labelled chart containers (Rank ladder, Win-rate, Rank delta,
     // Cumulative net, Modifiers), each with a painted canvas once the lazy
     // ECharts chunk resolves.
-    await expect(page.locator('.trend-card')).toHaveCount(5)
-    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(5)
-    await expect(page.locator('.trend-chart canvas')).toHaveCount(5)
+    await expect(page.locator('.trend-card')).toHaveCount(6)
+    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(6)
+    await expect(page.locator('.trend-chart canvas')).toHaveCount(6)
     await expect(page.locator('.trend-chart[aria-label="Rank progression over time, by role"]')).toBeVisible()
   })
 

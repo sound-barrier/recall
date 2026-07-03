@@ -65,6 +65,7 @@ function resetView(): void {
 
 const rankSeries = dossier.rankLadder
 const winrateSeries = dossier.rollingWinrate(windowSize)
+const heroWinrateSeries = dossier.heroRollingWinrate(windowSize)
 const rankDeltaSeries = dossier.rankDelta
 const cumulativeNetSeries = dossier.cumulativeNet
 const modifierFreqSeries = dossier.modifierFrequency
@@ -91,6 +92,11 @@ const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
     id: 'rolling-winrate', title: 'Rolling win-rate (%)', windowSelector: true,
     caption: `Rolling win rate over the last ${windowSize.value} matches, by role`, option: winrateOption(winrateSeries.value), hasData: someData(winrateSeries.value),
     empty: 'No decisive matches in the set.',
+  },
+  'hero-winrate': {
+    id: 'hero-winrate', title: 'Win-rate by hero', windowSelector: false,
+    caption: `Rolling win rate over the last ${windowSize.value} matches, per most-played hero`, option: winrateOption(heroWinrateSeries.value), hasData: someData(heroWinrateSeries.value),
+    empty: 'No decisive matches for any hero — nothing to chart yet.',
   },
   'rank-delta': {
     id: 'rank-delta', title: 'Rank delta per match', windowSelector: false,

@@ -6,6 +6,7 @@ import { usePersistedRef } from '@/composables/shared/usePersistedRef'
 const TREND_CHART_IDS = [
   'rank-ladder',
   'rolling-winrate',
+  'hero-winrate',
   'rank-delta',
   'cumulative-net',
   'modifiers',
