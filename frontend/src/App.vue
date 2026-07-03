@@ -41,11 +41,16 @@ import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 // chunk lands before the delay elapses and the fallback never
 // renders, keeping the snappy-feel intact.
 import ViewLazyFallback from '@/components/shared/ViewLazyFallback.vue'
+import ViewLoadError from '@/components/shared/ViewLoadError.vue'
 const VIEW_LAZY_DELAY = 220
 function lazyView(loader: () => Promise<{ default: Component }>) {
   return defineAsyncComponent({
     loader,
     loadingComponent: ViewLazyFallback,
+    // A failed chunk load (network drop, or a redeploy that
+    // invalidated the old hashed filenames) renders a reload
+    // affordance instead of a permanent skeleton.
+    errorComponent: ViewLoadError,
     delay: VIEW_LAZY_DELAY,
   })
 }
