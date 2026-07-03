@@ -47,16 +47,26 @@ jobs:
           # Only Go — the corpus needs no linters or frontend toolchain.
           install_args: go
 
-      - name: Install Tesseract
-        # The goldens are baselined against the TESSERACT_VERSION
-        # major.minor pinned (informationally) in mise.toml [env]; a
-        # drifted major.minor means "re-baseline the goldens", not a
-        # parser regression — the version line in the log is the first
-        # thing to check on an unexplained corpus failure.
+      - name: Install Tesseract (baseline major.minor)
+        # The goldens are baselined against the TESSERACT_VERSION pinned
+        # in mise.toml [env] (5.5.2, the maintainer's macOS/Homebrew
+        # build). ubuntu-latest's stock apt package is 5.3.x, whose OCR
+        # output drifts enough to flip a quarter of the corpus — the
+        # alex-p PPA tracks current upstream. The guard fails the job
+        # LOUDLY on a major.minor mismatch so environment drift can
+        # never masquerade as a parser regression; an intentional
+        # baseline bump means re-baseline the goldens + the mise pin.
         run: |
+          sudo add-apt-repository -y ppa:alex-p/tesseract-ocr5
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr
           tesseract --version | head -1
+          want="$(grep -E '^TESSERACT_VERSION' mise.toml | grep -oE '[0-9]+\.[0-9]+' | head -1)"
+          got="$(tesseract --version 2>&1 | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1)"
+          if [ "$got" != "$want" ]; then
+            echo "::error::Tesseract $got installed, but the goldens are baselined on $want (TESSERACT_VERSION in mise.toml) — fix the install source or re-baseline."
+            exit 1
+          fi
 
       - name: Run the golden corpus
         run: go test -run 'TestParseScreenshot_GoldenFiles' -v -timeout 35m ./pkg/parser/
