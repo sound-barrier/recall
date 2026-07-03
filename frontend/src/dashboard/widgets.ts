@@ -35,6 +35,7 @@ import AvgGameLengthWidget from '@/components/dashboard/widgets/AvgGameLengthWid
 import LeaverRateWidget from '@/components/dashboard/widgets/LeaverRateWidget.vue'
 import SessionsWidget from '@/components/dashboard/widgets/SessionsWidget.vue'
 import ModifierBreakdownWidget from '@/components/dashboard/widgets/ModifierBreakdownWidget.vue'
+import LossQualityWidget from '@/components/dashboard/widgets/LossQualityWidget.vue'
 import UphillBattleWidget from '@/components/dashboard/widgets/UphillBattleWidget.vue'
 import ReversalWidget from '@/components/dashboard/widgets/ReversalWidget.vue'
 
@@ -260,6 +261,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'leaver-rate',         eyebrow: 'Leaver rate',            shape: 'kpi',       defaultRow: 1, component: LeaverRateWidget,      config: EMPTY_SCHEMA          },
   { id: 'sessions',            eyebrow: 'Play sessions',          shape: 'kpi',       defaultRow: 1, component: SessionsWidget,        config: EMPTY_SCHEMA          },
   { id: 'modifier-breakdown',  eyebrow: 'Match modifiers',        shape: 'breakdown', defaultRow: 2, component: ModifierBreakdownWidget, config: EMPTY_SCHEMA       },
+  { id: 'loss-quality',        eyebrow: 'Loss quality',           shape: 'breakdown', defaultRow: 2, component: LossQualityWidget,      config: EMPTY_SCHEMA       },
   { id: 'uphill-battle',       eyebrow: 'Uphill battles',         shape: 'kpi',       defaultRow: 1, component: UphillBattleWidget,    config: EMPTY_SCHEMA          },
   { id: 'reversal',            eyebrow: 'Reversals',              shape: 'kpi',       defaultRow: 1, component: ReversalWidget,        config: EMPTY_SCHEMA          },
 ]
