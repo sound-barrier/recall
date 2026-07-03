@@ -161,6 +161,15 @@ last so the schema is frozen before the baseline is captured.
 
 ## 10. Smaller catalogued items (do opportunistically)
 
+- Pre-push hook race: lefthook runs the pre-push commands in parallel, and
+  playwright-smoke's harness rebuilds frontend/dist (vite empties the outDir
+  at build start) while lint-go-full typechecks `//go:embed all:frontend/dist`
+  — when the timing lines up the embed sees an empty dist and the push fails
+  spuriously (bit three pushes during the audit phases). Fix: build the smoke
+  harness's frontend into a temp outDir, or serialize the two hooks
+  (lefthook `piped`), or drop `--emptyOutDir`. Workaround per the hook's own
+  docs: `LEFTHOOK_EXCLUDE=playwright-smoke git push`. (S)
+
 - Store methods return bare driver errors with no operation context — wrap at
   the method boundary (`fmt.Errorf("load match queues: %w", err)`); start
   with the seven `aggregateAll` load sites. (S)
