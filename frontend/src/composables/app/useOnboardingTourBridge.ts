@@ -1,6 +1,7 @@
 import { nextTick } from 'vue'
 
 import { SeedTestProfile, SwitchProfile } from '@/api-client'
+import { cacheActiveProfile } from '@/composables/shared/profileStorage'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
@@ -22,6 +23,7 @@ export function useOnboardingTourBridge() {
     await SeedTestProfile()
     try { localStorage.setItem(ONBOARDING_RESUME_KEY, String(resumeStepIndex)) } catch (_) { /* ignore */ }
     await SwitchProfile('test')
+    cacheActiveProfile('test')
     window.location.reload()
   }
 

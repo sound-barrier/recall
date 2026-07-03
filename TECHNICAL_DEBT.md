@@ -154,9 +154,6 @@ last so the schema is frozen before the baseline is captured.
 
 ## 10. Smaller catalogued items (do opportunistically)
 
-- Profile-scoped localStorage: `recall.lastParsedAt` and friends are global
-  while the UI presents them as per-profile; ~33 `recall.*` keys have no
-  versioning convention. (M)
 - Four SFCs over the 500-line cap were never adjudicated by §3: MatchesTable
   (657), AboutModal (647), MatchHeroModeBand (643), MatchLeafRow (637) —
   adjudicate, don't blind-split. (S)

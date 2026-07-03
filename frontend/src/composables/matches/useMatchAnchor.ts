@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue'
 
 import { usePersistedRef } from '@/composables/shared/usePersistedRef'
+import { profileScopedKey } from '@/composables/shared/profileStorage'
 
 // "Since this match" anchor — the user marks a single match as a
 // reference point (post-review milestone, coaching checkpoint, new
@@ -21,7 +22,11 @@ import { usePersistedRef } from '@/composables/shared/usePersistedRef'
 // `Ref<string>` instead would let consumers write to it directly
 // and bypass persistence.
 
-export const ANCHOR_STORAGE_KEY = 'recall.matches.sinceAnchor'
+// The pre-profile-scoping global key. Reads adopt its value when the
+// scoped key is empty (an upgrading install keeps its anchor — it
+// belonged to the only profile in practice); writes land on the
+// scoped key only.
+export const LEGACY_ANCHOR_STORAGE_KEY = 'recall.matches.sinceAnchor'
 
 export interface MatchAnchorApi {
   anchorKey: ComputedRef<string>
@@ -34,7 +39,10 @@ let cached: MatchAnchorApi | null = null
 export function useMatchAnchor(): MatchAnchorApi {
   if (cached) return cached
   const { value, set } = usePersistedRef<string>({
-    key: ANCHOR_STORAGE_KEY,
+    // Profile-scoped: the anchor names a match_key that exists only
+    // in the active profile's database (ledger section 10).
+    key: profileScopedKey('matches.sinceAnchor'),
+    legacyKeys: [LEGACY_ANCHOR_STORAGE_KEY],
     defaultValue: '',
     parse: (raw) => raw,
   })
