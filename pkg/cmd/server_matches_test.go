@@ -115,37 +115,38 @@ func TestDeleteMatchAnnotation_204(t *testing.T) {
 // applyMatchesPagination — unknown cursor.
 // ───────────────────────────────────────────────────────────────────
 
-// An unknown cursor (no row's MatchKey equals it) must fall through
-// to start=0 — i.e. return the corpus from the beginning, not an
-// empty page. This pins the back-compat: a cursor pointing at a row
-// that has since been deleted shouldn't strand the caller on an
-// empty list.
-func TestApplyMatchesPagination_UnknownCursorReturnsFromStart(t *testing.T) {
+// An unknown cursor (no row's MatchKey equals it) returns the EMPTY
+// page — the pagination terminator. The former behavior — silently
+// restarting at start=0 with a 200 — handed scripted pagers the full
+// corpus again on a stale or mistyped cursor, looping forever
+// (ledger section 10). Empty page over a 400 because the cursor
+// schema is an arbitrary string: a schema-valid value must not be
+// rejected (schemathesis positive-data check), and a stale cursor is
+// a legitimate mid-pagination state, not a malformed request.
+func TestApplyMatchesPagination_UnknownCursorReturnsEmptyPage(t *testing.T) {
 	rows := []match.MatchRecord{
 		{MatchKey: "m1"},
 		{MatchKey: "m2"},
 		{MatchKey: "m3"},
 	}
 	out := cmd.ApplyMatchesPagination(rows, 0, "does-not-exist")
-	if len(out) != 3 {
-		t.Errorf("unknown cursor returned %d rows, want 3 (full corpus from start)", len(out))
+	if len(out) != 0 {
+		t.Errorf("unknown cursor returned %d rows — the pager would silently restart at page 1", len(out))
+	}
+	if out == nil {
+		t.Error("empty page must be non-nil (JSON [] wire shape)")
 	}
 }
 
-// Belt-and-suspenders: limit alongside an unknown cursor still slices
-// from the start so the caller gets a real page rather than nothing.
-func TestApplyMatchesPagination_UnknownCursorWithLimitSlicesFromStart(t *testing.T) {
+// A known cursor on the last row also yields the empty terminator.
+func TestApplyMatchesPagination_LastRowCursorReturnsEmptyPage(t *testing.T) {
 	rows := []match.MatchRecord{
 		{MatchKey: "m1"},
 		{MatchKey: "m2"},
-		{MatchKey: "m3"},
 	}
-	out := cmd.ApplyMatchesPagination(rows, 2, "does-not-exist")
-	if len(out) != 2 {
-		t.Errorf("got %d rows, want 2 (limit applied from start)", len(out))
-	}
-	if len(out) > 0 && out[0].MatchKey != "m1" {
-		t.Errorf("got first key %q, want m1", out[0].MatchKey)
+	out := cmd.ApplyMatchesPagination(rows, 2, "m2")
+	if out == nil || len(out) != 0 {
+		t.Errorf("got %v, want an empty non-nil page (JSON [] wire shape)", out)
 	}
 }
 

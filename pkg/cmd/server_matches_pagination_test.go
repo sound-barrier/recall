@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"recall/pkg/cmd"
@@ -91,6 +92,46 @@ func TestGetMatches_CursorPaging_PageBoundary(t *testing.T) {
 				t.Errorf("page 2 contained %q from page 1 — cursor must be exclusive", k)
 			}
 		}
+	}
+}
+
+// An unknown cursor returns the EMPTY page, never a silent restart at
+// page 1 (ledger section 10): the restart handed a scripted pager the
+// full corpus again with a 200, so a mistyped or stale cursor looped
+// forever. The empty page is the pagination terminator — the pager
+// stops cleanly and re-anchors from the first page if it expected
+// more. (Not a 400: the cursor schema is an arbitrary string, so a
+// schema-valid value must not be rejected — schemathesis's
+// positive-data check — and a row deleted between pages is a
+// legitimate mid-pagination state, not a malformed request.)
+func TestGetMatches_UnknownCursor_ReturnsEmptyPage(t *testing.T) {
+	fs := dbtest.New()
+	_, mux := newTestApp(t, fs)
+	seedMatches(t, fs, "m1", "m2", "m3")
+
+	rec := get(t, mux, "/api/v1/matches?cursor=does-not-exist")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != "[]" {
+		keys := decodeMatchKeys(t, rec.Body.Bytes())
+		t.Fatalf("unknown cursor returned %d rows %v, want the empty [] page", len(keys), keys)
+	}
+}
+
+// A stale cursor with a limit is still the empty terminator — the
+// limit slice must never mask a restart.
+func TestGetMatches_UnknownCursorWithLimit_ReturnsEmptyPage(t *testing.T) {
+	fs := dbtest.New()
+	_, mux := newTestApp(t, fs)
+	seedMatches(t, fs, "m1", "m2", "m3")
+
+	rec := get(t, mux, "/api/v1/matches?limit=2&cursor=does-not-exist")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != "[]" {
+		t.Fatalf("got body %s, want []", body)
 	}
 }
 

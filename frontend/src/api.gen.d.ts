@@ -2520,6 +2520,11 @@ export interface operations {
                 /**
                  * @description The previous page's last `match_key`. Returned records
                  *     start strictly after it. Empty / absent = first page.
+                 *     A cursor matching no record (mistyped, or the row was
+                 *     deleted between pages) returns the empty page — the
+                 *     pagination terminator. Re-anchor from the first page if
+                 *     more records were expected; pagination never silently
+                 *     restarts.
                  */
                 cursor?: string;
             };
