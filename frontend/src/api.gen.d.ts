@@ -1461,7 +1461,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/_screenshot/{filename}": {
+    "/_screenshot/{dir_id}/{filename}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1469,13 +1469,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Serve a screenshot image from the configured folder
-         * @description Streams a file from the configured screenshots directory. The
-         *     `{filename}` parameter must be a plain basename; path traversal
-         *     (`..`, `/`, `\`) is rejected. Used by the frontend to render
-         *     `<img>` previews without round-tripping bytes through the JSON
-         *     bridge. Sits outside `/api/v1/` because it serves binary
-         *     content, not JSON resources.
+         * Serve a screenshot image from a recorded screenshots folder
+         * @description Streams a file from the screenshots directory identified by
+         *     `{dir_id}` — the `screenshots_dirs` row id recorded on the
+         *     screenshot's DB row, or `0` for "the currently configured
+         *     folder" (unparsed files in the watched dir). The `{filename}`
+         *     parameter must be a plain basename; path traversal (`..`, `/`,
+         *     `\`) is rejected. Used by the frontend to render `<img>`
+         *     previews without round-tripping bytes through the JSON bridge.
+         *     Sits outside `/api/v1/` because it serves binary content, not
+         *     JSON resources.
          */
         get: operations["GetScreenshot"];
         put?: never;
@@ -4340,6 +4343,11 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /**
+                 * @description screenshots_dirs row id the file lives under; 0 means the currently configured screenshots folder.
+                 * @example 0
+                 */
+                dir_id: number;
                 /**
                  * @description URL-encoded basename of a file in the screenshots folder.
                  * @example Overwatch%202%20Screenshot%202026.05.10%20-%2021.49.34.41.png
