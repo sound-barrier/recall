@@ -11,8 +11,10 @@ import { matchEpoch } from '@/match/match-trends-helpers'
 
 // A gap longer than this between consecutive matches starts a new play
 // session. Three hours comfortably separates evening sessions from the
-// next day without splitting a bathroom break mid-grind.
-const SESSION_GAP_HOURS = 3
+// next day without splitting a bathroom break mid-grind. Exported so
+// the list's session grouping splits on the SAME rule the momentum
+// widgets count by.
+export const SESSION_GAP_HOURS = 3
 
 const HOUR_MS = 3_600_000
 const DAY_MS = 86_400_000

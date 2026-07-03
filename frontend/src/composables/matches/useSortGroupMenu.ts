@@ -17,6 +17,7 @@ const GROUP_LABELS: Record<GroupBy, string> = {
   week:       'by week',
   month:      'by month',
   year:       'by year',
+  session:    'by session',
   provenance: 'by provenance',
 }
 

@@ -18,7 +18,7 @@ import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 // as inline radio segmented buttons.
 
 type SortOrder = 'newest' | 'oldest'
-type GroupBy   = 'none' | 'day' | 'week' | 'month' | 'year' | 'provenance'
+type GroupBy   = 'none' | 'day' | 'week' | 'month' | 'year' | 'session' | 'provenance'
 
 const props = defineProps<{
   open:    boolean
@@ -96,6 +96,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   { value: 'week',       label: 'By week' },
   { value: 'month',      label: 'By month' },
   { value: 'year',       label: 'By year' },
+  { value: 'session',    label: 'By session' },
   { value: 'provenance', label: 'By provenance' },
 ]
 </script>
