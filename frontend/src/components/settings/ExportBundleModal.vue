@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 
 import { useScrollLock } from '@/composables/shared/useScrollLock'
 
@@ -55,16 +55,27 @@ const busy           = ref(false)
 
 // Reset every time the modal re-opens so a previous run's toggles
 // don't surprise the user.
-watch(() => props.open, (next) => {
+watch(() => props.open, async (next, prev) => {
   if (next) {
     filename.value       = defaultFilename()
     includeHidden.value  = false
     includeUnknown.value = false
     busy.value           = false
+    lastFocus.value =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    document.addEventListener('keydown', onKeydown)
+    await nextTick()
+    inputEl.value?.focus({ preventScroll: true })
+  } else if (prev) {
+    document.removeEventListener('keydown', onKeydown)
+    await nextTick()
+    lastFocus.value?.focus()
+    lastFocus.value = null
   }
 })
 
 const inputEl = ref<HTMLInputElement | null>(null)
+const lastFocus = ref<HTMLElement | null>(null)
 
 // Final count includes the checkbox selection plus the toggled-in
 // sets. Doesn't dedupe (the backend handles dedup), but the rough
@@ -124,13 +135,8 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-onMounted(async () => {
-  document.addEventListener('keydown', onKeydown)
-  await nextTick()
-  inputEl.value?.focus({ preventScroll: true })
-})
-
 onBeforeUnmount(() => {
+  // The open-watch owns add/remove; this covers unmount-while-open.
   document.removeEventListener('keydown', onKeydown)
 })
 </script>
