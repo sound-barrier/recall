@@ -50,7 +50,8 @@ func handleCreateProfile(a *app.App) http.HandlerFunc {
 		}
 		if writeError(w, r, a.CreateProfile(body.Name),
 			errStatus{app.ErrInvalidProfileName, probInvalidBody},
-			errStatus{app.ErrProfileExists, probConflict}) {
+			errStatus{app.ErrProfileExists, probConflict},
+			errStatus{app.ErrProfileSwitchDuringParse, probConflict}) {
 			return
 		}
 		// Content-Type MUST be set before WriteHeader — once the
@@ -91,7 +92,8 @@ func handleSwitchProfile(a *app.App) http.HandlerFunc {
 		}
 		if writeError(w, r, a.SwitchProfile(body.Name),
 			errStatus{app.ErrInvalidProfileName, probInvalidBody},
-			errStatus{app.ErrProfileNotFound, probNotFound}) {
+			errStatus{app.ErrProfileNotFound, probNotFound},
+			errStatus{app.ErrProfileSwitchDuringParse, probConflict}) {
 			return
 		}
 		writeJSON(w, r, a.GetProfiles(), nil)
@@ -115,7 +117,8 @@ func handleRenameProfile(a *app.App) http.HandlerFunc {
 		if writeError(w, r, a.RenameProfile(old, body.NewName),
 			errStatus{app.ErrInvalidProfileName, probInvalidBody},
 			errStatus{app.ErrProfileNotFound, probNotFound},
-			errStatus{app.ErrProfileExists, probConflict}) {
+			errStatus{app.ErrProfileExists, probConflict},
+			errStatus{app.ErrProfileSwitchDuringParse, probConflict}) {
 			return
 		}
 		writeJSON(w, r, a.GetProfiles(), nil)
