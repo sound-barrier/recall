@@ -3,6 +3,7 @@ import type { MatchRecord } from '@/api-client'
 import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { RESULT_MODIFIERS } from '@/match/match-trends-helpers'
+import { lossQuality, type LossQuality } from '@/match/match-loss-quality'
 import {
   type BreakdownEntry,
   type ModifierRecord,
@@ -119,6 +120,33 @@ export function useDossierQueries(
   // it counts toward each: the buckets overlap by design. Victory / defeat
   // / draw are excluded (they're the result, already the headline W/L/D).
   // Ranked by frequency. Drives the opt-in "Match modifiers" breakdown.
+  // Loss-quality buckets over the narrowed set's defeats (close /
+  // normal / stomp per match-loss-quality's margin rule). `unscored`
+  // counts defeats whose final_score didn't classify, so the widget
+  // can be honest about coverage instead of silently shrinking the
+  // denominator.
+  function lossQualityBreakdown(): ComputedRef<{ rows: BreakdownEntry[]; unscored: number }> {
+    return computed(() => {
+      const counts: Record<LossQuality, number> = { close: 0, normal: 0, stomp: 0 }
+      let unscored = 0
+      let losses = 0
+      for (const r of records.value) {
+        if (r.data?.result !== 'defeat') continue
+        losses++
+        const q = lossQuality(r.data?.result, r.data?.final_score)
+        if (q === null) unscored++
+        else counts[q]++
+      }
+      const rows = (['close', 'normal', 'stomp'] as const).map((key) => ({
+        key,
+        total: counts[key],
+        winrate: 0,
+        share: losses === 0 ? 0 : Math.round((counts[key] / losses) * 100),
+      }))
+      return { rows, unscored }
+    })
+  }
+
   function modifierBreakdown(
     opts: MaybeRefOrGetter<{ limit: number }>,
   ): ComputedRef<BreakdownEntry[]> {
@@ -685,6 +713,7 @@ export function useDossierQueries(
     topByCount,
     winrateBy,
     modifierBreakdown,
+    lossQualityBreakdown,
     modifierRecord,
     withWhomBreakdown,
     heroGameModeCounts,
