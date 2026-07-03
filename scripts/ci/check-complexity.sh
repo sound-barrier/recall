@@ -45,8 +45,12 @@ echo "── Go (gocyclo -over ${THRESHOLD}) ───────────�
 # we swallow that and a stderr from its missing-import warnings on a
 # barely-bootstrapped module. The exclusion at the end is for the
 # flatted stub Go's walker would otherwise pick up.
+# gocyclo is invoked with a relative root, so paths print WITHOUT a
+# leading slash — anchor the filter accordingly (the old
+# "/frontend/node_modules/" pattern never matched anything). tmp/ and
+# spike/ are scratch + spike code, not shipped surface.
 "$GOCYCLO" -over "$THRESHOLD" . 2>/dev/null \
-  | grep -v "/frontend/node_modules/" \
+  | grep -vE '(^|[[:space:]])(frontend/node_modules|tmp|spike)/' \
   || echo "(no Go functions above ${THRESHOLD})"
 
 echo
