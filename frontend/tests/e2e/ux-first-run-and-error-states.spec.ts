@@ -140,4 +140,32 @@ test.describe('error banner — retry CTA on load failures', () => {
     await expect.poll(() => calls).toBeGreaterThanOrEqual(2)
     await expect(banner).toBeHidden()
   })
+
+  test('error banner stays announced and reachable while a modal is open', async ({ page }) => {
+    // Every load fails → the banner persists for the whole test.
+    await page.route('**/api/v1/matches', (route: Route) =>
+      route.fulfill({ status: 500, body: 'boom' }))
+    await page.route('**/api/v1/profiles', (r) => r.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ active: 'main', profiles: ['main'] }),
+    }))
+
+    await page.goto('/')
+    const banner = page.locator('[data-testid="error-banner"]')
+    await expect(banner).toBeVisible()
+    // A failure is an announcement, not ambient chrome.
+    await expect(banner).toHaveAttribute('role', 'alert')
+
+    // Open the About modal — the page background freezes (inert +
+    // aria-hidden). The error surface must live ABOVE that layer: still
+    // visible, still dismissible. Pre-fix the banner sat inside the
+    // frozen container, so this dismiss click was unreachable.
+    await page.locator('.app-menu-trigger').click()
+    await page.locator('[data-app-menu-about]').click()
+    await expect(page.locator('[data-about-modal]')).toBeVisible()
+
+    await expect(banner).toBeVisible()
+    await page.locator('[data-testid="error-dismiss"]').click()
+    await expect(banner).toBeHidden()
+  })
 })

@@ -112,6 +112,13 @@ useAppBoot()
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
 
+    <!-- Failure announcement layer. Self-gates on a non-empty error and
+         renders OUTSIDE the freezable container: an API failure while a
+         modal is open must stay visible, announced (role=alert), and
+         dismissible — inside .container it inherited inert + aria-hidden
+         whenever backgroundFrozen flipped. -->
+    <ErrorBanner />
+
     <div class="container" :inert="backgroundFrozen || undefined" :aria-hidden="backgroundFrozen ? 'true' : undefined">
       <!-- Self-gates on a broken OCR install; renders above the masthead. -->
       <SystemAlertBanner />
@@ -120,9 +127,6 @@ useAppBoot()
 
       <!-- Self-gates on the 90-day overdue check (reads updateInfo itself). -->
       <UpdateReminderBanner />
-
-      <!-- Self-gates on a non-empty error. -->
-      <ErrorBanner />
 
       <!-- <main> is the page's primary landmark. The skip-link at the
            top of .app jumps focus here so keyboard users can bypass the
