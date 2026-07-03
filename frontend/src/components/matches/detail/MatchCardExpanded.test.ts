@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import type { MatchRecord } from '@/api'
+
+// The nested MatchJournal now writes annotations store-direct through
+// useMatchActions (for the saved-pulse persistence receipt). These tests
+// pin MatchCardExpanded's own contract, so stub the action layer rather
+// than standing up Pinia + the api seam.
+vi.mock('@/composables/matches/useMatchActions', () => ({
+  useMatchActions: () => ({
+    onSetMatchAnnotation: vi.fn().mockResolvedValue(true),
+  }),
+}))
 
 // MatchCardExpanded owns annotation draft state, the leaver-chooser
 // chips, heroes-played collapse, and the sources block. These tests
