@@ -26,10 +26,13 @@ The 2026-07-02 full audit (49 verified findings; report archived at
 picture, and its Phase-0 quick-win sweep landed 17 fixes across db/app/
 frontend/CI. What remains: **activate the migration framework before the tag
 (section 5 — the deliberate *last* 1.0 commit)**, and the audit findings
-still catalogued in sections 8-10 below (the data-fidelity and
-gates-that-never-ran sections, 6-7, were paid in full by the Phase-2 PR:
-v2 export bundles carry the user layer, the golden corpus runs on a
-scheduled lane, and the Store contract suite pins Fake↔SQLStore parity). The pre-tag coverage lift
+still catalogued in sections 9-10 below. Sections 6-7 were paid by the
+Phase-2 PR (v2 export bundles, the golden-corpus lane, the Store contract
+suite); section 8 by the Phase-3 PR (the narrow clause registry killed
+the enumeration-spread bug class and its McCabe cluster, the dossier
+bands share one header, each store owns its boot loader, api.ts uses the
+generated wire types) along with §9's parse-loop cost (one correlation
+snapshot per run). The pre-tag coverage lift
 landed on the genuinely consequential gap (the read-path sidecar/override
 attach in `pkg/aggregate`, 75% → ~90%); the named infra packages that stay
 thin do so structurally, not for want of a test (see §3). Everything else
@@ -149,31 +152,8 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
-## 8. Frontend structural debt
-
-- **Narrow clause registry** — the filter-clause enumeration is spread across
-  ~8 parallel lists in 5+ files (state factory, types, `passesNarrow`,
-  `activeClauses`, `clauseLabel`, `clearClause`, preset serialize/apply,
-  popover markup). It already shipped the dropped-preset-dimensions bug and
-  is what the McCabe 43/33/25/21 cluster actually measures. Fix shape: one
-  declarative clause table (`{id, state, predicate, label, clear, serialize}`)
-  driving every consumer. **Effort:** L.
-- **Dossier band header furniture is triplicated** (window picker, legend,
-  gear + active dot, reset) across MatchTimelineHeader / MatchMapRoleBand /
-  MatchHeroModeBand — rule of three is met; extract a `DossierBandHeader`.
-  **Effort:** M.
-- **`matchesStore.load()` is the de-facto boot coordinator** — it hydrates
-  the settings store + `appStore.dataLocation`, contradicting the documented
-  `useAppBoot` fan-out. Move the cross-store hydration. **Effort:** M.
-- **`api.ts` hand-duplicates generated wire types** (`GameDataStatus`,
-  `UpdateInfo`, `DataUpdateResult`) that exist in `api.gen.d.ts`. Import from
-  the generated schema. **Effort:** S.
-
 ## 9. Read/parse-path scalability (bites at ~10k matches)
 
-- **Parse loop is O(files × total rows)** — two full-DB `LoadAll`
-  materializations per screenshot (`pkg/app/parse.go`). Maintain the
-  correlation snapshot incrementally across the run. **Effort:** M-L.
 - **SSE terminal events can drop** — the hub's non-blocking send drops
   `parse-complete` on a full buffer with no client resync while connected,
   stranding the parse spinner. Guarantee delivery for terminal events (drop
