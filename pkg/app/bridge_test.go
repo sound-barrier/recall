@@ -7,6 +7,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"recall/pkg/db"
+	"recall/pkg/gamedata"
 )
 
 // Test-only bridges for the external app_test package. pkg/app is the core
@@ -86,3 +87,10 @@ func AppParseCancelMu(a *App) *sync.Mutex       { return &a.parseCancelMu }
 // SseMsg aliases the unexported SSE message envelope (exported fields) so the
 // SSE test can type its channels.
 type SseMsg = sseMsg
+
+// Manifest IO at the historical zero-config signatures — production
+// reaches the manifest through pkg/gamedata directly; only tests
+// want the appBaseDir()-resolved convenience.
+func LoadManifest() (DataManifest, error) { return gamedata.LoadManifest(appBaseDir()) }
+
+func SaveManifest(m DataManifest) error { return gamedata.SaveManifest(appBaseDir(), m) }
