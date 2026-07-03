@@ -53,8 +53,14 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
     // Clear any leftover anchor from previous specs so the
-    // "no anchor" branch in the narrow panel is observable.
-    await page.evaluate(() => localStorage.removeItem('recall.matches.sinceAnchor'))
+    // "no anchor" branch in the narrow panel is observable. The
+    // anchor is profile-scoped (profileStorage.ts); the bare key is
+    // the pre-scoping legacy location reads still adopt.
+    await page.evaluate(() => {
+      const active = localStorage.getItem('recall.activeProfile') || 'main'
+      localStorage.removeItem(`recall.profiles.${active}.matches.sinceAnchor`)
+      localStorage.removeItem('recall.matches.sinceAnchor')
+    })
     await page.reload()
     await page.locator('#tab-matches').click()
   })
@@ -279,8 +285,12 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
     await expect(page.locator('text=Open a match')).toBeVisible()
     await expect(page.locator('[data-since-anchor-toggle]')).toHaveCount(0)
 
-    // localStorage was cleared too.
-    const stored = await page.evaluate(() => localStorage.getItem('recall.matches.sinceAnchor'))
+    // localStorage was cleared too — on the profile-scoped key,
+    // where all anchor writes land since the scoping migration.
+    const stored = await page.evaluate(() => {
+      const active = localStorage.getItem('recall.activeProfile') || 'main'
+      return localStorage.getItem(`recall.profiles.${active}.matches.sinceAnchor`)
+    })
     expect(stored).toBe('')
   })
 })
