@@ -322,12 +322,12 @@ test.describe('Geography — Map × Role band', () => {
 
   test('offers a 1M/3M/6M/12M window toggle, defaulting to 6M', async ({ page }) => {
     const band = page.locator('.match-map-role')
-    await expect(band.locator('.mr-window-btn')).toHaveText(['1M', '3M', '6M', '12M'])
-    await expect(band.locator('.mr-window-btn.active')).toHaveText('6M')
+    await expect(band.locator('.bh-window-btn')).toHaveText(['1M', '3M', '6M', '12M'])
+    await expect(band.locator('.bh-window-btn.active')).toHaveText('6M')
     // Switching to 1M keeps the (recent) corpus visible — the Rialto
     // support cell is still populated.
-    await band.locator('.mr-window-btn', { hasText: '1M' }).click()
-    await expect(band.locator('.mr-window-btn.active')).toHaveText('1M')
+    await band.locator('.bh-window-btn', { hasText: '1M' }).click()
+    await expect(band.locator('.bh-window-btn.active')).toHaveText('1M')
     await expect(band.locator('.mr-cell[aria-label*="Support on Rialto"]')).toBeVisible()
   })
 })
