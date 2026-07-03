@@ -339,19 +339,33 @@ func parseMatchesPagination(r *http.Request) (int, string) {
 // drops everything up to + including the row matching `cursor` (if
 // set), then returns the next `limit` records. Pre-condition:
 // `limit > 0 || cursor != ""`.
+//
+// A non-empty cursor that matches no row (mistyped, or the row was
+// deleted between pages) returns the EMPTY page — the pagination
+// terminator — never a silent restart at page 1, which handed
+// scripted pagers the corpus again with a 200 forever (ledger
+// section 10). Empty-page over 400 because the cursor schema is an
+// arbitrary string: rejecting a schema-valid value trips
+// schemathesis's positive-data check, and a stale cursor is a
+// legitimate mid-pagination state, not a malformed request.
 func applyMatchesPagination(rows []match.MatchRecord, limit int, cursor string) []match.MatchRecord {
 	start := 0
 	if cursor != "" {
+		found := false
 		for i, r := range rows {
 			if r.MatchKey == cursor {
 				start = i + 1
+				found = true
 				break
 			}
 		}
+		if !found {
+			// Never `nil` so the JSON wire shape stays `[]` (the
+			// arrays-are-not-null rule in api-design.md).
+			return []match.MatchRecord{}
+		}
 	}
 	if start >= len(rows) {
-		// Never `nil` so the JSON wire shape stays `[]` (the
-		// arrays-are-not-null rule in api-design.md).
 		return []match.MatchRecord{}
 	}
 	tail := rows[start:]
