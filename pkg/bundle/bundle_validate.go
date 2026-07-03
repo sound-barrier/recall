@@ -1,4 +1,4 @@
-package app
+package bundle
 
 import (
 	"archive/zip"
@@ -73,7 +73,7 @@ type issueSink func(kind, msg string)
 //     key in manifest.screenshots
 //  10. data.json does NOT carry `screenshots_dirs` (the PII path
 //     map was intentionally stripped — bundles must be sanitized)
-func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
+func Validate(zipBytes []byte) ([]BundleIssue, error) {
 	zr, err := zip.NewReader(bytes.NewReader(zipBytes), int64(len(zipBytes)))
 	if err != nil {
 		return nil, fmt.Errorf("parse zip: %w", err)

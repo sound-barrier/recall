@@ -34,8 +34,6 @@ var (
 	CheckTesseract           = checkTesseract
 	RunWatchEvents           = runWatchEvents
 	PathIsMissingOrNotADir   = pathIsMissingOrNotADir
-	LooksLikeZIP             = looksLikeZIP
-	ReadZipFile              = readZipFile
 )
 
 // ── App-release update check (the gamedata seams moved to pkg/gamedata) ──
@@ -44,7 +42,6 @@ var ReleasesURL = &releasesURL
 // ── Other function-variable / tunable seams (pointers for save/swap/restore) ──
 var (
 	RevealCommand         = &revealCommand
-	MaxZipEntryBytes      = &maxZipEntryBytes
 	TesseractProbeTimeout = &tesseractProbeTimeout
 )
 

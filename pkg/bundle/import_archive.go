@@ -1,4 +1,4 @@
-package app
+package bundle
 
 import (
 	"archive/zip"
