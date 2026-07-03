@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import BandHeaderControls from '@/components/matches/dossier/BandHeaderControls.vue'
 import { useFullDossier, useGeographyDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
@@ -336,50 +337,23 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
         Map × role performance
       </h3>
 
-      <div class="mr-window" role="group" aria-label="Time window">
-        <button
-          v-for="m in WINDOWS"
-          :key="m"
-          type="button"
-          class="mr-window-btn"
-          :class="{ active: windowMonths === m }"
-          :aria-pressed="windowMonths === m"
-          :title="`Last ${m} month${m === 1 ? '' : 's'}`"
-          @click="pickWindow(m)"
-        >
-          {{ m }}M
-        </button>
-      </div>
-
-      <button
-        v-if="filterActive"
-        type="button"
-        class="mr-reset"
-        data-mr-reset
-        title="Clear the maps × roles filter this band applied"
-        @click="resetFilter"
-      >
-        ⟲ Reset
-      </button>
-
-      <button
-        type="button"
-        class="mr-gear"
-        :class="{ 'mr-gear-active': !cfg.isDefault.value }"
-        data-mr-config-trigger
-        :aria-label="cfg.isDefault.value ? 'Filter the Geography band' : 'Geography filters are active'"
-        :aria-expanded="configOpen"
-        :title="cfg.isDefault.value ? 'Filter by role, game mode, or map' : 'Geography filters active'"
-        @click="toggleConfig"
-      >
-        <span aria-hidden="true">⚙</span>
-      </button>
-
-      <ul class="mr-legend" aria-label="Cell-colour legend">
-        <li><span class="mr-swatch mr-loss" /> Losing</li>
-        <li><span class="mr-swatch mr-mixed" /> Mixed</li>
-        <li><span class="mr-swatch mr-win" /> Winning</li>
-      </ul>
+      <BandHeaderControls
+        :windows="WINDOWS"
+        :window-months="windowMonths"
+        :reset="filterActive
+          ? { title: 'Clear the maps × roles filter this band applied', attrs: { 'data-mr-reset': '' } }
+          : null"
+        :gear="{
+          active: !cfg.isDefault.value,
+          ariaLabel: cfg.isDefault.value ? 'Filter the Geography band' : 'Geography filters are active',
+          title: cfg.isDefault.value ? 'Filter by role, game mode, or map' : 'Geography filters active',
+          expanded: configOpen,
+          attrs: { 'data-mr-config-trigger': '' },
+        }"
+        @pick-window="pickWindow"
+        @reset="resetFilter"
+        @toggle-config="toggleConfig"
+      />
     </header>
 
     <div class="mr-scroll">
@@ -551,132 +525,6 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   text-transform: capitalize;
 }
 
-.mr-window {
-  display: inline-flex;
-  align-items: center;
-  margin-left: auto;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface-2);
-}
-
-.mr-window-btn {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  font-weight: 600;
-  padding: 0.22rem 0.55rem;
-  cursor: pointer;
-  border-right: 1px solid var(--border);
-  transition: color 140ms ease, background 140ms ease;
-}
-.mr-window-btn:last-child { border-right: 0; }
-.mr-window-btn:hover { color: var(--text); }
-
-/* Reset — clears this band's maps × roles filter without a scroll to the chips. */
-.mr-reset {
-  appearance: none;
-  margin-left: 0.4rem;
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  background: transparent;
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: 0.22rem 0.5rem;
-  cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
-}
-.mr-reset:hover { background: var(--accent); color: var(--primary-text-on-accent, var(--bg)); }
-.mr-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.mr-window-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.mr-window-btn.active {
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-/* Gear — opens the band's display-filter popover. An accent dot in the
-   corner signals when a filter is active. */
-.mr-gear {
-  position: relative;
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.4rem;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface-2);
-  color: var(--text-faint);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
-}
-.mr-gear:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-.mr-gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.mr-gear-active {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.mr-gear-active::after {
-  content: '';
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 1.5px var(--surface);
-}
-
-.mr-legend {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.mr-legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.mr-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
-}
-.mr-win { background: var(--win); }
-.mr-loss { background: var(--loss); }
-.mr-mixed { background: color-mix(in srgb, var(--win) 50%, var(--loss)); }
-
 .mr-scroll {
   padding-bottom: 0.2rem;
 }
@@ -834,9 +682,6 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 .mr-clear:hover { color: var(--text); background: color-mix(in srgb, var(--accent-soft) 55%, var(--accent)); }
 .mr-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-@media (width <= 720px) {
-  .mr-legend { display: none; }
-}
 
 /* ─── Selection: row/column label buttons + the combined-stats bar ─── */
 

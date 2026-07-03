@@ -69,7 +69,7 @@ test.describe('Geography band — gear filter', () => {
     await expect(page.locator(`${band} .mr-rowhead`)).toHaveCount(1)
     await expect(page.locator(`${band} .mr-rowhead`)).toHaveText('Support')
     // Gear flags an active filter.
-    await expect(page.locator('[data-mr-config-trigger]')).toHaveClass(/mr-gear-active/)
+    await expect(page.locator('[data-mr-config-trigger]')).toHaveClass(/bh-gear-active/)
   })
 
   test('game-mode filter narrows the column groups', async ({ page }) => {

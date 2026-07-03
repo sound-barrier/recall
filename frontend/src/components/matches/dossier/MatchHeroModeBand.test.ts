@@ -207,7 +207,7 @@ describe('MatchHeroModeBand', () => {
 
   it('renders the trailing-window picker defaulting to 6M and persists a pick', async () => {
     const wrapper = mountWidget(MatchHeroModeBand, { narrow: makeNarrow(), dossier: { heroGameModeCounts: [] } })
-    const buttons = wrapper.findAll('.hm-window-btn')
+    const buttons = wrapper.findAll('.bh-window-btn')
     expect(buttons).toHaveLength(4)
     expect(buttons[2]!.attributes('aria-pressed')).toBe('true')
     await buttons[1]!.trigger('click')
