@@ -28,6 +28,11 @@ export interface BreakdownEntry {
   // counts produces wildly bimodal 0 / 100 bars that don't
   // communicate volume.
   share: number
+  // Sample-size honesty (winrate rankings): true when the bucket has
+  // fewer than LOW_SAMPLE_N decisive matches — widgets render a
+  // visible caveat. `rank` is the Wilson lower bound the sort used.
+  lowSample?: boolean
+  rank?: number
 }
 
 // One modifier's record over the set — drives the Uphill Battle /
