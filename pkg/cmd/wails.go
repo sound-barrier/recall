@@ -92,6 +92,13 @@ func RunWails(a *app.App, assets embed.FS) {
 	sizeWindowToScreen(win)
 	setupSystemTray(wailsApp, win, a)
 
+	// In-app binary self-updater (Windows + Linux). Returns nil — leaving
+	// a.SelfUpdate unset and CanSelfUpdate false — on dev builds, macOS,
+	// and unwritable installs, so the About dialog falls back to the
+	// "Open release page" link there. Never reached in server mode
+	// (RunServer is a different entry point; this file is !serveronly).
+	a.SelfUpdate = initSelfUpdater(wailsApp, a)
+
 	// Wire native parse-complete notifications — but only when notifications can
 	// initialize without aborting (see notificationsSupported). Authorization is
 	// requested once on a goroutine (the macOS prompt needs the run loop that Run

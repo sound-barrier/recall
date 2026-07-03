@@ -92,6 +92,22 @@ Reviewed and deliberately left, so a future pass doesn't burn effort churning th
   parse-run-state / profile / tour / first-run wiring is more entangled with the
   shell's load/error/nav functions; extracting it further is opportunistic Boy-Scout
   work, not owed. The thin-shell target is already met.
+- **In-app self-update ships Windows + Linux only, three accepted gaps.** The
+  Wails v3 `pkg/updater` flow (About dialog → Install → SHA256SUMS-verified swap
+  → Restart) is deliberately gated off in three cases, all surfaced to the user
+  as the "Open release page" fallback (`can_self_update:false`): (1) **macOS is
+  excluded until a signing story exists** — an unsigned in-place swap would break
+  the Gatekeeper quarantine/notarization contract, and the maintainer's decision
+  is no signing certs; the dev-machine OS keeps the manual download. (2) The
+  **Windows HKCU `DisplayVersion` goes stale** after an in-app update (the
+  installer writes it, the updater doesn't) until the next installer run —
+  cosmetic, only visible in Add/Remove Programs. (3) **Linux swaps fail cleanly
+  with EXDEV when `/tmp` is a separate filesystem** (tmpfs) from the binary — the
+  updater's cross-device rename can't be atomic; it restores the backup and
+  reports the error rather than relaunching. Upstream-gap candidate to file, not
+  a bug in our integration. Dev builds and unwritable installs (legacy
+  machine-scope Program Files, deb-managed `/usr/local/bin`) also take the
+  fallback by the same `can_self_update` gate.
 - **Report-only cyclomatic-complexity** — the step stays REPORT-ONLY by design,
   but the numbers previously recorded here had drifted badly. The 2026-07-02
   audit re-ran the sweep: frontend max is **50** (`compareCol` in
@@ -176,11 +192,6 @@ last so the schema is frozen before the baseline is captured.
 
 So a future pass doesn't re-propose them:
 
-- **In-app auto-updater** — re-evaluated 2026-07 after the Wails v3 migration
-  (the old entry's rationale cited v2): v3 alpha still ships no first-party
-  binary updater, so the masthead flow stays "Check for updates → Open release
-  page." Revisit if wails v3 grows an updater story or the project adopts a
-  platform updater (Sparkle / winget) — not before.
 - **Real desktop-runtime e2e for Wails** — the `EventsOn`/`EventsOff` bridge,
   native dialogs, and watcher are only exercised on the released desktop app; a
   `wails dev` + CDP driver is cross-platform-fragile and not worth the harness

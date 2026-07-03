@@ -196,6 +196,23 @@ export function ApplyGameDataUpdate(): Promise<DataUpdateResult> {
   return _send<DataUpdateResult>('POST', '/api/v1/system/data-update')
 }
 
+// In-app binary self-update (Wails desktop, when UpdateInfo.can_self_update
+// is true). StartSelfUpdate kicks off a background check+download+install;
+// progress + outcome arrive as wails:updater:* events (see self-update-events).
+// RestartToApply swaps the staged binary and relaunches. Both are 202/void;
+// they resolve immediately (the work + restart happen out-of-band). A 409
+// (self-update unavailable) rejects with ApiError.
+export const StartSelfUpdate = _dualVoid<[]>(
+  'StartSelfUpdate',
+  'POST',
+  '/api/v1/system/self-update',
+)
+export const RestartToApply = _dualVoid<[]>(
+  'RestartToApply',
+  'POST',
+  '/api/v1/system/self-update/restart',
+)
+
 export function GetMatchResults(): Promise<MatchRecord[]> {
   if (IS_WAILS) return _wails('GetMatchResults')
   return _get<MatchRecord[]>('/api/v1/matches')

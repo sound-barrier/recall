@@ -24,6 +24,7 @@ const baseInfo: UpdateInfo = {
     added_heroes: ['Phoenix', 'Sojourn'],
     removed_maps: ['Hollywood'],
   },
+  can_self_update: false,
 }
 
 describe('AboutModal', () => {
@@ -222,5 +223,77 @@ describe('AboutModal', () => {
     })
     await wrapper.find('.update-check-modal-close').trigger('click')
     expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
+  describe('in-app self-update CTAs', () => {
+    // can_self_update true: an install that can swap its own binary.
+    const selfUpdatable: UpdateInfo = { ...baseInfo, can_self_update: true }
+    const idle = { phase: 'idle' as const, pct: null, error: '' }
+
+    it('shows Install update only when can_self_update is true', () => {
+      const on = mount(AboutModal, {
+        props: { open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: idle },
+      })
+      expect(on.find('[data-self-update-install]').exists()).toBe(true)
+
+      const off = mount(AboutModal, {
+        props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false, selfUpdate: idle },
+      })
+      expect(off.find('[data-self-update-install]').exists()).toBe(false)
+      // The release-page fallback is present in both cases.
+      expect(off.find('[data-update-check-open-release]').exists()).toBe(true)
+    })
+
+    it('emits install when Install update is clicked', async () => {
+      const wrapper = mount(AboutModal, {
+        props: { open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: idle },
+      })
+      await wrapper.find('[data-self-update-install]').trigger('click')
+      expect(wrapper.emitted('install')).toHaveLength(1)
+    })
+
+    it('replaces the button with a progressbar while a download is in flight', () => {
+      const wrapper = mount(AboutModal, {
+        props: {
+          open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
+          selfUpdate: { phase: 'downloading', pct: 42, error: '' },
+        },
+      })
+      const bar = wrapper.find('[data-self-update-progress]')
+      expect(bar.exists()).toBe(true)
+      expect(bar.attributes('role')).toBe('progressbar')
+      expect(bar.attributes('aria-valuenow')).toBe('42')
+      expect(bar.text()).toContain('42%')
+      // The install button is gone while busy.
+      expect(wrapper.find('[data-self-update-install]').exists()).toBe(false)
+    })
+
+    it('offers Restart now once the update is staged', async () => {
+      const wrapper = mount(AboutModal, {
+        props: {
+          open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
+          selfUpdate: { phase: 'ready', pct: 100, error: '' },
+        },
+      })
+      const restart = wrapper.find('[data-self-update-restart]')
+      expect(restart.exists()).toBe(true)
+      await restart.trigger('click')
+      expect(wrapper.emitted('restart')).toHaveLength(1)
+    })
+
+    it('shows an alert and a retry affordance in the error phase', () => {
+      const wrapper = mount(AboutModal, {
+        props: {
+          open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
+          selfUpdate: { phase: 'error', pct: null, error: 'checksum mismatch' },
+        },
+      })
+      const err = wrapper.find('[data-self-update-error]')
+      expect(err.exists()).toBe(true)
+      expect(err.attributes('role')).toBe('alert')
+      expect(err.text()).toContain('checksum mismatch')
+      // The Install control returns (labelled as a retry) so the user can retry.
+      expect(wrapper.find('[data-self-update-install]').text()).toContain('Try again')
+    })
   })
 })

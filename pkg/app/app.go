@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -100,6 +101,17 @@ type App struct {
 	// are broadcast over SSE instead of (or in addition to) the Wails
 	// runtime event bus.
 	SSEHub *SSEHub
+	// SelfUpdate is the in-app binary self-updater seam, wired by the
+	// Wails wrapper (pkg/cmd) only when self-update is possible on this
+	// install (desktop, non-dev, non-macOS, writable exe). Nil otherwise
+	// — including every server-mode binary — so StartSelfUpdate /
+	// RestartToApply and the CanSelfUpdate flag all key off one field.
+	// Exported like SSEHub (a setter would join the auto-bound Wails
+	// method surface). See pkg/app/selfupdate.go.
+	SelfUpdate SelfUpdater
+	// selfUpdateRunning single-flights StartSelfUpdate so a double-click
+	// can't launch two concurrent download+install passes.
+	selfUpdateRunning atomic.Bool
 	// startupErr records a non-recoverable Startup failure (profile
 	// init, --profile override, DB-dir create, DB open) without
 	// crashing the process. Callers can read it via StartupError()

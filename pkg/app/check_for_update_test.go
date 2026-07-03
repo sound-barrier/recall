@@ -74,6 +74,32 @@ func TestCheckForUpdate_CurrentVersionMatchesLatest(t *testing.T) {
 	}
 }
 
+func TestCheckForUpdate_CanSelfUpdate_FalseWithoutUpdater(t *testing.T) {
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.2.0")
+
+	got := (&app.App{}).CheckForUpdate()
+
+	if got.CanSelfUpdate {
+		t.Error("CanSelfUpdate: want false when no updater is wired (server mode / dev / macOS / unwritable)")
+	}
+}
+
+func TestCheckForUpdate_CanSelfUpdate_TrueWithUpdater(t *testing.T) {
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.2.0")
+
+	got := (&app.App{SelfUpdate: &fakeSelfUpdater{}}).CheckForUpdate()
+
+	if !got.CanSelfUpdate {
+		t.Error("CanSelfUpdate: want true when the updater seam is wired")
+	}
+}
+
 func TestCheckForUpdate_NewerReleaseAvailable(t *testing.T) {
 	srv := fakeReleasesServer(t, http.StatusOK,
 		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)

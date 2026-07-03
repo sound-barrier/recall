@@ -73,12 +73,13 @@ function defaultTesseract(overrides: Partial<TesseractStatus> = {}): TesseractSt
 
 function defaultUpdate(overrides: Partial<UpdateInfo> = {}): UpdateInfo {
   return {
-    checked:    false,
-    dev_build:  true,
-    available:  false,
-    latest:     '',
-    url:        '',
-    game_data:  { commit_sha: '', applied_commit: '', has_update: false },
+    checked:        false,
+    dev_build:      true,
+    available:      false,
+    latest:         '',
+    url:            '',
+    game_data:      { commit_sha: '', applied_commit: '', has_update: false },
+    can_self_update: false,
     ...overrides,
   }
 }

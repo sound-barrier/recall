@@ -92,4 +92,27 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		writeJSON(w, r, got, nil)
 	})
+	// Start an in-app binary self-update (Wails desktop only). Kicks off
+	// a background check+download+install; progress + outcome reach the UI
+	// as wails:updater:* events, so the response is 202 with no body. 409
+	// when self-update isn't possible here (server mode always, plus dev /
+	// macOS / unwritable installs) — the frontend shows CanSelfUpdate and
+	// won't call this then, but a scripted caller gets a clear problem.
+	apiMux.HandleFunc("POST /api/v1/system/self-update", func(w http.ResponseWriter, r *http.Request) {
+		if writeError(w, r, a.StartSelfUpdate(),
+			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable}) {
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	})
+	// Apply a staged self-update: swap the binary in place and relaunch.
+	// On success the process exits, so the client never sees a response;
+	// 202 is the "accepted, restarting" shape. 409 when no updater.
+	apiMux.HandleFunc("POST /api/v1/system/self-update/restart", func(w http.ResponseWriter, r *http.Request) {
+		if writeError(w, r, a.RestartToApply(),
+			errStatus{app.ErrSelfUpdateUnavailable, probSelfUpdateUnavailable}) {
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	})
 }

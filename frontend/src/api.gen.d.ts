@@ -1125,6 +1125,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/self-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start an in-app binary self-update
+         * @description Kicks off a background check-then-download-and-install of the
+         *     newest release for this platform, streamed and SHA-256-verified
+         *     against the release's `SHA256SUMS`. The effect is out-of-band:
+         *     progress and the terminal outcome arrive as `wails:updater:*`
+         *     events the About dialog renders, so the response is `202` with
+         *     no body. Single-flighted server-side — a second call while one
+         *     is in flight is a silent no-op.
+         *
+         *     `409` when self-update isn't possible on this install: server
+         *     mode (always), dev builds, macOS (no signing story), or an
+         *     install directory the running user can't overwrite (legacy
+         *     machine-wide Windows, or a root-owned `.deb`). The frontend
+         *     reads `can_self_update` on `GET /system/update` and won't call
+         *     this when it's false; the `409` is for scripted callers.
+         */
+        post: operations["StartSelfUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/self-update/restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply a staged self-update and relaunch
+         * @description Swaps the staged binary in place and relaunches. Called after a
+         *     prior self-update reaches the ready state (the
+         *     `wails:updater:update-ready` event). On success the process
+         *     exits and the new binary starts, so the client normally never
+         *     receives a response; `202` is the "accepted, restarting" shape.
+         *     `409` when no updater is wired (same gates as
+         *     `POST /api/v1/system/self-update`).
+         */
+        post: operations["RestartToApply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/data-location": {
         parameters: {
             query?: never;
@@ -1966,6 +2025,18 @@ export interface components {
              */
             release_notes?: string;
             game_data: components["schemas"]["GameDataStatus"];
+            /**
+             * @description True when this install can swap its own binary in place —
+             *     the Wails desktop build on a non-dev version, not macOS, in a
+             *     user-writable install directory. The About dialog shows an
+             *     "Install update" button (driving POST
+             *     /api/v1/system/self-update) only then; otherwise it falls
+             *     back to the "Open release page" link. Always false in server
+             *     mode, for dev builds, on macOS (no code-signing story), and
+             *     for legacy machine-wide Windows installs under Program Files.
+             * @example true
+             */
+            can_self_update: boolean;
         };
         /**
          * @description Comparison between the user's currently-loaded game data
@@ -4023,6 +4094,44 @@ export interface operations {
             422: components["responses"]["SHAVerificationFailed"];
             500: components["responses"]["InternalError"];
             502: components["responses"]["BadGateway"];
+        };
+    };
+    StartSelfUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Self-update started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    RestartToApply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restart accepted; the app is swapping + relaunching. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["Conflict"];
         };
     };
     GetDataLocation: {

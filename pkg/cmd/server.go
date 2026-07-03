@@ -359,13 +359,17 @@ type problemType struct {
 }
 
 var (
-	probInvalidBody    = problemType{"invalid-body", "Bad Request", http.StatusBadRequest}
-	probNotFound       = problemType{"not-found", "Not Found", http.StatusNotFound}
-	probConflict       = problemType{"conflict", "Conflict", http.StatusConflict}
-	probDataVerify     = problemType{"data-verification-failed", "Unprocessable Entity", http.StatusUnprocessableEntity}
-	probRestoreInvalid = problemType{"restore-invalid", "Unprocessable Entity", http.StatusUnprocessableEntity}
-	probBadGateway     = problemType{"upstream-fetch-failed", "Bad Gateway", http.StatusBadGateway}
-	probInternal       = problemType{"internal", "Internal Server Error", http.StatusInternalServerError}
+	probInvalidBody = problemType{"invalid-body", "Bad Request", http.StatusBadRequest}
+	probNotFound    = problemType{"not-found", "Not Found", http.StatusNotFound}
+	probConflict    = problemType{"conflict", "Conflict", http.StatusConflict}
+	// Self-update isn't possible on this install (server mode, dev build,
+	// macOS, or an unwritable install dir). 409 not 400: the request is
+	// well-formed, the server just can't act on it here.
+	probSelfUpdateUnavailable = problemType{"self-update-unavailable", "Conflict", http.StatusConflict}
+	probDataVerify            = problemType{"data-verification-failed", "Unprocessable Entity", http.StatusUnprocessableEntity}
+	probRestoreInvalid        = problemType{"restore-invalid", "Unprocessable Entity", http.StatusUnprocessableEntity}
+	probBadGateway            = problemType{"upstream-fetch-failed", "Bad Gateway", http.StatusBadGateway}
+	probInternal              = problemType{"internal", "Internal Server Error", http.StatusInternalServerError}
 )
 
 // fieldError is one entry in the `errors` extension member — a single offending
