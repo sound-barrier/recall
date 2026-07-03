@@ -25,10 +25,11 @@ The 2026-07-02 full audit (49 verified findings; report archived at
 `tmp/audit-2026-07-02.md`, regenerable from the audit PR) confirmed that
 picture, and its Phase-0 quick-win sweep landed 17 fixes across db/app/
 frontend/CI. What remains: **activate the migration framework before the tag
-(section 5 — the deliberate *last* 1.0 commit)**, and the audit's confirmed
-findings now catalogued in sections 6-10 below. Of those, section 6 (export
-bundles silently drop the user-edit layer) is the one worth weighing as
-pre-tag work — it is user-visible data fidelity. The pre-tag coverage lift
+(section 5 — the deliberate *last* 1.0 commit)**, and the audit findings
+still catalogued in sections 8-10 below (the data-fidelity and
+gates-that-never-ran sections, 6-7, were paid in full by the Phase-2 PR:
+v2 export bundles carry the user layer, the golden corpus runs on a
+scheduled lane, and the Store contract suite pins Fake↔SQLStore parity). The pre-tag coverage lift
 landed on the genuinely consequential gap (the read-path sidecar/override
 attach in `pkg/aggregate`, 75% → ~90%); the named infra packages that stay
 thin do so structurally, not for want of a test (see §3). Everything else
@@ -148,31 +149,6 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
-## 6. Export bundles silently drop the user layer
-
-`BundleDataV1` (`pkg/app/export_bundle.go`) carries only the five OCR row
-tables — no `user_match_data` + children, no annotations, no review / queue /
-play-mode state — yet its doc positions the bundle as "portable backup" and
-`manifest.match_count` counts manual matches it ships zero rows for, so
-`ValidateBundle` flags the bundle's own output with `match_count_mismatch`.
-A user round-tripping a bundle loses every hand-entered correction. (The
-full-DB `VACUUM INTO` backup is complete; this is the selective ZIP only.)
-Fix: add the user-layer tables to the bundle + import path (schema v2 or
-additive sections) and add the export→reimport override-survival e2e; at
-minimum stop counting manual keys and document the loss. **Effort:** M.
-
-## 7. Quality gates that don't actually run
-
-- **Golden parser corpus executes nowhere routinely** — CI runs `-short`
-  (skips it); local `task test-go` runs it into a >600s hang. The only
-  regression gate for the OCR heart of the app never fires. Add a
-  nightly/weekly lane (tesseract + fixtures submodule, no `-short`) or a
-  fast PR-time subset. **Effort:** M.
-- **`dbtest.Fake` has no contract test against `SQLStore`**, and one real
-  divergence exists: Fake stores `ignored_at` as RFC3339 while SQLite writes
-  `CURRENT_TIMESTAMP` format. Add a contract suite run against both
-  implementations; fix the format. **Effort:** M.
-
 ## 8. Frontend structural debt
 
 - **Narrow clause registry** — the filter-clause enumeration is spread across
@@ -182,10 +158,6 @@ minimum stop counting manual keys and document the loss. **Effort:** M.
   is what the McCabe 43/33/25/21 cluster actually measures. Fix shape: one
   declarative clause table (`{id, state, predicate, label, clear, serialize}`)
   driving every consumer. **Effort:** L.
-- **Errors are invisible mid-interaction** — the only global error surface
-  (`ErrorBanner`) has no live region and sits in the `inert` background
-  container whenever a modal is open. Give errors a toast/live-region layer
-  above modals. **Effort:** M.
 - **Dossier band header furniture is triplicated** (window picker, legend,
   gear + active dot, reset) across MatchTimelineHeader / MatchMapRoleBand /
   MatchHeroModeBand — rule of three is met; extract a `DossierBandHeader`.
@@ -202,9 +174,6 @@ minimum stop counting manual keys and document the loss. **Effort:** M.
 - **Parse loop is O(files × total rows)** — two full-DB `LoadAll`
   materializations per screenshot (`pkg/app/parse.go`). Maintain the
   correlation snapshot incrementally across the run. **Effort:** M-L.
-- **`LoadAll` is not snapshot-consistent** — 12 independent queries on pooled
-  connections; a concurrent write between them yields a torn aggregate. Run
-  the bulk load on one connection inside a read transaction. **Effort:** S-M.
 - **SSE terminal events can drop** — the hub's non-blocking send drops
   `parse-complete` on a full buffer with no client resync while connected,
   stranding the parse spinner. Guarantee delivery for terminal events (drop
