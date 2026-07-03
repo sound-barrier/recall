@@ -92,8 +92,8 @@ func (s *SQLStore) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey str
 // grouped by filename. Used by LoadAll to populate
 // Screenshots.AmbiguousCandidates in one bulk read instead of N
 // per-file lookups.
-func (s *SQLStore) loadAllAmbiguousCandidates() (map[string][]AmbiguousCandidate, error) {
-	rows, err := s.db.Query(
+func loadAllAmbiguousCandidates(q querier) (map[string][]AmbiguousCandidate, error) {
+	rows, err := q.Query(
 		`SELECT filename, match_key, distance_seconds FROM ambiguous_candidates
 		ORDER BY filename, distance_seconds ASC`,
 	)

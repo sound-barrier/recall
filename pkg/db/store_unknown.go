@@ -18,8 +18,8 @@ func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 	return err
 }
 
-func (s *SQLStore) loadUnknowns() ([]UnknownRow, error) {
-	rows, err := s.db.Query(
+func loadUnknowns(q querier) ([]UnknownRow, error) {
+	rows, err := q.Query(
 		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id
 		FROM unknown_screenshots ORDER BY id`,
 	)

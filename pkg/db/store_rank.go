@@ -60,8 +60,8 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 	return tx.Commit()
 }
 
-func (s *SQLStore) loadRanks() ([]RankRow, error) {
-	rows, err := s.db.Query(`SELECT
+func loadRanks(q querier) ([]RankRow, error) {
+	rows, err := q.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
 		rank, level, rank_progress, change_percent, result
 		FROM rank_screenshots ORDER BY id`)
@@ -91,7 +91,7 @@ func (s *SQLStore) loadRanks() ([]RankRow, error) {
 		byID[out[i].ID] = &out[i]
 	}
 
-	modRows, err := s.db.Query(`SELECT rank_screenshot_id, modifier FROM rank_modifiers`)
+	modRows, err := q.Query(`SELECT rank_screenshot_id, modifier FROM rank_modifiers`)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (s *SQLStore) loadRanks() ([]RankRow, error) {
 		return nil, err
 	}
 
-	srRows, err := s.db.Query(`SELECT rank_screenshot_id, hero, sr, change FROM rank_sr`)
+	srRows, err := q.Query(`SELECT rank_screenshot_id, hero, sr, change FROM rank_sr`)
 	if err != nil {
 		return nil, err
 	}

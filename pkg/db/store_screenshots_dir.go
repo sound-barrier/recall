@@ -79,9 +79,9 @@ func (s *SQLStore) PruneScreenshotsDirs() (int64, error) {
 	return res.RowsAffected()
 }
 
-func (s *SQLStore) loadScreenshotsDirs() (map[int64]string, error) {
+func loadScreenshotsDirs(q querier) (map[int64]string, error) {
 	out := map[int64]string{}
-	rows, err := s.db.Query(`SELECT id, path FROM screenshots_dirs`)
+	rows, err := q.Query(`SELECT id, path FROM screenshots_dirs`)
 	if err != nil {
 		return nil, err
 	}
