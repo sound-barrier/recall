@@ -581,22 +581,11 @@ jobs:
           real-assets: "true"
 
       - name: Install Tesseract (no-op for API surface but Startup checks for it)
-        # Assert installed major.minor matches TESSERACT_VERSION from mise.toml
-        # [env] (loaded into $GITHUB_ENV by mise-action) so OCR drift can't
-        # silently land between what dev baselined the goldens against and what
-        # CI runs. Loud-fail when Ubuntu bumps the package version — that's the
-        # signal to re-baseline goldens + bump the pin.
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends tesseract-ocr
-          installed=$(tesseract --version 2>&1 | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-          expected_mm=$(printf '%s' "$TESSERACT_VERSION" | cut -d. -f1-2)
-          installed_mm=$(printf '%s' "$installed" | cut -d. -f1-2)
-          if [ "$installed_mm" != "$expected_mm" ]; then
-            echo "::error::Tesseract major.minor mismatch: installed=$installed_mm expected=$expected_mm (TESSERACT_VERSION=$TESSERACT_VERSION in mise.toml). Bump the pin + re-baseline testdata/*.golden.json."
-            exit 1
-          fi
-          echo "Tesseract $installed matches pinned major.minor $expected_mm"
+        # Shared installer: alex-p PPA (stock apt tracks 5.3.x, the goldens
+        # are baselined on the 5.5.x mise.toml pin) + a loud major.minor
+        # guard. Same script the golden-corpus lane uses so every CI runner
+        # OCRs with the same engine the goldens were baselined against.
+        run: bash scripts/ci/install-tesseract.sh
 
       - name: Build + boot + fuzz + teardown via shared script
         # scripts/ci/check-api-drift.sh handles the build-serveronly →
