@@ -70,7 +70,7 @@ func (a *App) SwitchProfile(name string) error {
 	if a.profiles == nil {
 		return errors.New("profiles: not initialized")
 	}
-	if !containsProfile(a.profiles.List(), name) {
+	if !a.profiles.Contains(name) {
 		return fmt.Errorf("%w: %q", ErrProfileNotFound, name)
 	}
 	return a.activateAndReload(name)
