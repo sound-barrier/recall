@@ -232,7 +232,7 @@ jobs:
   # checkout is still in the scan path so syft's go.mod / package.json
   # scanners run too — the resulting SBOM is the union of both passes.
   sbom:
-    needs: [build, build-mac]
+    needs: [build, build-mac, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: read
