@@ -204,6 +204,14 @@ func scopeLabel(force bool) string {
 // running. On success it stamps the run-state snapshot + creates the
 // cancel ctx the OCR loop checks between files. Paired with endParse.
 func (a *App) claimParse(force bool) (context.Context, bool) {
+	return a.claimRunSlot(scopeLabel(force))
+}
+
+// claimRunSlot takes the single-flight slot for any operation that needs
+// the store to itself — OCR runs and profile activations alike (a store
+// swap under a live parse would close the handle out from under the
+// loop). scope labels the run for the ActiveParse resync snapshot.
+func (a *App) claimRunSlot(scope string) (context.Context, bool) {
 	a.parseCancelMu.Lock()
 	defer a.parseCancelMu.Unlock()
 	if a.parseRunning {
@@ -212,7 +220,7 @@ func (a *App) claimParse(force bool) (context.Context, bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	a.parseRunning = true
 	a.parseCancel = cancel
-	a.parseScope = scopeLabel(force)
+	a.parseScope = scope
 	a.parseDone, a.parseTotal = 0, 0
 	return ctx, true
 }

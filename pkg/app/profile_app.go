@@ -139,6 +139,14 @@ func (a *App) RenameProfile(old, newName string) error {
 	}
 	wasActive := a.profiles.Active() == old
 	if wasActive {
+		// Same guard as activateAndReload: the branch below closes the
+		// live store, and an in-flight parse would write through it
+		// mid-rename. (defer runs at function end — the slot is held
+		// for the whole rename + reopen.)
+		if _, ok := a.claimRunSlot("profile-rename"); !ok {
+			return ErrProfileSwitchDuringParse
+		}
+		defer a.endParse()
 		// Tear down everything that holds the active profile dir open
 		// — the directory rename can't proceed while SQLite has the
 		// .db file mapped.
@@ -188,6 +196,13 @@ func (a *App) reopenActiveStore() error {
 	return nil
 }
 
+// ErrProfileSwitchDuringParse rejects a profile activation while a parse
+// holds the single-flight slot: activateAndReload tears down and replaces
+// a.store, and an OCR loop writing through the old handle mid-swap would
+// race a closed store. Callers retry once the parse finishes; the HTTP
+// layer maps this to 409.
+var ErrProfileSwitchDuringParse = errors.New("profiles: a parse is in flight — retry when it finishes")
+
 // DeleteProfile drops a profile from the list AND wipes its dir. The
 // active profile cannot be deleted — callers must SwitchProfile first.
 func (a *App) DeleteProfile(name string) error {
@@ -208,6 +223,14 @@ func (a *App) DeleteProfile(name string) error {
 // disk, permission). The HTTP handler returns 500 and the user
 // retries.
 func (a *App) activateAndReload(name string) error {
+	// Hold the run slot for the whole swap: a watcher- or user-triggered
+	// parse mid-switch would write through the store this function is
+	// about to close. Busy → the caller retries after the parse (409).
+	if _, ok := a.claimRunSlot("profile-switch"); !ok {
+		return ErrProfileSwitchDuringParse
+	}
+	defer a.endParse()
+
 	// Persist any in-memory settings deltas the user staged but hasn't
 	// triggered a save for. The toggle setters all save inline, so
 	// this is paranoia — but cheap paranoia.

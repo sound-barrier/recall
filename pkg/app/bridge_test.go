@@ -94,6 +94,7 @@ func AppProfiles(a *App) *Profiles              { return a.profiles }
 func AppWatcher(a *App) *fsnotify.Watcher       { return a.watcher }
 func AppWatchedDir(a *App) string               { return a.watchedDir }
 func AppParseCancel(a *App) *context.CancelFunc { return &a.parseCancel }
+func AppParseRunning(a *App) *bool              { return &a.parseRunning }
 func AppParseCancelMu(a *App) *sync.Mutex       { return &a.parseCancelMu }
 
 // SseMsg aliases the unexported SSE message envelope (exported fields) so the
