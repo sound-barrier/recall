@@ -42,8 +42,8 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 	return tx.Commit()
 }
 
-func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
-	rows, err := s.db.Query(
+func loadPersonals(q querier) ([]PersonalRow, error) {
+	rows, err := q.Query(
 		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id, hero, hero_raw
 		FROM personal_screenshots ORDER BY id`,
 	)
@@ -70,7 +70,7 @@ func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 		byID[out[i].ID] = &out[i]
 	}
 
-	hsRows, err := s.db.Query(
+	hsRows, err := q.Query(
 		`SELECT personal_screenshot_id, hero, stat_key, stat_value
 		FROM personal_hero_stats`,
 	)

@@ -2,6 +2,13 @@ package db
 
 import "database/sql"
 
+// querier is the read surface shared by *sql.DB and *sql.Tx. LoadAll's
+// bulk loaders take it so the whole snapshot reads through ONE deferred
+// transaction instead of racing pooled connections.
+type querier interface {
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
 // Bulk read/write paths — LoadAll fans out across the five parent
 // tables; LoadAllFilenames is the union read used by the parse loop
 // to skip already-parsed files; Clear wipes every parent (children
@@ -9,28 +16,38 @@ import "database/sql"
 
 // LoadAll bulk-reads every row across all parent tables with their
 // children attached. The aggregator does the per-match grouping.
+//
+// The loaders run inside ONE deferred read transaction: on pooled
+// connections a cross-table write landing between them (e.g.
+// ResolveAmbiguous rewriting a parent key + deleting its candidate rows)
+// was visible half-applied — a torn aggregate.
 func (s *SQLStore) LoadAll() (Screenshots, error) {
 	var out Screenshots
-	var err error
-	if out.ScreenshotsDirs, err = s.loadScreenshotsDirs(); err != nil {
+	tx, err := s.db.Begin()
+	if err != nil {
 		return out, err
 	}
-	if out.Summaries, err = s.loadSummaries(); err != nil {
+	// Read-only usage; Rollback just releases the snapshot.
+	defer func() { _ = tx.Rollback() }()
+	if out.ScreenshotsDirs, err = loadScreenshotsDirs(tx); err != nil {
 		return out, err
 	}
-	if out.Teams, err = s.loadTeams(); err != nil {
+	if out.Summaries, err = loadSummaries(tx); err != nil {
 		return out, err
 	}
-	if out.Personals, err = s.loadPersonals(); err != nil {
+	if out.Teams, err = loadTeams(tx); err != nil {
 		return out, err
 	}
-	if out.Ranks, err = s.loadRanks(); err != nil {
+	if out.Personals, err = loadPersonals(tx); err != nil {
 		return out, err
 	}
-	if out.Unknowns, err = s.loadUnknowns(); err != nil {
+	if out.Ranks, err = loadRanks(tx); err != nil {
 		return out, err
 	}
-	if out.AmbiguousCandidates, err = s.loadAllAmbiguousCandidates(); err != nil {
+	if out.Unknowns, err = loadUnknowns(tx); err != nil {
+		return out, err
+	}
+	if out.AmbiguousCandidates, err = loadAllAmbiguousCandidates(tx); err != nil {
 		return out, err
 	}
 	return out, nil

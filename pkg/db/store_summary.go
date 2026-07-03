@@ -70,8 +70,8 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 	return tx.Commit()
 }
 
-func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
-	rows, err := s.db.Query(`SELECT
+func loadSummaries(q querier) ([]SummaryRow, error) {
+	rows, err := q.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
 		map, map_raw, playlist, hero, hero_raw, result, final_score, date, finished_at, game_length,
 		perf_elim_total, perf_elim_avg_per_10min,
@@ -107,7 +107,7 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 		byID[out[i].ID] = &out[i]
 	}
 
-	hpRows, err := s.db.Query(
+	hpRows, err := q.Query(
 		`SELECT summary_screenshot_id, hero, percent_played, play_time
 		FROM summary_heroes_played`,
 	)
