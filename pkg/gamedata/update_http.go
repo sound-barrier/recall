@@ -1,4 +1,4 @@
-package app
+package gamedata
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func updateAllowedHost(h string) bool {
 	return strings.HasSuffix(h, ".githubusercontent.com")
 }
 
-// newUpdateClient is the http.Client used for every update fetch: a
+// NewUpdateClient is the http.Client used for every update fetch: a
 // 5 s timeout plus a redirect guard. The guard refuses to follow a
 // redirect to a host outside the GitHub / Pages allowlist or to a
 // non-HTTPS scheme, and caps the chain at 10 hops.
@@ -39,7 +39,7 @@ func updateAllowedHost(h string) bool {
 // user-controlled (it comes from the hardcoded var-seams above), so
 // only redirects are gated — test seams pointing at 127.0.0.1 keep
 // working because CheckRedirect doesn't fire on the first request.
-func newUpdateClient() *http.Client {
+func NewUpdateClient() *http.Client {
 	return &http.Client{
 		Timeout: 5 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -90,7 +90,7 @@ func getBytes(client *http.Client, url string) ([]byte, error) {
 // accept this for a home-lab tool — the data here is roster YAML, not
 // secrets — but the limitation is real. Stronger options (a
 // separate-channel signature, SLSA attestation verification) are
-// deferred. The redirect guard in newUpdateClient bounds the
+// deferred. The redirect guard in NewUpdateClient bounds the
 // adjacent SSRF risk regardless.
 func verifySha256(payload, sidecar []byte) bool {
 	fields := strings.Fields(string(sidecar))

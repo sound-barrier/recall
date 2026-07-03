@@ -21,47 +21,11 @@ type CheckState struct {
 	LastCheckedAt time.Time `json:"last_checked_at"`
 }
 
-// DataManifest records the release-tag or main commit the user's
-// most recent Apply Data Update call pulled from + the SHA-256 of
-// each file written. Lives at <RECALL_DATA_DIR>/data/manifest.json.
-// A missing manifest means the install is running on embedded data
-// only.
-//
-// AppliedSource discriminates between the two channels:
-//   - "release" (or "" for manifests written before this field
-//     existed) — AppliedReleaseTag carries the tag.
-//   - "main" — AppliedMainCommit carries the 7-char short commit SHA
-//     pulled from Pages-published data/version.json.
-type DataManifest struct {
-	AppliedSource     string                  `json:"applied_source,omitempty"`
-	AppliedReleaseTag string                  `json:"applied_release_tag,omitempty"`
-	AppliedMainCommit string                  `json:"applied_main_commit,omitempty"`
-	AppliedAt         time.Time               `json:"applied_at"`
-	Files             map[string]ManifestFile `json:"files"`
-}
-
-// ManifestFile holds the post-write checksum + byte count of one
-// applied YAML. Used by Apply Data Update to detect partial-write
-// regressions on subsequent runs.
-type ManifestFile struct {
-	SHA256 string `json:"sha256"`
-	Size   int64  `json:"size"`
-}
-
-const (
-	checkStateFilename = "check_state.json"
-	manifestFilename   = "manifest.json"
-	dataDirName        = "data"
-)
+const checkStateFilename = "check_state.json"
 
 // checkStatePath returns <RECALL_DATA_DIR>/check_state.json.
 func checkStatePath() string {
 	return filepath.Join(appBaseDir(), checkStateFilename)
-}
-
-// manifestPath returns <RECALL_DATA_DIR>/data/manifest.json.
-func manifestPath() string {
-	return filepath.Join(appBaseDir(), dataDirName, manifestFilename)
 }
 
 // LoadCheckState reads the persisted check-state file. A missing or
@@ -104,38 +68,4 @@ func SaveCheckState(s CheckState) error {
 // CheckForUpdate after a successful release-API response.
 func TouchLastChecked(now time.Time) error {
 	return SaveCheckState(CheckState{LastCheckedAt: now.UTC()})
-}
-
-// LoadManifest reads the persisted data-manifest file. A missing file
-// returns a zero-value manifest with no error — same shape callers
-// already handle for "running on embedded data".
-func LoadManifest() (DataManifest, error) {
-	b, err := os.ReadFile(manifestPath())
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return DataManifest{}, nil
-		}
-		return DataManifest{}, fmt.Errorf("read manifest: %w", err)
-	}
-	var m DataManifest
-	if err := json.Unmarshal(b, &m); err != nil {
-		applog.Subsystem("manifest").Warn("corrupt JSON, treating as missing", "err", err)
-		return DataManifest{}, nil
-	}
-	return m, nil
-}
-
-// SaveManifest atomically writes the data-manifest under
-// <RECALL_DATA_DIR>/data/manifest.json. Used by Apply Data Update
-// after every file has been verified + renamed into place.
-func SaveManifest(m DataManifest) error {
-	dir := filepath.Join(appBaseDir(), dataDirName)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("mkdir data: %w", err)
-	}
-	b, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal manifest: %w", err)
-	}
-	return os.WriteFile(manifestPath(), b, 0o600)
 }

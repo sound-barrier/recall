@@ -11,6 +11,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 
 	"recall/pkg/applog"
+	"recall/pkg/gamedata"
 )
 
 // Version is injected at build time via -ldflags "-X recall/pkg/app.Version=<tag>".
@@ -138,9 +139,7 @@ func startGameDataFetch() chan GameDataStatus {
 	ch := make(chan GameDataStatus, 1)
 	go func() {
 		defer applog.RecoverPanic("update")
-		ver := fetchMainVersion()
-		mh, mm, ms := fetchMainRosters()
-		ch <- computeGameDataStatus(ver, mh, mm, ms)
+		ch <- gamedata.Status(appBaseDir())
 	}()
 	return ch
 }
@@ -157,7 +156,7 @@ type releaseMeta struct {
 // the last-checked timestamp. ok=false on any network/decode failure or an
 // empty tag — the caller collapses that to an empty UpdateInfo.
 func fetchLatestReleaseMeta() (releaseMeta, bool) {
-	client := newUpdateClient()
+	client := gamedata.NewUpdateClient()
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, releasesURL, nil)
 	if err != nil {
 		return releaseMeta{}, false
@@ -243,7 +242,7 @@ func updateInfoFor(v string, isDev bool, m releaseMeta) UpdateInfo {
 	if !current.LessThan(upstream) {
 		return UpdateInfo{Checked: true, LastCheckedAt: m.lastChecked, ReleaseNotes: m.notes}
 	}
-	heroes, maps, sources := fetchReleaseRosters(m.latest)
+	heroes, maps, sources := gamedata.FetchReleaseRosters(m.latest)
 	return UpdateInfo{
 		Checked:       true,
 		Available:     true,

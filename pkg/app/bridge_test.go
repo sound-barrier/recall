@@ -39,18 +39,8 @@ var (
 	ReadZipFile              = readZipFile
 )
 
-// ── OW-data update client (URL seams are pointers so tests can swap them) ──
-var (
-	NewUpdateClient   = newUpdateClient
-	ParseRosterNames  = parseRosterNames
-	UpdateAllowedHost = updateAllowedHost
-	VerifySha256      = verifySha256
-	ReleasesURL       = &releasesURL
-	MainVersionURL    = &mainVersionURL
-	MainAssetURL      = &mainAssetURL
-	ReleaseAssetURL   = &releaseAssetURL
-	RenameFunc        = &renameFunc
-)
+// ── App-release update check (the gamedata seams moved to pkg/gamedata) ──
+var ReleasesURL = &releasesURL
 
 // ── Other function-variable / tunable seams (pointers for save/swap/restore) ──
 var (
