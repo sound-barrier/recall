@@ -21,12 +21,18 @@ the first-run readiness checklist + hide-undo toast, the `ClearMatches` doc note
 the oversized-SFC splits, the stale-doc + cyclomatic-complexity + discoverability
 polish all landed.
 
-**One item remains before the tag:** activate the migration framework (§5 — the
-deliberate *last* 1.0 commit). The pre-tag coverage lift landed on the genuinely
-consequential gap (the read-path sidecar/override attach in `pkg/aggregate`, 75% →
-~90%); the named infra packages that stay thin do so structurally, not for want of
-a test (see §3). Everything else below is deliberately accepted (§3) or out of
-scope.
+The 2026-07-02 full audit (49 verified findings; report archived at
+`tmp/audit-2026-07-02.md`, regenerable from the audit PR) confirmed that
+picture, and its Phase-0 quick-win sweep landed 17 fixes across db/app/
+frontend/CI. What remains: **activate the migration framework before the tag
+(section 5 — the deliberate *last* 1.0 commit)**, and the audit's confirmed
+findings now catalogued in sections 6-10 below. Of those, section 6 (export
+bundles silently drop the user-edit layer) is the one worth weighing as
+pre-tag work — it is user-visible data fidelity. The pre-tag coverage lift
+landed on the genuinely consequential gap (the read-path sidecar/override
+attach in `pkg/aggregate`, 75% → ~90%); the named infra packages that stay
+thin do so structurally, not for want of a test (see §3). Everything else
+below is a catalogued section, deliberately accepted (§3), or out of scope.
 
 ## 3. Consciously accepted — do NOT "fix" these without a new reason
 
@@ -62,12 +68,19 @@ Reviewed and deliberately left, so a future pass doesn't burn effort churning th
   parse-run-state / profile / tour / first-run wiring is more entangled with the
   shell's load/error/nav functions; extracting it further is opportunistic Boy-Scout
   work, not owed. The thin-shell target is already met.
-- **Report-only cyclomatic-complexity** — the highest remaining are `load()` (14)
-  and `valueLabel` (11) in the frontend, and `parsePersonalStatCell` (17) in the
-  parser. The lefthook complexity step is REPORT-ONLY by design: these are branchy
-  by nature (an `allSettled` boot coordinator; dense OCR cell logic the rules
-  exempt). `ExportDataCSV` and `SeedProfile` were already trimmed under 15.
-  Refactor only if a real readability/bug problem surfaces.
+- **Report-only cyclomatic-complexity** — the step stays REPORT-ONLY by design,
+  but the numbers previously recorded here had drifted badly. The 2026-07-02
+  audit re-ran the sweep: frontend max is **50** (`compareCol` in
+  `useTableSort.ts` — a flat 13-case column-comparator switch whose `??`
+  fallbacks inflate the metric; accepted as a dispatch table), and the real
+  signal is the `useMatchesNarrow.ts` cluster (`passesNarrow` 43,
+  `clauseLabel` 33, `activeClauses` 25, `clearClause` 21). That cluster is the
+  filter-clause enumeration spread — adding a dimension touches ~8 parallel
+  lists across 5+ files — and it already shipped a bug (saved presets dropped
+  the three newest dimensions; fixed in the Phase-0 PR). Its fix is the
+  clause-registry refactor (section 8), not per-function splits. Go-side max
+  (non-test): `writeFixture` 23, `parsePersonalStatCell` 17. Everything else:
+  refactor only if a real readability/bug problem surfaces.
 - **DRY hotspots to *watch*, not pre-abstract** — the four near-identical
   `register*Routes` (`pkg/cmd/server_*.go`) and the export/import bundle cluster
   (`ExportBundle` / `importJSONv1` / `importDataCSV` / `ValidateBundle`). The
@@ -114,23 +127,122 @@ users have data: the **first** post-1.0 schema change needs a migration path tha
 doesn't exist yet. Do it as the **last** commit before the 1.0 tag, once the
 schema shape is final:
 
-1. Set `PRAGMA user_version` in `NewSQLStore`.
+1. Reconcile this plan with the shipped framework: `pkg/db/migrate.go` tracks
+   applied versions in a `schema_version` **table** (an earlier revision of
+   this item said `PRAGMA user_version`, which the runner never used). Adopt
+   the table as the contract or change the runner — before baselining.
 2. Seed a baseline `0001_init.up.sql` / `.down.sql` from the current
    `pkg/db/schema.sql` — get it *exactly* matching the shipped schema or existing
    installs mis-migrate.
-3. Flip `applyMigrations` live so versioned pairs apply on open, and switch the
-   "adding a field" workflow to versioned migrations.
+3. **Freeze `schema.sql` at that exact baseline.** `applySchema` runs BEFORE
+   `applyMigrations` on every open, so a post-1.0 edit to `schema.sql` without
+   a paired migration leaves upgraded installs missing the change while
+   fresh-DB tests stay green (the silent failure mode); pairing the same
+   change in both places duplicate-column-bricks fresh installs instead. The
+   "adding a field" workflow moves to versioned migrations only.
+4. Wire the existing `VACUUM INTO` machinery (`pkg/db/backup.go`) as an
+   automatic pre-migration snapshot so a bad migration can't eat the only copy
+   of a user's history.
+5. Flip `applyMigrations` live so versioned pairs apply on open.
 
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
+
+## 6. Export bundles silently drop the user layer
+
+`BundleDataV1` (`pkg/app/export_bundle.go`) carries only the five OCR row
+tables — no `user_match_data` + children, no annotations, no review / queue /
+play-mode state — yet its doc positions the bundle as "portable backup" and
+`manifest.match_count` counts manual matches it ships zero rows for, so
+`ValidateBundle` flags the bundle's own output with `match_count_mismatch`.
+A user round-tripping a bundle loses every hand-entered correction. (The
+full-DB `VACUUM INTO` backup is complete; this is the selective ZIP only.)
+Fix: add the user-layer tables to the bundle + import path (schema v2 or
+additive sections) and add the export→reimport override-survival e2e; at
+minimum stop counting manual keys and document the loss. **Effort:** M.
+
+## 7. Quality gates that don't actually run
+
+- **Golden parser corpus executes nowhere routinely** — CI runs `-short`
+  (skips it); local `task test-go` runs it into a >600s hang. The only
+  regression gate for the OCR heart of the app never fires. Add a
+  nightly/weekly lane (tesseract + fixtures submodule, no `-short`) or a
+  fast PR-time subset. **Effort:** M.
+- **`dbtest.Fake` has no contract test against `SQLStore`**, and one real
+  divergence exists: Fake stores `ignored_at` as RFC3339 while SQLite writes
+  `CURRENT_TIMESTAMP` format. Add a contract suite run against both
+  implementations; fix the format. **Effort:** M.
+
+## 8. Frontend structural debt
+
+- **Narrow clause registry** — the filter-clause enumeration is spread across
+  ~8 parallel lists in 5+ files (state factory, types, `passesNarrow`,
+  `activeClauses`, `clauseLabel`, `clearClause`, preset serialize/apply,
+  popover markup). It already shipped the dropped-preset-dimensions bug and
+  is what the McCabe 43/33/25/21 cluster actually measures. Fix shape: one
+  declarative clause table (`{id, state, predicate, label, clear, serialize}`)
+  driving every consumer. **Effort:** L.
+- **Errors are invisible mid-interaction** — the only global error surface
+  (`ErrorBanner`) has no live region and sits in the `inert` background
+  container whenever a modal is open. Give errors a toast/live-region layer
+  above modals. **Effort:** M.
+- **Dossier band header furniture is triplicated** (window picker, legend,
+  gear + active dot, reset) across MatchTimelineHeader / MatchMapRoleBand /
+  MatchHeroModeBand — rule of three is met; extract a `DossierBandHeader`.
+  **Effort:** M.
+- **`matchesStore.load()` is the de-facto boot coordinator** — it hydrates
+  the settings store + `appStore.dataLocation`, contradicting the documented
+  `useAppBoot` fan-out. Move the cross-store hydration. **Effort:** M.
+- **`api.ts` hand-duplicates generated wire types** (`GameDataStatus`,
+  `UpdateInfo`, `DataUpdateResult`) that exist in `api.gen.d.ts`. Import from
+  the generated schema. **Effort:** S.
+
+## 9. Read/parse-path scalability (bites at ~10k matches)
+
+- **Parse loop is O(files × total rows)** — two full-DB `LoadAll`
+  materializations per screenshot (`pkg/app/parse.go`). Maintain the
+  correlation snapshot incrementally across the run. **Effort:** M-L.
+- **`LoadAll` is not snapshot-consistent** — 12 independent queries on pooled
+  connections; a concurrent write between them yields a torn aggregate. Run
+  the bulk load on one connection inside a read transaction. **Effort:** S-M.
+- **SSE terminal events can drop** — the hub's non-blocking send drops
+  `parse-complete` on a full buffer with no client resync while connected,
+  stranding the parse spinner. Guarantee delivery for terminal events (drop
+  only progress), or poll `/parses/active` while busy. **Effort:** M.
+
+## 10. Smaller catalogued items (do opportunistically)
+
+- Store methods return bare driver errors with no operation context — wrap at
+  the method boundary (`fmt.Errorf("load match queues: %w", err)`); start
+  with the seven `aggregateAll` load sites. (S)
+- `idx_teams_ead` is a dead index — no SQL query filters on E/A/D; EAD
+  correlation runs in-memory. Drop it or mark it reserved. (S)
+- Pagination cursor-not-found silently restarts at page 1 (infinite curl
+  pager); return an empty page or 400. The frontend never paginates at all —
+  the full corpus rides every `GET /matches`. (S)
+- Profile-scoped localStorage: `recall.lastParsedAt` and friends are global
+  while the UI presents them as per-profile; ~33 `recall.*` keys have no
+  versioning convention. (M)
+- Four SFCs over the 500-line cap were never adjudicated by §3: MatchesTable
+  (657), AboutModal (647), MatchHeroModeBand (643), MatchLeafRow (637) —
+  adjudicate, don't blind-split. (S)
+- WAL + `synchronous(normal)` adoption — verifier-downgraded to optional
+  hardening (busy_timeout already rides the DSN); if adopted, also remove
+  `dst+"-journal"` in restore. (S)
+- `pkg/app` still carries several distinct sub-domains (seed/fixtures,
+  export/import/validate-bundle, update + apply-data-update, profile
+  management, tesseract engine) — candidates for the next decomposition
+  round; outline first per CLAUDE.md. (L)
 
 ## Out of scope — deliberately not building
 
 So a future pass doesn't re-propose them:
 
-- **In-app auto-updater** — Wails v2 has no in-app binary updater; the masthead
-  flow stays "Check for updates → Open release page." Revisit only if the Wails
-  updater story changes.
+- **In-app auto-updater** — re-evaluated 2026-07 after the Wails v3 migration
+  (the old entry's rationale cited v2): v3 alpha still ships no first-party
+  binary updater, so the masthead flow stays "Check for updates → Open release
+  page." Revisit if wails v3 grows an updater story or the project adopts a
+  platform updater (Sparkle / winget) — not before.
 - **Real desktop-runtime e2e for Wails** — the `EventsOn`/`EventsOff` bridge,
   native dialogs, and watcher are only exercised on the released desktop app; a
   `wails dev` + CDP driver is cross-platform-fragile and not worth the harness
