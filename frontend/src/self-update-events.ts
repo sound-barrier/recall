@@ -36,7 +36,7 @@ export interface SelfUpdateError {
 // passed to AboutModal. `pct` is null while indeterminate (no total
 // received yet); `error` carries a user-facing message in the 'error'
 // phase.
-export type SelfUpdatePhase =
+type SelfUpdatePhase =
   | 'idle' | 'starting' | 'downloading' | 'verifying'
   | 'installing' | 'ready' | 'restarting' | 'error'
 
