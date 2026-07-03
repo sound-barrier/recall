@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/gamedata"
 	"recall/pkg/parser"
 )
 
@@ -16,9 +17,9 @@ import (
 // and restores the prior func on cleanup.
 func withRenameFunc(t *testing.T, fn func(oldpath, newpath string) error) {
 	t.Helper()
-	prev := *app.RenameFunc
-	*app.RenameFunc = fn
-	t.Cleanup(func() { *app.RenameFunc = prev })
+	prev := gamedata.RenameFunc
+	gamedata.RenameFunc = fn
+	t.Cleanup(func() { gamedata.RenameFunc = prev })
 }
 
 // applyMainTestSetup wires up the Pages-published main channel
@@ -205,4 +206,22 @@ func TestApplyGameDataUpdate_PartialRenameFailure_RestoresOriginal(t *testing.T)
 	if m.AppliedMainCommit == "abc1234" {
 		t.Errorf("manifest written despite failure: AppliedMainCommit=%q", m.AppliedMainCommit)
 	}
+}
+
+// validSourcesYAML returns a minimal screenshot_sources.yaml body
+// suitable for fakeAssetServer. One source, valid regex, the example
+// that snip's prefix-matching test in screenshot_sources_test.go uses.
+func validSourcesYAML() []byte {
+	return []byte(`sources:
+  - name: snip
+    prefix: "Screenshot "
+    regex: '^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})\.png$'
+    year_offset: 0
+    example: "Screenshot 2026-06-07 224855.png"
+  - name: testtool
+    prefix: "TestTool_"
+    regex: '^TestTool_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.png$'
+    year_offset: 0
+    example: "TestTool_2026-06-08_14-32-11.png"
+`)
 }

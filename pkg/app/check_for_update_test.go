@@ -6,135 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"recall/pkg/app"
+	"recall/pkg/gamedata"
 )
-
-func TestUpdateAllowedHost(t *testing.T) {
-	cases := []struct {
-		host string
-		want bool
-	}{
-		{"api.github.com", true},
-		{"github.com", true},
-		{"sound-barrier.github.io", true},
-		{"objects.githubusercontent.com", true}, // release downloads 302 here
-		{"raw.githubusercontent.com", true},
-		{"evil.example.com", false},
-		{"github.com.evil.example.com", false}, // suffix-confusion attempt
-		{"githubusercontent.com", false},       // bare apex, not a *. subdomain
-		{"localhost", false},
-		{"169.254.169.254", false}, // cloud metadata endpoint
-		{"", false},
-	}
-	for _, c := range cases {
-		if got := app.UpdateAllowedHost(c.host); got != c.want {
-			t.Errorf("app.UpdateAllowedHost(%q) = %v, want %v", c.host, got, c.want)
-		}
-	}
-}
-
-func TestNewUpdateClient_RedirectGuard(t *testing.T) {
-	c := app.NewUpdateClient()
-	if c.CheckRedirect == nil {
-		t.Fatal("newUpdateClient must set CheckRedirect")
-	}
-	mkReq := func(raw string) *http.Request {
-		u, err := url.Parse(raw)
-		if err != nil {
-			t.Fatalf("parse %q: %v", raw, err)
-		}
-		return &http.Request{URL: u}
-	}
-
-	// Allowed redirect targets → follow (nil error).
-	for _, ok := range []string{
-		"https://github.com/sound-barrier/recall/releases/download/v1/x",
-		"https://objects.githubusercontent.com/abc",
-		"https://api.github.com/x",
-		"https://sound-barrier.github.io/recall/data/heroes.yaml",
-	} {
-		if err := c.CheckRedirect(mkReq(ok), nil); err != nil {
-			t.Errorf("expected %s to be followed, got error: %v", ok, err)
-		}
-	}
-
-	// Off-allowlist host → refuse.
-	if err := c.CheckRedirect(mkReq("https://evil.example.com/x"), nil); err == nil {
-		t.Error("expected off-allowlist host redirect to be refused")
-	}
-	// Non-HTTPS downgrade → refuse.
-	if err := c.CheckRedirect(mkReq("http://github.com/x"), nil); err == nil {
-		t.Error("expected non-HTTPS redirect to be refused")
-	}
-	// Redirect-loop cap → refuse after 10 hops.
-	via := make([]*http.Request, 10)
-	if err := c.CheckRedirect(mkReq("https://github.com/x"), via); err == nil {
-		t.Error("expected the 11th redirect to be refused")
-	}
-}
-
-// CheckForUpdate is the one App method that makes an outbound network
-// call (GitHub Releases). Tests must never touch the real API — they'd
-// be slow, fragile, and would exhaust anonymous rate limits in a
-// loop. Instead, each test stands up an httptest.NewServer with a
-// canned handler and points `*app.ReleasesURL` (the package-level seam) at
-// it for the duration of the test.
-
-// isEmptyUpdate returns true when no useful fields landed — equivalent
-// to `got == UpdateInfo{}` before LatestHeroes/LatestMaps moved the
-// struct out of comparable territory.
-func isEmptyUpdate(u app.UpdateInfo) bool {
-	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
-		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0 &&
-		u.LastCheckedAt == "" && u.ReleaseNotes == "" &&
-		u.GameData.AppliedCommit == "" && !u.GameData.HasUpdate
-}
-
-// withReleasesURL swaps *app.ReleasesURL for the duration of the test and
-// restores it after — same shape as parser tests' runTesseractFunc
-// swapping.
-//
-// Also wires the main-channel URLs at a pre-closed httptest server
-// so the parallel fetch in CheckForUpdate stays hermetic. Tests that
-// want a LIVE main channel call withMainURLs(t, srv.URL) AFTER this
-// to override — the LIFO Cleanup unwinds the override before this
-// helper's restore fires.
-func withReleasesURL(t *testing.T, url string) {
-	t.Helper()
-	prev := *app.ReleasesURL
-	*app.ReleasesURL = url
-	t.Cleanup(func() { *app.ReleasesURL = prev })
-	withMainURLs(t, closedServerURL(t))
-}
-
-// withVersion swaps the package-level Version (set via ldflags in
-// production) for the duration of the test. Needed because
-// CheckForUpdate's branches depend on the running version string.
-func withVersion(t *testing.T, v string) {
-	t.Helper()
-	prev := app.Version
-	app.Version = v
-	t.Cleanup(func() { app.Version = prev })
-}
-
-// fakeReleasesServer stands up a one-off httptest server whose single
-// handler responds with the given status + body. Server closes via
-// t.Cleanup so individual tests stay focused on assertions.
-func fakeReleasesServer(t *testing.T, status int, body string) *httptest.Server {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		_, _ = w.Write([]byte(body))
-	}))
-	t.Cleanup(srv.Close)
-	return srv
-}
 
 func TestCheckForUpdate_DevBuildReportsLatestAsInformational(t *testing.T) {
 	srv := fakeReleasesServer(t, http.StatusOK,
@@ -349,19 +227,19 @@ func TestCheckForUpdate_PrereleaseInstallNeverPromptsDowngrade(t *testing.T) {
 	}
 }
 
-// withReleaseAssetURL swaps *app.ReleaseAssetURL for the duration of the
+// withReleaseAssetURL swaps gamedata.ReleaseAssetURL for the duration of the
 // test and restores it after — needed because the release-roster
 // fetches go through this function. Tests can route the asset URLs
 // at an httptest server.
 func withReleaseAssetURL(t *testing.T, builder func(version, name string) string) {
 	t.Helper()
-	prev := *app.ReleaseAssetURL
-	*app.ReleaseAssetURL = builder
-	t.Cleanup(func() { *app.ReleaseAssetURL = prev })
+	prev := gamedata.ReleaseAssetURL
+	gamedata.ReleaseAssetURL = builder
+	t.Cleanup(func() { gamedata.ReleaseAssetURL = prev })
 }
 
-// withMainURLs swaps the main-channel URL seams (*app.MainAssetURL +
-// *app.MainVersionURL) so tests stay hermetic. Tests that don't care
+// withMainURLs swaps the main-channel URL seams (gamedata.MainAssetURL +
+// gamedata.MainVersionURL) so tests stay hermetic. Tests that don't care
 // about the main channel pass closedServerURL (a pre-closed
 // httptest server) — every main-channel fetch returns a connection
 // error which collapses to GameDataStatus{} (empty CommitSHA, no diff)
@@ -372,13 +250,13 @@ func withReleaseAssetURL(t *testing.T, builder func(version, name string) string
 // `.sha256` sidecars staged.
 func withMainURLs(t *testing.T, base string) {
 	t.Helper()
-	prevAsset := *app.MainAssetURL
-	prevVersion := *app.MainVersionURL
-	*app.MainAssetURL = func(name string) string { return base + "/" + name }
-	*app.MainVersionURL = base + "/version.json"
+	prevAsset := gamedata.MainAssetURL
+	prevVersion := gamedata.MainVersionURL
+	gamedata.MainAssetURL = func(name string) string { return base + "/" + name }
+	gamedata.MainVersionURL = base + "/version.json"
 	t.Cleanup(func() {
-		*app.MainAssetURL = prevAsset
-		*app.MainVersionURL = prevVersion
+		gamedata.MainAssetURL = prevAsset
+		gamedata.MainVersionURL = prevVersion
 	})
 }
 
@@ -434,7 +312,7 @@ func sha256hex(b []byte) string {
 //   - /screenshot_sources.yaml      → sourcesBody (empty body skips route)
 //   - /screenshot_sources.yaml.sha256 → matching sidecar
 //
-// Callers point *app.ReleaseAssetURL at this server's URL.
+// Callers point gamedata.ReleaseAssetURL at this server's URL.
 func fakeAssetServer(t *testing.T, heroesBody, mapsBody, sourcesBody []byte) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -530,69 +408,55 @@ func TestCheckForUpdate_MismatchedSidecarRejectsRosters(t *testing.T) {
 	}
 }
 
-func TestVerifySha256_RejectsMalformedSidecar(t *testing.T) {
-	payload := []byte("hello")
-	cases := []struct {
-		name    string
-		sidecar []byte
-		want    bool
-	}{
-		{"empty sidecar", []byte(""), false},
-		{"truncated hash (only 10 chars)", []byte("abcdef0123  file.yaml"), false},
-		{"correct hash + filename", []byte(sha256hex(payload) + "  file.yaml"), true},
-		{
-			"upper-case hash (sidecars sometimes ship hex like this)",
-			[]byte(strings.ToUpper(sha256hex(payload)) + "  file.yaml"), true,
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := app.VerifySha256(payload, tc.sidecar); got != tc.want {
-				t.Errorf("got %v, want %v", got, tc.want)
-			}
-		})
-	}
+// isEmptyUpdate returns true when no useful fields landed — equivalent
+// to `got == UpdateInfo{}` before LatestHeroes/LatestMaps moved the
+// struct out of comparable territory.
+func isEmptyUpdate(u app.UpdateInfo) bool {
+	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
+		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0 &&
+		u.LastCheckedAt == "" && u.ReleaseNotes == "" &&
+		u.GameData.AppliedCommit == "" && !u.GameData.HasUpdate
 }
 
-func TestParseRosterNames_DedupsAcrossGroups(t *testing.T) {
-	// If a hero appears under two role-groups (the YAML schema
-	// doesn't forbid it), parseRosterNames must dedup so the FE
-	// doesn't render the same CTA twice.
-	yaml := []byte("tank:\n  - Doomfist\n  - Reinhardt\ndps:\n  - Doomfist\n")
-	names := app.ParseRosterNames(yaml)
-	if len(names) != 2 {
-		t.Errorf("want 2 unique names (Doomfist dedup), got %v", names)
-	}
+// withReleasesURL swaps *app.ReleasesURL for the duration of the test and
+// restores it after — same shape as parser tests' runTesseractFunc
+// swapping.
+//
+// Also wires the main-channel URLs at a pre-closed httptest server
+// so the parallel fetch in CheckForUpdate stays hermetic. Tests that
+// want a LIVE main channel call withMainURLs(t, srv.URL) AFTER this
+// to override — the LIFO Cleanup unwinds the override before this
+// helper's restore fires.
+func withReleasesURL(t *testing.T, url string) {
+	t.Helper()
+	prev := *app.ReleasesURL
+	*app.ReleasesURL = url
+	t.Cleanup(func() { *app.ReleasesURL = prev })
+	withMainURLs(t, closedServerURL(t))
 }
 
-func TestParseRosterNames_DropsBlankEntries(t *testing.T) {
-	// A blank string in the YAML is filtered — the parser's
-	// reference data never carries one but defending against it
-	// keeps the FE from rendering a CTA with an empty backtick'd
-	// label.
-	yaml := []byte("tank:\n  - \"\"\n  - Reinhardt\n")
-	names := app.ParseRosterNames(yaml)
-	if len(names) != 1 || names[0] != "Reinhardt" {
-		t.Errorf("want [Reinhardt], got %v", names)
-	}
+// withVersion swaps the package-level Version (set via ldflags in
+// production) for the duration of the test. Needed because
+// CheckForUpdate's branches depend on the running version string.
+func withVersion(t *testing.T, v string) {
+	t.Helper()
+	prev := app.Version
+	app.Version = v
+	t.Cleanup(func() { app.Version = prev })
 }
 
-// validSourcesYAML returns a minimal screenshot_sources.yaml body
-// suitable for fakeAssetServer. One source, valid regex, the example
-// that snip's prefix-matching test in screenshot_sources_test.go uses.
-func validSourcesYAML() []byte {
-	return []byte(`sources:
-  - name: snip
-    prefix: "Screenshot "
-    regex: '^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})\.png$'
-    year_offset: 0
-    example: "Screenshot 2026-06-07 224855.png"
-  - name: testtool
-    prefix: "TestTool_"
-    regex: '^TestTool_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.png$'
-    year_offset: 0
-    example: "TestTool_2026-06-08_14-32-11.png"
-`)
+// fakeReleasesServer stands up a one-off httptest server whose single
+// handler responds with the given status + body. Server closes via
+// t.Cleanup so individual tests stay focused on assertions.
+func fakeReleasesServer(t *testing.T, status int, body string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
 }
 
 func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {

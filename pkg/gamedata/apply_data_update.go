@@ -1,4 +1,4 @@
-package app
+package gamedata
 
 import (
 	"crypto/sha256"
@@ -87,10 +87,10 @@ type DataUpdateResult struct {
 // mutex is fine because the call is rare (once a month per user).
 var dataUpdateMu sync.Mutex
 
-// renameFunc is the test seam that lets apply_data_update_test.go
+// RenameFunc is the test seam that lets apply_data_update_test.go
 // simulate a partial-rename failure. Defaults to os.Rename in
 // production; tests swap it for a wrapper that fails on the Nth call.
-var renameFunc = os.Rename
+var RenameFunc = os.Rename
 
 // dataYAMLFiles is the canonical list of asset names Apply Data
 // Update writes. Order is the on-disk write order so the partial-
@@ -101,13 +101,13 @@ var dataYAMLFiles = []string{
 	"screenshot_sources.yaml",
 }
 
-// ApplyGameDataUpdate downloads + verifies + applies the live game
-// data from the Pages-published main channel. Returns the diff vs
-// the previous dataset on success; ErrDataUpdateMainFetchFailed if
+// Apply downloads + verifies + applies the live game data from the
+// Pages-published main channel into <baseDir>/data. Returns the diff
+// vs the previous dataset on success; ErrDataUpdateMainFetchFailed if
 // Pages is unreachable, ErrDataUpdateChecksum on sidecar mismatch,
 // ErrDataUpdateIO on local disk failures. Safe for concurrent callers
 // via dataUpdateMu.
-func (a *App) ApplyGameDataUpdate() (DataUpdateResult, error) {
+func Apply(baseDir string) (DataUpdateResult, error) {
 	dataUpdateMu.Lock()
 	defer dataUpdateMu.Unlock()
 
@@ -128,7 +128,7 @@ func (a *App) ApplyGameDataUpdate() (DataUpdateResult, error) {
 		AppliedAt:         time.Now().UTC(),
 		Files:             map[string]ManifestFile{},
 	}
-	added, err := commitVerifiedAssets(verified, manifest)
+	added, err := commitVerifiedAssets(baseDir, verified, manifest)
 	if err != nil {
 		return DataUpdateResult{}, err
 	}
@@ -144,7 +144,7 @@ func (a *App) ApplyGameDataUpdate() (DataUpdateResult, error) {
 // Callers populate manifest.AppliedSource + AppliedReleaseTag /
 // AppliedMainCommit + AppliedAt. The manifest's Files map is filled
 // in here from verified.
-func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManifest) (DataUpdateResult, error) {
+func commitVerifiedAssets(baseDir string, verified map[string]verifiedAsset, manifest DataManifest) (DataUpdateResult, error) {
 	// Reject a checksum-valid-but-unparseable payload BEFORE anything is
 	// written: past this point the files are committed and the manifest
 	// records the version as applied, while parser.Reload would silently
@@ -154,7 +154,7 @@ func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManife
 			return DataUpdateResult{}, fmt.Errorf("%w: %s: %w", ErrDataUpdateMalformed, name, err)
 		}
 	}
-	dataDir := filepath.Join(appBaseDir(), dataDirName)
+	dataDir := filepath.Join(baseDir, dataDirName)
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return DataUpdateResult{}, fmt.Errorf("%w: mkdir data: %w", ErrDataUpdateIO, err)
 	}
@@ -178,7 +178,7 @@ func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManife
 		v := verified[name]
 		manifest.Files[name] = ManifestFile{SHA256: v.sha256, Size: int64(len(v.bytes))}
 	}
-	if err := SaveManifest(manifest); err != nil {
+	if err := SaveManifest(baseDir, manifest); err != nil {
 		return DataUpdateResult{}, fmt.Errorf("%w: write manifest: %w", ErrDataUpdateIO, err)
 	}
 
@@ -202,14 +202,14 @@ func fetchAndVerifyMainAssets() (map[string]verifiedAsset, error) {
 	// newUpdateClient, not a bare http.Client: the apply path must enforce
 	// the same redirect-host allowlist + HTTPS guard the check path does,
 	// or a spoofed redirect could bounce the fetch to an arbitrary host.
-	client := newUpdateClient()
+	client := NewUpdateClient()
 	out := make(map[string]verifiedAsset, len(dataYAMLFiles))
 	for _, name := range dataYAMLFiles {
-		b, err := getBytes(client, mainAssetURL(name))
+		b, err := getBytes(client, MainAssetURL(name))
 		if err != nil {
 			return nil, fmt.Errorf("%w: fetch %s: %w", ErrDataUpdateMainFetchFailed, name, err)
 		}
-		sum, err := getBytes(client, mainAssetURL(name)+".sha256")
+		sum, err := getBytes(client, MainAssetURL(name)+".sha256")
 		if err != nil {
 			return nil, fmt.Errorf("%w: fetch %s.sha256: %w", ErrDataUpdateMainFetchFailed, name, err)
 		}
@@ -262,7 +262,7 @@ func writeAndRename(dataDir string, verified map[string]verifiedAsset) error {
 	for _, name := range dataYAMLFiles {
 		tmp := filepath.Join(dataDir, name+".tmp")
 		final := filepath.Join(dataDir, name)
-		if err := renameFunc(tmp, final); err != nil {
+		if err := RenameFunc(tmp, final); err != nil {
 			return fmt.Errorf("%w: rename %s.tmp: %w", ErrDataUpdateIO, name, err)
 		}
 	}

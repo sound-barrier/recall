@@ -1,4 +1,4 @@
-package app
+package gamedata
 
 import (
 	"encoding/json"
@@ -40,33 +40,33 @@ type GameDataStatus struct {
 	AppliedAt     string `json:"applied_at,omitempty"`
 }
 
-// releaseAssetURL builds the public-asset URL for a release file.
-// Exposed as a package var so tests can swap it for an
+// ReleaseAssetURL builds the public-asset URL for a release file.
+// Exported package var: tests swap it for an
 // httptest.NewServer-routed builder. The released-asset attestation
 // PR (#220) ships `recall-<version>-heroes.yaml`,
 // `recall-<version>-maps.yaml`, and `<file>.sha256` sidecars for both
 // at this prefix.
-var releaseAssetURL = func(version, name string) string {
+var ReleaseAssetURL = func(version, name string) string {
 	return fmt.Sprintf(
 		"https://github.com/sound-barrier/recall/releases/download/v%s/recall-%s-%s",
 		version, version, name,
 	)
 }
 
-// mainAssetURL builds the from-main asset URL. Var-seam so tests can
-// route at an httptest.NewServer — same pattern as releaseAssetURL.
+// MainAssetURL builds the from-main asset URL. Var-seam so tests can
+// route at an httptest.NewServer — same pattern as ReleaseAssetURL.
 // Pages publishes the three YAMLs + per-file `.sha256` sidecars at
 // https://sound-barrier.github.io/recall/data/ on every push to main
 // that touches pkg/parser/*.yaml; see .github/workflows/pages.yml.
-var mainAssetURL = func(name string) string {
+var MainAssetURL = func(name string) string {
 	return "https://sound-barrier.github.io/recall/data/" + name
 }
 
-// mainVersionURL points at the version.json the Pages workflow
+// MainVersionURL points at the version.json the Pages workflow
 // publishes alongside the YAMLs. The file carries the commit SHA +
 // committer date so the app can label what users applied
 // ("Applied main @ abc1234 · 2 days ago"). Var-seam for tests.
-var mainVersionURL = "https://sound-barrier.github.io/recall/data/version.json"
+var MainVersionURL = "https://sound-barrier.github.io/recall/data/version.json"
 
 // flattenRoster takes a role/type-grouped map of canonical display
 // names (parser.HeroesByRole / parser.MapsByGameMode output) and returns a
@@ -131,7 +131,7 @@ func diffRosters(applied, latest []string) (added, removed []string) {
 // treat empty as "no upgrade hint available" + fall back to generic
 // copy. heroes/maps share the parseRosterNames helper; sources uses
 // its own parser since the YAML shape is `{sources: [{name, ...}]}`.
-func fetchReleaseRosters(version string) (heroes, maps, sources []string) {
+func FetchReleaseRosters(version string) (heroes, maps, sources []string) {
 	heroes = fetchAsset(version, "heroes.yaml", parseRosterNames)
 	maps = fetchAsset(version, "maps.yaml", parseRosterNames)
 	sources = fetchAsset(version, "screenshot_sources.yaml", parseSourceNames)
@@ -143,14 +143,14 @@ func fetchReleaseRosters(version string) (heroes, maps, sources []string) {
 // by `decode`. Empty slice on any failure (network / status / SHA
 // mismatch / decode error).
 func fetchAsset(version, name string, decode func([]byte) []string) []string {
-	client := newUpdateClient()
+	client := NewUpdateClient()
 
-	yamlBytes, err := getBytes(client, releaseAssetURL(version, name))
+	yamlBytes, err := getBytes(client, ReleaseAssetURL(version, name))
 	if err != nil {
 		return nil
 	}
 
-	sumBytes, err := getBytes(client, releaseAssetURL(version, name)+".sha256")
+	sumBytes, err := getBytes(client, ReleaseAssetURL(version, name)+".sha256")
 	if err != nil {
 		return nil
 	}
@@ -175,8 +175,8 @@ type mainVersion struct {
 // an empty CommitSHA as "Pages channel unavailable" and skip the
 // main-channel diff entirely.
 func fetchMainVersion() mainVersion {
-	client := newUpdateClient()
-	b, err := getBytes(client, mainVersionURL)
+	client := NewUpdateClient()
+	b, err := getBytes(client, MainVersionURL)
 	if err != nil {
 		return mainVersion{}
 	}
@@ -200,13 +200,13 @@ func fetchMainRosters() (heroes, maps, sources []string) {
 }
 
 func fetchMainAsset(name string, decode func([]byte) []string) []string {
-	client := newUpdateClient()
+	client := NewUpdateClient()
 
-	yamlBytes, err := getBytes(client, mainAssetURL(name))
+	yamlBytes, err := getBytes(client, MainAssetURL(name))
 	if err != nil {
 		return nil
 	}
-	sumBytes, err := getBytes(client, mainAssetURL(name)+".sha256")
+	sumBytes, err := getBytes(client, MainAssetURL(name)+".sha256")
 	if err != nil {
 		return nil
 	}
@@ -216,17 +216,26 @@ func fetchMainAsset(name string, decode func([]byte) []string) []string {
 	return decode(yamlBytes)
 }
 
+// Status fetches the main-channel version + rosters and diffs them
+// against the local manifest + currently-loaded parser tables. The
+// one-call surface the app shell's background game-data probe uses.
+func Status(baseDir string) GameDataStatus {
+	ver := fetchMainVersion()
+	heroes, maps, sources := fetchMainRosters()
+	return computeGameDataStatus(baseDir, ver, heroes, maps, sources)
+}
+
 // computeGameDataStatus reads the local manifest + currently-loaded
 // rosters and returns a GameDataStatus showing what's different
 // between the user's applied main commit (per manifest) and the
 // freshly-fetched main rosters. Returns an empty GameDataStatus
 // (CommitSHA="") when the Pages fetch failed — the FE uses CommitSHA
 // as the "main channel reachable" gate.
-func computeGameDataStatus(ver mainVersion, heroes, maps, sources []string) GameDataStatus {
+func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, sources []string) GameDataStatus {
 	if ver.CommitSHA == "" {
 		return GameDataStatus{}
 	}
-	manifest, _ := LoadManifest()
+	manifest, _ := LoadManifest(baseDir)
 	gd := GameDataStatus{
 		RosterDiff: RosterDiff{
 			HasUpdate: manifest.AppliedSource != "main" || manifest.AppliedMainCommit != shortenCommitSHA(ver.CommitSHA),
