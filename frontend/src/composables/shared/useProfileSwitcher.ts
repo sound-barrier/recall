@@ -1,5 +1,6 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } from '@/api-client'
+import { cacheActiveProfile } from '@/composables/shared/profileStorage'
 
 // Stateful logic for the masthead profile chip + dropdown: the profile
 // list, the open/creating/rename UI state, and the create / rename / switch
@@ -30,6 +31,11 @@ export function useProfileSwitcher() {
       const res = await GetProfiles()
       profiles.value = res.profiles
       active.value   = res.active
+      // Freshen the sync-readable scope for profile-scoped
+      // localStorage keys (profileStorage.ts) — setup-time reads used
+      // the previous session's cache; this heals any out-of-band
+      // change for the next boot.
+      cacheActiveProfile(res.active)
     } catch (_) {
       profiles.value = []
       active.value   = ''
@@ -54,6 +60,7 @@ export function useProfileSwitcher() {
     busy.value = true
     try {
       await SwitchProfile(name)
+      cacheActiveProfile(name)
       window.location.reload()
     } catch (e) {
       error.value = String(e)
@@ -72,7 +79,10 @@ export function useProfileSwitcher() {
     if (busy.value || !newNameValid.value) return
     busy.value = true
     try {
-      await CreateProfile(newName.value.trim())
+      // CreateProfile activates the new profile server-side.
+      const created = newName.value.trim()
+      await CreateProfile(created)
+      cacheActiveProfile(created)
       window.location.reload()
     } catch (e) {
       error.value = String(e)
@@ -127,7 +137,10 @@ export function useProfileSwitcher() {
     if (!renameValueValid.value) return
     busy.value = true
     try {
-      await RenameProfile(renameTarget.value, renameValue.value.trim())
+      const renamed = renameValue.value.trim()
+      await RenameProfile(renameTarget.value, renamed)
+      // Only a rename of the ACTIVE profile moves the storage scope.
+      if (renameTarget.value === active.value) cacheActiveProfile(renamed)
       window.location.reload()
     } catch (e) {
       error.value = String(e)

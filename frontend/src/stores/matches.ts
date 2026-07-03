@@ -23,6 +23,7 @@ import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useEventStream } from '@/composables/shared/useEventStream'
+import { profileScopedKey } from '@/composables/shared/profileStorage'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
@@ -89,7 +90,10 @@ export const useMatchesStore = defineStore('matches', () => {
   // store owns lastParsedAt, so it owns its hydration too.
   function restoreLastParsedAt() {
     try {
-      const v = localStorage.getItem('recall.lastParsedAt')
+      // Profile-scoped, with one-way adoption of the pre-scoping
+      // global key so an upgrading install keeps its timestamp.
+      const v = localStorage.getItem(profileScopedKey('lastParsedAt'))
+        ?? localStorage.getItem('recall.lastParsedAt')
       if (v) lastParsedAt.value = Number(v) || null
     } catch (_) { /* private-mode localStorage */ }
   }
@@ -361,7 +365,7 @@ export const useMatchesStore = defineStore('matches', () => {
     onParseComplete: async () => {
       await load()
       lastParsedAt.value = Date.now()
-      try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
+      try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
       parseBusy.value = false
       parseProgress.value = null
       cancellingParse.value = false
@@ -393,7 +397,7 @@ export const useMatchesStore = defineStore('matches', () => {
     },
     resetLastParsedAt: () => {
       lastParsedAt.value = null
-      try { localStorage.removeItem('recall.lastParsedAt') } catch (_) { /* non-fatal */ }
+      try { localStorage.removeItem(profileScopedKey('lastParsedAt')) } catch (_) { /* non-fatal */ }
     },
     onError: (m) => useAppStore().setErrorFromRaw(m),
   })

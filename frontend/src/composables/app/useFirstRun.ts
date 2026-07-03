@@ -4,6 +4,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useFirstRunAcknowledged } from '@/composables/shared/useFirstRunAcknowledged'
+import { cacheActiveProfile } from '@/composables/shared/profileStorage'
 
 // First-run "name your main account" gate. Self-persists the dismissal in
 // localStorage so the modal never returns once acknowledged, and is gated on
@@ -20,6 +21,9 @@ export function useFirstRun() {
 
   function onFirstRunDismiss(renamedTo: string | null) {
     ack()
+    // The first-run gate renames the ACTIVE profile — move the
+    // profile-scoped localStorage scope with it before the reload.
+    if (renamedTo !== null) cacheActiveProfile(renamedTo)
     // A rename tore down + re-init'd the SQLite store at the new directory
     // (same as the masthead chip's switch/create/rename). Reload so every
     // composable re-fetches against the renamed profile — profile state is

@@ -60,6 +60,42 @@ describe('usePersistedRef', () => {
     expect(storage['k']).toBe('light')
   })
 
+  // legacyKeys — one-way adoption for keys that moved (e.g. the
+  // profile-scoping migration): a fresh primary key reads the old
+  // global key's value so the user's state survives the move, but
+  // writes only ever land on the primary key.
+  it('adopts a legacy key value when the primary key is empty', async () => {
+    storage['recall.old'] = 'light'
+    const { value } = mountWith({
+      key: 'recall.new', legacyKeys: ['recall.old'],
+      defaultValue: 'dark', parse: parseEnum('dark', 'light'),
+    })
+    await flushPromises()
+    expect(value.value).toBe('light')
+  })
+
+  it('prefers the primary key over a legacy key when both hold values', async () => {
+    storage['recall.new'] = 'dark'
+    storage['recall.old'] = 'light'
+    const { value } = mountWith({
+      key: 'recall.new', legacyKeys: ['recall.old'],
+      defaultValue: 'light', parse: parseEnum('dark', 'light'),
+    })
+    await flushPromises()
+    expect(value.value).toBe('dark')
+  })
+
+  it('writes to the primary key only, leaving the legacy key untouched', async () => {
+    storage['recall.old'] = 'light'
+    const { set } = mountWith({
+      key: 'recall.new', legacyKeys: ['recall.old'],
+      defaultValue: 'dark', parse: parseEnum('dark', 'light'),
+    })
+    set('dark')
+    expect(storage['recall.new']).toBe('dark')
+    expect(storage['recall.old']).toBe('light')
+  })
+
   it('set invokes onChange and onMount invokes it with the hydrated value', async () => {
     const onChange = vi.fn()
     storage['k'] = 'light'

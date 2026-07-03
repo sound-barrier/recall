@@ -34,6 +34,12 @@ interface PrefChangedDetail { key: string }
 
 export interface PersistedRefOptions<T> {
   key: string
+  // Prior locations of this preference, tried in order when `key`
+  // holds nothing — one-way adoption for keys that moved (e.g. the
+  // profile-scoping migration). Writes only ever land on `key`; the
+  // legacy value stays put so an older build reading the old key
+  // still sees it.
+  legacyKeys?: string[]
   defaultValue: T
   // Returns the parsed value, or undefined to fall back to default.
   parse: (raw: string) => T | undefined
@@ -53,10 +59,13 @@ export function usePersistedRef<T>(opts: PersistedRefOptions<T>): {
 
   function readStored(): T {
     try {
-      const raw = localStorage.getItem(opts.key)
-      if (raw === null) return opts.defaultValue
-      const parsed = opts.parse(raw)
-      return parsed === undefined ? opts.defaultValue : parsed
+      for (const key of [opts.key, ...(opts.legacyKeys ?? [])]) {
+        const raw = localStorage.getItem(key)
+        if (raw === null) continue
+        const parsed = opts.parse(raw)
+        if (parsed !== undefined) return parsed
+      }
+      return opts.defaultValue
     } catch (_) {
       return opts.defaultValue
     }
