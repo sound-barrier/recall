@@ -43,7 +43,10 @@ mkdir -p "$E2E_DIR"
 # and its opens ("open …: no such file or directory"). HEAD is
 # exactly the content being pushed; node_modules rides in as a
 # symlink since a worktree checkout doesn't carry it.
-WORKTREE=$E2E_DIR/tree
+# PID-suffixed so an overlapping push (previous battery still
+# finishing while a new one starts) can't remove the worktree out
+# from under this run's vite build via its exit trap.
+WORKTREE=$E2E_DIR/tree-$$
 REPO_ROOT=$(pwd)
 git worktree remove --force "$WORKTREE" 2>/dev/null || true
 git worktree add --force --detach "$WORKTREE" HEAD >/dev/null
