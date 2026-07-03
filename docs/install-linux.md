@@ -8,10 +8,10 @@ by the pre-built binary — you can [build from source](../CONTRIBUTING.md#build
 Grab one of the following from the
 [GitHub Releases](https://github.com/sound-barrier/recall/releases) page:
 
-| Format | Install to |
-|---|---|
-| `recall-{version}-linux-amd64.deb` | `/usr/local/bin/recall` (via dpkg) |
-| `recall-{version}-linux-amd64.tar.gz` | Extract anywhere |
+| Format | Install to | Self-updates in-app? |
+|---|---|---|
+| `recall-{version}-linux-amd64.deb` | `/usr/local/bin/recall` (via dpkg) | No — root-owned |
+| `recall-{version}-linux-amd64.tar.gz` | Extract anywhere | Yes, if the folder is user-writable |
 
 ```sh
 # .deb (Ubuntu / Debian)
@@ -21,6 +21,13 @@ sudo dpkg -i recall-{version}-linux-amd64.deb
 tar -xzf recall-{version}-linux-amd64.tar.gz
 ./recall
 ```
+
+> **In-app updates** need Recall's binary to sit in a directory you can
+> write to. The `.tar.gz` extracted under your home dir qualifies; a
+> `.deb` install lands in root-owned `/usr/local/bin`, so it can't swap
+> itself — Recall's About dialog falls back to an "Open release page"
+> link there. The release also ships a bare `recall-{version}-linux-amd64`
+> binary that the in-app updater fetches; you don't download it yourself.
 
 ## 2. Install Tesseract 5.x
 

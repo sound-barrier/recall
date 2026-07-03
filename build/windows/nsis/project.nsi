@@ -44,6 +44,75 @@ Unicode true
 ####
 !include "wails_tools.nsh"
 
+####
+## Migration: remove a prior machine-wide (Program Files) install.
+##
+## Recall moved from machine scope to per-user ($LOCALAPPDATA\Programs\Recall)
+## so the in-app self-updater can swap the running exe in place — Program Files
+## isn't writable without elevation. A per-user (unelevated) installer can't
+## delete Program Files or HKLM keys, so it runs the OLD uninstaller: that
+## uninstaller's own admin manifest raises exactly ONE UAC prompt via
+## ShellExecute (ExecShellWait; a plain ExecWait/CreateProcess would fail with
+## ERROR_ELEVATION_REQUIRED). The old uninstaller removes the app files, the
+## HKLM Add/Remove-Programs entry, and the all-users shortcuts. `_?=` runs it
+## in place synchronously; a running uninstall.exe can't self-delete, so an
+## inert uninstall.exe + its folder may linger in Program Files (no registry
+## entry — harmless). On UAC decline we warn and continue: aborting the
+## per-user install would strand the user worse than a temporary dual install.
+####
+!define OLD_UNINST_ROOT "Software\Microsoft\Windows\CurrentVersion\Uninstall"
+
+!macro tryRemoveMachineKey KEYNAME
+    SetRegView 64
+    ReadRegStr $R0 HKLM "${OLD_UNINST_ROOT}\${KEYNAME}" "UninstallString"
+    ${If} $R0 != ""
+        ; DisplayIcon is the UNQUOTED "$INSTDIR\<exe>" — clean for GetParent
+        ; (UninstallString is quoted). GetParent works here the same way the
+        ; already-used ${GetSize} does (both from the FileFunc.nsh include).
+        ReadRegStr $R1 HKLM "${OLD_UNINST_ROOT}\${KEYNAME}" "DisplayIcon"
+        ${GetParent} "$R1" $R2
+        ${If} ${FileExists} "$R2\uninstall.exe"
+            DetailPrint "Removing previous machine-wide install: $R2"
+            ExecShellWait "" "$R2\uninstall.exe" '/S _?=$R2'
+            Delete "$R2\uninstall.exe"   ; best-effort; unelevated remove of a
+            RMDir "$R2"                   ; Program Files path may fail — fine
+        ${EndIf}
+    ${EndIf}
+!macroend
+
+!macro tryRemoveMachineDir OLDDIR
+    ${If} ${FileExists} "${OLDDIR}\uninstall.exe"
+        DetailPrint "Removing previous machine-wide install: ${OLDDIR}"
+        ExecShellWait "" "${OLDDIR}\uninstall.exe" '/S _?=${OLDDIR}'
+        Delete "${OLDDIR}\uninstall.exe"
+        RMDir "${OLDDIR}"
+    ${EndIf}
+!macroend
+
+!macro removeMachineScopeInstall
+    ; Registry-driven for the current identity and the pre-identity-fix
+    ; scaffold identity (b37230d0 set "sound-barrier"/"Recall"; before it the
+    ; wails scaffold used "My Company"/"My Product").
+    !insertmacro tryRemoveMachineKey "sound-barrierRecall"
+    !insertmacro tryRemoveMachineKey "My CompanyMy Product"
+    ; Dir-probe fallbacks for installs whose registry key is already gone.
+    !insertmacro tryRemoveMachineDir "$PROGRAMFILES64\sound-barrier\Recall"
+    !insertmacro tryRemoveMachineDir "$PROGRAMFILES64\My Company\My Product"
+    !insertmacro tryRemoveMachineDir "$PROGRAMFILES64\Recall"
+    RMDir "$PROGRAMFILES64\sound-barrier"   ; empty company dir, best-effort
+    RMDir "$PROGRAMFILES64\My Company"
+
+    ; If a machine key survived (user declined the UAC prompt), warn but don't
+    ; abort. /SD IDOK keeps silent installs unblocked.
+    SetRegView 64
+    ReadRegStr $R0 HKLM "${OLD_UNINST_ROOT}\sound-barrierRecall" "UninstallString"
+    ReadRegStr $R1 HKLM "${OLD_UNINST_ROOT}\My CompanyMy Product" "UninstallString"
+    ${If} $R0 != ""
+    ${OrIf} $R1 != ""
+        MessageBox MB_OK|MB_ICONEXCLAMATION "A previous machine-wide copy of Recall could not be removed automatically. Please uninstall the old Recall from Settings > Apps (Add/Remove Programs) when convenient." /SD IDOK
+    ${EndIf}
+!macroend
+
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
 VIFileVersion    "${INFO_PRODUCTVERSION}.0"
@@ -96,11 +165,21 @@ FunctionEnd
 Section
     !insertmacro wails.setShellContext
 
+    ; Per-user installs first clear any prior machine-wide (Program Files)
+    ; copy so there's exactly one install and it can self-update in place.
+    !if "${WAILS_INSTALL_SCOPE}" == "user"
+        !insertmacro removeMachineScopeInstall
+    !endif
+
     !insertmacro wails.webview2runtime
 
     SetOutPath $INSTDIR
-    
+
     !insertmacro wails.files
+
+    ; The DB-reset helper documented in docs/install-windows.md. Bundled next
+    ; to the app; uninstall's RMDir /r $INSTDIR removes it.
+    File "/oname=Reset-Database.bat" "..\..\..\scripts\windows\Reset-Database.bat"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
