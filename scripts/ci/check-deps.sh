@@ -117,7 +117,10 @@ printf '  %s\n' "─────────────────────
 # ── Exact tool pins (mise.toml) ────────────────────────────────────────────
 # These are exact pins; a mismatch means mise + CI are behind upstream.
 
-WAILS_PINNED=$(mise_pin 'go:github.com/wailsapp/wails/v2/cmd/wails')
+# The live CLI is the v3 alpha (the v2 pin was a dead migration leftover).
+# gh_latest reports the newest stable release, so a mismatch against the
+# alpha pin is expected until v3 goes stable — informational, like the rest.
+WAILS_PINNED=$(mise_pin 'go:github.com/wailsapp/wails/v3/cmd/wails3')
 WAILS_LATEST=$(gh_latest wailsapp/wails)
 check "Wails CLI" "$WAILS_PINNED" "$WAILS_LATEST" "mise.toml [tools]"
 
