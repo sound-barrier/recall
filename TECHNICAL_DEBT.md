@@ -25,8 +25,9 @@ The 2026-07-02 full audit (49 verified findings; report archived at
 `tmp/audit-2026-07-02.md`, regenerable from the audit PR) confirmed that
 picture, and its Phase-0 quick-win sweep landed 17 fixes across db/app/
 frontend/CI. What remains: **activate the migration framework before the tag
-(section 5 — the deliberate *last* 1.0 commit)**, and the approved
-`pkg/app` decomposition plan in section 10. Sections 6-7 were paid by the
+(section 5 — the deliberate *last* 1.0 commit)** — every other
+catalogued section has been paid (the decomposition round carved
+`pkg/bundle`, `pkg/gamedata`, and `pkg/profiles` out of the shell). Sections 6-7 were paid by the
 Phase-2 PR (v2 export bundles, the golden-corpus lane, the Store contract
 suite); section 8 by the Phase-3 PR (the narrow clause registry killed
 the enumeration-spread bug class and its McCabe cluster, the dossier
@@ -170,22 +171,6 @@ schema shape is final:
 
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
-
-## 10. Smaller catalogued items (do opportunistically)
-
-- `pkg/app` decomposition — **outline agreed 2026-07 (maintainer-approved),
-  scheduled as its own PR after the Phase-4 PR merges.** Three carve-outs on
-  the pkg/match/correlate/aggregate pattern (pure logic to a leaf package,
-  `*App` keeps thin Wails-bound delegators + type aliases so wire shapes and
-  bindings don't move): (1) `pkg/bundle` — export_bundle + import_matches +
-  bundle_validate (~1,125 lines; store + dir-resolver injected);
-  (2) `pkg/gamedata` — update_gamedata + apply_data_update + update_http
-  (~715 lines; paths + HTTP seam injected, parser-table refresh stays in the
-  shell); (3) `pkg/profiles` — the `*Profiles` manager + profile_move's
-  two-phase move (~620 lines; store constructor injected; profile_app.go
-  wiring stays). Deliberately NOT carving: tesseract (shares the
-  safePathChars boundary + tessStatus state), seed.go, watcher/parse/
-  settings (the shell's core). (L)
 
 ## Out of scope — deliberately not building
 
