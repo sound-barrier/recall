@@ -137,6 +137,67 @@ func TestSSEHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 	}
 }
 
+// Terminal lifecycle events (parse-complete / parse-cancelled — the
+// no-payload Broadcast surface) must reach a connected client even when
+// a progress burst has filled its buffer, or the parse spinner strands
+// until a manual reload (TECHNICAL_DEBT.md section 9). The hub may drop
+// stream events (BroadcastData) for a slow consumer, but never a
+// terminal one — it evicts the oldest buffered message instead.
+func TestSSEHub_Broadcast_TerminalEventSurvivesFullBuffer(t *testing.T) {
+	h := app.NewSSEHub()
+	ch := h.Subscribe()
+
+	// Stuff the buffer past capacity with lossy progress events.
+	for i := range cap(ch) + 4 {
+		h.BroadcastData("parse-progress", `{"done":`+string(rune('0'+i%10))+`}`)
+	}
+
+	h.Broadcast("parse-complete")
+
+	gotTerminal := false
+	for {
+		select {
+		case m := <-ch:
+			if m.Event == "parse-complete" {
+				gotTerminal = true
+			}
+		case <-time.After(100 * time.Millisecond):
+			if !gotTerminal {
+				t.Fatal("parse-complete was dropped on a full buffer — the spinner would strand")
+			}
+			return
+		}
+	}
+}
+
+func TestSSEHub_BroadcastData_StillDropsOnFullBuffer(t *testing.T) {
+	// The lossy contract for stream events is load-bearing: a stalled
+	// reader must never make the producer block OR grow the buffer.
+	h := app.NewSSEHub()
+	ch := h.Subscribe()
+
+	for range cap(ch) {
+		h.BroadcastData("parse-progress", `{"seq":"filler"}`)
+	}
+	h.BroadcastData("parse-progress", `{"seq":"overflow"}`)
+
+	received := 0
+	for {
+		select {
+		case m := <-ch:
+			received++
+			if m.Data == `{"seq":"overflow"}` {
+				t.Fatal("overflow stream event was delivered — expected drop-on-full")
+			}
+		case <-time.After(100 * time.Millisecond):
+			if received != cap(ch) {
+				t.Fatalf("received %d events, want exactly the buffer's %d", received, cap(ch))
+			}
+			return
+		}
+	}
+}
+
 func TestSSEHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 	// Subscribe + Broadcast hammered from goroutines must not race.
 	// `go test -race` catches missing locks here.
