@@ -74,3 +74,4 @@ no soft-pedalling. Numbers that go down get a row too.
 - `lefthook.yml` — the pre-push invocation (uses the script's
   defaults, no env overrides).
 | 2026-07-03 | MAX_INITIAL_CSS_BYTES | 67000 → 68000 | Phase-5 sample-size caveat chip (.bd-low-n) +192B |
+| 2026-07-03 | MAX_TOTAL_JS_BYTES | 1270000 → 1320000 | echarts 6.1 major (CVE-2026-45249 fix), ~44KB in the lazy TrendChart chunk |
