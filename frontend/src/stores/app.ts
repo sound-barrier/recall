@@ -1,8 +1,15 @@
 import { computed, nextTick, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { CheckForUpdate, GetDataLocation, GetVersion, type UpdateInfo, type DataLocation } from '@/api-client'
+import {
+  CheckForUpdate, GetDataLocation, GetVersion, StartSelfUpdate, RestartToApply, EventsOn,
+  type UpdateInfo, type DataLocation,
+} from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
+import {
+  SelfUpdateEvents,
+  type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
+} from '@/self-update-events'
 import type { TabId } from '@/composables/shared/useTabKeyboardNav'
 import { useMatchesStore } from '@/stores/matches'
 
@@ -98,6 +105,63 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  // ── In-app self-update ────────────────────────────────────────────
+  // Drives the About dialog's Install / progress / Restart affordance,
+  // shown only when updateInfo.can_self_update is true. The lifecycle is
+  // event-driven: StartSelfUpdate kicks off a background pass in Go, and
+  // the framework's wails:updater:* events (bridged through EventsOn)
+  // move the phase. State lives here (not in the modal) so a background
+  // download keeps its progress across About close/reopen.
+  const selfUpdate = ref<SelfUpdateState>({ phase: 'idle', pct: null, error: '' })
+
+  // Register the updater event handlers once. EventsOn has replace
+  // semantics per name, so a repeat call is harmless; wiring lazily on
+  // first user action keeps the no-network-on-mount contract (no
+  // EventSource opens until the user clicks Install).
+  let selfUpdateWired = false
+  function wireSelfUpdateEvents() {
+    if (selfUpdateWired) return
+    selfUpdateWired = true
+    EventsOn(SelfUpdateEvents.CheckStarted, () => { selfUpdate.value = { phase: 'starting', pct: null, error: '' } })
+    EventsOn(SelfUpdateEvents.DownloadStarted, () => { selfUpdate.value = { phase: 'downloading', pct: null, error: '' } })
+    EventsOn<SelfUpdateProgress>(SelfUpdateEvents.DownloadProgress, (p) => {
+      const pct = p && p.total > 0 ? Math.round((p.written / p.total) * 100) : null
+      selfUpdate.value = { phase: 'downloading', pct, error: '' }
+    })
+    EventsOn(SelfUpdateEvents.DownloadComplete, () => { selfUpdate.value = { phase: 'verifying', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.Verifying, () => { selfUpdate.value = { phase: 'verifying', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.Installing, () => { selfUpdate.value = { phase: 'installing', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.UpdateReady, () => { selfUpdate.value = { phase: 'ready', pct: 100, error: '' } })
+    EventsOn(SelfUpdateEvents.NoUpdate, () => { selfUpdate.value = { phase: 'idle', pct: null, error: '' } })
+    EventsOn<SelfUpdateError>(SelfUpdateEvents.Error, (e) => {
+      selfUpdate.value = { phase: 'error', pct: null, error: e?.message || 'Update failed. Please try again.' }
+    })
+  }
+
+  // Kick off a check+download+install. Enters 'starting' immediately;
+  // the wails:updater:* events carry it the rest of the way. A rejected
+  // POST (409 self-update-unavailable) lands in the error phase.
+  async function startSelfUpdate() {
+    wireSelfUpdateEvents()
+    selfUpdate.value = { phase: 'starting', pct: null, error: '' }
+    try {
+      await StartSelfUpdate()
+    } catch (e) {
+      selfUpdate.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
+    }
+  }
+
+  // Apply a staged update: swap the binary and relaunch. On success the
+  // process exits, so this only returns on failure.
+  async function restartToApply() {
+    selfUpdate.value = { ...selfUpdate.value, phase: 'restarting' }
+    try {
+      await RestartToApply()
+    } catch (e) {
+      selfUpdate.value = { phase: 'error', pct: null, error: plainLanguageError(String(e)) }
+    }
+  }
+
   // ── Data location (Settings → Backup) ─────────────────────────────
   // Hydrated by useAppBoot's fan-out at mount.
   const dataLocation = ref<DataLocation | null>(null)
@@ -133,6 +197,9 @@ export const useAppStore = defineStore('app', () => {
     openAbout,
     closeAbout,
     checkForUpdates,
+    selfUpdate,
+    startSelfUpdate,
+    restartToApply,
     dataLocation,
     loadDataLocation,
     startupError,

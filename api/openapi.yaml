@@ -1572,6 +1572,53 @@ paths:
         "502":
           $ref: "#/components/responses/BadGateway"
 
+  /api/v1/system/self-update:
+    post:
+      operationId: StartSelfUpdate
+      tags: [System]
+      summary: Start an in-app binary self-update
+      x-internal: true
+      description: |
+        Kicks off a background check-then-download-and-install of the
+        newest release for this platform, streamed and SHA-256-verified
+        against the release's `SHA256SUMS`. The effect is out-of-band:
+        progress and the terminal outcome arrive as `wails:updater:*`
+        events the About dialog renders, so the response is `202` with
+        no body. Single-flighted server-side — a second call while one
+        is in flight is a silent no-op.
+
+        `409` when self-update isn't possible on this install: server
+        mode (always), dev builds, macOS (no signing story), or an
+        install directory the running user can't overwrite (legacy
+        machine-wide Windows, or a root-owned `.deb`). The frontend
+        reads `can_self_update` on `GET /system/update` and won't call
+        this when it's false; the `409` is for scripted callers.
+      responses:
+        "202":
+          description: Self-update started.
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/system/self-update/restart:
+    post:
+      operationId: RestartToApply
+      tags: [System]
+      summary: Apply a staged self-update and relaunch
+      x-internal: true
+      description: |
+        Swaps the staged binary in place and relaunches. Called after a
+        prior self-update reaches the ready state (the
+        `wails:updater:update-ready` event). On success the process
+        exits and the new binary starts, so the client normally never
+        receives a response; `202` is the "accepted, restarting" shape.
+        `409` when no updater is wired (same gates as
+        `POST /api/v1/system/self-update`).
+      responses:
+        "202":
+          description: Restart accepted; the app is swapping + relaunching.
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/system/data-location:
     get:
       operationId: GetDataLocation
@@ -2669,7 +2716,7 @@ components:
 
     UpdateInfo:
       type: object
-      required: [checked, dev_build, available, latest, url, game_data]
+      required: [checked, dev_build, available, latest, url, game_data, can_self_update]
       properties:
         checked:
           type: boolean
@@ -2742,6 +2789,18 @@ components:
             never `v-html`.
         game_data:
           $ref: "#/components/schemas/GameDataStatus"
+        can_self_update:
+          type: boolean
+          description: |
+            True when this install can swap its own binary in place —
+            the Wails desktop build on a non-dev version, not macOS, in a
+            user-writable install directory. The About dialog shows an
+            "Install update" button (driving POST
+            /api/v1/system/self-update) only then; otherwise it falls
+            back to the "Open release page" link. Always false in server
+            mode, for dev builds, on macOS (no code-signing story), and
+            for legacy machine-wide Windows installs under Program Files.
+          example: true
     GameDataStatus:
       description: |
         Comparison between the user's currently-loaded game data

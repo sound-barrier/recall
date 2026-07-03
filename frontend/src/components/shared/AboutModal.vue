@@ -18,18 +18,45 @@ import { useGameDataUpdate } from '@/composables/shared/useGameDataUpdate'
 import UpdateDiffManifest from '@/components/shared/UpdateDiffManifest.vue'
 import { OpenURL, type UpdateInfo, type DataUpdateResult } from '@/api-client'
 import { GITHUB_REPO_URL, LICENSE_URL, ISSUES_URL } from '@/app-links'
+import type { SelfUpdateState } from '@/self-update-events'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   open:           boolean
   updateInfo:     UpdateInfo | null
   currentVersion: string
   checking:       boolean
-}>()
+  // In-app self-update lifecycle, owned by the app store. Rendered inside
+  // the "available" branch only when updateInfo.can_self_update is true.
+  // Optional so prop-driven unit tests that don't exercise self-update can
+  // omit it; the store always supplies the live state in production.
+  selfUpdate?:    SelfUpdateState
+}>(), {
+  selfUpdate: () => ({ phase: 'idle', pct: null, error: '' }),
+})
 
 const emit = defineEmits<{
   close:   []
   applied: [DataUpdateResult]
+  install: []
+  restart: []
 }>()
+
+// Whether this install can swap its own binary (updateInfo.can_self_update).
+const canSelfUpdate = computed(() => props.updateInfo?.can_self_update === true)
+
+// Phase groupings for the CTA template.
+const selfUpdateBusy = computed(() =>
+  ['starting', 'downloading', 'verifying', 'installing', 'restarting'].includes(props.selfUpdate.phase))
+const selfUpdateProgressLabel = computed(() => {
+  const s = props.selfUpdate
+  switch (s.phase) {
+    case 'downloading': return s.pct != null ? `Downloading… ${s.pct}%` : 'Downloading…'
+    case 'verifying':   return 'Verifying…'
+    case 'installing':  return 'Installing…'
+    case 'restarting':  return 'Restarting…'
+    default:            return 'Starting…'
+  }
+})
 
 useModalFocusTrap(toRef(props, 'open'), {
   containerSelector: '.update-check-modal-box',
@@ -148,6 +175,61 @@ function openReleasePage() {
               <p v-if="info.release_notes" class="update-check-modal-notes">
                 {{ info.release_notes }}
               </p>
+
+              <!-- In-app self-update — only when this install can swap its
+                   own binary (Windows/Linux, writable, non-dev). Otherwise
+                   the release-page link below is the only path. -->
+              <template v-if="info.available && canSelfUpdate">
+                <div
+                  v-if="selfUpdateBusy"
+                  class="update-check-modal-selfupdate-progress"
+                  data-self-update-progress
+                  role="progressbar"
+                  :aria-valuenow="selfUpdate.pct ?? undefined"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  :aria-label="selfUpdateProgressLabel"
+                >
+                  <span class="update-check-modal-selfupdate-bar">
+                    <span
+                      class="update-check-modal-selfupdate-fill"
+                      :class="{ indeterminate: selfUpdate.pct == null }"
+                      :style="selfUpdate.pct != null ? { width: selfUpdate.pct + '%' } : undefined"
+                    />
+                  </span>
+                  <span class="update-check-modal-selfupdate-label">{{ selfUpdateProgressLabel }}</span>
+                </div>
+
+                <button
+                  v-else-if="selfUpdate.phase === 'ready'"
+                  type="button"
+                  class="update-check-modal-btn update-check-modal-btn-primary"
+                  data-self-update-restart
+                  @click="emit('restart')"
+                >
+                  Restart now to apply
+                </button>
+
+                <button
+                  v-else
+                  type="button"
+                  class="update-check-modal-btn update-check-modal-btn-primary"
+                  data-self-update-install
+                  @click="emit('install')"
+                >
+                  {{ selfUpdate.phase === 'error' ? 'Try again' : 'Install update' }}
+                </button>
+
+                <p
+                  v-if="selfUpdate.phase === 'error'"
+                  class="update-check-modal-selfupdate-error"
+                  data-self-update-error
+                  role="alert"
+                >
+                  {{ selfUpdate.error }}
+                </p>
+              </template>
+
               <button
                 type="button"
                 class="update-check-modal-btn update-check-modal-btn-ghost"
@@ -506,6 +588,55 @@ function openReleasePage() {
 
 @keyframes update-check-modal-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   In-app self-update — Install / progress / error (Windows + Linux)
+   ──────────────────────────────────────────────────────────────── */
+
+.update-check-modal-selfupdate-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.update-check-modal-selfupdate-bar {
+  display: block;
+  width: 100%;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  overflow: hidden;
+}
+
+.update-check-modal-selfupdate-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+.update-check-modal-selfupdate-fill.indeterminate {
+  width: 40%;
+  animation: update-check-modal-selfupdate-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes update-check-modal-selfupdate-slide {
+  0%   { margin-left: -40%; }
+  100% { margin-left: 100%; }
+}
+
+.update-check-modal-selfupdate-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.update-check-modal-selfupdate-error {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--loss);
 }
 
 /* ────────────────────────────────────────────────────────────────

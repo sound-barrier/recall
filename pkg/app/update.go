@@ -68,6 +68,14 @@ type UpdateInfo struct {
 	// fetch failed (network / Pages outage / invalid version.json) and
 	// the FE shows a "main unreachable" state.
 	GameData GameDataStatus `json:"game_data"`
+
+	// CanSelfUpdate is true when this install can swap its own binary
+	// in place (desktop Wails build, non-dev, non-macOS, writable exe).
+	// The About dialog shows an "Install update" button only then;
+	// otherwise it falls back to the "Open release page" link (server
+	// mode, dev builds, macOS, and machine-wide Windows installs that
+	// predate the per-user move). Mirrors App.SelfUpdate != nil.
+	CanSelfUpdate bool `json:"can_self_update"`
 }
 
 // releasesURL is the GitHub Releases API endpoint CheckForUpdate
@@ -130,6 +138,9 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	}
 	u := updateInfoFor(v, isDev, meta)
 	u.GameData = <-gameDataChan
+	// One field covers every gate: the Wails wrapper only sets
+	// a.SelfUpdate when self-update is actually possible here.
+	u.CanSelfUpdate = a.SelfUpdate != nil
 	return u
 }
 

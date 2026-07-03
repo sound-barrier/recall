@@ -63,10 +63,10 @@ const { manualMatchOpen, anchorToast, undoHideToast, cheatsheetOpen, firstRunMod
 
 // App store — About (version + update hub) + the non-dismissible startup gate.
 const {
-  view, appVersion, updateInfo, updateCheckBusy, aboutOpen,
+  view, appVersion, updateInfo, updateCheckBusy, aboutOpen, selfUpdate,
   startupError, showStartupErrorModal,
 } = storeToRefs(appStore)
-const { closeAbout } = appStore
+const { closeAbout, startSelfUpdate, restartToApply } = appStore
 
 // Settings — Tesseract + the first-run source candidates.
 const { tesseractStatus, screenshotCandidates, probing } = storeToRefs(settingsStore)
@@ -219,8 +219,11 @@ const lightboxSrc = computed(() => {
     :update-info="updateInfo"
     :current-version="appVersion"
     :checking="updateCheckBusy"
+    :self-update="selfUpdate"
     @close="closeAbout"
     @applied="load"
+    @install="startSelfUpdate"
+    @restart="restartToApply"
   />
 
   <!-- Settings dialog — the ⌘, / app-menu / kebab Preferences surface. Mirrors

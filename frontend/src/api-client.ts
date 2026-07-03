@@ -32,6 +32,8 @@ function bind<K extends keyof Api>(name: K): Api[K] {
 }
 
 export const ApplyGameDataUpdate = bind('ApplyGameDataUpdate')
+export const StartSelfUpdate = bind('StartSelfUpdate')
+export const RestartToApply = bind('RestartToApply')
 export const BackupDatabase = bind('BackupDatabase')
 export const GetDatabaseHealth = bind('GetDatabaseHealth')
 export const RunDatabaseMaintenance = bind('RunDatabaseMaintenance')
