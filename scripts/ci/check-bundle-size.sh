@@ -48,8 +48,18 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 : "${MAX_TOTAL_CSS_BYTES:=317000}"
 
 if [[ "${1:-}" == "--build" ]]; then
-  echo "==> building frontend (npm --prefix frontend run build)…"
-  npm --prefix "${REPO_ROOT}/frontend" run build >/dev/null
+  # Build into a PID-suffixed staging dir and measure THERE — never
+  # frontend/dist. lefthook runs pre-push hooks in parallel, and
+  # vite's empty-at-start on the real dist raced any concurrent
+  # lint-go-full / coverage hook compiling
+  # `//go:embed all:frontend/dist` (the same class the smoke hook was
+  # cured of by its isolated worktree). CI calls this script WITHOUT
+  # --build and keeps reading the real dist it built one step earlier.
+  STAGE_DIR="/tmp/recall-bundle-stage-$$"
+  trap 'rm -rf "$STAGE_DIR"' EXIT
+  echo "==> building frontend into ${STAGE_DIR} (staged)…"
+  npm --prefix "${REPO_ROOT}/frontend" run build -- --outDir "$STAGE_DIR" --emptyOutDir >/dev/null
+  DIST_DIR="${STAGE_DIR}/assets"
 fi
 
 if [[ ! -d "${DIST_DIR}" ]]; then
