@@ -239,12 +239,21 @@ func NewSQLStore(path string) (*SQLStore, error) {
 	// surfaced as an intermittent 500 on GET /matches mid-parse. A non-zero
 	// timeout makes the loser wait for the lock instead. foreign_keys(1)
 	// likewise reaches every connection (CASCADE was only enforced on one).
+	// journal_mode(wal) lets the UI's reads proceed against the last
+	// committed snapshot while the parse loop writes, instead of queueing
+	// behind the writer's lock (it persists in the file; re-asserting per
+	// connection is harmless). synchronous(normal) is the WAL-recommended
+	// durability point — fsync at checkpoint, not per-commit; the WAL
+	// still guarantees crash consistency — and is per-connection, so it
+	// MUST ride the DSN. Restore already drops stale -wal/-shm sidecars
+	// when swapping the database file (pkg/app/backup.go).
 	// :memory: stays bare — it's single-connection by reuse, so the Exec
 	// below is the reliable setter there; the query-string DSN isn't worth
 	// the shared-cache complexity for tests.
 	dsn := path
 	if path != ":memory:" {
-		dsn += "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+		dsn += "?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)" +
+			"&_pragma=journal_mode(wal)&_pragma=synchronous(normal)"
 	}
 	d, err := sql.Open("sqlite", dsn)
 	if err != nil {

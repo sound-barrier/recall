@@ -157,9 +157,6 @@ last so the schema is frozen before the baseline is captured.
 - Four SFCs over the 500-line cap were never adjudicated by §3: MatchesTable
   (657), AboutModal (647), MatchHeroModeBand (643), MatchLeafRow (637) —
   adjudicate, don't blind-split. (S)
-- WAL + `synchronous(normal)` adoption — verifier-downgraded to optional
-  hardening (busy_timeout already rides the DSN); if adopted, also remove
-  `dst+"-journal"` in restore. (S)
 - `pkg/app` still carries several distinct sub-domains (seed/fixtures,
   export/import/validate-bundle, update + apply-data-update, profile
   management, tesseract engine) — candidates for the next decomposition
