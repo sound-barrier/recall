@@ -1,0 +1,62 @@
+# Golden-corpus parser regression lane.
+#
+# The fixture corpus (testdata/images submodule + testdata/*.golden.json) is
+# the only regression gate for the OCR parser — and before this lane it ran
+# nowhere routinely: ci.yml's go-test passes -short (which skips it) and the
+# local `task test` -race run blows the 600s package timeout. This lane runs
+# the corpus nightly, on demand, and whenever the parser or its fixtures
+# change on a PR or on main.
+#
+# No -race: the corpus is single-flight OCR, not a concurrency test, and
+# -race is what made it untenable locally. ci.yml's -short -race run still
+# covers the parser's unit surface.
+name: Golden corpus
+
+on:
+  schedule:
+    - cron: '17 9 * * *'  # daily, off the top-of-hour rush
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'pkg/parser/**'
+      - 'testdata/**'
+      - '.github/workflows/golden-corpus.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'pkg/parser/**'
+      - 'testdata/**'
+      - '.github/workflows/golden-corpus.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  golden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          # testdata/images — the recall-testdata fixture submodule.
+          submodules: true
+
+      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+        with:
+          # Only Go — the corpus needs no linters or frontend toolchain.
+          install_args: go
+
+      - name: Install Tesseract
+        # The goldens are baselined against the TESSERACT_VERSION
+        # major.minor pinned (informationally) in mise.toml [env]; a
+        # drifted major.minor means "re-baseline the goldens", not a
+        # parser regression — the version line in the log is the first
+        # thing to check on an unexplained corpus failure.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+          tesseract --version | head -1
+
+      - name: Run the golden corpus
+        run: go test -run 'TestParseScreenshot_GoldenFiles' -v -timeout 35m ./pkg/parser/
