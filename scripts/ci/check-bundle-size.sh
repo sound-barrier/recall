@@ -48,7 +48,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # per-store boot loaders) net-added ~0.3KB of lazy-chunk JS and landed
 # exactly 318B over. The ratchet stays tight: bump deliberately with a
 # rationale here, never to absorb accidental bloat.
-: "${MAX_TOTAL_JS_BYTES:=1270000}"
+# 2026-07: 1270000 → 1320000 — echarts 5.6 → 6.1 (with vue-echarts 8),
+# the dependabot major that fixes CVE-2026-45249, adds ~44KB to the
+# lazy TrendChart chunk (total-only; initial JS untouched). Security
+# upgrade, not bloat absorption.
+: "${MAX_TOTAL_JS_BYTES:=1320000}"
 : "${MAX_TOTAL_CSS_BYTES:=317000}"
 
 if [[ "${1:-}" == "--build" ]]; then
