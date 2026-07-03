@@ -22,7 +22,7 @@ func TestParseScreenshot_BoundsHungTesseract(t *testing.T) {
 	}
 	dir := t.TempDir()
 	fake := filepath.Join(dir, "tesseract")
-	if err := os.WriteFile(fake, []byte("#!/bin/sh\nsleep 10\n"), 0o700); err != nil {
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nsleep 30\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	shot := filepath.Join(dir, "shot.png")
@@ -40,9 +40,13 @@ func TestParseScreenshot_BoundsHungTesseract(t *testing.T) {
 	parser.SetTesseractTimeout(100 * time.Millisecond)
 	t.Cleanup(func() { parser.SetTesseractTimeout(0) })
 
+	// The bound leaves generous headroom for a loaded machine (each of the
+	// classifier's OCR passes costs timeout + WaitDelay + spawn overhead);
+	// an UNBOUNDED run blocks ≥30s on the very first invocation, so the
+	// separation stays unambiguous.
 	start := time.Now()
 	_, _ = parser.ParseScreenshot(shot) // classifiers tolerate OCR failures; the contract is the bound
-	if elapsed := time.Since(start); elapsed > 5*time.Second {
+	if elapsed := time.Since(start); elapsed > 15*time.Second {
 		t.Fatalf("ParseScreenshot took %v with a hung tesseract — invocations are unbounded", elapsed)
 	}
 }
