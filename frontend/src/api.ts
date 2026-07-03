@@ -172,48 +172,17 @@ export function GetStartupError(): Promise<string> {
   return _get<{ message: string }>('/api/v1/system/startup-error').then(d => d.message)
 }
 
-type GameDataStatus = {
-  commit_sha:       string
-  committed_at?:    string
-  applied_commit:   string
-  applied_at?:      string
-  has_update:       boolean
-  added_heroes?:    string[]
-  removed_heroes?:  string[]
-  added_maps?:      string[]
-  removed_maps?:    string[]
-  added_sources?:   string[]
-  removed_sources?: string[]
-}
-
-export type UpdateInfo = {
-  checked:          boolean
-  dev_build:        boolean
-  available:        boolean
-  latest:           string
-  url:              string
-  latest_heroes?:   string[]
-  latest_maps?:     string[]
-  latest_sources?:  string[]
-  last_checked_at?: string
-  release_notes?:   string
-  game_data:        GameDataStatus
-}
+// Wire shapes come from the generated schema — the hand-rolled copies
+// these replaced had already drifted (the spec marked game_data optional
+// while the Go struct always populates it; the spec now says required).
+export type UpdateInfo = components['schemas']['UpdateInfo']
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
   if (IS_WAILS) return _wails('CheckForUpdate')
   return _get<UpdateInfo>('/api/v1/system/update')
 }
 
-export type DataUpdateResult = {
-  applied_commit:   string
-  added_heroes?:    string[]
-  removed_heroes?:  string[]
-  added_maps?:      string[]
-  removed_maps?:    string[]
-  added_sources?:   string[]
-  removed_sources?: string[]
-}
+export type DataUpdateResult = components['schemas']['DataUpdateResult']
 
 // ApplyGameDataUpdate pulls the live YAMLs from
 // https://sound-barrier.github.io/recall/data/ (the main channel
