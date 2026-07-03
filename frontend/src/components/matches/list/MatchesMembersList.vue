@@ -144,6 +144,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
         >
           <span class="sd-chevron" :class="{ 'sd-chevron-collapsed': isCollapsed(section.key) }" aria-hidden="true">▾</span>
           <span class="sd-label">{{ section.header }}</span>
+          <span v-if="section.rollup" class="sd-rollup" data-session-rollup>{{ section.rollup }}</span>
           <span class="sd-count">{{ sectionTotal(section.key) }}</span>
         </button>
         <span class="sd-line" aria-hidden="true" />
@@ -424,4 +425,13 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   font-weight: 700;
 }
 .leaves-empty-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.sd-rollup {
+  margin-left: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
 </style>

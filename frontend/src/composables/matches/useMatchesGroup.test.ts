@@ -224,3 +224,44 @@ describe('useMatchesGroup', () => {
     })
   })
 })
+
+describe('session grouping', () => {
+  function statRec(date: string, finishedAt: string, key: string, result: string, ead?: [number, number, number]): MatchRecord {
+    const base = rec(date, finishedAt, key)
+    base.data = { ...base.data, result, ...(ead ? { eliminations: ead[0], assists: ead[1], deaths: ead[2] } : {}) }
+    return base
+  }
+
+  it('splits on gaps wider than the momentum session gap (3h)', () => {
+    const records = ref([
+      statRec('2026-05-10', '10:00', 's1a', 'victory'),
+      statRec('2026-05-10', '10:30', 's1b', 'victory'),
+      statRec('2026-05-10', '19:00', 's2a', 'defeat'),
+    ])
+    const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('session'), ref<SortOrder>('oldest'))
+    expect(groupedSections.value).toHaveLength(2)
+    expect(groupedSections.value[0]!.records.map((r) => r.match_key)).toEqual(['s1a', 's1b'])
+    expect(groupedSections.value[1]!.records.map((r) => r.match_key)).toEqual(['s2a'])
+  })
+
+  it('rolls up W/L, the wall-clock span, and the average line', () => {
+    const records = ref([
+      statRec('2026-05-10', '19:00', 'a', 'defeat', [12, 8, 12]),
+      statRec('2026-05-10', '19:30', 'b', 'victory', [18, 10, 8]),
+    ])
+    const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('session'), ref<SortOrder>('newest'))
+    const rollup = groupedSections.value[0]!.rollup ?? ''
+    expect(rollup).toContain('1W 1L')
+    expect(rollup).toContain('30m')
+    expect(rollup).toContain('avg 15/9/10')
+  })
+
+  it('collects undated records into the trailing no-date section', () => {
+    const undated = rec('', '', 'nodate')
+    const records = ref([statRec('2026-05-10', '10:00', 'a', 'victory'), undated])
+    const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('session'), ref<SortOrder>('newest'))
+    const last = groupedSections.value[groupedSections.value.length - 1]!
+    expect(last.key).toBe('no-date')
+    expect(last.records.map((r) => r.match_key)).toEqual(['nodate'])
+  })
+})

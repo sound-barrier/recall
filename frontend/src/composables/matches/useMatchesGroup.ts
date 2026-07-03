@@ -1,6 +1,8 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { isEditedMatch, isManualMatch } from '@/match/match-helpers'
+import { matchEpoch } from '@/match/match-trends-helpers'
+import { SESSION_GAP_HOURS } from '@/match/match-momentum-helpers'
 
 // Sort + group-by state for the Matches workspace leaves list.
 // Extracted from MatchesView so the bucketing logic has its own
@@ -9,7 +11,7 @@ import { isEditedMatch, isManualMatch } from '@/match/match-helpers'
 // that's much easier to verify in isolation than through the
 // integrated UI.
 
-export type GroupBy   = 'none' | 'day' | 'week' | 'month' | 'year' | 'provenance'
+export type GroupBy   = 'none' | 'day' | 'week' | 'month' | 'year' | 'session' | 'provenance'
 export type SortOrder = 'newest' | 'oldest'
 
 // Provenance grouping buckets in surfacing order — the user-touched
@@ -31,6 +33,9 @@ export interface GroupedSection {
   // can omit the divider row entirely.
   header: string | null
   records: MatchRecord[]
+  // Session grouping only: the pre-formatted rollup line the divider
+  // renders next to the header ("2W 1L · 1h 40m · avg 21/10/8").
+  rollup?: string
 }
 
 function sortKey(r: MatchRecord): string {
@@ -86,6 +91,66 @@ function bucketFor(date: string, bucket: GroupBy): { key: string; label: string 
   }
 }
 
+// sessionHeader labels a session by its day + finished-at span:
+// "Sat, Jun 3 · 19:00 – 19:30". Single-match sessions show one time.
+function sessionHeader(records: MatchRecord[]): string {
+  const times = records
+    .map((r) => ({ date: r.data?.date ?? '', at: r.data?.finished_at ?? '' }))
+    .filter((t) => t.date !== '')
+    .sort((a, b) => `${a.date}T${a.at}`.localeCompare(`${b.date}T${b.at}`))
+  if (times.length === 0) return 'Session'
+  const first = times[0]
+  const last = times[times.length - 1]
+  const d = new Date(first!.date + 'T00:00:00')
+  const day = isNaN(d.getTime())
+    ? first!.date
+    : shortDateWithYear(d, { weekday: 'short', month: 'short', day: 'numeric' })
+  const span = first!.at && last!.at && first!.at !== last!.at
+    ? ` · ${first!.at} – ${last!.at}`
+    : first!.at ? ` · ${first!.at}` : ''
+  return `${day}${span}`
+}
+
+// sessionRollup pre-formats the divider's stat line: W/L/D tallies,
+// the session's wall-clock span, and the average E/A/D line across
+// matches that carry stats. Draws and the average drop out when
+// empty so short lines stay short.
+function sessionRollup(records: MatchRecord[]): string {
+  let w = 0
+  let l = 0
+  let dr = 0
+  let e = 0
+  let a = 0
+  let dth = 0
+  let statted = 0
+  const epochs: number[] = []
+  for (const r of records) {
+    const res = r.data?.result
+    if (res === 'victory') w++
+    else if (res === 'defeat') l++
+    else if (res === 'draw') dr++
+    if (typeof r.data?.eliminations === 'number') {
+      e += r.data.eliminations
+      a += r.data.assists ?? 0
+      dth += r.data.deaths ?? 0
+      statted++
+    }
+    const t = matchEpoch(r)
+    if (t != null) epochs.push(t)
+  }
+  const parts: string[] = []
+  const wld = [`${w}W`, `${l}L`, ...(dr > 0 ? [`${dr}D`] : [])].join(' ')
+  parts.push(wld)
+  if (epochs.length > 1) {
+    const spanMin = Math.round((Math.max(...epochs) - Math.min(...epochs)) / 60_000)
+    parts.push(spanMin >= 60 ? `${Math.floor(spanMin / 60)}h ${spanMin % 60}m` : `${spanMin}m`)
+  }
+  if (statted > 0) {
+    parts.push(`avg ${Math.round(e / statted)}/${Math.round(a / statted)}/${Math.round(dth / statted)}`)
+  }
+  return parts.join(' · ')
+}
+
 export function useMatchesGroup(
   records: Readonly<Ref<MatchRecord[]>>,
   groupBy: Readonly<Ref<GroupBy>>,
@@ -111,6 +176,38 @@ export function useMatchesGroup(
       return PROVENANCE_SECTIONS
         .map((s) => ({ key: s.key, header: s.header, records: sortedRecords.value.filter(s.match) }))
         .filter((s) => s.records.length > 0)
+    }
+    // Sessions are sequence-derived, not per-record bucketed: walk the
+    // display-ordered records and break whenever adjacent placeable
+    // times sit further apart than the momentum widgets' session gap.
+    // Records without a placeable time collect into the trailing
+    // no-date section — a session is definitionally about WHEN.
+    if (groupBy.value === 'session') {
+      const gapMs = SESSION_GAP_HOURS * 3_600_000
+      const sections: GroupedSection[] = []
+      let cur: GroupedSection | null = null
+      let prevEpoch: number | null = null
+      let noDateSection: GroupedSection | null = null
+      for (const rec of sortedRecords.value) {
+        const t = matchEpoch(rec)
+        if (t == null) {
+          if (!noDateSection) noDateSection = { key: 'no-date', header: 'No date', records: [] }
+          noDateSection.records.push(rec)
+          continue
+        }
+        if (!cur || prevEpoch == null || Math.abs(t - prevEpoch) > gapMs) {
+          cur = { key: `session-${rec.match_key}`, header: '', records: [] }
+          sections.push(cur)
+        }
+        cur.records.push(rec)
+        prevEpoch = t
+      }
+      for (const s of sections) {
+        s.header = sessionHeader(s.records)
+        s.rollup = sessionRollup(s.records)
+      }
+      if (noDateSection) sections.push(noDateSection)
+      return sections
     }
     const sections: GroupedSection[] = []
     let cur: GroupedSection | null = null
