@@ -55,7 +55,7 @@ type Store interface {
 	// ambiguous zone, multiple matches inside 0-30 min, or a
 	// timestamp-window tie), the resolver records candidates here
 	// and the screenshot's parent row stores
-	// `match_key = "ambiguous:<filename>"`. Other screenshots within
+	// `match_key = "ambiguous-<base64url(filename)>"`. Other screenshots within
 	// mergeWindow of that screenshot inherit the same sentinel via
 	// the timestamp-window pass, so several rows can share one
 	// ambiguous match_key. The user picks the real match via

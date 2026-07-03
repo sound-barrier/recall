@@ -52,7 +52,7 @@ flowchart LR
 
 - **Backend:** Go — **pure-Go, no CGo** (`modernc.org/sqlite`), so release builds
   cross-compile cleanly for every platform.
-- **Frontend:** Vue 3 + Vite, embedded in a [Wails v2](https://wails.io/) desktop
+- **Frontend:** Vue 3 + Vite, embedded in a [Wails v3](https://v3.wails.io/) desktop
   shell or served as a static SPA in server mode.
 - **OCR:** the [Tesseract](https://github.com/tesseract-ocr/tesseract) 5.x CLI,
   invoked per screenshot.

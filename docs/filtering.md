@@ -67,7 +67,7 @@ clear the input to drop the clause.
 > **Note:** the previous vim-style scoped-clause syntax
 > (`note:clutch`, `tag:stack`, `member:Apollo`, `replay:7H1`)
 > isn't part of the current search — substring match only.
-> See `REVIEW.md` (F1) for the plan to restore scoped
+> See FEATURES.md ("Scoped search clauses in the narrow panel") for the plan to restore scoped
 > clauses.
 
 ### Time scope
@@ -261,7 +261,7 @@ Stats + Rank Update + Source Screenshots dossier. The panel
 honors ← / → for prev/next match against the *currently filtered*
 list, so once you've filtered to "every Lúcio loss on Rialto"
 the arrow keys paginate through that exact set. See
-[How it works → The Matches view](how-it-works.md#the-matches-view)
+[How it works → What it looks like](how-it-works.md#what-it-looks-like)
 for the panel's keyboard contract in detail.
 
 ## Match count

@@ -28,13 +28,13 @@ releases, etc.).
 
 ## Common commands
 
-The build runner is [go-task](https://taskz.dev) (`Taskfile.yml`, run inside the
+The build runner is [go-task](https://taskfile.dev) (`Taskfile.yml`, run inside the
 [mise](https://mise.jdx.dev)-managed environment — `mise install` provisions the
 pinned toolchain from `mise.toml`). `task --list` shows the full catalog.
 
 | Command | Purpose |
 |---|---|
-| `task dev` | Hot-reload dev server (Vite `:5173`, Wails IPC `:34115`). |
+| `task dev` | Hot-reload dev server (Vite `:9245` — `WAILS_VITE_PORT` overrides). |
 | `task test` | Go unit (`-race`) + Vitest. |
 | `task test-e2e` | Playwright e2e. Required for any UI feature (TDD rule below). |
 | `task lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |

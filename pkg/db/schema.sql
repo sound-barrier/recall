@@ -19,9 +19,11 @@
 --     deleting a `screenshots_dirs` row that any screenshot still
 --     references. Drop dependent rows first to free the dir.
 --   - Parent tables carry a composite `(match_key, parsed_at)`
---     index. The leading `match_key` covers single-column queries;
---     the trailing `parsed_at` removes the sort step in
---     `aggregateAll`'s bulk load + group.
+--     index. The leading `match_key` covers the single-column
+--     by-key queries (hard delete, ambiguous resolution). The
+--     trailing `parsed_at` is currently unexploited headroom: the
+--     bulk loads read `ORDER BY id` and the aggregator sorts each
+--     match group in memory.
 --   - `hero_raw` / `map_raw` preserve the OCR'd string when the
 --     parser's canonical matcher rejects the candidate. UI surfaces
 --     "Unknown hero (miyazaki?)" / "Unknown map (X?)" chips by

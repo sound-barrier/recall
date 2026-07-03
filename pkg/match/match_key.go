@@ -18,9 +18,10 @@ import (
 // is URL-safe (alphanumerics + `-` `_`) and needs no path escaping;
 // Filename() decodes it back.
 //
-// The legacy form used `:` instead of `-` between the kind prefix and
-// the body; a one-time migration in pkg/db.SQLStore rewrote on-disk
-// rows so the wire format is now stable on the dash form.
+// The dash form is the only shape the parser has ever written to disk.
+// (An earlier doc here claimed a one-time colon→dash migration in
+// pkg/db.SQLStore; no such migration ever existed — only a test fixture
+// string referenced the colon form.)
 //
 // This type is OPT-IN at internal call sites today — consumers can
 // keep treating match_key as a bare string for back-compat. New code
