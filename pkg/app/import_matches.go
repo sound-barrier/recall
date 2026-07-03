@@ -39,10 +39,11 @@ type MatchImportResult struct {
 // screenshots-dir reference collapses to the sentinel, mirroring the way the
 // bundle export strips filesystem paths.
 //
-// The bundle's data.json carries OCR parent rows only (no user-override layer),
-// so edits, annotations, hidden flags, and queue/play-mode overrides made by
-// the source user are intentionally not transferred — this is a share format,
-// not a backup. Use Backup/Restore for a full-fidelity copy.
+// A v2 data.json also carries the user layer — inline edits, manual matches,
+// annotations, review / queue / play-mode state, hidden flags — which imports
+// under the same skip-existing rule: an incoming key you already have is
+// skipped wholesale, so a merge can never clobber local edits. v1 bundles
+// (builds ≤0.22.x) simply have no user layer to import.
 func (a *App) ImportMatches(payload []byte) (ImportSummary, error) {
 	payload = stripBOM(payload)
 	if !looksLikeZIP(payload) {
@@ -73,40 +74,115 @@ func (a *App) ImportMatches(payload []byte) (ImportSummary, error) {
 	if err := importAllParentTables(a.store, "import", fresh, toSentinel); err != nil {
 		return ImportSummary{}, err
 	}
-	return ImportSummary{Imported: len(imported), Skipped: len(skipped)}, nil
+	manualImported, err := a.importUserLayer(data, existing)
+	if err != nil {
+		return ImportSummary{}, err
+	}
+	return ImportSummary{Imported: len(imported) + manualImported, Skipped: len(skipped)}, nil
+}
+
+// importUserLayer writes the v2 user-layer sections for keys not already
+// present locally (the same skip-existing rule the parent rows follow).
+// Returns how many MANUAL matches it imported — keys that exist only in
+// the user layer, which the parent-row partition can't count.
+func (a *App) importUserLayer(data BundleDataV2, existing map[string]struct{}) (int, error) {
+	skip := func(k string) bool {
+		_, ok := existing[k]
+		return ok
+	}
+	incomingParents := map[string]struct{}{}
+	for k := range dataMatchKeys(BundleDataV2{
+		Summaries: data.Summaries, Teams: data.Teams, Personals: data.Personals,
+		Ranks: data.Ranks, Unknowns: data.Unknowns,
+	}) {
+		incomingParents[k] = struct{}{}
+	}
+	manual := 0
+	for _, ud := range data.UserMatchData {
+		if skip(ud.MatchKey) {
+			continue
+		}
+		if err := a.store.UpsertUserMatchData(ud); err != nil {
+			return 0, fmt.Errorf("import: user data for %q: %w", ud.MatchKey, err)
+		}
+		if _, hasParents := incomingParents[ud.MatchKey]; !hasParents {
+			manual++
+		}
+	}
+	for _, ann := range data.Annotations {
+		if skip(ann.MatchKey) {
+			continue
+		}
+		if err := a.store.SetAnnotation(ann); err != nil {
+			return 0, fmt.Errorf("import: annotation for %q: %w", ann.MatchKey, err)
+		}
+	}
+	for k, r := range data.Reviews {
+		if skip(k) || r.ReviewedBy == "" {
+			continue
+		}
+		if err := a.store.SetReview(k, r.ReviewedBy); err != nil {
+			return 0, fmt.Errorf("import: review for %q: %w", k, err)
+		}
+	}
+	for k, q := range data.Queues {
+		if skip(k) || q.QueueType == "" {
+			continue
+		}
+		if err := a.store.SetMatchQueue(k, q.QueueType); err != nil {
+			return 0, fmt.Errorf("import: queue for %q: %w", k, err)
+		}
+	}
+	for k, pm := range data.PlayModes {
+		if skip(k) || pm.PlayMode == "" {
+			continue
+		}
+		if err := a.store.SetMatchPlayMode(k, pm.PlayMode); err != nil {
+			return 0, fmt.Errorf("import: play mode for %q: %w", k, err)
+		}
+	}
+	for _, k := range data.Hidden {
+		if skip(k) {
+			continue
+		}
+		if err := a.store.HideMatch(k); err != nil {
+			return 0, fmt.Errorf("import: hidden flag for %q: %w", k, err)
+		}
+	}
+	return manual, nil
 }
 
 // readBundleData extracts and validates the data.json out of a bundle ZIP. A
 // payload that isn't a readable bundle wraps ErrImportMalformed (→ 400); a
 // readable-but-wrong-schema bundle is a plain error (→ 409).
-func readBundleData(payload []byte) (BundleDataV1, error) {
+func readBundleData(payload []byte) (BundleDataV2, error) {
 	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
-		return BundleDataV1{}, fmt.Errorf("%w: open zip: %w", ErrImportMalformed, err)
+		return BundleDataV2{}, fmt.Errorf("%w: open zip: %w", ErrImportMalformed, err)
 	}
 	manifestBytes, err := readZipFile(zr, "manifest.json")
 	if err != nil {
-		return BundleDataV1{}, fmt.Errorf("%w: missing manifest.json: %w", ErrImportMalformed, err)
+		return BundleDataV2{}, fmt.Errorf("%w: missing manifest.json: %w", ErrImportMalformed, err)
 	}
 	var mf struct {
 		Schema string `json:"schema"`
 	}
 	if err := json.Unmarshal(manifestBytes, &mf); err != nil {
-		return BundleDataV1{}, fmt.Errorf("%w: manifest decode: %w", ErrImportMalformed, err)
+		return BundleDataV2{}, fmt.Errorf("%w: manifest decode: %w", ErrImportMalformed, err)
 	}
 	if mf.Schema != BundleSchemaV1 {
-		return BundleDataV1{}, fmt.Errorf("import: unsupported bundle schema %q (this build expects %q)", mf.Schema, BundleSchemaV1)
+		return BundleDataV2{}, fmt.Errorf("import: unsupported bundle schema %q (this build expects %q)", mf.Schema, BundleSchemaV1)
 	}
 	dataBytes, err := readZipFile(zr, "data.json")
 	if err != nil {
-		return BundleDataV1{}, fmt.Errorf("%w: missing data.json: %w", ErrImportMalformed, err)
+		return BundleDataV2{}, fmt.Errorf("%w: missing data.json: %w", ErrImportMalformed, err)
 	}
-	var data BundleDataV1
+	var data BundleDataV2
 	if err := json.Unmarshal(dataBytes, &data); err != nil {
-		return BundleDataV1{}, fmt.Errorf("import: data.json decode: %w", err)
+		return BundleDataV2{}, fmt.Errorf("import: data.json decode: %w", err)
 	}
-	if data.Schema != exportSchemaV1 {
-		return BundleDataV1{}, fmt.Errorf("import: unsupported data schema %q (this build expects %q)", data.Schema, exportSchemaV1)
+	if data.Schema != exportSchemaV1 && data.Schema != exportSchemaV2 {
+		return BundleDataV2{}, fmt.Errorf("import: unsupported data schema %q (this build accepts %q and %q)", data.Schema, exportSchemaV1, exportSchemaV2)
 	}
 	return data, nil
 }
