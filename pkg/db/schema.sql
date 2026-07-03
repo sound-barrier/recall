@@ -107,8 +107,6 @@ CREATE TABLE IF NOT EXISTS teams_screenshots (
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_teams_match_key_parsed_at ON teams_screenshots(match_key, parsed_at);
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_teams_ead ON teams_screenshots(eliminations, assists, deaths);
--- statement-end
 
 CREATE TABLE IF NOT EXISTS teams_hero_stats (
   teams_screenshot_id INTEGER NOT NULL REFERENCES teams_screenshots(id) ON DELETE CASCADE,
