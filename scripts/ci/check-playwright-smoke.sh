@@ -33,11 +33,28 @@ fi
 
 mkdir -p "$E2E_DIR"
 
-echo "[playwright-smoke] Building frontend/dist…"
-(cd frontend && npm run build >/dev/null)
+# Build the whole harness inside an isolated git worktree of HEAD so
+# this hook never touches the main tree's frontend/dist: lefthook
+# runs pre-push hooks in parallel, and any in-place mutation of dist
+# races a concurrent lint-go-full / coverage hook compiling
+# `//go:embed all:frontend/dist` — vite's empty-at-start left the dir
+# empty ("contains no embeddable files"), and even a file-by-file
+# rsync swap changed the hashed filenames between the embed's glob
+# and its opens ("open …: no such file or directory"). HEAD is
+# exactly the content being pushed; node_modules rides in as a
+# symlink since a worktree checkout doesn't carry it.
+WORKTREE=$E2E_DIR/tree
+REPO_ROOT=$(pwd)
+git worktree remove --force "$WORKTREE" 2>/dev/null || true
+git worktree add --force --detach "$WORKTREE" HEAD >/dev/null
+trap 'cd "$REPO_ROOT" && git worktree remove --force "$WORKTREE" 2>/dev/null || true' EXIT
+ln -sfn "$REPO_ROOT/frontend/node_modules" "$WORKTREE/frontend/node_modules"
+
+echo "[playwright-smoke] Building frontend/dist (isolated worktree)…"
+(cd "$WORKTREE/frontend" && npm run build >/dev/null)
 
 echo "[playwright-smoke] Building serveronly binary…"
-go build -tags serveronly -o "$BIN" .
+(cd "$WORKTREE" && go build -tags serveronly -o "$BIN" .)
 
 echo "[playwright-smoke] Running smoke subset…"
 # `--grep` matches the test title OR describe-block; specs paired
