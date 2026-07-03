@@ -136,3 +136,44 @@ describe('useNarrowPresets', () => {
     expect(presets.value).toEqual([])
   })
 })
+
+describe('preset round-trip of newer filter dimensions', () => {
+  // pickedLeavers / pickedModifiers / pickedRanks joined MatchesNarrowState
+  // after the v2 preset shape shipped — a preset must carry them, and
+  // applying one must reset them (not leave stale picks merged in).
+  it('saves and applies leaver-side, modifier, and rank picks', () => {
+    const state = buildState()
+    state.pickedLeavers.value = new Set<LeaverPick>(['team'])
+    state.pickedModifiers.value = new Set(['win streak'])
+    state.pickedRanks.value = new Set(['diamond'])
+    const { savePreset, applyPreset } = useNarrowPresets(state)
+    savePreset('leaver hunts')
+
+    state.pickedLeavers.value = new Set<LeaverPick>()
+    state.pickedModifiers.value = new Set(['loss streak'])
+    state.pickedRanks.value = new Set()
+    applyPreset('leaver hunts')
+
+    expect([...state.pickedLeavers.value]).toEqual(['team'])
+    expect([...state.pickedModifiers.value]).toEqual(['win streak'])
+    expect([...state.pickedRanks.value]).toEqual(['diamond'])
+  })
+
+  it('applies a legacy preset (saved before the dimensions existed) by clearing them', () => {
+    if (typeof globalThis.localStorage === 'undefined') return // happy-dom warm-up race
+    const state = buildState()
+    const { savePreset } = useNarrowPresets(state)
+    savePreset('legacy')
+    // Simulate a pre-fix stored preset: strip the new keys.
+    const raw = JSON.parse(localStorage.getItem('recall.narrowPresets.v2')!) as Array<{ state: Record<string, unknown> }>
+    delete raw[0]!.state['pickedLeavers']
+    delete raw[0]!.state['pickedModifiers']
+    delete raw[0]!.state['pickedRanks']
+    localStorage.setItem('recall.narrowPresets.v2', JSON.stringify(raw))
+
+    const fresh = useNarrowPresets(state)
+    state.pickedModifiers.value = new Set(['volatile'])
+    fresh.applyPreset('legacy')
+    expect(state.pickedModifiers.value.size).toBe(0)
+  })
+})

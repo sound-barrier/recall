@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue'
-import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, PresetRange } from '@/composables/matches/useMatchesNarrow'
+import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, PresetRange } from '@/composables/matches/useMatchesNarrow'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier'
 
 // Saved-set / preset feature.
@@ -28,6 +28,9 @@ interface SerializedNarrow {
   pickedQueues:      QueuePick[]
   pickedPlayModes:   PlayModePick[]
   pickedSources:     SourcePick[]
+  pickedLeavers:     LeaverPick[]
+  pickedModifiers:   string[]
+  pickedRanks:       string[]
   pickedRange:       PresetRange
   customFrom:        string
   customTo:          string
@@ -57,6 +60,9 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
     pickedQueues:      [...state.pickedQueues.value],
     pickedPlayModes:   [...state.pickedPlayModes.value],
     pickedSources:     [...state.pickedSources.value],
+    pickedLeavers:     [...state.pickedLeavers.value],
+    pickedModifiers:   [...state.pickedModifiers.value].sort(),
+    pickedRanks:       [...state.pickedRanks.value].sort(),
     pickedRange:       state.pickedRange.value,
     customFrom:        state.customFrom.value,
     customTo:          state.customTo.value,
@@ -81,6 +87,11 @@ function apply(state: MatchesNarrowState, s: SerializedNarrow): void {
   state.pickedQueues.value      = new Set(s.pickedQueues)
   state.pickedPlayModes.value   = new Set(s.pickedPlayModes)
   state.pickedSources.value     = new Set(s.pickedSources ?? [])
+  // `?? []` also RESETS the dimension for presets saved before it existed —
+  // leaving the live picks in place would apply a merged half-preset.
+  state.pickedLeavers.value     = new Set(s.pickedLeavers ?? [])
+  state.pickedModifiers.value   = new Set(s.pickedModifiers ?? [])
+  state.pickedRanks.value       = new Set(s.pickedRanks ?? [])
   state.pickedRange.value       = s.pickedRange
   state.customFrom.value        = s.customFrom
   state.customTo.value          = s.customTo
