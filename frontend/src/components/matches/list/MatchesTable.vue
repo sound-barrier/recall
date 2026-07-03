@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/useTableSort'
 import { useTableMode } from '@/composables/matches/useTableMode'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useColumnResize } from '@/composables/matches/useColumnResize'
-import { useCellSelection } from '@/composables/matches/useCellSelection'
+import { useCellDragSelect } from '@/composables/matches/useCellDragSelect'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { PlayModePick, QueuePick } from '@/composables/matches/matchesNarrow.types'
 import type { SearchClause } from '@/match/search-query'
@@ -142,106 +142,18 @@ watch(() => props.resetCounter, () => {
 })
 
 // ─── Cell range-select + copy (TSV) ────────────────────────
-// Drag a rectangle of cells, Ctrl/Cmd+C copies it as TSV for Excel/Sheets. A
-// plain click (no drag) still opens the row; a drag selects the range.
+// Drag a rectangle of cells, Ctrl/Cmd+C copies it as TSV for
+// Excel/Sheets; a plain click still opens the row. The whole pointer
+// state machine (threshold, edge auto-scroll, copy keybinding) lives
+// in useCellDragSelect — this shell only binds its three outputs.
 const tableCols = TABLE_SORT_COLUMNS.map((c) => c.col)
-const cellSel = useCellSelection(tableFlatRecords, tableCols, ow.heroRole)
-
-// Resolve the cell under a pointer event — null on interactive children (so
-// their own click still fires) or off-grid.
-function cellAt(e: MouseEvent): { key: string; col: number } | null {
-  const el = e.target as HTMLElement
-  if (el.closest('button, input, a')) return null
-  const td = el.closest<HTMLElement>('td[data-col]')
-  const key = el.closest<HTMLElement>('tr[data-match-key]')?.dataset.matchKey
-  if (!td || key == null) return null
-  const col = Number(td.dataset.col)
-  return Number.isNaN(col) ? null : { key, col }
-}
-
-// Re-resolve the cell at a viewport point — used by the auto-scroll to extend
-// the selection to whatever scrolled under the held pointer.
-function cellFromPoint(x: number, y: number): { key: string; col: number } | null {
-  const el = document.elementFromPoint(x, y) as HTMLElement | null
-  if (!el || el.closest('button, input, a')) return null
-  const td = el.closest<HTMLElement>('td[data-col]')
-  const key = el.closest<HTMLElement>('tr[data-match-key]')?.dataset.matchKey
-  if (!td || key == null) return null
-  const col = Number(td.dataset.col)
-  return Number.isNaN(col) ? null : { key, col }
-}
-
-// Auto-scroll the pane while dragging near its top/bottom edge, so a selection
-// can extend past the viewport (it stops on its own when the pointer leaves the
-// edge or the drag ends).
-let dragPoint = { x: 0, y: 0 }
-let scrollRAF = 0
-function autoScrollTick() {
-  const pane = tableScrollRef.value
-  if (!pane || !cellSel.dragging.value) { scrollRAF = 0; return }
-  const rect = pane.getBoundingClientRect()
-  const EDGE = 32
-  const dir = dragPoint.y < rect.top + EDGE ? -1 : dragPoint.y > rect.bottom - EDGE ? 1 : 0
-  if (dir === 0) { scrollRAF = 0; return }
-  pane.scrollTop += dir * 14
-  const cell = cellFromPoint(dragPoint.x, dragPoint.y)
-  if (cell) cellSel.extendTo(cell.key, cell.col)
-  scrollRAF = requestAnimationFrame(autoScrollTick)
-}
-
-// Only commit a selection once the pointer moves past a small threshold, so a
-// click still falls through to the row's open-detail handler.
-let pendingStart: { key: string; col: number; x: number; y: number } | null = null
-let suppressNextOpen = false
-
-function onCellMouseDown(e: MouseEvent) {
-  if (e.button !== 0) return
-  suppressNextOpen = false
-  const cell = cellAt(e)
-  if (!cell) return
-  pendingStart = { ...cell, x: e.clientX, y: e.clientY }
-  document.addEventListener('mousemove', onCellMouseMove)
-  document.addEventListener('mouseup', onCellMouseUp, { once: true })
-}
-function onCellMouseMove(e: MouseEvent) {
-  if (cellSel.dragging.value) {
-    const cell = cellAt(e)
-    if (cell) cellSel.extendTo(cell.key, cell.col)
-    dragPoint = { x: e.clientX, y: e.clientY }
-    if (!scrollRAF) scrollRAF = requestAnimationFrame(autoScrollTick)
-    return
-  }
-  if (!pendingStart) return
-  if (Math.abs(e.clientX - pendingStart.x) + Math.abs(e.clientY - pendingStart.y) < 4) return
-  cellSel.startAt(pendingStart.key, pendingStart.col)
-  const cell = cellAt(e)
-  if (cell) cellSel.extendTo(cell.key, cell.col)
-}
-function onCellMouseUp() {
-  document.removeEventListener('mousemove', onCellMouseMove)
-  if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = 0 }
-  if (cellSel.dragging.value) suppressNextOpen = true
-  pendingStart = null
-  cellSel.endDrag()
-}
-function onRowOpen(key: string) {
-  if (suppressNextOpen) { suppressNextOpen = false; return }
-  emit('open-match', key)
-}
-
-function isEditable(el: EventTarget | null): boolean {
-  return el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
-}
-function onCellKeydown(e: KeyboardEvent) {
-  if (!cellSel.hasSelection.value) return
-  if (e.key === 'Escape') { cellSel.clear(); return }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !isEditable(document.activeElement)) {
-    e.preventDefault()
-    void cellSel.copy()
-  }
-}
-onMounted(() => document.addEventListener('keydown', onCellKeydown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onCellKeydown))
+const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
+  rows: tableFlatRecords,
+  cols: tableCols,
+  heroRole: ow.heroRole,
+  containerRef: tableScrollRef,
+  onOpen: (key) => emit('open-match', key),
+})
 </script>
 
 <template>
