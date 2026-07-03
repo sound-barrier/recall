@@ -34,8 +34,10 @@ export function useAppBoot() {
   onMounted(() => {
     matchesStore.restoreLastParsedAt()
     void appStore.loadVersion()
+    void appStore.loadDataLocation()
     void matchesStore.load()
     void matchesStore.loadIgnored()
+    void settingsStore.load()
     void settingsStore.loadScreenshotCandidates()
     GetStartupError()
       .then(msg => { if (msg) appStore.setStartupError(msg) })

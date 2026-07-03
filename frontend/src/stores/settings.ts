@@ -3,6 +3,10 @@ import { defineStore } from 'pinia'
 
 import type { NamedCandidate } from '@/api-client'
 import {
+  GetScreenshotsDir,
+  GetWatchEnabled,
+  GetExitOnClose,
+  GetTesseractStatus,
   PickTesseractBinary,
   ResetTesseractPath,
   ProbeTesseractBinary,
@@ -163,7 +167,26 @@ export const useSettingsStore = defineStore('settings', () => {
   // the matches-store dossier all read ONE instance.
   const { weekStart, setWeekStart } = useWeekStart()
 
+  // Boot loader for this store's server-backed fields — useAppBoot fans
+  // out here at mount. Per-subsystem isolation: one failed call never
+  // blocks the others, and a failed Tesseract probe reports found:false
+  // (a real "not detected" state) rather than leaving stale status.
+  async function load() {
+    const [dir, watchOn, exitClose, tess] = await Promise.allSettled([
+      GetScreenshotsDir(),
+      GetWatchEnabled(),
+      GetExitOnClose(),
+      GetTesseractStatus(),
+    ])
+    if (dir.status === 'fulfilled') setScreenshotsDir(dir.value || '')
+    if (watchOn.status === 'fulfilled') setWatchEnabled(!!watchOn.value)
+    if (exitClose.status === 'fulfilled') setExitOnClose(!!exitClose.value)
+    if (tess.status === 'fulfilled') setTesseractStatus(tess.value)
+    else setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
+  }
+
   return {
+    load,
     themeMode,
     setTheme,
     weekStart,

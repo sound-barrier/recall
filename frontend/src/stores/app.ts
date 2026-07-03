@@ -1,7 +1,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { CheckForUpdate, GetVersion, type UpdateInfo, type DataLocation } from '@/api-client'
+import { CheckForUpdate, GetDataLocation, GetVersion, type UpdateInfo, type DataLocation } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import type { TabId } from '@/composables/shared/useTabKeyboardNav'
 import { useMatchesStore } from '@/stores/matches'
@@ -99,8 +99,15 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // ── Data location (Settings → Backup) ─────────────────────────────
-  // Set by the boot coordinator (load()'s allSettled fan-out).
+  // Hydrated by useAppBoot's fan-out at mount.
   const dataLocation = ref<DataLocation | null>(null)
+  async function loadDataLocation() {
+    try {
+      dataLocation.value = await GetDataLocation()
+    } catch (_) {
+      dataLocation.value = null
+    }
+  }
 
   // ── Startup failure ───────────────────────────────────────────────
   // Filled by useAppBoot from GetStartupError(); the modal is open iff the
@@ -127,6 +134,7 @@ export const useAppStore = defineStore('app', () => {
     closeAbout,
     checkForUpdates,
     dataLocation,
+    loadDataLocation,
     startupError,
     showStartupErrorModal,
     setStartupError,

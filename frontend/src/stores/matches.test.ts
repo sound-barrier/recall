@@ -6,16 +6,19 @@ import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
 import type { MatchRecord, TesseractStatus, DataLocation } from '@/api'
 
-// Direct unit tests for the load() boot coordinator — the Promise.allSettled
-// fan-out that used to live in App.vue's onMounted and was only reachable through
-// a full-App mount. EventsOn/Off + GetActiveParse are no-op'd so creating the
-// store (which wires the SSE event-stream + parse-recovery) doesn't reach for the
-// absent Wails runtime; the six load() endpoints are mockable per test.
+// Direct unit tests for the boot-time domain loaders useAppBoot fans into —
+// matchesStore.load() (records + new-count), settingsStore.load() (dir /
+// watch / exit-close / tesseract), and appStore.loadDataLocation(). The
+// per-subsystem isolation contract is the point: one failed endpoint never
+// blocks the others. EventsOn/Off + GetActiveParse are no-op'd so creating
+// the store (which wires the SSE event-stream + parse-recovery) doesn't
+// reach for the absent Wails runtime.
 const api = vi.hoisted(() => ({
   GetMatchResults:       vi.fn(),
   GetScreenshotsDir:     vi.fn(),
   GetWatchEnabled:       vi.fn(),
   GetTesseractStatus:    vi.fn(),
+  GetExitOnClose:        vi.fn(),
   GetNewScreenshotCount: vi.fn(),
   GetDataLocation:       vi.fn(),
 }))
@@ -46,6 +49,7 @@ function setHappyDefaults() {
   api.GetScreenshotsDir.mockResolvedValue('/srv/recall')
   api.GetWatchEnabled.mockResolvedValue(true)
   api.GetTesseractStatus.mockResolvedValue(tess())
+  api.GetExitOnClose.mockResolvedValue(false)
   api.GetNewScreenshotCount.mockResolvedValue(3)
   api.GetDataLocation.mockResolvedValue(DATA_LOC)
 }
@@ -57,13 +61,13 @@ beforeEach(() => {
 })
 
 describe('matches store — load() boot coordinator', () => {
-  it('fans the six endpoints into the app/matches/settings stores on the happy path', async () => {
+  it('the boot fan-out hydrates each store from its OWN loader', async () => {
     const matches = useMatchesStore()
     const settings = useSettingsStore()
     const app = useAppStore()
     expect(matches.firstLoadPending).toBe(true)
 
-    await matches.load()
+    await Promise.all([matches.load(), settings.load(), app.loadDataLocation()])
 
     expect(matches.records.map(r => r.match_key)).toEqual(['m-1', 'm-2'])
     expect(settings.screenshotsDir).toBe('/srv/recall')
@@ -80,7 +84,7 @@ describe('matches store — load() boot coordinator', () => {
     const settings = useSettingsStore()
     const app = useAppStore()
 
-    await matches.load()
+    await Promise.all([matches.load(), settings.load()])
 
     // The records ref is NOT blanked by the failure...
     expect(matches.records).toEqual([])
@@ -111,7 +115,7 @@ describe('matches store — load() boot coordinator', () => {
     const matches = useMatchesStore()
     const settings = useSettingsStore()
 
-    await matches.load()
+    await Promise.all([matches.load(), settings.load()])
 
     // Probe failure → found:false (NOT a false "detected"), and matches still loaded.
     expect(settings.tesseractReady).toBe(false)
