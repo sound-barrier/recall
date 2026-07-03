@@ -7,7 +7,8 @@
 // from the app store; Tesseract + source candidates from settings) plus its own
 // onboarding-tour bridge (a stateless DOM/nav helper) — so App mounts it with no
 // props.
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, type Component } from 'vue'
+import ViewLoadError from '@/components/shared/ViewLoadError.vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
@@ -20,18 +21,26 @@ import UnsupportedModal from '@/components/app/UnsupportedModal.vue'
 
 // Same lazy split App.vue had — each becomes its own Vite chunk, fetched on
 // first open. App.lazy-views.test guards the pattern (it reads this file too).
-const AboutModal = defineAsyncComponent(() => import('@/components/shared/AboutModal.vue'))
-const SettingsModal = defineAsyncComponent(() => import('@/components/settings/SettingsModal.vue'))
-const FirstRunProfileModal = defineAsyncComponent(() => import('@/components/shared/FirstRunProfileModal.vue'))
-const ExportBundleModal = defineAsyncComponent(() => import('@/components/settings/ExportBundleModal.vue'))
-const IgnoredFilesPanel = defineAsyncComponent(() => import('@/components/settings/IgnoredFilesPanel.vue'))
-const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
-const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/list/MatchAnchorToast.vue'))
-const MatchUndoToast = defineAsyncComponent(() => import('@/components/matches/list/MatchUndoToast.vue'))
-const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
-const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
-const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/manual/ManualMatchModal.vue'))
-const OnboardingTour = defineAsyncComponent(() => import('@/components/shared/OnboardingTour.vue'))
+
+// Shared factory: a modal chunk that fails to load renders the same
+// reload affordance the lazy views use — otherwise the open-flag
+// flips and nothing appears (see ViewLoadError.vue).
+function lazyOverlay(loader: () => Promise<{ default: Component }>) {
+  return defineAsyncComponent({ loader, errorComponent: ViewLoadError })
+}
+
+const AboutModal = lazyOverlay(() => import('@/components/shared/AboutModal.vue'))
+const SettingsModal = lazyOverlay(() => import('@/components/settings/SettingsModal.vue'))
+const FirstRunProfileModal = lazyOverlay(() => import('@/components/shared/FirstRunProfileModal.vue'))
+const ExportBundleModal = lazyOverlay(() => import('@/components/settings/ExportBundleModal.vue'))
+const IgnoredFilesPanel = lazyOverlay(() => import('@/components/settings/IgnoredFilesPanel.vue'))
+const MatchDetailPanel = lazyOverlay(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
+const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/list/MatchAnchorToast.vue'))
+const MatchUndoToast = lazyOverlay(() => import('@/components/matches/list/MatchUndoToast.vue'))
+const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
+const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
+const ManualMatchModal = lazyOverlay(() => import('@/components/matches/manual/ManualMatchModal.vue'))
+const OnboardingTour = lazyOverlay(() => import('@/components/shared/OnboardingTour.vue'))
 
 const appStore = useAppStore()
 const matchesStore = useMatchesStore()

@@ -50,15 +50,17 @@ describe('App.vue lazy-loaded components', () => {
 
   for (const { name, path } of views) {
     it(`${name} is async-imported via defineAsyncComponent or lazyView`, () => {
-      // Two valid shapes:
+      // Three valid shapes:
       //   const X = defineAsyncComponent(() => import('./X.vue'))
       //   const X = lazyView(() => import('./X.vue'))     ← view chunks
-      // `lazyView` is the App.vue helper that wraps defineAsyncComponent
-      // with a loading fallback + delay. Both compile to the same
-      // dynamic import that Vite statically extracts for chunk splitting
-      // — a runtime variable would defeat the optimisation either way.
+      //   const X = lazyOverlay(() => import('./X.vue'))  ← modal chunks
+      // `lazyView` (App.vue) adds a loading fallback + delay;
+      // `lazyOverlay` (AppOverlays.vue) adds the chunk-failure error
+      // component. All compile to the same dynamic import that Vite
+      // statically extracts for chunk splitting — a runtime variable
+      // would defeat the optimisation either way.
       const pattern = new RegExp(
-        `const\\s+${name}\\s*=\\s*(?:defineAsyncComponent|lazyView)\\(\\s*(?:\\{[^}]*loader:\\s*)?\\(\\)\\s*=>\\s*import\\(['"]${escapeRegex(path)}['"]\\)`,
+        `const\\s+${name}\\s*=\\s*(?:defineAsyncComponent|lazyView|lazyOverlay)\\(\\s*(?:\\{[^}]*loader:\\s*)?\\(\\)\\s*=>\\s*import\\(['"]${escapeRegex(path)}['"]\\)`,
       )
       expect(source).toMatch(pattern)
     })
