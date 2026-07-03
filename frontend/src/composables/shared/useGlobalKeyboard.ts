@@ -109,13 +109,6 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
         })()
       },
     },
-    // Global: open the cheatsheet. allowInInput so the user can hit
-    // `?` from anywhere — including while typing in a search box.
-    {
-      key: '?',
-      allowInInput: true,
-      handler: () => { openCheatsheet.value = true },
-    },
     // Global: vim-style view navigation (`g` then m/i/s/u).
     ...(['m', 'i', 's', 'u'] as const).map((follow): Shortcut => {
       const target: TabId = (
@@ -218,4 +211,17 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
       },
     },
   ], { suppressed: computed(() => openCheatsheet.value || modalOpen.value) })
+
+  // The cheatsheet opener registers on its own dispatcher, exempt from the
+  // modal suppression above: `?` must stay reachable from EVERY surface —
+  // including inside the narrow panel or a settings dialog — because the
+  // cheatsheet is the discovery surface for each context's bindings (it
+  // stacks over open modals and filters to the active context).
+  useKeyboardShortcuts([
+    {
+      key: '?',
+      allowInInput: true,
+      handler: () => { openCheatsheet.value = true },
+    },
+  ], { suppressed: openCheatsheet })
 }
