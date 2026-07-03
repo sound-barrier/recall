@@ -9,33 +9,16 @@ import type {
   SourcePick,
   LeaverPick,
 } from '@/composables/matches/matchesNarrow.types'
-import {
-  matchesDateRange,
-  matchesHero,
-  matchesLeaverHandling,
-  matchesMembers,
-  matchesModifiers,
-  matchesPickedSet,
-  matchesReviewedBy,
-  matchesQueueType,
-  matchesPlayMode,
-  matchesRole,
-  matchesSearch,
-  matchesSinceAnchor,
-  matchesSource,
-  matchesTags,
-} from '@/composables/matches/narrowPredicates'
+import { NARROW_CLAUSES, type ClauseCtx, type ClauseId } from '@/composables/matches/matchesNarrow.clauses'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { TIER_ORDER, FILTERABLE_MODIFIERS, RESULT_MODIFIERS } from '@/match/match-trends-helpers'
 
-// One narrow clause per filter dimension — the unit `passesNarrow` gates each on,
-// and `narrowExcluding` / `matchesNarrowExcept` / the smart-empty suggestions skip.
-type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
-  | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
-  | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'modifiers' | 'ranks'
-  | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
-
+// One narrow clause per filter dimension, declared once in the
+// NARROW_CLAUSES registry (matchesNarrow.clauses.ts) — predicate,
+// restriction test, chip count, label, and single-clause reset together.
+// `passesNarrow` gates each on, and `narrowExcluding` /
+// `matchesNarrowExcept` / the smart-empty suggestions skip by id.
 const NO_SKIP: ReadonlySet<ClauseId> = new Set()
 
 // Owns every filter dimension for the Matches set-workspace narrow
@@ -187,35 +170,11 @@ export function useMatchesNarrow(
   }
 
   // ── Active-clause introspection ─────────────────────────
-  const activeClauseCount = computed(() => {
-    let n = 0
-    if (searchText.value.trim()) n++
-    if (customFrom.value || customTo.value) n++
-    else if (pickedRange.value !== 'all') n++
-    n += pickedMaps.value.size
-    n += pickedGameModes.value.size
-    n += pickedHeroes.value.size
-    n += pickedRoles.value.size
-    n += pickedResults.value.size
-    n += pickedTags.value.size
-    n += pickedMembers.value.size
-    n += pickedReviewedBy.value.size
-    n += pickedQueues.value.size
-    n += pickedPlayModes.value.size
-    n += pickedSources.value.size
-    n += pickedLeavers.value.size
-    n += pickedModifiers.value.size
-    n += pickedRanks.value.size
-    if (leaverHandling.value !== 'include') n++
-    if (minPlayMinutes.value > 0) n++
-    if (minPlayPercent.value > 0) n++
-    if (includeUnknown.value) n++
-    // "Since anchor" only counts when both legs are set — an active
-    // toggle pointing at no anchor (or a stale anchor) is a no-op
-    // anyway, no point inflating the chip count.
-    if (sinceAnchorActive.value && anchorKey.value !== '') n++
-    return n
-  })
+  // Chip count per the registry: picked sets count per pick, minPlay per
+  // threshold, includeUnknown its non-default ON state, sinceAnchor only
+  // with both legs set (each entry documents its own semantics).
+  const activeClauseCount = computed(() =>
+    NARROW_CLAUSES.reduce((n, c) => n + (c.chips ? c.chips(state) : (c.restricts(state) ? 1 : 0)), 0))
   const anyNarrow = computed(() => activeClauseCount.value > 0)
 
   // ── Available-option universes (full corpus, NOT narrowed) ──
@@ -294,29 +253,14 @@ export function useMatchesNarrow(
     return records.value.find((r) => r.match_key === anchorKey.value)?.parsed_at ?? null
   }
 
+  function clauseCtx(skip: ReadonlySet<ClauseId>, anchorFloor: string | null): ClauseCtx {
+    return { searchClauses: searchClauses.value, heroRole, anchorFloor, skip }
+  }
+
   function passesNarrow(r: MatchRecord, skip: ReadonlySet<ClauseId>, anchorFloor: string | null): boolean {
     if (!r.data) return false
-    if (!skip.has('includeUnknown') && !includeUnknown.value && !r.data.map) return false
-    if (!skip.has('search')      && !matchesSearch(r, searchClauses.value)) return false
-    if (!skip.has('dateRange')   && !matchesDateRange(r, customFrom.value, customTo.value)) return false
-    if (!skip.has('maps')        && !matchesPickedSet(r.data.map, pickedMaps.value)) return false
-    if (!skip.has('gameModes')   && !matchesPickedSet(r.data.game_mode, pickedGameModes.value)) return false
-    if (!skip.has('roles')       && !matchesRole(r, pickedRoles.value, heroRole)) return false
-    if (!skip.has('results')     && !matchesPickedSet(r.data.result, pickedResults.value)) return false
-    if (!skip.has('heroes') && !skip.has('minPlay')
-      && !matchesHero(r, pickedHeroes.value, minPlayMinutes.value, minPlayPercent.value)) return false
-    if (!skip.has('tags')        && !matchesTags(r, pickedTags.value)) return false
-    if (!skip.has('members')     && !matchesMembers(r, pickedMembers.value)) return false
-    if (!skip.has('reviewedBy')  && !matchesReviewedBy(r, pickedReviewedBy.value)) return false
-    if (!skip.has('queues')      && !matchesQueueType(r, pickedQueues.value)) return false
-    if (!skip.has('playModes')   && !matchesPlayMode(r, pickedPlayModes.value)) return false
-    if (!skip.has('sources')     && !matchesSource(r, pickedSources.value)) return false
-    if (!skip.has('sinceAnchor') && !matchesSinceAnchor(r, anchorFloor)) return false
-    if (!skip.has('leaver')      && !matchesLeaverHandling(r, leaverHandling.value)) return false
-    if (!skip.has('leaverSide')  && !matchesPickedSet(r.annotation?.leaver, pickedLeavers.value as Set<string>)) return false
-    if (!skip.has('modifiers')   && !matchesModifiers(r, pickedModifiers.value)) return false
-    if (!skip.has('ranks')       && !matchesPickedSet(r.data.rank, pickedRanks.value)) return false
-    return true
+    const ctx = clauseCtx(skip, anchorFloor)
+    return NARROW_CLAUSES.every((c) => skip.has(c.id) || c.passes(r, state, ctx))
   }
 
   const narrowedRecords = computed(() => {
@@ -364,101 +308,17 @@ export function useMatchesNarrow(
   const narrowedExceptHeroesGameModes = computed(() => narrowExcluding(new Set<ClauseId>(['heroes', 'gameModes'])))
 
   function activeClauses(): ClauseId[] {
-    const out: ClauseId[] = []
-    if (searchText.value.trim())                                    out.push('search')
-    if (customFrom.value || customTo.value || pickedRange.value !== 'all') out.push('dateRange')
-    if (pickedMaps.value.size > 0)                                  out.push('maps')
-    if (pickedGameModes.value.size > 0)                              out.push('gameModes')
-    if (pickedRoles.value.size > 0)                                 out.push('roles')
-    if (pickedResults.value.size > 0)                               out.push('results')
-    if (pickedHeroes.value.size > 0)                                out.push('heroes')
-    if (pickedTags.value.size > 0)                                  out.push('tags')
-    if (pickedMembers.value.size > 0)                               out.push('members')
-    if (pickedReviewedBy.value.size > 0)                            out.push('reviewedBy')
-    if (pickedQueues.value.size > 0)                                out.push('queues')
-    if (pickedPlayModes.value.size > 0)                             out.push('playModes')
-    if (pickedSources.value.size > 0)                               out.push('sources')
-    if (leaverHandling.value !== 'include')                         out.push('leaver')
-    if (pickedLeavers.value.size > 0)                               out.push('leaverSide')
-    if (pickedModifiers.value.size > 0)                             out.push('modifiers')
-    if (pickedRanks.value.size > 0)                                 out.push('ranks')
-    if (sinceAnchorActive.value && anchorKey.value !== '')          out.push('sinceAnchor')
-    if (minPlayMinutes.value > 0 || minPlayPercent.value > 0)       out.push('minPlay')
-    // Excluding unknown-map rows is itself a restriction the smart-empty can lift.
-    if (!includeUnknown.value)                                      out.push('includeUnknown')
-    return out
+    return NARROW_CLAUSES.filter((c) => c.restricts(state)).map((c) => c.id)
   }
 
+  const clauseById = new Map(NARROW_CLAUSES.map((c) => [c.id, c]))
+
   function clauseLabel(c: ClauseId): string {
-    switch (c) {
-      case 'search':         return `search "${searchText.value.trim()}"`
-      case 'dateRange':      return 'date range'
-      case 'maps':           return pickedMaps.value.size === 1
-        ? `map ${[...pickedMaps.value][0]}`
-        : `${pickedMaps.value.size} map picks`
-      case 'gameModes':       return pickedGameModes.value.size === 1
-        ? `game-mode ${[...pickedGameModes.value][0]}`
-        : `${pickedGameModes.value.size} game-mode picks`
-      case 'roles':          return pickedRoles.value.size === 1
-        ? `role ${[...pickedRoles.value][0]}`
-        : `${pickedRoles.value.size} role picks`
-      case 'results':        return pickedResults.value.size === 1
-        ? `result ${[...pickedResults.value][0]}`
-        : `${pickedResults.value.size} result picks`
-      case 'heroes':         return pickedHeroes.value.size === 1
-        ? `hero ${[...pickedHeroes.value][0]}`
-        : `${pickedHeroes.value.size} hero picks`
-      case 'tags':           return pickedTags.value.size === 1
-        ? `tag #${[...pickedTags.value][0]}`
-        : `${pickedTags.value.size} tag picks`
-      case 'members':        return pickedMembers.value.size === 1
-        ? `with ${[...pickedMembers.value][0]}`
-        : `${pickedMembers.value.size} teammates`
-      case 'reviewedBy':     return 'reviewed-by filter'
-      case 'queues':         return 'queue-type filter'
-      case 'playModes':      return 'play-mode filter'
-      case 'sources':        return pickedSources.value.size === 1
-        ? `${[...pickedSources.value][0] === 'manual' ? 'user-entered' : 'edited'} only`
-        : 'provenance filter'
-      case 'leaver':         return 'leaver handling'
-      case 'leaverSide':     return pickedLeavers.value.size === 1
-        ? `${[...pickedLeavers.value][0]} leaver`
-        : `${pickedLeavers.value.size} leaver sides`
-      case 'modifiers':      return pickedModifiers.value.size === 1
-        ? `modifier ${[...pickedModifiers.value][0]}`
-        : `${pickedModifiers.value.size} modifier picks`
-      case 'ranks':          return pickedRanks.value.size === 1
-        ? `rank ${[...pickedRanks.value][0]}`
-        : `${pickedRanks.value.size} rank picks`
-      case 'sinceAnchor':    return 'since-anchor floor'
-      case 'minPlay':        return 'minimum play threshold'
-      case 'includeUnknown': return 'unknown-map exclusion'
-    }
+    return clauseById.get(c)!.label(state)
   }
 
   function clearClause(c: ClauseId) {
-    switch (c) {
-      case 'search':         searchText.value = ''; break
-      case 'dateRange':      pickedRange.value = 'all'; customFrom.value = ''; customTo.value = ''; break
-      case 'maps':           pickedMaps.value = new Set(); break
-      case 'gameModes':       pickedGameModes.value = new Set(); break
-      case 'roles':          pickedRoles.value = new Set(); break
-      case 'results':        pickedResults.value = new Set(); break
-      case 'heroes':         pickedHeroes.value = new Set(); break
-      case 'tags':           pickedTags.value = new Set(); break
-      case 'members':        pickedMembers.value = new Set(); break
-      case 'reviewedBy':     pickedReviewedBy.value = new Set(); break
-      case 'queues':         pickedQueues.value = new Set(); break
-      case 'playModes':      pickedPlayModes.value = new Set(); break
-      case 'sources':        pickedSources.value = new Set(); break
-      case 'leaver':         leaverHandling.value = 'include'; break
-      case 'leaverSide':     pickedLeavers.value = new Set(); break
-      case 'modifiers':      pickedModifiers.value = new Set(); break
-      case 'ranks':          pickedRanks.value = new Set(); break
-      case 'sinceAnchor':    sinceAnchorActive.value = false; break
-      case 'minPlay':        minPlayMinutes.value = 0; minPlayPercent.value = 0; break
-      case 'includeUnknown': includeUnknown.value = true; break
-    }
+    clauseById.get(c)!.clear(state)
   }
 
   const clauseExclusionCounts = computed<ClauseSuggestion[]>(() => {

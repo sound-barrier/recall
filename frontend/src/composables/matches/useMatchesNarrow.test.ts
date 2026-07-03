@@ -269,6 +269,24 @@ describe('useMatchesNarrow', () => {
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['high', 'mid'])
     })
 
+    it("smart-empty 'remove min-play' keeps the hero picks in its count (no over-promise)", () => {
+      // One lucio game below the threshold + one game WITHOUT lucio at all.
+      const records = ref([
+        rec({ key: 'a', heroesPlayed: [{ hero: 'lucio', percent_played: 100, play_time: '2:00' }] }),
+        rec({ key: 'b', hero: 'ana', heroesPlayed: [{ hero: 'ana', percent_played: 100, play_time: '10:00' }] }),
+      ])
+      const { narrowedRecords, pickHero, minPlayMinutes, clauseExclusionCounts } =
+        useMatchesNarrow(records, createMatchesNarrowState())
+      pickHero('lucio')
+      minPlayMinutes.value = 5
+      expect(narrowedRecords.value).toHaveLength(0)
+
+      const s = clauseExclusionCounts.value.find((x) => x.clauseId === 'minPlay')
+      // Lifting the threshold surfaces the lucio game ONLY — the old fused
+      // skip dropped the hero picks too and promised the ana game as well.
+      expect(s?.wouldSurface).toBe(1)
+    })
+
     it('minPlayPercent filters by heroes_played.percent_played', () => {
       const records = ref(corpus)
       const { narrowedRecords, pickHero, minPlayPercent } = useMatchesNarrow(records, createMatchesNarrowState())

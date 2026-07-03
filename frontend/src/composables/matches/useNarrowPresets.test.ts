@@ -137,6 +137,26 @@ describe('useNarrowPresets', () => {
   })
 })
 
+describe('preset shape completeness', () => {
+  // Guards the shotgun class the clause registry killed elsewhere: a new
+  // narrow dimension adds a state field, and this fails until the preset
+  // shape learns it too (the pickedLeavers/Modifiers/Ranks bug shipped
+  // exactly because nothing tied the two together).
+  it('serializes every narrow state field except the session anchor', () => {
+    if (typeof globalThis.localStorage === 'undefined') return // happy-dom warm-up race
+    const state = buildState()
+    const { savePreset } = useNarrowPresets(state)
+    savePreset('shape-probe')
+    const stored = (JSON.parse(localStorage.getItem('recall.narrowPresets.v2')!) as Array<{ state: Record<string, unknown> }>)[0]!.state
+    // anchorKey is owned by useMatchAnchor and persists on its own;
+    // presets deliberately capture only the toggle leg.
+    const expected = Object.keys(state).filter((k) => k !== 'anchorKey')
+    for (const key of expected) {
+      expect(stored, `preset shape is missing narrow state field "${key}"`).toHaveProperty(key)
+    }
+  })
+})
+
 describe('preset round-trip of newer filter dimensions', () => {
   // pickedLeavers / pickedModifiers / pickedRanks joined MatchesNarrowState
   // after the v2 preset shape shipped — a preset must carry them, and
