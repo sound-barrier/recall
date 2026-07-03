@@ -57,6 +57,14 @@ describe('useGlobalKeyboard — modal suppression', () => {
     w.unmount()
   })
 
+  it("keeps '?' reachable while a modal is up — the cheatsheet stacks over modals", () => {
+    const deps = makeDeps({ modalOpen: ref(true) })
+    const w = mountKeyboard(deps)
+    press('?')
+    expect(deps.openCheatsheet.value).toBe(true)
+    w.unmount()
+  })
+
   it('the detail panel deliberately does NOT suppress — e closes it on the focused card', () => {
     const deps = makeDeps({ selectionIsOpen: ref(true), selectedKey: ref<string | null>('m1') })
     const w = mountKeyboard(deps)
