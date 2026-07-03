@@ -44,17 +44,17 @@ import (
 //  2. Auto-detect: text if stderr is a terminal, JSON otherwise.
 func Init() io.Writer {
 	w := io.Writer(os.Stderr)
-	h := newHandler(w, formatFromEnv())
-	logger := slog.New(h)
-	slog.SetDefault(logger)
-	// Route stdlib log.Printf through slog too so existing call
-	// sites (~28 across pkg/) keep working without a sweep. The
-	// stdlib level is INFO — slog distinguishes Warn / Error via
-	// its own API, but stdlib has no level, so INFO is the right
-	// floor.
+	initTo(w)
+	return w
+}
+
+// logSetup routes stdlib log.Printf through slog so existing call
+// sites (~28 across pkg/) keep working without a sweep. The stdlib
+// level is INFO — slog distinguishes Warn / Error via its own API,
+// but stdlib has no level, so INFO is the right floor.
+func logSetup() {
 	log.SetFlags(0)
 	log.SetOutput(slogWriter{level: slog.LevelInfo})
-	return w
 }
 
 // Subsystem returns a *slog.Logger pre-tagged with `subsystem=name`.

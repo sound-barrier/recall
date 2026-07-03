@@ -138,6 +138,7 @@ func (a *App) StartParse(force bool) error {
 		return ErrParseInFlight
 	}
 	go func() {
+		defer applog.RecoverPanic("parse")
 		defer a.endParse()
 		if runErr := a.runClaimedParse(ctx, force, dir); runErr != nil {
 			applog.Subsystem("parse").Error("background parse failed", "err", runErr)

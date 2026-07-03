@@ -82,6 +82,7 @@ func RunServer(a *app.App, assets embed.FS) {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	logger := applog.Subsystem("server")
 	go func() {
+		defer applog.RecoverPanic("server")
 		<-quit
 		logger.Info("shutting down")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
