@@ -73,3 +73,4 @@ no soft-pedalling. Numbers that go down get a row too.
 - `.github/workflows/ci.yml` — the CI invocation.
 - `lefthook.yml` — the pre-push invocation (uses the script's
   defaults, no env overrides).
+| 2026-07-03 | MAX_INITIAL_CSS_BYTES | 67000 → 68000 | Phase-5 sample-size caveat chip (.bd-low-n) +192B |

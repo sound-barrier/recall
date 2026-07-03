@@ -33,7 +33,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=162000}"
-: "${MAX_INITIAL_CSS_BYTES:=67000}"
+# 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
+# (.bd-low-n in components.css) landed the initial CSS 192B over the
+# old point. ~1KB headroom, same ratchet spirit: bump deliberately
+# with a rationale, never to absorb accidental bloat.
+: "${MAX_INITIAL_CSS_BYTES:=68000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
