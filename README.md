@@ -11,7 +11,7 @@
 [![Docs](https://img.shields.io/badge/docs-sound--barrier.github.io%2Frecall-7B36ED?logo=gitbook&logoColor=white)](https://sound-barrier.github.io/recall/)
 [![API](https://img.shields.io/badge/API-Swagger%20UI-85EA2D?logo=swagger&logoColor=black)](https://sound-barrier.github.io/recall/api/)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-defined-purple)](CODE_OF_CONDUCT.md)
-[![Backlog](https://img.shields.io/badge/backlog-public-orange)](REVIEW.md)
+[![Backlog](https://img.shields.io/badge/backlog-public-orange)](TECHNICAL_DEBT.md)
 
 **Recall** turns your Overwatch match history into a clear picture of how you're
 actually playing — on your own machine, with no account and nothing uploaded.
@@ -65,7 +65,7 @@ The browser / headless mode and Docker are optional power-user extras
 **Project**
 
 - [Architecture](ARCHITECTURE.md) — how the pipeline works under the hood (OCR → SQLite → UI)
-- [Review](REVIEW.md) — outstanding work: features, bugs, tech debt, and what we will not build
+- [Technical debt](TECHNICAL_DEBT.md) — the outstanding-work ledger: what is owed, accepted, and out of scope (feature ideas live in [FEATURES.md](FEATURES.md))
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -218,7 +218,7 @@ First-run friction tends to land in one of a handful of spots. The deep-links go
 
 Recall shells out to Tesseract 5.x to read screenshot text. If the Engine row in **Settings → Engine** shows a red "Not found" chip, or the Parse button stays disabled with "Tesseract required":
 
-1. Install Tesseract 5.x from your platform's guide — [Windows](docs/install-windows.md#4-install-tesseract-5x) (UB-Mannheim installer), [macOS](docs/install-macos.md#4-install-tesseract-5x) (`brew install tesseract`), [Linux](docs/install-linux.md#4-install-tesseract-5x) (`apt install tesseract-ocr`).
+1. Install Tesseract 5.x from your platform's guide — [Windows](docs/install-windows.md#4-install-tesseract-5x) (UB-Mannheim installer), [macOS](docs/install-macos.md#4-install-tesseract-5x) (`brew install tesseract`), [Linux](docs/install-linux.md#2-install-tesseract-5x) (`apt install tesseract-ocr`).
 2. Click **Settings → Engine → Detect** — Recall walks the per-OS install locations + `PATH` looking for a working 5.x binary.
 3. If Detect comes up empty, click **Locate Tesseract…** and point Recall at the binary directly (`C:\Program Files\Tesseract-OCR\tesseract.exe` on Windows, `/opt/homebrew/bin/tesseract` on Apple Silicon, `/usr/bin/tesseract` on most Linux distros).
 4. Tesseract **3.x / 4.x predate the OW post-match font** and misread reliably — the Engine row flags older versions but the parse-accuracy hit is the real reason to upgrade.
@@ -281,7 +281,7 @@ reading here — the desktop app is all you need.
 
 ## Contributing
 
-Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, coding conventions, and [git hook requirements](CONTRIBUTING.md#git-hooks-lefthook). The release/tagging process — automated via [release-please](https://github.com/googleapis/release-please), with `make release-beta` / `make release-fire` shortcuts for the manual bits — is documented in [RELEASES.md](RELEASES.md). Commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/).
+Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, coding conventions, and [git hook requirements](CONTRIBUTING.md#git-hooks-lefthook). The release/tagging process — automated via [release-please](https://github.com/googleapis/release-please), with `task release-beta` / `task release-fire` shortcuts for the manual bits — is documented in [RELEASES.md](RELEASES.md). Commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 By participating in this project — opening an issue, filing a PR, commenting on a discussion — you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Short version: be kind, and remember that Recall is given away free of charge and maintained in spare time, so no demands and no expectations of timely replies, bug fixes, or feature requests.
 

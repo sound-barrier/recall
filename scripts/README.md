@@ -26,7 +26,7 @@ resolve paths relative to their own location.
 | [`db-export.sh`](#db-exportsh) | Dump every match as newline-delimited JSON (per-type rows preserved). |
 | [`clear-db.sh`](#clear-dbsh) | Wipe every parent table + VACUUM; equivalent to the UI's Clear Database button. |
 | [`check-deps.sh`](#check-depssh) | Compare pinned tool versions (Wails, hadolint, lefthook, trivy) against latest GitHub releases. |
-| [`_db.sh`](#_dbsh) | Internal library sourced by `db-*.sh` (DB-path resolution + schema-version detection); not run directly. |
+| `_db.sh` | Internal library sourced by `db-*.sh` (DB-path resolution + schema-version detection); not run directly. |
 
 ---
 
@@ -73,7 +73,7 @@ the raw rows the aggregator works from.
 
 Lookups across `db-show.sh` / `db-delete.sh` / `db-reparse.sh` accept:
 
-- `match:YYYY-MM-DDTHH:MM:SS` — exact match_key
+- `match-YYYY-MM-DDTHH-MM-SS` — exact match_key (dash-separated; keys are URL-safe, no colons)
 - a filename substring (e.g. the trailing timestamp from a screenshot
   filename) — matches against `filename` on every parent
 - a map-name substring — only `db-show.sh` (matches `SUMMARY.map`)

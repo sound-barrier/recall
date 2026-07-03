@@ -71,8 +71,9 @@ type SummaryRow struct {
 	MatchKey string
 	ParsedAt string
 	// ScreenshotsDirID points at the screenshots_dirs row recording
-	// which folder this screenshot was ingested from. 0 = NULL (the dir
-	// was unset at parse time).
+	// which folder this screenshot was ingested from. The column is
+	// NOT NULL: a zero here means "dir unset" and the write path maps
+	// it to the id=1 sentinel row via dirIDOrSentinel before insert.
 	ScreenshotsDirID int64
 	Map              string
 	// MapRaw / HeroRaw — raw OCR text preserved when the matcher
@@ -116,7 +117,7 @@ type TeamsRow struct {
 	Filename         string
 	MatchKey         string
 	ParsedAt         string
-	ScreenshotsDirID int64 // 0 = NULL
+	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
 	Eliminations     int
 	Assists          int
 	Deaths           int
@@ -144,7 +145,7 @@ type PersonalRow struct {
 	Filename         string
 	MatchKey         string
 	ParsedAt         string
-	ScreenshotsDirID int64 // 0 = NULL
+	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
 	Hero             string
 	HeroRaw          string
 
@@ -157,7 +158,7 @@ type RankRow struct {
 	Filename         string
 	MatchKey         string
 	ParsedAt         string
-	ScreenshotsDirID int64 // 0 = NULL
+	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
 	Rank             string
 	Level            int
 	RankProgress     int
@@ -239,7 +240,7 @@ type UnknownRow struct {
 	Filename         string
 	MatchKey         string
 	ParsedAt         string
-	ScreenshotsDirID int64 // 0 = NULL
+	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
 }
 
 // Screenshots is the bulk-load result — every row in the DB grouped by
@@ -259,7 +260,7 @@ type Screenshots struct {
 
 	// AmbiguousCandidates maps filename → candidate matches it could
 	// belong to, populated for screenshots whose match_key is
-	// "ambiguous:<filename>". Empty for the common case.
+	// "ambiguous-<base64url(filename)>". Empty for the common case.
 	AmbiguousCandidates map[string][]AmbiguousCandidate
 }
 
