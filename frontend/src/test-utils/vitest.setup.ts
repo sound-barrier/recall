@@ -1,14 +1,25 @@
 import { afterAll, vi } from 'vitest'
 
-// Short-circuit ONLY the reference-data fetch (useOWData) so it can't slip past
-// the @/api-client mock and hang on a real http://localhost:3000 connection
-// under the low-fork coverage run — the App.test "mounts without throwing"
-// ECONNREFUSED timeout. Every other request passes through unchanged, so
-// endpoint-specific test mocks (e.g. the profiles list) keep their own shapes.
-// Set on globalThis directly (NOT via vi.stubGlobal) so api.test's per-test
-// vi.stubGlobal('fetch') still overrides + restores this on unstub.
-const realFetch = globalThis.fetch
-globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+// Fallback fetch for anything a test didn't stub. Two rules:
+//
+//  1. The reference-data fetch (useOWData) resolves with an empty
+//     roster so it can't slip past the @/api-client mock — the old
+//     App.test "mounts without throwing" ECONNREFUSED timeout.
+//  2. EVERYTHING ELSE resolves as an inert 503 instead of dialing a
+//     real socket. Nothing listens on happy-dom's localhost:3000, so
+//     a request that reaches this layer could only ever fail — and
+//     under the coverage run's low fork count, a leaked un-awaited
+//     request's ECONNREFUSED landed AFTER its test file finished and
+//     vitest failed the whole run on the unhandled rejection (the
+//     api.test :3000 flake, second sighting). An immediately-resolved
+//     503 keeps leaked requests inert and awaited ones deterministic;
+//     the console.error keeps the leak visible so it can be mocked
+//     properly at its source.
+//
+// Set on globalThis directly (NOT via vi.stubGlobal) so api.test's
+// per-test vi.stubGlobal('fetch') still overrides + restores this on
+// unstub.
+globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
   const url = input instanceof Request ? input.url : String(input)
   if (url.includes('/system/reference-data')) {
     return {
@@ -18,7 +29,14 @@ globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters
       text: async () => '{}',
     }
   }
-  return realFetch(input, init)
+  console.error('[vitest.setup] unmocked fetch in a unit test (resolved as 503):', url)
+  return {
+    ok: false,
+    status: 503,
+    headers: { get: () => null },
+    text: async () => 'unit-test network disabled',
+    json: async () => ({}),
+  }
 }) as unknown as typeof fetch
 
 // Cross-file '@/api' isolation. After each test FILE, drop both the module
