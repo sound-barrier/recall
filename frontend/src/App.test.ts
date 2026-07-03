@@ -15,7 +15,13 @@ afterEach(() => {
 })
 
 describe('App.vue', () => {
-  it('mounts without throwing and shows the RECALL masthead', async () => {
+  // 15s budget: the first App mount pays the whole SFC tree's
+  // import + compile cost, and under the pre-push battery the box
+  // runs coverage instrumentation concurrently with the playwright
+  // harness build — the default 5s flaked a push on pure load. A
+  // real mount hang still fails; it just isn't confused with a
+  // saturated machine.
+  it('mounts without throwing and shows the RECALL masthead', { timeout: 15_000 }, async () => {
     const wrapper = await mountApp()
     expect(wrapper.find('.masthead').exists()).toBe(true)
     // Masthead text uses the OW Wordmark font on "RECALL".
