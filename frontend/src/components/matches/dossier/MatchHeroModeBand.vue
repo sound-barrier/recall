@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import BandHeaderControls from '@/components/matches/dossier/BandHeaderControls.vue'
 import { useDossier, useHeroModeDossier } from '@/composables/dashboard/useDossier'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
@@ -227,52 +228,26 @@ const levelTitle = computed(() => {
         {{ levelTitle }}
       </h3>
 
-      <div class="hm-window" role="group" aria-label="Time window">
-        <button
-          v-for="m in WINDOWS"
-          :key="m"
-          type="button"
-          class="hm-window-btn"
-          :class="{ active: windowMonths === m }"
-          :aria-pressed="windowMonths === m"
-          :title="`Last ${m} month${m === 1 ? '' : 's'}`"
-          @click="pickWindow(m)"
-        >
-          {{ m }}M
-        </button>
-      </div>
-
-      <button
-        v-if="filterActive"
-        type="button"
-        class="hm-reset"
-        data-hero-mode-reset
-        title="Clear the Hero × Game-Mode filter (drill + selection)"
-        @click="resetFilter"
-      >
-        ⟲ Reset
-      </button>
-
-      <button
-        v-if="depth === 0"
-        type="button"
-        class="hm-gear"
-        :class="{ 'hm-gear-active': !configIsDefault }"
-        data-widget-config-trigger
-        data-hero-mode-config-trigger
-        :aria-label="configIsDefault ? 'Configure the Hero × Game-Mode band' : 'Hero × Game-Mode settings are customised'"
-        :aria-expanded="configOpen"
-        title="Heroes to show + min matches"
-        @click="toggleConfig"
-      >
-        <span aria-hidden="true">⚙</span>
-      </button>
-
-      <ul v-if="depth <= 1" class="hm-legend" aria-label="Cell-colour legend">
-        <li><span class="hm-swatch hm-loss" /> Losing</li>
-        <li><span class="hm-swatch hm-mixed" /> Mixed</li>
-        <li><span class="hm-swatch hm-win" /> Winning</li>
-      </ul>
+      <BandHeaderControls
+        :windows="WINDOWS"
+        :window-months="windowMonths"
+        :reset="filterActive
+          ? { title: 'Clear the Hero × Game-Mode filter (drill + selection)', attrs: { 'data-hero-mode-reset': '' } }
+          : null"
+        :gear="depth === 0
+          ? {
+            active: !configIsDefault,
+            ariaLabel: configIsDefault ? 'Configure the Hero × Game-Mode band' : 'Hero × Game-Mode settings are customised',
+            title: 'Heroes to show + min matches',
+            expanded: configOpen,
+            attrs: { 'data-widget-config-trigger': '', 'data-hero-mode-config-trigger': '' },
+          }
+          : null"
+        :legend="depth <= 1"
+        @pick-window="pickWindow"
+        @reset="resetFilter"
+        @toggle-config="toggleConfig"
+      />
     </header>
 
     <!-- Fixed-height body: drilling/going-back never resizes the band (so
@@ -426,131 +401,6 @@ const levelTitle = computed(() => {
   text-transform: capitalize;
 }
 
-.hm-window {
-  display: inline-flex;
-  align-items: center;
-  margin-left: auto;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface-2);
-}
-
-.hm-window-btn {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  font-weight: 600;
-  padding: 0.22rem 0.55rem;
-  cursor: pointer;
-  border-right: 1px solid var(--border);
-  transition: color 140ms ease, background 140ms ease;
-}
-.hm-window-btn:last-child { border-right: 0; }
-.hm-window-btn:hover { color: var(--text); }
-
-.hm-window-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.hm-window-btn.active {
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-/* Reset — clears the band's filter (drill + selection) without a scroll to chips. */
-.hm-reset {
-  appearance: none;
-  margin-left: 0.4rem;
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  background: transparent;
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: 0.22rem 0.5rem;
-  cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
-}
-.hm-reset:hover { background: var(--accent); color: var(--primary-text-on-accent); }
-.hm-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-/* Gear — root-level config popover. Accent dot when non-default. */
-.hm-gear {
-  position: relative;
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.4rem;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface-2);
-  color: var(--text-faint);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
-}
-.hm-gear:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-.hm-gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.hm-gear-active {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.hm-gear-active::after {
-  content: '';
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 1.5px var(--surface);
-}
-
-.hm-legend {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.hm-legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.hm-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
-}
-.hm-win { background: var(--win); }
-.hm-loss { background: var(--loss); }
-.hm-mixed { background: color-mix(in srgb, var(--win) 50%, var(--loss)); }
-
 /* Fixed-height level body — a constant, comfortable height across every
    drill level so navigating the stack never resizes the band (and never
    shifts the matches list below it). A level taller than this scrolls in
@@ -637,7 +487,4 @@ const levelTitle = computed(() => {
   letter-spacing: 0.04em;
 }
 
-@media (width <= 720px) {
-  .hm-legend { display: none; }
-}
 </style>

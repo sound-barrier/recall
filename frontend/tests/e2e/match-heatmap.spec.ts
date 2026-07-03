@@ -95,12 +95,12 @@ test.describe('campaign-log header', () => {
     expect(heatmapCells).toBeGreaterThanOrEqual(175)
     expect(heatmapCells).toBeLessThanOrEqual(189)
     // 6M is the default + the active window-btn.
-    await expect(page.locator('.window-btn.active')).toHaveText('6M')
+    await expect(page.locator('.timeline-head .bh-window-btn.active')).toHaveText('6M')
   })
 
   test('window picker flips to 3M and the cell count shrinks accordingly', async ({ page }) => {
-    await page.locator('.window-btn', { hasText: '3M' }).click()
-    await expect(page.locator('.window-btn.active')).toHaveText('3M')
+    await page.locator('.timeline-head .bh-window-btn', { hasText: '3M' }).click()
+    await expect(page.locator('.timeline-head .bh-window-btn.active')).toHaveText('3M')
     const cells = await page.locator('.heatmap-cell').count()
     // 13 weeks × 7 days = 91 cells with ±1 week slack.
     expect(cells).toBeGreaterThanOrEqual(84)
@@ -108,8 +108,8 @@ test.describe('campaign-log header', () => {
   })
 
   test('window picker flips to 1M and the cell count shrinks accordingly', async ({ page }) => {
-    await page.locator('.window-btn', { hasText: '1M' }).click()
-    await expect(page.locator('.window-btn.active')).toHaveText('1M')
+    await page.locator('.timeline-head .bh-window-btn', { hasText: '1M' }).click()
+    await expect(page.locator('.timeline-head .bh-window-btn.active')).toHaveText('1M')
     const cells = await page.locator('.heatmap-cell').count()
     // 5 weeks × 7 days = 35 cells with ±1 week slack.
     expect(cells).toBeGreaterThanOrEqual(28)
@@ -117,7 +117,7 @@ test.describe('campaign-log header', () => {
   })
 
   test('window picker flips to 12M and persists across reload', async ({ page, context }) => {
-    await page.locator('.window-btn', { hasText: '12M' }).click()
+    await page.locator('.timeline-head .bh-window-btn', { hasText: '12M' }).click()
     const cells = await page.locator('.heatmap-cell').count()
     // 52 × 7 = 364 ± 1 week slack.
     expect(cells).toBeGreaterThanOrEqual(357)
@@ -145,7 +145,7 @@ test.describe('campaign-log header', () => {
 
     await page.reload()
     await expect(page.locator('.match-timeline')).toBeVisible()
-    await expect(page.locator('.window-btn.active')).toHaveText('12M')
+    await expect(page.locator('.timeline-head .bh-window-btn.active')).toHaveText('12M')
   })
 
   test('heatmap cell aria-label encodes the day record (W-L + W%)', async ({ page }) => {

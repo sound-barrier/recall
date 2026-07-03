@@ -252,7 +252,7 @@ describe('MatchMapRoleBand', () => {
 
   it('offers a 1M/3M/6M/12M window toggle defaulting to 6M', () => {
     const w = mountBand()
-    const btns = w.findAll('.mr-window-btn')
+    const btns = w.findAll('.bh-window-btn')
     expect(btns.map((b) => b.text())).toEqual(['1M', '3M', '6M', '12M'])
     const active = btns.find((b) => b.attributes('aria-pressed') === 'true')
     expect(active?.text()).toBe('6M')
@@ -260,7 +260,7 @@ describe('MatchMapRoleBand', () => {
 
   it('persists the chosen window and marks it active', async () => {
     const w = mountBand()
-    const oneMonth = w.findAll('.mr-window-btn').find((b) => b.text() === '1M')
+    const oneMonth = w.findAll('.bh-window-btn').find((b) => b.text() === '1M')
     await oneMonth?.trigger('click')
     expect(oneMonth?.attributes('aria-pressed')).toBe('true')
     expect(localStorage.getItem('recall.mapRoleWindowMonths')).toBe('1')

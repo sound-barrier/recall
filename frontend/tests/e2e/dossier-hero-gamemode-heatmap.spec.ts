@@ -211,7 +211,7 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     // Default 6M renders the grid.
     await expect(band.locator('.heatmap-grid')).toBeVisible()
     // 1M cutoff excludes the ~45-day-old corpus → falls below the floor.
-    await band.locator('.hm-window-btn', { hasText: '1M' }).click()
+    await band.locator('.bh-window-btn', { hasText: '1M' }).click()
     await expect(band.locator('.heatmap-empty')).toBeVisible()
     await expect(band.locator('.heatmap-grid')).toHaveCount(0)
   })

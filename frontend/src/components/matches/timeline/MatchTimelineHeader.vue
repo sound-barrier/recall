@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
+import BandHeaderControls from '@/components/matches/dossier/BandHeaderControls.vue'
 import MatchHeatmapHeader from '@/components/matches/timeline/MatchHeatmapHeader.vue'
 import MatchSparklineBrush from '@/components/matches/timeline/MatchSparklineBrush.vue'
 
@@ -61,7 +62,7 @@ const selectionStats = computed(() => {
   return { days: days.size, wins, losses, draws, total, winrate: decided ? Math.round((wins / decided) * 100) : null }
 })
 
-const { windowMonths, pickWindow } = useWindowMonths('recall.timelineWindowMonths')
+const { WINDOW_MONTHS, windowMonths, pickWindow } = useWindowMonths('recall.timelineWindowMonths')
 
 const windowWeeks = computed((): number => {
   switch (windowMonths.value) {
@@ -85,37 +86,16 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
       <span id="timeline-eyebrow" class="timeline-eyebrow">Campaign Log</span>
       <span class="timeline-range">{{ windowLabel }}</span>
 
-      <div class="timeline-window" role="group" aria-label="Heatmap window">
-        <button
-          v-for="m in ([1, 3, 6, 12] as const)"
-          :key="m"
-          type="button"
-          class="window-btn"
-          :class="{ active: windowMonths === m }"
-          :aria-pressed="windowMonths === m"
-          :title="`Show last ${m} months`"
-          @click="pickWindow(m)"
-        >
-          {{ m }}M
-        </button>
-      </div>
-
-      <button
-        v-if="dateFilterActive"
-        type="button"
-        class="timeline-reset"
-        data-timeline-reset
-        title="Clear the date filter"
-        @click="resetRange"
-      >
-        ⟲ Reset
-      </button>
-
-      <ul class="timeline-legend" aria-label="Cell-color legend">
-        <li><span class="legend-swatch legend-loss" /> Losing</li>
-        <li><span class="legend-swatch legend-mixed" /> Mixed</li>
-        <li><span class="legend-swatch legend-win" /> Winning</li>
-      </ul>
+      <BandHeaderControls
+        :windows="WINDOW_MONTHS"
+        :window-months="windowMonths"
+        window-group-label="Heatmap window"
+        :reset="dateFilterActive
+          ? { title: 'Clear the date filter', attrs: { 'data-timeline-reset': '' } }
+          : null"
+        @pick-window="pickWindow"
+        @reset="resetRange"
+      />
     </header>
 
     <div class="timeline-body">
@@ -207,93 +187,6 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   color: var(--text-faint);
 }
 
-.timeline-window {
-  display: inline-flex;
-  align-items: center;
-  margin-left: auto;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface-2);
-}
-
-.window-btn {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  font-weight: 600;
-  padding: 0.22rem 0.55rem;
-  cursor: pointer;
-  border-right: 1px solid var(--border);
-  transition: color 140ms ease, background 140ms ease;
-}
-.window-btn:last-child { border-right: 0; }
-.window-btn:hover      { color: var(--text); }
-
-.window-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.window-btn.active {
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-/* Reset — clears the date filter without a scroll to the active-chips rail. */
-.timeline-reset {
-  appearance: none;
-  margin-left: 0.4rem;
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  background: transparent;
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: 0.22rem 0.5rem;
-  cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
-}
-.timeline-reset:hover { background: var(--accent); color: var(--primary-text-on-accent); }
-.timeline-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.timeline-legend {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  list-style: none;
-  margin: 0 0 0 0.6rem;
-  padding: 0;
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.timeline-legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.legend-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
-}
-.legend-win   { background: var(--win); }
-.legend-loss  { background: var(--loss); }
-.legend-mixed { background: color-mix(in srgb, var(--win) 50%, var(--loss)); }
-
 .timeline-body {
   display: flex;
   align-items: flex-start;
@@ -302,8 +195,6 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 }
 
 @media (width <= 720px) {
-  .timeline-legend { display: none; }
-
   .timeline-body {
     flex-direction: column;
     gap: 0.8rem;
