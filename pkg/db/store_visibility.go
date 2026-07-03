@@ -1,5 +1,7 @@
 package db
 
+import "fmt"
+
 // Hidden matches — user-curated soft delete. Presence in the
 // hidden_matches table IS the hidden state; no boolean column
 // stored anywhere. Hide/Unhide are idempotent — hiding an
@@ -81,16 +83,19 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 func (s *SQLStore) LoadHiddenKeys() (map[string]bool, error) {
 	rows, err := s.db.Query(`SELECT match_key FROM hidden_matches`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load hidden keys: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	out := map[string]bool{}
 	for rows.Next() {
 		var k string
 		if err := rows.Scan(&k); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load hidden keys: %w", err)
 		}
 		out[k] = true
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("load hidden keys: %w", err)
+	}
+	return out, nil
 }

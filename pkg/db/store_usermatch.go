@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 // User match-data override layer — the single store backing both inline edits
 // of a parsed match and hand-entered (manual) matches. Mirrors the
@@ -178,7 +181,7 @@ func (s *SQLStore) LoadAllUserMatchData() (map[string]UserMatchData, error) {
 		 FROM user_match_data`,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load user match data: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
@@ -189,19 +192,19 @@ func (s *SQLStore) LoadAllUserMatchData() (map[string]UserMatchData, error) {
 			&d.FinishedAt, &d.GameLength, &d.Rank, &d.Level, &d.RankProgress,
 			&d.ChangePercent, &d.UpdatedAt,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load user match data: %w", err)
 		}
 		out[d.MatchKey] = d
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load user match data: %w", err)
 	}
 	for _, attach := range []func(map[string]UserMatchData) error{
 		s.loadUserMatchHeroes, s.loadUserMatchHeroStats,
 		s.loadUserMatchSR, s.loadUserMatchModifiers,
 	} {
 		if err := attach(out); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load user match data: %w", err)
 		}
 	}
 	return out, nil

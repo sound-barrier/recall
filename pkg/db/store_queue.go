@@ -1,5 +1,7 @@
 package db
 
+import "fmt"
+
 // Per-match queue-type tag (role / open). Presence in match_queue IS
 // the "queue known" signal; absence means "queue not set."
 // SetMatchQueue is an idempotent upsert; ClearMatchQueue is a
@@ -65,7 +67,7 @@ func (s *SQLStore) BulkSetMatchQueue(matchKeys []string, queueType string) error
 func (s *SQLStore) LoadMatchQueues() (map[string]QueueState, error) {
 	rows, err := s.db.Query(`SELECT match_key, queue_type, overridden_at FROM match_queue`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load match queues: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	out := map[string]QueueState{}
@@ -73,9 +75,12 @@ func (s *SQLStore) LoadMatchQueues() (map[string]QueueState, error) {
 		var k string
 		var st QueueState
 		if err := rows.Scan(&k, &st.QueueType, &st.OverriddenAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load match queues: %w", err)
 		}
 		out[k] = st
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("load match queues: %w", err)
+	}
+	return out, nil
 }
