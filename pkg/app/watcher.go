@@ -51,7 +51,10 @@ func (a *App) startWatching() {
 	a.watchedDir = dir
 	logger.Info("watching", "dir", dir)
 
-	go a.runWatchLoop(w)
+	go func() {
+		defer applog.RecoverPanic("watch")
+		a.runWatchLoop(w)
+	}()
 }
 
 func (a *App) runWatchLoop(w *fsnotify.Watcher) {
@@ -101,6 +104,7 @@ func (a *App) scheduleParseDebounced() {
 		a.watchTimer.Stop()
 	}
 	a.watchTimer = time.AfterFunc(watchDebounce, func() {
+		defer applog.RecoverPanic("watch")
 		logger := applog.Subsystem("watch")
 		logger.Info("debounce elapsed, running ParseScreenshots")
 		// ParseScreenshots is synchronous + emits parse-complete itself

@@ -212,6 +212,15 @@ func (a *App) saveSettingsBestEffort() {
 
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	// Mirror logs onto disk as early as the install root is knowable —
+	// stderr vanishes for a desktop app launched from Finder / the
+	// Start menu, and field bug reports need something to attach. The
+	// file handle deliberately lives for the process lifetime.
+	// Best-effort: a failure (read-only volume, permissions) keeps
+	// logging on stderr.
+	if _, err := applog.AttachFile(filepath.Join(appBaseDir(), "logs", "recall.log")); err != nil {
+		applog.Subsystem("boot").Warn("on-disk log unavailable", "err", err)
+	}
 	if !a.initProfiles() {
 		return
 	}
@@ -231,7 +240,10 @@ func (a *App) Startup(ctx context.Context) {
 	// a cold-boot Windows Defender scan, and it must not stall the UI. The probe
 	// publishes its result + emits "tesseract-status" so the engine self-heals.
 	if probeTesseractOnStartup {
-		go a.probeTesseractInBackground(a.settingsSnapshot().TesseractPath)
+		go func() {
+			defer applog.RecoverPanic("tesseract")
+			a.probeTesseractInBackground(a.settingsSnapshot().TesseractPath)
+		}()
 	}
 }
 

@@ -137,6 +137,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 func startGameDataFetch() chan GameDataStatus {
 	ch := make(chan GameDataStatus, 1)
 	go func() {
+		defer applog.RecoverPanic("update")
 		ver := fetchMainVersion()
 		mh, mm, ms := fetchMainRosters()
 		ch <- computeGameDataStatus(ver, mh, mm, ms)
