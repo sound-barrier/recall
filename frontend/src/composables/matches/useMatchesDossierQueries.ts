@@ -4,6 +4,7 @@ import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/mat
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { RESULT_MODIFIERS } from '@/match/match-trends-helpers'
 import { lossQuality, type LossQuality } from '@/match/match-loss-quality'
+import { wilsonLowerBound, LOW_SAMPLE_N } from '@/match/match-sample-helpers'
 import {
   type BreakdownEntry,
   type ModifierRecord,
@@ -106,10 +107,17 @@ export function useDossierQueries(
           const winrate = Math.round((w / total) * 100)
           // share === winrate so the shared breakdown bar renders the
           // win-rate; the widgets read `winrate` directly regardless.
-          return { key, total, winrate, share: winrate }
+          // Ranking uses the Wilson lower bound, NOT the raw winrate:
+          // a thin perfect sample must not outrank a solid good one
+          // (sample-size honesty; the displayed % stays raw).
+          return {
+            key, total, winrate, share: winrate,
+            lowSample: total < LOW_SAMPLE_N,
+            rank: wilsonLowerBound(w, total),
+          }
         })
         .filter((e) => e.total >= minMatches)
-        .sort((a, b) => b.winrate - a.winrate || b.total - a.total)
+        .sort((a, b) => b.rank - a.rank || b.total - a.total)
         .slice(0, limit)
     })
   }

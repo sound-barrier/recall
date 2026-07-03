@@ -28,6 +28,12 @@ const rows = dossier.winrateBy(() => ({
         <span class="bd-time">{{ row.total }}x</span>
       </span>
       <span class="bd-stats">{{ row.winrate }}%</span>
+      <span
+        v-if="row.lowSample"
+        data-low-sample
+        class="bd-low-n"
+        :title="`Only ${row.total} decisive matches — treat this rate as noisy`"
+      >n&lt;5</span>
     </li>
   </ul>
 </template>
