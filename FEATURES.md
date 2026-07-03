@@ -1,8 +1,8 @@
 # Recall — Feature Backlog
 
 A single triage surface for forward-looking feature ideas. Companion
-to `REVIEW.md` (the outstanding tech-debt + near-term feature/bug backlog) —
-this file tracks the opposite direction: what *could* be built next.
+to `TECHNICAL_DEBT.md` (the outstanding tech-debt ledger) — this file
+tracks the opposite direction: what *could* be built next.
 
 ## How this file works
 
@@ -24,23 +24,20 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### Analysis & Insights
 
-- **Win rate by time of day / day of week** — surface "you tilt after 11pm" patterns. Surfaces as a 7×24 mini-heatmap on the Settings → Insights tab; cell tooltip carries match-count + significance hint.
-- **Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop. Two-pronged trigger: ≥3 losses in a row AND the rolling-window K/D dropped >25% from the user's 30-day average. Nudge is dismissible without persistence (so it doesn't moralise on a single bad day).
-- **Streak tracking** — current and longest win/loss streaks, per role and overall. Streak panel beside the W/L tally on the AggregateStats surface.
+- **Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop. Two-pronged trigger: ≥3 losses in a row AND the rolling-window K/D dropped >25% from the user's 30-day average. Nudge is dismissible without persistence (so it doesn't moralise on a single bad day). *Partially shipped:* the dossier's TiltCheckWidget surfaces the signal; the nudge itself remains.
 - **Map-specific performance drill-down** — best/worst maps per hero, with sample-size caveats. Confidence interval rather than raw win-rate (`62% ± 8%, n=14`) so a 100% streak on n=2 doesn't dominate.
 - **Hero matchup matrix** — your hero × enemy hero → win rate (requires enemy team capture, which is a parser stretch).
 - **Role performance comparison** — tank vs DPS vs support averages side-by-side.
 - **Performance trend lines per hero over time** — are you improving on Juno, regressing on Ana? Mini-sparkline beside the hero name inside the journal/expanded card.
 - **SR / rank velocity** — climb rate per session, week, season.
 - **Goal tracking** — "reach Diamond by end of season" with progress bar.
-- **Session boundary detection** — auto-group consecutive matches into "sessions" (gaps > 30 min), then surface session-level W/L/avg-stats. Visual divider in the match list when the gap to the previous match exceeds the threshold; session header shows "Session · 4 matches · 75% WR · ~52 min".
-- **Hero pool diversity score** — how many heroes you played in a window, weighted by play-time; flag over-reliance on a single pick.
+- **Session boundary detection** — auto-group consecutive matches into "sessions" (gaps > 30 min), then surface session-level W/L/avg-stats. Visual divider in the match list when the gap to the previous match exceeds the threshold; session header shows "Session · 4 matches · 75% WR · ~52 min". *Partially shipped:* SessionsWidget counts sessions; the list dividers + per-session rollups remain.
+- **Hero pool diversity score** — how many heroes you played in a window, weighted by play-time; flag over-reliance on a single pick. *Partially shipped:* HeroPoolSizeWidget surfaces the raw count; weighting + the over-reliance flag remain.
 - **Performance vs SR delta** — does the W/L / E-A-D shape this week actually match the rank change? Highlights "rank deflation" or "lucky climbing."
 - **Off-role surprise stat** — when you queue a non-main role, do you over/underperform the role average?
 - **Pre / post-patch performance split** — bucket matches by OW patch dates (manually entered or auto-fetched) so you can see "I was good before the Juno nerf."
 - **Fresh-queue vs tilted-queue** — performance after >1h break vs after a <5 min re-queue, side by side.
 - **Rolling baseline comparison** — this week's stats vs your own 30-day rolling average (with significance hint when sample is too small). Significance check: t-test on the mean difference; show `↑ +1.4σ` style annotation rather than a raw percentage delta.
-- **Form chart** — small W/L/W/W/L sparkline of the last 10 matches per role, refreshed live as new matches parse. Same dimensions as the existing slot-chip family so it lives in the masthead header band without disturbing the layout.
 - **Annual recap** — Spotify-style year-end review: total hours, most-played hero, peak SR, best W-streak, longest losing skid, "you played Juno on Rialto N times". Generated as a single shareable image (PNG) via an offscreen canvas + the existing Big Noodle font.
 
 ### Match Data & Editing
@@ -56,7 +53,7 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### Ingest & OCR
 
-- **Multi-language Tesseract support** — non-English OW clients. `pkg/parser/tesseract.go` invokes Tesseract with `-l eng`; replace with the user's configured language code from `Settings → Engine`. Hero/map roster dictionaries (`heroes.yaml`, `maps.yaml`) become localisation-aware: each entry has a `display_name` map keyed by locale plus the canonical English token used for storage.
+- **Multi-language Tesseract support** — non-English OW clients. `pkg/parser/tesseract.go` invokes Tesseract with no language flag (Tesseract's `eng` default); pass the user's configured language code from `Settings → Engine`. Hero/map roster dictionaries (`heroes.yaml`, `maps.yaml`) become localisation-aware: each entry has a `display_name` map keyed by locale plus the canonical English token used for storage.
 - **Video clip support** — extract end-of-match frames from `.mp4` recordings using `ffmpeg`. Frame-selection heuristic: every 0.5s, classify; once the classifier hits SUMMARY/TEAMS/PERSONAL, capture that exact frame and feed to the existing OCR pipeline.
 - **OCR confidence scoring** — surface low-confidence parses for human review (Tesseract returns per-line `--c=stderr` confidence; expose it). Stat cells under a configurable threshold get a subtle dashed underline + tooltip; aggregated into a per-match "confidence score" surfaced as a chip on the card.
 - **User-trainable hero-name aliases** — when OCR consistently mangles a specific hero name, let the user save a mapping (`ornBITAL → ORBITAL`). Lives in `pkg/parser/aliases.yaml` (gitignored, user-local); applied by the classifier before hero-roster lookup.
@@ -71,7 +68,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 <!-- Multiple profiles — SHIPPED. Each profile has its own settings + SQLite DB under <base>/profiles/<name>/, switchable from a masthead chip. The chip also supports rename + create; matches can be bulk-moved between profiles from the matches view's bulk action bar. --profile=<name> on both binaries scopes a launch. See docs/how-it-works.md → "Where things live on disk". -->
 
-- **Customizable dashboard widgets** — pick which stats appear on the home view. Drag-to-reorder card list of widgets; each widget is a self-contained `<DashboardWidget>` SFC with a fixed grid footprint so the layout stays tractable.
 - **Command palette (⌘K)** — fuzzy-find across views, settings, and individual matches by hero/map/date. Modal overlay with the same scoring engine as the existing match-search parser; live preview surfaces the top 5 results as the user types.
 - **Recent-matches widget on Settings** — small "last 5 matches" strip on the Settings tab so the user always has context while configuring.
 - **Natural-language date picker** — `last week`, `this season`, `before Mauga buff`, `since Tuesday` parses to date ranges and pre-fills the date filter. Falls back to the existing datetime pickers for ambiguous input.
@@ -80,6 +76,7 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Quick-edit popover on stat cells** — click any displayed stat on a card → 1-click ± nudge or numeric input without expanding the whole card. Useful for correcting OCR mistakes without opening the journal.
 - **Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
 - **Settings export/import** — share configuration with a teammate (folder paths, theme, filter prefs, presets) as a small JSON. Useful for stack-mate parity; lives next to the existing Backup & Restore section.
+- **Scoped search clauses in the narrow panel** — restore the vim-style `note:clutch` / `tag:stack` / `member:Apollo` / `replay:7H1` clause syntax (retired with the FilterRail; see Retired below) inside the narrow panel's search box. The `search-query.ts` parser still ships and is unit-tested; only the UI hook is missing.
 - **Match journal writing mode** — dedicated full-viewport markdown editor for the note field, with side-rail preview + word count. Reached via a small "expand" affordance on the journal panel; submission persists back through `SetMatchAnnotation`.
 
 ### Integrations
@@ -130,8 +127,8 @@ to avoid heading collisions with the live backlog above.
 - **UX & Settings — Theme picker (Day / Night / Contrast)** — Settings → Appearance; three swatch cards with per-swatch palette miniatures (cream paper / black ground / pure-black high-contrast). The Contrast variant boosts the accent to `#ffbf4d`, flattens every surface to pure black, and goes full-saturation on W/L/D colours — built for tournament-booth or low-vision use, never auto-picked. Fresh installs autodetect the OS light/dark preference via `window.matchMedia('(prefers-color-scheme: dark)')` so a user running their OS in light mode lands on Day; once the user explicitly picks anything, `recall.theme` in localStorage takes over and the OS preference is ignored on subsequent launches (and reinstalls — localStorage lives outside the app bundle). `useTheme` composable owns the persistence + DOM apply; `applyTheme` sets `data-theme` on the document root which scopes the CSS variable blocks in `app.css`. Coverage: `frontend/src/composables/useTheme.test.ts` (15 cases including OS-detection branches) and `frontend/tests/e2e/theme.spec.ts` (swatch picks, persistence across reload, OS preference on fresh install, opt-in semantics for Contrast).
 - **UX & Settings — Keyboard shortcuts + cheatsheet (`?`)** — power-user bindings exposed by `useKeyboardShortcuts` (single capture-phase document listener, input-gated, sequence-prefix support for vim-style `g`+x view nav). Global: `/` (focus the match-search input), `g`+`m`/`i`/`s`/`u` (view nav), `?` (open the cheatsheet). Matches view: `j`/`k` (card focus, no wrap), `e` (toggle expand), `t` (focus tags editor on the focused card, auto-expanding first). The cheatsheet modal lists every binding the app exposes — including existing tablist arrows + Esc-dismiss + focus-trap Tab cycle — so users discovering one affordance learn about all of them. Composable in `useKeyboardShortcuts.ts`; modal in `KeyboardShortcutsModal.vue`; Playwright e2e in `frontend/tests/e2e/keyboard-shortcuts.spec.ts`.
 - **UX & Settings — First-launch onboarding tour** — full-viewport HUD-style briefing overlay that walks new users through configure → parse → explore. Vertical progress rail with ult-charge-style segments on the left, giant Big-Noodle-italic step numbers + accent flares on the right. Gated by the `recall.onboardingCompleted` localStorage key (skip / finish / Escape all persist). Each step's "Next" navigates the underlying tab so the briefing copy and visible view stay synchronised. State + step-machine in `useOnboardingTour`; component in `OnboardingTour.vue`; Playwright e2e in `frontend/tests/e2e/onboarding-tour.spec.ts`.
-- **Data & Export — CSV / JSON export** — `ExportData` + `ExportDataCSV` produce full match history dumps; surfaced via Settings → Backup & Restore.
-- **Data & Export — Local backup / restore** — one-click DB export + import via Settings → Backup & Restore (`ImportData`), with idempotent re-import semantics.
+- **Analysis & Insights — Dashboard widget set (customizable)** — the Matches dossier's widget grid: 30+ self-contained widgets (drag-to-reorder via `useDragReorder`, per-widget gear config via `useWidgetConfig`), fed by `useMatchesDossier`'s bedrock refs + parameterized query helpers. Absorbs several former Triaging items outright: **Win rate by time of day / day of week** (TimeOfDayWidget + DayOfWeekWidget), **Streak tracking** (CurrentStreakWidget + LongestWinStreakWidget), and the **Form chart** (Recent5MatchesWidget — configurable-count W/L strip as a widget rather than the masthead sparkline originally sketched).
+- **Data & Export — Local backup / restore** — one-click **full-database snapshot** via Settings → Backup & Restore (`BackupDatabase` = `VACUUM INTO`, `RestoreDatabase` validates with `PRAGMA integrity_check` + a schema probe before swapping). Replaced the earlier per-table `ExportData`/`ExportDataCSV` JSON/CSV dumps, which were lossy by construction (they predated several aux tables).
 - **UX & Settings — Right-edge detail panel + screenshot lightbox** — clicking a `.leaf-row` (or pressing `e` on the focused row) opens a 540px-wide slide-in panel from the right anchored to one selected `match_key`. The panel hosts every per-match editor surface (Match Journal, leaver chooser, Match Stats grid, Rank Update — rare/decorated when present, Heroes Played, Source Screenshots, soft-delete row), reordered top-down to read as a scouting dossier: When · Final Score · Parsed (meta strip) → Leaver? → Match Stats → Rank Update → Match Journal → Heroes Played → Sources. Keyboard ergonomics: `← / →` paginate prev/next match against `narrowedRecords` (the same set the leaves list shows; `j`/`k` are vim alternates), `↑ / ↓ / PgUp / PgDn / Space / Home / End` scroll the panel body via an rAF momentum tween, `Esc` closes (capture-phase so a nested cheatsheet or lightbox dismisses just itself; in a text field, Esc blurs the field instead of closing the panel). The panel is a real modal — `useModalFocusTrap` cycles Tab inside `.detail-panel`, `inert` on the background container blocks every Tab / click leak to the leaves list, `/` is suppressed while open. `useSelectedMatch` composable owns the selection + auto-closes when the open match leaves `narrowedRecords` (filter narrows, user hides it). Inline screenshot previews click-to-fullscreen via `MatchScreenshotLightbox`. The cheatsheet (`?`) filters its bindings to the current context (Matches view vs Settings vs panel-open). All three modal surfaces lazy-load via `defineAsyncComponent`. Body assertions live in `MatchDetailPanel.test.ts` (39 cases mounting the panel directly); 25 e2e cases in `frontend/tests/e2e/match-detail-panel.spec.ts` cover open/close/paginate/scroll/Tab-trap/inert/Esc-in-input/section-order/lightbox/cheatsheet/auto-close-on-hide/backdrop-click.
 
 ## Retired
@@ -143,13 +140,26 @@ file.
 - **UX & Settings — Saved filter presets** (shipped pre-PR-#100; retired in PR #101) — Presets dropdown in the old FilterRail's tools row, backed by `useFilterPresets` + `FilterPresetsMenu.vue`. Deleted alongside the FilterRail itself when the set-workspace redesign moved every filter into the new Narrow this set panel. A typed replacement (serialising `MatchesNarrowState`) shipped as `useNarrowPresets`.
 - **UX & Settings — Group-jump timeline rail** (shipped; retired in PR #100) — sticky right-edge chip column that scrolled + auto-expanded the target month group on click. The set-workspace redesign replaced the nested Month → Week → Day expand tree with a single sort + Y/M/W/D group control above the leaves; the rail's "jump between many groups" affordance lost its target audience when the tree flattened. Component (`MatchGroupTimeline.vue`) + e2e spec deleted.
 - **UX & Settings — Compact / dense view toggle** (shipped; retired in PR #101) — `useDensityMode` composable + a density button in the old group-rail. The new `.leaf-row` design is already as dense as the old compact mode (7-cell grid, monospace numerals, fixed row height) so the toggle had no second mode to flip to.
-- **Match Data & Editing — Global match search (vim-style scoped clauses)** (shipped; partially retired in PR #100) — `note:clutch` / `tag:stack` / `member:Apollo` / `replay:7H1` clause parsing via `search-query.ts` + `useMatchFilters.searchClauses`. The new narrow-panel search box does plain substring match across every lexical surface (map / hero / mode / note / tag / heroes-played). The clause-parsing helper still ships and is unit-tested; the UI hook was removed with the FilterRail. Restoring the scoped-clause UX in the narrow panel is open in `REVIEW.md` (F1).
+- **Match Data & Editing — Global match search (vim-style scoped clauses)** (shipped; partially retired in PR #100) — `note:clutch` / `tag:stack` / `member:Apollo` / `replay:7H1` clause parsing via `search-query.ts` + `useMatchFilters.searchClauses`. The new narrow-panel search box does plain substring match across every lexical surface (map / hero / mode / note / tag / heroes-played). The clause-parsing helper still ships and is unit-tested; the UI hook was removed with the FilterRail. Restoring the scoped-clause UX in the narrow panel is tracked in Triaging above ("Scoped search clauses in the narrow panel").
 
 ## Denied / Won't Do
 
-- **Encrypted SQLite** — passphrase on launch for shared machines.
-- **Cloud sync** — S3, Dropbox, or self-hosted endpoint for multi-device players.
-- **Live OCR while OW is running** — window capture, no manual screenshot needed.
-- **Discord webhook** — post match results to a server channel.
+- **Encrypted SQLite** — passphrase on launch for shared machines. Would force
+  a CGo or app-layer crypto dependency against the load-bearing pure-Go build,
+  for data that is roster YAML + your own match stats on your own machine.
+- **Cloud sync** — S3, Dropbox, or self-hosted endpoint for multi-device
+  players. Against the core stance: no account, no network upload
+  (ARCHITECTURE.md). The export/import bundle is the sanctioned transfer path.
+- **Live OCR while OW is running** — window capture, no manual screenshot
+  needed. Capture hooks in a live competitive game read as cheat-adjacent to
+  anti-cheat tooling; the screenshot workflow stays the boundary.
+- **Discord webhook** — post match results to a server channel. Outbound
+  pushes of match data cross the no-upload stance; the shareable-export ideas
+  in Triaging cover the "show a friend" case without a standing pipe.
 - **Twitch / OBS overlay** — current rank, today's W/L, last 5 results.
-- **Tracker.gg / Overbuff bulk import** — seed historical data from existing third-party trackers.
+  Streaming-integration surface area for a niche audience; OBS scene-switching
+  stays in Triaging as the one narrowly-scoped integration worth weighing.
+- **Tracker.gg / Overbuff bulk import** — seed historical data from
+  third-party trackers. Their data comes without screenshots (nothing to
+  re-verify against) and scraping their APIs is ToS-fragile; Recall's history
+  stays grounded in the user's own captures.
