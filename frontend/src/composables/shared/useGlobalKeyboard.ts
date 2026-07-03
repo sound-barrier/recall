@@ -1,4 +1,4 @@
-import { nextTick, type Ref } from 'vue'
+import { computed, nextTick, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useKeyboardShortcuts, type Shortcut } from '@/composables/shared/useKeyboardShortcuts'
 import { type TabId } from '@/composables/shared/useTabKeyboardNav'
@@ -20,9 +20,14 @@ export interface GlobalKeyboardDeps {
   // The active view, used to gate Matches-specific shortcuts and
   // to forward `g <x>` sequence navigation to the right tab.
   view: Ref<TabId>
-  // Cheatsheet open state — also doubles as the `suppressed` ref
-  // for the dispatcher (no shortcut fires while the modal is up).
+  // Cheatsheet open state — the `?` shortcut writes it, and it feeds the
+  // dispatcher's suppression (no shortcut fires while the modal is up).
   openCheatsheet: Ref<boolean>
+  // True while any modal OTHER than the detail panel is up (narrow panel,
+  // manual match, About, settings dialog, first-run, startup error, …) —
+  // suppresses the whole map. The detail panel deliberately stays out:
+  // e-to-close and the j/k interplay are part of the global map.
+  modalOpen: Ref<boolean>
   // Whether the detail panel modal is open. Used to suppress
   // Matches-list shortcuts so the panel's own handlers don't race.
   selectionIsOpen: Ref<boolean>
@@ -63,6 +68,7 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
   const {
     view,
     openCheatsheet,
+    modalOpen,
     selectionIsOpen,
     selectedKey,
     closeSelection,
@@ -211,5 +217,5 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
         })()
       },
     },
-  ], { suppressed: openCheatsheet })
+  ], { suppressed: computed(() => openCheatsheet.value || modalOpen.value) })
 }

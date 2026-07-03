@@ -91,15 +91,22 @@ export const useUiStore = defineStore('ui', () => {
   // readers + Tab nav don't bleed into the dimmed page. Reads the startup-error
   // gate from the app store + the unsupported-OCR gate from the matches store;
   // the rest are this store's own flags. Add to it when a new modal mounts.
-  const backgroundFrozen = computed(() =>
+  // Every modal that should mute the global keyboard map. The detail panel
+  // (selection) deliberately stays out — e-to-close and the j/k interplay
+  // are part of the global map while it's open; the cheatsheet suppresses
+  // itself via its own ref in useAppKeyboard.
+  const shortcutMutingModalOpen = computed(() =>
     firstRun.firstRunModalOpen.value
     || appStore.showStartupErrorModal
     || matchesStore.showUnsupportedModal
-    || selection.isOpen.value
     || narrowOpen.value
     || manualMatchOpen.value
     || settingsDialogOpen.value
     || appStore.aboutOpen,
+  )
+
+  const backgroundFrozen = computed(() =>
+    shortcutMutingModalOpen.value || selection.isOpen.value,
   )
 
   return {
@@ -124,6 +131,7 @@ export const useUiStore = defineStore('ui', () => {
     openCheatsheet,
     closeCheatsheet,
     backgroundFrozen,
+    shortcutMutingModalOpen,
     // Anchor toast (delegated to useAnchorToast)
     anchorToast: anchor.anchorToast,
     onSetAnchor: anchor.onSetAnchor,
