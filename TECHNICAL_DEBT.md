@@ -54,6 +54,21 @@ Reviewed and deliberately left, so a future pass doesn't burn effort churning th
   worked-example pattern) would blow the initial-CSS budget (~270 B headroom, and
   the journal CSS rides a lazy chunk), so a child SFC would have to *duplicate*
   ~80 lines of chrome — net worse. Cohesive-shell exemption.
+- **`AboutModal.vue` (~647) and `MatchLeafRow.vue` (~637)** — adjudicated
+  2026-07 (the last of the never-adjudicated four). AboutModal's logic is
+  already maximally extracted (`useGameDataUpdate`, `useModalFocusTrap`, the
+  `UpdateDiffManifest` child); its bulk is the `update-check-modal-*` chrome
+  shared verbatim across both update sections, and the only nominal seam
+  would duplicate that shared chrome. MatchLeafRow is ~370 lines of
+  irreducible per-row grid CSS + dense 7-cell markup with all logic in
+  `match-helpers`/`match-label-helpers`/`search-query`; its map/hero-block
+  seams share the `.leaf-filter-cell` funnel chrome and would each thread
+  6-7 props — the MatchJournal "net worse" precedent. `MatchHeroModeBand`
+  needed no ruling: the Phase-3 `BandHeaderControls` extraction already put
+  it at ~490. `MatchesTable` was the one with a real seam left — its
+  ~100-line cell drag-select pointer machine moved to `useCellDragSelect`
+  (script now ~145 lines; the ~570-line residual is table chrome under this
+  same exemption).
 - **Three oversized-but-cohesive Matches SFCs — `MatchMapRoleBand.vue` (923),
   `MatchStatusChoosers.vue` (712), `MatchesView.vue` (693).** `MatchMapRoleBand`
   (the single largest SFC) already has its logic maximally extracted — the
@@ -154,9 +169,6 @@ last so the schema is frozen before the baseline is captured.
 
 ## 10. Smaller catalogued items (do opportunistically)
 
-- Four SFCs over the 500-line cap were never adjudicated by §3: MatchesTable
-  (657), AboutModal (647), MatchHeroModeBand (643), MatchLeafRow (637) —
-  adjudicate, don't blind-split. (S)
 - `pkg/app` still carries several distinct sub-domains (seed/fixtures,
   export/import/validate-bundle, update + apply-data-update, profile
   management, tesseract engine) — candidates for the next decomposition
