@@ -1,5 +1,7 @@
 package db
 
+import "fmt"
+
 // Per-match review-status tag. Presence in match_reviews IS the
 // "reviewed" signal; absence means "not reviewed." SetReview is an
 // idempotent upsert; ClearReview is a targeted delete; LoadReviews
@@ -29,7 +31,7 @@ func (s *SQLStore) ClearReview(matchKey string) error {
 func (s *SQLStore) LoadReviews() (map[string]ReviewState, error) {
 	rows, err := s.db.Query(`SELECT match_key, reviewed_by, reviewed_at FROM match_reviews`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load reviews: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	out := map[string]ReviewState{}
@@ -37,9 +39,12 @@ func (s *SQLStore) LoadReviews() (map[string]ReviewState, error) {
 		var k string
 		var st ReviewState
 		if err := rows.Scan(&k, &st.ReviewedBy, &st.ReviewedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load reviews: %w", err)
 		}
 		out[k] = st
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("load reviews: %w", err)
+	}
+	return out, nil
 }

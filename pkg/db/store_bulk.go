@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 // querier is the read surface shared by *sql.DB and *sql.Tx. LoadAll's
 // bulk loaders take it so the whole snapshot reads through ONE deferred
@@ -25,30 +28,30 @@ func (s *SQLStore) LoadAll() (Screenshots, error) {
 	var out Screenshots
 	tx, err := s.db.Begin()
 	if err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	// Read-only usage; Rollback just releases the snapshot.
 	defer func() { _ = tx.Rollback() }()
 	if out.ScreenshotsDirs, err = loadScreenshotsDirs(tx); err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	if out.Summaries, err = loadSummaries(tx); err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	if out.Teams, err = loadTeams(tx); err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	if out.Personals, err = loadPersonals(tx); err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	if out.Ranks, err = loadRanks(tx); err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	if out.Unknowns, err = loadUnknowns(tx); err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	if out.AmbiguousCandidates, err = loadAllAmbiguousCandidates(tx); err != nil {
-		return out, err
+		return out, fmt.Errorf("load screenshots: %w", err)
 	}
 	return out, nil
 }

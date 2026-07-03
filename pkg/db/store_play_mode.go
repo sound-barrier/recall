@@ -1,5 +1,7 @@
 package db
 
+import "fmt"
+
 // Per-match play-mode tag (quickplay / competitive). Presence in
 // match_play_mode is the user-set OVERRIDE; absence means "fall back
 // to whatever the parser captured in summary_screenshots.mode or
@@ -67,7 +69,7 @@ func (s *SQLStore) BulkSetMatchPlayMode(matchKeys []string, playMode string) err
 func (s *SQLStore) LoadMatchPlayModes() (map[string]PlayModeState, error) {
 	rows, err := s.db.Query(`SELECT match_key, play_mode, overridden_at FROM match_play_mode`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load match play modes: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	out := map[string]PlayModeState{}
@@ -75,9 +77,12 @@ func (s *SQLStore) LoadMatchPlayModes() (map[string]PlayModeState, error) {
 		var k string
 		var st PlayModeState
 		if err := rows.Scan(&k, &st.PlayMode, &st.OverriddenAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load match play modes: %w", err)
 		}
 		out[k] = st
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("load match play modes: %w", err)
+	}
+	return out, nil
 }

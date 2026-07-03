@@ -1,5 +1,7 @@
 package db
 
+import "fmt"
+
 // Match annotations — user-curated per-match notes (leaver flag + free
 // text + replay code + group members). UPSERT semantics on
 // SetAnnotation; DeleteAnnotation is a targeted delete;
@@ -89,32 +91,32 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 		 FROM match_annotations`,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load annotations: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	out := make(map[string]Annotation)
 	for rows.Next() {
 		var a Annotation
 		if err := rows.Scan(&a.MatchKey, &a.Leaver, &a.Note, &a.ReplayCode, &a.AnnotatedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load annotations: %w", err)
 		}
 		out[a.MatchKey] = a
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load annotations: %w", err)
 	}
 
 	// Attach members. One round-trip across the whole table; ordered
 	// by match_key for stable iteration during the attach loop.
 	memberRows, err := s.db.Query(`SELECT match_key, member FROM match_annotation_members ORDER BY match_key, member`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load annotations: %w", err)
 	}
 	defer func() { _ = memberRows.Close() }()
 	for memberRows.Next() {
 		var key, member string
 		if err := memberRows.Scan(&key, &member); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load annotations: %w", err)
 		}
 		a, ok := out[key]
 		if !ok {
@@ -126,7 +128,7 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 		out[key] = a
 	}
 	if err := memberRows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load annotations: %w", err)
 	}
 
 	// Attach tags. Same wholesale-read pattern as members; sorted
@@ -134,13 +136,13 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 	// downstream without an extra sort in the aggregator.
 	tagRows, err := s.db.Query(`SELECT match_key, tag FROM match_annotation_tags ORDER BY match_key, tag`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load annotations: %w", err)
 	}
 	defer func() { _ = tagRows.Close() }()
 	for tagRows.Next() {
 		var key, tag string
 		if err := tagRows.Scan(&key, &tag); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("load annotations: %w", err)
 		}
 		a, ok := out[key]
 		if !ok {
@@ -149,5 +151,8 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 		a.Tags = append(a.Tags, tag)
 		out[key] = a
 	}
-	return out, tagRows.Err()
+	if err := tagRows.Err(); err != nil {
+		return nil, fmt.Errorf("load annotations: %w", err)
+	}
+	return out, nil
 }
