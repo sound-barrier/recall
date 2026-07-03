@@ -38,11 +38,19 @@ function record(s: Stub, idx: number) {
 // window includes them. The component reads today's date from
 // new Date() — pinning relative-to-now keeps the heatmap surface
 // stable without needing fake timers.
-const todayISO = new Date().toISOString().slice(0, 10)
+// LOCAL date components, not toISOString (UTC): the component renders the
+// heatmap in local time, so a UTC "today" is tomorrow's cell every local
+// evening — the suite failed nightly between 5pm and midnight Denver.
+function localISO(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+const todayISO = localISO(new Date())
 function daysAgo(n: number): string {
   const d = new Date()
   d.setDate(d.getDate() - n)
-  return d.toISOString().slice(0, 10)
+  return localISO(d)
 }
 
 const STUBS: Stub[] = [
