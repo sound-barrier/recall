@@ -14,12 +14,12 @@ import type { WindowMonths } from '@/composables/matches/useWindowMonths'
 // e2e hooks (data-mr-reset, data-timeline-reset, …) ride in via each
 // bundle's `attrs` so existing spec selectors keep working.
 
-export interface BandResetControl {
+interface BandResetControl {
   title: string
   attrs?: Record<string, string>
 }
 
-export interface BandGearControl {
+interface BandGearControl {
   active: boolean
   ariaLabel: string
   title: string
