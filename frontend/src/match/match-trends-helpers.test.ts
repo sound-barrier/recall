@@ -6,6 +6,7 @@ import {
   roleBucket,
   rankLadderSeries,
   rollingWinrateSeries,
+  heroRollingWinrateSeries,
   currentRankByRole,
   rankDeltaSeries,
   cumulativeNetRecordSeries,
@@ -187,5 +188,43 @@ describe('modifierFrequencySeries', () => {
 describe('matchEpoch', () => {
   it('returns null when no time can be derived', () => {
     expect(matchEpoch({ match_key: 'unmatched-foo.png', data: {} })).toBeNull()
+  })
+})
+
+describe('heroRollingWinrateSeries', () => {
+  function heroRec(date: string, time: string, hero: string, result: 'victory' | 'defeat'): TrendInput {
+    const base = rec(date, time, { result })
+    return { ...base, data: { ...base.data, hero } }
+  }
+
+  it('buckets by primary hero with one rolling series each', () => {
+    const series = heroRollingWinrateSeries([
+      heroRec('2026-05-01', '20:00', 'juno', 'defeat'),
+      heroRec('2026-05-02', '20:00', 'juno', 'victory'),
+      heroRec('2026-05-01', '21:00', 'ana', 'victory'),
+    ], 10)
+    const names = series.map((s) => s.name).sort()
+    expect(names).toEqual(['ana', 'juno'])
+    const juno = series.find((s) => s.name === 'juno')!
+    expect(juno.points.map((p) => p.v)).toEqual([0, 50])
+  })
+
+  it('keeps only the top-N heroes by decisive volume', () => {
+    const records: TrendInput[] = []
+    for (let h = 0; h < 8; h++) {
+      for (let i = 0; i <= h; i++) {
+        records.push(heroRec('2026-05-01', `${String(8 + i).padStart(2, '0')}:0${h}`, `hero${h}`, 'victory'))
+      }
+    }
+    const series = heroRollingWinrateSeries(records, 10, 3)
+    expect(series).toHaveLength(3)
+    expect(series.map((s) => s.name).sort()).toEqual(['hero5', 'hero6', 'hero7'])
+  })
+
+  it('skips records without a hero or a decisive result', () => {
+    const base = rec('2026-05-01', '20:00', { result: 'victory' })
+    const draw = heroRec('2026-05-02', '20:00', 'juno', 'victory')
+    draw.data = { ...draw.data, result: 'draw' }
+    expect(heroRollingWinrateSeries([base, draw], 10)).toEqual([])
   })
 })

@@ -226,7 +226,7 @@ describe('useMatchesGroup', () => {
 })
 
 describe('session grouping', () => {
-  function statRec(date: string, finishedAt: string, key: string, result: string, ead?: [number, number, number]): MatchRecord {
+  function statRec(date: string, finishedAt: string, key: string, result: 'victory' | 'defeat' | 'draw', ead?: [number, number, number]): MatchRecord {
     const base = rec(date, finishedAt, key)
     base.data = { ...base.data, result, ...(ead ? { eliminations: ead[0], assists: ead[1], deaths: ead[2] } : {}) }
     return base

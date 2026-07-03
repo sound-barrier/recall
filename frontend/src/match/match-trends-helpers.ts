@@ -158,6 +158,53 @@ export function rankLadderSeries(records: readonly TrendInput[]): RankSeries[] {
   return orderBuckets([...byBucket.entries()].map(([key, e]) => ({ key, label: e.label, points: e.points })))
 }
 
+// Rolling win-rate per HERO (the per-hero trend: "improving on Juno,
+// regressing on Ana"). Same rolling window as rollingWinrateSeries,
+// but bucketed by the record's primary hero and limited to the
+// topHeroes most-played heroes by decisive-match volume — every hero
+// in a wide pool would be twenty one-game lines, which charts noise.
+export function heroRollingWinrateSeries(
+  records: readonly TrendInput[],
+  window: number,
+  topHeroes = 5,
+): TrendSeries[] {
+  const span = Math.max(1, Math.floor(window))
+  const byHero = new Map<string, { decisive: boolean[]; times: number[]; keys: string[] }>()
+  for (const { rec, t } of timedRecords(records)) {
+    const result = rec.data?.result
+    let win: boolean
+    if (result === 'victory') win = true
+    else if (result === 'defeat') win = false
+    else continue
+    const hero = rec.data?.hero
+    if (!hero) continue
+    const entry = byHero.get(hero) ?? { decisive: [], times: [], keys: [] }
+    entry.decisive.push(win)
+    entry.times.push(t)
+    entry.keys.push(rec.match_key)
+    byHero.set(hero, entry)
+  }
+  const kept = [...byHero.entries()]
+    .sort((a, b) => b[1].decisive.length - a[1].decisive.length)
+    .slice(0, topHeroes)
+
+  const series: TrendSeries[] = []
+  for (const [hero, entry] of kept) {
+    const points: TrendPoint[] = []
+    for (let i = 0; i < entry.decisive.length; i++) {
+      const start = Math.max(0, i - span + 1)
+      let wins = 0
+      for (let j = start; j <= i; j++) {
+        if (entry.decisive[j]) wins++
+      }
+      const n = i - start + 1
+      points.push({ t: entry.times[i]!, v: Math.round((wins / n) * 100), matchKey: entry.keys[i]! })
+    }
+    series.push({ name: hero, key: hero, points })
+  }
+  return series
+}
+
 // Trailing win-rate (%) over the last `window` decisive matches, one line
 // per role bucket. Draws are excluded from numerator and denominator
 // (matching the dossier's headline winrate). One point per decisive

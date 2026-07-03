@@ -8,6 +8,7 @@ import {
   cumulativeNetRecordSeries,
   modifierFrequencySeries,
   rollingWinrateSeries,
+  heroRollingWinrateSeries,
   type RankNow,
   type RankSeries,
   type TrendSeries,
@@ -25,9 +26,14 @@ export function useMatchesTrends(records: Readonly<Ref<MatchRecord[]>>) {
   const cumulativeNet = computed<TrendSeries[]>(() => cumulativeNetRecordSeries(records.value))
   const modifierFrequency = computed<TrendSeries[]>(() => modifierFrequencySeries(records.value))
 
+  // Per-hero rolling win-rate over the set's most-played heroes.
+  function heroRollingWinrate(window: MaybeRefOrGetter<number>): ComputedRef<TrendSeries[]> {
+    return computed(() => heroRollingWinrateSeries(records.value, toValue(window)))
+  }
+
   function rollingWinrate(window: MaybeRefOrGetter<number>): ComputedRef<TrendSeries[]> {
     return computed(() => rollingWinrateSeries(records.value, toValue(window)))
   }
 
-  return { rankLadder, currentRank, rankDelta, cumulativeNet, modifierFrequency, rollingWinrate }
+  return { rankLadder, currentRank, rankDelta, cumulativeNet, modifierFrequency, rollingWinrate, heroRollingWinrate }
 }
