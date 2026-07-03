@@ -10,16 +10,55 @@ import (
 	"recall/pkg/app"
 )
 
-// registerBackupRoutes attaches the backup / restore / import handlers:
-//   - GET  /api/v1/database        — download a native .db snapshot (backup)
-//   - PUT  /api/v1/database        — replace the live DB from a .db snapshot
-//   - POST /api/v1/exports/bundle  — selection-aware .zip (manifest+data+shots)
-//   - POST /api/v1/imports         — MERGE a bundle's matches (additive)
+// registerBackupRoutes attaches the backup / restore / import /
+// database-health handlers:
+//   - GET  /api/v1/database             — download a native .db snapshot (backup)
+//   - PUT  /api/v1/database             — replace the live DB from a .db snapshot
+//   - GET  /api/v1/database/health      — integrity check + size/freelist stats
+//   - POST /api/v1/database/maintenance — run optimize / vacuum, return fresh health
+//   - POST /api/v1/exports/bundle       — selection-aware .zip (manifest+data+shots)
+//   - POST /api/v1/imports              — MERGE a bundle's matches (additive)
 func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/database", handleBackupDatabase(a))
 	apiMux.HandleFunc("PUT /api/v1/database", handleRestoreDatabase(a))
+	apiMux.HandleFunc("GET /api/v1/database/health", handleDatabaseHealth(a))
+	apiMux.HandleFunc("POST /api/v1/database/maintenance", handleDatabaseMaintenance(a))
 	apiMux.HandleFunc("POST /api/v1/exports/bundle", handleExportBundle(a))
 	apiMux.HandleFunc("POST /api/v1/imports", handleImportMatches(a))
+}
+
+// handleDatabaseHealth reports the read-only health snapshot —
+// integrity_check + page/freelist counts + file sizes.
+func handleDatabaseHealth(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		health, err := a.GetDatabaseHealth()
+		writeJSON(w, r, health, err)
+	}
+}
+
+// handleDatabaseMaintenance runs one maintenance operation
+// ("optimize" | "vacuum") and returns the refreshed health report.
+// Unknown operation → 400; parse mid-flight → 409 (vacuum takes an
+// exclusive lock, so maintenance serializes against the OCR loop).
+func handleDatabaseMaintenance(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Operation string `json:"operation"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		health, err := a.RunDatabaseMaintenance(body.Operation)
+		if writeError(
+			w, r, err,
+			errStatus{app.ErrInvalidMaintenanceOp, probInvalidBody},
+			errStatus{app.ErrParseInFlight, probConflict},
+		) {
+			return
+		}
+		writeJSON(w, r, health, nil)
+	}
 }
 
 // handleBackupDatabase streams a complete, compacted native SQLite snapshot of

@@ -206,6 +206,14 @@ type Store interface {
 
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
+	// Database health + maintenance surface (Settings → Advanced →
+	// Database health). Health is read-only and safe mid-parse;
+	// Optimize / Vacuum are serialized against parses by the app
+	// layer (Vacuum takes an exclusive lock for its duration).
+	Health() (DBHealth, error)
+	Optimize() error
+	Vacuum() error
+
 	Close() error
 }
 
@@ -223,6 +231,9 @@ type Store interface {
 // re-inserting is correct and simple.
 type SQLStore struct {
 	db *sql.DB
+	// path is the on-disk database location (":memory:" for test
+	// stores) — retained so Health() can stat the file + WAL sizes.
+	path string
 }
 
 var _ Store = (*SQLStore)(nil)
@@ -276,7 +287,7 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
-	store := &SQLStore{db: d}
+	store := &SQLStore{db: d, path: path}
 	// Reclaim screenshots_dirs rows orphaned by deleted matches / changed watch
 	// folders (the FK is RESTRICT, so they never go on their own).
 	if _, err := store.PruneScreenshotsDirs(); err != nil {

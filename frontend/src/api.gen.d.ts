@@ -1347,6 +1347,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/database/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report database integrity + size statistics
+         * @description Runs `PRAGMA integrity_check` plus the page/freelist pragmas
+         *     and stats the database + WAL files. Read-only — safe while a
+         *     parse is running. `integrity` is `ok` or the first problem
+         *     line SQLite reported; a non-ok value means the database needs
+         *     restoring from a backup.
+         */
+        get: operations["GetDatabaseHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/database/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a database maintenance operation
+         * @description Executes one maintenance operation and returns the refreshed
+         *     health report. `optimize` runs `PRAGMA optimize` (SQLite's
+         *     analyze-if-useful hook, cheap); `vacuum` rebuilds the file to
+         *     reclaim freelist pages and truncates the WAL (takes an
+         *     exclusive lock — serialized against parses, `409` while one
+         *     is in flight).
+         */
+        post: operations["RunDatabaseMaintenance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/exports/bundle": {
         parameters: {
             query?: never;
@@ -1493,6 +1542,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Point-in-time database health report. `integrity` is `ok` or
+         *     the first problem line `PRAGMA integrity_check` reported.
+         *     Sizes are bytes on disk; `wal_bytes` is 0 when no WAL sidecar
+         *     exists. `freelist_pages` counts reclaimable pages — `vacuum`
+         *     returns them to the filesystem.
+         */
+        DBHealth: {
+            integrity: string;
+            /** Format: int64 */
+            size_bytes: number;
+            /** Format: int64 */
+            wal_bytes: number;
+            /** Format: int64 */
+            freelist_pages: number;
+            /** Format: int64 */
+            page_count: number;
+            checked_at: string;
+        };
         /**
          * @description RFC 9457 (Problem Details for HTTP APIs) error body, returned as
          *     `application/problem+json` for every 4xx/5xx the API surfaces. `type`
@@ -4216,6 +4284,65 @@ export interface operations {
             };
             /** @description The uploaded file is not a usable Recall database. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetDatabaseHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Point-in-time health report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DBHealth"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    RunDatabaseMaintenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    operation: "optimize" | "vacuum";
+                };
+            };
+        };
+        responses: {
+            /** @description Operation completed; refreshed health report. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DBHealth"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description A parse is in flight; retry once it completes. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
