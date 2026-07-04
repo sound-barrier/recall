@@ -82,37 +82,73 @@ interface ChartCard {
   windowSelector: boolean
 }
 
+const rankLadderCard = computed<ChartCard>(() => ({
+  id: 'rank-ladder',
+  title: 'Rank over time',
+  windowSelector: false,
+  caption: 'Rank progression over time, by role',
+  option: rankLadderOption(rankSeries.value),
+  hasData: someData(rankSeries.value),
+  empty: 'No rank readings — capture a competitive rank screenshot to track your climb.',
+}))
+
+const rollingWinrateCard = computed<ChartCard>(() => ({
+  id: 'rolling-winrate',
+  title: 'Rolling win-rate (%)',
+  windowSelector: true,
+  caption: `Rolling win rate over the last ${windowSize.value} matches, by role`,
+  option: winrateOption(winrateSeries.value),
+  hasData: someData(winrateSeries.value),
+  empty: 'No decisive matches in the set.',
+}))
+
+const heroWinrateCard = computed<ChartCard>(() => ({
+  id: 'hero-winrate',
+  title: 'Win-rate by hero',
+  windowSelector: false,
+  caption: `Rolling win rate over the last ${windowSize.value} matches, per most-played hero`,
+  option: winrateOption(heroWinrateSeries.value),
+  hasData: someData(heroWinrateSeries.value),
+  empty: 'No decisive matches for any hero — nothing to chart yet.',
+}))
+
+const rankDeltaCard = computed<ChartCard>(() => ({
+  id: 'rank-delta',
+  title: 'Rank delta per match',
+  windowSelector: false,
+  caption: 'Per-match rank change, by role',
+  option: rankDeltaOption(rankDeltaSeries.value),
+  hasData: someData(rankDeltaSeries.value),
+  empty: 'No rank readings — capture a competitive rank screenshot.',
+}))
+
+const cumulativeNetCard = computed<ChartCard>(() => ({
+  id: 'cumulative-net',
+  title: 'Cumulative net record',
+  windowSelector: false,
+  caption: 'Running wins minus losses over time, by role',
+  option: lineOption(cumulativeNetSeries.value),
+  hasData: someData(cumulativeNetSeries.value),
+  empty: 'No decisive matches in the set.',
+}))
+
+const modifiersCard = computed<ChartCard>(() => ({
+  id: 'modifiers',
+  title: 'Modifiers over time',
+  windowSelector: false,
+  caption: 'Cumulative count of each match modifier over time',
+  option: lineOption(modifierFreqSeries.value),
+  hasData: someData(modifierFreqSeries.value),
+  empty: 'No modifiers recorded — they come from competitive rank screenshots.',
+}))
+
 const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
-  'rank-ladder': {
-    id: 'rank-ladder', title: 'Rank over time', windowSelector: false,
-    caption: 'Rank progression over time, by role', option: rankLadderOption(rankSeries.value), hasData: someData(rankSeries.value),
-    empty: 'No rank readings — capture a competitive rank screenshot to track your climb.',
-  },
-  'rolling-winrate': {
-    id: 'rolling-winrate', title: 'Rolling win-rate (%)', windowSelector: true,
-    caption: `Rolling win rate over the last ${windowSize.value} matches, by role`, option: winrateOption(winrateSeries.value), hasData: someData(winrateSeries.value),
-    empty: 'No decisive matches in the set.',
-  },
-  'hero-winrate': {
-    id: 'hero-winrate', title: 'Win-rate by hero', windowSelector: false,
-    caption: `Rolling win rate over the last ${windowSize.value} matches, per most-played hero`, option: winrateOption(heroWinrateSeries.value), hasData: someData(heroWinrateSeries.value),
-    empty: 'No decisive matches for any hero — nothing to chart yet.',
-  },
-  'rank-delta': {
-    id: 'rank-delta', title: 'Rank delta per match', windowSelector: false,
-    caption: 'Per-match rank change, by role', option: rankDeltaOption(rankDeltaSeries.value), hasData: someData(rankDeltaSeries.value),
-    empty: 'No rank readings — capture a competitive rank screenshot.',
-  },
-  'cumulative-net': {
-    id: 'cumulative-net', title: 'Cumulative net record', windowSelector: false,
-    caption: 'Running wins minus losses over time, by role', option: lineOption(cumulativeNetSeries.value), hasData: someData(cumulativeNetSeries.value),
-    empty: 'No decisive matches in the set.',
-  },
-  'modifiers': {
-    id: 'modifiers', title: 'Modifiers over time', windowSelector: false,
-    caption: 'Cumulative count of each match modifier over time', option: lineOption(modifierFreqSeries.value), hasData: someData(modifierFreqSeries.value),
-    empty: 'No modifiers recorded — they come from competitive rank screenshots.',
-  },
+  'rank-ladder': rankLadderCard.value,
+  'rolling-winrate': rollingWinrateCard.value,
+  'hero-winrate': heroWinrateCard.value,
+  'rank-delta': rankDeltaCard.value,
+  'cumulative-net': cumulativeNetCard.value,
+  'modifiers': modifiersCard.value,
 }))
 
 const visibleCards = computed(() => visibleIds.value.map((id) => cardsById.value[id]))
