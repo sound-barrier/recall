@@ -39,15 +39,6 @@ under the grid opens the native folder picker for everything else.
 | **Win Snip tool** | `%USERPROFILE%\Pictures\Screenshots` (and the OneDrive variant) | `Screenshot YYYY-MM-DD HHMMSS.png` |
 | **Steam install** | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` (resolved via the `HKCU\Software\Valve\Steam` registry) | (Steam's own F12 captures) |
 
-On macOS / Linux the grid is hidden — auto-detect is Windows-only by
-current product decision. The empty-state shows only the **Pick your
-screenshots folder…** button with a small *AUTO-DETECT · WINDOWS
-ONLY* note above it. Common macOS / Linux paths Recall used to probe
-(and still works against if you pick them manually):
-
-- macOS: `~/Documents/Overwatch/ScreenShots/Overwatch/`
-- Linux (Steam Proton): `~/.steam/steam/steamapps/compatdata/2357570/pfx/drive_c/users/steamuser/Documents/Overwatch/ScreenShots/Overwatch/`
-
 Once a folder is set, the steady-state Settings row exposes
 **Reveal** (opens the folder in your OS file manager), **Detect**
 (re-runs the legacy single-best-path probe), **Change…** (native
@@ -78,12 +69,8 @@ binary Recall shells out to. The status row underneath shows:
   install path for your OS and didn't find anything. Click
   **Locate Tesseract…** to point it at the real binary.
 
-Recall auto-detects on first launch:
-
-- Windows (UB-Mannheim default): `C:\Program Files\Tesseract-OCR\tesseract.exe`
-- macOS Apple Silicon: `/opt/homebrew/bin/tesseract`
-- macOS Intel: `/usr/local/bin/tesseract`
-- Linux (apt-installed): `/usr/bin/tesseract`
+Recall auto-detects the UB-Mannheim default on first launch:
+`C:\Program Files\Tesseract-OCR\tesseract.exe`.
 
 **Version compatibility:** Tesseract 5.x is the supported series.
 Versions 3.x and 4.x predate the Overwatch post-match font and
@@ -92,9 +79,8 @@ an amber "not officially supported" warning under the status row
 when it detects 3.x or 4.x — parsing still runs but you'll see lower
 accuracy.
 
-If your install path has drifted (e.g. you moved from Intel to Apple
-Silicon Homebrew), the **Use default** link under the path row
-resets to the platform default in one click.
+If your install path has drifted, the **Use default** link under the
+path row resets to the default in one click.
 
 ### 03 / Appearance
 
@@ -337,9 +323,7 @@ The four canonical capture sources Recall auto-detects on Windows —
 Nvidia Overlay, OW PrntScn default, Win Snip tool, and Steam install
 — all parse end-to-end. Steam's in-game F12 captures
 (`YYYYMMDDHHMMSS_N.jpg`) folded in alongside the other three in
-mid-2026; nothing extra to configure. On macOS / Linux you point
-Recall at whichever folder the Steam client writes to and the same
-filename matcher fires.
+mid-2026; nothing extra to configure.
 
 ## Sidebar version block (masthead, lower-right)
 

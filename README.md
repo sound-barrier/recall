@@ -21,8 +21,7 @@ searchable history. Don't want to screenshot every game? Type a match in by hand
 Then explore your win rate, SR trend, hero pool, and exactly what you're strong
 and weak at — by hero, map, role, time of day, however you want to slice it.
 
-The browser / headless mode and Docker are optional power-user extras
-(see [Advanced](#advanced)). Curious how it works under the hood? See
+Curious how it works under the hood? See
 **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## What it looks like
@@ -44,7 +43,7 @@ The browser / headless mode and Docker are optional power-user extras
 </tr>
 </table>
 
-📚 **Full documentation:** [sound-barrier.github.io/recall](https://sound-barrier.github.io/recall/) — installation guides, advanced usage, and the [API reference](https://sound-barrier.github.io/recall/api/). Auto-deployed from `main` on every doc change.
+📚 **Full documentation:** [sound-barrier.github.io/recall](https://sound-barrier.github.io/recall/) — the Windows install guide and the [API reference](https://sound-barrier.github.io/recall/api/). Auto-deployed from `main` on every doc change.
 
 ## Table of Contents
 
@@ -53,14 +52,9 @@ The browser / headless mode and Docker are optional power-user extras
 - [Quick start](#quick-start)
 - [Installation](#installation)
   - [Verifying downloads](#verifying-downloads)
-  - [Windows](docs/install-windows.md) · [macOS](docs/install-macos.md) · [Linux](docs/install-linux.md)
+  - [Windows install guide](docs/install-windows.md)
 - [Capturing matches](#capturing-matches)
 - [Troubleshooting](#troubleshooting)
-
-**Advanced** — most users can skip these
-
-- [🖥️ Use without the desktop app](docs/server.md) — browser access, headless mode, run on startup
-- [🐳 Run in Docker](docs/docker.md) — containers, home lab, NAS
 
 **Project**
 
@@ -73,9 +67,9 @@ The browser / headless mode and Docker are optional power-user extras
 
 The desktop app is the simplest way to use Recall. Five steps from zero to your first match record:
 
-1. **Install Recall** — grab `recall-{version}-windows-amd64-installer.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases) and run it. Full step-by-step in the [Windows install guide](docs/install-windows.md). For macOS or Linux, see the [Installation](#installation) section below.
-2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. Older 3.x / 4.x builds are detected and flagged with a warning — parsing may misread. (macOS/Linux instructions are in [docs/install-macos.md](docs/install-macos.md) and [docs/install-linux.md](docs/install-linux.md).)
-3. **Launch Recall and pick a screenshots folder.** The first-run Settings screen surfaces a four-card picker for the canonical Windows capture sources — **Nvidia Overlay**, **OW PrntScn default**, **Win Snip tool**, and **Steam install** — each with a status dot showing whether the path exists on your machine. One click on a found card sets it as the watched folder. A "Pick a different folder…" tile under the grid covers everything else. On macOS / Linux the grid is hidden; the manual folder picker is the only path.
+1. **Install Recall** — grab `recall-{version}-windows-amd64-installer.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases) and run it. Full step-by-step in the [Windows install guide](docs/install-windows.md).
+2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. Older 3.x / 4.x builds are detected and flagged with a warning — parsing may misread.
+3. **Launch Recall and pick a screenshots folder.** The first-run Settings screen surfaces a four-card picker for the canonical Windows capture sources — **Nvidia Overlay**, **OW PrntScn default**, **Win Snip tool**, and **Steam install** — each with a status dot showing whether the path exists on your machine. One click on a found card sets it as the watched folder. A "Pick a different folder…" tile under the grid covers everything else.
 4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot. Recall recognises Nvidia Overlay, OW's default PrntScn, Windows Snip, and Steam in-game F12 filename shapes automatically (full list of supported formats below step 5).
 5. **Click *Parse → Run Parse*** to scan the folder, or flip on *Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
 
@@ -83,31 +77,21 @@ Recall recognises four capture-tool filename shapes automatically: **Nvidia Over
 
 The masthead's **Check for updates** button compares your installed Recall against the latest release on GitHub AND surfaces any new heroes / maps / capture-tool grammars added since your build shipped — apply them in-place without reinstalling. The app also shows a quiet "you haven't checked in a while" banner roughly every 90 days so a stale install gets nudged. See [Updates & game data](docs/settings-reference.md#updates--game-data) for the full flow.
 
-That's all most users need. The [Advanced](#advanced) sections below cover running Recall headless and inside a container — neither is required for everyday use. (Trends over time — SR, win-rate, per-match stats — now live right in the Matches tab.)
+That's all most users need. (Trends over time — SR, win-rate, per-match stats — now live right in the Matches tab.)
 
 ## Installation
 
-Pre-built binaries for every tagged release are on the [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
+Pre-built binaries for every tagged release are on the [GitHub Releases](https://github.com/sound-barrier/recall/releases) page. Recall is a Windows 10/11 (x64) desktop app.
 
-| Platform | Desktop app | Server binary |
-|---|---|---|
-| **Windows** | `recall-{version}-windows-amd64-installer.exe` | `recall-server-{version}-windows-amd64.exe` |
-| macOS arm64 | `recall-{version}-darwin-arm64.dmg` | `recall-server-{version}-darwin-arm64.tar.gz` |
-| Linux | `recall-{version}-linux-amd64.tar.gz` · `recall-{version}-linux-amd64.deb` | `recall-server-{version}-linux-amd64.tar.gz` · `recall-server-{version}-linux-amd64.deb` |
-| Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |
+| Platform | Desktop app |
+|---|---|
+| **Windows** | `recall-{version}-windows-amd64-installer.exe` |
 
-For per-platform setup details (SmartScreen / Gatekeeper bypass, package-manager Tesseract install, data paths), see the platform guides:
-
-- [Installing on Windows](docs/install-windows.md)
-- [Installing on macOS](docs/install-macos.md)
-- [Installing on Linux](docs/install-linux.md)
+For setup details (SmartScreen bypass, Tesseract install, data paths), see the [Windows install guide](docs/install-windows.md).
 
 ### Verifying downloads
 
-Every release binary ships with a `.sha256` checksum file — the
-[macOS](docs/install-macos.md#verifying-your-download) and
-[Linux](docs/install-linux.md#verifying-your-download) install guides
-have the one-line `shasum --check` command. On Windows, PowerShell:
+Every release binary ships with a `.sha256` checksum file. On Windows, PowerShell:
 
 ```powershell
 (Get-FileHash recall-{version}-windows-amd64-installer.exe).Hash -eq `
@@ -160,7 +144,7 @@ Got more than one Overwatch account? Each profile in Recall is a fully separate 
 
 If you accidentally ingest a smurf game into the wrong profile, the Matches view's bulk-select supports a **Move to…** action that transfers the ticked matches (plus their annotations and hidden flags) into another profile in one shot. No manual SQL needed.
 
-You can also scope a single launch to a specific profile via `--profile=<name>` on either binary — useful for opening an alt account once without changing the persisted default. The full [data layout is documented under *How it works → Where things live on disk*](docs/how-it-works.md#where-things-live-on-disk).
+You can also scope a single launch to a specific profile via `--profile=<name>` on the app binary — useful for opening an alt account once without changing the persisted default. The full [data layout is documented under *How it works → Where things live on disk*](docs/how-it-works.md#where-things-live-on-disk).
 
 ### What each screenshot type looks like
 
@@ -218,9 +202,9 @@ First-run friction tends to land in one of a handful of spots. The deep-links go
 
 Recall shells out to Tesseract 5.x to read screenshot text. If the Engine row in **Settings → Engine** shows a red "Not found" chip, or the Parse button stays disabled with "Tesseract required":
 
-1. Install Tesseract 5.x from your platform's guide — [Windows](docs/install-windows.md#4-install-tesseract-5x) (UB-Mannheim installer), [macOS](docs/install-macos.md#4-install-tesseract-5x) (`brew install tesseract`), [Linux](docs/install-linux.md#2-install-tesseract-5x) (`apt install tesseract-ocr`).
-2. Click **Settings → Engine → Detect** — Recall walks the per-OS install locations + `PATH` looking for a working 5.x binary.
-3. If Detect comes up empty, click **Locate Tesseract…** and point Recall at the binary directly (`C:\Program Files\Tesseract-OCR\tesseract.exe` on Windows, `/opt/homebrew/bin/tesseract` on Apple Silicon, `/usr/bin/tesseract` on most Linux distros).
+1. Install Tesseract 5.x — see the [Windows install guide](docs/install-windows.md#4-install-tesseract-5x) (UB-Mannheim installer).
+2. Click **Settings → Engine → Detect** — Recall walks the default install locations + `PATH` looking for a working 5.x binary.
+3. If Detect comes up empty, click **Locate Tesseract…** and point Recall at the binary directly (`C:\Program Files\Tesseract-OCR\tesseract.exe`).
 4. Tesseract **3.x / 4.x predate the OW post-match font** and misread reliably — the Engine row flags older versions but the parse-accuracy hit is the real reason to upgrade.
 
 </details>
@@ -231,22 +215,18 @@ Recall shells out to Tesseract 5.x to read screenshot text. If the Engine row in
 The watcher and Parse-run both need read access to the directory you picked in **Settings → Directories**. If you see "Cannot access X. Check that you have read access or try a different folder.":
 
 - **Windows OneDrive sync** — `Documents\Overwatch\…` or `Pictures\Screenshots\…` under OneDrive can flip to *Files On-Demand* (cloud-only placeholders). Right-click the Overwatch screenshots subfolder → **Always keep on this device**, or move your OW screenshot output to a non-synced path.
-- **macOS app sandbox** — first-time access to `~/Documents` or `~/Pictures` may prompt for Recall in **System Settings → Privacy & Security → Files and Folders**. Tick the relevant folder and re-pick it under Settings.
-- **Linux symlinks** — Recall resolves the picked path via `filepath.Clean` and rejects anything containing `..` or symlink-escapes outside the watched tree. Pick the *real* directory, not a symlink to it.
 - The picked folder must be a **directory** (not a file or device); the Settings probe surfaces "Not a directory" when this is wrong.
 
 </details>
 
 <details>
-<summary><strong>Reset Recall's database (per-OS)</strong></summary>
+<summary><strong>Reset Recall's database</strong></summary>
 
 To start fresh, recover from a corrupted database, or recover after a **schema-changing update** (Recall has no migrations pre-1.0, so an old database can become incompatible — wipe it and Recall rebuilds an empty one and re-parses your screenshots). Close Recall first, then:
 
-| OS | Wipe one profile's matches | Wipe everything |
-|---|---|---|
-| **Windows** | `Remove-Item -Recurse "$env:AppData\Recall\profiles\<name>\db\"` | `Remove-Item -Recurse "$env:AppData\Recall"` |
-| **macOS** | `rm -rf ~/Library/Application\ Support/Recall/profiles/<name>/db/` | `rm -rf ~/Library/Application\ Support/Recall/` |
-| **Linux** | `rm -rf ~/.config/recall/profiles/<name>/db/` | `rm -rf ~/.config/recall/` |
+| Wipe one profile's matches | Wipe everything |
+|---|---|
+| `Remove-Item -Recurse "$env:AppData\Recall\profiles\<name>\db\"` | `Remove-Item -Recurse "$env:AppData\Recall"` |
 
 **Windows — guided script (backs up first):** double-click `C:\Program Files\recall\Reset-Database.bat` (it ships with the installer), or download `recall-{version}-Reset-Database.bat` from [Releases](https://github.com/sound-barrier/recall/releases). It backs the database up before deleting and asks to confirm — handy when a schema-changing update left the app unable to open. Steps + what's lost vs. kept: [Resetting your database](docs/install-windows.md#resetting-your-database-no-migrations-yet).
 
@@ -256,28 +236,14 @@ A softer in-app option exists too (when the app still opens): **Settings → Adv
 <details>
 <summary><strong>Port conflict / "address already in use"</strong></summary>
 
-Two ports matter, both `localhost`-only:
+One `localhost`-only port matters:
 
 - **`:9245` (Vite dev server, dev only)** — only used by `task dev` (`wails3 dev`); the production app uses an OS-allocated port. If it errors with "bind: address already in use", another `wails3 dev` is already running — kill it.
-- **`:7000` (server mode)** — only when you run `recall-server --server` per [docs/server.md](docs/server.md). Override with `--addr 127.0.0.1:7099` if `:7000` is busy.
 
-The Wails desktop app does NOT open any externally-visible port by default — the IPC bridge is in-process between the Go runtime and the embedded WebKit/WebView window.
+The Wails desktop app does NOT open any externally-visible port by default — the IPC bridge is in-process between the Go runtime and the embedded WebView2 window.
 </details>
 
-If none of the above match, the [platform install guides](docs/install-macos.md) carry the long form, and [CONTRIBUTING.md → Bug-report bundles](CONTRIBUTING.md#bug-report-bundles) describes how to ship a reproducible payload to a bug report.
-
----
-
-# Advanced
-
-If you're just playing Overwatch and want to track your stats, you can stop
-reading here — the desktop app is all you need.
-
-| Guide | For when… |
-|---|---|
-| [🖥️ Use without the desktop app](docs/server.md) | You want browser access, or to run Recall on a headless machine. |
-| [🐳 Run in Docker](docs/docker.md) | You run containers on a home lab or NAS. |
-| [📘 API reference](https://sound-barrier.github.io/recall/api/) | You want to read or try the HTTP API — Swagger UI rendering of the OpenAPI spec, auto-deployed from `main`. |
+If none of the above match, the [Windows install guide](docs/install-windows.md) carries the long form, and [CONTRIBUTING.md → Bug-report bundles](CONTRIBUTING.md#bug-report-bundles) describes how to ship a reproducible payload to a bug report.
 
 ## Contributing
 

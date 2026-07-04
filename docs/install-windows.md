@@ -193,8 +193,7 @@ To restore a backup, copy the `recall-<timestamp>.db` trio from
 Recall is closed.
 
 > Run `Reset-Database.bat /force` to skip the prompt, or `/nobackup` to
-> delete without a backup. On macOS / Linux (no `.bat`), close Recall and
-> delete `recall.db` (plus `-wal` / `-shm`) under the app-data dir.
+> delete without a backup.
 
 ## Verifying your download
 
@@ -227,10 +226,3 @@ Actions workflow — not just "the hash matches the .sha256 file"
 The same two checks work on the reset helper — swap in
 `recall-{version}-Reset-Database.bat` (it ships its own `.sha256` and is
 attested alongside the installer).
-
-## Server binary (advanced)
-
-A headless server binary
-(`recall-server-{version}-windows-amd64.exe`) is also available if
-you want to run Recall without the desktop window. See
-[Run without the desktop app](server.md) for setup.

@@ -122,14 +122,12 @@ any image for the full-resolution source.
 
 ### First-time setup (about 2 minutes)
 
-1. **Install Recall** for your OS — [macOS](install-macos.md),
-   [Linux](install-linux.md), or [Windows](install-windows.md).
+1. **Install Recall** — see the [Windows install guide](install-windows.md).
 2. **Install Tesseract 5.x** — the OCR engine Recall shells out to.
-   Each install guide has the per-platform command (Homebrew on
-   macOS, apt on Linux, UB-Mannheim installer on Windows).
+   The install guide has the UB-Mannheim installer steps.
 3. **Point Recall at your screenshots folder.** Open Recall and go
    to **Settings → Directories → Change Folder…**. The default
-   Overwatch path on each OS is in the install guide.
+   Overwatch path is in the install guide.
 
 That's it for setup. **Settings → Engine** should now show
 **Detected** with a green dot and Tesseract's version.
@@ -221,11 +219,9 @@ detected default folders on Windows:
 | **Windows Snip tool** | `Screenshot 2026-06-07 224855.png` | `Pictures\Screenshots` |
 | **Steam in-game F12** | `20260609000031_1.jpg` | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` |
 
-On macOS / Linux the four cards are hidden and you point Recall at
-whichever folder OW (or Steam, or your screenshot manager) writes to.
-The filename shape — not the folder — is what the parser uses to
-correlate the timestamp, so the same matcher fires regardless of
-platform.
+If you use a different capture tool or a synced folder, point Recall
+at wherever it writes to — the filename shape, not the folder, is what
+the parser uses to correlate the timestamp.
 
 **For the cleanest parse, capture high-quality PNG screenshots with
 Overwatch's default colours.** Of the sources above, the **Nvidia overlay** and the
@@ -257,7 +253,7 @@ set to, so you can scope a trend to one hero, map, or date range.
 
 - **No upload, no account, no telemetry.** Recall is fully local.
   Screenshots stay on your disk, the database is a single SQLite
-  file under your OS's user-config directory. There is no Recall
+  file under your Windows user-config directory. There is no Recall
   server to phone home to.
 - **No name extraction.** The parser doesn't try to read BattleTags
   off teams — only your own stats are kept. If you blur or
@@ -269,14 +265,8 @@ set to, so you can scope a trend to one hero, map, or date range.
 
 ## Where things live on disk
 
-Recall keeps state in your OS's user-config directory. The
-install-wide base directory:
-
-| OS | Base directory |
-|---|---|
-| macOS | `~/Library/Application Support/Recall/` |
-| Linux | `~/.config/recall/` (or `$XDG_CONFIG_HOME/recall/`) |
-| Windows | `%AppData%\Recall\` |
+Recall keeps state in your Windows user-config directory — the
+install-wide base directory is `%AppData%\Recall\`.
 
 Inside the base directory, Recall organises everything by
 **profile**. Each profile is a separate OW account (or alt, or

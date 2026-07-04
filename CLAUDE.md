@@ -43,7 +43,7 @@ pinned toolchain from `mise.toml`). `task --list` shows the full catalog.
 | `task cover` | Generate Go + frontend **unit** coverage reports (umbrella). Required before opening a PR. |
 | `task cover-e2e` | **Integration** coverage from the Playwright suite (Go `-cover` + monocart V8 frontend) → `coverage/e2e/`. Informational, not gated. |
 
-Full command catalog, env-var overrides, Dockerfile stages, package layout, and
+Full command catalog, env-var overrides, package layout, and
 helper-script reference: **`docs/dev-reference.md`**.
 
 ## Working style
@@ -322,7 +322,7 @@ These load automatically when you open a matching file:
 | Documentation site | `.claude/rules/docs-site.md` | `docs/**`, `book/**`, root `*.md` |
 
 Read on demand (never auto-loaded): **`docs/dev-reference.md`** — full make-target
-catalog, env-var table, Dockerfile stages, package layout, helper scripts, test
+catalog, env-var table, package layout, helper scripts, test
 fixtures.
 
 > Auto memory is on by default (Claude Code ≥ v2.1.59). New debugging insights

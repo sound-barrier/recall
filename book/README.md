@@ -5,8 +5,7 @@ screenshots into a personal match history you can browse, filter,
 and chart. It runs locally — no account, no upload, no telemetry.
 
 This guide gets you from zero to your first parsed match in about
-five minutes on Windows. **Mac or Linux player?** See [macOS](install-macos.md)
-or [Linux](install-linux.md).
+five minutes on Windows.
 
 ## 1. Download Recall
 
@@ -102,17 +101,6 @@ That's it. You're using Recall.
   history by hero, map, role, date, etc.
 - **[Unknown screenshots](unknown-screenshots.md)** — what to do
   when a screenshot didn't match a known map.
-
-## Other platforms
-
-- [Installing on macOS](install-macos.md)
-- [Installing on Linux](install-linux.md)
-
-## Power-user features (most players can skip these)
-
-- [Run without the desktop app](server.md) — browser access on a
-  remote machine.
-- [Run in Docker](docker.md) — containers, home lab, NAS.
 
 ## Getting help
 
