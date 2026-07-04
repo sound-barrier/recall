@@ -12,9 +12,9 @@
 # Auto-managed tools are intentionally omitted (they track @latest via mise or
 # Dependabot, so there is no fixed pin to compare):
 #   • golangci-lint, shfmt, govulncheck, deadcode,
-#     gocyclo, hadolint, lefthook, trivy, jq  — mise "latest"
+#     gocyclo, lefthook, trivy, jq  — mise "latest"
 #   • ESLint, typescript-eslint, stylelint, htmlhint, vue-tsc — Dependabot npm
-#   • hadolint-action, trivy-action, setup-go, setup-node — Dependabot Actions
+#   • trivy-action, setup-go, setup-node — Dependabot Actions
 #
 # Requires: curl, jq
 

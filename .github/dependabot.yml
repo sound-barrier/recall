@@ -37,13 +37,3 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-
-  # Docker base images in Dockerfile.build
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    groups:
-      docker-images:
-        patterns: ["*"]

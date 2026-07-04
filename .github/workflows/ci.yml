@@ -105,12 +105,6 @@ jobs:
       - name: Lint shell scripts (shellcheck + shfmt)
         run: task lint-shell
 
-      # Dockerfile
-      - name: Lint Dockerfile (Hadolint)
-        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
-        with:
-          dockerfile: Dockerfile.build
-
       # OpenAPI spec — Spectral with the spectral:oas ruleset + project
       # overrides in .spectral.yaml. SPECTRAL_VERSION comes from mise.toml
       # [env] (loaded into $GITHUB_ENV by mise-action).
@@ -256,23 +250,7 @@ jobs:
           echo "::error::Unit tests failed (Go=${GO_OUTCOME}, frontend=${FE_OUTCOME}). See the 'Unit test results' check and the test-run step logs."
           exit 1
 
-  # ── Job 2: Linux/amd64 Wails app ────────────────────────────────────────
-  build-linux:
-    runs-on: ubuntu-latest
-    env:
-      DOCKER_BUILDKIT: "1"
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
-      # Docker does the heavy build; the host only needs task + jq (the
-      # build-* tasks compute BUILD_VERSION via jq), so install just those.
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
-        with:
-          install_args: task jq
-      - name: Build Linux/amd64 Wails app
-        run: task build-linux
-
-  # ── Job 3: Windows/amd64 Wails app ──────────────────────────────────────
+  # ── Job 2: Windows/amd64 Wails app ──────────────────────────────────────
   build-windows:
     # Native cross-compile (no Docker) — v3's Windows WebView2 loader is pure Go,
     # so this needs wails3 + node + makensis, not buildx.
@@ -291,35 +269,7 @@ jobs:
       - name: Build Windows/amd64 Wails app + NSIS installer
         run: task build-windows
 
-  # ── Job 4: Server binaries + container image ─────────────────────────────
-  build-server:
-    runs-on: ubuntu-latest
-    env:
-      DOCKER_BUILDKIT: "1"
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
-        with:
-          install_args: task jq
-      - name: Build all server binaries (Linux, Windows, macOS arm64+amd64)
-        run: task build-server-all
-      - name: Build Linux server container image (with Tesseract)
-        run: task build-server-container
-
-  # ── Job 5: macOS Wails build (requires Apple SDK / Xcode CLT) ────────────
-  build-mac:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-
-      # Go + Node + Wails CLI (+ task, jq) from mise.toml's pins.
-      - uses: ./.github/actions/wails-build-env
-
-      - name: Build macOS universal Wails app
-        run: task build-mac
-
-  # ── Job 6: Vulnerability scan ────────────────────────────────────────────
+  # ── Job 3: Vulnerability scan ────────────────────────────────────────────
   # Mirrors `task trivy` but runs in CI and uploads results to the GitHub
   # Security tab (Alerts → Code scanning) as well as failing the build.
   trivy:
@@ -355,7 +305,7 @@ jobs:
         with:
           sarif_file: trivy.sarif
 
-  # ── Job 7: Go-specific vulnerability scan ────────────────────────────────
+  # ── Job 4: Go-specific vulnerability scan ────────────────────────────────
   # govulncheck is call-graph-aware: it only flags CVEs in code paths Recall
   # actually invokes. Complements Trivy (which scans all module versions
   # regardless of reachability) and typically produces fewer false positives.
@@ -389,7 +339,7 @@ jobs:
   # hook — so contributors get fast feedback before push without
   # duplicating coverage with CodeQL.
 
-  # ── Job 8: Cyclomatic complexity (REPORT ONLY) ───────────────────────────
+  # ── Job 5: Cyclomatic complexity (REPORT ONLY) ───────────────────────────
   # gocyclo (Go) + ESLint's `complexity` rule (frontend) at threshold 10.
   # `continue-on-error: true` keeps the job NON-BLOCKING — a high number
   # never fails the build, it just shows up in the job log. We watch the
@@ -423,7 +373,7 @@ jobs:
       - name: Diff against baseline (report-only)
         run: bash scripts/ci/check-complexity-baseline.sh
 
-  # ── Job 9: Dead code analysis ────────────────────────────────────────────
+  # ── Job 6: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant
   # only — the Wails variant registers App methods via reflection so deadcode
   # would report false positives; golangci-lint `unused` covers that variant).
@@ -454,7 +404,7 @@ jobs:
       - name: Dead TypeScript code (knip)
         run: cd frontend && npm run dead:ts
 
-  # ── Job 10: Frontend coverage report ─────────────────────────────────────
+  # ── Job 7: Frontend coverage report ─────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and lcov
   # file are uploaded as a workflow artifact so they can be downloaded from
   # the Actions run page for any push or PR.
@@ -496,7 +446,7 @@ jobs:
           path: frontend/coverage/
           retention-days: 30
 
-  # ── Job 11: Go coverage report ───────────────────────────────────────────
+  # ── Job 8: Go coverage report ───────────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and func
   # summary are uploaded as a workflow artifact so they can be downloaded
   # from the Actions run page for any push or PR.
@@ -558,7 +508,7 @@ jobs:
           path: coverage/go/
           retention-days: 30
 
-  # ── Job 12: OpenAPI ↔ implementation drift check ─────────────────────────
+  # ── Job 9: OpenAPI ↔ implementation drift check ─────────────────────────
   # Spectral checks the spec is well-formed; schemathesis checks the spec
   # matches the running server. Fuzzes spec-derived requests against a
   # freshly-built serveronly binary and verifies every response conforms to

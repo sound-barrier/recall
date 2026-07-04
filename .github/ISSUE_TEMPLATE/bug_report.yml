@@ -14,7 +14,7 @@ body:
     id: version
     attributes:
       label: Recall version
-      description: Shown in the top-right corner of the app (e.g. `v0.1.0`). For the server binary run `recall-server --version`.
+      description: Shown in the top-right corner of the app (e.g. `v0.1.0`), or in About Recall.
       placeholder: v0.1.0
     validations:
       required: true

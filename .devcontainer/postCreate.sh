@@ -95,7 +95,6 @@ log "done — tool versions:"
     printf '  tesseract      %s\n' "$(tesseract --version 2>&1 | head -1)"
     printf '  golangci-lint  %s\n' "$(mise exec -- golangci-lint --version 2>&1 | head -1)"
     printf '  wails          %s\n' "$(mise exec -- wails -v 2>&1 | head -1)"
-    printf '  hadolint       %s\n' "$(mise exec -- hadolint --version)"
     printf '  lefthook       %s\n' "$(mise exec -- lefthook version)"
     printf '  trivy          %s\n' "$(mise exec -- trivy --version 2>&1 | head -1)"
     printf '  typos          %s\n' "$(mise exec -- typos --version 2>&1 | head -1)"
@@ -116,7 +115,7 @@ Next steps:
     (both run `task dev`); `task build-mac` also needs a macOS host.
 
   • Lint/test before committing:
-        task lint    # golangci-lint, ESLint+typescript-eslint, Stylelint, HTMLHint, shellcheck+shfmt, Hadolint, yamllint, Spectral
+        task lint    # golangci-lint, ESLint+typescript-eslint, Stylelint, HTMLHint, shellcheck+shfmt, yamllint, Spectral
         task test    # Go + Vitest
 
   • API spec change?  Regenerate types:
