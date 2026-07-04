@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref } from 'vue'
 
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useDragReorder } from '@/composables/dashboard/useDragReorder'
@@ -56,8 +56,19 @@ const windowSize = ref<number>(20)
 // Bumped to tell every chart to reset its zoom; "Reset view" also clears
 // the brushed date range so the user can get back to the full picture.
 const resetSignal = ref(0)
+
+// "Reset view" is enabled only when there's something to reset: a chart's
+// zoom slider is off the full range, or a custom (brushed) date range is
+// active. Otherwise the button would be a no-op and read as broken.
+const zoomedCharts = reactive(new Set<TrendChartId>())
+const canReset = computed(() => zoomedCharts.size > 0 || narrow.pickedRange.value === 'custom')
+function onZoomChange(id: TrendChartId, zoomed: boolean): void {
+  if (zoomed) zoomedCharts.add(id)
+  else zoomedCharts.delete(id)
+}
 function resetView(): void {
   resetSignal.value++
+  zoomedCharts.clear()
   narrow.customFrom.value = ''
   narrow.customTo.value = ''
   narrow.pickedRange.value = 'all'
@@ -82,54 +93,53 @@ interface ChartCard {
   option: TrendOption
   hasData: boolean
   empty: string
-  windowSelector: boolean
   // Static (heatmap) cards opt out of the timeline brush/zoom/click.
   interactive?: boolean
 }
 
 const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
   'rank-ladder': {
-    id: 'rank-ladder', title: 'Rank over time', windowSelector: false,
+    id: 'rank-ladder', title: 'Rank over time',
     caption: 'Rank progression over time, by role', option: rankLadderOption(rankSeries.value), hasData: someData(rankSeries.value),
     empty: 'No rank readings — capture a competitive rank screenshot to track your climb.',
   },
   'rolling-winrate': {
-    id: 'rolling-winrate', title: 'Rolling win-rate (%)', windowSelector: true,
+    id: 'rolling-winrate', title: 'Rolling win-rate (%)',
     caption: `Rolling win rate over the last ${windowSize.value} matches, by role`, option: winrateOption(winrateSeries.value), hasData: someData(winrateSeries.value),
     empty: 'No decisive matches in the set.',
   },
   'hero-winrate': {
-    id: 'hero-winrate', title: 'Win-rate by hero', windowSelector: false,
+    id: 'hero-winrate', title: 'Win-rate by hero',
     caption: `Rolling win rate over the last ${windowSize.value} matches, per most-played hero`, option: winrateOption(heroWinrateSeries.value), hasData: someData(heroWinrateSeries.value),
     empty: 'No decisive matches for any hero — nothing to chart yet.',
   },
   'map-winrate': {
-    id: 'map-winrate', title: 'Win-rate by map', windowSelector: false,
+    id: 'map-winrate', title: 'Win-rate by map',
     caption: `Rolling win rate over the last ${windowSize.value} matches, per most-played map`, option: winrateOption(mapWinrateSeries.value), hasData: someData(mapWinrateSeries.value),
     empty: 'No decisive matches on any map — nothing to chart yet.',
   },
   'combat': {
-    id: 'combat', title: 'Combat per 10 min', windowSelector: false,
+    id: 'combat', title: 'Combat per 10 min',
     caption: 'Eliminations, deaths, and assists per 10 minutes over time', option: lineOption(combatStatsSeries.value), hasData: someData(combatStatsSeries.value),
     empty: 'No combat stats parsed — they come from a scoreboard screenshot, not the rank screen.',
   },
   'rank-delta': {
-    id: 'rank-delta', title: 'Rank delta per match', windowSelector: false,
+    id: 'rank-delta', title: 'Rank delta per match',
     caption: 'Per-match rank change, by role', option: rankDeltaOption(rankDeltaSeries.value), hasData: someData(rankDeltaSeries.value),
     empty: 'No rank readings — capture a competitive rank screenshot.',
   },
   'cumulative-net': {
-    id: 'cumulative-net', title: 'Cumulative net record', windowSelector: false,
+    id: 'cumulative-net', title: 'Cumulative net record',
     caption: 'Running wins minus losses over time, by role', option: lineOption(cumulativeNetSeries.value, { area: true }), hasData: someData(cumulativeNetSeries.value),
     empty: 'No decisive matches in the set.',
   },
   'modifiers': {
-    id: 'modifiers', title: 'Modifiers over time', windowSelector: false,
+    id: 'modifiers', title: 'Modifiers over time',
     caption: 'Cumulative count of each match modifier over time', option: lineOption(modifierFreqSeries.value), hasData: someData(modifierFreqSeries.value),
     empty: 'No modifiers recorded — they come from competitive rank screenshots.',
   },
   'best-times': {
-    id: 'best-times', title: 'Best times to play', windowSelector: false, interactive: false,
+    id: 'best-times', title: 'Best times to play', interactive: false,
     caption: 'Win rate by day of week and time of day', option: heatmapOption(bestTimesGrid.value), hasData: bestTimesGrid.value.cells.length > 0,
     empty: 'No decisive matches with a known date and time — nothing to chart yet.',
   },
@@ -140,6 +150,12 @@ const hiddenCards = computed(() => hiddenIds.value.map((id) => cardsById.value[i
 const anyData = computed(() => Object.values(cardsById.value).some((c) => c.hasData))
 
 const WINDOW_OPTIONS = [10, 20, 50] as const
+
+// The rolling-window selector drives every rolling win-rate chart, so it lives
+// in the section toolbar (not on one card). Show it only when at least one of
+// those charts is visible.
+const WINDOWED_IDS: readonly TrendChartId[] = ['rolling-winrate', 'hero-winrate', 'map-winrate']
+const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED_IDS.includes(id)))
 </script>
 
 <template>
@@ -155,10 +171,19 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
         <span class="trends-title">Trends</span>
         <span class="trends-hint">Rank, win-rate &amp; modifiers over time, by role</span>
       </button>
+      <label v-if="expanded && showWindowSelector" class="trends-window">
+        <span class="trends-window-label">Rolling window</span>
+        <select v-model.number="windowSize" class="trend-window-select">
+          <option v-for="size in WINDOW_OPTIONS" :key="size" :value="size">
+            last {{ size }}
+          </option>
+        </select>
+      </label>
       <button
         v-if="expanded"
         type="button"
         class="trends-reset"
+        :disabled="!canReset"
         title="Reset chart zoom and clear the brushed date range"
         @click="resetView"
       >
@@ -214,16 +239,6 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
                 </h4>
               </div>
               <div class="trend-card-actions">
-                <select
-                  v-if="card.windowSelector"
-                  v-model.number="windowSize"
-                  class="trend-window-select"
-                  aria-label="Win-rate window"
-                >
-                  <option v-for="size in WINDOW_OPTIONS" :key="size" :value="size">
-                    last {{ size }}
-                  </option>
-                </select>
                 <button
                   type="button"
                   class="trend-card-close"
@@ -243,6 +258,7 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
               :interactive="card.interactive"
               @open-match="(k) => emit('open-match', k)"
               @narrow-range="onNarrowRange"
+              @zoom-change="(z) => onZoomChange(card.id, z)"
             />
             <p v-else class="trend-card-empty">
               {{ card.empty }}
@@ -314,9 +330,26 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
   cursor: pointer;
 }
 
-.trends-reset:hover {
+.trends-reset:enabled:hover {
   color: var(--text);
   border-color: var(--border-strong);
+}
+
+.trends-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.trends-window {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.trends-window-label {
+  color: var(--text-dim);
+  font-size: 0.78rem;
 }
 
 .trends-body {

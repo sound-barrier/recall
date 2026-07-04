@@ -106,11 +106,13 @@ test.describe('Matches — Trends interactions', () => {
     await expect(page.locator('.trend-card')).toHaveCount(8)
   })
 
-  test('Reset view clears a brushed date range', async ({ page }) => {
+  test('Reset view is disabled until a brush, then clears the brushed range', async ({ page }) => {
     await mock(page, Array.from({ length: 8 }, (_, i) => rankMatch(`m${i}`, `2026-05-${String(10 + i).padStart(2, '0')}`, 3)))
     await page.goto('/')
     const box = await openRankChart(page)
     await expect(page.locator('.leaf-row')).toHaveCount(8)
+    // Nothing zoomed or brushed yet → the button is a no-op, so it's disabled.
+    await expect(page.locator('.trends-reset')).toBeDisabled()
 
     const y = box.y + box.height * 0.42
     await page.mouse.move(box.x + box.width * 0.30, y)
@@ -119,8 +121,12 @@ test.describe('Matches — Trends interactions', () => {
     await page.mouse.move(box.x + box.width * 0.62, y)
     await page.mouse.up()
     await expect.poll(() => page.locator('.leaf-row').count()).toBeLessThan(8)
+    // A brushed range is now active → the button has something to reset.
+    await expect(page.locator('.trends-reset')).toBeEnabled()
 
     await page.locator('.trends-reset').click()
     await expect.poll(() => page.locator('.leaf-row').count()).toBe(8)
+    // Back to the full picture → nothing left to reset.
+    await expect(page.locator('.trends-reset')).toBeDisabled()
   })
 })

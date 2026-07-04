@@ -28,6 +28,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'open-match': [matchKey: string]
   'narrow-range': [from: string, to: string]
+  // True while this chart's zoom slider is off the full range, so the
+  // section can enable "Reset view" only when there's something to reset.
+  'zoom-change': [zoomed: boolean]
 }>()
 
 const { themeMode } = useTheme()
@@ -119,6 +122,16 @@ function epochToLocalInput(ms: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// The zoom slider moved — tell the parent whether it now sits off the full
+// range (start > 0 or end < 100), so "Reset view" can enable/disable itself.
+function onDataZoom(params: unknown): void {
+  const p = params as { start?: number; end?: number; batch?: { start?: number; end?: number }[] }
+  const range = p.batch?.[0] ?? p
+  const start = range.start ?? 0
+  const end = range.end ?? 100
+  emit('zoom-change', start > 0.5 || end < 99.5)
+}
+
 // The match_key nearest a given epoch across every plotted series — used
 // to turn a click (a near-zero brush span) into "open that match".
 interface ChartPoint { value?: [number, number]; matchKey?: string }
@@ -188,10 +201,12 @@ onMounted(() => {
 watch(themedOption, () => {
   if (props.interactive !== false) void nextTick(enableBrush)
 })
-// Parent "Reset view" → snap the zoom window back to the full range.
+// Parent "Reset view" → snap the zoom window back to the full range and
+// drop any lingering brush selection rectangle.
 watch(() => props.resetSignal, () => {
   if (props.interactive === false) return
   chart.value?.dispatchAction?.({ type: 'dataZoom', start: 0, end: 100 })
+  chart.value?.dispatchAction?.({ type: 'brush', areas: [] })
 })
 onBeforeUnmount(() => motionQuery?.removeEventListener('change', syncMotion))
 </script>
@@ -211,6 +226,7 @@ onBeforeUnmount(() => motionQuery?.removeEventListener('change', syncMotion))
       :theme="themeName"
       autoresize
       @brush-end="onBrushEnd"
+      @datazoom="onDataZoom"
     />
   </div>
 </template>

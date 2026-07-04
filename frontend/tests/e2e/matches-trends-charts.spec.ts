@@ -118,6 +118,10 @@ test.describe('Matches — Trends section', () => {
     await page.locator('#tab-matches').click()
     await page.locator('.trends-toggle').click()
 
+    // The window selector lives in the section toolbar, not on a chart card.
+    await expect(page.locator('.trends-header .trend-window-select')).toBeVisible()
+    await expect(page.locator('.trend-card .trend-window-select')).toHaveCount(0)
+
     // Defaults to a 20-match window.
     await expect(page.locator('.trend-chart[aria-label="Rolling win rate over the last 20 matches, by role"]')).toBeVisible()
 
