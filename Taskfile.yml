@@ -1,15 +1,17 @@
 # Recall — task runner (https://taskfile.dev). Replaces the old Makefile.
 #
 # Prerequisites (host):
-#   Docker (or Podman aliased as docker) — for all Linux/Windows targets
-#   Wails CLI + Xcode CLT + Go 1.26+    — for macOS Wails-app target only
-#   Go 1.26+                             — for macOS server target (no Xcode needed)
+#   Wails CLI + Node + Go 1.26+ + makensis — for the Windows app + installer
+#                                            (native cross-compile from any OS)
+#   Xcode CLT (macOS only)                 — for `task dev` / build-mac locally
 #
 # Quick start: task --list   (or just `task`)
 #
+# Recall ships a Windows desktop app only; Linux/macOS desktop and the
+# server were removed. macOS stays a development target (`task dev`).
 # Most tasks keep their old Makefile name 1:1 — `make test` → `task test`,
-# `make build-linux` → `task build-linux`. Overridable vars are passed the
-# same way: `task seed-dev N=300 PROFILE=demo`.
+# `make build-windows` → `task build-windows`. Overridable vars are passed
+# the same way: `task seed-dev N=300 PROFILE=demo`.
 version: '3'
 
 # Suppress task's command echo — the per-task `[ recall ] …` lines narrate
@@ -22,15 +24,13 @@ silent: true
 # `mise exec -- task …`). Tasks read them as shell `$VARS`, so run `task`
 # inside the mise-managed environment (see mise.toml).
 vars:
+  # DOCKER is still used by the swagger task (docker-run Swagger UI). The
+  # Dockerfile-based Linux/server builds were removed with the Windows-only
+  # cutover, so DOCKERFILE + the Linux/server dist dirs are gone.
   DOCKER: '{{.DOCKER | default "docker"}}'
-  DOCKERFILE: Dockerfile.build
   DIST_DIR: dist
-  DIST_LINUX: dist/linux
   DIST_WINDOWS: dist/windows
   DIST_MAC: dist/mac
-  DIST_SERVER_LINUX: dist/server-linux
-  DIST_SERVER_WINDOWS: dist/server-windows
-  DIST_SERVER_MAC: dist/server-mac
   # Version stamped into the binary via -ldflags. Falls back to "dev".
   BUILD_VERSION:
     sh: jq -r '."."' .release-please-manifest.json 2>/dev/null || echo dev
@@ -73,7 +73,6 @@ includes:
   common: ./build/Taskfile.yml
   darwin: ./build/darwin/Taskfile.yml
   windows: ./build/windows/Taskfile.yml
-  linux: ./build/linux/Taskfile.yml
 
 tasks:
   default:
@@ -85,14 +84,9 @@ tasks:
     cmds: ['./initialize.sh']
 
   # ── Wails desktop-app builds ───────────────────────────────────────────
-  build-linux:
-    desc: Linux/amd64 Wails app via Docker → dist/linux/Recall
-    cmds:
-      - echo "[ recall ] Building linux/amd64 Wails app via Docker…"
-      - mkdir -p {{.DIST_LINUX}}
-      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target linux-export --output type=local,dest={{.DIST_LINUX}} .'
-      - echo "[ recall ] ✓  dist/linux/Recall"
-
+  # Recall ships a Windows desktop app only. build-mac stays for local dev
+  # on the maintainer's macOS machine (`task dev` + occasional real-app
+  # testing); it is never released. Linux desktop + the server were removed.
   build-windows:
     desc: Windows/amd64 Wails v3 app + NSIS installer (native cross-compile) → dist/windows/
     # Native cross-compile (CGO_ENABLED=0 — v3's WebView2 loader is pure Go), so
@@ -125,58 +119,6 @@ tasks:
       - cp -R bin/Recall.app {{.DIST_MAC}}/Recall.app
       - echo "[ recall ] ✓  dist/mac/Recall.app"
 
-  build-all-docker:
-    desc: Linux + Windows Wails apps via Docker
-    cmds:
-      - task: build-linux
-      - task: build-windows
-
-  build-all:
-    desc: All three Wails platforms (macOS host required)
-    cmds:
-      - task: build-linux
-      - task: build-windows
-      - task: build-mac
-
-  # ── Server-only builds (pure Go, CGO_ENABLED=0, -tags serveronly) ───────
-  build-server-linux:
-    desc: Linux/amd64 server binary via Docker → dist/server-linux/Recall-server
-    cmds:
-      - echo "[ recall ] Building linux/amd64 server binary via Docker…"
-      - mkdir -p {{.DIST_SERVER_LINUX}}
-      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-linux-export --output type=local,dest={{.DIST_SERVER_LINUX}} .'
-      - echo "[ recall ] ✓  dist/server-linux/Recall-server"
-
-  build-server-windows:
-    desc: Windows/amd64 server binary via Docker → dist/server-windows/Recall-server.exe
-    cmds:
-      - echo "[ recall ] Building windows/amd64 server binary via Docker…"
-      - mkdir -p {{.DIST_SERVER_WINDOWS}}
-      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-windows-export --output type=local,dest={{.DIST_SERVER_WINDOWS}} .'
-      - echo "[ recall ] ✓  dist/server-windows/Recall-server.exe"
-
-  build-server-mac:
-    desc: macOS arm64 server binary via Docker → dist/server-mac/
-    cmds:
-      - echo "[ recall ] Building macOS server binary (arm64) via Docker…"
-      - mkdir -p {{.DIST_SERVER_MAC}}
-      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-mac-export --output type=local,dest={{.DIST_SERVER_MAC}} .'
-      - echo "[ recall ] ✓  dist/server-mac/Recall-server-arm64"
-
-  build-server-all:
-    desc: All three server binaries via Docker
-    cmds:
-      - task: build-server-linux
-      - task: build-server-windows
-      - task: build-server-mac
-
-  build-server-container:
-    desc: Linux server container image with Tesseract → recall-server:local
-    cmds:
-      - echo "[ recall ] Building linux/amd64 server container image…"
-      - '{{.DOCKER}} build --platform linux/amd64 --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-container --tag recall-server:local .'
-      - echo "[ recall ] ✓  recall-server:local"
-
   # ── Quality ────────────────────────────────────────────────────────────
   cloc:
     desc: Count lines of source code, summary table (config in .clocrc)
@@ -199,7 +141,6 @@ tasks:
       - task: lint-html
       - task: lint-py
       - task: lint-shell
-      - task: lint-docker
       - task: lint-yaml
       - task: lint-openapi
       - task: lint-typos
@@ -248,13 +189,6 @@ tasks:
       - ruff check $(git ls-files '*.py')
       - ruff format --check $(git ls-files '*.py')
       - echo "[ recall ] ✓  Python lint clean"
-
-  lint-docker:
-    desc: Lint Dockerfile.build (hadolint)
-    cmds:
-      - echo "[ recall ] Linting Dockerfile (hadolint)…"
-      - hadolint {{.DOCKERFILE}}
-      - echo "[ recall ] ✓  Dockerfile lint clean"
 
   lint-shell:
     desc: Lint shell scripts (shellcheck + shfmt diff)
@@ -642,8 +576,8 @@ tasks:
 
   # Host-platform Wails v3 entry points the wails3 CLI delegates to: `wails3
   # build`/`package` and the `task run` step inside `wails3 dev`. They dispatch
-  # to the matching build/{{OS}}/Taskfile target. (The cross-platform Docker
-  # builds + the dist-staged macOS build are build-linux/build-windows/build-mac.)
+  # to the matching build/{{OS}}/Taskfile target. (The dist-staged app builds
+  # are build-windows — shipped — and build-mac — local dev only.)
   build:
     desc: Build the Wails v3 app for the host platform → bin/Recall
     cmds:

@@ -16,14 +16,13 @@
 
 set -euo pipefail
 
-# Collect the artifacts once. The `recall-*-linux-amd64` glob matches only
-# the raw updater binary — the tarball/deb end in .tar.gz/.deb, and no
-# `recall-server-*-linux-amd64` raw binary exists — so it can't double-count.
-# The raw Windows updater exe is already covered by `recall-*.exe`.
+# Collect the Windows release artifacts once: the installer + raw updater
+# exe (both `recall-*.exe`), the reference-data YAMLs, and the reset-DB
+# helper. The raw `…-windows-amd64.exe` is the in-app updater's swap target,
+# so its hash MUST be in SHA256SUMS.
 files=()
 for f in \
-  recall-*-linux-amd64 \
-  recall-*.tar.gz recall-*.deb recall-*.exe recall-*.dmg recall-*.yaml recall-*.bat; do
+  recall-*.exe recall-*.yaml recall-*.bat; do
   [ -f "$f" ] && files+=("$f")
 done
 

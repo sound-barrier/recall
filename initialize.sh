@@ -71,9 +71,9 @@ case "$PLATFORM" in
 
     # Wails v2 references webkit2gtk-4.0 in its CGo directives, but Debian
     # bookworm+/Ubuntu 24.04+ only ship 4.1. Drop pkg-config shim files that
-    # redirect the 4.0 names to the installed 4.1 libraries (mirrors
-    # Dockerfile.build's linux-builder stage). The `task dev` target also
-    # passes `-tags webkit2_4_1`, so this is belt-and-suspenders.
+    # redirect the 4.0 names to the installed 4.1 libraries (needed for the
+    # WSL2/Linux `task dev` GTK build). The `task dev` target also passes
+    # `-tags webkit2_4_1`, so this is belt-and-suspenders.
     log "pkg-config shims: webkit2gtk-4.0 → 4.1, javascriptcoregtk-4.0 → 4.1"
     sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc >/dev/null <<'PC'
 Name: webkit2gtk-4.0
@@ -106,7 +106,7 @@ command -v mise >/dev/null 2>&1 || die "mise not on PATH after install. See http
 
 # ─── Toolchain via mise ──────────────────────────────────────────────
 # Reads mise.toml: go, node, task, wails, the Go/JS/shell linters and
-# formatters (golangci-lint, shfmt, yamllint, hadolint, actionlint,
+# formatters (golangci-lint, shfmt, yamllint, actionlint,
 # typos, ruff, trivy, lefthook, jq, govulncheck, deadcode,
 # gocyclo) and the pipx SAST/fuzz tools (semgrep,
 # schemathesis). Pinned versions live there — `task check-deps` validates them.

@@ -2,11 +2,10 @@ name: Wails build environment
 description: >
   Provision the toolchain a native `wails3 build` needs — Go, Node, the Wails v3
   CLI (wails3), plus task + jq (the build-* tasks compute BUILD_VERSION via jq) —
-  from the pinned versions in mise.toml. Used by any job that runs `task
-  build-mac` / `wails3 build` natively (ci.yml + release.yml build-mac). mise.toml
+  from the pinned versions in mise.toml. Used by any job that runs a native
+  `wails3` build — the `build-windows` job in ci.yml + release.yml. mise.toml
   is the single source of truth for every version; bumping a pin there propagates
-  to every consumer. Pairs with the Dockerized cross-builds (Linux/Windows Wails +
-  server binaries) that run entirely inside Dockerfile.build.
+  to every consumer.
 
 runs:
   using: composite

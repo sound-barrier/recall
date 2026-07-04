@@ -30,34 +30,29 @@ maintainer reviews + merges the PR
 release-please.yml fires again on the merge commit;
 push-release-tag.sh pushes the vX.Y.Z tag and dispatches release.yml
     ↓
-release.yml builds binaries + DMG + container image (matrix-parallel)
+release.yml builds the Windows installer + raw updater exe + SHA256SUMS
     ↓
 GitHub Release published with artifacts attached
 ```
+
+Recall ships a **Windows desktop app only**; the release pipeline publishes
+Windows artifacts (the NSIS installer, the raw self-update exe, the reference
+YAMLs, an SBOM, and `SHA256SUMS`). The Linux/macOS desktop builds and the
+self-hosted server container were removed.
 
 Config lives in `release-please-config.json` and `.release-please-manifest.json`.
 
 ## One-time repo setup
 
-Two settings unlock the full automation. Skip either and you'll fall back to the [manual recovery procedures](#when-releaseyml-doesnt-auto-fire) — or, for #2, every container pull will require auth forever.
-
-1. **Allow GitHub Actions to open PRs.** Settings → Actions → General → Workflow permissions → check **"Allow GitHub Actions to create and approve pull requests"**. Without this, release-please errors with *"GitHub Actions is not permitted to create or approve pull requests."* when it tries to open the Release PR.
-
-2. **GHCR package visibility — flip `recall-server` to public.** ✅ Already done for `sound-barrier/recall`. The instructions below stay for forks and any future package renames.
-
-   New container packages on GHCR default to private. `docker pull ghcr.io/<owner>/recall-server:<tag>` fails with `denied` for unauthenticated users until you flip the visibility:
-
-   GHCR → Packages → `recall-server` → Package settings → Change visibility → **Public** → confirm by typing the package name.
-
-   Why this is manual: `release.yml`'s `publish-container` job runs `scripts/release/flip-package-public.sh` after each push, which calls `PATCH /orgs|user/packages/container/recall-server` with `visibility=public`. The call is wrapped in `continue-on-error: true` because `GITHUB_TOKEN` does **not** carry the `write:packages` OAuth scope required for visibility changes — GHCR refuses the request with HTTP 403. The script retries five times then surrenders; the workflow continues so the rest of the release still ships. The retry loop is intentional: when this scope eventually lands on `GITHUB_TOKEN` (or when a future contributor adds a PAT with the scope to the workflow), the automation will start succeeding without any code change. **Do not delete the script or remove the `continue-on-error` wrapper** — both are load-bearing, the inline comments in `release.yml` and `scripts/release/flip-package-public.sh` explain why. After the one-time UI flip, the package stays public across all subsequent releases; you only do this once per package name.
+**Allow GitHub Actions to open PRs.** Settings → Actions → General → Workflow permissions → check **"Allow GitHub Actions to create and approve pull requests"**. Without this, release-please errors with *"GitHub Actions is not permitted to create or approve pull requests."* when it tries to open the Release PR. Skip it and you'll fall back to the [manual recovery procedures](#when-releaseyml-doesnt-auto-fire).
 
 ## Cutting a stable release
 
 1. **Merge the Release PR.** release-please opens it titled `chore(main): release vX.Y.Z` whenever there are tag-bumping commits on `main`. The PR diff shows the version bump in `.release-please-manifest.json` and the additions to `CHANGELOG.md`.
 2. **Review the changelog content** before merging — anything `chore:` or `style:` is hidden, anything else is grouped by type. If the changelog is missing a notable change, fix the underlying commit subject (amend + force-push, OR add an empty `git commit --allow-empty -m "fix: …"` if the original PR is already squashed in).
 3. **Merge the PR** (rebase). `release-please.yml` fires again on the merge commit; its `push-release-tag.sh` step detects the `chore(main): release X.Y.Z` subject, pushes the `vX.Y.Z` tag, calls `gh workflow run release.yml --ref vX.Y.Z` to fire the release workflow, and flips the PR label from `autorelease: pending` to `autorelease: tagged`.
-4. **`release.yml` runs** and builds artifacts. The four `build` matrix entries (wails-linux, server-linux, server-windows, server-mac) plus `build-mac` and the native `build-windows` start in parallel. `sbom` waits on those, `release` waits on `sbom`, and `publish-container` waits on `release`. Total wall-clock is **~9–10 minutes** end-to-end. The matrix-max is dominated by `wails-linux` (~4–5 min, CGo + WebKit native compile — not cache-bound), and `publish-container` adds ~3–3.5 min of serial time after the release page is created. The shared GHA cache shaves modest time off the server-* and Docker-base layers but the critical path is gated by the wails-linux build. **If no `Release` workflow run shows up at all**, see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire).
-5. **Verify the GitHub Release**: `.dmg`, `.tar.gz`, `.deb`, `.exe`, the raw `recall-{v}-linux-amd64` + `recall-{v}-windows-amd64.exe` updater binaries, SBOM, per-artifact `.sha256` files, and the combined `SHA256SUMS` should all be attached. The container image at `ghcr.io/<owner>/recall-server:X.Y.Z` should be present in Packages, with the rolling `:X.Y` and `:latest` tags pointing at it. (Rolling tags only move on stable releases — see the [stable vs. prerelease table](#stable-vs-prerelease-at-a-glance).)
+4. **`release.yml` runs** and builds artifacts. `build-windows` (native NSIS cross-compile) runs first; `sbom` waits on it, and `release` waits on `sbom`. Total wall-clock is **~4–5 minutes** end-to-end, dominated by the Windows build (frontend bundle + `wails3` package + `makensis`). **If no `Release` workflow run shows up at all**, see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire).
+5. **Verify the GitHub Release**: the NSIS `recall-{v}-windows-amd64-installer.exe` (human download), the raw `recall-{v}-windows-amd64.exe` (in-app updater target), the reference-data YAMLs, `recall-{v}-Reset-Database.bat`, the SBOM, per-artifact `.sha256` files, and the combined `SHA256SUMS` should all be attached.
 
 ## Cutting a prerelease (beta / rc / alpha)
 
@@ -79,7 +74,7 @@ What happens next:
 1. release-please re-evaluates on the push, reads the `Release-As:` footer, and opens (or updates) a **Release PR** titled `chore(main): release v0.0.13-beta.0`.
 2. The PR diff bumps `.release-please-manifest.json` to `0.0.13-beta.0` and adds a `## [0.0.13-beta.0]` heading to `CHANGELOG.md` listing every commit since the last release tag.
 3. Merge the PR. `release-please.yml`'s `push-release-tag.sh` step detects the `chore(main): release X.Y.Z` merge commit, pushes the `v0.0.13-beta.0` tag, and calls `gh workflow run release.yml --ref v0.0.13-beta.0` to fire the release workflow. (The explicit `gh workflow run` is required because tag pushes from `github-actions[bot]` don't fire `release.yml`'s `push: tags` trigger on their own — see the [auto-fire section](#when-releaseyml-doesnt-auto-fire) for the why.)
-4. `release.yml` builds artifacts and creates the Release page. GitHub marks the resulting Release as a **prerelease** automatically because the tag has a hyphenated suffix — no separate workflow or flag needed. The published container is tagged `:0.0.13-beta.0` only; the rolling `:latest` and `:0.0` tags don't move, so production pulls of `:latest` continue to land on the most recent stable build.
+4. `release.yml` builds artifacts and creates the Release page. GitHub marks the resulting Release as a **prerelease** automatically because the tag has a hyphenated suffix — no separate workflow or flag needed.
 
 The next beta in the same line: `task release-beta VERSION=0.0.13-beta.1`. The next *official* release: don't use `release-beta` — let release-please bump normally from the most recent tag (e.g. `v0.0.13` from `fix:` commits, `v0.1.0` from `feat:`). The absence of a hyphenated suffix in the tag is what makes a release "official"; the same `release.yml` builds artifacts either way.
 
@@ -111,8 +106,7 @@ Both stable releases and prereleases go through the same release-please → `v*`
 | `.release-please-manifest.json` value | `0.1.0` | `0.1.0-beta.0` |
 | Git tag created on PR merge | `v0.1.0` | `v0.1.0-beta.0` (hyphenated suffix) |
 | Workflow that fires on the tag | `release.yml` | **same** `release.yml` |
-| Release artifact filenames | `recall-0.1.0-*.{tar.gz,deb,dmg,exe,zip}` + SBOM | `recall-0.1.0-beta.0-*.{tar.gz,deb,dmg,exe,zip}` + SBOM |
-| Container tags (`ghcr.io/<owner>/recall-server`) | `:0.1.0`, `:0.1`, **and** `:latest` | `:0.1.0-beta.0` only (rolling `:latest` and `:0.1` don't move) |
+| Release artifact filenames | `recall-0.1.0-windows-amd64*.exe` + YAMLs + `SHA256SUMS` + SBOM | `recall-0.1.0-beta.0-windows-amd64*.exe` + YAMLs + `SHA256SUMS` + SBOM |
 | GitHub Release marker | normal release | **auto-flagged as prerelease** (the hyphen in `github.ref_name` is what flips `prerelease: true`) |
 
 ```mermaid
@@ -124,11 +118,11 @@ flowchart TD
     D --> F["Release PR<br/>chore(main): release v0.1.0-beta.0"]
     E -- "merge" --> G["Tag: v0.1.0"]
     F -- "merge" --> H["Tag: v0.1.0-beta.0"]
-    G --> I["release.yml fires on v* tag<br/>(builds binaries, container, SBOM)"]
+    G --> I["release.yml fires on v* tag<br/>(builds Windows installer + exe + SBOM)"]
     H --> I
     I --> J{"Does the tag<br/>contain a hyphen?"}
-    J -- "no" --> K["GitHub Release: stable<br/>container: :0.1.0 + :0.1 + :latest"]
-    J -- "yes" --> L["GitHub Release: prerelease<br/>container: :0.1.0-beta.0 only"]
+    J -- "no" --> K["GitHub Release: stable"]
+    J -- "yes" --> L["GitHub Release: prerelease"]
 ```
 
 ## `release.yml` jobs
@@ -137,26 +131,9 @@ Triggered on `v*` tag push (the auto-fire path from `push-release-tag.sh`'s `gh 
 
 | Job | `needs:` | Output | Notes |
 |---|---|---|---|
-| `build` *(matrix × 4)* | — | One artifact set per matrix target: wails-linux (raw `recall-{v}-linux-amd64` + `.tar.gz` + `.deb`), server-linux (`.tar.gz` + `.deb`), server-windows (`.exe`), server-mac (`.tar.gz`) | Each entry runs on its own ubuntu-latest runner via `docker/build-push-action` against a `Dockerfile.build` target. All four share GHA cache scope `release-build`, so the `go-base` / `server-base` layers materialise once across runs. Packaging logic lives in `scripts/release/package-{wails,server}-{linux,windows,mac}.sh`. The extension-less `recall-{v}-linux-amd64` is the raw binary the in-app updater swaps — the `.tar.gz` nests the binary in a directory and can't be swapped. |
-| `build-mac` | — | macOS Wails arm64 `.app` bundle → `.dmg` via `hdiutil` | Apple runner required (Apple SDK isn't redistributable). DMG staging in `scripts/release/make-dmg.sh`, which retries `hdiutil create` up to 3× on the "Resource busy" CI flake. |
-| `build-windows` | — | Windows/amd64 NSIS `installer.exe` + raw `recall-{v}-windows-amd64.exe` | **Native** cross-compile on ubuntu — v3's WebView2 loader is pure Go (`CGO_ENABLED=0`), so no Docker/mingw. `task build-windows` = `wails3 task windows:package INSTALL_SCOPE=user` (generate syso → `go build -H windowsgui` → WebView2 bootstrapper → `makensis`; per-user install so the in-app updater can swap in place), then `scripts/release/package-wails-windows.sh` emits both the installer (human download) and the raw exe (updater target). |
-| `sbom` | `build`, `build-mac` | `recall-{version}-sbom.spdx.json` | `anchore/sbom-action`. Downloads built artifacts, untars tarballs so syft scans both source AND binaries. Captures Go-build-info indirect deps the source-only scan misses. |
-| `release` | `build`, `build-mac`, `build-windows`, `sbom` | GitHub Release with all artifacts + per-artifact `<filename>.sha256` + a combined `SHA256SUMS` | `softprops/action-gh-release` creates+uploads atomically — no pre-existing release means no GitHub-immutability race. SBOM does not get a sha256 sidecar. Artifact filenames embed the version with the `v` prefix stripped. **`SHA256SUMS` is load-bearing**: the in-app Wails updater reads it (github provider `ChecksumAsset: "SHA256SUMS"`, a compile-time constant) to verify each download — renaming it breaks every shipped client. |
-| `publish-container` | `release` | `ghcr.io/<owner>/recall-server:<tags>` | Tag matrix below. Signed with cosign keyless OIDC (see below). Gated on `release` succeeding so GHCR never has a tag without matching downloadable assets. |
-
-**GHCR tag matrix.** Every tag publishes the exact `:{{version}}`. Rolling `:{{major}}.{{minor}}` and `:latest` only push on stable releases — prerelease tags (hyphenated, e.g. `v0.1.0-beta.0`) are guarded by `enable=${{ !contains(github.ref_name, '-') }}`. So `docker pull recall-server:latest` always lands on a non-prerelease build. The full matrix is in [Stable vs. prerelease at a glance](#stable-vs-prerelease-at-a-glance).
-
-**GHCR auth + visibility.** Push uses `secrets.GITHUB_TOKEN`; no PAT needed. Workflow permissions include `packages: write`. The job attempts `continue-on-error` to flip the package to public via API, but `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility — for `sound-barrier/recall` the package was already flipped public manually (one-time, see [One-time repo setup](#one-time-repo-setup) → step 2). Forks need to do the same once per package name.
-
-**Image signing.** After push, every tag is signed via `sigstore/cosign-installer@v3` + `cosign sign --yes` keyless OIDC — the workflow's GitHub Actions identity is the signing identity (no long-lived keys). Signing is by digest (`${tag%:*}@${DIGEST}`), not tag, so a tag re-point cannot invalidate the signature. Requires `id-token: write` on `publish-container`. User verification:
-
-```sh
-cosign verify ghcr.io/sound-barrier/recall-server:<tag> \
-  --certificate-identity-regexp 'https://github.com/sound-barrier/recall/\.github/workflows/release\.yml@refs/tags/v.*' \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
-```
-
-Full recipe in [docs/docker.md](docs/docker.md) → "Verifying the image".
+| `build-windows` | — | Windows/amd64 NSIS `installer.exe` + raw `recall-{v}-windows-amd64.exe` | **Native** cross-compile on ubuntu — v3's WebView2 loader is pure Go (`CGO_ENABLED=0`), so no Docker/mingw. `task build-windows` = `wails3 task windows:package INSTALL_SCOPE=user` (generate syso → `go build -H windowsgui` → WebView2 bootstrapper → `makensis`; per-user install so the in-app updater can swap in place), then `scripts/release/package-wails-windows.sh` emits both the installer (human download) and the raw exe (updater target). Provenance-attested in-job. |
+| `sbom` | `build-windows` | `recall-{version}-sbom.spdx.json` | `anchore/sbom-action`. Downloads the built artifacts so syft scans both source AND the binary. Captures Go-build-info indirect deps the source-only scan misses. |
+| `release` | `build-windows`, `sbom` | GitHub Release with all artifacts + per-artifact `<filename>.sha256` + a combined `SHA256SUMS` | `softprops/action-gh-release` creates+uploads atomically — no pre-existing release means no GitHub-immutability race. This job also stages + attests the reference-data YAMLs and `Reset-Database.bat`. SBOM does not get a sha256 sidecar. Artifact filenames embed the version with the `v` prefix stripped. **`SHA256SUMS` is load-bearing**: the in-app Wails updater reads it (github provider `ChecksumAsset: "SHA256SUMS"`, a compile-time constant) to verify each download — renaming it breaks every shipped client. |
 
 ## When `release.yml` doesn't auto-fire
 
@@ -178,7 +155,7 @@ Every job in `release.yml` keys off `github.ref_name`, which is the tag name for
 
 ## When a release published with no assets
 
-You see a `vX.Y.Z` release on the Releases page (or in Drafts) with **zero assets attached** (no `.dmg`, no `.tar.gz`, no `.sha256` files). Two distinct causes have produced this end-state historically — the recovery differs by cause.
+You see a `vX.Y.Z` release on the Releases page (or in Drafts) with **zero assets attached** (no `.exe`, no `.sha256` files). Two distinct causes have produced this end-state historically — the recovery differs by cause.
 
 ### Cause A — immutable-release race (pre `skip-github-release`)
 
@@ -196,9 +173,9 @@ Affects: anything cut *before* `skip-github-release` landed (v0.2.0, v0.2.1).
 
 ### Cause B — `release.yml` build job failed
 
-Symptom: `release.yml` ran but one of the `build` matrix entries, `build-mac`, or `sbom` failed, so the `release` job (which `needs:` all three groups) never ran and no assets were uploaded.
+Symptom: `release.yml` ran but `build-windows` or `sbom` failed, so the `release` job (which `needs:` both) never ran and no assets were uploaded.
 
-Affects: any release where the build-side flaked (most commonly `build-mac`'s `hdiutil create` — the retry loop in `scripts/release/make-dmg.sh` covers that specific case; other build failures need to be diagnosed individually).
+Affects: any release where the Windows build or SBOM step flaked; diagnose the failing job individually.
 
 ### Recovery procedure
 
