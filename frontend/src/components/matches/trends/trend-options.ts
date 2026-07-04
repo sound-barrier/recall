@@ -33,9 +33,11 @@ const LEGEND = { type: 'scroll' as const, top: 8, left: 'center' as const }
 // (its handles zoom, its body pans — no wheel zoom, so page scroll isn't
 // hijacked and body-drag stays free for the brush), and an always-on
 // lineX brush (TrendChart arms the cursor) whose selection narrows the set.
+// `handleLabel` shows the date at each slider handle while dragging (echarts
+// 6.1 defaults it to hover-only; we make it always-on).
 const INTERACTION = {
   dataZoom: [
-    { type: 'slider' as const, bottom: 4, height: 16 },
+    { type: 'slider' as const, bottom: 4, height: 16, handleLabel: { show: true } },
   ],
   brush: {
     xAxisIndex: 0,
