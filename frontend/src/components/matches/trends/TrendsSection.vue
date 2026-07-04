@@ -6,7 +6,7 @@ import { useDragReorder } from '@/composables/dashboard/useDragReorder'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useTrendsLayout, type TrendChartId } from '@/composables/matches/useTrendsLayout'
 import type { TrendOption } from '@/components/matches/trends/echarts'
-import { rankLadderOption, winrateOption, lineOption, rankDeltaOption } from '@/components/matches/trends/trend-options'
+import { rankLadderOption, winrateOption, lineOption, rankDeltaOption, heatmapOption } from '@/components/matches/trends/trend-options'
 
 // ECharts is heavy; defer it to its own chunk that only loads when the
 // user opens the section (the v-if below gates the mount).
@@ -71,6 +71,7 @@ const rankDeltaSeries = dossier.rankDelta
 const cumulativeNetSeries = dossier.cumulativeNet
 const modifierFreqSeries = dossier.modifierFrequency
 const combatStatsSeries = dossier.combat
+const bestTimesGrid = dossier.dayTimeWinrate({ bucketCount: 6 })
 
 const someData = (series: { points: unknown[] }[]) => series.some((s) => s.points.length > 0)
 
@@ -82,6 +83,8 @@ interface ChartCard {
   hasData: boolean
   empty: string
   windowSelector: boolean
+  // Static (heatmap) cards opt out of the timeline brush/zoom/click.
+  interactive?: boolean
 }
 
 const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
@@ -124,6 +127,11 @@ const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
     id: 'modifiers', title: 'Modifiers over time', windowSelector: false,
     caption: 'Cumulative count of each match modifier over time', option: lineOption(modifierFreqSeries.value), hasData: someData(modifierFreqSeries.value),
     empty: 'No modifiers recorded — they come from competitive rank screenshots.',
+  },
+  'best-times': {
+    id: 'best-times', title: 'Best times to play', windowSelector: false, interactive: false,
+    caption: 'Win rate by day of week and time of day', option: heatmapOption(bestTimesGrid.value), hasData: bestTimesGrid.value.cells.length > 0,
+    empty: 'No decisive matches with a known date and time — nothing to chart yet.',
   },
 }))
 
@@ -232,6 +240,7 @@ const WINDOW_OPTIONS = [10, 20, 50] as const
               :option="card.option"
               :caption="card.caption"
               :reset-signal="resetSignal"
+              :interactive="card.interactive"
               @open-match="(k) => emit('open-match', k)"
               @narrow-range="onNarrowRange"
             />

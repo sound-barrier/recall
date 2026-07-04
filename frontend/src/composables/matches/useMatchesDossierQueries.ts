@@ -2,7 +2,7 @@ import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } 
 import type { MatchRecord } from '@/api-client'
 import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
-import { RESULT_MODIFIERS } from '@/match/match-trends-helpers'
+import { RESULT_MODIFIERS, dayTimeWinrateGrid, type WinrateGrid } from '@/match/match-trends-helpers'
 import { lossQuality, type LossQuality } from '@/match/match-loss-quality'
 import { wilsonLowerBound, LOW_SAMPLE_N } from '@/match/match-sample-helpers'
 import {
@@ -698,6 +698,15 @@ export function useDossierQueries(
     })
   }
 
+  // Day-of-week × time-of-day win-rate grid for the Trends "best times to
+  // play" heatmap. Reuses the dossier's week-start rotation so the rows
+  // match the calendar setting the day-of-week breakdown uses.
+  function dayTimeWinrate(
+    opts: MaybeRefOrGetter<{ bucketCount: 6 | 12 | 24 }>,
+  ): ComputedRef<WinrateGrid> {
+    return computed(() => dayTimeWinrateGrid(records.value, toValue(opts).bucketCount, weekStart?.value ?? 0))
+  }
+
   // Recent results — last N decisive (W / L / D) results in
   // newest-first order. The widget renders these as small coloured
   // pills so the user reads "I just won, lost, lost, won, won" at
@@ -733,6 +742,7 @@ export function useDossierQueries(
     bestWinrateHero,
     timeOfDayBuckets,
     dayOfWeekBuckets,
+    dayTimeWinrate,
     recentResults,
   }
 }

@@ -13,6 +13,7 @@ import {
   cumulativeNetRecordSeries,
   modifierFrequencySeries,
   combatSeries,
+  dayTimeWinrateGrid,
   matchEpoch,
   type TrendInput,
 } from '@/match/match-trends-helpers'
@@ -297,5 +298,34 @@ describe('combatSeries', () => {
     ])
     expect(series.map((s) => s.key)).toEqual(['eliminations'])
     expect(series[0]!.points).toHaveLength(1)
+  })
+})
+
+describe('dayTimeWinrateGrid', () => {
+  it('crosses day-of-week × time bucket and computes per-cell win-rate', () => {
+    // 2026-05-10 is a Sunday; bucketCount 6 → 4-hour blocks.
+    const grid = dayTimeWinrateGrid([
+      rec('2026-05-10', '20:00', { result: 'victory' }), // Sun, 20–24
+      rec('2026-05-10', '21:00', { result: 'defeat' }), // Sun, 20–24
+      rec('2026-05-10', '09:00', { result: 'victory' }), // Sun, 08–12
+    ], 6)
+    expect(grid.bucketLabels).toEqual(['00–04', '04–08', '08–12', '12–16', '16–20', '20–24'])
+    expect(grid.dayLabels).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']) // weekStart 0
+    expect(grid.cells.find((c) => c.y === 0 && c.x === 5)).toMatchObject({ wins: 1, total: 2, winRate: 50 })
+    expect(grid.cells.find((c) => c.y === 0 && c.x === 2)).toMatchObject({ wins: 1, total: 1, winRate: 100 })
+    // Empty (day, bucket) pairs are omitted entirely.
+    expect(grid.cells.every((c) => c.total > 0)).toBe(true)
+  })
+
+  it('rotates rows by weekStart and skips draws + missing date/time', () => {
+    // 2026-05-11 is a Monday; weekStart 1 → row 0 is Monday.
+    const grid = dayTimeWinrateGrid([
+      rec('2026-05-11', '20:00', { result: 'victory' }),
+      rec('2026-05-11', '20:00', { result: 'draw' }), // excluded — not decisive
+      rec('', '20:00', { result: 'victory' }), // no date — skipped
+    ], 6, 1)
+    expect(grid.dayLabels[0]).toBe('Mon')
+    expect(grid.cells).toHaveLength(1)
+    expect(grid.cells[0]).toMatchObject({ x: 5, y: 0, wins: 1, total: 1 })
   })
 })

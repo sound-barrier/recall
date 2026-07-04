@@ -19,6 +19,10 @@ const props = defineProps<{
   caption: string
   // Bumped by the parent's "Reset view" button to reset this chart's zoom.
   resetSignal?: number
+  // Timeline charts (the default) arm a lineX brush + zoom slider and turn a
+  // click into "open that match". Static charts (the day×time heatmap) set
+  // this false: no brush/zoom, and a click is inert.
+  interactive?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -157,6 +161,7 @@ function onPointerDown(e: PointerEvent): void {
   downY = e.clientY
 }
 function onPointerUp(e: PointerEvent): void {
+  if (props.interactive === false) return
   if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return
   const inst = chart.value
   if (!inst?.convertFromPixel || !inst.containPixel) return
@@ -178,11 +183,14 @@ onMounted(() => {
     syncMotion()
     motionQuery.addEventListener('change', syncMotion)
   }
-  void nextTick(enableBrush)
+  if (props.interactive !== false) void nextTick(enableBrush)
 })
-watch(themedOption, () => nextTick(enableBrush))
+watch(themedOption, () => {
+  if (props.interactive !== false) void nextTick(enableBrush)
+})
 // Parent "Reset view" → snap the zoom window back to the full range.
 watch(() => props.resetSignal, () => {
+  if (props.interactive === false) return
   chart.value?.dispatchAction?.({ type: 'dataZoom', start: 0, end: 100 })
 })
 onBeforeUnmount(() => motionQuery?.removeEventListener('change', syncMotion))

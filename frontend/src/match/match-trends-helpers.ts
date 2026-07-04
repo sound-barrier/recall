@@ -9,7 +9,8 @@
 // match-stats-helpers.ts (W/L/D tally + numeric formats).
 
 import type { MatchRecord } from '@/api-client'
-import { matchTime } from '@/match/match-time-helpers'
+import { matchTime, type WeekStart } from '@/match/match-time-helpers'
+import { DAY_OF_WEEK_LABELS, makeTimeOfDayLabels } from '@/composables/matches/useMatchesDossier.types'
 
 // The slice of a match record the trend builders read. Narrowed so
 // callers (and tests) don't have to satisfy fields these never touch.
@@ -427,4 +428,68 @@ export function combatSeries(records: readonly TrendInput[]): TrendSeries[] {
   return COMBAT_METRICS
     .map((m) => ({ name: m.name, key: m.key, points: byMetric.get(m.key)! }))
     .filter((s) => s.points.length > 0)
+}
+
+// One cell of the day-of-week × time-of-day win-rate grid ("when do I play
+// my best?"). `x` is the time-bucket column, `y` the day row (after the
+// week-start rotation). Cells with no decisive match are omitted from the
+// grid entirely so the chart leaves them blank rather than colouring 0%.
+export interface WinrateCell {
+  x: number
+  y: number
+  wins: number
+  total: number
+  winRate: number
+}
+
+export interface WinrateGrid {
+  dayLabels: string[]    // rows top→bottom, rotated to the week-start
+  bucketLabels: string[] // columns, e.g. 00–04 … 20–24
+  cells: WinrateCell[]
+}
+
+// Cross day-of-week (from `data.date`, read in UTC like the dossier's
+// day-of-week breakdown) with time-of-day (from `data.finished_at`'s hour,
+// bucketed) and compute win-rate per cell over decisive matches. `weekStart`
+// rotates the day rows so row 0 is the user's first day of the week. Pure —
+// the composable layer supplies the reactive weekStart.
+export function dayTimeWinrateGrid(
+  records: readonly TrendInput[],
+  bucketCount: 6 | 12 | 24,
+  weekStart: WeekStart = 0,
+): WinrateGrid {
+  const hoursPerBucket = 24 / bucketCount
+  const wins = Array.from({ length: 7 }, () => new Array<number>(bucketCount).fill(0))
+  const total = Array.from({ length: 7 }, () => new Array<number>(bucketCount).fill(0))
+  for (const rec of records) {
+    const result = rec.data?.result
+    let win: boolean
+    if (result === 'victory') win = true
+    else if (result === 'defeat') win = false
+    else continue
+    const date = rec.data?.date
+    const fa = rec.data?.finished_at
+    if (!date || !fa || fa.length < 2) continue
+    const day = new Date(date + 'T00:00:00Z').getUTCDay()
+    const hour = Number.parseInt(fa.slice(0, 2), 10)
+    if (!Number.isFinite(day) || day < 0 || day > 6) continue
+    if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue
+    const bucket = Math.floor(hour / hoursPerBucket)
+    total[day]![bucket]!++
+    if (win) wins[day]![bucket]!++
+  }
+  const bucketLabels = makeTimeOfDayLabels(bucketCount)
+  const dayLabels: string[] = []
+  const cells: WinrateCell[] = []
+  for (let row = 0; row < 7; row++) {
+    const srcDay = (weekStart + row) % 7
+    dayLabels.push(DAY_OF_WEEK_LABELS[srcDay]!)
+    for (let x = 0; x < bucketCount; x++) {
+      const t = total[srcDay]![x]!
+      if (t === 0) continue
+      const w = wins[srcDay]![x]!
+      cells.push({ x, y: row, wins: w, total: t, winRate: Math.round((w / t) * 100) })
+    }
+  }
+  return { dayLabels, bucketLabels, cells }
 }

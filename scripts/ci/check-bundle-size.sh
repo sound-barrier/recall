@@ -52,7 +52,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # the dependabot major that fixes CVE-2026-45249, adds ~44KB to the
 # lazy TrendChart chunk (total-only; initial JS untouched). Security
 # upgrade, not bloat absorption.
-: "${MAX_TOTAL_JS_BYTES:=1320000}"
+# 2026-07: 1320000 → 1360000 — the "Best times to play" heatmap card
+# registers two more tree-shaken ECharts pieces (HeatmapChart +
+# VisualMapComponent) in the lazy TrendChart chunk, ~37.5KB total-only
+# (initial JS untouched). The approved flagship 6.1 chart, not bloat.
+: "${MAX_TOTAL_JS_BYTES:=1360000}"
 : "${MAX_TOTAL_CSS_BYTES:=317000}"
 
 if [[ "${1:-}" == "--build" ]]; then
