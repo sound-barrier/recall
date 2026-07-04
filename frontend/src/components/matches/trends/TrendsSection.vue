@@ -70,6 +70,7 @@ const mapWinrateSeries = dossier.mapRollingWinrate(windowSize)
 const rankDeltaSeries = dossier.rankDelta
 const cumulativeNetSeries = dossier.cumulativeNet
 const modifierFreqSeries = dossier.modifierFrequency
+const combatStatsSeries = dossier.combat
 
 const someData = (series: { points: unknown[] }[]) => series.some((s) => s.points.length > 0)
 
@@ -103,6 +104,11 @@ const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
     id: 'map-winrate', title: 'Win-rate by map', windowSelector: false,
     caption: `Rolling win rate over the last ${windowSize.value} matches, per most-played map`, option: winrateOption(mapWinrateSeries.value), hasData: someData(mapWinrateSeries.value),
     empty: 'No decisive matches on any map — nothing to chart yet.',
+  },
+  'combat': {
+    id: 'combat', title: 'Combat per 10 min', windowSelector: false,
+    caption: 'Eliminations, deaths, and assists per 10 minutes over time', option: lineOption(combatStatsSeries.value), hasData: someData(combatStatsSeries.value),
+    empty: 'No combat stats parsed — they come from a scoreboard screenshot, not the rank screen.',
   },
   'rank-delta': {
     id: 'rank-delta', title: 'Rank delta per match', windowSelector: false,

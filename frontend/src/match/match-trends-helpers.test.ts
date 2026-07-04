@@ -12,6 +12,7 @@ import {
   rankDeltaSeries,
   cumulativeNetRecordSeries,
   modifierFrequencySeries,
+  combatSeries,
   matchEpoch,
   type TrendInput,
 } from '@/match/match-trends-helpers'
@@ -264,5 +265,37 @@ describe('mapRollingWinrateSeries', () => {
     const draw = mapRec('2026-05-02', '20:00', 'numbani', 'victory')
     draw.data = { ...draw.data, result: 'draw' }
     expect(mapRollingWinrateSeries([noMap, draw], 10)).toEqual([])
+  })
+})
+
+describe('combatSeries', () => {
+  function combatRec(
+    date: string,
+    time: string,
+    perf: Partial<Record<'eliminations' | 'deaths' | 'assists', number>>,
+  ): TrendInput {
+    const base = rec(date, time)
+    const performance: Record<string, { total: number; avg_per_10min: number }> = {}
+    for (const [k, v] of Object.entries(perf)) performance[k] = { total: v, avg_per_10min: v }
+    return { ...base, data: { ...base.data, performance } }
+  }
+
+  it('emits eliminations/deaths/assists lines with per-10-min points in order', () => {
+    const series = combatSeries([
+      combatRec('2026-05-01', '20:00', { eliminations: 12, deaths: 4, assists: 8 }),
+      combatRec('2026-05-02', '20:00', { eliminations: 20, deaths: 6, assists: 10 }),
+    ])
+    expect(series.map((s) => s.name)).toEqual(['Eliminations', 'Deaths', 'Assists'])
+    const elims = series.find((s) => s.key === 'eliminations')!
+    expect(elims.points.map((p) => p.v)).toEqual([12, 20])
+  })
+
+  it('drops a metric with no coverage and skips matches without performance', () => {
+    const series = combatSeries([
+      combatRec('2026-05-01', '20:00', { eliminations: 12 }), // no deaths/assists parsed
+      rec('2026-05-02', '20:00', { result: 'victory' }), // no performance at all
+    ])
+    expect(series.map((s) => s.key)).toEqual(['eliminations'])
+    expect(series[0]!.points).toHaveLength(1)
   })
 })

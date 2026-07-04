@@ -45,6 +45,12 @@ const match = (key: string, date: string, time: string, s: Stub) => ({
     // One hero per role so the win-rate-by-hero chart has series too.
     hero: { tank: 'reinhardt', dps: 'ashe', support: 'juno' }[s.role ?? 'tank'],
     result: s.result ?? 'victory',
+    // Per-10-min combat stats so the combat chart has data too.
+    performance: {
+      eliminations: { total: 20, avg_per_10min: 12 },
+      deaths: { total: 6, avg_per_10min: 4 },
+      assists: { total: 15, avg_per_10min: 9 },
+    },
     date,
     finished_at: time,
     ...(s.rank != null ? { rank: s.rank } : {}),
@@ -73,7 +79,7 @@ function mockMatches(page: import('@playwright/test').Page, body: unknown) {
 }
 
 test.describe('Matches — Trends section', () => {
-  test('expands to render the seven lazy-loaded trend charts', async ({ page }) => {
+  test('expands to render the eight lazy-loaded trend charts', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
     await page.locator('#tab-matches').click()
@@ -87,14 +93,16 @@ test.describe('Matches — Trends section', () => {
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
-    // Seven labelled chart containers (Rank ladder, Win-rate, Win-rate by
-    // hero, Win-rate by map, Rank delta, Cumulative net, Modifiers), each
-    // with a painted canvas once the lazy ECharts chunk resolves.
-    await expect(page.locator('.trend-card')).toHaveCount(7)
-    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(7)
-    await expect(page.locator('.trend-chart canvas')).toHaveCount(7)
+    // Eight labelled chart containers (Rank ladder, Win-rate, Win-rate by
+    // hero, Win-rate by map, Combat per 10 min, Rank delta, Cumulative net,
+    // Modifiers), each with a painted canvas once the lazy ECharts chunk
+    // resolves.
+    await expect(page.locator('.trend-card')).toHaveCount(8)
+    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(8)
+    await expect(page.locator('.trend-chart canvas')).toHaveCount(8)
     await expect(page.locator('.trend-chart[aria-label="Rank progression over time, by role"]')).toBeVisible()
     await expect(page.locator('.trend-chart[aria-label="Rolling win rate over the last 20 matches, per most-played map"]')).toBeVisible()
+    await expect(page.locator('.trend-chart[aria-label="Eliminations, deaths, and assists per 10 minutes over time"]')).toBeVisible()
   })
 
   test('the window selector re-renders the rolling win-rate chart', async ({ page }) => {
