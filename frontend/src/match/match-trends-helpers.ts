@@ -396,3 +396,35 @@ export function modifierFrequencySeries(records: readonly TrendInput[]): TrendSe
     .map(([name, e]) => ({ name, key: name, points: e.points }))
     .sort((a, b) => b.points.length - a.points.length || a.name.localeCompare(b.name))
 }
+
+// Combat output per 10 minutes over time — one line each for eliminations,
+// deaths, and assists, from the scoreboard's per-10-min figures (which
+// normalise for game length). These stats have intermittent OCR coverage —
+// they come from a SUMMARY/PERSONAL scoreboard screenshot, not the rank
+// screen — so a match contributes a point to a metric only when that figure
+// was parsed; the chart connects across the gaps. A rising eliminations /
+// assists line or a falling deaths line is the "am I improving mechanically,
+// not just climbing?" signal. Keyed so the presentation layer colours them
+// semantically (eliminations green, deaths red, assists blue).
+const COMBAT_METRICS = [
+  { key: 'eliminations', name: 'Eliminations' },
+  { key: 'deaths', name: 'Deaths' },
+  { key: 'assists', name: 'Assists' },
+] as const
+
+export function combatSeries(records: readonly TrendInput[]): TrendSeries[] {
+  const byMetric = new Map<string, TrendPoint[]>(COMBAT_METRICS.map((m) => [m.key, []]))
+  for (const { rec, t } of timedRecords(records)) {
+    const perf = rec.data?.performance
+    if (!perf) continue
+    for (const m of COMBAT_METRICS) {
+      const v = perf[m.key]?.avg_per_10min
+      if (typeof v !== 'number') continue
+      byMetric.get(m.key)!.push({ t, v: Math.round(v * 10) / 10, matchKey: rec.match_key })
+    }
+  }
+  // Keep the E/D/A order; drop a metric that has no coverage at all.
+  return COMBAT_METRICS
+    .map((m) => ({ name: m.name, key: m.key, points: byMetric.get(m.key)! }))
+    .filter((s) => s.points.length > 0)
+}
