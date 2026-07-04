@@ -75,3 +75,4 @@ no soft-pedalling. Numbers that go down get a row too.
   defaults, no env overrides).
 | 2026-07-03 | MAX_INITIAL_CSS_BYTES | 67000 → 68000 | Phase-5 sample-size caveat chip (.bd-low-n) +192B |
 | 2026-07-03 | MAX_TOTAL_JS_BYTES | 1270000 → 1320000 | echarts 6.1 major (CVE-2026-45249 fix), ~44KB in the lazy TrendChart chunk |
+| 2026-07-03 | MAX_TOTAL_JS_BYTES | 1320000 → 1360000 | "Best times to play" heatmap card registers HeatmapChart + VisualMapComponent, ~37.5KB in the lazy TrendChart chunk |

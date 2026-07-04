@@ -2,7 +2,7 @@
 // ECharts options. This is the presentation seam — it knows about ECharts;
 // the data layer does not.
 import type { TrendOption } from '@/components/matches/trends/echarts'
-import { TIER_ORDER, type RankPoint, type RankSeries, type Tier, type TrendSeries } from '@/match/match-trends-helpers'
+import { TIER_ORDER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/match-trends-helpers'
 
 // Consistent colours for known series keys so a line means the same thing
 // across charts: a Tank line is the same blue on every rank/win-rate chart,
@@ -187,5 +187,49 @@ export function rankDeltaOption(series: TrendSeries[]): TrendOption {
       ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
       data: s.points.map((p) => ({ value: [p.t, p.v] as [number, number], matchKey: p.matchKey })),
     })),
+  }
+}
+
+// "Best times to play" — a day-of-week × time-of-day win-rate heatmap. This
+// is a STATIC grid (category × category, no time axis / brush / zoom — the
+// hosting card passes `interactive: false`), so it deliberately omits the
+// shared INTERACTION. Each cell is coloured by win-rate on a red→green
+// diverging scale centred on 50%; cells with no decisive match are absent
+// from the data and render blank. Volume (W–L) rides in the tooltip.
+export function heatmapOption(grid: WinrateGrid): TrendOption {
+  return {
+    grid: { left: 8, right: 12, top: 12, bottom: 52, containLabel: true },
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: unknown): string => {
+        const d = (params as { data?: { value: [number, number, number]; wins: number; total: number } }).data
+        if (!d) return ''
+        const day = grid.dayLabels[d.value[1]] ?? ''
+        const bucket = grid.bucketLabels[d.value[0]] ?? ''
+        return `${day} ${bucket} · ${d.wins}W–${d.total - d.wins}L · ${d.value[2]}%`
+      },
+    },
+    xAxis: { type: 'category', data: grid.bucketLabels, splitArea: { show: true }, axisTick: { show: false } },
+    yAxis: { type: 'category', data: grid.dayLabels, inverse: true, splitArea: { show: true }, axisTick: { show: false } },
+    visualMap: {
+      min: 0,
+      max: 100,
+      calculable: false,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 2,
+      text: ['100%', '0%'],
+      inRange: { color: ['#ff5a73', '#ffc94d', '#4dff8e'] },
+    },
+    series: [{
+      type: 'heatmap',
+      data: grid.cells.map((c) => ({
+        value: [c.x, c.y, c.winRate] as [number, number, number],
+        wins: c.wins,
+        total: c.total,
+      })),
+      label: { show: false },
+      emphasis: { itemStyle: { borderColor: '#fff', borderWidth: 1 } },
+    }],
   }
 }

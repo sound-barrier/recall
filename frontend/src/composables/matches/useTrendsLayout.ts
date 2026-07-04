@@ -12,6 +12,7 @@ const TREND_CHART_IDS = [
   'rank-delta',
   'cumulative-net',
   'modifiers',
+  'best-times',
 ] as const
 export type TrendChartId = typeof TREND_CHART_IDS[number]
 
