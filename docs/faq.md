@@ -66,15 +66,12 @@ database layout can leave your old database incompatible. The fix is to wipe the
 database — Recall rebuilds an empty one on next launch and re-parses your
 screenshots folder, so your matches come back.
 
-On **Windows**, use the guided reset script (it backs up first): double-click
+Use the guided reset script (it backs up first): double-click
 `C:\Program Files\recall\Reset-Database.bat`, which ships with the installer, or
 download `recall-{version}-Reset-Database.bat` from the
 [releases page](https://github.com/sound-barrier/recall/releases). Full steps —
 and what's kept vs. lost — are in
 [Resetting your database](install-windows.md#resetting-your-database-no-migrations-yet).
-On **macOS / Linux**, close Recall and delete `recall.db` (plus its `-wal` and
-`-shm` sidecars) from the active profile's `db` folder under the app-data dir
-(`~/Library/Application Support/Recall/` on macOS, `~/.config/recall/` on Linux).
 
 ## Will I lose my matches if I reset or wipe the database?
 
@@ -95,12 +92,8 @@ Settings → Folders.
 ## How do I back up Recall, or move it to a new computer?
 
 Everything Recall knows — settings plus the match database, per profile — lives
-in one folder. Close Recall, then copy it to back it up or carry it to another
-machine:
-
-- **Windows:** `%AppData%\Recall\`
-- **macOS:** `~/Library/Application Support/Recall/`
-- **Linux:** `~/.config/recall/`
+in one folder, `%AppData%\Recall\`. Close Recall, then copy it to back it up or
+carry it to another machine.
 
 Drop it in the same place on the other machine (Recall closed) and your profiles,
 settings, and matches come over. Your screenshots live separately — copy that

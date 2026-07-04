@@ -28,13 +28,8 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 |---|---|
 | `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, `wails3`, every linter), Debian GTK4 + WebKitGTK 6.0 dev libs, `npm ci`, `lefthook install`. Idempotent. |
 | `task dev` | Hot-reload Wails v3 dev server (`wails3 dev`, macOS / Debian / Ubuntu). |
-| `task build-linux` | Linux/amd64 Wails v3 app → `dist/linux/Recall` via Docker (GTK4 + WebKitGTK 6.0, CGo). |
-| `task build-windows` | Windows/amd64 Wails v3 app + NSIS installer → `dist/windows/` via a **native** cross-compile (`CGO_ENABLED=0` — v3's WebView2 loader is pure Go, no Docker; needs `wails3` + node + `makensis`). |
-| `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). Release workflow wraps it in a DMG. |
-| `task build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed. |
-| `task build-server-{linux,windows,mac}` | Server binary → `dist/server-<os>/Recall-server` via Docker. |
-| `task build-server-all` / `build-server-container` | All three server builds / Linux server container image with Tesseract → `recall-server:local`. |
-| `task build-all` | All three Wails platforms (macOS host required). |
+| `task build-windows` | Windows/amd64 Wails v3 app + NSIS installer → `dist/windows/` via a **native** cross-compile (`CGO_ENABLED=0` — v3's WebView2 loader is pure Go, no Docker; needs `wails3` + node + `makensis`). The shipped release target. |
+| `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). **Local dev target only — not released.** |
 | `go build ./...` / `-tags serveronly ./...` | Compile-check Wails / server variant. |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
 | `brew bundle` | macOS bootstrap from `Brewfile`: mise, go-task, Tesseract, Podman, pipx, cloc. Everything else (Go/Node toolchains + all linters + `wails3`) comes from `mise install`. |
@@ -42,11 +37,11 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `eval "$(mise activate zsh)"` | One-time shell hook (or `bash`) so the toolchain + `RECALL_DATA_DIR` load automatically on `cd`. |
 | `cd frontend && npm ci` | Install frontend deps (required after clone / `task clean`). |
 | `task fmt` | Go (`golangci-lint fmt` — gci import groups + gofmt -s) + shell (`shfmt -w -i 2 -ci -bn`). Sub-targets `fmt-go`, `fmt-shell`. |
-| `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, Hadolint, yamllint, Spectral. |
+| `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, yamllint, Spectral. |
 | `task clean` | Remove `dist/`, `build/bin/`, `frontend/{dist,node_modules}`. |
 | `task update-deps` | `go get -u ./...` + `go mod tidy` + `npm update`. |
 | `task check-deps` | Compare pinned tools vs latest. |
-| `task trivy` | Trivy scan (Go + npm + Dockerfile); fails on HIGH/CRITICAL. |
+| `task trivy` | Trivy scan (Go + npm); fails on HIGH/CRITICAL. |
 | `task cloc` / `cloc-detail` | LOC summary. |
 | `task icon` | Resync `build/appicon.png` from `assets/icon.png` (macOS-only `sips`). |
 | `task swagger` | Swagger UI v5 in a container (default `:8080`, `SWAGGER_PORT` override). |
@@ -86,12 +81,6 @@ GUI can't render inside the container; contributors there use
 port. Native-window dev hosts: **macOS** and **Debian/Ubuntu** (both run
 `task dev`); Windows is a release target only (dev via WSL2 Ubuntu).
 
-`Dockerfile.build` has 14 named stages. Stages 1–6 are the Wails builds (CGo +
-WebView libs). Stages 7–13 are the `serveronly` builds — pure Go,
-`CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets incl. macOS
-arm64. Stage 14 (`server-container`) is a `debian:bookworm-slim` runtime image
-with Tesseract pre-installed.
-
 ## Reference-data publishing surface
 
 The parser ships three YAMLs (`heroes.yaml`, `maps.yaml`,
@@ -118,8 +107,7 @@ only on URL.
 | `RECALL_DATA_DIR` | platform user-config dir | Install-wide base directory. Each profile gets `<base>/profiles/<name>/{settings.json,db/recall.db}`. mise.toml `[env]` sets this to `<repo>/data` when mise is active. |
 | `RECALL_PROFILE` | *(unset — script-only)* | Forces `scripts/db/db-*.sh` to operate on a specific profile. Mirrors the app's `--profile=<name>` CLI flag. Not read by the app binaries. |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; also dumps raw Tesseract `.txt` output per OCR call when set. |
-| `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` inside Docker. |
-| `DOCKER` | `docker` | Container runtime binary for `task build-*`. Set to `podman` for Podman. |
+| `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. |
 | `RECALL_PPROF` | *(off)* | Mounts `net/http/pprof` under `/debug/pprof/` in server mode. Never expose publicly. |
 | `RECALL_FIXTURE_DIR` | `../../testdata/images` (from `pkg/parser/`) | `.png` image dir for `TestParseScreenshot_GoldenFiles` (the `recall-testdata` submodule). Override with an ABSOLUTE path; set alone, goldens are read/written beside the images (single-dir mode). |
 | `RECALL_GOLDEN_DIR` | `../../testdata` (from `pkg/parser/`) | `.golden.json` sidecar dir for `TestParseScreenshot_GoldenFiles`. Override with an ABSOLUTE path. |

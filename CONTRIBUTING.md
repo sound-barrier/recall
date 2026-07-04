@@ -19,7 +19,7 @@ the detailed internal conventions see [`CLAUDE.md`](CLAUDE.md).
   - [Windows (via WSL2)](#windows-via-wsl2)
 - [Building](#building)
   - [Wails desktop app](#wails-desktop-app)
-  - [Server-only binary](#server-only-binary)
+  - [Server binary (dev/test)](#server-binary-devtest)
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
   - [npm supply-chain cooldown](#npm-supply-chain-cooldown)
@@ -204,11 +204,11 @@ For headless work (CI, container shell, remote box without a display) use server
 go run -tags serveronly . --server   # browse http://127.0.0.1:7000
 ```
 
-Container builds work identically to macOS — `task build-linux` / `task build-server-*` delegate to `Dockerfile.build` and need Docker (or Podman via `DOCKER=podman make ...`) running. `task build-windows` is a **native** cross-compile (v3's WebView2 loader is pure Go) — no Docker, but it needs `wails3` + node + `makensis` on PATH.
+`task build-windows` (the shipped app) is a **native** cross-compile (v3's WebView2 loader is pure Go) — no Docker, but it needs `wails3` + node + `makensis` on PATH.
 
 ### Windows (via WSL2)
 
-Windows is supported as a *target* (release builds ship a NSIS installer and a server `.exe`) but not as a native dev OS — the toolchain assumes a POSIX shell (`bash` `scripts/*.sh`, `shellcheck`/`shfmt`, GNU `find`/`xargs`, `lefthook` hooks that shell out) and PowerShell/CMD won't carry it. The maintained dev flow is **WSL2 Ubuntu**, which drops you into the same Debian/Ubuntu environment covered above.
+Windows is the *ship* target (release builds a NSIS installer + the raw self-update exe) but not a native dev OS — the toolchain assumes a POSIX shell (`bash` `scripts/*.sh`, `shellcheck`/`shfmt`, GNU `find`/`xargs`, `lefthook` hooks that shell out) and PowerShell/CMD won't carry it. The maintained dev flow is **WSL2 Ubuntu**, which drops you into the same Debian/Ubuntu environment covered above; `task dev` there runs the frontend against a GTK shell via WSLg (identical UI — only the native window differs from the shipped WebView2 build).
 
 > **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above also works on Windows — VS Code talks to Docker Desktop's WSL2 backend and skips most of this section. Tradeoff: no GUI for `task dev` (use server mode). The WSL2 native flow below is recommended if you want the Wails window via WSLg.
 
@@ -223,20 +223,14 @@ The default distro matches the apt branch in [`initialize.sh`](initialize.sh), s
 
 **2. Run `task` from the WSL2 bash prompt, not PowerShell or Git Bash.** The Taskfile, lefthook hooks, and every `scripts/*.sh` assume bash with POSIX `find`/`xargs`/`grep` semantics. Open the *Ubuntu* terminal app (or `wsl` from any Windows shell), `cd` into your clone, and run `task` commands there.
 
-**3. Wire up Docker Desktop's WSL2 backend.** `task build-linux` / `task build-server-*` delegate to `Dockerfile.build` (`task build-windows` is a native, Docker-free cross-compile). Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) on the Windows host, then in *Settings → General* tick **Use the WSL 2 based engine**, and in *Settings → Resources → WSL Integration* toggle on your Ubuntu distro. Verify from the WSL2 shell:
-
-```sh
-docker info        # should print server details, not "Cannot connect…"
-```
-
-**4. `task dev` and `task test-e2e`.**
+**3. `task dev` and `task test-e2e`.**
 
 - `task dev` works on Windows 11 (and Windows 10 22H2+) via [WSLg](https://github.com/microsoft/wslg), which forwards the GTK window natively — no X server setup needed.
 - **Edit in VS Code on the Windows host, run `task dev` in the WSL terminal — same directory both sides.** Install the [WSL extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) on Windows, then from your cloned directory inside WSL2 run `code .`. VS Code reopens against the WSL filesystem, the integrated terminal lands inside WSL automatically, and `task dev` from that terminal launches Wails with WSLg forwarding the GTK window to the Windows desktop. **Clone into WSL's native FS (e.g. `~/recall`), not `/mnt/c/…`** — file-watcher latency on the Windows-mount path is bad enough to make Vite HMR feel broken.
 - Older Windows 10 has no WSLg. Use server mode instead: `go run -tags serveronly . --server` and open `http://127.0.0.1:7000` in a Windows browser.
 - `task test-e2e` runs Playwright headless against a built `serveronly` binary on `127.0.0.1:7099` (per [`e2e.yml`](.github/workflows/e2e.yml)). No X11 or WSLg needed; works on every Windows version that supports WSL2.
 
-**5. Install Tesseract inside WSL2, not on the Windows side.**
+**4. Install Tesseract inside WSL2, not on the Windows side.**
 
 ```sh
 sudo apt install tesseract-ocr
@@ -244,48 +238,43 @@ sudo apt install tesseract-ocr
 
 That puts the binary at `/usr/bin/tesseract`, which Recall auto-detects on first launch. The Windows-side UB-Mannheim MSI from [`docs/install-windows.md`](docs/install-windows.md) is for end-users running the shipped `.exe`; the WSL2 dev binary is a Linux binary and won't see it.
 
-**6. Point Recall at your Overwatch screenshots — they live on the Windows side.** Overwatch on Windows writes to `C:\Users\<you>\Documents\Overwatch\ScreenShots\Overwatch\`. From WSL2 that path is mounted at `/mnt/c/Users/<you>/Documents/Overwatch/ScreenShots/Overwatch/` — use the `/mnt/c/...` form in Recall's *Settings → Screenshots*. The `/mnt/c` reads are slower than the WSL2 native filesystem but fine for the watcher's per-image cadence.
+**5. Point Recall at your Overwatch screenshots — they live on the Windows side.** Overwatch on Windows writes to `C:\Users\<you>\Documents\Overwatch\ScreenShots\Overwatch\`. From WSL2 that path is mounted at `/mnt/c/Users/<you>/Documents/Overwatch/ScreenShots/Overwatch/` — use the `/mnt/c/...` form in Recall's *Settings → Screenshots*. The `/mnt/c` reads are slower than the WSL2 native filesystem but fine for the watcher's per-image cadence.
 
 ## Building
 
-Recall ships two binary flavors:
+Recall ships a **Windows desktop app only**. There are two build tags:
 
-| Flavor | What it is | CGo? |
+| Flavor | What it is | Shipped? |
 |---|---|---|
-| **Wails app** | Native desktop window (WebKit/WebView2) | Yes — needs platform WebView libs |
-| **Server** | Headless HTTP server (default `127.0.0.1:7000`, override with `RECALL_SERVER_ADDR`) | No — pure Go, cross-compilable anywhere |
+| **Wails app** | Native desktop window (WebView2) | **Yes** — the Windows installer + raw self-update exe |
+| **Server** (`-tags serveronly`) | Headless HTTP server (default `127.0.0.1:7000`, override with `RECALL_SERVER_ADDR`) | No — pure-Go dev/test tool: headless dev + the Playwright e2e harness |
 
 ### Wails desktop app
 
 ```sh
-task build-linux        # Linux/amd64   → dist/linux/Recall
-task build-windows      # Windows/amd64 app + NSIS installer → dist/windows/ (native)
-task build-mac          # macOS arm64 .app → dist/mac/  (macOS host required)
-task build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
-task build-all          # all three (macOS host required)
+task build-windows      # Windows/amd64 app + NSIS installer + raw exe → dist/windows/ (native, shipped)
+task build-mac          # macOS arm64 .app → dist/mac/  (local dev only; macOS host required, never released)
 ```
 
-Linux and Windows builds run in Docker (`Dockerfile.build`). macOS `.app` bundles
-require Apple's SDK and must be built on a Mac — `task build-mac` exits on non-Darwin hosts.
+`build-windows` is a **native** cross-compile from any OS — v3's WebView2 loader
+is pure Go (`CGO_ENABLED=0`), so no Docker/mingw; it needs `wails3` + node +
+`makensis` on PATH. `build-mac` exists only so the maintainer can build/test the
+app locally on macOS (`task dev`'s companion); it is not part of the release.
 
-### Server-only binary
+### Server binary (dev/test)
 
-The server binary (`-tags serveronly`) has no Wails or WebView dependency — it is pure Go.
-All three OS targets can be produced from Docker on any host, including macOS.
+The `-tags serveronly` binary has no Wails or WebView dependency — it is pure Go.
+It is not a shipped product; it powers headless dev and the e2e harness. Build it
+ad-hoc the way `e2e.yml` does:
 
 ```sh
-task build-server-linux      # Linux/amd64     → dist/server-linux/Recall-server
-task build-server-windows    # Windows/amd64   → dist/server-windows/Recall-server.exe
-task build-server-mac        # macOS arm64     → dist/server-mac/  (Docker, no Apple SDK!)
-task build-server-all        # all three server builds
-task build-server-container  # Linux container image with Tesseract → recall-server:local
+go build -tags serveronly -o recall-server .   # then: ./recall-server --server
 ```
 
 ### Other build commands
 
 ```sh
 task clean              # remove dist/, build/bin/, frontend/dist, frontend/node_modules
-DOCKER=podman make ...  # use Podman instead of Docker
 go build ./...          # compile-check Wails variant
 go build -tags serveronly ./...  # compile-check server variant
 ```
@@ -294,7 +283,7 @@ go build -tags serveronly ./...  # compile-check server variant
 
 ```sh
 task fmt            # format all Go source files (golangci-lint fmt — gci import groups + gofmt -s)
-task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral
+task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, yamllint, Spectral
 task lint-yaml      # yamllint only
 task lint-openapi   # Spectral only (api/openapi.yaml)
 task test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
@@ -323,7 +312,7 @@ Zero tolerance for flaky tests. Three rules enforce this:
 1. **No retries.** `frontend/playwright.config.ts` sets `retries: 0` everywhere — CI and local — so a flake fails the build immediately. If a test is racy or carries a brittle assertion, fix the test (tighten the wait, scope the locator, widen a pixel tolerance with a documented reason). Retries are not a workaround.
 2. **No flake-suppression skips.** Every `t.Skip` in `pkg/` must appear in `scripts/ci/test-skips-allow.txt` with a one-line "why" comment. `scripts/ci/check-test-skips.sh` (run by both lefthook `pre-push.test-skips` and CI) diffs the live grep against the allow-list and fails on drift. The allow-list is for documented environment gates (OS-conditional probe tests, `-short`-mode tesseract integration) — not for hiding races. No frontend test should use `.skip()` / `.only()` / `.fixme()`.
 3. **Pre-push smoke subset.** `lefthook.yml`'s `pre-push.playwright-smoke` hook rebuilds `frontend/dist` + the serveronly binary, then runs a `--grep`-filtered Playwright subset against the same harness as `task test-e2e`. Target: ≤60s on a warm cache. The full suite still gates in CI. Skip with `LEFTHOOK_EXCLUDE=playwright-smoke git push` or `SKIP_E2E_SMOKE=1 git push` (the latter is the documented opt-out for slow networks / dev VMs).
-The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
+The scan covers Go module dependencies and npm packages.
 
 Project environment variables (`RECALL_DATA_DIR` + the tool-version pins) live in `mise.toml`'s `[env]` table and load automatically once mise is activated (`eval "$(mise activate zsh)"`). To set an additional override, add it to `[env]` in `mise.toml` (or export it in your shell). This replaces the old direnv/`.envrc` flow.
 
@@ -331,7 +320,7 @@ Project environment variables (`RECALL_DATA_DIR` + the tool-version pins) live i
 
 `frontend/.npmrc` sets `min-release-age=7` so every `npm install` from inside `frontend/` rejects npm package versions younger than seven days. This catches the typical hijacked-publish → npm-unpublish window — Shai-Hulud, the 2025 worm wave, and the recent compromises of `@ctrl/tinycolor` et al. were all detected and pulled inside 72 h. Dependabot honours `.npmrc` when it builds the updated tree, so a malicious publish that lands during its weekly window won't generate a PR until the cooldown elapses (by which point npm has usually pulled it).
 
-Requires npm ≥ 11.0; CI (`actions/setup-node` with Node 26) and `Dockerfile.build` (`node:26-slim`) both ship npm 11 already. `npm ci` is unaffected — it installs exact versions from the lockfile without re-resolving — so checkouts and CI builds remain reproducible.
+Requires npm ≥ 11.0; CI (`actions/setup-node` with Node 26) ships npm 11 already. `npm ci` is unaffected — it installs exact versions from the lockfile without re-resolving — so checkouts and CI builds remain reproducible.
 
 **Emergency CVE override** (when a same-day patch needs to land before the cooldown elapses):
 
