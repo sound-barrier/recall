@@ -14,6 +14,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 
 	"recall/pkg/app"
+	"recall/pkg/applog"
 )
 
 // External targets for the Help menu (the browser/kebab equivalents live in
@@ -115,7 +116,7 @@ func RunWails(a *app.App, assets embed.FS) {
 	}
 
 	if err := wailsApp.Run(); err != nil {
-		println("Error:", err.Error())
+		applog.Subsystem("desktop").Error("wails run failed", "err", err)
 	}
 }
 
