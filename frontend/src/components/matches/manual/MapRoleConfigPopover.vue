@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { useMapRoleConfig, type MapRole } from '@/composables/matches/useMapRoleConfig'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
@@ -80,6 +80,7 @@ function onDocumentPointerDown(e: PointerEvent) {
   emit('close')
 }
 onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown, true))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPointerDown, true))
 
 const POPOVER_WIDTH = 300
 const POPOVER_HEIGHT_ESTIMATE = 380

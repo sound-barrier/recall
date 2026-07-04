@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import type { WidgetDef } from '@/dashboard/widgets'
@@ -77,6 +77,9 @@ function onDocumentPointerDown(e: PointerEvent) {
 }
 onMounted(() => {
   document.addEventListener('pointerdown', onDocumentPointerDown, true)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown, true)
 })
 
 // Popover position derived from the anchor rect. Anchored RIGHT-
