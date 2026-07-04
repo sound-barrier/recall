@@ -64,15 +64,11 @@ pre-commit:
       run: task gen-types
       stage_fixed: true
 
-    # ── YAML / Dockerfile / Shell ─────────────────────────────────────
+    # ── YAML / Shell ──────────────────────────────────────────────────
     yamllint:
       glob: "*.{yml,yaml}"
       run: yamllint {staged_files}
       exclude: "api/openapi.yaml"  # Spectral handles this
-
-    hadolint:
-      glob: "Dockerfile*"
-      run: hadolint {staged_files}
 
     # shfmt + shellcheck on staged shell scripts. Same flags as
     # `task lint-shell` (the CI target) so the hook catches what CI
