@@ -434,7 +434,7 @@ export function combatSeries(records: readonly TrendInput[]): TrendSeries[] {
 // my best?"). `x` is the time-bucket column, `y` the day row (after the
 // week-start rotation). Cells with no decisive match are omitted from the
 // grid entirely so the chart leaves them blank rather than colouring 0%.
-export interface WinrateCell {
+interface WinrateCell {
   x: number
   y: number
   wins: number
