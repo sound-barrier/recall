@@ -1,5 +1,123 @@
 # Changelog
 
+## [0.23.0](https://github.com/sound-barrier/recall/compare/v0.22.3...v0.23.0) (2026-07-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** Linux (.deb/tar.gz) and macOS (.dmg) desktop builds and the self-hosted ghcr.io/<owner>/recall-server container image are no longer built or published. Existing self-hosted / non-Windows users stay on the last release that shipped them.
+* **api:** GET /api/v1/matches with a cursor matching no record now returns an empty array instead of restarting pagination at the first page.
+
+### Features
+
+* **app:** carry the user layer in export bundles (recall-export/v2) ([b14986a](https://github.com/sound-barrier/recall/commit/b14986a0bbcf2a10b4d3eaa8eb115336e59b1a82))
+* **app:** panic recovery on background goroutines + on-disk log ([aa6e5e0](https://github.com/sound-barrier/recall/commit/aa6e5e0fb7db57c5c5ba855c923e853cefa6290a))
+* **dossier:** loss-quality breakdown widget (close / normal / stomp) ([9077ca1](https://github.com/sound-barrier/recall/commit/9077ca1b661a685b5bf0935799427a12caeae5ac))
+* **dossier:** sample-size honesty on the winrate breakdowns ([8749356](https://github.com/sound-barrier/recall/commit/87493569c52a381a1f71009b4afcf9760cb7b66c))
+* **frontend:** error boundary for uncaught errors + failed chunks ([9066dc2](https://github.com/sound-barrier/recall/commit/9066dc28a69a073af87186db07b453518355b4d4))
+* **matches:** session grouping with W/L + span + average rollups ([43c8fc1](https://github.com/sound-barrier/recall/commit/43c8fc16f45e4a5a245a0fee2eb91d1ed6920a0b))
+* **settings:** database health surface in Advanced ([76a5ce6](https://github.com/sound-barrier/recall/commit/76a5ce6802095e4ee29672bf19b4233d25515fad))
+* **trends:** per-hero rolling win-rate chart ([36bab96](https://github.com/sound-barrier/recall/commit/36bab96e7708b0d8213f938db4f6201e3dbe45d4))
+* **update:** add in-app self-update for Windows + Linux ([636a59c](https://github.com/sound-barrier/recall/commit/636a59c6579de108aae3fdea57ea42111f4babeb))
+* **update:** scope in-app self-update to Windows only ([6a7858c](https://github.com/sound-barrier/recall/commit/6a7858c9da4b083f29d2b910b468760b9a68b95c))
+
+
+### Bug Fixes
+
+* **api:** document the real /_screenshot URL shape ([254a013](https://github.com/sound-barrier/recall/commit/254a013c423614c92b54c7ba4d6a83a31af5716a))
+* **api:** unknown pagination cursor returns the empty page ([4750969](https://github.com/sound-barrier/recall/commit/4750969cae1ef1c50e9d18564f95c44cba503044))
+* **app:** carry review state across a cross-profile match move ([5a0e138](https://github.com/sound-barrier/recall/commit/5a0e1386febe38971ac474fa13d4918c9ea6f035))
+* **app:** guarantee SSE terminal-event delivery on a full buffer ([1db46a3](https://github.com/sound-barrier/recall/commit/1db46a3a78daeaafb93f9bb6364a1bd4e8c00109))
+* **app:** refuse profile activation while a parse is in flight ([c9c94d0](https://github.com/sound-barrier/recall/commit/c9c94d0875a565b274574cfb00af90b37846ca6a))
+* **app:** synchronize all App.settings access behind a lock ([26ee334](https://github.com/sound-barrier/recall/commit/26ee334e74bb564c73c861685d50591c20ce1412))
+* **app:** validate update YAML before commit; allowlist the fetch ([b57c5d0](https://github.com/sound-barrier/recall/commit/b57c5d036ebb0c7c90416ba962e5f06fdbca3899))
+* **build:** stamp the release version into the macOS app bundle ([f355cf6](https://github.com/sound-barrier/recall/commit/f355cf64d33bad6a9018c521b879d27e4dbd6b16))
+* **build:** use the Recall icon, not the default Wails "W" ([a858f7e](https://github.com/sound-barrier/recall/commit/a858f7efe4835101f3b7d07edf04208720240e2d))
+* **ci:** make the complexity sweep's exclusion filter actually match ([37fc143](https://github.com/sound-barrier/recall/commit/37fc1437e1be62ed4f7b68ac8434a4466d74c564))
+* **ci:** make the release SBOM wait for the Windows installer ([70be8f6](https://github.com/sound-barrier/recall/commit/70be8f6c7f10436c0d4c1d8c08788c22e278b557))
+* **ci:** make the trivy gate honor its documented severity filter ([eaf2dcf](https://github.com/sound-barrier/recall/commit/eaf2dcf6c8e7abce47e0c681942ac192a0058979))
+* **ci:** pin the schemathesis seed ([7e9d23c](https://github.com/sound-barrier/recall/commit/7e9d23c97436fe98dffa9a370403fa9de0f7255b))
+* **db:** enforce the rank-modifier vocabulary on the user override table ([396192d](https://github.com/sound-barrier/recall/commit/396192d24a052f3e83394bb524fe8d76e3ec26c9))
+* **db:** purge ambiguous candidates when a match is hard-deleted ([1205aab](https://github.com/sound-barrier/recall/commit/1205aab6d816bb2f719a8a15739dbc4155082980))
+* **db:** run Clear inside one transaction ([b8a2d57](https://github.com/sound-barrier/recall/commit/b8a2d57ed2cdedb463bb4f08218fd8ac9060ba87))
+* **db:** run LoadAll inside one read transaction ([8629cf2](https://github.com/sound-barrier/recall/commit/8629cf2af6b0b4a1f17b050b9f1b802a03287b03))
+* **db:** wrap store load errors with operation context ([c0f2052](https://github.com/sound-barrier/recall/commit/c0f20522ce87e4a4ca0bcd16f74110ff279aef97))
+* **frontend:** carry all narrow dimensions through saved presets ([4c857b1](https://github.com/sound-barrier/recall/commit/4c857b164d183d3446a22e5e0de807226b1c330c))
+* **frontend:** honor the modal contract in the two settings dialogs ([b153ae2](https://github.com/sound-barrier/recall/commit/b153ae23ad320176ea5c0deaab537dc627a50b1a))
+* **frontend:** keep ? reachable while a modal is up ([d7e4cdc](https://github.com/sound-barrier/recall/commit/d7e4cdcb27c853fe99d8692a10331d6487534dae))
+* **frontend:** keep the error banner announced and reachable over modals ([5113a18](https://github.com/sound-barrier/recall/commit/5113a18ce93a27ff6247dcbccc9b80dd1e6f49f8))
+* **frontend:** make the journal's saved pulse a real persistence receipt ([6121fdb](https://github.com/sound-barrier/recall/commit/6121fdbcc72ab1dcacff1a263d6f25008076766e))
+* **frontend:** mute global shortcuts while any non-panel modal is open ([77ad438](https://github.com/sound-barrier/recall/commit/77ad4383b246e45e8e007dc7b94976065e6a76d5))
+* **frontend:** scope data-referencing localStorage keys per profile ([c6881dc](https://github.com/sound-barrier/recall/commit/c6881dc55cf0035eec47c20703530ab538323d76))
+* **parser:** bound every Tesseract invocation with a timeout ([ae1ce5b](https://github.com/sound-barrier/recall/commit/ae1ce5b964a5a4f14a8a3adac09f6e3a91a2abba))
+
+
+### Performance
+
+* **app:** carry one correlation snapshot across the parse run ([9743dee](https://github.com/sound-barrier/recall/commit/9743deef5d2004359bab69aa266398a32f4cb5e1))
+* **db:** adopt WAL journal mode + synchronous(NORMAL) ([a73af01](https://github.com/sound-barrier/recall/commit/a73af010462d81a8f58747a7e4dadc49db01e3c9))
+* **db:** drop the dead idx_teams_ead index ([bc72cfa](https://github.com/sound-barrier/recall/commit/bc72cfad5406810c62403b83f27ebdb81cf4c654))
+
+
+### Refactors
+
+* **app:** carve the bundle pipeline into pkg/bundle ([d2a0fc1](https://github.com/sound-barrier/recall/commit/d2a0fc1a6f9006a949a0bd1345bce367c83932e5))
+* **app:** carve the game-data pipeline into pkg/gamedata ([9826158](https://github.com/sound-barrier/recall/commit/9826158658576d1839c53dec2c382f2c331d1be8))
+* **app:** carve the profile manager + move engine into pkg/profiles ([10be298](https://github.com/sound-barrier/recall/commit/10be2989ac0e250918886bb48ce42d344a6e0486))
+* **frontend:** adjudicate the four never-ruled oversized SFCs ([0a9583f](https://github.com/sound-barrier/recall/commit/0a9583f960ccd8125f356792335e645efe511d4e))
+* **frontend:** adopt the generated wire types in api.ts ([faec458](https://github.com/sound-barrier/recall/commit/faec4585c95f498643117d2bdd98dbfe77f9a5cc))
+* **frontend:** declare narrow filter clauses once, in a registry ([d53706c](https://github.com/sound-barrier/recall/commit/d53706cfa577fed5b060f095cfd56c89b691a501))
+* **frontend:** each store owns its boot loader; useAppBoot fans out ([be30f65](https://github.com/sound-barrier/recall/commit/be30f65045be045121f6b5017cdf11c63f5a4688))
+* **frontend:** extract the dossier bands' shared header furniture ([9b33a97](https://github.com/sound-barrier/recall/commit/9b33a972adf9808449397ac147fcbcb891fa41df))
+
+
+### Documentation
+
+* **debt:** delete section 10 — the decomposition round paid it ([b428e7a](https://github.com/sound-barrier/recall/commit/b428e7a49ccbf9ba845f070e5fa84644c7bbd8b0))
+* **debt:** delete the ledger entries Phase 2 paid ([ee5deb2](https://github.com/sound-barrier/recall/commit/ee5deb2716fe5e78b2db0e57c05cb02b1bf10090))
+* **debt:** delete the ledger entries Phase 3 paid ([db17e06](https://github.com/sound-barrier/recall/commit/db17e061ea2a29f791c0a56206040b20d2235ca7))
+* **debt:** note the pre-push playwright-smoke vs go-embed race ([36d19e3](https://github.com/sound-barrier/recall/commit/36d19e30fbafc30fa29adb66b0baa0568f227d39))
+* **debt:** record the approved pkg/app decomposition plan ([d37e870](https://github.com/sound-barrier/recall/commit/d37e8706b46abadeaa4d0bad94b82016bfa7f44a))
+* **debt:** true up the ledger against the 2026-07-02 audit ([62610ef](https://github.com/sound-barrier/recall/commit/62610efed6b19d39313c7147df39e701ea7f70a4))
+* **features:** re-triage the backlog against what actually shipped ([9d17824](https://github.com/sound-barrier/recall/commit/9d17824796ace55f6b2abc67ccfe086c9acb9cc6))
+* purge remaining Mac/Linux references from the Windows-only surface ([3e71304](https://github.com/sound-barrier/recall/commit/3e7130425b9b317b5f18b9642799ec8292d050b0))
+* sweep stale references, dead anchors, and false code comments ([5d74c3f](https://github.com/sound-barrier/recall/commit/5d74c3f10cabbe79dff8cb325bf3fb84925a3d3f))
+* trim to Windows-only — remove server/Docker + Linux/macOS docs ([d6ac816](https://github.com/sound-barrier/recall/commit/d6ac816c9c4f2366e6c244832575fba709dd3110))
+
+
+### Build & Packaging
+
+* **bundle:** +1KB initial-CSS headroom for the caveat chip ([b666bed](https://github.com/sound-barrier/recall/commit/b666bedb184be0b8782e906d1339e96544faa268))
+* **bundle:** +50KB total-JS headroom for the echarts 6 major ([a2a1250](https://github.com/sound-barrier/recall/commit/a2a1250e8298d82477087102751e9fc6286937fa))
+* **cover:** credit cross-package execution with -coverpkg ([e180ea3](https://github.com/sound-barrier/recall/commit/e180ea3c5ed7d627da38d228452cad80d58ec877))
+* **deps:** Bump echarts and vue-echarts in /frontend ([566556f](https://github.com/sound-barrier/recall/commit/566556f955dced6b64ae087189fe91a997fc0fb6))
+* **deps:** Bump the actions group with 4 updates ([a0d2979](https://github.com/sound-barrier/recall/commit/a0d2979db4af16b50229599b475c31e5dd02c5f7))
+* drop the orphaned hadolint pre-commit hook ([df62d04](https://github.com/sound-barrier/recall/commit/df62d04ca9447b037bcc13a08ee2cf8b139cf951))
+* **hooks:** isolate the smoke harness in a git worktree ([039532a](https://github.com/sound-barrier/recall/commit/039532ab86ddd78860c168878bd24087b34997e3))
+* **hooks:** PID-suffix the smoke harness worktree path ([298864e](https://github.com/sound-barrier/recall/commit/298864ed2db329652bb366a52a59068d7994c0a5))
+* **hooks:** stage the bundle-size build outside frontend/dist ([a0ddfee](https://github.com/sound-barrier/recall/commit/a0ddfee19dd865693a8e23924e927ada9e23ea40))
+* **release:** ship Windows only — drop Linux/macOS builds and the server ([cb645b3](https://github.com/sound-barrier/recall/commit/cb645b37bd2ccd7d434fc5433809feeb16ff1b61))
+* **release:** updater-consumable assets + per-user Windows install ([e688eee](https://github.com/sound-barrier/recall/commit/e688eeec528134f38858cb30b41add5539545dab))
+
+
+### CI
+
+* install the goldens' baseline Tesseract in the corpus lane ([cc22579](https://github.com/sound-barrier/recall/commit/cc2257942b3e2a2aa6ce3500857f3d4896931e46))
+* run the parser golden corpus on a scheduled lane ([dc7ab59](https://github.com/sound-barrier/recall/commit/dc7ab59fc498bd702cac913f9cdab64a9a572a35))
+* share one baseline-Tesseract installer across CI jobs ([fe3e772](https://github.com/sound-barrier/recall/commit/fe3e772e8838bbfb2cb1b1c3bca0c6a878b6946b))
+
+
+### Tests
+
+* **db:** pin the Store contract across SQLStore and dbtest.Fake ([d20192b](https://github.com/sound-barrier/recall/commit/d20192ba8767ceb91a5b81199ef978137d412c90))
+* **e2e:** assert the anchor clear on its profile-scoped key ([d31e74c](https://github.com/sound-barrier/recall/commit/d31e74cc7eed9678906ae4348d759a3622c2cbc7))
+* **e2e:** compute the heatmap fixture dates in local time ([0a4d0da](https://github.com/sound-barrier/recall/commit/0a4d0da4b810ce48832886603ee9ff6bd63e0256))
+* **e2e:** migrate map-role-band window selectors to bh- classes ([149cfd5](https://github.com/sound-barrier/recall/commit/149cfd5a4d33fe6c1e9eb1b4c34ed0f0e4fd816a))
+* **frontend:** give the App mount smoke test a load-tolerant budget ([1136d52](https://github.com/sound-barrier/recall/commit/1136d525e79b7f897bf14a5e3bd2ad1d30429d46))
+* **frontend:** resolve unmocked unit-test fetches as an inert 503 ([598ad27](https://github.com/sound-barrier/recall/commit/598ad2729b7dbed5a000d02d4e1bc4ccebe16c65))
+* **frontend:** stub @wailsio/runtime under Vitest ([01a8517](https://github.com/sound-barrier/recall/commit/01a8517ea3dee141b43029b992b8bca89b9c12e2))
+* **parser:** widen the hung-tesseract bound; register its skip ([6b92a8c](https://github.com/sound-barrier/recall/commit/6b92a8cadc5df8d0e9ae0100652166d358ca0ef9))
+
 ## [0.22.3](https://github.com/sound-barrier/recall/compare/v0.22.2...v0.22.3) (2026-06-29)
 
 
