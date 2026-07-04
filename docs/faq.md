@@ -67,7 +67,7 @@ database — Recall rebuilds an empty one on next launch and re-parses your
 screenshots folder, so your matches come back.
 
 Use the guided reset script (it backs up first): double-click
-`C:\Program Files\recall\Reset-Database.bat`, which ships with the installer, or
+`%LocalAppData%\Programs\Recall\Reset-Database.bat`, which ships with the installer, or
 download `recall-{version}-Reset-Database.bat` from the
 [releases page](https://github.com/sound-barrier/recall/releases). Full steps —
 and what's kept vs. lost — are in
