@@ -14,9 +14,8 @@ The template walks you through the fields the maintainer needs to
 reproduce the problem:
 
 - **Recall version** — shown in the top-right of the app (e.g.
-  `v0.1.0`), or run `recall-server --version` for the server binary.
-- **Operating system + version** — `macOS 15.2`, `Ubuntu 24.04`,
-  `Windows 11 23H2`, etc.
+  `v0.1.0`), or in About Recall.
+- **Windows version** — e.g. `Windows 11 23H2`.
 - **Tesseract version** — shown in **Settings → Engine**, or run
   `tesseract --version`.
 - **Expected vs actual** — what you thought would happen, what

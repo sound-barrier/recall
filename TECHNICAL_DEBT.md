@@ -14,7 +14,7 @@ on without re-deriving the context. Effort: S ≈ hours, M ≈ a day, L ≈ mult
 
 Recall is 1.0-ready on correctness: thin-shell Vue + Pinia, file-per-concern
 pure-Go (no-CGo) SQLite, disciplined REST/DB contracts, broad CI (dual build-tag
-lint, schemathesis, CodeQL, gosec, govulncheck, cosign-signed provenance,
+lint, schemathesis, CodeQL, gosec, govulncheck, SLSA build provenance,
 Playwright + axe). The pre-1.0 contract-fix + polish pass is **done** — the
 annotation `DELETE` verb, the `rank_modifiers` `CHECK`, the `screenshots_dirs` GC,
 the first-run readiness checklist + hide-undo toast, the `ClearMatches` doc note,

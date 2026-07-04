@@ -61,7 +61,7 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Drag-and-drop screenshot import** — drop a PNG anywhere in the app to ingest it without touching the watcher folder. HTML5 file API on the Matches view's outer dropzone; bypasses the watcher and writes directly into the configured screenshots dir under a `manual/` subdir.
 - **Background watcher status indicator** — small dot in the masthead showing "watching · N new" so the state is visible from every tab. Two states: idle (dim green) and processing (pulsing accent); tooltip surfaces the most recent activity timestamp.
 - **Screenshot content-hash dedup** — SHA-256 the file content at ingest; if a hash matches an already-parsed file, skip Tesseract entirely and link the rows. Catches "saved the same screenshot twice via Steam + system shortcut" cases without re-OCR cost.
-- **Watcher pause when game not running** — detect OW process / active window via OS APIs (macOS `NSWorkspace`, Windows `EnumWindows`, Linux `wmctrl`); pause the file-watcher when OW isn't running so a system sleep+wake doesn't re-scan everything. Single boolean preference in Settings → Engine.
+- **Watcher pause when game not running** — detect the OW process / active window via the Windows APIs (`EnumWindows`); pause the file-watcher when OW isn't running so a system sleep+wake doesn't re-scan everything. Single boolean preference in Settings → Engine.
 - **OCR debug overlay** — toggle "show raw Tesseract output" on each card to compare the parsed values against the raw text. Useful for filing OCR bugs; surfaces under Settings → Advanced.
 
 ### UX & Settings
@@ -88,7 +88,7 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Markdown export per match** — single-match summary as markdown for blog posts / coaching review. Three-section template: scoreboard table, journal annotation rendered as markdown, embedded source-screenshot file references.
 - **OBS scene switcher** — switch OBS scenes via the OBS WebSocket protocol when a SUMMARY screenshot is detected. Use case: streamers running a "between matches" scene that flips to "match in progress" the moment the parser sees a non-summary screenshot.
 - **Replay-code QR code** — generate a QR encoding the replay code for sharing with a coach via phone scan. Pure SVG, no external service.
-- **Match → calendar event** — auto-create a system calendar event for "OW match" with the result + length so habit-tracker apps see it. Uses macOS EventKit / Windows Outlook / Linux CalDAV, gated behind explicit permission.
+- **Match → calendar event** — auto-create a system calendar event for "OW match" with the result + length so habit-tracker apps see it. Uses the Windows calendar / Outlook integration, gated behind explicit permission.
 
 ### Data & Export
 
