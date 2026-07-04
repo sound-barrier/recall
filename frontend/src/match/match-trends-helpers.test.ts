@@ -7,6 +7,7 @@ import {
   rankLadderSeries,
   rollingWinrateSeries,
   heroRollingWinrateSeries,
+  mapRollingWinrateSeries,
   currentRankByRole,
   rankDeltaSeries,
   cumulativeNetRecordSeries,
@@ -226,5 +227,42 @@ describe('heroRollingWinrateSeries', () => {
     const draw = heroRec('2026-05-02', '20:00', 'juno', 'victory')
     draw.data = { ...draw.data, result: 'draw' }
     expect(heroRollingWinrateSeries([base, draw], 10)).toEqual([])
+  })
+})
+
+describe('mapRollingWinrateSeries', () => {
+  function mapRec(date: string, time: string, map: string, result: 'victory' | 'defeat'): TrendInput {
+    const base = rec(date, time, { result })
+    return { ...base, data: { ...base.data, map } }
+  }
+
+  it('buckets by map with one rolling series each', () => {
+    const series = mapRollingWinrateSeries([
+      mapRec('2026-05-01', '20:00', 'numbani', 'defeat'),
+      mapRec('2026-05-02', '20:00', 'numbani', 'victory'),
+      mapRec('2026-05-01', '21:00', 'ilios', 'victory'),
+    ], 10)
+    expect(series.map((s) => s.name).sort()).toEqual(['ilios', 'numbani'])
+    const numbani = series.find((s) => s.name === 'numbani')!
+    expect(numbani.points.map((p) => p.v)).toEqual([0, 50])
+  })
+
+  it('keeps only the top-N maps by decisive volume', () => {
+    const records: TrendInput[] = []
+    for (let m = 0; m < 8; m++) {
+      for (let i = 0; i <= m; i++) {
+        records.push(mapRec('2026-05-01', `${String(8 + i).padStart(2, '0')}:0${m}`, `map${m}`, 'victory'))
+      }
+    }
+    const series = mapRollingWinrateSeries(records, 10, 3)
+    expect(series).toHaveLength(3)
+    expect(series.map((s) => s.name).sort()).toEqual(['map5', 'map6', 'map7'])
+  })
+
+  it('skips records without a map or a decisive result', () => {
+    const noMap = rec('2026-05-01', '20:00', { result: 'victory' })
+    const draw = mapRec('2026-05-02', '20:00', 'numbani', 'victory')
+    draw.data = { ...draw.data, result: 'draw' }
+    expect(mapRollingWinrateSeries([noMap, draw], 10)).toEqual([])
   })
 })

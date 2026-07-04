@@ -7,6 +7,7 @@ const TREND_CHART_IDS = [
   'rank-ladder',
   'rolling-winrate',
   'hero-winrate',
+  'map-winrate',
   'rank-delta',
   'cumulative-net',
   'modifiers',

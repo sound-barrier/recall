@@ -73,7 +73,7 @@ function mockMatches(page: import('@playwright/test').Page, body: unknown) {
 }
 
 test.describe('Matches — Trends section', () => {
-  test('expands to render the six lazy-loaded trend charts', async ({ page }) => {
+  test('expands to render the seven lazy-loaded trend charts', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
     await page.locator('#tab-matches').click()
@@ -87,13 +87,14 @@ test.describe('Matches — Trends section', () => {
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
-    // Five labelled chart containers (Rank ladder, Win-rate, Rank delta,
-    // Cumulative net, Modifiers), each with a painted canvas once the lazy
-    // ECharts chunk resolves.
-    await expect(page.locator('.trend-card')).toHaveCount(6)
-    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(6)
-    await expect(page.locator('.trend-chart canvas')).toHaveCount(6)
+    // Seven labelled chart containers (Rank ladder, Win-rate, Win-rate by
+    // hero, Win-rate by map, Rank delta, Cumulative net, Modifiers), each
+    // with a painted canvas once the lazy ECharts chunk resolves.
+    await expect(page.locator('.trend-card')).toHaveCount(7)
+    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(7)
+    await expect(page.locator('.trend-chart canvas')).toHaveCount(7)
     await expect(page.locator('.trend-chart[aria-label="Rank progression over time, by role"]')).toBeVisible()
+    await expect(page.locator('.trend-chart[aria-label="Rolling win rate over the last 20 matches, per most-played map"]')).toBeVisible()
   })
 
   test('the window selector re-renders the rolling win-rate chart', async ({ page }) => {

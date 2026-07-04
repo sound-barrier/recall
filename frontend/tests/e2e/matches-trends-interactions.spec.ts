@@ -95,13 +95,13 @@ test.describe('Matches — Trends interactions', () => {
     await page.goto('/')
     await openRankChart(page)
 
-    await expect(page.locator('.trend-card')).toHaveCount(6)
+    await expect(page.locator('.trend-card')).toHaveCount(7)
     await page.locator('.trend-card', { hasText: 'Modifiers over time' }).locator('.trend-card-close').click()
-    await expect(page.locator('.trend-card')).toHaveCount(5)
+    await expect(page.locator('.trend-card')).toHaveCount(6)
     const chip = page.locator('.trends-add-chip', { hasText: 'Modifiers over time' })
     await expect(chip).toBeVisible()
     await chip.click()
-    await expect(page.locator('.trend-card')).toHaveCount(6)
+    await expect(page.locator('.trend-card')).toHaveCount(7)
   })
 
   test('Reset view clears a brushed date range', async ({ page }) => {

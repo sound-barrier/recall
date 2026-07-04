@@ -4,8 +4,8 @@ import { test, expect } from './_fixtures'
 
 // Per-hero trend over time (audit product gap #2): "improving on
 // Juno, regressing on Ana" — the Trends charts plotted only the
-// whole narrowed set (per role). A sixth chart plots the rolling
-// win-rate per hero for the set's most-played heroes, so a hero's
+// whole narrowed set (per role). The win-rate-by-hero chart plots the
+// rolling win-rate per hero for the set's most-played heroes, so a hero's
 // own trajectory is visible instead of being averaged away.
 
 function match(key: string, date: string, time: string, hero: string, result: 'victory' | 'defeat') {
