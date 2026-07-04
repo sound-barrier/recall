@@ -94,13 +94,19 @@ func (w *wailsSelfUpdater) Restart(ctx context.Context) error {
 	return w.u.Restart(ctx)
 }
 
-// recallAssetMatcher picks the raw Windows updater exe the framework
+// RecallAssetMatcher picks the raw Windows updater exe the framework
 // swaps: recall-<v>-windows-amd64.exe. Requiring the exact
 // `windows-<arch>.exe` suffix excludes the installer
 // (recall-<v>-windows-amd64-installer.exe, which ends in
 // `-installer.exe`), the reference YAMLs, SHA256SUMS/.sha256, and the
 // SBOM by construction. Self-update only runs on Windows (see the gate
 // in initSelfUpdater), so req.Platform is always "windows" here.
+func RecallAssetMatcher(req updater.CheckRequest, assets []github.ReleaseAsset) int {
+	return recallAssetMatcher(req, assets)
+}
+
+// recallAssetMatcher contains the matcher implementation used by
+// RecallAssetMatcher and internal call sites.
 func recallAssetMatcher(req updater.CheckRequest, assets []github.ReleaseAsset) int {
 	suffix := req.Platform + "-" + req.Arch + ".exe"
 	for i, a := range assets {
