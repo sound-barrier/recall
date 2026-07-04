@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 
 // Combined Sort + Group dropdown for the Matches leaves head. Two
@@ -58,6 +58,9 @@ function onDocumentPointerDown(e: PointerEvent) {
 }
 onMounted(() => {
   document.addEventListener('pointerdown', onDocumentPointerDown, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown, true)
 })
 
 // Position helper — anchored under the trigger, left-aligned to its
