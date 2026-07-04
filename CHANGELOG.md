@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.23.2](https://github.com/sound-barrier/recall/compare/v0.23.1...v0.23.2) (2026-07-04)
+
+
+### Features
+
+* **trends:** add a "Best times to play" heatmap ([cf3b819](https://github.com/sound-barrier/recall/commit/cf3b8191bfad7be7e696704994d32f490dd0815e))
+* **trends:** add a "Combat per 10 min" chart ([687c95d](https://github.com/sound-barrier/recall/commit/687c95d7cc1b1a1e4da164bfee7b4108b36564a5))
+* **trends:** add a "Win-rate by map" chart ([a498207](https://github.com/sound-barrier/recall/commit/a49820740f79b29fa7a1040015d2a023029cdd6b))
+* **trends:** fill the area under the climb charts ([43b8354](https://github.com/sound-barrier/recall/commit/43b83542f9abde3863b441bbcb3570076242a883))
+* **trends:** label the zoom-slider handles with the date ([75d7c8e](https://github.com/sound-barrier/recall/commit/75d7c8e46fa0b5315ae25c5753f5bde21eedf5a1))
+
+
+### Refactors
+
+* **trends:** demote "Modifiers over time" to opt-in ([fb38a0c](https://github.com/sound-barrier/recall/commit/fb38a0c6da40cab061cebd4b5bd02d976a26e432))
+* **trends:** keep WinrateCell file-local ([3d65478](https://github.com/sound-barrier/recall/commit/3d65478bdce11bf863da6ad90ae30b26d9e88dbd))
+
 ## [0.23.1](https://github.com/sound-barrier/recall/compare/v0.23.0...v0.23.1) (2026-07-04)
 
 
