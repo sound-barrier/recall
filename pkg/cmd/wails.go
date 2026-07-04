@@ -115,7 +115,7 @@ func RunWails(a *app.App, assets embed.FS) {
 	}
 
 	if err := wailsApp.Run(); err != nil {
-		println("Error:", err.Error())
+		fmt.Fprintln(os.Stderr, "Error:", err)
 	}
 }
 
