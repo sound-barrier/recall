@@ -23,6 +23,25 @@ function colorFor(key: string | undefined): string | undefined {
   return key ? SERIES_COLOR[key] : undefined
 }
 
+// A subtle vertical fill under a line — the series colour at ~25% alpha
+// fading to transparent at the baseline — for a "climb" feel on the rank
+// ladder + cumulative net. Fading out at the bottom keeps overlapping role
+// fills readable; the rare unmapped series (the 'all' bucket) gets a neutral
+// tint so the shape stays a gradient either way.
+function areaFill(key: string | undefined) {
+  const c = colorFor(key) ?? '#8892a0'
+  return {
+    color: {
+      type: 'linear' as const,
+      x: 0, y: 0, x2: 0, y2: 1,
+      colorStops: [
+        { offset: 0, color: `${c}40` },
+        { offset: 1, color: `${c}00` },
+      ],
+    },
+  }
+}
+
 // Reserve top room for the (centered) scroll legend so it never sits over
 // the plot, and bottom room for the zoom slider. Units live in the card
 // title (no y-axis name to collide with the legend).
@@ -102,6 +121,7 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
       symbolSize: 5,
       connectNulls: true,
       emphasis: { focus: 'series' as const },
+      areaStyle: areaFill(s.key),
       ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
       data: s.points.map((p) => ({ value: [p.t, p.score] as [number, number], rank: p, matchKey: p.matchKey })),
     })),
@@ -146,7 +166,7 @@ export function winrateOption(series: TrendSeries[]): TrendOption {
 // A generic multi-line chart (cumulative net record; modifier frequency).
 // Auto value axis; role-coloured where the series key is a role bucket,
 // else the themed categorical palette (e.g. one colour per modifier).
-export function lineOption(series: TrendSeries[]): TrendOption {
+export function lineOption(series: TrendSeries[], opts: { area?: boolean } = {}): TrendOption {
   return {
     ...INTERACTION,
     grid: GRID,
@@ -161,6 +181,7 @@ export function lineOption(series: TrendSeries[]): TrendOption {
       symbolSize: 5,
       connectNulls: true,
       emphasis: { focus: 'series' as const },
+      ...(opts.area ? { areaStyle: areaFill(s.key) } : {}),
       ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
       data: s.points.map((p) => ({ value: [p.t, p.v] as [number, number], matchKey: p.matchKey })),
     })),

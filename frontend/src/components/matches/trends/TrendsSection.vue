@@ -120,7 +120,7 @@ const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
   },
   'cumulative-net': {
     id: 'cumulative-net', title: 'Cumulative net record', windowSelector: false,
-    caption: 'Running wins minus losses over time, by role', option: lineOption(cumulativeNetSeries.value), hasData: someData(cumulativeNetSeries.value),
+    caption: 'Running wins minus losses over time, by role', option: lineOption(cumulativeNetSeries.value, { area: true }), hasData: someData(cumulativeNetSeries.value),
     empty: 'No decisive matches in the set.',
   },
   'modifiers': {
