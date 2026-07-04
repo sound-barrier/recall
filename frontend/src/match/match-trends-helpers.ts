@@ -205,6 +205,53 @@ export function heroRollingWinrateSeries(
   return series
 }
 
+// Rolling win-rate per MAP (the per-map trend: "climbing on Numbani,
+// sinking on Ilios"). Same rolling window and top-N shape as
+// heroRollingWinrateSeries, but bucketed by the match's map and limited to
+// the topMaps most-played by decisive-match volume so a wide rotation
+// doesn't chart twenty one-game lines.
+export function mapRollingWinrateSeries(
+  records: readonly TrendInput[],
+  window: number,
+  topMaps = 5,
+): TrendSeries[] {
+  const span = Math.max(1, Math.floor(window))
+  const byMap = new Map<string, { decisive: boolean[]; times: number[]; keys: string[] }>()
+  for (const { rec, t } of timedRecords(records)) {
+    const result = rec.data?.result
+    let win: boolean
+    if (result === 'victory') win = true
+    else if (result === 'defeat') win = false
+    else continue
+    const map = rec.data?.map
+    if (!map) continue
+    const entry = byMap.get(map) ?? { decisive: [], times: [], keys: [] }
+    entry.decisive.push(win)
+    entry.times.push(t)
+    entry.keys.push(rec.match_key)
+    byMap.set(map, entry)
+  }
+  const kept = [...byMap.entries()]
+    .sort((a, b) => b[1].decisive.length - a[1].decisive.length)
+    .slice(0, topMaps)
+
+  const series: TrendSeries[] = []
+  for (const [map, entry] of kept) {
+    const points: TrendPoint[] = []
+    for (let i = 0; i < entry.decisive.length; i++) {
+      const start = Math.max(0, i - span + 1)
+      let wins = 0
+      for (let j = start; j <= i; j++) {
+        if (entry.decisive[j]) wins++
+      }
+      const n = i - start + 1
+      points.push({ t: entry.times[i]!, v: Math.round((wins / n) * 100), matchKey: entry.keys[i]! })
+    }
+    series.push({ name: map, key: map, points })
+  }
+  return series
+}
+
 // Trailing win-rate (%) over the last `window` decisive matches, one line
 // per role bucket. Draws are excluded from numerator and denominator
 // (matching the dossier's headline winrate). One point per decisive
