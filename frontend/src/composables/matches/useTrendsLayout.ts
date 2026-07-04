@@ -16,6 +16,12 @@ const TREND_CHART_IDS = [
 ] as const
 export type TrendChartId = typeof TREND_CHART_IDS[number]
 
+// Charts hidden on a fresh install — opt-in via the "+ add" chips. "Modifiers
+// over time" is meta-analysis (how often each rank modifier fired), the least
+// "am I progressing" of the set, so it starts collapsed rather than crowding
+// the default view. A user who arranges their charts keeps their own layout.
+const DEFAULT_HIDDEN: TrendChartId[] = ['modifiers']
+
 function isKnownId(x: unknown): x is TrendChartId {
   return typeof x === 'string' && (TREND_CHART_IDS as readonly string[]).includes(x)
 }
@@ -44,7 +50,7 @@ export function useTrendsLayout() {
   })
   const { value: hidden, set: setHidden } = usePersistedRef<TrendChartId[]>({
     key: 'recall.trends.hidden',
-    defaultValue: [],
+    defaultValue: DEFAULT_HIDDEN,
     parse: parseIds,
     serialize: (v) => JSON.stringify(v),
   })

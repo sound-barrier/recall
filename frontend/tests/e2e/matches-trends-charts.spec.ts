@@ -79,7 +79,7 @@ function mockMatches(page: import('@playwright/test').Page, body: unknown) {
 }
 
 test.describe('Matches — Trends section', () => {
-  test('expands to render the nine lazy-loaded trend charts', async ({ page }) => {
+  test('expands to render the eight default trend charts (Modifiers opt-in)', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
     await page.locator('#tab-matches').click()
@@ -93,20 +93,23 @@ test.describe('Matches — Trends section', () => {
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
-    // Nine labelled chart containers (Rank ladder, Win-rate, Win-rate by
-    // hero, Win-rate by map, Combat per 10 min, Rank delta, Cumulative net,
-    // Modifiers, Best times to play), each with a painted canvas once the
-    // lazy ECharts chunk resolves.
-    await expect(page.locator('.trend-card')).toHaveCount(9)
-    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(9)
+    // Eight labelled chart containers by default (Rank ladder, Win-rate,
+    // Win-rate by hero, Win-rate by map, Combat per 10 min, Rank delta,
+    // Cumulative net, Best times to play), each with a painted canvas once the
+    // lazy ECharts chunk resolves. "Modifiers over time" starts collapsed
+    // (opt-in) — it surfaces as an add-chip, not a card.
+    await expect(page.locator('.trend-card')).toHaveCount(8)
+    await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(8)
     // Each chart paints at least one canvas once the lazy ECharts chunk
     // resolves; some chart types (the heatmap) add an extra zrender layer, so
     // assert a floor rather than an exact count coupled to ECharts internals.
-    expect(await page.locator('.trend-chart canvas').count()).toBeGreaterThanOrEqual(9)
+    expect(await page.locator('.trend-chart canvas').count()).toBeGreaterThanOrEqual(8)
     await expect(page.locator('.trend-chart[aria-label="Rank progression over time, by role"]')).toBeVisible()
     await expect(page.locator('.trend-chart[aria-label="Rolling win rate over the last 20 matches, per most-played map"]')).toBeVisible()
     await expect(page.locator('.trend-chart[aria-label="Eliminations, deaths, and assists per 10 minutes over time"]')).toBeVisible()
     await expect(page.locator('.trend-chart[aria-label="Win rate by day of week and time of day"]')).toBeVisible()
+    // "Modifiers over time" is demoted to opt-in — present as an add-chip.
+    await expect(page.locator('.trends-add-chip', { hasText: 'Modifiers over time' })).toBeVisible()
   })
 
   test('the window selector re-renders the rolling win-rate chart', async ({ page }) => {
