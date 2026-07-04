@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.23.1](https://github.com/sound-barrier/recall/compare/v0.23.0...v0.23.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* **cmd:** log the Wails Run() failure via applog, not the println builtin ([877106b](https://github.com/sound-barrier/recall/commit/877106be16ec007615dd8288ac1b7278b54d2396))
+* **ui:** remove leaked pointerdown listeners on popover unmount ([13fa0a2](https://github.com/sound-barrier/recall/commit/13fa0a29cb6206faaa7ad894cede638d51abb15a))
+
 ## [0.23.0](https://github.com/sound-barrier/recall/compare/v0.22.3...v0.23.0) (2026-07-04)
 
 
