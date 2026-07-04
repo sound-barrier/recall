@@ -120,13 +120,13 @@ func executableSwappable() bool {
 	if err != nil {
 		return false
 	}
-	return dirWritable(filepath.Dir(exe))
+	return DirWritable(filepath.Dir(exe))
 }
 
-// dirWritable probes a directory by creating and removing a temp file.
+// DirWritable probes a directory by creating and removing a temp file.
 // A create OR a remove failure (a legacy machine-scope Program Files
 // install without elevation) reports false.
-func dirWritable(dir string) bool {
+func DirWritable(dir string) bool {
 	f, err := os.CreateTemp(dir, ".recall-update-probe-*")
 	if err != nil {
 		return false
