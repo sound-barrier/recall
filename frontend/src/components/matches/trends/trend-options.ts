@@ -4,18 +4,23 @@
 import type { TrendOption } from '@/components/matches/trends/echarts'
 import { TIER_ORDER, type RankPoint, type RankSeries, type Tier, type TrendSeries } from '@/match/match-trends-helpers'
 
-// Consistent role colours across both charts so a Tank line is the same
-// blue on the rank chart and the win-rate chart. Buckets without a mapped
-// colour ('all') fall through to the chart's themed categorical palette.
-const ROLE_SERIES_COLOR: Record<string, string> = {
+// Consistent colours for known series keys so a line means the same thing
+// across charts: a Tank line is the same blue on every rank/win-rate chart,
+// and the combat metrics read semantically (eliminations green, deaths red,
+// assists blue). Keys without a mapped colour (heroes, maps, modifiers,
+// 'all') fall through to the chart's themed categorical palette.
+const SERIES_COLOR: Record<string, string> = {
   tank: '#5ca8ff',
   dps: '#ff6b6b',
   support: '#5ce1a0',
   open: '#f5a623',
+  eliminations: '#5ce1a0',
+  deaths: '#ff6b6b',
+  assists: '#5cc8ff',
 }
 
 function colorFor(key: string | undefined): string | undefined {
-  return key ? ROLE_SERIES_COLOR[key] : undefined
+  return key ? SERIES_COLOR[key] : undefined
 }
 
 // Reserve top room for the (centered) scroll legend so it never sits over
