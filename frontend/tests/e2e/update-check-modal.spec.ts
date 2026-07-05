@@ -87,7 +87,7 @@ test.describe('update-check modal', () => {
     await expect(page.locator('[data-update-check-manifest]')).toContainText(/Phoenix/)
   })
 
-  test('leads game data with a plain-language summary + age, no commit SHA', async ({ page }) => {
+  test('leads game data with a plain-language summary, no age or commit SHA', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: false, latest: '0.3.0',
@@ -105,7 +105,9 @@ test.describe('update-check modal', () => {
     await openAbout(page)
     // Plain headline naming the kind/counts; the manifest names the items.
     await expect(page.locator('[data-update-check-summary]')).toContainText('1 new hero, 1 new map available')
-    await expect(page.locator('[data-update-check-freshness]')).toContainText('Your roster data is 14 days old')
+    // Freshness reports content, not age — never "N days old".
+    await expect(page.locator('[data-update-check-freshness]')).toContainText('A roster update is available')
+    await expect(page.locator('[data-update-check-freshness]')).not.toContainText('days old')
     // The meaningless commit SHAs are gone from the entire modal.
     await expect(page.locator('[role="dialog"][aria-modal="true"]')).not.toContainText('MAIN @')
     await expect(page.locator('[role="dialog"][aria-modal="true"]')).not.toContainText('abc1234')
