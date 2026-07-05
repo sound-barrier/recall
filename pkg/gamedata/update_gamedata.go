@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -52,6 +53,13 @@ var ReleaseAssetURL = func(version, name string) string {
 		version, version, name,
 	)
 }
+
+// ReleaseListURL is the GitHub API endpoint listing releases newest-first.
+// FetchReleaseRosters walks this list to find the most recent release that
+// still carries a given roster YAML — release.yml only attaches heroes.yaml /
+// maps.yaml when they changed, so the latest release may omit an unchanged one.
+// Var-seam: tests route it at an httptest.NewServer.
+var ReleaseListURL = "https://api.github.com/repos/sound-barrier/recall/releases?per_page=30"
 
 // MainAssetURL builds the from-main asset URL. Var-seam so tests can
 // route at an httptest.NewServer — same pattern as ReleaseAssetURL.
@@ -131,11 +139,63 @@ func diffRosters(applied, latest []string) (added, removed []string) {
 // treat empty as "no upgrade hint available" + fall back to generic
 // copy. heroes/maps share the parseRosterNames helper; sources uses
 // its own parser since the YAML shape is `{sources: [{name, ...}]}`.
-func FetchReleaseRosters(version string) (heroes, maps, sources []string) {
-	heroes = fetchAsset(version, "heroes.yaml", parseRosterNames)
-	maps = fetchAsset(version, "maps.yaml", parseRosterNames)
-	sources = fetchAsset(version, "screenshot_sources.yaml", parseSourceNames)
+func FetchReleaseRosters(latest string) (heroes, maps, sources []string) {
+	order := releaseWalkOrder(latest)
+	heroes = fetchAssetAcross(order, "heroes.yaml", parseRosterNames)
+	maps = fetchAssetAcross(order, "maps.yaml", parseRosterNames)
+	sources = fetchAssetAcross(order, "screenshot_sources.yaml", parseSourceNames)
 	return heroes, maps, sources
+}
+
+// releaseWalkOrder returns the release versions to try for an asset, newest
+// first: `latest` always leads, followed by every other tag from the GitHub
+// releases list (newest-first, v-stripped, deduped). If the list fetch fails it
+// degrades to just [latest] — the pre-walk-back behavior.
+func releaseWalkOrder(latest string) []string {
+	order := []string{latest}
+	seen := map[string]struct{}{latest: {}}
+	for _, tag := range fetchReleaseTags() {
+		if _, dup := seen[tag]; dup {
+			continue
+		}
+		seen[tag] = struct{}{}
+		order = append(order, tag)
+	}
+	return order
+}
+
+// fetchReleaseTags returns release tag versions (leading "v" stripped),
+// newest-first, from the GitHub releases list. Empty on any failure — callers
+// then only try `latest`.
+func fetchReleaseTags() []string {
+	b, err := getBytes(NewUpdateClient(), ReleaseListURL)
+	if err != nil {
+		return nil
+	}
+	var releases []struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.Unmarshal(b, &releases); err != nil {
+		return nil
+	}
+	tags := make([]string, 0, len(releases))
+	for _, r := range releases {
+		if r.TagName != "" {
+			tags = append(tags, strings.TrimPrefix(r.TagName, "v"))
+		}
+	}
+	return tags
+}
+
+// fetchAssetAcross tries each version in order and returns the first roster the
+// release actually carries. nil only if no release in the walk has the asset.
+func fetchAssetAcross(versions []string, name string, decode func([]byte) []string) []string {
+	for _, v := range versions {
+		if names := fetchAsset(v, name, decode); names != nil {
+			return names
+		}
+	}
+	return nil
 }
 
 // fetchAsset downloads <release>/recall-<v>-<name> + its .sha256
@@ -237,9 +297,6 @@ func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, source
 	}
 	manifest, _ := LoadManifest(baseDir)
 	gd := GameDataStatus{
-		RosterDiff: RosterDiff{
-			HasUpdate: manifest.AppliedSource != "main" || manifest.AppliedMainCommit != shortenCommitSHA(ver.CommitSHA),
-		},
 		CommitSHA:     shortenCommitSHA(ver.CommitSHA),
 		CommittedAt:   ver.CommittedAt,
 		AppliedCommit: manifest.AppliedMainCommit,
@@ -256,6 +313,16 @@ func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, source
 	if sources != nil {
 		gd.AddedSources, gd.RemovedSources = diffRosters(sourceNames(parser.Sources()), sources)
 	}
+	// Content-based: an update exists only when the live rosters actually differ
+	// from what the app already has — NOT when the published main commit merely
+	// advanced. pages.yml republishes version.json on testdata/openapi/docs
+	// changes too, so a commit-SHA comparison flagged a phantom "update
+	// available" (and the UI's "roster data is N days old") when heroes & maps
+	// were byte-identical. Keying off the diff makes the signal reflect the
+	// roster, not release cadence.
+	gd.HasUpdate = len(gd.AddedHeroes)+len(gd.RemovedHeroes)+
+		len(gd.AddedMaps)+len(gd.RemovedMaps)+
+		len(gd.AddedSources)+len(gd.RemovedSources) > 0
 	return gd
 }
 

@@ -56,20 +56,6 @@ export function useGameDataUpdate(
     return rows
   })
 
-  // Plain-language age of the user's currently-applied roster data. Commit SHAs
-  // mean nothing to a player deciding whether to update, so we never show them.
-  function ageInWords(iso?: string): string {
-    if (!iso) return ''
-    const then = Date.parse(iso)
-    if (Number.isNaN(then)) return ''
-    const days = Math.floor((Date.now() - then) / 86_400_000)
-    if (days <= 0)  return 'less than a day old'
-    if (days === 1) return '1 day old'
-    if (days < 30)  return `${days} days old`
-    const months = Math.floor(days / 30)
-    return months === 1 ? '1 month old' : `${months} months old`
-  }
-
   // "2 new heroes, 1 new map available" — the headline a player actually reads,
   // built from the added-name lists (additions are the common, interesting case;
   // retirements stay in the manifest below).
@@ -84,11 +70,15 @@ export function useGameDataUpdate(
     return parts.length ? `${parts.join(', ')} available` : ''
   })
 
+  // Freshness reports CONTENT, not age. When the live rosters match what the app
+  // has (has_update false), the data is current no matter how long ago it was
+  // applied — showing "N days old" there reads as stale when nothing shipped. The
+  // age of applied data is deliberately never surfaced; the change summary above
+  // carries the only thing a player cares about when there IS an update.
   const dataFreshnessLabel = computed(() => {
     const g = gameData.value
     if (!g.applied_commit) return 'Currently using the built-in roster'
-    const age = ageInWords(g.applied_at)
-    return age ? `Your roster data is ${age}` : 'Your roster data is up to date'
+    return g.has_update ? 'A roster update is available' : 'Your roster is up to date'
   })
 
   const canApply = computed(() => {

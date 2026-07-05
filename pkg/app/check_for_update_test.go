@@ -10,8 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"recall/pkg/app"
 	"recall/pkg/gamedata"
+	"recall/pkg/parser"
 )
 
 func TestCheckForUpdate_DevBuildReportsLatestAsInformational(t *testing.T) {
@@ -459,6 +462,13 @@ func withReleasesURL(t *testing.T, url string) {
 	*app.ReleasesURL = url
 	t.Cleanup(func() { *app.ReleasesURL = prev })
 	withMainURLs(t, closedServerURL(t))
+	// Keep the release-roster walk-back hermetic: an unreachable list URL makes
+	// FetchReleaseRosters fall back to trying only the latest tag (the behavior
+	// these tests were written against). Tests exercising real walk-back set
+	// gamedata.ReleaseListURL themselves.
+	prevList := gamedata.ReleaseListURL
+	gamedata.ReleaseListURL = closedServerURL(t)
+	t.Cleanup(func() { gamedata.ReleaseListURL = prevList })
 }
 
 // withVersion swaps the package-level Version (set via ldflags in
@@ -605,14 +615,19 @@ func TestCheckForUpdate_GameDataStatusPopulatesCommitSHAAndDiff(t *testing.T) {
 	}
 }
 
-func TestCheckForUpdate_GameDataStatusReflectsAppliedCommit(t *testing.T) {
+// GameData.has_update is content-based, not commit-based: CheckForUpdate reports
+// NO game-data update when the live-channel rosters match the app's loaded
+// rosters, even though the published main commit differs from the applied one.
+// pages.yml republishes version.json (a fresh commit + date) on
+// testdata/openapi/docs changes too, so a commit-SHA comparison flagged a
+// phantom update — and the UI then showed "your roster data is N days old" — with
+// byte-identical heroes & maps. The applied commit is still surfaced for display.
+func TestCheckForUpdate_NoGameDataUpdate_WhenRostersMatchDespiteNewCommit(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	// Pre-seed the manifest as if the user already synced from main
-	// at the SAME commit we'll publish — HasUpdate should flip false.
 	if err := app.SaveManifest(app.DataManifest{
 		AppliedSource:     "main",
-		AppliedMainCommit: "abc1234",
-		AppliedAt:         time.Now().UTC().Add(-1 * time.Hour),
+		AppliedMainCommit: "old0000", // deliberately != the published commit below
+		AppliedAt:         time.Now().UTC().Add(-16 * 24 * time.Hour),
 		Files:             map[string]app.ManifestFile{},
 	}); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
@@ -621,16 +636,45 @@ func TestCheckForUpdate_GameDataStatusReflectsAppliedCommit(t *testing.T) {
 		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.3.0")
-	mainSrv := fakeMainServer(t, "abc1234567890def",
-		[]byte("tank:\n  - Reinhardt\n"), []byte("control:\n  - Ilios\n"), validSourcesYAML())
+	// Publish the app's OWN loaded rosters on the live channel → zero diff.
+	heroes, maps, sources := loadedRostersYAML(t)
+	mainSrv := fakeMainServer(t, "abc1234567890def", heroes, maps, sources)
 	withMainURLs(t, mainSrv.URL)
 
 	got := (&app.App{}).CheckForUpdate()
 
-	if got.GameData.AppliedCommit != "abc1234" {
-		t.Errorf("GameData.AppliedCommit: want 'abc1234', got %q", got.GameData.AppliedCommit)
+	if got.GameData.AppliedCommit != "old0000" {
+		t.Errorf("GameData.AppliedCommit: want 'old0000', got %q", got.GameData.AppliedCommit)
 	}
 	if got.GameData.HasUpdate {
-		t.Error("GameData.HasUpdate: want false (applied commit matches published commit)")
+		t.Errorf("GameData.HasUpdate: want false — rosters match, so a differing published commit must NOT flag an update (added heroes %v, added maps %v)",
+			got.GameData.AddedHeroes, got.GameData.AddedMaps)
 	}
+}
+
+// loadedRostersYAML serializes the app's currently-loaded parser rosters into the
+// YAML shapes the live channel publishes, so a fake main server can echo them
+// back for a guaranteed zero-diff.
+func loadedRostersYAML(t *testing.T) (heroes, maps, sources []byte) {
+	t.Helper()
+	var err error
+	if heroes, err = yaml.Marshal(parser.HeroesByRole()); err != nil {
+		t.Fatalf("marshal heroes: %v", err)
+	}
+	if maps, err = yaml.Marshal(parser.MapsByGameMode()); err != nil {
+		t.Fatalf("marshal maps: %v", err)
+	}
+	type namedSource struct {
+		Name string `yaml:"name"`
+	}
+	wrapper := struct {
+		Sources []namedSource `yaml:"sources"`
+	}{}
+	for _, s := range parser.Sources() {
+		wrapper.Sources = append(wrapper.Sources, namedSource{Name: s.Name})
+	}
+	if sources, err = yaml.Marshal(wrapper); err != nil {
+		t.Fatalf("marshal sources: %v", err)
+	}
+	return heroes, maps, sources
 }
