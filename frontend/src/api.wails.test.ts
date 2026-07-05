@@ -68,3 +68,52 @@ describe('SetMatchAnnotation (Wails mode)', () => {
     ])
   })
 })
+
+// Regression: the native Windows WebView2 does NOT put the "wails" marker in
+// navigator.userAgent — Wails only appends it to the outgoing request header
+// (see wails v3 webview_window_windows.go processRequest). It DOES serve the app
+// from the `wails.localhost` virtual host. A UA-only detector reads false there,
+// so every call wrongly takes the fetch path and 404s against the desktop
+// AssetServer (no /api/v1 routes). Detection must key off the serving origin.
+describe('Wails detection on Windows WebView2 (origin-based, no UA marker)', () => {
+  const realUA = navigator.userAgent
+  const realLocation = window.location
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    json: async () => [],
+    text: async () => '[]',
+  }))
+
+  beforeEach(() => {
+    // Windows Edge UA — deliberately WITHOUT any "wails" token.
+    Object.defineProperty(navigator, 'userAgent', {
+      value:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0',
+      configurable: true,
+    })
+    Object.defineProperty(window, 'location', {
+      value: { protocol: 'http:', hostname: 'wails.localhost', href: 'http://wails.localhost/' },
+      configurable: true,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockClear()
+    callByName.mockClear()
+    vi.resetModules()
+  })
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'userAgent', { value: realUA, configurable: true })
+    Object.defineProperty(window, 'location', { value: realLocation, configurable: true })
+    vi.unstubAllGlobals()
+  })
+
+  it('routes calls through the Wails bridge, not fetch, when served from wails.localhost', async () => {
+    const { GetMatchResults } = await import('@/api')
+    await GetMatchResults()
+    expect(callByName).toHaveBeenCalledWith('recall/pkg/app.App.GetMatchResults')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
