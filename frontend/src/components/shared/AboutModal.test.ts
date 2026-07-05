@@ -86,17 +86,38 @@ describe('AboutModal', () => {
     expect(wrapper.text()).toContain('New hero: Phoenix')
   })
 
-  it('leads with a plain-language change summary + data age, never a commit SHA', () => {
+  it('leads with a plain-language change summary, never a commit SHA', () => {
     const wrapper = mount(AboutModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     // 2 added heroes, 0 added maps → "2 new heroes available".
     expect(wrapper.find('[data-update-check-summary]').text()).toContain('2 new heroes available')
-    expect(wrapper.find('[data-update-check-freshness]').text()).toContain('Your roster data is 14 days old')
     // The meaningless commit SHAs are gone.
     expect(wrapper.text()).not.toContain('MAIN @')
     expect(wrapper.text()).not.toContain('abc1234')
     expect(wrapper.text()).not.toContain('def5678')
+  })
+
+  // The freshness line reports CONTENT, not age: when nothing has changed it must
+  // say the roster is up to date, never "N days old" — no roster released ≠ stale.
+  it('says the roster is up to date (not "N days old") when nothing has changed', () => {
+    const upToDate: UpdateInfo = {
+      ...baseInfo,
+      available: false,
+      game_data: {
+        commit_sha: 'def5678',
+        committed_at: new Date(Date.now() - 16 * 86_400_000).toISOString(),
+        applied_commit: 'abc1234',
+        applied_at: new Date(Date.now() - 16 * 86_400_000).toISOString(), // applied 16 days ago
+        has_update: false, // rosters match the live channel — no diff
+      },
+    }
+    const wrapper = mount(AboutModal, {
+      props: { open: true, updateInfo: upToDate, currentVersion: '1.0.0', checking: false },
+    })
+    const freshness = wrapper.find('[data-update-check-freshness]').text()
+    expect(freshness).toContain('up to date')
+    expect(freshness).not.toMatch(/days? old/)
   })
 
   it('flags an available binary update with the latest version', () => {
