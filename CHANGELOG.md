@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.24.0](https://github.com/sound-barrier/recall/compare/v0.23.2...v0.24.0) (2026-07-05)
+
+
+### Bug Fixes
+
+* **installer:** close running Recall before writing files ([9c135f5](https://github.com/sound-barrier/recall/commit/9c135f5669a1bf41712c0eca87c54f51f92d4018))
+* **trends:** gate Reset view and move the window selector ([6601233](https://github.com/sound-barrier/recall/commit/660123361f4f311262ff93a4d02a920cf64fe757))
+
+
+### Chores
+
+* cut v0.24.0 ([66a80bb](https://github.com/sound-barrier/recall/commit/66a80bb3879d631d39b06a8107ab5b0bf880817e))
+
 ## [0.23.2](https://github.com/sound-barrier/recall/compare/v0.23.1...v0.23.2) (2026-07-04)
 
 
