@@ -143,6 +143,10 @@ jobs:
       # source tree. Without checkout the script is absent from the
       # runner filesystem and the step dies with exit 127.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          # Full history + tags so the roster-staging step can diff this tag
+          # against the previous release and skip unchanged YAMLs.
+          fetch-depth: 0
 
       # Download all artifacts into the current directory (merge-multiple flattens them).
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
@@ -171,9 +175,24 @@ jobs:
           # workflow safe against a future change to the trigger.
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          cp pkg/parser/heroes.yaml             "recall-${VERSION}-heroes.yaml"
-          cp pkg/parser/maps.yaml               "recall-${VERSION}-maps.yaml"
-          cp pkg/parser/screenshot_sources.yaml "recall-${VERSION}-screenshot_sources.yaml"
+          # Publish a roster YAML only when it changed since the previous
+          # release. Re-attaching a byte-identical file every release just churns
+          # assets and makes the app's "what's new" hint noisy; the app walks
+          # back to the most recent release that still carries each file
+          # (gamedata.FetchReleaseRosters), so omitting an unchanged one is safe.
+          prev_tag="$(git describe --tags --abbrev=0 "v${VERSION}^" 2>/dev/null || true)"
+          echo "Previous release tag: ${prev_tag:-<none>}"
+          for name in heroes maps screenshot_sources; do
+            src="pkg/parser/${name}.yaml"
+            if [ -z "$prev_tag" ] \
+               || ! git rev-parse -q --verify "${prev_tag}:${src}" >/dev/null 2>&1 \
+               || ! git diff --quiet "${prev_tag}" HEAD -- "$src"; then
+              cp "$src" "recall-${VERSION}-${name}.yaml"
+              echo "staged  recall-${VERSION}-${name}.yaml (changed since ${prev_tag:-<no previous release>})"
+            else
+              echo "skipped ${name}.yaml (unchanged since ${prev_tag})"
+            fi
+          done
 
       # The Windows DB-reset helper (also bundled in the installer). A
       # checked-in source file copied straight into the workspace, like
