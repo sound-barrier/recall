@@ -41,16 +41,30 @@ export type ProblemDetails     = components['schemas']['ProblemDetails']
 // with no import from the generated frontend/bindings/.
 const APP_FQN = 'recall/pkg/app.App.'
 
-// Detect the native Wails v3 webview by its user-agent marker. The webview's UA
-// carries the Wails application name ("wails.io" by default), set synchronously
-// at webview creation — so it's reliably present when this module first loads.
-// (window._wails.flags is NOT: the backend injects it LATER via ExecJS, after
-// this const would already have evaluated, so it read as false on boot and every
-// call wrongly took the fetch path.) A regular browser (server mode) + the test
-// env lack the marker. We match the bare "wails" token, NOT a hostname-shaped
-// literal, so CodeQL's incomplete-URL-sanitization rule stays quiet. Stays a
-// `const` so tree-shakers can fold the dead branch at build time.
-const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails')
+// Detect the native Wails v3 webview. Wails serves the app from its own origin —
+// the `wails:` custom scheme (macOS) or the `wails.localhost` virtual host
+// (Windows) — which window.location exposes synchronously the moment this module
+// loads. That origin check is the primary, cross-platform signal.
+//
+// The older UA-marker check works only on macOS: there Wails sets
+// applicationNameForUserAgent ("wails.io") into the JS-visible navigator.userAgent,
+// but on Windows the marker is appended ONLY to the outgoing request header (see
+// wails v3 webview_window_windows.go processRequest), never to navigator.userAgent
+// — so a UA-only detector read false on every Windows build and every call
+// wrongly took the fetch path (HTTP 404 against the desktop AssetServer). We keep
+// the UA check as a secondary signal (covers `wails dev`, where the webview may
+// load the Vite origin) and OR the two. String comparisons only — no
+// hostname-shaped regex, so CodeQL's incomplete-URL-sanitization rule stays quiet.
+// (window._wails.flags is unusable here: the backend injects it LATER via ExecJS,
+// after this would already have evaluated.)
+function detectWailsWebview(): boolean {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location
+    if (protocol === 'wails:' || hostname === 'wails.localhost') return true
+  }
+  return typeof navigator !== 'undefined' && navigator.userAgent.includes('wails')
+}
+const IS_WAILS = detectWailsWebview()
 
 // OpenURL opens a URL in the OS default browser. In Wails mode the WebView
 // does not route target="_blank" links to the system browser, so we call the
