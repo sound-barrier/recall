@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.25.0](https://github.com/sound-barrier/recall/compare/v0.24.0...v0.25.0) (2026-07-05)
+
+
+### Bug Fixes
+
+* **frontend:** detect Wails by serving origin, not just the UA ([151a758](https://github.com/sound-barrier/recall/commit/151a758b4e1d37a08057951b480e9866ed17fa96))
+
+
+### Chores
+
+* cut v0.25.0 ([5e81084](https://github.com/sound-barrier/recall/commit/5e810842900e726f839b541a37cb27e195d1cd1b))
+
 ## [0.24.0](https://github.com/sound-barrier/recall/compare/v0.23.2...v0.24.0) (2026-07-05)
 
 
