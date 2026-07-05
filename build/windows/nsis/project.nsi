@@ -113,6 +113,28 @@ Unicode true
     ${EndIf}
 !macroend
 
+####
+## Close any running Recall before touching files.
+##
+## Recall's window-close hook hides the app to the tray and keeps the process
+## alive as the background screenshots watcher (pkg/cmd/systray.go,
+## ExitOnClose defaults false) — so the user can believe they "closed" Recall
+## while recall.exe is still running. An in-place per-user upgrade (or the
+## uninstaller's RMDir) then can't overwrite the locked exe and NSIS aborts with
+## "Error opening file for writing: ...\recall.exe". A graceful WM_CLOSE is no
+## use here: the app's own close hook cancels it (that's the hide-to-tray
+## behavior), so we force-terminate the process tree (/T also takes the child
+## WebView2 host processes) and pause to let the file handles release before the
+## File writes. Matches on image name, so it clears a running copy in either
+## scope; the installer's own image is recall-<arch>-installer.exe, which never
+## matches recall.exe.
+####
+!macro closeRunningRecall
+    DetailPrint "Closing any running Recall instance…"
+    ExecWait '"$SYSDIR\taskkill.exe" /F /T /IM "${PRODUCT_EXECUTABLE}"'
+    Sleep 1000
+!macroend
+
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
 VIFileVersion    "${INFO_PRODUCTVERSION}.0"
@@ -165,6 +187,10 @@ FunctionEnd
 Section
     !insertmacro wails.setShellContext
 
+    ; A running Recall (tray watcher) locks recall.exe and fails the upgrade
+    ; with "Error opening file for writing" — close it before any file writes.
+    !insertmacro closeRunningRecall
+
     ; Per-user installs first clear any prior machine-wide (Program Files)
     ; copy so there's exactly one install and it can self-update in place.
     !if "${WAILS_INSTALL_SCOPE}" == "user"
@@ -190,8 +216,12 @@ Section
     !insertmacro wails.writeUninstaller
 SectionEnd
 
-Section "uninstall" 
+Section "uninstall"
     !insertmacro wails.setShellContext
+
+    ; A running tray instance locks recall.exe; without this the RMDir below
+    ; silently leaves the exe (and the live process) behind.
+    !insertmacro closeRunningRecall
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
