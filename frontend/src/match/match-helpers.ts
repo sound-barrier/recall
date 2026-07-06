@@ -278,6 +278,23 @@ export function screenshotURL(filename: string, dirID = 0): string {
   return `/_screenshot/${dirID}/${encodeURIComponent(filename)}`
 }
 
+// previousAnnotatedRecord finds the source for the journal's "Apply
+// previous" affordance: walking back from currentKey through a
+// chronologically ASCENDING record list (the aggregate's match_key sort
+// order, preserved by narrowedRecords), the nearest earlier match whose
+// annotation carries members or tags. Null when currentKey is absent,
+// oldest, or nothing before it is annotated.
+export function previousAnnotatedRecord<
+  T extends { match_key: string, annotation?: { members?: string[], tags?: string[] } | null },
+>(records: T[], currentKey: string): T | null {
+  const idx = records.findIndex(r => r.match_key === currentKey)
+  for (let i = idx - 1; i >= 0; i--) {
+    const a = records[i]!.annotation
+    if ((a?.members?.length ?? 0) > 0 || (a?.tags?.length ?? 0) > 0) return records[i]!
+  }
+  return null
+}
+
 // Duplicate-sweep candidates: the backend marks an ambiguous candidate
 // proposed by the end-of-parse duplicate sweep (identical TEAMS stat
 // line, 30 min – 7 days apart) with reason "duplicate_stats"; ordinary

@@ -152,7 +152,10 @@ That's it for setup. **Settings → Engine** should now show
    primary hero, e/a/d, and result. Click a card (or the chevron, or
    press `e` on the focused row) to open the **detail panel** — a
    slide-in surface on the right with the full readout: When · Final
-   Score · Parsed, your match journal (notes / replay / squad / tags),
+   Score · Parsed, your match journal (notes / replay / squad / tags —
+   playing a stack session? **Apply previous** on the journal header
+   copies the squad + tags from your last annotated match into the
+   draft, and nothing saves until you hit Confirm),
    the leaver chooser, the Match Stats grid, a Rank Update card (when
    a rank screenshot was captured for this match), Heroes Played, and
    the source screenshots. Use `←` / `→` to step through the filtered

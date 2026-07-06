@@ -7,6 +7,7 @@ import { useDetailPanelKeyboard } from '@/composables/matches/useDetailPanelKeyb
 import { useUiStore } from '@/stores/ui'
 import { useMatchesStore } from '@/stores/matches'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
+import { previousAnnotatedRecord } from '@/match/match-helpers'
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import DetailPanelHeader from '@/components/matches/detail/DetailPanelHeader.vue'
 
@@ -54,6 +55,12 @@ const positionTotal = computed(() => matchesStore.matchesNarrow.narrowedRecords.
 const hasLightbox = computed(() => preview.lightboxFilename.value !== null)
 const anchorKey = computed(() => matchesStore.matchAnchor.anchorKey.value)
 const availableTags = computed(() => matchesStore.matchesNarrow.availableTags.value)
+// The journal's "Apply previous" source: the nearest chronologically
+// earlier narrowed match carrying members or tags (narrowedRecords is
+// ascending — the aggregate's match_key sort order). Null hides the button.
+const applySource = computed(() => record.value
+  ? previousAnnotatedRecord(matchesStore.matchesNarrow.narrowedRecords.value, record.value.match_key)
+  : null)
 
 // Forwarded to MatchCardExpanded — per-match boolean / per-filename + field fns.
 const isSourcesOpen = computed(() => uiStore.isSourcesOpen(selection.selectedKey.value))
@@ -185,6 +192,7 @@ function onBackdropClick(e: MouseEvent) {
             :anchor-key="anchorKey"
             :available-tags="availableTags"
             :pending-focus="pendingFocus"
+            :apply-source="applySource"
             @focus-consumed="clearPendingFocus"
             @toggle-sources="toggleSources"
             @toggle-preview="togglePreview"

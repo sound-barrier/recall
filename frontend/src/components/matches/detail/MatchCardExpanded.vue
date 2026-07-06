@@ -52,6 +52,9 @@ const props = defineProps<{
   // annotation actions. Emits `focus-consumed` after applying so
   // the parent can clear and avoid re-focusing on re-render.
   pendingFocus?: '' | 'note' | 'tag'
+  // The journal's "Apply previous" source (the chronologically previous
+  // annotated match), threaded from MatchDetailPanel like availableTags.
+  applySource?: Pick<MatchRecord, 'match_key' | 'annotation'> | null
 }>()
 
 const emit = defineEmits<{
@@ -277,6 +280,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       :search-clauses="searchClauses"
       :available-tags="availableTags"
       :pending-focus="pendingFocus"
+      :apply-source="applySource"
       @focus-consumed="emit('focus-consumed')"
     />
 
