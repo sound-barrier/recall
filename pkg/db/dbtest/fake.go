@@ -73,6 +73,7 @@ type Fake struct {
 	// verify the App layer (or HTTP handlers) actually reached the
 	// store.
 	UpsertCalls     int
+	OptimizeCalls   int
 	ClearCalls      int
 	CloseCalls      int
 	HideCalls       []string
@@ -281,8 +282,14 @@ func (f *Fake) Health() (db.DBHealth, error) {
 	return db.DBHealth{Integrity: "ok", CheckedAt: "2026-01-01T00:00:00Z"}, nil
 }
 
-// Optimize is a no-op — nothing to analyze in memory.
-func (f *Fake) Optimize() error { return nil }
+// Optimize is a no-op — nothing to analyze in memory. Calls are
+// counted so the post-parse auto-optimize scheduling is observable.
+func (f *Fake) Optimize() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.OptimizeCalls++
+	return nil
+}
 
 // Vacuum is a no-op — nothing to compact in memory.
 func (f *Fake) Vacuum() error { return nil }

@@ -308,6 +308,8 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// match be recognized: its stat line lives under one fresh key
 	// regardless of which file minted it (duplicate_sweep.go).
 	st.sweepNewMatchDuplicates()
+	// Post-run DB maintenance — self-gating, skipped when nothing changed.
+	a.optimizeAfterParse(len(st.matchesUpdated))
 	// Authoritative completion signal for EVERY parse path. The frontend
 	// drives parseBusy off this (not a held-open request), and the watcher
 	// no longer emits it separately. The distinct-match count feeds the desktop
