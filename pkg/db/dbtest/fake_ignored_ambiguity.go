@@ -88,6 +88,50 @@ func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandid
 	return append([]db.AmbiguousCandidate(nil), cands...), nil
 }
 
+func (f *Fake) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename string, cands []db.AmbiguousCandidate) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	rewritten := 0
+	for i, r := range f.Summaries {
+		if r.MatchKey == matchKey {
+			f.Summaries[i].MatchKey = ambiguousMatchKey
+			rewritten++
+		}
+	}
+	for i, r := range f.Teams {
+		if r.MatchKey == matchKey {
+			f.Teams[i].MatchKey = ambiguousMatchKey
+			rewritten++
+		}
+	}
+	for i, r := range f.Personals {
+		if r.MatchKey == matchKey {
+			f.Personals[i].MatchKey = ambiguousMatchKey
+			rewritten++
+		}
+	}
+	for i, r := range f.Ranks {
+		if r.MatchKey == matchKey {
+			f.Ranks[i].MatchKey = ambiguousMatchKey
+			rewritten++
+		}
+	}
+	for i, r := range f.Unknowns {
+		if r.MatchKey == matchKey {
+			f.Unknowns[i].MatchKey = ambiguousMatchKey
+			rewritten++
+		}
+	}
+	if rewritten == 0 {
+		return false, nil
+	}
+	if f.Ambiguous == nil {
+		f.Ambiguous = map[string][]db.AmbiguousCandidate{}
+	}
+	f.Ambiguous[filename] = append([]db.AmbiguousCandidate(nil), cands...)
+	return true, nil
+}
+
 func (f *Fake) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

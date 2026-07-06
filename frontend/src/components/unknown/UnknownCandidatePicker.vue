@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { screenshotURL } from '@/match/match-helpers'
+import { screenshotURL, isDuplicateCandidate, hasDuplicateCandidate } from '@/match/match-helpers'
+import { formatCandidateDistance } from '@/match/match-time-helpers'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 
@@ -36,11 +37,6 @@ function setActive(candKey: string) {
 // the candidate is no longer in `records` (hidden + show-hidden off).
 function findRecord(matchKey: string): MatchRecord | undefined {
   return matchesStore.records.find(r => r.match_key === matchKey)
-}
-
-function formatDistance(seconds: number): string {
-  if (seconds < 60) return `${seconds}s apart`
-  return `${Math.round(seconds / 60)} min apart`
 }
 
 // "Treat as new match" mints a fresh match-<ts> key from the ambiguous
@@ -88,7 +84,10 @@ function freshKey(): string | null {
           </button>
           <div class="candidate-headline">
             <span class="candidate-key mono">{{ cand.match_key }}</span>
-            <span class="candidate-distance">{{ formatDistance(cand.distance_seconds) }}</span>
+            <span v-if="isDuplicateCandidate(cand)" class="candidate-duplicate-label">
+              Possible duplicate — identical combat stat line
+            </span>
+            <span class="candidate-distance">{{ formatCandidateDistance(cand.distance_seconds) }}</span>
             <span v-if="findRecord(cand.match_key)" class="candidate-summary">
               {{ [findRecord(cand.match_key)?.data?.map, findRecord(cand.match_key)?.data?.hero, findRecord(cand.match_key)?.data?.date].filter(Boolean).join(' · ') }}
             </span>
@@ -98,7 +97,7 @@ function freshKey(): string | null {
             class="btn primary candidate-attach"
             @click="emit('pick', cand.match_key)"
           >
-            Attach to this match
+            {{ isDuplicateCandidate(cand) ? 'Same match — merge screenshots' : 'Attach to this match' }}
           </button>
         </div>
         <button
@@ -107,7 +106,7 @@ function freshKey(): string | null {
           class="btn ghost candidate-fresh"
           @click="emit('pick', freshKey()!)"
         >
-          Treat as new match
+          {{ hasDuplicateCandidate(rec) ? 'Different match — keep separate' : 'Treat as new match' }}
         </button>
       </div>
       <!-- Side-by-side preview pane — the active candidate's representative
@@ -284,6 +283,16 @@ function freshKey(): string | null {
 .candidate-distance {
   font-size: 0.69rem;
   color: var(--text-faint);
+}
+
+/* Why this candidate was proposed — only duplicate-sweep candidates carry
+   the label, so it reads as a warning rather than routine metadata. */
+.candidate-duplicate-label {
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--loss);
 }
 
 .candidate-summary {

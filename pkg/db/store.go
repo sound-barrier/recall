@@ -71,9 +71,15 @@ type Store interface {
 	// when there are no candidates to resolve (caller maps to 404). The
 	// caller passes the decoded `filename` (the candidate-table key) since
 	// the sentinel match_key now carries it base64url-encoded.
+	// DemoteMatchToAmbiguous is ResolveAmbiguous's inverse, used by the
+	// end-of-parse duplicate sweep: every parent row carrying matchKey
+	// is rewritten onto the ambiguous sentinel and cands is recorded
+	// under filename in one transaction. (false, nil) when no row
+	// carried the key (nothing was demoted, no candidates recorded).
 	ApplyAmbiguity(filename string, cands []AmbiguousCandidate) error
 	LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandidate, error)
 	ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string) (bool, error)
+	DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename string, cands []AmbiguousCandidate) (bool, error)
 
 	// Match-annotation surface — user-curated per-match notes.
 	// SetAnnotation upserts; DeleteAnnotation removes by key; LoadAnnotations

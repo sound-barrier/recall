@@ -14,6 +14,8 @@ import {
   formatFinishedAt,
   screenshotURL,
   highlightSubstring,
+  isDuplicateCandidate,
+  hasDuplicateCandidate,
 } from '@/match/match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
@@ -431,5 +433,19 @@ describe('row formatters', () => {
   it('formatFinishedAt returns the finish time or empty', () => {
     expect(formatFinishedAt({ data: { finished_at: '21:29' } })).toBe('21:29')
     expect(formatFinishedAt({ data: {} })).toBe('')
+  })
+})
+
+describe('duplicate-candidate predicates', () => {
+  it('isDuplicateCandidate keys on reason === "duplicate_stats"', () => {
+    expect(isDuplicateCandidate({ reason: 'duplicate_stats' })).toBe(true)
+    expect(isDuplicateCandidate({})).toBe(false)
+    expect(isDuplicateCandidate({ reason: '' })).toBe(false)
+  })
+
+  it('hasDuplicateCandidate scans the candidate list and tolerates its absence', () => {
+    expect(hasDuplicateCandidate({ candidates: [{ match_key: 'm', distance_seconds: 11321, reason: 'duplicate_stats' }] })).toBe(true)
+    expect(hasDuplicateCandidate({ candidates: [{ match_key: 'm', distance_seconds: 720 }] })).toBe(false)
+    expect(hasDuplicateCandidate({})).toBe(false)
   })
 })

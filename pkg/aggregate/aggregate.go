@@ -107,6 +107,7 @@ func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots
 				rec.Candidates = append(rec.Candidates, match.AmbiguousAttribution{
 					MatchKey:        c.MatchKey,
 					DistanceSeconds: c.DistanceSeconds,
+					Reason:          correlate.CandidateReason(c.DistanceSeconds),
 				})
 			}
 		}

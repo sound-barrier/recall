@@ -8,6 +8,7 @@ import {
   formatMinutesAsClock,
   formatPlayMinutes,
   monthDateRange,
+  formatCandidateDistance,
 } from '@/match/match-time-helpers'
 
 // ─── matchTime ───────────────────────────────────────────────────────
@@ -309,5 +310,24 @@ describe('monthDateRange', () => {
 
   it('zero-pads single-digit months in the output', () => {
     expect(monthDateRange('2026-09')).toEqual({ from: '2026-09-01', to: '2026-09-30' })
+  })
+})
+
+describe('formatCandidateDistance', () => {
+  it('renders sub-minute distances in seconds', () => {
+    expect(formatCandidateDistance(45)).toBe('45s apart')
+  })
+
+  it('renders sub-hour distances in minutes', () => {
+    expect(formatCandidateDistance(720)).toBe('12 min apart')
+  })
+
+  it('renders hour-scale distances in hours (the duplicate-sweep zone)', () => {
+    expect(formatCandidateDistance(11321)).toBe('3 h apart')
+  })
+
+  it('renders multi-day distances in days with singular/plural handled', () => {
+    expect(formatCandidateDistance(2 * 86400 + 3600)).toBe('2 days apart')
+    expect(formatCandidateDistance(48 * 3600)).toBe('2 days apart')
   })
 })

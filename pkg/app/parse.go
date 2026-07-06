@@ -289,6 +289,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	st := &parseRunState{
 		app: a, dirID: dirID, matchesUpdated: map[string]struct{}{},
 		snap: snap, annos: annos, hidden: hidden, reviews: reviews,
+		preRunKeys: snapshotMatchKeys(snap),
 	}
 	_, err = ParseScreenshotsDirFunc(ctx, screenshotsDir, parsed, st.handleFile)
 	// User pressed Stop mid-batch. The partial state already committed to
@@ -303,6 +304,10 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
+	// Only now, with the run's capture sets complete, can a re-captured
+	// match be recognized: its stat line lives under one fresh key
+	// regardless of which file minted it (duplicate_sweep.go).
+	st.sweepNewMatchDuplicates()
 	// Authoritative completion signal for EVERY parse path. The frontend
 	// drives parseBusy off this (not a held-open request), and the watcher
 	// no longer emits it separately. The distinct-match count feeds the desktop
@@ -360,6 +365,11 @@ type parseRunState struct {
 	annos   map[string]db.Annotation
 	hidden  map[string]bool
 	reviews map[string]db.ReviewState
+	// Match keys that existed before this run started — the duplicate
+	// sweep (duplicate_sweep.go) only judges keys minted during the
+	// run, so pre-existing history is never demoted and ReParseAll
+	// (where every re-adopted key pre-exists) is exempt by construction.
+	preRunKeys map[string]struct{}
 }
 
 // handleFile is the per-file parser callback: snapshot progress, insert the

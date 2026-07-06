@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"slices"
 
+	"recall/pkg/correlate"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
@@ -99,6 +100,7 @@ func AttachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.Ambigu
 			attr := match.AmbiguousAttribution{
 				MatchKey:        c.MatchKey,
 				DistanceSeconds: c.DistanceSeconds,
+				Reason:          correlate.CandidateReason(c.DistanceSeconds),
 			}
 			if cand, ok := byKey[c.MatchKey]; ok && len(cand.SourceFiles) > 0 {
 				attr.RepresentativeSourceFile = cand.SourceFiles[0]

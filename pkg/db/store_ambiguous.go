@@ -88,6 +88,53 @@ func (s *SQLStore) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey str
 	return true, tx.Commit()
 }
 
+// DemoteMatchToAmbiguous is the exact inverse of ResolveAmbiguous: it
+// atomically rewrites every parent row carrying matchKey onto the
+// ambiguous sentinel and records the candidate list under filename (the
+// sentinel's embedded anchor). The end-of-parse duplicate sweep uses it
+// to pull a freshly-created match back into the "Needs your review"
+// queue. Returns (false, nil) without recording candidates when no
+// parent row carries matchKey — recording them anyway would orphan
+// candidate rows no record surfaces.
+func (s *SQLStore) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename string, cands []AmbiguousCandidate) (bool, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	rewritten := int64(0)
+	for _, table := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		res, err := tx.Exec(
+			`UPDATE `+table+` SET match_key = ? WHERE match_key = ?`,
+			ambiguousMatchKey, matchKey,
+		)
+		if err != nil {
+			return false, err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return false, err
+		}
+		rewritten += n
+	}
+	if rewritten == 0 {
+		return false, nil
+	}
+	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE filename = ?`, filename); err != nil {
+		return false, err
+	}
+	for _, c := range cands {
+		if _, err := tx.Exec(
+			`INSERT INTO ambiguous_candidates (filename, match_key, distance_seconds) VALUES (?,?,?)`,
+			filename, c.MatchKey, c.DistanceSeconds,
+		); err != nil {
+			return false, err
+		}
+	}
+	return true, tx.Commit()
+}
+
 // loadAllAmbiguousCandidates returns every ambiguous_candidates row
 // grouped by filename. Used by LoadAll to populate
 // Screenshots.AmbiguousCandidates in one bulk read instead of N

@@ -11,7 +11,10 @@ The tab surfaces two kinds of records:
    to a single match. Statistics (eliminations / assists / deaths)
    matched one or more existing matches in a time window short
    enough that "this could be the same match or a different match
-   with identical stats" is genuinely ambiguous. See
+   with identical stats" is genuinely ambiguous — or a fresh
+   capture's full scoreboard stat line exactly duplicated a match
+   from the past week (almost certainly a re-screenshot; flagged
+   **Possible duplicate**). See
    [Needs your review (ambiguous attribution)](#needs-your-review-ambiguous-attribution)
    below.
 2. **Unknown maps** — records where the map couldn't be parsed at
@@ -188,25 +191,46 @@ repro; crop or blur them before uploading if you'd like.
 
 ## Needs your review (ambiguous attribution)
 
-If two matches share the same hero, map, and `(eliminations,
-assists, deaths)` triple inside a 30-minute window, Recall can't
-tell them apart from the screenshots alone. Rather than guess —
-which can silently merge two distinct matches into one record —
-the resolver hands the call back to you.
+Two situations land a capture here. If two matches share the same
+hero, map, and `(eliminations, assists, deaths)` triple inside a
+30-minute window, Recall can't tell them apart from the
+screenshots alone. And if a freshly parsed match's **entire**
+scoreboard stat line — eliminations, assists, deaths, damage,
+healing, AND mitigation — exactly equals a match already in your
+history from the past 7 days, it is almost certainly a
+re-screenshot of the same match (identical damage numbers don't
+happen twice by accident); the new capture is flagged **Possible
+duplicate** instead of silently becoming a second match. Rather
+than guess — which can silently merge two distinct matches into
+one record, or double-count one match as two — the resolver hands
+the call back to you.
 
 Ambiguous records appear at the top of the Unknown tab under the
 **"Needs your review — N"** subheading. Each card shows:
 
-- The filename of the screenshot needing attribution.
+- The filename of the screenshot needing attribution, with a
+  **Possible duplicate** chip when the duplicate check flagged it.
 - A **"Pick the match"** block listing candidate matches. For each
   candidate you'll see its key, hero / map / date headline, and
   how far apart in time it is from the ambiguous screenshot
-  (e.g. *"12 min apart"*).
-- An **Attach to this match** button per candidate.
-- A **Treat as new match** escape hatch — picks a fresh
+  (e.g. *"12 min apart"*, *"3 h apart"*). Duplicate candidates
+  carry an explicit *"Possible duplicate — identical combat stat
+  line"* label.
+- An **Attach to this match** button per candidate — worded
+  **Same match — merge screenshots** for duplicate candidates.
+- A **Treat as new match** escape hatch (**Different match — keep
+  separate** on duplicate cards) — picks a fresh
   `match:<timestamp>` derived from the screenshot's filename, so
   the row becomes its own standalone match instead of joining
   any candidate.
+
+One edge worth knowing about the duplicate check: it compares the
+full scoreboard line from your TEAMS screenshot, so a re-capture
+that includes only the post-match summary (no scoreboard shot on
+one side or the other) won't be flagged. It also runs at the end
+of each parse run — in the rare case where a duplicate set's
+summary lands in one watcher run and its scoreboard in the next,
+the pairing across runs isn't re-checked.
 
 Clicking **Attach** rewrites every parent row carrying the
 ambiguous sentinel (the original screenshot AND any siblings

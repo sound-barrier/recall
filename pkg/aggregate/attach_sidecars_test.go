@@ -172,3 +172,49 @@ func TestAggregateMatchKey_AttachesSidecarsAndFoldsUnknown(t *testing.T) {
 		t.Errorf("SourceFiles = %v, want to include the unknown u.png", rec.SourceFiles)
 	}
 }
+
+// The candidate Reason is derived from distance: beyond the 30-min EAD
+// cap a candidate can only come from the duplicate sweep; at or below
+// it, the reason stays empty (window / EAD ambiguity).
+func TestAttachAmbiguity_DerivesDuplicateReasonFromDistance(t *testing.T) {
+	sentinel := match.NewAmbiguousMatchKey("dup.png").String()
+	recs := []match.MatchRecord{
+		{MatchKey: sentinel, SourceFiles: []string{"dup.png"}},
+		{MatchKey: "match-orig", SourceFiles: []string{"orig.png"}},
+	}
+	aggregate.AttachAmbiguity(recs, map[string][]db.AmbiguousCandidate{
+		"dup.png": {
+			{MatchKey: "match-orig", DistanceSeconds: 11321},
+			{MatchKey: "match-other", DistanceSeconds: 720},
+		},
+	})
+	if len(recs[0].Candidates) != 2 {
+		t.Fatalf("expected 2 candidates, got %+v", recs[0].Candidates)
+	}
+	if got := recs[0].Candidates[0].Reason; got != "duplicate_stats" {
+		t.Errorf("11321s candidate reason = %q, want duplicate_stats", got)
+	}
+	if got := recs[0].Candidates[1].Reason; got != "" {
+		t.Errorf("720s candidate reason = %q, want empty", got)
+	}
+}
+
+// The single-key aggregate path (attachMatchSidecars via
+// AggregateMatchKey) derives the same reason — pins both candidate-
+// building sites.
+func TestAggregateMatchKey_DerivesDuplicateReasonFromDistance(t *testing.T) {
+	sentinel := match.NewAmbiguousMatchKey("dup.png").String()
+	snap := db.Screenshots{
+		Teams: []db.TeamsRow{{Filename: "dup.png", MatchKey: sentinel, Eliminations: 1}},
+		AmbiguousCandidates: map[string][]db.AmbiguousCandidate{
+			"dup.png": {{MatchKey: "match-orig", DistanceSeconds: 11321}},
+		},
+	}
+	rec, ok := aggregate.AggregateMatchKey(sentinel, snap, nil, nil, nil)
+	if !ok {
+		t.Fatal("expected the sentinel record to aggregate")
+	}
+	if len(rec.Candidates) != 1 || rec.Candidates[0].Reason != "duplicate_stats" {
+		t.Errorf("candidates = %+v, want one with reason duplicate_stats", rec.Candidates)
+	}
+}

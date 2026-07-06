@@ -1096,3 +1096,90 @@ func TestSQLStore_SentinelScreenshotsDir_SeededAndFKEnforced(t *testing.T) {
 		t.Fatalf("insert with sentinel id failed: %v", err)
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────
+// DemoteMatchToAmbiguous — the duplicate sweep's inverse of
+// ResolveAmbiguous.
+// ──────────────────────────────────────────────────────────────────
+
+func TestSQLStore_DemoteMatchToAmbiguous_RewritesRowsAndRecordsCandidates(t *testing.T) {
+	s := openMemory(t)
+	const key = "match-2026-05-10T21-14-03"
+	const sentinel = "ambiguous-c2NvcmVib2FyZC0yLnBuZw"
+	if err := s.UpsertTeams(db.TeamsRow{
+		Filename: "dup-teams.png", MatchKey: key,
+		Eliminations: 17, Assists: 16, Deaths: 11,
+		Damage: 12843, Healing: 9021, Mitigation: 3310,
+	}); err != nil {
+		t.Fatalf("UpsertTeams: %v", err)
+	}
+	if err := s.UpsertSummary(db.SummaryRow{
+		Filename: "dup-summary.png", MatchKey: key, Map: "rialto",
+	}); err != nil {
+		t.Fatalf("UpsertSummary: %v", err)
+	}
+	if err := s.UpsertTeams(db.TeamsRow{
+		Filename: "other.png", MatchKey: "match-2026-05-10T18-05-22",
+		Eliminations: 1, Assists: 2, Deaths: 3,
+	}); err != nil {
+		t.Fatalf("UpsertTeams other: %v", err)
+	}
+
+	cands := []db.AmbiguousCandidate{{MatchKey: "match-2026-05-10T18-05-22", DistanceSeconds: 11321}}
+	ok, err := s.DemoteMatchToAmbiguous(key, sentinel, "dup-teams.png", cands)
+	if err != nil {
+		t.Fatalf("DemoteMatchToAmbiguous: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected ok=true when rows carried the key")
+	}
+
+	snap, err := s.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	for _, r := range snap.Teams {
+		switch r.Filename {
+		case "dup-teams.png":
+			if r.MatchKey != sentinel {
+				t.Errorf("teams row not demoted: %q", r.MatchKey)
+			}
+		case "other.png":
+			if r.MatchKey != "match-2026-05-10T18-05-22" {
+				t.Errorf("unrelated row touched: %q", r.MatchKey)
+			}
+		}
+	}
+	if len(snap.Summaries) != 1 || snap.Summaries[0].MatchKey != sentinel {
+		t.Errorf("summary row not demoted: %+v", snap.Summaries)
+	}
+
+	got, err := s.LoadAmbiguousCandidatesFor("dup-teams.png")
+	if err != nil {
+		t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
+	}
+	if !reflect.DeepEqual(got, cands) {
+		t.Errorf("candidates: got %+v want %+v", got, cands)
+	}
+}
+
+func TestSQLStore_DemoteMatchToAmbiguous_NoRows_NoOp(t *testing.T) {
+	s := openMemory(t)
+	ok, err := s.DemoteMatchToAmbiguous(
+		"match-2026-05-10T21-14-03", "ambiguous-eA", "gone.png",
+		[]db.AmbiguousCandidate{{MatchKey: "match-x", DistanceSeconds: 9000}},
+	)
+	if err != nil {
+		t.Fatalf("DemoteMatchToAmbiguous: %v", err)
+	}
+	if ok {
+		t.Fatalf("expected ok=false when no rows carry the key")
+	}
+	got, err := s.LoadAmbiguousCandidatesFor("gone.png")
+	if err != nil {
+		t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected no orphaned candidates, got %+v", got)
+	}
+}
