@@ -278,6 +278,20 @@ export function screenshotURL(filename: string, dirID = 0): string {
   return `/_screenshot/${dirID}/${encodeURIComponent(filename)}`
 }
 
+// Duplicate-sweep candidates: the backend marks an ambiguous candidate
+// proposed by the end-of-parse duplicate sweep (identical TEAMS stat
+// line, 30 min – 7 days apart) with reason "duplicate_stats"; ordinary
+// EAD-bridge / timestamp-window candidates carry no reason. The Unknown
+// tab swaps its wording ("Possible duplicate", merge / keep-separate)
+// on this signal.
+export function isDuplicateCandidate(cand: { reason?: string }): boolean {
+  return cand.reason === 'duplicate_stats'
+}
+
+export function hasDuplicateCandidate(rec: Pick<MatchRecord, 'candidates'>): boolean {
+  return rec.candidates?.some(isDuplicateCandidate) ?? false
+}
+
 // highlightSubstring segments `text` into alternating hit / non-hit
 // runs against a (case-insensitive, trimmed) query. Pure — caller
 // renders each segment as a <mark> or plain text. Empty text →

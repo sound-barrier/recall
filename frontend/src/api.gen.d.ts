@@ -2279,10 +2279,13 @@ export interface components {
             /**
              * @description True iff the resolver couldn't pin this screenshot to a
              *     single match (EAD signature match in the 5-30 min
-             *     ambiguous window, or multiple candidates inside 30 min).
-             *     The `match_key` carries the `ambiguous-<filename>`
-             *     sentinel and the `candidates` array lists the possible
-             *     matches the user can pick from in the Unknown tab.
+             *     ambiguous window, or multiple candidates inside 30 min),
+             *     or the end-of-parse duplicate sweep demoted a freshly
+             *     created match whose full TEAMS stat line duplicated an
+             *     existing match's within 7 days. The `match_key` carries
+             *     the `ambiguous-<filename>` sentinel and the `candidates`
+             *     array lists the possible matches the user can pick from
+             *     in the Unknown tab.
              */
             ambiguous?: boolean;
             /**
@@ -2295,7 +2298,9 @@ export interface components {
         /**
          * @description One candidate match an ambiguous screenshot could belong to.
          *     Populated by the resolver when EAD-bridge ambiguity is
-         *     detected; surfaced to the user in the Unknown tab.
+         *     detected, or by the end-of-parse duplicate sweep when a fresh
+         *     match's TEAMS stat line duplicates an existing match's;
+         *     surfaced to the user in the Unknown tab.
          */
         AmbiguousCandidate: {
             /**
@@ -2309,6 +2314,19 @@ export interface components {
              * @example 720
              */
             distance_seconds: number;
+            /**
+             * @description Why the candidate was proposed. `duplicate_stats` means the
+             *     end-of-parse duplicate sweep found the capture's full TEAMS
+             *     stat line (eliminations, assists, deaths, damage, healing,
+             *     mitigation) exactly equal to this candidate match's, 30
+             *     minutes to 7 days apart — almost certainly a re-capture of
+             *     the same match. Omitted for ordinary EAD-bridge /
+             *     timestamp-window ambiguity. Derived from `distance_seconds`
+             *     server-side, never stored.
+             * @example duplicate_stats
+             * @enum {string}
+             */
+            reason?: "duplicate_stats";
             /**
              * @description One source file from the candidate match (its earliest
              *     screenshot) so the picker UI can render a thumbnail next

@@ -194,6 +194,17 @@ export function formatIgnoredAt(ts: string | null | undefined): string {
   })
 }
 
+// formatCandidateDistance renders an ambiguous candidate's |Δt| at the scale
+// that reads naturally: seconds under a minute, minutes under an hour, hours
+// under two days (duplicate-sweep candidates live here), whole days beyond.
+export function formatCandidateDistance(seconds: number): string {
+  if (seconds < 60) return `${seconds}s apart`
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min apart`
+  if (seconds < 48 * 3600) return `${Math.round(seconds / 3600)} h apart`
+  const days = Math.round(seconds / 86400)
+  return `${days} day${days === 1 ? '' : 's'} apart`
+}
+
 // monthDateRange maps a 'YYYY-MM' month key to its full calendar span as
 // YYYY-MM-DD strings — first day to last day, handling 30/31-day months and
 // leap-year February. Drives the campaign-log heatmap's "pick the whole month".

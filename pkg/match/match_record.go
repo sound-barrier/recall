@@ -102,9 +102,16 @@ const (
 //
 // RepresentativeSourceFile + RepresentativeDirID let the Unknown-tab
 // picker render a small thumbnail beside each candidate.
+//
+// Reason says why the candidate was proposed: "duplicate_stats" when it
+// came from the end-of-parse duplicate sweep (identical TEAMS stat
+// line, hours-to-days apart), empty for the EAD-bridge / timestamp-
+// window ambiguity. Derived from distance at aggregate time
+// (correlate.CandidateReason), never stored.
 type AmbiguousAttribution struct {
 	MatchKey                 string `json:"match_key"`
 	DistanceSeconds          int    `json:"distance_seconds"`
+	Reason                   string `json:"reason,omitempty"`
 	RepresentativeSourceFile string `json:"representative_source_file,omitempty"`
 	RepresentativeDirID      int64  `json:"representative_dir_id,omitempty"`
 }

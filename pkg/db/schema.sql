@@ -227,6 +227,11 @@ CREATE TABLE IF NOT EXISTS unknown_screenshots (
 CREATE INDEX IF NOT EXISTS idx_unknown_match_key_parsed_at ON unknown_screenshots(match_key, parsed_at);
 -- statement-end
 
+-- Candidate rows come from two producers: the per-file resolver
+-- (EAD-bridge / timestamp-window ambiguity, distances <= 30 min) and
+-- the end-of-parse duplicate sweep (identical TEAMS stat line, 30 min
+-- to 7 days). No reason column on purpose — the producer is derivable
+-- from distance_seconds (correlate.CandidateReason).
 CREATE TABLE IF NOT EXISTS ambiguous_candidates (
   filename         TEXT NOT NULL,
   match_key        TEXT NOT NULL,

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
-import { screenshotURL } from '@/match/match-helpers'
+import { screenshotURL, hasDuplicateCandidate } from '@/match/match-helpers'
 import UnknownCandidatePicker from '@/components/unknown/UnknownCandidatePicker.vue'
 import UnknownReferenceGapSection from '@/components/unknown/UnknownReferenceGapSection.vue'
 import UnknownUnmatchedSection from '@/components/unknown/UnknownUnmatchedSection.vue'
@@ -140,7 +140,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
         Needs your review — {{ ambiguousList.length }}
       </h3>
       <p class="needs-review-desc">
-        These screenshots share statistics with other matches close in time. Pick the match each one belongs to, or treat it as a new match if none of the candidates is right.
+        These screenshots share statistics with other matches close in time — or exactly duplicate another match's stat line hours later. Pick the match each one belongs to, or keep it separate if none of the candidates is right.
       </p>
       <div class="unknown-list">
         <article
@@ -153,6 +153,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
             <div class="unknown-head-lhs">
               <span class="unknown-key-block">
                 <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
+                <span v-if="hasDuplicateCandidate(rec)" class="duplicate-badge">Possible duplicate</span>
                 <span class="unknown-src-count">
                   {{ rec.candidates?.length ?? 0 }} candidate match{{ (rec.candidates?.length ?? 0) === 1 ? '' : 'es' }}
                 </span>

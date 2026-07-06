@@ -200,6 +200,22 @@
   color: var(--text-faint);
 }
 
+/* "Possible duplicate" chip on a "Needs your review" card whose candidate
+   list carries a duplicate-sweep hit (reason: duplicate_stats). */
+.duplicate-badge {
+  align-self: flex-start;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--loss);
+  background: color-mix(in srgb, var(--loss) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--loss) 50%, transparent);
+  border-radius: 2px;
+  padding: 0.12rem 0.4rem;
+}
+
 .unknown-head-rhs {
   display: flex;
   align-items: center;
