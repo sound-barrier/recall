@@ -254,6 +254,9 @@ func (a *App) noteProgress(done, total int) {
 // completion the same way — the linchpin that lets the server return
 // 202 up-front instead of holding the request open for the whole run.
 func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir string) error {
+	// This run consumes whatever the watcher queued — clear the
+	// masthead's "N new" tally up front (the parse chip takes over).
+	a.resetWatchActivity()
 	parsed, err := a.parsedSkipSet(force)
 	if err != nil {
 		return err

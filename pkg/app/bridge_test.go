@@ -54,6 +54,8 @@ var (
 	CaptureFatal        = (*App).captureFatal
 	StartWatching       = (*App).startWatching
 	StopWatching        = (*App).stopWatching
+	NoteWatchActivity   = (*App).noteWatchActivity
+	ResetWatchActivity  = (*App).resetWatchActivity
 	LoadSettings        = (*App).loadSettings
 	SaveSettings        = (*App).saveSettings
 	DataDir             = (*App).dataDir
@@ -77,8 +79,17 @@ func SetAppStore(a *App, s db.Store) { a.store = s }
 // the engine "found" without shelling out to a real binary.
 func AppTessStatus(a *App) *TesseractStatus { return &a.tessStatus }
 
-func AppProfiles(a *App) *Profiles              { return a.profiles }
-func AppWatcher(a *App) *fsnotify.Watcher       { return a.watcher }
+func AppProfiles(a *App) *Profiles        { return a.profiles }
+func AppWatcher(a *App) *fsnotify.Watcher { return a.watcher }
+
+// AppWatchActivity snapshots the watcher's pending tally + last-seen
+// stamp for the masthead-dot lifecycle tests.
+func AppWatchActivity(a *App) (int, string) {
+	a.watchMu.Lock()
+	defer a.watchMu.Unlock()
+	ev := a.watchActivityLocked()
+	return ev.Pending, ev.LastSeenAt
+}
 func AppWatchedDir(a *App) string               { return a.watchedDir }
 func AppParseCancel(a *App) *context.CancelFunc { return &a.parseCancel }
 func AppParseRunning(a *App) *bool              { return &a.parseRunning }

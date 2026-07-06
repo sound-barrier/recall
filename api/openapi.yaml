@@ -2116,6 +2116,13 @@ paths:
             times for the same match within a single parse batch as
             additional screenshots refine its fields.
           * `parse-complete` — fired after a parse run finishes
+          * `watch-activity` — fired when the folder watcher sees a new
+            screenshot and when a parse run starts, carrying
+            `{pending, last_seen_at?}`: `pending` counts files queued
+            since the last parse run began (0 when a run consumes the
+            queue) and `last_seen_at` (RFC 3339) stamps the most recent
+            file event. Drives the masthead's "watching · N new" dot;
+            not replayed — a reconnecting client simply starts idle.
           * Keepalive comment lines every 25 s so reverse proxies
             don't close the connection
 

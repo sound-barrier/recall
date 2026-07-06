@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
 import { EventsOn, EventsOff, type MatchRecord, type TesseractStatus } from '@/api-client'
-import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
+import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
 
 // Live-stream subscriptions for the three SSE events emitted during
 // ingest: parse-progress (per-file ticks), parse-complete (batch
@@ -17,6 +17,9 @@ export interface EventStreamApi {
   records: Ref<MatchRecord[]>
   parseProgress: Ref<ParseProgressEvent | null>
   parseLog: Ref<ParseProgressEvent[]>
+  // Watcher pending-file tally for the masthead dot. Optional - absent
+  // consumers simply never see watch-activity payloads.
+  watchActivity?: Ref<WatchActivityEvent | null>
   // Called when a parse batch finishes. Should reload records and
   // refresh whatever the caller wants invalidated.
   onParseComplete: () => Promise<void> | void
@@ -85,6 +88,10 @@ export function useEventStream(api: EventStreamApi) {
     EventsOn<TesseractStatus>('tesseract-status', (s) => {
       if (s) api.onTesseractStatus?.(s)
     })
+    // Watcher pending-file tally - the masthead's "watching · N new" dot.
+    EventsOn<WatchActivityEvent>('watch-activity', (ev) => {
+      if (ev && api.watchActivity) api.watchActivity.value = ev
+    })
   }
 
   function unsubscribe() {
@@ -93,6 +100,7 @@ export function useEventStream(api: EventStreamApi) {
     EventsOff('parse-cancelled')
     EventsOff('match-updated')
     EventsOff('tesseract-status')
+    EventsOff('watch-activity')
   }
 
   onMounted(subscribe)

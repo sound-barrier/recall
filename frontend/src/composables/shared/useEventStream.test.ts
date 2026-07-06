@@ -59,7 +59,7 @@ describe('useEventStream', () => {
 
   afterEach(() => { vi.clearAllMocks() })
 
-  it('subscribes to all five lifecycle events on mount', () => {
+  it('subscribes to all six lifecycle events on mount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
@@ -70,10 +70,11 @@ describe('useEventStream', () => {
       'parse-complete',
       'parse-progress',
       'tesseract-status',
+      'watch-activity',
     ])
   })
 
-  it('unsubscribes from all five on unmount', () => {
+  it('unsubscribes from all six on unmount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
@@ -85,6 +86,7 @@ describe('useEventStream', () => {
       'parse-complete',
       'parse-progress',
       'tesseract-status',
+      'watch-activity',
     ])
   })
 

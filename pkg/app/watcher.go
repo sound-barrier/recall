@@ -58,7 +58,54 @@ func (a *App) startWatching() {
 }
 
 func (a *App) runWatchLoop(w *fsnotify.Watcher) {
-	runWatchEvents(w.Events, w.Errors, a.scheduleParseDebounced)
+	runWatchEvents(w.Events, w.Errors, func() {
+		a.noteWatchActivity()
+		a.scheduleParseDebounced()
+	})
+}
+
+// WatchActivityEvent is emitted on the "watch-activity" channel/event
+// whenever the watcher sees a new screenshot (pending grows) and when a
+// parse run starts (pending resets to 0). Feeds the masthead's
+// "watching · N new" dot; LastSeenAt (RFC3339) drives its tooltip.
+type WatchActivityEvent struct {
+	Pending    int    `json:"pending"`
+	LastSeenAt string `json:"last_seen_at,omitempty"`
+}
+
+// noteWatchActivity records one watcher file event and broadcasts the
+// updated tally.
+func (a *App) noteWatchActivity() {
+	a.watchMu.Lock()
+	a.watchPending++
+	a.watchLastSeen = time.Now().UTC()
+	ev := a.watchActivityLocked()
+	a.watchMu.Unlock()
+	a.emitWatchActivity(ev)
+}
+
+// resetWatchActivity zeroes the pending tally when a parse run starts —
+// whatever the watcher queued is being consumed now. Emits only when
+// there was something to clear, so idle parses stay silent.
+func (a *App) resetWatchActivity() {
+	a.watchMu.Lock()
+	if a.watchPending == 0 {
+		a.watchMu.Unlock()
+		return
+	}
+	a.watchPending = 0
+	ev := a.watchActivityLocked()
+	a.watchMu.Unlock()
+	a.emitWatchActivity(ev)
+}
+
+// watchActivityLocked snapshots the event payload; callers hold watchMu.
+func (a *App) watchActivityLocked() WatchActivityEvent {
+	ev := WatchActivityEvent{Pending: a.watchPending}
+	if !a.watchLastSeen.IsZero() {
+		ev.LastSeenAt = a.watchLastSeen.Format(time.RFC3339)
+	}
+	return ev
 }
 
 // runWatchEvents is the pure event-loop body, abstracted away from
@@ -128,6 +175,7 @@ func (a *App) stopWatching() {
 		a.watchTimer.Stop()
 		a.watchTimer = nil
 	}
+	a.watchPending = 0
 	if a.watcher == nil {
 		return
 	}

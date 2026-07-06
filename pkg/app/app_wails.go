@@ -33,6 +33,15 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
+// emitWatchActivity broadcasts the watcher's pending-file tally to the
+// Wails event bus and (in --server mode) the SSE hub — the masthead's
+// "watching · N new" dot.
+func (a *App) emitWatchActivity(ev WatchActivityEvent) {
+	data, _ := json.Marshal(ev)
+	emitEvent("watch-activity", ev)
+	a.SSEHub.BroadcastData("watch-activity", string(data))
+}
+
 // emitMatchUpdated broadcasts a freshly-aggregated match.MatchRecord to the
 // Wails event bus and the SSE hub. Fired after each per-screenshot insert
 // resolves a match_key so the frontend can incrementally render the affected

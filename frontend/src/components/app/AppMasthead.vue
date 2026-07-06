@@ -10,10 +10,12 @@ import { storeToRefs } from 'pinia'
 import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useSettingsStore } from '@/stores/settings'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { useTabKeyboardNav } from '@/composables/shared/useTabKeyboardNav'
 import { GITHUB_REPO_URL } from '@/app-links'
 import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
+import MastheadWatchDot from '@/components/shared/MastheadWatchDot.vue'
 import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
 import AppMenuButton from '@/components/app/AppMenuButton.vue'
 
@@ -21,7 +23,8 @@ const appStore = useAppStore()
 const matchesStore = useMatchesStore()
 const { view, appVersion } = storeToRefs(appStore)
 const { goToView } = appStore
-const { records, unknownRecords, parseProgress, recordsPulse } = storeToRefs(matchesStore)
+const { records, unknownRecords, parseProgress, watchActivity, recordsPulse } = storeToRefs(matchesStore)
+const { watchEnabled } = storeToRefs(useSettingsStore())
 const { matchesNarrow } = matchesStore
 
 // Tablist Arrow/Home/End nav — owned here (App keeps useAppKeyboard for the
@@ -139,6 +142,11 @@ const wld = computed(() => tallyWLD(
       </nav>
     </div>
     <div class="masthead-right">
+      <MastheadWatchDot
+        :watch-enabled="watchEnabled"
+        :activity="watchActivity"
+        :parse-progress="parseProgress"
+      />
       <MastheadParseChip
         :parse-progress="parseProgress"
         @go-to-view="goToView($event)"
