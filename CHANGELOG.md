@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.25.1](https://github.com/sound-barrier/recall/compare/v0.25.0...v0.25.1) (2026-07-06)
+
+
+### Features
+
+* flag duplicate captures of the same match for triage ([37df4e4](https://github.com/sound-barrier/recall/commit/37df4e4b98a1c9d6915cf809a5382411150cc0e7))
+
+
+### Bug Fixes
+
+* **gamedata:** base the game-data update signal on roster content ([b5dd296](https://github.com/sound-barrier/recall/commit/b5dd2969a482f68a1a604ce977102b8708abe2d8))
+
+
+### Refactors
+
+* **frontend:** extract SelfUpdateCta from AboutModal ([88b3443](https://github.com/sound-barrier/recall/commit/88b3443491fc8a2fdf8347b2e630d16efa91ce44))
+
+
+### Documentation
+
+* re-evaluate TECHNICAL_DEBT section 3 against source ([827ed1e](https://github.com/sound-barrier/recall/commit/827ed1ef5d4ca067770a52a75dfd96827a7b6bf9))
+
+
+### Build & Packaging
+
+* **deps:** Bump github.com/wailsapp/wails/v3 in the go-deps group ([1f5a284](https://github.com/sound-barrier/recall/commit/1f5a284d473957cdc1531ac215e13eec7ab4831b))
+* **deps:** Bump marocchino/sticky-pull-request-comment ([7c63c28](https://github.com/sound-barrier/recall/commit/7c63c28500c6b2349266e0560061509be3cda76c))
+
+
+### CI
+
+* publish roster YAMLs only when changed; stamp version.json from the roster commit ([e4779d7](https://github.com/sound-barrier/recall/commit/e4779d78a883906af55c7bd3784acd28a4dbd75c))
+
+
+### Tests
+
+* **e2e:** assert content-based roster freshness, not "N days old" ([9553640](https://github.com/sound-barrier/recall/commit/95536404cb90bcc6a7b4270c5b148feeaff2914f))
+
 ## [0.25.0](https://github.com/sound-barrier/recall/compare/v0.24.0...v0.25.0) (2026-07-05)
 
 
