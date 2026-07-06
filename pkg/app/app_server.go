@@ -17,6 +17,13 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
+// emitWatchActivity broadcasts the watcher's pending-file tally to SSE
+// subscribers — the masthead's "watching · N new" dot.
+func (a *App) emitWatchActivity(ev WatchActivityEvent) {
+	data, _ := json.Marshal(ev)
+	a.SSEHub.BroadcastData("watch-activity", string(data))
+}
+
 // emitMatchUpdated broadcasts a freshly-aggregated match.MatchRecord to SSE
 // subscribers. Counterpart to the Wails build's variant — same wire
 // shape, server-only emit path.

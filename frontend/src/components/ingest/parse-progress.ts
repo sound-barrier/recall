@@ -18,3 +18,13 @@ export interface ParseProgressEvent {
   hero_corrections?: number
   map_corrections?: number
 }
+
+// Watcher tally event - emitted when the folder watcher sees a new
+// screenshot (pending grows) and when a parse run starts (pending
+// resets). Drives the masthead's "watching · N new" dot; last_seen_at
+// (RFC3339) feeds its tooltip. Session-scoped by design: there is no
+// resync endpoint, the dot simply starts idle on reload.
+export interface WatchActivityEvent {
+  pending: number
+  last_seen_at?: string
+}

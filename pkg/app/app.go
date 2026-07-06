@@ -70,11 +70,16 @@ type App struct {
 	// File-watch state. watcher is non-nil while the directory is being
 	// observed; watchTimer holds the debounce timer that fires
 	// ParseScreenshots after no new files have appeared for
-	// watchDebounce. watchMu guards all three plus watchedDir.
-	watcher    *fsnotify.Watcher
-	watchedDir string
-	watchTimer *time.Timer
-	watchMu    sync.Mutex
+	// watchDebounce. watchPending counts files the watcher has seen
+	// since the last parse run started (the masthead's "watching · N
+	// new" dot); watchLastSeen stamps the most recent file event for
+	// its tooltip. watchMu guards all of these plus watchedDir.
+	watcher       *fsnotify.Watcher
+	watchedDir    string
+	watchTimer    *time.Timer
+	watchPending  int
+	watchLastSeen time.Time
+	watchMu       sync.Mutex
 	// parseCancelMu guards the whole parse run-state below: the
 	// single-flight flag, the progress snapshot, and the cancel func.
 	// One small lock so CancelParse, the GET /parses/active status

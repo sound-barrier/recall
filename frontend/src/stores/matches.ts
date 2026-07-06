@@ -16,7 +16,7 @@ import {
 } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
-import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
+import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
@@ -76,6 +76,8 @@ export const useMatchesStore = defineStore('matches', () => {
   // when idle). parseLog: rolling completed-file log. newScreenshotCount:
   // image files in the dir not yet in the DB (null = not yet fetched).
   const parseProgress = ref<ParseProgressEvent | null>(null)
+  // Watcher pending-file tally (masthead dot). Event-fed, session-scoped.
+  const watchActivity = ref<WatchActivityEvent | null>(null)
   const parseLog = ref<ParseProgressEvent[]>([])
   const newScreenshotCount = ref<number | null>(null)
   // Wall-clock of the last successful manual parse → Settings "Last run · X".
@@ -362,6 +364,7 @@ export const useMatchesStore = defineStore('matches', () => {
     records,
     parseProgress,
     parseLog,
+    watchActivity,
     onParseComplete: async () => {
       await load()
       lastParsedAt.value = Date.now()
@@ -453,6 +456,7 @@ export const useMatchesStore = defineStore('matches', () => {
     cancellingParse,
     firstLoadPending,
     parseProgress,
+    watchActivity,
     parseLog,
     newScreenshotCount,
     lastParsedAt,
