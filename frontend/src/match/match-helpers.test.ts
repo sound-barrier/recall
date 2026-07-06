@@ -16,6 +16,7 @@ import {
   highlightSubstring,
   isDuplicateCandidate,
   hasDuplicateCandidate,
+  previousAnnotatedRecord,
 } from '@/match/match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
@@ -447,5 +448,28 @@ describe('duplicate-candidate predicates', () => {
     expect(hasDuplicateCandidate({ candidates: [{ match_key: 'm', distance_seconds: 11321, reason: 'duplicate_stats' }] })).toBe(true)
     expect(hasDuplicateCandidate({ candidates: [{ match_key: 'm', distance_seconds: 720 }] })).toBe(false)
     expect(hasDuplicateCandidate({})).toBe(false)
+  })
+})
+
+describe('previousAnnotatedRecord', () => {
+  const r = (key: string, annotation?: { members?: string[]; tags?: string[] }) =>
+    ({ match_key: key, annotation })
+
+  it('walks back to the nearest earlier match with members or tags', () => {
+    const records = [
+      r('match-1', { members: ['Apollo'] }),
+      r('match-2'),
+      r('match-3', { tags: ['stack'] }),
+      r('match-4'),
+    ]
+    expect(previousAnnotatedRecord(records, 'match-4')?.match_key).toBe('match-3')
+    expect(previousAnnotatedRecord(records, 'match-3')?.match_key).toBe('match-1')
+  })
+
+  it('returns null for the oldest match, unknown keys, and unannotated history', () => {
+    const records = [r('match-1'), r('match-2', { members: [], tags: [] }), r('match-3')]
+    expect(previousAnnotatedRecord(records, 'match-1')).toBeNull()
+    expect(previousAnnotatedRecord(records, 'match-3')).toBeNull()
+    expect(previousAnnotatedRecord(records, 'match-nope')).toBeNull()
   })
 })

@@ -50,3 +50,67 @@ describe('commitAnnotation saved pulse', () => {
     expect(editor.savedFlash.value).toBe('tags')
   })
 })
+
+// Apply-previous copies members + tags into the DRAFT only: nothing may
+// persist until the user confirms (or implicitly confirms by committing
+// any field — every commit writes all drafts).
+describe('applyAnnotationDraft / confirm / undo', () => {
+  function editorWithSpy() {
+    const calls: unknown[] = []
+    const editor = useMatchAnnotationEditor(
+      rec,
+      (input) => { calls.push(input); return Promise.resolve(true) },
+      () => [],
+      () => [],
+    )
+    return { editor, calls }
+  }
+
+  it('apply replaces the draft without emitting a write', () => {
+    const { editor, calls } = editorWithSpy()
+    editor.memberDraft.value = ['Old']
+    editor.applyAnnotationDraft({ members: ['Apollo', 'Zed'], tags: ['Stack'] })
+    expect(editor.memberDraft.value).toEqual(['Apollo', 'Zed'])
+    expect(editor.tagDraft.value).toEqual(['stack']) // normalized like every tag entry
+    expect(editor.applyPending.value).toBe(true)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('confirm persists all drafts and clears the pending state', async () => {
+    const { editor, calls } = editorWithSpy()
+    editor.applyAnnotationDraft({ members: ['Apollo'], tags: ['stack'] })
+    editor.confirmAppliedAnnotation()
+    await flushMicrotasks()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({ members: ['Apollo'], tags: ['stack'] })
+    expect(editor.applyPending.value).toBe(false)
+    expect(editor.savedFlash.value).toBe('members')
+  })
+
+  it('undo restores the snapshotted draft and never emits', () => {
+    const { editor, calls } = editorWithSpy()
+    editor.memberDraft.value = ['Old']
+    editor.tagDraft.value = ['solo']
+    editor.applyAnnotationDraft({ members: ['Apollo'], tags: ['stack'] })
+    editor.undoAppliedAnnotation()
+    expect(editor.memberDraft.value).toEqual(['Old'])
+    expect(editor.tagDraft.value).toEqual(['solo'])
+    expect(editor.applyPending.value).toBe(false)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('committing any other field implicitly confirms the applied values', async () => {
+    const { editor, calls } = editorWithSpy()
+    editor.applyAnnotationDraft({ members: ['Apollo'], tags: ['stack'] })
+    editor.noteDraft.value = 'clutch round'
+    editor.commitAnnotation('note')
+    await flushMicrotasks()
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      note: 'clutch round',
+      members: ['Apollo'],
+      tags: ['stack'],
+    })
+    expect(editor.applyPending.value).toBe(false)
+  })
+})

@@ -45,6 +45,10 @@ watch(
     replayDraft.value = next?.replay_code ?? ''
     memberDraft.value = next?.members ?? []
     tagDraft.value = next?.tags ?? []
+    // A refreshed annotation supersedes an in-flight apply — the drafts
+    // it snapshotted no longer describe the record.
+    applyPending.value = false
+    applySnapshot = null
   },
   { immediate: false },
 )
@@ -154,6 +158,11 @@ function exitNoteEditMode() {
 // something the user typed in another input. Leaver is read from the
 // existing annotation (the chooser owns that field independently).
 function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
+  // A full-state commit persists any applied-but-unconfirmed members/tags
+  // too (every field write carries all drafts), so an in-flight apply is
+  // hereby confirmed implicitly.
+  applyPending.value = false
+  applySnapshot = null
   const outcome = emitAnnotation({
     leaver:      (record().annotation?.leaver ?? '') as MatchAnnotationInput['leaver'],
     note:        noteDraft.value.trim(),
@@ -170,6 +179,38 @@ function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
       setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
     })
     .catch(() => { /* rejected persist — no false receipt */ })
+}
+
+// ── Apply previous annotation ───────────────────────────────────
+//
+// One-click copy of another match's members + tags into THIS match's
+// draft, replacing it — nothing persists until the user confirms (or
+// implicitly confirms by committing any field, see commitAnnotation).
+// Undo restores the snapshotted pre-apply draft. Note / replay code /
+// leaver are deliberately never copied: they're per-match by nature.
+const applyPending = ref(false)
+let applySnapshot: { members: string[], tags: string[] } | null = null
+
+function applyAnnotationDraft(src: { members?: string[], tags?: string[] }) {
+  applySnapshot = { members: memberDraft.value, tags: tagDraft.value }
+  memberDraft.value = [...(src.members ?? [])]
+  tagDraft.value = (src.tags ?? []).map(normalizeTagLabel).filter(Boolean)
+  applyPending.value = true
+}
+
+function confirmAppliedAnnotation() {
+  // commitAnnotation clears the pending state itself (implicit-confirm
+  // path); the Group cell carries the saved pulse for the copied set.
+  commitAnnotation('members')
+}
+
+function undoAppliedAnnotation() {
+  if (applySnapshot) {
+    memberDraft.value = applySnapshot.members
+    tagDraft.value = applySnapshot.tags
+  }
+  applyPending.value = false
+  applySnapshot = null
 }
 
 function addMember() {
@@ -360,6 +401,10 @@ function onTagKeydown(e: KeyboardEvent) {
     enterEditMode,
     exitNoteEditMode,
     commitAnnotation,
+    applyPending,
+    applyAnnotationDraft,
+    confirmAppliedAnnotation,
+    undoAppliedAnnotation,
     addMember,
     removeMember,
     onMemberKeydown,

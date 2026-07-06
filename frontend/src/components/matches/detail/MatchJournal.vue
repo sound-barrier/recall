@@ -18,6 +18,11 @@ const props = defineProps<{
   // annotation actions: focus the matching input on mount, then emit
   // focus-consumed so the parent can clear its pending-focus state.
   pendingFocus?: '' | 'note' | 'tag'
+  // The chronologically previous annotated match (threaded from
+  // MatchDetailPanel like availableTags) — the source for the head's
+  // "Apply previous" one-click copy of members + tags into the draft.
+  // Absent/null hides the affordance.
+  applySource?: Pick<MatchRecord, 'match_key' | 'annotation'> | null
 }>()
 
 const emit = defineEmits<{
@@ -46,6 +51,10 @@ const {
   enterEditMode,
   exitNoteEditMode,
   commitAnnotation,
+  applyPending,
+  applyAnnotationDraft,
+  confirmAppliedAnnotation,
+  undoAppliedAnnotation,
   addMember,
   removeMember,
   onMemberKeydown,
@@ -91,9 +100,41 @@ onMounted(() => {
   >
     <div class="journal-head">
       <span class="journal-head-title">MATCH JOURNAL</span>
-      <span class="journal-head-meta" :data-status="hasAnyNote ? 'logged' : 'empty'">
-        <span class="journal-head-pip" aria-hidden="true" />
-        {{ hasAnyNote ? 'LOGGED' : 'AWAITING ENTRY' }}
+      <span class="journal-head-actions">
+        <template v-if="applyPending">
+          <button
+            type="button"
+            class="journal-apply-btn"
+            data-journal-apply-confirm
+            :aria-label="`Confirm members and tags copied from ${applySource?.match_key ?? 'the previous match'}`"
+            @click="confirmAppliedAnnotation"
+          >
+            Confirm
+          </button>
+          <button
+            type="button"
+            class="journal-apply-btn undo"
+            data-journal-apply-undo
+            aria-label="Undo the applied annotation"
+            @click="undoAppliedAnnotation"
+          >
+            Undo
+          </button>
+        </template>
+        <button
+          v-else-if="applySource"
+          type="button"
+          class="journal-apply-btn"
+          data-journal-apply
+          :aria-label="`Apply members and tags from ${applySource.match_key}`"
+          @click="applyAnnotationDraft(applySource.annotation ?? {})"
+        >
+          Apply previous
+        </button>
+        <span class="journal-head-meta" :data-status="hasAnyNote ? 'logged' : 'empty'">
+          <span class="journal-head-pip" aria-hidden="true" />
+          {{ hasAnyNote ? 'LOGGED' : 'AWAITING ENTRY' }}
+        </span>
       </span>
     </div>
 
@@ -360,6 +401,41 @@ onMounted(() => {
 .journal-head-title {
   color: var(--text);
   font-weight: 700;
+}
+
+.journal-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* Apply previous / Confirm / Undo — head-strip-scale controls that read
+   as chrome, not content, matching the strip's mono uppercase voice. */
+.journal-apply-btn {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  color: var(--text);
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.journal-apply-btn:hover,
+.journal-apply-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.journal-apply-btn.undo {
+  border-color: var(--border-soft);
+  color: var(--text-dim);
 }
 
 .journal-head-meta {

@@ -561,3 +561,44 @@ describe('MatchDetailPanel — provenance banner', () => {
     expect(ResetMatchData).toHaveBeenCalledWith('match-x')
   })
 })
+
+describe('apply previous annotation', () => {
+  function twoMatchSetup() {
+    const prev = makeRecord({}, {
+      match_key: 'match-2026-05-10T20-00-00',
+      annotation: { leaver: '', members: ['Apollo', 'Zed'], tags: ['stack'] },
+    } as unknown as Partial<MatchRecord>)
+    const cur = makeRecord({ map: 'numbani' }, { match_key: 'match-2026-05-10T22-10-00' })
+    return mountPanel({ records: [prev, cur], record: cur, selectKey: cur.match_key })
+  }
+
+  it('apply fills the journal draft chips without persisting; confirm persists once', async () => {
+    const { wrapper } = twoMatchSetup()
+    const apply = wrapper.find('[data-journal-apply]')
+    expect(apply.exists()).toBe(true)
+
+    await apply.trigger('click')
+    expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo', 'Zed'])
+    expect(SetMatchAnnotation).not.toHaveBeenCalled()
+
+    await wrapper.find('[data-journal-apply-confirm]').trigger('click')
+    await flushPromises()
+    expect(SetMatchAnnotation).toHaveBeenCalledTimes(1)
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(
+      'match-2026-05-10T22-10-00',
+      expect.objectContaining({ members: ['Apollo', 'Zed'], tags: ['stack'] }),
+    )
+  })
+
+  it('undo restores the draft and the button is absent without an annotated predecessor', async () => {
+    const { wrapper } = twoMatchSetup()
+    await wrapper.find('[data-journal-apply]').trigger('click')
+    await wrapper.find('[data-journal-apply-undo]').trigger('click')
+    expect(wrapper.findAll('.member-chip-tag')).toHaveLength(0)
+    expect(SetMatchAnnotation).not.toHaveBeenCalled()
+
+    // A lone match has nothing to copy from.
+    const solo = mountPanel()
+    expect(solo.wrapper.find('[data-journal-apply]').exists()).toBe(false)
+  })
+})
