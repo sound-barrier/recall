@@ -29,7 +29,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "1.60.0",
+    "@playwright/test": "1.61.1",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vitest/coverage-v8": "^4.1.8",
     "@vitest/eslint-plugin": "^1.6.20",
@@ -41,7 +41,7 @@
     "globals": "^17.6.0",
     "happy-dom": "^20.10.3",
     "htmlhint": "^1.9.2",
-    "knip": "^6.16.1",
+    "knip": "^6.23.0",
     "monocart-coverage-reports": "^2.12.12",
     "openapi-typescript": "^7.13.0",
     "postcss-html": "^1.8.1",
