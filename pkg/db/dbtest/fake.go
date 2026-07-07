@@ -66,6 +66,12 @@ type Fake struct {
 	// recorded it so the next parse run skips it. Mirrors Ignored's role.
 	AllHeroes map[string]bool
 
+	// FailedFiles is the OCR-failure ledger keyed by filename — the Fake
+	// analog of the failed_files table. RecordFailedFile upserts
+	// (attempts+1, refreshed error/last_failed_at); RemoveFailedFile
+	// deletes. Tests seed rows directly or assert after a parse run.
+	FailedFiles map[string]db.FailedFileRow
+
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
 	// without going through the resolver / write path.

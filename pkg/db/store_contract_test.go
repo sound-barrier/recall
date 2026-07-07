@@ -309,3 +309,48 @@ func TestStoreContract_ResolveAmbiguousRewritesParentsAndClearsCandidates(t *tes
 		})
 	}
 }
+
+// The failed-file ledger's semantics both implementations must share:
+// upsert increments attempts and refreshes error/last_failed_at while
+// preserving first_failed_at; remove is idempotent; list is ordered
+// most-recently-failed first and returns RFC3339 timestamps.
+func TestStoreContract_FailedFileLifecycle(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			if err := s.RecordFailedFile("f.png", 1, "first error"); err != nil {
+				t.Fatalf("record: %v", err)
+			}
+			if err := s.RecordFailedFile("f.png", 1, "second error"); err != nil {
+				t.Fatalf("re-record: %v", err)
+			}
+			rows, err := s.ListFailedFiles()
+			if err != nil {
+				t.Fatalf("list: %v", err)
+			}
+			if len(rows) != 1 {
+				t.Fatalf("want 1 row, got %d", len(rows))
+			}
+			r := rows[0]
+			if r.Attempts != 2 || r.Error != "second error" {
+				t.Errorf("row = %+v, want attempts=2 error=second error", r)
+			}
+			if _, err := time.Parse(time.RFC3339, r.FirstFailedAt); err != nil {
+				t.Errorf("FirstFailedAt %q is not RFC3339: %v", r.FirstFailedAt, err)
+			}
+			if _, err := time.Parse(time.RFC3339, r.LastFailedAt); err != nil {
+				t.Errorf("LastFailedAt %q is not RFC3339: %v", r.LastFailedAt, err)
+			}
+			if err := s.RemoveFailedFile("f.png"); err != nil {
+				t.Fatalf("remove: %v", err)
+			}
+			if err := s.RemoveFailedFile("f.png"); err != nil {
+				t.Fatalf("remove absent must be a no-op: %v", err)
+			}
+			rows, err = s.ListFailedFiles()
+			if err != nil || len(rows) != 0 {
+				t.Fatalf("want empty after remove, got %v (err %v)", rows, err)
+			}
+		})
+	}
+}

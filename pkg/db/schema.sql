@@ -294,6 +294,24 @@ CREATE TABLE IF NOT EXISTS ignored_screenshots (
 );
 -- statement-end
 
+-- Per-file OCR failure ledger backing the Unknown tab's "Failed to read"
+-- triage section. A row exists while the file's most recent parse attempt
+-- failed; a later successful parse deletes it, and "Delete forever"
+-- (ignored_screenshots) deletes it. Deliberately NOT a skip list — failed
+-- files are re-attempted on every parse run; ignoring is the user's
+-- suppression lever. screenshots_dir_id lets the diagnostic bundle resolve
+-- the on-disk path later (PruneScreenshotsDirs unions this table so a dir
+-- referenced only here survives the startup GC).
+CREATE TABLE IF NOT EXISTS failed_files (
+  filename           TEXT PRIMARY KEY,
+  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
+  error              TEXT NOT NULL DEFAULT '',
+  attempts           INTEGER NOT NULL DEFAULT 1,
+  first_failed_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_failed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
+
 -- Recognized-but-unstored skip list for the PERSONAL "All Heroes" aggregate
 -- view. The parser classifies it ("all_heroes") but extracts nothing — its
 -- combat totals duplicate the TEAMS screen and its card icons defeat the OCR.
