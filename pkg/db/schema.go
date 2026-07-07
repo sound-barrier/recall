@@ -29,6 +29,64 @@ func applySchema(d *sql.DB) error {
 	return nil
 }
 
+// additiveColumns lists nullable columns added AFTER their table's original
+// CREATE — the one schema-evolution case `CREATE TABLE IF NOT EXISTS` can't
+// handle (it never alters an existing table). Kept deliberately tiny.
+var additiveColumns = []struct{ table, column, ddl string }{
+	{"summary_screenshots", "played_at_utc", "TEXT"},
+	{"user_match_data", "played_at_utc", "TEXT"},
+}
+
+// ensureAdditiveColumns adds any additiveColumns missing from an already-created
+// database. Pre-1.0 the versioned migration framework is intentionally inert and
+// the model is wipe-and-relaunch — but that forces a user with real history to
+// discard it for a purely additive column, and until the column exists every
+// INSERT (and the documented Re-parse All backfill) 500s. This is the ONE safe
+// exception: additive nullable columns only, checked via PRAGMA table_info and
+// added with ALTER TABLE ADD COLUMN (idempotent). Anything non-additive still
+// belongs in the 1.0 migration framework.
+func ensureAdditiveColumns(d *sql.DB) error {
+	for _, c := range additiveColumns {
+		has, err := columnExists(d, c.table, c.column)
+		if err != nil {
+			return err
+		}
+		if has {
+			continue
+		}
+		// #nosec G202 -- table/column/ddl are hard-coded constants above, not
+		// user input; ADD COLUMN doesn't accept bound parameters for the name.
+		if _, err := d.Exec("ALTER TABLE " + c.table + " ADD COLUMN " + c.column + " " + c.ddl); err != nil {
+			return fmt.Errorf("add %s.%s: %w", c.table, c.column, err)
+		}
+	}
+	return nil
+}
+
+// columnExists reports whether table has a column named column.
+func columnExists(d *sql.DB, table, column string) (bool, error) {
+	// #nosec G202 -- table is a hard-coded constant from additiveColumns.
+	rows, err := d.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var (
+			cid, notnull, pk int
+			name, ctype      string
+			dflt             any
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
 // splitStatements breaks a SQL body into individual statements on
 // lines whose content is exactly the sentinel `-- statement-end`.
 // Matching whole-line-only prevents the splitter from triggering on
