@@ -79,3 +79,4 @@ no soft-pedalling. Numbers that go down get a row too.
 | 2026-07-06 | MAX_TOTAL_JS_BYTES | 1360000 → 1365000 | Apply-previous-annotation journal affordance (~2KB in the lazy detail-panel chunk); prior headroom was already <1.5KB |
 | 2026-07-06 | MAX_TOTAL_JS_BYTES | 1365000 → 1380000 | 2026-07 QoL batch: pin toggle + markdown generator + tilt/session toasts + CI helpers + tour pips, ~12.7KB across lazy chunks |
 | 2026-07-06 | MAX_TOTAL_CSS_BYTES | 317000 → 322000 | 2026-07 QoL batch scoped styles (toasts, pips, pinned section, backup row), ~1.5KB |
+| 2026-07-06 | MAX_INITIAL_CSS_BYTES | 68000 → 69000 | Breakdown-bar alignment grid (fixed columns, ± sub-columns, chip overlay) in the shared components.css — global by design, 12 widgets share it; ~0.5KB |

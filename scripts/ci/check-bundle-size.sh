@@ -37,7 +37,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
 # with a rationale, never to absorb accidental bloat.
-: "${MAX_INITIAL_CSS_BYTES:=68000}"
+: "${MAX_INITIAL_CSS_BYTES:=69000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
