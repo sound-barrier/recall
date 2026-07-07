@@ -25,6 +25,13 @@ type QueueState struct {
 // chose to "Delete forever" on the Unknown tab. `IgnoredAt` is the
 // server-assigned timestamp the Settings panel renders so users can
 // distinguish recent ignores from old ones.
+// IngestedFile is one content-hash registry row (see ingested_files in
+// schema.sql). DuplicateOf is ” for originals.
+type IngestedFile struct {
+	ContentHash string
+	DuplicateOf string
+}
+
 type IgnoredRow struct {
 	Filename  string
 	IgnoredAt string

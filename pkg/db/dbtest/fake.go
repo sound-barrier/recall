@@ -48,7 +48,8 @@ type Fake struct {
 	// the parse pipeline should skip that file. Absence is the normal
 	// "fair game" state. Tests seed this map directly or assert on it
 	// after calling AddIgnoredScreenshot.
-	Ignored map[string]bool
+	Ignored       map[string]bool
+	IngestedFiles map[string]db.IngestedFile
 
 	// IgnoredAt maps filename → the timestamp at which it was ignored.
 	// Parallel to Ignored so ListIgnoredScreenshots can return rows in

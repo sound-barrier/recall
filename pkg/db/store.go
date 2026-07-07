@@ -193,6 +193,13 @@ type Store interface {
 	// rows with their `ignored_at` timestamp for the Settings panel.
 	// ClearIgnoredScreenshots truncates the table in one statement
 	// for the bulk "Re-enable all" action.
+	// Content-hash dedup registry: UpsertIngestedFile records a file's
+	// hash (+ the canonical filename when it was a byte-identical
+	// copy); LoadIngestedFiles is the one bulk read the parse loop's
+	// dedup pre-scan consults.
+	UpsertIngestedFile(filename, contentHash, duplicateOf string) error
+	LoadIngestedFiles() (map[string]IngestedFile, error)
+
 	AddIgnoredScreenshot(filename string) error
 	RemoveIgnoredScreenshot(filename string) error
 	LoadIgnoredFilenames() (map[string]bool, error)

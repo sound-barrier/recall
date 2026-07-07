@@ -9,6 +9,24 @@ import (
 	"recall/pkg/db"
 )
 
+func (f *Fake) UpsertIngestedFile(filename, contentHash, duplicateOf string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.IngestedFiles == nil {
+		f.IngestedFiles = map[string]db.IngestedFile{}
+	}
+	f.IngestedFiles[filename] = db.IngestedFile{ContentHash: contentHash, DuplicateOf: duplicateOf}
+	return nil
+}
+
+func (f *Fake) LoadIngestedFiles() (map[string]db.IngestedFile, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]db.IngestedFile, len(f.IngestedFiles))
+	maps.Copy(out, f.IngestedFiles)
+	return out, nil
+}
+
 func (f *Fake) AddIgnoredScreenshot(filename string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

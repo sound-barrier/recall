@@ -1183,3 +1183,32 @@ func TestSQLStore_DemoteMatchToAmbiguous_NoRows_NoOp(t *testing.T) {
 		t.Errorf("expected no orphaned candidates, got %+v", got)
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────
+// ingested_files — the content-hash dedup registry.
+// ──────────────────────────────────────────────────────────────────
+
+func TestSQLStore_IngestedFiles_UpsertThenLoadRoundTrip(t *testing.T) {
+	s := openMemory(t)
+	if err := s.UpsertIngestedFile("a.png", "hash-1", ""); err != nil {
+		t.Fatalf("UpsertIngestedFile: %v", err)
+	}
+	if err := s.UpsertIngestedFile("b.png", "hash-1", "a.png"); err != nil {
+		t.Fatalf("UpsertIngestedFile dup: %v", err)
+	}
+	// Re-upsert overwrites in place (re-parse semantics).
+	if err := s.UpsertIngestedFile("b.png", "hash-2", ""); err != nil {
+		t.Fatalf("UpsertIngestedFile overwrite: %v", err)
+	}
+	got, err := s.LoadIngestedFiles()
+	if err != nil {
+		t.Fatalf("LoadIngestedFiles: %v", err)
+	}
+	want := map[string]db.IngestedFile{
+		"a.png": {ContentHash: "hash-1"},
+		"b.png": {ContentHash: "hash-2"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("registry = %+v, want %+v", got, want)
+	}
+}
