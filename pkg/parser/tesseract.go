@@ -3,6 +3,7 @@ package parser
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/png"
@@ -79,13 +80,40 @@ func getTesseractTimeout() time.Duration {
 // binary, no temp files, no exec.
 var runTesseractFunc = runTesseract
 
+// errTesseractTimeout marks an invocation killed by the per-call
+// timeout. Distinguished so the retry wrapper can skip it — a timeout
+// already consumed the full budget, and retrying a hung binary would
+// triple every affected region's stall.
+var errTesseractTimeout = errors.New("tesseract timed out")
+
+// tesseractRetryDelays paces runTesseractWithRetry. Transient failures
+// (a screenshot still being flushed by the capture tool, an AV scan
+// briefly holding the binary or the temp PNG) resolve within a beat,
+// so two short retries recover them while a genuinely broken call adds
+// well under a second before failing for real. Tests shrink these.
+var tesseractRetryDelays = []time.Duration{100 * time.Millisecond, 500 * time.Millisecond}
+
+// runTesseractWithRetry is the retrying front for every OCR call:
+// non-timeout failures get tesseractRetryDelays' worth of re-attempts.
+func runTesseractWithRetry(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
+	out, err := runTesseractFunc(pre, workDir, name, psm, whitelist)
+	for _, delay := range tesseractRetryDelays {
+		if err == nil || errors.Is(err, errTesseractTimeout) {
+			return out, err
+		}
+		time.Sleep(delay)
+		out, err = runTesseractFunc(pre, workDir, name, psm, whitelist)
+	}
+	return out, err
+}
+
 // ocrInverted writes the cropped region as inverted-luminance grayscale (white
 // in-game text becomes black, dark backgrounds become white) and 3x upscaled.
 // Best for the row stats and header where text is solid white.
 func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
 	pre := preprocessInverted(sub)
-	return runTesseractFunc(pre, workDir, name, psm, whitelist)
+	return runTesseractWithRetry(pre, workDir, name, psm, whitelist)
 }
 
 // ocrRaw is ocrInverted's non-inverted sibling for colored / mid-tone text that
@@ -94,7 +122,7 @@ func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whit
 func ocrRaw(img image.Image, rect image.Rectangle, workDir, name string, scale int, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
 	pre := preprocessRaw(sub, scale)
-	return runTesseractFunc(pre, workDir, name, psm, whitelist)
+	return runTesseractWithRetry(pre, workDir, name, psm, whitelist)
 }
 
 // ocrThreshold binarises a bright-on-color region (pixels brighter than
@@ -104,7 +132,7 @@ func ocrRaw(img image.Image, rect image.Rectangle, workDir, name string, scale i
 func ocrThreshold(img image.Image, rect image.Rectangle, workDir, name string, scale int, thresh uint8, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
 	pre := preprocessHighContrast(sub, scale, thresh)
-	return runTesseractFunc(pre, workDir, name, psm, whitelist)
+	return runTesseractWithRetry(pre, workDir, name, psm, whitelist)
 }
 
 func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
@@ -144,7 +172,7 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	HideWindow(cmd) // no-op on macOS/Linux; suppresses console flash on Windows
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() != nil {
-			return "", fmt.Errorf("tesseract timed out after %s: %w", timeout, err)
+			return "", fmt.Errorf("%w after %s: %w", errTesseractTimeout, timeout, err)
 		}
 		return "", fmt.Errorf("tesseract failed: %w (%s)", err, stderr.String())
 	}
