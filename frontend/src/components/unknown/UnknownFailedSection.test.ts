@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
 import { useMatchesStore } from '@/stores/matches'
-import { IgnoreScreenshot } from '@/api'
+import { ExportDiagnosticBundle, IgnoreScreenshot } from '@/api'
 import type { FailedFile } from '@/api'
 
 // The section reads matchesStore.failedFiles directly and suppresses via
@@ -17,6 +17,7 @@ vi.mock('@/api', async (importOriginal) => ({
   GetFailedFiles:         vi.fn(async () => []),
   GetIgnoredScreenshots:  vi.fn(async () => []),
   IgnoreScreenshot:       vi.fn(async () => undefined),
+  ExportDiagnosticBundle: vi.fn(async () => 'recall-diagnostic-x.zip'),
 }))
 
 afterEach(() => {
@@ -54,6 +55,25 @@ describe('UnknownFailedSection', () => {
     expect(section.text()).toContain('decoding image: png: invalid format')
     expect(section.text()).toContain('6 attempts')
     expect(section.text()).toMatch(/retried on every parse run/i)
+  })
+
+  it('the bundle button calls the export and reports the saved name', async () => {
+    const wrapper = mountWith([row()])
+    const btn = wrapper.find('[data-diagnostic-bundle]')
+    expect(btn.exists()).toBe(true)
+
+    await btn.trigger('click')
+    await new Promise((r) => setTimeout(r))
+    expect(ExportDiagnosticBundle).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Saved recall-diagnostic-x.zip')
+  })
+
+  it('a Wails dialog cancel (empty name) stays silent', async () => {
+    vi.mocked(ExportDiagnosticBundle).mockResolvedValueOnce('')
+    const wrapper = mountWith([row()])
+    await wrapper.find('[data-diagnostic-bundle]').trigger('click')
+    await new Promise((r) => setTimeout(r))
+    expect(wrapper.text()).not.toContain('Saved')
   })
 
   it('two-click Delete forever fires IgnoreScreenshot only on confirm', async () => {

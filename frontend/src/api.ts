@@ -968,6 +968,31 @@ export async function ExportBundle(opts: {
   return name
 }
 
+// ExportDiagnosticBundle builds the parser-triage zip (failed
+// screenshots + logs + environment manifest). Wails mode routes through
+// the native save dialog (SaveDiagnosticBundleToFile); the server build
+// POSTs and streams the ZIP into a browser download. Resolves with the
+// saved filename ("" on user cancel in Wails mode).
+export async function ExportDiagnosticBundle(): Promise<string> {
+  if (IS_WAILS) return _wails<string>('SaveDiagnosticBundleToFile')
+  const r = await fetch('/api/v1/exports/diagnostic', { method: 'POST' })
+  if (!r.ok) throw await _apiError(r)
+  const cd = r.headers.get('Content-Disposition') ?? ''
+  const matched = /filename="([^"]+)"/.exec(cd)
+  const name = matched?.[1] ?? `recall-diagnostic-${tsFilenameStamp()}.zip`
+  const blob = await r.blob()
+  const blobURL = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = blobURL
+  a.download = name
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(blobURL)
+  return name
+}
+
 // tsFilenameStamp builds a filesystem-safe `YYYY-MM-DDTHH-MM-SS` stamp for a
 // fallback download name when the server omits Content-Disposition.
 function tsFilenameStamp(): string {

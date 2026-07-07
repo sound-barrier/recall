@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { FailedFile } from '@/api-client'
+import { ExportDiagnosticBundle } from '@/api-client'
 import { screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
+import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 
@@ -20,6 +22,25 @@ const matchesStore = useMatchesStore()
 const { onIgnoreScreenshot } = useMatchActions()
 
 const failedFiles = computed(() => matchesStore.failedFiles)
+
+// "Save diagnostic bundle" — one click, one zip (failed screenshots +
+// logs + environment manifest) for bug reports. Wails saves via the
+// native dialog; server mode blob-downloads. An empty saved-name means
+// the user cancelled the dialog — stay silent.
+const bundleBusy = ref(false)
+const bundleSavedAs = ref('')
+async function onSaveDiagnosticBundle() {
+  if (bundleBusy.value) return
+  bundleBusy.value = true
+  bundleSavedAs.value = ''
+  try {
+    bundleSavedAs.value = await ExportDiagnosticBundle()
+  } catch (e) {
+    useAppStore().setErrorFromRaw(String(e))
+  } finally {
+    bundleBusy.value = false
+  }
+}
 
 // "Delete forever" arm/disarm — the UnknownUnmatchedSection pattern,
 // keyed by filename (failed rows have no match_key).
@@ -69,12 +90,27 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
 <template>
   <div v-if="failedFiles.length > 0" id="section-failed" class="unknown-list">
     <div class="failed-section-head">
-      <h3 class="failed-heading">
-        Failed to read ({{ failedFiles.length }})
-      </h3>
+      <div class="failed-head-row">
+        <h3 class="failed-heading">
+          Failed to read ({{ failedFiles.length }})
+        </h3>
+        <button
+          type="button"
+          class="btn failed-bundle-btn"
+          data-diagnostic-bundle
+          :disabled="bundleBusy"
+          @click="onSaveDiagnosticBundle"
+        >
+          {{ bundleBusy ? 'Building…' : 'Save diagnostic bundle' }}
+        </button>
+      </div>
       <p class="failed-blurb">
         Recall could not read these screenshots at all — they are retried on every parse run.
-        Delete one forever to stop retrying it.
+        Delete one forever to stop retrying it, or save a diagnostic bundle
+        (these images + logs + version info) to attach to a bug report.
+      </p>
+      <p v-if="bundleSavedAs" class="failed-bundle-saved" role="status">
+        ✓ Saved {{ bundleSavedAs }}
       </p>
     </div>
 
@@ -145,6 +181,23 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+
+.failed-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.failed-bundle-btn {
+  flex-shrink: 0;
+}
+
+.failed-bundle-saved {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--win, var(--accent));
 }
 
 .failed-blurb {
