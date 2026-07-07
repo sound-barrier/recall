@@ -67,6 +67,22 @@ describe('SetMatchAnnotation (Wails mode)', () => {
       { MatchKey: 'match:x', Leaver: '', Note: 'just a note', ReplayCode: '', Members: [], Tags: [] },
     ])
   })
+
+  it('forwards explicitly provided tags to Tags in the Wails payload', async () => {
+    const { SetMatchAnnotation } = await import('@/api')
+    await SetMatchAnnotation('match:tags', { note: 'tagged', tags: ['toxicity', 'afk'] })
+    expect(callByName.mock.lastCall).toEqual([
+      'recall/pkg/app.App.SetMatchAnnotation',
+      {
+        MatchKey: 'match:tags',
+        Leaver: '',
+        Note: 'tagged',
+        ReplayCode: '',
+        Members: [],
+        Tags: ['toxicity', 'afk'],
+      },
+    ])
+  })
 })
 
 // Regression: the native Windows WebView2 does NOT put the "wails" marker in
@@ -115,5 +131,21 @@ describe('Wails detection on Windows WebView2 (origin-based, no UA marker)', () 
     await GetMatchResults()
     expect(callByName).toHaveBeenCalledWith('recall/pkg/app.App.GetMatchResults')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('routes calls through fetch, not the Wails bridge, when origin is not wails.localhost and UA has no marker', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { protocol: 'http:', hostname: 'localhost', href: 'http://localhost:5173/' },
+      configurable: true,
+    })
+    fetchMock.mockClear()
+    callByName.mockClear()
+    vi.resetModules()
+
+    const { GetMatchResults } = await import('@/api')
+    await GetMatchResults()
+
+    expect(fetchMock).toHaveBeenCalled()
+    expect(callByName).not.toHaveBeenCalled()
   })
 })
