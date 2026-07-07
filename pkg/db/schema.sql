@@ -63,6 +63,15 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   date          TEXT NOT NULL DEFAULT '',
   finished_at   TEXT NOT NULL DEFAULT '',
   game_length   TEXT NOT NULL DEFAULT '',
+  -- Canonical UTC instant of the match, derived at parse time by applying the
+  -- machine's timezone identity to the naive local date+finished_at (DST-correct
+  -- per match date). NULL when date/finished_at are absent/unparseable. The
+  -- naive date/finished_at + match_key stay naive-local on purpose — the
+  -- correlator (corroborated()) compares them against the naive filename axis;
+  -- played_at_utc is an ADDITIVE canonical value, never a re-encoding.
+  -- TEXT (RFC3339, not DATETIME) so the *string round-trip skips the driver's
+  -- time.Time coercion; UTC RFC3339 sorts lexicographically.
+  played_at_utc TEXT,
   perf_elim_total            INTEGER NOT NULL DEFAULT 0,
   perf_elim_avg_per_10min    REAL    NOT NULL DEFAULT 0,
   perf_assists_total         INTEGER NOT NULL DEFAULT 0,
@@ -349,6 +358,10 @@ CREATE TABLE IF NOT EXISTS user_match_data (
   date           TEXT,
   finished_at    TEXT,
   game_length    TEXT,
+  -- Canonical UTC instant (see summary_screenshots.played_at_utc). Manual
+  -- entries carry an offset on the wire so this is exact; the naive
+  -- date/finished_at/key stay naive-local for axis consistency with OCR rows.
+  played_at_utc  TEXT,
   rank           TEXT,
   level          INTEGER,
   rank_progress  INTEGER,

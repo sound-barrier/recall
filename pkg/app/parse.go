@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"recall/pkg/aggregate"
 	"recall/pkg/applog"
@@ -490,12 +491,27 @@ func (st *parseRunState) recordMatchUpdate(key string, beforeRec match.MatchReco
 // The build*Row constructors are shared by the store write (insertParsed)
 // and the run snapshot's in-memory mirror (applyToSnapshot) — one source
 // for the row fields, so the mirror can't drift from what was written.
+// canonicalPlayedAtUTC derives the match's canonical UTC instant from its
+// naive local date+finished_at, interpreting the wall clock in the machine's
+// timezone identity (time.Local — a full zone, so DST is correct per match
+// date). Returns nil (→ SQL NULL) when the pair is absent/unparseable. The
+// naive date/finished_at stay naive-local on the row; this is additive.
+func canonicalPlayedAtUTC(date, finishedAt string) *string {
+	utc, ok := match.LocalWallClockToUTC(date, finishedAt, time.Local)
+	if !ok {
+		return nil
+	}
+	s := utc.Format(time.RFC3339)
+	return &s
+}
+
 func buildSummaryRow(filename, key string, dirID int64, r *parser.MatchResult) db.SummaryRow {
 	row := db.SummaryRow{
 		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
 		Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 		Result: r.Result, FinalScore: r.FinalScore,
 		Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
+		PlayedAtUTC: canonicalPlayedAtUTC(r.Date, r.FinishedAt),
 	}
 	if r.Performance != nil {
 		row.PerfElimTotal = r.Performance.Eliminations.Total

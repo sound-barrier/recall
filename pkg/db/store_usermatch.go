@@ -27,21 +27,22 @@ func (s *SQLStore) UpsertUserMatchData(d UserMatchData) error {
 	if _, err := tx.Exec(
 		`INSERT INTO user_match_data (
 		   match_key, map, hero, eliminations, assists, deaths, damage, healing,
-		   mitigation, result, final_score, date, finished_at, game_length,
+		   mitigation, result, final_score, date, finished_at, game_length, played_at_utc,
 		   rank, level, rank_progress, change_percent)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   map=excluded.map, hero=excluded.hero, eliminations=excluded.eliminations,
 		   assists=excluded.assists, deaths=excluded.deaths, damage=excluded.damage,
 		   healing=excluded.healing, mitigation=excluded.mitigation,
 		   result=excluded.result, final_score=excluded.final_score,
 		   date=excluded.date, finished_at=excluded.finished_at,
-		   game_length=excluded.game_length, rank=excluded.rank, level=excluded.level,
+		   game_length=excluded.game_length, played_at_utc=excluded.played_at_utc,
+		   rank=excluded.rank, level=excluded.level,
 		   rank_progress=excluded.rank_progress, change_percent=excluded.change_percent,
 		   updated_at=CURRENT_TIMESTAMP`,
 		d.MatchKey, d.Map, d.Hero, d.Eliminations, d.Assists, d.Deaths, d.Damage,
 		d.Healing, d.Mitigation, d.Result, d.FinalScore, d.Date, d.FinishedAt,
-		d.GameLength, d.Rank, d.Level, d.RankProgress, d.ChangePercent,
+		d.GameLength, d.PlayedAtUTC, d.Rank, d.Level, d.RankProgress, d.ChangePercent,
 	); err != nil {
 		return err
 	}
@@ -177,7 +178,7 @@ func (s *SQLStore) LoadAllUserMatchData() (map[string]UserMatchData, error) {
 	rows, err := s.db.Query(
 		`SELECT match_key, map, hero, eliminations, assists, deaths, damage,
 		        healing, mitigation, result, final_score, date, finished_at,
-		        game_length, rank, level, rank_progress, change_percent, updated_at
+		        game_length, played_at_utc, rank, level, rank_progress, change_percent, updated_at
 		 FROM user_match_data`,
 	)
 	if err != nil {
@@ -189,7 +190,7 @@ func (s *SQLStore) LoadAllUserMatchData() (map[string]UserMatchData, error) {
 		if err := rows.Scan(
 			&d.MatchKey, &d.Map, &d.Hero, &d.Eliminations, &d.Assists, &d.Deaths,
 			&d.Damage, &d.Healing, &d.Mitigation, &d.Result, &d.FinalScore, &d.Date,
-			&d.FinishedAt, &d.GameLength, &d.Rank, &d.Level, &d.RankProgress,
+			&d.FinishedAt, &d.GameLength, &d.PlayedAtUTC, &d.Rank, &d.Level, &d.RankProgress,
 			&d.ChangePercent, &d.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("load user match data: %w", err)

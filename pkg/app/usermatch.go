@@ -196,14 +196,18 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 	key := match.NewTrackedMatchKey(played.Format("2006-01-02T15-04-05")).String()
 
 	mapName, primary, result := input.Map, input.Heroes[0], input.Result
+	// Naive local wall-clock for date/finished_at/key (axis consistency with
+	// OCR rows); canonical UTC is exact because played carries the wire offset.
 	date, finished := played.Format("2006-01-02"), played.Format("15:04")
+	playedUTC := played.UTC().Format(time.RFC3339)
 	data := db.UserMatchData{
-		MatchKey:   key,
-		Map:        &mapName,
-		Hero:       &primary,
-		Result:     &result,
-		Date:       &date,
-		FinishedAt: &finished,
+		MatchKey:    key,
+		Map:         &mapName,
+		Hero:        &primary,
+		Result:      &result,
+		Date:        &date,
+		FinishedAt:  &finished,
+		PlayedAtUTC: &playedUTC,
 	}
 	for i, h := range input.Heroes {
 		if h != "" {
