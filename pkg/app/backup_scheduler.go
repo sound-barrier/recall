@@ -79,12 +79,14 @@ func (a *App) GetAutoBackupStatus() AutoBackupStatus {
 	return st
 }
 
-// SetAutoBackupInterval persists the interval: -1 disables, 1..365 are
-// literal days. (0 is rejected rather than silently meaning "default" —
-// the wire contract stays unambiguous.)
+// SetAutoBackupInterval persists the interval: -1 disables, 0 resets
+// to the default (weekly), 1..365 are literal days. The whole [-1,365]
+// range is valid so the wire contract is a plain bounded integer —
+// schemathesis-generated values inside the documented bounds must
+// never 400.
 func (a *App) SetAutoBackupInterval(days int) error {
-	if days != -1 && (days < 1 || days > autoBackupMaxDays) {
-		return fmt.Errorf("%w: %d (want -1 or 1..%d)", ErrInvalidBackupInterval, days, autoBackupMaxDays)
+	if days < -1 || days > autoBackupMaxDays {
+		return fmt.Errorf("%w: %d (want -1..%d)", ErrInvalidBackupInterval, days, autoBackupMaxDays)
 	}
 	snap := a.mutateSettings(func(s *Settings) { s.AutoBackupIntervalDays = days })
 	return a.saveSettings(snap)

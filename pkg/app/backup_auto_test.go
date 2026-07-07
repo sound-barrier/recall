@@ -169,13 +169,19 @@ func TestAutoBackupStatus_ReadsNewestSnapshotAndFreshness(t *testing.T) {
 func TestSetAutoBackupInterval_Validates(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 	a, _ := newParseReadyApp(t)
-	for _, bad := range []int{0, -2, 366} {
+	for _, bad := range []int{-2, 366} {
 		if err := a.SetAutoBackupInterval(bad); err == nil {
 			t.Errorf("interval %d must be rejected", bad)
 		}
 	}
 	if err := a.SetAutoBackupInterval(-1); err != nil {
 		t.Errorf("-1 (off) must be accepted: %v", err)
+	}
+	if err := a.SetAutoBackupInterval(0); err != nil {
+		t.Errorf("0 (reset to default) must be accepted: %v", err)
+	}
+	if got := a.GetAutoBackupStatus().IntervalDays; got != 7 {
+		t.Errorf("interval after reset-to-default = %d, want 7", got)
 	}
 	if err := a.SetAutoBackupInterval(30); err != nil {
 		t.Errorf("30 days must be accepted: %v", err)
