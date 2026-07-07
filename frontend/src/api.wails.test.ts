@@ -67,6 +67,22 @@ describe('SetMatchAnnotation (Wails mode)', () => {
       { MatchKey: 'match:x', Leaver: '', Note: 'just a note', ReplayCode: '', Members: [], Tags: [] },
     ])
   })
+
+  it('forwards explicitly provided tags to Tags in the Wails payload', async () => {
+    const { SetMatchAnnotation } = await import('@/api')
+    await SetMatchAnnotation('match:tags', { note: 'tagged', tags: ['toxicity', 'afk'] })
+    expect(callByName.mock.lastCall).toEqual([
+      'recall/pkg/app.App.SetMatchAnnotation',
+      {
+        MatchKey: 'match:tags',
+        Leaver: '',
+        Note: 'tagged',
+        ReplayCode: '',
+        Members: [],
+        Tags: ['toxicity', 'afk'],
+      },
+    ])
+  })
 })
 
 // Regression: the native Windows WebView2 does NOT put the "wails" marker in
