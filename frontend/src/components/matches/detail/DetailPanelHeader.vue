@@ -24,6 +24,8 @@ const emit = defineEmits<{
   next: []
   reset: []
   pin: []
+  'copy-markdown': []
+  'copy-summary': []
 }>()
 </script>
 
@@ -48,6 +50,26 @@ const emit = defineEmits<{
       >{{ record.data?.result || 'unknown' }}</span>
     </div>
 
+    <button
+      type="button"
+      class="detail-icon-btn"
+      data-copy-summary
+      aria-label="Copy match summary to clipboard"
+      title="Copy summary — one-line result for pasting into chat"
+      @click="emit('copy-summary')"
+    >
+      <span aria-hidden="true">⧉</span>
+    </button>
+    <button
+      type="button"
+      class="detail-icon-btn detail-copy-md"
+      data-copy-markdown
+      aria-label="Copy match as Markdown to clipboard"
+      title="Copy as Markdown — stats, journal, and screenshot refs"
+      @click="emit('copy-markdown')"
+    >
+      <span aria-hidden="true">M↓</span>
+    </button>
     <button
       type="button"
       class="detail-icon-btn detail-pin"
