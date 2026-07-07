@@ -1,5 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref, computed } from 'vue'
+
+// This happy-dom version ships NO window.localStorage, which made every
+// guarded test below silently vacuous (the `typeof localStorage ===
+// 'undefined'` early-returns fired on every run). Install an in-memory
+// stand-in up front so the suite actually executes; the old guards stay
+// as inert belt-and-braces.
+const memStore = new Map<string, string>()
+vi.stubGlobal('localStorage', {
+  getItem: (k: string) => memStore.get(k) ?? null,
+  setItem: (k: string, v: string) => { memStore.set(k, String(v)) },
+  removeItem: (k: string) => { memStore.delete(k) },
+  clear: () => { memStore.clear() },
+  key: (i: number) => [...memStore.keys()][i] ?? null,
+  get length() { return memStore.size },
+})
 import { useNarrowPresets } from '@/composables/matches/useNarrowPresets'
 import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, PresetRange } from '@/composables/matches/useMatchesNarrow'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier'
@@ -24,6 +39,8 @@ function buildState(): MatchesNarrowState {
     pickedRange:       ref<PresetRange>('all'),
     customFrom:        ref(''),
     customTo:          ref(''),
+    customFromTime:    ref(''),
+    customToTime:      ref(''),
     leaverHandling:    ref<LeaverHandling>('include'),
     minPlayMinutes:    ref(0),
     minPlayPercent:    ref(0),
@@ -154,6 +171,47 @@ describe('preset shape completeness', () => {
     for (const key of expected) {
       expect(stored, `preset shape is missing narrow state field "${key}"`).toHaveProperty(key)
     }
+  })
+})
+
+describe('time-of-day bounds in presets', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('round-trips customFromTime / customToTime', () => {
+    if (typeof globalThis.localStorage === 'undefined') return
+    const state = buildState()
+    const { savePreset, applyPreset } = useNarrowPresets(state)
+    state.customFrom.value = '2026-01-07'
+    state.customFromTime.value = '11:00'
+    state.customTo.value = '2026-03-13'
+    state.customToTime.value = '10:59'
+    state.pickedRange.value = 'custom'
+    savePreset('season-window')
+
+    state.customFromTime.value = ''
+    state.customToTime.value = ''
+    applyPreset('season-window')
+    expect(state.customFromTime.value).toBe('11:00')
+    expect(state.customToTime.value).toBe('10:59')
+  })
+
+  it('legacy presets without time keys apply as blank times', () => {
+    if (typeof globalThis.localStorage === 'undefined') return
+    const state = buildState()
+    const { savePreset, applyPreset } = useNarrowPresets(state)
+    savePreset('legacy')
+    const raw = JSON.parse(localStorage.getItem('recall.narrowPresets.v2')!) as Array<{ state: Record<string, unknown> }>
+    delete raw[0]!.state['customFromTime']
+    delete raw[0]!.state['customToTime']
+    localStorage.setItem('recall.narrowPresets.v2', JSON.stringify(raw))
+
+    state.customFromTime.value = '09:30'
+    state.customToTime.value = '18:00'
+    applyPreset('legacy')
+    expect(state.customFromTime.value).toBe('')
+    expect(state.customToTime.value).toBe('')
   })
 })
 

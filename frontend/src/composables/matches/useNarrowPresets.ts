@@ -34,6 +34,8 @@ interface SerializedNarrow {
   pickedRange:       PresetRange
   customFrom:        string
   customTo:          string
+  customFromTime:    string
+  customToTime:      string
   leaverHandling:    LeaverHandling
   minPlayMinutes:    number
   minPlayPercent:    number
@@ -66,6 +68,8 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
     pickedRange:       state.pickedRange.value,
     customFrom:        state.customFrom.value,
     customTo:          state.customTo.value,
+    customFromTime:    state.customFromTime.value,
+    customToTime:      state.customToTime.value,
     leaverHandling:    state.leaverHandling.value,
     minPlayMinutes:    state.minPlayMinutes.value,
     minPlayPercent:    state.minPlayPercent.value,
@@ -95,6 +99,9 @@ function apply(state: MatchesNarrowState, s: SerializedNarrow): void {
   state.pickedRange.value       = s.pickedRange
   state.customFrom.value        = s.customFrom
   state.customTo.value          = s.customTo
+  // `?? ''` resets the time bounds for presets saved before they existed.
+  state.customFromTime.value    = s.customFromTime ?? ''
+  state.customToTime.value      = s.customToTime ?? ''
   state.leaverHandling.value    = s.leaverHandling
   state.minPlayMinutes.value    = s.minPlayMinutes
   state.minPlayPercent.value    = s.minPlayPercent

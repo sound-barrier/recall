@@ -104,7 +104,7 @@ const {
 // NarrowPopover child, which receives the same `matchesStore.matchesNarrow`
 // bundle and destructures the picker callbacks itself.
 const {
-  pickedRange, customFrom, customTo,
+  pickedRange, customFrom, customTo, customFromTime, customToTime,
   anchorKey,
   resetNarrow,
   anyNarrow,
@@ -412,8 +412,8 @@ const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.include
         :records="visibleRecords"
         :filter-from="customFrom"
         :filter-to="customTo"
-        @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
-        @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
+        @update:filter-from="(v: string) => { customFrom = v; customFromTime = ''; pickedRange = 'custom' }"
+        @update:filter-to="(v: string) => { customTo = v; customToTime = ''; pickedRange = 'custom' }"
         @open-match="(k: string) => selection.open(k)"
       />
 

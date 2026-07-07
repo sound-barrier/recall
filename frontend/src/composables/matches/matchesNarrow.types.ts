@@ -69,6 +69,11 @@ export interface MatchesNarrowState {
   pickedRange:       Ref<PresetRange>
   customFrom:        Ref<string>
   customTo:          Ref<string>
+  // Optional minute boundaries ('HH:MM', '' = whole day) tightening the
+  // custom From/To days — the patch-drop primitive for future seasons.
+  // Panel-owned: every non-panel range write resets them to ''.
+  customFromTime:    Ref<string>
+  customToTime:      Ref<string>
   leaverHandling:    Ref<LeaverHandling>
   minPlayMinutes:    Ref<number>
   minPlayPercent:    Ref<number>

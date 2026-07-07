@@ -436,6 +436,48 @@ describe('useMatchesNarrow', () => {
       expect(customFrom.value).toBe('')
       expect(customTo.value).toBe('')
     })
+
+    it('a from time narrows within the from day', () => {
+      const day = [
+        rec({ key: 'early', date: '2026-01-07', finishedAt: '09:00' }),
+        rec({ key: 'edge', date: '2026-01-07', finishedAt: '10:59' }),
+        rec({ key: 'patch', date: '2026-01-07', finishedAt: '11:00' }),
+        rec({ key: 'late', date: '2026-01-07', finishedAt: '21:57' }),
+      ]
+      const records = ref(day)
+      const { narrowedRecords, customFrom, customFromTime, pickedRange } =
+        useMatchesNarrow(records, createMatchesNarrowState())
+      customFrom.value = '2026-01-07'
+      customFromTime.value = '11:00'
+      pickedRange.value = 'custom'
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['late', 'patch'])
+    })
+
+    it('pickRange clears the time bounds (presets and all)', () => {
+      const records = ref(corpus)
+      const { pickRange, customFromTime, customToTime } =
+        useMatchesNarrow(records, createMatchesNarrowState())
+      customFromTime.value = '11:00'
+      customToTime.value = '10:59'
+      pickRange('7d')
+      expect(customFromTime.value).toBe('')
+      expect(customToTime.value).toBe('')
+
+      customFromTime.value = '11:00'
+      pickRange('all')
+      expect(customFromTime.value).toBe('')
+    })
+
+    it('resetNarrow clears the time bounds', () => {
+      const records = ref(corpus)
+      const { resetNarrow, customFromTime, customToTime } =
+        useMatchesNarrow(records, createMatchesNarrowState())
+      customFromTime.value = '11:00'
+      customToTime.value = '10:59'
+      resetNarrow()
+      expect(customFromTime.value).toBe('')
+      expect(customToTime.value).toBe('')
+    })
   })
 
   describe('combined filters — AND across dimensions', () => {

@@ -90,7 +90,7 @@ export function useMatchesNarrow(
     pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes, pickedSources,
     pickedLeavers, pickedModifiers, pickedRanks,
-    pickedRange, customFrom, customTo,
+    pickedRange, customFrom, customTo, customFromTime, customToTime,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
   } = state
@@ -133,10 +133,14 @@ export function useMatchesNarrow(
     if (v === 'all') {
       customFrom.value = ''
       customTo.value = ''
+      customFromTime.value = ''
+      customToTime.value = ''
     } else if (v !== 'custom') {
       const days = v === '7d' ? 7 : v === '30d' ? 30 : 90
       customFrom.value = daysAgoISO(days)
       customTo.value = ''
+      customFromTime.value = ''
+      customToTime.value = ''
     }
   }
 
@@ -159,6 +163,8 @@ export function useMatchesNarrow(
     pickedRange.value         = 'all'
     customFrom.value          = ''
     customTo.value            = ''
+    customFromTime.value      = ''
+    customToTime.value        = ''
     leaverHandling.value      = 'include'
     minPlayMinutes.value      = 0
     minPlayPercent.value      = 0
@@ -343,7 +349,7 @@ export function useMatchesNarrow(
     pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes, pickedSources,
     pickedLeavers, pickedModifiers, pickedRanks,
-    pickedRange, customFrom, customTo,
+    pickedRange, customFrom, customTo, customFromTime, customToTime,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
     // Actions
