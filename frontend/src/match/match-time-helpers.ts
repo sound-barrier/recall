@@ -52,6 +52,33 @@ export function matchTime(rec: Pick<MatchRecord, 'match_key' | 'data'>): string 
   return `${m[1]}T${m[2]}:${m[3]}:${m[4]}`
 }
 
+// matchInstantUTC returns the match's canonical UTC instant (RFC3339) — the
+// backend-derived `played_at_utc` when present, else a best-effort derivation
+// from the naive local date+finished_at (for rows parsed before played_at_utc
+// existed; a Re-parse All backfills the real column). '' when no instant is
+// derivable. Seasons compare against this; display renders it in the viewer's
+// current timezone.
+export function matchInstantUTC(rec: Pick<MatchRecord, 'match_key' | 'data'>): string {
+  const utc = rec.data?.played_at_utc
+  if (utc) return utc
+  // Fallback: interpret the naive sortable string as local wall clock (what
+  // it was) and take its UTC instant. For a stationary viewer this equals the
+  // real played_at_utc; only a viewer who has since changed timezone sees a
+  // difference, and only for un-reparsed rows.
+  const local = matchTime(rec)
+  if (!local) return ''
+  const d = new Date(local)
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString()
+}
+
+// formatLocalFromUTC renders a UTC instant (RFC3339) as the friendly
+// "May 9, 2026 @ 9:08pm" string, in the viewer's CURRENT timezone. The match
+// display twin of formatParsedAt (which does the same for parsed_at) — the
+// two now share one UTC→local convention.
+export function formatLocalFromUTC(iso: string | null | undefined): string {
+  return formatParsedAt(iso)
+}
+
 // Lightweight relative-time formatter for the "Last run" hint.
 // Uses vi.setSystemTime() in tests to control Date.now().
 export function formatRelativeTime(ms: number | null | undefined): string {
@@ -139,6 +166,13 @@ export function computeEarliestMatchDateTime(recs: Pick<MatchRecord, 'data'>[]):
 // stores date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the
 // Wails UI prefers a friendlier `May 9, 2026 @ 9:08pm` rendering.
 export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
+  // Prefer the canonical UTC instant, rendered in the viewer's current zone,
+  // so the display is timezone-correct (and matches parsed_at's convention).
+  // For a stationary viewer this equals the naive rendering below; the naive
+  // path stays as the fallback for rows without a played_at_utc.
+  const utc = rec.data?.played_at_utc
+  if (utc) return formatLocalFromUTC(utc)
+
   const d = rec.data ?? {}
   if (!d.date && !d.finished_at) return ''
 

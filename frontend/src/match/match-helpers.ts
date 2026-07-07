@@ -222,18 +222,30 @@ export function formatRoles(
 // so a multi-year corpus reads in correct chronological order instead of
 // looking scrambled when same-month/day labels collide across years.
 export function formatRowDate(rec: Pick<MatchRecord, 'data'>): string {
-  const d = rec.data?.date
-  if (!d) return '—'
-  const dt = new Date(d + 'T00:00:00')
-  if (isNaN(dt.getTime())) return d
+  // Prefer the canonical UTC instant, rendered in the viewer's current zone
+  // (equals the naive date for a stationary viewer); fall back to the naive
+  // date for rows without a played_at_utc.
+  const utc = rec.data?.played_at_utc
+  const dt = utc ? new Date(utc) : rec.data?.date ? new Date(rec.data.date + 'T00:00:00') : null
+  if (!dt) return '—'
+  if (isNaN(dt.getTime())) return rec.data?.date ?? '—'
   const sameYear = dt.getFullYear() === new Date().getFullYear()
   return dt.toLocaleDateString(undefined, sameYear
     ? { month: 'short', day: 'numeric' }
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// Finish time-of-day for a row (data.finished_at), '' when absent.
+// Finish time-of-day for a row, '' when absent. Prefers the canonical UTC
+// instant (rendered as local 24h HH:MM), else the naive finished_at.
 export function formatFinishedAt(rec: Pick<MatchRecord, 'data'>): string {
+  const utc = rec.data?.played_at_utc
+  if (utc) {
+    const dt = new Date(utc)
+    if (!isNaN(dt.getTime())) {
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return `${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+    }
+  }
   return rec.data?.finished_at ?? ''
 }
 
