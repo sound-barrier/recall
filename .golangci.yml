@@ -70,6 +70,10 @@ linters:
           disabled: true
   exclusions:
     warn-unused: true  # report exclusion rules that no longer match anything
+    paths:
+      # npm packages can ship Go source (flatted bundles a Go port of its
+      # codec); nothing under node_modules is ours to lint.
+      - frontend/node_modules
     rules:
       # gosec is rolled in from the standalone `gosec` job, which ran with its
       # default `-tests=false` — it never scanned test files. Mirror that: a
@@ -96,6 +100,11 @@ formatters:
   # leave them alone, so it would clobber gci's layout below. gofmt (with -s,
   # default) handles general formatting and sorts within gci's groups without
   # imposing its own grouping; gci owns import grouping.
+  exclusions:
+    paths:
+      # Same carve-out as linters.exclusions — vendored npm Go ports are not
+      # ours to format.
+      - frontend/node_modules
   enable:
     - gofmt
     - gci
