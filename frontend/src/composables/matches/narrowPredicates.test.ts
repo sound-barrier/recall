@@ -59,6 +59,48 @@ describe('matchesDateRange', () => {
     const r = rec({ data: { date: '2026-05-10' } as MatchRecord['data'] })
     expect(matchesDateRange(r, '2026-05-10T00:00', '2026-05-10T23:59')).toBe(true)
   })
+
+  it('places a summary-less tracked match by its key capture time', () => {
+    // No data.date, but the key carries the screenshot capture time —
+    // the same recipe (matchTime) the list sorts and displays with.
+    const r = rec({ match_key: 'match-2026-05-10T19-57-14' })
+    expect(matchesDateRange(r, '2026-06-01', '')).toBe(false)
+    expect(matchesDateRange(r, '2026-05-01', '2026-05-31')).toBe(true)
+  })
+
+  it('sentinel rows without a capture time always pass', () => {
+    expect(matchesDateRange(rec({ match_key: 'unmatched-YnJva2VuLnBuZw' }), '2026-06-01', '2026-06-30')).toBe(true)
+  })
+
+  it('a from time narrows within the from day (patch boundary)', () => {
+    const at = (t: string) => rec({ data: { date: '2026-01-07', finished_at: t } as MatchRecord['data'] })
+    expect(matchesDateRange(at('11:00'), '2026-01-07', '', '11:00')).toBe(true)
+    expect(matchesDateRange(at('13:45'), '2026-01-07', '', '11:00')).toBe(true)
+    expect(matchesDateRange(at('10:59'), '2026-01-07', '', '11:00')).toBe(false)
+  })
+
+  it('a to time keeps second-precision records inside the closing minute', () => {
+    // Key-fallback stamps carry seconds; the record truncates to the
+    // minute so 'to 10:59' includes 10:59:45 - the seasons phrasing
+    // "to Mar 13, 10:59am" means the whole closing minute.
+    const r = rec({ match_key: 'match-2026-03-13T10-59-45' })
+    expect(matchesDateRange(r, '', '2026-03-13', '', '10:59')).toBe(true)
+    expect(matchesDateRange(r, '2026-03-13', '', '11:00')).toBe(false)
+  })
+
+  it('a time with an empty date bound is inert', () => {
+    const r = rec({ data: { date: '2026-05-10', finished_at: '09:00' } as MatchRecord['data'] })
+    expect(matchesDateRange(r, '', '', '11:00', '')).toBe(true)
+    expect(matchesDateRange(r, '', '', '', '08:00')).toBe(true)
+  })
+
+  it('a dated record without a time or key stamp stays date-filterable', () => {
+    const r = rec({ match_key: 'm', data: { date: '2026-05-10' } as MatchRecord['data'] })
+    expect(matchesDateRange(r, '2026-05-01', '2026-05-31')).toBe(true)
+    expect(matchesDateRange(r, '2026-06-01', '')).toBe(false)
+    // Against a time bound it reads as start-of-day.
+    expect(matchesDateRange(r, '2026-05-10', '', '00:01')).toBe(false)
+  })
 })
 
 describe('matchesPickedSet', () => {
