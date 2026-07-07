@@ -206,6 +206,34 @@ func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden
 	return path, nil
 }
 
+// SaveDiagnosticBundleToFile pops a native save dialog defaulting to
+// `recall-diagnostic-<ts>.zip`, then writes the ExportDiagnosticBundle
+// payload to the chosen path. Dialog first, build second — a cancel
+// costs nothing. Returns the path on success, "" + nil on user cancel.
+func (a *App) SaveDiagnosticBundleToFile() (string, error) {
+	defaultName := "recall-diagnostic-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+	path, err := application.Get().Dialog.SaveFile().
+		SetMessage("Save diagnostic bundle").
+		SetFilename(defaultName).
+		AddFilter("Diagnostic bundle (ZIP)", "*.zip").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	data, err := a.ExportDiagnosticBundle()
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return "", fmt.Errorf("write diagnostic bundle: %w", err)
+	}
+	return path, nil
+}
+
 // LoadRestoreFromFile opens a native open dialog, reads the chosen `.db`
 // snapshot, and applies it via RestoreDatabase. Returns the path read on
 // success; "" if cancelled. REPLACES the current database — the caller is

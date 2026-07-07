@@ -17,6 +17,7 @@ import (
 //   - GET  /api/v1/database/health      — integrity check + size/freelist stats
 //   - POST /api/v1/database/maintenance — run optimize / vacuum, return fresh health
 //   - POST /api/v1/exports/bundle       — selection-aware .zip (manifest+data+shots)
+//   - POST /api/v1/exports/diagnostic   — parser-triage .zip (failed shots+logs+env)
 //   - POST /api/v1/imports              — MERGE a bundle's matches (additive)
 func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/database", handleBackupDatabase(a))
@@ -24,6 +25,7 @@ func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/database/health", handleDatabaseHealth(a))
 	apiMux.HandleFunc("POST /api/v1/database/maintenance", handleDatabaseMaintenance(a))
 	apiMux.HandleFunc("POST /api/v1/exports/bundle", handleExportBundle(a))
+	apiMux.HandleFunc("POST /api/v1/exports/diagnostic", handleExportDiagnostic(a))
 	apiMux.HandleFunc("POST /api/v1/imports", handleImportMatches(a))
 }
 
@@ -166,6 +168,23 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 			return
 		}
 		fname := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
+		_, _ = w.Write(data)
+	}
+}
+
+// handleExportDiagnostic assembles the parser-triage zip (failed
+// screenshots + logs + environment manifest). No request body; an empty
+// failure ledger is a 409 — there's nothing to diagnose, and an empty
+// zip would read as a broken export. See pkg/app/diagnostic.go.
+func handleExportDiagnostic(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := a.ExportDiagnosticBundle()
+		if writeError(w, r, err, errStatus{app.ErrNoFailedFiles, probConflict}) {
+			return
+		}
+		fname := "recall-diagnostic-" + time.Now().UTC().Format("20060102-150405") + ".zip"
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
 		_, _ = w.Write(data)
