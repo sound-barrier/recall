@@ -1,5 +1,70 @@
 # Changelog
 
+## [0.25.2](https://github.com/sound-barrier/recall/compare/v0.25.1...v0.25.2) (2026-07-07)
+
+
+### Features
+
+* auto-run PRAGMA optimize after match-changing parse runs ([a068625](https://github.com/sound-barrier/recall/commit/a068625adcca25d40b8edbdd664191b37ed299f4))
+* **backup:** automatic backup scheduler ([8390590](https://github.com/sound-barrier/recall/commit/83905900652ba6dad759cd6fe04da2e06275ffdf))
+* **backup:** safety snapshot before Re-parse All ([7bbf45e](https://github.com/sound-barrier/recall/commit/7bbf45e2e334d5c84745df2767eb1101af2a26f8))
+* **frontend:** apply previous annotation from the match journal ([ae93c8c](https://github.com/sound-barrier/recall/commit/ae93c8cecfbdd2d6777bfb06127cec5500e53a1b))
+* **frontend:** copy match as markdown or one-line summary ([142bfd7](https://github.com/sound-barrier/recall/commit/142bfd7bf4ea72f5c1def214d9feccadbe0fb695))
+* **frontend:** onboarding tour skip-ahead pips ([136d8fe](https://github.com/sound-barrier/recall/commit/136d8fe691c64e25e49fec81a380f12358544ad1))
+* **frontend:** post-parse session summary toast ([79f36b2](https://github.com/sound-barrier/recall/commit/79f36b2d6b474c54c1431e16f28ef72cc0c8d336))
+* **frontend:** tilt-detection nudge ([eb1bcfc](https://github.com/sound-barrier/recall/commit/eb1bcfc740ed2bf6851dc8abf315d911c19abc1d))
+* **frontend:** Wilson confidence intervals on winrates ([bd65971](https://github.com/sound-barrier/recall/commit/bd6597132e82870bae524b90fa08de71359fefd2))
+* **ingest:** skip byte-identical screenshots via content hashes ([eb1ef0f](https://github.com/sound-barrier/recall/commit/eb1ef0f4a9a1d6df048e84fbd0a48052c026a7a5))
+* masthead watching dot with pending-screenshot tally ([984ce97](https://github.com/sound-barrier/recall/commit/984ce974cbc73a8e6cb0674e63acd8eb35a0f85c))
+* **parser:** retry transient Tesseract failures ([78e9fd5](https://github.com/sound-barrier/recall/commit/78e9fd530ee701c65c6a135febcf9818ec988b7f))
+* pin matches above the date groups ([691d792](https://github.com/sound-barrier/recall/commit/691d7923d106e7d4f4c4c8bcc3326f2474d8b8d1))
+
+
+### Bug Fixes
+
+* **a11y:** silence empty self-update alerts; calm the bar under reduced motion ([3f13abc](https://github.com/sound-barrier/recall/commit/3f13abc25a8c8d1bb1b80e1f2eef70a86f0d84fa))
+* **api:** make the auto-backup interval a total bounded contract ([ad6e9ea](https://github.com/sound-barrier/recall/commit/ad6e9ea83f291896c16b8125baef193b3c6dfdfa))
+* **frontend:** AA contrast on the active backup-interval cell ([be2356b](https://github.com/sound-barrier/recall/commit/be2356b299161187b86b0b6529e431b5be2cdde4))
+* **frontend:** align breakdown bars and stat columns ([b4f5c8c](https://github.com/sound-barrier/recall/commit/b4f5c8ccf9f4292e5294a425681d2468c33f5870))
+* **frontend:** keep dossier drags smooth while reflows settle ([aac1eae](https://github.com/sound-barrier/recall/commit/aac1eaedbffd06f7a40a694c71873745ab6217f4))
+* **frontend:** smooth dossier widget drags by ignoring gap crossings ([310428a](https://github.com/sound-barrier/recall/commit/310428aaef233aa404900cb9cbb2cee094572a43))
+
+
+### Performance
+
+* **gamedata:** reuse one HTTP client per update operation ([965cad9](https://github.com/sound-barrier/recall/commit/965cad9766f52db4d7714fac9348e8180b76b9f2))
+
+
+### Refactors
+
+* **gamedata:** size flattenRoster from its input ([133de94](https://github.com/sound-barrier/recall/commit/133de94d8b32ae1962930f6ac9a04a2d9870dccc))
+
+
+### Documentation
+
+* accept the 2026-07 quality-of-life batch ([5f7cb26](https://github.com/sound-barrier/recall/commit/5f7cb26827b0e07b5002f21cac9b8bf22231ea03))
+* move the 2026-07 quality-of-life batch to Shipped ([59cdf75](https://github.com/sound-barrier/recall/commit/59cdf7502b742376b39173f38a25af2abced7054))
+* move the watcher status indicator to Shipped ([04880cf](https://github.com/sound-barrier/recall/commit/04880cfff6d91b1d0cff54a33f28b1753eda19dc))
+* sync FEATURES.md with shipped features ([b4b661c](https://github.com/sound-barrier/recall/commit/b4b661c556ef287d29f68eb6dd2a0ed0166dd093))
+
+
+### Build & Packaging
+
+* **deps:** bump frontend dependencies for release ([aac65b3](https://github.com/sound-barrier/recall/commit/aac65b3200dccdf5b8f1d72ba308ac08de160b8b))
+* **deps:** bump Go dependencies for release ([993e28b](https://github.com/sound-barrier/recall/commit/993e28b17711d07349c00012f15dcf7a16a06041))
+
+
+### CI
+
+* bump initial-CSS budget 68000 -&gt; 69000 ([f84f324](https://github.com/sound-barrier/recall/commit/f84f3244c3ebd9cc86ae72f4986455aad80c8290))
+* bump total bundle budgets for the QoL batch ([d8747b3](https://github.com/sound-barrier/recall/commit/d8747b3e7b0087ba9297bd953318e2df30aadfee))
+* bump total-JS bundle budget 1360000 -&gt; 1365000 ([c512912](https://github.com/sound-barrier/recall/commit/c512912b08a04faca9f9b4f1afe3ecd8cf038723))
+
+
+### Tests
+
+* **frontend:** pin Wails tags forwarding and non-Wails fetch routing ([6cf1734](https://github.com/sound-barrier/recall/commit/6cf173451b374ee017caf49686b5f5c4e00def28))
+
 ## [0.25.1](https://github.com/sound-barrier/recall/compare/v0.25.0...v0.25.1) (2026-07-06)
 
 
