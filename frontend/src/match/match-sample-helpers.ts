@@ -24,3 +24,19 @@ export function wilsonLowerBound(wins: number, total: number): number {
   const spread = z * Math.sqrt((p * (1 - p)) / total + z2 / (4 * total * total))
   return (centre - spread) / denominator
 }
+
+// wilsonMargin returns the DISPLAY half-width of the Wilson 95%
+// interval in percentage points, rounded — the "± 8" in
+// "62% ± 8 · n=14". The interval isn't symmetric around the raw
+// winrate, so the display margin is half the interval's width (an
+// honest single number beats a lopsided pair for a KPI sub-line).
+// Null when there are no decisive matches.
+export function wilsonMargin(wins: number, total: number): number | null {
+  if (total <= 0) return null
+  const z = 1.96
+  const z2 = z * z
+  const p = wins / total
+  const denominator = 1 + z2 / total
+  const spread = z * Math.sqrt((p * (1 - p)) / total + z2 / (4 * total * total))
+  return Math.round(((2 * spread) / denominator / 2) * 100)
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { wilsonLowerBound, LOW_SAMPLE_N } from '@/match/match-sample-helpers'
+import { wilsonLowerBound, wilsonMargin, LOW_SAMPLE_N } from '@/match/match-sample-helpers'
 
 describe('wilsonLowerBound', () => {
   it('ranks a solid 75% over a thin perfect sample', () => {
@@ -31,5 +31,18 @@ describe('wilsonLowerBound', () => {
 describe('LOW_SAMPLE_N', () => {
   it('is the documented five-match line', () => {
     expect(LOW_SAMPLE_N).toBe(5)
+  })
+})
+
+describe('wilsonMargin', () => {
+  it('returns the rounded 95% half-width in percentage points', () => {
+    // 9/14 → Wilson 95% half-width ≈ 22.4 → 22.
+    expect(wilsonMargin(9, 14)).toBe(22)
+    // Large solid sample tightens: 60/100 → ± ≈ 9.
+    expect(wilsonMargin(60, 100)).toBe(9)
+  })
+
+  it('null with no decisive matches', () => {
+    expect(wilsonMargin(0, 0)).toBeNull()
   })
 })
