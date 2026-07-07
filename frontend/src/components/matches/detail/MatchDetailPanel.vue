@@ -8,6 +8,8 @@ import { useUiStore } from '@/stores/ui'
 import { useMatchesStore } from '@/stores/matches'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { previousAnnotatedRecord } from '@/match/match-helpers'
+import { matchToMarkdown, matchSummaryLine } from '@/match/match-markdown'
+import { useAppStore } from '@/stores/app'
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import DetailPanelHeader from '@/components/matches/detail/DetailPanelHeader.vue'
 
@@ -77,6 +79,31 @@ const clearPendingFocus = uiStore.clearPendingFocus
 function toggleSources() { uiStore.toggleSources(selection.selectedKey.value) }
 
 const ow = useOWData()
+
+// Clipboard exports — the pure generators in @/match/match-markdown,
+// fed the resolved display names. Failures surface on the app banner
+// (clipboard access can be denied in odd embed contexts).
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch (e) {
+    useAppStore().setErrorFromRaw(`Clipboard copy failed: ${String(e)}`)
+  }
+}
+function copyMarkdown() {
+  if (!record.value) return
+  void copyText(matchToMarkdown(record.value, {
+    mapDisplay: record.value.data?.map ? ow.mapDisplayName(record.value.data.map) : undefined,
+    heroDisplay: record.value.data?.hero ? ow.heroDisplayName(record.value.data.hero) : undefined,
+  }))
+}
+function copySummary() {
+  if (!record.value) return
+  void copyText(matchSummaryLine(record.value, {
+    mapDisplay: record.value.data?.map ? ow.mapDisplayName(record.value.data.map) : undefined,
+    heroDisplay: record.value.data?.hero ? ow.heroDisplayName(record.value.data.hero) : undefined,
+  }))
+}
 
 const panelRef = ref<HTMLElement | null>(null)
 const bodyRef = ref<HTMLElement | null>(null)
@@ -167,6 +194,8 @@ function onBackdropClick(e: MouseEvent) {
           @next="selection.openNext()"
           @reset="onResetMatchData(record.match_key)"
           @pin="onSetMatchPinned(record.match_key, !record.pinned)"
+          @copy-markdown="copyMarkdown"
+          @copy-summary="copySummary"
         />
 
         <!-- role="region" + aria-label inside the dialog so SR users
