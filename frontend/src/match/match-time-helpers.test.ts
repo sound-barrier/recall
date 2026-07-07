@@ -2,6 +2,8 @@ import { vi, describe, it, expect, afterEach } from 'vitest'
 import {
   matchTime,
   fmtTime,
+  matchInstantUTC,
+  formatLocalFromUTC,
   formatRelativeTime,
   computeEarliestMatchDateTime,
   formatParsedAt,
@@ -66,6 +68,33 @@ describe('fmtTime', () => {
 
   it('returns "" when neither is set', () => {
     expect(fmtTime({ data: {} })).toBe('')
+  })
+
+  it('prefers played_at_utc over the naive fields, rendered in the viewer zone', () => {
+    // A deliberately-wrong naive pair; the canonical UTC must win. Whatever
+    // the host zone, fmtTime(rec) must equal formatLocalFromUTC(the instant)
+    // and NOT the naive rendering — proving the instant is preferred.
+    const rec = { data: { date: '1999-01-01', finished_at: '00:00', played_at_utc: '2026-05-11T03:29:00Z' } }
+    expect(fmtTime(rec)).toBe(formatLocalFromUTC('2026-05-11T03:29:00Z'))
+    expect(fmtTime(rec)).not.toBe('Jan 1, 1999 @ 12:00am')
+  })
+
+  it('falls back to the naive rendering when played_at_utc is absent', () => {
+    expect(fmtTime({ data: { date: '2026-05-09', finished_at: '21:08' } })).toBe('May 9, 2026 @ 9:08pm')
+  })
+})
+
+describe('matchInstantUTC', () => {
+  it('returns played_at_utc verbatim when present', () => {
+    expect(matchInstantUTC({ match_key: 'm', data: { played_at_utc: '2026-05-11T03:29:00Z' } })).toBe('2026-05-11T03:29:00Z')
+  })
+  it('derives a UTC instant from the naive local fields when the column is absent', () => {
+    // new Date('2026-05-10T21:08') is interpreted local → toISOString UTC.
+    const got = matchInstantUTC({ match_key: 'm', data: { date: '2026-05-10', finished_at: '21:08' } })
+    expect(got).toBe(new Date('2026-05-10T21:08').toISOString())
+  })
+  it('is "" for a record with no placeable time', () => {
+    expect(matchInstantUTC({ match_key: 'unmatched-abc', data: {} })).toBe('')
   })
 
   it('does not zero-pad the day-of-month', () => {

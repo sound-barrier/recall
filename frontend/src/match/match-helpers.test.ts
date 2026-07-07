@@ -431,6 +431,21 @@ describe('row formatters', () => {
     expect(formatRowDate({ data: { date: 'garbage' } })).toBe('garbage')
   })
 
+  it('formatFinishedAt prefers played_at_utc (rendered local 24h) over naive', () => {
+    // 03:29Z renders to some local HH:MM; whatever the host zone it must equal
+    // the local hours/minutes of that instant, not the deliberately-wrong naive.
+    const dt = new Date('2026-05-11T03:29:00Z')
+    const pad = (n: number) => String(n).padStart(2, '0')
+    expect(formatFinishedAt({ data: { finished_at: '00:00', played_at_utc: '2026-05-11T03:29:00Z' } }))
+      .toBe(`${pad(dt.getHours())}:${pad(dt.getMinutes())}`)
+  })
+
+  it('formatRowDate prefers played_at_utc over the naive date', () => {
+    const dt = new Date('2026-05-11T03:29:00Z')
+    expect(formatRowDate({ data: { date: '1999-01-01', played_at_utc: '2026-05-11T03:29:00Z' } }))
+      .toContain(String(dt.getDate()))
+  })
+
   it('formatFinishedAt returns the finish time or empty', () => {
     expect(formatFinishedAt({ data: { finished_at: '21:29' } })).toBe('21:29')
     expect(formatFinishedAt({ data: {} })).toBe('')
