@@ -111,7 +111,7 @@ export function useDossierQueries(
           // a thin perfect sample must not outrank a solid good one
           // (sample-size honesty; the displayed % stays raw).
           return {
-            key, total, winrate, share: winrate,
+            key, total, winrate, wins: w, share: winrate,
             lowSample: total < LOW_SAMPLE_N,
             rank: wilsonLowerBound(w, total),
           }

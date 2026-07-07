@@ -33,6 +33,10 @@ export interface BreakdownEntry {
   // visible caveat. `rank` is the Wilson lower bound the sort used.
   lowSample?: boolean
   rank?: number
+  // Decisive wins behind `winrate` — set by winrateBy so the CI
+  // display can recompute the Wilson margin; absent on count-shaped
+  // breakdowns.
+  wins?: number
 }
 
 // One modifier's record over the set — drives the Uphill Battle /

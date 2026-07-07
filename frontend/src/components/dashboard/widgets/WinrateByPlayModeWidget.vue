@@ -6,9 +6,17 @@
 // match is noise; over 50 matches is signal). Non-default; users
 // opt in via the dossier customize gallery.
 import { useDossier } from '@/composables/dashboard/useDossier'
+import { wilsonMargin } from '@/match/match-sample-helpers'
 
 const dossier = useDossier()
 const playModeBreakdown = dossier.playModeBreakdown
+
+// Wilson ± (pct points) inline while the sample is thin enough for it
+// to matter; solid samples (n ≥ 30) keep the clean single number.
+function ciMargin(row: { wins?: number, total: number }): number | null {
+  if (row.wins == null || row.total >= 30) return null
+  return wilsonMargin(row.wins, row.total)
+}
 </script>
 
 <template>
@@ -22,7 +30,7 @@ const playModeBreakdown = dossier.playModeBreakdown
         <span class="bd-fill" :style="{ width: row.winrate + '%' }" />
         <span class="bd-time">{{ row.total }}x</span>
       </span>
-      <span class="bd-stats">{{ row.winrate }}%</span>
+      <span class="bd-stats">{{ row.winrate }}%<span v-if="ciMargin(row)" class="bd-ci"> ±{{ ciMargin(row) }}</span></span>
     </li>
   </ul>
 </template>

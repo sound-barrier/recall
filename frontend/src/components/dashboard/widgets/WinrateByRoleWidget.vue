@@ -3,6 +3,7 @@
 // a minimum decisive-match sample. Bar fill is win-rate; the count
 // overlay shows the sample. Opt-in.
 import { useDossier } from '@/composables/dashboard/useDossier'
+import { wilsonMargin } from '@/match/match-sample-helpers'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { winrateBySchema, type WinrateByConfig } from '@/dashboard/widgets'
 
@@ -14,6 +15,13 @@ const rows = dossier.winrateBy(() => ({
   minMatches: config.value.minMatches,
   limit:      config.value.limit,
 }))
+
+// Wilson ± (pct points) inline while the sample is thin enough for it
+// to matter; solid samples (n ≥ 30) keep the clean single number.
+function ciMargin(row: { wins?: number, total: number }): number | null {
+  if (row.wins == null || row.total >= 30) return null
+  return wilsonMargin(row.wins, row.total)
+}
 </script>
 
 <template>
@@ -27,7 +35,7 @@ const rows = dossier.winrateBy(() => ({
         <span class="bd-fill" :style="{ width: row.winrate + '%' }" />
         <span class="bd-time">{{ row.total }}x</span>
       </span>
-      <span class="bd-stats">{{ row.winrate }}%</span>
+      <span class="bd-stats">{{ row.winrate }}%<span v-if="ciMargin(row)" class="bd-ci"> ±{{ ciMargin(row) }}</span></span>
       <span
         v-if="row.lowSample"
         data-low-sample
