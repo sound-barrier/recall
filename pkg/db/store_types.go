@@ -37,6 +37,19 @@ type IgnoredRow struct {
 	IgnoredAt string
 }
 
+// FailedFileRow is one OCR-failure ledger row (see failed_files in
+// schema.sql). Error holds the most recent attempt's message; Attempts
+// counts every failed run since FirstFailedAt. ScreenshotsDirID resolves
+// the on-disk directory for the diagnostic bundle.
+type FailedFileRow struct {
+	Filename         string
+	ScreenshotsDirID int64
+	Error            string
+	Attempts         int
+	FirstFailedAt    string
+	LastFailedAt     string
+}
+
 // PlayModeState is one row of match_play_mode. `PlayMode` is the
 // CHECK-constrained enum ('quickplay' | 'competitive'); `OverriddenAt`
 // is the server-assigned timestamp captured when the user toggled the

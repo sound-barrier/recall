@@ -42,6 +42,11 @@ func (a *App) IgnoreScreenshot(filename string) error {
 	if err := a.store.AddIgnoredScreenshot(filename); err != nil {
 		return fmt.Errorf("add ignored screenshot: %w", err)
 	}
+	// An ignored file is skipped on every future run, so a standing
+	// OCR-failure row would sit in the triage list forever — clear it.
+	if err := a.store.RemoveFailedFile(filename); err != nil {
+		return fmt.Errorf("clear failed-file row for %s: %w", filename, err)
+	}
 	// Deduplicate so a tracked-match lookup that returns the same key
 	// we already had in the hard-coded fallback list doesn't call
 	// HardDeleteMatch twice (harmless but noisier in tests + audit

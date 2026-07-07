@@ -409,10 +409,25 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		ev.Error = parseErr.Error()
 	}
 	// Skip insert/aggregate on per-file parse failure but still emit the
-	// progress event so the user sees an accurate file count.
+	// progress event so the user sees an accurate file count. Record the
+	// failure in the ledger so the Unknown tab can triage it — a UX
+	// nicety, not a correctness invariant, so a store error only logs.
+	// The ledger is NOT a skip list: the file is re-attempted next run.
 	if parseErr != nil || result == nil {
+		errMsg := "parser returned no result"
+		if parseErr != nil {
+			errMsg = parseErr.Error()
+		}
+		if err := a.store.RecordFailedFile(filename, st.dirID, errMsg); err != nil {
+			applog.Subsystem("parse").Warn("record failed file", "filename", filename, "err", err)
+		}
 		a.emitParseProgress(ev)
 		return
+	}
+	// A parse that now succeeds clears any standing failure row — the
+	// file graduated out of the triage list.
+	if err := a.store.RemoveFailedFile(filename); err != nil {
+		applog.Subsystem("parse").Warn("clear failed file", "filename", filename, "err", err)
 	}
 
 	key, ambigCands := correlate.ResolveMatchKey(filename, result, st.snap)

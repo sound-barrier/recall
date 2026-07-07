@@ -153,6 +153,7 @@ func (s *SQLStore) Clear() error {
 		}
 	}
 	for _, t := range []string{
+		"failed_files", // references screenshots_dirs RESTRICT — must precede it
 		"screenshots_dirs",
 		"match_reviews",
 		"match_queue",

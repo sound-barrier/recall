@@ -211,6 +211,17 @@ type Store interface {
 	ListIgnoredScreenshots() ([]IgnoredRow, error)
 	ClearIgnoredScreenshots() error
 
+	// Failed-file ledger — per-file OCR failure records for the Unknown
+	// tab's "Failed to read" triage section. NOT a skip list: failed
+	// files are re-attempted on every run. RecordFailedFile upserts
+	// (attempts+1, refreshed error/last_failed_at, preserved
+	// first_failed_at); RemoveFailedFile is the idempotent delete the
+	// success path and "Delete forever" call; ListFailedFiles returns
+	// rows most recently failed first.
+	RecordFailedFile(filename string, dirID int64, errMsg string) error
+	RemoveFailedFile(filename string) error
+	ListFailedFiles() ([]FailedFileRow, error)
+
 	// All-Heroes-screenshots surface — recognized-but-unstored skip list.
 	// The PERSONAL "All Heroes" aggregate view carries no data worth
 	// extracting (its combat totals duplicate the TEAMS screen, and its card
