@@ -15,6 +15,7 @@ import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
+import { useTiltNudge } from '@/composables/matches/useTiltNudge'
 import { screenshotURL } from '@/match/match-helpers'
 import StartupErrorModal from '@/components/app/StartupErrorModal.vue'
 import UnsupportedModal from '@/components/app/UnsupportedModal.vue'
@@ -37,6 +38,7 @@ const IgnoredFilesPanel = lazyOverlay(() => import('@/components/settings/Ignore
 const MatchDetailPanel = lazyOverlay(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
 const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/list/MatchAnchorToast.vue'))
 const MatchUndoToast = lazyOverlay(() => import('@/components/matches/list/MatchUndoToast.vue'))
+const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/list/TiltNudgeToast.vue'))
 const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = lazyOverlay(() => import('@/components/matches/manual/ManualMatchModal.vue'))
@@ -80,7 +82,13 @@ const {
   unknownRecords,
   exportBundleOpen,
   exportBundleSelectedKeys,
+  records,
 } = storeToRefs(matchesStore)
+
+// Tilt nudge — evaluated over the FULL record set (tilt is about
+// actual recent play, not the current narrow); dismissal is
+// session-scoped to the streak inside the composable.
+const tiltNudge = useTiltNudge(records)
 const {
   confirmUnsupportedParse,
   closeIgnoredPanel,
@@ -120,6 +128,13 @@ const lightboxSrc = computed(() => {
     :state="undoHideToast"
     @undo="onUndoHide"
     @dismiss="onUndoHideDismiss"
+  />
+
+  <!-- Tilt nudge — dismissible break suggestion on a collapsed loss
+       streak. Session-scoped; never auto-dismisses. -->
+  <TiltNudgeToast
+    :signal="tiltNudge.visibleSignal.value"
+    @dismiss="tiltNudge.dismiss"
   />
 
   <!-- Fullscreen screenshot lightbox — stacks above the detail panel via

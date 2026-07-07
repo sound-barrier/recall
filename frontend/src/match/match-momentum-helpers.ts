@@ -134,3 +134,75 @@ export function sessionCount(records: readonly MomentumInput[], gapHours = SESSI
   }
   return sessions
 }
+
+// ── Tilt nudge ──────────────────────────────────────────────────────
+//
+// Two-pronged trigger (deliberately strict so it never moralises on a
+// single bad day): the LATEST >=3 timed matches are all defeats, AND
+// the loss-streak K/D collapsed more than 25% below the 30-day
+// baseline (which needs >=5 matches to mean anything). Assists count
+// toward neither side; deaths floor at 1 so a deathless baseline
+// can't divide by zero.
+
+const TILT_MIN_LOSSES = 3
+const TILT_KD_DROP = 0.75
+const TILT_BASELINE_DAYS = 30
+const TILT_BASELINE_MIN_SAMPLE = 5
+
+export interface TiltNudgeSignal {
+  losses: number
+  // Percent the streak K/D sits below the baseline, rounded.
+  dropPercent: number
+  // The streak's first loss — the dismissal key: the same streak never
+  // re-nudges, a new streak may.
+  streakKey: string
+}
+
+function kd(records: readonly MomentumInput[]): number | null {
+  let elims = 0
+  let deaths = 0
+  let sampled = 0
+  for (const r of records) {
+    const d = r.data ?? {}
+    if (d.eliminations == null && d.deaths == null) continue
+    sampled++
+    elims += d.eliminations ?? 0
+    deaths += d.deaths ?? 0
+  }
+  if (sampled === 0) return null
+  return elims / Math.max(1, deaths)
+}
+
+export function tiltNudgeSignal(records: readonly MomentumInput[]): TiltNudgeSignal | null {
+  const timed = records
+    .map(r => ({ r, t: matchEpoch(r) }))
+    .filter((x): x is { r: MomentumInput, t: number } => x.t != null)
+    .sort((a, b) => a.t - b.t)
+  if (timed.length < TILT_MIN_LOSSES + TILT_BASELINE_MIN_SAMPLE) return null
+
+  const streak: MomentumInput[] = []
+  for (let i = timed.length - 1; i >= 0; i--) {
+    if (timed[i]!.r.data?.result !== 'defeat') break
+    streak.unshift(timed[i]!.r)
+  }
+  if (streak.length < TILT_MIN_LOSSES) return null
+
+  const latest = timed[timed.length - 1]!.t
+  const floor = latest - TILT_BASELINE_DAYS * 24 * HOUR_MS
+  const baselinePool = timed
+    .slice(0, timed.length - streak.length)
+    .filter(x => x.t >= floor)
+    .map(x => x.r)
+  if (baselinePool.length < TILT_BASELINE_MIN_SAMPLE) return null
+
+  const streakKD = kd(streak)
+  const baseKD = kd(baselinePool)
+  if (streakKD == null || baseKD == null || baseKD <= 0) return null
+  if (streakKD > baseKD * TILT_KD_DROP) return null
+
+  return {
+    losses: streak.length,
+    dropPercent: Math.round((1 - streakKD / baseKD) * 100),
+    streakKey: streak[0]!.match_key,
+  }
+}

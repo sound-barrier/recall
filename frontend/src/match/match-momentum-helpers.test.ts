@@ -6,6 +6,7 @@ import {
   netRankProgress,
   leaverRate,
   sessionCount,
+  tiltNudgeSignal,
   type MomentumInput,
 } from '@/match/match-momentum-helpers'
 
@@ -99,5 +100,70 @@ describe('leaverRate', () => {
 
   it('returns a null rate on an empty set', () => {
     expect(leaverRate([])).toEqual({ rate: null, leaverCount: 0, total: 0 })
+  })
+})
+
+describe('tiltNudgeSignal', () => {
+  const m = (key: string, day: number, hour: number, result: string, e: number, d: number) => ({
+    match_key: key,
+    data: {
+      date: `2026-05-${String(day).padStart(2, '0')}`,
+      finished_at: `${String(hour).padStart(2, '0')}:00`,
+      result,
+      eliminations: e,
+      deaths: d,
+    },
+  }) as unknown as MomentumInput
+
+  const healthyBaseline = () =>
+    Array.from({ length: 8 }, (_, i) => m(`w${i}`, i + 1, 10, 'victory', 20, 5))
+
+  it('fires on ≥3 trailing losses with a >25% K/D collapse', () => {
+    const records = [
+      ...healthyBaseline(),
+      m('l1', 11, 20, 'defeat', 4, 9),
+      m('l2', 11, 21, 'defeat', 3, 10),
+      m('l3', 11, 22, 'defeat', 5, 8),
+    ]
+    const sig = tiltNudgeSignal(records)
+    expect(sig).not.toBeNull()
+    expect(sig!.losses).toBe(3)
+    expect(sig!.streakKey).toBe('l1')
+    expect(sig!.dropPercent).toBeGreaterThan(25)
+  })
+
+  it('stays silent below three losses, without the collapse, or on a thin baseline', () => {
+    const twoLosses = [...healthyBaseline(), m('l1', 11, 20, 'defeat', 4, 9), m('l2', 11, 21, 'defeat', 3, 10)]
+    expect(tiltNudgeSignal(twoLosses)).toBeNull()
+
+    const goodKD = [
+      ...healthyBaseline(),
+      m('l1', 11, 20, 'defeat', 19, 5),
+      m('l2', 11, 21, 'defeat', 20, 5),
+      m('l3', 11, 22, 'defeat', 18, 5),
+    ]
+    expect(tiltNudgeSignal(goodKD)).toBeNull()
+
+    const thin = [
+      m('w1', 1, 10, 'victory', 20, 5),
+      m('l1', 11, 20, 'defeat', 4, 9),
+      m('l2', 11, 21, 'defeat', 3, 10),
+      m('l3', 11, 22, 'defeat', 5, 8),
+    ]
+    expect(tiltNudgeSignal(thin)).toBeNull()
+  })
+
+  it('a win between streaks resets the dismissal key', () => {
+    const records = [
+      ...healthyBaseline(),
+      m('l1', 11, 20, 'defeat', 4, 9),
+      m('l2', 11, 21, 'defeat', 3, 10),
+      m('l3', 11, 22, 'defeat', 5, 8),
+      m('w9', 12, 10, 'victory', 20, 5),
+      m('n1', 12, 20, 'defeat', 4, 9),
+      m('n2', 12, 21, 'defeat', 3, 10),
+      m('n3', 12, 22, 'defeat', 5, 8),
+    ]
+    expect(tiltNudgeSignal(records)!.streakKey).toBe('n1')
   })
 })
