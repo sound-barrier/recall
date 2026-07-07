@@ -598,7 +598,13 @@
 
 .breakdown li {
   display: grid;
-  grid-template-columns: minmax(80px, 110px) 1fr auto;
+
+  /* Three FIXED-shape columns so every row's bar track starts and ends
+     at identical x regardless of name length, percent width, a ±
+     interval, or the n<5 chip (which overlays the bar column instead
+     of adding a fourth). The old `auto` stats column let per-row
+     content reshape each li's private grid — ragged bars. */
+  grid-template-columns: 110px minmax(0, 1fr) 5rem;
   align-items: center;
   gap: 0.5rem;
 
@@ -619,6 +625,13 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   color: var(--text);
+
+  /* Names must never reshape their row's grid — the fixed column +
+     ellipsis keep every bar starting at the same x. */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bd-bar {
@@ -680,6 +693,42 @@
   font-size: 0.7rem;
   color: var(--text-dim);
   font-feature-settings: "tnum";
+  text-align: right;
+}
+
+/* When ANY row in a breakdown carries a Wilson ± (`.bd-ci`), every
+   row's stats cell splits into percent | ± sub-columns so the
+   percents line up down the widget instead of drifting left on ±
+   rows. Widgets that never show a ± keep the plain right-hugged
+   percent. (Same :has() technique as the bd-time bar variant above.) */
+.breakdown ul:has(.bd-ci) .bd-stats {
+  display: inline-grid;
+  grid-template-columns: 1fr 2.2rem;
+  justify-items: end;
+  column-gap: 0.15rem;
+}
+
+.bd-ci {
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* The n<5 chip overlays the right end of its row's BAR rather than
+   occupying a column of its own — a fourth column would steal width
+   from the 1fr bar on chip rows only. Overlaying means the name /
+   bar / stats trio needs EXPLICIT cells: an explicitly-placed chip
+   would otherwise displace the auto-placed bar out of column 2. */
+.breakdown li .bd-name { grid-area: 1 / 1; }
+.breakdown li .bd-bar { grid-area: 1 / 2; }
+.breakdown li .bd-stats { grid-area: 1 / 3; }
+
+.breakdown li .bd-low-n {
+  grid-area: 1 / 2;
+  place-self: center end;
+  margin-right: 4px;
+  margin-left: 0;
+  background: var(--surface);
+  z-index: 1;
 }
 .bd-total { color: var(--text-faint); font-size: 0.6rem; }
 
