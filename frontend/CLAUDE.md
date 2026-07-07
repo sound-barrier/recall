@@ -246,6 +246,18 @@ for you.
 
 ## Gotchas
 
+- **Match time: display from the canonical UTC instant, not the naive OCR
+  fields.** `data.date`/`data.finished_at` are the OW scoreboard's naive local
+  wall clock (no timezone); `data.played_at_utc` is the backend-derived canonical
+  UTC (RFC3339). Human-display helpers (`fmtTime`, `formatRowDate`,
+  `formatFinishedAt`) prefer `matchInstantUTC(rec)` rendered in the viewer's
+  current zone (`formatLocalFromUTC`, sharing `formatParsedAt`'s convention) and
+  fall back to the naive strings for rows without the column (backfilled by
+  Re-parse All). For a stationary viewer the output is identical to the naive
+  render. The SORT/compare key (`matchTime`) is intentionally still the naive
+  string — don't "fix" it to UTC without checking #607's date-range predicate and
+  the heatmap/grouping helpers, which compare against it.
+
 - **Run from `frontend/`.** `npx vitest` / `npx playwright test` /
   `npm run *` need the cwd to be `frontend/`. Vitest errors with a
   misleading "Install @vitejs/plugin-vue to handle .vue files";
