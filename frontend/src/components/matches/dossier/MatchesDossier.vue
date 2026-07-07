@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MatchRecord } from '@/api-client'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import { formatRangeBound } from '@/match/match-time-helpers'
 
 // The set-dossier header: the eyebrow + headline + subline and the
 // active-clause chip row. The chips mutate the narrow bundle's refs
@@ -20,6 +21,8 @@ const {
   searchText,
   pickedRange,
   customFrom,
+  customFromTime,
+  customToTime,
   customTo,
   pickedMaps,
   pickedGameModes,
@@ -80,7 +83,7 @@ function sourceLabel(source: string): string {
       </li>
       <li v-if="customFrom || customTo" class="active-chip range">
         <span class="chip-key">Dates</span>
-        <span class="chip-val">{{ customFrom || '…' }} → {{ customTo || '…' }}</span>
+        <span class="chip-val">{{ formatRangeBound(customFrom, customFromTime) }} → {{ formatRangeBound(customTo, customToTime) }}</span>
         <button class="chip-x" aria-label="Clear dates" @click="pickRange('all')">
           ×
         </button>
