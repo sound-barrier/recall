@@ -165,4 +165,19 @@ test.describe('onboarding tour — first-launch behaviour', () => {
     )
     expect(completed).toBe('true')
   })
+
+  test('step pips jump directly to a step (skip-ahead)', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('.tour-callout')).toBeVisible()
+    await expect(page.locator('.tour-callout-counter')).toContainText('01 /')
+
+    // Jump straight to step 4 from the pip row — no linear stepping.
+    await page.locator('.tour-pip').nth(3).click()
+    await expect(page.locator('.tour-callout-counter')).toContainText('04 /')
+    await expect(page.locator('.tour-pip').nth(3)).toHaveAttribute('aria-current', 'step')
+
+    // And back to the start the same way.
+    await page.locator('.tour-pip').first().click()
+    await expect(page.locator('.tour-callout-counter')).toContainText('01 /')
+  })
 })

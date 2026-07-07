@@ -32,6 +32,9 @@ const props = defineProps<{
   body:      string
   // Counter copy ("3 of 12").
   counter:   string
+  // Skip-ahead pips: total step count + the ACTIVE zero-based index.
+  stepCount: number
+  stepIndex: number
   // Button state.
   canBack:   boolean
   isLast:    boolean
@@ -42,6 +45,7 @@ const emit = defineEmits<{
   next:   []
   skip:   []
   finish: []
+  jump: [index: number]
 }>()
 
 const CALLOUT_W = 360
@@ -291,6 +295,20 @@ const connector = computed(() => {
       <span class="tour-callout-drag-handle" aria-hidden="true">⋮⋮</span>
       <span class="tour-callout-eyebrow">{{ eyebrow }}</span>
       <span class="tour-callout-counter">{{ counter }}</span>
+      <nav class="tour-pips" aria-label="Jump to tour step">
+        <button
+          v-for="i in stepCount"
+          :key="i"
+          type="button"
+          class="tour-pip"
+          :class="{ active: i - 1 === stepIndex }"
+          :aria-current="i - 1 === stepIndex ? 'step' : undefined"
+          :aria-label="`Go to step ${i} of ${stepCount}`"
+          @pointerdown.stop
+          @mousedown.stop
+          @click.stop="emit('jump', i - 1)"
+        />
+      </nav>
     </header>
     <div class="tour-callout-body-block">
       <div class="tour-callout-num" aria-hidden="true">
@@ -430,6 +448,37 @@ const connector = computed(() => {
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--accent, #d96a2e);
+}
+
+.tour-pips {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-left: 0.55rem;
+}
+
+/* Skip-ahead jump points — the linear order stays the default flow,
+   the pips just stop forcing it. */
+.tour-pip {
+  appearance: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border: 1px solid var(--border-strong, #666);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.tour-pip:hover,
+.tour-pip:focus-visible {
+  border-color: var(--accent, #d96a2e);
+  transform: scale(1.15);
+}
+
+.tour-pip.active {
+  background: var(--accent, #d96a2e);
+  border-color: var(--accent, #d96a2e);
 }
 
 .tour-callout-counter {
