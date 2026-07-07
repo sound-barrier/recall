@@ -109,6 +109,11 @@ type SummaryRow struct {
 	Date       string
 	FinishedAt string
 	GameLength string
+	// PlayedAtUTC is the canonical UTC instant (RFC3339), derived at parse
+	// time from Date+FinishedAt via the machine's timezone identity. nil =
+	// SQL NULL (date/finished_at absent or unparseable). The naive Date/
+	// FinishedAt above stay naive-local for the correlator; this is additive.
+	PlayedAtUTC *string
 
 	PerfElimTotal          int
 	PerfElimAvgPer10Min    float64
@@ -201,20 +206,24 @@ type HeroSR struct {
 // non-nil = the user's value, so a user-entered 0 is distinct from unset. A
 // manual match is a UserMatchData whose key has no screenshot row behind it.
 type UserMatchData struct {
-	MatchKey      string
-	Map           *string
-	Hero          *string
-	Eliminations  *int
-	Assists       *int
-	Deaths        *int
-	Damage        *int
-	Healing       *int
-	Mitigation    *int
-	Result        *string
-	FinalScore    *string
-	Date          *string
-	FinishedAt    *string
-	GameLength    *string
+	MatchKey     string
+	Map          *string
+	Hero         *string
+	Eliminations *int
+	Assists      *int
+	Deaths       *int
+	Damage       *int
+	Healing      *int
+	Mitigation   *int
+	Result       *string
+	FinalScore   *string
+	Date         *string
+	FinishedAt   *string
+	GameLength   *string
+	// PlayedAtUTC is the canonical UTC instant (RFC3339). Manual entries
+	// send an offset on the wire so it's exact; naive Date/FinishedAt/key
+	// stay naive-local for axis consistency with OCR rows.
+	PlayedAtUTC   *string
 	Rank          *string
 	Level         *int
 	RankProgress  *int
