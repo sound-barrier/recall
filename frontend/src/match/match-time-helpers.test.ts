@@ -9,6 +9,7 @@ import {
   formatPlayMinutes,
   monthDateRange,
   formatCandidateDistance,
+  formatRangeBound,
 } from '@/match/match-time-helpers'
 
 // ─── matchTime ───────────────────────────────────────────────────────
@@ -329,5 +330,19 @@ describe('formatCandidateDistance', () => {
   it('renders multi-day distances in days with singular/plural handled', () => {
     expect(formatCandidateDistance(2 * 86400 + 3600)).toBe('2 days apart')
     expect(formatCandidateDistance(48 * 3600)).toBe('2 days apart')
+  })
+})
+
+describe('formatRangeBound', () => {
+  it('renders an unset side as an ellipsis', () => {
+    expect(formatRangeBound('')).toBe('…')
+    expect(formatRangeBound('', '11:00')).toBe('…')
+  })
+  it('trims T-suffixed viz bounds to the day', () => {
+    expect(formatRangeBound('2026-05-10T00:00')).toBe('2026-05-10')
+    expect(formatRangeBound('2026-05-31T23:59')).toBe('2026-05-31')
+  })
+  it('appends the minute bound when set', () => {
+    expect(formatRangeBound('2026-01-07', '11:00')).toBe('2026-01-07 11:00')
   })
 })

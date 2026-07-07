@@ -213,3 +213,13 @@ export function monthDateRange(month: string): { from: string; to: string } {
   const last = new Date(y!, m!, 0).getDate() // day 0 of next month = this month's last day
   return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, '0')}` }
 }
+
+// formatRangeBound renders one side of the narrow custom range for
+// chips and the panel meta line: the YYYY-MM-DD day (T-suffixed viz
+// bounds are trimmed) plus the optional HH:MM minute bound; '…' for
+// an unset side, matching the "from → to" readout convention.
+export function formatRangeBound(date: string, time = ''): string {
+  if (!date) return '…'
+  const day = date.slice(0, 10)
+  return time ? `${day} ${time}` : day
+}

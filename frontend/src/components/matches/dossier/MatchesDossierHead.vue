@@ -4,6 +4,7 @@ import { computed, defineAsyncComponent, ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import type { NarrowMode } from '@/composables/matches/useNarrowMode'
+import { formatRangeBound } from '@/match/match-time-helpers'
 import { useDashboardGrid } from '@/composables/dashboard/useDashboardGrid'
 import MatchesDossier from '@/components/matches/dossier/MatchesDossier.vue'
 import DashboardWidget from '@/components/dashboard/DashboardWidget.vue'
@@ -43,7 +44,7 @@ const emit = defineEmits<{
 const {
   searchText,
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers,
-  pickedRange, customFrom, customTo,
+  pickedRange, customFrom, customTo, customFromTime, customToTime,
   anchorKey,
   activeClauseCount, anyNarrow,
   narrowedRecords,
@@ -87,7 +88,7 @@ const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
   const parts: string[] = []
   if (searchText.value.trim()) parts.push(`"${searchText.value.trim()}"`)
-  if (customFrom.value || customTo.value) parts.push(`${customFrom.value || '…'} → ${customTo.value || '…'}`)
+  if (customFrom.value || customTo.value) parts.push(`${formatRangeBound(customFrom.value, customFromTime.value)} → ${formatRangeBound(customTo.value, customToTime.value)}`)
   else if (pickedRange.value !== 'all') parts.push(`last ${pickedRange.value}`)
   if (pickedGameModes.value.size) parts.push([...pickedGameModes.value].join('/'))
   if (pickedMaps.value.size)     parts.push([...pickedMaps.value].join(' · '))

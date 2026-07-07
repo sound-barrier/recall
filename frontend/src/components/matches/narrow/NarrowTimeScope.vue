@@ -1,14 +1,42 @@
 <script setup lang="ts">
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import { formatRangeBound } from '@/match/match-time-helpers'
 
 // The Time-scope facet: preset range chips (All / 7d / 30d / 90d) + a custom
-// from/to date pair. Reads + writes pickedRange / customFrom / customTo off the
-// shared narrow bundle — picking a preset clears the custom dates; editing either
-// date flips pickedRange to 'custom'. np-section / np-chip chrome is global
-// (narrow.css); the date inputs carry their own scoped styles.
+// from/to date pair, each with an OPTIONAL minute bound (blank = whole day —
+// the patch-drop primitive: "from Jan 7 11:00" splits a day at the patch).
+// Reads + writes pickedRange / customFrom / customTo (+ the panel-owned
+// customFromTime / customToTime) off the shared narrow bundle — picking a
+// preset clears the custom dates and times; editing either date flips
+// pickedRange to 'custom'; emptying a date clears its time (a time without
+// a date is inert, so the input is disabled until its date is set).
+// np-section / np-chip chrome is global (narrow.css); the date/time inputs
+// carry their own scoped styles.
 type MatchesNarrowApi = ReturnType<typeof useMatchesNarrow>
 const props = defineProps<{ narrow: MatchesNarrowApi }>()
-const { pickedRange, customFrom, customTo, pickRange } = props.narrow
+const { pickedRange, customFrom, customTo, customFromTime, customToTime, pickRange } = props.narrow
+
+function onDateInput(side: 'from' | 'to', value: string) {
+  const dateRef = side === 'from' ? customFrom : customTo
+  const timeRef = side === 'from' ? customFromTime : customToTime
+  dateRef.value = value
+  if (!value) timeRef.value = ''
+  pickedRange.value = 'custom'
+}
+
+function onTimeInput(side: 'from' | 'to', value: string) {
+  const timeRef = side === 'from' ? customFromTime : customToTime
+  timeRef.value = value
+  pickedRange.value = 'custom'
+}
+
+function clearDates() {
+  customFrom.value = ''
+  customTo.value = ''
+  customFromTime.value = ''
+  customToTime.value = ''
+  pickedRange.value = 'all'
+}
 </script>
 
 <template>
@@ -17,7 +45,7 @@ const { pickedRange, customFrom, customTo, pickRange } = props.narrow
     <div class="np-section-head">
       <span class="np-section-eyebrow">Time scope</span>
       <span class="np-section-meta">
-        <template v-if="customFrom || customTo">{{ customFrom || '…' }} → {{ customTo || '…' }}</template>
+        <template v-if="customFrom || customTo">{{ formatRangeBound(customFrom, customFromTime) }} → {{ formatRangeBound(customTo, customToTime) }}</template>
         <template v-else-if="pickedRange !== 'all'">last {{ pickedRange }}</template>
         <template v-else>all time</template>
       </span>
@@ -39,8 +67,21 @@ const { pickedRange, customFrom, customTo, pickRange } = props.narrow
         <input
           type="date"
           class="np-date"
-          :value="customFrom"
-          @input="customFrom = ($event.target as HTMLInputElement).value; pickedRange = 'custom'"
+          data-np-from-date
+          :value="customFrom.slice(0, 10)"
+          @input="onDateInput('from', ($event.target as HTMLInputElement).value)"
+        >
+      </label>
+      <label class="np-date-label">
+        <span>From time</span>
+        <input
+          type="time"
+          class="np-date np-time"
+          data-np-from-time
+          :value="customFromTime"
+          :disabled="!customFrom"
+          title="Optional — narrow the From day to a start time (e.g. a patch drop)"
+          @input="onTimeInput('from', ($event.target as HTMLInputElement).value)"
         >
       </label>
       <label class="np-date-label">
@@ -48,14 +89,27 @@ const { pickedRange, customFrom, customTo, pickRange } = props.narrow
         <input
           type="date"
           class="np-date"
-          :value="customTo"
-          @input="customTo = ($event.target as HTMLInputElement).value; pickedRange = 'custom'"
+          data-np-to-date
+          :value="customTo.slice(0, 10)"
+          @input="onDateInput('to', ($event.target as HTMLInputElement).value)"
+        >
+      </label>
+      <label class="np-date-label">
+        <span>To time</span>
+        <input
+          type="time"
+          class="np-date np-time"
+          data-np-to-time
+          :value="customToTime"
+          :disabled="!customTo"
+          title="Optional — cap the To day at an end time (inclusive minute)"
+          @input="onTimeInput('to', ($event.target as HTMLInputElement).value)"
         >
       </label>
       <button
         v-if="customFrom || customTo"
         class="np-date-clear"
-        @click="customFrom = ''; customTo = ''; pickedRange = 'all'"
+        @click="clearDates"
       >
         Clear dates
       </button>
@@ -96,6 +150,15 @@ const { pickedRange, customFrom, customTo, pickRange } = props.narrow
 }
 
 .np-date:focus { border-color: var(--accent); }
+
+.np-time {
+  min-width: 5.4rem;
+}
+
+.np-time:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .np-date-clear {
   appearance: none;
