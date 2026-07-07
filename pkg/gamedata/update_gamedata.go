@@ -189,9 +189,9 @@ func fetchReleaseTags() []string {
 
 // fetchAssetAcross tries each version in order and returns the first roster the
 // release actually carries. nil only if no release in the walk has the asset.
-func fetchAssetAcross(versions []string, name string, decode func([]byte) []string) []string {
+func fetchAssetAcross(client *UpdateClient, versions []string, name string, decode func([]byte) []string) []string {
 	for _, v := range versions {
-		if names := fetchAsset(v, name, decode); names != nil {
+		if names := fetchAsset(client, v, name, decode); names != nil {
 			return names
 		}
 	}
@@ -202,9 +202,7 @@ func fetchAssetAcross(versions []string, name string, decode func([]byte) []stri
 // sidecar, verifies the SHA, and returns the flat name list extracted
 // by `decode`. Empty slice on any failure (network / status / SHA
 // mismatch / decode error).
-func fetchAsset(version, name string, decode func([]byte) []string) []string {
-	client := NewUpdateClient()
-
+func fetchAsset(client *UpdateClient, version, name string, decode func([]byte) []string) []string {
 	yamlBytes, err := getBytes(client, ReleaseAssetURL(version, name))
 	if err != nil {
 		return nil
