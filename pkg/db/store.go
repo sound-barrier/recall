@@ -114,6 +114,11 @@ type Store interface {
 	UnhideMatch(matchKey string) error
 	LoadHiddenKeys() (map[string]bool, error)
 
+	// Pinned matches — same presence-is-state sidecar as hidden.
+	PinMatch(matchKey string) error
+	UnpinMatch(matchKey string) error
+	LoadPinnedKeys() (map[string]bool, error)
+
 	// HardDeleteMatch removes every trace of matchKey from the DB —
 	// rows across all five parent tables (children CASCADE), the
 	// hidden_matches flag, the annotation, the review-status row, the

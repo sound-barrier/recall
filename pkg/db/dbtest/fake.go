@@ -26,6 +26,7 @@ type Fake struct {
 	DirIDs      map[string]int64
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
+	Pinned      map[string]bool
 
 	// UserMatchData maps match_key → the per-match user override layer
 	// (inline edits + hand-entered matches). Absence = pure OCR / no match.

@@ -69,7 +69,8 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 		annos, _ := a.store.LoadAnnotations()
 		hidden, _ := a.store.LoadHiddenKeys()
 		reviews, _ := a.store.LoadReviews()
-		if rec, ok := aggregate.AggregateMatchKey(resolvedTo, snap, annos, hidden, reviews); ok {
+		pinned, _ := a.store.LoadPinnedKeys()
+		if rec, ok := aggregate.AggregateMatchKey(resolvedTo, snap, annos, hidden, reviews, pinned); ok {
 			a.emitMatchUpdated(rec)
 		}
 	}

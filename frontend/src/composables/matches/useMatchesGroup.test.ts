@@ -265,3 +265,26 @@ describe('session grouping', () => {
     expect(last.records.map((r) => r.match_key)).toEqual(['nodate'])
   })
 })
+
+describe('pinned section', () => {
+  it('pinned matches lead the list in their own section, others group normally', () => {
+    const records = ref<MatchRecord[]>([
+      rec('2026-05-01', '10:00', 'p1'),
+      { ...rec('2026-05-02', '10:00', 'p2'), pinned: true } as MatchRecord,
+      rec('2026-05-03', '10:00', 'p3'),
+    ])
+    const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('day'), ref<SortOrder>('newest'))
+    const sections = groupedSections.value
+    expect(sections[0]?.key).toBe('pinned')
+    expect(sections[0]?.header).toMatch(/pinned/i)
+    expect(sections[0]?.records.map(r => r.match_key)).toEqual(['p2'])
+    const rest = sections.slice(1).flatMap(s => s.records.map(r => r.match_key))
+    expect(rest).toEqual(['p3', 'p1'])
+  })
+
+  it('no pinned records means no pinned section', () => {
+    const records = ref<MatchRecord[]>([rec('2026-05-01', '10:00', 'p1')])
+    const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('none'), ref<SortOrder>('newest'))
+    expect(groupedSections.value[0]?.key).toBe('all')
+  })
+})

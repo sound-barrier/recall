@@ -209,6 +209,15 @@ CREATE TABLE IF NOT EXISTS match_annotation_tags (
 CREATE INDEX IF NOT EXISTS idx_match_annotation_tags_tag ON match_annotation_tags(tag);
 -- statement-end
 
+-- User-curated pins: presence IS the pinned state (the hidden_matches
+-- pattern). Pinned matches render in a dedicated section above the
+-- date groups.
+CREATE TABLE IF NOT EXISTS pinned_matches (
+  match_key TEXT PRIMARY KEY,
+  pinned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
+
 CREATE TABLE IF NOT EXISTS hidden_matches (
   match_key TEXT PRIMARY KEY,
   hidden_at DATETIME DEFAULT CURRENT_TIMESTAMP

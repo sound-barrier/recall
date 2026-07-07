@@ -165,8 +165,22 @@ export function useMatchesGroup(
   })
 
   const groupedSections = computed<GroupedSection[]>(() => {
+    // Pinned matches lead the list in their own section regardless of
+    // grouping mode; the remaining records group as before. Sort order
+    // still applies inside the pinned section.
+    const pinned = sortedRecords.value.filter(r => r.pinned)
+    const sections = buildSections(
+      pinned.length ? sortedRecords.value.filter(r => !r.pinned) : sortedRecords.value,
+    )
+    if (pinned.length > 0) {
+      sections.unshift({ key: 'pinned', header: '★ Pinned', records: pinned })
+    }
+    return sections
+  })
+
+  function buildSections(base: MatchRecord[]): GroupedSection[] {
     if (groupBy.value === 'none') {
-      return [{ key: 'all', header: null, records: sortedRecords.value }]
+      return [{ key: 'all', header: null, records: base }]
     }
     // Provenance is a categorical grouping (not date-bucketed): each
     // section holds that source's records, still date-sorted within.
@@ -174,7 +188,7 @@ export function useMatchesGroup(
     // show an empty "Edited" divider.
     if (groupBy.value === 'provenance') {
       return PROVENANCE_SECTIONS
-        .map((s) => ({ key: s.key, header: s.header, records: sortedRecords.value.filter(s.match) }))
+        .map((s) => ({ key: s.key, header: s.header, records: base.filter(s.match) }))
         .filter((s) => s.records.length > 0)
     }
     // Sessions are sequence-derived, not per-record bucketed: walk the
@@ -188,7 +202,7 @@ export function useMatchesGroup(
       let cur: GroupedSection | null = null
       let prevEpoch: number | null = null
       let noDateSection: GroupedSection | null = null
-      for (const rec of sortedRecords.value) {
+      for (const rec of base) {
         const t = matchEpoch(rec)
         if (t == null) {
           if (!noDateSection) noDateSection = { key: 'no-date', header: 'No date', records: [] }
@@ -219,7 +233,7 @@ export function useMatchesGroup(
     // row jumps to the top of "newest first" above genuinely
     // recent matches.
     let noDateSection: GroupedSection | null = null
-    for (const rec of sortedRecords.value) {
+    for (const rec of base) {
       const { key, label } = bucketFor(rec.data?.date ?? '', groupBy.value)
       if (key === 'no-date') {
         if (!noDateSection) noDateSection = { key, header: label, records: [] }
@@ -234,7 +248,7 @@ export function useMatchesGroup(
     }
     if (noDateSection) sections.push(noDateSection)
     return sections
-  })
+  }
 
   return { sortedRecords, groupedSections }
 }

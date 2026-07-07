@@ -155,7 +155,7 @@ func TestAggregateMatchKey_AttachesSidecarsAndFoldsUnknown(t *testing.T) {
 	hidden := map[string]bool{"m1": true}
 	reviews := map[string]db.ReviewState{"m1": {ReviewedBy: "self", ReviewedAt: "2026-06-20T00:00:00Z"}}
 
-	rec, ok := aggregate.AggregateMatchKey("m1", snap, annos, hidden, reviews)
+	rec, ok := aggregate.AggregateMatchKey("m1", snap, annos, hidden, reviews, nil)
 	if !ok {
 		t.Fatal("AggregateMatchKey ok=false for an existing key")
 	}
@@ -210,7 +210,7 @@ func TestAggregateMatchKey_DerivesDuplicateReasonFromDistance(t *testing.T) {
 			"dup.png": {{MatchKey: "match-orig", DistanceSeconds: 11321}},
 		},
 	}
-	rec, ok := aggregate.AggregateMatchKey(sentinel, snap, nil, nil, nil)
+	rec, ok := aggregate.AggregateMatchKey(sentinel, snap, nil, nil, nil, nil)
 	if !ok {
 		t.Fatal("expected the sentinel record to aggregate")
 	}

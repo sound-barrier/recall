@@ -294,6 +294,39 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/{match_key}/pin:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: SetMatchPin
+      tags: [Matches]
+      summary: Star or unstar a match (pin above the date groups)
+      description: |
+        Flips a match's pinned state. `pinned: true` records a row in
+        the `pinned_matches` sidecar; the aggregator then sets
+        `MatchRecord.pinned = true` on every read and the Matches list
+        renders the match in a dedicated "Pinned" section above the
+        date groups, regardless of grouping or sort. `pinned: false`
+        removes the star. Both directions are idempotent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pinned]
+              properties:
+                pinned:
+                  type: boolean
+                  description: True to pin; false to unpin.
+      responses:
+        "204":
+          description: Pin state updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/matches/{match_key}/resolution:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
@@ -3117,6 +3150,13 @@ components:
             default to "Not set" until the user explicitly toggles
             via the right-panel radiogroup; omitted from JSON when
             no override row exists.
+        pinned:
+          type: boolean
+          description: |
+            True iff the user starred this match (`pinned_matches`
+            sidecar). The Matches list renders pinned matches in a
+            leading "Pinned" section above the date groups. Omitted
+            when false.
         ambiguous:
           type: boolean
           description: |

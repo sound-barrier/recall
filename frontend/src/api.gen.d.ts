@@ -163,6 +163,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{match_key}/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
+                 */
+                match_key: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Star or unstar a match (pin above the date groups)
+         * @description Flips a match's pinned state. `pinned: true` records a row in
+         *     the `pinned_matches` sidecar; the aggregator then sets
+         *     `MatchRecord.pinned = true` on every read and the Matches list
+         *     renders the match in a dedicated "Pinned" section above the
+         *     date groups, regardless of grouping or sort. `pinned: false`
+         *     removes the star. Both directions are idempotent.
+         */
+        put: operations["SetMatchPin"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{match_key}/resolution": {
         parameters: {
             query?: never;
@@ -2318,6 +2355,13 @@ export interface components {
              */
             play_mode?: components["schemas"]["PlayModeEnum"];
             /**
+             * @description True iff the user starred this match (`pinned_matches`
+             *     sidecar). The Matches list renders pinned matches in a
+             *     leading "Pinned" section above the date groups. Omitted
+             *     when false.
+             */
+            pinned?: boolean;
+            /**
              * @description True iff the resolver couldn't pin this screenshot to a
              *     single match (EAD signature match in the 5-30 min
              *     ambiguous window, or multiple candidates inside 30 min),
@@ -2933,6 +2977,45 @@ export interface operations {
         };
         responses: {
             /** @description Visibility updated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SetMatchPin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
+                 */
+                match_key: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description True to pin; false to unpin. */
+                    pinned: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Pin state updated. */
             204: {
                 headers: {
                     [name: string]: unknown;

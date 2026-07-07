@@ -250,6 +250,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 
     <!-- 6. Annotations — provenance + leaver + tags. Empty when none. -->
     <div class="leaf-meta-block">
+      <span v-if="rec.pinned" class="leaf-pin" title="Pinned match" aria-label="Pinned">★</span>
       <MatchProvenanceBadge :source="rec.source" :edited-fields="rec.edited_fields" compact />
       <span v-if="rec.annotation?.leaver" class="leaf-leaver" :title="`Leaver: ${rec.annotation.leaver}`">L</span>
       <span
@@ -557,6 +558,12 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 }
 
 /* 6. Annotations — tags + leaver. Always renders (may be empty). */
+.leaf-pin {
+  color: var(--accent);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
 .leaf-meta-block {
   display: flex;
   flex-wrap: wrap;

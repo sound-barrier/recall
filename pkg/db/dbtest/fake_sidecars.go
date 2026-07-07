@@ -174,6 +174,31 @@ func (f *Fake) LoadMatchPlayModes() (map[string]db.PlayModeState, error) {
 	return out, nil
 }
 
+func (f *Fake) PinMatch(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Pinned == nil {
+		f.Pinned = map[string]bool{}
+	}
+	f.Pinned[matchKey] = true
+	return nil
+}
+
+func (f *Fake) UnpinMatch(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.Pinned, matchKey)
+	return nil
+}
+
+func (f *Fake) LoadPinnedKeys() (map[string]bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]bool, len(f.Pinned))
+	maps.Copy(out, f.Pinned)
+	return out, nil
+}
+
 func (f *Fake) LoadHiddenKeys() (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

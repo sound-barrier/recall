@@ -85,6 +85,10 @@ type MatchRecord struct {
 	// for the screenshot and is asking the user to pick the right
 	// one. The frontend surfaces these in the Unknown tab's "Needs
 	// your review" subsection.
+	// Pinned mirrors the pinned_matches sidecar — notable matches the
+	// user starred; the list renders them in a leading section.
+	Pinned bool `json:"pinned,omitempty"`
+
 	Ambiguous  bool                   `json:"ambiguous,omitempty"`
 	Candidates []AmbiguousAttribution `json:"candidates,omitempty"`
 }

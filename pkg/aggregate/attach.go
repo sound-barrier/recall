@@ -113,6 +113,19 @@ func AttachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.Ambigu
 	}
 }
 
+// AttachPinned flips `Pinned` on every record in the starred set.
+// Pure function, called once per aggregateAll.
+func AttachPinned(recs []match.MatchRecord, pinned map[string]bool) {
+	if len(pinned) == 0 {
+		return
+	}
+	for i := range recs {
+		if pinned[recs[i].MatchKey] {
+			recs[i].Pinned = true
+		}
+	}
+}
+
 // AttachHidden flips `Hidden` to true on every record whose match_key
 // is in the soft-delete set. Pure function, called once per aggregateAll.
 func AttachHidden(recs []match.MatchRecord, hidden map[string]bool) {
