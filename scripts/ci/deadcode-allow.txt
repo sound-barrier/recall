@@ -26,6 +26,7 @@ App\.Pick
 # builds the Blob client-side.
 App\.SaveBackupToFile
 App\.SaveBundleToFile
+App\.SaveDiagnosticBundleToFile
 App\.SaveTextToFile
 App\.LoadRestoreFromFile
 App\.LoadMatchImportFromFile
