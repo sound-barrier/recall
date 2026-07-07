@@ -285,7 +285,7 @@ for you.
 
 - **`stylelint-config-standard` rejects BEM `--`.** `selector-class-pattern` only allows kebab-case (`.foo-modifier`, not `.foo--modifier`). Also requires empty line before every rule block (including `:hover` after `}`). Errors not warnings — most are autofixable via `npx stylelint --fix`.
 
-- **knip project scope is `src/**/*.{ts,vue}`.** Keep `@eslint/js` in `ignoreDependencies` (typescript-eslint consumes it internally without ES-import). `@vitest/coverage-v8` doesn't need it — vitest detects via `coverage.provider: 'v8'`. Run via `make dead-code-ts`.
+- **knip project scope is `src/**/*.{ts,vue}`.** No `ignoreDependencies` needed: knip ≥6.23 resolves typescript-eslint's internal `@eslint/js` use (the old ignore entry now trips a "remove from ignoreDependencies" hint), and `@vitest/coverage-v8` is detected via `coverage.provider: 'v8'`. Run via `make dead-code-ts`.
 
 - **TypeScript 6.x blocked by `openapi-typescript@7.x`** (`peer typescript: "^5.x"`). Hold at `^5.x` until upstream supports TS 6. (Pin lives in `frontend/package.json` — check there for the current constraint.)
 
