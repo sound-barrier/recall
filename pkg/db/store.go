@@ -310,6 +310,13 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, fmt.Errorf("schema: %w", err)
 	}
+	// Add nullable columns introduced after the DB was first created (the one
+	// case CREATE TABLE IF NOT EXISTS can't cover) so an upgraded DB keeps its
+	// history instead of 500ing every insert. Additive-only; see schema.go.
+	if err := ensureAdditiveColumns(d); err != nil {
+		_ = d.Close()
+		return nil, fmt.Errorf("ensure additive columns: %w", err)
+	}
 	// No-op until the first migration file lands post-1.0; the
 	// framework is wired in so adding one is a drop-in addition.
 	if err := applyMigrations(d); err != nil {
