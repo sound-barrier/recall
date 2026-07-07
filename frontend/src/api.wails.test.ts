@@ -116,4 +116,20 @@ describe('Wails detection on Windows WebView2 (origin-based, no UA marker)', () 
     expect(callByName).toHaveBeenCalledWith('recall/pkg/app.App.GetMatchResults')
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('routes calls through fetch, not the Wails bridge, when origin is not wails.localhost and UA has no marker', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { protocol: 'http:', hostname: 'localhost', href: 'http://localhost:5173/' },
+      configurable: true,
+    })
+    fetchMock.mockClear()
+    callByName.mockClear()
+    vi.resetModules()
+
+    const { GetMatchResults } = await import('@/api')
+    await GetMatchResults()
+
+    expect(fetchMock).toHaveBeenCalled()
+    expect(callByName).not.toHaveBeenCalled()
+  })
 })
