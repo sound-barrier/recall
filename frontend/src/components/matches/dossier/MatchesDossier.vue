@@ -81,7 +81,7 @@ function sourceLabel(source: string): string {
       <li v-if="customFrom || customTo" class="active-chip range">
         <span class="chip-key">Dates</span>
         <span class="chip-val">{{ customFrom || '…' }} → {{ customTo || '…' }}</span>
-        <button class="chip-x" aria-label="Clear dates" @click="customFrom = ''; customTo = ''; pickedRange = 'all'">
+        <button class="chip-x" aria-label="Clear dates" @click="pickRange('all')">
           ×
         </button>
       </li>

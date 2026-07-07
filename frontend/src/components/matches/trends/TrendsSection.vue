@@ -27,6 +27,9 @@ const narrow = useNarrow()
 function onNarrowRange(from: string, to: string): void {
   narrow.customFrom.value = from
   narrow.customTo.value = to
+  // Viz picks are whole-day: drop any panel-set minute bounds.
+  narrow.customFromTime.value = ''
+  narrow.customToTime.value = ''
   narrow.pickedRange.value = 'custom'
 }
 
@@ -71,6 +74,8 @@ function resetView(): void {
   zoomedCharts.clear()
   narrow.customFrom.value = ''
   narrow.customTo.value = ''
+  narrow.customFromTime.value = ''
+  narrow.customToTime.value = ''
   narrow.pickedRange.value = 'all'
 }
 

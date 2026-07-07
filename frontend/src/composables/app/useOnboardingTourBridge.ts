@@ -53,6 +53,8 @@ export function useOnboardingTourBridge() {
     narrowState.pickedRange.value = 'all'
     narrowState.customFrom.value = ''
     narrowState.customTo.value = ''
+    narrowState.customFromTime.value = ''
+    narrowState.customToTime.value = ''
   }
 
   return {

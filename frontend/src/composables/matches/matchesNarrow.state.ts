@@ -34,6 +34,8 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     pickedRange:      ref<PresetRange>('all'),
     customFrom:       ref(''),
     customTo:         ref(''),
+    customFromTime:   ref(''),
+    customToTime:     ref(''),
     leaverHandling:   ref<LeaverHandling>('include'),
     minPlayMinutes:   ref(0),
     minPlayPercent:   ref(0),
