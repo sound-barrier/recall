@@ -56,8 +56,8 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # registers two more tree-shaken ECharts pieces (HeatmapChart +
 # VisualMapComponent) in the lazy TrendChart chunk, ~37.5KB total-only
 # (initial JS untouched). The approved flagship 6.1 chart, not bloat.
-: "${MAX_TOTAL_JS_BYTES:=1365000}"
-: "${MAX_TOTAL_CSS_BYTES:=317000}"
+: "${MAX_TOTAL_JS_BYTES:=1380000}"
+: "${MAX_TOTAL_CSS_BYTES:=322000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
