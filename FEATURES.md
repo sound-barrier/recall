@@ -24,8 +24,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### Analysis & Insights
 
-- **Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop. Two-pronged trigger: ≥3 losses in a row AND the rolling-window K/D dropped >25% from the user's 30-day average. Nudge is dismissible without persistence (so it doesn't moralise on a single bad day). *Partially shipped:* the dossier's TiltCheckWidget surfaces the signal; the nudge itself remains.
-- **Map-specific performance drill-down** — best/worst maps per hero, with sample-size caveats. Confidence interval rather than raw win-rate (`62% ± 8%, n=14`) so a 100% streak on n=2 doesn't dominate. *Partially shipped:* the pivot table's Map dimension, the Trends map-winrate chart, and the sample-size-honesty widget cover the drill-down; the confidence-interval display remains.
 - **Hero matchup matrix** — your hero × enemy hero → win rate (requires enemy team capture, which is a parser stretch).
 - **Performance trend lines per hero over time** — are you improving on Juno, regressing on Ana? Mini-sparkline beside the hero name inside the journal/expanded card.
 - **SR / rank velocity** — climb rate per session, week, season.
@@ -40,7 +38,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### Match Data & Editing
 
-- **Pin matches** — pin notable matches (a personal-best, a tournament game) to the top of the list regardless of date. Use a star (`★`) on the card header — single click toggles. Pinned matches form their own group above the date-grouped list, with its own count.
 - **Duplicate-match detector** — SHIPPED in triage form: the end-of-parse sweep flags a fresh match whose full TEAMS stat line duplicates an existing match within 7 days ("Possible duplicate" in the Unknown tab's Needs-your-review queue; merge or keep-separate). Remaining ideas if they earn their way back: near-identical-timestamp detection without a TEAMS shot, and a `data-duplicate-of` navigation link in the card chrome.
 - **Manual match merge** — UI to fuse two records into one match-key when correlation didn't catch them automatically. Drag one card onto another (with a hover-state confirm zone) to invoke; the merged row's match_key is the older of the two.
 - **Match exclusion reasons** — annotation field for *why* a match is being de-emphasised (placement / MMR adjustment / DC / internet outage). Drives a filter that hides them from win-rate calculations without removing them from the list, complementing the existing leaver-handling control.
@@ -54,7 +51,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **User-trainable hero-name aliases** — when OCR consistently mangles a specific hero name, let the user save a mapping (`ornBITAL → ORBITAL`). Lives in `pkg/parser/aliases.yaml` (gitignored, user-local); applied by the classifier before hero-roster lookup.
 - **Partial-match recovery** — if SUMMARY is missing, attempt match-key derivation from scoreboard + timestamp + map alone, then degrade gracefully. Reuses the existing EAD-signature matching in `resolveMatchKey`; surfaces under a "partial" badge on the card so the user knows this match has incomplete data.
 - **Drag-and-drop screenshot import** — drop a PNG anywhere in the app to ingest it without touching the watcher folder. HTML5 file API on the Matches view's outer dropzone; bypasses the watcher and writes directly into the configured screenshots dir under a `manual/` subdir.
-- **Screenshot content-hash dedup** — SHA-256 the file content at ingest; if a hash matches an already-parsed file, skip Tesseract entirely and link the rows. Catches "saved the same screenshot twice via Steam + system shortcut" cases without re-OCR cost.
 - **Watcher pause when game not running** — detect the OW process / active window via the Windows APIs (`EnumWindows`); pause the file-watcher when OW isn't running so a system sleep+wake doesn't re-scan everything. Single boolean preference in Settings → Engine.
 - **OCR debug overlay** — toggle "show raw Tesseract output" on each card to compare the parsed values against the raw text. Useful for filing OCR bugs; surfaces under Settings → Advanced.
 
@@ -68,7 +64,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Live ranked progress tracker** — sticky banner during a session showing W/L count + estimated SR delta + remaining matches needed to hit the next rank tier. Activates when the user has parsed ≥3 matches within a 90-minute window.
 - **Multi-window support** — open the Matches view in a separate Wails window while parsing continues in the main window. Per-window state (filters, focused card) but shared records.
 - **Quick-edit popover on stat cells** — click any displayed stat on a card → 1-click ± nudge or numeric input without expanding the whole card. Useful for correcting OCR mistakes without opening the journal. *Note:* the editing itself shipped as `EditableStat` in the detail panel; what remains is list-level access without opening the panel.
-- **Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
 - **Settings export/import** — share configuration with a teammate (folder paths, theme, filter prefs, presets) as a small JSON. Useful for stack-mate parity; lives next to the existing Backup & Restore section.
 - **Match journal writing mode** — dedicated full-viewport markdown editor for the note field, with side-rail preview + word count. Reached via a small "expand" affordance on the journal panel; submission persists back through `SetMatchAnnotation`.
 
@@ -78,7 +73,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Bad-streak webhook** — fire a configurable webhook (Discord, Slack, custom) when ≥ N losses in a row, so a friend or `pushover` can intervene. The webhook URL is per-user secret — store in `settings.json` but flag in the export to redact.
 - **Friend-roster lookup** — match BattleTags in `annotation.members` against a saved roster so the chip shows the friend's display name. Roster file is YAML at `~/.config/recall/roster.yaml`, optionally synced via the Backup & Restore export.
 - **Strava-style weekly recap** — generate a shareable weekly-summary image / markdown blob from the session-level stats. Hooks the existing `tallyWLD` aggregator + a server-side PNG render via `chromedp`.
-- **Markdown export per match** — single-match summary as markdown for blog posts / coaching review. Three-section template: scoreboard table, journal annotation rendered as markdown, embedded source-screenshot file references.
 - **OBS scene switcher** — switch OBS scenes via the OBS WebSocket protocol when a SUMMARY screenshot is detected. Use case: streamers running a "between matches" scene that flips to "match in progress" the moment the parser sees a non-summary screenshot.
 - **Replay-code QR code** — generate a QR encoding the replay code for sharing with a coach via phone scan. Pure SVG, no external service.
 - **Match → calendar event** — auto-create a system calendar event for "OW match" with the result + length so habit-tracker apps see it. Uses the Windows calendar / Outlook integration, gated behind explicit permission.
@@ -95,12 +89,26 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 - **Memory / DB profiler in Advanced** — show on-disk DB size, per-table row counts, aggregator allocation, parse queue depth. Helps the user understand why a 10k-match history feels slow before they file a perf bug.
 - **Schema verifier in Settings** — Advanced tool that walks every parent + child table, compares column shapes against the canonical CREATE TABLE in `pkg/db/db.go`, and reports drift. Catches "I hand-edited the DB and now things look weird" cases.
-- **Resilient parse with retry** — auto-retry failed Tesseract calls (single-screenshot transient I/O failures) with exponential backoff before marking the file unknown. Failures lifted out of the screenshot's exec context so the rest of the parse loop continues.
 - **Parser benchmarks dashboard** — Settings tool that times each per-type parser against the bundled golden fixtures and surfaces a regression flag if any path slows >25% versus baseline. Pairs with the existing `make test` golden-file run.
 
 ## Accepted
 
-*(empty — promote the next Triaging item here when it's slated for work)*
+### 2026-07 quality-of-life batch
+
+Eleven items accepted 2026-07-06, delivered as one multi-commit PR
+(safety → robustness → visible value → analytics → polish).
+
+- **Pin matches** — pin notable matches (a personal-best, a tournament game) to the top of the list regardless of date. Use a star (`★`) on the card header — single click toggles. Pinned matches form their own group above the date-grouped list, with its own count.
+- **Screenshot content-hash dedup** — SHA-256 the file content at ingest; if a hash matches an already-parsed file, skip Tesseract entirely and link the rows. Catches "saved the same screenshot twice via Steam + system shortcut" cases without re-OCR cost.
+- **Resilient parse with retry** — auto-retry failed Tesseract calls (single-screenshot transient I/O failures) with exponential backoff before marking the file unknown. Failures lifted out of the screenshot's exec context so the rest of the parse loop continues.
+- **Markdown export per match** — single-match summary as markdown for blog posts / coaching review. Three-section template: scoreboard table, journal annotation rendered as markdown, embedded source-screenshot file references.
+- **Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop. Two-pronged trigger: ≥3 losses in a row AND the rolling-window K/D dropped >25% from the user's 30-day average. Nudge is dismissible without persistence (so it doesn't moralise on a single bad day). *Partially shipped:* the dossier's TiltCheckWidget surfaces the signal; the nudge itself remains.
+- **Map-specific performance drill-down** — best/worst maps per hero, with sample-size caveats. Confidence interval rather than raw win-rate (`62% ± 8%, n=14`) so a 100% streak on n=2 doesn't dominate. *Partially shipped:* the pivot table's Map dimension, the Trends map-winrate chart, and the sample-size-honesty widget cover the drill-down; the confidence-interval display remains.
+- **Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
+- **Auto-backup scheduler** — automatic `VACUUM INTO` snapshots on a configurable interval (default weekly, retention 3) checked at startup and after parse runs, written to `<profile>/backups/auto-<ts>.db` and pruned; Settings → Backup & Restore shows the last automatic backup and warns when it goes stale. De-risks the pre-1.0 wipe-and-relaunch reality.
+- **Snapshot before Re-parse All** — Re-parse All rewrites every row from OCR, so it takes a silent timestamped safety snapshot first (keep last 2) via the same `VACUUM INTO` machinery.
+- **Post-session summary toast** — after a watcher-triggered parse burst finishes: "Session so far: 4 matches · 3W-1L" toast, closing the loop the masthead watching-dot opens.
+- **Copy match summary** — one-click compact result line (map · hero · E/A/D · result · replay code) from the detail panel for pasting into Discord; reuses the markdown-export generator.
 
 ## Shipped
 
