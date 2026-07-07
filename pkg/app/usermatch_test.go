@@ -91,6 +91,37 @@ func TestCreateManualMatch_CreatesManualRecord(t *testing.T) {
 	}
 }
 
+// The played_at timestamp's WALL CLOCK (in its stated offset) is what
+// drives the match key, date, and finished_at — matching OCR rows,
+// which store the player's local wall clock. A UTC conversion here
+// would shift a Denver 8pm entry to 02:00 next-day and break any
+// time-based filtering.
+func TestCreateManualMatch_PreservesLocalWallClock(t *testing.T) {
+	fake := dbtest.New()
+	a := app.NewWithStore(fake)
+
+	rec, err := a.CreateManualMatch(match.ManualMatchInput{
+		Map:       "ilios",
+		PlayMode:  "competitive",
+		QueueType: "role",
+		Heroes:    []string{"ana"},
+		Result:    "victory",
+		PlayedAt:  "2026-06-15T14:30:00-08:00",
+	})
+	if err != nil {
+		t.Fatalf("CreateManualMatch: %v", err)
+	}
+	if want := "match-2026-06-15T14-30-00"; rec.MatchKey != want {
+		t.Errorf("MatchKey = %q, want %q (wall clock, not UTC)", rec.MatchKey, want)
+	}
+	if rec.Data.Date != "2026-06-15" {
+		t.Errorf("Date = %q, want 2026-06-15", rec.Data.Date)
+	}
+	if rec.Data.FinishedAt != "14:30" {
+		t.Errorf("FinishedAt = %q, want 14:30", rec.Data.FinishedAt)
+	}
+}
+
 func TestCreateManualMatch_WritesOptionalAnnotationFields(t *testing.T) {
 	fake := dbtest.New()
 	a := app.NewWithStore(fake)

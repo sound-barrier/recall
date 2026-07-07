@@ -64,6 +64,12 @@ describe('useManualMatchForm', () => {
     expect(input.heroes).toEqual(['reinhardt'])
     expect(input.result).toBe('defeat')
     expect(input.played_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)
+    // The wire payload must carry the LOCAL wall clock the user typed,
+    // with an explicit offset — not a UTC-converted instant. The Go
+    // side derives match key/date/finished_at from the stated wall
+    // clock, matching OCR rows.
+    expect(input.played_at!.startsWith('2026-06-15T14:30:00')).toBe(true)
+    expect(input.played_at).toMatch(/[+-]\d{2}:\d{2}$/)
     expect(input.rank).toBeUndefined()
   })
 
