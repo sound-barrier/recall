@@ -1,10 +1,12 @@
 import { ref, nextTick } from 'vue'
 import { defineStore } from 'pinia'
 
-import type { NamedCandidate } from '@/api-client'
+import type { AutoBackupStatus, NamedCandidate } from '@/api-client'
 import {
+  GetAutoBackupStatus,
   GetScreenshotsDir,
   GetWatchEnabled,
+  SetAutoBackupInterval,
   GetExitOnClose,
   GetTesseractStatus,
   PickTesseractBinary,
@@ -84,6 +86,20 @@ export const useSettingsStore = defineStore('settings', () => {
       : 'Configure Tesseract in Settings → Engine before enabling Watch.',
     onError: (m) => { appStore.setErrorFromRaw(m) },
   })
+
+  // ── Automatic backups ─────────────────────────────────────────────
+  // Schedule + newest-snapshot status from GET /settings/auto-backup;
+  // the setter echoes the refreshed status so the row updates in one
+  // round-trip. Round-trip failures surface on the app error banner and
+  // leave the last-known status in place.
+  const autoBackup = ref<AutoBackupStatus | null>(null)
+  async function setAutoBackupInterval(days: number) {
+    try {
+      autoBackup.value = await SetAutoBackupInterval(days)
+    } catch (e) {
+      appStore.setErrorFromRaw(String(e))
+    }
+  }
 
   // ── Window close behavior (desktop) ───────────────────────────────
   // false (default) hides the window to the tray so the folder watcher keeps
@@ -172,15 +188,17 @@ export const useSettingsStore = defineStore('settings', () => {
   // blocks the others, and a failed Tesseract probe reports found:false
   // (a real "not detected" state) rather than leaving stale status.
   async function load() {
-    const [dir, watchOn, exitClose, tess] = await Promise.allSettled([
+    const [dir, watchOn, exitClose, tess, autoBk] = await Promise.allSettled([
       GetScreenshotsDir(),
       GetWatchEnabled(),
       GetExitOnClose(),
       GetTesseractStatus(),
+      GetAutoBackupStatus(),
     ])
     if (dir.status === 'fulfilled') setScreenshotsDir(dir.value || '')
     if (watchOn.status === 'fulfilled') setWatchEnabled(!!watchOn.value)
     if (exitClose.status === 'fulfilled') setExitOnClose(!!exitClose.value)
+    if (autoBk.status === 'fulfilled') autoBackup.value = autoBk.value
     if (tess.status === 'fulfilled') setTesseractStatus(tess.value)
     else setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
   }
@@ -206,6 +224,8 @@ export const useSettingsStore = defineStore('settings', () => {
     gotoEngineSettings,
     watchEnabled,
     setWatchEnabled,
+    autoBackup,
+    setAutoBackupInterval,
     toggleWatch,
     exitOnClose,
     setExitOnClose,

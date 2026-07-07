@@ -876,6 +876,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/auto-backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the automatic-backup schedule and last-snapshot status
+         * @description The auto-backup scheduler writes periodic `VACUUM INTO` snapshots
+         *     to `<profile>/backups/auto-<ts>.db` (newest 3 kept), checked at
+         *     startup and after every parse run. `interval_days` is the
+         *     EFFECTIVE interval: `-1` when the user disabled it, otherwise the
+         *     configured day count (never-configured installs default to 7 —
+         *     protection without touching Settings). `stale` is true when the
+         *     scheduler is enabled and the newest snapshot is missing or older
+         *     than the interval.
+         */
+        get: operations["GetAutoBackupStatus"];
+        /**
+         * Set the automatic-backup interval
+         * @description `interval_days` is `-1` to disable or a literal 1–365 day count.
+         *     `0` is rejected (the "never configured → default" sentinel is a
+         *     storage detail, not a wire value). Echoes the refreshed status so
+         *     the UI updates in one round-trip.
+         */
+        put: operations["SetAutoBackupInterval"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profiles": {
         parameters: {
             query?: never;
@@ -2301,6 +2335,29 @@ export interface components {
              *     `distance_seconds` ascending.
              */
             candidates?: components["schemas"]["AmbiguousCandidate"][];
+        };
+        /**
+         * @description Automatic-backup schedule + newest-snapshot status. See
+         *     `GET /api/v1/settings/auto-backup`.
+         */
+        AutoBackupStatus: {
+            /**
+             * @description Effective interval — -1 disabled, else days.
+             * @example 7
+             */
+            interval_days: number;
+            /**
+             * Format: date-time
+             * @description Timestamp of the newest automatic snapshot (parsed from its
+             *     filename). Omitted when no automatic snapshot exists yet.
+             * @example 2026-07-05T10:00:00Z
+             */
+            last_backup_at?: string;
+            /**
+             * @description True when the scheduler is enabled and the newest snapshot is
+             *     missing or older than the interval.
+             */
+            stale: boolean;
         };
         /**
          * @description One candidate match an ambiguous screenshot could belong to.
@@ -3805,6 +3862,58 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetAutoBackupStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current schedule + newest-snapshot status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoBackupStatus"];
+                };
+            };
+        };
+    };
+    SetAutoBackupInterval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description -1 to disable, else 1–365 days.
+                     * @example 7
+                     */
+                    interval_days: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Saved; refreshed status echoed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoBackupStatus"];
+                };
             };
             400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];

@@ -847,6 +847,22 @@ export function RunDatabaseMaintenance(operation: 'optimize' | 'vacuum'): Promis
   return _send<DBHealth>('POST', '/api/v1/database/maintenance', { operation })
 }
 
+export type AutoBackupStatus = components['schemas']['AutoBackupStatus']
+
+export function GetAutoBackupStatus(): Promise<AutoBackupStatus> {
+  if (IS_WAILS) return _wails<AutoBackupStatus>('GetAutoBackupStatus')
+  return _get<AutoBackupStatus>('/api/v1/settings/auto-backup')
+}
+
+export function SetAutoBackupInterval(intervalDays: number): Promise<AutoBackupStatus> {
+  if (IS_WAILS) {
+    // The Wails binding returns only an error; refetch for the echo the
+    // HTTP path gets for free.
+    return _wails<void>('SetAutoBackupInterval', intervalDays).then(GetAutoBackupStatus)
+  }
+  return _send<AutoBackupStatus>('PUT', '/api/v1/settings/auto-backup', { interval_days: intervalDays })
+}
+
 export function BackupDatabase(): Promise<string> {
   if (IS_WAILS) return _wails<string>('SaveBackupToFile')
   return downloadBinary('/api/v1/database', `recall-backup-${tsFilenameStamp()}.db`)

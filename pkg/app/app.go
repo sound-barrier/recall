@@ -262,6 +262,16 @@ func (a *App) Startup(ctx context.Context) {
 			a.probeTesseractInBackground(a.settingsSnapshot().TesseractPath)
 		}()
 	}
+	// Periodic backup safety net — off the boot path for the same
+	// reason as the probe: VACUUM INTO can take seconds on a large
+	// history and must not stall first paint. Gated like the probe so
+	// Startup-running tests never race the goroutine (backup_scheduler.go).
+	if autoBackupOnStartup {
+		go func() {
+			defer applog.RecoverPanic("backup")
+			a.maybeAutoBackup()
+		}()
+	}
 }
 
 // initProfiles loads (or initializes) the profile manager — every

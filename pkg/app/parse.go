@@ -318,6 +318,8 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	st.sweepNewMatchDuplicates()
 	// Post-run DB maintenance — self-gating, skipped when nothing changed.
 	a.optimizeAfterParse(len(st.matchesUpdated))
+	// Periodic safety net — writes a snapshot iff one is due (backup_scheduler.go).
+	a.maybeAutoBackup()
 	// Authoritative completion signal for EVERY parse path. The frontend
 	// drives parseBusy off this (not a held-open request), and the watcher
 	// no longer emits it separately. The distinct-match count feeds the desktop

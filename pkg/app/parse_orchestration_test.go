@@ -19,6 +19,12 @@ func newParseReadyApp(t *testing.T) (*app.App, *dbtest.Fake) {
 	a := app.NewWithStore(fake)
 	app.AppSettings(a).ScreenshotsDir = t.TempDir()
 	app.AppTessStatus(a).Found = true
+	// Snapshot hooks (pre-reparse + auto-backup) run inside the parse
+	// path; stub the VACUUM INTO seam so unit tests never touch a real
+	// SQLite file. Backup-specific tests re-stub with their recorders.
+	prevBackup := *app.BackupToFunc
+	*app.BackupToFunc = func(src, dest string) error { return nil }
+	t.Cleanup(func() { *app.BackupToFunc = prevBackup })
 	return a, fake
 }
 

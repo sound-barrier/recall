@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import type { ExportStatus } from '@/composables/settings/useBackupRestore'
+import { useSettingsStore } from '@/stores/settings'
+import { formatIgnoredAt } from '@/match/match-time-helpers'
 
 // Backup & Restore panel:
 //   - Backup        — save a complete native SQLite (.db) snapshot.
@@ -27,6 +30,19 @@ const emit = defineEmits<{
   'cancel-restore': []
   'import-matches': []
 }>()
+
+// Automatic backups read the settings store directly (the store-direct
+// convention) — the rest of this panel predates it and stays prop-driven.
+const settingsStore = useSettingsStore()
+const { autoBackup } = storeToRefs(settingsStore)
+
+// Interval segments — mirrors the calendar week-start radiogroup.
+const INTERVALS = [
+  { days: -1, label: 'Off', title: 'Never back up automatically' },
+  { days: 1, label: 'Daily', title: 'Snapshot at most once a day' },
+  { days: 7, label: 'Weekly', title: 'Snapshot at most once a week' },
+  { days: 30, label: 'Monthly', title: 'Snapshot at most once a month' },
+] as const
 </script>
 
 <template>
@@ -73,6 +89,54 @@ const emit = defineEmits<{
             <span v-if="backingUp">Saving…</span>
             <span v-else>Backup (.db)</span>
           </button>
+        </div>
+      </div>
+
+      <!-- Automatic backups — the scheduler's interval + newest-snapshot
+           status. Snapshots land in <profile>/backups/, newest 3 kept. -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <h4 class="setting-label">
+            Automatic Backups
+          </h4>
+          <p class="setting-desc">
+            Recall snapshots your database on a schedule (checked at launch and after each parse). The newest three snapshots are kept in your profile's <strong>backups</strong> folder.
+          </p>
+          <p v-if="autoBackup" class="setting-meta" data-auto-backup-last>
+            <template v-if="autoBackup.last_backup_at">
+              Last automatic backup: {{ formatIgnoredAt(autoBackup.last_backup_at) }}
+            </template>
+            <template v-else>
+              No automatic backup yet.
+            </template>
+            <span v-if="autoBackup.stale" class="setting-meta blocked auto-backup-stale">
+              <span class="block-mark" aria-hidden="true">!</span>
+              Overdue — a snapshot will be taken after the next parse.
+            </span>
+          </p>
+        </div>
+        <div class="setting-control">
+          <div
+            v-if="autoBackup"
+            class="auto-backup-grid"
+            role="radiogroup"
+            aria-label="Automatic backup interval"
+          >
+            <button
+              v-for="opt in INTERVALS"
+              :key="opt.days"
+              type="button"
+              class="auto-backup-cell"
+              role="radio"
+              :aria-checked="autoBackup.interval_days === opt.days"
+              :class="{ active: autoBackup.interval_days === opt.days }"
+              :data-auto-backup-interval="opt.days"
+              :title="opt.title"
+              @click="settingsStore.setAutoBackupInterval(opt.days)"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -156,3 +220,61 @@ const emit = defineEmits<{
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Segmented interval picker — the SettingsCalendar week-start cell
+   language, sized for word labels instead of day letters. (That
+   grid's styles are scoped to its own SFC, hence the local copy.) */
+.auto-backup-grid {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  padding: 2px;
+  transition: border-color 140ms ease;
+}
+
+.auto-backup-grid:hover {
+  border-color: var(--border-strong);
+}
+
+.auto-backup-grid:focus-within {
+  border-color: var(--accent);
+}
+
+.auto-backup-cell {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 0.7rem;
+  background: transparent;
+  border: 0;
+  border-radius: 1px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.auto-backup-cell:hover {
+  color: var(--text);
+  background: rgb(255 255 255 / 3%);
+}
+
+.auto-backup-cell.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.auto-backup-stale {
+  display: inline-flex;
+  margin-left: 0.5rem;
+}
+</style>
