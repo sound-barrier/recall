@@ -92,11 +92,22 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     dropHint.value  = null
   }
 
+  // Single write path for the hint. Dragover fires continuously
+  // (~10/s) while the pointer moves; writing a fresh object per event
+  // made the live-preview watcher rebuild + re-render the whole grid
+  // every tick, restarting the in-flight reflow animations — the drag
+  // read as stutter. Only a genuinely NEW target touches the ref.
+  function setHint(row: number, idx: number) {
+    const cur = dropHint.value
+    if (cur && cur.row === row && cur.idx === idx) return
+    dropHint.value = { row, idx }
+  }
+
   function onDragOver(row: number, idx: number, e: DragEvent) {
     if (!dragging.value) return
     e.preventDefault() // permit drop
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
-    dropHint.value = { row, idx }
+    setHint(row, idx)
   }
 
   function onDrop(row: number, idx: number, e: DragEvent) {
@@ -122,27 +133,49 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     onDragEnd()
   }
 
+  // "Append at the row tail" is only a real target when the pointer
+  // sits past the row's last cell — right of it on its own line, or
+  // below it. Everywhere else the container only hears dragover
+  // because the pointer is crossing the grid GAPS between cells;
+  // treating those as "append" bounced the live preview to the tail
+  // and back on every gap crossing. Gaps are transitional — keep the
+  // current hint.
+  function pointerPastLastCell(container: Element, x: number, y: number): boolean {
+    const last = container.lastElementChild
+    if (!last) return true // empty row: the whole container is the drop zone
+    const rect = last.getBoundingClientRect()
+    return y > rect.bottom || (y >= rect.top && x > rect.right)
+  }
+
   function onRowDragOver(row: number, e: DragEvent) {
     if (!dragging.value) return
     e.preventDefault()
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
-    // Only set the "append at end" hint when the event ORIGINATED on
-    // the row container, not when it bubbled up from a child cell.
+    // Only consider the "append at end" hint when the event ORIGINATED
+    // on the row container, not when it bubbled up from a child cell.
     // Without this guard, the per-cell dropHint set a moment earlier
     // gets clobbered on the bubble pass and the live-preview lands
     // every drag at the row tail.
     if (e.target !== e.currentTarget) return
-    const size = opts.rowSize(row)
-    dropHint.value = { row, idx: size }
+    const container = e.currentTarget instanceof Element ? e.currentTarget : null
+    if (container && !pointerPastLastCell(container, e.clientX, e.clientY)) return
+    setHint(row, opts.rowSize(row))
   }
 
   function onRowDrop(row: number, e: DragEvent) {
     if (!dragging.value) return
     e.preventDefault()
     const { id, row: fromRow, idx: fromIdx } = dragging.value
-    const targetIdx = opts.rowSize(row)
+    // Releasing over a gap must land the widget where the hint (and
+    // the live preview) showed it — not at the row tail. Same
+    // source-before-target compensation as onDrop. No hint → the
+    // legacy append contract.
+    const hint = dropHint.value
+    const toRow = hint ? hint.row : row
+    let toIdx = hint ? hint.idx : opts.rowSize(row)
+    if (hint && fromRow === toRow && fromIdx < toIdx) toIdx -= 1
     // Fire onMove BEFORE onDragEnd — see onDrop's note for why.
-    opts.onMove(id, fromRow, fromIdx, row, targetIdx)
+    opts.onMove(id, fromRow, fromIdx, toRow, toIdx)
     onDragEnd()
   }
 

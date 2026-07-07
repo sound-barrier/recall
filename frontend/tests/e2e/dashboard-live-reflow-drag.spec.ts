@@ -1,7 +1,7 @@
 /**
  * Live-reflow drag UX.
  *
- * Three contracts to pin:
+ * Five contracts to pin:
  *   1. The dragged source widget wears the `dashboard-widget-dragging`
  *      ghost class while a drag is in flight (highlighting the box
  *      being dragged).
@@ -12,6 +12,12 @@
  *   3. If the user releases the mouse without an intervening drop on
  *      a dossier cell (= released off-dossier), the layout snaps back
  *      to its pre-drag state.
+ *   4. Dragovers that land on the row container because the pointer is
+ *      crossing a grid gap between cells do NOT move the preview — only
+ *      a pointer genuinely past the row's last cell hints an append.
+ *      (Re-hinting the tail on every gap crossing made drags stutter.)
+ *   5. The append-at-tail affordance survives: past the last cell, the
+ *      preview shows the widget at the row end.
  *
  * We exercise the contract by driving the DnD events programmatically
  * via page.dispatchEvent rather than relying on Playwright's
@@ -150,5 +156,52 @@ test.describe('dashboard live-reflow drag', () => {
       // winrate should not have moved in storage.
       expect(parsed['1']?.[0]).toBe('winrate')
     }
+  })
+
+  // Pointer travel across a row constantly crosses the grid GAPS between
+  // cells; those dragovers land on the row container. They must not
+  // disturb the current preview — re-hinting "append at tail" on every
+  // gap crossing bounced the layout back and forth and made the whole
+  // drag read as stutter.
+  test('crossing a mid-row gap keeps the preview in place (no tail bounce)', async ({ page }) => {
+    await startDrag(page, 'winrate')
+    await dragOver(page, 'total-time')
+    expect((await widgetOrder(page, 1)).indexOf('winrate')).toBe(2)
+
+    await page.evaluate(() => {
+      const row = document.querySelector('.dashboard-row[data-row="1"]')
+      if (!row) throw new Error('row 1 not found')
+      const cells = row.querySelectorAll('[data-widget-id]')
+      const a = cells[0]!.getBoundingClientRect()
+      const b = cells[1]!.getBoundingClientRect()
+      const dt = (window as unknown as { __dragDT?: DataTransfer }).__dragDT ?? new DataTransfer()
+      row.dispatchEvent(new DragEvent('dragover', {
+        bubbles: true, cancelable: true, dataTransfer: dt,
+        clientX: (a.right + b.left) / 2, clientY: a.top + a.height / 2,
+      }))
+    })
+
+    expect((await widgetOrder(page, 1)).indexOf('winrate')).toBe(2)
+    await endDrag(page, 'winrate')
+  })
+
+  test('dragging past the last cell still previews an append at the row end', async ({ page }) => {
+    await startDrag(page, 'winrate')
+
+    await page.evaluate(() => {
+      const row = document.querySelector('.dashboard-row[data-row="1"]')
+      if (!row) throw new Error('row 1 not found')
+      const cells = row.querySelectorAll('[data-widget-id]')
+      const last = cells[cells.length - 1]!.getBoundingClientRect()
+      const dt = (window as unknown as { __dragDT?: DataTransfer }).__dragDT ?? new DataTransfer()
+      row.dispatchEvent(new DragEvent('dragover', {
+        bubbles: true, cancelable: true, dataTransfer: dt,
+        clientX: last.right + 20, clientY: last.top + last.height / 2,
+      }))
+    })
+
+    const preview = await widgetOrder(page, 1)
+    expect(preview.indexOf('winrate')).toBe(preview.length - 1)
+    await endDrag(page, 'winrate')
   })
 })

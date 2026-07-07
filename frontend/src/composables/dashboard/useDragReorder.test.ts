@@ -131,6 +131,81 @@ describe('useDragReorder — drag handlers', () => {
     api.onRowDrop(2, fakeDragEvent())
     expect(onMove).toHaveBeenCalledWith('winrate', 1, 0, 2, 3)
   })
+
+  it('onRowDrop lands at the current drop hint, not the row tail', () => {
+    // Releasing over a grid gap fires drop on the row container. The
+    // user is looking at the hinted position — commit THAT, with the
+    // same source-before-target compensation onDrop applies.
+    const onMove = vi.fn()
+    const api = useDragReorder({ onMove, rowSize: () => 7 })
+    api.onDragStart('winrate', 1, 5, fakeDragEvent())
+    api.onDragOver(1, 2, fakeDragEvent())
+    api.onRowDrop(1, fakeDragEvent())
+    expect(onMove).toHaveBeenCalledWith('winrate', 1, 5, 1, 2)
+  })
+})
+
+describe('useDragReorder — drop-hint stability during a drag', () => {
+  // A dragover fires continuously (~10/s) while the pointer moves. If
+  // every event allocates a fresh hint object, the live-preview watcher
+  // rebuilds the layout and re-renders the whole grid per tick — the
+  // reflow animations restart constantly and the drag reads as stutter.
+
+  function rowWithLastCellRect(rect: Partial<DOMRect> | null): HTMLElement {
+    const row = document.createElement('div')
+    if (rect) {
+      const cell = document.createElement('div')
+      vi.spyOn(cell, 'getBoundingClientRect').mockReturnValue(rect as DOMRect)
+      row.appendChild(cell)
+    }
+    return row
+  }
+
+  function rowDragEvent(row: HTMLElement, clientX: number, clientY: number): DragEvent {
+    return fakeDragEvent({ target: row, currentTarget: row, clientX, clientY })
+  }
+
+  it('onDragOver over the same cell keeps the same dropHint object (no per-event churn)', () => {
+    const api = useDragReorder({ onMove: vi.fn(), rowSize: () => 4 })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    api.onDragOver(1, 2, fakeDragEvent())
+    const first = api.dropHint.value
+    api.onDragOver(1, 2, fakeDragEvent())
+    expect(api.dropHint.value).toBe(first)
+  })
+
+  it('onRowDragOver mid-row (a grid gap) keeps the current cell hint instead of jumping to the tail', () => {
+    const api = useDragReorder({ onMove: vi.fn(), rowSize: () => 7 })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    api.onDragOver(1, 2, fakeDragEvent())
+    const row = rowWithLastCellRect({ top: 0, bottom: 80, left: 1000, right: 1180 })
+    api.onRowDragOver(1, rowDragEvent(row, 250, 40))
+    expect(api.dropHint.value).toEqual({ row: 1, idx: 2 })
+  })
+
+  it('onRowDragOver past the last cell hints an append at the row tail', () => {
+    const api = useDragReorder({ onMove: vi.fn(), rowSize: () => 7 })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    const row = rowWithLastCellRect({ top: 0, bottom: 80, left: 1000, right: 1180 })
+    api.onRowDragOver(1, rowDragEvent(row, 1200, 40))
+    expect(api.dropHint.value).toEqual({ row: 1, idx: 7 })
+  })
+
+  it('onRowDragOver below the last cell line also hints an append', () => {
+    const api = useDragReorder({ onMove: vi.fn(), rowSize: () => 7 })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    const row = rowWithLastCellRect({ top: 0, bottom: 80, left: 1000, right: 1180 })
+    api.onRowDragOver(1, rowDragEvent(row, 250, 120))
+    expect(api.dropHint.value).toEqual({ row: 1, idx: 7 })
+  })
+
+  it('onRowDragOver over an empty row hints the first slot', () => {
+    const api = useDragReorder({ onMove: vi.fn(), rowSize: (row) => (row === 2 ? 0 : 5) })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    const row = rowWithLastCellRect(null)
+    api.onRowDragOver(2, rowDragEvent(row, 250, 40))
+    expect(api.dropHint.value).toEqual({ row: 2, idx: 0 })
+  })
 })
 
 describe('useDragReorder — keyboard alternatives', () => {
