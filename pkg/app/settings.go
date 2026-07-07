@@ -21,6 +21,11 @@ type Settings struct {
 	// hides it to the tray so the folder watcher keeps running. Honored only on
 	// Windows/Linux — macOS always stays in the menu bar per platform convention.
 	ExitOnClose bool `json:"exit_on_close"`
+	// AutoBackupIntervalDays drives the automatic VACUUM INTO snapshots
+	// (backup_scheduler.go). 0 = never configured → defaults ON at a
+	// week (existing installs get protection without touching Settings);
+	// -1 = explicit opt-out; positive = literal days.
+	AutoBackupIntervalDays int `json:"auto_backup_interval_days,omitempty"`
 }
 
 // appBaseDir returns the install-wide base directory. Used by the

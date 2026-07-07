@@ -39,8 +39,9 @@ var (
 
 // ── Backup / snapshot seams ───────────────────────────────────────────────
 var (
-	BackupToFunc   = &backupToFunc
-	PruneSnapshots = pruneSnapshots
+	BackupToFunc    = &backupToFunc
+	PruneSnapshots  = pruneSnapshots
+	MaybeAutoBackup = (*App).maybeAutoBackup
 )
 
 // ── App-release update check (the gamedata seams moved to pkg/gamedata) ──

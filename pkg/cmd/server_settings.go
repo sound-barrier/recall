@@ -29,6 +29,9 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 
 	apiMux.HandleFunc("GET /api/v1/settings/close-behavior", handleGetCloseBehavior(a))
 	apiMux.HandleFunc("PUT /api/v1/settings/close-behavior", handleSetCloseBehavior(a))
+
+	apiMux.HandleFunc("GET /api/v1/settings/auto-backup", handleGetAutoBackup(a))
+	apiMux.HandleFunc("PUT /api/v1/settings/auto-backup", handleSetAutoBackup(a))
 }
 
 func handleGetScreenshotsFolder(a *app.App) http.HandlerFunc {
@@ -148,5 +151,32 @@ func handleSetCloseBehavior(a *app.App) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleGetAutoBackup(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, r, a.GetAutoBackupStatus(), nil)
+	}
+}
+
+// handleSetAutoBackup persists the interval and echoes the refreshed
+// status so the UI updates in one round-trip (the mirror of the DB
+// maintenance handler's echo shape). `*int` so a missing field is a
+// 400, not a silent zero.
+func handleSetAutoBackup(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			IntervalDays *int `json:"interval_days"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.IntervalDays == nil {
+			writeProblem(w, r, probInvalidBody, "body must be {\"interval_days\":<int>}")
+			return
+		}
+		if writeError(w, r, a.SetAutoBackupInterval(*body.IntervalDays),
+			errStatus{app.ErrInvalidBackupInterval, probInvalidBody}) {
+			return
+		}
+		writeJSON(w, r, a.GetAutoBackupStatus(), nil)
 	}
 }

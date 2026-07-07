@@ -33,6 +33,7 @@ func RunWails(a *app.App, assets embed.FS) {
 	// The desktop's ServiceStartup hands Startup a real lifecycle context, so the
 	// background engine probe's "tesseract-status" emit is safe here.
 	app.EnableTesseractProbeOnStartup()
+	app.EnableAutoBackupOnStartup()
 
 	// Declared up front so the single-instance callback can focus it — the
 	// window itself is created after application.New below.

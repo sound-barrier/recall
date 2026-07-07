@@ -1224,6 +1224,60 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/settings/auto-backup:
+    get:
+      operationId: GetAutoBackupStatus
+      tags: [Settings]
+      summary: Get the automatic-backup schedule and last-snapshot status
+      description: |
+        The auto-backup scheduler writes periodic `VACUUM INTO` snapshots
+        to `<profile>/backups/auto-<ts>.db` (newest 3 kept), checked at
+        startup and after every parse run. `interval_days` is the
+        EFFECTIVE interval: `-1` when the user disabled it, otherwise the
+        configured day count (never-configured installs default to 7 —
+        protection without touching Settings). `stale` is true when the
+        scheduler is enabled and the newest snapshot is missing or older
+        than the interval.
+      responses:
+        "200":
+          description: Current schedule + newest-snapshot status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoBackupStatus"
+    put:
+      operationId: SetAutoBackupInterval
+      tags: [Settings]
+      summary: Set the automatic-backup interval
+      description: |
+        `interval_days` is `-1` to disable or a literal 1–365 day count.
+        `0` is rejected (the "never configured → default" sentinel is a
+        storage detail, not a wire value). Echoes the refreshed status so
+        the UI updates in one round-trip.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [interval_days]
+              properties:
+                interval_days:
+                  type: integer
+                  description: -1 to disable, else 1–365 days.
+                  example: 7
+      responses:
+        "200":
+          description: Saved; refreshed status echoed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoBackupStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/profiles:
     get:
       operationId: GetProfiles
@@ -3083,6 +3137,30 @@ components:
             `distance_seconds` ascending.
           items:
             $ref: "#/components/schemas/AmbiguousCandidate"
+
+    AutoBackupStatus:
+      type: object
+      required: [interval_days, stale]
+      description: |
+        Automatic-backup schedule + newest-snapshot status. See
+        `GET /api/v1/settings/auto-backup`.
+      properties:
+        interval_days:
+          type: integer
+          description: Effective interval — -1 disabled, else days.
+          example: 7
+        last_backup_at:
+          type: string
+          format: date-time
+          description: |
+            Timestamp of the newest automatic snapshot (parsed from its
+            filename). Omitted when no automatic snapshot exists yet.
+          example: "2026-07-05T10:00:00Z"
+        stale:
+          type: boolean
+          description: |
+            True when the scheduler is enabled and the newest snapshot is
+            missing or older than the interval.
 
     AmbiguousCandidate:
       type: object
