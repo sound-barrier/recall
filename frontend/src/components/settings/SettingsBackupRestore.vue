@@ -268,7 +268,10 @@ const INTERVALS = [
 }
 
 .auto-backup-cell.active {
-  color: var(--accent);
+  /* Full-contrast text: the OW orange on its soft fill sits at ~3.8:1,
+     under AA for this 10px-bold label — the ring + fill carry the
+     selected state, the text stays var(--text) (a11y.md contrast rule). */
+  color: var(--text);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
