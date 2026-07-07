@@ -3,6 +3,7 @@ package gamedata
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -144,10 +145,15 @@ func diffRosters(applied, latest []string) (added, removed []string) {
 // copy. heroes/maps share the parseRosterNames helper; sources uses
 // its own parser since the YAML shape is `{sources: [{name, ...}]}`.
 func FetchReleaseRosters(latest string) (heroes, maps, sources []string) {
-	order := releaseWalkOrder(latest)
-	heroes = fetchAssetAcross(order, "heroes.yaml", parseRosterNames)
-	maps = fetchAssetAcross(order, "maps.yaml", parseRosterNames)
-	sources = fetchAssetAcross(order, "screenshot_sources.yaml", parseSourceNames)
+	// One client for the whole check: every asset + sidecar + the release
+	// list hit the same GitHub hosts, so sharing the transport reuses
+	// connections and TLS state across the up-to-dozens of GETs a
+	// release walk can issue.
+	client := NewUpdateClient()
+	order := releaseWalkOrder(client, latest)
+	heroes = fetchAssetAcross(client, order, "heroes.yaml", parseRosterNames)
+	maps = fetchAssetAcross(client, order, "maps.yaml", parseRosterNames)
+	sources = fetchAssetAcross(client, order, "screenshot_sources.yaml", parseSourceNames)
 	return heroes, maps, sources
 }
 
@@ -155,10 +161,10 @@ func FetchReleaseRosters(latest string) (heroes, maps, sources []string) {
 // first: `latest` always leads, followed by every other tag from the GitHub
 // releases list (newest-first, v-stripped, deduped). If the list fetch fails it
 // degrades to just [latest] — the pre-walk-back behavior.
-func releaseWalkOrder(latest string) []string {
+func releaseWalkOrder(client *http.Client, latest string) []string {
 	order := []string{latest}
 	seen := map[string]struct{}{latest: {}}
-	for _, tag := range fetchReleaseTags() {
+	for _, tag := range fetchReleaseTags(client) {
 		if _, dup := seen[tag]; dup {
 			continue
 		}
@@ -171,8 +177,8 @@ func releaseWalkOrder(latest string) []string {
 // fetchReleaseTags returns release tag versions (leading "v" stripped),
 // newest-first, from the GitHub releases list. Empty on any failure — callers
 // then only try `latest`.
-func fetchReleaseTags() []string {
-	b, err := getBytes(NewUpdateClient(), ReleaseListURL)
+func fetchReleaseTags(client *http.Client) []string {
+	b, err := getBytes(client, ReleaseListURL)
 	if err != nil {
 		return nil
 	}
@@ -193,9 +199,9 @@ func fetchReleaseTags() []string {
 
 // fetchAssetAcross tries each version in order and returns the first roster the
 // release actually carries. nil only if no release in the walk has the asset.
-func fetchAssetAcross(versions []string, name string, decode func([]byte) []string) []string {
+func fetchAssetAcross(client *http.Client, versions []string, name string, decode func([]byte) []string) []string {
 	for _, v := range versions {
-		if names := fetchAsset(v, name, decode); names != nil {
+		if names := fetchAsset(client, v, name, decode); names != nil {
 			return names
 		}
 	}
@@ -206,9 +212,7 @@ func fetchAssetAcross(versions []string, name string, decode func([]byte) []stri
 // sidecar, verifies the SHA, and returns the flat name list extracted
 // by `decode`. Empty slice on any failure (network / status / SHA
 // mismatch / decode error).
-func fetchAsset(version, name string, decode func([]byte) []string) []string {
-	client := NewUpdateClient()
-
+func fetchAsset(client *http.Client, version, name string, decode func([]byte) []string) []string {
 	yamlBytes, err := getBytes(client, ReleaseAssetURL(version, name))
 	if err != nil {
 		return nil
@@ -238,8 +242,7 @@ type mainVersion struct {
 // zero value on any failure (network, decode, etc.) — callers treat
 // an empty CommitSHA as "Pages channel unavailable" and skip the
 // main-channel diff entirely.
-func fetchMainVersion() mainVersion {
-	client := NewUpdateClient()
+func fetchMainVersion(client *http.Client) mainVersion {
 	b, err := getBytes(client, MainVersionURL)
 	if err != nil {
 		return mainVersion{}
@@ -256,16 +259,14 @@ func fetchMainVersion() mainVersion {
 // Pages-published live channel and returns the flat name lists. Same
 // SHA-256 verification shape as fetchReleaseRosters; nil returned
 // for any asset whose fetch or verification failed.
-func fetchMainRosters() (heroes, maps, sources []string) {
-	heroes = fetchMainAsset("heroes.yaml", parseRosterNames)
-	maps = fetchMainAsset("maps.yaml", parseRosterNames)
-	sources = fetchMainAsset("screenshot_sources.yaml", parseSourceNames)
+func fetchMainRosters(client *http.Client) (heroes, maps, sources []string) {
+	heroes = fetchMainAsset(client, "heroes.yaml", parseRosterNames)
+	maps = fetchMainAsset(client, "maps.yaml", parseRosterNames)
+	sources = fetchMainAsset(client, "screenshot_sources.yaml", parseSourceNames)
 	return heroes, maps, sources
 }
 
-func fetchMainAsset(name string, decode func([]byte) []string) []string {
-	client := NewUpdateClient()
-
+func fetchMainAsset(client *http.Client, name string, decode func([]byte) []string) []string {
 	yamlBytes, err := getBytes(client, MainAssetURL(name))
 	if err != nil {
 		return nil
@@ -284,8 +285,11 @@ func fetchMainAsset(name string, decode func([]byte) []string) []string {
 // against the local manifest + currently-loaded parser tables. The
 // one-call surface the app shell's background game-data probe uses.
 func Status(baseDir string) GameDataStatus {
-	ver := fetchMainVersion()
-	heroes, maps, sources := fetchMainRosters()
+	// Same client across version.json + all three rosters + sidecars —
+	// eight sequential GETs to one Pages host per background probe.
+	client := NewUpdateClient()
+	ver := fetchMainVersion(client)
+	heroes, maps, sources := fetchMainRosters(client)
 	return computeGameDataStatus(baseDir, ver, heroes, maps, sources)
 }
 

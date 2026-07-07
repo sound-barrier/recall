@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -111,12 +112,15 @@ func Apply(baseDir string) (DataUpdateResult, error) {
 	dataUpdateMu.Lock()
 	defer dataUpdateMu.Unlock()
 
-	ver := fetchMainVersion()
+	// One client for version.json + all roster assets — every GET in an
+	// apply hits the same Pages host.
+	client := NewUpdateClient()
+	ver := fetchMainVersion(client)
 	if ver.CommitSHA == "" {
 		return DataUpdateResult{}, fmt.Errorf("%w: version.json unreachable", ErrDataUpdateMainFetchFailed)
 	}
 
-	verified, err := fetchAndVerifyMainAssets()
+	verified, err := fetchAndVerifyMainAssets(client)
 	if err != nil {
 		return DataUpdateResult{}, err
 	}
@@ -197,12 +201,11 @@ func commitVerifiedAssets(baseDir string, verified map[string]verifiedAsset, man
 }
 
 // fetchAndVerifyMainAssets is the main-channel sibling of
-// fetchAndVerifyAssets — same shape, different URL builder.
-func fetchAndVerifyMainAssets() (map[string]verifiedAsset, error) {
-	// newUpdateClient, not a bare http.Client: the apply path must enforce
-	// the same redirect-host allowlist + HTTPS guard the check path does,
-	// or a spoofed redirect could bounce the fetch to an arbitrary host.
-	client := NewUpdateClient()
+// fetchAndVerifyAssets — same shape, different URL builder. The client
+// must come from NewUpdateClient: the apply path enforces the same
+// redirect-host allowlist + HTTPS guard the check path does, or a
+// spoofed redirect could bounce the fetch to an arbitrary host.
+func fetchAndVerifyMainAssets(client *http.Client) (map[string]verifiedAsset, error) {
 	out := make(map[string]verifiedAsset, len(dataYAMLFiles))
 	for _, name := range dataYAMLFiles {
 		b, err := getBytes(client, MainAssetURL(name))
