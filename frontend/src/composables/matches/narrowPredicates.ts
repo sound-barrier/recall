@@ -1,6 +1,7 @@
 import type { MatchRecord } from '@/api-client'
 import { rolesForHeader } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
+import { matchTime } from '@/match/match-time-helpers'
 import type { SearchClause } from '@/match/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/useMatchesNarrow'
 
@@ -68,18 +69,41 @@ export function matchesSearch(r: MatchRecord, clauses: SearchClause[]): boolean 
   })
 }
 
-export function matchesDateRange(r: MatchRecord, fromBound: string, toBound: string): boolean {
-  const dateKey = r.data?.date ?? ''
-  if (!dateKey) return true
+// matchesDateRange places a record on the naive-local time axis via the
+// canonical matchTime() recipe (SUMMARY date+finished_at, else the match
+// key's capture timestamp), falling back to bare data.date so dated rows
+// without either stamp stay filterable. Records with NO placeable time
+// (unmatched-/ambiguous- sentinels) always pass.
+//
+// Bounds: fromBound/toBound are date strings; the optional fromTime/toTime
+// ('HH:MM') tighten their day to a minute boundary — the patch-drop
+// primitive the future seasons feature builds on. Contract (also the
+// seasons contract): everything is naive LOCAL wall-clock; both ends are
+// inclusive; mixed precision resolves by truncating the RECORD to the
+// minute (never padding the bound), so `to 10:59` keeps a 10:59:45 match
+// — "to 10:59" means the whole closing minute — while `from 11:00`
+// excludes 10:59:59.
+export function matchesDateRange(
+  r: MatchRecord,
+  fromBound: string,
+  toBound: string,
+  fromTime = '',
+  toTime = '',
+): boolean {
+  const stamp = matchTime(r) || (r.data?.date ?? '')
+  if (!stamp) return true
+  const minute = stamp.slice(0, 16)
+  const date = stamp.slice(0, 10)
   // Slice the bound strings to YYYY-MM-DD before comparing — the
   // heatmap cell-click writes `${date}T00:00`/`${date}T23:59` for
   // sub-day band selection; preset ranges + the manual datepicker
   // write bare YYYY-MM-DD. A raw lexicographic compare between the
-  // two forms drops every record on the active day.
+  // two forms drops every record on the active day. Sub-day precision
+  // comes ONLY from the explicit fromTime/toTime panel inputs.
   const from = fromBound.slice(0, 10)
   const to = toBound.slice(0, 10)
-  if (from && dateKey < from) return false
-  if (to && dateKey > to) return false
+  if (from && (fromTime ? minute < `${from}T${fromTime}` : date < from)) return false
+  if (to && (toTime ? minute > `${to}T${toTime}` : date > to)) return false
   return true
 }
 
