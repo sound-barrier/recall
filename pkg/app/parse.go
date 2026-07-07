@@ -266,6 +266,9 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
+	// Byte-identical copies of already-ingested files skip OCR entirely
+	// (dedup.go) — they join the skip set before the loop starts.
+	a.dedupNewFiles(screenshotsDir, parsed)
 
 	// Record the source folder once per batch so every screenshot in
 	// this Parse run is FK'd to the same screenshots_dirs row. Resolved

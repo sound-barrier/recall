@@ -263,6 +263,22 @@ CREATE TABLE IF NOT EXISTS match_play_mode (
 );
 -- statement-end
 
+-- Content-hash registry for every image the parse loop has examined.
+-- duplicate_of names the canonical filename when this file was a
+-- byte-identical copy (skipped before OCR); '' for originals. Lets a
+-- Steam+system-shortcut double-save cost zero Tesseract time and zero
+-- duplicate rows. Only files ingested after this table shipped carry
+-- hashes — older history simply never matches.
+CREATE TABLE IF NOT EXISTS ingested_files (
+  filename      TEXT PRIMARY KEY,
+  content_hash  TEXT NOT NULL,
+  duplicate_of  TEXT NOT NULL DEFAULT '',
+  first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_ingested_files_hash ON ingested_files(content_hash);
+-- statement-end
+
 CREATE TABLE IF NOT EXISTS ignored_screenshots (
   filename   TEXT PRIMARY KEY,
   ignored_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
