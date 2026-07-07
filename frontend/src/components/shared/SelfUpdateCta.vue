@@ -73,7 +73,7 @@ const progressLabel = computed(() => {
   </button>
 
   <p
-    v-if="state.phase === 'error'"
+    v-if="state.phase === 'error' && state.error"
     class="update-check-modal-selfupdate-error"
     data-self-update-error
     role="alert"
@@ -109,6 +109,14 @@ const progressLabel = computed(() => {
 .update-check-modal-selfupdate-fill.indeterminate {
   width: 40%;
   animation: update-check-modal-selfupdate-slide 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-check-modal-selfupdate-fill.indeterminate {
+    animation: none;
+    margin-left: 0;
+    width: 100%;
+  }
 }
 
 @keyframes update-check-modal-selfupdate-slide {
