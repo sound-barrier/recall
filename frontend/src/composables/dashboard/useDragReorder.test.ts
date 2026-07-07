@@ -206,6 +206,42 @@ describe('useDragReorder — drop-hint stability during a drag', () => {
     api.onRowDragOver(2, rowDragEvent(row, 250, 40))
     expect(api.dropHint.value).toEqual({ row: 2, idx: 0 })
   })
+
+  // When a hint reorders the preview, the displaced siblings glide for
+  // the move-transition duration — and the glide sweeps their boxes
+  // under a stationary pointer. Re-hinting from a transiting cell uses
+  // its FINAL-layout index, which bounces the preview straight back: a
+  // feedback loop at every cell boundary. Cells wearing the configured
+  // move class are settling; their dragovers must not re-hint.
+
+  it('onDragOver from a cell mid-move animation keeps the current hint', () => {
+    const api = useDragReorder({
+      onMove: vi.fn(),
+      rowSize: () => 4,
+      moveClass: 'dashboard-widget-move',
+    })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    api.onDragOver(1, 2, fakeDragEvent())
+    const settlingCell = document.createElement('div')
+    settlingCell.classList.add('dashboard-widget-move')
+    const evt = fakeDragEvent({ currentTarget: settlingCell })
+    api.onDragOver(1, 0, evt)
+    expect(evt.preventDefault).toHaveBeenCalled() // drop stays permitted
+    expect(api.dropHint.value).toEqual({ row: 1, idx: 2 })
+  })
+
+  it('onDragOver from a settled cell re-hints normally when moveClass is configured', () => {
+    const api = useDragReorder({
+      onMove: vi.fn(),
+      rowSize: () => 4,
+      moveClass: 'dashboard-widget-move',
+    })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    const settledCell = document.createElement('div')
+    const evt = fakeDragEvent({ currentTarget: settledCell })
+    api.onDragOver(1, 2, evt)
+    expect(api.dropHint.value).toEqual({ row: 1, idx: 2 })
+  })
 })
 
 describe('useDragReorder — keyboard alternatives', () => {

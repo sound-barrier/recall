@@ -39,6 +39,10 @@ export function useDashboardGrid() {
       const r = dashboardRows.value.find((x) => x.index === row)
       return r ? r.widgets.length : 0
     },
+    // The dossier rows animate reorders via <TransitionGroup
+    // name="dashboard-widget">; cells wearing its move class are still
+    // gliding into a fresh preview and must not re-hint.
+    moveClass: 'dashboard-widget-move',
   })
 
   const dashboardRows = computed(() => {

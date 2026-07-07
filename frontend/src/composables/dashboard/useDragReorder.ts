@@ -44,6 +44,14 @@ export interface UseDragReorderOptions {
   onMove: (id: string, fromRow: number, fromIdx: number, toRow: number, toIdx: number) => void
   rowSize: RowSize
   adjacentRow?: AdjacentRowResolver
+  // The class the consumer's <TransitionGroup> applies to cells during
+  // a FLIP move transition (its `${name}-move` class). When set, a
+  // dragover from a cell wearing it does NOT re-hint: the cell's box
+  // is mid-glide under the pointer while its props already hold the
+  // final-layout index, so re-hinting bounces the preview straight
+  // back — a feedback loop at every cell boundary. Leave unset for
+  // consumers that don't animate reorders.
+  moveClass?: string
 }
 
 export interface DragReorderApi {
@@ -103,10 +111,19 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     dropHint.value = { row, idx }
   }
 
+  // True when the event's cell is still settling from a previous
+  // preview reflow (see UseDragReorderOptions.moveClass).
+  function cellIsSettling(e: DragEvent): boolean {
+    if (!opts.moveClass) return false
+    const el = e.currentTarget
+    return el instanceof Element && el.classList.contains(opts.moveClass)
+  }
+
   function onDragOver(row: number, idx: number, e: DragEvent) {
     if (!dragging.value) return
     e.preventDefault() // permit drop
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    if (cellIsSettling(e)) return
     setHint(row, idx)
   }
 
