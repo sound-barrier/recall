@@ -588,6 +588,15 @@ export function BulkSetMatchPlayMode(matchKeys: string[], playMode: PlayMode): P
 // separate App methods), so the boolean determines which method name
 // the bridge resolves. Server-mode posts the new state to the
 // /visibility sub-resource on the parent match.
+// Star/unstar — the /pin sub-resource, SetMatchVisibility's twin.
+export function SetMatchPin(matchKey: string, pinned: boolean): Promise<void> {
+  if (IS_WAILS) {
+    return _wails<void>(pinned ? 'PinMatch' : 'UnpinMatch', matchKey)
+  }
+  const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/pin`
+  return _send<void>('PUT', path, { pinned }).then(() => undefined)
+}
+
 export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<void> {
   if (IS_WAILS) {
     return hidden ? _wails('HideMatch', matchKey) : _wails('UnhideMatch', matchKey)

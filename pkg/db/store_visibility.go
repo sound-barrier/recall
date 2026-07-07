@@ -72,6 +72,7 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 		`DELETE FROM user_match_data WHERE match_key = ?`, // children CASCADE
 		`DELETE FROM match_queue WHERE match_key = ?`,
 		`DELETE FROM match_play_mode WHERE match_key = ?`,
+		`DELETE FROM pinned_matches WHERE match_key = ?`,
 	} {
 		if _, err := tx.Exec(q, matchKey); err != nil {
 			return err
@@ -98,4 +99,38 @@ func (s *SQLStore) LoadHiddenKeys() (map[string]bool, error) {
 		return nil, fmt.Errorf("load hidden keys: %w", err)
 	}
 	return out, nil
+}
+
+// Pinned matches — the hidden_matches pattern applied to pins.
+// Idempotent both directions.
+
+func (s *SQLStore) PinMatch(matchKey string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO pinned_matches (match_key) VALUES (?)
+		 ON CONFLICT(match_key) DO UPDATE SET pinned_at = CURRENT_TIMESTAMP`,
+		matchKey,
+	)
+	return err
+}
+
+func (s *SQLStore) UnpinMatch(matchKey string) error {
+	_, err := s.db.Exec(`DELETE FROM pinned_matches WHERE match_key = ?`, matchKey)
+	return err
+}
+
+func (s *SQLStore) LoadPinnedKeys() (map[string]bool, error) {
+	rows, err := s.db.Query(`SELECT match_key FROM pinned_matches`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return nil, err
+		}
+		out[k] = true
+	}
+	return out, rows.Err()
 }

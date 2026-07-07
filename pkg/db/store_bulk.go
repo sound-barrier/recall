@@ -159,6 +159,7 @@ func (s *SQLStore) Clear() error {
 		"match_play_mode",
 		"match_annotations", // match_annotation_members + _tags cascade
 		"hidden_matches",
+		"pinned_matches",
 		"ambiguous_candidates",
 		"ignored_screenshots",
 		"all_heroes_screenshots",

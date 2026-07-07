@@ -51,6 +51,40 @@ func handleGetMatchByKey(a *app.App) http.HandlerFunc {
 	}
 }
 
+// handleSetMatchPin stars / unstars a match — the visibility
+// endpoint's twin over the pinned_matches sidecar. `Pinned *bool` for
+// the same missing-vs-false reason (see handleSetMatchVisibility).
+func handleSetMatchPin(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		var body struct {
+			Pinned *bool `json:"pinned"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		if body.Pinned == nil {
+			writeProblem(w, r, probInvalidBody, "body must be {\"pinned\":<bool>}",
+				withFieldErrors(fieldError{"pinned", "must be a boolean"}))
+			return
+		}
+		var err error
+		if *body.Pinned {
+			err = a.PinMatch(matchKey)
+		} else {
+			err = a.UnpinMatch(matchKey)
+		}
+		if writeError(w, r, err) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 // handleSetMatchVisibility soft-deletes (hides / unhides) a match.
 // `hidden: true` adds the match to hidden_matches; `hidden: false`
 // removes it. Both are idempotent — repeated identical calls succeed

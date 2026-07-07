@@ -23,6 +23,7 @@ const emit = defineEmits<{
   prev: []
   next: []
   reset: []
+  pin: []
 }>()
 </script>
 
@@ -46,6 +47,19 @@ const emit = defineEmits<{
         :class="`result-${record.data?.result || 'unknown'}`"
       >{{ record.data?.result || 'unknown' }}</span>
     </div>
+
+    <button
+      type="button"
+      class="detail-icon-btn detail-pin"
+      :class="{ pinned: record.pinned }"
+      data-pin-toggle
+      :aria-pressed="record.pinned ? 'true' : 'false'"
+      :aria-label="record.pinned ? 'Unpin this match' : 'Pin this match'"
+      :title="record.pinned ? 'Unpin — remove from the Pinned section' : 'Pin — keep above the date groups'"
+      @click="emit('pin')"
+    >
+      <span aria-hidden="true">{{ record.pinned ? '★' : '☆' }}</span>
+    </button>
 
     <div class="detail-toolbar-nav" role="group" aria-label="Match navigation">
       <button

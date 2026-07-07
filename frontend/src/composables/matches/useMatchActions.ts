@@ -10,6 +10,7 @@ import {
   SetMatchAnnotation,
   DeleteMatchAnnotation,
   HardDeleteMatch,
+  SetMatchPin,
   SetMatchVisibility,
   MoveMatches,
   UpdateMatchData,
@@ -214,6 +215,13 @@ export function useMatchActions() {
   }
 
   // ── Per-match status (hide / review / queue / play-mode) ──────────
+  async function onSetMatchPinned(matchKey: string, pinned: boolean) {
+    try {
+      await SetMatchPin(matchKey, pinned)
+      await reload()
+    } catch (e) { onError(String(e)) }
+  }
+
   async function onSetMatchHidden(matchKey: string, hidden: boolean) {
     try {
       // Capture the label off the still-present record before the reload drops it.
@@ -274,6 +282,7 @@ export function useMatchActions() {
     onSetMatchAnnotation,
     onUpdateMatchData,
     onResetMatchData,
+    onSetMatchPinned,
     onSetMatchHidden,
     onSetMatchReview,
     onSetMatchQueue,

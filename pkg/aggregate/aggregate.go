@@ -35,7 +35,7 @@ import (
 // Settings → Advanced → Re-parse all screenshots is the only
 // path (it re-runs Tesseract, which now correctly rejects the
 // short-name fuzzy match).
-func AggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) (match.MatchRecord, bool) {
+func AggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) (match.MatchRecord, bool) {
 	vs := collectViewsForKey(snap, key)
 	if len(vs) == 0 {
 		return match.MatchRecord{}, false
@@ -43,7 +43,7 @@ func AggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 	rec := FoldGroup(key, vs, snap.ScreenshotsDirs)
 	InferSoleHeroPercent(&rec.Data)
 	InferResultFromRank(&rec.Data)
-	attachMatchSidecars(&rec, key, snap, annos, hidden, reviews)
+	attachMatchSidecars(&rec, key, snap, annos, hidden, reviews, pinned)
 	return rec, true
 }
 
@@ -81,7 +81,7 @@ func collectViewsForKey(snap db.Screenshots, key string) []ScreenshotView {
 
 // attachMatchSidecars decorates rec with the per-key annotation, hidden
 // flag, review state, and ambiguous-attribution candidates.
-func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) {
+func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) {
 	if a, ok := annos[key]; ok {
 		rec.Annotation = &match.MatchAnnotation{
 			Leaver:      a.Leaver,
@@ -94,6 +94,9 @@ func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots
 	}
 	if hidden[key] {
 		rec.Hidden = true
+	}
+	if pinned[key] {
+		rec.Pinned = true
 	}
 	if st, ok := reviews[key]; ok {
 		rec.ReviewedBy = st.ReviewedBy

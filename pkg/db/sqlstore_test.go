@@ -1212,3 +1212,30 @@ func TestSQLStore_IngestedFiles_UpsertThenLoadRoundTrip(t *testing.T) {
 		t.Errorf("registry = %+v, want %+v", got, want)
 	}
 }
+
+func TestSQLStore_PinnedMatches_RoundTripAndHardDelete(t *testing.T) {
+	s := openMemory(t)
+	if err := s.PinMatch("match-1"); err != nil {
+		t.Fatalf("PinMatch: %v", err)
+	}
+	if err := s.PinMatch("match-1"); err != nil { // idempotent
+		t.Fatalf("PinMatch again: %v", err)
+	}
+	keys, err := s.LoadPinnedKeys()
+	if err != nil || !keys["match-1"] {
+		t.Fatalf("LoadPinnedKeys = %v, %v", keys, err)
+	}
+	if err := s.UnpinMatch("match-1"); err != nil {
+		t.Fatalf("UnpinMatch: %v", err)
+	}
+	if err := s.PinMatch("match-2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.HardDeleteMatch("match-2"); err != nil {
+		t.Fatalf("HardDeleteMatch: %v", err)
+	}
+	keys, _ = s.LoadPinnedKeys()
+	if len(keys) != 0 {
+		t.Errorf("expected no pins after unpin + hard delete, got %v", keys)
+	}
+}

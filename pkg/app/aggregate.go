@@ -53,6 +53,10 @@ func (a *App) aggregateAll() ([]match.MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	pinned, err := a.store.LoadPinnedKeys()
+	if err != nil {
+		return nil, err
+	}
 	queues, err := a.store.LoadMatchQueues()
 	if err != nil {
 		return nil, err
@@ -70,6 +74,7 @@ func (a *App) aggregateAll() ([]match.MatchRecord, error) {
 	aggregate.AttachUserData(recs, userData)
 	aggregate.AttachAnnotations(recs, annos)
 	aggregate.AttachHidden(recs, hidden)
+	aggregate.AttachPinned(recs, pinned)
 	aggregate.AttachReviews(recs, reviews)
 	aggregate.AttachQueues(recs, queues)
 	aggregate.AttachPlayModes(recs, playModes)

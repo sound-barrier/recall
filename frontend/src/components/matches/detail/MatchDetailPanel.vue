@@ -40,7 +40,7 @@ const { selection, preview } = uiStore
 const { searchClauses } = storeToRefs(matchesStore)
 const { pendingFocusTarget: pendingFocus } = storeToRefs(uiStore)
 const {
-  onSetLeaverAnnotation, onSetMatchHidden, onSetMatchReview,
+  onSetLeaverAnnotation, onSetMatchHidden, onSetMatchPinned, onSetMatchReview,
   onSetMatchQueue, onSetMatchPlayMode, onUpdateMatchData, onResetMatchData,
 } = useMatchActions()
 
@@ -166,6 +166,7 @@ function onBackdropClick(e: MouseEvent) {
           @prev="selection.openPrev()"
           @next="selection.openNext()"
           @reset="onResetMatchData(record.match_key)"
+          @pin="onSetMatchPinned(record.match_key, !record.pinned)"
         />
 
         <!-- role="region" + aria-label inside the dialog so SR users

@@ -137,7 +137,7 @@ func (st *parseRunState) demoteDuplicate(c createdKey, cands []db.AmbiguousCandi
 		delete(st.matchesUpdated, c.key)
 		st.matchesUpdated[sentinel] = struct{}{}
 	}
-	if rec, found := aggregate.AggregateMatchKey(sentinel, st.snap, st.annos, st.hidden, st.reviews); found {
+	if rec, found := aggregate.AggregateMatchKey(sentinel, st.snap, st.annos, st.hidden, st.reviews, st.pinned); found {
 		st.app.emitMatchUpdated(rec)
 	}
 	return true

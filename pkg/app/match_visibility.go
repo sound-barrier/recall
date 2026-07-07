@@ -27,6 +27,23 @@ func (a *App) UnhideMatch(matchKey string) error {
 	return a.store.UnhideMatch(matchKey)
 }
 
+// PinMatch stars a match — the list renders pinned matches in a
+// leading section above the date groups. Idempotent.
+func (a *App) PinMatch(matchKey string) error {
+	if matchKey == "" {
+		return errors.New("match_key required")
+	}
+	return a.store.PinMatch(matchKey)
+}
+
+// UnpinMatch removes the star. Idempotent.
+func (a *App) UnpinMatch(matchKey string) error {
+	if matchKey == "" {
+		return errors.New("match_key required")
+	}
+	return a.store.UnpinMatch(matchKey)
+}
+
 // HardDeleteMatch wipes every row keyed on matchKey from the database.
 // Surfaced by the Hidden drawer's Delete affordance — the user has
 // already moved the match to the archive and explicitly confirmed.
