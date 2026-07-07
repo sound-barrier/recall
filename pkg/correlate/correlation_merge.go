@@ -48,6 +48,7 @@ func MergeMatchResult(dst, src *parser.MatchResult) {
 	dst.Date = FirstNonEmpty(dst.Date, src.Date)
 	dst.FinishedAt = FirstNonEmpty(dst.FinishedAt, src.FinishedAt)
 	dst.GameLength = FirstNonEmpty(dst.GameLength, src.GameLength)
+	dst.PlayedAtUTC = FirstNonEmpty(dst.PlayedAtUTC, src.PlayedAtUTC)
 	dst.Performance = FirstNonEmpty(dst.Performance, src.Performance)
 	dst.Rank = FirstNonEmpty(dst.Rank, src.Rank)
 	dst.Level = FirstNonEmpty(dst.Level, src.Level)

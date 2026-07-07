@@ -34,11 +34,16 @@ type MatchResult struct {
 	QueueType string `json:"queue_type,omitempty"`
 
 	// Summary-screen-only fields. Empty on a teams parse.
-	Result       string       `json:"result,omitempty"`      // "victory", "defeat", or "draw"
-	FinalScore   string       `json:"final_score,omitempty"` // e.g. "3-1"
-	Date         string       `json:"date,omitempty"`        // ISO date, e.g. "2026-05-10"
-	FinishedAt   string       `json:"finished_at,omitempty"` // HH:MM 24h, as shown by the client
-	GameLength   string       `json:"game_length,omitempty"` // MM:SS
+	Result     string `json:"result,omitempty"`      // "victory", "defeat", or "draw"
+	FinalScore string `json:"final_score,omitempty"` // e.g. "3-1"
+	Date       string `json:"date,omitempty"`        // ISO date, e.g. "2026-05-10"
+	FinishedAt string `json:"finished_at,omitempty"` // HH:MM 24h, as shown by the client
+	GameLength string `json:"game_length,omitempty"` // MM:SS
+	// PlayedAtUTC is the canonical UTC instant (RFC3339), derived at parse
+	// time from Date+FinishedAt via the machine timezone identity. Empty when
+	// no instant is derivable. The FE renders it in the user's current zone
+	// and uses it for season assignment; Date/FinishedAt stay naive-local.
+	PlayedAtUTC  string       `json:"played_at_utc,omitempty"`
 	HeroesPlayed []HeroPlay   `json:"heroes_played,omitempty"`
 	Performance  *Performance `json:"performance,omitempty"`
 
