@@ -37,6 +37,12 @@ var (
 	PathIsMissingOrNotADir   = pathIsMissingOrNotADir
 )
 
+// ── Backup / snapshot seams ───────────────────────────────────────────────
+var (
+	BackupToFunc   = &backupToFunc
+	PruneSnapshots = pruneSnapshots
+)
+
 // ── App-release update check (the gamedata seams moved to pkg/gamedata) ──
 var ReleasesURL = &releasesURL
 
