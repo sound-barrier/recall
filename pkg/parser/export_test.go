@@ -6,6 +6,8 @@ package parser
 // is ParseScreenshot, which needs Tesseract. Compiled only under test, so none
 // of this widens the shipped API.
 var (
+	RunTesseractWithRetry = runTesseractWithRetry
+	ErrTesseractTimeout   = errTesseractTimeout
 	Digitize              = digitize
 	Levenshtein           = levenshtein
 	ExtractInts           = extractInts
@@ -41,3 +43,9 @@ var (
 // HeroStatKeys exposes the loaded dataset's hero→stat-key map (an unexported
 // field of the unexported owDataset) for the embedded-YAML coverage test.
 func HeroStatKeys() map[string][]string { return loadDataset().heroStatKeys }
+
+// TesseractRetryDelays lets the retry test collapse the backoff.
+var TesseractRetryDelays = &tesseractRetryDelays
+
+// RunTesseractSeam exposes the exec seam for the retry test.
+var RunTesseractSeam = &runTesseractFunc
