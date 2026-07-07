@@ -157,6 +157,35 @@ If everything looks correct and the map is still missing, that's
 likely an OCR weakness on the parser's side. See **File a bug
 report** below.
 
+### Failed to read (the OCR-failure list)
+
+Some files never make it far enough to become a record at all —
+Recall's parser errored before anything could be stored. These land
+in the **Failed to read** section with the parser's error message,
+how many runs have attempted the file, and when it last failed.
+Typical causes:
+
+- The image isn't one of the four screen types Recall recognizes
+  (a menu, a play-of-the-game, a screenshot from another game).
+- The file isn't a decodable PNG/JPEG (corrupt download, renamed
+  format, a cloud-placeholder file that isn't really on disk).
+- Custom UI colors (e.g. colorblind settings) defeat the scoreboard
+  detection.
+
+Failed files are **retried on every parse run** — that's why the
+run counter keeps including them. If a file will never parse, use
+**Delete forever** to stop retrying it (the file itself stays on
+disk), exactly like an unmatched card.
+
+**Save diagnostic bundle** (in the section header) builds a single
+`.zip` to attach to a bug report: the failing screenshots, each
+failure's error message, Recall's log files, and a small version +
+environment snapshot (OS, Tesseract path and version, image
+resolutions). It deliberately contains **no settings file and no
+database** — nothing about your match history beyond the failing
+images themselves. Note the screenshots and logs are included
+verbatim, so glance over them before sharing publicly.
+
 ### When a record is just noise
 
 If a PNG ended up in your screenshots folder that isn't actually
