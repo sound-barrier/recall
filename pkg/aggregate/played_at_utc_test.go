@@ -7,9 +7,6 @@ import (
 	"recall/pkg/db"
 )
 
-//go:fix inline
-func strptr(s string) *string { return new(s) }
-
 // The canonical played_at_utc on a summary row reaches MatchRecord.Data, and a
 // user_match_data override wins (manual matches + edits).
 func TestAggregate_PlayedAtUTC_FromSummaryAndOverride(t *testing.T) {
