@@ -1013,6 +1013,30 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/screenshots/failed:
+    get:
+      operationId: GetFailedFiles
+      tags: [Pipeline]
+      summary: List screenshots whose OCR attempt failed
+      description: |
+        Returns the OCR-failure ledger, most-recently-failed first —
+        the Unknown tab's "Failed to read" triage section. A row exists
+        while the file's most recent parse attempt failed; failed files
+        are re-attempted on every parse run (this is visibility, not a
+        skip list). A later successful parse clears its row, as does
+        `PUT /api/v1/screenshots/{filename}/ignore` ("Delete forever").
+      responses:
+        "200":
+          description: List of failed files.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FailedFile"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/settings/screenshots-folder:
     get:
       operationId: GetScreenshotsFolder
@@ -2713,6 +2737,36 @@ components:
             ISO 8601 (RFC 3339); SQLite's `CURRENT_TIMESTAMP` rounds to
             the nearest second so two ignores within the same second
             share an identical value and tie-break on filename ASC.
+
+    FailedFile:
+      type: object
+      required: [filename, error, attempts, first_failed_at, last_failed_at]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Overwatch_2026-07-01_20-11-04.png"
+          description: |
+            Filename the failure ledger keys on. Same shape as the
+            `filename` path parameter on the per-file ignore endpoints.
+        error:
+          type: string
+          example: "decoding image: png: invalid format"
+          description: The most recent attempt's error message, verbatim.
+        attempts:
+          type: integer
+          minimum: 1
+          example: 6
+          description: Failed parse runs since `first_failed_at`.
+        first_failed_at:
+          type: string
+          example: "2026-07-01T20:15:00Z"
+          description: Timestamp of the first recorded failure (RFC 3339).
+        last_failed_at:
+          type: string
+          example: "2026-07-06T21:30:00Z"
+          description: Timestamp of the most recent failure (RFC 3339).
 
     FolderPath:
       type: object
