@@ -80,7 +80,12 @@ var MainVersionURL = "https://sound-barrier.github.io/recall/data/version.json"
 // names (parser.HeroesByRole / parser.MapsByGameMode output) and returns a
 // flat slice for diffing.
 func flattenRoster(grouped map[string][]string) []string {
-	out := make([]string, 0, 32)
+	total := 0
+	for _, names := range grouped {
+		total += len(names)
+	}
+
+	out := make([]string, 0, total)
 	for _, names := range grouped {
 		out = append(out, names...)
 	}
