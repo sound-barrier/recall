@@ -48,3 +48,9 @@ pkg/parser/integration_test.go:84:		t.Skipf("tesseract not found at %q — insta
 pkg/parser/integration_test.go:91:		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
 pkg/parser/integration_test.go:107:		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
 pkg/parser/integration_test.go:138:				t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
+
+# pkg/match + pkg/app UTC time-model tests skip only when the host lacks
+# America/Denver zoneinfo (belt-and-braces; CI images ship it). Not flake
+# suppression — the DST conversion assertions need a real DST zone.
+pkg/match/match_time_test.go:17:		t.Skipf("no America/Denver zoneinfo: %v", err)
+pkg/app/parse_played_at_utc_test.go:44:		t.Skip("host cannot convert the wall clock")
