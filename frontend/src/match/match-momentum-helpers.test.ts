@@ -7,6 +7,7 @@ import {
   leaverRate,
   sessionCount,
   tiltNudgeSignal,
+  currentSessionSummary,
   type MomentumInput,
 } from '@/match/match-momentum-helpers'
 
@@ -165,5 +166,38 @@ describe('tiltNudgeSignal', () => {
       m('n3', 12, 22, 'defeat', 5, 8),
     ]
     expect(tiltNudgeSignal(records)!.streakKey).toBe('n1')
+  })
+})
+
+describe('currentSessionSummary', () => {
+  const m = (key: string, day: number, hh: number, mm: number, result: string) => ({
+    match_key: key,
+    data: {
+      date: `2026-05-${String(day).padStart(2, '0')}`,
+      finished_at: `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`,
+      result,
+    },
+  }) as unknown as MomentumInput
+  const epoch = (day: number, hh: number, mm: number) =>
+    new Date(2026, 4, day, hh, mm).getTime()
+
+  it('tallies the trailing session while it is active', () => {
+    const records = [
+      m('old', 10, 10, 0, 'victory'), // separate morning session
+      m('a', 10, 19, 0, 'victory'),
+      m('b', 10, 20, 0, 'victory'),
+      m('c', 10, 21, 0, 'defeat'),
+    ]
+    const sum = currentSessionSummary(records, epoch(10, 21, 30))
+    expect(sum).toEqual({ matches: 3, w: 2, l: 1, d: 0 })
+  })
+
+  it('null once the latest match falls outside the gap (stale history)', () => {
+    const records = [m('a', 3, 19, 0, 'victory'), m('b', 3, 20, 0, 'defeat')]
+    expect(currentSessionSummary(records, epoch(10, 21, 0))).toBeNull()
+  })
+
+  it('null with no timed matches', () => {
+    expect(currentSessionSummary([{ match_key: 'x', data: {} } as unknown as MomentumInput], epoch(10, 21, 0))).toBeNull()
   })
 })

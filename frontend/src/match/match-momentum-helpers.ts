@@ -206,3 +206,48 @@ export function tiltNudgeSignal(records: readonly MomentumInput[]): TiltNudgeSig
     streakKey: streak[0]!.match_key,
   }
 }
+
+// ── Session summary ─────────────────────────────────────────────────
+//
+// The freshest play session's tally, but only while it's ACTIVE: the
+// latest timed match must sit within the session gap of `now`. A
+// re-parse of an old backlog therefore never reads as "session so
+// far" — sessions are about what's happening tonight, not history.
+
+export interface SessionSummary {
+  matches: number
+  w: number
+  l: number
+  d: number
+}
+
+export function currentSessionSummary(
+  records: readonly MomentumInput[],
+  now: number = Date.now(),
+  gapHours: number = SESSION_GAP_HOURS,
+): SessionSummary | null {
+  const timed = records
+    .map(r => ({ r, t: matchEpoch(r) }))
+    .filter((x): x is { r: MomentumInput, t: number } => x.t != null)
+    .sort((a, b) => a.t - b.t)
+  if (timed.length === 0) return null
+
+  const gapMs = gapHours * HOUR_MS
+  const latest = timed[timed.length - 1]!
+  if (now - latest.t > gapMs) return null
+
+  const session = [latest]
+  for (let i = timed.length - 2; i >= 0; i--) {
+    if (session[0]!.t - timed[i]!.t > gapMs) break
+    session.unshift(timed[i]!)
+  }
+
+  const sum: SessionSummary = { matches: session.length, w: 0, l: 0, d: 0 }
+  for (const { r } of session) {
+    const res = r.data?.result
+    if (res === 'victory') sum.w++
+    else if (res === 'defeat') sum.l++
+    else if (res === 'draw') sum.d++
+  }
+  return sum
+}
