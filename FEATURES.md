@@ -93,27 +93,24 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ## Accepted
 
-### 2026-07 quality-of-life batch
-
-Eleven items accepted 2026-07-06, delivered as one multi-commit PR
-(safety → robustness → visible value → analytics → polish).
-
-- **Pin matches** — pin notable matches (a personal-best, a tournament game) to the top of the list regardless of date. Use a star (`★`) on the card header — single click toggles. Pinned matches form their own group above the date-grouped list, with its own count.
-- **Screenshot content-hash dedup** — SHA-256 the file content at ingest; if a hash matches an already-parsed file, skip Tesseract entirely and link the rows. Catches "saved the same screenshot twice via Steam + system shortcut" cases without re-OCR cost.
-- **Resilient parse with retry** — auto-retry failed Tesseract calls (single-screenshot transient I/O failures) with exponential backoff before marking the file unknown. Failures lifted out of the screenshot's exec context so the rest of the parse loop continues.
-- **Markdown export per match** — single-match summary as markdown for blog posts / coaching review. Three-section template: scoreboard table, journal annotation rendered as markdown, embedded source-screenshot file references.
-- **Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop. Two-pronged trigger: ≥3 losses in a row AND the rolling-window K/D dropped >25% from the user's 30-day average. Nudge is dismissible without persistence (so it doesn't moralise on a single bad day). *Partially shipped:* the dossier's TiltCheckWidget surfaces the signal; the nudge itself remains.
-- **Map-specific performance drill-down** — best/worst maps per hero, with sample-size caveats. Confidence interval rather than raw win-rate (`62% ± 8%, n=14`) so a 100% streak on n=2 doesn't dominate. *Partially shipped:* the pivot table's Map dimension, the Trends map-winrate chart, and the sample-size-honesty widget cover the drill-down; the confidence-interval display remains.
-- **Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
-- **Auto-backup scheduler** — automatic `VACUUM INTO` snapshots on a configurable interval (default weekly, retention 3) checked at startup and after parse runs, written to `<profile>/backups/auto-<ts>.db` and pruned; Settings → Backup & Restore shows the last automatic backup and warns when it goes stale. De-risks the pre-1.0 wipe-and-relaunch reality.
-- **Snapshot before Re-parse All** — Re-parse All rewrites every row from OCR, so it takes a silent timestamped safety snapshot first (keep last 2) via the same `VACUUM INTO` machinery.
-- **Post-session summary toast** — after a watcher-triggered parse burst finishes: "Session so far: 4 matches · 3W-1L" toast, closing the loop the masthead watching-dot opens.
-- **Copy match summary** — one-click compact result line (map · hero · E/A/D · result · replay code) from the detail panel for pasting into Discord; reuses the markdown-export generator.
+*(empty — promote the next Triaging item here when it's slated for work)*
 
 ## Shipped
 
 Grouped by original Triaging category for cross-reference; no H3 subheads
 to avoid heading collisions with the live backlog above.
+
+- **Match Data & Editing — Pin matches** — pin notable matches (a personal-best, a tournament game) to the top of the list regardless of date. Use a star (`★`) on the card header — single click toggles. Pinned matches form their own group above the date-grouped list, with its own count.
+- **Ingest & OCR — Screenshot content-hash dedup** — SHA-256 the file content at ingest; if a hash matches an already-parsed file, skip Tesseract entirely and link the rows. Catches "saved the same screenshot twice via Steam + system shortcut" cases without re-OCR cost.
+- **Performance & Robustness — Resilient parse with retry** — auto-retry failed Tesseract calls (single-screenshot transient I/O failures) with exponential backoff before marking the file unknown. Failures lifted out of the screenshot's exec context so the rest of the parse loop continues.
+- **Integrations — Markdown export per match** — single-match summary as markdown for blog posts / coaching review. Three-section template: scoreboard table, journal annotation rendered as markdown, embedded source-screenshot file references.
+- **Analysis & Insights — Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop. Two-pronged trigger: ≥3 losses in a row AND the rolling-window K/D dropped >25% from the user's 30-day average. Nudge is dismissible without persistence (so it doesn't moralise on a single bad day). *Partially shipped:* the dossier's TiltCheckWidget surfaces the signal; the nudge itself remains.
+- **Analysis & Insights — Map-specific performance drill-down** — best/worst maps per hero, with sample-size caveats. Confidence interval rather than raw win-rate (`62% ± 8%, n=14`) so a 100% streak on n=2 doesn't dominate. *Partially shipped:* the pivot table's Map dimension, the Trends map-winrate chart, and the sample-size-honesty widget cover the drill-down; the confidence-interval display remains.
+- **UX & Settings — Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
+- **Data & Export — Auto-backup scheduler** — automatic `VACUUM INTO` snapshots on a configurable interval (default weekly, retention 3) checked at startup and after parse runs, written to `<profile>/backups/auto-<ts>.db` and pruned; Settings → Backup & Restore shows the last automatic backup and warns when it goes stale. De-risks the pre-1.0 wipe-and-relaunch reality.
+- **Data & Export — Snapshot before Re-parse All** — Re-parse All rewrites every row from OCR, so it takes a silent timestamped safety snapshot first (keep last 2) via the same `VACUUM INTO` machinery.
+- **UX & Settings — Post-session summary toast** — after a watcher-triggered parse burst finishes: "Session so far: 4 matches · 3W-1L" toast, closing the loop the masthead watching-dot opens.
+- **Match Data & Editing — Copy match summary** — one-click compact result line (map · hero · E/A/D · result · replay code) from the detail panel for pasting into Discord; reuses the markdown-export generator.
 
 - **Ingest & OCR — Background watcher status indicator** — a dim-green "WATCHING" dot in the masthead whenever folder-watch is enabled, visible from every tab; it grows to "WATCHING · N NEW" as the watcher queues screenshots behind the 60 s debounce (a new `watch-activity` event carries the pending tally + last-seen stamp, reset when any parse run consumes the queue). The tooltip surfaces the most recent activity timestamp; while a parse is in flight the accent-pulsing `MastheadParseChip` takes the slot and the dot yields. Session-scoped by design — no resync endpoint, the dot starts idle on reload. e2e in `frontend/tests/e2e/masthead-watch-dot.spec.ts`.
 - **Performance & Robustness — Vacuum scheduler** — the auto half shipped as a self-gating per-run hook rather than an every-N counter: `PRAGMA optimize` runs at the end of every parse run that changed at least one match (SQLite decides whether any ANALYZE work is worthwhile, so a no-op invocation costs milliseconds and no counter needs persisting). Runs silently with an applog line; failures never fail the parse. VACUUM stays manual by design — the Database health Compact button — because an unprompted multi-second exclusive lock is worse than a larger file.
