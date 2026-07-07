@@ -185,6 +185,73 @@ test.describe('dashboard live-reflow drag', () => {
     await endDrag(page, 'winrate')
   })
 
+  // The moment a hint reorders the preview, the displaced siblings
+  // glide for the 240ms move transition — and the glide sweeps their
+  // boxes under a stationary pointer. A dragover landing on a
+  // transiting sibling re-hints with its FINAL-layout index, bouncing
+  // the preview straight back (a feedback loop that read as stutter at
+  // every boundary). Cells wearing the move class are settling and
+  // must not re-hint.
+  test('a dragover on a still-settling sibling does not bounce the preview back', async ({ page }) => {
+    await startDrag(page, 'winrate')
+
+    const probe = await page.evaluate(async () => {
+      const dt = (window as unknown as { __dragDT?: DataTransfer }).__dragDT ?? new DataTransfer()
+      const over = (sel: string) => {
+        const el = document.querySelector(sel)
+        if (!el) throw new Error(`${sel} not found`)
+        el.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      }
+      const order = () => Array.from(
+        document.querySelectorAll('.dashboard-row[data-row="1"] [data-widget-id]'),
+        (el) => el.getAttribute('data-widget-id'),
+      )
+      const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+      over('[data-widget-id="total-time"]')
+      await wait(50) // inside the 240ms settle window
+      const afterFirst = order()
+      const sibling = document.querySelector('[data-widget-id="avg-kda"]')
+      const siblingSettling = sibling?.classList.contains('dashboard-widget-move') ?? false
+      // avg-kda's box is gliding 1 → 0 under the pointer; its props
+      // already say idx 0. Old behavior: this re-hints idx 0 and the
+      // whole preview snaps back.
+      over('[data-widget-id="avg-kda"]')
+      await wait(50)
+      return { afterFirst, siblingSettling, afterSecond: order() }
+    })
+
+    expect(probe.afterFirst.indexOf('winrate')).toBe(2)
+    expect(probe.siblingSettling).toBe(true)
+    expect(probe.afterSecond.indexOf('winrate')).toBe(2)
+    await endDrag(page, 'winrate')
+  })
+
+  // A cross-row hop spans two TransitionGroups, so it renders as
+  // leave + enter. Mid-drag that meant double-vision: a 240ms
+  // scale-out ghost in the source row while a copy scale-ins at the
+  // preview slot. During a drag the FLIP move is the only motion —
+  // enter/leave snap instantly.
+  test('a cross-row preview hop leaves no settling ghost in the source row', async ({ page }) => {
+    await startDrag(page, 'winrate')
+
+    const probe = await page.evaluate(async () => {
+      const dt = (window as unknown as { __dragDT?: DataTransfer }).__dragDT ?? new DataTransfer()
+      const target = document.querySelector('[data-widget-id="top-maps"]')
+      if (!target) throw new Error('top-maps not found')
+      target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      await new Promise((r) => setTimeout(r, 80))
+      return {
+        ghosts: document.querySelectorAll('.dashboard-row[data-row="1"] .dashboard-widget-leave-active').length,
+        row2HasWinrate: !!document.querySelector('.dashboard-row[data-row="2"] [data-widget-id="winrate"]'),
+      }
+    })
+
+    expect(probe.row2HasWinrate).toBe(true)
+    expect(probe.ghosts).toBe(0)
+    await endDrag(page, 'winrate')
+  })
+
   test('dragging past the last cell still previews an append at the row end', async ({ page }) => {
     await startDrag(page, 'winrate')
 

@@ -154,6 +154,7 @@ function toggleNarrow() {
       <TransitionGroup
         tag="div"
         class="dashboard-row"
+        :class="{ 'is-drag-active': dragReorder.dragging.value !== null }"
         name="dashboard-widget"
         :data-row="row.index"
         @dragover.prevent="dragReorder.onRowDragOver(row.index, $event)"
@@ -364,6 +365,18 @@ function toggleNarrow() {
 
 .dashboard-widget-leave-active {
   pointer-events: none;
+}
+
+/* While a drag is in flight the FLIP move is the ONLY motion. A
+   cross-row hop spans two TransitionGroups (leave + enter), which
+   mid-drag rendered as double-vision: a 240ms scale-out ghost in the
+   source row while a copy scale-ins at the preview slot. Snap
+   enter/leave during drag; the displaced siblings' move transition
+   carries all the motion. Post-drop and revert-on-cancel renders run
+   after `dragging` clears, so they keep the full animation. */
+.dashboard-row.is-drag-active .dashboard-widget-enter-active,
+.dashboard-row.is-drag-active .dashboard-widget-leave-active {
+  transition: none;
 }
 
 .dashboard-widget-enter-from,
