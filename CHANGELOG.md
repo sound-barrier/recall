@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.25.3](https://github.com/sound-barrier/recall/compare/v0.25.2...v0.25.3) (2026-07-07)
+
+
+### Features
+
+* **bundle:** diagnostic zip export for parser triage ([c7b1d17](https://github.com/sound-barrier/recall/commit/c7b1d17ac1eb8c2acd0ce17d4ef707ead5748999))
+* **parse:** record failed OCR files in a failed_files ledger ([922f293](https://github.com/sound-barrier/recall/commit/922f293bf6a395eaaae5f2eea8ec5183aeea7d5c))
+* **unknown:** failed-files triage section on the Unknown tab ([be43492](https://github.com/sound-barrier/recall/commit/be43492195c5160eb17700c9ff69ee5091a76825))
+* **unknown:** one-click diagnostic bundle from the failed-files section ([c824a49](https://github.com/sound-barrier/recall/commit/c824a4933d47e8454de060b51dbc3954f1087fd0))
+
+
+### Documentation
+
+* failed-file triage + diagnostic bundle ([be184cd](https://github.com/sound-barrier/recall/commit/be184cd0fb188980b65a445da83ac80549434e52))
+
 ## [0.25.2](https://github.com/sound-barrier/recall/compare/v0.25.1...v0.25.2) (2026-07-07)
 
 
