@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"recall/pkg/db/dbtest"
 )
 
 // Backup / restore / merge-import HTTP contract.
@@ -142,4 +144,36 @@ func putBytes(t *testing.T, mux *http.ServeMux, path string, body []byte) *httpt
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	return rec
+}
+
+func TestExportDiagnostic_EmptyLedgerIs409(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := fire(t, mux, http.MethodPost, "/api/v1/exports/diagnostic", nil)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", rec.Code)
+	}
+}
+
+func TestExportDiagnostic_StreamsZipWithDisposition(t *testing.T) {
+	fs := dbtest.New()
+	_ = fs.RecordFailedFile("bad.png", 0, "boom")
+	_, mux := newTestApp(t, fs)
+
+	// No screenshots dir configured and no file on disk: the bundle is
+	// still valid — the manifest records included:false and the zip
+	// carries whatever logs exist. The zip-shape assertions below are
+	// what this test pins.
+	rec := fire(t, mux, http.MethodPost, "/api/v1/exports/diagnostic", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/zip" {
+		t.Errorf("content-type = %q", ct)
+	}
+	if cd := rec.Header().Get("Content-Disposition"); !strings.Contains(cd, "recall-diagnostic-") {
+		t.Errorf("content-disposition = %q", cd)
+	}
+	if _, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len())); err != nil {
+		t.Errorf("body is not a zip: %v", err)
+	}
 }

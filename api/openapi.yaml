@@ -2147,6 +2147,40 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/exports/diagnostic:
+    post:
+      operationId: ExportDiagnosticBundle
+      tags: [Backup]
+      summary: Build a parser-triage diagnostic bundle (ZIP)
+      description: |
+        Builds a `.zip` for bug reports when screenshots won't parse:
+        every ledgered failed screenshot still on disk under
+        `screenshots/<filename>`, the app logs (`logs/recall.log` plus
+        the rotated `.1` when present), and a root `manifest.json`
+        (`recall-diagnostic/v1`) carrying the app version, an
+        environment snapshot (OS/arch, Tesseract path + version), and
+        each failure's error, attempt count, and decoded image
+        resolution.
+
+        Deliberately excludes `settings.json` and the database — the
+        bundle is for parser triage and stays safe to share. No request
+        body. An empty failure ledger is a 409: there is nothing to
+        diagnose.
+      responses:
+        "200":
+          description: |
+            ZIP bundle with a `Content-Disposition: attachment;
+            filename="recall-diagnostic-<timestamp>.zip"` header.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/imports:
     post:
       operationId: ImportMatches

@@ -1586,6 +1586,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exports/diagnostic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a parser-triage diagnostic bundle (ZIP)
+         * @description Builds a `.zip` for bug reports when screenshots won't parse:
+         *     every ledgered failed screenshot still on disk under
+         *     `screenshots/<filename>`, the app logs (`logs/recall.log` plus
+         *     the rotated `.1` when present), and a root `manifest.json`
+         *     (`recall-diagnostic/v1`) carrying the app version, an
+         *     environment snapshot (OS/arch, Tesseract path + version), and
+         *     each failure's error, attempt count, and decoded image
+         *     resolution.
+         *
+         *     Deliberately excludes `settings.json` and the database — the
+         *     bundle is for parser triage and stays safe to share. No request
+         *     body. An empty failure ledger is a 409: there is nothing to
+         *     diagnose.
+         */
+        post: operations["ExportDiagnosticBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports": {
         parameters: {
             query?: never;
@@ -4800,6 +4832,31 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ExportDiagnosticBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description ZIP bundle with a `Content-Disposition: attachment;
+             *     filename="recall-diagnostic-<timestamp>.zip"` header.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
