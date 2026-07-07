@@ -87,6 +87,14 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 		writeJSON(w, r, out, err)
 	})
 
+	// GET: the OCR-failure ledger backing the Unknown tab's "Failed to
+	// read" triage section. Read-only — suppression reuses the ignore
+	// endpoints above, and a later successful parse clears rows itself.
+	apiMux.HandleFunc("GET /api/v1/screenshots/failed", func(w http.ResponseWriter, r *http.Request) {
+		out, err := a.GetFailedFiles()
+		writeJSON(w, r, out, err)
+	})
+
 	// DELETE: bulk truncate the suppress list — Settings panel's
 	// "Re-enable all" action. Idempotent; 204 even when the list was
 	// already empty. The next Parse run re-discovers every file from

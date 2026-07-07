@@ -496,6 +496,26 @@ export function GetIgnoredScreenshots(): Promise<IgnoredScreenshot[]> {
   return _get<IgnoredScreenshot[]>('/api/v1/screenshots/ignored')
 }
 
+// Returned row from GetFailedFiles — one screenshot whose most recent
+// OCR attempt failed. `error` is the parser's message verbatim;
+// `attempts` counts failed runs since `first_failed_at`. Failed files
+// are re-attempted on every parse run (the ledger is visibility, not a
+// skip list).
+export type FailedFile = {
+  filename:        string
+  error:           string
+  attempts:        number
+  first_failed_at: string
+  last_failed_at:  string
+}
+
+// List the OCR-failure ledger, most recently failed first — the
+// Unknown tab's "Failed to read" triage section.
+export function GetFailedFiles(): Promise<FailedFile[]> {
+  if (IS_WAILS) return _wails('GetFailedFiles')
+  return _get<FailedFile[]>('/api/v1/screenshots/failed')
+}
+
 
 // Per-match review-status tag. `reviewedBy` is `'self'` (user
 // reviewed the VOD themselves), `'coach'` (a coach reviewed it),

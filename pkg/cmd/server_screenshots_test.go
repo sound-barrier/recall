@@ -186,3 +186,46 @@ func TestPostScreenshotsIgnore_RejectsPathSeparators(t *testing.T) {
 		}
 	}
 }
+
+func TestGetScreenshotsFailed_ReturnsLedgerRows(t *testing.T) {
+	fs := dbtest.New()
+	_ = fs.RecordFailedFile("corrupt.png", 1, "decoding image: png: invalid format")
+	_ = fs.RecordFailedFile("corrupt.png", 1, "tesseract failed: exit status 1")
+	_, mux := newTestApp(t, fs)
+	rec := get(t, mux, "/api/v1/screenshots/failed")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	type failedFile struct {
+		Filename      string `json:"filename"`
+		Error         string `json:"error"`
+		Attempts      int    `json:"attempts"`
+		FirstFailedAt string `json:"first_failed_at"`
+		LastFailedAt  string `json:"last_failed_at"`
+	}
+	var got []failedFile
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d rows, want 1", len(got))
+	}
+	r := got[0]
+	if r.Filename != "corrupt.png" || r.Attempts != 2 || r.Error != "tesseract failed: exit status 1" {
+		t.Errorf("row = %+v", r)
+	}
+	if r.FirstFailedAt == "" || r.LastFailedAt == "" {
+		t.Errorf("timestamps must be set: %+v", r)
+	}
+}
+
+func TestGetScreenshotsFailed_EmptyIsEmptyArray(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := get(t, mux, "/api/v1/screenshots/failed")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if body := rec.Body.String(); body != "[]\n" && body != "[]" {
+		t.Errorf("empty ledger must serialize as [], got %q", body)
+	}
+}

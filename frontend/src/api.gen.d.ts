@@ -751,6 +751,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/screenshots/failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List screenshots whose OCR attempt failed
+         * @description Returns the OCR-failure ledger, most-recently-failed first —
+         *     the Unknown tab's "Failed to read" triage section. A row exists
+         *     while the file's most recent parse attempt failed; failed files
+         *     are re-attempted on every parse run (this is visibility, not a
+         *     skip list). A later successful parse clears its row, as does
+         *     `PUT /api/v1/screenshots/{filename}/ignore` ("Delete forever").
+         */
+        get: operations["GetFailedFiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/screenshots-folder": {
         parameters: {
             query?: never;
@@ -1952,6 +1977,34 @@ export interface components {
              * @example 2026-05-10T22:21:11Z
              */
             ignored_at: string;
+        };
+        FailedFile: {
+            /**
+             * @description Filename the failure ledger keys on. Same shape as the
+             *     `filename` path parameter on the per-file ignore endpoints.
+             * @example Overwatch_2026-07-01_20-11-04.png
+             */
+            filename: string;
+            /**
+             * @description The most recent attempt's error message, verbatim.
+             * @example decoding image: png: invalid format
+             */
+            error: string;
+            /**
+             * @description Failed parse runs since `first_failed_at`.
+             * @example 6
+             */
+            attempts: number;
+            /**
+             * @description Timestamp of the first recorded failure (RFC 3339).
+             * @example 2026-07-01T20:15:00Z
+             */
+            first_failed_at: string;
+            /**
+             * @description Timestamp of the most recent failure (RFC 3339).
+             * @example 2026-07-06T21:30:00Z
+             */
+            last_failed_at: string;
         };
         FolderPath: {
             /**
@@ -3717,6 +3770,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetFailedFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of failed files. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FailedFile"][];
+                };
             };
             500: components["responses"]["InternalError"];
         };

@@ -1,9 +1,10 @@
 import { computed, markRaw, ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
 
-import type { MatchRecord } from '@/api-client'
+import type { FailedFile, MatchRecord } from '@/api-client'
 import {
   GetNewScreenshotCount,
+  GetFailedFiles,
   GetMatchResults,
   ParseScreenshots,
   ReParseAll,
@@ -88,6 +89,7 @@ export const useMatchesStore = defineStore('matches', () => {
   }
   const parseLog = ref<ParseProgressEvent[]>([])
   const newScreenshotCount = ref<number | null>(null)
+  const failedFiles = ref<FailedFile[]>([])
   // Wall-clock of the last successful manual parse → Settings "Last run · X".
   const lastParsedAt = ref<number | null>(null)
 
@@ -156,9 +158,10 @@ export const useMatchesStore = defineStore('matches', () => {
   async function load() {
     const appStore = useAppStore()
     const before = records.value.length
-    const [recs, newCount] = await Promise.allSettled([
+    const [recs, newCount, failed] = await Promise.allSettled([
       GetMatchResults(),
       GetNewScreenshotCount(),
+      GetFailedFiles(),
     ])
     if (recs.status === 'fulfilled') {
       if (tourActive.value) {
@@ -172,7 +175,16 @@ export const useMatchesStore = defineStore('matches', () => {
       appStore.setError(`Could not load matches: ${plainLanguageError(String(recs.reason))}`, load)
     }
     newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
+    if (failed.status === 'fulfilled') failedFiles.value = failed.value ?? []
     firstLoadPending.value = false
+  }
+
+  // The OCR-failure ledger backing the Unknown tab's "Failed to read"
+  // section. Refreshed by every load() (boot, parse-complete, clear,
+  // Delete forever via onIgnoreScreenshot's reload); loadFailed exists
+  // for callers that only need this slice.
+  async function loadFailed() {
+    try { failedFiles.value = (await GetFailedFiles()) ?? [] } catch (_) { /* keep last */ }
   }
 
   // ── Parse run controls ────────────────────────────────────────────
@@ -499,6 +511,8 @@ export const useMatchesStore = defineStore('matches', () => {
     onUnignoreScreenshot,
     onClearIgnoredScreenshots,
     onRunParseFromIgnored,
+    failedFiles,
+    loadFailed,
     clearingDB,
     clearConfirm,
     armClear,

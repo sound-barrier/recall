@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { screenshotURL, hasDuplicateCandidate } from '@/match/match-helpers'
 import UnknownCandidatePicker from '@/components/unknown/UnknownCandidatePicker.vue'
+import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
 import UnknownReferenceGapSection from '@/components/unknown/UnknownReferenceGapSection.vue'
 import UnknownUnmatchedSection from '@/components/unknown/UnknownUnmatchedSection.vue'
 import type { CardStateApi } from '@/types/cardState'
@@ -218,6 +219,8 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
     </div>
 
     <UnknownUnmatchedSection :card-state="cardState" />
+
+    <UnknownFailedSection />
 
     <UnknownReferenceGapSection />
   </section>
