@@ -180,13 +180,18 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 		return "", db.UserMatchData{}, err
 	}
 
-	played := time.Now().UTC()
+	// The wall clock in played_at's STATED offset drives the key, date,
+	// and finished_at — never a UTC conversion. OCR rows store the
+	// player's local wall clock (filename timestamps + the SUMMARY's
+	// on-screen clock), so manual rows must sit on the same naive-local
+	// axis or every time-based sort/filter is hours off for them.
+	played := time.Now()
 	if input.PlayedAt != "" {
 		parsed, err := time.Parse(time.RFC3339, input.PlayedAt)
 		if err != nil {
 			return "", db.UserMatchData{}, fmt.Errorf("%w (%w)", ErrInvalidPlayedAt, err)
 		}
-		played = parsed.UTC()
+		played = parsed
 	}
 	key := match.NewTrackedMatchKey(played.Format("2006-01-02T15-04-05")).String()
 

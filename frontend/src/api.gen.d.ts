@@ -1955,9 +1955,13 @@ export interface components {
             result: components["schemas"]["ResultEnum"];
             /**
              * Format: date-time
-             * @description When the match was played (RFC 3339). Defaults to now; drives
-             *     the `match_key` plus `date` / `finished_at`.
-             * @example 2026-06-15T14:30:00Z
+             * @description When the match was played (RFC 3339). Defaults to now. The
+             *     timestamp's WALL CLOCK in its stated offset drives the
+             *     `match_key` plus `date` / `finished_at` — send the player's
+             *     local time with its offset so manual rows sit on the same
+             *     naive-local time axis as OCR rows (which store the on-screen
+             *     local clock).
+             * @example 2026-06-15T14:30:00-08:00
              */
             played_at?: string;
             rank?: components["schemas"]["ManualRankInput"];

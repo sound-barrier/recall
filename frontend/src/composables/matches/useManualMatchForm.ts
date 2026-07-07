@@ -12,6 +12,21 @@ function localNowValue(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// localOffsetISO turns the datetime-local input value ('YYYY-MM-DDTHH:MM',
+// naive local) into RFC3339 WITH the local offset for that instant
+// ('YYYY-MM-DDTHH:MM:00±HH:MM') — never toISOString(), which converts to
+// UTC and shifts the wall clock. The Go side derives match key / date /
+// finished_at from the STATED wall clock, keeping manual rows on the same
+// naive-local time axis as OCR rows. The offset is computed from the
+// entered instant itself, so it is DST-correct for that date.
+function localOffsetISO(dtLocal: string): string {
+  const offsetMin = -new Date(dtLocal).getTimezoneOffset()
+  const sign = offsetMin >= 0 ? '+' : '-'
+  const abs = Math.abs(offsetMin)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${dtLocal}:00${sign}${pad(Math.trunc(abs / 60))}:${pad(abs % 60)}`
+}
+
 export function useManualMatchForm() {
   const map = ref('')
   const playMode = ref<'' | 'quickplay' | 'competitive'>('')
@@ -115,7 +130,7 @@ export function useManualMatchForm() {
       result: result.value as 'victory' | 'defeat' | 'draw',
     }
     if (playedAt.value) {
-      input.played_at = new Date(playedAt.value).toISOString()
+      input.played_at = localOffsetISO(playedAt.value)
     }
     if (isCompetitive.value && rankTier.value.trim() !== '') {
       input.rank = {
