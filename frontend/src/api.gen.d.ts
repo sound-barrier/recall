@@ -934,10 +934,9 @@ export interface paths {
         get: operations["GetAutoBackupStatus"];
         /**
          * Set the automatic-backup interval
-         * @description `interval_days` is `-1` to disable or a literal 1–365 day count.
-         *     `0` is rejected (the "never configured → default" sentinel is a
-         *     storage detail, not a wire value). Echoes the refreshed status so
-         *     the UI updates in one round-trip.
+         * @description `interval_days` is `-1` to disable, `0` to reset to the default
+         *     (weekly), or a literal 1–365 day count. Echoes the refreshed
+         *     status so the UI updates in one round-trip.
          */
         put: operations["SetAutoBackupInterval"];
         post?: never;
@@ -3981,7 +3980,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /**
-                     * @description -1 to disable, else 1–365 days.
+                     * @description -1 disables, 0 resets to the default (weekly), else literal days.
                      * @example 7
                      */
                     interval_days: number;
