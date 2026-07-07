@@ -39,6 +39,7 @@ const MatchDetailPanel = lazyOverlay(() => import('@/components/matches/detail/M
 const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/list/MatchAnchorToast.vue'))
 const MatchUndoToast = lazyOverlay(() => import('@/components/matches/list/MatchUndoToast.vue'))
 const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/list/TiltNudgeToast.vue'))
+const SessionSummaryToast = lazyOverlay(() => import('@/components/matches/list/SessionSummaryToast.vue'))
 const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = lazyOverlay(() => import('@/components/matches/manual/ManualMatchModal.vue'))
@@ -83,6 +84,7 @@ const {
   exportBundleOpen,
   exportBundleSelectedKeys,
   records,
+  sessionToast,
 } = storeToRefs(matchesStore)
 
 // Tilt nudge — evaluated over the FULL record set (tilt is about
@@ -128,6 +130,13 @@ const lightboxSrc = computed(() => {
     :state="undoHideToast"
     @undo="onUndoHide"
     @dismiss="onUndoHideDismiss"
+  />
+
+  <!-- Post-parse session tally — auto-dismissing "Session so far"
+       readout after a run lands during an active session. -->
+  <SessionSummaryToast
+    :state="sessionToast"
+    @dismiss="matchesStore.dismissSessionToast"
   />
 
   <!-- Tilt nudge — dismissible break suggestion on a collapsed loss

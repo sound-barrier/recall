@@ -17,6 +17,7 @@ import {
 import { plainLanguageError } from '@/error-helpers'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
+import { currentSessionSummary, type SessionSummary } from '@/match/match-momentum-helpers'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
@@ -78,6 +79,13 @@ export const useMatchesStore = defineStore('matches', () => {
   const parseProgress = ref<ParseProgressEvent | null>(null)
   // Watcher pending-file tally (masthead dot). Event-fed, session-scoped.
   const watchActivity = ref<WatchActivityEvent | null>(null)
+  // Post-parse session tally toast: set when a parse completes while
+  // the freshest matches form an ACTIVE session (see
+  // currentSessionSummary); token restarts the toast timer per run.
+  const sessionToast = ref<(SessionSummary & { token: number }) | null>(null)
+  function dismissSessionToast(token: number) {
+    if (sessionToast.value?.token === token) sessionToast.value = null
+  }
   const parseLog = ref<ParseProgressEvent[]>([])
   const newScreenshotCount = ref<number | null>(null)
   // Wall-clock of the last successful manual parse → Settings "Last run · X".
@@ -367,6 +375,8 @@ export const useMatchesStore = defineStore('matches', () => {
     watchActivity,
     onParseComplete: async () => {
       await load()
+      const session = currentSessionSummary(records.value)
+      sessionToast.value = session ? { ...session, token: Date.now() } : null
       lastParsedAt.value = Date.now()
       try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
       parseBusy.value = false
@@ -457,6 +467,8 @@ export const useMatchesStore = defineStore('matches', () => {
     firstLoadPending,
     parseProgress,
     watchActivity,
+    sessionToast,
+    dismissSessionToast,
     parseLog,
     newScreenshotCount,
     lastParsedAt,
