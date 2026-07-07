@@ -2639,6 +2639,14 @@ export interface components {
             finished_at?: string;
             /** @example 11:25 */
             game_length?: string;
+            /**
+             * @description Canonical UTC instant (RFC 3339), derived at parse time from
+             *     date+finished_at via the machine's timezone identity. Absent when
+             *     no instant is derivable. The client renders it in the viewer's
+             *     current timezone; date/finished_at remain the naive local clock.
+             * @example 2026-05-11T03:29:00Z
+             */
+            played_at_utc?: string;
             heroes_played?: components["schemas"]["HeroPlay"][];
             performance?: components["schemas"]["Performance"];
             /** @example platinum */

@@ -5,6 +5,15 @@ import (
 	"recall/pkg/parser"
 )
 
+// derefString reads a nullable string column (nil → ""). Used to fold the
+// canonical played_at_utc onto the string-typed MatchResult.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 // ScreenshotView is the per-screenshot row the aggregator folds. The
 // five parent row types convert to this shape via toView<X> helpers
 // below.
@@ -44,6 +53,7 @@ func summaryToView(r db.SummaryRow) ScreenshotView {
 			Map: r.Map, MapRaw: r.MapRaw, Playlist: r.Playlist, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
+			PlayedAtUTC: derefString(r.PlayedAtUTC),
 		},
 	}
 	if r.PerfElimTotal > 0 || r.PerfAssistsTotal > 0 || r.PerfDeathsTotal > 0 {

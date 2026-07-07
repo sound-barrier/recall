@@ -243,6 +243,7 @@ func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(
 		{ud.Date, &d.Date, "data.date"},
 		{ud.FinishedAt, &d.FinishedAt, "data.finished_at"},
 		{ud.GameLength, &d.GameLength, "data.game_length"},
+		{ud.PlayedAtUTC, &d.PlayedAtUTC, "data.played_at_utc"},
 		{ud.Rank, &d.Rank, "data.rank"},
 	} {
 		if s.val != nil {
