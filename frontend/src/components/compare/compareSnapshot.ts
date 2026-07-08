@@ -75,7 +75,7 @@ export function buildSeasonMetrics(
   // Hero-swap discipline at the fixed default threshold — Compare has no
   // per-widget gear, so it always reads the 5% "touched the point" floor.
   const buckets = heroCountBuckets(records, DEFAULT_HERO_MEANINGFUL_PCT)
-  const poolAnalysis = analyzeHeroPool(records, DEFAULT_HERO_MEANINGFUL_PCT)
+  const poolAnalysis = analyzeHeroPool(records, DEFAULT_HERO_MEANINGFUL_PCT, ow.heroRole)
   return {
     games: wld.total, wins: wld.w, losses: wld.l, draws: wld.d,
     competitiveGames: playlists.competitive, quickPlayGames: playlists.quickplay,

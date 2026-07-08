@@ -1,12 +1,13 @@
 /**
  * Hero-count buckets + hero-pool analysis.
  *
- * Two opt-in dossier widgets: "Heroes per match" buckets games by how many
- * heroes were MEANINGFULLY played (a hero under 5% of the match — touched the
- * point — doesn't count), and "Hero pool" derives the user's pool (heroes with
- * 5+ meaningful decisive games), splits games into in-pool vs out-of-pool, and
+ * "Heroes per match" (a default-visible dossier widget) buckets games by how
+ * many heroes were MEANINGFULLY played (a hero under 5% of the match — touched
+ * the point — doesn't count). The "Hero Pool" full-width band (default-visible,
+ * below the dossier) derives the user's pool (max(5, 10% of decisive games)
+ * meaningful decisive games), splits games into in-pool vs out-of-pool, and
  * lists each out-of-pool hero's record. The same numbers surface as rows in
- * the Compare tab's Heroes section.
+ * the Compare tab's Heroes section and the Hero pool size KPI.
  *
  * Corpus (threshold 5%):
  *   L1-7  lucio 100%            → 5W 2L
@@ -96,8 +97,9 @@ test.describe('hero-count buckets + hero pool', () => {
   })
 
   test('buckets games by meaningful hero count — a <5% touch is not a swap', async ({ page }) => {
-    await addWidget(page, 'heroes-per-match')
+    // Ships default-visible — no Add-menu trip needed.
     const widget = page.locator('.breakdown', { hasText: 'Heroes per match' })
+    await expect(widget).toBeVisible()
     const rows = widget.locator('li:not(.bd-placeholder)')
     await expect(rows).toHaveCount(2) // no 3-hero or 4+ games in the corpus
 
@@ -112,7 +114,6 @@ test.describe('hero-count buckets + hero pool', () => {
   })
 
   test('raising the threshold to 10% reclassifies the borderline 7% swap', async ({ page }) => {
-    await addWidget(page, 'heroes-per-match')
     await page.locator('[data-widget-config-trigger="heroes-per-match"]').click()
     await page.locator('[data-widget-config-choice="thresholdPct=10"]').click()
     await page.locator('[data-testid="widget-config-save"]').click()
@@ -125,14 +126,18 @@ test.describe('hero-count buckets + hero pool', () => {
   })
 
   test('derives the pool, splits in/out games, and names the out-of-pool heroes', async ({ page }) => {
-    await addWidget(page, 'hero-pool')
-    const widget = page.locator('.breakdown', { hasText: 'Hero pool' })
+    // The Hero Pool BAND ships default-visible below the dossier grid.
+    const widget = page.locator('.hero-pool-band')
+    await expect(widget).toBeVisible()
 
-    // The pool is lucio + brig — ana (3 games) and genji (1) are below the floor.
+    // The pool is brig + lucio (role-sorted, alphabetical within Support) —
+    // ana (3 games) and genji (1) are below the floor.
     const pool = widget.locator('[data-pool-hero]')
     await expect(pool).toHaveCount(2)
-    await expect(pool.nth(0)).toContainText('lucio')
-    await expect(pool.nth(1)).toContainText('brig')
+    await expect(pool.nth(0)).toContainText(/brig/i)
+    await expect(pool.nth(1)).toContainText(/l[úu]cio/i)
+    // The role grouping is visibly noted.
+    await expect(widget.locator('[data-pool-role="support"]')).toHaveText('Support')
 
     // The split: 13 in-pool games at 69%, 4 out-of-pool at 25%.
     await expect(widget.locator('[data-pool-split="pure"]')).toContainText('13')
@@ -151,22 +156,21 @@ test.describe('hero-count buckets + hero pool', () => {
     const kpi = page.locator('.kpi-tile', { hasText: 'Hero pool size' })
     // 17 heroes touched would be wrong — the derived pool is lucio + brig.
     await expect(kpi.locator('.kpi-value')).toHaveText('2')
-    await expect(kpi.locator('.kpi-sub')).toHaveText('lucio, brigitte')
+    await expect(kpi.locator('.kpi-sub')).toHaveText('brigitte, lucio') // role-sorted, then alphabetical
   })
 
-  test("the hero-pool widget's own gear re-derives the analysis at 10%", async ({ page }) => {
-    await addWidget(page, 'hero-pool')
-    await page.locator('[data-widget-config-trigger="hero-pool"]').click()
+  test("the Hero Pool band's gear re-derives the analysis at 10%", async ({ page }) => {
+    await page.locator('[data-hero-pool-config-trigger]').click()
     await page.locator('[data-widget-config-choice="thresholdPct=10"]').click()
     await page.locator('[data-testid="widget-config-save"]').click()
 
-    const widget = page.locator('.breakdown', { hasText: 'Hero pool' })
+    const widget = page.locator('.hero-pool-band')
     // X1's 7% genji no longer counts: it becomes a pure single-lucio game, so
     // the out-of-pool side drops to the 3 ana games and genji leaves the list.
     await expect(widget.locator('[data-pool-split="pure"]')).toContainText('14')
     await expect(widget.locator('[data-pool-split="out"]')).toContainText('3')
     await expect(widget.locator('[data-pool-out-hero]')).toHaveCount(1)
-    await expect(widget.locator('[data-pool-out-hero]')).toContainText('ana')
+    await expect(widget.locator('[data-pool-out-hero]')).toContainText(/ana/i)
   })
 
   // Full-page axe over the POPULATED matches view with both widgets rendered.
@@ -180,8 +184,8 @@ test.describe('hero-count buckets + hero pool', () => {
       await page.goto('/')
       await page.locator('#tab-matches').click()
       await expect(page.locator('.set-dossier')).toBeVisible()
-      await addWidget(page, 'heroes-per-match')
-      await addWidget(page, 'hero-pool')
+      // Both surfaces ship default-visible: the buckets widget in the grid,
+      // the Hero Pool band below it.
       await expect(page.locator('[data-pool-hero]').first()).toBeVisible()
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

@@ -39,7 +39,6 @@ import LossQualityWidget from '@/components/dashboard/widgets/LossQualityWidget.
 import UphillBattleWidget from '@/components/dashboard/widgets/UphillBattleWidget.vue'
 import ReversalWidget from '@/components/dashboard/widgets/ReversalWidget.vue'
 import HeroesPerMatchWidget from '@/components/dashboard/widgets/HeroesPerMatchWidget.vue'
-import HeroPoolWidget from '@/components/dashboard/widgets/HeroPoolWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -283,7 +282,6 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'uphill-battle',       eyebrow: 'Uphill battles',         shape: 'kpi',       defaultRow: 1, component: UphillBattleWidget,    config: EMPTY_SCHEMA          },
   { id: 'reversal',            eyebrow: 'Reversals',              shape: 'kpi',       defaultRow: 1, component: ReversalWidget,        config: EMPTY_SCHEMA          },
   { id: 'heroes-per-match',    eyebrow: 'Heroes per match',       shape: 'breakdown', defaultRow: 2, component: HeroesPerMatchWidget,  config: heroDisciplineSchema  },
-  { id: 'hero-pool',           eyebrow: 'Hero pool',              shape: 'breakdown', defaultRow: 2, component: HeroPoolWidget,        config: heroDisciplineSchema  },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add
@@ -292,7 +290,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
 // via the customizer.
 export const DEFAULT_ROW_LAYOUT: Readonly<Record<number, readonly string[]>> = {
   1: ['winrate', 'avg-kda', 'total-time', 'most-played-hero', 'reviewed-count', 'days-since-review', 'wld-since-review'],
-  2: ['top-maps', 'top-heroes', 'top-roles'],
+  2: ['top-maps', 'top-heroes', 'top-roles', 'heroes-per-match'],
 }
 
 // Lookup helper. Returns undefined for unknown ids so callers can

@@ -64,7 +64,8 @@ describe('dashboard widget registry', () => {
       'winrate', 'avg-kda', 'total-time', 'most-played-hero',
       'reviewed-count', 'days-since-review', 'wld-since-review',
     ])
-    // Second row was the breakdown row: maps, heroes, roles.
-    expect(DEFAULT_ROW_LAYOUT[2]).toEqual(['top-maps', 'top-heroes', 'top-roles'])
+    // Second row was the breakdown row: maps, heroes, roles — plus the
+    // default-visible hero-swap buckets added in the hero-pool PR.
+    expect(DEFAULT_ROW_LAYOUT[2]).toEqual(['top-maps', 'top-heroes', 'top-roles', 'heroes-per-match'])
   })
 })

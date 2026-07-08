@@ -744,7 +744,7 @@ export function useDossierQueries(
   function heroPool(
     opts: MaybeRefOrGetter<{ thresholdPct: number }>,
   ): ComputedRef<HeroPoolAnalysis> {
-    return computed(() => analyzeHeroPool(tallyRecords.value, toValue(opts).thresholdPct))
+    return computed(() => analyzeHeroPool(tallyRecords.value, toValue(opts).thresholdPct, (h) => heroRole?.(h ?? '') ?? ''))
   }
 
   return {

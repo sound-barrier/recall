@@ -7,6 +7,7 @@ import DossierSection from '@/components/matches/dossier/DossierSection.vue'
 import MatchTimelineHeader from '@/components/matches/timeline/MatchTimelineHeader.vue'
 import MatchMapRoleBand from '@/components/matches/dossier/MatchMapRoleBand.vue'
 import MatchHeroModeBand from '@/components/matches/dossier/MatchHeroModeBand.vue'
+import MatchHeroPoolBand from '@/components/matches/dossier/MatchHeroPoolBand.vue'
 
 // Full-width sections below the dossier grid (Campaign Log, Geography).
 // Order + visibility come from useSectionLayout (a module singleton, so
@@ -118,5 +119,6 @@ function onSectionMove(id: string, dir: -1 | 1) {
       v-else-if="sectionId === 'hero-game-mode'"
       @open-match="(k: string) => emit('open-match', k)"
     />
+    <MatchHeroPoolBand v-else-if="sectionId === 'hero-pool'" />
   </DossierSection>
 </template>

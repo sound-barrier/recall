@@ -6,7 +6,7 @@ const EMPTY_SPLIT = { pure: { games: 0, wins: 0, decisive: 0, winrate: 0 }, out:
 
 function pool(keys: string[]) {
   return {
-    pool: keys.map((key, i) => ({ key, total: 10 - i, wins: 5, losses: 4, winrate: 55, lowSample: false })),
+    pool: keys.map((key, i) => ({ key, role: 'support', total: 10 - i, wins: 5, losses: 4, winrate: 55, lowSample: false })),
     split: EMPTY_SPLIT,
     outHeroes: [],
   }

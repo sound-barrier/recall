@@ -24,12 +24,23 @@ export interface HeroCountBucket {
 // A pool member (or an out-of-pool hero) with its record over the slice.
 export interface PoolHeroStat {
   key: string // raw hero key, display-resolved by the view
+  role: string // 'tank' | 'dps' | 'support' | '' when unresolvable
   total: number // matches meaningfully played (all results)
   wins: number
   losses: number // decisive losses (draws excluded)
   winrate: number // decisive-only integer percent
   lowSample: boolean
 }
+
+// The pool reads in team-composition order: Tank, then DPS, then Support
+// (unresolvable roles last), heroes alphabetical within each role.
+const ROLE_ORDER: Record<string, number> = { tank: 0, dps: 1, support: 2 }
+
+function roleRank(role: string): number {
+  return ROLE_ORDER[role] ?? 3
+}
+
+type HeroRoleResolver = (hero: string | null | undefined) => string
 
 // One side of the in-pool / out-of-pool split.
 interface PoolSplitSide {
@@ -58,13 +69,14 @@ export interface HeroPoolAnalysis {
 export function analyzeHeroPool(
   records: readonly Pick<MatchRecord, 'data'>[],
   thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+  heroRole: HeroRoleResolver = () => '',
 ): HeroPoolAnalysis {
-  const pool = deriveHeroPool(records, thresholdPct)
+  const pool = deriveHeroPool(records, thresholdPct, heroRole)
   const names = pool.map((p) => p.key)
   return {
     pool,
     split: poolSplit(records, names, thresholdPct),
-    outHeroes: outOfPoolHeroes(records, names, thresholdPct),
+    outHeroes: outOfPoolHeroes(records, names, thresholdPct, heroRole),
   }
 }
 
@@ -160,9 +172,10 @@ function heroTally(
   return map
 }
 
-function toStat(key: string, t: { total: number; wins: number; decisive: number }): PoolHeroStat {
+function toStat(key: string, role: string, t: { total: number; wins: number; decisive: number }): PoolHeroStat {
   return {
     key,
+    role,
     total: t.total,
     wins: t.wins,
     losses: t.decisive - t.wins,
@@ -182,17 +195,19 @@ const POOL_SHARE_PCT = 10
 
 // deriveHeroPool: the heroes with enough meaningful DECISIVE games in the
 // slice — max(LOW_SAMPLE_N, 10% of the slice's decisive games) — to count as
-// the player's identity, not an experiment. Sorted most-played first.
+// the player's identity, not an experiment. Sorted Tank → DPS → Support, then
+// hero name, so the pool reads like a team composition.
 export function deriveHeroPool(
   records: readonly Pick<MatchRecord, 'data'>[],
   thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+  heroRole: HeroRoleResolver = () => '',
 ): PoolHeroStat[] {
   const decisiveGames = records.filter((r) => isDecisive(r) && meaningfulHeroes(r, thresholdPct).length > 0).length
   const floor = Math.max(LOW_SAMPLE_N, Math.ceil((POOL_SHARE_PCT / 100) * decisiveGames))
   return [...heroTally(records, thresholdPct).entries()]
     .filter(([, t]) => t.decisive >= floor)
-    .map(([key, t]) => toStat(key, t))
-    .sort((a, b) => b.total - a.total || a.key.localeCompare(b.key))
+    .map(([key, t]) => toStat(key, heroRole(key), t))
+    .sort((a, b) => roleRank(a.role) - roleRank(b.role) || a.key.localeCompare(b.key))
 }
 
 // poolSplit classifies each match: PURE when every meaningful hero is in the
@@ -234,11 +249,12 @@ export function outOfPoolHeroes(
   records: readonly Pick<MatchRecord, 'data'>[],
   pool: readonly string[],
   thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+  heroRole: HeroRoleResolver = () => '',
 ): PoolHeroStat[] {
   const inPool = new Set(pool)
   return [...heroTally(records, thresholdPct).entries()]
     .filter(([key]) => !inPool.has(key))
-    .map(([key, t]) => ({ stat: toStat(key, t), rank: wilsonLowerBound(t.wins, t.decisive) }))
+    .map(([key, t]) => ({ stat: toStat(key, heroRole(key), t), rank: wilsonLowerBound(t.wins, t.decisive) }))
     .sort((a, b) => a.rank - b.rank || b.stat.total - a.stat.total)
     .map((x) => x.stat)
 }
