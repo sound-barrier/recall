@@ -151,3 +151,32 @@ func TestReload_ConcurrentReadsAndSwaps(t *testing.T) {
 		t.Fatal("concurrent reads/reloads triggered a panic")
 	}
 }
+
+func TestReload_SeasonsAlsoSwaps(t *testing.T) {
+	tmp := t.TempDir()
+	override := `seasons:
+  - name: "Override Season"
+    chapter: "Override"
+    number: 9
+    start: "2026-09-01T00:00:00Z"
+    end: "2026-11-01T00:00:00Z"
+`
+	if err := os.WriteFile(filepath.Join(tmp, "seasons.yaml"), []byte(override), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	swapDataDir(t, tmp)
+
+	if err := parser.Reload(); err != nil {
+		t.Fatalf("Reload returned err: %v", err)
+	}
+	found := false
+	for _, s := range parser.Seasons() {
+		if s.Name == "Override Season" && s.Number == 9 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Seasons() does not contain the override after reload; got %+v", parser.Seasons())
+	}
+}
