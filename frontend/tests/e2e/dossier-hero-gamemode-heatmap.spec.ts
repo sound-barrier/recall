@@ -230,10 +230,10 @@ test.describe('dossier — Hero × Game-Mode row', () => {
 
   test('the row is reorderable — the section grip moves it above Geography', async ({ page }) => {
     // Ships last (after campaign-log + geography).
-    expect(await sectionOrder(page)).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    expect(await sectionOrder(page)).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
     await page.locator('[data-section-grip="hero-game-mode"]').focus()
     await page.keyboard.press('ArrowUp')
-    expect(await sectionOrder(page)).toEqual(['campaign-log', 'hero-game-mode', 'geography'])
+    expect(await sectionOrder(page)).toEqual(['campaign-log', 'hero-game-mode', 'geography', 'hero-pool'])
   })
 
   test('the empty-state copy surfaces when decisive matches are below the floor', async ({ page }) => {

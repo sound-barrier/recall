@@ -32,7 +32,7 @@ ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 MISE="${ROOT}/mise.toml"
 
 # Read a `key = "value"` pin from mise.toml (first match). Handles both bare
-# keys (go = "1.26.4") and quoted backend keys
+# keys (go = "1.26.5") and quoted backend keys
 # ("go:github.com/...wails" = "v2.12.0").
 mise_pin() {
   grep -E "^\"?${1}\"?[[:space:]]*=[[:space:]]*\"" "${MISE}" | head -1 \

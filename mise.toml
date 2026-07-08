@@ -40,7 +40,7 @@ GOTOOLCHAIN = "local"
 
 [tools]
 # Language runtimes (match go.mod / CI).
-go = "1.26.4"
+go = "1.26.5"
 node = "26"
 
 # The task runner itself, so `mise install` bootstraps a complete toolchain

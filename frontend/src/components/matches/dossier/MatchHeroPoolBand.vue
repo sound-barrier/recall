@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDossier } from '@/composables/dashboard/useDossier'
+import { useFullDossier } from '@/composables/dashboard/useDossier'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widgets'
@@ -13,7 +13,13 @@ import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 // worst-first — "a swap to ana rarely ends in a win" as data. The gear holds
 // the shared point-touch threshold (heroes under it never count as played).
 
-const dossier = useDossier()
+// The FULL dossier (hidden-stripped corpus), not the narrowed one: the pool
+// is an identity metric — narrowing to one hero must not collapse "your pool"
+// to that hero — and a narrow-stable height keeps the band from shifting the
+// page when the Hero × Game-Mode band above it drills (its drill narrows the
+// whole set; a resizing band here would defeat the list's scroll anchoring).
+// Windowed/filtered pool analysis lives on the Compare tab.
+const dossier = useFullDossier()
 const ow = useOWData()
 const { config } = useWidgetConfig<HeroDisciplineConfig>('hero-pool', heroDisciplineSchema)
 
