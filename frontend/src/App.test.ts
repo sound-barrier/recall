@@ -194,11 +194,11 @@ describe('App.vue — tablist keyboard navigation', () => {
     expect(wrapper.find('#tab-ingest').attributes('aria-selected')).toBe('true')
   })
 
-  it('ArrowLeft from Settings wraps to Unknown', async () => {
+  it('ArrowLeft from Settings wraps to Compare', async () => {
     const wrapper = await mountApp()
     await wrapper.find('#tab-settings').trigger('click')
     await wrapper.find('nav.page-nav').trigger('keydown', { key: 'ArrowLeft' })
-    expect(wrapper.find('#tab-unknown').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('#tab-compare').attributes('aria-selected')).toBe('true')
   })
 
   it('Home jumps to the first tab (Settings)', async () => {
@@ -208,10 +208,10 @@ describe('App.vue — tablist keyboard navigation', () => {
     expect(wrapper.find('#tab-settings').attributes('aria-selected')).toBe('true')
   })
 
-  it('End jumps to the last tab (Unknown)', async () => {
+  it('End jumps to the last tab (Compare)', async () => {
     const wrapper = await mountApp()
     await wrapper.find('nav.page-nav').trigger('keydown', { key: 'End' })
-    expect(wrapper.find('#tab-unknown').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('#tab-compare').attributes('aria-selected')).toBe('true')
   })
 
   it('typing into a tab without an arrow key does not change selection', async () => {

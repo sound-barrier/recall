@@ -83,7 +83,7 @@ const wld = computed(() => tallyWLD(
           aria-controls="panel-settings"
           @click="goToView('settings')"
         >
-          <span class="nav-tab-num">01</span>
+          <span class="nav-tab-num" aria-hidden="true">01</span>
           <span class="nav-tab-label">Settings</span>
         </button>
         <button
@@ -97,7 +97,7 @@ const wld = computed(() => tallyWLD(
           aria-controls="panel-ingest"
           @click="goToView('ingest')"
         >
-          <span class="nav-tab-num">02</span>
+          <span class="nav-tab-num" aria-hidden="true">02</span>
           <span class="nav-tab-label">Parse</span>
         </button>
         <button
@@ -111,7 +111,7 @@ const wld = computed(() => tallyWLD(
           aria-controls="panel-matches"
           @click="goToView('matches')"
         >
-          <span class="nav-tab-num">03</span>
+          <span class="nav-tab-num" aria-hidden="true">03</span>
           <span class="nav-tab-label">
             Matches
             <span
@@ -133,11 +133,25 @@ const wld = computed(() => tallyWLD(
           aria-controls="panel-unknown"
           @click="goToView('unknown')"
         >
-          <span class="nav-tab-num">04</span>
+          <span class="nav-tab-num" aria-hidden="true">04</span>
           <span class="nav-tab-label">
             Unknown
             <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
           </span>
+        </button>
+        <button
+          id="tab-compare"
+          class="nav-tab"
+          :class="{ active: view === 'compare' }"
+          :aria-selected="view === 'compare'"
+          :aria-current="view === 'compare' ? 'page' : undefined"
+          :tabindex="view === 'compare' ? 0 : -1"
+          role="tab"
+          aria-controls="panel-compare"
+          @click="goToView('compare')"
+        >
+          <span class="nav-tab-num" aria-hidden="true">05</span>
+          <span class="nav-tab-label">Compare</span>
         </button>
       </nav>
     </div>

@@ -58,6 +58,7 @@ const IngestView = lazyView(() => import('@/components/ingest/IngestView.vue'))
 const MatchesView = lazyView(() => import('@/components/matches/MatchesView.vue'))
 const SettingsView = lazyView(() => import('@/components/settings/SettingsView.vue'))
 const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsView.vue'))
+const SeasonCompareView = lazyView(() => import('@/components/compare/SeasonCompareView.vue'))
 
 // App-shell cross-cutting state (error banner, version, update check, data
 // location) lives in the Pinia app store. Destructure with the same local
@@ -151,6 +152,10 @@ useAppBoot()
         <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
         <!-- Reads its triage lists + card state + actions from the stores. -->
         <UnknownMapsView v-if="view === 'unknown'" />
+
+        <!-- ─── SEASON COMPARE VIEW ──────────────────────────────── -->
+        <!-- Reads the corpus + shared narrow off the matches store. -->
+        <SeasonCompareView v-if="view === 'compare'" />
 
         <!-- ─── MATCHES VIEW ───────────────────────────────────── -->
         <!-- First paint: render skeleton leaf-rows until the initial

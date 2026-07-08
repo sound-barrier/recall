@@ -56,8 +56,15 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # registers two more tree-shaken ECharts pieces (HeatmapChart +
 # VisualMapComponent) in the lazy TrendChart chunk, ~37.5KB total-only
 # (initial JS untouched). The approved flagship 6.1 chart, not bloat.
-: "${MAX_TOTAL_JS_BYTES:=1385000}"
-: "${MAX_TOTAL_CSS_BYTES:=322000}"
+# 2026-07: 1385000 → 1402000 — the Season Comparison tab (SeasonCompareView +
+# match-compare-helpers + match-compare-aggregate: per-role/hero/mode/queue
+# breakdowns, sectioned table) adds a new lazy view chunk, ~13.5KB total-only.
+# It's a defineAsyncComponent, so initial JS is untouched; a whole new feature
+# tab with a rich metric set, not bloat absorption.
+: "${MAX_TOTAL_JS_BYTES:=1402000}"
+# 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
+# (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
+: "${MAX_TOTAL_CSS_BYTES:=325000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

@@ -318,6 +318,9 @@ export function useMatchesNarrow(
   }
   const narrowedExceptMapsRoles = computed(() => narrowExcluding(new Set<ClauseId>(['maps', 'roles'])))
   const narrowedExceptHeroesGameModes = computed(() => narrowExcluding(new Set<ClauseId>(['heroes', 'gameModes'])))
+  // The narrow with only its season clause skipped — the season-comparison view
+  // filters this by season itself, so the two columns aren't collapsed to one.
+  const narrowedExceptSeason = computed(() => narrowExcluding(new Set<ClauseId>(['season'])))
 
   function activeClauses(): ClauseId[] {
     return NARROW_CLAUSES.filter((c) => c.restricts(state)).map((c) => c.id)
@@ -371,6 +374,7 @@ export function useMatchesNarrow(
     narrowedRecords,
     narrowedExceptMapsRoles,
     narrowedExceptHeroesGameModes,
+    narrowedExceptSeason,
     clauseExclusionCounts,
   }
 }
