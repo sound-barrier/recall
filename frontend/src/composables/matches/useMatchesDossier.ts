@@ -378,21 +378,6 @@ export function useMatchesDossier(
     return best
   })
 
-  // Hero-pool size — distinct hero count across every match's
-  // heroes_played[] union. Uses the full narrow, not tallyRecords,
-  // because pool diversity is a workflow metric (the user wants to
-  // see "how many distinct heroes I've touched" regardless of
-  // leaver handling).
-  const heroPoolSize = computed<number>(() => {
-    const set = new Set<string>()
-    for (const r of records.value) {
-      for (const hp of r.data?.heroes_played ?? []) {
-        if (hp.hero) set.add(hp.hero)
-      }
-    }
-    return set.size
-  })
-
   // Config-driven query-helper tier lives in its own composable; it
   // closes over the same narrowed records via the args passed here.
   const queries = useDossierQueries(records, tallyRecords, heroRole, weekStart)
@@ -418,7 +403,6 @@ export function useMatchesDossier(
     currentStreak,
     longestWinStreak,
     longestLosingStreak,
-    heroPoolSize,
     topRoles,
     playModeBreakdown,
     // ─── Query helpers — config-driven, return reactive results

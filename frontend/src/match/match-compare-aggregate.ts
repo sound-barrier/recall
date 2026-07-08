@@ -1,5 +1,6 @@
 import type { MatchRecord } from '@/api-client'
 import { rolesForHeader } from '@/match/match-helpers'
+import { meaningfulHeroes } from '@/match/match-hero-pool-helpers'
 
 // Compare-specific per-season breakdowns the dossier doesn't expose directly —
 // per-role hero pools + best hero, worst hero, per-game-mode win rate, and the
@@ -45,14 +46,13 @@ function tally(map: Map<string, WinLoss>, key: string, result: string | null | u
 
 // Per-hero W/L over the slice: a match credits every distinct hero in its
 // heroes_played, so a hero's win rate is the record of matches it appeared in.
+// meaningfulHeroes applies the point-touch threshold, so a 3% swap never
+// credits a hero with the match (same semantics as the hero-pool widgets).
 function heroTally(records: MatchRecord[]): Map<string, WinLoss> {
   const map = new Map<string, WinLoss>()
   for (const r of records) {
-    const seen = new Set<string>()
-    for (const hp of r.data?.heroes_played ?? []) {
-      if (!hp.hero || seen.has(hp.hero)) continue
-      seen.add(hp.hero)
-      tally(map, hp.hero, r.data?.result)
+    for (const hero of meaningfulHeroes(r)) {
+      tally(map, hero, r.data?.result)
     }
   }
   return map
@@ -79,10 +79,9 @@ export function roleRates(records: MatchRecord[], heroRole: HeroRoleResolver): R
 export function heroPoolsByRole(records: MatchRecord[], heroRole: HeroRoleResolver): Record<Role, number> {
   const sets: Record<Role, Set<string>> = { tank: new Set(), dps: new Set(), support: new Set() }
   for (const r of records) {
-    for (const hp of r.data?.heroes_played ?? []) {
-      if (!hp.hero) continue
-      const role = heroRole(hp.hero)
-      if (role === 'tank' || role === 'dps' || role === 'support') sets[role].add(hp.hero)
+    for (const hero of meaningfulHeroes(r)) {
+      const role = heroRole(hero)
+      if (role === 'tank' || role === 'dps' || role === 'support') sets[role].add(hero)
     }
   }
   return { tank: sets.tank.size, dps: sets.dps.size, support: sets.support.size }

@@ -1102,29 +1102,6 @@ describe('useMatchesDossier', () => {
     })
   })
 
-  describe('heroPoolSize', () => {
-    it('returns 0 for an empty corpus', () => {
-      const records = ref<MatchRecord[]>([])
-      const { heroPoolSize } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
-      expect(heroPoolSize.value).toBe(0)
-    })
-
-    it('counts distinct heroes across heroes_played[*]', () => {
-      const records = ref([
-        {
-          ...rec({}),
-          data: { heroes_played: [{ hero: 'lucio' }, { hero: 'ana' }] },
-        } as unknown as MatchRecord,
-        {
-          ...rec({}),
-          data: { heroes_played: [{ hero: 'lucio' }, { hero: 'kiriko' }] },
-        } as unknown as MatchRecord,
-      ])
-      const { heroPoolSize } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
-      expect(heroPoolSize.value).toBe(3) // lucio + ana + kiriko
-    })
-  })
-
   describe('winrateBy', () => {
     it('ranks keys by winrate, gates on the decisive sample, excludes draws', () => {
       const records = ref<MatchRecord[]>([

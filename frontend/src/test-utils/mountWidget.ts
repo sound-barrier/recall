@@ -58,7 +58,6 @@ type DossierOverride = {
   wldSinceLastReview?:  WLDSinceLastReview | null
   currentStreak?:       CurrentStreak
   longestWinStreak?:    number
-  heroPoolSize?:        number
   topRoles?:            RoleBreakdownEntry[]
   playModeBreakdown?:   BreakdownEntry[]
   // Query helper — pass the result; helper yields a function returning
@@ -116,7 +115,6 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     wldSinceLastReview:  wrap(over.wldSinceLastReview, null),
     currentStreak:       wrap(over.currentStreak, { count: 0, result: null, sinceDate: null }),
     longestWinStreak:    wrap(over.longestWinStreak, 0),
-    heroPoolSize:        wrap(over.heroPoolSize, 0),
     topRoles:            wrap(over.topRoles, []),
     playModeBreakdown:   wrap(over.playModeBreakdown, [] as BreakdownEntry[]),
     // Query helpers — return functions matching the dossier's signature.
