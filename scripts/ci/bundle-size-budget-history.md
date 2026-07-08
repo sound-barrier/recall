@@ -83,3 +83,5 @@ no soft-pedalling. Numbers that go down get a row too.
 | 2026-07-07 | MAX_TOTAL_JS_BYTES | 1380000 → 1385000 | Competitive seasons: season-assignment helpers + pickedSeason clause/predicate + the NarrowTimeScope selector + reference-data plumbing, ~2KB; prior headroom was <0.1KB |
 | 2026-07-07 | MAX_TOTAL_JS_BYTES | 1385000 → 1402000 | Season Comparison tab: SeasonCompareView (new lazy view chunk) + match-compare-helpers + match-compare-aggregate (per-role/hero/mode/queue breakdowns, sectioned table), ~13.5KB total-only (initial JS untouched) |
 | 2026-07-07 | MAX_TOTAL_CSS_BYTES | 322000 → 325000 | Season Comparison view scoped styles (A/B/Δ table, scope toggle, controls), ~2KB |
+| 2026-07-08 | MAX_TOTAL_JS_BYTES | 1402000 → 1424000 | Compare tab Form mode: FormCompareView + form slices/verdict/drill-through in the lazy compare chunk, ~16KB total-only (initial JS untouched) |
+| 2026-07-08 | MAX_TOTAL_CSS_BYTES | 325000 → 332000 | Form-mode scoped styles (verdict card, preset chips, pairing controls, sparklines), ~5KB |

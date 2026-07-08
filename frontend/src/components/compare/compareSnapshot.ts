@@ -1,0 +1,77 @@
+import type { MatchRecord } from '@/api-client'
+import type { MatchesDossier } from '@/composables/matches/useMatchesDossier'
+import type { BreakdownEntry } from '@/composables/matches/useMatchesDossier.types'
+import {
+  bestHeroByRole, heroPoolsByRole, modeBreakdown, playlistCounts, queueCounts,
+  roleRates, topMap, worstHero,
+} from '@/match/match-compare-aggregate'
+import type { SeasonMetrics } from '@/match/match-compare-helpers'
+
+// Shared SeasonMetrics assembly for both Compare modes: the scalar metrics come
+// off a dossier instance, the compare-specific breakdowns off the record slice.
+// The Form mode passes `extras` (rank/sessions/leaver) to light up its extra
+// rows; the Seasons mode omits them and stays visually unchanged.
+
+// A hero qualifies as best/worst for a window only with at least this many
+// decisive games, so a 1-game 100% hero can't take the title — matches the
+// win-rate low-sample floor (LOW_SAMPLE_N).
+const HERO_MIN_GAMES = 5
+
+export interface SnapshotResolvers {
+  heroRole: (input: string | null | undefined) => string
+  heroDisplayName: (input: string | null | undefined) => string
+  mapDisplayName: (input: string | null | undefined) => string
+  mapGameMode: (input: string | null | undefined) => string
+}
+
+export interface SnapshotExtras {
+  rankProgress: number | null
+  sessions: number
+  leaverRatePct: number | null
+}
+
+export function topHeroDisplay(entries: BreakdownEntry[], resolvers: Pick<SnapshotResolvers, 'heroDisplayName'>): string | null {
+  const top = entries[0]
+  return top ? resolvers.heroDisplayName(top.key) : null
+}
+
+export function buildSeasonMetrics(
+  d: MatchesDossier,
+  records: MatchRecord[],
+  topHero: string | null,
+  ow: SnapshotResolvers,
+  extras?: SnapshotExtras,
+): SeasonMetrics {
+  const wld = d.wld.value
+  const kda = d.averageKDA.value
+  const time = d.totalTimePlayed.value
+  // Role rows use rolesForHeader (via roleRates) rather than the dossier's
+  // topRoles union, so they name the same record set the narrow's role filter
+  // (and the leaf-row role chips) select — a role drill-through is exact.
+  const roles = roleRates(records, ow.heroRole)
+  const pools = heroPoolsByRole(records, ow.heroRole)
+  const best = bestHeroByRole(records, ow.heroRole, ow.heroDisplayName, HERO_MIN_GAMES)
+  const playlists = playlistCounts(records)
+  const queues = queueCounts(records)
+  return {
+    games: wld.total, wins: wld.w, losses: wld.l, draws: wld.d,
+    competitiveGames: playlists.competitive, quickPlayGames: playlists.quickplay,
+    roleQueueGames: queues.role, openQueueGames: queues.open,
+    winratePct: d.winrate.value,
+    elimsPer10: kda ? kda.eliminations : null,
+    deathsPer10: kda ? kda.deaths : null,
+    assistsPer10: kda ? kda.assists : null,
+    minutesPlayed: time.minutes, timeLabel: time.label,
+    combatSamples: kda?.qualifyingMatches ?? 0,
+    longestWinStreak: d.longestWinStreak.value,
+    longestLosingStreak: d.longestLosingStreak.value,
+    roleTank: roles.tank, roleDps: roles.dps, roleSupport: roles.support,
+    heroPoolTank: pools.tank, heroPoolDps: pools.dps, heroPoolSupport: pools.support,
+    bestHeroTank: best.tank, bestHeroDps: best.dps, bestHeroSupport: best.support,
+    topMap: topMap(records, ow.mapDisplayName),
+    modes: modeBreakdown(records, ow.mapGameMode),
+    topHero,
+    worstHero: worstHero(records, ow.heroDisplayName, HERO_MIN_GAMES),
+    ...(extras ?? {}),
+  }
+}

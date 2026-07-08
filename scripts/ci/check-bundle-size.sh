@@ -61,10 +61,15 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # breakdowns, sectioned table) adds a new lazy view chunk, ~13.5KB total-only.
 # It's a defineAsyncComponent, so initial JS is untouched; a whole new feature
 # tab with a rich metric set, not bloat absorption.
-: "${MAX_TOTAL_JS_BYTES:=1402000}"
+# 2026-07: 1402000 → 1424000 — the Compare tab's Form mode (FormCompareView +
+# form slices/verdict + drill-through), ~16KB in the same lazy compare chunk
+# (initial JS untouched). A second full comparison mode, not bloat.
+: "${MAX_TOTAL_JS_BYTES:=1424000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
-: "${MAX_TOTAL_CSS_BYTES:=325000}"
+# 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
+# chips, pairing controls, sparklines), ~5KB. New feature.
+: "${MAX_TOTAL_CSS_BYTES:=332000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
