@@ -90,7 +90,10 @@ from the finish time — so a game that began just before a season
 boundary but ran a few minutes into the new season still counts
 toward the old one. Season boundaries are fixed UTC instants shown
 in your local time; the season filter combines with the date range
-(pick a season *and* a narrower window inside it). Seasons ship in
+(pick a season *and* a narrower window inside it). Picking a season
+also lights its day span on the Campaign Log heatmap (and the sparkline
+beside it) — that calendar always shows your full history, so the
+highlight is how a season pick reads there. Seasons ship in
 `seasons.yaml` and update through the same **Check for updates**
 flow as the hero and map rosters — a corrected season date shows up
 there as "1 season updated".

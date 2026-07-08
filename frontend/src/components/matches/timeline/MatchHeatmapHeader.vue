@@ -20,6 +20,12 @@ const props = defineProps<{
   records: MatchRecord[]
   filterFrom: string
   filterTo: string
+  // Picked-season day span (YYYY-MM-DD), '' when no season is picked. A
+  // passive highlight overlay only — it lights the season's cells but does not
+  // engage the brush/emit machinery. A manual date range (filterFrom/filterTo)
+  // takes precedence over it.
+  seasonFrom?: string
+  seasonTo?: string
   // 13 / 26 / 52 — picked by the wrapper's 3M/6M/12M control.
   windowWeeks: number
   weekStartsOn?: 0 | 1
@@ -168,15 +174,26 @@ const dragAnchor = ref<string | null>(null) // YYYY-MM-DD
 const dragHover  = ref<string | null>(null)
 const isDragging = computed(() => dragAnchor.value !== null)
 
+// Passive season overlay: when no manual date range is set, the picked
+// season's day span lights up so the season pick has a visible echo on the
+// Campaign Log. Kept OUT of activeRange so it never feeds the click/toggle,
+// month-active, or extend-range gestures — those stay about the manual brush.
+const seasonRange = computed(() => {
+  if (props.filterFrom || props.filterTo) return null
+  if (!props.seasonFrom || !props.seasonTo) return null
+  return { from: props.seasonFrom, to: props.seasonTo }
+})
+
 // The span to highlight: the live drag preview while dragging, else the
-// committed filter range. One source of truth → never two boxes.
+// committed filter range, else the picked-season overlay. One source of truth
+// → never two boxes.
 const highlightRange = computed(() => {
   if (dragAnchor.value && dragHover.value) {
     const a = dragAnchor.value
     const b = dragHover.value
     return a <= b ? { from: a, to: b } : { from: b, to: a }
   }
-  return activeRange.value
+  return activeRange.value ?? seasonRange.value
 })
 
 function isActive(cell: { date: string }): boolean {

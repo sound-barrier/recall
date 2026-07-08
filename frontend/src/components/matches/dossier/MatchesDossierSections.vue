@@ -19,6 +19,10 @@ const props = defineProps<{
   records: MatchRecord[]
   filterFrom: string
   filterTo: string
+  // Picked-season day span (YYYY-MM-DD), '' when none — forwarded to the
+  // Campaign Log so the season pick highlights on the heatmap + sparkline.
+  seasonFrom?: string
+  seasonTo?: string
 }>()
 
 const emit = defineEmits<{
@@ -104,6 +108,8 @@ function onSectionMove(id: string, dir: -1 | 1) {
       :records="props.records"
       :filter-from="props.filterFrom"
       :filter-to="props.filterTo"
+      :season-from="props.seasonFrom"
+      :season-to="props.seasonTo"
       @update:filter-from="(v: string) => emit('update:filterFrom', v)"
       @update:filter-to="(v: string) => emit('update:filterTo', v)"
     />

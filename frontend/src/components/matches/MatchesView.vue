@@ -18,6 +18,7 @@ import MatchesListToolbar from '@/components/matches/list/MatchesListToolbar.vue
 import { useMatchesSelection } from '@/composables/matches/useMatchesSelection'
 import { useMatchesMovePicker } from '@/composables/matches/useMatchesMovePicker'
 import { matchesToCSV } from '@/match/match-csv'
+import { seasonWindowToLocalDates } from '@/match/match-season-helpers'
 // NarrowPopover is the heavyweight authoring surface (the search +
 // combobox + range pickers + active-clause range etc.). Lazy-load
 // it so MatchesView's initial chunk doesn't carry its ~30K of
@@ -105,6 +106,7 @@ const {
 // bundle and destructures the picker callbacks itself.
 const {
   pickedRange, customFrom, customTo, customFromTime, customToTime,
+  pickedSeason,
   anchorKey,
   resetNarrow,
   anyNarrow,
@@ -224,6 +226,15 @@ function commitHardDelete(key: string) {
 // singleton — it lazy-fetches `/api/v1/system/reference-data` and
 // reuses the same reactive store across every consumer.
 const ow = useOWData()
+
+// The picked season's day span, for the Campaign Log's passive highlight. The
+// heatmap is filter-independent (full corpus), so a season pick otherwise leaves
+// it unchanged; lighting the season's days gives the pick a visible echo there.
+// '' bounds when no season is picked or the window can't be resolved.
+const seasonHighlight = computed<{ from: string; to: string }>(() => {
+  const window = pickedSeason.value ? ow.seasonWindow(pickedSeason.value) : null
+  return window ? seasonWindowToLocalDates(window) : { from: '', to: '' }
+})
 
 // Build the flat CSV for the data view's "Export CSV" affordances and
 // hand it up to App.vue to save. Exports the ticked subset when any rows
@@ -412,6 +423,8 @@ const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.include
         :records="visibleRecords"
         :filter-from="customFrom"
         :filter-to="customTo"
+        :season-from="seasonHighlight.from"
+        :season-to="seasonHighlight.to"
         @update:filter-from="(v: string) => { customFrom = v; customFromTime = ''; pickedRange = 'custom' }"
         @update:filter-to="(v: string) => { customTo = v; customToTime = ''; pickedRange = 'custom' }"
         @open-match="(k: string) => selection.open(k)"
