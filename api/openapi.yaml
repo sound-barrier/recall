@@ -2917,6 +2917,9 @@ components:
         removed_maps: { type: array, items: { type: string } }
         added_sources: { type: array, items: { type: string } }
         removed_sources: { type: array, items: { type: string } }
+        added_seasons: { type: array, items: { type: string } }
+        removed_seasons: { type: array, items: { type: string } }
+        changed_seasons: { type: array, items: { type: string }, description: "Season names whose window (start/end) changed." }
 
     UpdateInfo:
       type: object
@@ -3066,6 +3069,9 @@ components:
         removed_maps: { type: array, items: { type: string } }
         added_sources: { type: array, items: { type: string } }
         removed_sources: { type: array, items: { type: string } }
+        added_seasons: { type: array, items: { type: string } }
+        removed_seasons: { type: array, items: { type: string } }
+        changed_seasons: { type: array, items: { type: string }, description: "Season names whose window (start/end) changed." }
 
     DataLocation:
       type: object

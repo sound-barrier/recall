@@ -27,6 +27,12 @@ type RosterDiff struct {
 	RemovedMaps    []string `json:"removed_maps,omitempty"`
 	AddedSources   []string `json:"added_sources,omitempty"`
 	RemovedSources []string `json:"removed_sources,omitempty"`
+	// Seasons diff by NAME. Unlike the roster name-lists, a season's content
+	// is its window, so a same-name entry with a shifted start/end shows up in
+	// ChangedSeasons (a corrected end date IS an update).
+	AddedSeasons   []string `json:"added_seasons,omitempty"`
+	RemovedSeasons []string `json:"removed_seasons,omitempty"`
+	ChangedSeasons []string `json:"changed_seasons,omitempty"`
 }
 
 // GameDataStatus tracks the live main channel. CommitSHA /
@@ -290,7 +296,8 @@ func Status(baseDir string) GameDataStatus {
 	client := NewUpdateClient()
 	ver := fetchMainVersion(client)
 	heroes, maps, sources := fetchMainRosters(client)
-	return computeGameDataStatus(baseDir, ver, heroes, maps, sources)
+	seasons := fetchMainSeasons(client)
+	return computeGameDataStatus(baseDir, ver, heroes, maps, sources, seasons)
 }
 
 // computeGameDataStatus reads the local manifest + currently-loaded
@@ -299,7 +306,7 @@ func Status(baseDir string) GameDataStatus {
 // freshly-fetched main rosters. Returns an empty GameDataStatus
 // (CommitSHA="") when the Pages fetch failed — the FE uses CommitSHA
 // as the "main channel reachable" gate.
-func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, sources []string) GameDataStatus {
+func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, sources []string, seasons []seasonMeta) GameDataStatus {
 	if ver.CommitSHA == "" {
 		return GameDataStatus{}
 	}
@@ -321,6 +328,9 @@ func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, source
 	if sources != nil {
 		gd.AddedSources, gd.RemovedSources = diffRosters(sourceNames(parser.Sources()), sources)
 	}
+	if seasons != nil {
+		gd.AddedSeasons, gd.RemovedSeasons, gd.ChangedSeasons = diffSeasons(parser.Seasons(), seasons)
+	}
 	// Content-based: an update exists only when the live rosters actually differ
 	// from what the app already has — NOT when the published main commit merely
 	// advanced. pages.yml republishes version.json on testdata/openapi/docs
@@ -330,7 +340,8 @@ func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, source
 	// roster, not release cadence.
 	gd.HasUpdate = len(gd.AddedHeroes)+len(gd.RemovedHeroes)+
 		len(gd.AddedMaps)+len(gd.RemovedMaps)+
-		len(gd.AddedSources)+len(gd.RemovedSources) > 0
+		len(gd.AddedSources)+len(gd.RemovedSources)+
+		len(gd.AddedSeasons)+len(gd.RemovedSeasons)+len(gd.ChangedSeasons) > 0
 	return gd
 }
 
@@ -341,6 +352,102 @@ func shortenCommitSHA(sha string) string {
 		return sha[:7]
 	}
 	return sha
+}
+
+// seasonMeta is the comparable form of one live season fetched from Pages —
+// name is the diff key, the rest is the content a same-name change compares.
+type seasonMeta struct {
+	name, chapter string
+	number        int
+	start, end    time.Time
+}
+
+// parseSeasonMetas decodes seasons.yaml into comparable metas, parsing the UTC
+// instants so a re-formatted boundary (19:00:00Z vs 19:00Z) doesn't false-diff.
+// nil on any error — the caller then skips the season diff (roster pattern).
+func parseSeasonMetas(yamlBytes []byte) []seasonMeta {
+	var wrapped struct {
+		Seasons []struct {
+			Name    string `yaml:"name"`
+			Chapter string `yaml:"chapter"`
+			Number  int    `yaml:"number"`
+			Start   string `yaml:"start"`
+			End     string `yaml:"end"`
+		} `yaml:"seasons"`
+	}
+	if err := yaml.Unmarshal(yamlBytes, &wrapped); err != nil {
+		return nil
+	}
+	out := make([]seasonMeta, 0, len(wrapped.Seasons))
+	for _, s := range wrapped.Seasons {
+		start, err1 := time.Parse(time.RFC3339, s.Start)
+		end, err2 := time.Parse(time.RFC3339, s.End)
+		if s.Name == "" || err1 != nil || err2 != nil {
+			return nil // a malformed live file is not a partial diff
+		}
+		out = append(out, seasonMeta{name: s.Name, chapter: s.Chapter, number: s.Number, start: start.UTC(), end: end.UTC()})
+	}
+	return out
+}
+
+// diffSeasons compares the currently-loaded seasons against the live set by
+// NAME: added (live-only), removed (applied-only), changed (same name, differing
+// chapter/number/start/end). Each list is sorted for stable UI rendering.
+func diffSeasons(applied []parser.Season, live []seasonMeta) (added, removed, changed []string) {
+	appliedByName := make(map[string]parser.Season, len(applied))
+	for _, s := range applied {
+		appliedByName[s.Name] = s
+	}
+	liveByName := make(map[string]seasonMeta, len(live))
+	for _, s := range live {
+		liveByName[s.name] = s
+	}
+	for name, l := range liveByName {
+		a, ok := appliedByName[name]
+		if !ok {
+			added = append(added, name)
+			continue
+		}
+		if a.Chapter != l.chapter || a.Number != l.number || !a.Start.Equal(l.start) || !a.End.Equal(l.end) {
+			changed = append(changed, name)
+		}
+	}
+	for name := range appliedByName {
+		if _, ok := liveByName[name]; !ok {
+			removed = append(removed, name)
+		}
+	}
+	sort.Strings(added)
+	sort.Strings(removed)
+	sort.Strings(changed)
+	return added, removed, changed
+}
+
+// seasonMetasFromParser adapts loaded parser seasons to the diff's meta shape
+// (the apply path compares two loaded sets, not a fetched YAML).
+func seasonMetasFromParser(seasons []parser.Season) []seasonMeta {
+	out := make([]seasonMeta, 0, len(seasons))
+	for _, s := range seasons {
+		out = append(out, seasonMeta{name: s.Name, chapter: s.Chapter, number: s.Number, start: s.Start.UTC(), end: s.End.UTC()})
+	}
+	return out
+}
+
+// fetchMainSeasons fetches + verifies the live seasons.yaml and returns its
+// comparable metas (nil on any failure — the season diff is then skipped).
+func fetchMainSeasons(client *http.Client) []seasonMeta {
+	yamlBytes, err := getBytes(client, MainAssetURL("seasons.yaml"))
+	if err != nil {
+		return nil
+	}
+	sumBytes, err := getBytes(client, MainAssetURL("seasons.yaml")+".sha256")
+	if err != nil {
+		return nil
+	}
+	if !verifySha256(yamlBytes, sumBytes) {
+		return nil
+	}
+	return parseSeasonMetas(yamlBytes)
 }
 
 // parseSourceNames reads the screenshot_sources.yaml structure
