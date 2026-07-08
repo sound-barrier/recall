@@ -259,7 +259,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   // PR B opt-in widgets (NOT in DEFAULT_ROW_LAYOUT).
   { id: 'current-streak',      eyebrow: 'Current streak',         shape: 'kpi',       defaultRow: 1, component: CurrentStreakWidget,    config: EMPTY_SCHEMA          },
   { id: 'longest-win-streak',  eyebrow: 'Longest win streak',     shape: 'kpi',       defaultRow: 1, component: LongestWinStreakWidget, config: EMPTY_SCHEMA          },
-  { id: 'hero-pool-size',      eyebrow: 'Hero pool size',         shape: 'kpi',       defaultRow: 1, component: HeroPoolSizeWidget,     config: EMPTY_SCHEMA          },
+  { id: 'hero-pool-size',      eyebrow: 'Hero pool size',         shape: 'kpi',       defaultRow: 1, component: HeroPoolSizeWidget,     config: heroDisciplineSchema  },
   { id: 'best-winrate-hero',   eyebrow: 'Best hero by winrate',   shape: 'kpi',       defaultRow: 1, component: BestWinrateHeroWidget,  config: bestWinrateHeroSchema },
   { id: 'top-game-modes',       eyebrow: 'Most played game modes',  shape: 'breakdown', defaultRow: 2, component: TopGameModesWidget,      config: topGameModesSchema     },
   { id: 'time-of-day',         eyebrow: 'Time of day',            shape: 'breakdown', defaultRow: 2, component: TimeOfDayWidget,        config: timeOfDaySchema       },

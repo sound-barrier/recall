@@ -146,6 +146,14 @@ test.describe('hero-count buckets + hero pool', () => {
     await expect(widget.locator('[data-pool-out-hero]', { hasText: 'ana' })).toContainText('33%')
   })
 
+  test('the Hero pool size KPI counts the DERIVED pool, with the roster as its subtitle', async ({ page }) => {
+    await addWidget(page, 'hero-pool-size')
+    const kpi = page.locator('.kpi-tile', { hasText: 'Hero pool size' })
+    // 17 heroes touched would be wrong — the derived pool is lucio + brig.
+    await expect(kpi.locator('.kpi-value')).toHaveText('2')
+    await expect(kpi.locator('.kpi-sub')).toHaveText('lucio, brigitte')
+  })
+
   test("the hero-pool widget's own gear re-derives the analysis at 10%", async ({ page }) => {
     await addWidget(page, 'hero-pool')
     await page.locator('[data-widget-config-trigger="hero-pool"]').click()
