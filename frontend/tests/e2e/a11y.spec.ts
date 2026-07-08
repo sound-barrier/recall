@@ -25,6 +25,7 @@ const VIEWS: { name: string; tabId: string }[] = [
   { name: 'settings',                  tabId: 'tab-settings' },
   { name: 'ingest',                    tabId: 'tab-ingest' },
   { name: 'unknown',                   tabId: 'tab-unknown' },
+  { name: 'compare',                   tabId: 'tab-compare' },
 ]
 
 const THEMES = ['day', 'dark', 'night', 'high-contrast'] as const

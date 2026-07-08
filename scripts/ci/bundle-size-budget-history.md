@@ -81,3 +81,5 @@ no soft-pedalling. Numbers that go down get a row too.
 | 2026-07-06 | MAX_TOTAL_CSS_BYTES | 317000 → 322000 | 2026-07 QoL batch scoped styles (toasts, pips, pinned section, backup row), ~1.5KB |
 | 2026-07-06 | MAX_INITIAL_CSS_BYTES | 68000 → 69000 | Breakdown-bar alignment grid (fixed columns, ± sub-columns, chip overlay) in the shared components.css — global by design, 12 widgets share it; ~0.5KB |
 | 2026-07-07 | MAX_TOTAL_JS_BYTES | 1380000 → 1385000 | Competitive seasons: season-assignment helpers + pickedSeason clause/predicate + the NarrowTimeScope selector + reference-data plumbing, ~2KB; prior headroom was <0.1KB |
+| 2026-07-07 | MAX_TOTAL_JS_BYTES | 1385000 → 1402000 | Season Comparison tab: SeasonCompareView (new lazy view chunk) + match-compare-helpers + match-compare-aggregate (per-role/hero/mode/queue breakdowns, sectioned table), ~13.5KB total-only (initial JS untouched) |
+| 2026-07-07 | MAX_TOTAL_CSS_BYTES | 322000 → 325000 | Season Comparison view scoped styles (A/B/Δ table, scope toggle, controls), ~2KB |

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 
+import type { MatchRecord } from '@/api-client'
 import MatchHeatmapHeader from '@/components/matches/timeline/MatchHeatmapHeader.vue'
 
 // Days are keyed relative to today so they fall inside the heatmap's trailing
@@ -14,7 +15,9 @@ function ymd(offset: number): string {
   return `${y}-${m}-${day}`
 }
 
-const records = [{ match_key: 'm1', data: { date: ymd(-3), result: 'victory' } }]
+const records = [
+  { match_key: 'm1', source_files: ['m1.png'], data: { date: ymd(-3), result: 'victory' } },
+] as unknown as MatchRecord[]
 
 function activeDates(wrapper: ReturnType<typeof mount>): string[] {
   return wrapper.findAll('.heatmap-cell.active').map((c) => c.attributes('data-date') ?? '')
