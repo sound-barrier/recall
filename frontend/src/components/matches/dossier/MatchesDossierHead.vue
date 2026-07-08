@@ -44,7 +44,7 @@ const emit = defineEmits<{
 const {
   searchText,
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers,
-  pickedRange, customFrom, customTo, customFromTime, customToTime,
+  pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
   anchorKey,
   activeClauseCount, anyNarrow,
   narrowedRecords,
@@ -90,6 +90,7 @@ const setHeadline = computed(() => {
   if (searchText.value.trim()) parts.push(`"${searchText.value.trim()}"`)
   if (customFrom.value || customTo.value) parts.push(`${formatRangeBound(customFrom.value, customFromTime.value)} → ${formatRangeBound(customTo.value, customToTime.value)}`)
   else if (pickedRange.value !== 'all') parts.push(`last ${pickedRange.value}`)
+  if (pickedSeason.value) parts.push(pickedSeason.value)
   if (pickedGameModes.value.size) parts.push([...pickedGameModes.value].join('/'))
   if (pickedMaps.value.size)     parts.push([...pickedMaps.value].join(' · '))
   if (pickedRoles.value.size)    parts.push([...pickedRoles.value].join('/'))
