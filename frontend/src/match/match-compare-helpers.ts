@@ -10,7 +10,7 @@ import type { HeroStat, ModeStat } from '@/match/match-compare-aggregate'
 // reads as ▲, so the table answers "am I doing better this season than last?".
 
 // A win-rate + games pair (a role or a game mode). games 0 → not played.
-export interface RateStat {
+interface RateStat {
   winrate: number
   games: number
 }
@@ -51,6 +51,15 @@ export interface SeasonMetrics {
   // Heroes
   topHero: string | null // already display-resolved; null when none
   worstHero: HeroStat | null
+  // How many games actually carried a performance block — the combat rates'
+  // real denominator (OCR coverage is partial). The verdict gates its combat
+  // movers on this so one game's rates can't headline the word.
+  combatSamples?: number
+  // Form-mode extras — rows are emitted only when BOTH snapshots carry the
+  // field, so the Seasons mode (which doesn't populate them) is unchanged.
+  rankProgress?: number | null // net rank-meter movement in divisions (100% = 1)
+  sessions?: number
+  leaverRatePct?: number | null // % of games with a leaver; null on an empty slice
 }
 
 type RowOutcome = 'improved' | 'regressed' | 'even' | 'neutral' | null
@@ -223,6 +232,12 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10
 }
 
+// Rank-progress column: an explicitly-signed division count ("+1.4 div").
+function signedDivisions(n: number): string {
+  const sign = n > 0 ? '+' : n < 0 ? '−' : ''
+  return `${sign}${round1(Math.abs(n))} div`
+}
+
 // timeRow shows each column's pre-formatted play-time; the delta is neutral (more
 // time played is context, not "better"), rendered as a signed minute count.
 function timeRow(a: SeasonMetrics, b: SeasonMetrics): ComparisonRow {
@@ -268,6 +283,13 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
       title: 'Overview',
       rows: [
         displayRow('record', 'Record (W–L–D)', `${a.wins}–${a.losses}–${a.draws}`, `${b.wins}–${b.losses}–${b.draws}`),
+        ...(a.rankProgress !== undefined && b.rankProgress !== undefined
+          ? [numericRow({
+              key: 'rankProgress', label: 'Rank progress', dir: 'higher-better',
+              a: a.rankProgress, b: b.rankProgress,
+              fmt: signedDivisions, fmtDelta: (n) => `${round1(n)} div`, quantize: round1,
+            })]
+          : []),
         intRow('games', 'Games', 'neutral', a.games, b.games),
         intRow('compGames', 'Competitive games', 'neutral', a.competitiveGames, b.competitiveGames),
         intRow('qpGames', 'Quick play games', 'neutral', a.quickPlayGames, b.quickPlayGames),
@@ -288,8 +310,18 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
       title: 'Consistency',
       rows: [
         timeRow(a, b),
+        ...(a.sessions !== undefined && b.sessions !== undefined
+          ? [intRow('sessions', 'Sessions', 'neutral', a.sessions, b.sessions)]
+          : []),
         intRow('longestWin', 'Longest win streak', 'higher-better', a.longestWinStreak, b.longestWinStreak),
         intRow('longestLose', 'Longest losing streak', 'lower-better', a.longestLosingStreak, b.longestLosingStreak),
+        ...(a.leaverRatePct !== undefined && b.leaverRatePct !== undefined
+          ? [numericRow({
+              key: 'leaverRate', label: 'Games with a leaver', dir: 'lower-better',
+              a: a.leaverRatePct, b: b.leaverRatePct,
+              fmt: (n) => `${n}%`, fmtDelta: (n) => `${n} pts`,
+            })]
+          : []),
       ],
     },
     {

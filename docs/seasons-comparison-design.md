@@ -1,8 +1,40 @@
-# Season comparison (Compare tab)
+# The Compare tab
 
-The **Compare** tab (05) puts two competitive seasons side by side so "am I
-doing better this season than last?" is answerable at a glance. It is a
-follow-up to the competitive-seasons filter.
+The **Compare** tab (05) answers "am I doing better?" in two modes over one
+comparison engine: **Seasons** (two competitive seasons side by side) and
+**Form** (two adjacent windows of play, judged into a verdict).
+
+## Form mode
+
+Form compares this stretch of play against the one before it:
+
+- **By time** — pick "this period" on a calendar; the baseline auto-mirrors to
+  the immediately-preceding window of identical length (unlockable for a custom
+  baseline). Preset chips cover the daily drivers: last 7d vs prior 7d, last
+  30d vs prior 30d, and — when a previous season exists — **same point last
+  season** (the prior season truncated to the same elapsed days, the only fair
+  mid-season comparison).
+- **By matches** — the last N matches vs the N before them (10/20/50), fair by
+  construction, no calendar involved.
+- **Conditions** — each window can be filtered to duo-with-a-member, solo,
+  weekday/weekend, a role, or a hero, so "duo vs solo this month" is the same
+  table as "this week vs last week".
+
+The answer comes first: a **verdict word** — SHARPER / SLIPPING / HOLDING, or
+TOO EARLY TO CALL under five decisive games — computed from weighted rate
+movers (win rate, deaths, elims/assists, rank progress), with the top movers as
+the subline and a facing **rolling-winrate sparkline pair** showing each
+period's shape. The sectioned A/B/Δ table sits below as evidence, gaining
+Form-only rows (rank progress in divisions, sessions, leaver rate), and its
+cells **drill through** to the Matches tab with the window + dimension applied
+(cells whose condition the narrow can't express — solo, weekday/weekend —
+aren't drillable).
+
+Pure logic lives in `match-form-slices.ts` (window math, pairing, conditions,
+rolling winrate) and `match-form-verdict.ts` (weights + thresholds); the two
+modes share `CompareTable.vue` and the `compareSnapshot` builder.
+
+## Seasons mode
 
 ## What it shows
 

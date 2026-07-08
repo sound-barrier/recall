@@ -1,4 +1,5 @@
 import type { MatchRecord } from '@/api-client'
+import { rolesForHeader } from '@/match/match-helpers'
 
 // Compare-specific per-season breakdowns the dossier doesn't expose directly —
 // per-role hero pools + best hero, worst hero, per-game-mode win rate, and the
@@ -55,6 +56,23 @@ function heroTally(records: MatchRecord[]): Map<string, WinLoss> {
     }
   }
   return map
+}
+
+// roleRates tallies games + win rate per role using rolesForHeader — the SAME
+// role set the leaf-row chips and the narrow's role filter use — so a compare
+// role row and a role drill-through describe the identical record set.
+export function roleRates(records: MatchRecord[], heroRole: HeroRoleResolver): Record<Role, { winrate: number; games: number }> {
+  const map = new Map<string, WinLoss>()
+  for (const r of records) {
+    for (const role of rolesForHeader(r, heroRole)) {
+      if (role === 'tank' || role === 'dps' || role === 'support') tally(map, role, r.data?.result)
+    }
+  }
+  const statFor = (role: Role) => {
+    const wl = map.get(role)
+    return wl ? { winrate: winratePct(wl), games: wl.games } : { winrate: 0, games: 0 }
+  }
+  return { tank: statFor('tank'), dps: statFor('dps'), support: statFor('support') }
 }
 
 // heroPoolsByRole counts distinct heroes played in each role.
