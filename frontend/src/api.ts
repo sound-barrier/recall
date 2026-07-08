@@ -242,6 +242,13 @@ export type OWData = {
     year_offset: number
     example: string
   }>
+  seasons: Array<{
+    name: string
+    chapter: string
+    number: number
+    start: string
+    end: string
+  }>
 }
 
 // Static Overwatch reference data baked into the parser at compile

@@ -1,6 +1,15 @@
 import { ref, computed, type ComputedRef, type Ref } from 'vue'
 import { GetOWData, type OWData } from '@/api-client'
 
+// Season is one competitive-season window (from reference data). Start/end are
+// UTC RFC3339 strings; season assignment compares a match's canonical UTC
+// instant against [start, end).
+export type Season = NonNullable<OWData['seasons']>[number]
+
+// SeasonWindow is the parsed comparable form of a season boundary — epoch ms,
+// half-open [startMs, endMs). null from the resolver = unknown season name.
+export type SeasonWindow = { startMs: number; endMs: number }
+
 // useOWData exposes the static Overwatch reference data
 // (heroes-by-role + maps-by-game-mode) fetched once per session from
 // /api/owdata and surfaced as canonical-name lookups for the UI.
@@ -29,6 +38,9 @@ export type OWDataApi = {
   mapGameMode:         (input: string | null | undefined) => string
   heroIndex:       ComputedRef<Map<string, { display: string; role: string }>>
   mapIndex:        ComputedRef<Map<string, { display: string; gameMode: string }>>
+  seasons:         ComputedRef<Season[]>
+  seasonsByChapter: ComputedRef<{ chapter: string; seasons: Season[] }[]>
+  seasonWindow:    (name: string) => SeasonWindow | null
 }
 
 // Module-level singleton state. Set on first call, reused thereafter.
@@ -69,6 +81,43 @@ const mapIndex = computed(() => {
   return m
 })
 
+const seasons = computed<Season[]>(() => data.value?.seasons ?? [])
+
+// Chapters in first-appearance order, each with its seasons in file order —
+// drives the grouped <optgroup> in the season selector.
+const seasonsByChapter = computed(() => {
+  const order: string[] = []
+  const byChapter = new Map<string, Season[]>()
+  for (const s of seasons.value) {
+    const chapter = s.chapter || 'Seasons'
+    if (!byChapter.has(chapter)) {
+      byChapter.set(chapter, [])
+      order.push(chapter)
+    }
+    byChapter.get(chapter)!.push(s)
+  }
+  return order.map((chapter) => ({ chapter, seasons: byChapter.get(chapter)! }))
+})
+
+// seasonWindow resolves a season NAME to its parsed [startMs, endMs) window.
+// The narrow state stores only the name (preset-serializable); the window is
+// re-resolved from live reference data at filter time (the anchorKey pattern).
+const seasonWindowIndex = computed(() => {
+  const m = new Map<string, SeasonWindow>()
+  for (const s of seasons.value) {
+    const startMs = Date.parse(s.start)
+    const endMs = Date.parse(s.end)
+    if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
+      m.set(s.name, { startMs, endMs })
+    }
+  }
+  return m
+})
+
+function seasonWindow(name: string): SeasonWindow | null {
+  return seasonWindowIndex.value.get(name) ?? null
+}
+
 function heroDisplayName(input: string | null | undefined): string {
   if (!input) return ''
   return heroIndex.value.get(normalize(input))?.display ?? input
@@ -96,5 +145,5 @@ export function useOWData(): OWDataApi {
       .then(d => { data.value = d })
       .catch(() => { /* leave lookups empty; UI falls back to lowercase */ })
   }
-  return { data, heroDisplayName, mapDisplayName, heroRole, mapGameMode, heroIndex, mapIndex }
+  return { data, heroDisplayName, mapDisplayName, heroRole, mapGameMode, heroIndex, mapIndex, seasons, seasonsByChapter, seasonWindow }
 }

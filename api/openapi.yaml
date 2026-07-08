@@ -1771,7 +1771,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [heroes_by_role, maps_by_game_mode, screenshot_sources]
+                required: [heroes_by_role, maps_by_game_mode, screenshot_sources, seasons]
                 properties:
                   heroes_by_role:
                     type: object
@@ -1811,6 +1811,22 @@ paths:
                         regex:       { type: string, description: "Anchored Go regex; six capture groups (y, m, d, H, M, S)." }
                         year_offset: { type: integer, description: "Added to the captured year (2-digit YAML → 2000)." }
                         example:     { type: string, description: "Canonical example filename." }
+                  seasons:
+                    type: array
+                    description: |
+                      Competitive season windows. Source-of-truth is
+                      `pkg/parser/seasons.yaml`. Drives the season filter
+                      (a match belongs to the season its START falls in)
+                      and future season comparison. Boundaries are UTC.
+                    items:
+                      type: object
+                      required: [name, chapter, number, start, end]
+                      properties:
+                        name:    { type: string, description: "Full season name, e.g. 'Reign of Talon — Season 2'." }
+                        chapter: { type: string, description: "Grouping label, e.g. 'Reign of Talon'." }
+                        number:  { type: integer, description: "Season number within the chapter." }
+                        start:   { type: string, format: date-time, description: "Season start, UTC RFC 3339 (inclusive)." }
+                        end:     { type: string, format: date-time, description: "Season end, UTC RFC 3339 (exclusive; = next start)." }
 
   /api/v1/system/screenshots-folder-candidates:
     get:

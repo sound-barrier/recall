@@ -153,7 +153,7 @@ function buildMock(overrides: MountOverrides = {}) {
     // OWData payload so useOWData's lookups fall through to the
     // stored lowercase form (the test fixtures already use the
     // lowercase form).
-    GetOWData:           vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {} })),
+    GetOWData:           vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [] })),
     EventsOn: vi.fn((name: string, cb: (data: unknown) => void) => {
       eventHandlers.set(name, cb)
     }),

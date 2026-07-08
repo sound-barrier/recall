@@ -4570,6 +4570,30 @@ export interface operations {
                             /** @description Canonical example filename. */
                             example: string;
                         }[];
+                        /**
+                         * @description Competitive season windows. Source-of-truth is
+                         *     `pkg/parser/seasons.yaml`. Drives the season filter
+                         *     (a match belongs to the season its START falls in)
+                         *     and future season comparison. Boundaries are UTC.
+                         */
+                        seasons: {
+                            /** @description Full season name, e.g. 'Reign of Talon — Season 2'. */
+                            name: string;
+                            /** @description Grouping label, e.g. 'Reign of Talon'. */
+                            chapter: string;
+                            /** @description Season number within the chapter. */
+                            number: number;
+                            /**
+                             * Format: date-time
+                             * @description Season start, UTC RFC 3339 (inclusive).
+                             */
+                            start: string;
+                            /**
+                             * Format: date-time
+                             * @description Season end, UTC RFC 3339 (exclusive; = next start).
+                             */
+                            end: string;
+                        }[];
                     };
                 };
             };
