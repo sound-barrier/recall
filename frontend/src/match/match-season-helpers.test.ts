@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import type { MatchRecord } from '@/api-client'
 import type { Season } from '@/composables/shared/useOWData'
-import { matchStartUTC, seasonForMatch, inSeasonWindow } from '@/match/match-season-helpers'
+import { matchStartUTC, seasonForMatch, inSeasonWindow, seasonWindowToLocalDates } from '@/match/match-season-helpers'
 
 function rec(data: Record<string, unknown>, key = 'm'): Pick<MatchRecord, 'match_key' | 'data'> {
   return { match_key: key, data } as Pick<MatchRecord, 'match_key' | 'data'>
@@ -56,5 +56,21 @@ describe('inSeasonWindow', () => {
     expect(inSeasonWindow(199, w)).toBe(true)
     expect(inSeasonWindow(200, w)).toBe(false)
     expect(inSeasonWindow(99, w)).toBe(false)
+  })
+})
+
+describe('seasonWindowToLocalDates', () => {
+  // Noon-UTC instants resolve to the same calendar day in every timezone
+  // from UTC-12 to UTC+11, so these bounds are stable wherever the suite runs.
+  it('maps a [start, end) UTC window to inclusive local YYYY-MM-DD bounds', () => {
+    const w = { startMs: Date.parse('2026-06-16T12:00:00Z'), endMs: Date.parse('2026-08-11T12:00:00Z') }
+    expect(seasonWindowToLocalDates(w)).toEqual({ from: '2026-06-16', to: '2026-08-11' })
+  })
+
+  // The end is exclusive at the instant level; a mid-day end still counts its
+  // own day because the last covered day is the local date of (end − 1ms).
+  it('includes the end day when the season ends mid-day', () => {
+    const w = { startMs: Date.parse('2026-06-16T12:00:00Z'), endMs: Date.parse('2026-06-17T12:00:00Z') }
+    expect(seasonWindowToLocalDates(w)).toEqual({ from: '2026-06-16', to: '2026-06-17' })
   })
 })
