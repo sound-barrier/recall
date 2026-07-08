@@ -66,6 +66,9 @@ var embeddedHeroStatsYAML []byte
 //go:embed screenshot_sources.yaml
 var embeddedScreenshotSourcesYAML []byte
 
+//go:embed seasons.yaml
+var embeddedSeasonsYAML []byte
+
 // owDataset bundles every parser lookup into one immutable snapshot.
 // Reload() builds a fresh *owDataset and atomic-Pointer-Stores it;
 // readers call loadDataset() once per call site and read fields off
@@ -89,6 +92,9 @@ type owDataset struct {
 
 	// Screenshot-source filename grammars.
 	screenshotSources []ScreenshotSource
+
+	// Competitive season windows (see seasons.yaml).
+	seasons []Season
 
 	// Combined load error from this snapshot's construction. nil
 	// means every YAML loaded cleanly; non-nil means at least one
@@ -159,6 +165,10 @@ func IsKnownMap(name string) bool {
 // mutated by callers.
 func Sources() []ScreenshotSource { return loadDataset().screenshotSources }
 
+// Seasons returns the competitive season windows (seasons.yaml), in file
+// order. Surfaced via App.GetOWData() → /api/v1/system/reference-data.
+func Seasons() []Season { return loadDataset().seasons }
+
 // LoadError returns the combined error from the current dataset's
 // construction, or nil if every YAML loaded cleanly. Surfaced via
 // /api/v1/system/reference-data so the UI can render a banner if a
@@ -204,6 +214,9 @@ func Reload() error {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "hero_stats.yaml", embeddedHeroStatsYAML, unmarshalHeroStats); err != nil {
+		errs = append(errs, err)
+	}
+	if err := loadInto(ds, "seasons.yaml", embeddedSeasonsYAML, unmarshalSeasons); err != nil {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "screenshot_sources.yaml", embeddedScreenshotSourcesYAML, unmarshalScreenshotSources); err != nil {

@@ -1,0 +1,25 @@
+# Competitive seasons — used to filter and compare matches by season.
+#
+# Boundaries are UTC instants (RFC 3339). A match belongs to the season its
+# START falls in (start = finish − game_length); back-to-back windows are
+# half-open [start, end), so a match starting exactly at a boundary is in the
+# NEW season. This file is embedded in the binary AND published to GitHub Pages
+# so the app can check for updates (a corrected end date ships as an update).
+#
+# Adding/correcting a season: edit this file, rebuild — no Go changes needed.
+seasons:
+  - name: "Reign of Talon — Season 1"
+    chapter: "Reign of Talon"
+    number: 1
+    start: "2026-02-10T19:00:00Z"
+    end: "2026-04-14T19:00:00Z"
+  - name: "Reign of Talon — Season 2"
+    chapter: "Reign of Talon"
+    number: 2
+    start: "2026-04-14T19:00:00Z"
+    end: "2026-06-16T19:00:00Z"
+  - name: "Reign of Talon — Season 3"
+    chapter: "Reign of Talon"
+    number: 3
+    start: "2026-06-16T19:00:00Z"
+    end: "2026-08-11T19:00:00Z"

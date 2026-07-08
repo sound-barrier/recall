@@ -34,6 +34,8 @@ func ValidateDataYAML(name string, b []byte) error {
 		return unmarshalHeroStats(ds, b)
 	case "screenshot_sources.yaml":
 		return unmarshalScreenshotSources(ds, b)
+	case "seasons.yaml":
+		return unmarshalSeasons(ds, b)
 	}
 	return fmt.Errorf("validate data yaml: unknown file %q", name)
 }
