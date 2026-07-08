@@ -2,6 +2,7 @@ import type { MatchRecord } from '@/api-client'
 import { rolesForHeader } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { matchTime } from '@/match/match-time-helpers'
+import { matchStartUTC, inSeasonWindow } from '@/match/match-season-helpers'
 import type { SearchClause } from '@/match/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/useMatchesNarrow'
 
@@ -241,6 +242,23 @@ export function matchesSinceAnchor(r: MatchRecord, anchorFloor: string | null): 
   if (anchorFloor === null) return true
   const parsedAt = r.parsed_at ?? ''
   return parsedAt > anchorFloor
+}
+
+// matchesPickedSeason keeps a match iff its START (matchStartUTC) falls in the
+// picked season's [startMs, endMs) window. '' / unknown season / untimed match
+// all pass (inert), mirroring the other soft gates. Windows are non-overlapping
+// so "start is in the picked window" == "the match's season is the picked one".
+export function matchesPickedSeason(
+  r: MatchRecord,
+  seasonName: string,
+  seasonWindow: (name: string) => { startMs: number; endMs: number } | null,
+): boolean {
+  if (!seasonName) return true
+  const w = seasonWindow(seasonName)
+  if (!w) return true
+  const startMs = matchStartUTC(r)
+  if (startMs === null) return true
+  return inSeasonWindow(startMs, w)
 }
 
 export function matchesLeaverHandling(r: MatchRecord, mode: 'include' | 'exclude-tally' | 'hide'): boolean {

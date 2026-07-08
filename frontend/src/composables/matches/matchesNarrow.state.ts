@@ -36,6 +36,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     customTo:         ref(''),
     customFromTime:   ref(''),
     customToTime:     ref(''),
+    pickedSeason:     ref(''),
     leaverHandling:   ref<LeaverHandling>('include'),
     minPlayMinutes:   ref(0),
     minPlayPercent:   ref(0),

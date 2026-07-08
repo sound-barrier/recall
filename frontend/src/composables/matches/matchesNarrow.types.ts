@@ -74,6 +74,10 @@ export interface MatchesNarrowState {
   // Panel-owned: every non-panel range write resets them to ''.
   customFromTime:    Ref<string>
   customToTime:      Ref<string>
+  // Single-select competitive-season filter — the season NAME ('' = off).
+  // The window is resolved at filter time from reference data (ClauseCtx),
+  // not stored, so a preset survives a seasons.yaml update.
+  pickedSeason:      Ref<string>
   leaverHandling:    Ref<LeaverHandling>
   minPlayMinutes:    Ref<number>
   minPlayPercent:    Ref<number>

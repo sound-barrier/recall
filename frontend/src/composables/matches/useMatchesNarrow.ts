@@ -90,14 +90,14 @@ export function useMatchesNarrow(
     pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes, pickedSources,
     pickedLeavers, pickedModifiers, pickedRanks,
-    pickedRange, customFrom, customTo, customFromTime, customToTime,
+    pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
   } = state
 
   // Resolves heroes_played to roles for the broad role match (so a secondary
   // open-queue role still filters to the matches that played it).
-  const { heroRole } = useOWData()
+  const { heroRole, seasonWindow } = useOWData()
 
   // Parse the raw search box into scoped clauses once. The narrow
   // filter gates on these, and they're re-exposed so the leaf rows can
@@ -144,6 +144,11 @@ export function useMatchesNarrow(
     }
   }
 
+  // Single-select season: clicking the active season clears it (toggle).
+  function pickSeason(name: string) {
+    pickedSeason.value = pickedSeason.value === name ? '' : name
+  }
+
   function resetNarrow() {
     searchText.value          = ''
     pickedMaps.value          = new Set()
@@ -165,6 +170,7 @@ export function useMatchesNarrow(
     customTo.value            = ''
     customFromTime.value      = ''
     customToTime.value        = ''
+    pickedSeason.value        = ''
     leaverHandling.value      = 'include'
     minPlayMinutes.value      = 0
     minPlayPercent.value      = 0
@@ -260,7 +266,7 @@ export function useMatchesNarrow(
   }
 
   function clauseCtx(skip: ReadonlySet<ClauseId>, anchorFloor: string | null): ClauseCtx {
-    return { searchClauses: searchClauses.value, heroRole, anchorFloor, skip }
+    return { searchClauses: searchClauses.value, heroRole, anchorFloor, seasonWindow, skip }
   }
 
   function passesNarrow(r: MatchRecord, skip: ReadonlySet<ClauseId>, anchorFloor: string | null): boolean {
@@ -349,7 +355,8 @@ export function useMatchesNarrow(
     pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes, pickedSources,
     pickedLeavers, pickedModifiers, pickedRanks,
-    pickedRange, customFrom, customTo, customFromTime, customToTime,
+    pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
+    pickSeason,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
     // Actions

@@ -14,6 +14,7 @@ import {
   matchesRole,
   matchesSearch,
   matchesSinceAnchor,
+  matchesPickedSeason,
   matchesSource,
   matchesTags,
 } from '@/composables/matches/narrowPredicates'
@@ -30,7 +31,7 @@ import {
 export type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
   | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
   | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'modifiers' | 'ranks'
-  | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
+  | 'sinceAnchor' | 'minPlay' | 'includeUnknown' | 'season'
 
 // Per-pass inputs the predicates need beyond the raw state: the parsed
 // search clauses, the hero→role resolver, the pre-resolved anchor floor
@@ -41,6 +42,10 @@ export interface ClauseCtx {
   searchClauses: SearchClause[]
   heroRole: (hero: string | null | undefined) => string
   anchorFloor: string | null
+  // Resolves the picked season NAME to its [startMs, endMs) window (null =
+  // unknown name). From useOWData; kept out of narrow state so presets store
+  // only the name and the window re-resolves from live reference data.
+  seasonWindow: (name: string) => { startMs: number; endMs: number } | null
   skip: ReadonlySet<ClauseId>
 }
 
@@ -228,6 +233,13 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     passes: (r, _s, ctx) => matchesSinceAnchor(r, ctx.anchorFloor),
     label: () => 'since-anchor floor',
     clear: (s) => { s.sinceAnchorActive.value = false },
+  },
+  {
+    id: 'season',
+    restricts: (s) => s.pickedSeason.value !== '',
+    passes: (r, s, ctx) => matchesPickedSeason(r, s.pickedSeason.value, ctx.seasonWindow),
+    label: (s) => `season ${s.pickedSeason.value}`,
+    clear: (s) => { s.pickedSeason.value = '' },
   },
   {
     id: 'leaver',
