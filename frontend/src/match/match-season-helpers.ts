@@ -28,6 +28,26 @@ export function inSeasonWindow(startMs: number, w: SeasonWindow): boolean {
   return startMs >= w.startMs && startMs < w.endMs
 }
 
+// seasonWindowToLocalDates maps a season's [startMs, endMs) UTC window to the
+// inclusive local calendar-day span it covers, as YYYY-MM-DD bounds — the
+// day-granularity range the Campaign Log heatmap + sparkline highlight when a
+// season is picked. The window is half-open at the instant level, so the last
+// covered day is the local date of (endMs − 1): a season ending exactly at local
+// midnight highlights through the prior day; one ending mid-day, through that day.
+export function seasonWindowToLocalDates(w: SeasonWindow): { from: string; to: string } {
+  return { from: toLocalYMD(w.startMs), to: toLocalYMD(w.endMs - 1) }
+}
+
+// toLocalYMD formats an epoch-ms instant as its local-timezone YYYY-MM-DD — the
+// same day key the heatmap grid uses, so a highlight bound lines up with a cell.
+function toLocalYMD(ms: number): string {
+  const d = new Date(ms)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 // seasonForMatch returns the season a match belongs to (by start time), or null
 // when the match has no derivable time or falls outside every window.
 export function seasonForMatch(

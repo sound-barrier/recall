@@ -24,6 +24,10 @@ const props = defineProps<{
   records: MatchRecord[]
   filterFrom: string
   filterTo: string
+  // Picked-season day span (YYYY-MM-DD), '' when none — a passive highlight on
+  // the calendar + sparkline so a season pick echoes on the Campaign Log.
+  seasonFrom?: string
+  seasonTo?: string
   weekStartsOn?: 0 | 1
 }>()
 
@@ -107,6 +111,8 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
           :records="records"
           :filter-from="filterFrom"
           :filter-to="filterTo"
+          :season-from="seasonFrom"
+          :season-to="seasonTo"
           :window-weeks="windowWeeks"
           :week-starts-on="weekStartsOn"
           @update:filter-from="(v: string) => emit('update:filter-from', v)"
@@ -116,6 +122,8 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
           :records="records"
           :filter-from="filterFrom"
           :filter-to="filterTo"
+          :season-from="seasonFrom"
+          :season-to="seasonTo"
           :window-weeks="windowWeeks"
           :week-starts-on="weekStartsOn"
           @update:filter-from="(v: string) => emit('update:filter-from', v)"

@@ -28,6 +28,10 @@ const props = defineProps<{
   records: MatchRecord[]
   filterFrom: string
   filterTo: string
+  // Picked-season day span (YYYY-MM-DD), '' when none. Draws the same passive
+  // band as a manual range when no manual range is active; a manual range wins.
+  seasonFrom?: string
+  seasonTo?: string
   windowWeeks: number
   weekStartsOn?: 0 | 1
 }>()
@@ -111,6 +115,21 @@ const dragEndIndex = ref<number | null>(null)
 
 const isDragging = computed(() => dragStartIndex.value !== null)
 
+// Clamp a season [from, to] day span to in-grid cell indices: the first cell
+// on/after `from` and the last cell on/before `to`. Returns [null, null] when
+// the span doesn't overlap the visible window.
+function seasonBandIndices(from: string, to: string): [number | null, number | null] {
+  const cells = model.value.cells
+  const lo = cells.findIndex(c => c.date >= from)
+  if (lo < 0) return [null, null]
+  let hi: number | null = null
+  for (let i = cells.length - 1; i >= 0; i--) {
+    if (cells[i]!.date <= to) { hi = i; break }
+  }
+  if (hi == null || hi < lo) return [null, null]
+  return [lo, hi]
+}
+
 // Visible selection band — during a drag this reflects the user's
 // in-flight choice; otherwise it reflects the currently-applied
 // filterFrom/filterTo so the user can SEE the active range.
@@ -123,6 +142,11 @@ const selectionBand = computed<{ x: number; width: number } | null>(() => {
   } else if (props.filterFrom && props.filterTo) {
     a = model.value.cells.findIndex(c => c.date === props.filterFrom.slice(0, 10))
     b = model.value.cells.findIndex(c => c.date === props.filterTo.slice(0, 10))
+  } else if (props.seasonFrom && props.seasonTo) {
+    // The picked-season band. Its bounds can fall outside the visible window
+    // (a season that started before the grid), so clamp to the in-grid span:
+    // first cell on/after seasonFrom → last cell on/before seasonTo.
+    ;[a, b] = seasonBandIndices(props.seasonFrom, props.seasonTo)
   }
   if (a == null || b == null || a < 0 || b < 0) return null
   const lo = Math.min(a, b)
