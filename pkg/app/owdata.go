@@ -1,6 +1,10 @@
 package app
 
-import "recall/pkg/parser"
+import (
+	"time"
+
+	"recall/pkg/parser"
+)
 
 // OWData is the read-only Overwatch reference data the parser is keyed
 // against — the canonical hero roster (per role) and map roster (per
@@ -14,6 +18,18 @@ type OWData struct {
 	HeroesByRole      map[string][]string `json:"heroes_by_role"`
 	MapsByGameMode    map[string][]string `json:"maps_by_game_mode"`
 	ScreenshotSources []ScreenshotSource  `json:"screenshot_sources"`
+	Seasons           []Season            `json:"seasons"`
+}
+
+// Season surfaces a competitive season window to the frontend (season
+// filter + comparison). Source-of-truth is pkg/parser/seasons.yaml; Start/End
+// are UTC RFC3339 strings on the wire.
+type Season struct {
+	Name    string `json:"name"`
+	Chapter string `json:"chapter"`
+	Number  int    `json:"number"`
+	Start   string `json:"start"`
+	End     string `json:"end"`
 }
 
 // ScreenshotSource surfaces the parser's per-tool filename grammar
@@ -46,9 +62,21 @@ func (a *App) GetOWData() OWData {
 			Example:    s.Example,
 		})
 	}
+	parserSeasons := parser.Seasons()
+	seasons := make([]Season, 0, len(parserSeasons))
+	for _, s := range parserSeasons {
+		seasons = append(seasons, Season{
+			Name:    s.Name,
+			Chapter: s.Chapter,
+			Number:  s.Number,
+			Start:   s.Start.UTC().Format(time.RFC3339),
+			End:     s.End.UTC().Format(time.RFC3339),
+		})
+	}
 	return OWData{
 		HeroesByRole:      parser.HeroesByRole(),
 		MapsByGameMode:    parser.MapsByGameMode(),
 		ScreenshotSources: sources,
+		Seasons:           seasons,
 	}
 }

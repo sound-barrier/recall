@@ -25,7 +25,7 @@ globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
     return {
       ok: true,
       status: 200,
-      json: async () => ({ heroes_by_role: {}, maps_by_game_mode: {} }),
+      json: async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [] }),
       text: async () => '{}',
     }
   }

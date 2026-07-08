@@ -21,6 +21,11 @@ const SAMPLE_DATA = {
     hybrid:     ["King's Row"],
     flashpoint: ['New Junk City'],
   },
+  screenshot_sources: [],
+  seasons: [
+    { name: 'Reign of Talon — Season 1', chapter: 'Reign of Talon', number: 1, start: '2026-02-10T19:00:00Z', end: '2026-04-14T19:00:00Z' },
+    { name: 'Reign of Talon — Season 2', chapter: 'Reign of Talon', number: 2, start: '2026-04-14T19:00:00Z', end: '2026-06-16T19:00:00Z' },
+  ],
 }
 
 async function freshOWData() {
@@ -145,4 +150,23 @@ describe('useOWData', () => {
     expect(api.mapDisplayName('kings row')).toBe('kings row')
     expect(api.data.value).toBeNull()
   })
+
+  it('exposes seasons, chapter grouping, and a name→window resolver', async () => {
+    getOWDataMock.mockResolvedValue(SAMPLE_DATA)
+    const useOWData = await freshOWData()
+    const ow = useOWData()
+    await Promise.resolve(); await Promise.resolve()
+
+    expect(ow.seasons.value).toHaveLength(2)
+    expect(ow.seasonsByChapter.value).toEqual([
+      { chapter: 'Reign of Talon', seasons: SAMPLE_DATA.seasons },
+    ])
+    const w = ow.seasonWindow('Reign of Talon — Season 2')
+    expect(w).toEqual({
+      startMs: Date.parse('2026-04-14T19:00:00Z'),
+      endMs: Date.parse('2026-06-16T19:00:00Z'),
+    })
+    expect(ow.seasonWindow('nope')).toBeNull()
+  })
+
 })
