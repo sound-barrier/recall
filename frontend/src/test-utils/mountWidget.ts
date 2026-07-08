@@ -23,6 +23,14 @@ import type {
 } from '@/composables/matches/useMatchesDossier'
 import type { RankNow } from '@/match/match-trends-helpers'
 import type { RateSample, LeaverRate } from '@/match/match-momentum-helpers'
+import type { HeroCountBucket, HeroPoolAnalysis } from '@/match/match-hero-pool-helpers'
+
+// Empty pool analysis for widgets that don't seed heroPool.
+const EMPTY_POOL: HeroPoolAnalysis = {
+  pool: [],
+  split: { pure: { games: 0, wins: 0, decisive: 0, winrate: 0 }, out: { games: 0, wins: 0, decisive: 0, winrate: 0 } },
+  outHeroes: [],
+}
 
 // Per-widget test helper that:
 //   1. Stubs localStorage so useWidgetConfig hydrates cleanly (the
@@ -73,6 +81,9 @@ type DossierOverride = {
   recentMatches?:      Array<{ matchKey: string; date: string; finishedAt: string; result: string; map: string }>
   // Query helper — win-rate-by-X widgets.
   winrateBy?:          BreakdownEntry[]
+  // Query helpers — hero-swap discipline widgets.
+  heroCountBuckets?:   HeroCountBucket[]
+  heroPool?:           HeroPoolAnalysis
   // Query helpers — modifier widgets.
   modifierBreakdown?:  BreakdownEntry[]
   modifierRecord?:     ModifierRecord | null
@@ -111,6 +122,8 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     // Query helpers — return functions matching the dossier's signature.
     topByCount:          wrapQuery(over.topByCount, [] as BreakdownEntry[]),
     winrateBy:           wrapQuery(over.winrateBy, [] as BreakdownEntry[]),
+    heroCountBuckets:    wrapQuery(over.heroCountBuckets, [] as HeroCountBucket[]),
+    heroPool:            wrapQuery(over.heroPool, EMPTY_POOL),
     modifierBreakdown:   wrapQuery(over.modifierBreakdown, [] as BreakdownEntry[]),
     modifierRecord:      wrapQuery(over.modifierRecord, null as ModifierRecord | null),
     currentRank:         wrap(over.currentRank, [] as RankNow[]),

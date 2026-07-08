@@ -85,3 +85,4 @@ no soft-pedalling. Numbers that go down get a row too.
 | 2026-07-07 | MAX_TOTAL_CSS_BYTES | 322000 → 325000 | Season Comparison view scoped styles (A/B/Δ table, scope toggle, controls), ~2KB |
 | 2026-07-08 | MAX_TOTAL_JS_BYTES | 1402000 → 1424000 | Compare tab Form mode: FormCompareView + form slices/verdict/drill-through in the lazy compare chunk, ~16KB total-only (initial JS untouched) |
 | 2026-07-08 | MAX_TOTAL_CSS_BYTES | 325000 → 332000 | Form-mode scoped styles (verdict card, preset chips, pairing controls, sparklines), ~5KB |
+| 2026-07-08 | MAX_TOTAL_JS_BYTES | 1424000 → 1430000 | Hero-swap discipline: Heroes-per-match + Hero-pool widgets, match-hero-pool-helpers, Compare Heroes rows, ~1.3KB total-only |

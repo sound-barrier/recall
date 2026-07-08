@@ -15,6 +15,9 @@ function metrics(over: Partial<SeasonMetrics> = {}): SeasonMetrics {
     bestHeroTank: { hero: 'Reinhardt', winrate: 62, games: 8 }, bestHeroDps: null, bestHeroSupport: null,
     topMap: "King's Row", modes: [{ key: 'hybrid', label: 'Hybrid', winrate: 60, games: 10 }],
     topHero: 'Reinhardt', worstHero: null,
+    heroPool: 'Reinhardt, Genji',
+    singleHeroGames: { winrate: 65, games: 15 }, multiHeroGames: { winrate: 40, games: 5 },
+    pureHeroPoolGames: { winrate: 63, games: 16 }, outOfPoolGames: { winrate: 25, games: 4 },
     ...over,
   }
 }
@@ -33,9 +36,35 @@ describe('compareSeasons', () => {
 
   it('surfaces the game-count, role, and hero rows', () => {
     const keys = compareSeasons(metrics(), metrics()).flatMap((s) => s.rows.map((r) => r.key))
-    for (const k of ['compGames', 'qpGames', 'roleQueue', 'openQueue', 'roleTank', 'poolDps', 'bestTank', 'topMap', 'worstHero']) {
+    for (const k of ['compGames', 'qpGames', 'roleQueue', 'openQueue', 'roleTank', 'poolDps', 'bestTank', 'topMap', 'worstHero',
+      'heroPool', 'singleHero', 'multiHero', 'purePool', 'outPool']) {
       expect(keys).toContain(k)
     }
+  })
+
+  it('caveats a rate row when a column has few decisive games', () => {
+    const rows = compareSeasons(
+      metrics({ outOfPoolGames: { winrate: 0, games: 2, decisive: 1 } }),
+      metrics({ outOfPoolGames: { winrate: 50, games: 8, decisive: 8 } }),
+    )
+    expect(row(rows, 'outPool').lowSample).toBe(true)
+    // Rows whose producers don't supply a decisive count stay uncaveated.
+    expect(row(rows, 'roleTank').lowSample).toBe(false)
+  })
+
+  it('renders the hero-pool row as a plain display and the swap rows as judged rates', () => {
+    const rows = compareSeasons(
+      metrics({ heroPool: null, outOfPoolGames: { winrate: 20, games: 5 } }),
+      metrics({ heroPool: 'Lúcio, Brigitte', outOfPoolGames: { winrate: 50, games: 4 } }),
+    )
+    const pool = row(rows, 'heroPool')
+    expect(pool.aDisplay).toBe('—')
+    expect(pool.bDisplay).toBe('Lúcio, Brigitte')
+    expect(pool.delta).toBeNull()
+    const out = row(rows, 'outPool')
+    expect(out.aDisplay).toBe('20% · 5g')
+    expect(out.outcome).toBe('improved')
+    expect(out.delta).toBe('▲ 30 pts')
   })
 
   it('records W–L–D as a display row with no verdict', () => {

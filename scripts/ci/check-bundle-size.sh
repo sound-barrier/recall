@@ -64,7 +64,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-07: 1402000 → 1424000 — the Compare tab's Form mode (FormCompareView +
 # form slices/verdict + drill-through), ~16KB in the same lazy compare chunk
 # (initial JS untouched). A second full comparison mode, not bloat.
-: "${MAX_TOTAL_JS_BYTES:=1424000}"
+# 2026-07: 1424000 → 1430000 — hero-swap discipline pair (Heroes per match +
+# Hero pool widgets + match-hero-pool-helpers + Compare rows), ~1.3KB in the
+# MatchesView/compare chunks (initial JS untouched). New feature.
+: "${MAX_TOTAL_JS_BYTES:=1430000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

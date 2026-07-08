@@ -6,6 +6,12 @@ import { RESULT_MODIFIERS, dayTimeWinrateGrid, type WinrateGrid } from '@/match/
 import { lossQuality, type LossQuality } from '@/match/match-loss-quality'
 import { wilsonLowerBound, LOW_SAMPLE_N } from '@/match/match-sample-helpers'
 import {
+  analyzeHeroPool,
+  heroCountBuckets as computeHeroCountBuckets,
+  type HeroCountBucket,
+  type HeroPoolAnalysis,
+} from '@/match/match-hero-pool-helpers'
+import {
   type BreakdownEntry,
   type ModifierRecord,
   type HeroBreakdownEntry,
@@ -726,9 +732,26 @@ export function useDossierQueries(
     })
   }
 
+  // Hero-swap discipline: games bucketed by meaningful-hero count. Iterates
+  // tallyRecords so the leaver 'Drop from tally' setting is respected.
+  function heroCountBuckets(
+    opts: MaybeRefOrGetter<{ thresholdPct: number }>,
+  ): ComputedRef<HeroCountBucket[]> {
+    return computed(() => computeHeroCountBuckets(tallyRecords.value, toValue(opts).thresholdPct))
+  }
+
+  // The derived hero pool + in/out split + out-of-pool hero records.
+  function heroPool(
+    opts: MaybeRefOrGetter<{ thresholdPct: number }>,
+  ): ComputedRef<HeroPoolAnalysis> {
+    return computed(() => analyzeHeroPool(tallyRecords.value, toValue(opts).thresholdPct))
+  }
+
   return {
     topByCount,
     winrateBy,
+    heroCountBuckets,
+    heroPool,
     modifierBreakdown,
     lossQualityBreakdown,
     modifierRecord,

@@ -54,7 +54,15 @@ triple:
 - **Maps** — most-played map, plus win rate + games per game mode (Control,
   Escort, Hybrid, Push, Flashpoint, Clash) played in either season.
 - **Heroes** — most-played hero and the lowest-win-rate hero (min 5 decisive
-  games, so a one-off bad game can't take the title).
+  games, so a one-off bad game can't take the title); plus the hero-swap
+  discipline rows: the derived **hero pool** (heroes with at least
+  max(5, 10% of the window's decisive games) meaningful decisive games — the
+  floor rules small histories, the share keeps a large one's pool to actual
+  mains), single- vs multi-hero game rates, and in-pool vs
+  out-of-pool game rates. "Meaningful" ignores heroes under 5% of a match
+  (touched the point) — the same semantics as the *Heroes per match* and
+  *Hero pool* dossier widgets, which additionally expose the threshold as a
+  gear knob (3/5/10%).
 
 The **Δ (B vs A)** column frames the change as season B relative to season A: a
 green ▲ when B improved, a red ▼ when it regressed, and a muted signed value for

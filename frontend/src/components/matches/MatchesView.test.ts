@@ -505,11 +505,15 @@ describe('MatchesView — infinite-scroll window', () => {
     expect(wrapper.findAll('.leaves-foot-rule')).toHaveLength(2)
   })
 
-  it('foot has aria-live=polite + role=status for screen-reader updates', () => {
+  it('foot carries an aria-live=polite status INSIDE the listitem (a role=status li is an invalid list child)', () => {
     const wrapper = mountView(fillCorpus(50))
     const foot = wrapper.find('[data-testid="leaves-foot"]')
-    expect(foot.attributes('role')).toBe('status')
-    expect(foot.attributes('aria-live')).toBe('polite')
+    // The li keeps its implicit listitem role…
+    expect(foot.attributes('role')).toBeUndefined()
+    // …and the live region is a nested span.
+    const status = foot.find('[role="status"]')
+    expect(status.exists()).toBe(true)
+    expect(status.attributes('aria-live')).toBe('polite')
   })
 })
 
