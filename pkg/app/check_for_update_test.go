@@ -321,6 +321,10 @@ func fakeMainServer(t *testing.T, commitSHA string, heroesBody, mapsBody, source
 	stage("heroes.yaml", heroesBody)
 	stage("maps.yaml", mapsBody)
 	stage("screenshot_sources.yaml", sourcesBody)
+	// seasons.yaml is a required data file (dataYAMLFiles) so Apply needs it
+	// present; serve content identical to the embedded set so the season diff
+	// is empty and doesn't perturb has_update assertions.
+	stage("seasons.yaml", validSeasonsYAML())
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv

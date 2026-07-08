@@ -225,3 +225,25 @@ func validSourcesYAML() []byte {
     example: "TestTool_2026-06-08_14-32-11.png"
 `)
 }
+
+// validSeasonsYAML matches the embedded pkg/parser/seasons.yaml so a live-vs-
+// applied season diff is empty in tests that don't intend a season change.
+func validSeasonsYAML() []byte {
+	return []byte(`seasons:
+  - name: "Reign of Talon — Season 1"
+    chapter: "Reign of Talon"
+    number: 1
+    start: "2026-02-10T19:00:00Z"
+    end: "2026-04-14T19:00:00Z"
+  - name: "Reign of Talon — Season 2"
+    chapter: "Reign of Talon"
+    number: 2
+    start: "2026-04-14T19:00:00Z"
+    end: "2026-06-16T19:00:00Z"
+  - name: "Reign of Talon — Season 3"
+    chapter: "Reign of Talon"
+    number: 3
+    start: "2026-06-16T19:00:00Z"
+    end: "2026-08-11T19:00:00Z"
+`)
+}
