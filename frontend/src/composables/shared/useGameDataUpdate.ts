@@ -13,7 +13,7 @@ export type GameDataApplyState =
   | { kind: 'success', result: DataUpdateResult }
   | { kind: 'error', message: string }
 
-export type DiffRow = { kind: 'Hero' | 'Map' | 'Source', sign: '+' | '−', name: string }
+export type DiffRow = { kind: 'Hero' | 'Map' | 'Source' | 'Season', sign: '+' | '−' | '~', name: string }
 
 export function useGameDataUpdate(
   updateInfo: MaybeRefOrGetter<UpdateInfo | null>,
@@ -34,13 +34,15 @@ export function useGameDataUpdate(
   // ("3 NEW · 1 RETIRED" splits visually into gain vs loss).
   const addedCount = computed(() => {
     const g = gameData.value
-    return (g.added_heroes?.length ?? 0) + (g.added_maps?.length ?? 0) + (g.added_sources?.length ?? 0)
+    return (g.added_heroes?.length ?? 0) + (g.added_maps?.length ?? 0) + (g.added_sources?.length ?? 0) + (g.added_seasons?.length ?? 0)
   })
   const removedCount = computed(() => {
     const g = gameData.value
-    return (g.removed_heroes?.length ?? 0) + (g.removed_maps?.length ?? 0) + (g.removed_sources?.length ?? 0)
+    return (g.removed_heroes?.length ?? 0) + (g.removed_maps?.length ?? 0) + (g.removed_sources?.length ?? 0) + (g.removed_seasons?.length ?? 0)
   })
-  const changeCount = computed(() => addedCount.value + removedCount.value)
+  // Changed seasons (same name, shifted window) are neither added nor removed.
+  const changedCount = computed(() => gameData.value.changed_seasons?.length ?? 0)
+  const changeCount = computed(() => addedCount.value + removedCount.value + changedCount.value)
 
   // Every changed name, grouped by kind, in one flat list: added heroes →
   // maps → sources, then removed, so additions (the common case) lead.
@@ -53,6 +55,9 @@ export function useGameDataUpdate(
     for (const h of g.removed_heroes ?? []) rows.push({ kind: 'Hero',   sign: '−', name: h })
     for (const m of g.removed_maps   ?? []) rows.push({ kind: 'Map',    sign: '−', name: m })
     for (const s of g.removed_sources?? []) rows.push({ kind: 'Source', sign: '−', name: s })
+    for (const s of g.added_seasons   ?? []) rows.push({ kind: 'Season', sign: '+', name: s })
+    for (const s of g.changed_seasons ?? []) rows.push({ kind: 'Season', sign: '~', name: s })
+    for (const s of g.removed_seasons ?? []) rows.push({ kind: 'Season', sign: '−', name: s })
     return rows
   })
 
@@ -66,7 +71,10 @@ export function useGameDataUpdate(
       seg(g.added_heroes?.length ?? 0, 'hero', 'heroes'),
       seg(g.added_maps?.length ?? 0, 'map', 'maps'),
       seg(g.added_sources?.length ?? 0, 'screenshot source', 'screenshot sources'),
+      seg(g.added_seasons?.length ?? 0, 'season', 'seasons'),
     ].filter(Boolean)
+    const changedSeasons = g.changed_seasons?.length ?? 0
+    if (changedSeasons > 0) parts.push(`${changedSeasons} season${changedSeasons === 1 ? '' : 's'} updated`)
     return parts.length ? `${parts.join(', ')} available` : ''
   })
 
