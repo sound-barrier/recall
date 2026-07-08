@@ -81,6 +81,9 @@ type DataUpdateResult struct {
 	RemovedMaps    []string `json:"removed_maps,omitempty"`
 	AddedSources   []string `json:"added_sources,omitempty"`
 	RemovedSources []string `json:"removed_sources,omitempty"`
+	AddedSeasons   []string `json:"added_seasons,omitempty"`
+	RemovedSeasons []string `json:"removed_seasons,omitempty"`
+	ChangedSeasons []string `json:"changed_seasons,omitempty"`
 }
 
 // dataUpdateMu serializes ApplyGameDataUpdate calls so two concurrent
@@ -100,6 +103,7 @@ var dataYAMLFiles = []string{
 	"heroes.yaml",
 	"maps.yaml",
 	"screenshot_sources.yaml",
+	"seasons.yaml",
 }
 
 // Apply downloads + verifies + applies the live game data from the
@@ -167,6 +171,7 @@ func commitVerifiedAssets(baseDir string, verified map[string]verifiedAsset, man
 	prevHeroes := flattenRoster(parser.HeroesByRole())
 	prevMaps := flattenRoster(parser.MapsByGameMode())
 	prevSources := sourceNames(parser.Sources())
+	prevSeasons := parser.Seasons()
 
 	if err := writeAndRename(dataDir, verified); err != nil {
 		restoreSnapshot(dataDir, snapshot)
@@ -189,6 +194,7 @@ func commitVerifiedAssets(baseDir string, verified map[string]verifiedAsset, man
 	addedHeroes, removedHeroes := diffRosters(prevHeroes, flattenRoster(parser.HeroesByRole()))
 	addedMaps, removedMaps := diffRosters(prevMaps, flattenRoster(parser.MapsByGameMode()))
 	addedSources, removedSources := diffRosters(prevSources, sourceNames(parser.Sources()))
+	addedSeasons, removedSeasons, changedSeasons := diffSeasons(prevSeasons, seasonMetasFromParser(parser.Seasons()))
 
 	return DataUpdateResult{
 		AddedHeroes:    addedHeroes,
@@ -197,6 +203,9 @@ func commitVerifiedAssets(baseDir string, verified map[string]verifiedAsset, man
 		RemovedMaps:    removedMaps,
 		AddedSources:   addedSources,
 		RemovedSources: removedSources,
+		AddedSeasons:   addedSeasons,
+		RemovedSeasons: removedSeasons,
+		ChangedSeasons: changedSeasons,
 	}, nil
 }
 

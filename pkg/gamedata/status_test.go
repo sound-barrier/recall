@@ -35,7 +35,7 @@ func TestComputeGameDataStatus_IdenticalRosters_NoUpdate(t *testing.T) {
 	sources := sourceNames(parser.Sources())
 
 	gd := gamedata.ComputeGameDataStatusForTest(
-		t.TempDir(), "abcdef1234567", "2026-06-17T00:00:00Z", heroes, maps, sources)
+		t.TempDir(), "abcdef1234567", "2026-06-17T00:00:00Z", heroes, maps, sources, "")
 
 	if gd.HasUpdate {
 		t.Errorf("HasUpdate = true for byte-identical rosters; want false (no roster change → no update)")
@@ -54,7 +54,7 @@ func TestComputeGameDataStatus_NewHero_HasUpdate(t *testing.T) {
 	sources := sourceNames(parser.Sources())
 
 	gd := gamedata.ComputeGameDataStatusForTest(
-		t.TempDir(), "abcdef1234567", "2026-07-01T00:00:00Z", heroes, maps, sources)
+		t.TempDir(), "abcdef1234567", "2026-07-01T00:00:00Z", heroes, maps, sources, "")
 
 	if !gd.HasUpdate {
 		t.Fatal("HasUpdate = false; want true when a new hero appears in the fetched roster")
@@ -67,5 +67,73 @@ func TestComputeGameDataStatus_NewHero_HasUpdate(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("AddedHeroes = %v; want it to contain the new hero", gd.AddedHeroes)
+	}
+}
+
+// A season whose end date shifted (same name, different window) is a
+// content-based update — the name-list diff heroes/maps use would miss it.
+func TestComputeGameDataStatus_ChangedSeasonWindow_HasUpdate(t *testing.T) {
+	heroes := flattenRoster(parser.HeroesByRole())
+	maps := flattenRoster(parser.MapsByGameMode())
+	sources := sourceNames(parser.Sources())
+
+	// Live seasons.yaml with Season 3's end corrected (Aug 11 → Aug 12).
+	liveSeasons := `seasons:
+  - name: "Reign of Talon — Season 1"
+    chapter: "Reign of Talon"
+    number: 1
+    start: "2026-02-10T19:00:00Z"
+    end: "2026-04-14T19:00:00Z"
+  - name: "Reign of Talon — Season 2"
+    chapter: "Reign of Talon"
+    number: 2
+    start: "2026-04-14T19:00:00Z"
+    end: "2026-06-16T19:00:00Z"
+  - name: "Reign of Talon — Season 3"
+    chapter: "Reign of Talon"
+    number: 3
+    start: "2026-06-16T19:00:00Z"
+    end: "2026-08-12T19:00:00Z"
+`
+	gd := gamedata.ComputeGameDataStatusForTest(
+		t.TempDir(), "abcdef1234567", "2026-07-01T00:00:00Z", heroes, maps, sources, liveSeasons)
+
+	if !gd.HasUpdate {
+		t.Fatal("HasUpdate = false; want true when a season window changed")
+	}
+	if len(gd.ChangedSeasons) != 1 || gd.ChangedSeasons[0] != "Reign of Talon — Season 3" {
+		t.Errorf("ChangedSeasons = %v, want [Reign of Talon — Season 3]", gd.ChangedSeasons)
+	}
+	if len(gd.AddedSeasons) != 0 || len(gd.RemovedSeasons) != 0 {
+		t.Errorf("added/removed should be empty: +%v -%v", gd.AddedSeasons, gd.RemovedSeasons)
+	}
+}
+
+// Byte-identical live seasons produce no season diff.
+func TestComputeGameDataStatus_IdenticalSeasons_NoSeasonDiff(t *testing.T) {
+	heroes := flattenRoster(parser.HeroesByRole())
+	maps := flattenRoster(parser.MapsByGameMode())
+	sources := sourceNames(parser.Sources())
+	identical := `seasons:
+  - name: "Reign of Talon — Season 1"
+    chapter: "Reign of Talon"
+    number: 1
+    start: "2026-02-10T19:00:00Z"
+    end: "2026-04-14T19:00:00Z"
+  - name: "Reign of Talon — Season 2"
+    chapter: "Reign of Talon"
+    number: 2
+    start: "2026-04-14T19:00:00Z"
+    end: "2026-06-16T19:00:00Z"
+  - name: "Reign of Talon — Season 3"
+    chapter: "Reign of Talon"
+    number: 3
+    start: "2026-06-16T19:00:00Z"
+    end: "2026-08-11T19:00:00Z"
+`
+	gd := gamedata.ComputeGameDataStatusForTest(
+		t.TempDir(), "abcdef1234567", "2026-07-01T00:00:00Z", heroes, maps, sources, identical)
+	if len(gd.AddedSeasons)+len(gd.RemovedSeasons)+len(gd.ChangedSeasons) != 0 {
+		t.Errorf("identical seasons should not diff: +%v -%v ~%v", gd.AddedSeasons, gd.RemovedSeasons, gd.ChangedSeasons)
 	}
 }

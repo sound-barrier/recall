@@ -2125,6 +2125,10 @@ export interface components {
             removed_maps?: string[];
             added_sources?: string[];
             removed_sources?: string[];
+            added_seasons?: string[];
+            removed_seasons?: string[];
+            /** @description Season names whose window (start/end) changed. */
+            changed_seasons?: string[];
         };
         UpdateInfo: {
             /**
@@ -2261,6 +2265,10 @@ export interface components {
             removed_maps?: string[];
             added_sources?: string[];
             removed_sources?: string[];
+            added_seasons?: string[];
+            removed_seasons?: string[];
+            /** @description Season names whose window (start/end) changed. */
+            changed_seasons?: string[];
         };
         DataLocation: {
             /**
