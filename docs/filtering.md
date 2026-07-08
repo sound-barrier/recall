@@ -83,6 +83,18 @@ Date filtering applies only to records that have a parseable
 date) pass through every date filter and appear in the leaves
 list under the **No date** group when grouping is active.
 
+Above the preset chips, the **Season** dropdown narrows to a
+single competitive season, grouped by chapter. A match belongs to
+the season it **started** in — the app subtracts the game length
+from the finish time — so a game that began just before a season
+boundary but ran a few minutes into the new season still counts
+toward the old one. Season boundaries are fixed UTC instants shown
+in your local time; the season filter combines with the date range
+(pick a season *and* a narrower window inside it). Seasons ship in
+`seasons.yaml` and update through the same **Check for updates**
+flow as the hero and map rosters — a corrected season date shows up
+there as "1 season updated".
+
 ### Map + Game Mode, Hero + Role
 
 **Map** and **Hero** are typeahead comboboxes — 31 maps and 51
