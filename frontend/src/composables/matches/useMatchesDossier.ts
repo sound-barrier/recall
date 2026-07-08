@@ -359,6 +359,25 @@ export function useMatchesDossier(
     return best
   })
 
+  // Mirror of longestWinStreak for the largest contiguous `defeat` run —
+  // victory/draw reset it, non-decisive records don't break it.
+  const longestLosingStreak = computed<number>(() => {
+    const sorted = tallyRecords.value
+      .slice()
+      .sort((a, b) => (a.parsed_at ?? '').localeCompare(b.parsed_at ?? ''))
+    let best = 0
+    let current = 0
+    for (const r of sorted) {
+      if (r.data?.result === 'defeat') {
+        current++
+        if (current > best) best = current
+      } else if (r.data?.result === 'victory' || r.data?.result === 'draw') {
+        current = 0
+      }
+    }
+    return best
+  })
+
   // Hero-pool size — distinct hero count across every match's
   // heroes_played[] union. Uses the full narrow, not tallyRecords,
   // because pool diversity is a workflow metric (the user wants to
@@ -398,6 +417,7 @@ export function useMatchesDossier(
     wldSinceLastReview,
     currentStreak,
     longestWinStreak,
+    longestLosingStreak,
     heroPoolSize,
     topRoles,
     playModeBreakdown,

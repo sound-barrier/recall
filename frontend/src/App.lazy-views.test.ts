@@ -28,6 +28,7 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'MatchesView',            path: '@/components/matches/MatchesView.vue' },
     { name: 'SettingsView',           path: '@/components/settings/SettingsView.vue' },
     { name: 'UnknownMapsView',        path: '@/components/unknown/UnknownMapsView.vue' },
+    { name: 'SeasonCompareView',      path: '@/components/compare/SeasonCompareView.vue' },
     { name: 'MatchDetailPanel',       path: '@/components/matches/detail/MatchDetailPanel.vue' },
     { name: 'MatchScreenshotLightbox', path: '@/components/matches/detail/MatchScreenshotLightbox.vue' },
     { name: 'KeyboardShortcutsModal', path: '@/components/shared/KeyboardShortcutsModal.vue' },

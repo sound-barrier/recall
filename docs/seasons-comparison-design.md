@@ -1,58 +1,72 @@
-# Season comparison — scoped design (not built)
+# Season comparison (Compare tab)
 
-A follow-up to the competitive-seasons filter. This documents *how* a
-"Season A vs Season B" performance comparison would be built so the work can
-be picked up later; nothing here is implemented yet.
+The **Compare** tab (05) puts two competitive seasons side by side so "am I
+doing better this season than last?" is answerable at a glance. It is a
+follow-up to the competitive-seasons filter.
 
-## Goal
+## What it shows
 
-Let the user pick two seasons and see their performance side by side —
-win/loss, win-rate, average KDA, top heroes/roles, time played — so "am I
-doing better this season than last?" is answerable at a glance.
+Pick a **Baseline (A)** and a **Compared (B)** season from the two chapter-grouped
+selectors. Metrics are grouped into labelled sections, each row an **A / B / Δ**
+triple:
 
-## The seam already exists
+- **Overview** — record (W–L–D), total games, competitive vs quick-play games,
+  role-queue vs open-queue games, and win rate. Win rate carries its Wilson 95%
+  margin and decisive-match count (`67% ±37 · n=3`); a season with fewer than
+  five decisive matches is tagged `n<5` so a rate that swings on a single result
+  reads as noisy.
+- **Combat** — eliminations / deaths / assists per 10 minutes.
+- **Consistency** — time played, longest win streak, longest losing streak.
+- **Roles** — win rate per role (Tank / DPS / Support, as `58% · 12g`), hero pool
+  per role, and the highest-win-rate hero per role (min 5 decisive games).
+- **Maps** — most-played map, plus win rate + games per game mode (Control,
+  Escort, Hybrid, Push, Flashpoint, Clash) played in either season.
+- **Heroes** — most-played hero and the lowest-win-rate hero (min 5 decisive
+  games, so a one-off bad game can't take the title).
 
-The dossier aggregation (`useMatchesDossier`, `frontend/src/composables/matches/`)
-is a pure `Ref<MatchRecord[]> → ComputedRef` transform, and the matches store
-already instantiates it **four times** over four differently-filtered record
-refs (`stores/matches.ts` — `dossier` over `narrowedRecords`, `fullDossier`
-over `records`, plus the geography/hero-mode variants). Each is lazy: only the
-bedrock refs / query helpers a consumer actually reads recompute.
+The **Δ (B vs A)** column frames the change as season B relative to season A: a
+green ▲ when B improved, a red ▼ when it regressed, and a muted signed value for
+metrics with no "better" direction (games, time, hero pool). ▲ always means "B
+is better", so a *lower* death rate reads as a green ▲. The winning column's cell
+is tinted.
 
-A comparison view is **two more** instances over two season-filtered record
-refs — no new store state, no new aggregation code:
+## Scope toggle — full seasons vs the current filter
 
-```ts
-const seasons = useOWData().seasons
-const seasonA = computed(() => records.value.filter(r => seasonForMatch(r, seasons.value)?.name === pickA.value))
-const seasonB = computed(() => records.value.filter(r => seasonForMatch(r, seasons.value)?.name === pickB.value))
-const dossierA = useMatchesDossier(seasonA, leaverHandling, heroRole, weekStart)
-const dossierB = useMatchesDossier(seasonB, leaverHandling, heroRole, weekStart)
-```
+A **Full seasons ⇄ Current filter** toggle chooses each column's source:
 
-`seasonForMatch` (`frontend/src/match/match-season-helpers.ts`) already does the
-start-time UTC placement. `weekStart`/`leaverHandling`/`heroRole` thread in the
-same way the store's existing dossiers get them.
+- **Full seasons** aggregates the entire season A / entire season B.
+- **Current filter** applies whatever is picked in the Matches narrow panel —
+  minus its own season clause — inside each season, so you can compare, say,
+  only your Juno-on-King's-Row games across S1 and S2.
 
-## What to render
+The current-filter source reuses the narrow's `narrowedExceptSeason` ref (the
+same skip-variant machinery behind the Geography and Hero×Mode bands).
 
-Read the **bedrock refs** off each dossier (`wld`, `winrate`, `averageKDA`,
-`topRoles`, `totalTimePlayed`, `currentStreak`, `heroPoolSize`) and the
-parameterized **query helpers** (`topByCount`, `bestWinrateHero`, …) for a
-two-column table, each row a metric with A / B / delta. A small "which season"
-pair of selectors (reusing the `seasonsByChapter` grouping) drives `pickA`/`pickB`.
+## How it reuses the dossier
 
-## Open questions for whoever builds it
+Each column is a full `useMatchesDossier` instance over a season-filtered record
+ref — the season is placed by **start time** (`seasonForMatch`), the same rule
+the filter and heatmap highlight use. The comparison reads the dossier's bedrock
+refs (`wld`, `winrate`, `averageKDA`, `totalTimePlayed`, `longestWinStreak`,
+`longestLosingStreak`, `topRoles`) for the scalar metrics; the compare-specific
+breakdowns the dossier doesn't expose — per-role hero pools, best/worst hero,
+per-game-mode win rate, most-played map, and the playlist / queue-type counts —
+are pure functions in `match-compare-aggregate.ts` over the season's record
+slice. `match-compare-helpers.ts` then turns the two snapshots into the labelled
+sections (delta, direction, Wilson caveat). No backend or schema changes.
 
-- **Where it lives** — a new sub-view/tab, a mode of the Trends section, or a
-  modal. (Trends already owns the "compare over time" mental model.)
-- **Small-sample honesty** — reuse the Wilson-interval treatment the dossier
-  already applies to thin win-rates so a 2-game season doesn't read as 100%.
-- **Untimed / cross-season matches** — matches with no derivable start
-  (`seasonForMatch` → null) belong to neither column; surface the excluded
-  count so the comparison isn't silently lossy.
+## Untimed matches
 
-## Cost
+A match with no derivable start (`seasonForMatch → null`, e.g. an unmatched
+screenshot with no SUMMARY date) belongs to neither column. Rather than silently
+dropping it, the view surfaces the excluded count below the table so the
+comparison isn't lossy.
 
-Small — the aggregation is reused wholesale; the work is one view component,
-two season selectors, and a metric table. No backend or schema changes.
+## Possible future extensions
+
+- **N-way comparison** — the same aggregation generalises to more than two
+  columns; the current UI is fixed at two.
+- **Sparkline-per-metric** — a small trend beside each row for the seasons in
+  between.
+- **Chapter roll-up** — compare a whole chapter (its seasons summed) against
+  another.
