@@ -189,21 +189,20 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
       aria-hidden="true"
       data-testid="leaves-sentinel"
     />
-    <!-- Honest count for screen readers AND sighted users. -->
-    <li
-      class="leaves-foot"
-      role="status"
-      aria-live="polite"
-      data-testid="leaves-foot"
-    >
-      <span v-if="hasMore && !flatVirtualization">
-        Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
-      </span>
-      <span v-else class="leaves-foot-end">
-        <span class="leaves-foot-rule" aria-hidden="true" />
-        End · {{ sortedRecords.length }}
-        {{ sortedRecords.length === 1 ? 'match' : 'matches' }}
-        <span class="leaves-foot-rule" aria-hidden="true" />
+    <!-- Honest count for screen readers AND sighted users. The status role
+         lives on an inner span, not the <li> — overriding the li's listitem
+         role would give the list a non-listitem child (invalid ARIA). -->
+    <li class="leaves-foot" data-testid="leaves-foot">
+      <span role="status" aria-live="polite">
+        <span v-if="hasMore && !flatVirtualization">
+          Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
+        </span>
+        <span v-else class="leaves-foot-end">
+          <span class="leaves-foot-rule" aria-hidden="true" />
+          End · {{ sortedRecords.length }}
+          {{ sortedRecords.length === 1 ? 'match' : 'matches' }}
+          <span class="leaves-foot-rule" aria-hidden="true" />
+        </span>
       </span>
     </li>
   </ul>
@@ -319,7 +318,10 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   height: 1px;
   background: linear-gradient(90deg, var(--border) 0%, var(--border) 70%, transparent);
 }
-.sd-label { color: var(--accent); }
+
+/* --accent-text, not raw --accent: the OW orange is 1.92:1 on Day surfaces at
+   this size — the theme-aware accent-for-text token clears AA everywhere. */
+.sd-label { color: var(--accent-text); }
 
 .sd-count {
   font-family: var(--mono);

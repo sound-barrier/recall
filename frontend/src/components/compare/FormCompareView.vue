@@ -217,6 +217,11 @@ const midY = SPARK_PAD + (SPARK_H - 2 * SPARK_PAD) / 2
 // ─── Drill-through ────────────────────────────────────────────────────────
 const ROLE_ROW_KEYS: Record<string, string> = { roleTank: 'tank', roleDps: 'dps', roleSupport: 'support' }
 
+// Rows whose dimension the narrow can't express at all: there is no per-match
+// hero-count or hero-pool clause, so a window-only drill would land on a list
+// whose count contradicts the cell. Not drillable rather than approximately so.
+const NON_DRILLABLE_ROWS = new Set(['heroPool', 'singleHero', 'multiHero', 'purePool', 'outPool'])
+
 // In by-matches mode the drill expresses a COUNT window as its first/last
 // match dates — only exact when no extra match shares those boundary days.
 // Verify by re-counting: a cell is drillable only when the derived window +
@@ -233,6 +238,7 @@ function windowIsExact(col: 'a' | 'b'): boolean {
 }
 
 function drillable(row: ComparisonRow, col: 'a' | 'b'): boolean {
+  if (NON_DRILLABLE_ROWS.has(row.key)) return false
   const window = col === 'a' ? pair.value.aWindow : pair.value.bWindow
   const cond = col === 'a' ? condA.value : condB.value
   const display = col === 'a' ? row.aDisplay : row.bDisplay

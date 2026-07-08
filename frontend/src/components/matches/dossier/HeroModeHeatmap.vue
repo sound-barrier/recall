@@ -169,6 +169,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
         <button
           v-for="cell in row.cells"
           :key="cell.gameMode"
+          role="gridcell"
           type="button"
           class="heatmap-cell"
           :class="[heatmapCellClass(cell), {

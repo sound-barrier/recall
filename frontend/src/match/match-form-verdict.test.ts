@@ -16,6 +16,9 @@ function metrics(over: Partial<SeasonMetrics> = {}): SeasonMetrics {
     bestHeroTank: null, bestHeroDps: null, bestHeroSupport: null,
     topMap: 'Ilios', modes: [],
     topHero: 'Reinhardt', worstHero: null,
+    heroPool: 'Reinhardt',
+    singleHeroGames: { winrate: 53, games: 20 }, multiHeroGames: { winrate: 0, games: 0 },
+    pureHeroPoolGames: { winrate: 53, games: 20 }, outOfPoolGames: { winrate: 0, games: 0 },
     ...over,
   }
 }

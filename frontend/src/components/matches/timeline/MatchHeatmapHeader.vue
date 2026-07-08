@@ -291,10 +291,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <!-- role=group, not grid: the calendar is a set of day-filter BUTTONS, not
+       an arrow-navigable grid (the grid pattern requires row semantics + arrow
+       keys we don't implement — axe rightly rejected gridcells without rows). -->
   <div
     class="match-heatmap"
     :class="{ 'is-dragging': isDragging }"
-    role="grid"
+    role="group"
     :aria-label="`Match calendar — ${model.start} to ${model.end}`"
   >
     <svg
@@ -359,7 +362,7 @@ onBeforeUnmount(() => {
           rx="2"
           :fill="cellFill(cell)"
           :aria-label="cellLabel(cell)"
-          role="gridcell"
+          role="button"
           :tabindex="cell.empty ? -1 : 0"
           @mousedown="onCellDown(cell, $event)"
           @keydown.enter.prevent="$event.shiftKey ? extendRangeTo(cell.date) : commitClick(cell.date)"

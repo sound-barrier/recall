@@ -620,15 +620,20 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 }
 
 .leaf-result-chip.result-victory {
-  background: color-mix(in srgb, var(--win) 22%, var(--surface));
+  /* Pure --win/--loss text at this 10.9px bold size can't clear 4.5:1 on the
+     Day tint (22% read 3.6:1; even 8% only 4.39). Mixing 20% of the theme's
+     --text into the glyph darkens it in Day and lightens it in dark themes —
+     AA in both directions with the hue intact. */
+  background: color-mix(in srgb, var(--win) 12%, var(--surface));
   border-color: var(--win-line, var(--win));
-  color: var(--win);
+  color: color-mix(in srgb, var(--win) 80%, var(--text));
 }
 
 .leaf-result-chip.result-defeat {
-  background: color-mix(in srgb, var(--loss) 22%, var(--surface));
+  /* Same 80/20 text mix as the victory chip — see the note there. */
+  background: color-mix(in srgb, var(--loss) 12%, var(--surface));
   border-color: var(--loss-line, var(--loss));
-  color: var(--loss);
+  color: color-mix(in srgb, var(--loss) 80%, var(--text));
 }
 
 .leaf-result-chip.result-draw {

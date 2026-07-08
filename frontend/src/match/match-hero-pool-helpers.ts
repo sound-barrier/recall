@@ -1,0 +1,244 @@
+import type { MatchRecord } from '@/api-client'
+import { LOW_SAMPLE_N, wilsonLowerBound } from '@/match/match-sample-helpers'
+
+// Hero-swap discipline: how many heroes a match was MEANINGFULLY played on,
+// the user's derived hero pool, and what reaching outside that pool costs.
+// A hero under the percent-played threshold (default 5%) was probably touched
+// to contest the point — it is not a swap and never counts. Pure over a record
+// slice so the dossier widgets and the Compare tab share one set of semantics.
+
+export const DEFAULT_HERO_MEANINGFUL_PCT = 5
+
+// One bucket of the "heroes per match" breakdown. `total` counts every match
+// in the bucket; `winrate` follows the house convention (decisive-only).
+export interface HeroCountBucket {
+  key: string // '1 hero' | '2 heroes' | '3 heroes' | '4+ heroes'
+  heroes: number // 1..4 (4 = "4 or more")
+  total: number
+  wins: number
+  decisive: number // wins + losses (draws excluded)
+  winrate: number
+  lowSample: boolean
+}
+
+// A pool member (or an out-of-pool hero) with its record over the slice.
+export interface PoolHeroStat {
+  key: string // raw hero key, display-resolved by the view
+  total: number // matches meaningfully played (all results)
+  wins: number
+  losses: number // decisive losses (draws excluded)
+  winrate: number // decisive-only integer percent
+  lowSample: boolean
+}
+
+// One side of the in-pool / out-of-pool split.
+interface PoolSplitSide {
+  games: number
+  wins: number
+  decisive: number // wins + losses (draws excluded) — the winrate's real n
+  winrate: number // decisive-only; 0 when no decisive game
+}
+
+export interface PoolSplit {
+  pure: PoolSplitSide
+  out: PoolSplitSide
+}
+
+// The full pool analysis a consumer renders: the derived pool, the in/out
+// split against it, and each out-of-pool hero's record.
+export interface HeroPoolAnalysis {
+  pool: PoolHeroStat[]
+  split: PoolSplit
+  outHeroes: PoolHeroStat[]
+}
+
+// analyzeHeroPool bundles the derive → split → out-heroes walk against one
+// slice — the single entry point the dossier query and the Compare snapshot
+// both call, so the two surfaces can never disagree.
+export function analyzeHeroPool(
+  records: readonly Pick<MatchRecord, 'data'>[],
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): HeroPoolAnalysis {
+  const pool = deriveHeroPool(records, thresholdPct)
+  const names = pool.map((p) => p.key)
+  return {
+    pool,
+    split: poolSplit(records, names, thresholdPct),
+    outHeroes: outOfPoolHeroes(records, names, thresholdPct),
+  }
+}
+
+// meaningfulHeroes returns the deduped heroes a match was meaningfully played
+// on: heroes_played entries at/above the threshold. A MISSING percent_played is
+// unknown, not zero — the parser omits it for heroes known only from the
+// PERSONAL roster (which lists every hero played but shows no per-hero %), and
+// its contract explicitly warns against filtering them as not-played. A record
+// whose PRESENT percentages all fall below the threshold falls back to the
+// primary data.hero — a match was necessarily played on SOMETHING — and a
+// record with no hero data at all yields [] (excluded from every tally here).
+export function meaningfulHeroes(
+  rec: Pick<MatchRecord, 'data'>,
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const hp of rec.data?.heroes_played ?? []) {
+    if (!hp.hero || seen.has(hp.hero)) continue
+    if (hp.percent_played !== undefined && hp.percent_played < thresholdPct) continue
+    seen.add(hp.hero)
+    out.push(hp.hero)
+  }
+  if (out.length > 0) return out
+  return rec.data?.hero ? [rec.data.hero] : []
+}
+
+function isWin(r: Pick<MatchRecord, 'data'>): boolean {
+  return r.data?.result === 'victory'
+}
+
+function isDecisive(r: Pick<MatchRecord, 'data'>): boolean {
+  return r.data?.result === 'victory' || r.data?.result === 'defeat'
+}
+
+function decisiveWinrate(wins: number, decisive: number): number {
+  return decisive === 0 ? 0 : Math.round((wins / decisive) * 100)
+}
+
+// heroCountBuckets groups matches by meaningful-hero count (1 / 2 / 3 / 4+).
+// Empty buckets are omitted; matches with no known hero don't appear.
+export function heroCountBuckets(
+  records: readonly Pick<MatchRecord, 'data'>[],
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): HeroCountBucket[] {
+  const tallies = new Map<number, { total: number; wins: number; decisive: number }>()
+  for (const r of records) {
+    const count = meaningfulHeroes(r, thresholdPct).length
+    if (count === 0) continue
+    const bucket = Math.min(count, 4)
+    const t = tallies.get(bucket) ?? { total: 0, wins: 0, decisive: 0 }
+    t.total++
+    if (isDecisive(r)) {
+      t.decisive++
+      if (isWin(r)) t.wins++
+    }
+    tallies.set(bucket, t)
+  }
+  return [1, 2, 3, 4]
+    .filter((n) => tallies.has(n))
+    .map((n) => {
+      const t = tallies.get(n)!
+      return {
+        key: n === 1 ? '1 hero' : n === 4 ? '4+ heroes' : `${n} heroes`,
+        heroes: n,
+        total: t.total,
+        wins: t.wins,
+        decisive: t.decisive,
+        winrate: decisiveWinrate(t.wins, t.decisive),
+        lowSample: t.decisive < LOW_SAMPLE_N,
+      }
+    })
+}
+
+// Per-hero record over the slice: a match credits each hero it was
+// meaningfully played on.
+function heroTally(
+  records: readonly Pick<MatchRecord, 'data'>[],
+  thresholdPct: number,
+): Map<string, { total: number; wins: number; decisive: number }> {
+  const map = new Map<string, { total: number; wins: number; decisive: number }>()
+  for (const r of records) {
+    for (const hero of meaningfulHeroes(r, thresholdPct)) {
+      const t = map.get(hero) ?? { total: 0, wins: 0, decisive: 0 }
+      t.total++
+      if (isDecisive(r)) {
+        t.decisive++
+        if (isWin(r)) t.wins++
+      }
+      map.set(hero, t)
+    }
+  }
+  return map
+}
+
+function toStat(key: string, t: { total: number; wins: number; decisive: number }): PoolHeroStat {
+  return {
+    key,
+    total: t.total,
+    wins: t.wins,
+    losses: t.decisive - t.wins,
+    winrate: decisiveWinrate(t.wins, t.decisive),
+    lowSample: t.decisive < LOW_SAMPLE_N,
+  }
+}
+
+// A hero joins the pool at 10% of the slice's decisive games (floored at
+// LOW_SAMPLE_N). The floor rules small histories — the caveat threshold and
+// the pool floor coincide there — while the share keeps a large corpus's pool
+// to actual mains: at 500 decisive games, crossing 5 games on a dozen heroes
+// must not empty "out of pool" of meaning. The share is relative because pool
+// membership is about identity; the n<5 CAVEAT stays absolute because a
+// rate's noise depends only on its sample count, never on its share.
+const POOL_SHARE_PCT = 10
+
+// deriveHeroPool: the heroes with enough meaningful DECISIVE games in the
+// slice — max(LOW_SAMPLE_N, 10% of the slice's decisive games) — to count as
+// the player's identity, not an experiment. Sorted most-played first.
+export function deriveHeroPool(
+  records: readonly Pick<MatchRecord, 'data'>[],
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): PoolHeroStat[] {
+  const decisiveGames = records.filter((r) => isDecisive(r) && meaningfulHeroes(r, thresholdPct).length > 0).length
+  const floor = Math.max(LOW_SAMPLE_N, Math.ceil((POOL_SHARE_PCT / 100) * decisiveGames))
+  return [...heroTally(records, thresholdPct).entries()]
+    .filter(([, t]) => t.decisive >= floor)
+    .map(([key, t]) => toStat(key, t))
+    .sort((a, b) => b.total - a.total || a.key.localeCompare(b.key))
+}
+
+// poolSplit classifies each match: PURE when every meaningful hero is in the
+// pool, OUT when any meaningful hero is outside it. Matches with no known
+// hero belong to neither side.
+export function poolSplit(
+  records: readonly Pick<MatchRecord, 'data'>[],
+  pool: readonly string[],
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): PoolSplit {
+  const inPool = new Set(pool)
+  const sides = {
+    pure: { games: 0, wins: 0, decisive: 0 },
+    out: { games: 0, wins: 0, decisive: 0 },
+  }
+  for (const r of records) {
+    const heroes = meaningfulHeroes(r, thresholdPct)
+    if (heroes.length === 0) continue
+    const side = heroes.every((h) => inPool.has(h)) ? sides.pure : sides.out
+    side.games++
+    if (isDecisive(r)) {
+      side.decisive++
+      if (isWin(r)) side.wins++
+    }
+  }
+  const finish = (s: { games: number; wins: number; decisive: number }): PoolSplitSide => ({
+    games: s.games,
+    wins: s.wins,
+    decisive: s.decisive,
+    winrate: decisiveWinrate(s.wins, s.decisive),
+  })
+  return { pure: finish(sides.pure), out: finish(sides.out) }
+}
+
+// outOfPoolHeroes: each hero OUTSIDE the pool with its record when
+// meaningfully played, sorted worst-first (Wilson floor ascending, so a
+// consistently-losing swap ranks above a single bad game).
+export function outOfPoolHeroes(
+  records: readonly Pick<MatchRecord, 'data'>[],
+  pool: readonly string[],
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): PoolHeroStat[] {
+  const inPool = new Set(pool)
+  return [...heroTally(records, thresholdPct).entries()]
+    .filter(([key]) => !inPool.has(key))
+    .map(([key, t]) => ({ stat: toStat(key, t), rank: wilsonLowerBound(t.wins, t.decisive) }))
+    .sort((a, b) => a.rank - b.rank || b.stat.total - a.stat.total)
+    .map((x) => x.stat)
+}

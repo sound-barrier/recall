@@ -9,10 +9,13 @@ import type { HeroStat, ModeStat } from '@/match/match-compare-aggregate'
 // relative to A" — season B (typically the newer pick) improving on season A
 // reads as ▲, so the table answers "am I doing better this season than last?".
 
-// A win-rate + games pair (a role or a game mode). games 0 → not played.
-interface RateStat {
+// A win-rate + games pair (a role, a game mode, a hero-count bucket…).
+// games 0 → not played. `decisive` (when the producer can supply it) lets the
+// row carry the n<5 caveat instead of a confidently-coloured thin delta.
+export interface RateStat {
   winrate: number
   games: number
+  decisive?: number
 }
 
 export interface SeasonMetrics {
@@ -51,6 +54,12 @@ export interface SeasonMetrics {
   // Heroes
   topHero: string | null // already display-resolved; null when none
   worstHero: HeroStat | null
+  // Hero-swap discipline (fixed 5% meaningful-play threshold on Compare).
+  heroPool: string | null // display-resolved, comma-joined; null when no pool derives
+  singleHeroGames: RateStat
+  multiHeroGames: RateStat
+  pureHeroPoolGames: RateStat
+  outOfPoolGames: RateStat
   // How many games actually carried a performance block — the combat rates'
   // real denominator (OCR coverage is partial). The verdict gates its combat
   // movers on this so one game's rates can't headline the word.
@@ -168,12 +177,17 @@ function rateRow(key: string, label: string, a: RateStat, b: RateStat): Comparis
   const bPlayed = b.games > 0
   const aDisplay = aPlayed ? `${a.winrate}% · ${a.games}g` : '—'
   const bDisplay = bPlayed ? `${b.winrate}% · ${b.games}g` : '—'
+  // Caveat a thin rate when the producer supplied a decisive count — a
+  // one-decisive-game column must not wear a confidently-coloured delta.
+  const lowSample =
+    (a.decisive !== undefined && aPlayed && a.decisive < LOW_SAMPLE_N) ||
+    (b.decisive !== undefined && bPlayed && b.decisive < LOW_SAMPLE_N)
   if (!aPlayed || !bPlayed) {
-    return { key, label, aDisplay, bDisplay, delta: null, outcome: null, lowSample: false }
+    return { key, label, aDisplay, bDisplay, delta: null, outcome: null, lowSample }
   }
   const outcome = judged('higher-better', a.winrate, b.winrate)
   const magnitude = `${Math.abs(b.winrate - a.winrate)} pts`
-  return { key, label, aDisplay, bDisplay, delta: deltaText(outcome, magnitude, magnitude), outcome, lowSample: false }
+  return { key, label, aDisplay, bDisplay, delta: deltaText(outcome, magnitude, magnitude), outcome, lowSample }
 }
 
 // heroStatRow renders "Genji · 62% · 8g" per column — no verdict, since the two
@@ -350,6 +364,11 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
       rows: [
         displayRow('topHero', 'Most-played hero', a.topHero, b.topHero),
         heroStatRow('worstHero', 'Lowest win-rate hero (≥5 games)', a.worstHero, b.worstHero),
+        displayRow('heroPool', 'Hero pool', a.heroPool, b.heroPool),
+        rateRow('singleHero', 'Single-hero games', a.singleHeroGames, b.singleHeroGames),
+        rateRow('multiHero', 'Multi-hero games', a.multiHeroGames, b.multiHeroGames),
+        rateRow('purePool', 'In-pool games', a.pureHeroPoolGames, b.pureHeroPoolGames),
+        rateRow('outPool', 'Out-of-pool games', a.outOfPoolGames, b.outOfPoolGames),
       ],
     },
   ]

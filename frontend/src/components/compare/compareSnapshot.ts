@@ -5,7 +5,11 @@ import {
   bestHeroByRole, heroPoolsByRole, modeBreakdown, playlistCounts, queueCounts,
   roleRates, topMap, worstHero,
 } from '@/match/match-compare-aggregate'
-import type { SeasonMetrics } from '@/match/match-compare-helpers'
+import {
+  analyzeHeroPool, heroCountBuckets, DEFAULT_HERO_MEANINGFUL_PCT,
+  type HeroCountBucket,
+} from '@/match/match-hero-pool-helpers'
+import type { RateStat, SeasonMetrics } from '@/match/match-compare-helpers'
 
 // Shared SeasonMetrics assembly for both Compare modes: the scalar metrics come
 // off a dossier instance, the compare-specific breakdowns off the record slice.
@@ -35,6 +39,21 @@ export function topHeroDisplay(entries: BreakdownEntry[], resolvers: Pick<Snapsh
   return top ? resolvers.heroDisplayName(top.key) : null
 }
 
+// Fold hero-count buckets into one RateStat: total games across the picked
+// buckets, winrate over their combined decisive games.
+function foldBuckets(buckets: HeroCountBucket[], pick: (b: HeroCountBucket) => boolean): RateStat {
+  let games = 0
+  let wins = 0
+  let decisive = 0
+  for (const b of buckets) {
+    if (!pick(b)) continue
+    games += b.total
+    wins += b.wins
+    decisive += b.decisive
+  }
+  return { games, decisive, winrate: decisive === 0 ? 0 : Math.round((wins / decisive) * 100) }
+}
+
 export function buildSeasonMetrics(
   d: MatchesDossier,
   records: MatchRecord[],
@@ -53,6 +72,10 @@ export function buildSeasonMetrics(
   const best = bestHeroByRole(records, ow.heroRole, ow.heroDisplayName, HERO_MIN_GAMES)
   const playlists = playlistCounts(records)
   const queues = queueCounts(records)
+  // Hero-swap discipline at the fixed default threshold — Compare has no
+  // per-widget gear, so it always reads the 5% "touched the point" floor.
+  const buckets = heroCountBuckets(records, DEFAULT_HERO_MEANINGFUL_PCT)
+  const poolAnalysis = analyzeHeroPool(records, DEFAULT_HERO_MEANINGFUL_PCT)
   return {
     games: wld.total, wins: wld.w, losses: wld.l, draws: wld.d,
     competitiveGames: playlists.competitive, quickPlayGames: playlists.quickplay,
@@ -72,6 +95,21 @@ export function buildSeasonMetrics(
     modes: modeBreakdown(records, ow.mapGameMode),
     topHero,
     worstHero: worstHero(records, ow.heroDisplayName, HERO_MIN_GAMES),
+    heroPool: poolAnalysis.pool.length > 0
+      ? poolAnalysis.pool.map((p) => ow.heroDisplayName(p.key)).join(', ')
+      : null,
+    singleHeroGames: foldBuckets(buckets, (b) => b.heroes === 1),
+    multiHeroGames: foldBuckets(buckets, (b) => b.heroes >= 2),
+    pureHeroPoolGames: {
+      games: poolAnalysis.split.pure.games,
+      decisive: poolAnalysis.split.pure.decisive,
+      winrate: poolAnalysis.split.pure.winrate,
+    },
+    outOfPoolGames: {
+      games: poolAnalysis.split.out.games,
+      decisive: poolAnalysis.split.out.decisive,
+      winrate: poolAnalysis.split.out.winrate,
+    },
     ...(extras ?? {}),
   }
 }
