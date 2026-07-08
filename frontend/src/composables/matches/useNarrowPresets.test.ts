@@ -41,6 +41,7 @@ function buildState(): MatchesNarrowState {
     customTo:          ref(''),
     customFromTime:    ref(''),
     customToTime:      ref(''),
+    pickedSeason:      ref(''),
     leaverHandling:    ref<LeaverHandling>('include'),
     minPlayMinutes:    ref(0),
     minPlayPercent:    ref(0),
@@ -195,6 +196,17 @@ describe('time-of-day bounds in presets', () => {
     applyPreset('season-window')
     expect(state.customFromTime.value).toBe('11:00')
     expect(state.customToTime.value).toBe('10:59')
+  })
+
+  it('round-trips the picked season by name', () => {
+    if (typeof globalThis.localStorage === 'undefined') return
+    const state = buildState()
+    const { savePreset, applyPreset } = useNarrowPresets(state)
+    state.pickedSeason.value = 'Reign of Talon — Season 2'
+    savePreset('s2')
+    state.pickedSeason.value = ''
+    applyPreset('s2')
+    expect(state.pickedSeason.value).toBe('Reign of Talon — Season 2')
   })
 
   it('legacy presets without time keys apply as blank times', () => {

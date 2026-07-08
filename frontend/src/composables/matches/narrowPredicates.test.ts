@@ -15,6 +15,7 @@ import {
   matchesQueueType,
   matchesPlayMode,
   matchesSinceAnchor,
+  matchesPickedSeason,
   matchesLeaverHandling,
 } from '@/composables/matches/narrowPredicates'
 
@@ -224,5 +225,26 @@ describe('matchesLeaverHandling', () => {
     expect(matchesLeaverHandling(leaver, 'exclude-tally')).toBe(true)
     expect(matchesLeaverHandling(leaver, 'hide')).toBe(false)
     expect(matchesLeaverHandling(rec(), 'hide')).toBe(true)
+  })
+})
+
+describe('matchesPickedSeason', () => {
+  const win = (name: string) =>
+    name === 'S2' ? { startMs: Date.parse('2026-04-14T19:00:00Z'), endMs: Date.parse('2026-06-16T19:00:00Z') } : null
+
+  it('is inert for an empty pick, an unknown season, and an untimed match', () => {
+    const r = rec({ data: { played_at_utc: '2026-05-01T12:00:00Z' } as MatchRecord['data'] })
+    expect(matchesPickedSeason(r, '', win)).toBe(true)
+    expect(matchesPickedSeason(r, 'nope', win)).toBe(true)
+    expect(matchesPickedSeason(rec({ match_key: 'unmatched-x', data: {} }), 'S2', win)).toBe(true)
+  })
+  it('keeps a match whose start falls in the picked window, drops one outside', () => {
+    expect(matchesPickedSeason(rec({ data: { played_at_utc: '2026-05-01T12:00:00Z' } as MatchRecord['data'] }), 'S2', win)).toBe(true)
+    expect(matchesPickedSeason(rec({ data: { played_at_utc: '2026-03-01T12:00:00Z' } as MatchRecord['data'] }), 'S2', win)).toBe(false)
+  })
+  it('places a boundary-straddling match by its start (prior season → dropped from the new one)', () => {
+    // Ends 19:10Z (inside S2 by end) but started 18:55Z (before the boundary).
+    const r = rec({ data: { played_at_utc: '2026-04-14T19:10:00Z', game_length: '15:00' } as MatchRecord['data'] })
+    expect(matchesPickedSeason(r, 'S2', win)).toBe(false)
   })
 })
