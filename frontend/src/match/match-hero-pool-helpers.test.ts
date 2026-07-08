@@ -75,15 +75,16 @@ describe('heroCountBuckets', () => {
 })
 
 describe('deriveHeroPool', () => {
-  it('requires LOW_SAMPLE_N meaningful decisive games, sorted most-played first', () => {
+  it('requires LOW_SAMPLE_N meaningful decisive games, role-sorted then alphabetical', () => {
     const records = [
       ...Array.from({ length: 5 }, (_, i) => rec(i < 3 ? 'victory' : 'defeat', [['brig', 100]])),
       ...Array.from({ length: 7 }, (_, i) => rec(i < 5 ? 'victory' : 'defeat', [['lucio', 100]])),
       ...Array.from({ length: 3 }, () => rec('defeat', [['ana', 100]])), // below floor
     ]
     const pool = deriveHeroPool(records, 5)
-    expect(pool.map((p) => p.key)).toEqual(['lucio', 'brig'])
-    expect(pool[0]).toMatchObject({ total: 7, wins: 5, winrate: 71 })
+    // No resolver -> every role is '' -> alphabetical.
+    expect(pool.map((p) => p.key)).toEqual(['brig', 'lucio'])
+    expect(pool[1]).toMatchObject({ total: 7, wins: 5, winrate: 71 })
   })
 
   it('draws do not count toward the decisive floor', () => {
@@ -102,7 +103,7 @@ describe('deriveHeroPool', () => {
       ...Array.from({ length: 12 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['brig', 100]])),
       ...Array.from({ length: 8 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['ana', 100]])),
     ]
-    expect(deriveHeroPool(records, 5).map((p) => p.key)).toEqual(['lucio', 'brig'])
+    expect(deriveHeroPool(records, 5).map((p) => p.key)).toEqual(['brig', 'lucio'])
   })
 
   it('keeps the absolute 5-game floor on a small history (10% would be lower)', () => {
@@ -111,7 +112,20 @@ describe('deriveHeroPool', () => {
       ...Array.from({ length: 10 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['lucio', 100]])),
       ...Array.from({ length: 5 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['brig', 100]])),
     ]
-    expect(deriveHeroPool(records, 5).map((p) => p.key)).toEqual(['lucio', 'brig'])
+    expect(deriveHeroPool(records, 5).map((p) => p.key)).toEqual(['brig', 'lucio'])
+  })
+
+  it('sorts Tank → DPS → Support when a role resolver is given', () => {
+    const heroRole = (h?: string | null) =>
+      h === 'zarya' ? 'tank' : h === 'ashe' ? 'dps' : h === 'brig' ? 'support' : ''
+    const records = [
+      ...Array.from({ length: 5 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['brig', 100]])),
+      ...Array.from({ length: 5 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['ashe', 100]])),
+      ...Array.from({ length: 5 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['zarya', 100]])),
+    ]
+    const pool = deriveHeroPool(records, 5, heroRole)
+    // Composition order despite identical game counts and alphabet.
+    expect(pool.map((p) => `${p.role}:${p.key}`)).toEqual(['tank:zarya', 'dps:ashe', 'support:brig'])
   })
 })
 

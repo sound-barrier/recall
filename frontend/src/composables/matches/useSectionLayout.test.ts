@@ -67,6 +67,7 @@ describe('reconcileSections', () => {
       { id: 'geography', visible: false },
       { id: 'campaign-log', visible: true },
       { id: 'hero-game-mode', visible: true },
+      { id: 'hero-pool', visible: true },
     ])
   })
 })
@@ -83,7 +84,7 @@ describe('useSectionLayout', () => {
 
   it('defaults all sections visible in registry order', async () => {
     const { api } = await mountHost()
-    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
     expect(api.addable.value).toEqual([])
   })
 
@@ -91,7 +92,7 @@ describe('useSectionLayout', () => {
     const { api } = await mountHost()
     api.remove('geography')
     await nextTick()
-    expect(api.visibleIds.value).toEqual(['campaign-log', 'hero-game-mode'])
+    expect(api.visibleIds.value).toEqual(['campaign-log', 'hero-game-mode', 'hero-pool'])
     expect(api.addable.value.map((s) => s.id)).toEqual(['geography'])
     expect(api.isVisible('geography')).toBe(false)
     // Persisted.
@@ -105,7 +106,7 @@ describe('useSectionLayout', () => {
     ])
     api.add('geography')
     await nextTick()
-    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
     expect(api.addable.value).toEqual([])
   })
 
@@ -113,7 +114,7 @@ describe('useSectionLayout', () => {
     const { api } = await mountHost()
     api.move(0, 1)
     await nextTick()
-    expect(api.visibleIds.value).toEqual(['geography', 'campaign-log', 'hero-game-mode'])
+    expect(api.visibleIds.value).toEqual(['geography', 'campaign-log', 'hero-game-mode', 'hero-pool'])
   })
 
   it('move() is a no-op for out-of-range or same index', async () => {
@@ -122,7 +123,7 @@ describe('useSectionLayout', () => {
     api.move(0, 9)
     api.move(-1, 1)
     await nextTick()
-    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
   })
 
   it('reset() restores the install default', async () => {
@@ -133,11 +134,11 @@ describe('useSectionLayout', () => {
     api.reset()
     await nextTick()
     expect(api.sections.value).toEqual(defaultSections())
-    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
   })
 
   it('falls back to defaults on corrupt stored JSON', async () => {
     const { api } = await mountHost('not json {{{')
-    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    expect(api.visibleIds.value).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
   })
 })

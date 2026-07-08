@@ -115,20 +115,20 @@ test.describe('dossier customize — no edit mode', () => {
   })
 
   test('section reorder via the grip persists', async ({ page }) => {
-    // Default order: Campaign Log, Geography, Hero × Game-Mode.
+    // Default order: Campaign Log, Geography, Hero × Game-Mode, Hero Pool.
     const order = () => page.locator('[data-section]').evaluateAll(
       (els) => els.map((e) => e.getAttribute('data-section')),
     )
-    expect(await order()).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    expect(await order()).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
 
     // Keyboard-move the Campaign Log down past Geography via its grip.
     await page.locator('[data-section-grip="campaign-log"]').focus()
     await page.keyboard.press('ArrowDown')
-    await expect.poll(order).toEqual(['geography', 'campaign-log', 'hero-game-mode'])
+    await expect.poll(order).toEqual(['geography', 'campaign-log', 'hero-game-mode', 'hero-pool'])
 
     await page.reload()
     await page.locator('#tab-matches').click()
-    await expect.poll(order).toEqual(['geography', 'campaign-log', 'hero-game-mode'])
+    await expect.poll(order).toEqual(['geography', 'campaign-log', 'hero-game-mode', 'hero-pool'])
   })
 
   test('the Add menu opens fully within the viewport', async ({ page }) => {
