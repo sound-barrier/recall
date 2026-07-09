@@ -19,6 +19,10 @@ func TestScrub(t *testing.T) {
 		{"strips a carriage return", "main\rERROR forged", "mainERROR forged"},
 		{"strips a CRLF pair", "a\r\nb", "ab"},
 		{"strips several line breaks", "a\nb\nc\n", "abc"},
+		{"preserves tab characters", "a\tb", "a\tb"},
+		{"preserves NUL bytes", "a\x00b", "a\x00b"},
+		{"preserves vertical tab", "a\x0bb", "a\x0bb"},
+		{"removes CR/LF while preserving other controls", "a\t\r\nb\x00\nc", "a\tb\x00c"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
