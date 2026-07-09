@@ -72,13 +72,15 @@ func (a *App) GetMatchResults() ([]match.MatchRecord, error) {
 // the current corpus sizes are small and the predictable shape (one
 // aggregator) is worth the duplication cost.
 func (a *App) GetMatchByKey(matchKey string) (match.MatchRecord, error) {
-	recs, err := a.GetMatchResults()
+	recs, err := a.aggregateAll()
 	if err != nil {
 		return match.MatchRecord{}, err
 	}
-	for _, r := range recs {
-		if r.MatchKey == matchKey {
-			return r, nil
+	for i := range recs {
+		if recs[i].MatchKey == matchKey {
+			aggregate.InferSoleHeroPercent(&recs[i].Data)
+			aggregate.InferResultFromRank(&recs[i].Data)
+			return recs[i], nil
 		}
 	}
 	return match.MatchRecord{}, match.ErrMatchNotFound
