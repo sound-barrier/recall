@@ -13,7 +13,12 @@ import {
   requiredWinRateForGames, DEFAULT_DECAY_SLOPE, DEFAULT_METER_MOVE_PCT,
   type DecayProjection, type NaiveProjection, type ProjectionCurves, type ProjectionInput,
 } from '@/match/elo-model'
-import { binomialTwoSidedP, lossStreakChance } from '@/match/elo-stats'
+import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo-stats'
+import {
+  credibleInterval, gamesToKnow, posteriorClimbQuantiles, probTrueWinRateAbove,
+} from '@/match/elo-bayes'
+import { decisiveResults } from '@/match/elo-streaks'
+import { statSeparators } from '@/match/elo-drivers'
 import { populationPercentile } from '@/match/elo-distribution'
 
 // The Elo Calculator's single state owner (loan-calculator semantics):
@@ -33,6 +38,12 @@ const SEASON_WEEKS = 12
 // decisive games — the "streaks are normal, not rigged" number.
 const STREAK_LEN = 5
 const STREAK_HORIZON = 100
+// KNOW_HALF_WIDTH: the ±3-point target behind "games to certainty".
+const KNOW_HALF_WIDTH = 0.03
+// The decay-slope input's editable band (mirrored by the form's min/max);
+// a measured slope seeds inside it.
+const SLOPE_PTS_MIN = 0.5
+const SLOPE_PTS_MAX = 5
 
 export function useEloCalculator(opts: EloCalcOpts) {
   const records = computed(() => toValue(opts.records))
@@ -72,6 +83,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
     sampleN.value = s.wins + s.losses
     meterMovePct.value = round1(s.meterMovePct)
     gamesPerWeekInput.value = s.gamesPerWeek === null ? null : round1(s.gamesPerWeek)
+    decaySlopePts.value = s.decaySlope === null
+      ? DEFAULT_DECAY_SLOPE * 100
+      : Math.min(SLOPE_PTS_MAX, Math.max(SLOPE_PTS_MIN, round1(s.decaySlope.pts)))
     selectedHeroes.value = new Set()
     dirty.value = false
   }
@@ -194,6 +208,29 @@ export function useEloCalculator(opts: EloCalcOpts) {
     return lossStreakChance(winRatePct.value / 100, STREAK_LEN, STREAK_HORIZON)
   })
 
+  // ── The Bayesian layer (skeptic prior — see elo-bayes) ─────────────
+  // All four follow the editable sample, so a manual what-if updates them
+  // like every other derived stat.
+  const skepticVerdict = computed(() => {
+    const inp = projInput.value
+    return inp ? probTrueWinRateAbove(0.5, inp.sampleWins, inp.sampleLosses) : null
+  })
+  const trueRateRange = computed(() => {
+    const inp = projInput.value
+    return inp ? credibleInterval(inp.sampleWins, inp.sampleLosses) : null
+  })
+  const climbQuantiles = computed(() => (projInput.value ? posteriorClimbQuantiles(projInput.value) : null))
+  const gamesToCertainty = computed(() => {
+    const inp = projInput.value
+    return inp ? gamesToKnow(inp.sampleWins, inp.sampleLosses, KNOW_HALF_WIDTH) : null
+  })
+
+  // History-derived stats: the actual played sequence + scoreboard splits.
+  // These read the track's games directly (not the editable sample) — a
+  // what-if can't rewrite what already happened.
+  const runs = computed(() => runsTest(decisiveResults(trackRecs.value)))
+  const drivers = computed(() => statSeparators(trackRecs.value))
+
   return {
     // track picking
     track, tracks: computed(() => tracksInfo.value.tracks), setTrack, trackLabels: TRACK_LABELS,
@@ -208,6 +245,8 @@ export function useEloCalculator(opts: EloCalcOpts) {
     pValue, percentileNow, percentileTarget, weeksNaive, weeksDecay,
     seasonGames, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
+    skepticVerdict, trueRateRange, climbQuantiles, gamesToCertainty,
+    runs, drivers,
   }
 }
 

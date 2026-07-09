@@ -13,6 +13,7 @@ import EloAnswer from '@/components/elo/EloAnswer.vue'
 import EloResultsPanel from '@/components/elo/EloResultsPanel.vue'
 import EloProjectionChart from '@/components/elo/EloProjectionChart.vue'
 import EloMythChecks from '@/components/elo/EloMythChecks.vue'
+import EloStatDrivers from '@/components/elo/EloStatDrivers.vue'
 import EloInputsPanel from '@/components/elo/EloInputsPanel.vue'
 import EloHeroPicker from '@/components/elo/EloHeroPicker.vue'
 import EloEvidencePanel from '@/components/elo/EloEvidencePanel.vue'
@@ -88,6 +89,8 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
     </section>
 
     <EloMythChecks />
+
+    <EloStatDrivers />
 
     <EloEvidencePanel :items="evidenceItems" />
   </section>
