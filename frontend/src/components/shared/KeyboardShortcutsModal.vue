@@ -207,6 +207,8 @@ const groups: readonly BindingGroup[] = [
       { keys: ['g', 'i'],       action: 'Go to Parse view', seq: true },
       { keys: ['g', 's'],       action: 'Go to Settings view', seq: true },
       { keys: ['g', 'u'],       action: 'Go to Unknown view', seq: true },
+      { keys: ['g', 'c'],       action: 'Go to Compare view', seq: true },
+      { keys: ['g', 'e'],       action: 'Go to Elo Calculator view', seq: true },
       { keys: ['?'],            action: 'Show this cheatsheet' },
     ],
   },

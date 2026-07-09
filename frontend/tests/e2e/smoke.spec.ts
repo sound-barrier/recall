@@ -15,9 +15,9 @@ test.describe('smoke — page loads + navigation', () => {
     await expect(page.locator('.brand')).toContainText(/RECALL/i)
   })
 
-  test('all five tabs are reachable by click', async ({ page }) => {
+  test('all six tabs are reachable by click', async ({ page }) => {
     await page.goto('/')
-    for (const id of ['tab-settings', 'tab-ingest', 'tab-matches', 'tab-unknown', 'tab-compare']) {
+    for (const id of ['tab-settings', 'tab-ingest', 'tab-matches', 'tab-unknown', 'tab-compare', 'tab-elo']) {
       await page.locator(`#${id}`).click()
       await expect(page.locator(`#${id}`)).toHaveAttribute('aria-selected', 'true')
     }
@@ -45,17 +45,17 @@ test.describe('a11y patterns — keyboard navigation', () => {
     await page.locator('#tab-settings').press('ArrowRight')
     await expect(page.locator('#tab-ingest')).toHaveAttribute('aria-selected', 'true')
 
-    // End → Compare (last tab)
+    // End → Elo Calculator (last tab)
     await page.locator('#tab-ingest').press('End')
-    await expect(page.locator('#tab-compare')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.locator('#tab-elo')).toHaveAttribute('aria-selected', 'true')
 
     // Home → Settings (first tab)
-    await page.locator('#tab-compare').press('Home')
+    await page.locator('#tab-elo').press('Home')
     await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
 
-    // ArrowLeft from Settings wraps to Compare
+    // ArrowLeft from Settings wraps to the Elo Calculator
     await page.locator('#tab-settings').press('ArrowLeft')
-    await expect(page.locator('#tab-compare')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.locator('#tab-elo')).toHaveAttribute('aria-selected', 'true')
 
     // Vim-style h / l aliases — l advances right, h walks left.
     // Same handler as ArrowLeft/ArrowRight, just an alternate key.

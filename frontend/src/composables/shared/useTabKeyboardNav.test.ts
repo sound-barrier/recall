@@ -36,7 +36,7 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('exports TAB_ORDER in nav order', () => {
-    expect(TAB_ORDER).toEqual(['settings', 'ingest', 'matches', 'unknown', 'compare'])
+    expect(TAB_ORDER).toEqual(['settings', 'ingest', 'matches', 'unknown', 'compare', 'elo'])
   })
 
   it('ArrowRight moves to the next tab and calls goToView', () => {
@@ -60,11 +60,11 @@ describe('useTabKeyboardNav', () => {
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('ArrowLeft'))
-    expect(go).toHaveBeenCalledWith('compare')
+    expect(go).toHaveBeenCalledWith('elo')
   })
 
   it('ArrowRight from the last tab wraps to the first', () => {
-    const view = ref<string>('compare')
+    const view = ref<string>('elo')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('ArrowRight'))
@@ -84,7 +84,7 @@ describe('useTabKeyboardNav', () => {
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('End'))
-    expect(go).toHaveBeenCalledWith('compare')
+    expect(go).toHaveBeenCalledWith('elo')
   })
 
   it('non-navigation keys are ignored (no goToView, no preventDefault)', () => {

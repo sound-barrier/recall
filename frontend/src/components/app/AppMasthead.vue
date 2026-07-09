@@ -153,6 +153,20 @@ const wld = computed(() => tallyWLD(
           <span class="nav-tab-num" aria-hidden="true">05</span>
           <span class="nav-tab-label">Compare</span>
         </button>
+        <button
+          id="tab-elo"
+          class="nav-tab"
+          :class="{ active: view === 'elo' }"
+          :aria-selected="view === 'elo'"
+          :aria-current="view === 'elo' ? 'page' : undefined"
+          :tabindex="view === 'elo' ? 0 : -1"
+          role="tab"
+          aria-controls="panel-elo"
+          @click="goToView('elo')"
+        >
+          <span class="nav-tab-num" aria-hidden="true">06</span>
+          <span class="nav-tab-label">Elo Calculator</span>
+        </button>
       </nav>
     </div>
     <div class="masthead-right">

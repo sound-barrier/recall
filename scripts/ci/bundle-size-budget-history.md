@@ -87,3 +87,5 @@ no soft-pedalling. Numbers that go down get a row too.
 | 2026-07-08 | MAX_TOTAL_CSS_BYTES | 325000 → 332000 | Form-mode scoped styles (verdict card, preset chips, pairing controls, sparklines), ~5KB |
 | 2026-07-08 | MAX_TOTAL_JS_BYTES | 1424000 → 1430000 | Hero-swap discipline: Heroes-per-match + Hero-pool widgets, match-hero-pool-helpers, Compare Heroes rows, ~1.3KB total-only |
 | 2026-07-08 | MAX_TOTAL_CSS_BYTES | 332000 → 335000 | Hero Pool band scoped styles (three-column layout, bars, gear), ~1KB |
+| 2026-07-09 | MAX_TOTAL_JS_BYTES | 1430000 → 1465000 | Elo Calculator tab lazy chunk (view + projection math + chart options), ~28KB |
+| 2026-07-09 | MAX_TOTAL_CSS_BYTES | 335000 → 345000 | Elo Calculator scoped styles (form, cards, evidence grid), ~5.5KB |

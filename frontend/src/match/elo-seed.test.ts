@@ -1,0 +1,177 @@
+import { describe, it, expect } from 'vitest'
+
+import type { MatchRecord } from '@/api-client'
+import {
+  isCompetitive, trackRecords, seedTrack, availableTracks, heroPickerStats, pooledWinLoss,
+} from '@/match/elo-seed'
+import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
+
+type Rec = Pick<MatchRecord, 'match_key' | 'data' | 'queue_type' | 'play_mode'>
+
+let seq = 0
+interface RecOpts {
+  result?: string
+  hero?: string
+  role?: string
+  queue?: 'role' | 'open'
+  playMode?: 'competitive' | 'quickplay'
+  playlist?: string
+  daysAgo?: number
+  rank?: { tier: string; level: number; progress: number; change?: number; modifiers?: string[] }
+}
+
+function rec(opts: RecOpts = {}): Rec {
+  seq++
+  const days = opts.daysAgo ?? Math.ceil(seq / 5)
+  const d = new Date(Date.UTC(2026, 5, 30, 12, 0, 0) - days * 86_400_000 - seq * 60_000)
+  const iso = d.toISOString()
+  return {
+    match_key: `m${seq}`,
+    queue_type: opts.queue ?? 'role',
+    play_mode: opts.playMode,
+    data: {
+      map: 'ilios',
+      playlist: opts.playlist ?? 'competitive',
+      hero: opts.hero ?? 'lucio',
+      role: opts.role ?? 'support',
+      result: opts.result ?? 'victory',
+      date: iso.slice(0, 10),
+      finished_at: iso.slice(11, 16),
+      played_at_utc: iso,
+      heroes_played: [{ hero: opts.hero ?? 'lucio', percent_played: 100 }],
+      ...(opts.rank
+        ? {
+            rank: opts.rank.tier,
+            level: opts.rank.level,
+            rank_progress: opts.rank.progress,
+            ...(opts.rank.change !== undefined ? { change_percent: opts.rank.change } : {}),
+            ...(opts.rank.modifiers ? { modifiers: opts.rank.modifiers } : {}),
+          }
+        : {}),
+    },
+  } as unknown as Rec
+}
+
+describe('isCompetitive', () => {
+  it('honours the play-mode override over the OCR playlist', () => {
+    expect(isCompetitive(rec({ playMode: 'competitive', playlist: 'quickplay' }))).toBe(true)
+    expect(isCompetitive(rec({ playMode: 'quickplay', playlist: 'competitive' }))).toBe(false)
+    expect(isCompetitive(rec({ playlist: 'quickplay' }))).toBe(false)
+  })
+
+  it('a rank reading is definitionally competitive', () => {
+    const r = rec({ playlist: '', rank: { tier: 'gold', level: 2, progress: 40 } })
+    expect(isCompetitive(r)).toBe(true)
+  })
+})
+
+describe('trackRecords', () => {
+  it('splits role queue by role and open queue into its own track', () => {
+    seq = 0
+    const records = [
+      rec({ role: 'support' }),
+      rec({ role: 'dps', hero: 'ashe' }),
+      rec({ queue: 'open', role: 'tank', hero: 'zarya' }),
+      rec({ playlist: 'quickplay' }), // not competitive → dropped
+    ]
+    expect(trackRecords(records, 'support')).toHaveLength(1)
+    expect(trackRecords(records, 'dps')).toHaveLength(1)
+    expect(trackRecords(records, 'open')).toHaveLength(1)
+    expect(trackRecords(records, 'tank')).toHaveLength(0)
+  })
+})
+
+describe('seedTrack', () => {
+  it('seeds rank, record, meter move, and pace from the track history', () => {
+    seq = 0
+    const records = [
+      // Latest reading wins the "current rank" slot.
+      rec({ daysAgo: 1, result: 'victory', rank: { tier: 'gold', level: 2, progress: 40, change: 22 } }),
+      rec({ daysAgo: 2, result: 'defeat', rank: { tier: 'gold', level: 2, progress: 18, change: -20 } }),
+      rec({ daysAgo: 3, result: 'victory', rank: { tier: 'gold', level: 3, progress: 95, change: 21 } }),
+      // Calibration + zero readings are excluded from the meter mean.
+      rec({ daysAgo: 4, result: 'victory', rank: { tier: 'gold', level: 3, progress: 70, change: 35, modifiers: ['victory', 'calibration'] } }),
+      rec({ daysAgo: 5, result: 'victory', rank: { tier: 'gold', level: 3, progress: 40, change: 0 } }),
+      ...Array.from({ length: 9 }, (_, i) => rec({ daysAgo: 6 + (i % 3), result: i < 6 ? 'victory' : 'defeat' })),
+    ]
+    const seed = seedTrack(records, 'support')
+    expect(seed.rank?.tier).toBe('gold')
+    expect(seed.rank?.level).toBe(2)
+    expect(seed.rank?.progress).toBe(40)
+    expect(seed.currentScore).toBeCloseTo(13.4, 9)
+    expect(seed.wins).toBe(10)
+    expect(seed.losses).toBe(4)
+    expect(seed.winRate).toBeCloseTo(10 / 14, 9)
+    expect(seed.meterMovePct).toBeCloseTo(21, 9) // mean(22, 20, 21)
+    expect(seed.meterSampleN).toBe(3)
+    // All 14 decisive games within 28 days, history span < 28d → real span (≥7d).
+    expect(seed.gamesPerWeek).not.toBeNull()
+    expect(seed.gamesPerWeek!).toBeGreaterThan(5)
+  })
+
+  it('falls back to the default meter move under three qualifying samples', () => {
+    seq = 0
+    const records = [
+      rec({ rank: { tier: 'silver', level: 1, progress: 10, change: 24 } }),
+      rec({ rank: { tier: 'silver', level: 1, progress: 34, change: 0 } }),
+    ]
+    const seed = seedTrack(records, 'support')
+    expect(seed.meterMovePct).toBe(DEFAULT_METER_MOVE_PCT)
+    expect(seed.meterSampleN).toBe(1)
+  })
+
+  it('yields nulls on an empty track', () => {
+    const seed = seedTrack([], 'tank')
+    expect(seed.rank).toBeNull()
+    expect(seed.currentScore).toBeNull()
+    expect(seed.winRate).toBeNull()
+    expect(seed.gamesPerWeek).toBeNull()
+  })
+})
+
+describe('availableTracks', () => {
+  it('summarizes per-track data and defaults to the most-played ranked track', () => {
+    seq = 0
+    const records = [
+      // DPS: most games but NO rank reading.
+      ...Array.from({ length: 8 }, () => rec({ role: 'dps', hero: 'ashe' })),
+      // Support: fewer games, has a rank → wins the default.
+      ...Array.from({ length: 4 }, () => rec({ role: 'support' })),
+      rec({ role: 'support', rank: { tier: 'gold', level: 2, progress: 40 } }),
+    ]
+    const { tracks, defaultTrack } = availableTracks(records)
+    expect(defaultTrack).toBe('support')
+    const dps = tracks.find((t) => t.key === 'dps')!
+    expect(dps.hasRank).toBe(false)
+    expect(dps.decisiveN).toBe(8)
+  })
+
+  it('falls back to the most-played track when nothing has a rank', () => {
+    seq = 0
+    const records = Array.from({ length: 3 }, () => rec({ role: 'tank', hero: 'zarya' }))
+    expect(availableTracks(records).defaultTrack).toBe('tank')
+  })
+})
+
+describe('heroPickerStats / pooledWinLoss', () => {
+  it('lists heroes with records, Wilson margins, and pool badges (in-pool first)', () => {
+    seq = 0
+    const records = [
+      ...Array.from({ length: 8 }, (_, i) => rec({ hero: 'lucio', result: i < 6 ? 'victory' : 'defeat' })),
+      ...Array.from({ length: 3 }, (_, i) => rec({ hero: 'ana', result: i < 1 ? 'victory' : 'defeat' })),
+    ]
+    const stats = heroPickerStats(records, () => 'support')
+    expect(stats[0]!.key).toBe('lucio')
+    expect(stats[0]!.inPool).toBe(true)
+    expect(stats[0]!.wins).toBe(6)
+    expect(stats[0]!.losses).toBe(2)
+    expect(stats[0]!.marginPts).not.toBeNull()
+    const ana = stats.find((s) => s.key === 'ana')!
+    expect(ana.inPool).toBe(false) // 3 games < the 5-decisive pool floor
+    expect(ana.lowSample).toBe(true)
+
+    expect(pooledWinLoss(stats, new Set(['lucio']))).toEqual({ wins: 6, losses: 2 })
+    expect(pooledWinLoss(stats, new Set(['lucio', 'ana']))).toEqual({ wins: 7, losses: 4 })
+    expect(pooledWinLoss(stats, new Set())).toEqual({ wins: 0, losses: 0 })
+  })
+})

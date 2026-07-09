@@ -67,14 +67,18 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-07: 1424000 → 1430000 — hero-swap discipline pair (Heroes per match +
 # Hero pool widgets + match-hero-pool-helpers + Compare rows), ~1.3KB in the
 # MatchesView/compare chunks (initial JS untouched). New feature.
-: "${MAX_TOTAL_JS_BYTES:=1430000}"
+# 2026-07: 1430000 -> 1465000 - the Elo Calculator tab (lazy chunk: view +
+# projection math + chart options), ~28KB. New feature.
+: "${MAX_TOTAL_JS_BYTES:=1465000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
 # chips, pairing controls, sparklines), ~5KB. New feature.
 # 2026-07: 332000 -> 335000 - the Hero Pool band's scoped styles (three-column
 # layout, bars, gear), ~1KB. New feature.
-: "${MAX_TOTAL_CSS_BYTES:=335000}"
+# 2026-07: 335000 -> 345000 - Elo Calculator scoped styles (form, cards,
+# evidence grid, chart frame), ~5.5KB. New feature.
+: "${MAX_TOTAL_CSS_BYTES:=345000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

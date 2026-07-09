@@ -1,0 +1,446 @@
+/* Elo Calculator tab — cross-component styles for the elo/* view family.
+   Global (not scoped) because eight components share the look; every rule is
+   nested under #panel-elo so it can't leak, and it reuses the same tokens +
+   treatments as the Compare/Settings tabs (settings-intro header, the
+   compare-scope-btn segmented control, surface-2 cards, the form-verdict-card
+   "one loud element", the compare-section-head band label). See
+   frontend/CLAUDE.md "Styles". */
+
+#panel-elo {
+  /* Fixed series hues shared with the projection chart lines so a colour
+     always means the same future: blue = if your wins hold, amber = as
+     opponents get tougher. These mirror trend-options' theme-independent
+     SERIES_COLOR palette. */
+  --elo-dream: #5ca8ff;
+  --elo-reality: #f5a623;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 72rem;
+}
+
+#panel-elo .elo-desc {
+  margin: 0.35rem 0 0;
+  max-width: 60ch;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* ─── Rank-track segmented control (mirrors .compare-mode / -scope-btn) ─── */
+
+#panel-elo .elo-tracks {
+  display: inline-flex;
+  margin-top: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#panel-elo .elo-track-btn {
+  appearance: none;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+
+#panel-elo .elo-track-btn + .elo-track-btn {
+  border-left: 1px solid var(--border);
+}
+
+#panel-elo .elo-track-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+#panel-elo .elo-track-btn.picked {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+  color: var(--text);
+}
+
+#panel-elo .elo-track-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+#panel-elo .elo-track-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#panel-elo .elo-track-n {
+  margin-left: 0.4rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Section bands (mirror .compare-section-head) ─── */
+
+#panel-elo .elo-band {
+  margin-top: 2.4rem;
+}
+
+#panel-elo .elo-band-title {
+  margin: 0 0 0.9rem;
+  padding-bottom: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+#panel-elo .elo-band-sub {
+  margin: -0.4rem 0 0.9rem;
+  color: var(--text-faint);
+  font-size: 0.76rem;
+  font-style: italic;
+}
+
+/* ─── The verdict: one loud answer (mirrors .form-verdict-card) ─── */
+
+#panel-elo .elo-answer {
+  padding: 1.1rem 1.3rem 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 45%),
+    var(--surface);
+}
+
+#panel-elo .elo-answer-eyebrow {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+#panel-elo .elo-answer-head {
+  margin: 0.2rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(2rem, 5.5vw, 3.1rem);
+  line-height: 1.02;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+#panel-elo .elo-answer-head.is-good { color: var(--win); }
+#panel-elo .elo-answer-head.is-hard { color: var(--loss); }
+
+#panel-elo .elo-answer-sub {
+  margin: 0.55rem 0 0;
+  max-width: 62ch;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+#panel-elo .elo-answer-sub strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+#panel-elo .elo-answer-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* ─── Verdict grid: cards beside the chart ─── */
+
+#panel-elo .elo-verdict-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+#panel-elo .elo-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+#panel-elo .elo-card {
+  border: 1px solid var(--border);
+  border-top-width: 2px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  padding: 0.7rem 0.9rem 0.85rem;
+}
+
+#panel-elo .elo-card-dream { border-top-color: var(--elo-dream); }
+#panel-elo .elo-card-reality { border-top-color: var(--elo-reality); }
+
+#panel-elo .elo-card-eyebrow {
+  margin: 0 0 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+#panel-elo .elo-card-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+#panel-elo .elo-card-dream .elo-card-swatch { background: var(--elo-dream); }
+#panel-elo .elo-card-reality .elo-card-swatch { background: var(--elo-reality); }
+
+#panel-elo .elo-card-head {
+  margin: 0 0 0.3rem;
+  font-family: var(--display);
+  font-size: 1.5rem;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+#panel-elo .elo-card-line {
+  margin: 0.15rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* ─── Projection chart frame ─── */
+
+#panel-elo .elo-chart {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-2);
+  padding: 0.5rem 0.5rem 0.35rem;
+}
+
+#panel-elo .elo-chart-cap {
+  margin: 0.25rem 0.3rem 0.1rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--text-faint);
+}
+
+/* ─── Adjust grid: inputs beside heroes ─── */
+
+#panel-elo .elo-adjust-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+#panel-elo .elo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+#panel-elo .elo-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#panel-elo .elo-legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+#panel-elo .elo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 0.9rem;
+}
+
+#panel-elo .elo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 6.5rem;
+  flex: 1 1 6.5rem;
+}
+
+#panel-elo .elo-field-wide { flex-basis: 10rem; }
+
+#panel-elo .elo-field-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+#panel-elo .elo-input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+#panel-elo .elo-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+#panel-elo .elo-hint {
+  font-size: 0.66rem;
+  line-height: 1.35;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+#panel-elo .elo-advanced summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+#panel-elo .elo-advanced[open] summary { margin-bottom: 0.55rem; }
+
+/* ─── Hero picker ─── */
+
+#panel-elo .elo-heroes {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#panel-elo .elo-heroes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+#panel-elo .elo-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+#panel-elo .elo-hero-name {
+  flex: 0 0 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#panel-elo .elo-hero-record {
+  flex: 1 1 auto;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+#panel-elo .elo-pool {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--win) 45%, var(--border));
+  background: color-mix(in srgb, var(--win) 12%, var(--surface-2));
+  color: var(--text);
+}
+
+#panel-elo .elo-pool.out {
+  border-color: var(--loss-line);
+  background: var(--loss-soft);
+}
+
+#panel-elo .elo-lown {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  padding: 0 0.28rem;
+  border-radius: 2px;
+  background: var(--loss-soft);
+  border: 1px solid var(--loss-line);
+  color: var(--text);
+}
+
+/* ─── Myth checks + evidence cards (shared card shell) ─── */
+
+#panel-elo .elo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.6rem;
+}
+
+#panel-elo .elo-cell {
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  padding: 0.55rem 0.75rem 0.65rem;
+}
+
+#panel-elo .elo-cell.good { border-left-color: var(--win); }
+#panel-elo .elo-cell.warn { border-left-color: var(--loss); }
+#panel-elo .elo-cell.neutral { border-left-color: var(--accent); }
+
+#panel-elo .elo-cell-q {
+  margin: 0 0 0.2rem;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+#panel-elo .elo-cell-a {
+  margin: 0 0 0.3rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+#panel-elo .elo-cell-note {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* ─── Responsive: stack the two-column grids ─── */
+
+@media (width <= 980px) {
+  #panel-elo .elo-verdict-grid,
+  #panel-elo .elo-adjust-grid {
+    grid-template-columns: 1fr;
+  }
+}
