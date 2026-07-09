@@ -110,7 +110,6 @@ var (
 	fixtureDPS      []string
 
 	fixtureResults = []string{"victory", "defeat", "draw"}
-	fixtureRanks   = []string{"bronze", "silver", "gold", "platinum", "diamond"}
 )
 
 func init() {
@@ -234,6 +233,11 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// of which pick the play mode without consulting the map.
 	forceClashQuickplay(&fx, summaryPlayModes)
 
+	// Rank climb — a post-pass over the (now-final) chronological summaries, so
+	// each role/queue track walks the ladder up from its staggered start at a
+	// 59% win rate instead of carrying random per-match rank noise.
+	applyRankProgression(&fx, seed, summaryPlayModes, summaryQueueTypes)
+
 	fx.appendReviewSeeds(seed)
 	fx.appendAnnotationSeeds(seed)
 	fx.appendQueueAndPlayModeSeeds(summaryQueueTypes, summaryPlayModes)
@@ -247,12 +251,11 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 // forceClashQuickplay normalizes every Clash match to quickplay. Clash is a
 // quickplay-only mode, but the per-match play-mode roll AND the coverage
 // map-patch are both map-blind, so a Clash map can land on a "competitive"
-// summary (with a competitive override seed, and even a rank screenshot).
-// Rewrite after the fact: quickplay playlist + override seed, and drop any rank
-// row keyed to a Clash match (rank screens only exist for competitive play).
-// summaryPlayModes is index-aligned with fx.Summaries.
+// summary. Rewrite after the fact: quickplay playlist + override seed.
+// summaryPlayModes is index-aligned with fx.Summaries. Runs BEFORE
+// applyRankProgression, which reads the final play modes and never emits a rank
+// reading on a quickplay (hence Clash) match — so no rank-drop is needed here.
 func forceClashQuickplay(fx *Fixture, summaryPlayModes []string) {
-	clashKeys := make(map[string]bool)
 	for i := range fx.Summaries {
 		s := &fx.Summaries[i]
 		if parser.MapGameMode(s.Map) != "clash" {
@@ -262,18 +265,7 @@ func forceClashQuickplay(fx *Fixture, summaryPlayModes []string) {
 		if i < len(summaryPlayModes) {
 			summaryPlayModes[i] = "quickplay"
 		}
-		clashKeys[s.MatchKey] = true
 	}
-	if len(clashKeys) == 0 {
-		return
-	}
-	kept := fx.Ranks[:0]
-	for _, r := range fx.Ranks {
-		if !clashKeys[r.MatchKey] {
-			kept = append(kept, r)
-		}
-	}
-	fx.Ranks = kept
 }
 
 // fixtureDayWeights builds per-day activity weights: ~40% inactive; the

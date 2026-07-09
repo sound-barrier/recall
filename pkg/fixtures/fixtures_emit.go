@@ -46,16 +46,17 @@ func (fx *Fixture) appendGeneratedMatch(rng *rand.Rand, profile playerProfile, m
 	// Per-match screenshot-type dice. Models realistic capture habits:
 	// SUMMARY is the most common (~95% — post-match screen is what the
 	// user almost always remembers to grab), TEAMS ~80% (requires opening
-	// the teams), PERSONAL ~70% (Tab during the game), RANK ~15% (only at
-	// end-of-game rank-up screens). Independent rolls so a match can land
-	// in any combination — including the missing-summary and missing-teams
-	// cases the dossier needs to handle. Floor: if all four roll false,
-	// force summary so every planned match has at least one screenshot row.
+	// the teams), PERSONAL ~70% (Tab during the game). Independent rolls so
+	// a match can land in any combination — including the missing-summary
+	// and missing-teams cases the dossier needs to handle. Floor: if all
+	// three roll false, force summary so every planned match has at least
+	// one screenshot row. RANK is NOT rolled here — competitive rank
+	// readings are emitted by applyRankProgression as a post-pass so they
+	// form a coherent per-track climb instead of random per-match noise.
 	hasSummary := rng.Float64() < 0.95
 	hasTeams := rng.Float64() < 0.80
 	hasPersonal := rng.Float64() < 0.70
-	hasRank := rng.Float64() < 0.15
-	if !hasSummary && !hasTeams && !hasPersonal && !hasRank {
+	if !hasSummary && !hasTeams && !hasPersonal {
 		hasSummary = true
 	}
 
@@ -123,22 +124,6 @@ func (fx *Fixture) appendGeneratedMatch(rng *rand.Rand, profile playerProfile, m
 		})
 	}
 
-	if hasRank {
-		fx.Ranks = append(fx.Ranks, db.RankRow{
-			Filename:      "rank-" + ts + ".png",
-			MatchKey:      key,
-			Rank:          fixtureRanks[rng.Intn(len(fixtureRanks))],
-			Level:         1 + rng.Intn(5),
-			RankProgress:  rng.Intn(100),
-			ChangePercent: rng.Intn(40) - 20,
-			Result:        result,
-			SR: []db.HeroSR{{
-				Hero:   primary.Hero,
-				SR:     2000 + rng.Intn(2000),
-				Change: rng.Intn(40) - 20,
-			}},
-		})
-	}
 	return primary.Hero
 }
 

@@ -33,16 +33,14 @@ var fixtureHourWeights = [24]float64{
 	5.0, 6.0, 6.5, 6.0, 4.0, 1.5, // 18-23 evening peak
 }
 
-// pickWeightedResult biases the match-result distribution toward what
-// a real player's history looks like: ~49.5% wins, ~49.5% losses,
-// ~1% draws. Uniform random across {victory, defeat, draw} would
-// produce a 33/33/33 split that reads as wrong at any N. Consumes one
-// rng.Float64() call — same entropy budget as the previous
-// fixtureResults[rng.Intn(...)] form, so swapping in this helper
-// doesn't shift downstream RNG state.
+// pickWeightedResult biases the match-result distribution toward a climbing
+// player's history: ~58.4% wins, ~40.6% losses, ~1% draws. Draws excluded,
+// that is a 59% decisive win rate (0.584 / (0.584 + 0.406)) — the rate the seed
+// walks up the ladder with, so the tour shows an honest ~59% climb rather than
+// a flat coin-flip. Consumes one rng.Float64() call.
 func pickWeightedResult(rng *rand.Rand) string {
 	switch r := rng.Float64(); {
-	case r < 0.495:
+	case r < 0.584:
 		return "victory"
 	case r < 0.99:
 		return "defeat"

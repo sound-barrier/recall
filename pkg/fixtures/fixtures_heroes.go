@@ -69,8 +69,11 @@ func roleOfHero(hero string) string {
 }
 
 func newPlayerProfile(rng *rand.Rand, style playStyle) playerProfile {
-	roles := []string{"tank", "support", "dps"}
-	mainRole := roles[rng.Intn(len(roles))]
+	// DPS is the seeded player's main role — Overwatch's most-played role, and
+	// flex gives the main role 60% of role-queue matches, so DPS becomes the
+	// busiest rank track (the highest climb). Fixed (not seed-random) so every
+	// seeded profile tells the same "DPS main" story.
+	mainRole := "dps"
 	var mainPool []string
 	switch mainRole {
 	case "tank":
