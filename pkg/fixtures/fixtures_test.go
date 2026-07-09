@@ -9,6 +9,7 @@ import (
 	"recall/pkg/db/dbtest"
 	"recall/pkg/fixtures"
 	"recall/pkg/match"
+	"recall/pkg/parser"
 )
 
 // TestMain pins the fixture date window so seeded distributions stay
@@ -151,11 +152,12 @@ func TestGenerateMatchFixture_DifferentSeedsDiffer(t *testing.T) {
 	}
 }
 
-func TestGenerateMatchFixture_ResultDistribution(t *testing.T) {
-	// Realistic player history: ~49.5% W, ~49.5% L, ~1% D. Uniform
-	// would produce 33/33/33 — wrong at any N. At N=10000 the law of
-	// large numbers tightens the spread enough that we can assert on
-	// the bands directly without re-running multiple seeds.
+func TestGenerateMatchFixture_ELOEquilibrium(t *testing.T) {
+	// The competitive win rate is an ELO curve, not a fixed target: high when a
+	// track is underranked, regressing to 50% at its skill ceiling. At a large
+	// N every track has long since reached its ceiling and plays at ~50% — you
+	// land where you belong. So the overall decisive rate settles near 50%
+	// (never above the ~59% typical ceiling), and draws stay ~1%.
 	const n = 10000
 	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
@@ -163,25 +165,15 @@ func TestGenerateMatchFixture_ResultDistribution(t *testing.T) {
 	for _, s := range fx.Summaries {
 		counts[s.Result]++
 	}
-
-	w := counts["victory"]
-	l := counts["defeat"]
-	d := counts["draw"]
-	// Denominator is the actual summary count, not n: timestamp dedupe
-	// collapses a small fraction of colliding match keys, so fewer than
-	// n summaries survive — the result PROBABILITY (49.5/49.5/1) is what
-	// we're asserting, independent of how many made it through.
+	w, l, d := counts["victory"], counts["defeat"], counts["draw"]
 	total := len(fx.Summaries)
 
-	// Each of W and L should land in [47%, 51%]. Draws in [0.5%, 1.5%].
-	if w < total*47/100 || w > total*51/100 {
-		t.Errorf("victory rate %.2f%% outside [47%%, 51%%]", float64(w)/float64(total)*100)
+	decisiveWR := float64(w) / float64(w+l) * 100
+	if decisiveWR < 48 || decisiveWR > 55 {
+		t.Errorf("equilibrium decisive win rate %.2f%% outside [48%%, 55%%] (should settle near 50%%)", decisiveWR)
 	}
-	if l < total*47/100 || l > total*51/100 {
-		t.Errorf("defeat rate %.2f%% outside [47%%, 51%%]", float64(l)/float64(total)*100)
-	}
-	if d < total*5/1000 || d > total*15/1000 {
-		t.Errorf("draw rate %.2f%% outside [0.5%%, 1.5%%]", float64(d)/float64(total)*100)
+	if d < total*3/1000 || d > total*20/1000 {
+		t.Errorf("draw rate %.2f%% outside [0.3%%, 2.0%%]", float64(d)/float64(total)*100)
 	}
 }
 
@@ -431,25 +423,38 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 		t.Fatalf("expected ~95%% of OCR matches to be play-mode-tagged (got %d/%d)", ocrPlayModes, n)
 	}
 
+	// The ~90/10 play-mode ASSIGNMENT is a separate mechanism from the
+	// clash→quickplay forcing (Clash is quickplay-only). A seed whose map
+	// shuffle puts a Clash map on top would swell quickplay well past 10% —
+	// legitimately, not a regression — so isolate the assignment by measuring
+	// only NON-Clash OCR matches, whose play mode follows the raw 90/10 dice.
+	mapByKey := make(map[string]string, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		mapByKey[s.MatchKey] = s.Map
+	}
 	comp, qp := 0, 0
 	for _, p := range fx.PlayModes {
 		switch p.PlayMode {
-		case "competitive":
-			comp++
-		case "quickplay":
-			qp++
+		case "competitive", "quickplay":
 		default:
 			t.Fatalf("play-mode carries invalid value %q (must be quickplay or competitive)", p.PlayMode)
 		}
+		m, ok := mapByKey[p.MatchKey]
+		if !ok || parser.MapGameMode(m) == "clash" {
+			continue // manual match (no OCR map) or force-quickplay Clash
+		}
+		if p.PlayMode == "competitive" {
+			comp++
+		} else {
+			qp++
+		}
 	}
-	// Rates computed against tagged count (not n) since not every
-	// match gets a summary under the ~95% dice roll.
-	total := len(fx.PlayModes)
+	total := comp + qp
 	if comp*100 < total*85 || comp*100 > total*95 {
-		t.Errorf("competitive rate %.2f%% outside [85%%, 95%%]", float64(comp)*100/float64(total))
+		t.Errorf("competitive rate %.2f%% outside [85%%, 95%%] (non-Clash)", float64(comp)*100/float64(total))
 	}
 	if qp*100 < total*5 || qp*100 > total*15 {
-		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%]", float64(qp)*100/float64(total))
+		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%] (non-Clash)", float64(qp)*100/float64(total))
 	}
 
 	// Every play-mode entry must reference a real match_key — an OCR summary
@@ -577,10 +582,9 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 
 func TestGenerateMatchFixture_ScreenshotTypeDistribution(t *testing.T) {
 	// Per-match screenshot-type dice models real capture habits:
-	// ~95% summary, ~80% teams (teams), ~70% personal, ~15% rank.
-	// Independent rolls so each match's combination of types varies.
-	// At N=5000 the binomial bands are tight enough to assert on each
-	// rate directly.
+	// ~95% summary, ~80% teams, ~70% personal. Independent rolls so each
+	// match's combination of types varies. At N=5000 the binomial bands are
+	// tight enough to assert on each rate directly.
 	const n = 5000
 	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
@@ -594,9 +598,35 @@ func TestGenerateMatchFixture_ScreenshotTypeDistribution(t *testing.T) {
 	if r := float64(len(fx.Personals)) * 100 / float64(n); r < 66 || r > 74 {
 		t.Errorf("personal rate %.2f%% outside [66%%, 74%%]", r)
 	}
-	if r := float64(len(fx.Ranks)) * 100 / float64(n); r < 12 || r > 18 {
-		t.Errorf("rank rate %.2f%% outside [12%%, 18%%]", r)
+	// Rank is no longer a per-match dice roll — applyRankProgression emits
+	// periodic cards on competitive matches only. Assert the structural
+	// invariants instead of a fixed share: some ranks exist, never more than
+	// the competitive-summary count, and every rank row is on a competitive
+	// match (never quickplay/clash).
+	comp := competitiveKeys(fx)
+	if len(fx.Ranks) == 0 {
+		t.Fatal("no rank readings emitted")
 	}
+	if len(fx.Ranks) > len(comp) {
+		t.Errorf("rank rows (%d) exceed competitive summaries (%d)", len(fx.Ranks), len(comp))
+	}
+	for _, r := range fx.Ranks {
+		if !comp[r.MatchKey] {
+			t.Errorf("rank row on non-competitive match %s", r.MatchKey)
+		}
+	}
+}
+
+// competitiveKeys returns the set of match keys whose seeded play mode is
+// competitive (from fx.PlayModes) — the only matches allowed to carry rank.
+func competitiveKeys(fx fixtures.Fixture) map[string]bool {
+	comp := make(map[string]bool)
+	for _, pm := range fx.PlayModes {
+		if pm.PlayMode == "competitive" {
+			comp[pm.MatchKey] = true
+		}
+	}
+	return comp
 }
 
 func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
@@ -681,5 +711,231 @@ func TestGenerateMatchFixture_ReviewRate(t *testing.T) {
 		if r.ReviewedBy != "self" && r.ReviewedBy != "coach" {
 			t.Fatalf("review carries invalid ReviewedBy %q (must be self or coach)", r.ReviewedBy)
 		}
+	}
+}
+
+// --- Rank-progression integration (black box, via GenerateMatchFixture) ---
+
+var rankTestTiers = []string{"bronze", "silver", "gold", "platinum", "diamond", "master", "grandmaster", "champion"}
+
+// ladderScoreOf mirrors the frontend ladderScore encoding so the tests reason
+// about "did this track climb" in the same numeric space the chart plots.
+func ladderScoreOf(rank string, level, prog int) float64 {
+	for i, n := range rankTestTiers {
+		if n == rank {
+			return float64(i*5+(5-level)) + float64(prog)/100
+		}
+	}
+	return -1
+}
+
+// queueByMatchKey indexes fx.Queues so a rank row can be routed to its track.
+func queueByMatchKey(fx fixtures.Fixture) map[string]string {
+	q := make(map[string]string, len(fx.Queues))
+	for _, s := range fx.Queues {
+		q[s.MatchKey] = s.QueueType
+	}
+	return q
+}
+
+func TestGenerateMatchFixture_RankModifiersValid(t *testing.T) {
+	// Every emitted modifier must be in the rank_modifiers CHECK enum or the
+	// UpsertRank INSERT would fail at seed time.
+	valid := map[string]bool{}
+	for _, m := range []string{
+		"expected", "uphill battle", "reversal", "consolation", "win streak",
+		"loss streak", "calibration", "volatile", "new map", "leaver compensation",
+		"victory", "defeat", "draw", "demotion protection",
+	} {
+		valid[m] = true
+	}
+	fx := fixtures.GenerateMatchFixture(1000, 8, "")
+	if len(fx.Ranks) == 0 {
+		t.Fatal("no rank readings emitted")
+	}
+	for _, r := range fx.Ranks {
+		if len(r.Modifiers) == 0 {
+			t.Errorf("rank row %s has no modifiers", r.MatchKey)
+		}
+		for _, m := range r.Modifiers {
+			if !valid[m] {
+				t.Errorf("rank row %s carries modifier %q, not in the CHECK enum", r.MatchKey, m)
+			}
+		}
+	}
+}
+
+func TestGenerateMatchFixture_RankClimbsEveryTrack(t *testing.T) {
+	// The tour profile's exact config. Every track must NET a rank-up from its
+	// staggered start (the "59% ⇒ ranking up for all" invariant), DPS is the
+	// busiest + highest track, and nothing overshoots past Diamond.
+	fx := fixtures.GenerateMatchFixture(500, 8, "")
+	queueBy := queueByMatchKey(fx)
+
+	start := map[string]float64{
+		"tank":    ladderScoreOf("silver", 1, 0),
+		"dps":     ladderScoreOf("gold", 4, 0),
+		"support": ladderScoreOf("gold", 3, 0),
+		"open":    ladderScoreOf("gold", 5, 0),
+	}
+	lastScore := map[string]float64{}
+	count := map[string]int{}
+	for _, r := range fx.Ranks {
+		track := queueBy[r.MatchKey]
+		if track != "open" {
+			if len(r.SR) == 0 {
+				t.Fatalf("rank row %s has no SR hero to resolve its role", r.MatchKey)
+			}
+			track = fixtures.RoleOfHero(r.SR[0].Hero)
+		}
+		lastScore[track] = ladderScoreOf(r.Rank, r.Level, r.RankProgress)
+		count[track]++
+	}
+
+	for track, s0 := range start {
+		if count[track] == 0 {
+			t.Errorf("track %q emitted no rank cards (can't show a climb)", track)
+			continue
+		}
+		if lastScore[track] <= s0 {
+			t.Errorf("track %q did not climb: last %.2f <= start %.2f", track, lastScore[track], s0)
+		}
+		// Runaway guard: a true 59% lands the busiest track ~Diamond, but
+		// per-track variance at N=500 can carry a lucky track a division or two
+		// into low Master. Grandmaster+ (score >= 30) would signal the walk
+		// climbs far too fast (a real bug), not luck.
+		if lastScore[track] >= 30 {
+			t.Errorf("track %q overshot into Grandmaster+ (score %.2f) — climb too fast", track, lastScore[track])
+		}
+	}
+	for _, off := range []string{"tank", "support"} {
+		if count["dps"] <= count[off] {
+			t.Errorf("dps (%d cards) should be the busiest role track, but %s has %d", count["dps"], off, count[off])
+		}
+		if lastScore["dps"] <= lastScore[off] {
+			t.Errorf("dps final %.2f should be the highest role track, but %s is %.2f", lastScore["dps"], off, lastScore[off])
+		}
+	}
+}
+
+func TestGenerateMatchFixture_RankChangePercentSigns(t *testing.T) {
+	// The climb is not monotone: most win-cards are positive, but a win-card
+	// whose 5-win window held many losses nets negative — so downturns are
+	// representable even though the 15-loss card rarely fires.
+	fx := fixtures.GenerateMatchFixture(5000, 8, "")
+	pos, neg := 0, 0
+	for _, r := range fx.Ranks {
+		switch {
+		case r.ChangePercent > 0:
+			pos++
+		case r.ChangePercent < 0:
+			neg++
+		}
+	}
+	if pos == 0 {
+		t.Error("no positive change_percent cards — the climb isn't showing")
+	}
+	if neg == 0 {
+		t.Error("no negative change_percent cards — a rough 5-win window should net negative")
+	}
+}
+
+// trackWLByKey tallies decisive competitive wins/losses per rank track over the
+// given result slice (nil = whole corpus), in chronological summary order.
+func trackWL(fx fixtures.Fixture) map[string]*[2]int {
+	queueBy := queueByMatchKey(fx)
+	mode := map[string]string{}
+	for _, pm := range fx.PlayModes {
+		mode[pm.MatchKey] = pm.PlayMode
+	}
+	out := map[string]*[2]int{}
+	for _, s := range fx.Summaries {
+		if mode[s.MatchKey] != "competitive" {
+			continue
+		}
+		track := queueBy[s.MatchKey]
+		if track != "open" {
+			track = fixtures.RoleOfHero(s.Hero)
+		}
+		if out[track] == nil {
+			out[track] = &[2]int{}
+		}
+		switch s.Result {
+		case "victory":
+			out[track][0]++
+		case "defeat":
+			out[track][1]++
+		}
+	}
+	return out
+}
+
+func TestGenerateMatchFixture_PerTrackEquilibrium(t *testing.T) {
+	// At large N every track has reached its skill ceiling and plays at the ELO
+	// equilibrium — ~50% — so it lands where it belongs. None sits near the
+	// underranked-climb ceiling (~59-70%) any more.
+	byTrack := trackWL(fixtures.GenerateMatchFixture(10000, 8, ""))
+	for _, track := range []string{"tank", "dps", "support", "open"} {
+		c := byTrack[track]
+		if c == nil || c[0]+c[1] == 0 {
+			t.Fatalf("track %q had no decisive competitive games", track)
+		}
+		wr := float64(c[0]) / float64(c[0]+c[1]) * 100
+		if wr < 47 || wr > 54 {
+			t.Errorf("track %q equilibrium win rate %.1f%% outside [47%%, 54%%]", track, wr)
+		}
+	}
+}
+
+func TestGenerateMatchFixture_ClimbingWinRateDescends(t *testing.T) {
+	// Over the tour-sized corpus the tracks are still climbing, so their win
+	// rate sits ABOVE 50% and never exceeds the ~70% cap; and for the busy DPS
+	// main the rate DESCENDS across the climb (matches get harder as it nears
+	// its ceiling) — the core ELO story.
+	fx := fixtures.GenerateMatchFixture(500, 8, "")
+	byTrack := trackWL(fx)
+	for _, track := range []string{"tank", "dps", "support", "open"} {
+		c := byTrack[track]
+		wr := float64(c[0]) / float64(c[0]+c[1]) * 100
+		if wr <= 50 || wr > 71 {
+			t.Errorf("track %q climbing win rate %.1f%% should be in (50%%, 71%%]", track, wr)
+		}
+	}
+
+	// DPS descent: first-third win rate > last-third.
+	var dps []string
+	queueBy := queueByMatchKey(fx)
+	mode := map[string]string{}
+	for _, pm := range fx.PlayModes {
+		mode[pm.MatchKey] = pm.PlayMode
+	}
+	for _, s := range fx.Summaries {
+		if mode[s.MatchKey] == "competitive" && queueBy[s.MatchKey] != "open" && fixtures.RoleOfHero(s.Hero) == "dps" {
+			dps = append(dps, s.Result)
+		}
+	}
+	wrOf := func(rs []string) float64 {
+		w, l := 0, 0
+		for _, r := range rs {
+			switch r {
+			case "victory":
+				w++
+			case "defeat":
+				l++
+			}
+		}
+		return float64(w) / float64(w+l)
+	}
+	third := len(dps) / 3
+	if early, late := wrOf(dps[:third]), wrOf(dps[len(dps)-third:]); early <= late {
+		t.Errorf("DPS win rate should descend as it climbs: early %.2f <= late %.2f", early, late)
+	}
+}
+
+func TestGenerateMatchFixture_RankDeterministic(t *testing.T) {
+	a := fixtures.GenerateMatchFixture(500, 8, "")
+	b := fixtures.GenerateMatchFixture(500, 8, "")
+	if !reflect.DeepEqual(a.Ranks, b.Ranks) {
+		t.Error("fx.Ranks differ across two identical-seed runs — rank walk isn't deterministic")
 	}
 }

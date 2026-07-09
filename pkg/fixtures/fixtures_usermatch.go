@@ -39,7 +39,6 @@ func (fx *Fixture) appendUserMatchVariants(seed int64) {
 	start, end := fixtureDateRange()
 	totalDays := int(end.Sub(start).Hours()/24) + 1
 	results := []string{"victory", "defeat", "draw"}
-	tiers := []string{"gold", "platinum", "diamond"}
 
 	manualN := max(len(fx.Summaries)/8, 4)
 	for range manualN {
@@ -72,14 +71,10 @@ func (fx *Fixture) appendUserMatchVariants(seed int64) {
 		if rng.Float64() < 0.15 {
 			mode = "quickplay"
 		}
-		if mode == "competitive" {
-			tier := tiers[rng.Intn(len(tiers))]
-			level := 1 + rng.Intn(5)
-			progress := rng.Intn(100)
-			ud.Rank = &tier
-			ud.Level = &level
-			ud.RankProgress = &progress
-		}
+		// Manual matches carry no rank — a hand-logged entry rarely records the
+		// rank screen, and leaving them rank-free keeps the rank trend driven
+		// solely by the coherent per-track climb in applyRankProgression rather
+		// than re-scattering it with random one-off points.
 
 		fx.UserData = append(fx.UserData, ud)
 		fx.Queues = append(fx.Queues, QueueSeed{MatchKey: key, QueueType: queue})
