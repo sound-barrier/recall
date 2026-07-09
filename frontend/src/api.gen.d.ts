@@ -2727,6 +2727,15 @@ export interface components {
              *     ]
              */
             profiles: string[];
+            /**
+             * @description The read-only profiles (the tour's sample "test" profile).
+             *     The client disables parse / import / restore / manual-add /
+             *     delete affordances for these — writes are rejected with 409.
+             * @example [
+             *       "test"
+             *     ]
+             */
+            immutable: string[];
         };
         SeedTestProfileResponse: {
             /**

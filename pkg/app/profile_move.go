@@ -71,6 +71,9 @@ func (a *App) validateMoveRequest(matchKeys []string, targetProfile string) (pro
 	if targetProfile == a.profiles.Active() {
 		return false, fmt.Errorf("%w: %q", ErrMoveTargetIsActive, targetProfile)
 	}
+	if a.profiles.IsImmutable(targetProfile) {
+		return false, fmt.Errorf("%w: %q", ErrProfileImmutable, targetProfile)
+	}
 	// Validated target, nothing to move — idempotent no-op. The
 	// empty-keys check sits HERE (not at the top of the function)
 	// so an empty body with a bad target_profile still reports

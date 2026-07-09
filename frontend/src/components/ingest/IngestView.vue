@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import ParseProgressPanel from '@/components/ingest/ParseProgressPanel.vue'
+import { useActiveProfile } from '@/composables/shared/useActiveProfile'
 
 // IngestView (presented to users as the "Parse" tab) — the
 // operational panel. One job: run the parse pipeline. Engine setup,
@@ -36,6 +37,9 @@ const {
   parseConnectionState,
 } = storeToRefs(matchesStore)
 const { parse, onCancelParse, refreshParse } = matchesStore
+// The tour's sample profile is read-only — parsing new screenshots into it is
+// rejected server-side (409), so disable the affordances here.
+const { isReadOnly } = useActiveProfile()
 const matchedCount = computed(() => matchesStore.records.length)
 const unknownCount = computed(() => matchesStore.unknownRecords.length)
 </script>
@@ -45,6 +49,10 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
     <header class="settings-intro">
       <p class="settings-eyebrow">
         Parse Pipeline
+      </p>
+      <p v-if="isReadOnly" class="readonly-note" data-readonly-note>
+        🔒 This is a read-only sample profile — parsing and watching are disabled.
+        Switch to your own profile to add matches.
       </p>
       <div v-if="!tesseractReady || !screenshotsDir" class="readiness" data-readiness-checklist>
         <h2 class="settings-heading missing">
@@ -110,11 +118,11 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
             </p>
           </div>
           <div class="setting-control">
-            <label class="big-switch" :class="{ on: watchEnabled, disabled: !tesseractReady }">
+            <label class="big-switch" :class="{ on: watchEnabled, disabled: !tesseractReady || isReadOnly }">
               <input
                 type="checkbox"
                 :checked="watchEnabled"
-                :disabled="!tesseractReady"
+                :disabled="!tesseractReady || isReadOnly"
                 @change="toggleWatch()"
               >
               <span class="big-switch-track"><span class="big-switch-knob" /></span>
@@ -174,9 +182,9 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
               v-else
               class="btn primary big"
               data-testid="run-parse-btn"
-              :class="{ ghost: tesseractReady && newScreenshotCount === 0 }"
-              :disabled="!tesseractReady || newScreenshotCount === 0"
-              :title="!tesseractReady ? 'Locate Tesseract in Settings → Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
+              :class="{ ghost: (tesseractReady && newScreenshotCount === 0) || isReadOnly }"
+              :disabled="!tesseractReady || newScreenshotCount === 0 || isReadOnly"
+              :title="isReadOnly ? 'This is a read-only sample profile.' : !tesseractReady ? 'Locate Tesseract in Settings → Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
               @click="parse()"
             >
               <span class="btn-dot" />

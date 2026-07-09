@@ -35,6 +35,10 @@ var (
 	ErrProfileExists      = errors.New("profile already exists")
 	ErrProfileNotFound    = errors.New("profile not found")
 	ErrProfileActive      = errors.New("cannot delete active profile")
+	// ErrProfileImmutable is returned when a write is attempted against a
+	// read-only profile (the tour's sample "test" profile). Handlers map it to
+	// 409 Conflict.
+	ErrProfileImmutable = errors.New("profile is read-only")
 )
 
 // DefaultProfileName is the name assigned on first-run / migration.
@@ -54,17 +58,21 @@ var profileNameRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$`)
 // via the embedded RWMutex: tests fan reads through Active/List
 // freely; writes (Create / Activate / Delete) take the write lock.
 type Profiles struct {
-	baseDir string
-	mu      sync.RWMutex
-	active  string
-	list    []string
+	baseDir   string
+	mu        sync.RWMutex
+	active    string
+	list      []string
+	immutable map[string]bool // read-only profiles (the tour's "test" sample)
 }
 
 // profilesFile is the on-disk envelope. Kept private so callers go
-// through the Profiles type for mutation.
+// through the Profiles type for mutation. `immutable` is a sidecar list of
+// read-only profile names — additive, so a profiles.json written before this
+// field existed simply has no immutable profiles.
 type profilesFile struct {
-	Active   string   `json:"active_profile"`
-	Profiles []string `json:"profiles"`
+	Active    string   `json:"active_profile"`
+	Profiles  []string `json:"profiles"`
+	Immutable []string `json:"immutable,omitempty"`
 }
 
 // LoadProfiles opens (and if necessary initializes) the profile state
@@ -93,6 +101,12 @@ func (p *Profiles) load() error {
 		p.active = f.Active
 		p.list = append(p.list[:0], f.Profiles...)
 		sort.Strings(p.list)
+		p.immutable = make(map[string]bool, len(f.Immutable))
+		for _, name := range f.Immutable {
+			if containsProfile(f.Profiles, name) {
+				p.immutable[name] = true
+			}
+		}
 		// Defence against a hand-edited profiles.json whose active is
 		// not in the list — fall back to the first listed profile, or
 		// the default name if list is empty.
@@ -230,6 +244,10 @@ func (p *Profiles) Rename(old, newName string) error {
 	p.list = removeString(p.list, old)
 	p.list = append(p.list, newName)
 	sort.Strings(p.list)
+	if p.immutable[old] {
+		delete(p.immutable, old)
+		p.immutable[newName] = true
+	}
 	if p.active == old {
 		p.active = newName
 	}
@@ -255,6 +273,7 @@ func (p *Profiles) Delete(name string) error {
 		return fmt.Errorf("profiles: remove %q dir: %w", name, err)
 	}
 	p.list = removeString(p.list, name)
+	delete(p.immutable, name)
 	return p.save()
 }
 
@@ -266,14 +285,45 @@ func (p *Profiles) ensureDir(name string) error {
 }
 
 func (p *Profiles) save() error {
+	immutable := make([]string, 0, len(p.immutable))
+	for name := range p.immutable {
+		immutable = append(immutable, name)
+	}
+	sort.Strings(immutable)
 	enc, err := json.MarshalIndent(profilesFile{
-		Active:   p.active,
-		Profiles: append([]string(nil), p.list...),
+		Active:    p.active,
+		Profiles:  append([]string(nil), p.list...),
+		Immutable: immutable,
 	}, "", "  ")
 	if err != nil {
 		return fmt.Errorf("profiles: marshal: %w", err)
 	}
 	return os.WriteFile(p.metaPath(), enc, 0o600)
+}
+
+// IsImmutable reports whether the named profile is read-only (writes rejected).
+func (p *Profiles) IsImmutable(name string) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.immutable[name]
+}
+
+// SetImmutable marks a profile read-only and persists it. Idempotent; errors if
+// the profile is unknown.
+func (p *Profiles) SetImmutable(name string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !containsProfile(p.list, name) {
+		return fmt.Errorf("%w: %q", ErrProfileNotFound, name)
+	}
+	if p.immutable == nil {
+		p.immutable = make(map[string]bool, 1)
+	}
+	if p.immutable[name] {
+		return nil
+	}
+	p.immutable[name] = true
+	return p.save()
 }
 
 // Contains reports whether name is one of the managed profiles.

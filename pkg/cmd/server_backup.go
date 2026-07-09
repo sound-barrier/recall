@@ -93,6 +93,7 @@ func handleRestoreDatabase(a *app.App) http.HandlerFunc {
 			w, r, a.RestoreDatabase(body),
 			errStatus{app.ErrRestoreInvalid, probRestoreInvalid},
 			errStatus{app.ErrParseInFlight, probConflict},
+			errStatus{app.ErrProfileImmutable, probConflict},
 		) {
 			return
 		}

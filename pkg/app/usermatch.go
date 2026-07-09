@@ -97,6 +97,9 @@ func (a *App) ResetMatchData(matchKey string) error {
 // queue / play-mode aux rows, and returns the aggregated record. The right-side
 // detail-panel choosers then work unchanged — they key on match_key.
 func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.MatchRecord, error) {
+	if err := a.assertActiveMutable(); err != nil {
+		return match.MatchRecord{}, err
+	}
 	key, data, err := buildManualMatch(input)
 	if err != nil {
 		return match.MatchRecord{}, err

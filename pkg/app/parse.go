@@ -182,6 +182,9 @@ func (a *App) ActiveParse() ActiveParseStatus {
 // entry points fail fast BEFORE claiming the run slot or spawning a
 // goroutine. Returns the cleaned screenshots dir for the loop.
 func (a *App) validateParsePreconditions() (string, error) {
+	if err := a.assertActiveMutable(); err != nil {
+		return "", err
+	}
 	screenshotsDir, err := validateScreenshotsDir(a.settingsSnapshot().ScreenshotsDir)
 	if err != nil {
 		return "", err
