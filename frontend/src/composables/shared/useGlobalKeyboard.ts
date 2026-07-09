@@ -109,13 +109,14 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
         })()
       },
     },
-    // Global: vim-style view navigation (`g` then m/i/s/u/c).
-    ...(['m', 'i', 's', 'u', 'c'] as const).map((follow): Shortcut => {
+    // Global: vim-style view navigation (`g` then m/i/s/u/c/e).
+    ...(['m', 'i', 's', 'u', 'c', 'e'] as const).map((follow): Shortcut => {
       const target: TabId = (
         follow === 'm' ? 'matches'  :
         follow === 'i' ? 'ingest'   :
         follow === 's' ? 'settings' :
-        follow === 'u' ? 'unknown'  : 'compare'
+        follow === 'u' ? 'unknown'  :
+        follow === 'c' ? 'compare'  : 'elo'
       )
       return {
         key: follow,

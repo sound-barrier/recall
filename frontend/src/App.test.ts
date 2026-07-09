@@ -194,11 +194,15 @@ describe('App.vue — tablist keyboard navigation', () => {
     expect(wrapper.find('#tab-ingest').attributes('aria-selected')).toBe('true')
   })
 
-  it('ArrowLeft from Settings wraps to Compare', async () => {
+  it('ArrowLeft from Settings wraps to the Elo Calculator', async () => {
     const wrapper = await mountApp()
     await wrapper.find('#tab-settings').trigger('click')
     await wrapper.find('nav.page-nav').trigger('keydown', { key: 'ArrowLeft' })
-    expect(wrapper.find('#tab-compare').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('#tab-elo').attributes('aria-selected')).toBe('true')
+    // Let the lazy Elo view resolve inside the test so its provider mounts
+    // cleanly — otherwise the async mount lands post-teardown and useEloCalc's
+    // inject-guard throws as an unhandled rejection.
+    await flushPromises()
   })
 
   it('Home jumps to the first tab (Settings)', async () => {
@@ -208,10 +212,11 @@ describe('App.vue — tablist keyboard navigation', () => {
     expect(wrapper.find('#tab-settings').attributes('aria-selected')).toBe('true')
   })
 
-  it('End jumps to the last tab (Compare)', async () => {
+  it('End jumps to the last tab (Elo Calculator)', async () => {
     const wrapper = await mountApp()
     await wrapper.find('nav.page-nav').trigger('keydown', { key: 'End' })
-    expect(wrapper.find('#tab-compare').attributes('aria-selected')).toBe('true')
+    expect(wrapper.find('#tab-elo').attributes('aria-selected')).toBe('true')
+    await flushPromises() // resolve the lazy Elo view within the test (see above)
   })
 
   it('typing into a tab without an arrow key does not change selection', async () => {

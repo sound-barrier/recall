@@ -1,0 +1,234 @@
+import {
+  computed, inject, provide, ref, toValue, watch,
+  type ComputedRef, type InjectionKey, type MaybeRefOrGetter, type Ref,
+} from 'vue'
+import type { MatchRecord } from '@/api-client'
+import { TIER_ORDER, ladderScore, type Tier } from '@/match/match-trends-helpers'
+import {
+  availableTracks, heroPickerStats, pooledWinLoss, seedTrack, trackRecords,
+  TRACK_LABELS, type HeroPickStat, type TrackKey, type TrackSeed,
+} from '@/match/elo-seed'
+import {
+  decayProjection, gamesToWeeks, naiveProjection, probWithinGames, projectionCurves,
+  requiredWinRateForGames, DEFAULT_DECAY_SLOPE, DEFAULT_METER_MOVE_PCT,
+  type DecayProjection, type NaiveProjection, type ProjectionCurves, type ProjectionInput,
+} from '@/match/elo-model'
+import { binomialTwoSidedP, lossStreakChance } from '@/match/elo-stats'
+import { populationPercentile } from '@/match/elo-distribution'
+
+// The Elo Calculator's single state owner (loan-calculator semantics):
+// picking a track re-fills every input from that track's history; every
+// input stays editable; a manual edit stops background re-seeding so
+// the user's numbers never fight the data. Provided to the elo/*
+// components via inject, mirroring the dashboard's useDossier seam.
+
+export interface EloCalcOpts {
+  records: MaybeRefOrGetter<MatchRecord[]>
+  heroRole: (hero: string | null | undefined) => string
+}
+
+// SEASON_WEEKS sizes the "this season" probability window.
+const SEASON_WEEKS = 12
+// The loss-streak reality check: odds of a run this long within this many
+// decisive games — the "streaks are normal, not rigged" number.
+const STREAK_LEN = 5
+const STREAK_HORIZON = 100
+
+export function useEloCalculator(opts: EloCalcOpts) {
+  const records = computed(() => toValue(opts.records))
+  const tracksInfo = computed(() => availableTracks(records.value))
+
+  const track = ref<TrackKey>(tracksInfo.value.defaultTrack)
+  const trackPicked = ref(false)
+  const dirty = ref(false)
+
+  // ── Editable inputs (all seeded, all overridable) ──────────────────
+  const currentTier = ref<Tier>('gold')
+  const currentDivision = ref(3)
+  const currentProgress = ref(0)
+  const targetTier = ref<Tier>('platinum')
+  const targetDivision = ref(5)
+  const winRatePct = ref<number | null>(null)
+  const sampleN = ref(0)
+  const meterMovePct = ref(DEFAULT_METER_MOVE_PCT)
+  const gamesPerWeekInput = ref<number | null>(null)
+  const decaySlopePts = ref(DEFAULT_DECAY_SLOPE * 100)
+
+  const selectedHeroes = ref<ReadonlySet<string>>(new Set())
+  const lastSeed = ref<TrackSeed | null>(null)
+
+  const seed = computed(() => seedTrack(records.value, track.value))
+
+  function applySeed(): void {
+    const s = seed.value
+    lastSeed.value = s
+    if (s.rank) {
+      currentTier.value = s.rank.tier
+      currentDivision.value = s.rank.level
+      currentProgress.value = Math.max(0, s.rank.progress)
+    }
+    applyTargetDefault(s.rank?.tier ?? currentTier.value)
+    winRatePct.value = s.winRate === null ? null : round1(s.winRate * 100)
+    sampleN.value = s.wins + s.losses
+    meterMovePct.value = round1(s.meterMovePct)
+    gamesPerWeekInput.value = s.gamesPerWeek === null ? null : round1(s.gamesPerWeek)
+    selectedHeroes.value = new Set()
+    dirty.value = false
+  }
+
+  // Default target: one tier up, division 5 (Champion tops out at 1).
+  function applyTargetDefault(fromTier: Tier): void {
+    const idx = (TIER_ORDER as readonly string[]).indexOf(fromTier)
+    const next = Math.min(idx + 1, TIER_ORDER.length - 1)
+    targetTier.value = TIER_ORDER[next] ?? 'champion'
+    targetDivision.value = next === idx ? 1 : 5
+  }
+
+  function setTrack(next: TrackKey): void {
+    trackPicked.value = true
+    track.value = next
+    applySeed()
+  }
+
+  // Re-seed when the corpus loads/changes — but never over a user's edits.
+  watch(seed, () => {
+    if (!dirty.value) applySeed()
+  }, { immediate: true })
+  watch(() => tracksInfo.value.defaultTrack, (next) => {
+    if (!trackPicked.value && !dirty.value) track.value = next
+  })
+
+  // ── Hero picker → win-rate reseeding ───────────────────────────────
+  const trackRecs = computed(() => trackRecords(records.value, track.value))
+  const heroStats: ComputedRef<HeroPickStat[]> = computed(() => heroPickerStats(trackRecs.value, opts.heroRole))
+
+  function toggleHero(key: string): void {
+    const next = new Set(selectedHeroes.value)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    selectedHeroes.value = next
+    dirty.value = true
+    applyHeroSelection(next)
+  }
+
+  function applyHeroSelection(selection: ReadonlySet<string>): void {
+    if (selection.size === 0) {
+      const s = seed.value
+      winRatePct.value = s.winRate === null ? null : round1(s.winRate * 100)
+      sampleN.value = s.wins + s.losses
+      return
+    }
+    const { wins, losses } = pooledWinLoss(heroStats.value, selection)
+    winRatePct.value = wins + losses > 0 ? round1((wins / (wins + losses)) * 100) : null
+    sampleN.value = wins + losses
+  }
+
+  // Manual edits are name-keyed (templates auto-unwrap destructured refs,
+  // so they can't pass the ref itself). Every edit marks the form dirty;
+  // win-rate/sample edits also detach the hero selection so the two
+  // sources never fight.
+  const editable = {
+    currentTier, currentDivision, currentProgress, targetTier, targetDivision,
+    winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
+  }
+  function editInput(
+    field: keyof typeof editable,
+    value: number | string | null,
+    opts2?: { detachHeroes?: boolean },
+  ): void {
+    ;(editable[field] as Ref<number | string | null>).value = value
+    dirty.value = true
+    if (opts2?.detachHeroes) selectedHeroes.value = new Set()
+  }
+
+  // ── Derived projections ────────────────────────────────────────────
+  const currentScore = computed(() => ladderScore(currentTier.value, currentDivision.value, currentProgress.value))
+  const targetScore = computed(() => ladderScore(targetTier.value, targetDivision.value, 0))
+
+  const projInput = computed<ProjectionInput | null>(() => {
+    if (currentScore.value === null || targetScore.value === null) return null
+    if (winRatePct.value === null || sampleN.value <= 0 || meterMovePct.value <= 0) return null
+    const wins = Math.round((sampleN.value * winRatePct.value) / 100)
+    return {
+      currentScore: currentScore.value,
+      targetScore: targetScore.value,
+      winRate: winRatePct.value / 100,
+      sampleWins: wins,
+      sampleLosses: sampleN.value - wins,
+      meterMovePct: meterMovePct.value,
+      decaySlope: decaySlopePts.value / 100,
+    }
+  })
+
+  const naive = computed<NaiveProjection | null>(() => (projInput.value ? naiveProjection(projInput.value) : null))
+  const decay = computed<DecayProjection | null>(() => (projInput.value ? decayProjection(projInput.value) : null))
+  const curves = computed<ProjectionCurves | null>(() => (projInput.value ? projectionCurves(projInput.value) : null))
+
+  const pValue = computed(() => {
+    const inp = projInput.value
+    return inp ? binomialTwoSidedP(inp.sampleWins, inp.sampleWins + inp.sampleLosses) : null
+  })
+  const percentileNow = computed(() => (currentScore.value === null ? null : populationPercentile(currentScore.value)))
+  const percentileTarget = computed(() => (targetScore.value === null ? null : populationPercentile(targetScore.value)))
+
+  const weeksNaive = computed(() => gamesToWeeks(naive.value?.expectedGames ?? null, gamesPerWeekInput.value))
+  const weeksDecay = computed(() => gamesToWeeks(decay.value?.expectedGames ?? null, gamesPerWeekInput.value))
+
+  const seasonGames = computed(() => {
+    const pace = gamesPerWeekInput.value
+    return pace === null || pace <= 0 ? null : Math.round(pace * SEASON_WEEKS)
+  })
+  const probThisSeason = computed(() => {
+    if (projInput.value === null || seasonGames.value === null) return null
+    return probWithinGames(projInput.value, seasonGames.value)
+  })
+  const requiredWrForSeason = computed(() => {
+    if (projInput.value === null || seasonGames.value === null) return null
+    return requiredWinRateForGames(projInput.value, seasonGames.value)
+  })
+
+  // Odds of a STREAK_LEN-loss run in the next STREAK_HORIZON games at the
+  // current win rate — the anti-"rigged" reality check.
+  const lossStreak = computed(() => {
+    if (winRatePct.value === null || sampleN.value <= 0) return null
+    return lossStreakChance(winRatePct.value / 100, STREAK_LEN, STREAK_HORIZON)
+  })
+
+  return {
+    // track picking
+    track, tracks: computed(() => tracksInfo.value.tracks), setTrack, trackLabels: TRACK_LABELS,
+    // editable inputs + edit API
+    currentTier, currentDivision, currentProgress, targetTier, targetDivision,
+    winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
+    editInput, lastSeed,
+    // hero picker
+    heroStats, selectedHeroes, toggleHero,
+    // derived
+    trackRecs, currentScore, targetScore, projInput, naive, decay, curves,
+    pValue, percentileNow, percentileTarget, weeksNaive, weeksDecay,
+    seasonGames, probThisSeason, requiredWrForSeason,
+    lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
+  }
+}
+
+function round1(v: number): number {
+  return Math.round(v * 10) / 10
+}
+
+export type EloCalculator = ReturnType<typeof useEloCalculator>
+
+const ELO_CALC_KEY: InjectionKey<EloCalculator> = Symbol('recall.elo-calculator')
+
+// useEloCalc injects the calculator provided by EloCalculatorView —
+// throws loudly when a component is mounted outside the provider.
+export function useEloCalc(): EloCalculator {
+  const calc = inject(ELO_CALC_KEY)
+  if (!calc) {
+    throw new Error('useEloCalc() called outside an EloCalculatorView provider.')
+  }
+  return calc
+}
+
+export function provideEloCalculator(calc: EloCalculator): void {
+  provide(ELO_CALC_KEY, calc)
+}
