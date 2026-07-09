@@ -307,7 +307,7 @@ func (a *App) activateAndReload(name string) error {
 	}
 	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
 	if err != nil {
-		applog.Subsystem("profiles").Error("open db", "name", name, "err", err)
+		applog.Subsystem("profiles").Error("open db", "name", applog.Scrub(name), "err", err)
 		return fmt.Errorf("profiles: open db for %q: %w", name, err)
 	}
 	a.store = s
