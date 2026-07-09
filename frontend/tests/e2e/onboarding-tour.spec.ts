@@ -211,3 +211,27 @@ test.describe('onboarding tour — first-launch behaviour', () => {
     await expect(page.locator('.tour-callout-counter')).toContainText('01 /')
   })
 })
+
+test.describe('onboarding tour — replay from Settings', () => {
+  // The Done step promises "Replay this tour anytime from Settings →
+  // Advanced" — this pins that the promise is real.
+  test('Settings → Advanced replays the tour on demand', async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('recall.firstRunAccountNamed', 'true')
+        localStorage.setItem('recall.onboardingCompleted', 'true')
+      } catch (_) { /* ignore */ }
+    })
+    await page.goto('/')
+    const tour = page.locator('[data-testid="onboarding-tour"]')
+    await expect(tour).toBeHidden() // completed → no auto-open
+
+    await page.locator('#tab-settings').click()
+    await page.locator('.advanced-summary').click()
+    await page.locator('[data-replay-tour]').click()
+
+    // The tour reopens from the top, over whatever view the user was on.
+    await expect(tour).toBeVisible()
+    await expect(tour).toContainText(/welcome to recall/i)
+  })
+})

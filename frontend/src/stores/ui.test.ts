@@ -16,7 +16,7 @@ vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
   EventsOn:       vi.fn(),
   EventsOff:      vi.fn(),
-  GetActiveParse: vi.fn(async () => null),
+  GetActiveParse: vi.fn(async () => ({ running: false, done: 0, total: 0, scope: '' })),
   GetOWData:      vi.fn(async () => ({ heroes: [], maps: [], roles: {}, gameModes: [] })),
   GetProfiles:    vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
 }))
@@ -101,5 +101,16 @@ describe('ui store — markRaw bundles', () => {
     // If markRaw were missing, Pinia would deep-unwrap isOpen to a bare boolean
     // and `.value` would be undefined.
     expect(ui.selection.isOpen.value).toBe(false)
+  })
+})
+
+describe('tour replay request', () => {
+  it('is a one-shot flag: request raises it, clear lowers it', () => {
+    const ui = useUiStore()
+    expect(ui.tourReplayRequested).toBe(false)
+    ui.requestTourReplay()
+    expect(ui.tourReplayRequested).toBe(true)
+    ui.clearTourReplayRequest()
+    expect(ui.tourReplayRequested).toBe(false)
   })
 })

@@ -4,14 +4,19 @@
 // Manage-ignored + re-parse-progress props/emits introduced.
 
 import { mount } from '@vue/test-utils'
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 
 // Mock ../api so the useOWData session-singleton fetch (added when
 // the Supported capture-source rules collapsible landed) doesn't
 // try to reach localhost:3000 at module-load time. Returning a
 // stub matches the real GetOWData shape so useOWData populates
 // data.value with the empty defaults.
-vi.mock('@/api', () => ({
+vi.mock('@/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api')>()),
+  EventsOn:       vi.fn(),
+  EventsOff:      vi.fn(),
+  GetActiveParse: vi.fn(async () => ({ running: false, done: 0, total: 0, scope: '' })),
   GetOWData: vi.fn(async () => ({
     heroes_by_role:     {},
     maps_by_type:       {},
@@ -20,6 +25,11 @@ vi.mock('@/api', () => ({
 }))
 
 import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
+import { useUiStore } from '@/stores/ui'
+
+// The component reads useUiStore (Replay-tour request), so every mount
+// needs an active Pinia.
+beforeEach(() => setActivePinia(createPinia()))
 
 function mountAdvanced(overrides: Partial<{
   clearConfirm:      boolean
@@ -159,5 +169,16 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
     const line = wrapper.find('[data-reparse-progress-line]')
     expect(line.text()).toContain('12 of 47 matches updated')
     expect(line.text()).not.toContain('corrected')
+  })
+})
+
+describe('SettingsAdvanced — replay onboarding tour', () => {
+  it('the Replay button raises the ui-store request (the Done-step promise)', async () => {
+    const wrapper = mountAdvanced()
+    const ui = useUiStore()
+    expect(ui.tourReplayRequested).toBe(false)
+    await wrapper.find('[data-replay-tour]').trigger('click')
+    expect(ui.tourReplayRequested).toBe(true)
+    wrapper.unmount()
   })
 })

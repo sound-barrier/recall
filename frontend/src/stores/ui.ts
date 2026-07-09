@@ -78,6 +78,14 @@ export const useUiStore = defineStore('ui', () => {
   const settingsDialogOpen = ref(false)
   function openSettingsDialog() { settingsDialogOpen.value = true }
   function closeSettingsDialog() { settingsDialogOpen.value = false }
+
+  // One-shot "replay the onboarding tour" request — Settings → Advanced
+  // raises it; OnboardingTour (mounted in AppOverlays) watches, clears it,
+  // and restarts from step 0. A flag rather than a direct call because the
+  // tour controller lives inside the overlay component, not in a store.
+  const tourReplayRequested = ref(false)
+  function requestTourReplay() { tourReplayRequested.value = true }
+  function clearTourReplayRequest() { tourReplayRequested.value = false }
   // A manual match was created → close the modal, reload so it lands in the
   // feed, and open it so the user can add the right-panel review / replay-code.
   async function onManualMatchCreated(rec: MatchRecord) {
@@ -127,6 +135,9 @@ export const useUiStore = defineStore('ui', () => {
     settingsDialogOpen,
     openSettingsDialog,
     closeSettingsDialog,
+    tourReplayRequested,
+    requestTourReplay,
+    clearTourReplayRequest,
     cheatsheetOpen,
     openCheatsheet,
     closeCheatsheet,
