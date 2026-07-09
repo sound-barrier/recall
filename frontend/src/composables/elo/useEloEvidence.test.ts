@@ -76,6 +76,8 @@ describe('useEloEvidence', () => {
     expect(ids).toContain('since-review')
     expect(ids).toContain('pool')
     expect(ids).toContain('leavers')
+    expect(ids).toContain('streak-tilt')
+    expect(ids).not.toContain('tilt')
     expect(ids).not.toContain('coin')
     expect(ids).not.toContain('percentile')
 
@@ -95,5 +97,62 @@ describe('useEloEvidence', () => {
     const clean = Array.from({ length: 6 }, (_, i) => rec({ result: i % 2 ? 'defeat' : 'victory' }))
     const { items } = evidenceFrom(clean)
     expect(items.value.map((i) => i.id)).not.toContain('leavers')
+  })
+})
+
+describe('useEloEvidence — streaks', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  // Forty games of W W L L cycles: both after-a-win and after-a-loss arms
+  // get ~20 transitions, and every loss streak stops at depth 2.
+  function cycleCorpus(): MatchRecord[] {
+    seq = 0
+    return Array.from({ length: 40 }, (_, i) => rec({ result: i % 4 < 2 ? 'victory' : 'defeat' }))
+  }
+
+  it('replaces the one-game tilt with streak-depth rates + a significance clause', () => {
+    const { items } = evidenceFrom(cycleCorpus())
+    const item = items.value.find((i) => i.id === 'streak-tilt')!
+    expect(item).toBeDefined()
+    // Depth-1 and depth-2 rates both surface in the value.
+    expect(item.value).toMatch(/%/)
+    // The 2×2 test is computable here (balanced arms) → the gloss carries p.
+    expect(item.gloss).toMatch(/p [=<]/)
+  })
+
+  it('surfaces the streak meter impact from streak-modified rank cards', () => {
+    seq = 0
+    const rows = [
+      ...Array.from({ length: 4 }, () => {
+        const r = rec({ result: 'victory' })
+        ;(r.data as Record<string, unknown>).change_percent = 30
+        ;(r.data as Record<string, unknown>).modifiers = ['victory', 'win streak']
+        return r
+      }),
+      ...Array.from({ length: 2 }, () => {
+        const r = rec({ result: 'defeat' })
+        ;(r.data as Record<string, unknown>).change_percent = -30
+        ;(r.data as Record<string, unknown>).modifiers = ['defeat', 'loss streak']
+        return r
+      }),
+      ...Array.from({ length: 4 }, (_, i) => {
+        const r = rec({ result: i % 2 ? 'victory' : 'defeat' })
+        ;(r.data as Record<string, unknown>).change_percent = i % 2 ? 20 : -20
+        ;(r.data as Record<string, unknown>).modifiers = [i % 2 ? 'victory' : 'defeat']
+        return r
+      }),
+    ]
+    const { items } = evidenceFrom(rows)
+    const meter = items.value.find((i) => i.id === 'streak-meter')!
+    expect(meter).toBeDefined()
+    // ±30 streak vs ±20 normal → the 1.5× ratio leads the value.
+    expect(meter.value).toMatch(/1\.5/)
+    expect(meter.gloss).toMatch(/win[- ]streak/i)
+    expect(meter.gloss).toMatch(/loss[- ]streak/i)
+  })
+
+  it('hides the meter item without enough streak-modified readings', () => {
+    const { items } = evidenceFrom(cycleCorpus()) // no change_percent at all
+    expect(items.value.map((i) => i.id)).not.toContain('streak-meter')
   })
 })

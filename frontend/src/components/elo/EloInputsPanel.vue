@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { TIER_ORDER, type Tier } from '@/match/match-trends-helpers'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
+import { fmtScoreRank } from '@/components/elo/elo-format'
 
 // The calculator form: every input starts from the picked track's own games and
 // stays editable. Manual edits stop the background re-seed; win-rate/sample
@@ -10,7 +11,7 @@ import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
 const {
   currentTier, currentDivision, currentProgress, targetTier, targetDivision,
   winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
-  editInput, lastSeed,
+  editInput, lastSeed, decay, projInput,
 } = useEloCalc()
 
 const DIVISIONS = [5, 4, 3, 2, 1]
@@ -30,6 +31,26 @@ const meterHint = computed(() => {
   const s = lastSeed.value
   if (!s || s.meterSampleN < 3) return `Using the typical ${DEFAULT_METER_MOVE_PCT}% — too few rank screens to measure yours.`
   return `Measured from ${s.meterSampleN} of your rank screens.`
+})
+
+// The decay-slope provenance: measured from the player's own climb when the
+// history can identify it (a logistic fit of result vs the rank held at play
+// time), else the honest "this is a default" copy — so the number is never a
+// mystery knob the user is asked to guess.
+const slopeHint = computed(() => {
+  const m = lastSeed.value?.decaySlope ?? null
+  if (m === null) {
+    return 'Win-rate points you lose per division climbed (default 1.5) — not enough ranked history to measure yours yet.'
+  }
+  const r1 = (v: number) => (Math.round(v * 10) / 10).toFixed(1)
+  return `Measured from your climb: ${r1(m.pts)} pts per division (95% range ${r1(m.lowerPts)}–${r1(m.upperPts)}, ${m.n} ranked games).`
+})
+
+// Live consequence line: what the CURRENT slope value means in ranks — the
+// ceiling the decay model levels off at. Changes as the user drags the knob.
+const plateauLine = computed(() => {
+  if (!projInput.value || !decay.value) return null
+  return `At ${decaySlopePts.value} pts per division, your current form levels off near ${fmtScoreRank(decay.value.impliedTrueScore)}.`
 })
 </script>
 
@@ -142,9 +163,8 @@ const meterHint = computed(() => {
           class="elo-input" data-elo-input="decay-slope" type="number" min="0.5" max="5" step="0.1"
           :value="decaySlopePts" @change="editInput('decaySlopePts', num($event))"
         >
-        <small class="elo-hint">
-          Win-rate points you lose per division climbed as opponents improve (default 1.5).
-        </small>
+        <small class="elo-hint" data-elo-slope-hint>{{ slopeHint }}</small>
+        <small v-if="plateauLine" class="elo-hint elo-plateau" data-elo-plateau>{{ plateauLine }}</small>
       </label>
     </details>
   </div>

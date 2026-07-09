@@ -3,7 +3,9 @@ import type { MatchRecord } from '@/api-client'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier.types'
 import { analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT } from '@/match/match-hero-pool-helpers'
-import { winrateAfterResult, leaverRate } from '@/match/match-momentum-helpers'
+import { leaverRate } from '@/match/match-momentum-helpers'
+import { afterResultCounts, streakMeterImpact, winrateByStreakDepth } from '@/match/elo-streaks'
+import { twoByTwoChiSquareP } from '@/match/elo-stats'
 import { LOW_SAMPLE_N } from '@/match/match-sample-helpers'
 
 // "What actually moves your rank" — the levers a player controls, each an item
@@ -35,7 +37,8 @@ export function useEloEvidence(opts: EloEvidenceOpts) {
       reviewHabit(dossier.reviewedCount.value, dossier.daysSinceLastReview.value.days, coachCount(opts.trackRecs.value)),
       sinceReview(dossier.wldSinceLastReview.value),
       poolDiscipline(opts.trackRecs.value, opts.heroRole),
-      tiltDelta(opts.trackRecs.value),
+      streakTilt(opts.trackRecs.value),
+      streakMeter(opts.trackRecs.value),
       leavers(opts.trackRecs.value),
     ]
     return out.filter((i): i is EvidenceItem => i !== null)
@@ -93,21 +96,68 @@ function poolDiscipline(
   }
 }
 
-function tiltDelta(recs: readonly MatchRecord[]): EvidenceItem | null {
-  const afterLoss = winrateAfterResult(recs, 'defeat')
-  const afterWin = winrateAfterResult(recs, 'victory')
-  if (afterLoss.sample < LOW_SAMPLE_N || afterWin.sample < LOW_SAMPLE_N) return null
-  if (afterLoss.winrate === null || afterWin.winrate === null) return null
-  const drop = afterWin.winrate - afterLoss.winrate
+// streakTilt extends the one-game tilt readout to the whole run: the
+// next-game win rate as a loss streak deepens (1 / 2 / 3+ back), with the
+// after-a-loss vs after-a-win 2×2 tested for significance. The deeper the
+// sag, the earlier stepping away starts paying — and streak games also
+// swing the meter hardest (see streakMeter), so the rank cost compounds.
+function streakTilt(recs: readonly MatchRecord[]): EvidenceItem | null {
+  const depth = winrateByStreakDepth(recs)
+  const first = depth.afterLoss[0]
+  if (!first || first.sample < LOW_SAMPLE_N || first.winrate === null) return null
+
+  const shown = depth.afterLoss.filter((d) => d.sample >= LOW_SAMPLE_N && d.winrate !== null)
+  const value = `${shown.map((d) => `${d.winrate}%`).join(' · ')} as losses stack`
+  const ladder = shown
+    .map((d) => `${d.winrate}% after ${depthWord(d.depth, shown.length)}`)
+    .join(', ')
+
+  const counts = afterResultCounts(recs)
+  const p = twoByTwoChiSquareP(counts.winAfterWin, counts.lossAfterWin, counts.winAfterLoss, counts.lossAfterLoss)
+  const pClause = p === null
+    ? ''
+    : p < 0.05
+      ? ` The after-a-loss dip is a real pattern (${fmtP(p)}), not queue punishment.`
+      : ` The after-a-loss dip is within noise so far (${fmtP(p)}).`
+
+  const deepest = shown[shown.length - 1]
+  const sagging = deepest !== undefined && deepest.winrate !== null
+    && depth.baselineWinrate !== null && deepest.winrate < depth.baselineWinrate - 5
   return {
-    id: 'tilt',
-    label: 'Playing on tilt',
-    value: `${afterLoss.winrate}% after a loss`,
-    gloss: drop > 5
-      ? `You win ${afterLoss.winrate}% right after a loss vs ${afterWin.winrate}% after a win — the queue isn't punishing you; your play slips. Take the break.`
-      : `Your win rate barely changes after a loss (${afterLoss.winrate}% vs ${afterWin.winrate}% after a win) — tilt isn't costing you rank.`,
-    tone: drop > 5 ? 'warn' : 'good',
+    id: 'streak-tilt',
+    label: 'Deeper into a loss streak',
+    value,
+    gloss: `Your next-game win rate: ${ladder} (baseline ${depth.baselineWinrate}% over ${depth.baselineSample} games).${pClause}${sagging ? ' Two down is the cheapest moment to stop — every further game has more rank to give.' : ' Your play holds up inside streaks — the meter risk below is the only reason to pace yourself.'}`,
+    tone: sagging ? 'warn' : 'good',
   }
+}
+
+function depthWord(depth: number, bucketCount: number): string {
+  if (depth === 1) return 'one loss'
+  if (depth === 2) return 'two straight'
+  return bucketCount >= 3 ? `${depth} or more` : `${depth} straight`
+}
+
+// streakMeter is the mechanical half of the user's observation that
+// streaks decide their rank: the rank card's own streak modifiers move
+// the meter more per game, in both directions.
+function streakMeter(recs: readonly MatchRecord[]): EvidenceItem | null {
+  const m = streakMeterImpact(recs)
+  if (m === null) return null
+  const ratio = Math.round(m.ratio * 10) / 10
+  const divisions = (netPct: number) => (Math.abs(netPct) / 100).toFixed(1)
+  return {
+    id: 'streak-meter',
+    label: 'Streaks move your meter more',
+    value: `${ratio}× inside streaks`,
+    gloss: `Your rank cards move ±${Math.round(m.streakAbsMean)}% during a streak vs ±${Math.round(m.normalAbsMean)}% otherwise (${m.streakN} streak games measured). Win-streak games have banked +${Math.round(m.winStreakNet)}% meter (≈${divisions(m.winStreakNet)} divisions); loss-streak games gave back ${Math.round(m.lossStreakNet)}% (≈${divisions(m.lossStreakNet)} divisions). Ride the former; cut the latter early — each extra game in a losing run has more ground to give.`,
+    tone: Math.abs(m.lossStreakNet) > m.winStreakNet ? 'warn' : 'neutral',
+  }
+}
+
+function fmtP(p: number): string {
+  if (p < 0.0001) return 'p < 0.0001'
+  return `p = ${p.toFixed(p < 0.01 ? 3 : 2)}`
 }
 
 function leavers(recs: readonly MatchRecord[]): EvidenceItem | null {

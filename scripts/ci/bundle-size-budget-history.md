@@ -13,6 +13,7 @@ no soft-pedalling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|
+| 2026-07-09 | elo-statistics | 162000 | 69000 | 1490000 | 345000 | Elo statistics layer: Beta-posterior verdict/credible interval/honest timeline (elo-bayes), measured decay slope + plateau preview, runs test + 2×2 tilt significance, win/loss stat drivers (elo-drivers), streak-depth + streak-meter evidence (elo-streaks) — ~3.5KB in the lazy Elo chunk (total JS 1475000 → 1490000, ~11KB headroom). |
 | 2026-07-09 | - | 162000 | 69000 | 1465000 | 345000 | Elo Calculator scoped styles (form, cards, evidence grid), total CSS 335000 → 345000 (~5.5KB). |
 | 2026-07-09 | - | 162000 | 69000 | 1465000 | 335000 | Elo Calculator tab lazy chunk (view + projection math + chart options), ~28KB (total JS 1430000 → 1465000). |
 | 2026-07-08 | - | 162000 | 69000 | 1430000 | 335000 | Hero Pool band scoped styles (three-column layout, bars, gear), total CSS 332000 → 335000 (~1KB). |

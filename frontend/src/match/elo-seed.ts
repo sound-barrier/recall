@@ -12,6 +12,8 @@ import {
 } from '@/match/match-hero-pool-helpers'
 import { wilsonMargin } from '@/match/match-sample-helpers'
 import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
+import { logisticSlope } from '@/match/elo-stats'
+import { shrunkWinRate } from '@/match/elo-bayes'
 
 export type TrackKey = 'tank' | 'dps' | 'support' | 'open'
 
@@ -63,6 +65,7 @@ export interface TrackSeed {
   meterMovePct: number
   meterSampleN: number
   gamesPerWeek: number | null
+  decaySlope: MeasuredSlope | null // measured from the climb; null = use the default
 }
 
 // seedTrack derives every calculator input from one track's history.
@@ -80,7 +83,60 @@ export function seedTrack(records: readonly TrackInput[], track: TrackKey): Trac
     meterMovePct: meter.pct,
     meterSampleN: meter.n,
     gamesPerWeek: measuredPace(recs),
+    decaySlope: measuredDecaySlope(recs),
   }
+}
+
+export interface MeasuredSlope {
+  pts: number // win-rate points lost per division climbed (can be ≤ 0 for an improver)
+  lowerPts: number // 95% CI
+  upperPts: number
+  n: number // (score, result) pairs behind the fit
+}
+
+// SLOPE_MIN_PAIRS / SLOPE_MIN_SPREAD gate the regression: under 30
+// paired games, or less than a division of rank movement, the slope
+// isn't identifiable and the calculator keeps its default.
+const SLOPE_MIN_PAIRS = 30
+const SLOPE_MIN_SPREAD = 1
+
+// measuredDecaySlope fits the player's own "how fast it gets harder":
+// a logistic regression of each decisive result on the rank held when
+// the game was played (the most recent PRE-match reading, carried
+// forward), converted from logit units to win-rate points per division
+// at the fitted mean rate — the local linearization the decay model
+// actually uses. Null when the history can't identify a slope.
+export function measuredDecaySlope(recs: readonly TrackInput[]): MeasuredSlope | null {
+  const timed = recs
+    .map((r) => ({ r, t: matchEpoch(r) }))
+    .filter((x): x is { r: TrackInput; t: number } => x.t !== null)
+    .sort((a, b) => a.t - b.t)
+
+  const xs: number[] = []
+  const wins: boolean[] = []
+  let score: number | null = null
+  for (const { r } of timed) {
+    const d = r.data
+    const result = d?.result
+    if (score !== null && (result === 'victory' || result === 'defeat')) {
+      xs.push(score)
+      wins.push(result === 'victory')
+    }
+    if (d?.rank && typeof d.level === 'number') {
+      const next = ladderScore(d.rank, d.level, d.rank_progress ?? 0)
+      if (next !== null) score = next
+    }
+  }
+  if (xs.length < SLOPE_MIN_PAIRS) return null
+  if (Math.max(...xs) - Math.min(...xs) < SLOPE_MIN_SPREAD) return null
+
+  const fit = logisticSlope(xs, wins)
+  if (fit === null) return null
+  // Logit slope → probability slope at the fitted centre (delta method).
+  const scale = fit.meanRate * (1 - fit.meanRate)
+  const s = -fit.slope * scale
+  const half = 1.96 * fit.se * scale
+  return { pts: s * 100, lowerPts: (s - half) * 100, upperPts: (s + half) * 100, n: fit.n }
 }
 
 function decisiveTally(recs: readonly TrackInput[]): { wins: number; losses: number } {
@@ -157,6 +213,7 @@ export interface HeroPickStat {
   wins: number
   losses: number
   winrate: number // integer %, decisive-only (house convention)
+  adjustedWinrate: number | null // empirical-Bayes: shrunk toward the pooled rate
   marginPts: number | null // Wilson ± in percentage points
   inPool: boolean
   lowSample: boolean
@@ -164,8 +221,10 @@ export interface HeroPickStat {
 
 // heroPickerStats lists every meaningfully-played hero on the track with
 // its record and pool membership — straight off analyzeHeroPool (the
-// pool ∪ out-of-pool sets already carry all the tallies). In-pool heroes
-// first, then by sample size.
+// pool ∪ out-of-pool sets already carry all the tallies). Each hero also
+// gets an adjusted rate shrunk toward the pooled record ("the player is
+// the constant"): a hot 3–0 reads near the pool, a long record barely
+// moves. In-pool heroes first, then by sample size.
 export function heroPickerStats(
   trackRecs: readonly Pick<MatchRecord, 'data'>[],
   heroRole: (hero: string | null | undefined) => string,
@@ -175,17 +234,23 @@ export function heroPickerStats(
     ...analysis.pool.map((h) => ({ ...h, inPool: true })),
     ...analysis.outHeroes.map((h) => ({ ...h, inPool: false })),
   ]
+  const poolWins = rows.reduce((s, h) => s + h.wins, 0)
+  const poolLosses = rows.reduce((s, h) => s + h.losses, 0)
   return rows
-    .map((h) => ({
-      key: h.key,
-      role: h.role,
-      wins: h.wins,
-      losses: h.losses,
-      winrate: h.winrate,
-      marginPts: wilsonMargin(h.wins, h.wins + h.losses),
-      inPool: h.inPool,
-      lowSample: h.lowSample,
-    }))
+    .map((h) => {
+      const adjusted = shrunkWinRate(h.wins, h.losses, poolWins, poolLosses)
+      return {
+        key: h.key,
+        role: h.role,
+        wins: h.wins,
+        losses: h.losses,
+        winrate: h.winrate,
+        adjustedWinrate: adjusted === null ? null : Math.round(adjusted * 100),
+        marginPts: wilsonMargin(h.wins, h.wins + h.losses),
+        inPool: h.inPool,
+        lowSample: h.lowSample,
+      }
+    })
     .sort((a, b) => Number(b.inPool) - Number(a.inPool) || (b.wins + b.losses) - (a.wins + a.losses))
 }
 

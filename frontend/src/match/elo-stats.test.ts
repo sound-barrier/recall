@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 
-import { normalCdf, binomialTwoSidedP, inverseGaussianCdf, lossStreakChance } from '@/match/elo-stats'
+import {
+  normalCdf, binomialTwoSidedP, inverseGaussianCdf, lossStreakChance,
+  betaCdf, tCdf, runsTest, logisticSlope, twoByTwoChiSquareP,
+} from '@/match/elo-stats'
 
 describe('normalCdf', () => {
   it('hits the textbook anchors', () => {
@@ -86,5 +89,138 @@ describe('lossStreakChance', () => {
     const p = lossStreakChance(0.52, 5, 100)
     expect(p).toBeGreaterThan(0.6)
     expect(p).toBeLessThan(0.85)
+  })
+})
+
+describe('betaCdf', () => {
+  it('is the identity for Beta(1,1) (uniform)', () => {
+    expect(betaCdf(0.3, 1, 1)).toBeCloseTo(0.3, 10)
+    expect(betaCdf(0.85, 1, 1)).toBeCloseTo(0.85, 10)
+  })
+
+  it('matches the Beta(2,2) closed form 3x² − 2x³', () => {
+    expect(betaCdf(0.25, 2, 2)).toBeCloseTo(0.15625, 10)
+    expect(betaCdf(0.5, 2, 2)).toBeCloseTo(0.5, 10)
+    expect(betaCdf(0.75, 2, 2)).toBeCloseTo(0.84375, 10)
+  })
+
+  it('respects the reflection identity I_x(a,b) = 1 − I_{1−x}(b,a)', () => {
+    expect(betaCdf(0.37, 6.5, 2.25)).toBeCloseTo(1 - betaCdf(0.63, 2.25, 6.5), 10)
+  })
+
+  it('matches the exact binomial-tail identity at half for integer shapes', () => {
+    // I_½(a, b) = P(Binomial(a+b−1, ½) ≥ a). For a=61, b=41: n=101, tail from 61.
+    let logTerm = 101 * Math.log(0.5)
+    let below61 = 0
+    for (let k = 0; k <= 60; k++) {
+      below61 += Math.exp(logTerm)
+      logTerm += Math.log((101 - k) / (k + 1))
+    }
+    expect(betaCdf(0.5, 61, 41)).toBeCloseTo(1 - below61, 9)
+  })
+
+  it('clamps the edges', () => {
+    expect(betaCdf(0, 3, 4)).toBe(0)
+    expect(betaCdf(1, 3, 4)).toBe(1)
+    expect(betaCdf(-0.2, 3, 4)).toBe(0)
+  })
+})
+
+describe('tCdf', () => {
+  it('is ½ at zero for any df', () => {
+    expect(tCdf(0, 1)).toBeCloseTo(0.5, 10)
+    expect(tCdf(0, 30)).toBeCloseTo(0.5, 10)
+  })
+
+  it('is the Cauchy CDF at df = 1 (F(1) = ¾)', () => {
+    expect(tCdf(1, 1)).toBeCloseTo(0.75, 8)
+    expect(tCdf(-1, 1)).toBeCloseTo(0.25, 8)
+  })
+
+  it('approaches the normal CDF at large df', () => {
+    expect(tCdf(1.96, 1e6)).toBeCloseTo(normalCdf(1.96), 4)
+  })
+})
+
+describe('runsTest', () => {
+  it('matches the hand-computed z for a blocky 20/20 sequence', () => {
+    // Ten Ws, ten Ls, ten Ws, ten Ls → 4 runs. n1 = n2 = 20, n = 40:
+    // E[R] = 1 + 2·400/40 = 21; Var = 800·760/(1600·39) = 9.7436;
+    // z = (4 − 21)/√9.7436 = −5.4463.
+    const seq = [
+      ...Array<boolean>(10).fill(true), ...Array<boolean>(10).fill(false),
+      ...Array<boolean>(10).fill(true), ...Array<boolean>(10).fill(false),
+    ]
+    const r = runsTest(seq)!
+    expect(r.runs).toBe(4)
+    expect(r.expectedRuns).toBeCloseTo(21, 10)
+    expect(r.z).toBeCloseTo(-5.4463, 3)
+    expect(r.pValue).toBeLessThan(0.001)
+  })
+
+  it('a perfectly alternating sequence has MORE runs than chance (z > 0)', () => {
+    const seq = Array.from({ length: 40 }, (_, i) => i % 2 === 0)
+    const r = runsTest(seq)!
+    expect(r.runs).toBe(40)
+    expect(r.z).toBeGreaterThan(0)
+  })
+
+  it('needs at least ten of each outcome', () => {
+    expect(runsTest([...Array<boolean>(9).fill(true), ...Array<boolean>(30).fill(false)])).toBeNull()
+    expect(runsTest([])).toBeNull()
+  })
+})
+
+describe('logisticSlope', () => {
+  it('recovers the exact two-point logit line from two clusters', () => {
+    // 30 games at x=0 (21W/9L → logit 0.847298) and 30 at x=3 (18W/12L →
+    // logit 0.405465): the saturated MLE slope is Δlogit/Δx = −0.147278.
+    const xs: number[] = []
+    const wins: boolean[] = []
+    for (let i = 0; i < 30; i++) { xs.push(0); wins.push(i < 21) }
+    for (let i = 0; i < 30; i++) { xs.push(3); wins.push(i < 18) }
+    const fit = logisticSlope(xs, wins)!
+    expect(fit.slope).toBeCloseTo((Math.log(18 / 12) - Math.log(21 / 9)) / 3, 6)
+    // The fitted rate at the centred midpoint is σ(mean of the two logits).
+    const midLogit = (Math.log(21 / 9) + Math.log(18 / 12)) / 2
+    expect(fit.meanRate).toBeCloseTo(1 / (1 + Math.exp(-midLogit)), 6)
+    expect(fit.se).toBeGreaterThan(0)
+    expect(fit.n).toBe(60)
+  })
+
+  it('returns null on degenerate inputs', () => {
+    // One class only.
+    expect(logisticSlope([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], Array<boolean>(10).fill(true))).toBeNull()
+    // No x spread.
+    const wins = Array.from({ length: 10 }, (_, i) => i % 2 === 0)
+    expect(logisticSlope(Array<number>(10).fill(2), wins)).toBeNull()
+    // Too few points.
+    expect(logisticSlope([0, 1], [true, false])).toBeNull()
+  })
+
+  it('returns null on complete separation instead of a runaway slope', () => {
+    // All wins below x=5, all losses above — the MLE diverges.
+    const xs = Array.from({ length: 20 }, (_, i) => i)
+    const wins = xs.map((x) => x < 10)
+    expect(logisticSlope(xs, wins)).toBeNull()
+  })
+})
+
+describe('twoByTwoChiSquareP', () => {
+  it('matches a hand-computed Yates chi-square', () => {
+    // after-win: 30W/20L; after-loss: 15W/35L. |ad − bc| = |1050 − 300| = 750,
+    // Yates: (750 − 50)² · 100 / (50·50·45·55) = 490000·100/6187500 = 7.9192;
+    // p = 2(1 − Φ(√7.9192)) = 2(1 − Φ(2.8141)) ≈ 0.00489.
+    const p = twoByTwoChiSquareP(30, 20, 15, 35)!
+    expect(p).toBeCloseTo(0.00489, 4)
+  })
+
+  it('is 1 when the Yates-corrected difference vanishes', () => {
+    expect(twoByTwoChiSquareP(10, 10, 10, 10)).toBe(1)
+  })
+
+  it('returns null when an expected cell drops below 5', () => {
+    expect(twoByTwoChiSquareP(2, 30, 1, 40)).toBeNull()
+    expect(twoByTwoChiSquareP(0, 0, 10, 10)).toBeNull()
   })
 })

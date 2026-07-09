@@ -164,10 +164,59 @@
   align-items: start;
 }
 
+#panel-elo .elo-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
 #panel-elo .elo-cards {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
+}
+
+/* The honest-timeline strip under the two model cards: same plate as a
+   card but muted — it annotates the cards rather than competing. */
+#panel-elo .elo-timeline {
+  border: 1px dashed var(--border);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 3px;
+  padding: 0.6rem 0.8rem;
+}
+
+#panel-elo .elo-timeline-label {
+  margin: 0 0 0.25rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+#panel-elo .elo-timeline-line {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+#panel-elo .elo-timeline-know {
+  margin-top: 0.3rem;
+  color: var(--text-faint);
+}
+
+/* The plateau preview under the decay-slope input reacts live to the
+   knob — accented so the cause→effect link reads. */
+#panel-elo .elo-plateau {
+  display: block;
+  margin-top: 0.3rem;
+  color: color-mix(in srgb, var(--accent) 75%, var(--text-dim));
+  font-style: normal;
+}
+
+#panel-elo .elo-fine-print {
+  margin-top: 0.75rem;
 }
 
 #panel-elo .elo-card {

@@ -115,3 +115,68 @@ describe('useEloCalculator', () => {
     expect(calc.lossStreak.value!).toBeGreaterThan(0)
   })
 })
+
+describe('useEloCalculator — statistics layer', () => {
+  // Two rank bands with a falling win rate (30 games each), plus per-10
+  // performance stats: measurable slope, runnable runs test, live drivers.
+  function climbCorpus(): MatchRecord[] {
+    seq = 0
+    const rows: MatchRecord[] = []
+    for (let i = 0; i < 60; i++) {
+      const old = i < 30
+      const win = old ? i % 10 < 7 : i % 10 < 6
+      const r = rec({
+        result: win ? 'victory' : 'defeat',
+        rank: { tier: 'gold', level: old ? 5 : 2, progress: 0, change: win ? 20 : -20 },
+      })
+      ;(r.data as Record<string, unknown>).performance = {
+        deaths: { total: 5, avg_per_10min: (win ? 4 : 6.5) + (i % 3) * 0.2 },
+      }
+      rows.push(r)
+    }
+    // rec() makes later seq OLDER, so reverse: the high-rank band must be newest.
+    return rows.reverse()
+  }
+
+  it('seeds the decay slope from the measured climb', () => {
+    const calc = useEloCalculator({ records: climbCorpus(), heroRole })
+    expect(calc.lastSeed.value?.decaySlope).not.toBeNull()
+    // Seeded input = the measured value, clamped into the 0.5–5 band.
+    expect(calc.decaySlopePts.value).toBeGreaterThanOrEqual(0.5)
+    expect(calc.decaySlopePts.value).toBeLessThanOrEqual(5)
+    expect(calc.decaySlopePts.value).not.toBe(1.5)
+  })
+
+  it('keeps the default slope when the climb is unmeasurable', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole })
+    expect(calc.lastSeed.value?.decaySlope ?? null).toBeNull()
+    expect(calc.decaySlopePts.value).toBe(1.5)
+  })
+
+  it('exposes the Bayesian readouts, the runs test, and the stat drivers', () => {
+    const calc = useEloCalculator({ records: climbCorpus(), heroRole })
+    expect(calc.skepticVerdict.value).toBeGreaterThan(0.5)
+    expect(calc.skepticVerdict.value).toBeLessThanOrEqual(1)
+    const iv = calc.trueRateRange.value!
+    expect(iv.lower).toBeLessThan(iv.upper)
+    const q = calc.climbQuantiles.value!
+    expect(q.p50).not.toBeNull()
+    expect(calc.gamesToCertainty.value).toBeGreaterThan(0)
+    const runs = calc.runs.value!
+    expect(runs.pValue).toBeGreaterThan(0)
+    expect(runs.nWins + runs.nLosses).toBe(60)
+    const drivers = calc.drivers.value
+    expect(drivers[0]!.key).toBe('deaths')
+    expect(drivers[0]!.winMean).toBeLessThan(drivers[0]!.lossMean)
+  })
+
+  it('nulls the Bayesian readouts while inputs are invalid', () => {
+    const calc = useEloCalculator({ records: [], heroRole })
+    expect(calc.skepticVerdict.value).toBeNull()
+    expect(calc.trueRateRange.value).toBeNull()
+    expect(calc.climbQuantiles.value).toBeNull()
+    expect(calc.gamesToCertainty.value).toBeNull()
+    expect(calc.runs.value).toBeNull()
+    expect(calc.drivers.value).toEqual([])
+  })
+})

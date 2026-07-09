@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import type { MatchRecord } from '@/api-client'
 import {
   isCompetitive, trackRecords, seedTrack, availableTracks, heroPickerStats, pooledWinLoss,
+  measuredDecaySlope,
 } from '@/match/elo-seed'
 import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
 
@@ -173,5 +174,71 @@ describe('heroPickerStats / pooledWinLoss', () => {
     expect(pooledWinLoss(stats, new Set(['lucio']))).toEqual({ wins: 6, losses: 2 })
     expect(pooledWinLoss(stats, new Set(['lucio', 'ana']))).toEqual({ wins: 7, losses: 4 })
     expect(pooledWinLoss(stats, new Set())).toEqual({ wins: 0, losses: 0 })
+  })
+})
+
+describe('measuredDecaySlope', () => {
+  // Two rank bands with a falling win rate: 30 games at Gold 5 (ladder 10,
+  // 21W/9L) then 30 at Gold 2 (ladder 13, 18W/12L). The carry-forward
+  // pairing yields 59 (pre-match score, result) points across 3 divisions.
+  function climbCorpus(): Rec[] {
+    seq = 0
+    const rows: Rec[] = []
+    for (let i = 0; i < 30; i++) {
+      rows.push(rec({
+        daysAgo: 90 - i, result: i % 10 < 7 ? 'victory' : 'defeat',
+        rank: { tier: 'gold', level: 5, progress: 0, change: i % 2 ? 20 : -20 },
+      }))
+    }
+    for (let i = 0; i < 30; i++) {
+      rows.push(rec({
+        daysAgo: 40 - i, result: i % 10 < 6 ? 'victory' : 'defeat',
+        rank: { tier: 'gold', level: 2, progress: 0, change: i % 2 ? 20 : -20 },
+      }))
+    }
+    return rows
+  }
+
+  it('recovers a positive slope with a CI from a two-band climb', () => {
+    const m = measuredDecaySlope(climbCorpus())!
+    expect(m).not.toBeNull()
+    expect(m.n).toBe(59)
+    // Analytic two-cluster estimate ≈ 3.3 pts/division; allow fit slack.
+    expect(m.pts).toBeGreaterThan(1.5)
+    expect(m.pts).toBeLessThan(6)
+    expect(m.lowerPts).toBeLessThan(m.pts)
+    expect(m.upperPts).toBeGreaterThan(m.pts)
+  })
+
+  it('is null with too few rank-bearing games or no rank spread', () => {
+    expect(measuredDecaySlope(climbCorpus().slice(0, 25))).toBeNull()
+    seq = 0
+    const flat = Array.from({ length: 60 }, (_, i) => rec({
+      daysAgo: 90 - i, result: i % 2 ? 'victory' : 'defeat',
+      rank: { tier: 'gold', level: 3, progress: 0 },
+    }))
+    expect(measuredDecaySlope(flat)).toBeNull()
+  })
+
+  it('plumbs through seedTrack as decaySlope', () => {
+    expect(seedTrack(climbCorpus(), 'support').decaySlope).not.toBeNull()
+    seq = 0
+    const tiny = [rec({ rank: { tier: 'gold', level: 2, progress: 40 } })]
+    expect(seedTrack(tiny, 'support').decaySlope).toBeNull()
+  })
+})
+
+describe('heroPickerStats — adjusted rates', () => {
+  it('shrinks each hero toward the pooled rate with strength-10 pseudo-games', () => {
+    seq = 0
+    const records = [
+      ...Array.from({ length: 8 }, (_, i) => rec({ hero: 'lucio', result: i < 6 ? 'victory' : 'defeat' })),
+      ...Array.from({ length: 3 }, (_, i) => rec({ hero: 'ana', result: i < 1 ? 'victory' : 'defeat' })),
+    ]
+    const stats = heroPickerStats(records, () => 'support')
+    // Pool totals 7W/4L → 63.64%. ana raw 33% → (1 + 6.364)/13 = 56.6% → 57.
+    expect(stats.find((s) => s.key === 'ana')!.adjustedWinrate).toBe(57)
+    // lucio raw 75% → (6 + 6.364)/18 = 68.7% → 69.
+    expect(stats.find((s) => s.key === 'lucio')!.adjustedWinrate).toBe(69)
   })
 })
