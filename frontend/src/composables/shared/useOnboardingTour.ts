@@ -16,14 +16,17 @@ import { usePersistedRef, parseBoolish, serializeBoolish } from '@/composables/s
 // to swap the live `records` ref for the curated `DEMO_MATCHES` set
 // in useDemoMatches.ts. The swap is purely in-memory; nothing is
 // persisted to the server or to SQLite. The flag flips back on
-// finish/skip/Escape so the user's real matches re-appear the moment
-// the tour closes.
+// finish / Escape so the user's real matches re-appear the moment the
+// tour closes. Skip is the exception: it seeds the sample "test"
+// profile and switches into it (reloading into the Done step), so a
+// skipping user lands in real seeded data rather than an empty app —
+// the Done step then flips the flag.
 //
-// Gate semantics (unchanged from the prior implementation): the tour
-// auto-opens on mount when `recall.onboardingCompleted` is missing or
-// anything other than the literal "true". Skip / finish / Escape-
-// dismiss all flip the flag, so a user who closes the tour via ANY
-// affordance never sees it again unless they explicitly `restart()`.
+// Gate semantics: the tour auto-opens on mount when
+// `recall.onboardingCompleted` is missing or anything other than the
+// literal "true". Finish, Escape-dismiss, and the Done step that Skip
+// fast-forwards to all flip the flag, so a user who closes the tour via
+// ANY affordance never sees it again unless they explicitly `restart()`.
 
 // Re-export from storageKeys so the literal lives in one place.
 // App.vue imports directly from storageKeys to avoid pulling this
@@ -297,7 +300,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     id: 'explore-sample',
     tag: 'TRY IT',
     heading: 'Explore with real data',
-    body: 'Recall is best with a history to dig through. Press Next to spin up a sample "test" profile — 500 matches across the last 8 months — and finish the tour there. Your own account stays put. Or Skip to finish without it.',
+    body: 'Recall is best with a history to dig through. Press Next — or Skip tour — to spin up a sample "test" profile (500 matches across the last 8 months) and finish there. Your own account stays untouched.',
     target: null,
   },
   // ── 18. Done ───────────────────────────────────────────────
@@ -425,8 +428,20 @@ export function useOnboardingTour(opts: UseOnboardingTourOptions = {}) {
     stepIndex.value = 0
   }
 
-  // Skip is functionally equivalent to finish.
-  function skip() {
+  // Skip fast-forwards to the seeded exploration rather than dropping the user
+  // into an empty app: it seeds the sample "test" profile and switches into it,
+  // which reloads the SPA and reopens the tour on the Done step — the same
+  // seed+resume path the "explore-sample" step's Next drives. Falls back to a
+  // plain finish when there's nothing to seed toward: already on the last step,
+  // no seed action wired (the unit harness), or the seed/switch rejects — so
+  // Skip never traps the user. (Escape stays a pure finish; see OnboardingTour.)
+  async function skip() {
+    if (!isLastStep.value && opts.actions?.seedAndSwitchToTest) {
+      try {
+        await opts.actions.seedAndSwitchToTest(totalSteps - 1)
+        return
+      } catch (_) { /* fall through to a plain finish */ }
+    }
     finish()
   }
 

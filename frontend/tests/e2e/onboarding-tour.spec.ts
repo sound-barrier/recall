@@ -44,17 +44,44 @@ test.describe('onboarding tour — first-launch behaviour', () => {
     await expect(tour).toContainText(/welcome to recall/i)
   })
 
-  test('Skip button dismisses and persists completion to localStorage', async ({ page }) => {
+  test('Skip button seeds the sample profile and resumes the tour on Done', async ({ page }) => {
+    // Skip no longer just closes the tour — it fast-forwards to the seeded
+    // exploration: seed the "test" profile, switch into it (which reloads the
+    // SPA), and reopen on the final Done step so the user lands in real data
+    // instead of an empty app. Mock both endpoints so the reload-resume
+    // contract runs without mutating the shared serveronly backend.
+    let seedCalled = false
+    await page.route('**/api/v1/profiles/test/seed', async (route) => {
+      seedCalled = true
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ profile: 'test', matches: 500, already_seeded: false }),
+      })
+    })
+    await page.route('**/api/v1/profiles/active', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ active: 'test', profiles: ['main', 'test'] }),
+      })
+    })
+
     await page.goto('/')
     const tour = page.locator('[data-testid="onboarding-tour"]')
     await expect(tour).toBeVisible()
+    await expect(tour).toContainText(/welcome to recall/i)
 
+    // Skip straight from the first step — it seeds, switches, reloads, and the
+    // tour reopens on Done (in the test profile), not just closing.
     await tour.getByRole('button', { name: /skip/i }).click()
-    await expect(tour).toBeHidden()
+    await expect(page.locator('.tour-callout-heading'))
+      .toContainText(/explore, then clean up/i, { timeout: 15000 })
+    expect(seedCalled).toBe(true)
 
-    // The localStorage flag must be set so subsequent loads don't
-    // re-open the tour. Read via page.evaluate so the assertion
-    // exercises the actual browser-side storage path.
+    // Finishing from Done persists completion so the tour stays gone.
+    await tour.getByRole('button', { name: /done/i }).click()
+    await expect(tour).toBeHidden()
     const completed = await page.evaluate(
       () => localStorage.getItem('recall.onboardingCompleted'),
     )
@@ -125,7 +152,10 @@ test.describe('onboarding tour — first-launch behaviour', () => {
     await page.goto('/')
     const tour = page.locator('[data-testid="onboarding-tour"]')
     await expect(tour).toBeVisible()
-    await tour.getByRole('button', { name: /skip/i }).click()
+    // Escape is the pure-dismiss path (Skip now seeds + reloads into the
+    // sample profile); use it to close, then prove the persisted completion
+    // flag keeps the tour hidden across a hard reload.
+    await page.keyboard.press('Escape')
     await expect(tour).toBeHidden()
 
     // Hard reload — localStorage persists across reload within the
