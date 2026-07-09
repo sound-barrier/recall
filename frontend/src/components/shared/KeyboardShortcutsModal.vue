@@ -107,16 +107,16 @@ function onCaptureKey(e: KeyboardEvent) {
       emit('close')
       return
     case 'j':
-    case 'ArrowUp':
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      nudgeScroll(-SCROLL_STEP_PX)
-      return
-    case 'k':
     case 'ArrowDown':
       e.preventDefault()
       e.stopImmediatePropagation()
       nudgeScroll(SCROLL_STEP_PX)
+      return
+    case 'k':
+    case 'ArrowUp':
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      nudgeScroll(-SCROLL_STEP_PX)
       return
     case 'Tab':
     case 'Shift':
