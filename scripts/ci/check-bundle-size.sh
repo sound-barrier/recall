@@ -69,7 +69,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # MatchesView/compare chunks (initial JS untouched). New feature.
 # 2026-07: 1430000 -> 1465000 - the Elo Calculator tab (lazy chunk: view +
 # projection math + chart options), ~28KB. New feature.
-: "${MAX_TOTAL_JS_BYTES:=1465000}"
+# 2026-07: 1465000 -> 1475000 - the Hero Pool band rebuild (3-mode toggle,
+# per-role pools, pool-membership narrow), ~5KB in the MatchesView chunk. New feature.
+: "${MAX_TOTAL_JS_BYTES:=1475000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { computed, type Component, type ComputedRef } from 'vue'
 import { vi } from 'vitest'
+import type { MatchRecord } from '@/api-client'
 import { DOSSIER_KEY, FULL_DOSSIER_KEY } from '@/composables/dashboard/useDossier'
 import { NARROW_KEY, type NarrowApi } from '@/composables/matches/useNarrow'
 import type {
@@ -49,6 +50,7 @@ const EMPTY_POOL: HeroPoolAnalysis = {
 
 type DossierOverride = {
   // Bedrock — pass the inner value; helper wraps in a computed ref.
+  records?:             MatchRecord[]
   winrate?:             number | null
   wld?:                 WinLossDraw
   totalTimePlayed?:     TotalTimePlayed
@@ -105,6 +107,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     () => computed(() => (v === undefined ? fallback : v))
 
   return {
+    records:             wrap(over.records, []),
     // Bedrock
     wld:                 wrap(over.wld, { w: 0, l: 0, d: 0, total: 0 }),
     winrate:             wrap(over.winrate, null),

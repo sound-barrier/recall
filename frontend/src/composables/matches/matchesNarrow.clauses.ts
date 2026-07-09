@@ -11,6 +11,7 @@ import {
   matchesReviewedBy,
   matchesQueueType,
   matchesPlayMode,
+  matchesPoolSide,
   matchesRole,
   matchesSearch,
   matchesSinceAnchor,
@@ -31,7 +32,7 @@ import {
 export type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
   | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
   | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'modifiers' | 'ranks'
-  | 'sinceAnchor' | 'minPlay' | 'includeUnknown' | 'season'
+  | 'sinceAnchor' | 'minPlay' | 'includeUnknown' | 'season' | 'poolSide'
 
 // Per-pass inputs the predicates need beyond the raw state: the parsed
 // search clauses, the hero→role resolver, the pre-resolved anchor floor
@@ -275,5 +276,14 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     label: (s) => pickedLabel(s.pickedRanks.value, (v) => `rank ${v}`, 'rank picks'),
     clear: (s) => { s.pickedRanks.value = new Set() },
     chips: (s) => s.pickedRanks.value.size,
+  },
+  {
+    // The Hero Pool band's In-pool / Out-of-pool selection. Not a picked-set:
+    // one nullable filter carrying the snapshotted pool keys + chosen side.
+    id: 'poolSide',
+    restricts: (s) => s.poolFilter.value !== null,
+    passes: (r, s) => matchesPoolSide(r, s.poolFilter.value),
+    label: (s) => (s.poolFilter.value?.side === 'off' ? 'off-pool games' : 'on-pool games'),
+    clear: (s) => { s.poolFilter.value = null },
   },
 ]

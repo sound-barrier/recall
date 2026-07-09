@@ -258,3 +258,97 @@ export function outOfPoolHeroes(
     .sort((a, b) => a.rank - b.rank || b.stat.total - a.stat.total)
     .map((x) => x.stat)
 }
+
+// The three pool contexts the Hero Pool band's toggle switches between. Role
+// and Open are the two ranked queue types (rank is tracked per queue); Quickplay
+// is the casual play mode. Kept separate because a hero pool — and the rank it
+// feeds — means something different in each.
+export type PoolMode = 'role' | 'open' | 'quickplay'
+
+// matchesPoolMode partitions the corpus into the three pool contexts. Quickplay
+// is the casual play mode regardless of queue; Role and Open are competitive.
+// Role is the DEFAULT ranked bucket — an explicit 'open' queue_type goes to Open
+// Queue, and anything else competitive (role, or an unlabelled comp match that
+// predates queue detection) counts as Role Queue, so the band never strands
+// real games in no mode.
+export function matchesPoolMode(
+  rec: Pick<MatchRecord, 'data' | 'queue_type' | 'play_mode'>,
+  mode: PoolMode,
+): boolean {
+  const playMode = rec.play_mode ?? rec.data?.playlist
+  if (mode === 'quickplay') return playMode === 'quickplay'
+  if (playMode !== 'competitive') return false
+  return mode === 'open' ? rec.queue_type === 'open' : rec.queue_type !== 'open'
+}
+
+// A single match's standing against a pool. 'none' = no known hero (counted by
+// neither side), mirroring poolSplit.
+export type PoolSide = 'pure' | 'off' | 'none'
+
+// classifyPoolMembership is the per-record form of poolSplit — 'pure' when every
+// meaningful hero is in the pool, 'off' when any is outside. The Hero Pool
+// band's in/out-of-pool narrow filter runs this per match.
+export function classifyPoolMembership(
+  rec: Pick<MatchRecord, 'data'>,
+  pool: ReadonlySet<string>,
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): PoolSide {
+  const heroes = meaningfulHeroes(rec, thresholdPct)
+  if (heroes.length === 0) return 'none'
+  return heroes.every((h) => pool.has(h)) ? 'pure' : 'off'
+}
+
+// A pool hero carrying its membership, for the merged display ranking.
+export interface RankedPoolHero extends PoolHeroStat {
+  inPool: boolean
+}
+
+// rankPoolHeroes merges the pool + out-of-pool heroes into ONE display ranking:
+// statistically-meaningful heroes (n ≥ LOW_SAMPLE_N) first — a solid record
+// outranks a noisy perfect one (55% over 35 games beats 100% over 3) — then win
+// rate descending, then volume. Pool membership rides along so the view can
+// badge each hero WITHOUT recolouring by pool status: a high-win off-pool hero
+// should read as "play this more", a losing in-pool hero as "reconsider".
+export function rankPoolHeroes(analysis: HeroPoolAnalysis): RankedPoolHero[] {
+  return [
+    ...analysis.pool.map((h) => ({ ...h, inPool: true })),
+    ...analysis.outHeroes.map((h) => ({ ...h, inPool: false })),
+  ].sort((a, b) =>
+    Number(a.lowSample) - Number(b.lowSample)
+    || b.winrate - a.winrate
+    || (b.wins + b.losses) - (a.wins + a.losses)
+    || a.key.localeCompare(b.key))
+}
+
+export interface RoleWinrate {
+  role: string // 'tank' | 'dps' | 'support'
+  games: number
+  wins: number
+  decisive: number
+  winrate: number // decisive-only integer percent
+}
+
+// roleWinrates: decisive win rate per locked role (data.role) over the slice —
+// the role-queue headers' "how am I doing on Tank?" number. Only the three
+// canonical roles, in team-composition order; unresolvable roles are skipped.
+export function roleWinrates(records: readonly Pick<MatchRecord, 'data'>[]): RoleWinrate[] {
+  const order = ['tank', 'dps', 'support']
+  const tally = new Map<string, { games: number; wins: number; decisive: number }>()
+  for (const r of records) {
+    const role = r.data?.role
+    if (!role || !order.includes(role)) continue
+    const t = tally.get(role) ?? { games: 0, wins: 0, decisive: 0 }
+    t.games++
+    if (isDecisive(r)) {
+      t.decisive++
+      if (isWin(r)) t.wins++
+    }
+    tally.set(role, t)
+  }
+  return order
+    .filter((role) => tally.has(role))
+    .map((role) => {
+      const t = tally.get(role)!
+      return { role, games: t.games, wins: t.wins, decisive: t.decisive, winrate: decisiveWinrate(t.wins, t.decisive) }
+    })
+}

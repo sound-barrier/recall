@@ -14,6 +14,7 @@ import {
   matchesReviewedBy,
   matchesQueueType,
   matchesPlayMode,
+  matchesPoolSide,
   matchesSinceAnchor,
   matchesPickedSeason,
   matchesLeaverHandling,
@@ -246,5 +247,28 @@ describe('matchesPickedSeason', () => {
     // Ends 19:10Z (inside S2 by end) but started 18:55Z (before the boundary).
     const r = rec({ data: { played_at_utc: '2026-04-14T19:10:00Z', game_length: '15:00' } as MatchRecord['data'] })
     expect(matchesPickedSeason(r, 'S2', win)).toBe(false)
+  })
+})
+
+describe('matchesPoolSide', () => {
+  const heroRec = (hero: string) => ({ data: { result: 'victory', hero,
+    heroes_played: [{ hero, percent_played: 100 }] } }) as unknown as MatchRecord
+  const pool = { side: 'pure' as const, keys: ['reinhardt', 'lucio'], thresholdPct: 5 }
+
+  it('passes everything when the filter is null', () => {
+    expect(matchesPoolSide(heroRec('ana'), null)).toBe(true)
+  })
+
+  it('keeps only the chosen side', () => {
+    expect(matchesPoolSide(heroRec('lucio'), pool)).toBe(true) // in pool → pure
+    expect(matchesPoolSide(heroRec('ana'), pool)).toBe(false) // off pool → not pure
+    expect(matchesPoolSide(heroRec('ana'), { ...pool, side: 'off' })).toBe(true)
+    expect(matchesPoolSide(heroRec('lucio'), { ...pool, side: 'off' })).toBe(false)
+  })
+
+  it('a no-hero match matches neither side', () => {
+    const noHero = { data: { result: 'victory' } } as unknown as MatchRecord
+    expect(matchesPoolSide(noHero, pool)).toBe(false)
+    expect(matchesPoolSide(noHero, { ...pool, side: 'off' })).toBe(false)
   })
 })

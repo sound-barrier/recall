@@ -3,8 +3,10 @@ import { rolesForHeader } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 import { matchStartUTC, inSeasonWindow } from '@/match/match-season-helpers'
+import { classifyPoolMembership } from '@/match/match-hero-pool-helpers'
 import type { SearchClause } from '@/match/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/useMatchesNarrow'
+import type { PoolFilter } from '@/composables/matches/matchesNarrow.types'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
 // returns `true` if the record passes that dimension's gate, and is
@@ -264,4 +266,12 @@ export function matchesPickedSeason(
 export function matchesLeaverHandling(r: MatchRecord, mode: 'include' | 'exclude-tally' | 'hide'): boolean {
   if (mode !== 'hide') return true
   return !r.annotation?.leaver
+}
+
+// matchesPoolSide gates a match against the Hero Pool band's In-pool /
+// Out-of-pool selection: classify the record against the snapshotted pool keys
+// and keep only the chosen side. A null filter passes everything.
+export function matchesPoolSide(r: Pick<MatchRecord, 'data'>, filter: PoolFilter | null): boolean {
+  if (!filter) return true
+  return classifyPoolMembership(r, new Set(filter.keys), filter.thresholdPct) === filter.side
 }
