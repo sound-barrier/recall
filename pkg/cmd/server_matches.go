@@ -139,8 +139,7 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 				return
 			}
 		}
-		if writeError(w, r, a.ClearDatabase(keepIgnored),
-			errStatus{app.ErrProfileImmutable, probConflict}) {
+		if writeError(w, r, a.ClearDatabase(keepIgnored)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

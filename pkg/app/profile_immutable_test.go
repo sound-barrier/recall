@@ -67,6 +67,13 @@ func TestApp_TestProfileRejectsMutations(t *testing.T) {
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
+	// Immutability is per-profile: on the default "main" (a normal profile) the
+	// import guards never fire — users parse/import on their own profiles as
+	// before. Only the seeded "test" profile is read-only.
+	if err := a.StartParse(false); errors.Is(err, app.ErrProfileImmutable) {
+		t.Fatal("StartParse on a normal profile must NOT be blocked as immutable")
+	}
+
 	if _, err := a.SeedTestProfile(); err != nil {
 		t.Fatalf("SeedTestProfile: %v", err)
 	}
@@ -83,23 +90,30 @@ func TestApp_TestProfileRejectsMutations(t *testing.T) {
 		t.Fatalf("SwitchProfile(test): %v", err)
 	}
 
-	// Every corpus-mutating entry point must reject while "test" is active.
+	// Every IMPORT-a-new-match entry point must reject while "test" is active.
 	// (The guard fires before any input validation, so empty inputs are fine.)
 	_, importErr := a.ImportMatches([]byte("{}"))
 	_, manualErr := a.CreateManualMatch(match.ManualMatchInput{})
-	checks := map[string]error{
+	blocked := map[string]error{
 		"StartParse":        a.StartParse(false),
 		"ParseScreenshots":  a.ParseScreenshots(),
 		"ReParseAll":        a.ReParseAll(),
 		"ImportMatches":     importErr,
 		"RestoreDatabase":   a.RestoreDatabase([]byte("{}")),
 		"CreateManualMatch": manualErr,
-		"ClearDatabase":     a.ClearDatabase(false),
-		"HardDeleteMatch":   a.HardDeleteMatch("match-2026-01-01T00-00-00"),
 	}
-	for name, err := range checks {
+	for name, err := range blocked {
 		if !errors.Is(err, app.ErrProfileImmutable) {
-			t.Errorf("%s on the immutable profile = %v, want ErrProfileImmutable", name, err)
+			t.Errorf("%s on the read-only profile = %v, want ErrProfileImmutable", name, err)
 		}
+	}
+
+	// Small edits — removing matches from the existing corpus — are NOT imports,
+	// so they must NOT be blocked (the demo stays explorable).
+	if err := a.HardDeleteMatch("match-2026-01-01T00-00-00"); errors.Is(err, app.ErrProfileImmutable) {
+		t.Error("HardDeleteMatch should be allowed on the read-only sample (it's a removal, not an import)")
+	}
+	if err := a.ClearDatabase(false); errors.Is(err, app.ErrProfileImmutable) {
+		t.Error("ClearDatabase should be allowed on the read-only sample (it's a removal, not an import)")
 	}
 }

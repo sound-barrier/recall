@@ -18,7 +18,8 @@ type ProfilesResponse struct {
 	Active   string   `json:"active"`
 	Profiles []string `json:"profiles"`
 	// Immutable lists the read-only profiles (the tour's "test" sample). The
-	// frontend disables parse / import / restore / manual-add / delete on these.
+	// frontend disables the new-match IMPORT affordances (parse / import /
+	// restore / manual-add / move-in) on these; small edits stay enabled.
 	Immutable []string `json:"immutable"`
 }
 
@@ -137,9 +138,11 @@ func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
 	if err != nil {
 		return SeedTestProfileResponse{}, err
 	}
-	// The sample profile is read-only: it's a curated demo, so the user can't
-	// grow or replace its corpus (parse / import / restore / manual / move-in /
-	// delete). Marked idempotently on every seed call.
+	// The sample profile's corpus is protected: it's a curated demo, so the user
+	// can't IMPORT new matches into it (parse / bundle import / manual add /
+	// move-in / restore-a-foreign-db). Small edits to the existing seeded
+	// matches — tags, reviews, per-match overrides, even deleting one — stay
+	// allowed so the demo is explorable. Marked idempotently on every seed call.
 	if err := a.profiles.SetImmutable(TestProfileName); err != nil {
 		return SeedTestProfileResponse{}, err
 	}
