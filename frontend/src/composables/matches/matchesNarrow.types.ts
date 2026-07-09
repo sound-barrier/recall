@@ -43,6 +43,16 @@ export type SourcePick = 'ocr' | 'ocr_edited' | 'manual'
 // filter; matches with no leaver tag drop out when any side is picked.
 export type LeaverPick = 'self' | 'team' | 'enemy'
 
+// Pool-membership filter — the Hero Pool band's In-pool / Out-of-pool
+// selection. Transient and band-driven (NOT saved in narrow presets): the band
+// snapshots the current mode's in-pool hero `keys` when a side is picked, and
+// the predicate classifies each match against them. `null` ≡ no filter.
+export interface PoolFilter {
+  side: 'pure' | 'off'
+  keys: string[]
+  thresholdPct: number
+}
+
 // Parent-owned state bundle. App.vue creates it once via
 // `createMatchesNarrowState()` and passes the same object to both
 // `useMatchesNarrow` (which derives narrowedRecords) and to
@@ -92,6 +102,8 @@ export interface MatchesNarrowState {
   // resetNarrow.
   anchorKey:         ComputedRef<string>
   sinceAnchorActive: Ref<boolean>
+  // Hero Pool band's In-pool / Out-of-pool narrow (null ≡ off). Transient.
+  poolFilter:        Ref<PoolFilter | null>
 }
 
 export interface CreateMatchesNarrowStateOptions {

@@ -52,7 +52,7 @@ function rec(result: string, heroes: [string, number][]) {
     source_files: [`${seq}.png`],
     parsed_at: utc,
     data: {
-      map: 'ilios', playlist: 'competitive', hero: heroes[0]![0], result,
+      map: 'ilios', playlist: 'competitive', hero: heroes[0]![0], role: 'support', result,
       date: utc.slice(0, 10), finished_at: '12:00', played_at_utc: utc, game_length: '10:00',
       eliminations: 10, assists: 5, deaths: 4,
       heroes_played: heroes.map(([hero, pct]) => ({ hero, percent_played: pct, play_time: '05:00' })),
@@ -130,20 +130,21 @@ test.describe('hero-count buckets + hero pool', () => {
     const widget = page.locator('.hero-pool-band')
     await expect(widget).toBeVisible()
 
-    // The pool is brig + lucio (role-sorted, alphabetical within Support) —
-    // ana (3 games) and genji (1) are below the floor.
-    const pool = widget.locator('[data-pool-hero]')
+    // Support-role pool = brig + lucio (alphabetical) — ana (3 games) and
+    // genji (1) are below that role's floor. In-pool heroes carry data-pool-hero
+    // without the out marker.
+    const pool = widget.locator('[data-pool-hero]:not([data-pool-out-hero])')
     await expect(pool).toHaveCount(2)
     await expect(pool.nth(0)).toContainText(/brig/i)
     await expect(pool.nth(1)).toContainText(/l[úu]cio/i)
-    // The role grouping is visibly noted.
-    await expect(widget.locator('[data-pool-role="support"]')).toHaveText('Support')
+    // The Support role header groups them.
+    await expect(widget.locator('[data-pool-role-header="support"]')).toContainText('Support')
 
-    // The split: 13 in-pool games at 69%, 4 out-of-pool at 25%.
-    await expect(widget.locator('[data-pool-split="pure"]')).toContainText('13')
-    await expect(widget.locator('[data-pool-split="pure"]')).toContainText('69%')
-    await expect(widget.locator('[data-pool-split="out"]')).toContainText('4')
-    await expect(widget.locator('[data-pool-split="out"]')).toContainText('25%')
+    // The Support discipline: 13 in-pool games at 69%, 4 out-of-pool at 25%.
+    await expect(widget.locator('[data-pool-side="pure"]')).toContainText('13')
+    await expect(widget.locator('[data-pool-side="pure"]')).toContainText('69%')
+    await expect(widget.locator('[data-pool-side="off"]')).toContainText('4')
+    await expect(widget.locator('[data-pool-side="off"]')).toContainText('25%')
 
     // Out-of-pool heroes with their record — the "swap to ana rarely wins" story.
     const out = widget.locator('[data-pool-out-hero]')
@@ -167,8 +168,8 @@ test.describe('hero-count buckets + hero pool', () => {
     const widget = page.locator('.hero-pool-band')
     // X1's 7% genji no longer counts: it becomes a pure single-lucio game, so
     // the out-of-pool side drops to the 3 ana games and genji leaves the list.
-    await expect(widget.locator('[data-pool-split="pure"]')).toContainText('14')
-    await expect(widget.locator('[data-pool-split="out"]')).toContainText('3')
+    await expect(widget.locator('[data-pool-side="pure"]')).toContainText('14')
+    await expect(widget.locator('[data-pool-side="off"]')).toContainText('3')
     await expect(widget.locator('[data-pool-out-hero]')).toHaveCount(1)
     await expect(widget.locator('[data-pool-out-hero]')).toContainText(/ana/i)
   })

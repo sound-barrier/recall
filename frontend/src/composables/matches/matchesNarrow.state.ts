@@ -9,6 +9,7 @@ import type {
   PlayModePick,
   SourcePick,
   LeaverPick,
+  PoolFilter,
 } from '@/composables/matches/matchesNarrow.types'
 
 // Factory for the parent-owned narrow-filter state bundle (one set of refs
@@ -46,5 +47,6 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     // reads still work without lifting the wrapper to optional.
     anchorKey:        opts.anchorKey ?? computed(() => ''),
     sinceAnchorActive: ref(false),
+    poolFilter:       ref<PoolFilter | null>(null),
   }
 }

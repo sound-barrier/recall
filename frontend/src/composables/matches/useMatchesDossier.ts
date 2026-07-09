@@ -392,6 +392,10 @@ export function useMatchesDossier(
   const momentum = useMatchesMomentum(records)
 
   return {
+    // The dossier's own record slice (unfiltered for useFullDossier, narrowed
+    // for useDossier). Exposed so a band can run its own aggregation the query
+    // helpers don't cover — the Hero Pool band filters this by queue mode.
+    records,
     // ─── Bedrock — no per-widget config, precomputed refs ─────
     wld,
     winrate,
