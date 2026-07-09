@@ -86,7 +86,8 @@ function nudgeScroll(deltaPx: number) {
 //      Esc — so a single press dismisses ONLY the cheatsheet, not
 //      the panel underneath. (Same pattern as
 //      MatchScreenshotLightbox.)
-//   2. j / ↑ scroll the modal body up; k / ↓ scroll it down.
+//   2. j / ↓ scroll the modal body down; k / ↑ scroll it up
+//      (matching the app-wide j = down / k = up convention).
 //   3. Every other non-modifier, non-Tab key is swallowed via
 //      stopImmediatePropagation so the app's global shortcuts
 //      (g→m view nav, `/` search focus, etc.) can't fire from
@@ -107,16 +108,16 @@ function onCaptureKey(e: KeyboardEvent) {
       emit('close')
       return
     case 'j':
-    case 'ArrowUp':
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      nudgeScroll(-SCROLL_STEP_PX)
-      return
-    case 'k':
     case 'ArrowDown':
       e.preventDefault()
       e.stopImmediatePropagation()
       nudgeScroll(SCROLL_STEP_PX)
+      return
+    case 'k':
+    case 'ArrowUp':
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      nudgeScroll(-SCROLL_STEP_PX)
       return
     case 'Tab':
     case 'Shift':

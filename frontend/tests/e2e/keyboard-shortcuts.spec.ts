@@ -108,6 +108,34 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
     await page.keyboard.press('?')
     await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeVisible()
   })
+
+  test('j / ArrowDown scroll the cheatsheet down; k / ArrowUp scroll it up', async ({ page }) => {
+    // The modal's vim keys must match the app-wide convention (useGlobalKeyboard
+    // maps j/ArrowDown = down, k/ArrowUp = up). Reduced motion makes nudgeScroll
+    // set scrollTop directly instead of the rAF momentum glide, so the direction
+    // is deterministic; a short viewport forces the shortcut list to overflow.
+    await seed(page)
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width: 900, height: 360 })
+    await page.goto('/')
+    await page.keyboard.press('?')
+    const box = page.locator('.kbd-modal-box')
+    await expect(box).toBeVisible()
+    // The assertion is only meaningful if there is room to scroll.
+    expect(await box.evaluate((el) => el.scrollHeight > el.clientHeight + 5)).toBe(true)
+
+    const top = () => box.evaluate((el) => el.scrollTop)
+    expect(await top()).toBe(0)
+
+    // j (and its ArrowDown alias) scroll DOWN — away from the top.
+    await page.keyboard.press('j')
+    await expect.poll(top).toBeGreaterThan(0)
+    const afterDown = await top()
+
+    // ArrowUp (alias of k) scrolls UP — back toward the top.
+    await page.keyboard.press('ArrowUp')
+    await expect.poll(top).toBeLessThan(afterDown)
+  })
 })
 
 test.describe('keyboard shortcuts — global bindings', () => {
