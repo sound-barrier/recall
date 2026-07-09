@@ -385,7 +385,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await expect(page.locator('aside.detail-panel')).toBeVisible()
   })
 
-  test('cheatsheet: j / ↑ scroll up, k / ↓ scroll down, every other key is a no-op except Esc', async ({ page }) => {
+  test('cheatsheet: j / ↓ scroll down, k / ↑ scroll up, every other key is a no-op except Esc', async ({ page }) => {
     // Force cheatsheet content to overflow by shrinking the viewport.
     await page.setViewportSize({ width: 800, height: 400 })
 
@@ -408,15 +408,15 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     })
     expect(downScroll).toBeGreaterThan(0)
 
-    // 'k' continues scrolling down.
-    for (let i = 0; i < 4; i++) await page.keyboard.press('k')
+    // 'j' continues scrolling down.
+    for (let i = 0; i < 4; i++) await page.keyboard.press('j')
     await page.waitForFunction((prev) => {
       const el = document.querySelector('.kbd-modal-box') as HTMLElement | null
       return !!el && el.scrollTop > prev
     }, downScroll, { timeout: 2000 })
 
-    // ↑ scrolls back up (eventually toward 0).
-    for (let i = 0; i < 30; i++) await page.keyboard.press('ArrowUp')
+    // 'k' / ↑ scroll back up (eventually toward 0).
+    for (let i = 0; i < 30; i++) await page.keyboard.press('k')
     await page.waitForFunction(() => {
       const el = document.querySelector('.kbd-modal-box') as HTMLElement | null
       return !!el && el.scrollTop < 5
