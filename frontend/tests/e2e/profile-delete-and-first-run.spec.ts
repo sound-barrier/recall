@@ -355,7 +355,7 @@ test.describe('first-run modal — onboarding-tour interaction', () => {
     await expect(page.locator('.first-run-modal')).toHaveCount(0)
   })
 
-  test('surfaces after the tour is skipped', async ({ page }) => {
+  test('surfaces after the tour is dismissed', async ({ page }) => {
     await page.route('**/api/v1/profiles', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
@@ -369,8 +369,10 @@ test.describe('first-run modal — onboarding-tour interaction', () => {
     await page.goto('/')
     const tour = page.locator('[data-testid="onboarding-tour"]')
     await expect(tour).toBeVisible()
-    // Skip the tour.
-    await tour.getByRole('button', { name: /skip/i }).click()
+    // Dismiss the tour. Escape is the pure-dismiss path — the "Skip tour"
+    // button now seeds the sample profile and reloads, which wouldn't close
+    // the tour to let the modal through.
+    await page.keyboard.press('Escape')
     await expect(tour).toBeHidden()
     // Now the modal can surface (account flag is still unset).
     await expect(page.locator('.first-run-modal')).toBeVisible()

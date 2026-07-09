@@ -10,9 +10,10 @@
  *     (welcome / cheatsheet / done have no target, so the cutout
  *     collapses) or the expected element is on-screen
  *
- * Also covers the persistence contract: closing the tour with Done
- * sets `recall.onboardingCompleted=true`, and a reload no longer
- * auto-opens it. Skip and Esc share the same persistence path.
+ * Also covers the persistence contract: closing the tour with Done or
+ * Esc sets `recall.onboardingCompleted=true`, and a reload no longer
+ * auto-opens it. Skip is the exception — it fast-forwards to the seeded
+ * sample profile (its own seed + resume-on-Done path).
  */
 import { test, expect, type Page } from '@playwright/test'
 
@@ -83,16 +84,23 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('button:has-text("Next")')).toBeVisible()
   })
 
-  test('Skip dismisses the tour and persists completion', async ({ page }) => {
+  test('Skip seeds the sample profile and resumes on Done', async ({ page }) => {
+    // Skip fast-forwards to the seeded exploration (seed "test", switch into
+    // it, reload, reopen on Done) rather than just closing. Mock the endpoints
+    // so the reload-resume runs without mutating the shared serveronly backend.
+    await page.route('**/api/v1/profiles/test/seed', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ profile: 'test', matches: 500, already_seeded: false }) }))
+    await page.route('**/api/v1/profiles/active', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ active: 'test', profiles: ['main', 'test'] }) }))
+
     await page.goto('/')
     await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
     await page.locator('button:has-text("Skip tour")').click()
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toHaveCount(0)
-
-    // Reload — tour stays closed.
-    await page.reload()
-    await page.waitForTimeout(500)
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toHaveCount(0)
+    // Reopens on the final Done step, now in the test profile.
+    await expect(page.locator('.tour-callout-heading'))
+      .toContainText(/explore, then clean up/i, { timeout: 15000 })
   })
 
   test('Esc dismisses the tour and persists completion', async ({ page }) => {
@@ -271,7 +279,9 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     )
     expect(lockedOverflow).toBe('hidden')
 
-    await page.locator('button:has-text("Skip tour")').click()
+    // Close via Escape (the pure-dismiss path) — the "Skip tour" button now
+    // seeds + reloads, which wouldn't exercise the scroll-lock release here.
+    await page.keyboard.press('Escape')
     await expect(page.locator('[data-testid="onboarding-tour"]')).toHaveCount(0)
     const unlockedOverflow = await page.evaluate(() =>
       window.getComputedStyle(document.body).overflow,

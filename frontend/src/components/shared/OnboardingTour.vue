@@ -99,7 +99,10 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     e.preventDefault()
     e.stopImmediatePropagation()
-    tour.skip()
+    // Escape is a pure dismiss — close + persist, no side effects. The
+    // "Skip tour" button (onSkip) is the one that seeds the sample profile;
+    // reloading into a seeded profile on an Escape keypress would surprise.
+    tour.finish()
     return
   }
   if (e.key === 'Enter') {
@@ -156,7 +159,7 @@ onUnmounted(() => {
   // is needed here even if the tour is still open at teardown.
 })
 
-function onSkip()   { tour.skip() }
+function onSkip()   { void tour.skip() }
 function onFinish() { tour.finish() }
 function onNext()   { void tour.next() }
 function onBack()   { void tour.prev() }

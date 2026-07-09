@@ -122,10 +122,12 @@ describe('useOnboardingTour — step navigation', () => {
 })
 
 describe('useOnboardingTour — finish / skip / restart', () => {
-  it('skip() persists completion and closes', async () => {
+  it('skip() with no seed action wired persists completion and closes', async () => {
+    // No actions supplied → nothing to seed toward, so skip falls back to a
+    // plain finish. The seeding path is covered in its own describe below.
     const tour = mountWithTour()
     await nextTick()
-    tour.skip()
+    await tour.skip()
     expect(tour.open.value).toBe(false)
     expect(localStorage.getItem(ONBOARDING_COMPLETED_KEY)).toBe('true')
   })
@@ -256,5 +258,51 @@ describe('useOnboardingTour — explore-sample seed + switch', () => {
     await nextTick()
     // Falls back to the normal first-run auto-open at step 0.
     expect(tour.stepIndex.value).toBe(0)
+  })
+})
+
+describe('useOnboardingTour — skip fast-forwards to the seeded sample', () => {
+  function actionsStub(seed: TourActionContext['seedAndSwitchToTest']): TourActionContext {
+    return {
+      goToView: vi.fn(), openMatch: vi.fn(), closeMatch: vi.fn(),
+      openNarrow: vi.fn(), closeNarrow: vi.fn(), applyHeroFilter: vi.fn(),
+      clearFilters: vi.fn(), seedAndSwitchToTest: seed,
+    }
+  }
+  const doneIdx = ONBOARDING_STEPS.length - 1
+
+  it('skip() seeds + switches into "test", parking the Done step to resume on', async () => {
+    const seed = vi.fn().mockResolvedValue(undefined)
+    const tour = mountWithTour({ actions: actionsStub(seed) })
+    await nextTick()
+    void tour.next() // move off step 0 — skip jumps to the sample from anywhere
+    await tour.skip()
+    // Skip parks the LAST step so the reload reopens on Done, in the test profile.
+    expect(seed).toHaveBeenCalledWith(doneIdx)
+    // The real action reloads the SPA (never resolves); the stub doesn't, so
+    // the tour is not finished here — the reload-resume path owns completion.
+    expect(localStorage.getItem(ONBOARDING_COMPLETED_KEY)).toBeNull()
+  })
+
+  it('skip() falls back to finish() when seed + switch rejects', async () => {
+    const seed = vi.fn().mockRejectedValue(new Error('seed failed'))
+    const tour = mountWithTour({ actions: actionsStub(seed) })
+    await nextTick()
+    await tour.skip()
+    expect(seed).toHaveBeenCalled()
+    // Seeding failed — skip must not trap the user, so it closes + persists.
+    expect(tour.open.value).toBe(false)
+    expect(localStorage.getItem(ONBOARDING_COMPLETED_KEY)).toBe('true')
+  })
+
+  it('skip() on the last step just finishes (already at the seeded destination)', async () => {
+    const seed = vi.fn().mockResolvedValue(undefined)
+    const tour = mountWithTour({ actions: actionsStub(seed) })
+    await nextTick()
+    await tour.goToStep(doneIdx)
+    await tour.skip()
+    expect(seed).not.toHaveBeenCalled()
+    expect(tour.open.value).toBe(false)
+    expect(localStorage.getItem(ONBOARDING_COMPLETED_KEY)).toBe('true')
   })
 })
