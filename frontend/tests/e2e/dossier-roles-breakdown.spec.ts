@@ -101,10 +101,17 @@ test.describe('dossier — Most played roles breakdown', () => {
     await page.locator('#tab-matches').click()
 
     const article = page.locator('[data-breakdown="roles"]')
-    const shares = await article.locator('.bd-stats').allTextContents()
-    // Parse "NN%" → number; sum must exceed 100.
-    const total = shares.map((s) => Number(s.replace('%', ''))).reduce((a, b) => a + b, 0)
-    expect(total).toBeGreaterThan(100)
+    await expect(article).toBeVisible()
+    // The role→percent mapping depends on useOWData's reference-data fetch
+    // resolving (heroes map to roles only once it lands). A one-shot read can
+    // fire before that on slow CI — heroes unmapped, the open-queue overlap
+    // sum not yet formed — so poll the sum until the breakdown settles.
+    await expect
+      .poll(async () => {
+        const shares = await article.locator('.bd-stats').allTextContents()
+        return shares.map((s) => Number(s.replace('%', ''))).reduce((a, b) => a + b, 0)
+      })
+      .toBeGreaterThan(100)
 
     // Dominant row (tank, 2x, 100%) sits first.
     const first = article.locator('li').first()
