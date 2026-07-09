@@ -13,6 +13,22 @@ no soft-pedalling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|
+| 2026-07-09 | - | 162000 | 69000 | 1465000 | 345000 | Elo Calculator scoped styles (form, cards, evidence grid), total CSS 335000 → 345000 (~5.5KB). |
+| 2026-07-09 | - | 162000 | 69000 | 1465000 | 335000 | Elo Calculator tab lazy chunk (view + projection math + chart options), ~28KB (total JS 1430000 → 1465000). |
+| 2026-07-08 | - | 162000 | 69000 | 1430000 | 335000 | Hero Pool band scoped styles (three-column layout, bars, gear), total CSS 332000 → 335000 (~1KB). |
+| 2026-07-08 | - | 162000 | 69000 | 1430000 | 332000 | Hero-swap discipline: Heroes-per-match + Hero-pool widgets, helpers, Compare Heroes rows, ~1.3KB total-only. |
+| 2026-07-08 | - | 162000 | 69000 | 1424000 | 332000 | Form-mode scoped styles (verdict card, preset chips, pairing controls, sparklines), total CSS 325000 → 332000 (~5KB). |
+| 2026-07-08 | - | 162000 | 69000 | 1424000 | 325000 | Compare tab Form mode: FormCompareView + slices/verdict/drill-through in the lazy compare chunk, ~16KB total-only. |
+| 2026-07-07 | - | 162000 | 69000 | 1402000 | 325000 | Season Comparison scoped styles (A/B/Δ table, scope toggle, controls), total CSS 322000 → 325000 (~2KB). |
+| 2026-07-07 | - | 162000 | 69000 | 1402000 | 322000 | Season Comparison tab: SeasonCompareView lazy chunk + compare helpers/aggregate, ~13.5KB total-only (initial JS unchanged). |
+| 2026-07-07 | - | 162000 | 69000 | 1385000 | 322000 | Competitive seasons: season-assignment helpers + pickedSeason clause/predicate + NarrowTimeScope selector + reference-data plumbing, ~2KB (total JS 1380000 → 1385000). |
+| 2026-07-06 | - | 162000 | 69000 | 1380000 | 322000 | Breakdown-bar alignment grid in shared components.css (global by design; 12 widgets share it), initial CSS 68000 → 69000 (~0.5KB). |
+| 2026-07-06 | - | 162000 | 68000 | 1380000 | 322000 | 2026-07 QoL batch scoped styles (toasts, pips, pinned section, backup row), total CSS 317000 → 322000 (~1.5KB). |
+| 2026-07-06 | - | 162000 | 68000 | 1380000 | 317000 | 2026-07 QoL batch: pin toggle + markdown generator + tilt/session toasts + CI helpers + tour pips, ~12.7KB across lazy chunks (total JS 1365000 → 1380000). |
+| 2026-07-06 | - | 162000 | 68000 | 1365000 | 317000 | Apply-previous-annotation journal affordance (~2KB in the lazy detail-panel chunk); prior total-JS headroom <1.5KB (1360000 → 1365000). |
+| 2026-07-03 | - | 162000 | 68000 | 1360000 | 317000 | "Best times to play" heatmap card registers HeatmapChart + VisualMapComponent, ~37.5KB in the lazy TrendChart chunk (total JS 1320000 → 1360000). |
+| 2026-07-03 | - | 162000 | 68000 | 1320000 | 317000 | echarts 6.1 major (CVE-2026-45249 fix), ~44KB in the lazy TrendChart chunk (total JS 1270000 → 1320000). |
+| 2026-07-03 | - | 162000 | 68000 | 1270000 | 317000 | Phase-5 sample-size caveat chip (.bd-low-n), initial CSS +192B (67000 → 68000). |
 | 2026-06-28 | wails-v3 | 162000 | 67000 | 1256000 | 317000 | feat(desktop)!: Wails v2→v3 migration. The frontend transport (api.ts) now imports `@wailsio/runtime` (Call.ByName / Events / Browser) — a module with import-time side effects (`window._wails = {}`), so it can't be tree-shaken out of server-mode bundles. ~+16.7 KB total JS (1252764 over the prior 1236000 cap); initial JS flat at 127375 (it lands in shared chunks, not the eager masthead shell); CSS unchanged. Bumped total JS to 1256000. |
 | 2026-06-27 | app-menu | 162000 | 67000 | 1236000 | 317000 | feat: Chrome/Firefox-style application menu — native macOS menu bar (About / Settings / View / Help wired to the in-app dialogs) + a ⋮ kebab on Windows/Linux/browser, plus an About dialog (identity + update hub, absorbing the old "Check for updates" button) and a Settings dialog mirroring the tab (shared `SettingsSections`). The kebab (`AppMenuButton`) + its scoped dropdown styles ride the eager masthead chunk: initial CSS 65726 over the prior 64000 cap (~+1.7 KB). The two lazy dialogs + `useAppMenu`/`useNativeMenu`/`app-links` net ~+2.9 KB total JS (1232943) and ~+3.2 KB total CSS (314254) over the deleted UpdateCheckModal. Bumped initial CSS to 67000, total JS to 1236000, total CSS to 317000. |
 | 2026-06-21 | filter-followups | 162000 | 64000 | 1219000 | 306000 | follow-up polish on the value-filter PR: cell-range-select auto-scroll near the pane edges (useCellSelection drag loop + elementFromPoint re-resolve), a clickable result-strip filter in the leaf rows, the funnel cue on the data-table filter cells, and the active-result highlight. ~+450 B total JS (1217448 over the prior 1217000 cap), all in the lazy MatchesView chunk; CSS under cap. Bumped total JS to 1219000. |
@@ -73,19 +89,3 @@ no soft-pedalling. Numbers that go down get a row too.
 - `.github/workflows/ci.yml` — the CI invocation.
 - `lefthook.yml` — the pre-push invocation (uses the script's
   defaults, no env overrides).
-| 2026-07-03 | MAX_INITIAL_CSS_BYTES | 67000 → 68000 | Phase-5 sample-size caveat chip (.bd-low-n) +192B |
-| 2026-07-03 | MAX_TOTAL_JS_BYTES | 1270000 → 1320000 | echarts 6.1 major (CVE-2026-45249 fix), ~44KB in the lazy TrendChart chunk |
-| 2026-07-03 | MAX_TOTAL_JS_BYTES | 1320000 → 1360000 | "Best times to play" heatmap card registers HeatmapChart + VisualMapComponent, ~37.5KB in the lazy TrendChart chunk |
-| 2026-07-06 | MAX_TOTAL_JS_BYTES | 1360000 → 1365000 | Apply-previous-annotation journal affordance (~2KB in the lazy detail-panel chunk); prior headroom was already <1.5KB |
-| 2026-07-06 | MAX_TOTAL_JS_BYTES | 1365000 → 1380000 | 2026-07 QoL batch: pin toggle + markdown generator + tilt/session toasts + CI helpers + tour pips, ~12.7KB across lazy chunks |
-| 2026-07-06 | MAX_TOTAL_CSS_BYTES | 317000 → 322000 | 2026-07 QoL batch scoped styles (toasts, pips, pinned section, backup row), ~1.5KB |
-| 2026-07-06 | MAX_INITIAL_CSS_BYTES | 68000 → 69000 | Breakdown-bar alignment grid (fixed columns, ± sub-columns, chip overlay) in the shared components.css — global by design, 12 widgets share it; ~0.5KB |
-| 2026-07-07 | MAX_TOTAL_JS_BYTES | 1380000 → 1385000 | Competitive seasons: season-assignment helpers + pickedSeason clause/predicate + the NarrowTimeScope selector + reference-data plumbing, ~2KB; prior headroom was <0.1KB |
-| 2026-07-07 | MAX_TOTAL_JS_BYTES | 1385000 → 1402000 | Season Comparison tab: SeasonCompareView (new lazy view chunk) + match-compare-helpers + match-compare-aggregate (per-role/hero/mode/queue breakdowns, sectioned table), ~13.5KB total-only (initial JS untouched) |
-| 2026-07-07 | MAX_TOTAL_CSS_BYTES | 322000 → 325000 | Season Comparison view scoped styles (A/B/Δ table, scope toggle, controls), ~2KB |
-| 2026-07-08 | MAX_TOTAL_JS_BYTES | 1402000 → 1424000 | Compare tab Form mode: FormCompareView + form slices/verdict/drill-through in the lazy compare chunk, ~16KB total-only (initial JS untouched) |
-| 2026-07-08 | MAX_TOTAL_CSS_BYTES | 325000 → 332000 | Form-mode scoped styles (verdict card, preset chips, pairing controls, sparklines), ~5KB |
-| 2026-07-08 | MAX_TOTAL_JS_BYTES | 1424000 → 1430000 | Hero-swap discipline: Heroes-per-match + Hero-pool widgets, match-hero-pool-helpers, Compare Heroes rows, ~1.3KB total-only |
-| 2026-07-08 | MAX_TOTAL_CSS_BYTES | 332000 → 335000 | Hero Pool band scoped styles (three-column layout, bars, gear), ~1KB |
-| 2026-07-09 | MAX_TOTAL_JS_BYTES | 1430000 → 1465000 | Elo Calculator tab lazy chunk (view + projection math + chart options), ~28KB |
-| 2026-07-09 | MAX_TOTAL_CSS_BYTES | 335000 → 345000 | Elo Calculator scoped styles (form, cards, evidence grid), ~5.5KB |
