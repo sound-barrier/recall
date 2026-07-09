@@ -25,8 +25,7 @@ func handleHardDeleteMatch(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if writeError(w, r, a.HardDeleteMatch(matchKey),
-			errStatus{app.ErrProfileImmutable, probConflict}) {
+		if writeError(w, r, a.HardDeleteMatch(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
