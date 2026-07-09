@@ -127,7 +127,7 @@ function streakTilt(recs: readonly MatchRecord[]): EvidenceItem | null {
     id: 'streak-tilt',
     label: 'Deeper into a loss streak',
     value,
-    gloss: `Your next-game win rate: ${ladder} (baseline ${depth.baselineWinrate}% over ${depth.baselineSample} games).${pClause}${sagging ? ' Two down is the cheapest moment to stop — every further game has more rank to give.' : ' Your play holds up inside streaks — the meter risk below is the only reason to pace yourself.'}`,
+    gloss: `Your next-game win rate: ${ladder} (baseline ${depth.baselineWinrate}% over ${depth.baselineSample} games).${pClause}${sagging ? ' Two down is the cheapest moment to stop — every further game has more rank to give.' : ' Your play holds up inside streaks — if you cut a bad night short, do it for the meter math, not your form.'}`,
     tone: sagging ? 'warn' : 'good',
   }
 }
