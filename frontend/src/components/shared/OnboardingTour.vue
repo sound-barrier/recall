@@ -8,6 +8,7 @@ import {
   type TourActionContext,
 } from '@/composables/shared/useOnboardingTour'
 import { useScrollLock } from '@/composables/shared/useScrollLock'
+import { useUiStore } from '@/stores/ui'
 import TourSpotlight from '@/components/shared/TourSpotlight.vue'
 import TourCallout from '@/components/shared/TourCallout.vue'
 
@@ -70,6 +71,16 @@ const actions: TourActionContext = {
 }
 
 const tour = useOnboardingTour({ actions })
+
+// Settings → Advanced "Replay tour" raises a one-shot request on the ui
+// store (the tour controller lives here, unreachable from Settings
+// directly). Clear-then-restart so a second click keeps working.
+const uiStore = useUiStore()
+watch(() => uiStore.tourReplayRequested, (requested) => {
+  if (!requested) return
+  uiStore.clearTourReplayRequest()
+  void tour.restart()
+})
 
 // Per-step copy: tag defaults to "OBJECTIVE N", num is the two-digit
 // step index. The Welcome / Done steps override tag with "BRIEFING"

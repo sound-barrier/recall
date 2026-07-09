@@ -3,10 +3,12 @@ import { ref, watch, computed } from 'vue'
 import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 import SupportedSourcesRow from '@/components/settings/SupportedSourcesRow.vue'
 import SettingsDatabaseHealth from '@/components/settings/SettingsDatabaseHealth.vue'
+import { useUiStore } from '@/stores/ui'
 
 // Advanced collapsible at the bottom of Settings — destructive Clear
-// Database flow + Manage ignored files (the Unknown-tab "Delete
-// forever" recovery surface). Native <details> gives free keyboard
+// Database flow, Manage ignored files (the Unknown-tab "Delete
+// forever" recovery surface), and the Replay-onboarding-tour entry the
+// tour's Done step points at. Native <details> gives free keyboard
 // support; the styled <summary> mirrors a section header for visual
 // continuity.
 //
@@ -15,6 +17,8 @@ import SettingsDatabaseHealth from '@/components/settings/SettingsDatabaseHealth
 // destructive-row styles (`.setting-row.danger-row` +
 // `.clear-confirm-group`) stay in SettingsView because they're
 // shared with the Backup/Restore section's Import-arm flow.
+
+const uiStore = useUiStore()
 
 const props = defineProps<{
   clearingDB?:       boolean
@@ -226,6 +230,22 @@ watch(
       </div>
 
       <SupportedSourcesRow />
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <h4 class="setting-label">
+            Replay the onboarding tour
+          </h4>
+          <p class="setting-desc">
+            Walk the guided tour again — every tab, the filters, the detail panel. It runs on demo data; your matches are untouched.
+          </p>
+        </div>
+        <div class="setting-control">
+          <button class="btn" data-replay-tour @click="uiStore.requestTourReplay()">
+            Replay tour
+          </button>
+        </div>
+      </div>
 
       <div class="setting-row" :class="{ 'danger-row': clearConfirm }">
         <div class="setting-info">
