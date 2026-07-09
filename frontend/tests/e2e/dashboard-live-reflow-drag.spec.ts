@@ -105,6 +105,11 @@ test.describe('dashboard live-reflow drag', () => {
     })
     await page.goto('/')
     await page.locator('#tab-matches').click()
+    // The drag helpers reach the DOM via page.evaluate, which — unlike a
+    // locator — does not auto-wait. Gate every test on the widget grid having
+    // hydrated so a dragstart can't race the render and throw "source widget
+    // … not found" (retries are 0, so a single race reds the whole job).
+    await expect(page.locator('[data-widget-id="winrate"]')).toBeVisible()
   })
 
   test('source widget wears the ghost class while a drag is in flight', async ({ page }) => {
