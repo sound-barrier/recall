@@ -42,6 +42,9 @@ func (a *App) BackupDatabase() ([]byte, error) {
 // tears down the store (mirroring the profile-switch teardown), atomically
 // swaps the file, drops stale WAL/shm sidecars, and reopens.
 func (a *App) RestoreDatabase(payload []byte) error {
+	if err := a.assertActiveMutable(); err != nil {
+		return err
+	}
 	dst := dbPath(a.dataDir())
 
 	staged, err := a.stageRestoreCandidate(payload, filepath.Dir(dst))

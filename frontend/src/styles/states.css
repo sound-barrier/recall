@@ -133,3 +133,16 @@
 .chev.open { transform: rotate(90deg); color: var(--accent); }
 .chev.small { font-size: 0.9rem; }
 
+
+/* Read-only sample-profile notice — shown on the Parse tab and Settings when
+   the active profile is immutable (the tour's "test" sample). */
+.readonly-note {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}

@@ -15,11 +15,15 @@ export function useMatchesMovePicker(opts: {
   clearArchive: () => void
   onMove: (keys: string[], targetProfile: string) => void
 }) {
-  const availableProfiles = ref<{ active: string; profiles: string[] }>({ active: '', profiles: [] })
+  const availableProfiles = ref<{ active: string; profiles: string[]; immutable: string[] }>({ active: '', profiles: [], immutable: [] })
   const movePickerOpen = ref<'live' | 'archive' | null>(null)
 
+  // Read-only profiles (the tour's sample) reject a move-in server-side, so
+  // exclude them from the target list along with the active profile itself.
   const otherProfiles = computed(() =>
-    availableProfiles.value.profiles.filter((p) => p !== availableProfiles.value.active),
+    availableProfiles.value.profiles.filter(
+      (p) => p !== availableProfiles.value.active && !availableProfiles.value.immutable.includes(p),
+    ),
   )
 
   function beginMoveLive() {
@@ -54,7 +58,9 @@ export function useMatchesMovePicker(opts: {
   onMounted(() => {
     // Best-effort: a fetch failure leaves availableProfiles empty, which
     // suppresses the Move button rather than erroring.
-    GetProfiles().then((res) => { availableProfiles.value = res }).catch(() => undefined)
+    GetProfiles()
+      .then((res) => { availableProfiles.value = { ...res, immutable: res.immutable ?? [] } })
+      .catch(() => undefined)
   })
 
   return { availableProfiles, movePickerOpen, otherProfiles, beginMoveLive, beginMoveArchive, cancelMove, commitMove }

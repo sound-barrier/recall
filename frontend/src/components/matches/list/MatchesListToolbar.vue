@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Density } from '@/composables/matches/useDensity'
+import { useActiveProfile } from '@/composables/shared/useActiveProfile'
 
 // The Matches members-section header toolbar: the "N matches" title, the
 // Sort+Group trigger, the row-density segmented control, and the
@@ -33,6 +34,10 @@ const emit = defineEmits<{
   'expand-all': []
   'collapse-all': []
 }>()
+
+// Manual add + bundle import write matches — rejected (409) on the read-only
+// sample profile, so disable them there.
+const { isReadOnly } = useActiveProfile()
 </script>
 
 <template>
@@ -48,7 +53,8 @@ const emit = defineEmits<{
         type="button"
         class="add-match-btn"
         data-add-match
-        title="Hand-enter a match — no screenshots needed"
+        :disabled="isReadOnly"
+        :title="isReadOnly ? 'This is a read-only sample profile.' : 'Hand-enter a match — no screenshots needed'"
         @click="emit('add-match')"
       >
         <span class="add-match-plus" aria-hidden="true">+</span>
@@ -58,7 +64,8 @@ const emit = defineEmits<{
         type="button"
         class="import-matches-btn"
         data-import-matches
-        title="Merge matches from a shared bundle (.zip) — additive, existing matches are skipped"
+        :disabled="isReadOnly"
+        :title="isReadOnly ? 'This is a read-only sample profile.' : 'Merge matches from a shared bundle (.zip) — additive, existing matches are skipped'"
         @click="emit('import-matches')"
       >
         Import matches…
@@ -240,6 +247,9 @@ const emit = defineEmits<{
 
 .add-match-btn:hover { background: var(--accent-bright, var(--accent)); }
 .add-match-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.add-match-btn:disabled,
+.import-matches-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .add-match-plus { font-size: 1rem; line-height: 1; }
 
 /* Neutral secondary action — same outlined shape as the sort trigger so it

@@ -39,6 +39,7 @@ export interface Match {
 export interface Profiles {
   active: string
   profiles: string[]
+  immutable: string[]
 }
 
 export function manual(overrides: Record<string, unknown> = {}) {

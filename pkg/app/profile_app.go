@@ -17,6 +17,18 @@ import (
 type ProfilesResponse struct {
 	Active   string   `json:"active"`
 	Profiles []string `json:"profiles"`
+	// Immutable lists the read-only profiles (the tour's "test" sample). The
+	// frontend disables parse / import / restore / manual-add / delete on these.
+	Immutable []string `json:"immutable"`
+}
+
+// assertActiveMutable returns ErrProfileImmutable when the active profile is
+// read-only — the guard every corpus-mutating entry point calls first.
+func (a *App) assertActiveMutable() error {
+	if a.profiles != nil && a.profiles.IsImmutable(a.profiles.Active()) {
+		return fmt.Errorf("%w: %q", ErrProfileImmutable, a.profiles.Active())
+	}
+	return nil
 }
 
 // SetProfileOverride stashes a profile name to activate during the
@@ -37,13 +49,22 @@ func (a *App) GetProfiles() ProfilesResponse {
 		// Pre-Startup safety: return a single-default placeholder so
 		// the frontend's first paint doesn't render an empty switcher.
 		return ProfilesResponse{
-			Active:   DefaultProfileName,
-			Profiles: []string{DefaultProfileName},
+			Active:    DefaultProfileName,
+			Profiles:  []string{DefaultProfileName},
+			Immutable: []string{},
+		}
+	}
+	list := a.profiles.List()
+	immutable := make([]string, 0, len(list))
+	for _, name := range list {
+		if a.profiles.IsImmutable(name) {
+			immutable = append(immutable, name)
 		}
 	}
 	return ProfilesResponse{
-		Active:   a.profiles.Active(),
-		Profiles: a.profiles.List(),
+		Active:    a.profiles.Active(),
+		Profiles:  list,
+		Immutable: immutable,
 	}
 }
 
@@ -114,6 +135,12 @@ func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
 		// Chaos deliberately omitted (0) — see the const comment above.
 	})
 	if err != nil {
+		return SeedTestProfileResponse{}, err
+	}
+	// The sample profile is read-only: it's a curated demo, so the user can't
+	// grow or replace its corpus (parse / import / restore / manual / move-in /
+	// delete). Marked idempotently on every seed call.
+	if err := a.profiles.SetImmutable(TestProfileName); err != nil {
 		return SeedTestProfileResponse{}, err
 	}
 	return SeedTestProfileResponse{

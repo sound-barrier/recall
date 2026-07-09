@@ -49,6 +49,9 @@ func (a *App) UnpinMatch(matchKey string) error {
 // already moved the match to the archive and explicitly confirmed.
 // Idempotent: unknown keys complete with no error.
 func (a *App) HardDeleteMatch(matchKey string) error {
+	if err := a.assertActiveMutable(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}

@@ -20,6 +20,7 @@ var (
 	ErrProfileNotFound    = profiles.ErrProfileNotFound
 	ErrProfileActive      = profiles.ErrProfileActive
 	ErrMoveTargetIsActive = profiles.ErrMoveTargetIsActive
+	ErrProfileImmutable   = profiles.ErrProfileImmutable
 )
 
 // LoadProfiles opens (or initializes) the profile manager rooted at

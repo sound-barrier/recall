@@ -18,7 +18,7 @@ test.describe('profiles (real server)', () => {
 
   test('create, switch, isolate, and delete a profile', async ({ request }) => {
     // Fresh install: a single empty "main".
-    expect(await getProfiles(request)).toEqual({ active: 'main', profiles: ['main'] })
+    expect(await getProfiles(request)).toEqual({ active: 'main', profiles: ['main'], immutable: [] })
 
     // Create "alt" — the server activates it.
     expect((await request.post('/api/v1/profiles', { data: { name: 'alt' } })).status()).toBe(201)
@@ -41,7 +41,7 @@ test.describe('profiles (real server)', () => {
     // Delete "alt" (from "main" — the active profile can't be deleted).
     await switchProfile(request, 'main')
     expect((await request.delete('/api/v1/profiles/alt')).status()).toBe(204)
-    expect(await getProfiles(request)).toEqual({ active: 'main', profiles: ['main'] })
+    expect(await getProfiles(request)).toEqual({ active: 'main', profiles: ['main'], immutable: [] })
   })
 
   test('moves a match to another profile, source loses it and the hidden flag survives', async ({ request }) => {

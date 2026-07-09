@@ -63,6 +63,9 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 // ImportMatches MERGES a bundle's matches into the live DB
 // (skip-existing). Wails-bound; the HTTP twin is POST /api/v1/imports.
 func (a *App) ImportMatches(payload []byte) (ImportSummary, error) {
+	if err := a.assertActiveMutable(); err != nil {
+		return ImportSummary{}, err
+	}
 	return bundle.Import(a.store, payload)
 }
 

@@ -53,7 +53,8 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		// in flight. Not 400 (the bytes parsed fine).
 		if writeError(w, r, a.StartParse(force),
 			errStatus{app.ErrInvalidScreenshotsDir, probConflict},
-			errStatus{app.ErrParseInFlight, probConflict}) {
+			errStatus{app.ErrParseInFlight, probConflict},
+			errStatus{app.ErrProfileImmutable, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)

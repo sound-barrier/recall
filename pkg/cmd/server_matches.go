@@ -139,7 +139,8 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 				return
 			}
 		}
-		if writeError(w, r, a.ClearDatabase(keepIgnored)) {
+		if writeError(w, r, a.ClearDatabase(keepIgnored),
+			errStatus{app.ErrProfileImmutable, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -169,7 +170,8 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrInvalidRank, probInvalidBody},
 			errStatus{app.ErrUnknownMap, probConflict},
 			errStatus{app.ErrUnknownHero, probConflict},
-			errStatus{app.ErrMatchKeyExists, probConflict}) {
+			errStatus{app.ErrMatchKeyExists, probConflict},
+			errStatus{app.ErrProfileImmutable, probConflict}) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -213,7 +215,8 @@ func handleMoveMatches(a *app.App) http.HandlerFunc {
 		if writeError(w, r, a.MoveMatches(matchKeys, *body.TargetProfile),
 			errStatus{app.ErrInvalidProfileName, probConflict},
 			errStatus{app.ErrProfileNotFound, probNotFound},
-			errStatus{app.ErrMoveTargetIsActive, probConflict}) {
+			errStatus{app.ErrMoveTargetIsActive, probConflict},
+			errStatus{app.ErrProfileImmutable, probConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
