@@ -63,6 +63,43 @@ func ensureAdditiveColumns(d *sql.DB) error {
 	return nil
 }
 
+// legacyNullBackfills lists columns that today's schema declares
+// NOT NULL with an empty-string default but that exist as plain nullable TEXT in databases
+// created before the current shape (CREATE TABLE IF NOT EXISTS never
+// retrofits constraints) — rows from back then can carry NULL, and the
+// loaders scan every one of these into a plain string, so a single
+// legacy row broke every matches load. The set is every string-scanned
+// column observed nullable in a real pre-rename database; playlist (the
+// mode→playlist rename) is the case caught in the wild.
+var legacyNullBackfills = []struct{ table, column string }{
+	{"summary_screenshots", "map"},
+	{"summary_screenshots", "playlist"},
+	{"summary_screenshots", "hero"},
+	{"summary_screenshots", "result"},
+	{"summary_screenshots", "final_score"},
+	{"summary_screenshots", "date"},
+	{"summary_screenshots", "finished_at"},
+	{"summary_screenshots", "game_length"},
+	{"personal_screenshots", "hero"},
+	{"rank_screenshots", "rank"},
+	{"rank_screenshots", "result"},
+}
+
+// backfillLegacyNulls heals legacy NULLs to the schema's empty-string default at
+// store open. Idempotent (the WHERE clause matches nothing after the
+// first run) and additive-safe — it only rewrites values the current
+// schema forbids, never real data.
+func backfillLegacyNulls(d *sql.DB) error {
+	for _, b := range legacyNullBackfills {
+		// #nosec G202 -- table/column are hard-coded constants above, not
+		// user input; identifiers can't be bound as parameters.
+		if _, err := d.Exec("UPDATE " + b.table + " SET " + b.column + " = '' WHERE " + b.column + " IS NULL"); err != nil {
+			return fmt.Errorf("backfill %s.%s: %w", b.table, b.column, err)
+		}
+	}
+	return nil
+}
+
 // columnExists reports whether table has a column named column.
 func columnExists(d *sql.DB, table, column string) (bool, error) {
 	// #nosec G202 -- table is a hard-coded constant from additiveColumns.

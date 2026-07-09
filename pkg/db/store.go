@@ -317,6 +317,12 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, fmt.Errorf("ensure additive columns: %w", err)
 	}
+	// Heal rows written before a now-NOT-NULL column existed (legacy
+	// nullable shapes keep their NULLs; the loaders scan plain strings).
+	if err := backfillLegacyNulls(d); err != nil {
+		_ = d.Close()
+		return nil, fmt.Errorf("backfill legacy nulls: %w", err)
+	}
 	// No-op until the first migration file lands post-1.0; the
 	// framework is wired in so adding one is a drop-in addition.
 	if err := applyMigrations(d); err != nil {
