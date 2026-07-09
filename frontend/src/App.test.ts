@@ -199,10 +199,11 @@ describe('App.vue — tablist keyboard navigation', () => {
     await wrapper.find('#tab-settings').trigger('click')
     await wrapper.find('nav.page-nav').trigger('keydown', { key: 'ArrowLeft' })
     expect(wrapper.find('#tab-elo').attributes('aria-selected')).toBe('true')
-    // Let the lazy Elo view resolve inside the test so its provider mounts
-    // cleanly — otherwise the async mount lands post-teardown and useEloCalc's
-    // inject-guard throws as an unhandled rejection.
-    await flushPromises()
+    // Poll until the lazy Elo view has fully mounted inside the test — a single
+    // flushPromises doesn't always span the dynamic-import → setup → render
+    // chain under CI's slow coverage run, and a mount that lands post-teardown
+    // makes useEloCalc's inject-guard throw as an unhandled rejection.
+    await vi.waitFor(() => expect(wrapper.find('#panel-elo').exists()).toBe(true))
   })
 
   it('Home jumps to the first tab (Settings)', async () => {
@@ -216,7 +217,7 @@ describe('App.vue — tablist keyboard navigation', () => {
     const wrapper = await mountApp()
     await wrapper.find('nav.page-nav').trigger('keydown', { key: 'End' })
     expect(wrapper.find('#tab-elo').attributes('aria-selected')).toBe('true')
-    await flushPromises() // resolve the lazy Elo view within the test (see above)
+    await vi.waitFor(() => expect(wrapper.find('#panel-elo').exists()).toBe(true)) // mount the lazy Elo view within the test (see above)
   })
 
   it('typing into a tab without an arrow key does not change selection', async () => {
