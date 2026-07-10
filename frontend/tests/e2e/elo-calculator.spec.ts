@@ -269,6 +269,27 @@ test.describe('Elo Calculator', () => {
     await expect(moves.first()).toContainText(/review/i)
   })
 
+  test('the playbook approximates the best-vs-worst hero climb gap', async ({ page }) => {
+    seq = 0
+    // lucio 30 games at 70% vs brigitte 20 at 35% — both past the evidence
+    // floor, a spread worth pricing. Meter pools are thin (one rank card),
+    // so the naive drift fallback prices it.
+    const rows = [
+      rec('victory', 'lucio', { rank: 'gold', level: 2, rank_progress: 40, change_percent: 21, modifiers: ['victory', 'expected'] }),
+      ...games(29, 20, 'lucio'),
+      ...games(20, 7, 'brigitte'),
+    ]
+    await mockCorpus(page, rows)
+    await openCalculator(page)
+
+    const gap = page.locator('[data-elo-hero-gap]')
+    await expect(gap).toBeVisible()
+    await expect(gap).toContainText(/l[uú]cio/i)
+    await expect(gap).toContainText(/brigitte/i)
+    await expect(gap).toContainText(/% meter per game faster/i)
+    await expect(gap).toContainText(/division/i)
+  })
+
   test('the projection chart renders with a target markline caption', async ({ page }) => {
     await mockCorpus(page, corpus70())
     await openCalculator(page)
