@@ -226,7 +226,9 @@ test.describe('Elo Calculator — phase 2 (simulator + skill curve)', () => {
     await expect(page.locator('[data-elo-skill-share]')).toContainText(/skill drift explains \d+%/i)
 
     // The verdict paragraphs must sit BELOW the chart figure, not on it —
-    // the band-sub top margin once pulled them into the frame.
+    // the band-sub top margin once pulled them into the frame. Wait for
+    // webfonts: a late font swap reflows the caption and races the measure.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
     const fig = await band.locator('figure.elo-chart').boundingBox()
     const share = await page.locator('[data-elo-skill-share]').first().boundingBox()
     if (!fig || !share) throw new Error('skill band geometry unavailable')

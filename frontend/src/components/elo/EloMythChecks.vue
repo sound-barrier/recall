@@ -8,10 +8,10 @@ import { fmtPct, fmtProb, fmtPValue, fmtRank } from '@/components/elo/elo-format
 // games, plus the season-odds. Each stat leads with a plain sentence; the raw
 // figure sits in a muted aside for anyone who wants it.
 const {
-  projInput, pValue, sampleN, winRatePct, lossStreak, streakLen, streakHorizon,
-  percentileNow, percentileTarget, probThisSeason, seasonGames,
+  projInput, pValue, sampleN, lossStreak, streakLen, streakHorizon,
+  percentileNow, percentileTarget, probThisSeason, seasonGames, requiredWrForSeason,
   targetTier, targetDivision, currentTier, currentDivision,
-  skepticVerdict, trueRateRange, runs,
+  skepticVerdict, trueRateRange, runs, decay, effectiveWinRatePct,
 } = useEloCalc()
 
 const rankNow = computed(() => fmtRank(currentTier.value, currentDivision.value))
@@ -24,33 +24,48 @@ interface Check { id: string; stat: string; q: string; a: string; note: string; 
 // volume is a verdict of "near even", never "too few games".
 const PINNED_HALF_WIDTH_PTS = 5
 
-// riggedCheck answers the rigged-MMR complaint in three honest registers:
-// the rate is clearly not a coin (significant); the rate is measured well
-// and simply near even (high volume — a slow climb looks like this); or
-// there genuinely aren't enough games yet to say either.
+// riggedCheck answers the rigged-MMR complaint in four honest registers:
+// the rate is clearly real (significant — celebratory only when it's GOOD
+// news); the rate is measured well and genuinely near even (a slow climb
+// or grind looks like this); measured well but leaning one way, just shy
+// of proof; or there honestly aren't enough games yet to say.
 function riggedCheck(): Check {
   const p = pValue.value!
+  const rate = effectiveWinRatePct.value
   if (p < 0.05) {
+    const above = rate !== null && rate > 50
     return {
       id: 'rigged', stat: 'p-value', q: 'Rigged MMR?',
       a: 'No — that rate is real',
-      note: `Over ${sampleN.value} games, luck alone almost never lands on ${winRatePct.value}%. (${fmtPValue(p)})`,
-      tone: 'good',
+      note: `Over ${sampleN.value} games, luck alone almost never lands on ${rate}%.${above ? '' : " It's really yours — which means the playbook above can really move it."} (${fmtPValue(p)})`,
+      tone: above ? 'good' : 'neutral',
     }
   }
   const iv = trueRateRange.value
   const halfPts = iv === null ? null : ((iv.upper - iv.lower) / 2) * 100
-  if (iv !== null && halfPts !== null && halfPts <= PINNED_HALF_WIDTH_PTS) {
+  if (iv !== null && halfPts !== null && halfPts <= PINNED_HALF_WIDTH_PTS && rate !== null) {
     const lo = Math.round(iv.lower * 100)
     const hi = Math.round(iv.upper * 100)
-    const lean = winRatePct.value !== null && winRatePct.value > 50
-      ? 'a shade above even'
-      : winRatePct.value !== null && winRatePct.value < 50 ? 'a shade below even' : 'dead even'
+    if (Math.abs(rate - 50) <= 2.5) {
+      const lean = rate > 50 ? 'a shade above even' : rate < 50 ? 'a shade below even' : 'dead even'
+      const closing = rate >= 50
+        ? 'A slow climb looks exactly like this.'
+        : 'A slow grind looks exactly like this — the playbook above is where the shade flips.'
+      return {
+        id: 'rigged', stat: 'p-value', q: 'Rigged MMR?',
+        a: 'No — near even, measured well',
+        note: `${sampleN.value} games pin your true win rate to ${lo}–${hi}% — ${lean}, far too close to even for a rigged matchmaker to be hiding in it. ${closing} (${fmtPValue(p)})`,
+        tone: 'good',
+      }
+    }
+    const below = rate < 50
     return {
       id: 'rigged', stat: 'p-value', q: 'Rigged MMR?',
-      a: 'No — near even, measured well',
-      note: `${sampleN.value} games pin your true win rate to ${lo}–${hi}% — ${lean}, far too close to even for a rigged matchmaker to be hiding in it. A slow climb looks exactly like this. (${fmtPValue(p)})`,
-      tone: 'good',
+      a: below ? 'No — a real dip, not a rigging' : 'No — a real edge, shy of proof',
+      note: `${sampleN.value} games put your true win rate around ${lo}–${hi}% — ${below
+        ? "leaning below even. That's not a rigged queue, it's a fixable rate: the playbook above is the way back."
+        : 'leaning above even; a little more volume makes it undeniable.'} (${fmtPValue(p)})`,
+      tone: below ? 'warn' : 'neutral',
     }
   }
   return {
@@ -101,10 +116,13 @@ const checks = computed<Check[]>(() => {
   }
 
   if (lossStreak.value !== null) {
+    const chance = lossStreak.value
     out.push({
       id: 'streaks', stat: 'streak', q: 'Endless loss streaks?',
-      a: `${fmtPct(lossStreak.value * 100)} — normal`,
-      note: `A ${streakLen}-loss streak in your next ${streakHorizon} games is ${fmtPct(lossStreak.value * 100)} likely at ${winRatePct.value}%. Expected, not rigged.`,
+      a: `${fmtPct(chance * 100)} — ${chance >= 0.2 ? 'normal' : 'rare, but real'}`,
+      note: chance >= 0.2
+        ? `A ${streakLen}-loss streak in your next ${streakHorizon} games is ${fmtPct(chance * 100)} likely at ${effectiveWinRatePct.value}%. Expected, not rigged.`
+        : `Even at ${effectiveWinRatePct.value}%, a ${streakLen}-loss run lands about ${fmtPct(chance * 100)} of the time over ${streakHorizon} games — rare enough to sting, still just variance.`,
       tone: 'neutral',
     })
   }
@@ -132,13 +150,28 @@ const checks = computed<Check[]>(() => {
     })
   }
 
-  if (probThisSeason.value !== null && seasonGames.value !== null) {
-    out.push({
-      id: 'season', stat: 'season', q: 'This season?',
-      a: fmtProb(probThisSeason.value),
-      note: `Your odds of reaching ${target.value} within about ${seasonGames.value} games — roughly 12 weeks at your pace.`,
-      tone: 'neutral',
-    })
+  if (seasonGames.value !== null && projInput.value !== null) {
+    const rate = effectiveWinRatePct.value
+    if (probThisSeason.value !== null) {
+      const req = decay.value?.requiredWinRate
+      const capped = req !== null && req !== undefined
+        ? ` The amber future is less kind: to STAY there you'd need about ${(req * 100).toFixed(1)}%.`
+        : ''
+      out.push({
+        id: 'season', stat: 'season', q: 'This season?',
+        a: fmtProb(probThisSeason.value),
+        note: `If your ${rate}% holds — the blue future on the chart — these are your odds of touching ${target.value} within ~${seasonGames.value} games, roughly 12 weeks at your pace.${capped}`,
+        tone: 'neutral',
+      })
+    } else {
+      const req = requiredWrForSeason.value
+      out.push({
+        id: 'season', stat: 'season', q: 'This season?',
+        a: 'Not at this rate',
+        note: `At ${rate}% the climb to ${target.value} never completes — you'd need about ${req !== null ? `${(req * 100).toFixed(1)}%` : 'more than this season allows'} to get there within ~${seasonGames.value} games. That number is the playbook's job, not the queue's.`,
+        tone: 'neutral',
+      })
+    }
   }
 
   return out
