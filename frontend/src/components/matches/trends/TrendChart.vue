@@ -234,7 +234,10 @@ onBeforeUnmount(() => motionQuery?.removeEventListener('change', syncMotion))
 <style scoped>
 .trend-chart {
   width: 100%;
-  height: 260px;
+
+  /* rem (= 260px at the 16px baseline) so charts scale with the fluid
+     root font-size instead of staying squat beside grown text. */
+  height: 16.25rem;
 }
 
 .trend-chart-canvas {
