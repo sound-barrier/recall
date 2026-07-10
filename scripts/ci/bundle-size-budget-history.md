@@ -13,6 +13,7 @@ no soft-pedalling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|
+| 2026-07-10 | elo-verdict-dials | 162000 | 69000 | 1520000 | 355000 | Verdict + dials combined band: the measured-baseline projections, edited-state tracking, and the "Your edits, priced" delta strip put total JS 2.8KB over (1510000 -> 1520000). |
 | 2026-07-10 | elo-receipts-playbook | 162000 | 69000 | 1510000 | 355000 | Elo receipts/playbook batch: hero-picker toggle rows + select-all toolbar styles tipped total CSS 451B over the ~600B headroom the elo-page-redesign row predicted would go next (350000 -> 355000). |
 | 2026-07-10 | elo-page-redesign | 162000 | 69000 | 1510000 | 350000 | Elo page redesign: the playbook band (EloPlaybook + the ranked, meter-priced EloNextMoves card + elo-next-moves helper) and the pool-band hero-row restyle put total JS 2.7KB over (1500000 -> 1510000); total CSS squeaks under with ~600B headroom — the next CSS-adding elo change bumps it. |
 | 2026-07-10 | elo-phase3 | 162000 | 69000 | 1500000 | 350000 | Elo phase 3: session-hygiene evidence, change-point scan + skill-chart markline, Bayesian lift table (elo-changepoint/elo-lift + EloLiftTable) — the lift-table styles tipped total CSS 404B over (345000 → 350000); total JS stays under its cap. |

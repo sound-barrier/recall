@@ -11,6 +11,7 @@ import { fmtRank } from '@/components/elo/elo-format'
 import EloTrackPicker from '@/components/elo/EloTrackPicker.vue'
 import EloAnswer from '@/components/elo/EloAnswer.vue'
 import EloResultsPanel from '@/components/elo/EloResultsPanel.vue'
+import EloDeltaStrip from '@/components/elo/EloDeltaStrip.vue'
 import EloProjectionChart from '@/components/elo/EloProjectionChart.vue'
 import EloMythChecks from '@/components/elo/EloMythChecks.vue'
 import EloSeasonSim from '@/components/elo/EloSeasonSim.vue'
@@ -68,31 +69,28 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
 
     <section class="elo-band" aria-labelledby="elo-verdict-title">
       <h3 id="elo-verdict-title" class="elo-band-title">
-        The verdict
+        The verdict — and the dials behind it
       </h3>
-      <EloAnswer />
-      <div class="elo-verdict-grid">
-        <EloResultsPanel />
-        <EloProjectionChart />
+      <p class="elo-band-sub">
+        Filled in from your games — everything on the right is editable, and the answer follows it live.
+      </p>
+      <div class="elo-verdict-adjust-grid">
+        <div class="elo-verdict-col">
+          <EloAnswer />
+          <EloDeltaStrip />
+          <EloResultsPanel />
+        </div>
+        <div class="elo-adjust-col">
+          <EloInputsPanel />
+          <EloHeroPicker />
+        </div>
       </div>
+      <EloProjectionChart />
     </section>
 
     <EloSeasonSim />
 
     <EloPlaybook :items="evidenceItems" />
-
-    <section class="elo-band" aria-labelledby="elo-adjust-title">
-      <h3 id="elo-adjust-title" class="elo-band-title">
-        Adjust the assumptions
-      </h3>
-      <p class="elo-band-sub">
-        Test your plan: these start as your measured numbers — change anything (or nudge a hero) to re-quote the climb.
-      </p>
-      <div class="elo-adjust-grid">
-        <EloInputsPanel />
-        <EloHeroPicker />
-      </div>
-    </section>
 
     <EloSkillCurve />
 

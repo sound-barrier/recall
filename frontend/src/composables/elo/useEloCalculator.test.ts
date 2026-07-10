@@ -212,6 +212,49 @@ describe('useEloCalculator — phase 2 (simulator + skill curve)', () => {
   })
 })
 
+describe('useEloCalculator — edited state + measured baseline', () => {
+  it('is unedited at the seed and flips on any of the three edit sources', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    expect(calc.isEdited.value).toBe(false)
+
+    calc.editInput('winRatePct', 62)
+    expect(calc.editedFields.value.winRatePct).toBe(true)
+    expect(calc.isEdited.value).toBe(true)
+    calc.resetToMeasured()
+    expect(calc.isEdited.value).toBe(false)
+    expect(calc.winRatePct.value).toBeCloseTo(57.1, 1)
+
+    calc.toggleHero('lucio')
+    expect(calc.isEdited.value).toBe(true)
+    calc.resetToMeasured()
+    expect(calc.isEdited.value).toBe(false)
+
+    calc.bumpHero('lucio', 1)
+    expect(calc.isEdited.value).toBe(true)
+    calc.resetToMeasured()
+    expect(calc.isEdited.value).toBe(false)
+  })
+
+  it('holds the measured projection steady while the live one follows the edit', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    const measuredBefore = calc.measuredNaive.value!.expectedGames
+    const liveBefore = calc.naive.value!.expectedGames
+    expect(measuredBefore).toBe(liveBefore)
+
+    calc.editInput('winRatePct', 70)
+    expect(calc.measuredNaive.value!.expectedGames).toBe(measuredBefore)
+    expect(calc.naive.value!.expectedGames).not.toBe(liveBefore)
+  })
+
+  it('re-snapshots the baseline when the track re-seeds', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    calc.editInput('winRatePct', 70)
+    calc.setTrack('support')
+    expect(calc.isEdited.value).toBe(false)
+    expect(calc.editedFields.value.winRatePct).toBe(false)
+  })
+})
+
 describe('useEloCalculator — hero what-if nudges', () => {
   // supportCorpus per hero: lucio 7W/4L (n=11, 64%), ana 1W/2L (n=3, 33%);
   // track sample 8W/6L = 57.1% over 14.

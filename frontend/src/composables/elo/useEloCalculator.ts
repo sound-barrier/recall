@@ -40,6 +40,21 @@ export interface EloCalcOpts {
   mapGameMode: (map: string | null | undefined) => string
 }
 
+// SeededForm is the snapshot of what the seed wrote into the form — the
+// "measured" baseline every edited-state affordance compares against.
+interface SeededForm {
+  currentTier: Tier
+  currentDivision: number
+  currentProgress: number
+  targetTier: Tier
+  targetDivision: number
+  winRatePct: number | null
+  sampleN: number
+  meterMovePct: number
+  gamesPerWeekInput: number | null
+  decaySlopePts: number
+}
+
 // SEASON_WEEKS sizes the "this season" probability window.
 const SEASON_WEEKS = 12
 // The loss-streak reality check: odds of a run this long within this many
@@ -76,6 +91,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const selectedHeroes = ref<ReadonlySet<string>>(new Set())
   const heroAdjustPts = ref<ReadonlyMap<string, number>>(new Map())
   const lastSeed = ref<TrackSeed | null>(null)
+  // The exact post-rounding form values the seed wrote — the "measured"
+  // baseline that edited-field markers and the delta strip compare against.
+  const seededForm = ref<SeededForm | null>(null)
 
   const seed = computed(() => seedTrack(records.value, track.value))
 
@@ -98,6 +116,18 @@ export function useEloCalculator(opts: EloCalcOpts) {
     selectedHeroes.value = new Set()
     heroAdjustPts.value = new Map()
     dirty.value = false
+    seededForm.value = {
+      currentTier: currentTier.value,
+      currentDivision: currentDivision.value,
+      currentProgress: currentProgress.value,
+      targetTier: targetTier.value,
+      targetDivision: targetDivision.value,
+      winRatePct: winRatePct.value,
+      sampleN: sampleN.value,
+      meterMovePct: meterMovePct.value,
+      gamesPerWeekInput: gamesPerWeekInput.value,
+      decaySlopePts: decaySlopePts.value,
+    }
   }
 
   // Default target: one tier up, division 5 (Champion tops out at 1).
@@ -186,6 +216,34 @@ export function useEloCalculator(opts: EloCalcOpts) {
     return round1(Math.max(0, Math.min(100, winRatePct.value + delta)))
   })
 
+  // ── Edited state: what differs from the measured seed ──────────────
+  // Per-field markers + the one flag the verdict eyebrow and the delta
+  // strip key on. Hero selection and nudges count as edits too.
+  const editedFields = computed<Record<keyof SeededForm, boolean>>(() => {
+    const f = seededForm.value
+    const cmp = (a: unknown, b: unknown) => f !== null && a !== b
+    return {
+      currentTier: cmp(currentTier.value, f?.currentTier),
+      currentDivision: cmp(currentDivision.value, f?.currentDivision),
+      currentProgress: cmp(currentProgress.value, f?.currentProgress),
+      targetTier: cmp(targetTier.value, f?.targetTier),
+      targetDivision: cmp(targetDivision.value, f?.targetDivision),
+      winRatePct: cmp(winRatePct.value, f?.winRatePct),
+      sampleN: cmp(sampleN.value, f?.sampleN),
+      meterMovePct: cmp(meterMovePct.value, f?.meterMovePct),
+      gamesPerWeekInput: cmp(gamesPerWeekInput.value, f?.gamesPerWeekInput),
+      decaySlopePts: cmp(decaySlopePts.value, f?.decaySlopePts),
+    }
+  })
+  const isEdited = computed(() =>
+    Object.values(editedFields.value).some(Boolean)
+    || selectedHeroes.value.size > 0
+    || heroAdjustPts.value.size > 0)
+
+  // resetToMeasured re-seeds the whole form (and clears the hero
+  // selection + nudges) — the one way back to the measured numbers.
+  const resetToMeasured = applySeed
+
   // Manual edits are name-keyed (templates auto-unwrap destructured refs,
   // so they can't pass the ref itself). Every edit marks the form dirty;
   // win-rate/sample edits also detach the hero selection so the two
@@ -252,6 +310,34 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const requiredWrForSeason = computed(() => {
     if (projInput.value === null || seasonGames.value === null) return null
     return requiredWinRateForGames(projInput.value, seasonGames.value)
+  })
+
+  // ── The measured baseline, projected (feeds the delta strip) ───────
+  const measuredProjInput = computed<ProjectionInput | null>(() => {
+    const f = seededForm.value
+    if (f === null || f.winRatePct === null || f.sampleN <= 0 || f.meterMovePct <= 0) return null
+    const cur = ladderScore(f.currentTier, f.currentDivision, f.currentProgress)
+    const tgt = ladderScore(f.targetTier, f.targetDivision, 0)
+    if (cur === null || tgt === null) return null
+    const wins = Math.round((f.sampleN * f.winRatePct) / 100)
+    return {
+      currentScore: cur,
+      targetScore: tgt,
+      winRate: f.winRatePct / 100,
+      sampleWins: wins,
+      sampleLosses: f.sampleN - wins,
+      meterMovePct: f.meterMovePct,
+      decaySlope: f.decaySlopePts / 100,
+    }
+  })
+  const measuredNaive = computed<NaiveProjection | null>(() =>
+    (measuredProjInput.value ? naiveProjection(measuredProjInput.value) : null))
+  const measuredWeeks = computed(() =>
+    gamesToWeeks(measuredNaive.value?.expectedGames ?? null, seededForm.value?.gamesPerWeekInput ?? null))
+  const measuredProbSeason = computed(() => {
+    const f = seededForm.value
+    if (measuredProjInput.value === null || f === null || f.gamesPerWeekInput === null || f.gamesPerWeekInput <= 0) return null
+    return probWithinGames(measuredProjInput.value, Math.round(f.gamesPerWeekInput * SEASON_WEEKS))
   })
 
   // Odds of a STREAK_LEN-loss run in the next STREAK_HORIZON games at the
@@ -328,7 +414,8 @@ export function useEloCalculator(opts: EloCalcOpts) {
     // editable inputs + edit API
     currentTier, currentDivision, currentProgress, targetTier, targetDivision,
     winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
-    editInput, lastSeed,
+    editInput, lastSeed, editedFields, isEdited, resetToMeasured,
+    measuredNaive, measuredWeeks, measuredProbSeason,
     // hero picker + what-if nudges
     heroStats, selectedHeroes, toggleHero, selectAllHeroes, clearHeroSelection,
     heroAdjustPts, bumpHero, resetHeroAdjust, whatIf, effectiveWinRatePct,
