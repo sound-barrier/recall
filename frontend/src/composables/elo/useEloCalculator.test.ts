@@ -216,6 +216,56 @@ describe('useEloCalculator — phase 2 (simulator + skill curve)', () => {
   })
 })
 
+describe('useEloCalculator — hero what-if nudges', () => {
+  // supportCorpus per hero: lucio 7W/4L (n=11, 64%), ana 1W/2L (n=3, 33%);
+  // track sample 8W/6L = 57.1% over 14.
+  it('a nudge shifts the effective rate by the hero share; the input stays measured', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    calc.bumpHero('lucio', 1)
+    expect(calc.winRatePct.value).toBeCloseTo(57.1, 1)
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(61, 1) // 57.1 + 11/14·5
+    expect(calc.projInput.value!.winRate).toBeCloseTo(0.61, 2)
+    expect(calc.whatIf.value.perHero.get('lucio')).toEqual({ from: 64, to: 69 })
+    calc.bumpHero('lucio', -1)
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(57.1, 1)
+  })
+
+  it('saturates at ±25 points per hero', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    for (let i = 0; i < 9; i++) calc.bumpHero('lucio', 1)
+    expect(calc.heroAdjustPts.value.get('lucio')).toBe(25)
+    expect(calc.whatIf.value.perHero.get('lucio')).toEqual({ from: 64, to: 89 })
+  })
+
+  it('a selection narrows the scope to the selected heroes', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    calc.toggleHero('lucio')
+    calc.bumpHero('lucio', 1)
+    // The sample IS lucio now, so the whole +5 lands: 63.6 → 68.6.
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(68.6, 1)
+    calc.bumpHero('ana', 1) // out of scope — no effect while selected
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(68.6, 1)
+    expect(calc.whatIf.value.perHero.has('ana')).toBe(false)
+  })
+
+  it('reset, track re-seed, and a detaching manual edit all clear the nudges', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    calc.bumpHero('lucio', 1)
+    calc.resetHeroAdjust()
+    expect(calc.heroAdjustPts.value.size).toBe(0)
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(57.1, 1)
+
+    calc.bumpHero('lucio', 1)
+    calc.setTrack('support')
+    expect(calc.heroAdjustPts.value.size).toBe(0)
+
+    calc.bumpHero('lucio', 1)
+    calc.editInput('winRatePct', 58, { detachHeroes: true })
+    expect(calc.heroAdjustPts.value.size).toBe(0)
+    expect(calc.effectiveWinRatePct.value).toBe(58)
+  })
+})
+
 describe('useEloCalculator — phase 3 (change-point + lift)', () => {
   it('exposes both on suitable corpora and nulls on empty', () => {
     // rec() makes later seq OLDER, so building winny-then-lossy yields a

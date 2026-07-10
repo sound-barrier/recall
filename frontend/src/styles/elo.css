@@ -481,6 +481,95 @@
   color: var(--text);
 }
 
+#panel-elo .elo-heroes-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#panel-elo .elo-heroes-list li .elo-hero-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#panel-elo .elo-nudge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#panel-elo .elo-nudge-btn {
+  appearance: none;
+  padding: 0 0.34rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+#panel-elo .elo-nudge-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+#panel-elo .elo-nudge-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+#panel-elo .elo-nudge-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#panel-elo .elo-nudge-chip {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+#panel-elo .elo-nudge-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0.55rem 0 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+#panel-elo .elo-nudge-reset {
+  appearance: none;
+  flex: none;
+  padding: 0.12rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+#panel-elo .elo-nudge-reset:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+#panel-elo .elo-nudge-reset:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 /* ─── Myth checks + evidence cards (shared card shell) ─── */
 
 #panel-elo .elo-grid {
