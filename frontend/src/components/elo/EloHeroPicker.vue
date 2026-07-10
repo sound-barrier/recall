@@ -5,14 +5,15 @@ import type { HeroPickStat } from '@/match/elo-seed'
 import { clampHeroAdjust, HERO_ADJUST_MAX, HERO_ADJUST_STEP } from '@/match/elo-whatif'
 import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
 
-// Tick heroes to use only their games as the win rate ("what if I only queued
-// these?"). Rows speak the Hero Pool band's language — pool/off badge, a
+// Click heroes to use only their games as the win rate ("what if I only
+// queued these?") — a highlighted row is in the sample; none highlighted
+// means the whole track counts. Rows speak the Hero Pool band's language — pool/off badge, a
 // WR-heat bar, the right-aligned record — so the two hero surfaces read as
 // one; the Wilson margin and shrunk rate live in the stat's tooltip. The
 // stepper nudges a hero one point per press (±5 max): a layered what-if,
 // weighted by how much you play them, that every projection above follows.
 const {
-  heroStats, selectedHeroes, toggleHero,
+  heroStats, selectedHeroes, toggleHero, selectAllHeroes, clearHeroSelection,
   heroAdjustPts, bumpHero, resetHeroAdjust, whatIf, winRatePct, effectiveWinRatePct,
 } = useEloCalc()
 const ow = useOWData()
@@ -71,14 +72,40 @@ const deltaPts = () => {
       Or use only certain heroes
     </legend>
     <p class="elo-hint">
-      Tick heroes to set the win rate from just their games (a multi-hero match counts once per hero).
+      Click heroes to set the win rate from just their games — highlighted rows are the ones being counted;
+      no highlight means every game on this track counts. A multi-hero match counts once per hero.
       The ▲▼ stepper asks: what if you got {{ HERO_ADJUST_STEP }} point better — or worse — on that hero?
       Up to ±{{ HERO_ADJUST_MAX }}, blended by their share of your games.
     </p>
+    <div class="elo-hero-toolbar">
+      <button
+        type="button"
+        class="elo-hero-select-btn"
+        data-elo-select-all
+        :disabled="heroStats.length > 0 && selectedHeroes.size === heroStats.length"
+        @click="selectAllHeroes"
+      >
+        Select all
+      </button>
+      <button
+        type="button"
+        class="elo-hero-select-btn"
+        data-elo-unselect-all
+        :disabled="selectedHeroes.size === 0"
+        @click="clearHeroSelection"
+      >
+        Unselect all
+      </button>
+    </div>
     <ul class="elo-heroes-list">
       <li v-for="h in heroStats" :key="h.key" :data-elo-hero="h.key">
-        <label class="elo-hero-row">
-          <input type="checkbox" :checked="selectedHeroes.has(h.key)" @change="toggleHero(h.key)">
+        <button
+          type="button"
+          class="elo-hero-row"
+          :class="{ selected: selectedHeroes.has(h.key) }"
+          :aria-pressed="selectedHeroes.has(h.key) ? 'true' : 'false'"
+          @click="toggleHero(h.key)"
+        >
           <span class="elo-hero-name">{{ ow.heroDisplayName(h.key) }}</span>
           <span class="elo-hero-tag" :class="{ out: !h.inPool }" data-pool-badge>{{ h.inPool ? 'pool' : 'off' }}</span>
           <span class="elo-hero-bar" aria-hidden="true">
@@ -92,7 +119,7 @@ const deltaPts = () => {
             {{ h.wins + h.losses }}x · {{ h.winrate }}%<span v-if="nudgedTo(h) !== null" class="elo-hero-nudged"> → {{ nudgedTo(h) }}%</span>
             <span v-if="h.lowSample" class="elo-lown" title="Fewer than 5 games — treat this rate as noisy">n&lt;5</span>
           </span>
-        </label>
+        </button>
         <span class="elo-nudge" role="group" :aria-label="`What-if nudge for ${ow.heroDisplayName(h.key)}`">
           <button
             type="button"

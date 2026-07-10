@@ -195,10 +195,24 @@ test.describe('Elo Calculator', () => {
     await expect(page.locator('[data-elo-hero="ana"] [data-pool-badge]')).toHaveText(/^off$/i)
     await expect(page.locator('[data-elo-hero="lucio"] [data-elo-hero-stat]')).toContainText('24x · 75%')
 
-    // Select only lucio: 18W/6L → 75%, n=24.
-    await page.locator('[data-elo-hero="lucio"] input[type="checkbox"]').check()
+    // Click the row to count only lucio: 18W/6L → 75%, n=24. Highlighted
+    // row = in the sample.
+    const lucioRow = page.locator('[data-elo-hero="lucio"] .elo-hero-row')
+    await lucioRow.click()
+    await expect(lucioRow).toHaveAttribute('aria-pressed', 'true')
     await expect(page.locator('[data-elo-input="win-rate"]')).toHaveValue('75')
     await expect(page.locator('[data-elo-input="sample-n"]')).toHaveValue('24')
+
+    // Select all pools every listed hero; Unselect all returns to the
+    // whole-track seed (40 games at 70%).
+    await page.locator('[data-elo-select-all]').click()
+    await expect(page.locator('.elo-hero-row[aria-pressed="true"]')).toHaveCount(3)
+    await expect(page.locator('[data-elo-select-all]')).toBeDisabled()
+    await page.locator('[data-elo-unselect-all]').click()
+    await expect(page.locator('.elo-hero-row[aria-pressed="true"]')).toHaveCount(0)
+    await expect(page.locator('[data-elo-unselect-all]')).toBeDisabled()
+    await expect(page.locator('[data-elo-input="win-rate"]')).toHaveValue('70')
+    await expect(page.locator('[data-elo-input="sample-n"]')).toHaveValue('40')
   })
 
   test('the rigged receipt is honest at volume: near even and measured, not "too few games"', async ({ page }) => {

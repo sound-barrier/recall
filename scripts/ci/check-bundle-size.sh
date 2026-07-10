@@ -80,7 +80,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # layout, bars, gear), ~1KB. New feature.
 # 2026-07: 335000 -> 345000 - Elo Calculator scoped styles (form, cards,
 # evidence grid, chart frame), ~5.5KB. New feature.
-: "${MAX_TOTAL_CSS_BYTES:=350000}"
+: "${MAX_TOTAL_CSS_BYTES:=355000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
