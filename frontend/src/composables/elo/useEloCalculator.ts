@@ -135,6 +135,22 @@ export function useEloCalculator(opts: EloCalcOpts) {
     applyHeroSelection(next)
   }
 
+  // selectAllHeroes / clearHeroSelection back the picker's bulk buttons.
+  // Both count as edits (dirty) exactly like a per-hero toggle.
+  function selectAllHeroes(): void {
+    const next: ReadonlySet<string> = new Set(heroStats.value.map((h) => h.key))
+    selectedHeroes.value = next
+    dirty.value = true
+    applyHeroSelection(next)
+  }
+
+  function clearHeroSelection(): void {
+    const next: ReadonlySet<string> = new Set()
+    selectedHeroes.value = next
+    dirty.value = true
+    applyHeroSelection(next)
+  }
+
   function applyHeroSelection(selection: ReadonlySet<string>): void {
     if (selection.size === 0) {
       const s = seed.value
@@ -314,7 +330,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
     editInput, lastSeed,
     // hero picker + what-if nudges
-    heroStats, selectedHeroes, toggleHero,
+    heroStats, selectedHeroes, toggleHero, selectAllHeroes, clearHeroSelection,
     heroAdjustPts, bumpHero, resetHeroAdjust, whatIf, effectiveWinRatePct,
     // derived
     trackRecs, currentScore, targetScore, projInput, naive, decay, curves,
