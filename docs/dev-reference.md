@@ -27,7 +27,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | Command | Purpose |
 |---|---|
 | `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, `wails3`, every linter), Debian GTK4 + WebKitGTK 6.0 dev libs, `npm ci`, `lefthook install`. Idempotent. |
-| `task dev` | Hot-reload Wails v3 dev server (`wails3 dev`, macOS / Debian / Ubuntu). |
+| `task dev` | Hot-reload Wails v3 dev server (`wails3 dev`, macOS / Debian / Ubuntu). Deletes the dev DB first (fresh schema every boot). |
 | `task build-windows` | Windows/amd64 Wails v3 app + NSIS installer → `dist/windows/` via a **native** cross-compile (`CGO_ENABLED=0` — v3's WebView2 loader is pure Go, no Docker; needs `wails3` + node + `makensis`). The shipped release target. |
 | `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). **Local dev target only — not released.** |
 | `go build ./...` / `-tags serveronly ./...` | Compile-check Wails / server variant. |
@@ -149,22 +149,26 @@ mise.toml `[env]` already pins `RECALL_DATA_DIR=<repo>/data`. With mise activate
 reads + writes under `<repo>/data/`, never under
 `~/Library/Application Support/Recall/`. Real installs stay untouched.
 
-### `task dev` does NOT re-seed
+### `task dev` starts from a FRESH database
 
-`task dev` only starts the Wails dev server (Vite `:5173`, Wails IPC `:34115`).
-It never touches the DB. To change the seeded corpus you must re-run
-`seed-dev` explicitly. Hot-reload covers code changes; the DB is the source
-of truth and persists across dev-server restarts.
+`task dev` deletes every dev profile's SQLite files (`data/profiles/*/db/`)
+before booting the server (Vite `:5173`, Wails IPC `:34115`), so each dev run
+opens on the current schema — a dev DB created under an older shape keeps its
+old column constraints forever and once broke every matches load. Settings and
+the profile registry live outside `db/` and survive the wipe; seeded corpora do
+NOT. Seed AFTER the server is up (order below), and use `task dev-db-reset` for
+a standalone wipe without booting.
 
 ### Workflow
 
 ```sh
-# Seed a fresh profile (creates "demo" if missing).
-task seed-dev N=300 PROFILE=demo
-
-# Boot the app, switch to the demo profile via the masthead chip,
-# then scroll Matches / inspect widgets / try sort + group.
+# Boot the app first — task dev wipes the dev DB on the way up, so a
+# corpus seeded beforehand would be deleted.
 task dev
+
+# Then (second shell) seed a profile and switch to it via the masthead
+# chip; scroll Matches / inspect widgets / try sort + group.
+task seed-dev N=300 PROFILE=demo
 ```
 
 ### Re-seeding and wiping
