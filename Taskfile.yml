@@ -593,9 +593,22 @@ tasks:
     cmds:
       - task: '{{OS}}:run'
 
-  dev:
-    desc: Start the Wails v3 hot-reload dev server (macOS or Debian)
+  dev-db-reset:
+    desc: Delete every dev profile's database (data/profiles/*/db) so the next boot starts on a fresh schema
     cmds:
+      # Pre-1.0 wipe-and-relaunch, automated: a dev DB created under an older
+      # schema shape keeps it forever (CREATE TABLE IF NOT EXISTS never
+      # retrofits constraints) and once broke every matches load. Settings +
+      # the profile registry live outside db/ and survive; explicit per-file
+      # patterns (not one broad glob) so the blast radius is legible.
+      - rm -f data/profiles/*/db/recall.db
+      - rm -f data/profiles/*/db/recall.db-wal
+      - rm -f data/profiles/*/db/recall.db-shm
+
+  dev:
+    desc: Start the Wails v3 hot-reload dev server (macOS or Debian) — deletes the dev DB first
+    cmds:
+      - task: dev-db-reset
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
 
   seed-dev:
