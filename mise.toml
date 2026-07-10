@@ -41,6 +41,8 @@ GOTOOLCHAIN = "local"
 [tools]
 # Language runtimes (match go.mod / CI).
 go = "1.26.5"
+# Keep in sync with the root .node-version (consumed by actions/setup-node
+# in CI); `task check-deps` asserts the two agree.
 node = "26"
 
 # The task runner itself, so `mise install` bootstraps a complete toolchain

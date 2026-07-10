@@ -6,23 +6,22 @@ on:
   pull_request:
     branches: [main]
 
+# A re-push to a PR cancels the now-stale run instead of stacking full
+# suites; pushes to main always run to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # CI only reads code — no releases or package pushes.
 permissions:
   contents: read
 
 jobs:
   # ── Job 1: All linters ──────────────────────────────────────────────────
+  # Pure linters + the bundle budget. Unit tests live in the test-unit job
+  # so a red here always means style/static analysis, never a failing test.
   lint:
     runs-on: ubuntu-latest
-    # Extra scopes are needed by EnricoMi/publish-unit-test-result-action so
-    # it can post the sticky comment + checks summary on pull requests. The
-    # workflow-level default is contents:read; per-job permissions replace
-    # rather than merge, so contents:read is re-listed below.
-    permissions:
-      contents: read
-      checks: write
-      pull-requests: write
-      issues: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
@@ -38,7 +37,6 @@ jobs:
           install_args: >-
             go node task ruff shfmt shellcheck jq
             go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
-            go:github.com/jstemmer/go-junit-report/v2
 
       # Wails v3's desktop code imports a CGo WebKit2GTK webview, so the default
       # build tags need these system libs to typecheck on the Ubuntu runner.
@@ -136,6 +134,53 @@ jobs:
       - name: Enforce SHA-pinned actions
         run: bash scripts/ci/check-action-pins.sh
 
+  # ── Job 2: Unit tests + type/spec drift ─────────────────────────────────
+  # Go (-race -short) + Vitest with JUnit output, vue-tsc, and the
+  # gen-types drift gate. Split out of `lint` so a failing test reports
+  # as test-unit, not as a lint failure. Provisioned with setup-go /
+  # setup-node (go.mod + .node-version are the version truth here);
+  # mise stays local-dev + the poly-tool lint job.
+  test-unit:
+    runs-on: ubuntu-latest
+    # Extra scopes are needed by EnricoMi/publish-unit-test-result-action so
+    # it can post the checks summary on pull requests. The workflow-level
+    # default is contents:read; per-job permissions replace rather than
+    # merge, so contents:read is re-listed below.
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+      issues: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install go-junit-report
+        run: go install github.com/jstemmer/go-junit-report/v2@latest
+
+      # Wails v3's desktop code imports a CGo WebKit2GTK webview, so the
+      # default build tags need these system libs to compile the tests.
+      - uses: ./.github/actions/linux-webview-deps
+
+      # go test loads the root package, whose //go:embed all:frontend/dist
+      # needs files present — the stub satisfies it; Vitest doesn't read dist.
+      - name: Prepare frontend/dist (stub for //go:embed)
+        uses: ./.github/actions/prepare-frontend-dist
+        with:
+          real-assets: "false"
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.
       # Tee through go-junit-report so the XML is always produced — the
@@ -227,7 +272,7 @@ jobs:
       # api/openapi.yaml" before it lands on main.
       - name: Verify generated types are in sync with OpenAPI spec
         run: |
-          task gen-types
+          cd frontend && npm run gen:types && cd ..
           if ! git diff --quiet frontend/src/api.gen.d.ts; then
             echo "::error::frontend/src/api.gen.d.ts is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
             git diff frontend/src/api.gen.d.ts | head -50
@@ -250,7 +295,7 @@ jobs:
           echo "::error::Unit tests failed (Go=${GO_OUTCOME}, frontend=${FE_OUTCOME}). See the 'Unit test results' check and the test-run step logs."
           exit 1
 
-  # ── Job 2: Windows/amd64 Wails app ──────────────────────────────────────
+  # ── Job 3: Windows/amd64 Wails app ──────────────────────────────────────
   build-windows:
     # Native cross-compile (no Docker) — v3's Windows WebView2 loader is pure Go,
     # so this needs wails3 + node + makensis, not buildx.
@@ -269,7 +314,7 @@ jobs:
       - name: Build Windows/amd64 Wails app + NSIS installer
         run: task build-windows
 
-  # ── Job 3: Vulnerability scan ────────────────────────────────────────────
+  # ── Job 4: Vulnerability scan ────────────────────────────────────────────
   # Mirrors `task trivy` but runs in CI and uploads results to the GitHub
   # Security tab (Alerts → Code scanning) as well as failing the build.
   trivy:
@@ -305,7 +350,7 @@ jobs:
         with:
           sarif_file: trivy.sarif
 
-  # ── Job 4: Go-specific vulnerability scan ────────────────────────────────
+  # ── Job 5: Go-specific vulnerability scan ────────────────────────────────
   # govulncheck is call-graph-aware: it only flags CVEs in code paths Recall
   # actually invokes. Complements Trivy (which scans all module versions
   # regardless of reachability) and typically produces fewer false positives.
@@ -313,10 +358,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      # go + govulncheck from mise.toml (govulncheck built with this Go).
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
-          install_args: go go:golang.org/x/vuln/cmd/govulncheck
+          go-version-file: go.mod
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
       # Wails v3's desktop code imports a CGo WebKit2GTK webview — the default
       # build tags need these system libs to build on the Ubuntu runner.
       - uses: ./.github/actions/linux-webview-deps
@@ -339,7 +385,7 @@ jobs:
   # hook — so contributors get fast feedback before push without
   # duplicating coverage with CodeQL.
 
-  # ── Job 5: Cyclomatic complexity (REPORT ONLY) ───────────────────────────
+  # ── Job 6: Cyclomatic complexity (REPORT ONLY) ───────────────────────────
   # gocyclo (Go) + ESLint's `complexity` rule (frontend) at threshold 10.
   # `continue-on-error: true` keeps the job NON-BLOCKING — a high number
   # never fails the build, it just shows up in the job log. We watch the
@@ -352,10 +398,16 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      # go (gocyclo) + node (eslint pass) from mise.toml.
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
-          install_args: go node go:github.com/fzipp/gocyclo/cmd/gocyclo
+          go-version-file: go.mod
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install gocyclo
+        run: go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
       # gocyclo doesn't need real frontend assets — Go source only.
       - name: Prepare frontend/dist (stub for //go:embed)
         uses: ./.github/actions/prepare-frontend-dist
@@ -373,7 +425,7 @@ jobs:
       - name: Diff against baseline (report-only)
         run: bash scripts/ci/check-complexity-baseline.sh
 
-  # ── Job 6: Dead code analysis ────────────────────────────────────────────
+  # ── Job 7: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant
   # only — the Wails variant registers App methods via reflection so deadcode
   # would report false positives; golangci-lint `unused` covers that variant).
@@ -383,10 +435,16 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      # go (+ deadcode) and node (+ knip) from mise.toml.
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
-          install_args: go node go:golang.org/x/tools/cmd/deadcode
+          go-version-file: go.mod
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install deadcode
+        run: go install golang.org/x/tools/cmd/deadcode@latest
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -404,7 +462,7 @@ jobs:
       - name: Dead TypeScript code (knip)
         run: cd frontend && npm run dead:ts
 
-  # ── Job 7: Frontend coverage report ─────────────────────────────────────
+  # ── Job 8: Frontend coverage report ─────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and lcov
   # file are uploaded as a workflow artifact so they can be downloaded from
   # the Actions run page for any push or PR.
@@ -413,9 +471,11 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
-          install_args: node
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -446,7 +506,7 @@ jobs:
           path: frontend/coverage/
           retention-days: 30
 
-  # ── Job 8: Go coverage report ───────────────────────────────────────────
+  # ── Job 9: Go coverage report ───────────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and func
   # summary are uploaded as a workflow artifact so they can be downloaded
   # from the Actions run page for any push or PR.
@@ -455,10 +515,14 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      # go + gocover-cobertura (Cobertura XML converter) from mise.toml.
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
-          install_args: go task go:github.com/boumenot/gocover-cobertura
+          go-version-file: go.mod
+      # task drives the cover-go recipe; gocover-cobertura converts the profile.
+      - name: Install task + gocover-cobertura
+        run: |
+          go install github.com/go-task/task/v3/cmd/task@latest
+          go install github.com/boumenot/gocover-cobertura@latest
 
       # Wails v3's desktop code imports a CGo WebKit2GTK webview — the default
       # build tags need these system libs to build on the Ubuntu runner.
@@ -508,7 +572,7 @@ jobs:
           path: coverage/go/
           retention-days: 30
 
-  # ── Job 9: OpenAPI ↔ implementation drift check ─────────────────────────
+  # ── Job 10: OpenAPI ↔ implementation drift check ─────────────────────────
   # Spectral checks the spec is well-formed; schemathesis checks the spec
   # matches the running server. Fuzzes spec-derived requests against a
   # freshly-built serveronly binary and verifies every response conforms to
@@ -519,11 +583,15 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      # go (build serveronly) + schemathesis (pipx) from mise.toml; also loads
-      # TESSERACT_VERSION + SCHEMATHESIS_VERSION from [env] into $GITHUB_ENV.
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
-          install_args: go task pipx:schemathesis
+          go-version-file: go.mod
+      # mise.toml [env] is the version truth for the pinned CLI tools; load
+      # the *_VERSION strings into the job env the same way mise-action did.
+      - name: Load tool versions from mise.toml
+        run: grep -E '^[A-Z_]+_VERSION *= *"' mise.toml | tr -d ' "' >> "$GITHUB_ENV"
+      - name: Install schemathesis (pipx)
+        run: pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
 
       - name: Prepare frontend/dist (real Vite build)
         uses: ./.github/actions/prepare-frontend-dist
