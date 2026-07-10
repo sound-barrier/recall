@@ -38,7 +38,9 @@ function makeNarrow() {
 
 // A root corpus with one populated lucio/control cell (above a 10-floor).
 const ROOT_CELLS = [
-  { hero: 'lucio', gameMode: 'control',    wins: 8, losses: 2, draws: 0, total: 10, winrate: 80 },
+  // 16W/4L: enough volume to EARN cell-win under the judgment bands
+  // (the drill tests below click the win-coloured cell).
+  { hero: 'lucio', gameMode: 'control',    wins: 16, losses: 4, draws: 0, total: 20, winrate: 80 },
   { hero: 'lucio', gameMode: 'escort',     wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
   { hero: 'lucio', gameMode: 'flashpoint', wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
   { hero: 'lucio', gameMode: 'hybrid',     wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
@@ -46,7 +48,7 @@ const ROOT_CELLS = [
   { hero: 'lucio', gameMode: 'clash',      wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
 ]
 const MAP_CELLS = [
-  { map: 'route66', wins: 6, losses: 4, draws: 0, total: 10, winrate: 60 },
+  { map: 'route66', wins: 14, losses: 6, draws: 0, total: 20, winrate: 70 },
   { map: 'havana',  wins: 3, losses: 1, draws: 0, total: 4,  winrate: 75 },
 ]
 const RECENT = [
@@ -119,7 +121,7 @@ describe('MatchHeroModeBand', () => {
     expect(tiles.length).toBe(2)
     const tileText = tiles.map((t) => t.text()).join(' ')
     expect(tileText).toContain('route66')
-    expect(tileText).toContain('60%')
+    expect(tileText).toContain('70%')
     expect(wrapper.find('.hm-title').text()).toContain('lucio × Control maps')
     expect(wrapper.find('[data-hero-mode-back]').exists()).toBe(true)
   })

@@ -149,10 +149,12 @@ test.describe('Hero Pool band', () => {
     await expect(page.locator('[data-hero-pool-reset]')).toHaveCount(0)
   })
 
-  test('heroes are colour-coded by win rate, not pool status', async ({ page }) => {
+  test('colour demands evidence — an 8-game 62% record stays neutral', async ({ page }) => {
     await openBand(page)
-    // reinhardt is in-pool at 62% → win-coloured; a losing in-pool hero would be
-    // loss-coloured. The fill class encodes win rate independent of membership.
-    await expect(page.locator('[data-pool-hero="reinhardt"] .hp-fill')).toHaveClass(/cell-win/)
+    // reinhardt is in-pool at 62% over just 8 games: under the judgment
+    // bands that's noise, not a signal, so the bar stays neutral instead
+    // of rewarding a small heater. (The classifier itself is unit-tested;
+    // this proves the class reaches the DOM.)
+    await expect(page.locator('[data-pool-hero="reinhardt"] .hp-fill')).toHaveClass(/cell-mid/)
   })
 })
