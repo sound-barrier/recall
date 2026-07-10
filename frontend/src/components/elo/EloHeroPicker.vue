@@ -3,35 +3,48 @@ import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { HeroPickStat } from '@/match/elo-seed'
 import { clampHeroAdjust, HERO_ADJUST_MAX, HERO_ADJUST_STEP } from '@/match/elo-whatif'
+import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
 
 // Tick heroes to use only their games as the win rate ("what if I only queued
-// these?"). Each row shows the hero's own record and whether it's in your usual
-// pool — off-pool picks are the honest "you're spending rank on practice" flag.
-// Small records also carry an adjusted rate shrunk toward the pooled record,
-// shown only when it meaningfully disagrees with the raw one.
-// The ▲▼ arrows nudge a hero's rate a point per press (at most ±5 from the
-// measured rate) — a layered what-if, weighted by how much you play them,
-// that every projection above follows.
+// these?"). Rows speak the Hero Pool band's language — pool/off badge, a
+// WR-heat bar, the right-aligned record — so the two hero surfaces read as
+// one; the Wilson margin and shrunk rate live in the stat's tooltip. The
+// stepper nudges a hero one point per press (±5 max): a layered what-if,
+// weighted by how much you play them, that every projection above follows.
 const {
   heroStats, selectedHeroes, toggleHero,
   heroAdjustPts, bumpHero, resetHeroAdjust, whatIf, winRatePct, effectiveWinRatePct,
 } = useEloCalc()
 const ow = useOWData()
 
-function recordText(h: HeroPickStat): string {
-  const margin = h.marginPts !== null ? ` ± ${h.marginPts}` : ''
-  const adj = h.adjustedWinrate !== null && Math.abs(h.adjustedWinrate - h.winrate) >= 2
-    ? ` · adj ${h.adjustedWinrate}%`
-    : ''
-  return `${h.winrate}%${margin}${adj} · ${h.wins + h.losses} games`
+// nudgedTo: the hero's rate with its active in-scope nudge applied.
+function nudgedTo(h: HeroPickStat): number | null {
+  return whatIf.value.perHero.get(h.key)?.to ?? null
 }
 
-function nudgeChip(h: HeroPickStat): string | null {
-  const nudged = whatIf.value.perHero.get(h.key)
-  return nudged ? `${nudged.from}% → ${nudged.to}%` : null
+function offset(h: HeroPickStat): number {
+  return heroAdjustPts.value.get(h.key) ?? 0
 }
 
-// Arrows dead-end at the ±25 saturation, the 0/100 rate bounds, and on
+function offsetText(h: HeroPickStat): string {
+  const v = offset(h)
+  return v > 0 ? `+${v}` : String(v)
+}
+
+// The bar wears the heat class of the rate ON DISPLAY, so a nudge visibly
+// re-sizes and re-tints it.
+function heatShape(h: HeroPickStat): { total: number; winrate: number; wins: number; losses: number } {
+  return { total: h.wins + h.losses, winrate: nudgedTo(h) ?? h.winrate, wins: h.wins, losses: h.losses }
+}
+
+function statTitle(h: HeroPickStat): string | undefined {
+  const parts = []
+  if (h.marginPts !== null) parts.push(`±${h.marginPts} points (Wilson)`)
+  if (h.adjustedWinrate !== null) parts.push(`shrunk toward your pooled rate: ${h.adjustedWinrate}%`)
+  return parts.length > 0 ? parts.join(' · ') : undefined
+}
+
+// Arrows dead-end at the ±5 saturation, the 0/100 rate bounds, and on
 // rows outside an active selection (their games aren't in the sample).
 function outOfScope(h: HeroPickStat): boolean {
   return selectedHeroes.value.size > 0 && !selectedHeroes.value.has(h.key)
@@ -58,24 +71,29 @@ const deltaPts = () => {
       Or use only certain heroes
     </legend>
     <p class="elo-hint">
-      Tick heroes to set the win rate from just their games. A multi-hero match counts once per hero.
-      "adj" pulls a small record toward your overall rate — a hot 3–0 isn't really 100%.
-      The ▲▼ arrows ask a different question: what if you got a little better — or worse — on that hero?
-      Each press is one point, up to {{ HERO_ADJUST_MAX }} either way, and the blend moves by their share of your games.
+      Tick heroes to set the win rate from just their games (a multi-hero match counts once per hero).
+      The ▲▼ stepper asks: what if you got {{ HERO_ADJUST_STEP }} point better — or worse — on that hero?
+      Up to ±{{ HERO_ADJUST_MAX }}, blended by their share of your games.
     </p>
     <ul class="elo-heroes-list">
       <li v-for="h in heroStats" :key="h.key" :data-elo-hero="h.key">
         <label class="elo-hero-row">
           <input type="checkbox" :checked="selectedHeroes.has(h.key)" @change="toggleHero(h.key)">
           <span class="elo-hero-name">{{ ow.heroDisplayName(h.key) }}</span>
-          <span class="elo-hero-record">{{ recordText(h) }}</span>
-          <span class="elo-pool" :class="{ out: !h.inPool }" data-pool-badge>
-            {{ h.inPool ? 'in pool' : 'out of pool' }}
+          <span class="elo-hero-tag" :class="{ out: !h.inPool }" data-pool-badge>{{ h.inPool ? 'pool' : 'off' }}</span>
+          <span class="elo-hero-bar" aria-hidden="true">
+            <span
+              class="elo-hero-fill"
+              :class="heatmapCellClass(heatShape(h))"
+              :style="{ width: `${nudgedTo(h) ?? h.winrate}%`, opacity: heatmapCellOpacity(heatShape(h)) }"
+            />
           </span>
-          <span v-if="h.lowSample" class="elo-lown" title="Fewer than 5 games — treat this rate as noisy">n&lt;5</span>
+          <span class="elo-hero-stat" data-elo-hero-stat :title="statTitle(h)">
+            {{ h.wins + h.losses }}x · {{ h.winrate }}%<span v-if="nudgedTo(h) !== null" class="elo-hero-nudged"> → {{ nudgedTo(h) }}%</span>
+            <span v-if="h.lowSample" class="elo-lown" title="Fewer than 5 games — treat this rate as noisy">n&lt;5</span>
+          </span>
         </label>
         <span class="elo-nudge" role="group" :aria-label="`What-if nudge for ${ow.heroDisplayName(h.key)}`">
-          <span v-if="nudgeChip(h)" class="elo-nudge-chip" data-elo-nudge-chip>{{ nudgeChip(h) }}</span>
           <button
             type="button"
             class="elo-nudge-btn"
@@ -84,6 +102,7 @@ const deltaPts = () => {
             :disabled="!canNudge(h, -1)"
             @click="bumpHero(h.key, -1)"
           >▼</button>
+          <span class="elo-nudge-offset" :class="{ active: offset(h) !== 0 }" data-elo-nudge-offset aria-hidden="true">{{ offsetText(h) }}</span>
           <button
             type="button"
             class="elo-nudge-btn"

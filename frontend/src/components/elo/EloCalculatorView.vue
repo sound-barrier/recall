@@ -13,19 +13,18 @@ import EloAnswer from '@/components/elo/EloAnswer.vue'
 import EloResultsPanel from '@/components/elo/EloResultsPanel.vue'
 import EloProjectionChart from '@/components/elo/EloProjectionChart.vue'
 import EloMythChecks from '@/components/elo/EloMythChecks.vue'
-import EloStatDrivers from '@/components/elo/EloStatDrivers.vue'
 import EloSeasonSim from '@/components/elo/EloSeasonSim.vue'
 import EloSkillCurve from '@/components/elo/EloSkillCurve.vue'
-import EloLiftTable from '@/components/elo/EloLiftTable.vue'
+import EloPlaybook from '@/components/elo/EloPlaybook.vue'
 import EloInputsPanel from '@/components/elo/EloInputsPanel.vue'
 import EloHeroPicker from '@/components/elo/EloHeroPicker.vue'
-import EloEvidencePanel from '@/components/elo/EloEvidencePanel.vue'
 
-// Elo Calculator — a loan-calculator for ranked climbing. Inputs seed from the
-// picked track's own games (all editable); the verdict + chart lead, the form
-// sits below as "adjust the assumptions", and two evidence bands answer
-// "Elo Hell" with the player's own numbers. Pure layout: state lives in
-// useEloCalculator (provided to the panels).
+// Elo Calculator — a loan-calculator for ranked climbing, told in a fixed
+// arc: how hard the climb is (verdict + simulated seasons), what to do
+// about it (the playbook), the tool to price that plan (the editable
+// assumptions + hero nudges), proof you're already moving (skill curve),
+// and — last, for the cursed nights — the "is it rigged?" receipts.
+// Pure layout: state lives in useEloCalculator (provided to the panels).
 const matchesStore = useMatchesStore()
 const ow = useOWData()
 
@@ -60,8 +59,8 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
         How long to reach <em>{{ target }}</em>?
       </h2>
       <p class="elo-desc">
-        A climb calculator, filled in from your own games and fully editable. Two honest futures —
-        keeping your win rate, versus what tougher opponents actually do — plus a reality check on "Elo Hell."
+        A climb calculator, filled in from your own games and fully editable. The honest price of the
+        climb, the playbook that shortens it, and — for the nights it feels rigged — the receipts.
       </p>
     </header>
 
@@ -78,12 +77,16 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
       </div>
     </section>
 
+    <EloSeasonSim />
+
+    <EloPlaybook :items="evidenceItems" />
+
     <section class="elo-band" aria-labelledby="elo-adjust-title">
       <h3 id="elo-adjust-title" class="elo-band-title">
         Adjust the assumptions
       </h3>
       <p class="elo-band-sub">
-        These come straight from your games — change anything to explore a what-if.
+        Test your plan: these start as your measured numbers — change anything (or nudge a hero) to re-quote the climb.
       </p>
       <div class="elo-adjust-grid">
         <EloInputsPanel />
@@ -91,16 +94,8 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
       </div>
     </section>
 
-    <EloSeasonSim />
-
-    <EloMythChecks />
-
-    <EloStatDrivers />
-
-    <EloLiftTable />
-
     <EloSkillCurve />
 
-    <EloEvidencePanel :items="evidenceItems" />
+    <EloMythChecks />
   </section>
 </template>

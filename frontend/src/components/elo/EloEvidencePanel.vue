@@ -8,13 +8,10 @@ defineProps<{ items: EvidenceItem[] }>()
 </script>
 
 <template>
-  <section v-if="items.length > 0" class="elo-band" aria-labelledby="elo-evidence-title">
-    <h3 id="elo-evidence-title" class="elo-band-title">
-      What actually moves your rank
-    </h3>
-    <p class="elo-band-sub">
-      The levers you control — measured from your own games, not guesses.
-    </p>
+  <section v-if="items.length > 0" class="elo-playbook-block" aria-labelledby="elo-evidence-title">
+    <h4 id="elo-evidence-title" class="elo-subhead">
+      The levers you control
+    </h4>
     <div class="elo-grid">
       <div v-for="item in items" :key="item.id" class="elo-cell" :class="item.tone" :data-elo-evidence="item.id">
         <p class="elo-cell-q">
