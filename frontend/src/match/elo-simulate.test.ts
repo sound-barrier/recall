@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { mulberry32, meterMoveSamples, simulateSeasons, type SimInput } from '@/match/elo-simulate'
+import { mulberry32, meterMoveSamples, simulateSeasons, expectedMeterDelta, type SimInput } from '@/match/elo-simulate'
 
 describe('mulberry32', () => {
   it('is deterministic per seed and uniform-ish in [0, 1)', () => {
@@ -123,5 +123,17 @@ describe('simulateSeasons', () => {
       expect(out.fan.p10[i]!).toBeLessThanOrEqual(out.fan.p50[i]!)
       expect(out.fan.p50[i]!).toBeLessThanOrEqual(out.fan.p90[i]!)
     }
+  })
+})
+
+describe('expectedMeterDelta', () => {
+  it('is the win-weighted mean of the signed pools', () => {
+    const samples = { winMoves: Array<number>(8).fill(20), lossMoves: Array<number>(8).fill(-25) }
+    // 0.6·20 + 0.4·(−25) = 2 exactly.
+    expect(expectedMeterDelta(samples, 0.6)).toBeCloseTo(2, 10)
+  })
+
+  it('is null when either pool is too thin to trust', () => {
+    expect(expectedMeterDelta({ winMoves: [20, 21], lossMoves: Array<number>(8).fill(-20) }, 0.5)).toBeNull()
   })
 })

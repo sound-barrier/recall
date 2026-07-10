@@ -3,8 +3,10 @@ import type { MatchRecord } from '@/api-client'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier.types'
 import { analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT } from '@/match/match-hero-pool-helpers'
-import { leaverRate } from '@/match/match-momentum-helpers'
+import { leaverRate, winrateBySessionIndex } from '@/match/match-momentum-helpers'
 import { afterResultCounts, streakMeterImpact, winrateByStreakDepth } from '@/match/elo-streaks'
+import { expectedMeterDelta, meterMoveSamples } from '@/match/elo-simulate'
+import { normalCdf } from '@/match/elo-stats'
 import { twoByTwoChiSquareP } from '@/match/elo-stats'
 import { LOW_SAMPLE_N } from '@/match/match-sample-helpers'
 
@@ -39,6 +41,7 @@ export function useEloEvidence(opts: EloEvidenceOpts) {
       poolDiscipline(opts.trackRecs.value, opts.heroRole),
       streakTilt(opts.trackRecs.value),
       streakMeter(opts.trackRecs.value),
+      sessionHygiene(opts.trackRecs.value),
       leavers(opts.trackRecs.value),
     ]
     return out.filter((i): i is EvidenceItem => i !== null)
@@ -152,6 +155,57 @@ function streakMeter(recs: readonly MatchRecord[]): EvidenceItem | null {
     value: `${ratio}× inside streaks`,
     gloss: `Your rank cards move ±${Math.round(m.streakAbsMean)}% during a streak vs ±${Math.round(m.normalAbsMean)}% otherwise (${m.streakN} streak games measured). Win-streak games have banked +${Math.round(m.winStreakNet)}% meter (≈${divisions(m.winStreakNet)} divisions); loss-streak games gave back ${Math.round(m.lossStreakNet)}% (≈${divisions(m.lossStreakNet)} divisions). Ride the former; cut the latter early — each extra game in a losing run has more ground to give.`,
     tone: Math.abs(m.lossStreakNet) > m.winStreakNet ? 'warn' : 'neutral',
+  }
+}
+
+// sessionHygiene is the "when in a session do I start losing?" ladder:
+// win rate by game-number-in-session (1 / 2 / 3 / 4+), a significance
+// clause from the logistic trend, and — when the rank-card pools allow —
+// the advice priced in meter. The quit-timing caveat stays attached:
+// people stop playing differently after wins vs losses, which bends this
+// curve, so trust the direction more than the decimals.
+function sessionHygiene(recs: readonly MatchRecord[]): EvidenceItem | null {
+  const b = winrateBySessionIndex(recs)
+  const first = b.buckets[0]
+  const last = b.buckets[b.buckets.length - 1]
+  if (!first || !last) return null
+  if (first.sample < LOW_SAMPLE_N || last.sample < LOW_SAMPLE_N) return null
+  const shown = b.buckets.filter((x) => x.sample >= LOW_SAMPLE_N && x.winrate !== null)
+  if (shown.length < 2) return null
+
+  const totalWins = b.buckets.reduce((s2, x) => s2 + x.wins, 0)
+  const totalN = b.buckets.reduce((s2, x) => s2 + x.sample, 0)
+  const baseline = Math.round((totalWins / totalN) * 100)
+
+  let pClause = ''
+  let significant = false
+  if (b.slope !== null && b.slope.se > 0) {
+    const p = Math.min(1, 2 * (1 - normalCdf(Math.abs(b.slope.slope / b.slope.se))))
+    significant = p < 0.05 && b.slope.slope < 0
+    pClause = significant
+      ? ` The late-session sag is a real pattern (${fmtP(p)}).`
+      : ` The by-game trend is within noise so far (${fmtP(p)}).`
+  }
+
+  let priced = ''
+  const lastRate = (last.winrate ?? 0) / 100
+  const samples = meterMoveSamples(recs)
+  const atBase = expectedMeterDelta(samples, totalWins / totalN)
+  const atLate = expectedMeterDelta(samples, lastRate)
+  if (atBase !== null && atLate !== null && atBase - atLate >= 0.5) {
+    priced = ` Each game that deep costs ≈${(atBase - atLate).toFixed(1)}% meter vs your typical game — stopping one earlier is nearly free rank.`
+  }
+
+  const ladder = shown
+    .map((x) => `${x.winrate}% at game ${x.index === b.buckets.length ? `${x.index}+` : x.index}`)
+    .join(', ')
+  const sagging = last.winrate !== null && last.winrate < baseline - 5 && significant
+  return {
+    id: 'session-hygiene',
+    label: 'Deeper into a session',
+    value: `${shown.map((x) => `${x.winrate}%`).join(' · ')} by game in session`,
+    gloss: `Across ${b.sessions} sessions: ${ladder} (baseline ${baseline}%).${pClause}${priced} Quit-timing habits bend this curve — trust the direction, not the decimals.`,
+    tone: sagging ? 'warn' : 'good',
   }
 }
 

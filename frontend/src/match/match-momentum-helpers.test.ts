@@ -8,6 +8,7 @@ import {
   sessionCount,
   tiltNudgeSignal,
   currentSessionSummary,
+  winrateBySessionIndex,
   type MomentumInput,
 } from '@/match/match-momentum-helpers'
 
@@ -199,5 +200,50 @@ describe('currentSessionSummary', () => {
 
   it('null with no timed matches', () => {
     expect(currentSessionSummary([{ match_key: 'x', data: {} } as unknown as MomentumInput], epoch(10, 21, 0))).toBeNull()
+  })
+})
+
+describe('winrateBySessionIndex', () => {
+  it('buckets by game-number-in-session with the 4+ pool and exact rates', () => {
+    const rows = [
+      // Session 1 (day 1, gaps < 3h): W W W L at indexes 1-4.
+      rec('2026-05-01', '10:00', { result: 'victory' }),
+      rec('2026-05-01', '10:20', { result: 'victory' }),
+      rec('2026-05-01', '11:00', { result: 'victory' }),
+      rec('2026-05-01', '12:00', { result: 'defeat' }),
+      // Session 2 (same day, 5h gap): W L.
+      rec('2026-05-01', '17:00', { result: 'victory' }),
+      rec('2026-05-01', '17:30', { result: 'defeat' }),
+      // Session 3 (next morning): L.
+      rec('2026-05-02', '09:00', { result: 'defeat' }),
+    ]
+    const b = winrateBySessionIndex(rows, { maxIndex: 3 })
+    expect(b.sessions).toBe(3)
+    expect(b.buckets).toEqual([
+      { index: 1, winrate: 67, wins: 2, sample: 3 },
+      { index: 2, winrate: 50, wins: 1, sample: 2 },
+      { index: 3, winrate: 50, wins: 1, sample: 2 }, // idx 3 + idx 4 pooled
+    ])
+    // 7 decisive games — under the logistic fit's floor.
+    expect(b.slope).toBeNull()
+  })
+
+  it('fits a negative slope on a late-session sag', () => {
+    const rows: ReturnType<typeof rec>[] = []
+    for (let d = 1; d <= 10; d++) {
+      const day = `2026-05-${String(d).padStart(2, '0')}`
+      // ~90 / 70 / 50 / 30% by index — a sag, not a cliff (a perfect
+      // 100→0 gradient is quasi-separated and the fit rightly refuses it).
+      const results = [d !== 10, d <= 7, d % 2 === 0, d <= 3]
+      results.forEach((win, i) => {
+        rows.push(rec(day, `${10 + i}:0${i}`, { result: win ? 'victory' : 'defeat' }))
+      })
+    }
+    const b = winrateBySessionIndex(rows)
+    expect(b.sessions).toBe(10)
+    expect(b.buckets[0]).toEqual({ index: 1, winrate: 90, wins: 9, sample: 10 })
+    expect(b.buckets[3]).toEqual({ index: 4, winrate: 30, wins: 3, sample: 10 })
+    expect(b.slope).not.toBeNull()
+    expect(b.slope!.slope).toBeLessThan(0)
   })
 })

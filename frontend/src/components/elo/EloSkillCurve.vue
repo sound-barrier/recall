@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import TrendChart from '@/components/matches/trends/TrendChart.vue'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { buildSkillCurveOption } from '@/components/elo/elo-chart-options'
+import { fmtPValue } from '@/components/elo/elo-format'
 
 // "Your true skill, filtered" — a Kalman smoother treats each rank reading
 // as a noisy observation of a slowly-drifting latent skill and draws the
@@ -10,9 +11,30 @@ import { buildSkillCurveOption } from '@/components/elo/elo-chart-options'
 // headline: how much of the visible rank movement is real skill drift vs
 // matchmaking noise — the sharpest "Elo Hell is mostly variance" number
 // the data supports.
-const { skillCurve } = useEloCalc()
+const { skillCurve, changePoint } = useEloCalc()
 
-const option = computed(() => (skillCurve.value ? buildSkillCurveOption(skillCurve.value) : null))
+const option = computed(() => (skillCurve.value
+  ? buildSkillCurveOption(skillCurve.value, changePoint.value ? { breakAt: changePoint.value.point.t } : {})
+  : null))
+
+// The dated break, with whatever the app can see changing around it.
+// Detection is deliberately conservative: only big, sustained shifts clear
+// the honest best-over-all-splits penalty, so this sentence is rare and
+// therefore trustworthy.
+const shiftLine = computed(() => {
+  const cp = changePoint.value
+  if (!cp) return null
+  const when = new Date(cp.point.t).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+  const { context } = cp
+  const correlate = context.reviewStarted
+    ? ' — around when you started reviewing games'
+    : context.poolEntered.length > 0
+      ? ` — around when ${context.poolEntered.join(' and ')} entered your pool`
+      : context.poolLeft.length > 0
+        ? ` — around when ${context.poolLeft.join(' and ')} left your pool`
+        : ''
+  return `Your win rate shifted around ${when}: ${cp.point.before.winrate}% → ${cp.point.after.winrate}% (${fmtPValue(cp.point.pValue)})${correlate}. Correlation, not causation — and a long climb sagging toward 50% can read as a downward shift.`
+})
 
 const sharePct = computed(() =>
   skillCurve.value === null ? null : Math.round(skillCurve.value.signalShare * 100))
@@ -48,6 +70,9 @@ const caption = computed(() =>
     </figure>
     <p class="elo-band-sub elo-skill-share" data-elo-skill-share>
       {{ shareLine }}
+    </p>
+    <p v-if="shiftLine" class="elo-band-sub elo-skill-share" data-elo-changepoint>
+      {{ shiftLine }}
     </p>
     <p class="elo-band-sub elo-fine-print">
       Readings are treated as evenly spaced games, not calendar time — a dense session and a week's gap count the same.

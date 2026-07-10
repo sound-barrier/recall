@@ -223,3 +223,106 @@ test.describe('Elo Calculator — phase 2 (simulator + skill curve)', () => {
     await expect(page.locator('[data-elo-skill-share]')).toContainText(/skill drift explains \d+%/i)
   })
 })
+
+test.describe('Elo Calculator — phase 3 (sessions, change-point, lift)', () => {
+  async function openWith(page: import('@playwright/test').Page, rows: unknown[]) {
+    await page.route('**/api/v1/system/reference-data', (r: Route) =>
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(REFERENCE_DATA) }))
+    await page.route('**/api/v1/matches', (r: Route) =>
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) }))
+    await page.goto('/')
+    await page.locator('#tab-elo').click()
+    await expect(page.locator('#panel-elo')).toBeVisible()
+  }
+
+  function baseRec(seqNo: number, day: string, hourMin: string, result: string, hero: string, extra: Record<string, unknown> = {}) {
+    return {
+      match_key: `p3-${seqNo}`,
+      source_files: [`p3-${seqNo}.png`],
+      parsed_at: `${day}T${hourMin}:00Z`,
+      queue_type: 'role',
+      ...('annotation' in extra ? { annotation: extra.annotation } : {}),
+      data: {
+        map: (extra.map as string) ?? 'ilios', playlist: 'competitive', hero, role: 'support', result,
+        date: day, finished_at: hourMin, played_at_utc: `${day}T${hourMin}:00Z`, game_length: '10:00',
+        heroes_played: [{ hero, percent_played: 100 }],
+        ...(extra.data as Record<string, unknown> ?? {}),
+      },
+    }
+  }
+
+  test('session-hygiene evidence: the per-game-in-session ladder with priced advice', async ({ page }) => {
+    // 15 days × 5-game sessions (hours 20:00–23:30, gaps < 3h): early games
+    // winny, games 4–5 lossy — a real late-session sag. change_percent on
+    // every game feeds the meter pools so the advice line gets priced.
+    const rows: unknown[] = []
+    let n = 0
+    for (let d = 1; d <= 15; d++) {
+      const day = `2026-05-${String(d).padStart(2, '0')}`
+      const results = [d % 5 !== 0, d % 5 !== 1, d % 2 === 0, d % 5 === 2, false] // ~80/73/53/20/0%
+      const hours = ['20:00', '21:10', '22:05', '22:55', '23:30']
+      results.forEach((win, i) => {
+        n++
+        rows.push(baseRec(n, day, hours[i]!, win ? 'victory' : 'defeat', 'lucio', {
+          data: { rank: 'gold', level: 3, rank_progress: (n * 7) % 100, change_percent: win ? 20 : -20, modifiers: [win ? 'victory' : 'defeat'] },
+        }))
+      })
+    }
+    await openWith(page, rows)
+    const item = page.locator('[data-elo-evidence="session-hygiene"]')
+    await expect(item).toBeVisible()
+    await expect(item).toContainText(/%.*·.*%/)
+    await expect(item).toContainText(/game/i)
+    await expect(item).toContainText(/meter/i)
+  })
+
+  test('change-point: the dated shift sentence renders in the skill band', async ({ page }) => {
+    // Oldest 50 games at 80%, newest 50 at 40% — a 40-point break (the
+    // honest selection-penalty math needs a big, sustained shift), every
+    // game rank-bearing so the skill band (and its markline) renders.
+    const rows: unknown[] = []
+    for (let i = 0; i < 100; i++) {
+      const old = i < 50
+      const win = old ? i % 5 !== 4 : i % 5 < 2
+      const day = `2026-0${old ? 3 : 4}-${String((i % 25) + 1).padStart(2, '0')}`
+      rows.push(baseRec(i + 1, day, `${String(10 + (i % 12)).padStart(2, '0')}:00`, win ? 'victory' : 'defeat', 'lucio', {
+        data: { rank: 'gold', level: old ? 4 : 3, rank_progress: (i * 9) % 100, change_percent: win ? 20 : -20, modifiers: [win ? 'victory' : 'defeat'] },
+      }))
+    }
+    await openWith(page, rows)
+    const line = page.locator('[data-elo-changepoint]')
+    await expect(line).toBeVisible()
+    await expect(line).toContainText(/shifted/i)
+    // The corpus's within-month day-recycling scrambles exact ordering, so
+    // the MLE split lands near (not exactly at) the intended boundary —
+    // assert the magnitudes, not the precise rates.
+    await expect(line).toContainText(/7[5-9]%|8[0-9]%/)
+    await expect(line).toContainText(/3[0-9]%|4[0-5]%/)
+  })
+
+  test('lift table: ranked helps/hurts with × lifts', async ({ page }) => {
+    // lucio on ilios 30 games at 70% vs ana on junkertown 20 games at 30%;
+    // a frequent teammate rides the winny half.
+    const rows: unknown[] = []
+    let n = 0
+    for (let i = 0; i < 30; i++) {
+      n++
+      const win = i < 21
+      rows.push(baseRec(n, `2026-05-${String((i % 28) + 1).padStart(2, '0')}`, '20:00', win ? 'victory' : 'defeat', 'lucio', {
+        map: 'ilios',
+        ...(i < 12 ? { annotation: { members: ['Buddy#123'] } } : {}),
+      }))
+    }
+    for (let i = 0; i < 20; i++) {
+      n++
+      rows.push(baseRec(n, `2026-06-${String((i % 28) + 1).padStart(2, '0')}`, '21:00', i < 6 ? 'victory' : 'defeat', 'ana', { map: 'junkertown' }))
+    }
+    await openWith(page, rows)
+    const band = page.locator('[data-elo-lift]')
+    await expect(band).toBeVisible()
+    await expect(band).toContainText('×')
+    await expect(band).toContainText(/helps/i)
+    await expect(band).toContainText(/hurts/i)
+    await expect(band).toContainText(/l[uú]cio/i)
+  })
+})

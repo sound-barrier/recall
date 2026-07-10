@@ -16,6 +16,7 @@ import EloMythChecks from '@/components/elo/EloMythChecks.vue'
 import EloStatDrivers from '@/components/elo/EloStatDrivers.vue'
 import EloSeasonSim from '@/components/elo/EloSeasonSim.vue'
 import EloSkillCurve from '@/components/elo/EloSkillCurve.vue'
+import EloLiftTable from '@/components/elo/EloLiftTable.vue'
 import EloInputsPanel from '@/components/elo/EloInputsPanel.vue'
 import EloHeroPicker from '@/components/elo/EloHeroPicker.vue'
 import EloEvidencePanel from '@/components/elo/EloEvidencePanel.vue'
@@ -29,7 +30,7 @@ const matchesStore = useMatchesStore()
 const ow = useOWData()
 
 const records = computed(() => matchesStore.records.filter((r) => !r.hidden))
-const calc = useEloCalculator({ records, heroRole: ow.heroRole })
+const calc = useEloCalculator({ records, heroRole: ow.heroRole, mapGameMode: ow.mapGameMode })
 provideEloCalculator(calc)
 
 const { items: evidenceItems } = useEloEvidence({
@@ -95,6 +96,8 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
     <EloMythChecks />
 
     <EloStatDrivers />
+
+    <EloLiftTable />
 
     <EloSkillCurve />
 

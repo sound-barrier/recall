@@ -51,6 +51,16 @@ export function meterMoveSamples(recs: readonly Pick<MatchRecord, 'data'>[]): Me
   return { winMoves, lossMoves }
 }
 
+// expectedMeterDelta is the mean signed meter move per game at win rate
+// p, from the player's own pools — the number that prices behavioral
+// advice ("one fewer late-session game ≈ +N% meter"). Null when either
+// pool is under MIN_POOL (same trust floor as the simulator).
+export function expectedMeterDelta(samples: MeterSamples, p: number): number | null {
+  if (samples.winMoves.length < MIN_POOL || samples.lossMoves.length < MIN_POOL) return null
+  const mean = (xs: number[]) => xs.reduce((s, v) => s + v, 0) / xs.length
+  return p * mean(samples.winMoves) + (1 - p) * mean(samples.lossMoves)
+}
+
 // MIN_POOL: fewer real moves than this on either side and the bootstrap
 // would just echo a handful of readings — fall back to the symmetric
 // form value instead (and say so).
