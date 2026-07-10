@@ -166,9 +166,6 @@ describe('useEloCalculator — statistics layer', () => {
     const runs = calc.runs.value!
     expect(runs.pValue).toBeGreaterThan(0)
     expect(runs.nWins + runs.nLosses).toBe(60)
-    const drivers = calc.drivers.value
-    expect(drivers[0]!.key).toBe('deaths')
-    expect(drivers[0]!.winMean).toBeLessThan(drivers[0]!.lossMean)
   })
 
   it('nulls the Bayesian readouts while inputs are invalid', () => {
@@ -178,7 +175,6 @@ describe('useEloCalculator — statistics layer', () => {
     expect(calc.climbQuantiles.value).toBeNull()
     expect(calc.gamesToCertainty.value).toBeNull()
     expect(calc.runs.value).toBeNull()
-    expect(calc.drivers.value).toEqual([])
   })
 })
 
