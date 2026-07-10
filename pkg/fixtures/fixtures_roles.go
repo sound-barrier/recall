@@ -69,17 +69,32 @@ func (p playerProfile) pickRoleForMatch(rng *rand.Rand, playMode string) string 
 		}
 		return p.mainRole
 	default: // styleFlex
-		// Flex players switch roles freely. QP widens further toward
-		// off-role queueing.
-		mainProb := 0.60
+		// Quickplay is the practice space — the player queues off-role
+		// freely there. Competitive follows the DPS-main split.
 		if playMode == "quickplay" {
-			mainProb = 0.30
+			if rng.Float64() < 0.30 {
+				return p.mainRole
+			}
+			others := otherRoles(p.mainRole)
+			return others[rng.Intn(len(others))]
 		}
-		if rng.Float64() < mainProb {
-			return p.mainRole
-		}
-		others := otherRoles(p.mainRole)
-		return others[rng.Intn(len(others))]
+		return pickCompRole(rng, p.mainRole)
+	}
+}
+
+// pickCompRole is the competitive role split: 85% the main role, 10% the
+// first off-role, 5% the second (with a DPS main that reads tank 10% /
+// support 5% — otherRoles returns tank-before-support). One knob for both
+// role-queue role picks and open-queue hero weighting.
+func pickCompRole(rng *rand.Rand, mainRole string) string {
+	others := otherRoles(mainRole)
+	switch r := rng.Float64(); {
+	case r < 0.85:
+		return mainRole
+	case r < 0.95:
+		return others[0]
+	default:
+		return others[1]
 	}
 }
 

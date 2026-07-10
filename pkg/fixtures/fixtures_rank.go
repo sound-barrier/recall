@@ -8,13 +8,16 @@ import (
 )
 
 // This file models a realistic competitive-rank climb for the seed generator.
-// Each role/queue track walks the ladder from a staggered start toward a hidden
-// skill ceiling under an ELO win rate — high when underranked (up to ~70%),
-// regressing to 50% where you belong — so climbing gets harder the higher you
-// go. The meter moves ±19–23% per game (±4–9% at the Bronze/Champion extremes,
-// ±26–30% on a 6+ streak), surfacing an old-cadence rank card every 5 wins / 15
-// losses. It replaces the previous per-match random rank, which teleported the
-// trend (e.g. Gold 1 → Grandmaster 3 between adjacent matches).
+// Each role/queue track walks the ladder around a slowly RISING true-skill
+// line: the win rate responds to the gap between position and line (below it
+// → elevated and recovering, above it → under 50% and falling back), so the
+// season prints local minima that bounce and local maxima that correct — mean
+// reversion around real skill. An autocorrelated form walk layers hot streaks
+// and cold slumps on top, and per-match hero costs (3+ heroes swapped, or an
+// off-pool primary) subtract win probability — the seeded account loses the
+// games a real player loses. The meter moves ±19–23% per game (±4–9% at the
+// Bronze/Champion extremes, ±26–30% on a 6+ streak), surfacing an old-cadence
+// rank card every 5 wins / 15 losses.
 
 // ladderPos is a point on the OW2 ladder, mirroring the frontend ladderScore
 // encoding: tier index 0..7, division 1..5 (1 = TOP of the tier — climb 5→1
@@ -42,16 +45,57 @@ var rankStartPositions = map[string]ladderPos{
 	"open":    {tier: 2, div: 5, prog: 0}, // Gold 5
 }
 
-// rankCeilings is each track's hidden skill ceiling — the rank where its win
-// rate has regressed to 50% and the climb plateaus. Set ABOVE every start so
-// all tracks begin underranked (win rate > 50%, climbing) and gradually
-// equalize as they approach it. This is what makes climbing get harder the
-// higher you go. DPS's ceiling is the highest (it's the main role).
-var rankCeilings = map[string]ladderPos{
-	"tank":    {tier: 2, div: 1, prog: 0}, // Gold 1
-	"dps":     {tier: 4, div: 2, prog: 0}, // Diamond 2
-	"support": {tier: 3, div: 3, prog: 0}, // Platinum 3
-	"open":    {tier: 3, div: 3, prog: 0}, // Platinum 3
+// skillLine is a track's TRUE skill across the season, in ladderScore units:
+// it starts a touch above the placement rank (everyone places low) and rises
+// to the season-end skill. The position chases this line — never the other
+// way around — so growth is skill-driven, not luck-driven.
+type skillLine struct {
+	start, end float64
+}
+
+// trackSkillLines: dps is the main role (85% of comp role-queue games) and
+// improves ~5 divisions across the season (Gold ≈3.5 → Platinum ≈3.4); the
+// thin tracks drift a little. Values are ladderScore units (tier*5 + (5-div)).
+var trackSkillLines = map[string]skillLine{
+	"tank":    {start: 9.3, end: 12.0},  // ~Silver 1 → ~Gold 3
+	"dps":     {start: 11.5, end: 16.6}, // ~Gold 3.5 → ~Plat 3.4
+	"support": {start: 12.1, end: 12.7}, // ~Gold 3 → ~Gold 2.3
+	"open":    {start: 10.3, end: 14.6}, // ~Gold 4.7 → ~Plat 5.4
+}
+
+// skillPulseWaypoints shape HOW the line rises: improvement comes in pulses
+// with plateaus between (frac of season → share of the total rise). During a
+// plateau the position catches up to — and overshoots — the line (local
+// maxima that fall back); during a pulse it lags below (local minima that
+// recover at an elevated win rate).
+var skillPulseWaypoints = [][2]float64{
+	{0.00, 0.00}, {0.10, 0.02}, {0.30, 0.34}, {0.48, 0.40},
+	{0.72, 0.78}, {0.85, 0.82}, {1.00, 1.00},
+}
+
+// skillProgress maps a season fraction onto the pulsed rise share via
+// piecewise-linear interpolation of skillPulseWaypoints.
+func skillProgress(frac float64) float64 {
+	frac = max(0, min(1, frac))
+	for i := 1; i < len(skillPulseWaypoints); i++ {
+		x0, y0 := skillPulseWaypoints[i-1][0], skillPulseWaypoints[i-1][1]
+		x1, y1 := skillPulseWaypoints[i][0], skillPulseWaypoints[i][1]
+		if frac <= x1 {
+			return y0 + (y1-y0)*(frac-x0)/(x1-x0)
+		}
+	}
+	return 1
+}
+
+// trueSkillAt is the track's true skill at a season fraction, in ladderScore
+// units. Unknown tracks read as flat mid-Gold (never happens in practice —
+// rankTrackKey filters first).
+func trueSkillAt(track string, frac float64) float64 {
+	line, ok := trackSkillLines[track]
+	if !ok {
+		return 11
+	}
+	return line.start + (line.end-line.start)*skillProgress(frac)
 }
 
 const (
@@ -66,41 +110,54 @@ const (
 	// the win/loss-streak pill attaches.
 	streakThreshold = 6
 
-	// Win-rate model (ELO equilibrium): the rate regresses to wrEqualize at the
-	// track's skill ceiling — where you belong — and rises the further BELOW it
-	// you sit, capped at wrCeiling and floored at wrFloor. A player placed far
-	// under their true rank wins big and climbs fast (up to ~70%); as they reach
-	// where they belong the rate GRADUALLY descends to 50% and the climb
-	// plateaus. wrSlopePerDiv is rate-points per division of headroom (the cap is
-	// reached ~13 divisions below the ceiling). drawRate is the ~1% draw share.
-	wrEqualize    = 0.50
-	wrCeiling     = 0.70
-	wrFloor       = 0.48
-	wrSlopePerDiv = 0.015
-	drawRate      = 0.01
-	// wrSteer pulls a track's realized win rate back toward its position's ELO
-	// win-prob using a short moving average of recent results, so a short track
-	// (few games) can't get unlucky enough to dip below 50% and sink — every
-	// track climbs. Gentle (0.3) so short win/loss streaks still form; the EMA
-	// is RECENT (not cumulative) so it corrects local dips without fighting the
-	// natural WR descent as the track climbs.
-	wrSteer    = 0.3
-	wrEMAAlpha = 0.15
+	// Win-rate model (gap reversion): a clean game's rate is wrEqualize plus
+	// gapSlope per division of (true skill − position), capped at ±wrGapCap —
+	// BELOW the line you win more and recover, ABOVE it you win less and fall
+	// back. wrEqualize sits ~3.5 points over 50% because the hero-cost
+	// penalties below are permanent loss mass: with them folded in, a player
+	// sitting ON the line wins ~50% and plateaus. The clean rate is clamped to
+	// [wrFloor, wrCeiling]; the penalty applies after, floored at pFloor so
+	// even a 4-hero off-pool disaster isn't a scripted loss. drawRate is the
+	// ~1% draw share.
+	wrEqualize = 0.535
+	gapSlope   = 0.035
+	wrGapCap   = 0.08
+	wrFloor    = 0.40
+	wrCeiling  = 0.63
+	pFloor     = 0.15
+	pCeil      = 0.85
+	drawRate   = 0.01
+	// The form walk: an autocorrelated per-track mood in win-rate points,
+	// stepped every decisive game and clamped to ±formAmpPts. Hot form pushes
+	// the position over the line into a peak; cold form digs the dip the gap
+	// term then climbs out of.
+	formStepPts = 0.9
+	formAmpPts  = 5.0
+
+	// Per-match hero costs (win-probability points). Three heroes played
+	// MEANINGFULLY in one match is a game that was going badly AND got worse —
+	// "usually a loss"; four is desperation. A hero below meaningfulHeroPct is
+	// a cameo (the coverage pass appends 5% touches), not a swap, and doesn't
+	// count. An off-pool primary bleeds a smaller, steady tax.
+	multiHeroThreePenaltyPts = 21
+	multiHeroFourPenaltyPts  = 26
+	offPoolPenaltyPts        = 10
+	meaningfulHeroPct        = 10
 )
 
 // ladderScore is the monotonic ladder position (matches the frontend encoding),
-// used to size win-rate headroom in divisions.
+// used to size the position↔skill gap in divisions.
 func ladderScore(p ladderPos) float64 {
 	return float64(p.tier*5+(5-p.div)) + float64(p.prog)/100
 }
 
-// winProb is the decisive win rate at a position given the track's skill
-// ceiling: 50% at the ceiling, rising with headroom below it, clamped to
-// [wrFloor, wrCeiling]. Above the ceiling it dips below 50% (a gradual decline
-// back toward equilibrium), so the climb self-corrects rather than running away.
-func winProb(pos, ceiling ladderPos) float64 {
-	wr := wrEqualize + wrSlopePerDiv*(ladderScore(ceiling)-ladderScore(pos))
-	return max(wrFloor, min(wrCeiling, wr))
+// winProb is the clean-game decisive win rate: gap reversion around the true-
+// skill line plus the current form, clamped to [wrFloor, wrCeiling]. Positive
+// gap = underranked = elevated rate; negative = overranked = sub-50 and
+// falling back toward the line.
+func winProb(posScore, lineScore, formPts float64) float64 {
+	gapTerm := max(-wrGapCap, min(wrGapCap, gapSlope*(lineScore-posScore)))
+	return max(wrFloor, min(wrCeiling, wrEqualize+gapTerm+formPts/100))
 }
 
 // carryUp resolves progress at/above 100 by promoting: division 5→1 within a
@@ -291,12 +348,11 @@ func (c rankCard) toRankRow(matchKey, ts, hero, result string) db.RankRow {
 // independent of the 5-win/15-loss card counter.
 type trackWalk struct {
 	pos                ladderPos
-	ceiling            ladderPos // skill ceiling — where the win rate hits 50%
 	grace              bool
 	streak             int
 	lastResult         string
 	games              int
-	recentWR           float64 // EMA of recent decisive results — steers realized WR to the ELO curve
+	form               float64 // autocorrelated mood, win-rate points, ±formAmpPts
 	winsSinceCard      int
 	lossSinceCard      int
 	netSinceCard       int
@@ -304,38 +360,30 @@ type trackWalk struct {
 	lastSR             int
 }
 
-// drawResult picks a game's outcome: ~1% draw, else a win with the position's
-// ELO win-prob, steered by the track's running record so realized WR tracks the
-// curve (every track climbs, the descent to 50% is clean) without heavy
-// variance. Updates the running record.
-func (w *trackWalk) drawResult(rng *rand.Rand) string {
+// drawResult picks a game's outcome: ~1% draw, else a win with the gap-
+// reversion probability at the track's position against its true-skill line,
+// shifted by the rolling form walk and the match's hero-cost penalty.
+func (w *trackWalk) drawResult(rng *rand.Rand, lineScore, penaltyPts float64) string {
 	if rng.Float64() < drawRate {
 		return "draw"
 	}
-	target := winProb(w.pos, w.ceiling)
-	p := max(wrFloor, min(wrCeiling, target+wrSteer*(target-w.recentWR)))
-	win := rng.Float64() < p
-	outcome := 0.0
-	if win {
-		outcome = 1.0
-	}
-	w.recentWR = w.recentWR*(1-wrEMAAlpha) + outcome*wrEMAAlpha
-	if win {
+	w.form = max(-formAmpPts, min(formAmpPts, w.form+rng.NormFloat64()*formStepPts))
+	p := winProb(ladderScore(w.pos), lineScore, w.form) - penaltyPts/100
+	p = max(pFloor, min(pCeil, p))
+	if rng.Float64() < p {
 		return "victory"
 	}
 	return "defeat"
 }
 
-// newTrackWalks builds one walk per track, each seeded at its staggered start
-// (with fresh demotion-protection grace) and its skill ceiling.
+// newTrackWalks builds one walk per track, seeded at its staggered start with
+// fresh demotion-protection grace and neutral form.
 func newTrackWalks() map[string]*trackWalk {
 	walks := make(map[string]*trackWalk, len(rankStartPositions))
 	for key, start := range rankStartPositions {
-		ceiling := rankCeilings[key]
 		walks[key] = &trackWalk{
-			pos: start, ceiling: ceiling, grace: true,
-			lastSR:   srFromLadder(start),
-			recentWR: winProb(start, ceiling), // seed the EMA at the starting win-prob
+			pos: start, grace: true,
+			lastSR: srFromLadder(start),
 		}
 	}
 	return walks
@@ -428,34 +476,61 @@ func (w *trackWalk) cardModifiers(result, modifier string) []string {
 	return mods
 }
 
+// matchPenaltyPts is the match's hero-cost tax in win-probability points
+// (≥ 0; drawResult subtracts it). Swapping to a third hero marks a game that
+// was going badly and got worse; a fourth is desperation. An off-pool primary
+// stacks its own smaller tax on top.
+func matchPenaltyPts(s *db.SummaryRow, isPoolHero func(string) bool) float64 {
+	meaningful := 0
+	for _, hp := range s.HeroesPlayed {
+		if hp.PercentPlayed >= meaningfulHeroPct {
+			meaningful++
+		}
+	}
+	pts := 0.0
+	switch {
+	case meaningful >= 4:
+		pts += multiHeroFourPenaltyPts
+	case meaningful == 3:
+		pts += multiHeroThreePenaltyPts
+	}
+	if !isPoolHero(s.Hero) {
+		pts += offPoolPenaltyPts
+	}
+	return pts
+}
+
 // applyRankProgression builds the per-track rank climb AND decides each
 // competitive match's result. It walks the chronological, index-aligned
 // fx.Summaries (playModes/queueTypes are the parallel per-summary slices):
-// each competitive match's win/loss is drawn from its track's ELO win rate at
-// its current position and written back onto the summary, then the track's
-// meter advances and an old-cadence rank card is emitted onto triggering
-// matches. Quickplay results (set by pickWeightedResult at build time) are left
-// untouched. Deterministic via the unused seed+8 sub-stream.
+// each competitive match's win/loss is drawn from its track's gap-reversion
+// rate against the season's true-skill line (index fraction ≈ season time,
+// since summaries are time-sorted), shifted by form and the match's hero
+// costs, and written back onto the summary; then the track's meter advances
+// and an old-cadence rank card is emitted onto triggering matches. Quickplay
+// results (set by pickWeightedResult at build time) are left untouched.
+// Deterministic via the seed+8 sub-stream.
 //
 // PRECONDITION: fx.Summaries is time-sorted (planMatchTimestamps guarantees it)
 // and index-aligned with playModes/queueTypes.
-func applyRankProgression(fx *Fixture, seed int64, playModes, queueTypes []string) {
+func applyRankProgression(fx *Fixture, seed int64, playModes, queueTypes []string, isPoolHero func(string) bool) {
 	// #nosec G404 -- deterministic dev fixture, not security-sensitive
 	rng := rand.New(rand.NewSource(seed + 8))
 	walks := newTrackWalks()
 	fx.Ranks = fx.Ranks[:0]
+	lastIdx := max(len(fx.Summaries)-1, 1)
 	for i := range fx.Summaries {
 		if i >= len(playModes) || i >= len(queueTypes) || playModes[i] != "competitive" {
 			continue
 		}
 		s := &fx.Summaries[i]
-		walk := walks[rankTrackKey(queueTypes[i], s.Hero)]
+		track := rankTrackKey(queueTypes[i], s.Hero)
+		walk := walks[track]
 		if walk == nil {
 			continue
 		}
-		// The result is the track's ELO win rate at its current position — the
-		// summary is rewritten to agree with the climb it drives.
-		s.Result = walk.drawResult(rng)
+		line := trueSkillAt(track, float64(i)/float64(lastIdx))
+		s.Result = walk.drawResult(rng, line, matchPenaltyPts(s, isPoolHero))
 		if card := walk.step(rng, s.Result); card != nil {
 			fx.Ranks = append(fx.Ranks, card.toRankRow(s.MatchKey, rankTS(s.Filename), s.Hero, s.Result))
 		}

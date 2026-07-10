@@ -106,9 +106,13 @@ func (a *App) SwitchProfile(name string) error {
 // path, not a user-facing demo). The Unknown/Ambiguous tour targets come from
 // the dedicated unknown/ambiguous fixtures in the base generation, not chaos.
 const (
-	TestProfileName    = "test"
-	testProfileSeed    = 8
-	testProfileMatches = 500
+	TestProfileName = "test"
+	testProfileSeed = 8
+	// testProfileMatches sizes the demo season to "about 10 hours of games a
+	// week": ~65-75% of self-reported play time is in-match at ~11 min/game →
+	// ~37 matches/week over the rolling 8-month window. The fixtures story
+	// tests (pkg/fixtures/fixtures_story_test.go) pin this tuple's realization.
+	testProfileMatches = 1300
 )
 
 // SeedTestProfileResponse is the wire shape for SeedTestProfile.
@@ -119,7 +123,7 @@ type SeedTestProfileResponse struct {
 }
 
 // SeedTestProfile creates a sample "test" profile (if absent) and seeds
-// it with ~500 synthetic matches over the rolling last-8-months window so
+// it with ~1300 synthetic matches (~10 h/week) over the rolling 8-month window so
 // a new user can explore Recall on a real history. It does NOT switch the
 // active profile — the caller (the walkthrough) does that separately.
 // Idempotent: if "test" already holds matches, it's reused untouched and

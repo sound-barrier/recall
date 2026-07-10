@@ -192,8 +192,10 @@ func (p playerProfile) pickHeroOneRole(rng *rand.Rand, prevHero, playMode string
 	return roleOfHero(h), h
 }
 
-// pickHeroFlex: competitive spreads across the flex pool (25% streak, 10%
-// off-main); quickplay flips toward off-mains.
+// pickHeroFlex: competitive picks the ROLE first on the DPS-main split
+// (85/10/5 — this is the open-queue mirror of pickCompRole) and then a
+// hero within it (25% streak, 10% same-role off-main experiment);
+// quickplay flips toward off-mains across all roles.
 func (p playerProfile) pickHeroFlex(rng *rand.Rand, prevHero, playMode string) (role, hero string) {
 	if playMode == "quickplay" {
 		// 10% streak, 60% off-mains, 30% flex mains. Flips the
@@ -212,14 +214,57 @@ func (p playerProfile) pickHeroFlex(rng *rand.Rand, prevHero, playMode string) (
 	if prevHero != "" && containsHero(p.flexHeroes, prevHero) && rng.Float64() < 0.25 {
 		return roleOfHero(prevHero), prevHero
 	}
-	// 10% off-main experiment — keeps off-mains in the corpus
-	// without the coverage pass having to do all the work.
-	if len(p.offMains) > 0 && rng.Float64() < 0.10 {
-		h := p.offMains[rng.Intn(len(p.offMains))]
-		return roleOfHero(h), h
+	pickedRole := pickCompRole(rng, p.mainRole)
+	// 10% off-main experiment within the picked role — keeps off-mains
+	// in the corpus without bending the role split.
+	if offs := p.offMainsInRole(pickedRole); len(offs) > 0 && rng.Float64() < 0.10 {
+		return pickedRole, offs[rng.Intn(len(offs))]
 	}
-	h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
-	return roleOfHero(h), h
+	if favs := p.favoritesInRole(pickedRole); len(favs) > 0 {
+		return pickedRole, favs[rng.Intn(len(favs))]
+	}
+	pool := poolForRole(pickedRole)
+	return pickedRole, pool[rng.Intn(len(pool))]
+}
+
+// favoritesInRole is the flex player's mains within one role.
+func (p playerProfile) favoritesInRole(role string) []string {
+	var out []string
+	for _, h := range p.flexHeroes {
+		if roleOfHero(h) == role {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+// offMainsInRole is the role's pool minus the flex player's mains.
+func (p playerProfile) offMainsInRole(role string) []string {
+	favs := p.favoritesInRole(role)
+	favSet := make(map[string]bool, len(favs))
+	for _, h := range favs {
+		favSet[h] = true
+	}
+	var out []string
+	for _, h := range poolForRole(role) {
+		if !favSet[h] {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+// isPoolHero reports whether a hero belongs to the player's own picks —
+// the pool the off-hero rank penalty is measured against.
+func (p playerProfile) isPoolHero(h string) bool {
+	switch p.style {
+	case styleOneTrick:
+		return h == p.favoriteHero
+	case styleOneRole:
+		return containsHero(p.mainPool, h)
+	default:
+		return containsHero(p.flexHeroes, h)
+	}
 }
 
 // heroPlay names one hero played in a single match, with the player's
@@ -235,8 +280,10 @@ type heroPlay struct {
 // plus the percent_played share for each. Distribution by style:
 //
 //   - one-trick: always 1 hero (the favorite). One-trickers don't swap.
-//   - flex / one-role / random: 10% 1 hero, 50% 2, 30% 3, 10% 4. Matches
-//     real play — most games have a swap, occasionally two, rarely more.
+//   - flex / one-role / random: mode-dependent via pickHeroCount —
+//     competitive players mostly commit (3+ heroes is the occasional
+//     desperation game, and fixtures_rank prices it as one); quickplay
+//     keeps the loose everything-goes spread.
 //
 // Heroes are drawn via the existing pickHero pump so the player's pool
 // (mains + 10% off-main for flex) drives the picks. The first hero
@@ -250,16 +297,7 @@ type heroPlay struct {
 func pickMatchHeroes(rng *rand.Rand, profile playerProfile, prevHero, playMode, queueType string) []heroPlay {
 	count := 1
 	if profile.style != styleOneTrick {
-		switch r := rng.Float64(); {
-		case r < 0.10:
-			count = 1
-		case r < 0.60:
-			count = 2
-		case r < 0.90:
-			count = 3
-		default:
-			count = 4
-		}
+		count = pickHeroCount(rng, playMode)
 	}
 
 	// Role-queue matches lock the player to a single role for the
@@ -288,6 +326,36 @@ func pickMatchHeroes(rng *rand.Rand, profile playerProfile, prevHero, playMode, 
 	}
 	allocateHeroPercents(plays)
 	return plays
+}
+
+// pickHeroCount rolls how many heroes one match touches. Competitive:
+// 30% one, 55% two, 12% three, 3% four — a comp player mostly commits,
+// and the 3+ tail is the "it was going badly" games the rank model
+// penalizes. Quickplay keeps the original loose spread (10/50/30/10).
+func pickHeroCount(rng *rand.Rand, playMode string) int {
+	r := rng.Float64()
+	if playMode == "quickplay" {
+		switch {
+		case r < 0.10:
+			return 1
+		case r < 0.60:
+			return 2
+		case r < 0.90:
+			return 3
+		default:
+			return 4
+		}
+	}
+	switch {
+	case r < 0.30:
+		return 1
+	case r < 0.85:
+		return 2
+	case r < 0.97:
+		return 3
+	default:
+		return 4
+	}
 }
 
 // allocateHeroPercents fills plays[i].Percent with shares summing to

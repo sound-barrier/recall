@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 )
@@ -107,31 +108,64 @@ func TestMeterBand(t *testing.T) {
 	}
 }
 
-func TestWinProb_ELOCurve(t *testing.T) {
-	gold, dia := tierIdx("gold"), tierIdx("diamond")
-	ceiling := ladderPos{tier: dia, div: 2, prog: 0} // Diamond 2
+func TestWinProb_GapReversion(t *testing.T) {
+	const line = 15.0 // ~Platinum 5, arbitrary
 
-	// 50% exactly at the ceiling — you belong here.
-	if p := winProb(ceiling, ceiling); p != 0.50 {
-		t.Errorf("winProb at the ceiling = %.3f; want 0.50", p)
+	// ON the line with neutral form: wrEqualize — a shade over 50% because
+	// the hero-cost penalties are folded in downstream (realized ≈ 50%).
+	if p := winProb(line, line, 0); p != wrEqualize {
+		t.Errorf("winProb on the line = %.3f; want wrEqualize %.3f", p, wrEqualize)
 	}
-	// Far below the ceiling → capped at wrCeiling (0.70), not higher.
-	if p := winProb(ladderPos{tier: tierIdx("bronze"), div: 5, prog: 0}, ceiling); p != wrCeiling {
-		t.Errorf("winProb far below ceiling = %.3f; want the %.2f cap", p, wrCeiling)
+	// A local MINIMUM (dropped below real skill) recovers at an elevated
+	// rate; a local MAXIMUM (peaked above it) falls back below 50%. The two
+	// sit symmetric around wrEqualize at the gap cap.
+	below := winProb(line-4, line, 0)
+	above := winProb(line+4, line, 0)
+	if below != wrEqualize+wrGapCap {
+		t.Errorf("winProb 4 divisions below = %.3f; want the +%.2f cap", below, wrGapCap)
 	}
-	// Above the ceiling → below 50%, floored at wrFloor.
-	if p := winProb(ladderPos{tier: tierIdx("master"), div: 1, prog: 0}, ceiling); p >= 0.50 || p < wrFloor {
-		t.Errorf("winProb above the ceiling = %.3f; want [%.2f, 0.50)", p, wrFloor)
+	if above != wrEqualize-wrGapCap || above >= 0.50 {
+		t.Errorf("winProb 4 divisions above = %.3f; want the -%.2f cap, under 50%%", above, wrGapCap)
 	}
-	// Monotonic descent: the higher you climb toward the ceiling, the lower the
-	// win rate.
+	// Monotone within the linear zone: the closer to the line from below,
+	// the lower the rate — climbing gets harder as you approach real skill.
 	prev := 1.0
-	for _, div := range []int{4, 3, 2, 1} { // Gold 4 → Gold 1, climbing
-		p := winProb(ladderPos{tier: gold, div: div, prog: 0}, ceiling)
+	for _, gap := range []float64{2, 1.5, 1, 0.5, 0} {
+		p := winProb(line-gap, line, 0)
 		if p >= prev {
-			t.Errorf("winProb should descend while climbing: Gold %d = %.3f >= previous %.3f", div, p, prev)
+			t.Errorf("winProb should descend approaching the line: gap %.1f = %.3f >= previous %.3f", gap, p, prev)
 		}
 		prev = p
+	}
+	// Form shifts the rate point-for-point; the hard clamp still rules.
+	if p := winProb(line, line, 3); math.Abs(p-(wrEqualize+0.03)) > 1e-9 {
+		t.Errorf("winProb with +3 form = %.3f; want %.3f", p, wrEqualize+0.03)
+	}
+	if p := winProb(line-10, line, formAmpPts); p != wrCeiling {
+		t.Errorf("hot form far below the line = %.3f; want the %.2f hard cap", p, wrCeiling)
+	}
+}
+
+func TestTrueSkillAt_PulsedRise(t *testing.T) {
+	for track, line := range trackSkillLines {
+		if got := trueSkillAt(track, 0); got != line.start {
+			t.Errorf("%s skill at season start = %.2f; want %.2f", track, got, line.start)
+		}
+		if got := trueSkillAt(track, 1); got != line.end {
+			t.Errorf("%s skill at season end = %.2f; want %.2f", track, got, line.end)
+		}
+		prev := line.start
+		for f := 0.05; f <= 1.0; f += 0.05 {
+			got := trueSkillAt(track, f)
+			if got < prev-1e-9 {
+				t.Fatalf("%s skill line regressed at frac %.2f: %.3f < %.3f — skill only rises", track, f, got, prev)
+			}
+			prev = got
+		}
+	}
+	// Out-of-range fractions clamp instead of extrapolating.
+	if got, want := trueSkillAt("dps", 1.7), trackSkillLines["dps"].end; got != want {
+		t.Errorf("frac past season end = %.2f; want clamped %.2f", got, want)
 	}
 }
 
