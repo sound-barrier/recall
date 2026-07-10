@@ -311,7 +311,7 @@ Zero tolerance for flaky tests. Three rules enforce this:
 
 1. **No retries.** `frontend/playwright.config.ts` sets `retries: 0` everywhere — CI and local — so a flake fails the build immediately. If a test is racy or carries a brittle assertion, fix the test (tighten the wait, scope the locator, widen a pixel tolerance with a documented reason). Retries are not a workaround.
 2. **No flake-suppression skips.** Every `t.Skip` in `pkg/` must appear in `scripts/ci/test-skips-allow.txt` with a one-line "why" comment. `scripts/ci/check-test-skips.sh` (run by both lefthook `pre-push.test-skips` and CI) diffs the live grep against the allow-list and fails on drift. The allow-list is for documented environment gates (OS-conditional probe tests, `-short`-mode tesseract integration) — not for hiding races. No frontend test should use `.skip()` / `.only()` / `.fixme()`.
-3. **Pre-push smoke subset.** `lefthook.yml`'s `pre-push.playwright-smoke` hook rebuilds `frontend/dist` + the serveronly binary, then runs a `--grep`-filtered Playwright subset against the same harness as `task test-e2e`. Target: ≤60s on a warm cache. The full suite still gates in CI. Skip with `LEFTHOOK_EXCLUDE=playwright-smoke git push` or `SKIP_E2E_SMOKE=1 git push` (the latter is the documented opt-out for slow networks / dev VMs).
+3. **Playwright smoke subset on demand.** `task verify` (and `scripts/ci/check-playwright-smoke.sh` directly) rebuilds `frontend/dist` + the serveronly binary, then runs a `--grep`-filtered Playwright subset against the same harness as `task test-e2e`. The full suite gates in CI on every push.
 The scan covers Go module dependencies and npm packages.
 
 Project environment variables (`RECALL_DATA_DIR` + the tool-version pins) live in `mise.toml`'s `[env]` table and load automatically once mise is activated (`eval "$(mise activate zsh)"`). To set an additional override, add it to `[env]` in `mise.toml` (or export it in your shell). This replaces the old direnv/`.envrc` flow.
@@ -354,13 +354,17 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 | `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (from `mise install`) |
 | `hadolint`          | `Dockerfile*`                   | `hadolint`           (from `mise install`) |
 
-**`pre-push`** — runs on `git push`. These hooks all do whole-project scans (dead code, unused exports, coverage roll-up) that can't be meaningfully scoped to staged files, so this stage keeps WIP commits fast while catching cross-cutting regressions before they reach origin.
+**`pre-push`** — runs on `git push`: the **fast core only** (~25s) — the checks most likely to turn a push into a red CI round-trip. Everything heavier still gates in CI and is bundled into **`task verify`** when you want the full battery locally before pushing.
 
 | Hook | Glob | Tool(s) it invokes |
 |---|---|---|
-| `deadcode` | `*.go`                       | `deadcode` (from `mise install`) — whole-program call-graph analysis for the `serveronly` build tag |
-| `knip`     | `frontend/src/**/*.{ts,vue}` | `knip` (auto-installed by `cd frontend && npm ci`) — unused TypeScript exports and stale devDependencies |
-| `coverage` | *(always)*                   | `task cover` — runs Go + Vitest coverage, fails when below the thresholds (Go `GO_COVERAGE_MIN` 46%, frontend `vitest.config.ts` 70/70/60/55). Skip with `LEFTHOOK_EXCLUDE=coverage git push` — CI re-runs the same checks so an override on push still fails the PR. **Ratchet policy:** every release is a chance to bump `GO_COVERAGE_MIN` upward by `floor(current) - 2` to lock in new coverage. |
+| `unit-go`        | `*.go`, `go.mod`, `go.sum`      | `go test -race -short ./...` — the same set CI's `test-unit` job runs |
+| `unit-frontend`  | `frontend/**`                   | `npx vitest run` (no coverage instrumentation — the coverage *gate* runs in CI + `task verify`) |
+| `gen-types-drift`| `api/openapi.yaml`, `api.gen.d.ts` | regenerates the types and fails if the committed file drifts from the spec |
+| `test-skips`     | `pkg/**/*_test.go`              | `scripts/ci/check-test-skips.sh` — every `t.Skip` must be on the allow-list |
+| `actionlint`     | `.github/workflows/*`           | `actionlint` + the SHA-pin policy check |
+
+Moved to CI-only (and `task verify`): the coverage gate, bundle-size budget, Playwright smoke subset, schemathesis API-drift fuzz, semgrep, complexity report, deadcode + knip, and the whole-project golangci/ESLint/vue-tsc sweeps. **Ratchet policy** (unchanged): every release is a chance to bump `GO_COVERAGE_MIN` upward by `floor(current) - 2` to lock in new coverage — the gate now lives in CI's coverage jobs + `task verify`.
 
 If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one push/commit, see below).
 
