@@ -161,17 +161,6 @@ test.describe('Elo Calculator — statistics layer', () => {
     await expect(cell).toContainText(/coin|chance|normal/i)
   })
 
-  test('stat drivers: deaths separate wins from losses', async ({ page }) => {
-    await openCalculator(page)
-    const drivers = page.locator('[data-elo-drivers]')
-    await expect(drivers).toBeVisible()
-    const deaths = page.locator('[data-elo-driver="deaths"]')
-    await expect(deaths).toContainText(/wins/i)
-    await expect(deaths).toContainText(/losses/i)
-    // Association-honesty fine print.
-    await expect(drivers).toContainText(/not causation/i)
-  })
-
   test('streak evidence: depth win rates + the meter moves more inside streaks', async ({ page }) => {
     await openCalculator(page)
     const depth = page.locator('[data-elo-evidence="streak-tilt"]')

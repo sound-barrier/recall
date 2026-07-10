@@ -5,7 +5,6 @@ import type { EvidenceItem } from '@/composables/elo/useEloEvidence'
 import EloNextMoves from '@/components/elo/EloNextMoves.vue'
 import EloEvidencePanel from '@/components/elo/EloEvidencePanel.vue'
 import EloLiftTable from '@/components/elo/EloLiftTable.vue'
-import EloStatDrivers from '@/components/elo/EloStatDrivers.vue'
 
 // "What you can do about it" — the page's single improvement band: the
 // ranked next-moves card, then the levers you control, the condition
@@ -13,9 +12,8 @@ import EloStatDrivers from '@/components/elo/EloStatDrivers.vue'
 // thin data; the band hides when none of them have anything to say.
 const props = defineProps<{ items: EvidenceItem[] }>()
 
-const { lift, drivers } = useEloCalc()
-const hasContent = computed(() =>
-  props.items.length > 0 || lift.value.length > 0 || drivers.value.length > 0)
+const { lift } = useEloCalc()
+const hasContent = computed(() => props.items.length > 0 || lift.value.length > 0)
 </script>
 
 <template>
@@ -29,6 +27,5 @@ const hasContent = computed(() =>
     <EloNextMoves />
     <EloEvidencePanel :items="items" />
     <EloLiftTable />
-    <EloStatDrivers />
   </section>
 </template>

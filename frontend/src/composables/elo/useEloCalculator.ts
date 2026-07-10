@@ -18,7 +18,6 @@ import {
   credibleInterval, gamesToKnow, posteriorClimbQuantiles, probTrueWinRateAbove,
 } from '@/match/elo-bayes'
 import { decisiveResults, decisiveTimeline } from '@/match/elo-streaks'
-import { statSeparators } from '@/match/elo-drivers'
 import { meterMoveSamples, simulateSeasons, type SeasonSim } from '@/match/elo-simulate'
 import { skillCurve as computeSkillCurve, type SkillCurve } from '@/match/elo-kalman'
 import {
@@ -263,11 +262,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
     return inp ? gamesToKnow(inp.sampleWins, inp.sampleLosses, KNOW_HALF_WIDTH) : null
   })
 
-  // History-derived stats: the actual played sequence + scoreboard splits.
-  // These read the track's games directly (not the editable sample) — a
-  // what-if can't rewrite what already happened.
+  // History-derived stats: the actual played sequence — a what-if can't
+  // rewrite what already happened.
   const runs = computed(() => runsTest(decisiveResults(trackRecs.value)))
-  const drivers = computed(() => statSeparators(trackRecs.value))
 
   // ── Phase 2: the bootstrap season simulator + the Kalman skill curve ──
   // The sim follows the FORM (posterior sample + target + pace) but replays
@@ -320,7 +317,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     seasonGames, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
     skepticVerdict, trueRateRange, climbQuantiles, gamesToCertainty,
-    runs, drivers, seasonSim, skillCurve, changePoint, lift,
+    runs, seasonSim, skillCurve, changePoint, lift,
   }
 }
 
