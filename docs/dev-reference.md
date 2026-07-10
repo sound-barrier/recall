@@ -49,6 +49,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task lint-openapi` | Spectral (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). |
 | `task test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI uses `-short` to skip the golden test. |
 | `task cover` / `cover-go` / `cover-frontend` | **Unit** coverage → `coverage/go/` + `frontend/coverage/`. Go fails below `GO_COVERAGE_MIN`; frontend below `vitest.config.ts` `coverage.thresholds`. |
+| `task verify` | The full pre-merge battery on demand — whole-project lint sweeps, coverage gate, bundle budget, dead code, semgrep, complexity, Playwright smoke, API drift. Everything the fast pre-push no longer runs (CI still gates all of it). |
 | `task cover-e2e` | **Integration** coverage from one Playwright run → `coverage/e2e/` (`go/` + `frontend/`). Builds an instrumented frontend (`E2E_COVERAGE=1` inline maps) + server (`go build -cover`); Go counters flush on the server's graceful SIGTERM shutdown, frontend V8 coverage is remapped to source by monocart (Chromium only). Informational — no floor gate; kept out of the `cover` umbrella so pre-push stays fast. |
 | `task test-e2e` | Playwright. Builds frontend + `serveronly` into `/tmp/recall-e2e/recall-server`, installs Chromium + WebKit, runs with `HOME=/tmp/recall-e2e` on `127.0.0.1:7099`. |
 | `task test-all` | `task test` + `task test-e2e`. |
