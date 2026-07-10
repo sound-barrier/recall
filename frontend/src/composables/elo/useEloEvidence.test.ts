@@ -193,3 +193,72 @@ describe('useEloEvidence — session hygiene', () => {
     expect(items.value.map((i) => i.id)).not.toContain('session-hygiene')
   })
 })
+
+describe('useEloEvidence — consistency & tilt queueing', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  function timed(day: string, time: string, result: string): MatchRecord {
+    seq++
+    return {
+      match_key: `t${seq}`,
+      queue_type: 'role',
+      data: {
+        playlist: 'competitive', hero: 'lucio', role: 'support', result,
+        date: day, finished_at: time,
+        heroes_played: [{ hero: 'lucio', percent_played: 100 }],
+        rank: 'gold', level: 3, change_percent: result === 'victory' ? 20 : -20,
+      },
+    } as unknown as MatchRecord
+  }
+
+  it('prices a rusty return after a week-plus break', () => {
+    const rows: MatchRecord[] = []
+    for (let d = 1; d <= 10; d++) rows.push(timed(`2026-04-${String(d).padStart(2, '0')}`, '20:00', d % 4 === 0 ? 'defeat' : 'victory'))
+    // 12 days off, then a 1W/6L return week.
+    for (let d = 22; d <= 28; d++) rows.push(timed(`2026-04-${d}`, '20:00', d === 24 ? 'victory' : 'defeat'))
+    const { items } = evidenceFrom(rows)
+    const item = items.value.find((i) => i.id === 'consistency')!
+    expect(item).toBeTruthy()
+    expect(item.label).toMatch(/break/i)
+    expect(item.value).toMatch(/% in your first games back/)
+    expect(item.gloss).toMatch(/sleep and exercise/i)
+    expect(item.tone).toBe('warn')
+  })
+
+  it('stays quiet without a qualifying break', () => {
+    const rows = Array.from({ length: 20 }, (_, i) =>
+      timed(`2026-04-${String((i % 28) + 1).padStart(2, '0')}`, '20:00', i % 2 ? 'victory' : 'defeat'))
+    expect(evidenceFrom(rows).items.value.some((i) => i.id === 'consistency')).toBe(false)
+  })
+
+  it('flags tilt queueing with the meter bill', () => {
+    const rows: MatchRecord[] = []
+    // Baseline wins/losses feed the meter pools...
+    for (let d = 1; d <= 12; d++) {
+      rows.push(timed(`2026-05-${String(d).padStart(2, '0')}`, '20:00', d % 3 ? 'victory' : 'defeat'))
+      rows.push(timed(`2026-05-${String(d).padStart(2, '0')}`, '21:00', d % 4 ? 'victory' : 'defeat'))
+    }
+    // ...one sitting with 6 straight losses, 30 minutes apart.
+    const hours = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30']
+    for (const h of hours) rows.push(timed('2026-05-20', h, 'defeat'))
+    const { items } = evidenceFrom(rows)
+    const item = items.value.find((i) => i.id === 'tilt-queue')!
+    expect(item).toBeTruthy()
+    expect(item.value).toMatch(/1 tilt queue/)
+    expect(item.gloss).toMatch(/5 straight losses/)
+    expect(item.gloss).toMatch(/meter|ground/)
+    expect(item.tone).toBe('warn')
+  })
+
+  it('praises the discipline when a long corpus never tilt-queues', () => {
+    const rows: MatchRecord[] = []
+    for (let d = 1; d <= 20; d++) {
+      rows.push(timed(`2026-05-${String(d).padStart(2, '0')}`, '20:00', d % 2 ? 'victory' : 'defeat'))
+      rows.push(timed(`2026-05-${String(d).padStart(2, '0')}`, '21:00', d % 2 ? 'defeat' : 'victory'))
+    }
+    const item = evidenceFrom(rows).items.value.find((i) => i.id === 'tilt-queue')!
+    expect(item).toBeTruthy()
+    expect(item.value).toMatch(/none/)
+    expect(item.tone).toBe('good')
+  })
+})

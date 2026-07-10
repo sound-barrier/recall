@@ -118,6 +118,42 @@ export function winrateBySessionIndex(
 // Win-rate of session-opening matches — the first decisive game of each
 // play session (a gap > gapHours since the previous decisive game, or
 // the very first game). Surfaces warm-up effects.
+export interface BreakRust {
+  breaks: number // gaps of gapDays+ between consecutive decisive games
+  back: RateSample // the first `window` decisive games after each gap
+  rest: RateSample // every other decisive game
+}
+
+// breakRust measures what a layoff costs: split the decisive sequence at
+// every gap of gapDays+ calendar days and compare the first `window` games
+// back against everything else. Rust is real for most players — and the
+// counter is consistency, not talent.
+export function breakRust(
+  records: readonly MomentumInput[],
+  opts: { gapDays?: number; window?: number } = {},
+): BreakRust {
+  const gapMs = (opts.gapDays ?? 7) * 24 * HOUR_MS
+  const window = opts.window ?? 8
+  const seq = decisiveSequence(records)
+  let breaks = 0
+  let backLeft = 0
+  const back = { wins: 0, n: 0 }
+  const rest = { wins: 0, n: 0 }
+  for (let i = 0; i < seq.length; i++) {
+    if (i > 0 && seq[i]!.t - seq[i - 1]!.t >= gapMs) {
+      breaks++
+      backLeft = window
+    }
+    const bucket = backLeft > 0 ? back : rest
+    if (backLeft > 0) backLeft--
+    bucket.n++
+    if (seq[i]!.win) bucket.wins++
+  }
+  const rate = (b: { wins: number; n: number }): RateSample =>
+    ({ winrate: b.n === 0 ? null : Math.round((b.wins / b.n) * 100), sample: b.n })
+  return { breaks, back: rate(back), rest: rate(rest) }
+}
+
 export function firstGameOfSessionWinrate(records: readonly MomentumInput[], gapHours = SESSION_GAP_HOURS): RateSample {
   const seq = decisiveSequence(records)
   const gapMs = gapHours * HOUR_MS

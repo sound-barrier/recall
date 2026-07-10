@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import type { MatchRecord } from '@/api-client'
 import {
-  decisiveResults, afterResultCounts, winrateByStreakDepth, streakMeterImpact,
+  decisiveResults, afterResultCounts, winrateByStreakDepth, streakMeterImpact, tiltEpisodes,
 } from '@/match/elo-streaks'
 
 type Rec = Pick<MatchRecord, 'match_key' | 'data'>
@@ -89,5 +89,52 @@ describe('streakMeterImpact', () => {
   it('is null until both sides have at least three readings', () => {
     expect(streakMeterImpact(meterRecords().slice(0, 4))).toBeNull()
     expect(streakMeterImpact([])).toBeNull()
+  })
+})
+
+describe('tiltEpisodes', () => {
+  // One sitting: results minutes apart; a new sitting starts 4h later.
+  function sitting(day: string, startHour: number, results: string[], keyPrefix: string): Rec[] {
+    return results.map((result, i) => ({
+      match_key: `${keyPrefix}${i}`,
+      data: {
+        result,
+        date: day,
+        finished_at: `${String(startHour + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`,
+      },
+    } as Rec))
+  }
+
+  it('counts a 5-loss sitting once and every game queued past the 4th loss', () => {
+    const rows = [
+      // L L L L L L W — episode 1; games 5, 6, 7 are tilt queues (2L then a W).
+      ...sitting('2026-05-01', 18, ['defeat', 'defeat', 'defeat', 'defeat', 'defeat', 'defeat', 'victory'], 'a'),
+    ]
+    const t = tiltEpisodes(rows)
+    expect(t.episodes).toBe(1)
+    expect(t.tiltGames).toBe(3)
+    expect(t.tiltWins).toBe(1)
+  })
+
+  it('a session break resets the run — 4 losses at night + 4 next morning is no tilt queue', () => {
+    const rows = [
+      ...sitting('2026-05-01', 20, ['defeat', 'defeat', 'defeat', 'defeat'], 'a'),
+      ...sitting('2026-05-02', 9, ['defeat', 'defeat', 'defeat', 'defeat'], 'b'),
+    ]
+    expect(tiltEpisodes(rows)).toEqual({ episodes: 0, tiltGames: 0, tiltWins: 0 })
+  })
+
+  it('two separate 5-loss sittings are two episodes', () => {
+    const rows = [
+      ...sitting('2026-05-01', 18, ['defeat', 'defeat', 'defeat', 'defeat', 'defeat'], 'a'),
+      ...sitting('2026-05-03', 18, ['victory', 'defeat', 'defeat', 'defeat', 'defeat', 'defeat'], 'b'),
+    ]
+    const t = tiltEpisodes(rows)
+    expect(t.episodes).toBe(2)
+    expect(t.tiltGames).toBe(2) // the 5th loss of each sitting
+  })
+
+  it('is empty on an empty corpus', () => {
+    expect(tiltEpisodes([])).toEqual({ episodes: 0, tiltGames: 0, tiltWins: 0 })
   })
 })
