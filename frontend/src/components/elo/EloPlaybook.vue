@@ -5,6 +5,7 @@ import type { EvidenceItem } from '@/composables/elo/useEloEvidence'
 import EloNextMoves from '@/components/elo/EloNextMoves.vue'
 import EloEvidencePanel from '@/components/elo/EloEvidencePanel.vue'
 import EloLiftTable from '@/components/elo/EloLiftTable.vue'
+import EloHeroGap from '@/components/elo/EloHeroGap.vue'
 
 // "What you can do about it" — the page's single improvement band: the
 // ranked next-moves card, then the levers you control, the condition
@@ -27,5 +28,6 @@ const hasContent = computed(() => props.items.length > 0 || lift.value.length > 
     <EloNextMoves />
     <EloEvidencePanel :items="items" />
     <EloLiftTable />
+    <EloHeroGap />
   </section>
 </template>

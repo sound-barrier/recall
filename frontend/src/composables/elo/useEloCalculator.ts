@@ -25,6 +25,7 @@ import {
 } from '@/match/elo-changepoint'
 import { liftTable, type LiftRow } from '@/match/elo-lift'
 import { clampHeroAdjust, heroWhatIf, type HeroWhatIf } from '@/match/elo-whatif'
+import { heroClimbGap, type HeroGap } from '@/match/elo-hero-gap'
 import { populationPercentile } from '@/match/elo-distribution'
 
 // The Elo Calculator's single state owner (loan-calculator semantics):
@@ -300,6 +301,10 @@ export function useEloCalculator(opts: EloCalcOpts) {
   })
   const lift = computed<LiftRow[]>(() =>
     liftTable(trackRecs.value, { heroRole: opts.heroRole, mapGameMode: opts.mapGameMode }))
+  // The best-vs-worst hero spread, priced in the player's own meter — how
+  // much faster the climb goes on the right heroes.
+  const heroGap = computed<HeroGap | null>(() =>
+    heroClimbGap(heroStats.value, meterSamples.value, meterMovePct.value))
 
   return {
     // track picking
@@ -317,7 +322,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     seasonGames, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
     skepticVerdict, trueRateRange, climbQuantiles, gamesToCertainty,
-    runs, seasonSim, skillCurve, changePoint, lift,
+    runs, seasonSim, skillCurve, changePoint, lift, heroGap,
   }
 }
 
