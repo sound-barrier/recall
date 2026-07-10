@@ -187,13 +187,16 @@ test.describe('Elo Calculator — statistics layer', () => {
     await expect(meter).toContainText(/1\.5/)
   })
 
-  test('hero picker shows an adjusted rate for hot small samples', async ({ page }) => {
+  test('hero picker keeps the shrunk rate for hot small samples in the stat tooltip', async ({ page }) => {
     await openCalculator(page)
     const ana = page.locator('[data-elo-hero="ana"]')
     await expect(ana).toBeVisible()
-    // 3W/0L raw 100% — the shrunk display pulls it toward the pool rate.
+    // 3W/0L raw 100% — the pool-band restyle moved the shrunk "adj" rate
+    // into the stat's tooltip; the visible flags are n<5 + the faded bar.
     await expect(ana).toContainText(/100%/)
-    await expect(ana).toContainText(/adj/i)
+    await expect(ana.locator('[data-elo-hero-stat]'))
+      .toHaveAttribute('title', /shrunk toward your pooled rate/i)
+    await expect(ana.locator('.elo-lown')).toBeVisible()
   })
 })
 

@@ -162,14 +162,50 @@ test.describe('Elo Calculator', () => {
     await mockCorpus(page, corpus70())
     await openCalculator(page)
 
-    // Hero rows show record + pool badges (ana is below the 5-game pool floor).
-    await expect(page.locator('[data-elo-hero="lucio"] [data-pool-badge]')).toContainText(/in pool/i)
-    await expect(page.locator('[data-elo-hero="ana"] [data-pool-badge]')).toContainText(/out/i)
+    // Hero rows speak the Hero Pool band language: pool/off badge + the
+    // right-aligned record stat (ana is below the 5-game pool floor).
+    await expect(page.locator('[data-elo-hero="lucio"] [data-pool-badge]')).toHaveText(/^pool$/i)
+    await expect(page.locator('[data-elo-hero="ana"] [data-pool-badge]')).toHaveText(/^off$/i)
+    await expect(page.locator('[data-elo-hero="lucio"] [data-elo-hero-stat]')).toContainText('24x · 75%')
 
     // Select only lucio: 18W/6L → 75%, n=24.
     await page.locator('[data-elo-hero="lucio"] input[type="checkbox"]').check()
     await expect(page.locator('[data-elo-input="win-rate"]')).toHaveValue('75')
     await expect(page.locator('[data-elo-input="sample-n"]')).toHaveValue('24')
+  })
+
+  test('the page tells its story in order: truth, playbook, price, proof, receipts', async ({ page }) => {
+    await mockCorpus(page, corpus70())
+    await openCalculator(page)
+
+    const bandLocator = page.locator('#panel-elo section.elo-band[aria-labelledby]')
+    const bands: (string | null)[] = []
+    for (let i = 0; i < await bandLocator.count(); i++) {
+      bands.push(await bandLocator.nth(i).getAttribute('aria-labelledby'))
+    }
+    const at = (id: string) => bands.indexOf(id)
+    expect(at('elo-verdict-title')).toBeGreaterThanOrEqual(0)
+    expect(at('elo-sim-title')).toBeGreaterThan(at('elo-verdict-title'))
+    expect(at('elo-playbook-title')).toBeGreaterThan(at('elo-sim-title'))
+    expect(at('elo-adjust-title')).toBeGreaterThan(at('elo-playbook-title'))
+    // The why-you're-stuck receipts close the page.
+    expect(bands[bands.length - 1]).toBe('elo-myths-title')
+
+    // The demoted improvement blocks live INSIDE the playbook band.
+    await expect(page.locator('[data-elo-playbook] [data-elo-lift]')).toBeVisible()
+    await expect(page.locator('[data-elo-playbook] [data-elo-evidence="reviews"]')).toBeVisible()
+  })
+
+  test('the playbook opens with ranked, priced next moves', async ({ page }) => {
+    await mockCorpus(page, corpus70())
+    await openCalculator(page)
+
+    const card = page.locator('[data-elo-next-moves]')
+    await expect(card).toBeVisible()
+    const moves = card.locator('[data-elo-move]')
+    expect(await moves.count()).toBeGreaterThanOrEqual(2)
+    // Nothing reviewed in the corpus → reviewing leads the list.
+    await expect(moves.first()).toContainText(/review/i)
   })
 
   test('the projection chart renders with a target markline caption', async ({ page }) => {

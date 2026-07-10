@@ -98,10 +98,10 @@ const checks = computed<Check[]>(() => {
 <template>
   <section v-if="checks.length > 0" class="elo-band" aria-labelledby="elo-myths-title">
     <h3 id="elo-myths-title" class="elo-band-title">
-      Is it really "Elo Hell"?
+      When it feels rigged — the receipts
     </h3>
     <p class="elo-band-sub">
-      The loudest complaints, checked against your own games.
+      The loudest "Elo Hell" complaints, checked against your own games. Read this on the nights the queue feels cursed.
     </p>
     <div class="elo-grid">
       <div v-for="c in checks" :key="c.id" class="elo-cell" :class="c.tone" :data-elo-stat="c.stat">

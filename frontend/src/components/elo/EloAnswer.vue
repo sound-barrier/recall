@@ -35,7 +35,7 @@ const answer = computed(() => {
       tone: 'is-hard',
       eyebrow: 'Reality check',
       head: `Capped near ${ceiling}`,
-      sub: `At ${wr}%, tougher opponents pull you back before ${target.value}. To climb past it you'd need to win about ${reqPct.toFixed(1)}% — roughly ${extra} more win${extra === 1 ? '' : 's'} per 100 games. That's improvement, not luck.`,
+      sub: `At ${wr}%, tougher opponents pull you back before ${target.value}. To climb past it you'd need to win about ${reqPct.toFixed(1)}% — roughly ${extra} more win${extra === 1 ? '' : 's'} per 100 games. That's improvement, not luck — and the playbook below is how you close the gap.`,
     }
   }
 
@@ -46,7 +46,7 @@ const answer = computed(() => {
     tone: '',
     eyebrow: 'If your form holds',
     head: fmtGames(naive.value.expectedGames),
-    sub: `to reach ${target.value} at ${wr}%${pace}. Your recent form points to around ${ceiling}, so the climb should stick — you're underranked, not hardstuck.`,
+    sub: `to reach ${target.value} at ${wr}%${pace}. Your recent form points to around ${ceiling}, so the climb should stick — you're underranked, not hardstuck. That's an effort price, not a wall; the playbook below is where those games come from.`,
   }
 })
 </script>

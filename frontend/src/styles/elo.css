@@ -262,6 +262,90 @@
   opacity: 0.65;
 }
 
+/* ─── Playbook band: one improvement arc, quiet sub-blocks ─── */
+
+#panel-elo .elo-playbook-block {
+  margin-top: 1.7rem;
+}
+
+#panel-elo .elo-subhead {
+  margin: 0 0 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+#panel-elo .elo-playbook-block .elo-subhead + .elo-band-sub {
+  margin-top: -0.35rem;
+}
+
+/* "Your next three moves" — the playbook's one loud card. */
+#panel-elo .elo-next-moves {
+  margin-top: 0.35rem;
+  padding: 0.75rem 0.95rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
+}
+
+#panel-elo .elo-next-moves-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+#panel-elo .elo-next-moves-list {
+  list-style: none;
+  counter-reset: moves;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+#panel-elo .elo-next-moves-list li {
+  counter-increment: moves;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+}
+
+#panel-elo .elo-next-moves-list li::before {
+  content: counter(moves);
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--accent-text);
+}
+
+#panel-elo .elo-move-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+#panel-elo .elo-move-detail {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+}
+
 #panel-elo .elo-card {
   border: 1px solid var(--border);
   border-top-width: 2px;
@@ -428,46 +512,94 @@
   gap: 0.3rem;
 }
 
-#panel-elo .elo-hero-row {
+/* Rows mirror the Matches Hero Pool band (hp-hero): name · pool/off tag ·
+   WR-heat bar · right-aligned mono record — one hero-row language app-wide. */
+#panel-elo .elo-heroes-list li {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.15rem 0;
-  font-size: 0.8rem;
+}
+
+#panel-elo .elo-hero-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.78rem;
   cursor: pointer;
+  border-radius: 3px;
+}
+
+#panel-elo .elo-hero-row:hover {
+  background: var(--surface);
 }
 
 #panel-elo .elo-hero-name {
-  flex: 0 0 7.5rem;
+  flex: 0 0 6.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-#panel-elo .elo-hero-record {
-  flex: 1 1 auto;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
   color: var(--text-dim);
 }
 
-#panel-elo .elo-pool {
-  flex: none;
+#panel-elo .elo-hero-tag {
+  flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 0.56rem;
+  font-size: 0.54rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.1rem 0.35rem;
+  padding: 0.05rem 0.3rem;
   border-radius: 2px;
-  border: 1px solid color-mix(in srgb, var(--win) 45%, var(--border));
-  background: color-mix(in srgb, var(--win) 12%, var(--surface-2));
-  color: var(--text);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  color: var(--text-dim);
 }
 
-#panel-elo .elo-pool.out {
-  border-color: var(--loss-line);
-  background: var(--loss-soft);
+#panel-elo .elo-hero-tag.out {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+
+#panel-elo .elo-hero-bar {
+  flex: 1 1 auto;
+  min-width: 3rem;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text-faint) 18%, transparent);
+  overflow: hidden;
+}
+
+#panel-elo .elo-hero-fill {
+  display: block;
+  height: 100%;
+  transition: width 160ms ease;
+}
+
+/* Colour by WIN RATE — the Hero Pool / Hero × Game-Mode scheme. */
+#panel-elo .elo-hero-fill.cell-win { background: var(--win); }
+
+#panel-elo .elo-hero-fill.cell-mid { background: var(--neutral, #95a5a6); }
+
+#panel-elo .elo-hero-fill.cell-loss { background: var(--loss); }
+
+#panel-elo .elo-hero-fill.cell-draw { background: var(--draw, #b59c30); }
+
+#panel-elo .elo-hero-fill.cell-empty { background: color-mix(in srgb, var(--text-faint) 30%, transparent); }
+
+#panel-elo .elo-hero-stat {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+#panel-elo .elo-hero-nudged {
+  color: var(--accent-text);
+  font-weight: 600;
 }
 
 #panel-elo .elo-lown {
@@ -481,44 +613,35 @@
   color: var(--text);
 }
 
-#panel-elo .elo-heroes-list li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-#panel-elo .elo-heroes-list li .elo-hero-row {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
+/* The nudge stepper: one bordered [▼ offset ▲] group per row. */
 #panel-elo .elo-nudge {
   flex: none;
   display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 #panel-elo .elo-nudge-btn {
   appearance: none;
-  padding: 0 0.34rem;
-  border: 1px solid var(--border);
-  border-radius: 2px;
+  border: 0;
+  padding: 0.28rem 0.38rem;
   background: var(--surface-2);
   color: var(--text-dim);
-  font-size: 0.6rem;
-  line-height: 1.5;
+  font-size: 0.58rem;
+  line-height: 1;
   cursor: pointer;
 }
 
 #panel-elo .elo-nudge-btn:hover:not(:disabled) {
   color: var(--text);
-  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
 }
 
 #panel-elo .elo-nudge-btn:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 #panel-elo .elo-nudge-btn:disabled {
@@ -526,12 +649,23 @@
   cursor: default;
 }
 
-#panel-elo .elo-nudge-chip {
+#panel-elo .elo-nudge-offset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  padding: 0 0.15rem;
+  border-inline: 1px solid var(--border);
+  background: var(--surface-2);
   font-family: var(--mono);
   font-size: 0.62rem;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: var(--text);
+  color: var(--text-faint);
+}
+
+#panel-elo .elo-nudge-offset.active {
+  color: var(--accent-text);
+  font-weight: 700;
 }
 
 #panel-elo .elo-nudge-summary {

@@ -33,13 +33,13 @@ const hurts = computed(() => lift.value.filter((r) => r.lift < 1).slice(0, MAX_R
 <template>
   <section
     v-if="helps.length > 0 || hurts.length > 0"
-    class="elo-band"
+    class="elo-playbook-block"
     aria-labelledby="elo-lift-title"
     data-elo-lift
   >
-    <h3 id="elo-lift-title" class="elo-band-title">
-      What moves your needle
-    </h3>
+    <h4 id="elo-lift-title" class="elo-subhead">
+      What helps · what hurts
+    </h4>
     <p class="elo-band-sub">
       Every split of your games, as a multiple of your usual win rate — small records are pulled toward your baseline so they can't shout.
     </p>

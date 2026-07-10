@@ -28,10 +28,10 @@ const rows = computed(() => drivers.value.map((d) => ({
 </script>
 
 <template>
-  <section v-if="rows.length > 0" class="elo-band" aria-labelledby="elo-drivers-title" data-elo-drivers>
-    <h3 id="elo-drivers-title" class="elo-band-title">
-      What actually separates your wins
-    </h3>
+  <section v-if="rows.length > 0" class="elo-playbook-block" aria-labelledby="elo-drivers-title" data-elo-drivers>
+    <h4 id="elo-drivers-title" class="elo-subhead">
+      What separates your wins from losses
+    </h4>
     <p class="elo-band-sub">
       Your scoreboard stats split by result, per 10 minutes — the biggest gap is the lever worth practicing first.
     </p>
