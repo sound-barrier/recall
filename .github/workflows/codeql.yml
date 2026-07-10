@@ -9,6 +9,11 @@ on:
     # Weekly on Monday at 06:00 UTC — offset from Dependabot (Sunday) to spread load.
     - cron: '0 6 * * 1'
 
+# A re-push to a PR cancels the now-stale analysis; main + cron always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # contents: read   — check out code
 # actions: read    — required for private repos (no-op on public, included for portability)
 # security-events: write — upload SARIF results to GitHub Security tab

@@ -30,6 +30,11 @@ on:
     branches: [main]
   pull_request:
 
+# A re-push to a PR cancels the now-stale run; main pushes always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -75,10 +80,16 @@ jobs:
 
       # go (build serveronly) + node (frontend build + Playwright) from
       # mise.toml's pins; also loads [env] (GOTOOLCHAIN=local, …).
-      - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         if: steps.changes.outputs.relevant == 'true'
         with:
-          install_args: go node
+          go-version-file: go.mod
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        if: steps.changes.outputs.relevant == 'true'
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Tesseract (the parser shells out to it)
         if: steps.changes.outputs.relevant == 'true'
