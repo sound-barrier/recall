@@ -186,9 +186,11 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	rangeStart, rangeEnd := fixtureDateRange()
 	totalDays := int(rangeEnd.Sub(rangeStart).Hours()/24) + 1
 
-	dayWeights, totalDayW := fixtureDayWeights(rng, totalDays)
+	// carveBreakWindows recomputes the weight total after zeroing the
+	// vacation days, so fixtureDayWeights' own total is discarded.
+	dayWeights, _ := fixtureDayWeights(rng, totalDays)
 	// #nosec G404 -- deterministic dev fixture, not security-sensitive
-	totalDayW = carveBreakWindows(rand.New(rand.NewSource(seed+9)), dayWeights)
+	totalDayW := carveBreakWindows(rand.New(rand.NewSource(seed+9)), dayWeights)
 	planned := planMatchTimestamps(rng, rangeStart, dayWeights, totalDayW, n)
 	profile := newPlayerProfile(rng, parsePlayStyle(rng, style))
 	md := fixtureMapDistribution(rng)
