@@ -162,12 +162,103 @@
 
 /* ─── Verdict grid: cards beside the chart ─── */
 
-#panel-elo .elo-verdict-grid {
+/* The verdict and its dials share one band: answer + cards left, the
+   editable form + hero picker right, so cause and effect stay in the
+   same viewport. Chart renders full-width below the grid. */
+#panel-elo .elo-verdict-adjust-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 1rem;
-  margin-top: 1rem;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 1.1rem;
+  margin-top: 0.2rem;
+  margin-bottom: 1rem;
   align-items: start;
+}
+
+#panel-elo .elo-verdict-col,
+#panel-elo .elo-adjust-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+@media (width <= 60rem) {
+  #panel-elo .elo-verdict-adjust-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The hero list scrolls inside the column (a 20-hero DPS roster must not
+   stretch the band) — the Hero Pool band's capped-pane pattern. */
+#panel-elo .elo-adjust-col .elo-heroes-list {
+  max-height: clamp(14rem, 30vh, 18rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 0.2rem;
+}
+
+/* "Your edits, priced" — the measured → edited delta strip. */
+#panel-elo .elo-delta-strip {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
+  padding: 0.55rem 0.8rem 0.6rem;
+}
+
+#panel-elo .elo-delta-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+#panel-elo .elo-delta-rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+#panel-elo .elo-delta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  font-size: 0.76rem;
+}
+
+#panel-elo .elo-delta-row dt {
+  color: var(--text-dim);
+}
+
+#panel-elo .elo-delta-row dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+#panel-elo .elo-delta-foot {
+  margin: 0.35rem 0 0;
+  font-size: 0.64rem;
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+/* Edited-state affordances on the form. */
+#panel-elo .elo-form-head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+#panel-elo .elo-edited-dot {
+  margin-left: 0.3rem;
+  font-size: 0.55rem;
+  color: var(--accent-text);
+  vertical-align: middle;
 }
 
 #panel-elo .elo-results {
@@ -419,13 +510,6 @@
 }
 
 /* ─── Adjust grid: inputs beside heroes ─── */
-
-#panel-elo .elo-adjust-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
-}
 
 #panel-elo .elo-form {
   display: flex;

@@ -215,6 +215,35 @@ test.describe('Elo Calculator', () => {
     await expect(page.locator('[data-elo-input="sample-n"]')).toHaveValue('40')
   })
 
+  test('editing a dial prices the change beside the verdict and resets clean', async ({ page }) => {
+    await mockCorpus(page, corpus70())
+    await openCalculator(page)
+
+    // Measured state: no delta strip, measured eyebrow, reset disabled.
+    await expect(page.locator('[data-elo-delta-strip]')).toBeHidden()
+    await expect(page.locator('[data-elo-reset-measured]')).toBeDisabled()
+    await expect(page.locator('[data-elo-answer]')).toContainText(/if your form holds/i)
+
+    // Drop the win rate to 60: naive E = 1.6/(0.21·0.2) → ~39 games (was ~20).
+    await page.locator('[data-elo-input="win-rate"]').fill('60')
+    await page.locator('[data-elo-input="win-rate"]').blur() // commit the @change
+    const strip = page.locator('[data-elo-delta-strip]')
+    await expect(strip).toBeVisible()
+    await expect(strip).toContainText(/~\s*20/)
+    await expect(strip).toContainText(/~\s*39/)
+    await expect(page.locator('[data-elo-answer]')).toContainText(/if your edits hold/i)
+    await expect(page.locator('[data-elo-edited="win-rate"]')).toBeVisible()
+
+    // Reset restores the measured numbers and every edited affordance clears.
+    const reset = page.locator('[data-elo-reset-measured]')
+    await expect(reset).toBeEnabled()
+    await reset.click()
+    await expect(page.locator('[data-elo-input="win-rate"]')).toHaveValue('70')
+    await expect(strip).toBeHidden()
+    await expect(reset).toBeDisabled()
+    await expect(page.locator('[data-elo-answer]')).toContainText(/if your form holds/i)
+  })
+
   test('the rigged receipt is honest at volume: near even and measured, not "too few games"', async ({ page }) => {
     seq = 0
     // 500 decisive games at 51.0% — a season and a half of play. The old copy
@@ -262,9 +291,11 @@ test.describe('Elo Calculator', () => {
     expect(at('elo-verdict-title')).toBeGreaterThanOrEqual(0)
     expect(at('elo-sim-title')).toBeGreaterThan(at('elo-verdict-title'))
     expect(at('elo-playbook-title')).toBeGreaterThan(at('elo-sim-title'))
-    expect(at('elo-adjust-title')).toBeGreaterThan(at('elo-playbook-title'))
     // The why-you're-stuck receipts close the page.
     expect(bands[bands.length - 1]).toBe('elo-myths-title')
+    // The dials live INSIDE the verdict band — no separate adjust band.
+    expect(bands).not.toContain('elo-adjust-title')
+    await expect(page.locator('section[aria-labelledby="elo-verdict-title"] [data-elo-input="win-rate"]')).toBeVisible()
 
     // The demoted improvement blocks live INSIDE the playbook band.
     await expect(page.locator('[data-elo-playbook] [data-elo-lift]')).toBeVisible()
@@ -325,6 +356,8 @@ test.describe('Elo Calculator', () => {
     await up.click()
     const summary = page.locator('[data-elo-whatif-summary]')
     await expect(summary).toContainText('70% → 70.6%')
+    // A nudge alone counts as an edit — the verdict says whose numbers it holds.
+    await expect(page.locator('[data-elo-answer]')).toContainText(/if your edits hold/i)
     await expect(lucio).toContainText('75% → 76%')
     await expect(page.locator('[data-elo-input="win-rate"]')).toHaveValue('70')
 

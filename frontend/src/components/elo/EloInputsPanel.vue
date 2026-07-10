@@ -11,7 +11,7 @@ import { fmtScoreRank } from '@/components/elo/elo-format'
 const {
   currentTier, currentDivision, currentProgress, targetTier, targetDivision,
   winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
-  editInput, lastSeed, decay, projInput,
+  editInput, lastSeed, decay, projInput, editedFields, isEdited, resetToMeasured,
 } = useEloCalc()
 
 const DIVISIONS = [5, 4, 3, 2, 1]
@@ -56,13 +56,25 @@ const plateauLine = computed(() => {
 
 <template>
   <div class="elo-form">
+    <div class="elo-form-head">
+      <button
+        type="button"
+        class="elo-hero-select-btn"
+        data-elo-reset-measured
+        :disabled="!isEdited"
+        title="Put every dial back to what your games measured"
+        @click="resetToMeasured"
+      >
+        Reset to measured
+      </button>
+    </div>
     <fieldset class="elo-fieldset">
       <legend class="elo-legend">
         Where you are
       </legend>
       <div class="elo-row">
         <label class="elo-field">
-          <span class="elo-field-label">Tier</span>
+          <span class="elo-field-label">Tier</span><span v-if="editedFields.currentTier" class="elo-edited-dot" data-elo-edited="current-tier" title="Differs from your measured number">●</span>
           <select
             class="elo-input" data-elo-current="tier" :value="currentTier"
             @change="editInput('currentTier', ($event.target as HTMLSelectElement).value as Tier)"
@@ -71,7 +83,7 @@ const plateauLine = computed(() => {
           </select>
         </label>
         <label class="elo-field">
-          <span class="elo-field-label">Division</span>
+          <span class="elo-field-label">Division</span><span v-if="editedFields.currentDivision" class="elo-edited-dot" data-elo-edited="current-division" title="Differs from your measured number">●</span>
           <select
             class="elo-input" data-elo-current="division" :value="String(currentDivision)"
             @change="editInput('currentDivision', num($event))"
@@ -80,7 +92,7 @@ const plateauLine = computed(() => {
           </select>
         </label>
         <label class="elo-field">
-          <span class="elo-field-label">Rank bar %</span>
+          <span class="elo-field-label">Rank bar %</span><span v-if="editedFields.currentProgress" class="elo-edited-dot" data-elo-edited="current-progress" title="Differs from your measured number">●</span>
           <input
             class="elo-input" data-elo-current="progress" type="number" min="0" max="99" step="1"
             :value="currentProgress" @change="editInput('currentProgress', num($event))"
@@ -95,7 +107,7 @@ const plateauLine = computed(() => {
       </legend>
       <div class="elo-row">
         <label class="elo-field">
-          <span class="elo-field-label">Tier</span>
+          <span class="elo-field-label">Tier</span><span v-if="editedFields.targetTier" class="elo-edited-dot" data-elo-edited="target-tier" title="Differs from your measured number">●</span>
           <select
             class="elo-input" data-elo-target="tier" :value="targetTier"
             @change="editInput('targetTier', ($event.target as HTMLSelectElement).value as Tier)"
@@ -104,7 +116,7 @@ const plateauLine = computed(() => {
           </select>
         </label>
         <label class="elo-field">
-          <span class="elo-field-label">Division</span>
+          <span class="elo-field-label">Division</span><span v-if="editedFields.targetDivision" class="elo-edited-dot" data-elo-edited="target-division" title="Differs from your measured number">●</span>
           <select
             class="elo-input" data-elo-target="division" :value="String(targetDivision)"
             @change="editInput('targetDivision', num($event))"
@@ -121,7 +133,7 @@ const plateauLine = computed(() => {
       </legend>
       <div class="elo-row">
         <label class="elo-field">
-          <span class="elo-field-label">Win rate %</span>
+          <span class="elo-field-label">Win rate %</span><span v-if="editedFields.winRatePct" class="elo-edited-dot" data-elo-edited="win-rate" title="Differs from your measured number">●</span>
           <input
             class="elo-input" data-elo-input="win-rate" type="number" min="0" max="100" step="0.1"
             :value="winRatePct ?? ''" @change="editInput('winRatePct', num($event), { detachHeroes: true })"
@@ -129,7 +141,7 @@ const plateauLine = computed(() => {
           <small class="elo-hint">{{ wrHint }}</small>
         </label>
         <label class="elo-field">
-          <span class="elo-field-label">Games counted</span>
+          <span class="elo-field-label">Games counted</span><span v-if="editedFields.sampleN" class="elo-edited-dot" data-elo-edited="sample-n" title="Differs from your measured number">●</span>
           <input
             class="elo-input" data-elo-input="sample-n" type="number" min="0" step="1"
             :value="sampleN" @change="editInput('sampleN', num($event), { detachHeroes: true })"
@@ -137,7 +149,7 @@ const plateauLine = computed(() => {
           <small class="elo-hint">How many games that win rate is from.</small>
         </label>
         <label class="elo-field">
-          <span class="elo-field-label">Games per week</span>
+          <span class="elo-field-label">Games per week</span><span v-if="editedFields.gamesPerWeekInput" class="elo-edited-dot" data-elo-edited="games-week" title="Differs from your measured number">●</span>
           <input
             class="elo-input" data-elo-input="games-week" type="number" min="0" step="0.1"
             :value="gamesPerWeekInput ?? ''" @change="editInput('gamesPerWeekInput', num($event))"
@@ -145,7 +157,7 @@ const plateauLine = computed(() => {
           <small class="elo-hint">Your recent pace — turns games into weeks.</small>
         </label>
         <label class="elo-field">
-          <span class="elo-field-label">Rank bar per game</span>
+          <span class="elo-field-label">Rank bar per game</span><span v-if="editedFields.meterMovePct" class="elo-edited-dot" data-elo-edited="meter-move" title="Differs from your measured number">●</span>
           <input
             class="elo-input" data-elo-input="meter-move" type="number" min="1" max="40" step="0.1"
             :value="meterMovePct" @change="editInput('meterMovePct', num($event))"
@@ -158,7 +170,7 @@ const plateauLine = computed(() => {
     <details class="elo-advanced">
       <summary>Advanced</summary>
       <label class="elo-field elo-field-wide">
-        <span class="elo-field-label">How fast it gets harder</span>
+        <span class="elo-field-label">How fast it gets harder</span><span v-if="editedFields.decaySlopePts" class="elo-edited-dot" data-elo-edited="decay-slope" title="Differs from your measured number">●</span>
         <input
           class="elo-input" data-elo-input="decay-slope" type="number" min="0.5" max="5" step="0.1"
           :value="decaySlopePts" @change="editInput('decaySlopePts', num($event))"
