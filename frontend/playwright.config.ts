@@ -27,11 +27,18 @@ export default defineConfig({
   workers: 1,
   // Fail the build on `.only` slipping into CI.
   forbidOnly: !!process.env.CI,
-  // Zero tolerance for flakes. A retry-pass would mask a race
-  // condition or a brittle assertion; fix the underlying test
-  // instead. Locally this also stops a "run it again, it'll work"
-  // habit from forming.
-  retries: 0,
+  // Locally: zero tolerance for flakes — a retry-pass would mask a race
+  // condition or a brittle assertion, and retries: 0 stops a "run it
+  // again, it'll work" habit from forming. Fix the underlying test.
+  //
+  // On CI: one retry. The shared runners starve rAF/transition chains
+  // under parallel load, and with ~660 tests one lost race reds the whole
+  // job — a single evening produced five DISTINCT single-test failures
+  // across four runs, each passing 5-10/10 locally. A retried test still
+  // reports as "flaky" in the run summary (visible, never silent), so
+  // repeat offenders keep getting root-fixed (the two worst already were:
+  // the drag specs' hydration gates + the tour→modal handoff timeout).
+  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
 
   // Snapshot path: drop the default {projectName}-{platform} suffix

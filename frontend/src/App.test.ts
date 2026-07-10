@@ -9,7 +9,11 @@ import { fireEvent, mockedApi, mountApp } from '@/test-utils/mountApp'
 // that App wires those pieces together correctly: API → composables
 // → DOM. Coverage rolls up via `make cover-frontend`.
 
-afterEach(() => {
+afterEach(async () => {
+  // Settle in-flight lazy-view imports inside the test env — a loader
+  // resolving after teardown throws EnvironmentTeardownError as an
+  // unhandled rejection (CI's slow coverage pass loses this race).
+  await vi.dynamicImportSettled()
   vi.restoreAllMocks()
   vi.resetModules()
 })

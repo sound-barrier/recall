@@ -26,7 +26,15 @@ vi.mock('@/api', async (importOriginal) => ({
 // the module registry after each test so the cached store + its real '@/api'
 // binding don't leak into a later mountApp test (whose vi.doMock('@/api')
 // can't reach an already-imported store). See reference_store_api_mock_isolation.
-afterEach(() => { vi.clearAllMocks(); vi.resetModules() })
+// Settle in-flight lazy-child imports (detail panel, lightbox, …) INSIDE
+// the test env — a loader that resolves after teardown throws
+// EnvironmentTeardownError as an unhandled rejection and fails the run
+// even with every test green (seen on CI's slow coverage pass).
+afterEach(async () => {
+  await vi.dynamicImportSettled()
+  vi.clearAllMocks()
+  vi.resetModules()
+})
 
 // Unit tests for the contextual multi-select + Hidden drawer surfaces.
 // End-to-end transport chain is covered by
