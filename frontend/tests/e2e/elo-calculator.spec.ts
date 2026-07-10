@@ -143,7 +143,9 @@ test.describe('Elo Calculator', () => {
     // keeping its raw stat in a muted aside.
     await expect(page.locator('[data-elo-stat="p-value"]')).toContainText(/p [=<]/)
     await expect(page.locator('[data-elo-stat="percentile"]')).toContainText(/%/)
-    await expect(page.locator('[data-elo-stat="streak"]')).toContainText(/normal/i)
+    // At 70% a 5-loss run is ~15% per 100 games — the honest register is
+    // "rare, but real", not "normal".
+    await expect(page.locator('[data-elo-stat="streak"]')).toContainText(/rare, but real/i)
   })
 
   test('a sub-50% win rate yields honest unreachable verdicts', async ({ page }) => {
@@ -156,6 +158,31 @@ test.describe('Elo Calculator', () => {
     await expect(page.locator('[data-elo-card="decay"]')).toContainText(/52\.4%/)
     // The headline verdict is the honest reality check, not a fantasy count.
     await expect(page.locator('[data-elo-answer]')).toContainText(/capped|reality|52\.4%/i)
+
+    // The season receipt ANSWERS the sub-50 case instead of vanishing.
+    const season = page.locator('[data-elo-stat="season"]')
+    await expect(season).toContainText(/not at this rate/i)
+    await expect(season).toContainText(/you'd need about \d+(\.\d+)?%/i)
+  })
+
+  test('losing at volume gets the honest dip answer, not "near even"', async ({ page }) => {
+    seq = 0
+    // 400 decisive at 45% — measured well, clearly leaning below even, yet
+    // (barely) not significant. The receipt must not call this "near even"
+    // OR "too few games": it is a real, fixable dip.
+    const rows = [
+      rec('victory', 'lucio', { rank: 'gold', level: 2, rank_progress: 40, change_percent: 21, modifiers: ['victory', 'expected'] }),
+      ...games(399, 179, 'lucio'), // + the ranked win above = 180W/220L
+    ]
+    await mockCorpus(page, rows)
+    await openCalculator(page)
+
+    const cell = page.locator('[data-elo-stat="p-value"]')
+    await expect(cell).toContainText(/a real dip/i)
+    await expect(cell).toContainText(/playbook/i)
+    await expect(cell).not.toContainText(/near even/i)
+    await expect(cell).not.toContainText(/slow climb/i)
+    await expect(cell).not.toContainText(/too few games/i)
   })
 
   test('picking heroes re-seeds the win rate from their pooled record', async ({ page }) => {
@@ -200,6 +227,12 @@ test.describe('Elo Calculator', () => {
     await expect(coin).toContainText(/more of it above|leans below|dead even/i)
     await expect(coin).not.toContainText(/skeptic's own assumption/i)
     await expect(coin).not.toContainText(/forced 50-50/i)
+
+    // The season receipt names its assumption and carries the decay
+    // counterweight instead of silently contradicting the capped verdict.
+    const season = page.locator('[data-elo-stat="season"]')
+    await expect(season).toContainText(/if your 51% holds/i)
+    await expect(season).toContainText(/amber future/i)
   })
 
   test('the page tells its story in order: truth, playbook, price, proof, receipts', async ({ page }) => {
