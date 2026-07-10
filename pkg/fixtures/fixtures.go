@@ -187,6 +187,8 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	totalDays := int(rangeEnd.Sub(rangeStart).Hours()/24) + 1
 
 	dayWeights, totalDayW := fixtureDayWeights(rng, totalDays)
+	// #nosec G404 -- deterministic dev fixture, not security-sensitive
+	totalDayW = carveBreakWindows(rand.New(rand.NewSource(seed+9)), dayWeights)
 	planned := planMatchTimestamps(rng, rangeStart, dayWeights, totalDayW, n)
 	profile := newPlayerProfile(rng, parsePlayStyle(rng, style))
 	md := fixtureMapDistribution(rng)
@@ -291,6 +293,37 @@ func fixtureDayWeights(rng *rand.Rand, totalDays int) ([]float64, float64) {
 		totalDayW = 1.0
 	}
 	return dayWeights, totalDayW
+}
+
+// carveBreakWindows zeroes 2-3 vacation windows (1-2+ weeks each) out of the
+// per-day activity weights — real players take time off, and the rank model
+// prices the rusty return (see applyRankProgression). Windows keep clear of
+// the season's edges so the corpus still opens and closes with play. Uses its
+// own derived rng so the main stream's draw sequence (hero/map picks) is
+// untouched. Returns the recomputed weight total.
+func carveBreakWindows(rng *rand.Rand, dayWeights []float64) float64 {
+	const edgeKeep = 10
+	breaks := 3 + rng.Intn(2) // 3 or 4 per season
+	for range breaks {
+		length := 7 + rng.Intn(8) // 7-14 days
+		span := len(dayWeights) - length - 2*edgeKeep
+		if span <= 0 {
+			break
+		}
+		start := edgeKeep + rng.Intn(span)
+		for d := start; d < start+length; d++ {
+			dayWeights[d] = 0
+		}
+	}
+	total := 0.0
+	for _, w := range dayWeights {
+		total += w
+	}
+	if total == 0 { // guard pathological tiny windows
+		dayWeights[len(dayWeights)/2] = 1.0
+		total = 1.0
+	}
+	return total
 }
 
 // planMatchTimestamps samples n match timestamps weighted by day + hour,

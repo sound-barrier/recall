@@ -3,6 +3,7 @@ package fixtures
 import (
 	"math/rand"
 	"strings"
+	"time"
 
 	"recall/pkg/db"
 )
@@ -58,7 +59,7 @@ type skillLine struct {
 // thin tracks drift a little. Values are ladderScore units (tier*5 + (5-div)).
 var trackSkillLines = map[string]skillLine{
 	"tank":    {start: 9.3, end: 12.0},  // ~Silver 1 → ~Gold 3
-	"dps":     {start: 11.5, end: 16.6}, // ~Gold 3.5 → ~Plat 3.4
+	"dps":     {start: 11.5, end: 16.4}, // ~Gold 3.5 → ~Plat 3.6
 	"support": {start: 12.1, end: 12.7}, // ~Gold 3 → ~Gold 2.3
 	"open":    {start: 10.3, end: 14.6}, // ~Gold 4.7 → ~Plat 5.4
 }
@@ -119,8 +120,8 @@ const (
 	// [wrFloor, wrCeiling]; the penalty applies after, floored at pFloor so
 	// even a 4-hero off-pool disaster isn't a scripted loss. drawRate is the
 	// ~1% draw share.
-	wrEqualize = 0.535
-	gapSlope   = 0.035
+	wrEqualize = 0.55
+	gapSlope   = 0.030
 	wrGapCap   = 0.08
 	wrFloor    = 0.40
 	wrCeiling  = 0.63
@@ -132,7 +133,7 @@ const (
 	// the position over the line into a peak; cold form digs the dip the gap
 	// term then climbs out of.
 	formStepPts = 0.9
-	formAmpPts  = 5.0
+	formAmpPts  = 6.0
 
 	// Per-match hero costs (win-probability points). Three heroes played
 	// MEANINGFULLY in one match is a game that was going badly AND got worse —
@@ -141,8 +142,22 @@ const (
 	// count. An off-pool primary bleeds a smaller, steady tax.
 	multiHeroThreePenaltyPts = 21
 	multiHeroFourPenaltyPts  = 26
-	offPoolPenaltyPts        = 10
+	offPoolPenaltyPts        = 12
 	meaningfulHeroPct        = 10
+
+	// Return rust: after rustGapDays+ without a match (the carved vacation
+	// windows), the first games back are played at a deficit that fades
+	// linearly over rustGames — it takes time to get back into the swing,
+	// and consistency is what protects the rank already earned.
+	rustGapDays = 7
+	rustGames   = 14
+	rustMaxPts  = 20.0
+
+	// Tilt queueing: from the tiltRunStart-th consecutive same-day loss on,
+	// every further game that day is played tilted — each queue digs the
+	// hole deeper until a win (or the day) breaks the spiral.
+	tiltRunStart = 3
+	tiltPts      = 5.0
 )
 
 // ladderScore is the monotonic ladder position (matches the frontend encoding),
@@ -500,6 +515,57 @@ func matchPenaltyPts(s *db.SummaryRow, isPoolHero func(string) bool) float64 {
 	return pts
 }
 
+// playerState is the cross-track, per-day human state the walk pass threads
+// through the chronological summaries: how rusty the player still is after a
+// break, and how tilted today's queue has become.
+type playerState struct {
+	lastDay    string
+	rustLeft   int
+	dayLossRun int
+}
+
+// observe updates the state for the next competitive match's date and
+// returns the rust+tilt penalty (win-probability points) it plays under.
+func (ps *playerState) observe(day string) float64 {
+	if ps.lastDay != "" && day != ps.lastDay {
+		if gap := daysBetween(ps.lastDay, day); gap >= rustGapDays {
+			ps.rustLeft = rustGames
+		}
+		ps.dayLossRun = 0
+	}
+	ps.lastDay = day
+	penalty := 0.0
+	if ps.rustLeft > 0 {
+		penalty += rustMaxPts * float64(ps.rustLeft) / rustGames
+		ps.rustLeft--
+	}
+	if ps.dayLossRun >= tiltRunStart {
+		penalty += tiltPts
+	}
+	return penalty
+}
+
+// record folds the game's outcome into the tilt run (draws leave it be).
+func (ps *playerState) record(result string) {
+	switch result {
+	case "victory":
+		ps.dayLossRun = 0
+	case "defeat":
+		ps.dayLossRun++
+	}
+}
+
+// daysBetween is the calendar-day distance between two YYYY-MM-DD dates;
+// zero when either fails to parse (synthetic dates never do).
+func daysBetween(a, b string) int {
+	ta, errA := time.Parse("2006-01-02", a)
+	tb, errB := time.Parse("2006-01-02", b)
+	if errA != nil || errB != nil {
+		return 0
+	}
+	return int(tb.Sub(ta).Hours() / 24)
+}
+
 // applyRankProgression builds the per-track rank climb AND decides each
 // competitive match's result. It walks the chronological, index-aligned
 // fx.Summaries (playModes/queueTypes are the parallel per-summary slices):
@@ -517,6 +583,7 @@ func applyRankProgression(fx *Fixture, seed int64, playModes, queueTypes []strin
 	// #nosec G404 -- deterministic dev fixture, not security-sensitive
 	rng := rand.New(rand.NewSource(seed + 8))
 	walks := newTrackWalks()
+	human := &playerState{}
 	fx.Ranks = fx.Ranks[:0]
 	lastIdx := max(len(fx.Summaries)-1, 1)
 	for i := range fx.Summaries {
@@ -530,7 +597,9 @@ func applyRankProgression(fx *Fixture, seed int64, playModes, queueTypes []strin
 			continue
 		}
 		line := trueSkillAt(track, float64(i)/float64(lastIdx))
-		s.Result = walk.drawResult(rng, line, matchPenaltyPts(s, isPoolHero))
+		penalty := matchPenaltyPts(s, isPoolHero) + human.observe(s.Date)
+		s.Result = walk.drawResult(rng, line, penalty)
+		human.record(s.Result)
 		if card := walk.step(rng, s.Result); card != nil {
 			fx.Ranks = append(fx.Ranks, card.toRankRow(s.MatchKey, rankTS(s.Filename), s.Hero, s.Result))
 		}

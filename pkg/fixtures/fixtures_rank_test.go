@@ -121,10 +121,10 @@ func TestWinProb_GapReversion(t *testing.T) {
 	// sit symmetric around wrEqualize at the gap cap.
 	below := winProb(line-4, line, 0)
 	above := winProb(line+4, line, 0)
-	if below != wrEqualize+wrGapCap {
+	if math.Abs(below-(wrEqualize+wrGapCap)) > 1e-9 {
 		t.Errorf("winProb 4 divisions below = %.3f; want the +%.2f cap", below, wrGapCap)
 	}
-	if above != wrEqualize-wrGapCap || above >= 0.50 {
+	if math.Abs(above-(wrEqualize-wrGapCap)) > 1e-9 || above >= 0.50 {
 		t.Errorf("winProb 4 divisions above = %.3f; want the -%.2f cap, under 50%%", above, wrGapCap)
 	}
 	// Monotone within the linear zone: the closer to the line from below,
