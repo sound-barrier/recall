@@ -269,6 +269,74 @@ func TestTourStory_StreaksExist(t *testing.T) {
 	}
 }
 
+// ── Breaks, rust, and tilt queues ──────────────────────────────────────
+
+func TestTourStory_BreaksAndRustyReturns(t *testing.T) {
+	st := buildTourStory(t)
+	// Replay the model's own player state over the competitive sequence so
+	// the measurement flags EXACTLY the games the model played rusty.
+	ps := &playerState{}
+	gaps := 0
+	var rusty, rest []string
+	for _, i := range st.comp {
+		s := st.fx.Summaries[i]
+		if ps.lastDay != "" && s.Date != ps.lastDay && daysBetween(ps.lastDay, s.Date) >= rustGapDays {
+			gaps++
+		}
+		pen := ps.observe(s.Date)
+		// Strong-rust games only (first half of the fade), tilt excluded so
+		// the read isn't contaminated.
+		if ps.dayLossRun < tiltRunStart && pen > rustMaxPts/2 {
+			rusty = append(rusty, s.Result)
+		} else if pen == 0 {
+			rest = append(rest, s.Result)
+		}
+		ps.record(s.Result)
+	}
+	if gaps < 1 {
+		t.Fatalf("season has no %d+ day break — vacations should be carved into the calendar", rustGapDays)
+	}
+	rustyWR, rustyN := winrate(rusty)
+	restWR, _ := winrate(rest)
+	if rustyN < 8 {
+		t.Fatalf("only %d decisive strong-rust games measured — break carving drifted", rustyN)
+	}
+	if restWR-rustyWR < 3 {
+		t.Errorf("WR in the first games back = %.1f%% vs %.1f%% otherwise; rust should cost ≥ 3 pts", rustyWR, restWR)
+	}
+}
+
+func TestTourStory_TiltRunsExist(t *testing.T) {
+	st := buildTourStory(t)
+	// 5+ consecutive same-day competitive losses — the tilt-queue pattern
+	// the app flags — must actually occur in the demo season.
+	episodes, run := 0, 0
+	day := ""
+	counted := false
+	for _, i := range st.comp {
+		s := st.fx.Summaries[i]
+		if s.Date != day {
+			day = s.Date
+			run = 0
+			counted = false
+		}
+		switch s.Result {
+		case "defeat":
+			run++
+			if run >= 5 && !counted {
+				episodes++
+				counted = true
+			}
+		case "victory":
+			run = 0
+			counted = false
+		}
+	}
+	if episodes < 2 {
+		t.Errorf("only %d same-day 5+ loss runs; the tilt-queue flag needs material (want ≥ 2)", episodes)
+	}
+}
+
 func TestTourStory_MeanRevertsAroundSkillLine(t *testing.T) {
 	st := buildTourStory(t)
 	// Local maxima fall back, local minima recover: the position must cross
