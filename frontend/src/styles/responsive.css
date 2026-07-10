@@ -1,5 +1,15 @@
 /* ─── Responsive ─────────────────────────────────────────── */
 
+/* Fluid interface scale. The app is built in rem, so the root font-size is
+   the one dial that scales the whole UI. It holds the 16px design baseline
+   through ~1080p-wide windows (and the 1280px e2e viewport), then grows
+   linearly with the viewport to ~19px on a 2560-wide (1440p) display so
+   text, spacing, and the rem-capped content columns keep pace with the
+   pixels instead of shrinking into the margins. */
+html {
+  font-size: clamp(16px, 0.417vw + 8px, 19px);
+}
+
 @media (width <= 880px) {
   .brand { font-size: 2.4rem; }
   .score-num { font-size: 2rem; }
