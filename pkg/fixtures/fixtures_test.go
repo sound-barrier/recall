@@ -214,22 +214,32 @@ func TestGenerateMatchFixture_FlexCoversEveryMapAndHero(t *testing.T) {
 	}
 }
 
-func TestGenerateMatchFixture_FlexSwapsMostMatches(t *testing.T) {
-	// Real players swap heroes mid-match most games — only ~10% stick
-	// with one hero start-to-finish. At N=500 the binomial spread is
-	// tight enough to assert single-hero matches fall in [5%, 20%].
-	const n = 500
+func TestGenerateMatchFixture_FlexSwapRatesPerMode(t *testing.T) {
+	// Competitive players mostly commit: ~30% one hero, ~55% one swap, and a
+	// 3+-hero desperation tail the rank model prices as usually-lost.
+	// Quickplay keeps the loose everything-goes spread (~10% single).
+	const n = 1300
 	fx := fixtures.GenerateMatchFixture(n, 1, "flex")
-
-	single := 0
+	mode := map[string]string{}
+	for _, pm := range fx.PlayModes {
+		mode[pm.MatchKey] = pm.PlayMode
+	}
+	singles := map[string]int{}
+	totals := map[string]int{}
 	for _, s := range fx.Summaries {
+		m := mode[s.MatchKey]
+		totals[m]++
 		if len(s.HeroesPlayed) == 1 {
-			single++
+			singles[m]++
 		}
 	}
-	if single*100 < n*5 || single*100 > n*20 {
-		t.Errorf("single-hero matches %d/%d (%.1f%%) outside [5%%, 20%%]",
-			single, n, float64(single)*100/float64(n))
+	compSingle := float64(singles["competitive"]) * 100 / float64(totals["competitive"])
+	if compSingle < 22 || compSingle > 38 {
+		t.Errorf("competitive single-hero share %.1f%% outside [22%%, 38%%] (want ~30)", compSingle)
+	}
+	qpSingle := float64(singles["quickplay"]) * 100 / float64(totals["quickplay"])
+	if qpSingle > 22 {
+		t.Errorf("quickplay single-hero share %.1f%%; the loose spread should stay under ~22%%", qpSingle)
 	}
 }
 
@@ -765,11 +775,12 @@ func TestGenerateMatchFixture_RankModifiersValid(t *testing.T) {
 	}
 }
 
-func TestGenerateMatchFixture_RankClimbsEveryTrack(t *testing.T) {
-	// The tour profile's exact config. Every track must NET a rank-up from its
-	// staggered start (the "59% ⇒ ranking up for all" invariant), DPS is the
-	// busiest + highest track, and nothing overshoots past Diamond.
-	fx := fixtures.GenerateMatchFixture(500, 8, "")
+func TestGenerateMatchFixture_RankClimbsMainTrack(t *testing.T) {
+	// The tour profile's exact config. The DPS main (85% of comp role queue)
+	// must NET real growth; the thin tank/support/open tracks wander with the
+	// gap-reversion model — they may drift a shade below their start on a
+	// given seed, but never collapse or run away. DPS stays busiest + highest.
+	fx := fixtures.GenerateMatchFixture(1300, 8, "")
 	queueBy := queueByMatchKey(fx)
 
 	start := map[string]float64{
@@ -797,8 +808,11 @@ func TestGenerateMatchFixture_RankClimbsEveryTrack(t *testing.T) {
 			t.Errorf("track %q emitted no rank cards (can't show a climb)", track)
 			continue
 		}
-		if lastScore[track] <= s0 {
-			t.Errorf("track %q did not climb: last %.2f <= start %.2f", track, lastScore[track], s0)
+		if track == "dps" && lastScore[track] < s0+3 {
+			t.Errorf("dps track must net a real climb: last %.2f < start %.2f + 3 divisions", lastScore[track], s0)
+		}
+		if lastScore[track] < s0-2.5 {
+			t.Errorf("track %q collapsed: last %.2f more than 2.5 divisions under its %.2f start", track, lastScore[track], s0)
 		}
 		// Runaway guard: a true 59% lands the busiest track ~Diamond, but
 		// per-track variance at N=500 can carry a lucky track a division or two
@@ -887,48 +901,26 @@ func TestGenerateMatchFixture_PerTrackEquilibrium(t *testing.T) {
 	}
 }
 
-func TestGenerateMatchFixture_ClimbingWinRateDescends(t *testing.T) {
-	// Over the tour-sized corpus the tracks are still climbing, so their win
-	// rate sits ABOVE 50% and never exceeds the ~70% cap; and for the busy DPS
-	// main the rate DESCENDS across the climb (matches get harder as it nears
-	// its ceiling) — the core ELO story.
-	fx := fixtures.GenerateMatchFixture(500, 8, "")
+func TestGenerateMatchFixture_TrackWinRatesStayHuman(t *testing.T) {
+	// Under gap reversion a track's realized rate hovers near 50 — elevated
+	// when it dips under its skill line, sub-50 when it peaks over it, taxed
+	// by the hero-cost penalties throughout. No track reads like a smurf or
+	// a thrower. (The arc itself — slow growth, slumps, mean reversion — is
+	// pinned by the TestTourStory_* suite.)
+	fx := fixtures.GenerateMatchFixture(1300, 8, "")
 	byTrack := trackWL(fx)
 	for _, track := range []string{"tank", "dps", "support", "open"} {
 		c := byTrack[track]
 		wr := float64(c[0]) / float64(c[0]+c[1]) * 100
-		if wr <= 50 || wr > 71 {
-			t.Errorf("track %q climbing win rate %.1f%% should be in (50%%, 71%%]", track, wr)
+		lo := 44.0
+		if track == "tank" || track == "support" {
+			// The ~5-10% off-role tracks are tiny samples that eat the
+			// off-pool + swap taxes — bleeding there IS the demo's lesson.
+			lo = 35
 		}
-	}
-
-	// DPS descent: first-third win rate > last-third.
-	var dps []string
-	queueBy := queueByMatchKey(fx)
-	mode := map[string]string{}
-	for _, pm := range fx.PlayModes {
-		mode[pm.MatchKey] = pm.PlayMode
-	}
-	for _, s := range fx.Summaries {
-		if mode[s.MatchKey] == "competitive" && queueBy[s.MatchKey] != "open" && fixtures.RoleOfHero(s.Hero) == "dps" {
-			dps = append(dps, s.Result)
+		if wr < lo || wr > 60 {
+			t.Errorf("track %q win rate %.1f%% outside the human band [%.0f%%, 60%%]", track, wr, lo)
 		}
-	}
-	wrOf := func(rs []string) float64 {
-		w, l := 0, 0
-		for _, r := range rs {
-			switch r {
-			case "victory":
-				w++
-			case "defeat":
-				l++
-			}
-		}
-		return float64(w) / float64(w+l)
-	}
-	third := len(dps) / 3
-	if early, late := wrOf(dps[:third]), wrOf(dps[len(dps)-third:]); early <= late {
-		t.Errorf("DPS win rate should descend as it climbs: early %.2f <= late %.2f", early, late)
 	}
 }
 

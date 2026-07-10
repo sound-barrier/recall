@@ -233,10 +233,10 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// of which pick the play mode without consulting the map.
 	forceClashQuickplay(&fx, summaryPlayModes)
 
-	// Rank climb — a post-pass over the (now-final) chronological summaries, so
-	// each role/queue track walks the ladder up from its staggered start at a
-	// 59% win rate instead of carrying random per-match rank noise.
-	applyRankProgression(&fx, seed, summaryPlayModes, summaryQueueTypes)
+	// Rank climb — a post-pass over the (now-final) chronological summaries:
+	// each role/queue track chases its rising true-skill line (gap reversion +
+	// form + per-match hero costs), so results and rank cards tell one story.
+	applyRankProgression(&fx, seed, summaryPlayModes, summaryQueueTypes, profile.isPoolHero)
 
 	fx.appendReviewSeeds(seed)
 	fx.appendAnnotationSeeds(seed)
