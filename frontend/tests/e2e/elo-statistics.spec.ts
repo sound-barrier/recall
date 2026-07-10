@@ -224,6 +224,15 @@ test.describe('Elo Calculator — phase 2 (simulator + skill curve)', () => {
     await expect(band).toBeVisible()
     await expect(band.locator('canvas')).toBeVisible()
     await expect(page.locator('[data-elo-skill-share]')).toContainText(/skill drift explains \d+%/i)
+
+    // The verdict paragraphs must sit BELOW the chart figure, not on it —
+    // the band-sub top margin once pulled them into the frame.
+    const fig = await band.locator('figure.elo-chart').boundingBox()
+    const share = await page.locator('[data-elo-skill-share]').first().boundingBox()
+    if (!fig || !share) throw new Error('skill band geometry unavailable')
+    // 1px slack for subpixel layout rounding; the bug this guards against
+    // was a 6px+ intrusion into the chart frame.
+    expect(share.y).toBeGreaterThanOrEqual(fig.y + fig.height - 1)
   })
 })
 
@@ -327,5 +336,81 @@ test.describe('Elo Calculator — phase 3 (sessions, change-point, lift)', () =>
     await expect(band).toContainText(/helps/i)
     await expect(band).toContainText(/hurts/i)
     await expect(band).toContainText(/l[uú]cio/i)
+  })
+})
+
+test.describe('Elo Calculator — consistency & tilt (breaks, rust, tilt queues)', () => {
+  async function openWith(page: import('@playwright/test').Page, rows: unknown[]) {
+    await page.route('**/api/v1/system/reference-data', (r: Route) =>
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(REFERENCE_DATA) }))
+    await page.route('**/api/v1/matches', (r: Route) =>
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) }))
+    await page.goto('/')
+    await page.locator('#tab-elo').click()
+    await expect(page.locator('#panel-elo')).toBeVisible()
+  }
+
+  function rec(seqNo: number, day: string, hourMin: string, win: boolean) {
+    return {
+      match_key: `ct-${seqNo}`,
+      source_files: [`ct-${seqNo}.png`],
+      parsed_at: `${day}T${hourMin}:00Z`,
+      queue_type: 'role',
+      data: {
+        map: 'ilios', playlist: 'competitive', hero: 'lucio', role: 'support',
+        result: win ? 'victory' : 'defeat',
+        date: day, finished_at: hourMin, played_at_utc: `${day}T${hourMin}:00Z`, game_length: '10:00',
+        heroes_played: [{ hero: 'lucio', percent_played: 100 }],
+        rank: 'gold', level: 3, rank_progress: (seqNo * 7) % 100,
+        change_percent: win ? 20 : -20, modifiers: [win ? 'victory' : 'defeat'],
+      },
+    }
+  }
+
+  test('a rusty return after a break surfaces the consistency lever', async ({ page }) => {
+    const rows: unknown[] = []
+    let n = 0
+    // Three weeks of steady play at ~60%...
+    for (let d = 1; d <= 20; d++) {
+      const day = `2026-04-${String(d).padStart(2, '0')}`
+      rows.push(rec(++n, day, '20:00', d % 5 !== 0))
+      rows.push(rec(++n, day, '21:00', d % 5 !== 1))
+    }
+    // ...a 12-day vacation, then a rusty first week back (1W/7L)...
+    for (let i = 0; i < 8; i++) {
+      const day = `2026-05-${String(2 + i).padStart(2, '0')}`
+      rows.push(rec(++n, day, '20:30', i === 3))
+    }
+    // ...then form returns.
+    for (let d = 12; d <= 20; d++) {
+      const day = `2026-05-${String(d).padStart(2, '0')}`
+      rows.push(rec(++n, day, '20:00', d % 3 !== 0))
+    }
+    await openWith(page, rows)
+    const item = page.locator('[data-elo-evidence="consistency"]')
+    await expect(item).toBeVisible()
+    await expect(item).toContainText(/first games back/i)
+    await expect(item).toContainText(/break/i)
+    await expect(item).toContainText(/sleep|exercise/i)
+  })
+
+  test('queueing through 5+ straight losses surfaces the tilt-queue flag', async ({ page }) => {
+    const rows: unknown[] = []
+    let n = 0
+    // Baseline evenings around 55% (meter pools need both win and loss mass)...
+    for (let d = 1; d <= 12; d++) {
+      const day = `2026-05-${String(d).padStart(2, '0')}`
+      rows.push(rec(++n, day, '20:00', d % 4 !== 0))
+      rows.push(rec(++n, day, '21:00', d % 3 !== 0))
+    }
+    // ...and one catastrophic sitting: seven straight losses, 25 minutes apart.
+    const hours = ['19:00', '19:25', '19:50', '20:15', '20:40', '21:05', '21:30']
+    for (const h of hours) rows.push(rec(++n, '2026-05-15', h, false))
+    await openWith(page, rows)
+    const item = page.locator('[data-elo-evidence="tilt-queue"]')
+    await expect(item).toBeVisible()
+    await expect(item).toContainText(/tilt/i)
+    await expect(item).toContainText(/5 straight|five straight/i)
+    await expect(item).toContainText(/meter|ground/i)
   })
 })

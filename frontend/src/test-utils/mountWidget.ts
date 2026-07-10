@@ -24,6 +24,7 @@ import type {
 } from '@/composables/matches/useMatchesDossier'
 import type { RankNow } from '@/match/match-trends-helpers'
 import type { RateSample, LeaverRate } from '@/match/match-momentum-helpers'
+import type { TiltEpisodes } from '@/match/elo-streaks'
 import type { HeroCountBucket, HeroPoolAnalysis } from '@/match/match-hero-pool-helpers'
 
 // Empty pool analysis for widgets that don't seed heroPool.
@@ -98,6 +99,7 @@ type DossierOverride = {
   avgGameLength?:      number | null
   leaverStats?:        LeaverRate
   sessions?:           number
+  tiltQueues?:         TiltEpisodes
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -135,6 +137,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     avgGameLength:       wrap(over.avgGameLength, null as number | null),
     leaverStats:         wrap(over.leaverStats, { rate: null, leaverCount: 0, total: 0 } as LeaverRate),
     sessions:            wrap(over.sessions, 0),
+    tiltQueues:          wrap(over.tiltQueues, { episodes: 0, tiltGames: 0, tiltWins: 0 } as TiltEpisodes),
     withWhomBreakdown:   wrapQuery(over.withWhomBreakdown, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),
     mostPlayedHero:      wrapQuery(over.mostPlayedHero, null),

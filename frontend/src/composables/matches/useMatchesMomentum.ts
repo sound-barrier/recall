@@ -11,6 +11,7 @@ import {
   type LeaverRate,
   type RateSample,
 } from '@/match/match-momentum-helpers'
+import { tiltEpisodes, type TiltEpisodes } from '@/match/elo-streaks'
 
 // "Net rank this week" anchors on the last seven days of play.
 const NET_RANK_DAYS = 7
@@ -27,6 +28,7 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
   const avgGameLength = computed<number | null>(() => avgGameLengthMinutes(records.value))
   const leaverStats = computed<LeaverRate>(() => leaverRate(records.value))
   const sessions = computed<number>(() => sessionCount(records.value))
+  const tiltQueues = computed<TiltEpisodes>(() => tiltEpisodes(records.value))
 
-  return { winrateAfterLoss, winrateAfterWin, firstGameWinrate, netRankWeek, avgGameLength, leaverStats, sessions }
+  return { winrateAfterLoss, winrateAfterWin, firstGameWinrate, netRankWeek, avgGameLength, leaverStats, sessions, tiltQueues }
 }

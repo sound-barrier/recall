@@ -25,6 +25,51 @@ export function decisiveTimeline(records: readonly StreakInput[]): { t: number; 
   return timed
 }
 
+export interface TiltEpisodes {
+  episodes: number // sittings that reached minRun straight losses
+  tiltGames: number // decisive games queued past the (minRun-1)th straight loss
+  tiltWins: number
+}
+
+// tiltEpisodes counts the times the player queued through minRun+
+// consecutive losses in ONE sitting (games closer than gapHours), plus
+// every further game played from the (minRun-1)th straight loss on — the
+// tilt-queue games whose meter usually has to be won back later.
+export function tiltEpisodes(
+  records: readonly StreakInput[],
+  opts: { minRun?: number; gapHours?: number } = {},
+): TiltEpisodes {
+  const minRun = opts.minRun ?? 5
+  const gapMs = (opts.gapHours ?? 3) * 3_600_000
+  const seq = decisiveTimeline(records)
+  const out: TiltEpisodes = { episodes: 0, tiltGames: 0, tiltWins: 0 }
+  let lossRun = 0
+  let counted = false
+  for (let i = 0; i < seq.length; i++) {
+    if (i > 0 && seq[i]!.t - seq[i - 1]!.t >= gapMs) {
+      lossRun = 0
+      counted = false
+    }
+    // Queueing with minRun-1 straight losses already on the board IS the
+    // tilt queue — this game and everything after it in the sitting.
+    if (lossRun >= minRun - 1) {
+      out.tiltGames++
+      if (seq[i]!.win) out.tiltWins++
+    }
+    if (seq[i]!.win) {
+      lossRun = 0
+      counted = false
+    } else {
+      lossRun++
+      if (lossRun >= minRun && !counted) {
+        out.episodes++
+        counted = true
+      }
+    }
+  }
+  return out
+}
+
 // decisiveResults is the same sequence as bare win/loss flags.
 export function decisiveResults(records: readonly StreakInput[]): boolean[] {
   return decisiveTimeline(records).map((x) => x.win)

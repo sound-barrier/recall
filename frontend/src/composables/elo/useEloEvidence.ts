@@ -3,8 +3,8 @@ import type { MatchRecord } from '@/api-client'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier.types'
 import { analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT } from '@/match/match-hero-pool-helpers'
-import { leaverRate, winrateBySessionIndex } from '@/match/match-momentum-helpers'
-import { afterResultCounts, streakMeterImpact, winrateByStreakDepth } from '@/match/elo-streaks'
+import { breakRust, leaverRate, winrateBySessionIndex } from '@/match/match-momentum-helpers'
+import { afterResultCounts, streakMeterImpact, tiltEpisodes, winrateByStreakDepth } from '@/match/elo-streaks'
 import { expectedMeterDelta, meterMoveSamples } from '@/match/elo-simulate'
 import { normalCdf } from '@/match/elo-stats'
 import { twoByTwoChiSquareP } from '@/match/elo-stats'
@@ -41,7 +41,9 @@ export function useEloEvidence(opts: EloEvidenceOpts) {
       poolDiscipline(opts.trackRecs.value, opts.heroRole),
       streakTilt(opts.trackRecs.value),
       streakMeter(opts.trackRecs.value),
+      tiltQueueing(opts.trackRecs.value),
       sessionHygiene(opts.trackRecs.value),
+      consistency(opts.trackRecs.value),
       leavers(opts.trackRecs.value),
     ]
     return out.filter((i): i is EvidenceItem => i !== null)
@@ -158,6 +160,40 @@ function streakMeter(recs: readonly MatchRecord[]): EvidenceItem | null {
   }
 }
 
+// tiltQueueing counts the sittings where the player queued through 5+
+// straight losses — and prices the games played from the 5th loss on in
+// the player's own meter. The zero case is shown too: not tilt-queueing
+// is a discipline worth naming.
+function tiltQueueing(recs: readonly MatchRecord[]): EvidenceItem | null {
+  const t = tiltEpisodes(recs)
+  const decisive = recs.filter((r) => r.data?.result === 'victory' || r.data?.result === 'defeat').length
+  if (t.episodes === 0) {
+    if (decisive < 30) return null
+    return {
+      id: 'tilt-queue',
+      label: 'Tilt queueing',
+      value: 'none — discipline holds',
+      gloss: `Across ${decisive} decisive games you never queued past 4 straight losses in one sitting. That restraint is worth divisions over a season — keep it.`,
+      tone: 'good',
+    }
+  }
+  const tiltWR = t.tiltGames > 0 ? Math.round((t.tiltWins / t.tiltGames) * 100) : 0
+  let priced = ''
+  const samples = meterMoveSamples(recs)
+  const perGame = expectedMeterDelta(samples, t.tiltGames > 0 ? t.tiltWins / t.tiltGames : 0)
+  if (perGame !== null && perGame < 0) {
+    const net = perGame * t.tiltGames
+    priced = `, ≈${Math.round(Math.abs(net))}% meter given back (~${(Math.abs(net) / 100).toFixed(1)} divisions)`
+  }
+  return {
+    id: 'tilt-queue',
+    label: 'Tilt queueing',
+    value: `${t.episodes} tilt queue${t.episodes === 1 ? '' : 's'} this season`,
+    gloss: `${t.episodes} sitting${t.episodes === 1 ? '' : 's'} reached 5 straight losses and you kept queueing: ${t.tiltGames} more game${t.tiltGames === 1 ? '' : 's'} at ${tiltWR}% from there${priced} — a lot of ground to make up. The cheapest fix in the game is stopping at two.`,
+    tone: 'warn',
+  }
+}
+
 // sessionHygiene is the "when in a session do I start losing?" ladder:
 // win rate by game-number-in-session (1 / 2 / 3 / 4+), a significance
 // clause from the logistic trend, and — when the rank-card pools allow —
@@ -206,6 +242,28 @@ function sessionHygiene(recs: readonly MatchRecord[]): EvidenceItem | null {
     value: `${shown.map((x) => `${x.winrate}%`).join(' · ')} by game in session`,
     gloss: `Across ${b.sessions} sessions: ${ladder} (baseline ${baseline}%).${pClause}${priced} Quit-timing habits bend this curve — trust the direction, not the decimals.`,
     tone: sagging ? 'warn' : 'good',
+  }
+}
+
+// consistency measures what layoffs cost from the player's own gaps: the
+// first games back after a 7+ day break vs everything else. The gloss
+// carries the broader point — steady play, sleep, and exercise are rank
+// infrastructure.
+function consistency(recs: readonly MatchRecord[]): EvidenceItem | null {
+  const r = breakRust(recs)
+  if (r.breaks === 0 || r.back.winrate === null || r.rest.winrate === null) return null
+  if (r.back.sample < LOW_SAMPLE_N) return null
+  const dip = r.rest.winrate - r.back.winrate
+  const read = dip >= 5
+    ? `Rust is real for you — plan easy warm-up games (or quickplay) after time off.`
+    : `You shake rust off quickly — still, the first games back are where it would show.`
+  return {
+    id: 'consistency',
+    label: 'Coming back from breaks',
+    value: `${r.back.winrate}% in your first games back`,
+    gloss: `Across ${r.breaks} break${r.breaks === 1 ? '' : 's'} of a week or more, you win ${r.back.winrate}% in your first ~8 games back vs ${r.rest.winrate}% otherwise (${r.back.sample} return games). ${read} Consistency compounds: regular play — and the sleep and exercise behind it — protects the rank you've already earned.`,
+    tone: dip >= 5 ? 'warn' : 'good',
+    lowSample: r.back.sample < 10,
   }
 }
 

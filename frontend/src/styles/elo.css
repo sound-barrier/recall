@@ -98,10 +98,16 @@
 }
 
 #panel-elo .elo-band-sub {
-  margin: -0.4rem 0 0.9rem;
+  margin: 0 0 0.9rem;
   color: var(--text-faint);
   font-size: 0.76rem;
   font-style: italic;
+}
+
+/* Only a sub sitting DIRECTLY under its band title snuggles up; a band-sub
+   after a chart figure or grid must not be pulled into the frame above it. */
+#panel-elo .elo-band-title + .elo-band-sub {
+  margin-top: -0.4rem;
 }
 
 /* ─── The verdict: one loud answer (mirrors .form-verdict-card) ─── */

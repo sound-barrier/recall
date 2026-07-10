@@ -29,6 +29,7 @@ import WinrateByHeroWidget from '@/components/dashboard/widgets/WinrateByHeroWid
 import WinrateByMapWidget from '@/components/dashboard/widgets/WinrateByMapWidget.vue'
 import WinrateByRoleWidget from '@/components/dashboard/widgets/WinrateByRoleWidget.vue'
 import TiltCheckWidget from '@/components/dashboard/widgets/TiltCheckWidget.vue'
+import TiltQueuesWidget from '@/components/dashboard/widgets/TiltQueuesWidget.vue'
 import FirstGameWinrateWidget from '@/components/dashboard/widgets/FirstGameWinrateWidget.vue'
 import NetRankWeekWidget from '@/components/dashboard/widgets/NetRankWeekWidget.vue'
 import AvgGameLengthWidget from '@/components/dashboard/widgets/AvgGameLengthWidget.vue'
@@ -272,6 +273,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'winrate-by-map',      eyebrow: 'Win-rate by map',        shape: 'breakdown', defaultRow: 2, component: WinrateByMapWidget,   config: winrateBySchema       },
   { id: 'winrate-by-role',     eyebrow: 'Win-rate by role',       shape: 'breakdown', defaultRow: 2, component: WinrateByRoleWidget,  config: winrateBySchema       },
   { id: 'tilt-check',          eyebrow: 'Win-rate after a loss',  shape: 'kpi',       defaultRow: 1, component: TiltCheckWidget,       config: EMPTY_SCHEMA          },
+  { id: 'tilt-queues',         eyebrow: 'Tilt queues',            shape: 'kpi',       defaultRow: 1, component: TiltQueuesWidget,      config: EMPTY_SCHEMA          },
   { id: 'first-game-winrate',  eyebrow: 'First game of session',  shape: 'kpi',       defaultRow: 1, component: FirstGameWinrateWidget, config: EMPTY_SCHEMA          },
   { id: 'net-rank-week',       eyebrow: 'Net rank (7 days)',      shape: 'kpi',       defaultRow: 1, component: NetRankWeekWidget,     config: EMPTY_SCHEMA          },
   { id: 'avg-game-length',     eyebrow: 'Avg game length',        shape: 'kpi',       defaultRow: 1, component: AvgGameLengthWidget,    config: EMPTY_SCHEMA          },

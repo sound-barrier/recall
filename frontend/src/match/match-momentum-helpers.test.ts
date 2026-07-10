@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import {
+  breakRust,
   winrateAfterResult,
   firstGameOfSessionWinrate,
   netRankProgress,
@@ -245,5 +246,57 @@ describe('winrateBySessionIndex', () => {
     expect(b.buckets[3]).toEqual({ index: 4, winrate: 30, wins: 3, sample: 10 })
     expect(b.slope).not.toBeNull()
     expect(b.slope!.slope).toBeLessThan(0)
+  })
+})
+
+describe('breakRust', () => {
+  it('splits the sequence at 7+ day gaps and compares the first games back', () => {
+    const rows = [
+      // Steady week: 6 games, 4W.
+      rec('2026-04-01', '20:00', { result: 'victory' }),
+      rec('2026-04-02', '20:00', { result: 'victory' }),
+      rec('2026-04-03', '20:00', { result: 'defeat' }),
+      rec('2026-04-04', '20:00', { result: 'victory' }),
+      rec('2026-04-05', '20:00', { result: 'victory' }),
+      rec('2026-04-06', '20:00', { result: 'defeat' }),
+      // 10-day vacation → the first 3 back count as rusty (window 3).
+      rec('2026-04-16', '20:00', { result: 'defeat' }),
+      rec('2026-04-17', '20:00', { result: 'defeat' }),
+      rec('2026-04-18', '20:00', { result: 'victory' }),
+      // Back to normal.
+      rec('2026-04-19', '20:00', { result: 'victory' }),
+    ]
+    const r = breakRust(rows, { gapDays: 7, window: 3 })
+    expect(r.breaks).toBe(1)
+    expect(r.back).toEqual({ winrate: 33, sample: 3 })
+    expect(r.rest).toEqual({ winrate: 71, sample: 7 }) // 5W/7 = 71%
+  })
+
+  it('a 6-day gap is a busy week, not a break', () => {
+    const rows = [
+      rec('2026-04-01', '20:00', { result: 'victory' }),
+      rec('2026-04-07', '20:00', { result: 'defeat' }),
+    ]
+    expect(breakRust(rows, { gapDays: 7 }).breaks).toBe(0)
+  })
+
+  it('counts every qualifying gap and pools their return windows', () => {
+    const rows = [
+      rec('2026-03-01', '20:00', { result: 'victory' }),
+      rec('2026-03-10', '20:00', { result: 'defeat' }), // break 1
+      rec('2026-03-11', '20:00', { result: 'defeat' }),
+      rec('2026-03-25', '20:00', { result: 'defeat' }), // break 2
+      rec('2026-03-26', '20:00', { result: 'victory' }),
+    ]
+    const r = breakRust(rows, { gapDays: 7, window: 2 })
+    expect(r.breaks).toBe(2)
+    expect(r.back).toEqual({ winrate: 25, sample: 4 })
+    expect(r.rest).toEqual({ winrate: 100, sample: 1 })
+  })
+
+  it('is empty-safe', () => {
+    const r = breakRust([])
+    expect(r.breaks).toBe(0)
+    expect(r.back).toEqual({ winrate: null, sample: 0 })
   })
 })
