@@ -374,7 +374,10 @@ test.describe('first-run modal — onboarding-tour interaction', () => {
     // the tour to let the modal through.
     await page.keyboard.press('Escape')
     await expect(tour).toBeHidden()
-    // Now the modal can surface (account flag is still unset).
-    await expect(page.locator('.first-run-modal')).toBeVisible()
+    // Now the modal can surface (account flag is still unset). The handoff
+    // rides the tour's leave transition + the modal's enter transition, and
+    // CI under parallel load starves rAF chains past the default 5s — this
+    // flaked twice (passes 10/10 locally), so give the render room.
+    await expect(page.locator('.first-run-modal')).toBeVisible({ timeout: 15000 })
   })
 })
