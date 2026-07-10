@@ -17,14 +17,32 @@ export function winrateVolumeFill(winrate: number, total: number, maxTotal: numb
   return `color-mix(in srgb, color-mix(in srgb, var(--win) ${winrate}%, var(--loss)) ${sat}%, var(--heatmap-empty))`
 }
 
+// The judgment bands: on the ladder anything above 51% is a climb (a
+// slower climb is still a climb) and anything below 48.5% is a slide —
+// only the dead zone between stays neutral. A band this close to 50%
+// must not reward noise, so colour is EARNED: the rate is blended with a
+// 90-game coin-flip prior (a skeptic's z-test in disguise) and anything
+// under 15 decisive games stays neutral outright. A 5-0 heater is a nice
+// evening, not evidence; 52% over a hundred games is a real — longer —
+// climb and deserves its green.
+const JUDGMENT_WIN_PCT = 51
+const JUDGMENT_LOSS_PCT = 48.5
+const JUDGMENT_MIN_DECISIVE = 15
+const JUDGMENT_PRIOR_GAMES = 90
+
 // Discrete win / mid / loss / draw / empty class for a performance-heatmap
-// cell, by win-rate band. Shared by the Hero × Game-Mode root heatmap-cell
-// and the drilled map-tile, which colour the same way.
+// cell. Shared by every surface that passes JUDGMENT on a win rate — the
+// Hero × Game-Mode root cell, the drilled map-tile, the Hero Pool bars,
+// and the Elo hero-picker fill. (The calendar records what happened
+// rather than judging it and colours via winrateVolumeFill instead.)
 export function heatmapCellClass(c: { total: number; winrate: number; wins: number; losses: number }): string {
-  if (c.total === 0)           return 'cell-empty'
-  if (c.wins + c.losses === 0) return 'cell-draw'
-  if (c.winrate >= 60)         return 'cell-win'
-  if (c.winrate <= 40)         return 'cell-loss'
+  if (c.total === 0) return 'cell-empty'
+  const decisive = c.wins + c.losses
+  if (decisive === 0) return 'cell-draw'
+  if (decisive < JUDGMENT_MIN_DECISIVE) return 'cell-mid'
+  const shrunk = ((c.wins + JUDGMENT_PRIOR_GAMES / 2) / (decisive + JUDGMENT_PRIOR_GAMES)) * 100
+  if (shrunk > JUDGMENT_WIN_PCT) return 'cell-win'
+  if (shrunk < JUDGMENT_LOSS_PCT) return 'cell-loss'
   return 'cell-mid'
 }
 
