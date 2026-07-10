@@ -9,7 +9,7 @@ import { fmtRank } from '@/components/elo/elo-format'
 // optimistic line, a dashed target line, and — when the target is above your
 // current ceiling — a dotted marker at the plateau. Static: no brush/zoom/click
 // (those assume a time axis + match keys).
-const { curves, decay, targetScore, targetTier, targetDivision } = useEloCalc()
+const { curves, decay, targetScore, targetTier, targetDivision, seasonSim } = useEloCalc()
 
 const targetLabel = computed(() => fmtRank(targetTier.value, targetDivision.value))
 
@@ -20,12 +20,17 @@ const option = computed(() => {
     targetScore: targetScore.value,
     targetLabel: targetLabel.value,
     ...(capped ? { ceilingScore: decay.value!.impliedTrueScore } : {}),
+    ...(seasonSim.value ? { fan: seasonSim.value.fan } : {}),
   })
 })
 
-const caption = computed(
-  () => `Two futures on the way to ${targetLabel.value}: if your wins hold (blue) vs as opponents get tougher (amber). The shaded band is how much luck can swing it.`,
-)
+const caption = computed(() => {
+  const base = `Two futures on the way to ${targetLabel.value}: if your wins hold (blue) vs as opponents get tougher (amber). The shaded band is how much luck can swing it.`
+  const sim = seasonSim.value
+  return sim
+    ? `${base} The gray fan is the middle 80% of ${sim.sims.toLocaleString()} simulated seasons replaying your real rank-card moves.`
+    : base
+})
 </script>
 
 <template>

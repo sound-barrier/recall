@@ -14,6 +14,8 @@ import EloResultsPanel from '@/components/elo/EloResultsPanel.vue'
 import EloProjectionChart from '@/components/elo/EloProjectionChart.vue'
 import EloMythChecks from '@/components/elo/EloMythChecks.vue'
 import EloStatDrivers from '@/components/elo/EloStatDrivers.vue'
+import EloSeasonSim from '@/components/elo/EloSeasonSim.vue'
+import EloSkillCurve from '@/components/elo/EloSkillCurve.vue'
 import EloInputsPanel from '@/components/elo/EloInputsPanel.vue'
 import EloHeroPicker from '@/components/elo/EloHeroPicker.vue'
 import EloEvidencePanel from '@/components/elo/EloEvidencePanel.vue'
@@ -88,9 +90,13 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
       </div>
     </section>
 
+    <EloSeasonSim />
+
     <EloMythChecks />
 
     <EloStatDrivers />
+
+    <EloSkillCurve />
 
     <EloEvidencePanel :items="evidenceItems" />
   </section>

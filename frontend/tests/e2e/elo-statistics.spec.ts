@@ -196,3 +196,30 @@ test.describe('Elo Calculator — statistics layer', () => {
     await expect(ana).toContainText(/adj/i)
   })
 })
+
+test.describe('Elo Calculator — phase 2 (simulator + skill curve)', () => {
+  test('the season simulator band renders its three verdict cells', async ({ page }) => {
+    await openCalculator(page)
+    const band = page.locator('[data-elo-sim]')
+    await expect(band).toBeVisible()
+    // 60 rank cards feed the empirical pools — no fallback note.
+    await expect(band).not.toContainText(/not enough rank cards/i)
+    await expect(page.locator('[data-elo-sim-stat="reach"]')).toContainText(/%/)
+    await expect(page.locator('[data-elo-sim-stat="lower"]')).toContainText(/%/)
+    // Median landing spot names a rank.
+    await expect(page.locator('[data-elo-sim-stat="final"]')).toContainText(/gold|platinum|diamond|silver/i)
+  })
+
+  test('the projection chart caption gains the simulated fan', async ({ page }) => {
+    await openCalculator(page)
+    await expect(page.locator('[data-elo-chart-caption]')).toContainText(/simulated/i)
+  })
+
+  test('the skill curve band renders with the signal-share verdict', async ({ page }) => {
+    await openCalculator(page)
+    const band = page.locator('[data-elo-skill]')
+    await expect(band).toBeVisible()
+    await expect(band.locator('canvas')).toBeVisible()
+    await expect(page.locator('[data-elo-skill-share]')).toContainText(/skill drift explains \d+%/i)
+  })
+})

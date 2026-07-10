@@ -50,8 +50,9 @@ export function credibleInterval(
 }
 
 // betaQuantile inverts betaCdf by bisection — 80 halvings pin the answer
-// far past display precision, and the CDF is cheap.
-function betaQuantile(q: number, a: number, b: number): number {
+// far past display precision, and the CDF is cheap. Exported for the
+// season simulator's inverse-CDF posterior sampling.
+export function betaQuantile(q: number, a: number, b: number): number {
   let lo = 0
   let hi = 1
   for (let i = 0; i < 80; i++) {

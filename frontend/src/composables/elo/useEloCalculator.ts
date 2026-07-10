@@ -3,7 +3,7 @@ import {
   type ComputedRef, type InjectionKey, type MaybeRefOrGetter, type Ref,
 } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { TIER_ORDER, ladderScore, type Tier } from '@/match/match-trends-helpers'
+import { TIER_ORDER, ladderScore, rankLadderSeries, type Tier } from '@/match/match-trends-helpers'
 import {
   availableTracks, heroPickerStats, pooledWinLoss, seedTrack, trackRecords,
   TRACK_LABELS, type HeroPickStat, type TrackKey, type TrackSeed,
@@ -19,6 +19,8 @@ import {
 } from '@/match/elo-bayes'
 import { decisiveResults } from '@/match/elo-streaks'
 import { statSeparators } from '@/match/elo-drivers'
+import { meterMoveSamples, simulateSeasons, type SeasonSim } from '@/match/elo-simulate'
+import { skillCurve as computeSkillCurve, type SkillCurve } from '@/match/elo-kalman'
 import { populationPercentile } from '@/match/elo-distribution'
 
 // The Elo Calculator's single state owner (loan-calculator semantics):
@@ -231,6 +233,31 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const runs = computed(() => runsTest(decisiveResults(trackRecs.value)))
   const drivers = computed(() => statSeparators(trackRecs.value))
 
+  // ── Phase 2: the bootstrap season simulator + the Kalman skill curve ──
+  // The sim follows the FORM (posterior sample + target + pace) but replays
+  // the player's real rank-card moves; a manual meter edit only matters as
+  // the fallback when the empirical pools are thin.
+  const meterSamples = computed(() => meterMoveSamples(trackRecs.value))
+  const seasonSim = computed<SeasonSim | null>(() => {
+    const inp = projInput.value
+    const horizon = seasonGames.value
+    if (!inp || horizon === null || inp.targetScore <= inp.currentScore) return null
+    return simulateSeasons({
+      currentScore: inp.currentScore,
+      targetScore: inp.targetScore,
+      sampleWins: inp.sampleWins,
+      sampleLosses: inp.sampleLosses,
+      horizonGames: horizon,
+      meter: meterSamples.value,
+      symmetricFallbackPct: inp.meterMovePct,
+    })
+  })
+  // The skill curve is pure history: the track's rank readings, de-noised.
+  const skillCurve = computed<SkillCurve | null>(() => {
+    const points = rankLadderSeries(trackRecs.value)[0]?.points ?? []
+    return computeSkillCurve(points)
+  })
+
   return {
     // track picking
     track, tracks: computed(() => tracksInfo.value.tracks), setTrack, trackLabels: TRACK_LABELS,
@@ -246,7 +273,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     seasonGames, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
     skepticVerdict, trueRateRange, climbQuantiles, gamesToCertainty,
-    runs, drivers,
+    runs, drivers, seasonSim, skillCurve,
   }
 }
 
