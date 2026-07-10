@@ -180,3 +180,37 @@ describe('useEloCalculator — statistics layer', () => {
     expect(calc.drivers.value).toEqual([])
   })
 })
+
+describe('useEloCalculator — phase 2 (simulator + skill curve)', () => {
+  it('exposes the season simulation and the skill curve on a rank-rich corpus', () => {
+    const calc = useEloCalculator({ records: (function climb() {
+      seq = 0
+      const rows: MatchRecord[] = []
+      for (let i = 0; i < 60; i++) {
+        const old = i < 30
+        const win = old ? i % 10 < 7 : i % 10 < 6
+        rows.push(rec({
+          result: win ? 'victory' : 'defeat',
+          rank: { tier: 'gold', level: old ? 5 : 2, progress: 0, change: win ? 20 : -20 },
+        }))
+      }
+      return rows.reverse()
+    })(), heroRole })
+    const sim = calc.seasonSim.value!
+    expect(sim).not.toBeNull()
+    expect(sim.usedEmpiricalMeter).toBe(true) // 60 rank cards feed both pools
+    expect(sim.probReachTarget).toBeGreaterThan(0)
+    expect(sim.fan.games[0]).toBe(0)
+    const curve = calc.skillCurve.value!
+    expect(curve).not.toBeNull()
+    expect(curve.n).toBe(60)
+    expect(curve.signalShare).toBeGreaterThan(0)
+    expect(curve.signalShare).toBeLessThanOrEqual(1)
+  })
+
+  it('nulls both when there is nothing to simulate or filter', () => {
+    const calc = useEloCalculator({ records: [], heroRole })
+    expect(calc.seasonSim.value).toBeNull()
+    expect(calc.skillCurve.value).toBeNull()
+  })
+})
