@@ -187,6 +187,18 @@ else
     "new major — mise.toml + ci.yml"
 fi
 
+# ── .node-version ↔ mise.toml sync ────────────────────────────────────
+# CI's actions/setup-node reads the root .node-version; local dev reads
+# mise.toml [tools] node. They must agree or CI and local drift apart.
+node_file=$(tr -d '[:space:]' <.node-version)
+node_mise=$(grep -E '^node *= *"' mise.toml | sed -E 's/.*"([^"]+)".*/\1/')
+if [ "$node_file" != "$node_mise" ]; then
+  printf '%b✗ .node-version (%s) != mise.toml node (%s) — keep them in sync.%b\n' "$RED" "$node_file" "$node_mise" "$RESET"
+  outdated=1
+else
+  printf '%b✓ .node-version matches mise.toml node (%s).%b\n' "$GREEN" "$node_file" "$RESET"
+fi
+
 printf '\n'
 if [ "$outdated" -eq 0 ]; then
   printf '%b✓ All binary tool pins are current.%b\n\n' "$GREEN" "$RESET"
