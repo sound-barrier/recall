@@ -219,6 +219,49 @@
   margin-top: 0.75rem;
 }
 
+/* ─── Lift table: two ranked lists, stacking when narrow ─── */
+
+#panel-elo .elo-lift-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+#panel-elo .elo-lift-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+#panel-elo .elo-lift-table caption {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-bottom: 0.35rem;
+}
+
+#panel-elo .elo-lift-table th,
+#panel-elo .elo-lift-table td {
+  text-align: left;
+  padding: 0.3rem 0.6rem 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+#panel-elo .elo-lift-table th {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+#panel-elo .elo-lift-table tr.low td {
+  opacity: 0.65;
+}
+
 #panel-elo .elo-card {
   border: 1px solid var(--border);
   border-top-width: 2px;

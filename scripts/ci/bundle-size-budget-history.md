@@ -13,6 +13,7 @@ no soft-pedalling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|
+| 2026-07-10 | elo-phase3 | 162000 | 69000 | 1500000 | 350000 | Elo phase 3: session-hygiene evidence, change-point scan + skill-chart markline, Bayesian lift table (elo-changepoint/elo-lift + EloLiftTable) — the lift-table styles tipped total CSS 404B over (345000 → 350000); total JS stays under its cap. |
 | 2026-07-10 | elo-phase2 | 162000 | 69000 | 1500000 | 345000 | Elo phase 2: bootstrap season simulator (elo-simulate + sim band + chart fan) and Kalman skill curve (elo-kalman + skill band) — ~9KB in the lazy Elo chunk left <2.5KB headroom (total JS 1490000 → 1500000). |
 | 2026-07-09 | elo-statistics | 162000 | 69000 | 1490000 | 345000 | Elo statistics layer: Beta-posterior verdict/credible interval/honest timeline (elo-bayes), measured decay slope + plateau preview, runs test + 2×2 tilt significance, win/loss stat drivers (elo-drivers), streak-depth + streak-meter evidence (elo-streaks) — ~3.5KB in the lazy Elo chunk (total JS 1475000 → 1490000, ~11KB headroom). |
 | 2026-07-09 | - | 162000 | 69000 | 1465000 | 345000 | Elo Calculator scoped styles (form, cards, evidence grid), total CSS 335000 → 345000 (~5.5KB). |

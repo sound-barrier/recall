@@ -17,10 +17,14 @@ import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo-stats
 import {
   credibleInterval, gamesToKnow, posteriorClimbQuantiles, probTrueWinRateAbove,
 } from '@/match/elo-bayes'
-import { decisiveResults } from '@/match/elo-streaks'
+import { decisiveResults, decisiveTimeline } from '@/match/elo-streaks'
 import { statSeparators } from '@/match/elo-drivers'
 import { meterMoveSamples, simulateSeasons, type SeasonSim } from '@/match/elo-simulate'
 import { skillCurve as computeSkillCurve, type SkillCurve } from '@/match/elo-kalman'
+import {
+  changePointContext, detectChangePoint, type ChangePoint, type ChangePointContext,
+} from '@/match/elo-changepoint'
+import { liftTable, type LiftRow } from '@/match/elo-lift'
 import { populationPercentile } from '@/match/elo-distribution'
 
 // The Elo Calculator's single state owner (loan-calculator semantics):
@@ -32,6 +36,7 @@ import { populationPercentile } from '@/match/elo-distribution'
 export interface EloCalcOpts {
   records: MaybeRefOrGetter<MatchRecord[]>
   heroRole: (hero: string | null | undefined) => string
+  mapGameMode: (map: string | null | undefined) => string
 }
 
 // SEASON_WEEKS sizes the "this season" probability window.
@@ -258,6 +263,16 @@ export function useEloCalculator(opts: EloCalcOpts) {
     return computeSkillCurve(points)
   })
 
+  // Phase 3: the dated win-rate break (with what changed around it) and
+  // the ranked lift table — both pure history over the track.
+  const changePoint = computed<{ point: ChangePoint; context: ChangePointContext } | null>(() => {
+    const point = detectChangePoint(decisiveTimeline(trackRecs.value))
+    if (point === null) return null
+    return { point, context: changePointContext(trackRecs.value, point.t, opts.heroRole) }
+  })
+  const lift = computed<LiftRow[]>(() =>
+    liftTable(trackRecs.value, { heroRole: opts.heroRole, mapGameMode: opts.mapGameMode }))
+
   return {
     // track picking
     track, tracks: computed(() => tracksInfo.value.tracks), setTrack, trackLabels: TRACK_LABELS,
@@ -273,7 +288,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     seasonGames, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
     skepticVerdict, trueRateRange, climbQuantiles, gamesToCertainty,
-    runs, drivers, seasonSim, skillCurve,
+    runs, drivers, seasonSim, skillCurve, changePoint, lift,
   }
 }
 

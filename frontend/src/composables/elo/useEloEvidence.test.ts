@@ -156,3 +156,40 @@ describe('useEloEvidence — streaks', () => {
     expect(items.value.map((i) => i.id)).not.toContain('streak-meter')
   })
 })
+
+describe('useEloEvidence — session hygiene', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('surfaces the by-game-in-session ladder on a session-rich corpus', () => {
+    // The default builder spaces games a day apart (sessions of one), so
+    // build 12 four-game evenings by hand: winny early, lossy late.
+    seq = 0
+    const rows: MatchRecord[] = []
+    for (let d = 1; d <= 12; d++) {
+      const day = `2026-05-${String(d).padStart(2, '0')}`
+      const results = [d !== 12, d <= 8, d % 2 === 0, d <= 3]
+      results.forEach((win, i) => {
+        seq++
+        rows.push({
+          match_key: `s${seq}`,
+          data: {
+            playlist: 'competitive', hero: 'lucio', role: 'support',
+            result: win ? 'victory' : 'defeat',
+            date: day, finished_at: `${19 + i}:0${i}`,
+            heroes_played: [{ hero: 'lucio', percent_played: 100 }],
+          },
+        } as unknown as MatchRecord)
+      })
+    }
+    const { items } = evidenceFrom(rows)
+    const item = items.value.find((i) => i.id === 'session-hygiene')!
+    expect(item).toBeDefined()
+    expect(item.value).toMatch(/%.*·.*%/)
+    expect(item.gloss).toMatch(/sessions/i)
+  })
+
+  it('hides on one-game sessions (the default fixture shape)', () => {
+    const { items } = evidenceFrom(corpus())
+    expect(items.value.map((i) => i.id)).not.toContain('session-hygiene')
+  })
+})

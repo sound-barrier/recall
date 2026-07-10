@@ -9,10 +9,10 @@ import { matchEpoch } from '@/match/match-trends-helpers'
 
 type StreakInput = Pick<MatchRecord, 'match_key' | 'data'>
 
-// decisiveResults is the chronological win/loss flags of a corpus —
+// decisiveTimeline is the chronological decisive sequence WITH timestamps —
 // draws and rows without a placeable time drop out. The shared spine for
-// the runs test and the streak-depth walk.
-export function decisiveResults(records: readonly StreakInput[]): boolean[] {
+// the runs test, the streak-depth walk, and the change-point scan.
+export function decisiveTimeline(records: readonly StreakInput[]): { t: number; win: boolean }[] {
   const timed: { t: number; win: boolean }[] = []
   for (const rec of records) {
     const result = rec.data?.result
@@ -22,7 +22,12 @@ export function decisiveResults(records: readonly StreakInput[]): boolean[] {
     timed.push({ t, win: result === 'victory' })
   }
   timed.sort((a, b) => a.t - b.t)
-  return timed.map((x) => x.win)
+  return timed
+}
+
+// decisiveResults is the same sequence as bare win/loss flags.
+export function decisiveResults(records: readonly StreakInput[]): boolean[] {
+  return decisiveTimeline(records).map((x) => x.win)
 }
 
 export interface AfterResultCounts {

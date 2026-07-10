@@ -180,7 +180,7 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
 // buildSkillCurveOption renders the Kalman-smoothed "true skill" line over
 // calendar time with its 1.96σ band — the de-noised version of the raw
 // rank-over-time chart, on the same tier-name ladder axis.
-export function buildSkillCurveOption(curve: SkillCurve): TrendOption {
+export function buildSkillCurveOption(curve: SkillCurve, opts: { breakAt?: number } = {}): TrendOption {
   const low = curve.level.map((v, i) => Math.max(0, v - (curve.halfWidth[i] ?? 0)))
   const high = curve.level.map((v, i) => Math.min(40, v + (curve.halfWidth[i] ?? 0)))
   const min = Math.max(0, Math.floor(Math.min(...low) / 5) * 5)
@@ -240,6 +240,17 @@ export function buildSkillCurveOption(curve: SkillCurve): TrendOption {
         showSymbol: false,
         smooth: true,
         data: at(curve.level),
+        ...(opts.breakAt !== undefined
+          ? {
+              markLine: {
+                silent: true,
+                symbol: 'none',
+                label: { formatter: 'Shift', position: 'insideEndTop' },
+                lineStyle: { type: 'dashed' },
+                data: [{ xAxis: opts.breakAt }],
+              },
+            }
+          : {}),
       },
     ],
   }

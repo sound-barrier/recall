@@ -37,10 +37,11 @@ function supportCorpus(): MatchRecord[] {
 }
 
 const heroRole = () => 'support'
+const mapGameMode = () => 'control'
 
 describe('useEloCalculator', () => {
   it('seeds every input from the default track', () => {
-    const calc = useEloCalculator({ records: supportCorpus(), heroRole })
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     expect(calc.track.value).toBe('support')
     expect(calc.currentTier.value).toBe('gold')
     expect(calc.currentDivision.value).toBe(2)
@@ -57,7 +58,7 @@ describe('useEloCalculator', () => {
 
   it('re-seeds when the corpus arrives asynchronously (no edits yet)', async () => {
     const records = ref<MatchRecord[]>([])
-    const calc = useEloCalculator({ records, heroRole })
+    const calc = useEloCalculator({ records, heroRole, mapGameMode })
     expect(calc.projInput.value).toBeNull()
     records.value = supportCorpus()
     await nextTick()
@@ -65,7 +66,7 @@ describe('useEloCalculator', () => {
   })
 
   it('hero selection re-seeds the win rate; clearing restores the track seed', () => {
-    const calc = useEloCalculator({ records: supportCorpus(), heroRole })
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     calc.toggleHero('lucio')
     // lucio: 6W/3L across the ranked (lucio) games + plain games = check via heroStats.
     const lucio = calc.heroStats.value.find((h) => h.key === 'lucio')!
@@ -77,7 +78,7 @@ describe('useEloCalculator', () => {
 
   it('a manual win-rate edit detaches the hero selection and blocks re-seeding', async () => {
     const records = ref(supportCorpus())
-    const calc = useEloCalculator({ records, heroRole })
+    const calc = useEloCalculator({ records, heroRole, mapGameMode })
     calc.toggleHero('lucio')
     expect(calc.selectedHeroes.value.size).toBe(1)
     calc.editInput('winRatePct', 58, { detachHeroes: true })
@@ -90,14 +91,14 @@ describe('useEloCalculator', () => {
   })
 
   it('switching tracks re-fills the whole form (loan-calculator semantics)', () => {
-    const calc = useEloCalculator({ records: supportCorpus(), heroRole })
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     calc.editInput('winRatePct', 58)
     calc.setTrack('support')
     expect(calc.winRatePct.value).toBeCloseTo(57.1, 1)
   })
 
   it('produces null projections while inputs are invalid', () => {
-    const calc = useEloCalculator({ records: [], heroRole })
+    const calc = useEloCalculator({ records: [], heroRole, mapGameMode })
     expect(calc.projInput.value).toBeNull()
     expect(calc.naive.value).toBeNull()
     expect(calc.decay.value).toBeNull()
@@ -106,7 +107,7 @@ describe('useEloCalculator', () => {
   })
 
   it('derives the shared statistics from the inputs', () => {
-    const calc = useEloCalculator({ records: supportCorpus(), heroRole })
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     expect(calc.pValue.value).not.toBeNull()
     expect(calc.percentileNow.value).toBeGreaterThan(0)
     expect(calc.percentileTarget.value).toBeGreaterThan(calc.percentileNow.value!)
@@ -139,7 +140,7 @@ describe('useEloCalculator — statistics layer', () => {
   }
 
   it('seeds the decay slope from the measured climb', () => {
-    const calc = useEloCalculator({ records: climbCorpus(), heroRole })
+    const calc = useEloCalculator({ records: climbCorpus(), heroRole, mapGameMode })
     expect(calc.lastSeed.value?.decaySlope).not.toBeNull()
     // Seeded input = the measured value, clamped into the 0.5–5 band.
     expect(calc.decaySlopePts.value).toBeGreaterThanOrEqual(0.5)
@@ -148,13 +149,13 @@ describe('useEloCalculator — statistics layer', () => {
   })
 
   it('keeps the default slope when the climb is unmeasurable', () => {
-    const calc = useEloCalculator({ records: supportCorpus(), heroRole })
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     expect(calc.lastSeed.value?.decaySlope ?? null).toBeNull()
     expect(calc.decaySlopePts.value).toBe(1.5)
   })
 
   it('exposes the Bayesian readouts, the runs test, and the stat drivers', () => {
-    const calc = useEloCalculator({ records: climbCorpus(), heroRole })
+    const calc = useEloCalculator({ records: climbCorpus(), heroRole, mapGameMode })
     expect(calc.skepticVerdict.value).toBeGreaterThan(0.5)
     expect(calc.skepticVerdict.value).toBeLessThanOrEqual(1)
     const iv = calc.trueRateRange.value!
@@ -171,7 +172,7 @@ describe('useEloCalculator — statistics layer', () => {
   })
 
   it('nulls the Bayesian readouts while inputs are invalid', () => {
-    const calc = useEloCalculator({ records: [], heroRole })
+    const calc = useEloCalculator({ records: [], heroRole, mapGameMode })
     expect(calc.skepticVerdict.value).toBeNull()
     expect(calc.trueRateRange.value).toBeNull()
     expect(calc.climbQuantiles.value).toBeNull()
@@ -183,7 +184,7 @@ describe('useEloCalculator — statistics layer', () => {
 
 describe('useEloCalculator — phase 2 (simulator + skill curve)', () => {
   it('exposes the season simulation and the skill curve on a rank-rich corpus', () => {
-    const calc = useEloCalculator({ records: (function climb() {
+    const calc = useEloCalculator({ mapGameMode, records: (function climb() {
       seq = 0
       const rows: MatchRecord[] = []
       for (let i = 0; i < 60; i++) {
@@ -209,8 +210,31 @@ describe('useEloCalculator — phase 2 (simulator + skill curve)', () => {
   })
 
   it('nulls both when there is nothing to simulate or filter', () => {
-    const calc = useEloCalculator({ records: [], heroRole })
+    const calc = useEloCalculator({ records: [], heroRole, mapGameMode })
     expect(calc.seasonSim.value).toBeNull()
     expect(calc.skillCurve.value).toBeNull()
+  })
+})
+
+describe('useEloCalculator — phase 3 (change-point + lift)', () => {
+  it('exposes both on suitable corpora and nulls on empty', () => {
+    // rec() makes later seq OLDER, so building winny-then-lossy yields a
+    // chronological lossy→winny corpus — an upward 40-pt break. (The
+    // timeline sorts by timestamp; array order is irrelevant.)
+    seq = 0
+    const rows: MatchRecord[] = []
+    for (let i = 0; i < 100; i++) {
+      const winnyBlock = i < 50
+      rows.push(rec({ result: (winnyBlock ? i % 5 !== 4 : i % 5 < 2) ? 'victory' : 'defeat' }))
+    }
+    const calc = useEloCalculator({ records: rows, heroRole, mapGameMode })
+    const cp = calc.changePoint.value
+    expect(cp).not.toBeNull()
+    expect(cp!.point.deltaPts).toBeGreaterThanOrEqual(30)
+    expect(calc.lift.value.length).toBeGreaterThan(0)
+
+    const empty = useEloCalculator({ records: [], heroRole, mapGameMode })
+    expect(empty.changePoint.value).toBeNull()
+    expect(empty.lift.value).toEqual([])
   })
 })

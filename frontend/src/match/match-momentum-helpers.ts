@@ -8,6 +8,7 @@
 
 import type { MatchRecord } from '@/api-client'
 import { matchEpoch } from '@/match/match-trends-helpers'
+import { logisticSlope, type LogisticSlopeFit } from '@/match/elo-stats'
 
 // A gap longer than this between consecutive matches starts a new play
 // session. Three hours comfortably separates evening sessions from the
@@ -59,6 +60,59 @@ export function winrateAfterResult(records: readonly MomentumInput[], prev: 'vic
     if (seq[i]!.win) wins++
   }
   return { winrate: n === 0 ? null : Math.round((wins / n) * 100), sample: n }
+}
+
+interface SessionIndexBucket {
+  index: number // 1-based; the last bucket pools maxIndex and deeper
+  winrate: number | null // integer %, null with no sample
+  wins: number
+  sample: number
+}
+
+export interface SessionIndexBreakdown {
+  buckets: SessionIndexBucket[]
+  slope: LogisticSlopeFit | null // logit per game-index; null under the fit floor
+  sessions: number
+}
+
+// winrateBySessionIndex is the session-hygiene curve: the next-game win
+// rate bucketed by how deep into a play session the game was (1, 2, 3,
+// maxIndex+). Where the late buckets sag is where stopping earlier starts
+// paying. The slope fit (index vs result, index capped to bound leverage)
+// supplies the "is the sag real?" p-value.
+export function winrateBySessionIndex(
+  records: readonly MomentumInput[],
+  opts: { maxIndex?: number; gapHours?: number } = {},
+): SessionIndexBreakdown {
+  const maxIndex = opts.maxIndex ?? 4
+  const gapMs = (opts.gapHours ?? SESSION_GAP_HOURS) * HOUR_MS
+  const seq = decisiveSequence(records)
+
+  const tallies = Array.from({ length: maxIndex }, (_, i) => ({ index: i + 1, wins: 0, sample: 0 }))
+  const xs: number[] = []
+  const wins: boolean[] = []
+  let sessions = 0
+  let idx = 0
+  for (let i = 0; i < seq.length; i++) {
+    const opensSession = i === 0 || seq[i]!.t - seq[i - 1]!.t > gapMs
+    idx = opensSession ? 1 : idx + 1
+    if (opensSession) sessions++
+    const bucket = tallies[Math.min(idx, maxIndex) - 1]!
+    bucket.sample++
+    if (seq[i]!.win) bucket.wins++
+    xs.push(Math.min(idx, maxIndex + 2))
+    wins.push(seq[i]!.win)
+  }
+  return {
+    buckets: tallies.map((b) => ({
+      index: b.index,
+      winrate: b.sample === 0 ? null : Math.round((b.wins / b.sample) * 100),
+      wins: b.wins,
+      sample: b.sample,
+    })),
+    slope: logisticSlope(xs, wins),
+    sessions,
+  }
 }
 
 // Win-rate of session-opening matches — the first decisive game of each
