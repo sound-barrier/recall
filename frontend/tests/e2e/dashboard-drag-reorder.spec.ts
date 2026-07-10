@@ -53,6 +53,17 @@ async function widgetOrder(page: import('@playwright/test').Page, rowIdx: number
 }
 
 test.describe('dashboard drag-reorder', () => {
+
+  // goto + open Matches + wait for the widget grid to hydrate. focus() and
+  // page.evaluate don't auto-wait the way locators do, so every test must
+  // gate on a rendered widget before driving the keyboard/DOM (retries are
+  // 0 — one lost race reds the whole job; this spec flaked twice on CI).
+  async function openDashboard(page: import('@playwright/test').Page) {
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('[data-widget-id="winrate"]')).toBeVisible()
+  }
+
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
@@ -63,8 +74,7 @@ test.describe('dashboard drag-reorder', () => {
   })
 
   test('drag handles are always present (no edit mode)', async ({ page }) => {
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await openDashboard(page)
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     // Always-on chrome — a handle on every widget, no mode to enter.
@@ -73,8 +83,7 @@ test.describe('dashboard drag-reorder', () => {
   })
 
   test('keyboard ArrowRight on a focused handle reorders within the row', async ({ page }) => {
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await openDashboard(page)
 
     const initial = await widgetOrder(page, 1)
     expect(initial[0]).toBe('winrate')
@@ -91,8 +100,7 @@ test.describe('dashboard drag-reorder', () => {
   })
 
   test('keyboard ArrowDown moves the widget into the row below', async ({ page }) => {
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await openDashboard(page)
     // Winrate starts in row 1; press ArrowDown on its handle.
     await page.locator('[data-drag-handle="winrate"]').focus()
     await page.keyboard.press('ArrowDown')
@@ -106,15 +114,17 @@ test.describe('dashboard drag-reorder', () => {
   })
 
   test('reorder persists across reload via recall.dashboard.layout', async ({ page }) => {
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
-    // Move Winrate one slot to the right.
+    await openDashboard(page)
+    // Move Winrate one slot to the right — and see the reorder land
+    // BEFORE reloading, so the persisted write provably happened.
     await page.locator('[data-drag-handle="winrate"]').focus()
     await page.keyboard.press('ArrowRight')
+    await expect.poll(async () => (await widgetOrder(page, 1))[0]).toBe('avg-kda')
 
-    // Reload + reopen Matches tab.
+    // Reload + reopen Matches tab, gating on hydration again.
     await page.reload()
     await page.locator('#tab-matches').click()
+    await expect(page.locator('[data-widget-id="winrate"]')).toBeVisible()
 
     const afterReload = await widgetOrder(page, 1)
     expect(afterReload[0]).toBe('avg-kda')
@@ -129,8 +139,7 @@ test.describe('dashboard drag-reorder', () => {
   })
 
   test('drag-handle exposes an aria-label naming the widget + keyboard contract', async ({ page }) => {
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await openDashboard(page)
     const handle = page.locator('[data-drag-handle="winrate"]')
     const label = await handle.getAttribute('aria-label')
     expect(label).toContain('winrate')
