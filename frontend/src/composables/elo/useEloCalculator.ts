@@ -25,6 +25,7 @@ import {
   changePointContext, detectChangePoint, type ChangePoint, type ChangePointContext,
 } from '@/match/elo-changepoint'
 import { liftTable, type LiftRow } from '@/match/elo-lift'
+import { clampHeroAdjust, heroWhatIf, type HeroWhatIf } from '@/match/elo-whatif'
 import { populationPercentile } from '@/match/elo-distribution'
 
 // The Elo Calculator's single state owner (loan-calculator semantics):
@@ -73,6 +74,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const decaySlopePts = ref(DEFAULT_DECAY_SLOPE * 100)
 
   const selectedHeroes = ref<ReadonlySet<string>>(new Set())
+  const heroAdjustPts = ref<ReadonlyMap<string, number>>(new Map())
   const lastSeed = ref<TrackSeed | null>(null)
 
   const seed = computed(() => seedTrack(records.value, track.value))
@@ -94,6 +96,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
       ? DEFAULT_DECAY_SLOPE * 100
       : Math.min(SLOPE_PTS_MAX, Math.max(SLOPE_PTS_MIN, round1(s.decaySlope.pts)))
     selectedHeroes.value = new Set()
+    heroAdjustPts.value = new Map()
     dirty.value = false
   }
 
@@ -144,6 +147,29 @@ export function useEloCalculator(opts: EloCalcOpts) {
     sampleN.value = wins + losses
   }
 
+  // ── Hero what-if nudges (±5-point arrows) ──────────────────────────
+  // A layered hypothesis, not an edit: the measured inputs stay put and
+  // every projection reads the nudged blend through effectiveWinRatePct.
+  function bumpHero(key: string, dir: 1 | -1): void {
+    const next = new Map(heroAdjustPts.value)
+    const stepped = clampHeroAdjust(next.get(key) ?? 0, dir)
+    if (stepped === 0) next.delete(key)
+    else next.set(key, stepped)
+    heroAdjustPts.value = next
+  }
+  function resetHeroAdjust(): void {
+    heroAdjustPts.value = new Map()
+  }
+
+  const whatIf = computed<HeroWhatIf>(() =>
+    heroWhatIf(heroStats.value, selectedHeroes.value, sampleN.value, heroAdjustPts.value))
+  const effectiveWinRatePct = computed<number | null>(() => {
+    if (winRatePct.value === null) return null
+    const delta = whatIf.value.deltaPts
+    if (delta === 0) return winRatePct.value
+    return round1(Math.max(0, Math.min(100, winRatePct.value + delta)))
+  })
+
   // Manual edits are name-keyed (templates auto-unwrap destructured refs,
   // so they can't pass the ref itself). Every edit marks the form dirty;
   // win-rate/sample edits also detach the hero selection so the two
@@ -159,7 +185,10 @@ export function useEloCalculator(opts: EloCalcOpts) {
   ): void {
     ;(editable[field] as Ref<number | string | null>).value = value
     dirty.value = true
-    if (opts2?.detachHeroes) selectedHeroes.value = new Set()
+    if (opts2?.detachHeroes) {
+      selectedHeroes.value = new Set()
+      heroAdjustPts.value = new Map()
+    }
   }
 
   // ── Derived projections ────────────────────────────────────────────
@@ -168,12 +197,13 @@ export function useEloCalculator(opts: EloCalcOpts) {
 
   const projInput = computed<ProjectionInput | null>(() => {
     if (currentScore.value === null || targetScore.value === null) return null
-    if (winRatePct.value === null || sampleN.value <= 0 || meterMovePct.value <= 0) return null
-    const wins = Math.round((sampleN.value * winRatePct.value) / 100)
+    const rate = effectiveWinRatePct.value
+    if (rate === null || sampleN.value <= 0 || meterMovePct.value <= 0) return null
+    const wins = Math.round((sampleN.value * rate) / 100)
     return {
       currentScore: currentScore.value,
       targetScore: targetScore.value,
-      winRate: winRatePct.value / 100,
+      winRate: rate / 100,
       sampleWins: wins,
       sampleLosses: sampleN.value - wins,
       meterMovePct: meterMovePct.value,
@@ -211,8 +241,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // Odds of a STREAK_LEN-loss run in the next STREAK_HORIZON games at the
   // current win rate — the anti-"rigged" reality check.
   const lossStreak = computed(() => {
-    if (winRatePct.value === null || sampleN.value <= 0) return null
-    return lossStreakChance(winRatePct.value / 100, STREAK_LEN, STREAK_HORIZON)
+    const rate = effectiveWinRatePct.value
+    if (rate === null || sampleN.value <= 0) return null
+    return lossStreakChance(rate / 100, STREAK_LEN, STREAK_HORIZON)
   })
 
   // ── The Bayesian layer (skeptic prior — see elo-bayes) ─────────────
@@ -280,8 +311,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
     currentTier, currentDivision, currentProgress, targetTier, targetDivision,
     winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
     editInput, lastSeed,
-    // hero picker
+    // hero picker + what-if nudges
     heroStats, selectedHeroes, toggleHero,
+    heroAdjustPts, bumpHero, resetHeroAdjust, whatIf, effectiveWinRatePct,
     // derived
     trackRecs, currentScore, targetScore, projInput, naive, decay, curves,
     pValue, percentileNow, percentileTarget, weeksNaive, weeksDecay,
