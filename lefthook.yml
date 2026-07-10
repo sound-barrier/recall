@@ -119,19 +119,19 @@ pre-commit:
       run: npx --yes markdownlint-cli2 --fix {staged_files}
       stage_fixed: true
 
-# Pre-push dead-code analysis. Both tools do whole-project scanning so they
-# can't be scoped to staged files like the pre-commit hooks above. Running
-# them only on push keeps WIP commits fast while still catching dead code
-# before it reaches origin. Skip with: LEFTHOOK_EXCLUDE=deadcode,knip git push
+# Pre-push: the FAST core only (~a minute) — the checks most likely to
+# catch a broken push before it burns a CI round-trip. Everything that
+# used to run here (coverage gate, bundle budget, Playwright smoke,
+# schemathesis, semgrep, complexity, deadcode/knip, the whole-project
+# lint sweeps) still gates in CI and is bundled into `task verify` for
+# an on-demand full local battery. Skip a hook with
+# LEFTHOOK_EXCLUDE=<name> git push.
 pre-push:
   parallel: true
   commands:
-    # actionlint scans every workflow file each time — fast enough
-    # (Go binary, ~50ms across our seven workflows) that pre-push is
-    # the right phase. Catches deprecated action inputs, syntax
-    # errors, and shellcheck issues in `run:` blocks before they hit
-    # CI and fail there. Paired with the SHA-pin check so a contributor
-    # adding a tag-pinned external action fails locally before pushing.
+    # actionlint + the SHA-pin policy — Go binary, ~50ms across the
+    # workflows; catches deprecated inputs, run-block shellcheck issues,
+    # and tag-pinned actions before CI does.
     actionlint:
       glob: ".github/workflows/*.{yml,yaml}"
       run: |
@@ -139,143 +139,36 @@ pre-push:
         actionlint .github/workflows/*.yml
         bash scripts/ci/check-action-pins.sh
 
-    # Delegates to scripts/ci/deadcode-check.sh; the allow-list of
-    # intentional unreachables (build-tag stubs, test-only seams) lives
-    # in scripts/ci/deadcode-allow.txt and is shared with Make + CI so all
-    # three call sites stay in sync.
-    deadcode:
-      glob: "*.go"
-      run: bash scripts/ci/deadcode-check.sh
+    # Go unit tests — same -race -short set CI's test-unit job runs
+    # (goldens are -short-gated). The single highest-signal pre-push
+    # check: a red here is a guaranteed red CI.
+    unit-go:
+      glob: "{*.go,go.mod,go.sum}"
+      run: go test -race -short ./...
 
-    # Whole-project lint sweep. The pre-commit `golangci-lint` hook
-    # uses `--new-from-rev=HEAD~` to scope to the staged diff for
-    # speed, but that scope MISSES cross-file regressions — a delete
-    # in one staged file can break an importer in an unstaged file,
-    # and CI catches it where lefthook didn't. This whole-project
-    # sweep mirrors the CI `lint` job exactly (host + windows GOOS ×
-    # both build tags) so a green pre-push guarantees a green CI lint.
-    # The GOOS=windows runs lint the //go:build windows files the
-    # host-GOOS runs skip (pure-Go, so it just swaps the stdlib view).
-    # Skip: LEFTHOOK_EXCLUDE=lint-go-full git push
-    lint-go-full:
-      glob: "*.go"
+    # Frontend unit tests — Vitest without coverage instrumentation
+    # (the coverage GATE runs in CI + `task verify`).
+    unit-frontend:
+      glob: "frontend/**"
+      run: cd frontend && npx vitest run
+
+    # Generated-types drift — regenerating api.gen.d.ts must be a no-op;
+    # otherwise api/openapi.yaml changed without `task gen-types`.
+    gen-types-drift:
+      glob: "{api/openapi.yaml,frontend/src/api.gen.d.ts}"
       run: |
         set -e
-        golangci-lint run ./...
-        golangci-lint run --build-tags serveronly ./...
-        GOOS=windows golangci-lint run ./...
-        GOOS=windows golangci-lint run --build-tags serveronly ./...
+        cd frontend && npm run gen:types && cd ..
+        if ! git diff --quiet frontend/src/api.gen.d.ts; then
+          echo "api.gen.d.ts is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
+          exit 1
+        fi
 
-    # Frontend whole-project sweep. Mirrors CI's `lint` job — eslint
-    # over the full tree (not just staged files), stylelint over the
-    # full tree, then vue-tsc (whole-project type-check). Catches the
-    # same cross-file regressions the Go sweep above does, plus the
-    # "rename a type, miss an importer" class of bug.
-    # Skip: LEFTHOOK_EXCLUDE=lint-frontend-full git push
-    lint-frontend-full:
-      glob: "frontend/**"
-      run: |
-        set -e
-        cd frontend
-        npm run lint:js
-        npm run lint:css
-        npx vue-tsc --noEmit
-
-    knip:
-      glob: "frontend/src/**/*.{ts,vue}"
-      run: cd frontend && npm run dead:ts
-
-    # gosec (Go SAST) is rolled into the lint-go-full hook's golangci-lint
-    # (the `gosec` linter, both build tags) — no separate hook needed.
-
-    # Semgrep — JS/TS SAST counterpart to gosec. Sweeps frontend/src/
-    # via the community rulesets (p/javascript + p/typescript +
-    # p/owasp-top-ten). Server-side coverage comes from CodeQL's
-    # javascript-typescript language (in codeql.yml); Semgrep here is
-    # the fast local feedback loop so contributors catch findings
-    # before push instead of in a 5-min CodeQL run. Registry rulesets
-    # are fetched at scan time — needs internet.
-    semgrep:
-      glob: "frontend/src/**/*.{ts,js}"
-      run: task lint-semgrep
-
-    # Coverage gate. Runs the same `task cover` umbrella developers
-    # invoke locally; vitest enforces the per-metric thresholds in
-    # vitest.config.ts, and the cover-go target enforces the Go floor
-    # (GO_COVERAGE_MIN, default 67). Skip with:
-    #   LEFTHOOK_EXCLUDE=coverage git push
-    # The CI workflow runs the same checks via Jobs 9 + 10, so a
-    # push that bypasses this still fails in CI before merge.
-    coverage:
-      run: task cover
-
-    # Cyclomatic complexity sweep — REPORT ONLY. Same script the CI
-    # `complexity` job runs (see .github/workflows/ci.yml). gocyclo
-    # for Go + ESLint's `complexity` rule for frontend, both with a
-    # threshold of 10 (McCabe's 1976 recommendation). The script
-    # always exits 0 so a high number never blocks a push; the goal
-    # is situational awareness, not a gate. When a number warrants
-    # action, raise a TECHNICAL_DEBT.md item.
-    # Skip with: LEFTHOOK_EXCLUDE=complexity git push
-    complexity:
-      run: bash scripts/ci/check-complexity.sh
-
-    # Bundle-size budget — same script CI runs in the lint job, with
-    # --build so the hook produces fresh frontend/dist/ artifacts to
-    # measure (CI builds in an earlier step; locally we need to do
-    # the build ourselves). Caps a contributor against pushing a
-    # change that would fail CI's "Enforce bundle-size budget" step.
-    # Budgets live as defaults in the script itself; bump them there.
-    # Skip with: LEFTHOOK_EXCLUDE=bundle-size git push
-    bundle-size:
-      glob: "frontend/**"
-      run: bash scripts/ci/check-bundle-size.sh --build
-
-    # Test-skip drift gate. Same `scripts/ci/check-test-skips.sh` the
-    # CI workflow runs — greps every `t.Skip*` in pkg/ and diffs
-    # against `scripts/ci/test-skips-allow.txt`. A new skip without an
-    # allow-list entry fails locally before push. Flake-suppression
-    # skips are not allowed; the allow-list is for documented
-    # environment gates (OS-conditional probe tests, `-short`-mode
-    # tesseract integration). Skip with:
-    #   LEFTHOOK_EXCLUDE=test-skips git push
+    # Test-skip drift gate — same allow-list diff CI runs; a new t.Skip
+    # without a scripts/ci/test-skips-allow.txt entry fails before push.
     test-skips:
       glob: "pkg/**/*_test.go"
       run: bash scripts/ci/check-test-skips.sh
-
-    # Playwright smoke subset. Mirrors `task test-e2e`'s harness
-    # (build frontend/dist + serveronly binary, run on :7099 with
-    # HOME=/tmp/recall-e2e) but `--grep`-filtered to a curated set
-    # of high-value specs. Catches the strict-mode-locator + layout-
-    # tolerance + route-mock-race patterns that have repeatedly
-    # flaked CI in the past day. The full suite still gates in CI;
-    # this is the fast local feedback loop.
-    #
-    # Target: ≤60s on a warm cache. Glob-scoped to the same surface
-    # CI's e2e relevance gate uses, so a docs-only push doesn't pay
-    # the cost. Skip with:
-    #   LEFTHOOK_EXCLUDE=playwright-smoke git push
-    playwright-smoke:
-      glob: "{frontend/**,pkg/**,api/openapi.yaml,*.go}"
-      run: bash scripts/ci/check-playwright-smoke.sh
-
-    # OpenAPI ↔ server drift — same `schemathesis` job CI runs (see
-    # .github/workflows/ci.yml). The build+boot+fuzz+teardown logic
-    # lives in scripts/ci/check-api-drift.sh so the hook and CI stay in
-    # sync. Fuzzes spec-derived requests against a freshly-built
-    # serveronly binary on port 7099 with a HOME-isolated tempdir
-    # and asserts every response conforms to the declared schema.
-    # Catches the "I added a route but forgot to update
-    # api/openapi.yaml" + "I echoed JSON without setting
-    # Content-Type" classes of bug that Spectral + unit tests can't
-    # see. Glob-scoped to API + server code so a docs-only push
-    # doesn't pay the ~15s cost.
-    # Requires: pipx install 'schemathesis>=3.36,<4'. The hook
-    # short-circuits with an actionable error if schemathesis isn't
-    # on PATH. Skip with: LEFTHOOK_EXCLUDE=schemathesis git push
-    schemathesis:
-      glob: "{api/openapi.yaml,pkg/cmd/**/*.go,pkg/app/**/*.go,main*.go}"
-      run: bash scripts/ci/check-api-drift.sh
 
 # Commit-message format check (optional but pairs with release-please).
 # Enable conventional commits via `commit-msg` hook — see release-please

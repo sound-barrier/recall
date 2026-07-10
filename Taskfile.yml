@@ -361,6 +361,30 @@ tasks:
     desc: Check pinned tool versions against latest releases (read-only)
     cmds: [bash scripts/ci/check-deps.sh]
 
+  verify:
+    desc: The full pre-merge battery on demand — everything the slimmed pre-push no longer runs (CI still gates all of it)
+    cmds:
+      - echo "[ recall ] verify — whole-project lint sweeps…"
+      - golangci-lint run ./...
+      - golangci-lint run --build-tags serveronly ./...
+      - GOOS=windows golangci-lint run ./...
+      - GOOS=windows golangci-lint run --build-tags serveronly ./...
+      - cd frontend && npm run lint:js && npm run lint:css && npx vue-tsc --noEmit
+      - echo "[ recall ] verify — coverage gate…"
+      - task: cover
+      - echo "[ recall ] verify — bundle budget (fresh build)…"
+      - bash scripts/ci/check-bundle-size.sh --build
+      - echo "[ recall ] verify — dead code…"
+      - bash scripts/ci/deadcode-check.sh
+      - cd frontend && npm run dead:ts
+      - echo "[ recall ] verify — SAST + complexity (report-only)…"
+      - task: lint-semgrep
+      - bash scripts/ci/check-complexity.sh
+      - echo "[ recall ] verify — Playwright smoke + API drift…"
+      - bash scripts/ci/check-playwright-smoke.sh
+      - bash scripts/ci/check-api-drift.sh
+      - echo "[ recall ] ✓  verify complete"
+
   # ── Release ────────────────────────────────────────────────────────────
   release-beta:
     desc: 'Cut a prerelease (usage: task release-beta VERSION=0.0.13-beta.0)'
