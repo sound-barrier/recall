@@ -182,25 +182,33 @@ test.describe('Elo Calculator', () => {
     await expect(page.locator('[data-elo-chart-caption]')).toContainText(/two futures/i)
   })
 
-  test('nudging a hero ±5 points shifts the blend by its share of the games', async ({ page }) => {
+  test('nudging a hero shifts the blend by its share, one point per press up to ±5', async ({ page }) => {
     await mockCorpus(page, corpus70())
     await openCalculator(page)
 
-    // ▲ on lucio: +5 points on 24 of the track's 40 games = +3 blended,
-    // so the what-if rate is 73% while the measured input stays 70.
+    // ▲ once on lucio: +1 point on 24 of the track's 40 games = +0.6 blended.
     const lucio = page.locator('[data-elo-hero="lucio"]')
-    await lucio.locator('[data-elo-nudge="up"]').click()
+    const up = lucio.locator('[data-elo-nudge="up"]')
+    const down = lucio.locator('[data-elo-nudge="down"]')
+    await up.click()
     const summary = page.locator('[data-elo-whatif-summary]')
+    await expect(summary).toContainText('70% → 70.6%')
+    await expect(lucio).toContainText('75% → 76%')
+    await expect(page.locator('[data-elo-input="win-rate"]')).toHaveValue('70')
+
+    // Four more presses saturate at +5 (75% → 80%), blending to 73% — and
+    // every projection follows: naive E = 1.6 / (0.21·0.46) → ~17 games.
+    for (let i = 0; i < 4; i++) await up.click()
     await expect(summary).toContainText('70% → 73%')
     await expect(lucio).toContainText('75% → 80%')
-    await expect(page.locator('[data-elo-input="win-rate"]')).toHaveValue('70')
-    // Every projection follows the what-if: naive E = 1.6 / (0.21·0.46) → ~17.
+    await expect(up).toBeDisabled()
     await expect(page.locator('[data-elo-card="naive"]')).toContainText(/~\s*17 games/)
 
-    // ▼ twice (+5 → 0 → −5): a slump on the main slows the climb, 70% → 67%.
-    await lucio.locator('[data-elo-nudge="down"]').click()
-    await lucio.locator('[data-elo-nudge="down"]').click()
+    // ▼ down to the −5 floor: a slump on the main slows the climb, 70% → 67%.
+    for (let i = 0; i < 10; i++) await down.click()
     await expect(summary).toContainText('70% → 67%')
+    await expect(lucio).toContainText('75% → 70%')
+    await expect(down).toBeDisabled()
 
     // Reset drops the layer and the verdict returns to the measured ~20.
     await page.locator('[data-elo-nudge-reset]').click()

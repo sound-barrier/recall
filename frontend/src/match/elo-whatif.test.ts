@@ -25,15 +25,15 @@ const NONE = new Set<string>()
 describe('heroWhatIf', () => {
   it('weights each nudge by the hero share of the games', () => {
     const w = heroWhatIf(STATS, NONE, 40, new Map([['lucio', 5]]))
-    expect(w.deltaPts).toBeCloseTo((24 / 40) * 5, 6) // +3
+    expect(w.deltaPts).toBeCloseTo((24 / 40) * 5, 6) // +3 at the +5 cap
     expect(w.perHero.get('lucio')).toEqual({ from: 75, to: 80 })
     expect(w.perHero.has('brigitte')).toBe(false)
   })
 
   it('sums nudges across heroes, sign and all', () => {
-    const w = heroWhatIf(STATS, NONE, 40, new Map([['lucio', 5], ['ana', -10]]))
-    expect(w.deltaPts).toBeCloseTo(3 - (4 / 40) * 10, 6) // +3 − 1 = +2
-    expect(w.perHero.get('ana')).toEqual({ from: 50, to: 40 })
+    const w = heroWhatIf(STATS, NONE, 40, new Map([['lucio', 5], ['ana', -5]]))
+    expect(w.deltaPts).toBeCloseTo(3 - (4 / 40) * 5, 6) // +3 − 0.5 = +2.5
+    expect(w.perHero.get('ana')).toEqual({ from: 50, to: 45 })
   })
 
   it('scopes to the selection: full weight inside, zero outside', () => {
@@ -72,10 +72,12 @@ describe('heroWhatIf', () => {
 })
 
 describe('clampHeroAdjust', () => {
-  it('steps by ±5 and stops at ±25', () => {
-    expect(clampHeroAdjust(0, 1)).toBe(HERO_ADJUST_STEP)
-    expect(clampHeroAdjust(5, -1)).toBe(0)
+  it('steps by ±1 and stops 5 points from the measured rate', () => {
+    expect(HERO_ADJUST_STEP).toBe(1)
+    expect(clampHeroAdjust(0, 1)).toBe(1)
+    expect(clampHeroAdjust(1, -1)).toBe(0)
     expect(clampHeroAdjust(HERO_ADJUST_MAX, 1)).toBe(HERO_ADJUST_MAX)
     expect(clampHeroAdjust(-HERO_ADJUST_MAX, -1)).toBe(-HERO_ADJUST_MAX)
+    expect(clampHeroAdjust(HERO_ADJUST_MAX, -1)).toBe(HERO_ADJUST_MAX - 1)
   })
 })

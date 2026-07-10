@@ -2,15 +2,16 @@
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { HeroPickStat } from '@/match/elo-seed'
-import { clampHeroAdjust, HERO_ADJUST_STEP } from '@/match/elo-whatif'
+import { clampHeroAdjust, HERO_ADJUST_MAX, HERO_ADJUST_STEP } from '@/match/elo-whatif'
 
 // Tick heroes to use only their games as the win rate ("what if I only queued
 // these?"). Each row shows the hero's own record and whether it's in your usual
 // pool — off-pool picks are the honest "you're spending rank on practice" flag.
 // Small records also carry an adjusted rate shrunk toward the pooled record,
 // shown only when it meaningfully disagrees with the raw one.
-// The ▲▼ arrows nudge a hero's rate ±5 points — a layered what-if, weighted by
-// how much you play them, that every projection above follows.
+// The ▲▼ arrows nudge a hero's rate a point per press (at most ±5 from the
+// measured rate) — a layered what-if, weighted by how much you play them,
+// that every projection above follows.
 const {
   heroStats, selectedHeroes, toggleHero,
   heroAdjustPts, bumpHero, resetHeroAdjust, whatIf, winRatePct, effectiveWinRatePct,
@@ -59,8 +60,8 @@ const deltaPts = () => {
     <p class="elo-hint">
       Tick heroes to set the win rate from just their games. A multi-hero match counts once per hero.
       "adj" pulls a small record toward your overall rate — a hot 3–0 isn't really 100%.
-      The ▲▼ arrows ask a different question: what if you got {{ HERO_ADJUST_STEP }} points better (or worse)
-      on that hero? The blend moves by their share of your games.
+      The ▲▼ arrows ask a different question: what if you got a little better — or worse — on that hero?
+      Each press is one point, up to {{ HERO_ADJUST_MAX }} either way, and the blend moves by their share of your games.
     </p>
     <ul class="elo-heroes-list">
       <li v-for="h in heroStats" :key="h.key" :data-elo-hero="h.key">
@@ -79,7 +80,7 @@ const deltaPts = () => {
             type="button"
             class="elo-nudge-btn"
             data-elo-nudge="down"
-            :aria-label="`Lower ${ow.heroDisplayName(h.key)} win rate ${HERO_ADJUST_STEP} points`"
+            :aria-label="`Lower ${ow.heroDisplayName(h.key)} win rate ${HERO_ADJUST_STEP} point`"
             :disabled="!canNudge(h, -1)"
             @click="bumpHero(h.key, -1)"
           >▼</button>
@@ -87,7 +88,7 @@ const deltaPts = () => {
             type="button"
             class="elo-nudge-btn"
             data-elo-nudge="up"
-            :aria-label="`Raise ${ow.heroDisplayName(h.key)} win rate ${HERO_ADJUST_STEP} points`"
+            :aria-label="`Raise ${ow.heroDisplayName(h.key)} win rate ${HERO_ADJUST_STEP} point`"
             :disabled="!canNudge(h, 1)"
             @click="bumpHero(h.key, 1)"
           >▲</button>
