@@ -223,28 +223,31 @@ describe('useEloCalculator — hero what-if nudges', () => {
     const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     calc.bumpHero('lucio', 1)
     expect(calc.winRatePct.value).toBeCloseTo(57.1, 1)
-    expect(calc.effectiveWinRatePct.value).toBeCloseTo(61, 1) // 57.1 + 11/14·5
-    expect(calc.projInput.value!.winRate).toBeCloseTo(0.61, 2)
-    expect(calc.whatIf.value.perHero.get('lucio')).toEqual({ from: 64, to: 69 })
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(57.9, 1) // 57.1 + 11/14·1
+    expect(calc.projInput.value!.winRate).toBeCloseTo(0.579, 3)
+    expect(calc.whatIf.value.perHero.get('lucio')).toEqual({ from: 64, to: 65 })
     calc.bumpHero('lucio', -1)
     expect(calc.effectiveWinRatePct.value).toBeCloseTo(57.1, 1)
   })
 
-  it('saturates at ±25 points per hero', () => {
+  it('saturates 5 points from the measured rate', () => {
     const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     for (let i = 0; i < 9; i++) calc.bumpHero('lucio', 1)
-    expect(calc.heroAdjustPts.value.get('lucio')).toBe(25)
-    expect(calc.whatIf.value.perHero.get('lucio')).toEqual({ from: 64, to: 89 })
+    expect(calc.heroAdjustPts.value.get('lucio')).toBe(5)
+    expect(calc.whatIf.value.perHero.get('lucio')).toEqual({ from: 64, to: 69 })
+    for (let i = 0; i < 14; i++) calc.bumpHero('lucio', -1)
+    expect(calc.heroAdjustPts.value.get('lucio')).toBe(-5)
+    expect(calc.whatIf.value.perHero.get('lucio')).toEqual({ from: 64, to: 59 })
   })
 
   it('a selection narrows the scope to the selected heroes', () => {
     const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     calc.toggleHero('lucio')
     calc.bumpHero('lucio', 1)
-    // The sample IS lucio now, so the whole +5 lands: 63.6 → 68.6.
-    expect(calc.effectiveWinRatePct.value).toBeCloseTo(68.6, 1)
+    // The sample IS lucio now, so the whole +1 lands: 63.6 → 64.6.
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(64.6, 1)
     calc.bumpHero('ana', 1) // out of scope — no effect while selected
-    expect(calc.effectiveWinRatePct.value).toBeCloseTo(68.6, 1)
+    expect(calc.effectiveWinRatePct.value).toBeCloseTo(64.6, 1)
     expect(calc.whatIf.value.perHero.has('ana')).toBe(false)
   })
 

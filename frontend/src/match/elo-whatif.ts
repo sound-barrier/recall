@@ -1,16 +1,16 @@
-// The hero what-if: nudge any hero's win rate ±5 points and watch the
-// blended track rate move by that hero's share of the games. The point is
-// pedagogical — a small improvement on a main shifts the climb far more
+// The hero what-if: nudge any hero's win rate a point at a time and watch
+// the blended track rate move by that hero's share of the games. The point
+// is pedagogical — a small improvement on a main shifts the climb far more
 // than a big one on a rarely-played pick, and a slump does the reverse.
 // Pure math; the composable layer owns the reactive state.
 
 import type { HeroPickStat } from '@/match/elo-seed'
 
 // One arrow press moves a hero this many points; a hero can be pushed at
-// most this far from its measured rate (keeps the what-if in "realistic
-// improvement" territory rather than fantasy).
-export const HERO_ADJUST_STEP = 5
-export const HERO_ADJUST_MAX = 25
+// most 5 points either way from its measured rate (keeps the what-if in
+// "realistic improvement" territory rather than fantasy).
+export const HERO_ADJUST_STEP = 1
+export const HERO_ADJUST_MAX = 5
 
 export interface HeroWhatIf {
   deltaPts: number // blended win-rate shift, percentage points

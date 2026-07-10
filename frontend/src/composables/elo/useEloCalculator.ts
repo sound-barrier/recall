@@ -147,7 +147,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     sampleN.value = wins + losses
   }
 
-  // ── Hero what-if nudges (±5-point arrows) ──────────────────────────
+  // ── Hero what-if nudges (1-point arrows, capped at ±5) ─────────────
   // A layered hypothesis, not an edit: the measured inputs stay put and
   // every projection reads the nudged blend through effectiveWinRatePct.
   function bumpHero(key: string, dir: 1 | -1): void {
