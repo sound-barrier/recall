@@ -174,6 +174,34 @@ test.describe('Elo Calculator', () => {
     await expect(page.locator('[data-elo-input="sample-n"]')).toHaveValue('24')
   })
 
+  test('the rigged receipt is honest at volume: near even and measured, not "too few games"', async ({ page }) => {
+    seq = 0
+    // 500 decisive games at 51.0% — a season and a half of play. The old copy
+    // called this "too few games to tell", which reads absurd at this volume:
+    // the truth is the rate is PINNED near even, and that's the answer.
+    const rows = [
+      rec('victory', 'lucio', { rank: 'gold', level: 2, rank_progress: 40, change_percent: 21, modifiers: ['victory', 'expected'] }),
+      ...games(499, 254, 'lucio'), // + the ranked win above = 255W/245L
+    ]
+    await mockCorpus(page, rows)
+    await openCalculator(page)
+
+    const cell = page.locator('[data-elo-stat="p-value"]')
+    await expect(cell).toContainText(/near even/i)
+    await expect(cell).toContainText(/\d+–\d+%/) // the pinned credible range
+    await expect(cell).not.toContainText(/too few games/i)
+    await expect(cell).not.toContainText(/play more/i)
+
+    // The coin cell speaks odds, not seminar: no "forced 50-50" jargon, and
+    // the straddling range is EXPLAINED (more of it above even than below)
+    // rather than left to read as a contradiction.
+    const coin = page.locator('[data-elo-stat="bayes"]')
+    await expect(coin).toContainText(/in 100/)
+    await expect(coin).toContainText(/more of it above|leans below|dead even/i)
+    await expect(coin).not.toContainText(/skeptic's own assumption/i)
+    await expect(coin).not.toContainText(/forced 50-50/i)
+  })
+
   test('the page tells its story in order: truth, playbook, price, proof, receipts', async ({ page }) => {
     await mockCorpus(page, corpus70())
     await openCalculator(page)
