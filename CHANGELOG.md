@@ -1,5 +1,106 @@
 # Changelog
 
+## [0.26.0](https://github.com/sound-barrier/recall/compare/v0.25.3...v0.26.0) (2026-07-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **profiles:** GET /api/v1/profiles gains a required `immutable: string[]` field, and profiles.json gains an additive `immutable` list. Pre-1.0, no migration — existing profiles load as mutable until re-seeded.
+
+### Features
+
+* **compare:** Form mode — window-vs-window comparison with a verdict ([6f40f23](https://github.com/sound-barrier/recall/commit/6f40f230d860c2485ba518f073a435352724a2e3))
+* **compare:** season A/B comparison tab ([b6b3291](https://github.com/sound-barrier/recall/commit/b6b3291decaebb709762f22585614b3e4fd6238f))
+* **db:** canonical played_at_utc alongside naive match time ([eb7c5fb](https://github.com/sound-barrier/recall/commit/eb7c5fbff46b12933acae911622e653bfed8d061))
+* **db:** surface played_at_utc on MatchRecord ([cbb991a](https://github.com/sound-barrier/recall/commit/cbb991a41e7f324d7837aa666ae4bcc6c5cea0f6))
+* **dossier:** Hero Pool as a full-width band, role-sorted; buckets ship visible ([7b195c6](https://github.com/sound-barrier/recall/commit/7b195c6742b64b45ea923e97758b11d22d5710ae))
+* **dossier:** Hero Pool band — per-mode pools, ranked, scrollable, filter ([1dbdd8c](https://github.com/sound-barrier/recall/commit/1dbdd8c0c3f7d5f5eab50ab9bb4a0d05420d793d))
+* **dossier:** Hero pool size KPI counts the derived pool ([e21050e](https://github.com/sound-barrier/recall/commit/e21050e7d45615562a5edc4d8cc684fe029c052a))
+* **dossier:** hero-count buckets + hero-pool analysis widgets ([017266e](https://github.com/sound-barrier/recall/commit/017266e1e500cdba18ce21899e446c94e219ec77))
+* **dossier:** win-rate colour is a judgment — tight bands, earned ([524c208](https://github.com/sound-barrier/recall/commit/524c2080d06a9858b12f11b7eadab4baba895f18))
+* **elo:** consistency + tilt-queue coaching, skill-band layout fix ([e02ca65](https://github.com/sound-barrier/recall/commit/e02ca6571e843c1b78b4c9a52b3d62ceb6e55831))
+* **elo:** drop the stat-drivers playbook block ([07759d0](https://github.com/sound-barrier/recall/commit/07759d05b7d3d081f36122a7e6abb390bbc22542))
+* **elo:** Elo Calculator tab — plain-language climb projections ([6870bc8](https://github.com/sound-barrier/recall/commit/6870bc80ff2419f28f9302d1f8d8e07a4b9c9fb2))
+* **elo:** hero picker rows toggle by click, with select/unselect all ([04bc5ac](https://github.com/sound-barrier/recall/commit/04bc5acccdd5f7e23b060a67fe4a70382e80a63d))
+* **elo:** per-hero ±5 win-rate nudge arrows in the picker ([9bc7ca9](https://github.com/sound-barrier/recall/commit/9bc7ca95c1464df9aae4fbe4980680ef3d82feaf))
+* **elo:** price the best-vs-worst hero gap in the playbook ([2eef4ae](https://github.com/sound-barrier/recall/commit/2eef4ae343470d5961af96ed385c66fe9b667329))
+* **elo:** reorder the page arc + native hero rows + next-moves card ([baab7a8](https://github.com/sound-barrier/recall/commit/baab7a8363f6eb772d232e38182e922a8a5bf730))
+* **elo:** season simulator + Kalman skill curve (phase 2) ([29df7de](https://github.com/sound-barrier/recall/commit/29df7de1f911fa9cfc95e672ba1fad6326285eda))
+* **elo:** session hygiene, change-point, lift table (phase 3) ([d4f7d71](https://github.com/sound-barrier/recall/commit/d4f7d713a2196cc57ffb0ad06ef5274fb26104b6))
+* **elo:** statistics layer — Bayes, measured slope, drivers, streaks ([4119c3a](https://github.com/sound-barrier/recall/commit/4119c3a1737d9eed6e2c3838d2625994d17a7bbd))
+* **elo:** verdict and dials share one band, edits priced live ([58aa39c](https://github.com/sound-barrier/recall/commit/58aa39c8aaaa8f6b65ea1ffa89840dec92396b87))
+* **fixtures:** realistic ELO rank climb in the tour seed ([35cf46f](https://github.com/sound-barrier/recall/commit/35cf46ff532894cb274092773ab2857e5cbc52db))
+* **fixtures:** tour seed plays like a real account climbing slowly ([7df0410](https://github.com/sound-barrier/recall/commit/7df0410f717d12bee390a009ab50778d40a9fbda))
+* **fixtures:** vacation breaks, return rust, and tilt spirals in seed ([7a86dc9](https://github.com/sound-barrier/recall/commit/7a86dc961008ffde90dd077eee129f574339f5ad))
+* **gamedata:** publish seasons.yaml + surface Season diffs ([f839f77](https://github.com/sound-barrier/recall/commit/f839f776af6fa76ee78a006bb1a15346a4b80a4e))
+* **gamedata:** structured season diff in the update-check ([a876aab](https://github.com/sound-barrier/recall/commit/a876aabcdaa36c2d20a9583e7fe44da3d05a9794))
+* **matches:** highlight the picked season on the Campaign Log ([e9c7bf6](https://github.com/sound-barrier/recall/commit/e9c7bf6be6ef6650f0e5bd973d6433f9e5e866fe))
+* **matches:** optional time inputs on the narrow custom date range ([3f4fdf3](https://github.com/sound-barrier/recall/commit/3f4fdf3672dd92c00b73d40ce255008090337b78))
+* **matches:** pickedSeason narrow clause (Model B) ([c4c2569](https://github.com/sound-barrier/recall/commit/c4c2569d600682e91fe79858def7ed71320be14c))
+* **matches:** render match times from the canonical UTC instant ([290c441](https://github.com/sound-barrier/recall/commit/290c4410329944e34f38d4b76b247d4e6161db4d))
+* **matches:** season assignment helpers, UTC-direct by start time ([deb1354](https://github.com/sound-barrier/recall/commit/deb13546b1ce92729f8240a0975a6817e236f66c))
+* **matches:** season selector in the narrow panel + active chip + e2e ([606a9d1](https://github.com/sound-barrier/recall/commit/606a9d1ecde857b4129ddb9652c8583a9634ea3c))
+* **matches:** time-of-day bounds in the narrow state, presets, and range writers ([d4cd400](https://github.com/sound-barrier/recall/commit/d4cd4003e2c016cd5f273f9fd62ba36be144fdce))
+* **onboarding:** Skip tour seeds the sample profile ([daefe3c](https://github.com/sound-barrier/recall/commit/daefe3c0f6f6c71de11b39e9e55f697dbd2e223f))
+* **parser:** embed, load, and validate seasons.yaml ([2a47484](https://github.com/sound-barrier/recall/commit/2a4748426b740cb56f22d971d9ee89481786ff01))
+* **profiles:** make the tour's sample profile read-only ([5b3de7a](https://github.com/sound-barrier/recall/commit/5b3de7a29a8fb935f7ffcb033d8d1cbbdb4efc35))
+* **system:** serve competitive seasons in reference-data ([8b6b213](https://github.com/sound-barrier/recall/commit/8b6b213d781f98611ff2f2dbe86938b7fdf13e32))
+* **ui:** fluid interface scale for 1440p+ displays ([e439236](https://github.com/sound-barrier/recall/commit/e43923689c630999c3ce046b17ffd99735b69c7a))
+
+
+### Bug Fixes
+
+* **ci:** green govulncheck + playwright — Go 1.26.5, full-dossier pool band ([983fd93](https://github.com/sound-barrier/recall/commit/983fd93b2ed1690cc7abc4515378d64c31f39a98))
+* **db:** add played_at_utc to existing DBs via an additive-column guard ([4eb4cc9](https://github.com/sound-barrier/recall/commit/4eb4cc92481a6e702defe0d7ddf57fc5e1ea9bc3))
+* **db:** heal legacy NULLs that today's loaders scan as strings ([4fb5f9a](https://github.com/sound-barrier/recall/commit/4fb5f9aa26cd1d09c64d423957509548d52e5dcb))
+* **elo:** every receipt honest in every regime ([8a1cb7a](https://github.com/sound-barrier/recall/commit/8a1cb7a8007f4451e662ad42a7b0d19038b27a2e))
+* **elo:** nudge arrows step 1 point, capped ±5 from the measured rate ([0d93df9](https://github.com/sound-barrier/recall/commit/0d93df954e9a46cb3bcb48d2ee99c5d5d5c9f6b5))
+* **elo:** receipts speak honestly at volume — near even is an answer ([77faba7](https://github.com/sound-barrier/recall/commit/77faba73533de429df846db0d51feda0c85f1437))
+* **elo:** self-contained streak-tilt gloss ([c02f488](https://github.com/sound-barrier/recall/commit/c02f488da0e7dd7702ec879963d743424b817177))
+* **fixtures:** drop the ineffectual day-weight total assignment ([65a2d56](https://github.com/sound-barrier/recall/commit/65a2d56ac1cfaf1c3663b9a74a3e3478b17f7514))
+* **manual-match:** derive match key and date from played_at's local wall clock ([c96a3ff](https://github.com/sound-barrier/recall/commit/c96a3ff3339a8bd30358969a90f8f12349065387))
+* **matches:** date filter places matches by matchTime, not bare data.date ([2e4644e](https://github.com/sound-barrier/recall/commit/2e4644e6ff9f1e31e7f4339e4dcd5c94a9170b75))
+* **onboarding:** wire the promised "Replay tour" into Settings ([f82e92f](https://github.com/sound-barrier/recall/commit/f82e92fd69090bc17b1dd58fd265507ab2767830))
+* **profiles:** let the read-only sample keep small edits, block only imports ([7628058](https://github.com/sound-barrier/recall/commit/7628058255793fcd7ff2c3d86424e534dab38895))
+* **profiles:** sanitize profile name before logging ([06fa99f](https://github.com/sound-barrier/recall/commit/06fa99fa109f478ead8c89f71d77dc4bc04c7d7c))
+* **shortcuts:** correct inverted j/k scroll in the cheatsheet ([4333e49](https://github.com/sound-barrier/recall/commit/4333e49c8d7d4f0dce01d9f589289f4bf8d88d2d))
+
+
+### Documentation
+
+* competitive seasons + season-comparison design ([93ffeaf](https://github.com/sound-barrier/recall/commit/93ffeafd45559f16d77d90da9e2a442b2c5462b2))
+* fold 2026-07 budget bumps into the history table ([3bc3342](https://github.com/sound-barrier/recall/commit/3bc3342b2068fa42f64b9969816c93fcef099950))
+* new pre-push contract, task verify, hybrid CI provisioning ([afed5b7](https://github.com/sound-barrier/recall/commit/afed5b7d507f9cda195dc1f3249c9176046437ae))
+* UTC-canonical match-time model ([46dd2d8](https://github.com/sound-barrier/recall/commit/46dd2d88523ffae2846bfaf7c88fea3e3275ec66))
+
+
+### Build & Packaging
+
+* **dev:** wipe the dev database before task dev boots the app ([6e16bcb](https://github.com/sound-barrier/recall/commit/6e16bcb335533a5ea0902a7b91756eef431e7de5))
+* fast-core pre-push + task verify umbrella ([0d174b4](https://github.com/sound-barrier/recall/commit/0d174b4a8eb99a1168b0d7f2abe4f06dd6029017))
+
+
+### CI
+
+* bump total-JS bundle budget 1380000 -&gt; 1385000 ([6c6dcbf](https://github.com/sound-barrier/recall/commit/6c6dcbf69f96fdca3d42aef62f567becdb950284))
+* split test-unit out of lint, hybrid setup-go/node, cancel stale runs ([3938ac8](https://github.com/sound-barrier/recall/commit/3938ac80af4660cfe8adb722d52c47ebfd35dfe2))
+
+
+### Tests
+
+* **aggregate:** drop the now-inlined strptr helper ([b8c9ebc](https://github.com/sound-barrier/recall/commit/b8c9ebce793deecf1255649d46d1c8d6b1630e4f))
+* **app:** de-flake the lazy Elo view mount in tab-nav tests ([79210fa](https://github.com/sound-barrier/recall/commit/79210fae0e30d93a24683128022baa0f8b69c416))
+* **applog:** pin Scrub's line-break-only contract ([6dfaf8c](https://github.com/sound-barrier/recall/commit/6dfaf8c31a8c8610b6447723dcced0b10ec94806))
+* **app:** serve seasons.yaml in the Apply mock server ([29a94e2](https://github.com/sound-barrier/recall/commit/29a94e24df590ca7b8b6795b6e674ed5eba62c08))
+* **app:** settle the lazy Elo view via dynamicImportSettled ([55cfbf9](https://github.com/sound-barrier/recall/commit/55cfbf94075818bccc206e37a26f94ce26c23df0))
+* **ci:** allow the UTC time-model zoneinfo skips ([d03968e](https://github.com/sound-barrier/recall/commit/d03968e6011723d6b471d8bbebdf824adabfa36c))
+* **dossier:** de-flake the open-queue role-overlap e2e ([b09523e](https://github.com/sound-barrier/recall/commit/b09523e79fd6c36fb4465f308b95644b215ef7d3))
+* **e2e:** fix the detail-panel cheatsheet scroll test for the j/k swap ([f9d2389](https://github.com/sound-barrier/recall/commit/f9d238950a7502900aca37a1a40cef834ac36980))
+* **e2e:** gate drag-reorder tests on grid hydration ([05acdb4](https://github.com/sound-barrier/recall/commit/05acdb4a20f386ccc74f64f5407d181313b6218c))
+* **e2e:** gate reflow-drag tests on grid hydration ([eab24d0](https://github.com/sound-barrier/recall/commit/eab24d0c43248fb98506cbbf0959a953539e7acd))
+* **e2e:** give the tour→first-run-modal handoff render room on CI ([abac9c5](https://github.com/sound-barrier/recall/commit/abac9c5e76e41d0e2478f5e92e9b0b2f8171e036))
+* one CI retry for e2e + settle lazy imports in teardown ([cb0fa4c](https://github.com/sound-barrier/recall/commit/cb0fa4cade091080afe768a54cf13402f700365f))
+
 ## [0.25.3](https://github.com/sound-barrier/recall/compare/v0.25.2...v0.25.3) (2026-07-07)
 
 
