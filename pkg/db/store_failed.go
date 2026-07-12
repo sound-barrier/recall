@@ -14,7 +14,7 @@ func (s *SQLStore) RecordFailedFile(filename string, dirID int64, errMsg string)
 		   error              = excluded.error,
 		   screenshots_dir_id = excluded.screenshots_dir_id,
 		   attempts           = attempts + 1,
-		   last_failed_at     = CURRENT_TIMESTAMP`,
+		   last_failed_at     = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		filename, dirID, errMsg,
 	)
 	return err

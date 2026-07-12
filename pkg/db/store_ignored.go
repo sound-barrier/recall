@@ -9,7 +9,7 @@ package db
 func (s *SQLStore) AddIgnoredScreenshot(filename string) error {
 	_, err := s.db.Exec(
 		`INSERT INTO ignored_screenshots (filename) VALUES (?)
-		 ON CONFLICT(filename) DO UPDATE SET ignored_at = CURRENT_TIMESTAMP`,
+		 ON CONFLICT(filename) DO UPDATE SET ignored_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		filename,
 	)
 	return err

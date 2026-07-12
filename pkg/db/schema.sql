@@ -11,6 +11,19 @@
 --
 -- Conventions baked into this schema:
 --
+--   - Every table is declared STRICT: SQLite enforces each column's
+--     declared datatype on write (a value that can't losslessly
+--     convert raises SQLITE_CONSTRAINT_DATATYPE) instead of applying
+--     loose type affinity. STRICT permits only
+--     INT/INTEGER/REAL/TEXT/BLOB/ANY — notably NOT `DATETIME`.
+--   - Timestamps are therefore TEXT holding an explicit RFC3339 UTC
+--     string, stamped by `strftime('%Y-%m-%dT%H:%M:%SZ','now')` rather
+--     than `CURRENT_TIMESTAMP` (whose space-separated output isn't
+--     RFC3339). This keeps the on-disk value self-describing and
+--     byte-identical to the RFC3339 the Go loaders scan — the former
+--     `DATETIME` affinity used to synthesize that via a driver
+--     time.Time round-trip, which STRICT/TEXT no longer triggers.
+--     Matches `played_at_utc`, already TEXT RFC3339.
 --   - Identifiers are snake_case throughout. The HTTP surface
 --     mirrors this — REST path params + JSON keys are snake_case
 --     end-to-end; see `.claude/rules/database.md` +
@@ -35,8 +48,8 @@
 CREATE TABLE IF NOT EXISTS screenshots_dirs (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   path          TEXT NOT NULL UNIQUE,
-  first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  first_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 -- Sentinel row at id=1 for "dir unset" — referenced by every parent
 -- row that lacks a real screenshots dir (test fixtures, legacy
@@ -50,7 +63,7 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   filename      TEXT NOT NULL UNIQUE,
   match_key     TEXT NOT NULL,
-  parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  parsed_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   map           TEXT NOT NULL DEFAULT '',
@@ -69,8 +82,8 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   -- naive date/finished_at + match_key stay naive-local on purpose — the
   -- correlator (corroborated()) compares them against the naive filename axis;
   -- played_at_utc is an ADDITIVE canonical value, never a re-encoding.
-  -- TEXT (RFC3339, not DATETIME) so the *string round-trip skips the driver's
-  -- time.Time coercion; UTC RFC3339 sorts lexicographically.
+  -- TEXT RFC3339 (like every timestamp here — see the header note); UTC
+  -- RFC3339 sorts lexicographically.
   played_at_utc TEXT,
   perf_elim_total            INTEGER NOT NULL DEFAULT 0,
   perf_elim_avg_per_10min    REAL    NOT NULL DEFAULT 0,
@@ -78,7 +91,7 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   perf_assists_avg_per_10min REAL    NOT NULL DEFAULT 0,
   perf_deaths_total          INTEGER NOT NULL DEFAULT 0,
   perf_deaths_avg_per_10min  REAL    NOT NULL DEFAULT 0
-);
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_summary_match_key_parsed_at ON summary_screenshots(match_key, parsed_at);
 -- statement-end
@@ -89,14 +102,14 @@ CREATE TABLE IF NOT EXISTS summary_heroes_played (
   percent_played  INTEGER NOT NULL DEFAULT 0,
   play_time       TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (summary_screenshot_id, hero)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS teams_screenshots (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   filename      TEXT NOT NULL UNIQUE,
   match_key     TEXT NOT NULL,
-  parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  parsed_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   -- The in-game teams scoreboard is a combat-stats source only; match
@@ -112,7 +125,7 @@ CREATE TABLE IF NOT EXISTS teams_screenshots (
   -- 'role' (5v5) or 'open' (6v6); '' when the count couldn't be read.
   -- A user-set match_queue annotation overrides this at read time.
   queue_type    TEXT NOT NULL DEFAULT ''
-);
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_teams_match_key_parsed_at ON teams_screenshots(match_key, parsed_at);
 -- statement-end
@@ -123,19 +136,19 @@ CREATE TABLE IF NOT EXISTS teams_hero_stats (
   stat_key    TEXT NOT NULL,
   stat_value  INTEGER NOT NULL,
   PRIMARY KEY (teams_screenshot_id, hero, stat_key)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS personal_screenshots (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   filename      TEXT NOT NULL UNIQUE,
   match_key     TEXT NOT NULL,
-  parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  parsed_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   hero          TEXT NOT NULL DEFAULT '',
   hero_raw      TEXT NOT NULL DEFAULT ''
-);
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_personal_match_key_parsed_at ON personal_screenshots(match_key, parsed_at);
 -- statement-end
@@ -146,14 +159,14 @@ CREATE TABLE IF NOT EXISTS personal_hero_stats (
   stat_key    TEXT NOT NULL,
   stat_value  INTEGER NOT NULL,
   PRIMARY KEY (personal_screenshot_id, hero, stat_key)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS rank_screenshots (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   filename        TEXT NOT NULL UNIQUE,
   match_key       TEXT NOT NULL,
-  parsed_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  parsed_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   rank            TEXT NOT NULL DEFAULT '',
@@ -161,7 +174,7 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   rank_progress   INTEGER NOT NULL DEFAULT 0,
   change_percent  INTEGER NOT NULL DEFAULT 0,
   result          TEXT NOT NULL DEFAULT ''
-);
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots(match_key, parsed_at);
 -- statement-end
@@ -179,7 +192,7 @@ CREATE TABLE IF NOT EXISTS rank_modifiers (
     'demotion protection'
   )),
   PRIMARY KEY (rank_screenshot_id, modifier)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS rank_sr (
@@ -188,7 +201,7 @@ CREATE TABLE IF NOT EXISTS rank_sr (
   sr        INTEGER NOT NULL DEFAULT 0,
   change    INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (rank_screenshot_id, hero)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS match_annotations (
@@ -196,8 +209,8 @@ CREATE TABLE IF NOT EXISTS match_annotations (
   leaver       TEXT CHECK (leaver IS NULL OR leaver IN ('self','team','enemy')),
   note         TEXT,
   replay_code  TEXT,
-  annotated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+  annotated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS match_annotation_members (
@@ -205,7 +218,7 @@ CREATE TABLE IF NOT EXISTS match_annotation_members (
   member    TEXT NOT NULL,
   PRIMARY KEY (match_key, member),
   FOREIGN KEY (match_key) REFERENCES match_annotations(match_key) ON DELETE CASCADE
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS match_annotation_tags (
@@ -213,7 +226,7 @@ CREATE TABLE IF NOT EXISTS match_annotation_tags (
   tag       TEXT NOT NULL,
   PRIMARY KEY (match_key, tag),
   FOREIGN KEY (match_key) REFERENCES match_annotations(match_key) ON DELETE CASCADE
-);
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_match_annotation_tags_tag ON match_annotation_tags(tag);
 -- statement-end
@@ -223,24 +236,24 @@ CREATE INDEX IF NOT EXISTS idx_match_annotation_tags_tag ON match_annotation_tag
 -- date groups.
 CREATE TABLE IF NOT EXISTS pinned_matches (
   match_key TEXT PRIMARY KEY,
-  pinned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  pinned_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS hidden_matches (
   match_key TEXT PRIMARY KEY,
-  hidden_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+  hidden_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS unknown_screenshots (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   filename    TEXT NOT NULL UNIQUE,
   match_key   TEXT NOT NULL,
-  parsed_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  parsed_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT
-);
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_unknown_match_key_parsed_at ON unknown_screenshots(match_key, parsed_at);
 -- statement-end
@@ -255,7 +268,7 @@ CREATE TABLE IF NOT EXISTS ambiguous_candidates (
   match_key        TEXT NOT NULL,
   distance_seconds INTEGER NOT NULL,
   PRIMARY KEY (filename, match_key)
-);
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_ambig_cand_match_key ON ambiguous_candidates(match_key);
 -- statement-end
@@ -263,22 +276,22 @@ CREATE INDEX IF NOT EXISTS idx_ambig_cand_match_key ON ambiguous_candidates(matc
 CREATE TABLE IF NOT EXISTS match_reviews (
   match_key   TEXT PRIMARY KEY,
   reviewed_by TEXT NOT NULL CHECK (reviewed_by IN ('self', 'coach')),
-  reviewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  reviewed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS match_queue (
   match_key     TEXT PRIMARY KEY,
   queue_type    TEXT NOT NULL CHECK (queue_type IN ('role', 'open')),
-  overridden_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  overridden_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS match_play_mode (
   match_key     TEXT PRIMARY KEY,
   play_mode     TEXT NOT NULL CHECK (play_mode IN ('quickplay', 'competitive')),
-  overridden_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  overridden_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 -- Content-hash registry for every image the parse loop has examined.
@@ -291,16 +304,16 @@ CREATE TABLE IF NOT EXISTS ingested_files (
   filename      TEXT PRIMARY KEY,
   content_hash  TEXT NOT NULL,
   duplicate_of  TEXT NOT NULL DEFAULT '',
-  first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  first_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_ingested_files_hash ON ingested_files(content_hash);
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS ignored_screenshots (
   filename   TEXT PRIMARY KEY,
-  ignored_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  ignored_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 -- Per-file OCR failure ledger backing the Unknown tab's "Failed to read"
@@ -316,9 +329,9 @@ CREATE TABLE IF NOT EXISTS failed_files (
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   error              TEXT NOT NULL DEFAULT '',
   attempts           INTEGER NOT NULL DEFAULT 1,
-  first_failed_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  last_failed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  first_failed_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  last_failed_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 -- Recognized-but-unstored skip list for the PERSONAL "All Heroes" aggregate
@@ -328,8 +341,8 @@ CREATE TABLE IF NOT EXISTS failed_files (
 -- ignored_screenshots) without a garbage match row or an Unknown-tab entry.
 CREATE TABLE IF NOT EXISTS all_heroes_screenshots (
   filename      TEXT PRIMARY KEY,
-  recognized_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  recognized_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 -- User match-data override layer. The single source for BOTH features:
@@ -366,8 +379,8 @@ CREATE TABLE IF NOT EXISTS user_match_data (
   level          INTEGER,
   rank_progress  INTEGER,
   change_percent INTEGER,
-  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
 -- statement-end
 
 -- Heroes-played list. position 0 = primary (drives card header + derived role,
@@ -380,7 +393,7 @@ CREATE TABLE IF NOT EXISTS user_match_heroes (
   play_time      TEXT,
   position       INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (match_key, hero)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS user_match_hero_stats (
@@ -389,7 +402,7 @@ CREATE TABLE IF NOT EXISTS user_match_hero_stats (
   stat_key    TEXT NOT NULL,
   stat_value  INTEGER NOT NULL,
   PRIMARY KEY (match_key, hero, stat_key)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS user_match_sr (
@@ -398,7 +411,7 @@ CREATE TABLE IF NOT EXISTS user_match_sr (
   sr          INTEGER NOT NULL DEFAULT 0,
   change      INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (match_key, hero)
-);
+) STRICT;
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
@@ -413,5 +426,5 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
     'demotion protection'
   )),
   PRIMARY KEY (match_key, modifier)
-);
+) STRICT;
 -- statement-end

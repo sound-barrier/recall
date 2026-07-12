@@ -36,7 +36,7 @@ func (s *SQLStore) SetAnnotation(a Annotation) error {
 		   leaver       = excluded.leaver,
 		   note         = excluded.note,
 		   replay_code  = excluded.replay_code,
-		   annotated_at = CURRENT_TIMESTAMP`,
+		   annotated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		a.MatchKey, leaver, a.Note, a.ReplayCode,
 	); err != nil {
 		return err

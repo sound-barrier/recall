@@ -17,7 +17,7 @@ func (s *SQLStore) SetReview(matchKey, reviewedBy string) error {
 		`INSERT INTO match_reviews (match_key, reviewed_by) VALUES (?, ?)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   reviewed_by = excluded.reviewed_by,
-		   reviewed_at = CURRENT_TIMESTAMP`,
+		   reviewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		matchKey, reviewedBy,
 	)
 	return err

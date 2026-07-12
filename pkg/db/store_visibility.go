@@ -11,7 +11,7 @@ import "fmt"
 func (s *SQLStore) HideMatch(matchKey string) error {
 	_, err := s.db.Exec(
 		`INSERT INTO hidden_matches (match_key) VALUES (?)
-		 ON CONFLICT(match_key) DO UPDATE SET hidden_at = CURRENT_TIMESTAMP`,
+		 ON CONFLICT(match_key) DO UPDATE SET hidden_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		matchKey,
 	)
 	return err
@@ -107,7 +107,7 @@ func (s *SQLStore) LoadHiddenKeys() (map[string]bool, error) {
 func (s *SQLStore) PinMatch(matchKey string) error {
 	_, err := s.db.Exec(
 		`INSERT INTO pinned_matches (match_key) VALUES (?)
-		 ON CONFLICT(match_key) DO UPDATE SET pinned_at = CURRENT_TIMESTAMP`,
+		 ON CONFLICT(match_key) DO UPDATE SET pinned_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		matchKey,
 	)
 	return err

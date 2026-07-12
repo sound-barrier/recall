@@ -12,7 +12,7 @@ package db
 func (s *SQLStore) UpsertAllHeroesScreenshot(filename string) error {
 	_, err := s.db.Exec(
 		`INSERT INTO all_heroes_screenshots (filename) VALUES (?)
-		 ON CONFLICT(filename) DO UPDATE SET recognized_at = CURRENT_TIMESTAMP`,
+		 ON CONFLICT(filename) DO UPDATE SET recognized_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		filename,
 	)
 	return err

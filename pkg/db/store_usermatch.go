@@ -39,7 +39,7 @@ func (s *SQLStore) UpsertUserMatchData(d UserMatchData) error {
 		   game_length=excluded.game_length, played_at_utc=excluded.played_at_utc,
 		   rank=excluded.rank, level=excluded.level,
 		   rank_progress=excluded.rank_progress, change_percent=excluded.change_percent,
-		   updated_at=CURRENT_TIMESTAMP`,
+		   updated_at=strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		d.MatchKey, d.Map, d.Hero, d.Eliminations, d.Assists, d.Deaths, d.Damage,
 		d.Healing, d.Mitigation, d.Result, d.FinalScore, d.Date, d.FinishedAt,
 		d.GameLength, d.PlayedAtUTC, d.Rank, d.Level, d.RankProgress, d.ChangePercent,
