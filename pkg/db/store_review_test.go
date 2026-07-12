@@ -22,8 +22,8 @@ func TestSQLStore_Review_SetLoadClearRoundTrip(t *testing.T) {
 	if got["match-A"].ReviewedBy != "self" || got["match-B"].ReviewedBy != "coach" {
 		t.Errorf("after seed, got %+v", got)
 	}
-	// reviewed_at is server-stamped via CURRENT_TIMESTAMP — should
-	// roundtrip non-empty for every persisted row. The dossier's
+	// reviewed_at is server-stamped via the strftime RFC3339 default —
+	// should roundtrip non-empty for every persisted row. The dossier's
 	// "days since last review" computation reads this field.
 	if got["match-A"].ReviewedAt == "" || got["match-B"].ReviewedAt == "" {
 		t.Errorf("reviewed_at should be populated, got %+v", got)
