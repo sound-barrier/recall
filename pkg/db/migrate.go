@@ -175,8 +175,8 @@ func ensureSchemaVersionTable(d *sql.DB) error {
 	_, err := d.Exec(`CREATE TABLE IF NOT EXISTS schema_version (
 		version    INTEGER PRIMARY KEY,
 		name       TEXT NOT NULL,
-		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-	)`)
+		applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+	) STRICT`)
 	if err != nil {
 		return fmt.Errorf("create schema_version: %w", err)
 	}

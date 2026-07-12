@@ -17,7 +17,7 @@ func (s *SQLStore) SetMatchQueue(matchKey, queueType string) error {
 		`INSERT INTO match_queue (match_key, queue_type) VALUES (?, ?)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   queue_type = excluded.queue_type,
-		   overridden_at = CURRENT_TIMESTAMP`,
+		   overridden_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		matchKey, queueType,
 	)
 	return err
@@ -54,7 +54,7 @@ func (s *SQLStore) BulkSetMatchQueue(matchKeys []string, queueType string) error
 		stmt = `INSERT INTO match_queue (match_key, queue_type) VALUES (?, ?)
 			 ON CONFLICT(match_key) DO UPDATE SET
 			   queue_type = excluded.queue_type,
-			   overridden_at = CURRENT_TIMESTAMP`
+			   overridden_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`
 		for _, k := range matchKeys {
 			if _, err := tx.Exec(stmt, k, queueType); err != nil {
 				return err

@@ -20,7 +20,7 @@ func (s *SQLStore) SetMatchPlayMode(matchKey, playMode string) error {
 		`INSERT INTO match_play_mode (match_key, play_mode) VALUES (?, ?)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   play_mode = excluded.play_mode,
-		   overridden_at = CURRENT_TIMESTAMP`,
+		   overridden_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
 		matchKey, playMode,
 	)
 	return err
@@ -56,7 +56,7 @@ func (s *SQLStore) BulkSetMatchPlayMode(matchKeys []string, playMode string) err
 		stmt = `INSERT INTO match_play_mode (match_key, play_mode) VALUES (?, ?)
 			 ON CONFLICT(match_key) DO UPDATE SET
 			   play_mode = excluded.play_mode,
-			   overridden_at = CURRENT_TIMESTAMP`
+			   overridden_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`
 		for _, k := range matchKeys {
 			if _, err := tx.Exec(stmt, k, playMode); err != nil {
 				return err
