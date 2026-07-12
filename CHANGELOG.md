@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.27.0](https://github.com/sound-barrier/recall/compare/v0.26.0...v0.27.0) (2026-07-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **db:** column datatypes and timestamp storage format changed with no migration provided. Existing databases must be wiped and re-created (pre-1.0 wipe + relaunch).
+
+### Features
+
+* **db:** make every table STRICT ([929f7f5](https://github.com/sound-barrier/recall/commit/929f7f57a98ca2b8625a2e213da588b0d630b45c))
+
+
+### Documentation
+
+* **db:** sweep stale CURRENT_TIMESTAMP/DATETIME comments post-STRICT ([675219c](https://github.com/sound-barrier/recall/commit/675219c71bcaf45f8c22c8ad5ddf909d353d7199))
+
+
+### Tests
+
+* **e2e:** anchor narrow-time-scope fixture to today, not Jan 2026 ([e5a0624](https://github.com/sound-barrier/recall/commit/e5a0624f0b2ebe6b274c7ed63b4eddf5fe679db4))
+
 ## [0.26.0](https://github.com/sound-barrier/recall/compare/v0.25.3...v0.26.0) (2026-07-11)
 
 
