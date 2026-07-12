@@ -2,11 +2,11 @@
  * Time-of-day bounds on the narrow custom date range.
  *
  * OW patches land at a clock time, not a date boundary — the optional
- * From/To time inputs tighten a custom day to a minute so "after Jan 7
- * 11:00" splits a day's matches at the patch drop. Blank time = whole
- * day (the long-standing behavior); the inputs stay disabled until
- * their date is set; heatmap picks are whole-day and reset any
- * panel-set time.
+ * From/To time inputs tighten a custom day to a minute so "after 11:00
+ * on the patch day" splits a day's matches at the patch drop. Blank
+ * time = whole day (the long-standing behavior); the inputs stay
+ * disabled until their date is set; heatmap picks are whole-day and
+ * reset any panel-set time.
  */
 import type { Route } from '@playwright/test'
 
@@ -31,12 +31,32 @@ function rec(key: string, date: string, time: string) {
   }
 }
 
+// Anchor the corpus to a fixed offset from *today* rather than a literal
+// calendar date. The Campaign Log heatmap only renders cells for its
+// trailing ~6-month window (useMatchHeatmap: today back 26 weeks), so a
+// hard-coded date silently rolls off the left edge once "today" advances
+// far enough past it — the `.heatmap-cell[data-date=…]` selector then
+// matches nothing and the click hangs. Days-ago keeps the patch day well
+// inside the window on every run. (Build the YYYY-MM-DD from LOCAL date
+// components, never toISOString — the heatmap's own axis is local.)
+function daysAgoLocal(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+const PATCH_DAY = daysAgoLocal(10) // the four-match day the tests split + pick
+const NEXT_DAY = daysAgoLocal(9)   // the day after, one match
+
 const corpus = () => ([
-  rec('early', '2026-01-07', '09:00'),
-  rec('edge', '2026-01-07', '10:59'),
-  rec('patch', '2026-01-07', '11:00'),
-  rec('late', '2026-01-07', '21:57'),
-  rec('nextday', '2026-01-08', '19:30'),
+  rec('early', PATCH_DAY, '09:00'),
+  rec('edge', PATCH_DAY, '10:59'),
+  rec('patch', PATCH_DAY, '11:00'),
+  rec('late', PATCH_DAY, '21:57'),
+  rec('nextday', NEXT_DAY, '19:30'),
 ])
 
 test.describe('narrow time scope', () => {
@@ -68,7 +88,7 @@ test.describe('narrow time scope', () => {
     const fromTime = page.locator('[data-np-from-time]')
     await expect(fromTime).toBeDisabled() // no date yet → time is inert
 
-    await fromDate.fill('2026-01-07')
+    await fromDate.fill(PATCH_DAY)
     await expect(fromTime).toBeEnabled()
     await expect(fromTime).toHaveValue('')
 
@@ -85,7 +105,7 @@ test.describe('narrow time scope', () => {
 
   test('a to time keeps the pre-patch side', async ({ page }) => {
     await page.locator('[data-narrow-trigger]').click()
-    await page.locator('[data-np-to-date]').fill('2026-01-07')
+    await page.locator('[data-np-to-date]').fill(PATCH_DAY)
     await page.locator('[data-np-to-time]').fill('10:59')
     await closePanel(page)
     await expect.poll(() => leafCount(page)).toBe(2) // early, edge
@@ -93,14 +113,14 @@ test.describe('narrow time scope', () => {
 
   test('a heatmap day pick resets a panel-set time to whole-day', async ({ page }) => {
     await page.locator('[data-narrow-trigger]').click()
-    await page.locator('[data-np-from-date]').fill('2026-01-07')
+    await page.locator('[data-np-from-date]').fill(PATCH_DAY)
     await page.locator('[data-np-from-time]').fill('11:00')
     await closePanel(page)
     await expect.poll(() => leafCount(page)).toBe(3)
 
     // Click the Jan 7 heatmap cell: a whole-day selection — the minute
     // bound must not survive it.
-    await page.locator('.heatmap-cell[data-date="2026-01-07"]').click()
+    await page.locator(`.heatmap-cell[data-date="${PATCH_DAY}"]`).click()
     await expect.poll(() => leafCount(page)).toBe(4) // all of Jan 7
   })
 
@@ -108,7 +128,7 @@ test.describe('narrow time scope', () => {
     await page.locator('[data-narrow-trigger]').click()
     const fromDate = page.locator('[data-np-from-date]')
     const fromTime = page.locator('[data-np-from-time]')
-    await fromDate.fill('2026-01-07')
+    await fromDate.fill(PATCH_DAY)
     await fromTime.fill('11:00')
     await fromDate.fill('')
     await expect(fromTime).toBeDisabled()
