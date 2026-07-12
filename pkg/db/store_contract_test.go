@@ -22,13 +22,12 @@ var storeImpls = []struct {
 	{"Fake", func(t *testing.T) db.Store { t.Helper(); return &dbtest.Fake{} }},
 }
 
-// IgnoredAt's wire shape is RFC3339: SQLite stores CURRENT_TIMESTAMP as
-// "2006-01-02 15:04:05", but the modernc driver scans DATETIME columns
-// through time.Time, so the string the app actually receives is
-// "2006-01-02T15:04:05Z" — and the Fake must match THAT read surface.
-// (The 2026-07 audit claimed the two had diverged by comparing the
-// storage format; this test adjudicated the claim empirically — both
-// implementations agree on RFC3339.)
+// IgnoredAt's wire shape is RFC3339: the STRICT ignored_at column is TEXT
+// stamped by strftime('%Y-%m-%dT%H:%M:%SZ','now'), so "2006-01-02T15:04:05Z"
+// is stored verbatim — no DATETIME affinity, no driver time.Time round-trip.
+// The Fake must match THAT read surface. (The 2026-07 audit claimed the two
+// had diverged by comparing the storage format; this test adjudicated the
+// claim empirically — both implementations agree on RFC3339.)
 func TestStoreContract_IgnoredAtIsRFC3339OnRead(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {

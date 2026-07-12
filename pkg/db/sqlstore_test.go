@@ -359,8 +359,8 @@ func TestSQLStore_ListIgnoredScreenshots_OrdersByTimestampDesc(t *testing.T) {
 	if err := s.AddIgnoredScreenshot("first.png"); err != nil {
 		t.Fatalf("AddIgnoredScreenshot first: %v", err)
 	}
-	// SQLite's CURRENT_TIMESTAMP rounds to seconds; sleep a second so
-	// the second add lands at a strictly later timestamp.
+	// The strftime('%…%SZ') stamp is whole-second resolution; sleep a
+	// second so the second add lands at a strictly later timestamp.
 	time.Sleep(1100 * time.Millisecond)
 	if err := s.AddIgnoredScreenshot("second.png"); err != nil {
 		t.Fatalf("AddIgnoredScreenshot second: %v", err)
@@ -433,7 +433,7 @@ func TestSQLStore_ParsedAt_PopulatedOnInsert(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.Summaries[0].ParsedAt == "" {
-		t.Fatal("expected ParsedAt to be populated by CURRENT_TIMESTAMP default")
+		t.Fatal("expected ParsedAt to be populated by the parsed_at strftime default")
 	}
 }
 
@@ -784,8 +784,8 @@ func TestSQLStore_HiddenMatches_RoundTrip(t *testing.T) {
 
 func TestSQLStore_HiddenMatches_IdempotentHideRefreshesTimestamp(t *testing.T) {
 	// The Hide UPSERT (ON CONFLICT DO UPDATE SET hidden_at =
-	// CURRENT_TIMESTAMP) is what keeps a re-hide from inserting a
-	// duplicate row and lets us observe a refresh.
+	// strftime('%Y-%m-%dT%H:%M:%SZ','now')) is what keeps a re-hide from
+	// inserting a duplicate row and lets us observe a refresh.
 	s := openMemory(t)
 	if err := s.HideMatch("m1"); err != nil {
 		t.Fatalf("first hide: %v", err)
@@ -794,7 +794,7 @@ func TestSQLStore_HiddenMatches_IdempotentHideRefreshesTimestamp(t *testing.T) {
 	if err := db.RawDB(s).QueryRow(`SELECT hidden_at FROM hidden_matches WHERE match_key = ?`, "m1").Scan(&first); err != nil {
 		t.Fatalf("read first hidden_at: %v", err)
 	}
-	// CURRENT_TIMESTAMP is whole-second resolution in SQLite; sleep a
+	// The strftime('%…%SZ') stamp is whole-second resolution; sleep a
 	// second to make a refresh observable. Long enough to be reliable,
 	// short enough to keep the test cheap.
 	time.Sleep(1100 * time.Millisecond)

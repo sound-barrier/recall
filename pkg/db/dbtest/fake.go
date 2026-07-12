@@ -54,8 +54,9 @@ type Fake struct {
 
 	// IgnoredAt maps filename → the timestamp at which it was ignored.
 	// Parallel to Ignored so ListIgnoredScreenshots can return rows in
-	// time order. AddIgnoredScreenshot stamps time.Now().UTC() formatted
-	// the same way SQLite's CURRENT_TIMESTAMP renders ("2026-06-05T...");
+	// time order. AddIgnoredScreenshot stamps time.Now().UTC() as RFC3339
+	// ("2026-06-05T...Z"), matching the byte-identical value the STRICT
+	// TEXT ignored_at column stores via strftime('%Y-%m-%dT%H:%M:%SZ');
 	// tests that need a deterministic timestamp seed this map directly
 	// before reading.
 	IgnoredAt map[string]string
