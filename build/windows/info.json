@@ -1,15 +1,15 @@
 {
-	"fixed": {
-		"file_version": "0.1.0"
-	},
-	"info": {
-		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "sound-barrier",
-			"FileDescription": "Recall — Overwatch match telemetry",
-			"LegalCopyright": "© 2026 sound-barrier",
-			"ProductName": "Recall",
-			"Comments": "Local Overwatch match history + trends"
-		}
-	}
+  "fixed": {
+    "file_version": "0.1.0"
+  },
+  "info": {
+    "0000": {
+      "ProductVersion": "0.1.0",
+      "CompanyName": "sound-barrier",
+      "FileDescription": "Recall — Overwatch match telemetry",
+      "LegalCopyright": "© 2026 sound-barrier",
+      "ProductName": "Recall",
+      "Comments": "Local Overwatch match history + trends"
+    }
+  }
 }
