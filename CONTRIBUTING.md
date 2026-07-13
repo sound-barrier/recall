@@ -94,7 +94,7 @@ Once the prerequisites are in place, the container installs:
 
 - Docker (Docker-in-Docker, for `task build-*` and `task swagger`)
 - System packages via apt: `tesseract`, `sqlite3`, `cloc`, `pipx`
-- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails v3 CLI (`wails3`), `task`, and every linter (`govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `hadolint`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
+- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails v3 CLI (`wails3`), `task`, and every linter (`govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `taplo`, `sqlfluff`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
 - `cd frontend && npm ci` for the Vue/Vite toolchain
 - `lefthook install` to wire the pre-commit hooks
 
@@ -171,7 +171,7 @@ sudo apt install -y \
 sudo apt install -y tesseract-ocr sqlite3 cloc pipx docker.io  # or podman
 
 # mise — provisions Go, Node, the Wails v3 CLI (wails3), task, and every linter
-# (golangci-lint, hadolint, yamllint, trivy,
+# (golangci-lint, taplo, sqlfluff, yamllint, trivy,
 # typos, ruff, gosec, semgrep, schemathesis, …) from mise.toml.
 curl -fsSL https://mise.run | sh
 export PATH="$HOME/.local/bin:$PATH"
@@ -283,7 +283,7 @@ go build -tags serveronly ./...  # compile-check server variant
 
 ```sh
 task fmt            # format all Go source files (golangci-lint fmt — gci import groups + gofmt -s)
-task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, yamllint, Spectral
+task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, yamllint, Spectral, taplo (TOML), sqlfluff (SQL), Biome (JSON)
 task lint-yaml      # yamllint only
 task lint-openapi   # Spectral only (api/openapi.yaml)
 task test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
@@ -352,7 +352,9 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 | `spectral`          | `api/openapi.yaml`              | `task lint-openapi` → `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
 | `gen-types`         | `api/openapi.yaml`              | `task gen-types` — regenerates `frontend/src/api.gen.d.ts` and auto-stages it so the generated file is never out of sync with the spec. |
 | `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (from `mise install`) |
-| `hadolint`          | `Dockerfile*`                   | `hadolint`           (from `mise install`) |
+| `taplo`             | `*.toml`                        | `taplo fmt` — formats + re-stages (from `mise install`) |
+| `sqlfluff`          | `*.sql`                         | `sqlfluff lint` (dialect sqlite — from `mise install`) |
+| `biome-json`        | `*.json`                        | `biome check --write` — formats/lints + re-stages (auto-pulled on demand by `npx`) |
 
 **`pre-push`** — runs on `git push`: the **fast core only** (~25s) — the checks most likely to turn a push into a red CI round-trip. Everything heavier still gates in CI and is bundled into **`task verify`** when you want the full battery locally before pushing.
 
