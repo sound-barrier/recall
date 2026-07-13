@@ -69,8 +69,9 @@
         "stylelint.vscode-stylelint",
         "mkaufman.HTMLHint",
 
-        // Dockerfile linter (Hadolint).
-        "exiasr.hadolint",
+        // Config-file linters (match the CI checks): TOML (taplo) + JSON (Biome).
+        "tamasfe.even-better-toml",
+        "biomejs.biome",
 
         // Containers (docker-in-docker feature exposes a daemon).
         "ms-azuretools.vscode-docker",
@@ -129,10 +130,10 @@
   // public URL the maintainer can flip private/public.
   "forwardPorts": [5173, 7000, 8080, 34115],
   "portsAttributes": {
-    "5173":  {"label": "Vite dev server"},
-    "7000":  {"label": "Recall server"},
-    "8080":  {"label": "Swagger UI (task swagger)"},
-    "34115": {"label": "Wails IPC dev"}
+    "5173": { "label": "Vite dev server" },
+    "7000": { "label": "Recall server" },
+    "8080": { "label": "Swagger UI (task swagger)" },
+    "34115": { "label": "Wails IPC dev" }
   },
 
   // The `vscode` user is created by the common-utils feature; using a
