@@ -142,6 +142,9 @@ tasks:
       - task: lint-py
       - task: lint-shell
       - task: lint-yaml
+      - task: lint-toml
+      - task: lint-sql
+      - task: lint-json
       - task: lint-openapi
       - task: lint-typos
       - task: lint-md
@@ -205,6 +208,30 @@ tasks:
       - echo "[ recall ] Linting YAML…"
       - yamllint .
       - echo "[ recall ] ✓  YAML lint clean"
+
+  lint-toml:
+    desc: Lint + format-check TOML (taplo, config in .taplo.toml)
+    cmds:
+      - command -v taplo >/dev/null || { echo "[ recall ] ✗  taplo not installed — run 'mise install'"; exit 1; }
+      - echo "[ recall ] Linting TOML (taplo)…"
+      - taplo fmt --check $(git ls-files '*.toml')
+      - taplo lint $(git ls-files '*.toml')
+      - echo "[ recall ] ✓  TOML lint clean"
+
+  lint-sql:
+    desc: Lint SQL (sqlfluff, dialect sqlite — config in .sqlfluff)
+    cmds:
+      - command -v sqlfluff >/dev/null || { echo "[ recall ] ✗  sqlfluff not installed — run 'mise install'"; exit 1; }
+      - echo "[ recall ] Linting SQL (sqlfluff)…"
+      - sqlfluff lint $(git ls-files '*.sql')
+      - echo "[ recall ] ✓  SQL lint clean"
+
+  lint-json:
+    desc: Lint + format-check JSON/JSONC (Biome, config in biome.jsonc)
+    cmds:
+      - echo "[ recall ] Linting JSON (biome)…"
+      - 'npx --yes "@biomejs/biome@$BIOME_VERSION" check .'
+      - echo "[ recall ] ✓  JSON lint clean"
 
   lint-typos:
     desc: Spell-check via typos (config in _typos.toml)

@@ -35,7 +35,7 @@ jobs:
       - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d  # v4.2.0
         with:
           install_args: >-
-            go node task ruff shfmt shellcheck jq
+            go node task ruff shfmt shellcheck jq taplo pipx:sqlfluff
             go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
       # Wails v3's desktop code imports a CGo WebKit2GTK webview, so the default
@@ -108,6 +108,19 @@ jobs:
       # [env] (loaded into $GITHUB_ENV by mise-action).
       - name: Lint OpenAPI (Spectral)
         run: task lint-openapi
+
+      # TOML lint + format-check via taplo (mise binary; config .taplo.toml).
+      - name: Lint TOML (taplo)
+        run: task lint-toml
+
+      # SQL lint via sqlfluff (mise pipx, dialect sqlite; config .sqlfluff).
+      - name: Lint SQL (sqlfluff)
+        run: task lint-sql
+
+      # JSON/JSONC lint + format-check via Biome (npx; config biome.jsonc).
+      # BIOME_VERSION comes from mise.toml [env] (loaded into $GITHUB_ENV).
+      - name: Lint JSON (Biome)
+        run: task lint-json
 
       # Spell-check code, docs, and identifiers. The action ships the
       # typos binary so the runner doesn't need a separate install

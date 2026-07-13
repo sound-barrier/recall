@@ -33,6 +33,10 @@ HONKIT_VERSION = "6.2.2"
 SCHEMATHESIS_VERSION = "4.21.10"
 TESSERACT_VERSION = "5.5.2"
 RUFF_VERSION = "0.15.20"
+SQLFLUFF_VERSION = "4.2.2"
+# Biome runs on-demand via npx (like Spectral/markdownlint), so it's a version
+# string here rather than a [tools] binary.
+BIOME_VERSION = "2.5.3"
 
 # Pin Go to the exact mise-installed toolchain so `go build`/`go test` never
 # auto-download a different one (parity with what actions/setup-go@v6 set in CI).
@@ -57,6 +61,7 @@ actionlint = "latest"
 yamllint = "latest"
 typos = "1.47.2"
 ruff = "0.15.20"
+taplo = "latest"
 trivy = "latest"
 lefthook = "latest"
 jq = "latest"
@@ -83,3 +88,4 @@ jq = "latest"
 # Python tools (isolated venvs) → pipx backend.
 "pipx:semgrep" = "1.168.0"
 "pipx:schemathesis" = "4.21.10"
+"pipx:sqlfluff" = "4.2.2"
