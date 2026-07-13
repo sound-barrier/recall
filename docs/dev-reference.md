@@ -37,7 +37,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `eval "$(mise activate zsh)"` | One-time shell hook (or `bash`) so the toolchain + `RECALL_DATA_DIR` load automatically on `cd`. |
 | `cd frontend && npm ci` | Install frontend deps (required after clone / `task clean`). |
 | `task fmt` | Go (`golangci-lint fmt` — gci import groups + gofmt -s) + shell (`shfmt -w -i 2 -ci -bn`). Sub-targets `fmt-go`, `fmt-shell`. |
-| `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, yamllint, Spectral. |
+| `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, yamllint, taplo (TOML), sqlfluff (SQL), Biome (JSON), Spectral. |
 | `task clean` | Remove `dist/`, `build/bin/`, `frontend/{dist,node_modules}`. |
 | `task update-deps` | `go get -u ./...` + `go mod tidy` + `npm update`. |
 | `task check-deps` | Compare pinned tools vs latest. |

@@ -37,7 +37,7 @@ pinned toolchain from `mise.toml`). `task --list` shows the full catalog.
 | `task dev` | Hot-reload dev server (Vite `:9245` — `WAILS_VITE_PORT` overrides). Deletes the dev DB first — seed after boot. |
 | `task test` | Go unit (`-race`) + Vitest. |
 | `task test-e2e` | Playwright e2e. Required for any UI feature (TDD rule below). |
-| `task lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |
+| `task lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, taplo/sqlfluff/Biome for TOML/SQL/JSON, …). |
 | `task fmt` | Go (`golangci-lint fmt` — gci import groups + gofmt -s) + shell (`shfmt`). |
 | `task gen-types` | Regenerate `frontend/src/api.gen.d.ts` after editing `api/openapi.yaml`. |
 | `task cover` | Generate Go + frontend **unit** coverage reports (umbrella). Required before opening a PR. |
