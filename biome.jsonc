@@ -1,0 +1,50 @@
+// Biome — JSON/JSONC lint + format config.
+// https://biomejs.dev/reference/configuration/
+//
+// Governs `task lint-json` (`biome check .`) and the lefthook `biome-json`
+// pre-commit hook. Deliberately scoped to JSON/JSONC only — ESLint owns
+// JS/TS/Vue and Stylelint owns CSS, so `files.includes` never widens past
+// `**/*.json`. Generated JSON (testdata goldens, the npm lockfile, Playwright
+// snapshot fixtures, build output) is excluded so a format pass can't churn it.
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**/*.json",
+      "!**/node_modules",
+      "!frontend/package-lock.json",
+      "!testdata",
+      "!**/*-snapshots",
+      "!frontend/dist",
+      "!coverage"
+    ]
+  },
+  "json": {
+    "parser": {
+      // devcontainer.json / tsconfig.json / wails.json carry comments (JSONC).
+      "allowComments": true,
+      "allowTrailingCommas": true
+    },
+    "formatter": {
+      "enabled": true,
+      "indentStyle": "space",
+      "indentWidth": 2
+    },
+    "linter": {
+      "enabled": true
+    }
+  },
+  "formatter": {
+    "enabled": true
+  },
+  "linter": {
+    // recommended rules apply by default when the linter is enabled; the
+    // valuable one here is noDuplicateObjectKeys for these config files.
+    "enabled": true
+  }
+}

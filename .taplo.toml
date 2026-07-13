@@ -1,0 +1,21 @@
+# taplo — TOML formatter + linter config.
+# https://taplo.tamasfe.dev/configuration/file.html
+#
+# Governs `task lint-toml` (`taplo fmt --check` + `taplo lint`) and the
+# lefthook `taplo` pre-commit hook. Scope: the repo's hand-authored TOML
+# (_typos.toml, mise.toml, ruff.toml, this file).
+
+include = ["**/*.toml"]
+
+[formatting]
+# 2-space indent; never reorder keys or arrays so the hand-authored grouping
+# in mise.toml survives a format pass. Align nothing so diffs stay minimal.
+indent_string = "  "
+reorder_keys = false
+reorder_arrays = false
+align_entries = false
+column_width = 100
+
+[schema]
+# Keep CI hermetic — don't fetch remote JSON schemas from taplo's catalog.
+enabled = false

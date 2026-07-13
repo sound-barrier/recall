@@ -1,0 +1,36 @@
+# sqlfluff — SQL linter config.
+# https://docs.sqlfluff.com/en/stable/configuration.html
+#
+# Governs `task lint-sql` (`sqlfluff lint`) and the lefthook `sqlfluff`
+# pre-commit hook. Scope: standalone .sql files — today just
+# pkg/db/schema.sql, plus any future pkg/db/migrations/*.sql. SQL embedded
+# in Go raw-string literals (pkg/db/store_*.go) is out of reach.
+
+[sqlfluff]
+dialect = sqlite
+# schema.sql is plain SQL (no Jinja/dbt templating); the whole-line
+# `-- statement-end` sentinel between statements is a normal SQL comment.
+templater = raw
+max_line_length = 120
+
+[sqlfluff:indentation]
+tab_space_size = 2
+
+# OW2 schema conventions: UPPER keywords/types, snake_case identifiers.
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = upper
+
+# `date` is a load-bearing column name (mirrored in the Go *Row structs and the
+# snake_case JSON/REST surface), so it stays even though SQLite treats it as a
+# keyword. Grandfather it; the rule still catches genuinely new collisions.
+[sqlfluff:rules:references.keywords]
+ignore_words = date

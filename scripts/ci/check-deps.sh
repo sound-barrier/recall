@@ -12,7 +12,7 @@
 # Auto-managed tools are intentionally omitted (they track @latest via mise or
 # Dependabot, so there is no fixed pin to compare):
 #   • golangci-lint, shfmt, govulncheck, deadcode,
-#     gocyclo, lefthook, trivy, jq  — mise "latest"
+#     gocyclo, lefthook, trivy, jq, taplo  — mise "latest"
 #   • ESLint, typescript-eslint, stylelint, htmlhint, vue-tsc — Dependabot npm
 #   • trivy-action, setup-go, setup-node — Dependabot Actions
 #
@@ -45,6 +45,8 @@ SEMGREP_VERSION=$(mise_pin SEMGREP_VERSION)
 HONKIT_VERSION=$(mise_pin HONKIT_VERSION)
 SCHEMATHESIS_VERSION=$(mise_pin SCHEMATHESIS_VERSION)
 RUFF_VERSION=$(mise_pin RUFF_VERSION)
+SQLFLUFF_VERSION=$(mise_pin SQLFLUFF_VERSION)
+BIOME_VERSION=$(mise_pin BIOME_VERSION)
 
 # Color support — disabled when stdout is not a terminal.
 if [ -t 1 ]; then
@@ -143,6 +145,14 @@ check "schemathesis" "$SCHEMATHESIS_VERSION" "$SCHEMATHESIS_LATEST" "mise.toml [
 # ruff — Python lint + format; PyPI is the source of truth.
 RUFF_LATEST=$(curl -fsSL https://pypi.org/pypi/ruff/json | jq -r .info.version)
 check "ruff" "$RUFF_VERSION" "$RUFF_LATEST" "mise.toml [env]/[tools]"
+
+# sqlfluff — Python SQL linter; PyPI is the source of truth.
+SQLFLUFF_LATEST=$(curl -fsSL https://pypi.org/pypi/sqlfluff/json | jq -r .info.version)
+check "sqlfluff" "$SQLFLUFF_VERSION" "$SQLFLUFF_LATEST" "mise.toml [env]/[tools]"
+
+# Biome — JSON/JSONC lint + format; runs via npx, npm is the source of truth.
+BIOME_LATEST=$(npm_latest @biomejs/biome)
+check "Biome" "$BIOME_VERSION" "$BIOME_LATEST" "mise.toml [env]"
 
 # Verify the literal typos action SHA-pin comment matches the mise pin.
 # GitHub Actions `uses:` refs cannot interpolate expressions, so the
