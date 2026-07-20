@@ -60,6 +60,17 @@
   --support: #7dffac;
   --support-soft: rgb(125 255 172 / 14%);
 
+  /* Categorical chart palette, slots 5–8. Slots 1–4 are the semantic
+     tokens (--accent / --win / --loss / --draw); these extend the ramp
+     for series with no meaning of their own — heroes, maps, modifiers.
+     They lived as hex literals inside TrendChart, so any chart with
+     five or more series drew four theme-aware colours followed by four
+     frozen dark-theme ones. Each theme overrides these for its ground. */
+  --chart-5: #5cc8ff;
+  --chart-6: #b98cff;
+  --chart-7: #ff9d5c;
+  --chart-8: #5ce1c0;
+
   /* Theme atmosphere tunables — overridden in light mode. */
   --atmos-orange: rgb(245 166 35 / 10%);
   --atmos-blue:   rgb(106 184 255 / 6%);
@@ -67,6 +78,35 @@
   --grid-line:    rgb(255 255 255 / 1.8%);
   --primary-text-on-accent: #1a0a00;
   --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
+
+  /* Shadow tint, as a bare `R G B` triplet so each rule keeps its OWN
+     alpha: `box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 45%)`.
+     Elevation shadows were hardcoded to `rgb(0 0 0 / …)` across ~38
+     rules, which is right on the dark palettes and wrong on Day —
+     pure black over cream reads as grime rather than depth. Day
+     overrides this to the OW brand gray, which composites warm and
+     noticeably softer at the same alpha, so the geometry and opacity
+     of every existing shadow carry over unchanged.
+     A triplet rather than finished shadow tokens because the alphas
+     in use span 12%–92% and are tuned per elevation; centralising the
+     HUE is the part that was actually broken.
+
+     Scope: OUTER shadows only — the ones cast onto the page. INSET
+     edges sit on the element's own fill (a `.btn.primary` orange chip,
+     the brand-gray plate), which is dark or saturated under every
+     theme, so they stay literal black; tinting those warm just erases
+     them. Same reasoning for modal scrims, which dim the app in every
+     theme and are deliberately black. */
+  --shadow-rgb: 0 0 0;
+
+  /* Drives `color-scheme` on <html> (see style.css). A token rather
+     than a per-theme rule on the root element: any bare
+     `[data-theme=X] { … }` block that sets real properties is
+     indistinguishable from the scoped-style miscompile that
+     scripts/ci/check-css-theme-leak.sh exists to catch, so keeping
+     this in the palette lets that check stay strict with no
+     exemptions. Controls UA form-control and scrollbar rendering. */
+  --color-scheme: dark;
 
   /* In-game display font for hero/map names and the big card scores. Big
      Noodle Too Oblique is intrinsically oblique — consumers pair this with

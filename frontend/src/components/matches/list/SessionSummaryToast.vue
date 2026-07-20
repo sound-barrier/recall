@@ -80,7 +80,7 @@ onBeforeUnmount(clearTimer)
 }
 
 .sst-copy strong {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .sst-dismiss {

@@ -14,7 +14,12 @@
    "spec plate" that anchors the wordmark and surfaces the brand gray
    #4A4A4A as a deliberate structural element in BOTH themes. The OW
    orange wordmark pops on it; the tile becomes the page's brand stamp
-   even when the rest of the page goes light. */
+   even when the rest of the page goes light.
+
+   Shadow split: the INSET edge lands on the plate, which is dark under
+   every theme, so it stays literal black — tinting it with --shadow-rgb
+   would make it invisible on Day (warm gray on warm gray). The outer
+   drop shadow lands on the PAGE and does follow the theme. */
 .brandmark-tile {
   position: relative;
   display: inline-flex;
@@ -25,7 +30,7 @@
   border-radius: 2px;
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 25%) inset,
-    0 14px 36px -14px rgb(0 0 0 / 55%);
+    0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
   isolation: isolate;
 }
 
@@ -50,7 +55,7 @@
   transform: translateY(-1px);
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 30%) inset,
-    0 18px 40px -14px rgb(0 0 0 / 65%);
+    0 18px 40px -14px rgb(var(--shadow-rgb) / 65%);
   filter: brightness(1.06);
 }
 
@@ -64,7 +69,7 @@
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 25%) inset,
     0 0 0 2px var(--accent-bright),
-    0 14px 36px -14px rgb(0 0 0 / 55%);
+    0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
 }
 
 /* Hover the tile → the accent rail brightens; no chroma halo. */
@@ -200,7 +205,7 @@
   box-shadow:
     0 0 0 2px #fff inset,
     0 0 0 1px rgb(255 255 255 / 55%),
-    0 18px 40px -14px rgb(0 0 0 / 65%);
+    0 18px 40px -14px rgb(var(--shadow-rgb) / 65%);
   filter: none;
 }
 
@@ -208,7 +213,7 @@
   box-shadow:
     0 0 0 2px #fff inset,
     0 0 0 3px var(--accent),
-    0 14px 36px -14px rgb(0 0 0 / 55%);
+    0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
 }
 
 [data-theme="high-contrast"] .brand {

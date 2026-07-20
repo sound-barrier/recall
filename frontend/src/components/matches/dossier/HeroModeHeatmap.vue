@@ -281,19 +281,19 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 }
 
 .heatmap-colhead:hover,
-.heatmap-rowhead:hover { color: var(--accent); }
+.heatmap-rowhead:hover { color: var(--accent-text); }
 
 .heatmap-colhead:focus-visible,
 .heatmap-rowhead:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* A header whose hero / game-mode is part of the current selection — stays lit. */
 .heatmap-colhead.header-selected,
 .heatmap-rowhead.header-selected {
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   border-radius: 2px;
 }
@@ -404,7 +404,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   text-overflow: ellipsis;
 }
 
-.hm-sel-stats strong { color: var(--accent); font-weight: 700; }
+.hm-sel-stats strong { color: var(--accent-text); font-weight: 700; }
 
 .hm-sel-hint {
   margin-left: auto;

@@ -219,7 +219,7 @@ function sourceLabel(source: string): string {
   font-size: 0.6rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -299,7 +299,7 @@ function sourceLabel(source: string): string {
   cursor: pointer;
   line-height: 1;
 }
-.chip-x:hover { color: var(--accent); }
+.chip-x:hover { color: var(--accent-text); }
 
 .active-chip.clear {
   border: 1px dashed var(--text-faint);
@@ -319,5 +319,5 @@ function sourceLabel(source: string): string {
   cursor: pointer;
   font-weight: 700;
 }
-.chip-clear:hover { color: var(--accent); }
+.chip-clear:hover { color: var(--accent-text); }
 </style>

@@ -106,7 +106,7 @@ async function submit() {
   background: var(--surface);
   border: 1px solid var(--border-strong, var(--border));
   border-radius: 4px;
-  box-shadow: 0 18px 60px rgb(0 0 0 / 45%);
+  box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 45%);
   padding: 0.9rem 1rem 0;
   display: flex;
   flex-direction: column;
@@ -145,7 +145,7 @@ async function submit() {
   font-size: 0.58rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -171,7 +171,7 @@ async function submit() {
   padding: 0 0.3rem;
 }
 
-.mm-close:hover { color: var(--accent); }
+.mm-close:hover { color: var(--accent-text); }
 
 .mm-foot {
   display: flex;
@@ -210,7 +210,7 @@ async function submit() {
   cursor: pointer;
 }
 
-.mm-btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.mm-btn.ghost:hover { border-color: var(--accent); color: var(--accent-text); }
 .mm-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--primary-text-on-accent, var(--surface)); }
 .mm-btn.primary:hover:not(:disabled) { background: var(--accent-bright, var(--accent)); }
 .mm-btn.primary:disabled { opacity: 0.45; cursor: not-allowed; }

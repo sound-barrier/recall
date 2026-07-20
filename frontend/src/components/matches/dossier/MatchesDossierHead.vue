@@ -411,7 +411,7 @@ function toggleNarrow() {
 .dossier-btn.primary {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .dossier-btn.primary.is-open {
@@ -419,7 +419,7 @@ function toggleNarrow() {
   color: var(--surface);
 }
 
-.dossier-btn:hover { border-color: var(--accent); color: var(--accent); }
+.dossier-btn:hover { border-color: var(--accent); color: var(--accent-text); }
 .dossier-btn.primary.is-open:hover { color: var(--surface); }
 
 .narrow-count { color: inherit; font-weight: 700; }

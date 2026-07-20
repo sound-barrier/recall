@@ -382,7 +382,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 }
 
 .seg-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .seg-btn-active {
@@ -405,7 +405,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 }
 
 .export-csv-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 
@@ -499,10 +499,10 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 }
 
 .th-sortable:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
 }
-.th-active { color: var(--accent); }
+.th-active { color: var(--accent-text); }
 
 /* Drag handle on each column's right edge (sits in the sticky th's containing
    block). Drag to resize, double-click to reset to the natural width. */
@@ -526,7 +526,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 
 .th-caret {
   font-size: 0.5rem;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* Numbered badge marking a column's position in a multi-key sort stack;

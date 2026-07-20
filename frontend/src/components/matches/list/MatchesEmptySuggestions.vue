@@ -88,12 +88,12 @@ defineProps<{
 .empty-suggestion-btn:focus-visible {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
 }
 
 .empty-suggestion-count {
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 </style>

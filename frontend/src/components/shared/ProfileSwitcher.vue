@@ -199,20 +199,20 @@ const { isReadOnly } = useActiveProfile()
 
 .profile-chip:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .profile-switcher.open .profile-chip {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-  color: var(--accent);
+  color: var(--accent-text);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .profile-glyph {
   font-size: 0.7rem;
   line-height: 1;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .profile-name {
@@ -236,7 +236,7 @@ const { isReadOnly } = useActiveProfile()
 
 .profile-switcher.open .profile-chev {
   transform: rotate(180deg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .profile-menu {
@@ -281,11 +281,11 @@ const { isReadOnly } = useActiveProfile()
 
 .profile-item:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .profile-item.active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .profile-item:disabled {
@@ -295,7 +295,7 @@ const { isReadOnly } = useActiveProfile()
 
 .profile-item-tick {
   font-size: 0.85rem;
-  color: var(--accent);
+  color: var(--accent-text);
   text-align: center;
   line-height: 1;
 }
@@ -419,7 +419,7 @@ const { isReadOnly } = useActiveProfile()
 }
 
 .profile-rename-trigger:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 

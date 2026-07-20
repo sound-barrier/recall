@@ -438,7 +438,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   padding: 0.12rem 0.4rem;
   font-family: var(--mono);
   font-size: 0.64rem;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   letter-spacing: 0.02em;
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
@@ -490,7 +490,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 .mm-chip.picked {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 

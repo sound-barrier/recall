@@ -184,7 +184,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   font-size: 0.62rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -249,5 +249,5 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   text-overflow: ellipsis;
 }
 
-.tl-sel-stats strong { color: var(--accent); font-weight: 700; }
+.tl-sel-stats strong { color: var(--accent-text); font-weight: 700; }
 </style>

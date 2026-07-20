@@ -414,7 +414,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 
 .tc-tag {
   font-size: 0.58rem;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-right: 0.3rem;
 }
 

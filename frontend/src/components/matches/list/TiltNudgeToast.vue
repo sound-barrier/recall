@@ -84,7 +84,7 @@ const emit = defineEmits<{
 .tilt-nudge-dismiss:hover,
 .tilt-nudge-dismiss:focus-visible {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .tilt-nudge-enter-active,

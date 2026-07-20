@@ -313,7 +313,7 @@ defineEmits<{
 
 .pp-arrow {
   font-size: 0.6rem;
-  color: var(--accent);
+  color: var(--accent-text);
   margin-top: 0.1rem;
   flex-shrink: 0;
   animation: pulse-dot 1s ease-in-out infinite;
@@ -347,10 +347,6 @@ defineEmits<{
 .pp-type-badge.personal   { background: var(--support-soft); border-color: var(--support); color: var(--support); }
 .pp-type-badge.rank       { background: var(--draw-soft); border-color: var(--draw-line); color: var(--draw); }
 .pp-type-badge.unknown    { background: transparent; border-color: var(--border); color: var(--text-faint); border-style: dashed; }
-
-:global([data-theme="light"]) .pp-type-badge.scoreboard { color: var(--tank); }
-:global([data-theme="light"]) .pp-type-badge.personal   { color: var(--support); }
-:global([data-theme="light"]) .pp-type-badge.rank       { color: var(--draw); }
 
 .pp-cur-fields {
   display: flex;
@@ -430,8 +426,4 @@ defineEmits<{
 .pp-log-type.scoreboard { color: var(--tank); }
 .pp-log-type.personal   { color: var(--support); }
 .pp-log-type.rank       { color: var(--draw); }
-
-:global([data-theme="light"]) .pp-log-type.scoreboard { color: var(--tank); }
-:global([data-theme="light"]) .pp-log-type.personal   { color: var(--support); }
-:global([data-theme="light"]) .pp-log-type.rank       { color: var(--draw); }
 </style>

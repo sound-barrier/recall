@@ -254,7 +254,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
 
 /* "Copied ✓" pulse on Copy buttons — accent flash for 1.4 s. */
 .btn-copied {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
 }
@@ -274,7 +274,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
 
 .detect-btn {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .detect-btn:hover:not(:disabled) {

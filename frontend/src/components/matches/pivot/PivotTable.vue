@@ -273,7 +273,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
 
 .pivot-reset:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 @media (width <= 52rem) {

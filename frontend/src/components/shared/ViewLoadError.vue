@@ -61,7 +61,7 @@ function reload() {
   border: 1px solid var(--accent);
   border-radius: 2px;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--mono);
   font-size: 0.68rem;
   letter-spacing: 0.1em;

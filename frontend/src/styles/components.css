@@ -76,7 +76,7 @@
 .setting-help:hover,
 .setting-help:focus-visible {
   outline: none;
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
 }
@@ -127,7 +127,7 @@
   pointer-events: none;
   transition: opacity 140ms ease, transform 140ms ease;
   z-index: 5;
-  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%);
+  box-shadow: 0 8px 24px -8px rgb(var(--shadow-rgb) / 50%);
 }
 
 .setting-help-pop::before {
@@ -214,7 +214,7 @@
   line-height: 1;
 }
 
-.probe-chip.success .probe-chip-mark { color: var(--accent); }
+.probe-chip.success .probe-chip-mark { color: var(--accent-text); }
 .probe-chip.blocked .probe-chip-mark { color: var(--text); }
 
 .probe-chip-text {
@@ -454,7 +454,7 @@
   border-radius: 2px;
   max-height: 12rem;
   overflow-y: auto;
-  box-shadow: 0 10px 22px -14px rgb(0 0 0 / 50%);
+  box-shadow: 0 10px 22px -14px rgb(var(--shadow-rgb) / 50%);
 }
 
 .match-tag-suggestions li {
@@ -469,7 +469,7 @@
 .match-tag-suggestions li:hover,
 .match-tag-suggestions li.cursor {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .match-tags-editor {
@@ -583,7 +583,7 @@
   font-size: 0.56rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 

@@ -92,7 +92,7 @@ const { data: owData } = useOWData()
 
 details[open] > .capture-source-summary::before {
   transform: rotate(90deg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .capture-source-summary-hint {
@@ -138,7 +138,7 @@ details[open] > .capture-source-summary::before {
 }
 
 .capture-source-regex {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .reparse-progress-line {
@@ -146,7 +146,7 @@ details[open] > .capture-source-summary::before {
   font-family: var(--mono);
   font-size: 0.66rem;
   letter-spacing: 0.06em;
-  color: var(--accent);
+  color: var(--accent-text);
   text-align: right;
 }
 </style>

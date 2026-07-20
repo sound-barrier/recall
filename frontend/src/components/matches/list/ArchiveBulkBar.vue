@@ -117,7 +117,7 @@ const {
   margin: 0 0 0.45rem;
 }
 
-.bab-glyph { color: var(--accent); font-size: 0.95rem; line-height: 1; }
+.bab-glyph { color: var(--accent-text); font-size: 0.95rem; line-height: 1; }
 
 .bab-count {
   font-family: var(--mono);

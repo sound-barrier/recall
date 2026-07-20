@@ -3,24 +3,39 @@
 // the data layer does not.
 import type { TrendOption } from '@/components/matches/trends/echarts'
 import { TIER_ORDER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/match-trends-helpers'
+import { themeColor, withAlpha } from '@/match/theme-colors'
 
 // Consistent colours for known series keys so a line means the same thing
 // across charts: a Tank line is the same blue on every rank/win-rate chart,
 // and the combat metrics read semantically (eliminations green, deaths red,
-// assists blue). Keys without a mapped colour (heroes, maps, modifiers,
+// assists blue). Keys without a mapped token (heroes, maps, modifiers,
 // 'all') fall through to the chart's themed categorical palette.
-const SERIES_COLOR: Record<string, string> = {
-  tank: '#5ca8ff',
-  dps: '#ff6b6b',
-  support: '#5ce1a0',
-  open: '#f5a623',
-  eliminations: '#5ce1a0',
-  deaths: '#ff6b6b',
-  assists: '#5cc8ff',
+//
+// These map to PALETTE TOKENS, not literal hues. They used to be hardcoded
+// hex, which meant a Tank line drew `#5ca8ff` on every theme while a Tank
+// badge three inches away drew `var(--tank)` — the same role in two
+// different blues, and on Day a light-on-cream blue where the token is the
+// dark `#1f5491` chosen for that ground. Resolving through the token makes
+// the chart agree with the rest of the app and follow the theme for free.
+//
+// Read at option-build time: callers must rebuild their options when the
+// theme changes (TrendsSection tracks `themeMode` for exactly this).
+const SERIES_TOKEN: Record<string, string> = {
+  tank: '--tank',
+  dps: '--dps',
+  support: '--support',
+  open: '--accent',
+  eliminations: '--win',
+  deaths: '--loss',
+  // Reuses the tank blue. Safe because the combat chart (elims/deaths/
+  // assists) and the role charts are never the same chart, so the two
+  // meanings can't collide in one legend.
+  assists: '--tank',
 }
 
 function colorFor(key: string | undefined): string | undefined {
-  return key ? SERIES_COLOR[key] : undefined
+  const token = key ? SERIES_TOKEN[key] : undefined
+  return token ? themeColor(token) : undefined
 }
 
 // A subtle vertical fill under a line — the series colour at ~25% alpha
@@ -28,15 +43,20 @@ function colorFor(key: string | undefined): string | undefined {
 // ladder + cumulative net. Fading out at the bottom keeps overlapping role
 // fills readable; the rare unmapped series (the 'all' bucket) gets a neutral
 // tint so the shape stays a gradient either way.
+// withAlpha rather than the old `${c}40` hex-suffix concatenation: that
+// assumed a 6-digit hex and produced the invalid `#6df40` for any 3-digit
+// token (high-contrast defines --tank as `#6df`). ECharts treats an
+// unparseable colour as transparent, so the fill silently vanished on that
+// theme with nothing logged.
 function areaFill(key: string | undefined) {
-  const c = colorFor(key) ?? '#8892a0'
+  const c = colorFor(key) ?? themeColor('--text-mute')
   return {
     color: {
       type: 'linear' as const,
       x: 0, y: 0, x2: 0, y2: 1,
       colorStops: [
-        { offset: 0, color: `${c}40` },
-        { offset: 1, color: `${c}00` },
+        { offset: 0, color: withAlpha(c, 0.25) },
+        { offset: 1, color: withAlpha(c, 0) },
       ],
     },
   }
@@ -242,7 +262,11 @@ export function heatmapOption(grid: WinrateGrid): TrendOption {
       left: 'center',
       bottom: 2,
       text: ['100%', '0%'],
-      inRange: { color: ['#ff5a73', '#ffc94d', '#4dff8e'] },
+      // The loss→draw→win ramp, from the palette. Hardcoded, these were
+      // the Night hues, so on Day the heatmap ran bright-red-to-neon-green
+      // over cream while every other win/loss surface used the muted
+      // #c0354a / #0f7a3a pair.
+      inRange: { color: [themeColor('--loss'), themeColor('--draw'), themeColor('--win')] },
     },
     series: [{
       type: 'heatmap',
@@ -252,7 +276,9 @@ export function heatmapOption(grid: WinrateGrid): TrendOption {
         total: c.total,
       })),
       label: { show: false },
-      emphasis: { itemStyle: { borderColor: '#fff', borderWidth: 1 } },
+      // --text, not '#fff': on Day the hover ring was white-on-cream and
+      // effectively invisible.
+      emphasis: { itemStyle: { borderColor: themeColor('--text'), borderWidth: 1 } },
     }],
   }
 }

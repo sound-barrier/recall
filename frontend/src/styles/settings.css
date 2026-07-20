@@ -106,7 +106,7 @@
   font-family: var(--display);
   font-weight: 800;
   font-size: 2.4rem;
-  color: var(--accent);
+  color: var(--accent-text);
   line-height: 0.85;
   margin: 0 -0.15rem;
   transform: translateY(2px) skewX(-8deg);

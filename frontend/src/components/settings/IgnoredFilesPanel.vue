@@ -312,7 +312,7 @@ function onBackdropClick(e: MouseEvent) {
   border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 16px 60px rgb(0 0 0 / 45%);
+  box-shadow: 0 16px 60px rgb(var(--shadow-rgb) / 45%);
 }
 
 .ignored-panel:focus-visible {
@@ -417,7 +417,7 @@ function onBackdropClick(e: MouseEvent) {
   object-fit: cover;
   border: 1px solid var(--border-strong, var(--border));
   border-radius: 4px;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 50%);
+  box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 50%);
   pointer-events: none;
 }
 
@@ -436,7 +436,7 @@ function onBackdropClick(e: MouseEvent) {
   appearance: none;
   background: transparent;
   border: none;
-  color: var(--accent);
+  color: var(--accent-text);
   font: inherit;
   cursor: pointer;
   padding: 0;

@@ -335,7 +335,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .queue-chip[data-state="role"][aria-checked="true"] {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
   box-shadow:
@@ -454,7 +454,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .play-mode-chip[data-state="quickplay"][aria-checked="true"] {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
   box-shadow:
@@ -573,7 +573,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
   border-style: solid;
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .since-anchor-btn:hover .since-anchor-sublabel,
@@ -662,7 +662,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .review-chip[data-state="self"][aria-checked="true"] {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
   box-shadow:

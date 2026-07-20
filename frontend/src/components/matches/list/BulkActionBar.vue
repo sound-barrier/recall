@@ -279,7 +279,7 @@ function pickTag(v: string) {
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
-.bab-glyph { color: var(--accent); font-size: 0.95rem; line-height: 1; }
+.bab-glyph { color: var(--accent-text); font-size: 0.95rem; line-height: 1; }
 
 .bab-count {
   font-family: var(--mono);
@@ -319,7 +319,7 @@ function pickTag(v: string) {
 .bulk-select-all {
   border: 1px solid var(--accent);
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .bulk-select-all:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
@@ -332,14 +332,14 @@ function pickTag(v: string) {
 
 .bulk-move:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .bulk-move-target {
   border: 1px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   font-style: italic;
 }
 
@@ -379,7 +379,7 @@ function pickTag(v: string) {
 .bulk-mode:hover,
 .bulk-mode:focus-visible {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   outline: none;
 }
@@ -387,7 +387,7 @@ function pickTag(v: string) {
 .bulk-mode.open {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .bab-caret { font-size: 0.7rem; }
@@ -415,7 +415,7 @@ function pickTag(v: string) {
   background: var(--surface-3, var(--surface-2));
   border: 1px solid var(--border-strong);
   border-radius: 2px;
-  box-shadow: 0 8px 18px rgb(0 0 0 / 30%);
+  box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 30%);
 }
 
 .bab-menu-item {
@@ -440,7 +440,7 @@ function pickTag(v: string) {
 .bab-menu-item:hover,
 .bab-menu-item:focus-visible {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
 }
 

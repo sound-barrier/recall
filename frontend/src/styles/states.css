@@ -73,7 +73,7 @@
   color: var(--text-faint);
   font-size: 0.88rem;
 }
-.empty-sub strong { color: var(--accent); font-weight: 600; }
+.empty-sub strong { color: var(--accent-text); font-weight: 600; }
 
 /* .empty-steps / .empty-step-num / .empty-steps strong.empty-link
    moved to MatchesView.vue */
@@ -98,7 +98,7 @@
 }
 
 .count strong {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   font-size: 0.95rem;
 }
@@ -130,7 +130,7 @@
   display: inline-block;
   font-weight: 300;
 }
-.chev.open { transform: rotate(90deg); color: var(--accent); }
+.chev.open { transform: rotate(90deg); color: var(--accent-text); }
 .chev.small { font-size: 0.9rem; }
 
 

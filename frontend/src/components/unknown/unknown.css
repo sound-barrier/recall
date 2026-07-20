@@ -16,7 +16,6 @@
   margin: 0 -0.05rem;
   border-radius: 1px;
 }
-:global([data-theme="light"]) .unknown-heading em { color: var(--draw); }
 
 .unknown-desc {
   margin-top: 0.65rem;

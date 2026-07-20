@@ -364,7 +364,7 @@ const connector = computed(() => {
       :y1="connector.y1"
       :x2="connector.x2"
       :y2="connector.y2"
-      stroke="var(--accent, #d96a2e)"
+      stroke="var(--accent)"
       stroke-width="1"
       stroke-dasharray="4 5"
       stroke-linecap="round"
@@ -374,7 +374,7 @@ const connector = computed(() => {
       :cx="connector.x1"
       :cy="connector.y1"
       r="3"
-      fill="var(--accent, #d96a2e)"
+      fill="var(--accent)"
     />
   </svg>
 </template>
@@ -386,11 +386,11 @@ const connector = computed(() => {
   pointer-events: auto;
   background: var(--surface, #1d1d1d);
   border: 1px solid var(--border, #3a3a3a);
-  border-left: 3px solid var(--accent, #d96a2e);
+  border-left: 3px solid var(--accent);
   padding: 1.05rem 1.15rem 0.85rem;
   box-shadow:
-    0 26px 70px rgb(0 0 0 / 60%),
-    0 0 0 1px color-mix(in srgb, var(--accent, #d96a2e) 18%, transparent);
+    0 26px 70px rgb(var(--shadow-rgb) / 60%),
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -447,7 +447,7 @@ const connector = computed(() => {
   font-size: 0.62rem;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--accent, #d96a2e);
+  color: var(--accent);
 }
 
 .tour-pips {
@@ -472,13 +472,13 @@ const connector = computed(() => {
 
 .tour-pip:hover,
 .tour-pip:focus-visible {
-  border-color: var(--accent, #d96a2e);
+  border-color: var(--accent);
   transform: scale(1.15);
 }
 
 .tour-pip.active {
-  background: var(--accent, #d96a2e);
-  border-color: var(--accent, #d96a2e);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .tour-callout-counter {
@@ -501,7 +501,7 @@ const connector = computed(() => {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', Impact, sans-serif;
   font-size: 3.2rem;
   line-height: 0.82;
-  color: var(--accent, #d96a2e);
+  color: var(--accent);
 
   /* Tilt that mirrors the masthead wordmark. Subtle — keeps
      proportions readable. */
@@ -515,7 +515,7 @@ const connector = computed(() => {
   line-height: 1.05;
   color: var(--text, #f0f0f0);
   margin: 0;
-  border-bottom: 2px solid var(--accent, #d96a2e);
+  border-bottom: 2px solid var(--accent);
   padding-bottom: 0.35rem;
   align-self: end;
 }
@@ -556,7 +556,7 @@ const connector = computed(() => {
 .tour-callout-skip:hover { color: var(--text-dim, #c0c0c0); }
 
 .tour-callout-skip:focus-visible {
-  outline: 2px solid var(--accent, #d96a2e);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 

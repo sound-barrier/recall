@@ -110,7 +110,7 @@ defineProps<{
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   align-self: center;
   padding: 0.1rem 0.4rem;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);

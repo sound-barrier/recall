@@ -313,7 +313,7 @@ const showProbeChip = computed(
 
 .engine-btn-group .detect-btn:not(:disabled).ghost {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .engine-btn-group .detect-btn:not(:disabled).ghost:hover {
@@ -340,7 +340,7 @@ const showProbeChip = computed(
 .engine-unsupported-warn .warn-icon {
   flex-shrink: 0;
   margin-top: 0.12rem;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .link-btn {
@@ -348,7 +348,7 @@ const showProbeChip = computed(
   padding: 0;
   background: none;
   font: inherit;
-  color: var(--accent);
+  color: var(--accent-text);
   border: none;
   cursor: pointer;
   text-decoration: underline;

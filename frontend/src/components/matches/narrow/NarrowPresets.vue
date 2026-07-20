@@ -144,7 +144,7 @@ function onSavePreset() {
 
 .np-preset-apply:hover,
 .np-preset-apply:focus-visible {
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
 }
 

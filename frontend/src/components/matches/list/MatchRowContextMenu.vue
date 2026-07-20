@@ -288,7 +288,7 @@ const menuStyle = computed(() => {
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: 2px;
-  box-shadow: 0 16px 32px -16px rgb(0 0 0 / 50%);
+  box-shadow: 0 16px 32px -16px rgb(var(--shadow-rgb) / 50%);
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -317,12 +317,12 @@ const menuStyle = computed(() => {
 .match-row-ctx-item:hover,
 .match-row-ctx-item:focus-visible {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
 }
 
 .match-row-ctx-item.is-anchor .match-row-ctx-glyph {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .match-row-ctx-item.is-danger:hover,

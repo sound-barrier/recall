@@ -239,7 +239,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 3px;
-  box-shadow: 0 18px 38px -16px rgb(0 0 0 / 55%);
+  box-shadow: 0 18px 38px -16px rgb(var(--shadow-rgb) / 55%);
 }
 
 .tsp-head {
@@ -270,7 +270,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 
 .tsp-close:hover,
 .tsp-close:focus-visible {
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
 }
 
@@ -358,7 +358,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 
 .tsp-icon:hover:not(:disabled),
 .tsp-icon:focus-visible {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   outline: none;
 }

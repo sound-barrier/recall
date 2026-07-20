@@ -113,7 +113,7 @@ function onDismiss() {
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--accent);
   border-radius: 2px;
-  box-shadow: 0 24px 48px -24px rgb(0 0 0 / 50%);
+  box-shadow: 0 24px 48px -24px rgb(var(--shadow-rgb) / 50%);
   z-index: 110;
   isolation: isolate;
 }
@@ -193,7 +193,7 @@ function onDismiss() {
 
 .match-undo-toast-dismiss:focus-visible {
   outline: none;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .match-undo-toast-enter-active,

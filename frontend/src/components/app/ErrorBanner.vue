@@ -54,6 +54,6 @@ const { clearError } = appStore
   background:
     linear-gradient(var(--loss-soft), var(--loss-soft)),
     var(--surface);
-  box-shadow: 0 6px 24px rgb(0 0 0 / 35%);
+  box-shadow: 0 6px 24px rgb(var(--shadow-rgb) / 35%);
 }
 </style>

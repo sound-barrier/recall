@@ -273,7 +273,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   transition: color 220ms ease;
 }
 
-.big-switch.on .big-switch-state { color: var(--accent); }
+.big-switch.on .big-switch-state { color: var(--accent-text); }
 
 .big-switch:focus-within .big-switch-track {
   outline: none;
@@ -360,7 +360,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
 
 .readiness-text em {
   font-style: normal;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ─── Btn-dot indicator (inside .btn.primary) ────────────── */

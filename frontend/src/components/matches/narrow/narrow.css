@@ -65,7 +65,7 @@
 .np-chip.picked {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -93,7 +93,7 @@
   font-size: 0.58rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -126,7 +126,7 @@
   padding: 0 0.3rem;
 }
 
-.np-close:hover { color: var(--accent); }
+.np-close:hover { color: var(--accent-text); }
 
 .np-search-row {
   display: grid;
@@ -282,7 +282,7 @@
 }
 
 .np-since-anchor-date {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
   letter-spacing: 0.04em;
 }

@@ -216,14 +216,14 @@
   border: 1px solid var(--border);
   border-radius: 2px;
   background: #000;
-  box-shadow: 0 8px 30px -8px rgb(0 0 0 / 50%);
+  box-shadow: 0 8px 30px -8px rgb(var(--shadow-rgb) / 50%);
   cursor: zoom-in;
   transition: box-shadow 160ms ease, border-color 160ms ease;
 }
 
 .source-preview:hover {
   border-color: var(--accent-soft);
-  box-shadow: 0 8px 30px -6px rgb(0 0 0 / 60%);
+  box-shadow: 0 8px 30px -6px rgb(var(--shadow-rgb) / 60%);
 }
 
 .source-preview-error {

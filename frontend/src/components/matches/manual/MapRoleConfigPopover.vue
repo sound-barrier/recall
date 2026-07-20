@@ -221,7 +221,7 @@ const popoverStyle = computed(() => {
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   border-radius: 2px;
-  box-shadow: 0 22px 48px -20px rgb(0 0 0 / 55%);
+  box-shadow: 0 22px 48px -20px rgb(var(--shadow-rgb) / 55%);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -238,7 +238,7 @@ const popoverStyle = computed(() => {
   font-size: 0.58rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -280,7 +280,7 @@ const popoverStyle = computed(() => {
 
 .mrc-count {
   font-size: 0.55rem;
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-soft);
   border-radius: 999px;
   padding: 0 0.35rem;
@@ -310,7 +310,7 @@ const popoverStyle = computed(() => {
 .mrc-pill:hover { color: var(--text); border-color: var(--border-strong, var(--border)); }
 
 .mrc-pill.on {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
 }
@@ -362,14 +362,14 @@ const popoverStyle = computed(() => {
 }
 .mrc-maps li:last-child .mrc-map { border-bottom: 0; }
 .mrc-map:hover { background: var(--surface-2); color: var(--text); }
-.mrc-map.on { color: var(--accent); }
+.mrc-map.on { color: var(--accent-text); }
 .mrc-map:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent-soft); }
 
 .mrc-check {
   display: inline-flex;
   justify-content: center;
   width: 0.9rem;
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--mono);
   font-size: 0.8rem;
 }

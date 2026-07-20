@@ -377,7 +377,7 @@ watch(
 
 .advanced-section[open] .advanced-chev {
   transform: rotate(90deg);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .advanced-rows {

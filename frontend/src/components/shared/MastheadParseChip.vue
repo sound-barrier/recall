@@ -122,7 +122,7 @@ const pct = computed(() => {
   font-feature-settings: 'tnum' on, 'lnum' on;
 }
 
-.mpc-done   { color: var(--accent); font-weight: 600; }
+.mpc-done   { color: var(--accent-text); font-weight: 600; }
 .mpc-slash  { color: var(--text-faint); opacity: 0.6; padding: 0 1px; }
 .mpc-total  { color: var(--text-faint); }
 

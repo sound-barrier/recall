@@ -6,6 +6,7 @@ import { registerTheme } from 'echarts/core'
 import '@/components/matches/trends/echarts'
 import type { TrendOption } from '@/components/matches/trends/echarts'
 import { useTheme } from '@/composables/settings/useTheme'
+import { cssVar } from '@/match/theme-colors'
 
 // Wraps vue-echarts with the cross-cutting concerns every trend chart
 // needs: app-theme colours (canvas can't inherit CSS, so we read the
@@ -35,11 +36,9 @@ const emit = defineEmits<{
 
 const { themeMode } = useTheme()
 
-function cssVar(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  return value || fallback
-}
+// cssVar moved to @/match/theme-colors so the option builders
+// (trend-options, elo-chart-options) resolve palette tokens the same way
+// this component does — they used to hardcode their series hues instead.
 
 // A unique theme name per mode so vue-echarts re-inits the chart when
 // the palette changes (it only re-applies the theme prop on a new
@@ -47,10 +46,10 @@ function cssVar(name: string, fallback: string): string {
 const themeName = ref(`recall-${themeMode.value}`)
 
 function registerThemeFromCss(): void {
-  const text = cssVar('--text', '#ecedf0')
-  const textDim = cssVar('--text-dim', '#9ca0ac')
-  const border = cssVar('--border', '#2c2f38')
-  const surface = cssVar('--surface-2', '#181b22')
+  const text = cssVar('--text')
+  const textDim = cssVar('--text-dim')
+  const border = cssVar('--border')
+  const surface = cssVar('--surface-2')
   const axis = {
     axisLine: { lineStyle: { color: border } },
     axisTick: { lineStyle: { color: border } },
@@ -59,15 +58,20 @@ function registerThemeFromCss(): void {
   }
   const name = `recall-${themeMode.value}`
   registerTheme(name, {
+    // The categorical fallback palette, for series with no semantic token
+    // of their own (heroes, maps, modifiers). Slots 5–8 used to be
+    // hardcoded, so a chart with five or more series mixed theme-aware
+    // colours with frozen dark-theme ones — visible on Day as four muted
+    // lines followed by four bright ones.
     color: [
-      cssVar('--accent', '#F5A623'),
-      cssVar('--win', '#4dff8e'),
-      cssVar('--loss', '#ff5a73'),
-      cssVar('--draw', '#ffc94d'),
-      '#5cc8ff',
-      '#b98cff',
-      '#ff9d5c',
-      '#5ce1c0',
+      cssVar('--accent'),
+      cssVar('--win'),
+      cssVar('--loss'),
+      cssVar('--draw'),
+      cssVar('--chart-5'),
+      cssVar('--chart-6'),
+      cssVar('--chart-7'),
+      cssVar('--chart-8'),
     ],
     backgroundColor: 'transparent',
     textStyle: { color: textDim },

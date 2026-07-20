@@ -219,5 +219,5 @@ function clearDates() {
   cursor: pointer;
 }
 
-.np-date-clear:hover { color: var(--accent); border-color: var(--accent); }
+.np-date-clear:hover { color: var(--accent-text); border-color: var(--accent); }
 </style>

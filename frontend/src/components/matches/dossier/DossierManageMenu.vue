@@ -173,7 +173,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   border-radius: 2px;
-  box-shadow: 0 22px 48px -20px rgb(0 0 0 / 55%);
+  box-shadow: 0 22px 48px -20px rgb(var(--shadow-rgb) / 55%);
   padding: 0.5rem 0.45rem 0.4rem;
   display: flex;
   flex-direction: column;
@@ -200,7 +200,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   font-size: 0.56rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
   padding: 0.15rem 0.4rem 0.25rem;
 }
@@ -237,7 +237,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 .dossier-manage-item-add {
   font-family: var(--mono);
   font-size: 1rem;
-  color: var(--accent);
+  color: var(--accent-text);
   line-height: 1;
 }
 

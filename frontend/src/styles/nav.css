@@ -62,7 +62,7 @@
 .nav-tab:hover { color: var(--text-dim); }
 .nav-tab:hover .nav-tab-num { color: var(--text-faint); }
 .nav-tab.active { color: var(--text); }
-.nav-tab.active .nav-tab-num { color: var(--accent); }
+.nav-tab.active .nav-tab-num { color: var(--accent-text); }
 
 .nav-tab.active::after {
   content: '';

@@ -121,7 +121,7 @@ const emit = defineEmits<{
 }
 
 .leaver-chip.active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-soft);
   border-color: var(--accent);
 }
@@ -150,6 +150,6 @@ const emit = defineEmits<{
 .leaver-chip-glyph.leaver-self  { color: var(--loss); }
 .leaver-chip-glyph.leaver-team  { color: var(--loss); }
 .leaver-chip-glyph.leaver-enemy { color: var(--win); }
-.leaver-chip.active .leaver-chip-glyph { color: var(--accent); }
+.leaver-chip.active .leaver-chip-glyph { color: var(--accent-text); }
 
 </style>

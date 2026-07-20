@@ -439,7 +439,7 @@ const { isReadOnly } = useActiveProfile()
 .jump-glyph {
   font-family: var(--mono);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.85rem;
   line-height: 1;
   transform: translateY(-1px);
