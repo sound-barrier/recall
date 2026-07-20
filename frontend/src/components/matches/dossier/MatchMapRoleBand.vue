@@ -7,7 +7,7 @@ import { useOWData } from '@/composables/shared/useOWData'
 import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import { useMapRoleSelection, type MapRoleCoord } from '@/composables/matches/useMapRoleSelection'
-import { winrateVolumeFill } from '@/match/match-heatmap-helpers'
+import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
 import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopover.vue'
 
@@ -15,9 +15,11 @@ import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopov
 //
 // A GitHub-contribution-graph-style heatmap: 3 role rows (Tank / DPS /
 // Support) × every map as a column, grouped by game-mode and
-// alphabetical within each group. Each cell's hue reads win rate
-// (green → red) and its saturation reads volume, so faint cells carry
-// little weight — same `cellFill` model as the Campaign Log calendar.
+// alphabetical within each group. Cells carry the shared judgment
+// classes (heatmapCellClass: green past the band, red below, grey in
+// the dead zone / under the evidence floor) with volume as opacity —
+// the same engine as the Hero × Game-Mode band, so the two dossier
+// bands can never disagree about what a 53% win rate means.
 // Cells, role labels, and map names are spreadsheet-style selectable
 // (click / Ctrl-toggle / Shift-range / drag-box, keyboard grid); selecting
 // highlights, drives a combined-stats readout, and LIVE-filters the match list
@@ -168,14 +170,6 @@ const structureLookup = computed(() => {
   return m
 })
 
-// Brightest cell anchors the volume saturation so one grind-heavy map
-// doesn't wash out the rest.
-const maxTotal = computed(() => {
-  let n = 0
-  for (const c of cells.value) if (c.total > n) n = c.total
-  return n
-})
-
 function cellFor(slug: string, role: Role): MapRoleCell | undefined {
   return lookup.value.get(`${slug}|${role}`)
 }
@@ -186,12 +180,19 @@ function structureCellFor(slug: string, role: Role): MapRoleCell | undefined {
   return structureLookup.value.get(`${slug}|${role}`)
 }
 
-// Win-rate hue × volume saturation, blended toward the empty tone for
-// low-volume cells. See winrateVolumeFill in match-helpers.
-function fill(slug: string, role: Role): string {
+// Discrete judgment class + volume opacity — the same shared engine as
+// the sibling Hero × Game-Mode band (heatmapCellClass), so a 53% map
+// cell and a 53% hero cell read identically. This band used to colour
+// by a continuous green↔red hue blend instead, which made the two
+// dossier bands disagree about the same win rate.
+function cellClass(slug: string, role: Role): string {
   const c = cellFor(slug, role)
-  if (!c) return 'var(--heatmap-empty)'
-  return winrateVolumeFill(c.winrate, c.total, maxTotal.value)
+  return c ? heatmapCellClass(c) : 'cell-empty'
+}
+
+function cellOpacity(slug: string, role: Role): string | undefined {
+  const c = cellFor(slug, role)
+  return c ? heatmapCellOpacity(c) : undefined
 }
 
 function cellLabel(slug: string, role: Role): string {
@@ -418,16 +419,16 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
             :key="`${role}-${col.slug}`"
             type="button"
             class="mr-cell"
-            :class="{
+            :class="[cellClass(col.slug, role), {
               'mr-empty': !structureCellFor(col.slug, role),
               'mr-group-start': col.firstInGroup,
               selected: sel.isSelected(col.slug, role),
               'in-drag-box': sel.isInDragBox(col.slug, role),
-            }"
+            }]"
             :style="{
               gridColumn: i + 2,
               gridRow: rIdx + 3,
-              background: fill(col.slug, role),
+              opacity: cellOpacity(col.slug, role),
             }"
             :data-mr-empty="!structureCellFor(col.slug, role) || undefined"
             :data-mr-cell="`${col.slug}|${role}`"
@@ -612,6 +613,15 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   cursor: pointer;
   transition: transform var(--duration-instant) ease, box-shadow var(--duration-instant) ease;
 }
+
+/* The shared judgment palette (mirrors HeroModeHeatmap): green above the
+   band, red below, neutral in the dead zone / under the evidence floor.
+   Volume renders as the cell's opacity, not as a hue shift. */
+.mr-cell.cell-empty { background: var(--heatmap-empty); }
+.mr-cell.cell-win  { background: var(--win); }
+.mr-cell.cell-mid  { background: var(--neutral); }
+.mr-cell.cell-loss { background: var(--loss); }
+.mr-cell.cell-draw { background: var(--draw); }
 
 /* Empty cells are still clickable (a click resets the filter, drag can start /
    stop on them) — they just don't get the data-cell hover pop. */

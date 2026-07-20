@@ -284,8 +284,18 @@ describe('MatchMapRoleBand', () => {
     expect(w.text().toLowerCase()).toContain('at least 1 match must be played to display data')
   })
 
-  // The win-rate-hue × volume-saturation math lives in
-  // winrateVolumeFill (match-helpers) and is unit-tested there —
-  // happy-dom drops color-mix() from a serialized style attribute, so
-  // it can't be asserted through the DOM here.
+  it('cells carry the shared judgment classes: green past the band, grey under the floor', () => {
+    const w = mountWidget(MatchMapRoleBand, {
+      dossier: { mapRoleCounts: [
+        // 53.3% over 30 decisive — a modest edge with real volume, green.
+        { map: 'rialto', role: 'support', wins: 16, losses: 14, draws: 0, total: 30, winrate: 53 },
+        // 75% over 4 — a heater, still under the 15-decisive floor, grey.
+        { map: 'ilios', role: 'tank', wins: 3, losses: 1, draws: 0, total: 4, winrate: 75 },
+      ] },
+      narrow: makeNarrow(),
+    })
+    expect(w.find('.mr-cell[aria-label*="Support on Rialto"]').classes()).toContain('cell-win')
+    expect(w.find('.mr-cell[aria-label*="Tank on Ilios"]').classes()).toContain('cell-mid')
+    expect(w.find('.mr-cell[aria-label*="Support on Ilios"]').classes()).toContain('cell-empty')
+  })
 })

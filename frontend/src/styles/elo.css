@@ -734,7 +734,7 @@
 /* Colour by WIN RATE — the Hero Pool / Hero × Game-Mode scheme. */
 #panel-elo .elo-hero-fill.cell-win { background: var(--win); }
 
-#panel-elo .elo-hero-fill.cell-mid { background: var(--neutral, #95a5a6); }
+#panel-elo .elo-hero-fill.cell-mid { background: var(--neutral); }
 
 #panel-elo .elo-hero-fill.cell-loss { background: var(--loss); }
 

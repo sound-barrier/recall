@@ -345,7 +345,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 }
 
 .heatmap-cell.cell-win  { background: var(--win,  #2ecc71); color: var(--bg); }
-.heatmap-cell.cell-mid  { background: var(--neutral, #95a5a6); color: var(--bg); }
+.heatmap-cell.cell-mid  { background: var(--neutral); color: var(--bg); }
 .heatmap-cell.cell-loss { background: var(--loss, #e74c3c); color: var(--bg); }
 .heatmap-cell.cell-draw { background: var(--draw, #b59c30); color: var(--bg); }
 
