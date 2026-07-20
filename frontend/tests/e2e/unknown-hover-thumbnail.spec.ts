@@ -157,9 +157,20 @@ test.describe('Unknown tab — hover preview', () => {
 
     // The preload should fire on view mount — both records' first
     // source files are fetched BEFORE the user has moved the mouse.
-    await expect.poll(() => fetched.sort().join(','), { timeout: 3000 })
-      .toContain('/_screenshot/0/broken.png')
-    expect(fetched).toContain('/_screenshot/0/other.png')
+    //
+    // Poll on BOTH filenames together. These are two independent
+    // requests, and the previous form polled for the first while
+    // asserting the second with a bare, un-retried expect() — so any
+    // ordering where the second landed after the poll was satisfied
+    // failed instantly. This spec failed exactly once during a full
+    // parallel run and passed 20+ times in isolation; that asymmetry
+    // was never proven to be the cause, but a poll that waits for the
+    // condition it actually needs is correct regardless.
+    await expect.poll(() => [...fetched].sort(), { timeout: 3000 })
+      .toEqual(expect.arrayContaining([
+        '/_screenshot/0/broken.png',
+        '/_screenshot/0/other.png',
+      ]))
   })
 
   test('records without any source_files do not render a hover thumbnail', async ({ page }) => {
