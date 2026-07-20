@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.27.1](https://github.com/sound-barrier/recall/compare/v0.27.0...v0.27.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **dev:** bind the Vite dev server to loopback IPv4 ([9c246ad](https://github.com/sound-barrier/recall/commit/9c246ad1e20f1af2bb49ea2cb7e74c29a97cf73a))
+* **ui:** make every theme correct, not just the audited one ([5eea9a1](https://github.com/sound-barrier/recall/commit/5eea9a10e6ae320b91f2c8648d2d74647ef47456))
+
+
+### Refactors
+
+* **ui:** adopt the design tokens the app already declared ([42a4e69](https://github.com/sound-barrier/recall/commit/42a4e6961a6cc5bfb523c619925de4cab3eeb6ad))
+* **ui:** collapse the eyebrow family to one definition ([b266f2f](https://github.com/sound-barrier/recall/commit/b266f2facfb7732bf6cf11f89c50357dc4bc906d))
+
+
+### Documentation
+
+* document taplo/sqlfluff/Biome in the linter tables ([edf7da1](https://github.com/sound-barrier/recall/commit/edf7da11faa9f32a79606b0c5a01128e7366b372))
+
+
+### Build & Packaging
+
+* **deps:** Bump modernc.org/sqlite in the go-deps group ([e11c2ce](https://github.com/sound-barrier/recall/commit/e11c2ce14aa30e33e5a71fbbfc183efde00c1138))
+* **deps:** Bump the actions group with 3 updates ([20c60bf](https://github.com/sound-barrier/recall/commit/20c60bffe7a02af31c4b63f5d95643b33b699e8b))
+* **deps:** Bump the actions group with 7 updates ([2daa5be](https://github.com/sound-barrier/recall/commit/2daa5bef753cca226f5885d9f6cc7345ee808e1b))
+* **deps:** Bump the go-deps group with 3 updates ([12982a5](https://github.com/sound-barrier/recall/commit/12982a5d2587165160be9f3873a1ae99e2df388e))
+* **deps:** refresh npm dependencies, holding two deliberate pins ([07235b1](https://github.com/sound-barrier/recall/commit/07235b1888c62ccf654c0152b0313c7e38ff922b))
+* **lint:** add taplo, sqlfluff, and Biome for TOML/SQL/JSON ([b54d091](https://github.com/sound-barrier/recall/commit/b54d091b22ae29ed1e76b00eff5c4d09a4778704))
+
+
+### CI
+
+* **deps:** hold dependency bumps for a cooldown window ([984d670](https://github.com/sound-barrier/recall/commit/984d67022a1b61ed1810032c71de7cbf34c41dd0))
+
+
+### Tests
+
+* **a11y:** audit every view against every theme, snapshot the system ([fcd424d](https://github.com/sound-barrier/recall/commit/fcd424d14488c7f1864b046e314cd3b0ab407382))
+* **e2e:** wait for both preloads, not one, in the hover-thumbnail spec ([90580a4](https://github.com/sound-barrier/recall/commit/90580a48912c962986c635f0dc1788d5f2618932))
+
 ## [0.27.0](https://github.com/sound-barrier/recall/compare/v0.26.0...v0.27.0) (2026-07-12)
 
 
