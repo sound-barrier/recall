@@ -311,7 +311,7 @@ const menuStyle = computed(() => {
   border: 0;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 100ms ease, color 100ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 
 .match-row-ctx-item:hover,
@@ -350,7 +350,7 @@ const menuStyle = computed(() => {
 
 .match-row-ctx-enter-active,
 .match-row-ctx-leave-active {
-  transition: opacity 110ms ease;
+  transition: opacity var(--duration-instant) ease;
 }
 
 .match-row-ctx-enter-from,

@@ -103,12 +103,17 @@ while IFS= read -r hit; do
   done
 
   if [[ -n "${leaked}" ]]; then
-    echo "::error::Theme rule leaked to a bare <html> selector in $(basename "${file}"): ${rule:0:120}" >&2
+    echo "::error::Theme rule applies to <html> itself in $(basename "${file}"): ${rule:0:120}" >&2
     echo "         Offending declarations: ${leaked}" >&2
-    echo "         Cause: the ':global([data-theme=…]) .foo' form inside <style scoped> miscompiles —" >&2
-    echo "         Vue drops the '.foo' and emits a bare selector matching <html>." >&2
+    echo "         Usually this is the Vue miscompile: the ':global([data-theme=…]) .foo'" >&2
+    echo "         form inside a <style scoped> block drops the '.foo' and emits a bare" >&2
+    echo "         selector, repainting the whole page once that component mounts." >&2
     echo "         Fix: move the rule into frontend/src/styles/*.css under a parent id," >&2
     echo "         e.g. [data-theme=\"day\"] #panel-ingest .foo { … }" >&2
+    echo "         If you MEANT to style the root per theme (a 'html[data-theme=x]' rule)," >&2
+    echo "         express it as a custom property instead and read it from the single" >&2
+    echo "         html{} rule in style.css — that's what --color-scheme does. Keeping the" >&2
+    echo "         rule out of the build is what lets this check stay strict." >&2
     fail=1
   fi
 done < <(grep -oHE '\[data-theme=[^]]+\]\{[^}]*\}' "${DIST_DIR}"/*.css 2>/dev/null || true)

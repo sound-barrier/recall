@@ -45,7 +45,7 @@
   cursor: pointer;
   letter-spacing: 0.04em;
   text-transform: lowercase;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
 
 .np-chip:hover {

@@ -298,7 +298,7 @@ function toggleNarrow() {
   left: 0; top: 0;
   width: 4px; height: 100%;
   background: var(--accent);
-  border-radius: 2px 0 0 2px;
+  border-radius: var(--radius) 0 0 var(--radius);
 }
 
 /* Shape-agnostic widget row. Each row is a flex grid of
@@ -359,10 +359,10 @@ function toggleNarrow() {
 .dashboard-widget-enter-active,
 .dashboard-widget-leave-active,
 .dashboard-widget-move {
-  transition: opacity 220ms ease,
-              transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1),
-              max-width 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
-              margin 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  transition: opacity var(--duration-med) ease,
+              transform var(--duration-relaxed) cubic-bezier(0.2, 0.7, 0.3, 1),
+              max-width var(--duration-med) cubic-bezier(0.2, 0.7, 0.3, 1),
+              margin var(--duration-med) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .dashboard-widget-leave-active {

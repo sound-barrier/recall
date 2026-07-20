@@ -247,7 +247,7 @@ const topHeroesPlayed = computed(() => {
   letter-spacing: 0.03em;
   padding: 0 0.15rem;
   cursor: pointer;
-  transition: color 160ms ease, text-shadow var(--duration-med) ease;
+  transition: color var(--duration-prompt) ease, text-shadow var(--duration-med) ease;
 }
 .hero-name:hover { color: var(--accent-bright); text-shadow: 0 0 16px var(--accent-glow); }
 .hero-name.active { text-shadow: 0 0 14px var(--accent-glow); }

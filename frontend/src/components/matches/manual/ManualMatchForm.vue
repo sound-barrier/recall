@@ -432,7 +432,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   color: var(--accent-text);
   cursor: pointer;
   letter-spacing: 0.02em;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
 
 .mm-token:hover {
@@ -473,7 +473,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   cursor: pointer;
   letter-spacing: 0.04em;
   text-transform: capitalize;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
 
 .mm-chip:hover { border-color: var(--accent-soft, var(--accent)); color: var(--text); }

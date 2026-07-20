@@ -215,7 +215,7 @@ function onNextClick() {
   display: grid;
   place-items: center;
   border-radius: var(--radius-lg);
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  transition: background var(--duration-prompt) ease, color var(--duration-prompt) ease, border-color var(--duration-prompt) ease;
 }
 
 .lightbox-close:hover {
@@ -270,7 +270,7 @@ function onNextClick() {
   display: grid;
   place-items: center;
   border-radius: var(--radius-lg);
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
+  transition: background var(--duration-prompt) ease, color var(--duration-prompt) ease, border-color var(--duration-prompt) ease, opacity var(--duration-prompt) ease;
 }
 
 .lightbox-prev {
@@ -310,7 +310,7 @@ function onNextClick() {
 
 .lightbox-fade-enter-active,
 .lightbox-fade-leave-active {
-  transition: opacity 180ms ease;
+  transition: opacity var(--duration-prompt) ease;
 }
 
 .lightbox-fade-enter-from,

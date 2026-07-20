@@ -238,7 +238,7 @@ const {
   color: var(--text-dim);
   font-size: var(--type-xl);
   transform: rotate(-90deg);
-  transition: transform 120ms ease;
+  transition: transform var(--duration-instant) ease;
 }
 .archive-chev.open { transform: rotate(0deg); }
 

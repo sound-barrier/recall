@@ -430,7 +430,7 @@ const levelTitle = computed(() => {
   min-height: 3.1rem;
   color: var(--bg);
   text-align: left;
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: transform var(--duration-instant) ease, box-shadow var(--duration-instant) ease;
 }
 
 .hm-map-tile:hover {

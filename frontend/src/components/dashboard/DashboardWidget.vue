@@ -128,8 +128,8 @@ function idxOr(): number { return props.idx ?? 0 }
   flex-direction: column;
   gap: 0.15rem;
   position: relative;
-  transition: transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
-              box-shadow 180ms ease,
+  transition: transform var(--duration-prompt) cubic-bezier(0.2, 0.7, 0.3, 1),
+              box-shadow var(--duration-prompt) ease,
               border-color var(--duration-fast) ease;
 }
 
@@ -139,8 +139,8 @@ function idxOr(): number { return props.idx ?? 0 }
   background: var(--surface);
   padding: 0.55rem 0.7rem 0.65rem;
   position: relative;
-  transition: transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
-              box-shadow 180ms ease,
+  transition: transform var(--duration-prompt) cubic-bezier(0.2, 0.7, 0.3, 1),
+              box-shadow var(--duration-prompt) ease,
               border-color var(--duration-fast) ease;
 }
 

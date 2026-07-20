@@ -7,7 +7,7 @@
   height: 15px;
   padding: 0 3px;
   background: var(--draw);
-  color: #1a1100;
+  color: var(--primary-text-on-accent);
   font-size: var(--type-2xs);
   font-weight: 700;
   font-family: var(--mono);
@@ -328,7 +328,7 @@
      generic dot — same gesture the settings-section accent ticks
      use. */
   transform: rotate(45deg);
-  transition: background 160ms ease;
+  transition: background var(--duration-prompt) ease;
 }
 
 .match-tag[data-tag="stack"]     .match-tag-mark { background: var(--tank); }
@@ -731,9 +731,9 @@
   appearance: none;
   opacity: 0.32;
   transition:
-    background-color 80ms ease,
-    border-color 80ms ease,
-    opacity 120ms ease;
+    background-color var(--duration-instant) ease,
+    border-color var(--duration-instant) ease,
+    opacity var(--duration-instant) ease;
 }
 
 .leaf-row:hover .leaf-checkbox,

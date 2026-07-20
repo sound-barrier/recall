@@ -133,7 +133,7 @@ useModalFocusTrap(toRef(props, 'open'), {
 
 .settings-modal-enter-active,
 .settings-modal-leave-active {
-  transition: opacity 180ms ease;
+  transition: opacity var(--duration-prompt) ease;
 }
 
 .settings-modal-enter-from,
@@ -143,7 +143,7 @@ useModalFocusTrap(toRef(props, 'open'), {
 
 .settings-modal-enter-active .settings-modal-box,
 .settings-modal-leave-active .settings-modal-box {
-  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  transition: transform var(--duration-med) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .settings-modal-enter-from .settings-modal-box,

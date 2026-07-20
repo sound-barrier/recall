@@ -194,7 +194,7 @@ const emit = defineEmits<{
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  transition: color 160ms ease;
+  transition: color var(--duration-prompt) ease;
 }
 .sources-toggle:hover { color: var(--text-dim); }
 

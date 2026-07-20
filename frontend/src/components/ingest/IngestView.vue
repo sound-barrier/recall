@@ -235,7 +235,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill);
-  transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+  transition: background var(--duration-relaxed) ease, border-color var(--duration-relaxed) ease, box-shadow var(--duration-relaxed) ease;
 }
 
 .big-switch-knob {
@@ -245,9 +245,9 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   background: var(--text-faint);
   border-radius: 50%;
   transition:
-    transform 260ms cubic-bezier(0.4, 0.0, 0.2, 1),
-    background 240ms ease,
-    box-shadow 240ms ease;
+    transform var(--duration-relaxed) cubic-bezier(0.4, 0.0, 0.2, 1),
+    background var(--duration-relaxed) ease,
+    box-shadow var(--duration-relaxed) ease;
 }
 
 .big-switch.on .big-switch-track {
@@ -270,7 +270,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   text-transform: uppercase;
   letter-spacing: 0.22em;
   color: var(--text-faint);
-  transition: color 220ms ease;
+  transition: color var(--duration-med) ease;
 }
 
 .big-switch.on .big-switch-state { color: var(--accent-text); }
@@ -367,7 +367,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
 
 .btn-dot {
   width: 6px; height: 6px;
-  background: #1a0a00;
+  background: var(--primary-text-on-accent);
   border-radius: 50%;
   box-shadow: 0 0 0 2px rgb(26 10 0 / 25%);
 }

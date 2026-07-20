@@ -610,7 +610,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   border-radius: var(--radius);
   min-height: var(--mr-row);
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: transform var(--duration-instant) ease, box-shadow var(--duration-instant) ease;
 }
 
 /* Empty cells are still clickable (a click resets the filter, drag can start /

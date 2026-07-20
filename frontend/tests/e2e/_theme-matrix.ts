@@ -140,9 +140,14 @@ export const AUDIT_CORPUS = [
       date: daysAgo(1),
       finished_at: '20:00',
       playlist: 'competitive',
-      rank_tier: 'diamond',
-      rank_division: 3,
-      rank_change: '+21',
+      // Field names matter: MatchRankBlock renders `data.rank` as the tier
+      // CLASS (.rank-tier.diamond), which is what selects the per-tier
+      // colour. An earlier version of this fixture said `rank_tier`, so the
+      // block never rendered and the audit stayed blind to the tier palette
+      // — which is precisely where six unreadable Day colours were hiding.
+      rank: 'diamond',
+      level: 3,
+      rank_progress: 62,
       heroes_played: [{ hero: 'ana', play_time: '08:15', percent_played: 100 }],
     },
     parsed_at: `${daysAgo(1)}T20:00:00Z`,

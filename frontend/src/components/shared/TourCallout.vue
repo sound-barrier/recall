@@ -77,7 +77,7 @@ let dragOffsetY = 0
 // callout's CSS keeps it invisible until this flips true — without
 // the gate, a step whose target enters with `transform: translateX`
 // (Narrow popover, detail panel) measures its pre-transition rect
-// on the first pass and lands at the wrong x for ~320ms before the
+// on the first pass and lands at the wrong x for ~var(--duration-slow) before the
 // second pass corrects it. Users see that flash; gating it on
 // `posReady` keeps the callout hidden until the final position is
 // known.
@@ -407,7 +407,7 @@ const connector = computed(() => {
 .tour-callout-ready {
   opacity: 1;
   animation: tour-callout-in 320ms cubic-bezier(0.18, 1, 0.32, 1) both;
-  transition: opacity var(--duration-med) ease 60ms, left var(--duration-slow) ease, top var(--duration-slow) ease;
+  transition: opacity var(--duration-med) ease var(--duration-instant), left var(--duration-slow) ease, top var(--duration-slow) ease;
 }
 
 @keyframes tour-callout-in {

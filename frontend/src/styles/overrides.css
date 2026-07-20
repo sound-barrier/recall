@@ -22,7 +22,7 @@
 /* Brand wordmark on the gray tile stays white-on-gray in both modes —
    the tile is dark in both themes, so no override needed. The corner
    tape stays subtle. */
-[data-theme="day"] .brand { color: #f5f3ee; }
+[data-theme="day"] .brand { color: var(--on-dark-plate); }
 
 /* Theme toggle reads on light surface too. The .active state already
    uses --accent-soft + --accent which both adapt to the theme. */
@@ -47,6 +47,10 @@
 [data-theme="day"] .multi-filter.open .mf-trigger { background: var(--surface-2); }
 [data-theme="day"] .mf-placeholder { color: var(--text-faint); }
 [data-theme="day"] .mf-row.checked { background: var(--accent-soft); color: var(--text); }
+/* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+   the checkbox well. Pure white, not --surface: on Day the surface tiers
+   are all cream, so a token here would sink the unchecked box into the
+   row behind it. */
 [data-theme="day"] .mf-row-mark { background: #fff; }
 
 [data-theme="day"] .mf-panel {
@@ -83,7 +87,7 @@
   border: 1px solid transparent;
   white-space: nowrap;
   cursor: default;
-  transition: opacity 150ms ease;
+  transition: opacity var(--duration-fast) ease;
 }
 
 .slot-chip.present {

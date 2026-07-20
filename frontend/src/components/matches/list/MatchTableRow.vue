@@ -261,7 +261,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .table-row {
   cursor: pointer;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
-  transition: background 120ms ease;
+  transition: background var(--duration-instant) ease;
 }
 
 .table-row:hover {
@@ -364,7 +364,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   color: inherit;
   cursor: pointer;
   border-radius: var(--radius);
-  transition: background 120ms ease, color 120ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 .tc-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
 .tc-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -385,7 +385,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   font-size: var(--type-2xs);
   cursor: pointer;
   border-radius: var(--radius);
-  transition: background 120ms ease, color 120ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 .tc-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
 .tc-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -501,7 +501,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   background-color: currentcolor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3h12l-4.5 5.5V13l-3 1.5V8.5z'/%3E%3C/svg%3E") no-repeat center / contain;
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--duration-instant) ease;
 }
 
 .tc-filter-cell:hover:not(:disabled)::after,

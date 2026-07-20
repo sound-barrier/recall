@@ -245,7 +245,7 @@ const popoverStyle = computed(() => {
   padding: 0.22rem 0.5rem;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: color 130ms ease, border-color 130ms ease;
+  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
 .mrc-reset:hover:not(:disabled) { color: var(--loss); border-color: var(--loss-line, var(--loss)); }
 .mrc-reset:disabled { opacity: 0.4; cursor: default; }
@@ -296,7 +296,7 @@ const popoverStyle = computed(() => {
   padding: 0.18rem 0.6rem;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
+  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 .mrc-pill:hover { color: var(--text); border-color: var(--border-strong, var(--border)); }
 
@@ -349,7 +349,7 @@ const popoverStyle = computed(() => {
   text-align: left;
   padding: 0.26rem 0.45rem;
   cursor: pointer;
-  transition: background 110ms ease, color 110ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 .mrc-maps li:last-child .mrc-map { border-bottom: 0; }
 .mrc-map:hover { background: var(--surface-2); color: var(--text); }

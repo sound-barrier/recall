@@ -219,7 +219,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   cursor: pointer;
   color: var(--text);
   text-align: left;
-  transition: background 130ms ease, border-color 130ms ease;
+  transition: background var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
 
 .dossier-manage-item:hover {
@@ -266,7 +266,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   padding: 0.4rem 0.5rem;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
+  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 
 .dossier-manage-reset:hover {
@@ -282,12 +282,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 
 .dossier-manage-fade-enter-active,
 .dossier-manage-fade-leave-active {
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .dossier-manage-fade-enter-active .dossier-manage-panel,
 .dossier-manage-fade-leave-active .dossier-manage-panel {
-  transition: transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  transition: transform var(--duration-prompt) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .dossier-manage-fade-enter-from,

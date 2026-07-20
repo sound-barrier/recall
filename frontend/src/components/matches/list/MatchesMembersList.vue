@@ -306,7 +306,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   font-size: var(--type-sm);
   line-height: 1;
   color: var(--accent-text);
-  transition: transform 160ms ease;
+  transition: transform var(--duration-prompt) ease;
 }
 .sd-chevron-collapsed { transform: rotate(-90deg); }
 

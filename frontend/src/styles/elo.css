@@ -728,7 +728,7 @@
 #panel-elo .elo-hero-fill {
   display: block;
   height: 100%;
-  transition: width 160ms ease;
+  transition: width var(--duration-prompt) ease;
 }
 
 /* Colour by WIN RATE — the Hero Pool / Hero × Game-Mode scheme. */

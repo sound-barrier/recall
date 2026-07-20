@@ -190,7 +190,7 @@ function onDismiss() {
 .match-undo-toast-enter-active,
 .match-undo-toast-leave-active {
   transition: opacity var(--duration-med) ease,
-              transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
+              transform var(--duration-relaxed) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .match-undo-toast-enter-from,

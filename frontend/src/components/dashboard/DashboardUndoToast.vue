@@ -242,14 +242,14 @@ const progressPct = computed(() => Math.round((remainingMs.value / DURATION_MS) 
   bottom: 0;
   height: 2px;
   background: var(--accent);
-  transition: width 100ms linear;
+  transition: width var(--duration-instant) linear;
 }
 
 /* ── Slide-in / slide-out ── */
 .dashboard-undo-toast-enter-active,
 .dashboard-undo-toast-leave-active {
   transition: opacity var(--duration-med) ease,
-              transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
+              transform var(--duration-relaxed) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .dashboard-undo-toast-enter-from,

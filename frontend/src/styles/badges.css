@@ -88,7 +88,7 @@
 /* Clickable interactions */
 .clickable {
   cursor: pointer;
-  transition: transform 160ms ease, filter 160ms ease, box-shadow var(--duration-med) ease, border-color 160ms ease;
+  transition: transform var(--duration-prompt) ease, filter var(--duration-prompt) ease, box-shadow var(--duration-med) ease, border-color var(--duration-prompt) ease;
   user-select: none;
 }
 .badge.clickable:hover { filter: brightness(1.2); transform: translateY(-1px); }
@@ -179,7 +179,7 @@
   text-decoration: none;
   padding: 0.25rem 0.4rem;
   border-radius: var(--radius);
-  transition: color 160ms ease, background 160ms ease;
+  transition: color var(--duration-prompt) ease, background var(--duration-prompt) ease;
   word-break: break-all;
   flex: 1;
   min-width: 0;
@@ -210,10 +210,14 @@
   height: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     letterbox behind a screenshot. Black in every theme on purpose: this
+     is a photo viewport, and tinting it with a surface token would cast
+     the screenshot's own colours. */
   background: #000;
   box-shadow: 0 8px 30px -8px rgb(var(--shadow-rgb) / 50%);
   cursor: zoom-in;
-  transition: box-shadow 160ms ease, border-color 160ms ease;
+  transition: box-shadow var(--duration-prompt) ease, border-color var(--duration-prompt) ease;
 }
 
 .source-preview:hover {

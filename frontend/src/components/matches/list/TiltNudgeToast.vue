@@ -89,7 +89,7 @@ const emit = defineEmits<{
 
 .tilt-nudge-enter-active,
 .tilt-nudge-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity var(--duration-prompt) ease, transform var(--duration-prompt) ease;
 }
 
 .tilt-nudge-enter-from,

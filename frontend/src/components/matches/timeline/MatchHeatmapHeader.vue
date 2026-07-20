@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
 
 .month-labels text {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: var(--type-3xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   fill: var(--text-faint);
@@ -420,7 +420,7 @@ onBeforeUnmount(() => {
 
 .day-labels text {
   font-family: var(--mono);
-  font-size: 8.5px;
+  font-size: var(--type-3xs);
   letter-spacing: 0.06em;
   fill: var(--text-faint);
 }

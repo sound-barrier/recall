@@ -339,7 +339,7 @@ function onBackdropClick(e: MouseEvent) {
 
 .detail-panel-enter-active,
 .detail-panel-leave-active {
-  transition: background 240ms ease, backdrop-filter 240ms ease;
+  transition: background var(--duration-relaxed) ease, backdrop-filter var(--duration-relaxed) ease;
 }
 
 .detail-panel-enter-active .detail-panel,

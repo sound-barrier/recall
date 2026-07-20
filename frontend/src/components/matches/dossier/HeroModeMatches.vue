@@ -86,7 +86,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
   font-size: var(--type-xs);
   color: var(--text);
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: background var(--duration-instant) ease;
 }
 .hm-match-row:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
 .hm-match-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

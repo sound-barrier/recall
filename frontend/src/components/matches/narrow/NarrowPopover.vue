@@ -529,7 +529,7 @@ onUnmounted(() => {
 }
 
 .lp-slide-enter-active,
-.lp-slide-leave-active { transition: transform 240ms ease, opacity 240ms ease; }
+.lp-slide-leave-active { transition: transform var(--duration-relaxed) ease, opacity var(--duration-relaxed) ease; }
 .lp-slide-enter-from   { transform: translateX(-100%); opacity: 0; }
 .lp-slide-leave-to     { transform: translateX(-100%); opacity: 0; }
 

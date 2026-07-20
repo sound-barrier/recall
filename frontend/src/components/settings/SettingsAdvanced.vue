@@ -332,7 +332,7 @@ watch(
   cursor: pointer;
   position: relative;
   user-select: none;
-  transition: border-color 160ms ease;
+  transition: border-color var(--duration-prompt) ease;
 }
 
 .advanced-summary:hover {

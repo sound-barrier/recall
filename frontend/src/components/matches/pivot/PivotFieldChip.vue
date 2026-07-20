@@ -185,7 +185,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: grab;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  transition: border-color var(--duration-instant) ease, background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 
 .pivot-chip:hover {

@@ -177,7 +177,7 @@ const showProbeChip = computed(
 
 <style scoped>
 .engine-row {
-  transition: background 220ms ease;
+  transition: background var(--duration-med) ease;
 }
 
 .engine-row.alert {

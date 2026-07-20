@@ -103,7 +103,7 @@ const progressLabel = computed(() => {
   height: 100%;
   border-radius: inherit;
   background: var(--accent);
-  transition: width 0.25s ease;
+  transition: width var(--duration-relaxed) ease;
 }
 
 .update-check-modal-selfupdate-fill.indeterminate {

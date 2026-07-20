@@ -71,7 +71,7 @@ const ow = useOWData()
   position: absolute;
   left: 0; top: 10%;
   width: 3px; height: 80%;
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
   background: var(--accent);
   opacity: 0.85;
 }
@@ -112,12 +112,15 @@ const ow = useOWData()
   border: 1px solid var(--border);
   color: var(--text);
 }
-.rank-tier.bronze    { color: #d18a4a; border-color: rgb(209 138 74 / 45%); }
-.rank-tier.silver    { color: #d6d6d6; border-color: rgb(214 214 214 / 40%); }
-.rank-tier.gold      { color: #ffd770; border-color: rgb(255 215 112 / 45%); }
-.rank-tier.platinum  { color: #7befd9; border-color: rgb(123 239 217 / 45%); }
-.rank-tier.diamond   { color: #c2e6ff; border-color: rgb(194 230 255 / 45%); }
-.rank-tier.master    { color: #d6b4ff; border-color: rgb(214 180 255 / 45%); }
+
+/* Borders derive from the same token so a tier can never drift into
+   two different colours, and both follow the theme. */
+.rank-tier.bronze    { color: var(--rank-bronze);   border-color: color-mix(in srgb, var(--rank-bronze) 45%, transparent); }
+.rank-tier.silver    { color: var(--rank-silver);   border-color: color-mix(in srgb, var(--rank-silver) 40%, transparent); }
+.rank-tier.gold      { color: var(--rank-gold);     border-color: color-mix(in srgb, var(--rank-gold) 45%, transparent); }
+.rank-tier.platinum  { color: var(--rank-platinum); border-color: color-mix(in srgb, var(--rank-platinum) 45%, transparent); }
+.rank-tier.diamond   { color: var(--rank-diamond);  border-color: color-mix(in srgb, var(--rank-diamond) 45%, transparent); }
+.rank-tier.master    { color: var(--rank-master);   border-color: color-mix(in srgb, var(--rank-master) 45%, transparent); }
 .rank-tier.grandmaster, .rank-tier.champion { color: var(--loss); border-color: var(--loss-line); }
 
 .rank-progress {

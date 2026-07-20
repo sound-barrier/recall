@@ -191,16 +191,56 @@ Cross-cutting styles live under `frontend/src/styles/`. `app.css` is a thin `@im
 
 When migrating a rule to scoped, check all eight component templates first — if more than one references it, keep it in `app.css`. `@keyframes` in scoped blocks get their NAME hashed, so animations used by multiple components must live in `app.css` (`pulse-dot` is canonical — used by ParseProgressPanel + IngestView).
 
+**One visual concept = one rule.** The small uppercase kicker had grown 40+
+near-identical definitions (`.kpi-eyebrow`, `.breakdown-eyebrow`,
+`.np-section-eyebrow`, …) across 6 font sizes and 6 letter-spacings before it was
+collapsed to `.eyebrow` (+ `.accent` / `.alert` modifiers) in `badges.css`.
+Components add `eyebrow` for the type and keep their own class only for LAYOUT.
+Reach for the shared class; if a new variant seems needed, add a modifier rather
+than a parallel family. `tests/e2e/a11y-theme-snapshot.spec.ts` records the set
+of DISTINCT computed values per family, so a reintroduced one-off shows up as a
+snapshot diff that has to be justified.
+
+**Use the design tokens — stylelint enforces it.**
+`scale-unlimited/declaration-strict-value` fails the build on a literal for any
+`*-color`, `fill`, `stroke`, `font-size`, `border-radius`, or
+`transition-duration`. The scales live in `styles/tokens.css` (per-theme values
+in `themes.css`): `--type-4xs … --type-7xl` (14 stops, 0.5–1.65rem), `--space-1
+… --space-7`, `--radius-hair/-/-md/-lg/-pill`, `--duration-instant … -hero`.
+Anything derived from a token passes, so `color-mix(in srgb, var(--accent) 22%,
+transparent)` and `rgb(var(--shadow-rgb) / 55%)` are fine. Exempt by design:
+display type ≥1.8rem (per-surface editorial, not scale points), `em` units,
+`@keyframes`/`animation` timings, and the definition files themselves. A genuine
+one-off gets a `stylelint-disable-next-line … --` with the reason, not a config
+loosening.
+
+**`--accent` is the CHROME token; `--accent-text` is the TYPE token.** Under
+Day, `--accent` is the bright OW orange at 1.9:1 on cream — fine for a border,
+fill or glow, unreadable as text. They're identical under the three dark themes,
+so the distinction only bites on Day and is easy to get wrong. Same shape for
+`--primary-text-on-accent` / `--primary-text-on-danger` (text sitting ON a
+coloured fill) and `--on-dark-plate` (text on the brand-gray tile, which stays
+dark under every theme).
+
+**New colours must clear AA on every surface AND on their own tint.** Check
+against `--surface`, `--surface-2`, `--surface-3`, `--bg` — and, for a token
+used as text over its own soft variant (a win chip is `color: var(--win)` on
+`background: var(--win-soft)`), against that composite too. That last case is
+what put Day's win/loss/draw at 3.8–4.2:1 for a long time.
+
 **Theme overrides DO NOT belong in `<style scoped>`.** The Vue compiler
 miscompiles the `:global(X) .y { … }` partial form — it strips `.y` and emits a
-bare `X { … }`, so `:global([data-theme="light"]) .link-btn { … }` becomes
-`[data-theme="light"] { … }` matching `<html>` directly and polluting the whole
+bare `X { … }`, so `:global([data-theme="day"]) .link-btn { … }` becomes
+`[data-theme="day"] { … }` matching `<html>` directly and polluting the whole
 page once mounted (scoped tags persist in `<head>` after unmount). Put
-theme-conditional rules in `app.css` under a parent id
-(`[data-theme="light"] #panel-settings .x`). Verify nothing leaked:
-`cd frontend && npm run build && grep -c '^\[data-theme=light\]{' dist/assets/*.css`
-must stay 0. (Latent but harmless in `ParseProgressPanel.vue` /
-`ParseStatusBar.vue` — color/background only.)
+theme-conditional rules in a `styles/*.css` file under a parent id
+(`[data-theme="day"] #panel-settings .x`). **`scripts/ci/check-css-theme-leak.sh`
+is the gate** (`task check-css-themes`, and a CI step): it fails on any bare
+`[data-theme=X]{…}` block that sets real properties — palette blocks setting only
+`--*` are fine — and on any rule targeting a theme mode `useTheme` never writes.
+It replaced a manual `grep -c '^\[data-theme=light\]{'` that was anchored with
+`^` against Vite's minified single-line CSS and so reported 0 while three real
+leaks shipped.
 
 **Theme set is Day / Dark / Night / High contrast**, stored under
 `recall.theme`. Legacy values (`light`, `ow-light`, `ow-dark`) are silently

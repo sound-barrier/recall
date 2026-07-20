@@ -103,7 +103,7 @@ onBeforeUnmount(clearTimer)
 
 .session-toast-enter-active,
 .session-toast-leave-active {
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity var(--duration-prompt) ease, transform var(--duration-prompt) ease;
 }
 
 .session-toast-enter-from,

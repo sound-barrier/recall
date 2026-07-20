@@ -58,7 +58,7 @@ function onDrop(e: DragEvent) {
   border: 1px dashed color-mix(in srgb, var(--border-strong) 70%, transparent);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: border-color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 
 /* The active drop target lifts with the app's accent wash — the same
