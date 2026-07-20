@@ -68,6 +68,17 @@ jobs:
       - name: Enforce bundle-size budget
         run: bash scripts/ci/check-bundle-size.sh
 
+      # Theme-scoped CSS integrity. Catches two failure modes the unit
+      # and e2e suites can't see, because both are properties of the
+      # BUILT stylesheet: (1) a `:global([data-theme=…]) .foo` rule in a
+      # <style scoped> block that Vue miscompiled into a bare selector
+      # matching <html>, repainting the whole page; (2) a rule targeting
+      # a theme mode useTheme never writes, which strands its styling.
+      # Replaces a manual grep in frontend/CLAUDE.md that was anchored
+      # with `^` and so never matched Vite's minified single-line CSS.
+      - name: Check CSS theme integrity
+        run: bash scripts/ci/check-css-theme-leak.sh
+
       - name: Lint Go (default build tags)
         run: golangci-lint run ./...
 

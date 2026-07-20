@@ -104,9 +104,15 @@ pre-commit:
     # which excludes generated JSON — testdata goldens, package-lock,
     # e2e snapshots). --write autofixes; stage_fixed re-stages. Runs via
     # npx (BIOME_VERSION from mise.toml [env]) like the Spectral/md hooks.
+    # --no-errors-on-unmatched: lefthook passes {staged_files} explicitly,
+    # which bypasses biome.json's `files.includes` exclusions — so a commit
+    # whose staged JSON is ENTIRELY excluded (e.g. only Playwright
+    # *-snapshots/ baselines) made biome exit 1 with "No files were
+    # processed" and blocked the commit. Same class as the frontend hooks'
+    # "no files for inspection" skip; nothing to check is not a failure.
     biome-json:
       glob: "*.json"
-      run: npx --yes "@biomejs/biome@$BIOME_VERSION" check --write {staged_files}
+      run: npx --yes "@biomejs/biome@$BIOME_VERSION" check --write --no-errors-on-unmatched {staged_files}
       stage_fixed: true
 
     # ── Python ────────────────────────────────────────────────────────
