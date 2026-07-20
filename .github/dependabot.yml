@@ -1,4 +1,24 @@
 version: 2
+
+# Cooldowns (all three ecosystems below) hold a bump back until its version
+# has been public for N days, so a release that gets yanked or hot-fixed
+# never reaches a PR here. This repo auto-merges dependency PRs on green CI,
+# so "CI passed" is the only gate — and a bad release can pass CI and still
+# be wrong. @playwright/test 1.61.0 is the worked example: it shipped, CI
+# went green locally, and its Linux WebKit build crashed two e2e specs on
+# the runner. It is pinned to an exact 1.60.0 to this day.
+#
+# Cooldown applies to VERSION updates only — per GitHub's reference, "the
+# cooldown option is only available for version updates, not security
+# updates". Dependabot security PRs still open immediately, so this trades
+# nothing away on the CVE path.
+#
+# Day counts are deliberately short. The point is to skip the first 72h
+# where a broken release usually gets pulled, not to run months behind:
+#   patch  3d  — usually the fix for someone else's bad afternoon
+#   minor  7d  — carries new code; one weekend of other people's CI
+#   major      — n/a here, majors are ignored (see each `ignore` block)
+
 updates:
   # Go modules — updates go.mod deps and the `go X.Y` toolchain directive.
   - package-ecosystem: "gomod"
@@ -9,6 +29,10 @@ updates:
     groups:
       go-deps:
         patterns: ["*"]
+    cooldown:
+      default-days: 7
+      semver-minor-days: 7
+      semver-patch-days: 3
     # Major version bumps require deliberate review — keep them out of the
     # grouped weekly PR so they surface individually with clear context.
     ignore:
@@ -24,6 +48,10 @@ updates:
     groups:
       npm-deps:
         patterns: ["*"]
+    cooldown:
+      default-days: 7
+      semver-minor-days: 7
+      semver-patch-days: 3
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -37,3 +65,10 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+    # github-actions supports `default-days` only — the semver-*-days keys
+    # are not available for this ecosystem, so one flat window it is. These
+    # are SHA pins (scripts/ci/check-action-pins.sh enforces that), which
+    # makes a silently re-pointed tag the thing to worry about; a week of
+    # daylight is cheap insurance.
+    cooldown:
+      default-days: 7
