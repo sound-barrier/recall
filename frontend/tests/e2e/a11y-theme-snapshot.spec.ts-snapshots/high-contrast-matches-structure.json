@@ -161,8 +161,8 @@
         "uppercase"
       ],
       "color": [
-        "rgb(230, 230, 230)",
-        "rgb(26, 17, 0)"
+        "rgb(0, 0, 0)",
+        "rgb(230, 230, 230)"
       ],
       "backgroundColor": [
         "rgb(10, 10, 10)",

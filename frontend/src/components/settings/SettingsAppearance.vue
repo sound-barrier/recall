@@ -213,7 +213,7 @@ function pick(mode: ThemeMode) {
   border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
-  transition: border-color 160ms ease, box-shadow var(--duration-med) ease, transform var(--duration-fast) ease;
+  transition: border-color var(--duration-prompt) ease, box-shadow var(--duration-med) ease, transform var(--duration-fast) ease;
   font: inherit;
   color: var(--text-dim);
 }

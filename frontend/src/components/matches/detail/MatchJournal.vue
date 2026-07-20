@@ -348,7 +348,7 @@ onMounted(() => {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: border-color 220ms ease, box-shadow 220ms ease;
+  transition: border-color var(--duration-med) ease, box-shadow var(--duration-med) ease;
 }
 
 .match-journal.populated {
@@ -490,7 +490,7 @@ onMounted(() => {
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  transition: border-color var(--duration-prompt) ease, box-shadow var(--duration-prompt) ease, background var(--duration-prompt) ease;
 }
 
 .journal-cell:focus-within {

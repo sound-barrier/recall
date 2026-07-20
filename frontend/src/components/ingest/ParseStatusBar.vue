@@ -227,7 +227,7 @@ function onJumpToIngest(e: MouseEvent) {
 
   /* slide-in is the default; slide-off applied via .status-bar-hidden */
   transform: translateY(0);
-  transition: transform 240ms cubic-bezier(0.3, 0, 0.2, 1);
+  transition: transform var(--duration-relaxed) cubic-bezier(0.3, 0, 0.2, 1);
   will-change: transform;
 }
 
@@ -275,7 +275,7 @@ function onJumpToIngest(e: MouseEvent) {
 
 .label {
   font-family: var(--mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-size: var(--type-xs);
   font-weight: 600;
   letter-spacing: 0.16em;
   color: var(--accent-text);
@@ -293,7 +293,7 @@ function onJumpToIngest(e: MouseEvent) {
   align-items: baseline;
   gap: 4px;
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', 'Russo One', sans-serif;
-  font-size: 22px;
+  font-size: var(--type-5xl);
   line-height: 1;
   letter-spacing: 0.04em;
   font-feature-settings: 'tnum' on, 'lnum' on;
@@ -345,7 +345,7 @@ function onJumpToIngest(e: MouseEvent) {
 .type-tag {
   flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--type-2xs);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -358,7 +358,7 @@ function onJumpToIngest(e: MouseEvent) {
 .filename {
   flex: 1 1 auto;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -375,7 +375,7 @@ function onJumpToIngest(e: MouseEvent) {
 
 .tick-label {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--type-xs);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
   color: var(--text-faint);
@@ -406,12 +406,12 @@ function onJumpToIngest(e: MouseEvent) {
   border-radius: var(--radius-hair);
   color: var(--loss);
   font-family: var(--mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform 100ms ease-out;
+  transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform var(--duration-instant) ease-out;
 }
 
 .abort-btn:hover:not(:disabled) {
@@ -440,7 +440,7 @@ function onJumpToIngest(e: MouseEvent) {
 }
 
 .abort-glyph {
-  font-size: 9px;
+  font-size: var(--type-3xs);
   line-height: 1;
 
   /* The square ■ glyph reads as "stop" at small sizes. */

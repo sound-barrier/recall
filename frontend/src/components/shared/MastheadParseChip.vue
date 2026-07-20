@@ -139,7 +139,7 @@ const pct = computed(() => {
   display: block;
   height: 100%;
   background: var(--accent);
-  transition: width 220ms cubic-bezier(0.3, 0, 0.2, 1);
+  transition: width var(--duration-med) cubic-bezier(0.3, 0, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {

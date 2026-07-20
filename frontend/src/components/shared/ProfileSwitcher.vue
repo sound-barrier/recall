@@ -194,7 +194,7 @@ const { isReadOnly } = useActiveProfile()
   cursor: pointer;
   font-weight: 700;
   line-height: 1;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+  transition: border-color var(--duration-instant) ease, color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 
 .profile-chip:hover {
@@ -230,7 +230,7 @@ const { isReadOnly } = useActiveProfile()
 .profile-chev {
   font-size: var(--type-lg);
   color: var(--text-dim);
-  transition: transform 120ms ease;
+  transition: transform var(--duration-instant) ease;
   transform-origin: center;
 }
 
@@ -410,7 +410,7 @@ const { isReadOnly } = useActiveProfile()
   padding: 0.3rem 0.4rem;
   border-radius: var(--radius);
   opacity: 0;
-  transition: opacity 100ms ease, color 100ms ease, background 100ms ease;
+  transition: opacity var(--duration-instant) ease, color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 
 .profile-item-row:hover .profile-rename-trigger,

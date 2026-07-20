@@ -313,7 +313,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   background: var(--text-faint);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: width 100ms ease, box-shadow 120ms ease;
+  transition: width var(--duration-instant) ease, box-shadow var(--duration-instant) ease;
 }
 .leaf-strip:disabled { cursor: default; }
 .leaf-strip:hover:not(:disabled) { width: 6px; }
@@ -408,7 +408,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   background-color: currentcolor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3h12l-4.5 5.5V13l-3 1.5V8.5z'/%3E%3C/svg%3E") no-repeat center / contain;
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--duration-instant) ease;
 }
 
 .leaf-filter-cell:hover::after,
@@ -499,7 +499,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   line-height: 1;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 .leaf-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
 .leaf-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -525,7 +525,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   font-weight: 600;
   cursor: pointer;
   border-radius: var(--radius);
-  transition: background 120ms ease, color 120ms ease;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
 }
 .leaf-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
 .leaf-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

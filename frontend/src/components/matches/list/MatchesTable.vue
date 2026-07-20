@@ -374,7 +374,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   background: var(--surface-2);
   border: none;
   cursor: pointer;
-  transition: color 120ms ease, background 120ms ease;
+  transition: color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 
 .seg-btn + .seg-btn {
@@ -401,7 +401,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
+  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
 
 .export-csv-btn:hover {
@@ -495,7 +495,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 
 .th-sortable {
   cursor: pointer;
-  transition: color 120ms ease, background 120ms ease;
+  transition: color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 
 .th-sortable:hover {

@@ -285,7 +285,7 @@ defineExpose({
   cursor: pointer;
   font-size: var(--type-lg);
   line-height: 1;
-  transition: color 120ms ease, transform 160ms ease;
+  transition: color var(--duration-instant) ease, transform var(--duration-prompt) ease;
 }
 
 .combo-caret:hover { color: var(--accent-text); }

@@ -20,7 +20,7 @@
 
 .btn.primary {
   background: var(--accent);
-  color: #1a0a00;
+  color: var(--primary-text-on-accent);
   border-color: var(--accent);
   box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset;
 }
@@ -74,7 +74,7 @@
 
 .btn.danger {
   background: var(--loss);
-  color: #fff;
+  color: var(--primary-text-on-danger);
   border-color: var(--loss);
   box-shadow: 0 0 0 1px rgb(0 0 0 / 30%) inset, 0 4px 22px -8px var(--loss-line);
 }
@@ -90,7 +90,7 @@
 /* .setting-row.danger-row, .clear-confirm-group, and the matching
    light-theme override moved to IngestView.vue */
 
-[data-theme="day"] .btn.danger { color: #fff; }
+[data-theme="day"] .btn.danger { color: var(--primary-text-on-danger); }
 [data-theme="day"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
 
 [data-theme="day"] .btn.danger-outline:hover:not(:disabled) {

@@ -174,8 +174,8 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
 .update-reminder-banner-enter-active,
 .update-reminder-banner-leave-active {
   transition: opacity var(--duration-med) ease,
-              transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
-              margin 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+              transform var(--duration-med) cubic-bezier(0.2, 0.7, 0.3, 1),
+              margin var(--duration-med) cubic-bezier(0.2, 0.7, 0.3, 1);
   overflow: hidden;
 }
 

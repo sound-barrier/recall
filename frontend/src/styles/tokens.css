@@ -66,6 +66,20 @@
      They lived as hex literals inside TrendChart, so any chart with
      five or more series drew four theme-aware colours followed by four
      frozen dark-theme ones. Each theme overrides these for its ground. */
+
+  /* Competitive rank tiers. Fixed Overwatch identity colours — a Gold
+     chip should read as gold — but they still have to be legible, and
+     as literals they were invisible on Day: every one of the six sat
+     between 1.04:1 and 2.24:1 on the cream surface, so a Day user could
+     not read their own rank. The a11y matrix missed it because the rank
+     block only renders inside the detail panel, which the audit doesn't
+     open. Day/high-contrast override these below. */
+  --rank-bronze: #d18a4a;
+  --rank-silver: #d6d6d6;
+  --rank-gold: #ffd770;
+  --rank-platinum: #7befd9;
+  --rank-diamond: #c2e6ff;
+  --rank-master: #d6b4ff;
   --chart-5: #5cc8ff;
   --chart-6: #b98cff;
   --chart-7: #ff9d5c;
@@ -77,6 +91,15 @@
   --atmos-coral:  rgb(255 90 115 / 5%);
   --grid-line:    rgb(255 255 255 / 1.8%);
   --primary-text-on-accent: #1a0a00;
+
+  /* Text on a --loss fill (destructive buttons, alert CTAs). */
+  --primary-text-on-danger: #fff;
+
+  /* Text on a plate that stays DARK under every theme — the brand-gray
+     brandmark tile, the system-alert hazard strip. It can't read a
+     surface/text token, because those flip with the theme while the
+     plate does not. */
+  --on-dark-plate: #f5f3ee;
   --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
 
   /* Shadow tint, as a bare `R G B` triplet so each rule keeps its OWN
@@ -201,10 +224,18 @@
      Parse) back to a readable column while the container is wide. */
   --content-max: clamp(1140px, calc(85vw - 100px), 1760px);
   --content-measure: 1180px;
-  --duration-fast: 140ms;
-  --duration-med:  200ms;
-  --duration-slow: 280ms;
-  --duration-hero: 360ms;
+
+  /* Seven stops. The original four (fast/med/slow/hero) covered only a
+     third of what the app actually used — 120ms alone appeared 28 times
+     and had nowhere to land, which is why 15 distinct literal timings
+     accumulated. The three added stops sit on the heaviest of those. */
+  --duration-instant: 120ms;
+  --duration-fast:    140ms;
+  --duration-prompt:  160ms;
+  --duration-med:     200ms;
+  --duration-relaxed: 240ms;
+  --duration-slow:    280ms;
+  --duration-hero:    360ms;
   --easing-out:  cubic-bezier(0.16, 1, 0.3, 1);
   --easing-emph: cubic-bezier(0.4, 0, 0.2, 1);
 }

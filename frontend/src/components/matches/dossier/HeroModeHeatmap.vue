@@ -315,7 +315,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   letter-spacing: 0.04em;
   color: var(--text);
   min-height: 2.2rem;
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: transform var(--duration-instant) ease, box-shadow var(--duration-instant) ease;
 }
 
 .heatmap-cell:not(:disabled):hover {

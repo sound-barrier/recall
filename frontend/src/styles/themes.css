@@ -80,6 +80,17 @@
   --support: #1e6f3a;
   --support-soft: rgb(30 111 58 / 13%);
 
+  /* Rank tiers, darkened to hold their hue identity while clearing AA on
+     the cream surfaces (5.0–5.9:1 on --surface-2, 4.4–5.2:1 on
+     --surface-3). The Night tints are pale by design against a near-black
+     ground; over cream they were unreadable. */
+  --rank-bronze: #8a5320;
+  --rank-silver: #5c5c5c;
+  --rank-gold: #7a5610;
+  --rank-platinum: #0f6357;
+  --rank-diamond: #1f5e8c;
+  --rank-master: #6b3fa0;
+
   /* Categorical chart slots 5–8, darkened for the cream ground. The
      Night values are light tints that all but vanish here; these clear
      the 3:1 WCAG bar for graphical objects against --bg. */
@@ -258,6 +269,14 @@
   --support: #8fa;
   --support-soft: rgb(136 255 170 / 25%);
 
+  /* Rank tiers at full saturation, like the rest of this palette. */
+  --rank-bronze: #fa5;
+  --rank-silver: #ddd;
+  --rank-gold: #fd6;
+  --rank-platinum: #6fd;
+  --rank-diamond: #9df;
+  --rank-master: #c9f;
+
   /* Categorical chart slots 5–8, pushed to full saturation to match the
      rest of this palette's read-from-across-the-room brief. */
   --chart-5: #6df;
@@ -269,6 +288,10 @@
   --atmos-coral:  rgb(255 51 85 / 5%);
   --grid-line:    rgb(255 255 255 / 4%);
   --primary-text-on-accent: #000;
+
+  /* Black, not the inherited white: this palette's --loss is the bright
+     #f35, where white sits at ~3.5:1 and black clears ~5.9:1. */
+  --primary-text-on-danger: #000;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

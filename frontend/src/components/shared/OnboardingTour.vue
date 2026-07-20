@@ -290,7 +290,7 @@ function onBack()   { void tour.prev() }
 }
 
 .onboarding-fade-enter-active,
-.onboarding-fade-leave-active { transition: opacity 240ms ease; }
+.onboarding-fade-leave-active { transition: opacity var(--duration-relaxed) ease; }
 
 .onboarding-fade-enter-from,
 .onboarding-fade-leave-to { opacity: 0; }

@@ -644,7 +644,7 @@ function openReleasePage() {
 
 .update-check-modal-enter-active,
 .update-check-modal-leave-active {
-  transition: opacity 180ms ease;
+  transition: opacity var(--duration-prompt) ease;
 }
 
 .update-check-modal-enter-from,
@@ -654,7 +654,7 @@ function openReleasePage() {
 
 .update-check-modal-enter-active .update-check-modal-box,
 .update-check-modal-leave-active .update-check-modal-box {
-  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  transition: transform var(--duration-med) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .update-check-modal-enter-from .update-check-modal-box,

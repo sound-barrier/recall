@@ -80,7 +80,7 @@ const {
   line-height: 1;
   color: var(--text);
   cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+  transition: border-color var(--duration-instant) ease, color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
 
 .app-menu-trigger:hover {

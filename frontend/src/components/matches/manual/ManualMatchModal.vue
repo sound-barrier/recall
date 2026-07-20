@@ -114,13 +114,13 @@ async function submit() {
 }
 
 .mm-fade-enter-active,
-.mm-fade-leave-active { transition: opacity 180ms ease; }
+.mm-fade-leave-active { transition: opacity var(--duration-prompt) ease; }
 
 .mm-fade-enter-from,
 .mm-fade-leave-to { opacity: 0; }
 
 .mm-fade-enter-active .mm-modal,
-.mm-fade-leave-active .mm-modal { transition: transform 180ms ease; }
+.mm-fade-leave-active .mm-modal { transition: transform var(--duration-prompt) ease; }
 
 .mm-fade-enter-from .mm-modal,
 .mm-fade-leave-to .mm-modal { transform: translateY(10px); }

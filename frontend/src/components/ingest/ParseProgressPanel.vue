@@ -176,7 +176,7 @@ defineEmits<{
   padding: 0.65rem 1rem;
   cursor: pointer;
   user-select: none;
-  transition: background 120ms ease;
+  transition: background var(--duration-instant) ease;
 }
 
 .pp-summary:hover { background: var(--surface-3); }
@@ -188,7 +188,7 @@ defineEmits<{
 .pp-chev {
   font-size: var(--type-2xl);
   color: var(--text-faint);
-  transition: transform var(--duration-med) var(--easing-emph), color 120ms ease;
+  transition: transform var(--duration-med) var(--easing-emph), color var(--duration-instant) ease;
   flex-shrink: 0;
 }
 
@@ -234,7 +234,7 @@ defineEmits<{
   background: var(--accent);
   border-radius: var(--radius);
   box-shadow: 0 0 8px var(--accent-glow);
-  transition: width 400ms var(--easing-emph);
+  transition: width var(--duration-hero) var(--easing-emph);
 }
 
 .pp-fraction {
@@ -391,7 +391,7 @@ defineEmits<{
   align-items: center;
   gap: var(--space-2);
   padding: 0.22rem 1rem;
-  transition: background 120ms ease;
+  transition: background var(--duration-instant) ease;
 }
 
 .pp-log-entry:hover { background: var(--surface-3); }
