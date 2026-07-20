@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.2](https://github.com/sound-barrier/recall/compare/v0.27.1...v0.27.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* **ui:** judge win rates on the raw rate, consistently on every surface ([e9e69f6](https://github.com/sound-barrier/recall/commit/e9e69f6176a005a6f44d99c3a7fd9910afcc874c))
+
 ## [0.27.1](https://github.com/sound-barrier/recall/compare/v0.27.0...v0.27.1) (2026-07-20)
 
 
