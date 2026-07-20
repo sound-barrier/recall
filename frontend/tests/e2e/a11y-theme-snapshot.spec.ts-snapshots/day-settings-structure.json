@@ -1,0 +1,233 @@
+{
+  "htmlAttr": {
+    "dataTheme": "day"
+  },
+  "activeTab": {
+    "id": "tab-settings",
+    "ariaSelected": "true",
+    "textContent": "01Settings"
+  },
+  "mainPresent": true,
+  "mastheadPresent": true,
+  "cssTokens": {
+    "--accent": "#fa9c1b",
+    "--accent-text": "#9e4d00",
+    "--accent-glow": "#fa9c1b73",
+    "--accent-soft": "#fa9c1b38",
+    "--text": "#1a1a1a",
+    "--text-dim": "#4a4a4a",
+    "--text-faint": "#5c5a52",
+    "--text-mute": "#6a675c",
+    "--surface": "#f5f3ed",
+    "--surface-2": "#e8e5dd",
+    "--surface-3": "#dcd8cd",
+    "--bg": "#efede6",
+    "--border": "#4a4a4a",
+    "--border-soft": "#b9b3a5",
+    "--border-strong": "#2a2a2a",
+    "--win": "#0f7a3a",
+    "--loss": "#c0354a",
+    "--draw": "#8b5c14",
+    "--tank": "#1f5491",
+    "--dps": "#c4451f",
+    "--support": "#1e6f3a",
+    "--identity-accent": "#9c4012",
+    "--primary-text-on-accent": "#1a0a00"
+  },
+  "designSystem": {
+    "eyebrow": {
+      "count": 2,
+      "fontSize": [
+        "10.4px",
+        "9.92px"
+      ],
+      "letterSpacing": [
+        "2.3808px",
+        "2.496px"
+      ],
+      "fontWeight": [
+        "400"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(250, 156, 27)",
+        "rgb(92, 90, 82)"
+      ],
+      "backgroundColor": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "borderRadius": [
+        "0px"
+      ]
+    },
+    "card": {
+      "count": 1,
+      "fontSize": [
+        "11.2px"
+      ],
+      "letterSpacing": [
+        "1.792px"
+      ],
+      "fontWeight": [
+        "700"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(74, 74, 74)"
+      ],
+      "backgroundColor": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "borderRadius": [
+        "2px"
+      ]
+    },
+    "panel": {
+      "count": 0,
+      "fontSize": [],
+      "letterSpacing": [],
+      "fontWeight": [],
+      "textTransform": [],
+      "color": [],
+      "backgroundColor": [],
+      "borderRadius": []
+    },
+    "button": {
+      "count": 41,
+      "fontSize": [
+        "11.2px",
+        "12.48px",
+        "13.28px",
+        "13.3333px",
+        "14px",
+        "16px",
+        "9.92px"
+      ],
+      "letterSpacing": [
+        "0.448px",
+        "0.4992px",
+        "1.3888px",
+        "1.5872px",
+        "1.792px",
+        "normal"
+      ],
+      "fontWeight": [
+        "400",
+        "600",
+        "700"
+      ],
+      "textTransform": [
+        "none",
+        "uppercase"
+      ],
+      "color": [
+        "rgb(0, 0, 0)",
+        "rgb(158, 77, 0)",
+        "rgb(192, 53, 74)",
+        "rgb(250, 156, 27)",
+        "rgb(26, 26, 26)",
+        "rgb(74, 74, 74)",
+        "rgb(92, 90, 82)",
+        "rgba(16, 16, 16, 0.3)"
+      ],
+      "backgroundColor": [
+        "rgb(232, 229, 221)",
+        "rgb(239, 239, 239)",
+        "rgba(0, 0, 0, 0)",
+        "rgba(239, 239, 239, 0.3)",
+        "rgba(250, 156, 27, 0.22)"
+      ],
+      "borderRadius": [
+        "0px",
+        "1px",
+        "2px"
+      ]
+    },
+    "badge": {
+      "count": 1,
+      "fontSize": [
+        "9.28px"
+      ],
+      "letterSpacing": [
+        "normal"
+      ],
+      "fontWeight": [
+        "700"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(26, 17, 0)"
+      ],
+      "backgroundColor": [
+        "rgb(139, 92, 20)"
+      ],
+      "borderRadius": [
+        "8px"
+      ]
+    },
+    "chip": {
+      "count": 1,
+      "fontSize": [
+        "9.92px"
+      ],
+      "letterSpacing": [
+        "1.5872px"
+      ],
+      "fontWeight": [
+        "700"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(26, 26, 26)"
+      ],
+      "backgroundColor": [
+        "rgb(232, 229, 221)"
+      ],
+      "borderRadius": [
+        "2px"
+      ]
+    },
+    "heading": {
+      "count": 25,
+      "fontSize": [
+        "17.6px",
+        "26.4px",
+        "29.6px",
+        "32px",
+        "40.8px"
+      ],
+      "letterSpacing": [
+        "-0.132px",
+        "-0.148px",
+        "-0.32px",
+        "0.088px",
+        "1.632px"
+      ],
+      "fontWeight": [
+        "700",
+        "800"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(245, 243, 238)",
+        "rgb(26, 26, 26)"
+      ],
+      "backgroundColor": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "borderRadius": [
+        "0px"
+      ]
+    }
+  }
+}

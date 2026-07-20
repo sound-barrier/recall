@@ -1,0 +1,193 @@
+{
+  "htmlAttr": {
+    "dataTheme": "high-contrast"
+  },
+  "activeTab": {
+    "id": "tab-compare",
+    "ariaSelected": "true",
+    "textContent": "05Compare"
+  },
+  "mainPresent": true,
+  "mastheadPresent": true,
+  "cssTokens": {
+    "--accent": "#ffbf4d",
+    "--accent-text": "#ffbf4d",
+    "--accent-glow": "#ffbf4d99",
+    "--accent-soft": "#ffbf4d4d",
+    "--text": "#fff",
+    "--text-dim": "#fff",
+    "--text-faint": "#e6e6e6",
+    "--text-mute": "#d0d0d0",
+    "--surface": "#000",
+    "--surface-2": "#0a0a0a",
+    "--surface-3": "#141414",
+    "--bg": "#000",
+    "--border": "#fff",
+    "--border-soft": "#888",
+    "--border-strong": "#fff",
+    "--win": "#0f6",
+    "--loss": "#f35",
+    "--draw": "gold",
+    "--tank": "#6df",
+    "--dps": "#f86",
+    "--support": "#8fa",
+    "--identity-accent": "#ffbf4d",
+    "--primary-text-on-accent": "#000"
+  },
+  "designSystem": {
+    "eyebrow": {
+      "count": 1,
+      "fontSize": [
+        "10.4px"
+      ],
+      "letterSpacing": [
+        "2.496px"
+      ],
+      "fontWeight": [
+        "400"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(230, 230, 230)"
+      ],
+      "backgroundColor": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "borderRadius": [
+        "0px"
+      ]
+    },
+    "card": {
+      "count": 0,
+      "fontSize": [],
+      "letterSpacing": [],
+      "fontWeight": [],
+      "textTransform": [],
+      "color": [],
+      "backgroundColor": [],
+      "borderRadius": []
+    },
+    "panel": {
+      "count": 0,
+      "fontSize": [],
+      "letterSpacing": [],
+      "fontWeight": [],
+      "textTransform": [],
+      "color": [],
+      "backgroundColor": [],
+      "borderRadius": []
+    },
+    "button": {
+      "count": 12,
+      "fontSize": [
+        "10.88px",
+        "13.3333px",
+        "16px",
+        "9.92px"
+      ],
+      "letterSpacing": [
+        "0.4352px",
+        "1.5872px",
+        "normal"
+      ],
+      "fontWeight": [
+        "400",
+        "700"
+      ],
+      "textTransform": [
+        "none",
+        "uppercase"
+      ],
+      "color": [
+        "rgb(230, 230, 230)",
+        "rgb(255, 255, 255)"
+      ],
+      "backgroundColor": [
+        "color(srgb 0.250588 0.195373 0.0970196)",
+        "rgb(10, 10, 10)",
+        "rgba(0, 0, 0, 0)"
+      ],
+      "borderRadius": [
+        "0px",
+        "2px"
+      ]
+    },
+    "badge": {
+      "count": 1,
+      "fontSize": [
+        "9.28px"
+      ],
+      "letterSpacing": [
+        "normal"
+      ],
+      "fontWeight": [
+        "700"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(26, 17, 0)"
+      ],
+      "backgroundColor": [
+        "rgb(255, 215, 0)"
+      ],
+      "borderRadius": [
+        "8px"
+      ]
+    },
+    "chip": {
+      "count": 1,
+      "fontSize": [
+        "9.92px"
+      ],
+      "letterSpacing": [
+        "1.5872px"
+      ],
+      "fontWeight": [
+        "700"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(255, 255, 255)"
+      ],
+      "backgroundColor": [
+        "rgb(10, 10, 10)"
+      ],
+      "borderRadius": [
+        "2px"
+      ]
+    },
+    "heading": {
+      "count": 2,
+      "fontSize": [
+        "32px",
+        "40.8px"
+      ],
+      "letterSpacing": [
+        "-0.32px",
+        "1.632px"
+      ],
+      "fontWeight": [
+        "700",
+        "800"
+      ],
+      "textTransform": [
+        "uppercase"
+      ],
+      "color": [
+        "rgb(255, 255, 255)"
+      ],
+      "backgroundColor": [
+        "rgba(0, 0, 0, 0)"
+      ],
+      "borderRadius": [
+        "0px"
+      ]
+    }
+  }
+}
