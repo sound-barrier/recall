@@ -105,6 +105,32 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     await expect(band.locator('.heatmap-cell')).toHaveCount(3 * 6)
   })
 
+  test('a modest edge with real volume earns green — 53% over 30 decisive', async ({ page }) => {
+    // The regression this guards: the old judgment rule shrank the observed
+    // rate toward 50% with a 90-imaginary-game prior, so a 53.3% hero at 30
+    // games blended to 50.8% and rendered grey — green effectively required
+    // ~57% at realistic per-hero volumes, which read as "the app doesn't
+    // believe I'm climbing". The bands are now judged on the raw rate once
+    // the 15-decisive floor is met; volume confidence is carried by the
+    // cell's opacity ramp instead.
+    await page.unrouteAll({ behavior: 'wait' })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      // Lucio on control: 16W / 14L = 53.3% over 30 decisive.
+      const corpus = Array.from({ length: 30 }, (_, i) =>
+        match(`g${i}`, 'lucio', 'control', i < 16 ? 'victory' : 'defeat',
+          `${String(10 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`))
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
+    })
+    await page.reload()
+    await page.locator('#tab-matches').click()
+    const band = page.locator('.hero-mode-band')
+    await expect(band).toBeVisible()
+
+    const lucioControl = band.locator('[data-hm-cell="control|lucio"]')
+    await expect(lucioControl).toBeVisible()
+    await expect(lucioControl).toHaveClass(/cell-win/)
+  })
+
   test('hides the Clash column when no Clash was played in the window (it is quickplay-only)', async ({ page }) => {
     await page.unrouteAll({ behavior: 'wait' })
     await page.route('**/api/v1/matches', async (route: Route) => {

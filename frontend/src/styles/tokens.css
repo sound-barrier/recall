@@ -60,6 +60,14 @@
   --support: #7dffac;
   --support-soft: rgb(125 255 172 / 14%);
 
+  /* The "no verdict" plate for judgment heatmap cells (heatmapCellClass's
+     cell-mid): the dead zone around 50% and the under-15-games floor. It
+     existed only as a hardcoded #95a5a6 FALLBACK — `var(--neutral, #95a5a6)`
+     — with no definition anywhere, so every theme silently rendered the
+     literal. Same value, now a real token; themes can override when a
+     palette needs it. */
+  --neutral: #95a5a6;
+
   /* Categorical chart palette, slots 5–8. Slots 1–4 are the semantic
      tokens (--accent / --win / --loss / --draw); these extend the ramp
      for series with no meaning of their own — heroes, maps, modifiers.

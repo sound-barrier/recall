@@ -405,4 +405,27 @@ test.describe('Geography — never-played roles + empty state', () => {
     await expect(heroMode).toBeVisible()
     await expect(heroMode.locator('[data-hm-no-data]')).toContainText(prompt)
   })
+
+  test('cells judge win rate with the same discrete bands as the Hero × Game-Mode band', async ({ page }) => {
+    // Consistency contract: this band used to colour by a continuous
+    // green-red hue blend (winrateVolumeFill) while its sibling Hero ×
+    // Game-Mode band used discrete judgment classes — the same 53% hero
+    // could look green in one band and muddy-neutral in the other. Both
+    // now share heatmapCellClass: green above 51%, red below 48.5%, grey
+    // in the dead zone or under 15 decisive games, opacity for volume.
+    await open(page, [
+      // Support on Rialto: 16W / 14L = 53.3% over 30 decisive (earns green).
+      ...Array.from({ length: 30 }, (_, i) =>
+        match(`w${i}`, 'rialto', 'escort', 'support', 'lucio', i < 16 ? 'victory' : 'defeat',
+          `${String(10 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`)),
+      // Tank on Ilios: 2W / 3L over 5 — under the 15-decisive floor (grey).
+      ...Array.from({ length: 5 }, (_, i) =>
+        match(`t${i}`, 'ilios', 'control', 'tank', 'reinhardt', i < 2 ? 'victory' : 'defeat', `12:0${i}`)),
+    ])
+    const band = page.locator('.match-map-role')
+    await expect(band).toBeVisible()
+
+    await expect(band.locator('.mr-cell[aria-label*="Support on Rialto"]')).toHaveClass(/cell-win/)
+    await expect(band.locator('.mr-cell[aria-label*="Tank on Ilios"]')).toHaveClass(/cell-mid/)
+  })
 })

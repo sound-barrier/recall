@@ -33,9 +33,18 @@ function offsetText(h: HeroPickStat): string {
 }
 
 // The bar wears the heat class of the rate ON DISPLAY, so a nudge visibly
-// re-sizes and re-tints it.
-function heatShape(h: HeroPickStat): { total: number; winrate: number; wins: number; losses: number } {
-  return { total: h.wins + h.losses, winrate: nudgedTo(h) ?? h.winrate, wins: h.wins, losses: h.losses }
+// re-sizes and re-tints it. heatmapCellClass judges from the exact
+// wins/decisive fraction (never the display-rounded `winrate` field), so a
+// nudged rate is expressed as synthetic win/loss tallies at the same
+// volume — passing it only through `winrate` left the class frozen on the
+// measured record and the nudge changed the bar's width but never its
+// colour. The un-nudged path hands the real tallies straight through.
+function heatShape(h: HeroPickStat): { total: number; wins: number; losses: number } {
+  const decisive = h.wins + h.losses
+  const nudged = nudgedTo(h)
+  if (nudged === null) return { total: decisive, wins: h.wins, losses: h.losses }
+  const wins = (nudged / 100) * decisive
+  return { total: decisive, wins, losses: decisive - wins }
 }
 
 function statTitle(h: HeroPickStat): string | undefined {

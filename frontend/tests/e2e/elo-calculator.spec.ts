@@ -345,6 +345,32 @@ test.describe('Elo Calculator', () => {
     await expect(page.locator('[data-elo-chart-caption]')).toContainText(/two futures/i)
   })
 
+  test('a nudge that crosses a judgment band re-tints the hero bar', async ({ page }) => {
+    // The hero bar "wears the heat class of the rate ON DISPLAY" — the
+    // documented contract of heatShape. It was silently broken: the class
+    // came from the raw win/loss tallies, so a what-if nudge moved the
+    // bar's width and label but never its colour. A 50% hero nudged to
+    // 52% must flip grey → green; slumped to 45%, green → red territory.
+    seq = 0
+    await mockCorpus(page, [
+      rec('victory', 'lucio', { rank: 'gold', level: 2, rank_progress: 40, change_percent: 22, modifiers: ['victory', 'expected'] }),
+      ...games(19, 9, 'lucio'), // + the ranked win above = 20 games, 10W 10L — 50%, dead-zone grey
+    ])
+    await openCalculator(page)
+
+    const fill = page.locator('[data-elo-hero="lucio"] .elo-hero-fill')
+    await expect(fill).toHaveClass(/cell-mid/)
+
+    const up = page.locator('[data-elo-hero="lucio"] [data-elo-nudge="up"]')
+    await up.click()
+    await up.click() // 50% + 2 = 52% — past the 51% band
+    await expect(fill).toHaveClass(/cell-win/)
+
+    const down = page.locator('[data-elo-hero="lucio"] [data-elo-nudge="down"]')
+    for (let i = 0; i < 7; i++) await down.click() // offset floors at −5 → 45%
+    await expect(fill).toHaveClass(/cell-loss/)
+  })
+
   test('nudging a hero shifts the blend by its share, one point per press up to ±5', async ({ page }) => {
     await mockCorpus(page, corpus70())
     await openCalculator(page)

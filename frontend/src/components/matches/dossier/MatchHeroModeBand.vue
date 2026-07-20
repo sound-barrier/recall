@@ -443,7 +443,7 @@ const levelTitle = computed(() => {
   outline-offset: 1px;
 }
 .hm-map-tile.cell-win  { background: var(--win,  #2ecc71); }
-.hm-map-tile.cell-mid  { background: var(--neutral, #95a5a6); }
+.hm-map-tile.cell-mid  { background: var(--neutral); }
 .hm-map-tile.cell-loss { background: var(--loss, #e74c3c); }
 .hm-map-tile.cell-draw { background: var(--draw, #b59c30); }
 .hm-map-tile.cell-empty { background: var(--surface-2); color: var(--text-faint); cursor: default; }

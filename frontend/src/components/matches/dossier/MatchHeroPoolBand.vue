@@ -510,7 +510,7 @@ const configIsDefault = computed(
 /* Colour by WIN RATE (green / grey / red), the Hero × Game-Mode scheme — not
    by pool status. Opacity fades low-volume heroes (significance). */
 .hp-fill.cell-win  { background: var(--win); }
-.hp-fill.cell-mid  { background: var(--neutral, #95a5a6); }
+.hp-fill.cell-mid  { background: var(--neutral); }
 .hp-fill.cell-loss { background: var(--loss); }
 .hp-fill.cell-draw { background: var(--draw, #b59c30); }
 .hp-fill.cell-empty { background: color-mix(in srgb, var(--text-faint) 30%, transparent); }

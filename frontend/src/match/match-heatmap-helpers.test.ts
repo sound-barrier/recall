@@ -1,26 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { heatmapCellClass, winrateVolumeFill } from '@/match/match-heatmap-helpers'
-
-describe('winrateVolumeFill', () => {
-  it('returns the empty tone for a zero-volume cell', () => {
-    expect(winrateVolumeFill(0, 0, 10)).toBe('var(--heatmap-empty)')
-    expect(winrateVolumeFill(80, 0, 10)).toBe('var(--heatmap-empty)')
-  })
-
-  it('encodes win rate as the green→red hue', () => {
-    expect(winrateVolumeFill(67, 12, 12)).toContain('var(--win) 67%')
-    expect(winrateVolumeFill(0, 5, 12)).toContain('var(--win) 0%')
-  })
-
-  it('saturates fully at the volume anchor and less below it', () => {
-    // total == maxTotal → 100% saturation.
-    expect(winrateVolumeFill(50, 12, 12)).toContain(' 100%,')
-    // 4 / 12 volume → 20 + 4/12*80 = 47%.
-    expect(winrateVolumeFill(50, 4, 12)).toContain(' 47%,')
-    // A single game floors near the 20% baseline.
-    expect(winrateVolumeFill(50, 1, 12)).toContain(' 27%,')
-  })
-})
+import { heatmapCellClass } from '@/match/match-heatmap-helpers'
 
 describe('heatmapCellClass — judgment bands', () => {
   const cell = (wins: number, losses: number, draws = 0) => ({
@@ -35,9 +14,15 @@ describe('heatmapCellClass — judgment bands', () => {
     expect(heatmapCellClass(cell(0, 0, 3))).toBe('cell-draw')
   })
 
-  it('a 52% record with real volume is a climb — win-coloured, not grey', () => {
+  it('a 52% record is a climb — win-coloured, not grey, at ANY volume past the floor', () => {
     expect(heatmapCellClass(cell(52, 48))).toBe('cell-win')
     expect(heatmapCellClass(cell(208, 192))).toBe('cell-win') // 52% at n=400
+
+    // The regression this rewrite fixes: under the old 90-game shrinkage
+    // prior, 52% needed >90 games ON THAT ONE CELL to colour — so a
+    // support player's 52% heroes sat grey at realistic per-hero volumes
+    // while they were visibly climbing with them.
+    expect(heatmapCellClass(cell(13, 12))).toBe('cell-win') // 52% at n=25 — same climb, sooner
   })
 
   it('the dead zone [48.5, 51] stays neutral at any volume', () => {
@@ -60,9 +45,11 @@ describe('heatmapCellClass — judgment bands', () => {
     expect(heatmapCellClass(cell(6, 4))).toBe('cell-mid')
   })
 
-  it('moderate volume needs a real edge to colour', () => {
-    expect(heatmapCellClass(cell(12, 8))).toBe('cell-win') // 60% over 20 — a real signal
-    expect(heatmapCellClass(cell(9, 7))).toBe('cell-mid') // 56% over 16 — not yet
+  it('past the floor, clearing the band is all it takes — no extra volume tax', () => {
+    expect(heatmapCellClass(cell(12, 8))).toBe('cell-win') // 60% over 20
+    expect(heatmapCellClass(cell(9, 7))).toBe('cell-win') // 56% over 16
+    expect(heatmapCellClass(cell(11, 9))).toBe('cell-win') // 55% over 20
+    expect(heatmapCellClass(cell(16, 14))).toBe('cell-win') // 53.3% over 30
     expect(heatmapCellClass(cell(5, 11))).toBe('cell-loss') // 31% over 16 — clearly bleeding
   })
 })
