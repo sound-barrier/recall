@@ -37,7 +37,7 @@ const breakdown = dossier.lossQualityBreakdown()
 .lq-unscored {
   margin: 0.4rem 0 0;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   color: var(--text-faint);
 }

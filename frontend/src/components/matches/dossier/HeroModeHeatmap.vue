@@ -222,7 +222,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 .heatmap-empty {
   margin: 0.6rem 0 0.1rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }
@@ -243,7 +243,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 
 .heatmap-header {
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -271,7 +271,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 
 .heatmap-rowhead {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   letter-spacing: 0.03em;
   color: var(--text);
   padding-right: 0.4rem;
@@ -295,13 +295,13 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 .heatmap-rowhead.header-selected {
   color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .heatmap-cell {
   appearance: none;
   border: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.25rem 0.2rem;
   cursor: pointer;
   display: flex;
@@ -310,7 +310,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   align-items: center;
   gap: 0.05rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text);
@@ -350,12 +350,12 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 .heatmap-cell.cell-draw { background: var(--draw, #b59c30); color: var(--bg); }
 
 .cell-rate {
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
 }
 
 .cell-vol {
-  font-size: 0.5rem;
+  font-size: var(--type-4xs);
   opacity: 0.8;
   line-height: 1;
 }
@@ -373,7 +373,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   box-sizing: border-box;
   padding: 0.4rem 0.55rem;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
@@ -384,7 +384,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   border-color: var(--border);
   background: transparent;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.03em;
   font-style: italic;
   color: var(--text-faint);
@@ -397,7 +397,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -409,7 +409,7 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
 .hm-sel-hint {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   color: var(--text-faint);
   font-style: italic;
   max-width: 18rem;

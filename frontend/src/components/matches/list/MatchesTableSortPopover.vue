@@ -233,12 +233,12 @@ function onColumnChange(from: TableSortCol, e: Event) {
   min-width: 290px;
   padding: 0.55rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.04em;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   box-shadow: 0 18px 38px -16px rgb(var(--shadow-rgb) / 55%);
 }
 
@@ -250,7 +250,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 }
 
 .tsp-title {
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -260,7 +260,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
 .tsp-close {
   appearance: none;
   padding: 0.1rem 0.3rem;
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
   color: var(--text-faint);
   cursor: pointer;
@@ -306,11 +306,11 @@ function onColumnChange(from: TableSortCol, e: Event) {
   min-width: 0;
   padding: 0.25rem 0.3rem;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .tsp-select:focus-visible {
@@ -322,14 +322,14 @@ function onColumnChange(from: TableSortCol, e: Event) {
   flex: 0 0 auto;
   padding: 0.25rem 0.4rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--accent-text, var(--accent));
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .tsp-dir:hover,
@@ -347,13 +347,13 @@ function onColumnChange(from: TableSortCol, e: Event) {
   width: 1.3rem;
   height: 1.3rem;
   padding: 0;
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
   color: var(--text-dim);
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .tsp-icon:hover:not(:disabled),
@@ -388,12 +388,12 @@ function onColumnChange(from: TableSortCol, e: Event) {
   appearance: none;
   padding: 0.3rem 0.55rem;
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .tsp-add {

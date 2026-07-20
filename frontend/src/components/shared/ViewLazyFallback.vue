@@ -31,7 +31,7 @@
   gap: 0.7rem;
   min-height: 50vh;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);

@@ -206,14 +206,14 @@ function pick(mode: ThemeMode) {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0.55rem;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
-  transition: border-color 160ms ease, box-shadow 200ms ease, transform 140ms ease;
+  transition: border-color 160ms ease, box-shadow var(--duration-med) ease, transform var(--duration-fast) ease;
   font: inherit;
   color: var(--text-dim);
 }
@@ -241,7 +241,7 @@ function pick(mode: ThemeMode) {
   position: relative;
   width: 132px;
   height: 78px;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   overflow: hidden;
   background: var(--swatch-bg);
   border: 1px solid var(--swatch-border);
@@ -263,7 +263,7 @@ function pick(mode: ThemeMode) {
 
 .swatch-line {
   height: 5px;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   background: var(--swatch-text);
   opacity: 0.7;
 }
@@ -287,7 +287,7 @@ function pick(mode: ThemeMode) {
   align-items: center;
   gap: 0.4rem;
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;

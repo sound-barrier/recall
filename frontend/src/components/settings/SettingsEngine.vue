@@ -198,7 +198,7 @@ const showProbeChip = computed(
   padding: 0.45rem 0.7rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   max-width: 100%;
 }
 
@@ -234,7 +234,7 @@ const showProbeChip = computed(
 
 .engine-state {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -252,17 +252,17 @@ const showProbeChip = computed(
   padding: 0.1rem 0.4rem;
   background: var(--surface-3);
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   font-feature-settings: "tnum";
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .engine-path {
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   word-break: break-all;
   letter-spacing: 0;
@@ -272,7 +272,7 @@ const showProbeChip = computed(
   margin-top: 0.55rem;
   max-width: 60ch;
   font-family: var(--body);
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
   color: var(--loss);
   line-height: 1.5;
 }
@@ -280,7 +280,7 @@ const showProbeChip = computed(
 .engine-meta {
   margin-top: 0.55rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }
@@ -289,10 +289,10 @@ const showProbeChip = computed(
   padding: 0.05rem 0.35rem;
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .engine-control {
@@ -324,15 +324,15 @@ const showProbeChip = computed(
 .engine-unsupported-warn {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-top: 0.6rem;
   padding: 0.6rem 0.85rem;
   max-width: 60ch;
   background: color-mix(in srgb, var(--accent) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   font-family: var(--body);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
   color: color-mix(in srgb, var(--accent) 80%, var(--text));
   line-height: 1.55;
 }
@@ -355,7 +355,7 @@ const showProbeChip = computed(
   text-underline-offset: 2px;
   text-decoration-color: var(--accent-soft);
   text-decoration-thickness: 1px;
-  transition: text-decoration-color 200ms ease, color 200ms ease;
+  transition: text-decoration-color var(--duration-med) ease, color var(--duration-med) ease;
 }
 
 .link-btn:hover {

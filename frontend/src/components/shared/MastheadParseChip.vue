@@ -84,14 +84,14 @@ const pct = computed(() => {
   padding: 0.3rem 0.65rem;
   background: var(--surface-2);
   border: 1px solid var(--accent-soft);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   font-family: var(--mono, ui-monospace, 'SF Mono', menlo, monospace);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.14em;
   color: var(--text);
   cursor: pointer;
   user-select: none;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .masthead-parse-chip:hover {
@@ -131,7 +131,7 @@ const pct = computed(() => {
   width: 56px;
   height: 4px;
   background: var(--surface-3);
-  border-radius: 2px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 

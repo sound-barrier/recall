@@ -114,7 +114,7 @@ function localTime(iso: string): string {
 
 .dbh-item dt {
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -123,7 +123,7 @@ function localTime(iso: string): string {
 .dbh-item dd {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text);
 }
 

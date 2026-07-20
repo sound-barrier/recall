@@ -62,7 +62,7 @@
     "card": {
       "count": 14,
       "fontSize": [
-        "12.16px",
+        "12.48px",
         "14px",
         "24px",
         "9.6px"
@@ -109,18 +109,16 @@
     "button": {
       "count": 30,
       "fontSize": [
-        "10.88px",
+        "10.56px",
         "12.48px",
         "13.3333px",
         "16px",
-        "9.28px",
-        "9.6px",
-        "9.92px"
+        "9.6px"
       ],
       "letterSpacing": [
-        "0.4352px",
+        "0.4224px",
         "0.576px",
-        "1.5872px",
+        "1.536px",
         "normal"
       ],
       "fontWeight": [
@@ -149,7 +147,7 @@
     "badge": {
       "count": 1,
       "fontSize": [
-        "9.28px"
+        "9.6px"
       ],
       "letterSpacing": [
         "normal"
@@ -173,10 +171,10 @@
     "chip": {
       "count": 1,
       "fontSize": [
-        "9.92px"
+        "9.6px"
       ],
       "letterSpacing": [
-        "1.5872px"
+        "1.536px"
       ],
       "fontWeight": [
         "700"
@@ -199,13 +197,13 @@
       "fontSize": [
         "32px",
         "40.8px",
-        "9.92px"
+        "9.6px"
       ],
       "letterSpacing": [
         "-0.32px",
-        "1.3888px",
+        "1.344px",
         "1.632px",
-        "1.7856px"
+        "1.728px"
       ],
       "fontWeight": [
         "700",

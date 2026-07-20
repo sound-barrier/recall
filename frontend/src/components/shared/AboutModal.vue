@@ -302,13 +302,13 @@ function openReleasePage() {
   display: grid;
   place-items: center;
   z-index: 1000;
-  padding: 1.5rem;
+  padding: var(--space-5);
 }
 
 .update-check-modal-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   width: min(540px, 100%);
   max-height: 90vh;
   overflow-y: auto;
@@ -318,7 +318,7 @@ function openReleasePage() {
 .update-check-modal-head {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 0.9rem 1.1rem 0.55rem;
   border-bottom: 1px solid var(--border-soft);
 }
@@ -326,7 +326,7 @@ function openReleasePage() {
 .update-check-modal-title {
   flex: 1 1 auto;
   font-family: var(--display);
-  font-size: 1.4rem;
+  font-size: var(--type-5xl);
   font-weight: 400;
   letter-spacing: 0.06em;
   margin: 0;
@@ -338,12 +338,12 @@ function openReleasePage() {
   border: 1px solid var(--border-soft);
   background: transparent;
   color: var(--text-dim);
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   width: 1.8rem;
   height: 1.8rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .update-check-modal-close:hover {
@@ -354,7 +354,7 @@ function openReleasePage() {
 .update-check-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
   padding: 1rem 1.1rem 1.2rem;
 }
 
@@ -364,12 +364,12 @@ function openReleasePage() {
   gap: 0.6rem;
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
 }
 
 .update-check-modal-section-title {
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -390,7 +390,7 @@ function openReleasePage() {
 
 .update-check-modal-row-label {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -399,7 +399,7 @@ function openReleasePage() {
 
 .update-check-modal-row-value {
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
   color: var(--text);
 }
 
@@ -411,7 +411,7 @@ function openReleasePage() {
 
 .update-check-modal-devbuild-current {
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text);
@@ -421,14 +421,14 @@ function openReleasePage() {
 .update-check-modal-devbuild-note,
 .update-check-modal-uptodate {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.06em;
   color: var(--text-dim);
   margin: 0 0 0.45rem;
 }
 
 .update-check-modal-notes {
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   line-height: 1.45;
   margin: 0.25rem 0 0.5rem;
@@ -437,7 +437,7 @@ function openReleasePage() {
 
 .update-check-modal-empty {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.16em;
   color: var(--text-dim);
   margin: 0.3rem 0;
@@ -446,11 +446,11 @@ function openReleasePage() {
 .update-check-modal-error {
   background: color-mix(in srgb, var(--loss) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--loss) 50%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.55rem 0.7rem;
   color: var(--loss);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   margin: 0.5rem 0;
 }
 
@@ -472,13 +472,13 @@ function openReleasePage() {
   appearance: none;
   font-family: var(--mono);
   font-weight: 700;
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   padding: 0.38rem 0.85rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 :deep(.update-check-modal-btn:disabled) {
@@ -510,7 +510,7 @@ function openReleasePage() {
 .update-check-modal-btn-wide {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.22em;
 }
 
@@ -565,7 +565,7 @@ function openReleasePage() {
 
 .about-version {
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.08em;
   color: var(--text-dim);
   margin: 0.15rem 0 0;
@@ -573,7 +573,7 @@ function openReleasePage() {
 
 .about-tagline {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -593,7 +593,7 @@ function openReleasePage() {
   border: 0;
   padding: 0;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.04em;
   color: var(--accent-text);
   cursor: pointer;
@@ -605,7 +605,7 @@ function openReleasePage() {
 }
 
 .about-disclaimer {
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   line-height: 1.5;
   color: var(--text-faint);
   margin: 0;
@@ -622,7 +622,7 @@ function openReleasePage() {
 
 .update-check-modal-summary {
   font-family: var(--display);
-  font-size: 1.45rem;
+  font-size: var(--type-6xl);
   font-weight: 400;
   letter-spacing: 0.04em;
   line-height: 1.15;
@@ -632,7 +632,7 @@ function openReleasePage() {
 
 .update-check-modal-freshness {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   color: var(--text-dim);
   margin: 0 0 0.7rem;

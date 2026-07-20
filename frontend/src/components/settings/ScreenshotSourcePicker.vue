@@ -203,7 +203,7 @@ void ({} as NamedCandidateStats)
 .src-picker {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   margin-top: 0.65rem;
 }
 
@@ -216,7 +216,7 @@ void ({} as NamedCandidateStats)
      was clipped off the panel. minmax(0, …) lets the tracks (and cards)
      shrink so the paths ellipsis-truncate instead. */
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .src-card {
@@ -228,12 +228,12 @@ void ({} as NamedCandidateStats)
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.65rem 0.85rem;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   cursor: pointer;
   font: inherit;
   color: var(--text);
@@ -274,7 +274,7 @@ void ({} as NamedCandidateStats)
 .src-title {
   font-family: var(--display);
   font-style: italic;
-  font-size: 1.0rem;
+  font-size: var(--type-2xl);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text);
@@ -284,7 +284,7 @@ void ({} as NamedCandidateStats)
 
 .src-path {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -293,7 +293,7 @@ void ({} as NamedCandidateStats)
 
 .src-stats {
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   color: var(--text-dim);
   margin-top: 0.05rem;
@@ -304,7 +304,7 @@ void ({} as NamedCandidateStats)
   align-items: center;
   gap: 0.35rem;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
@@ -325,7 +325,7 @@ void ({} as NamedCandidateStats)
 .src-platform-note {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -340,10 +340,10 @@ void ({} as NamedCandidateStats)
   width: 100%;
   background: transparent;
   border: 1px dashed var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.65rem 0.85rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
@@ -369,7 +369,7 @@ void ({} as NamedCandidateStats)
 }
 
 .src-custom-glyph {
-  font-size: 1.0rem;
+  font-size: var(--type-2xl);
   line-height: 1;
 }
 
@@ -380,7 +380,7 @@ void ({} as NamedCandidateStats)
 
 .src-custom-kbd {
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.18em;
   color: var(--text-faint);
 }

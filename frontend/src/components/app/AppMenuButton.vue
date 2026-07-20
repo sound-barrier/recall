@@ -75,8 +75,8 @@ const {
   height: 1.7rem;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-radius: 2px;
-  font-size: 1rem;
+  border-radius: var(--radius);
+  font-size: var(--type-2xl);
   line-height: 1;
   color: var(--text);
   cursor: pointer;
@@ -104,7 +104,7 @@ const {
   padding: 0.35rem;
   border: 1px solid var(--accent);
   background: var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow:
     0 6px 22px color-mix(in srgb, var(--bg) 55%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
@@ -122,11 +122,11 @@ const {
   padding: 0.4rem 0.6rem;
   border: 0;
   background: transparent;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text);
@@ -141,7 +141,7 @@ const {
 
 .app-menu-ext {
   color: var(--text-faint);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
 }
 
 .app-menu-item:hover .app-menu-ext {

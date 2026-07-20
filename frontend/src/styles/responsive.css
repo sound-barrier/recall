@@ -13,7 +13,7 @@ html {
 @media (width <= 880px) {
   .brand { font-size: 2.4rem; }
   .score-num { font-size: 2rem; }
-  .scoreboard { gap: 1rem; }
+  .scoreboard { gap: var(--space-4); }
   .filter-grid { grid-template-columns: repeat(3, 1fr); }
   .stats { grid-template-columns: repeat(3, 1fr); }
   .stat:nth-child(3) { border-right: none; }
@@ -36,7 +36,7 @@ html {
   .setting-control { align-items: flex-start; }
   .setting-value { text-align: left; }
   .section-num { font-size: 2.4rem; }
-  .section-title { font-size: 1.5rem; }
-  .settings-heading { font-size: 1.5rem; }
+  .section-title { font-size: var(--type-6xl); }
+  .settings-heading { font-size: var(--type-6xl); }
 }
 

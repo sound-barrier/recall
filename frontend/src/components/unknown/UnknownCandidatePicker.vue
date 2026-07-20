@@ -151,7 +151,7 @@ function freshKey(): string | null {
 .candidate-picker-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(220px, 32%, 360px);
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -166,11 +166,11 @@ function freshKey(): string | null {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 0.5rem 0.75rem;
   background: var(--surface);
   border: 1px solid var(--border-soft);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
@@ -196,7 +196,7 @@ function freshKey(): string | null {
   padding: 0;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   overflow: hidden;
   aspect-ratio: 16 / 9;
@@ -217,7 +217,7 @@ function freshKey(): string | null {
 }
 
 .candidate-preview-caption {
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -244,7 +244,7 @@ function freshKey(): string | null {
   padding: 0;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   overflow: hidden;
   transition: border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
@@ -273,7 +273,7 @@ function freshKey(): string | null {
 }
 
 .candidate-key {
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -281,14 +281,14 @@ function freshKey(): string | null {
 }
 
 .candidate-distance {
-  font-size: 0.69rem;
+  font-size: var(--type-xs);
   color: var(--text-faint);
 }
 
 /* Why this candidate was proposed — only duplicate-sweep candidates carry
    the label, so it reads as a warning rather than routine metadata. */
 .candidate-duplicate-label {
-  font-size: 0.69rem;
+  font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -296,7 +296,7 @@ function freshKey(): string | null {
 }
 
 .candidate-summary {
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text-dim);
 }
 

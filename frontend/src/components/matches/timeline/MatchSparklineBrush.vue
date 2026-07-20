@@ -301,7 +301,7 @@ function onPointerUp(e: PointerEvent) {
 }
 
 .sparkline-bar {
-  transition: opacity 140ms ease;
+  transition: opacity var(--duration-fast) ease;
 }
 
 .sparkline-bar:hover {

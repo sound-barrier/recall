@@ -93,7 +93,7 @@ const progressLabel = computed(() => {
   display: block;
   width: 100%;
   height: 0.4rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   overflow: hidden;
 }
@@ -125,14 +125,14 @@ const progressLabel = computed(() => {
 }
 
 .update-check-modal-selfupdate-label {
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.06em;
   color: var(--text-dim);
 }
 
 .update-check-modal-selfupdate-error {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--loss);
 }
 </style>

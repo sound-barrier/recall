@@ -88,20 +88,20 @@ function onSelect(value: string) {
 .combo-selected {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: var(--space-1);
   margin-bottom: 0.3rem;
 }
 
 .combo-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   padding: 0.18rem 0.18rem 0.18rem 0.5rem;
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--accent-text);
   font-weight: 700;
   text-transform: lowercase;
@@ -112,7 +112,7 @@ function onSelect(value: string) {
 }
 
 .combo-pill-tag {
-  font-size: 0.48rem;
+  font-size: var(--type-4xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 700;
@@ -125,7 +125,7 @@ function onSelect(value: string) {
   color: var(--accent-text);
   padding: 0 0.3rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--type-xl);
   line-height: 1;
 }
 

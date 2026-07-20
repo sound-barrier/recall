@@ -82,7 +82,7 @@ const emit = defineEmits<{
   overflow: hidden;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
@@ -109,7 +109,7 @@ const emit = defineEmits<{
 }
 
 .ignored-filename {
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -117,7 +117,7 @@ const emit = defineEmits<{
 }
 
 .ignored-timestamp {
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 

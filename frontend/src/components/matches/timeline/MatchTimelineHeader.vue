@@ -161,13 +161,13 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 40%),
     var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .timeline-empty {
   margin: 0.4rem 0;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 
@@ -181,7 +181,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 
 .timeline-range {
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.04em;
   color: var(--text-faint);
 }
@@ -212,7 +212,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   box-sizing: border-box;
   padding: 0.4rem 0.55rem;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
@@ -222,7 +222,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   border-color: var(--border);
   background: transparent;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.03em;
   font-style: italic;
   color: var(--text-faint);
@@ -233,7 +233,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
 
 .tl-sel-stats {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;

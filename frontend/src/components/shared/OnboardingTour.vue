@@ -272,7 +272,7 @@ function onBack()   { void tour.prev() }
   border: 1px solid var(--border, #3a3a3a);
   border-left: 2px solid var(--accent);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.22em;
   color: var(--accent-text);
   user-select: none;
@@ -280,7 +280,7 @@ function onBack()   { void tour.prev() }
 }
 
 .tour-marker-rune {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
 }
 

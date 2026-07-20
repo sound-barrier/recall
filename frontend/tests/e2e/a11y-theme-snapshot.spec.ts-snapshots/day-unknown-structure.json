@@ -99,12 +99,12 @@
       "count": 9,
       "fontSize": [
         "13.3333px",
-        "14px",
+        "13.6px",
         "16px",
-        "9.92px"
+        "9.6px"
       ],
       "letterSpacing": [
-        "1.5872px",
+        "1.536px",
         "normal"
       ],
       "fontWeight": [
@@ -133,7 +133,7 @@
     "badge": {
       "count": 1,
       "fontSize": [
-        "9.28px"
+        "9.6px"
       ],
       "letterSpacing": [
         "normal"
@@ -157,11 +157,11 @@
     "chip": {
       "count": 9,
       "fontSize": [
-        "9.92px"
+        "9.6px"
       ],
       "letterSpacing": [
-        "0.6944px",
-        "1.5872px"
+        "0.672px",
+        "1.536px"
       ],
       "fontWeight": [
         "600",

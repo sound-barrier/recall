@@ -53,7 +53,7 @@
   background: var(--accent-soft);
   padding: 0 0.25rem;
   margin: 0 -0.05rem;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
 }
 
 .settings-section {
@@ -110,7 +110,7 @@
 .section-title {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 1.85rem;
+  font-size: var(--type-display-sm);
   letter-spacing: -0.005em;
   line-height: 0.85;
   color: var(--text);
@@ -131,7 +131,7 @@
   padding: 1.35rem 0.6rem 1.35rem 0.2rem;
   border-bottom: 1px solid var(--hairline);
   position: relative;
-  transition: background 200ms ease;
+  transition: background var(--duration-med) ease;
 }
 .setting-row:last-child { border-bottom: none; }
 .setting-row:hover { background: var(--surface); }
@@ -146,7 +146,7 @@
   width: 4px; height: 4px;
   background: var(--border);
   border-radius: 50%;
-  transition: background 200ms ease, box-shadow 200ms ease;
+  transition: background var(--duration-med) ease, box-shadow var(--duration-med) ease;
 }
 
 .setting-row:hover::before {
@@ -158,7 +158,7 @@
 .setting-label {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   letter-spacing: 0.005em;
   text-transform: uppercase;
   color: var(--text);
@@ -167,7 +167,7 @@
 }
 
 .setting-desc {
-  font-size: 0.83rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   line-height: 1.5;
   max-width: 56ch;
@@ -180,10 +180,10 @@
 
 .setting-desc code {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   background: var(--surface-3);
   padding: 0.05rem 0.35rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--accent-text);
 }
 
@@ -218,7 +218,7 @@
    stretched the grid column off the page). */
 .setting-value {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text-dim);
   letter-spacing: 0;
   text-align: right;
@@ -227,7 +227,7 @@
   padding: 0.35rem 0.7rem;
   background: var(--surface);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 /* .big-switch family + .btn.primary.big .btn-dot descendant moved to
@@ -238,7 +238,7 @@
 .btn.primary.big,
 .btn.danger.big {
   padding: 0.85rem 1.4rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   letter-spacing: 0.06em;
 }
 

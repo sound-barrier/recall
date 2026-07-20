@@ -188,7 +188,7 @@ const { isReadOnly } = useActiveProfile()
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   margin: 0;
@@ -206,7 +206,7 @@ const { isReadOnly } = useActiveProfile()
 
 .leaves-head-controls {
   display: inline-flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
 
   /* Wrap onto extra rows (right-aligned) when the controls can't fit beside the
@@ -225,12 +225,12 @@ const { isReadOnly } = useActiveProfile()
   align-items: center;
   gap: 0.4rem;
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--accent);
   color: var(--primary-text-on-accent);
   padding: 0.4rem 0.8rem;
   font-family: var(--body);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -243,7 +243,7 @@ const { isReadOnly } = useActiveProfile()
 
 .add-match-btn:disabled,
 .import-matches-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.add-match-plus { font-size: 1rem; line-height: 1; }
+.add-match-plus { font-size: var(--type-2xl); line-height: 1; }
 
 /* Neutral secondary action — same outlined shape as the sort trigger so it
    reads as a peer control, not a second primary "create" button. */
@@ -251,10 +251,10 @@ const { isReadOnly } = useActiveProfile()
   appearance: none;
   background: transparent;
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.4rem 0.8rem;
   font-family: var(--body);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -286,13 +286,13 @@ const { isReadOnly } = useActiveProfile()
   appearance: none;
   background: transparent;
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.4rem 0.8rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-family: var(--body);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -322,7 +322,7 @@ const { isReadOnly } = useActiveProfile()
 }
 
 .sort-group-caret {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
   transform: translateY(-1px);
   transition: transform var(--duration-fast) ease;
@@ -342,7 +342,7 @@ const { isReadOnly } = useActiveProfile()
   display: inline-flex;
   align-items: stretch;
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: transparent;
   margin: 0;
   padding: 0;
@@ -367,7 +367,7 @@ const { isReadOnly } = useActiveProfile()
   border-radius: 0;
   padding: 0.4rem 0.8rem;
   font-family: var(--body);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -415,7 +415,7 @@ const { isReadOnly } = useActiveProfile()
 .jump-to-undated {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   white-space: nowrap;
 
   /* Match the sort/density padding so the three controls share an
@@ -433,7 +433,7 @@ const { isReadOnly } = useActiveProfile()
   font-family: var(--mono);
   font-weight: 700;
   color: var(--accent-text);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
   transform: translateY(-1px);
 }

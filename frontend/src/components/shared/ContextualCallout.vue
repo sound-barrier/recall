@@ -163,7 +163,7 @@ const calloutStyle = computed(() => {
   z-index: 180;
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   padding: 0.85rem 1rem 0.95rem;
   box-shadow:
     0 16px 36px color-mix(in srgb, var(--bg) 60%, transparent),
@@ -175,13 +175,13 @@ const calloutStyle = computed(() => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .ctx-heading {
   margin: 0;
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   font-style: italic;
   letter-spacing: 0.02em;
   color: var(--text);
@@ -193,7 +193,7 @@ const calloutStyle = computed(() => {
   border: none;
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   line-height: 1;
   cursor: pointer;
   padding: 0 0.3rem;
@@ -208,7 +208,7 @@ const calloutStyle = computed(() => {
 
 .ctx-body {
   margin: 0.5rem 0 0;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   line-height: 1.5;
 }
@@ -225,12 +225,12 @@ const calloutStyle = computed(() => {
   border: 1px solid var(--accent);
   color: var(--primary-text-on-accent, var(--bg));
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   padding: 0.4rem 0.85rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: filter var(--duration-fast) ease;
 }

@@ -617,11 +617,11 @@ const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.include
 .leaves {
   border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.7rem 1rem 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 /* ─── Scroll-to-top button ───────────────────────────────────────
@@ -645,7 +645,7 @@ const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.include
   border: 1px solid var(--border);
   border-radius: 50%;
   font-family: var(--mono);
-  font-size: 1.15rem;
+  font-size: var(--type-3xl);
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 6px 20px rgb(var(--shadow-rgb) / 35%);

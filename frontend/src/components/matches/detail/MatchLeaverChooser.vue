@@ -91,7 +91,7 @@ const emit = defineEmits<{
 .leaver-chooser-label {
   margin-right: 0.4rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -105,13 +105,13 @@ const emit = defineEmits<{
   padding: 0.22rem 0.6rem;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.04em;
   color: var(--text-dim);
   cursor: pointer;
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .leaver-chip:hover {
@@ -129,7 +129,7 @@ const emit = defineEmits<{
 .leaver-chip.leaver-clear {
   margin-left: auto;
   color: var(--text-faint);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -144,7 +144,7 @@ const emit = defineEmits<{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
 }
 .leaver-chip-glyph.leaver-self  { color: var(--loss); }

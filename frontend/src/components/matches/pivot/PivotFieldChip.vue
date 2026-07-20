@@ -178,12 +178,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   gap: 0.32rem;
   padding: 0.22rem 0.4rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.06em;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   cursor: grab;
   transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
@@ -217,7 +217,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 }
 
 .pivot-chip-grip {
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   color: var(--text-dim);
   line-height: 1;
 }
@@ -229,16 +229,16 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 
 .pivot-chip-agg {
   padding: 0.04rem 0.28rem;
-  font-size: 0.52rem;
+  font-size: var(--type-4xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--primary-text-on-accent);
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .pivot-chip-caret {
-  font-size: 0.5rem;
+  font-size: var(--type-4xs);
   color: var(--text-faint);
 }
 
@@ -250,10 +250,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   min-width: 9rem;
   display: flex;
   flex-direction: column;
-  padding: 0.25rem;
+  padding: var(--space-1);
   background: var(--surface-3, var(--surface));
   border: 1px solid var(--border-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 35%);
 }
 
@@ -261,10 +261,10 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin: 0.1rem 0.3rem 0.3rem;
   font-family: var(--mono);
-  font-size: 0.5rem;
+  font-size: var(--type-4xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -272,14 +272,14 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 
 .pivot-chip-reset {
   font-family: var(--mono);
-  font-size: 0.5rem;
+  font-size: var(--type-4xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.1rem 0.35rem;
   color: var(--accent-text);
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border));
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
@@ -291,11 +291,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   text-align: left;
   padding: 0.3rem 0.4rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--text);
   background: transparent;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 
@@ -314,7 +314,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   text-align: left;
   background: transparent;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
 }
 
 .pivot-chip-check {
@@ -323,7 +323,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   gap: 0.4rem;
   padding: 0.22rem 0.4rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   color: var(--text);
   cursor: pointer;
 }
@@ -345,8 +345,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   width: 0.95rem;
   height: 0.95rem;
   border: 1.5px solid var(--border-strong);
-  border-radius: 3px;
-  font-size: 0.7rem;
+  border-radius: var(--radius-md);
+  font-size: var(--type-sm);
   line-height: 1;
   color: var(--primary-text-on-accent);
 }

@@ -96,14 +96,14 @@ function unhide() {
 .match-danger {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-top: 1rem;
   padding-top: 0.85rem;
   border-top: 1px dashed color-mix(in srgb, currentcolor 18%, transparent);
 }
 
 .danger-prompt {
-  font-size: 0.8rem;
+  font-size: var(--type-md);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -118,7 +118,7 @@ function unhide() {
 
 .danger-glyph {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   line-height: 1;
 }
 
@@ -127,14 +127,14 @@ function unhide() {
   background: transparent;
   border: 1px solid color-mix(in srgb, currentcolor 22%, transparent);
   padding: 0.3rem 0.7rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-family: inherit;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
   cursor: pointer;
-  border-radius: 2px;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  border-radius: var(--radius);
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;

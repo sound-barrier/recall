@@ -196,7 +196,7 @@ const {
       transparent 16px
     ),
     var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 
@@ -214,20 +214,20 @@ const {
 }
 .archive-toggle:hover { background: color-mix(in srgb, var(--text-dim) 5%, transparent); }
 
-.archive-title { display: inline-flex; align-items: baseline; gap: 0.5rem; }
+.archive-title { display: inline-flex; align-items: baseline; gap: var(--space-2); }
 
 .archive-count {
   font-family: var(--display);
   font-style: italic;
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: var(--type-3xl);
   color: var(--text);
   line-height: 1;
 }
 
 .archive-noun {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -236,7 +236,7 @@ const {
 .archive-chev {
   margin-left: auto;
   color: var(--text-dim);
-  font-size: 0.9rem;
+  font-size: var(--type-xl);
   transform: rotate(-90deg);
   transition: transform 120ms ease;
 }
@@ -252,7 +252,7 @@ const {
   text-align: center;
   font-family: var(--mono);
   color: var(--text-dim);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   padding: 0.7rem 0;
 }
 
@@ -262,7 +262,7 @@ const {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .archive-row {
@@ -280,7 +280,7 @@ const {
   gap: 0.55rem;
   padding: 0.4rem 0.6rem;
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface-2) 70%, transparent);
 
   /* dimmed treatment — archived feel without losing legibility */
@@ -292,7 +292,7 @@ const {
   width: 4px;
   height: 1.6rem;
   background: var(--text-faint);
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
 }
 .archive-row.result-victory .archive-row-strip { background: var(--win); }
 .archive-row.result-defeat  .archive-row-strip { background: var(--loss); }
@@ -303,7 +303,7 @@ const {
   flex-direction: column;
   gap: 0.05rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--text-dim);
 }
 .archive-row-date { color: var(--text); font-weight: 700; letter-spacing: 0.04em; }
@@ -314,7 +314,7 @@ const {
   font-family: var(--display);
   font-style: italic;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   color: var(--text);
@@ -326,7 +326,7 @@ const {
 .archive-row-mode,
 .archive-row-queue {
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -339,7 +339,7 @@ const {
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: var(--type-xl);
   text-transform: uppercase;
   color: var(--text);
   overflow: hidden;
@@ -349,7 +349,7 @@ const {
 
 .archive-row-role {
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -364,9 +364,9 @@ const {
   font-weight: 700;
   color: var(--text);
 }
-.archive-row-stat { font-size: 0.95rem; letter-spacing: 0.02em; }
+.archive-row-stat { font-size: var(--type-xl); letter-spacing: 0.02em; }
 .archive-row-stat-deaths { color: var(--text-dim); }
-.archive-row-sep { color: var(--text-faint); font-size: 0.8rem; }
+.archive-row-sep { color: var(--text-faint); font-size: var(--type-md); }
 
 .archive-row-actions {
   display: inline-flex;
@@ -377,10 +377,10 @@ const {
 
 .archive-row-actions button {
   appearance: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.3rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
@@ -404,7 +404,7 @@ const {
 
 .archive-confirm-pre {
   color: var(--loss);
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   line-height: 1;
   padding-right: 0.1rem;
 }

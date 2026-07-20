@@ -328,14 +328,14 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 /* Discoverability hint for the otherwise-invisible drag cell-range select +
    clipboard-TSV copy. Supplementary, so it drops on narrow widths. */
 .cell-copy-hint {
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.04em;
   color: var(--text-faint);
   white-space: nowrap;
@@ -348,7 +348,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   font-size: 0.92em;
   padding: 0.02rem 0.22rem;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   color: var(--text-dim);
 }
@@ -360,13 +360,13 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 .seg {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
 .seg-btn {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.3rem 0.7rem;
@@ -392,14 +392,14 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 
 .export-csv-btn {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0.3rem 0.7rem;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease;
 }
@@ -437,7 +437,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 }
 
 .leaves-table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.leaves-table-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.leaves-table-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-lg); }
 .leaves-table-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .leaves-table-scroll::-webkit-scrollbar-track { background: transparent; }
 
@@ -457,7 +457,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   z-index: 2;
   text-align: left;
   padding: 0.5rem 0.55rem;
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
@@ -525,7 +525,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 }
 
 .th-caret {
-  font-size: 0.5rem;
+  font-size: var(--type-4xs);
   color: var(--accent-text);
 }
 
@@ -538,12 +538,12 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   min-width: 0.85rem;
   height: 0.85rem;
   padding: 0 0.15rem;
-  font-size: 0.5rem;
+  font-size: var(--type-4xs);
   font-weight: 700;
   line-height: 1;
   color: var(--primary-text-on-accent);
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 /* Virtualization spacer rows — pure height, no chrome. */
@@ -554,7 +554,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
 .leaves-foot-row td {
   padding: 0.9rem 0 1.1rem;
   text-align: center;
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);

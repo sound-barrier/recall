@@ -254,11 +254,11 @@ function onCancel() {
   max-width: 320px;
   background: var(--surface-2);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 12px 32px -10px rgb(var(--shadow-rgb) / 45%);
   padding: 0.85rem 0.95rem 0.7rem;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text);
 }
 
@@ -272,7 +272,7 @@ function onCancel() {
 }
 
 .wcp-title {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text);
@@ -289,7 +289,7 @@ function onCancel() {
 
 .wcp-field-label {
   display: block;
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -299,7 +299,7 @@ function onCancel() {
 .wcp-segmented {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   overflow: hidden;
 }
 
@@ -309,7 +309,7 @@ function onCancel() {
   border: none;
   padding: 0.32rem 0.7rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.06em;
   color: var(--text);
   cursor: pointer;
@@ -336,7 +336,7 @@ function onCancel() {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   cursor: pointer;
 }
 
@@ -344,7 +344,7 @@ function onCancel() {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   cursor: pointer;
 }
 
@@ -361,10 +361,10 @@ function onCancel() {
 
 .wcp-btn {
   appearance: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.7rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;

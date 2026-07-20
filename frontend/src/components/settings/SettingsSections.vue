@@ -185,7 +185,7 @@ const reparsing = parseBusy
   background: var(--brand-gray);
   transform: rotate(45deg);
   opacity: 0.5;
-  transition: background 200ms ease, box-shadow 200ms ease;
+  transition: background var(--duration-med) ease, box-shadow var(--duration-med) ease;
 }
 
 .settings-section:hover::after {

@@ -218,7 +218,7 @@ function sourceLabel(source: string): string {
   font-family: var(--display);
   font-style: italic;
   font-weight: 800;
-  font-size: 1.7rem;
+  font-size: var(--type-7xl);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   margin: 0;
@@ -228,7 +228,7 @@ function sourceLabel(source: string): string {
 
 .dossier-meta {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
 }
 
@@ -259,9 +259,9 @@ function sourceLabel(source: string): string {
   padding: 0.18rem 0.18rem 0.18rem 0.5rem;
   background: var(--surface-2);
   border: 1px solid var(--accent-soft, var(--accent));
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--text);
 }
 
@@ -271,7 +271,7 @@ function sourceLabel(source: string): string {
   color: var(--text-faint);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
 }
 
 .chip-val {
@@ -286,7 +286,7 @@ function sourceLabel(source: string): string {
   border: 0;
   color: var(--text-faint);
   padding: 0 0.3rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   cursor: pointer;
   line-height: 1;
 }
@@ -303,7 +303,7 @@ function sourceLabel(source: string): string {
   border: 0;
   padding: 0.18rem 0.55rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-dim);

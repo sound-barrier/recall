@@ -37,7 +37,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
 # with a rationale, never to absorb accidental bloat.
-: "${MAX_INITIAL_CSS_BYTES:=69000}"
+# 2026-07: 69000 → 73000 — design-token adoption. 646 font-size, 327
+# border-radius, 205 duration and 91 spacing declarations became
+# `var(--token)` references; a reference is ~11B longer than the literal
+# and lightningcss can't fold it, so RAW CSS grows ~4%. GZIPPED it is
+# +234B (token names repeat and compress), which is the number that
+# reaches a user. Paying 4% of an uncompressed metric for a single
+# source of truth on type/radius/motion.
+: "${MAX_INITIAL_CSS_BYTES:=73000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
@@ -80,7 +87,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # layout, bars, gear), ~1KB. New feature.
 # 2026-07: 335000 -> 345000 - Elo Calculator scoped styles (form, cards,
 # evidence grid, chart frame), ~5.5KB. New feature.
-: "${MAX_TOTAL_CSS_BYTES:=355000}"
+# 2026-07: 355000 → 368000 — same design-token adoption as the initial
+# CSS bump above; total raw 347710 → 362389, total gzipped +674B (1.3%).
+: "${MAX_TOTAL_CSS_BYTES:=368000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

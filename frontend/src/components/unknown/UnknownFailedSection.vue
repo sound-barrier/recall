@@ -176,7 +176,7 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
 .failed-heading {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -196,13 +196,13 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
 
 .failed-bundle-saved {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--win, var(--accent));
 }
 
 .failed-blurb {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 
@@ -217,7 +217,7 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
 .failed-error {
   margin: 0;
   padding: 0 0.8rem;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--loss);
   overflow-wrap: anywhere;
 }

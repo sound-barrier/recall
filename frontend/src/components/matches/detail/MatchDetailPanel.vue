@@ -295,7 +295,7 @@ function onBackdropClick(e: MouseEvent) {
   left: 0; top: 0; bottom: 0;
   width: 3px;
   background: var(--unknown-line);
-  transition: background 200ms ease, box-shadow 200ms ease;
+  transition: background var(--duration-med) ease, box-shadow var(--duration-med) ease;
 }
 
 .detail-panel.result-victory::before {
@@ -324,7 +324,7 @@ function onBackdropClick(e: MouseEvent) {
 }
 
 .detail-body::-webkit-scrollbar { width: 8px; }
-.detail-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.detail-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-lg); }
 
 /* MatchCardExpanded's top dashed-border separator is unnecessary
    inside the panel — the toolbar already provides the visual
@@ -344,7 +344,7 @@ function onBackdropClick(e: MouseEvent) {
 
 .detail-panel-enter-active .detail-panel,
 .detail-panel-leave-active .detail-panel {
-  transition: transform 280ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  transition: transform var(--duration-slow) cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .detail-panel-enter-from,

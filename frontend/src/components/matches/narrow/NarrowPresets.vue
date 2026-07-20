@@ -74,7 +74,7 @@ function onSavePreset() {
   padding: 0.6rem 0.6rem 0.7rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
 }
 
 .np-presets-head {
@@ -95,10 +95,10 @@ function onSavePreset() {
   appearance: none;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.5rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text);
   outline: 0;
 }
@@ -119,7 +119,7 @@ function onSavePreset() {
   align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .np-preset-apply {
@@ -128,7 +128,7 @@ function onSavePreset() {
   border: 0;
   padding: 0.25rem 0.55rem;
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.06em;
   color: var(--text);
   cursor: pointer;
@@ -147,7 +147,7 @@ function onSavePreset() {
   border-left: 1px solid var(--border);
   padding: 0.25rem 0.5rem;
   font-family: var(--mono);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
   color: var(--text-faint);
   cursor: pointer;

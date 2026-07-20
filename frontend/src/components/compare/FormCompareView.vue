@@ -517,11 +517,11 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 .form-preset {
   appearance: none;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.03em;
   padding: 0.35rem 0.75rem;
   cursor: pointer;
@@ -554,7 +554,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 .form-pairby {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -564,7 +564,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
   background: var(--surface-2);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.04em;
   padding: 0.45rem 0.7rem;
   cursor: pointer;
@@ -587,12 +587,12 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .form-field-label {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -602,10 +602,10 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 .form-select {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   color: var(--text);
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
 }
 
 .form-mirror {
@@ -617,7 +617,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 
 .form-mirror-label {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   padding-bottom: 0.45rem;
 }
@@ -625,11 +625,11 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 .form-mirror-toggle {
   appearance: none;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   padding: 0.3rem 0.55rem;
   cursor: pointer;
 }
@@ -654,7 +654,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
   flex-basis: 100%;
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--type-xs);
   color: var(--text-faint);
 }
 
@@ -663,7 +663,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
   margin: 1rem 0 0.4rem;
   padding: 1.1rem 1.2rem 1rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 45%),
     var(--surface);
@@ -700,7 +700,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
   gap: 0.3rem 1rem;
   margin: 0.5rem 0 0;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
 }
 
@@ -724,7 +724,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 
 .form-spark-label {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.05em;
   color: var(--text-faint);
   margin-bottom: 0.25rem;
@@ -760,7 +760,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 .form-spark-empty {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   font-style: italic;
   color: var(--text-faint);
   padding: 1.2rem 0;
@@ -768,7 +768,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 
 .form-note {
   margin: 0.7rem 0 0;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
 }
 
@@ -779,11 +779,11 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 .form-lown {
   display: inline-block;
   padding: 0 0.28rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--loss-soft);
   color: var(--text);
   border: 1px solid var(--loss-line);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
 }
 </style>

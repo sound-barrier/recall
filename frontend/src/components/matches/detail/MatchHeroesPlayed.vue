@@ -110,7 +110,7 @@ const topHeroesPlayed = computed(() => {
   appearance: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
   padding: 0.35rem 0.45rem 0.35rem 0.1rem;
   background: transparent;
@@ -119,9 +119,9 @@ const topHeroesPlayed = computed(() => {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
   margin-bottom: 0.55rem;
-  transition: background 140ms ease;
+  transition: background var(--duration-fast) ease;
 }
 
 .heroes-played-toggle:hover { background: var(--surface-2); }
@@ -135,7 +135,7 @@ const topHeroesPlayed = computed(() => {
   display: inline-block;
   font-family: var(--mono);
   color: var(--accent-text);
-  transition: transform 200ms ease;
+  transition: transform var(--duration-med) ease;
   transform: rotate(90deg);
   width: 0.9rem;
   text-align: center;
@@ -154,10 +154,10 @@ const topHeroesPlayed = computed(() => {
   border: 1px solid var(--border);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   font-feature-settings: "tnum";
 }
 
@@ -168,7 +168,7 @@ const topHeroesPlayed = computed(() => {
   gap: 0.45rem;
   margin-left: 0.35rem;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-mute);
   font-feature-settings: "tnum";
 }
@@ -184,7 +184,7 @@ const topHeroesPlayed = computed(() => {
 .heroes-summary-name {
   font-family: var(--display);
   font-style: italic;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   font-weight: 700;
   color: var(--accent-text);
   letter-spacing: 0.03em;
@@ -201,16 +201,16 @@ const topHeroesPlayed = computed(() => {
   background: var(--surface-3);
   border: 1px dashed var(--border);
   color: var(--text-faint);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.06em;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
 }
 
 .heroes-played-items {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  animation: heroes-items-in 200ms ease both;
+  animation: heroes-items-in var(--duration-med) ease both;
 }
 
 @keyframes heroes-items-in {
@@ -226,7 +226,7 @@ const topHeroesPlayed = computed(() => {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.75rem 0.9rem;
 }
 
@@ -240,28 +240,28 @@ const topHeroesPlayed = computed(() => {
 .hero-name {
   font-family: var(--display);
   font-style: italic;
-  font-size: 1.15rem;
+  font-size: var(--type-3xl);
   font-weight: 800;
   color: var(--accent-text);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0 0.15rem;
   cursor: pointer;
-  transition: color 160ms ease, text-shadow 200ms ease;
+  transition: color 160ms ease, text-shadow var(--duration-med) ease;
 }
 .hero-name:hover { color: var(--accent-bright); text-shadow: 0 0 16px var(--accent-glow); }
 .hero-name.active { text-shadow: 0 0 14px var(--accent-glow); }
 
 .hero-pct {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }
 
 .hero-time {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 
@@ -279,12 +279,12 @@ const topHeroesPlayed = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .personal-label {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -292,7 +292,7 @@ const topHeroesPlayed = computed(() => {
 
 .personal-value {
   font-family: var(--mono);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   font-weight: 600;
   color: var(--text);
   font-feature-settings: "tnum";

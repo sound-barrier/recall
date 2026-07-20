@@ -295,9 +295,9 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   padding: 0.55rem 0.85rem;
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   background: var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .leaf-row:hover {
@@ -311,7 +311,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   padding: 0;
   width: 4px; height: 36px;
   background: var(--text-faint);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: width 100ms ease, box-shadow 120ms ease;
 }
@@ -341,7 +341,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   position: absolute;
   top: 0.35rem;
   right: 0.5rem;
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
   color: var(--accent-text);
   pointer-events: auto;
@@ -360,14 +360,14 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 
 .leaf-when-date {
   color: var(--text);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .leaf-when-time {
   color: var(--text-faint);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.02em;
 }
 
@@ -392,7 +392,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   text-align: inherit;
   cursor: pointer;
 }
-.leaf-filter-cell { border-radius: 3px; }
+.leaf-filter-cell { border-radius: var(--radius-md); }
 .leaf-filter-cell:hover { filter: brightness(1.12); }
 .leaf-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
@@ -425,7 +425,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   color: var(--identity-accent);
@@ -449,19 +449,19 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 
 .leaf-mode-row {
   display: inline-flex;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .leaf-mode-chip,
 .leaf-queue-chip {
   font-family: var(--mono);
-  font-size: 0.52rem;
+  font-size: var(--type-4xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
   padding: 0.1rem 0.4rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
   line-height: 1;
 }
@@ -492,12 +492,12 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   background: transparent;
   padding: 0.05rem 0.2rem;
   font-family: var(--mono);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   font-weight: 700;
   color: var(--identity-accent);
   text-transform: lowercase;
   line-height: 1;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
@@ -518,13 +518,13 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   background: transparent;
   padding: 0 0.2rem;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
   font-weight: 600;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition: background 120ms ease, color 120ms ease;
 }
 .leaf-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
@@ -542,7 +542,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 }
 
 .stat-num {
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   font-weight: 700;
   color: var(--text);
   min-width: 1.1ch;
@@ -552,7 +552,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 
 .stat-sep {
   color: var(--text-faint);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   padding: 0 0.25rem;
   font-weight: 400;
 }
@@ -560,24 +560,24 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 /* 6. Annotations — tags + leaver. Always renders (may be empty). */
 .leaf-pin {
   color: var(--accent-text);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
   line-height: 1;
 }
 
 .leaf-meta-block {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: var(--space-1);
   align-items: center;
   min-width: 0;
 }
 
 .leaf-tag {
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   padding: 0.12rem 0.36rem;
   border: 1px solid var(--accent-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--accent-text);
   letter-spacing: 0.04em;
   text-transform: lowercase;
@@ -586,23 +586,23 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 
 .leaf-leaver {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 800;
   padding: 0.1rem 0.4rem;
   border: 1px solid var(--loss);
   color: var(--loss);
   background: color-mix(in srgb, var(--loss) 12%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   letter-spacing: 0.14em;
 }
 
 .leaf-result-chip {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   padding: 0.32rem 0.85rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-weight: 800;
   border: 1px solid var(--border);
   background: var(--surface-2);

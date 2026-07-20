@@ -47,10 +47,10 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
   min-width: 1.7rem;
   height: 1.7rem;
   padding: 0 0.45rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-weight: 700;
   letter-spacing: 0.05em;
   user-select: none;
@@ -77,7 +77,7 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
 .recent-empty {
   margin: 0;
   padding: 0.45rem 0;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-style: italic;
   color: var(--text-faint);
 }

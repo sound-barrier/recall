@@ -247,11 +247,11 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
   stroke: var(--accent);
   stroke-width: 1.5;
   opacity: 0.55;
-  transition: x 280ms ease, y 280ms ease, width 280ms ease, height 280ms ease;
+  transition: x var(--duration-slow) ease, y var(--duration-slow) ease, width var(--duration-slow) ease, height var(--duration-slow) ease;
 }
 
 .tour-spotlight-cutout {
-  transition: x 280ms ease, y 280ms ease, width 280ms ease, height 280ms ease;
+  transition: x var(--duration-slow) ease, y var(--duration-slow) ease, width var(--duration-slow) ease, height var(--duration-slow) ease;
 }
 
 .tour-spotlight-brackets {

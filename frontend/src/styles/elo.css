@@ -27,7 +27,7 @@
   margin: 0.35rem 0 0;
   max-width: 60ch;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1.5;
 }
 
@@ -37,7 +37,7 @@
   display: inline-flex;
   margin-top: 1.1rem;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -47,7 +47,7 @@
   background: var(--surface-2);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.04em;
   padding: 0.45rem 0.85rem;
   cursor: pointer;
@@ -102,7 +102,7 @@
   margin: 0 0 0.9rem;
   padding-bottom: 0.4rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -113,7 +113,7 @@
 #panel-elo .elo-band-sub {
   margin: 0 0 0.9rem;
   color: var(--text-faint);
-  font-size: 0.76rem;
+  font-size: var(--type-md);
   font-style: italic;
 }
 
@@ -128,7 +128,7 @@
 #panel-elo .elo-answer {
   padding: 1.1rem 1.3rem 1.2rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 45%),
     var(--surface);
@@ -153,7 +153,7 @@
 #panel-elo .elo-answer-sub {
   margin: 0.55rem 0 0;
   max-width: 62ch;
-  font-size: 0.86rem;
+  font-size: var(--type-lg);
   line-height: 1.5;
   color: var(--text-dim);
 }
@@ -209,7 +209,7 @@
 #panel-elo .elo-delta-strip {
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   border-left: 3px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
   padding: 0.55rem 0.8rem 0.6rem;
 }
@@ -217,7 +217,7 @@
 #panel-elo .elo-delta-title {
   margin: 0 0 0.35rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -235,7 +235,7 @@
   display: flex;
   justify-content: space-between;
   gap: 0.8rem;
-  font-size: 0.76rem;
+  font-size: var(--type-md);
 }
 
 #panel-elo .elo-delta-row dt {
@@ -251,7 +251,7 @@
 
 #panel-elo .elo-delta-foot {
   margin: 0.35rem 0 0;
-  font-size: 0.64rem;
+  font-size: var(--type-xs);
   font-style: italic;
   color: var(--text-faint);
 }
@@ -264,7 +264,7 @@
 
 #panel-elo .elo-edited-dot {
   margin-left: 0.3rem;
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   color: var(--accent-text);
   vertical-align: middle;
 }
@@ -286,14 +286,14 @@
 #panel-elo .elo-timeline {
   border: 1px dashed var(--border);
   border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   padding: 0.6rem 0.8rem;
 }
 
 #panel-elo .elo-timeline-label {
   margin: 0 0 0.25rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -301,7 +301,7 @@
 
 #panel-elo .elo-timeline-line {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   line-height: 1.5;
   color: var(--text-dim);
 }
@@ -329,20 +329,20 @@
 #panel-elo .elo-lift-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
   margin-top: 0.75rem;
 }
 
 #panel-elo .elo-lift-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8rem;
+  font-size: var(--type-md);
 }
 
 #panel-elo .elo-lift-table caption {
   text-align: left;
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -357,7 +357,7 @@
 }
 
 #panel-elo .elo-lift-table th {
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-faint);
@@ -376,7 +376,7 @@
 #panel-elo .elo-subhead {
   margin: 0 0 0.55rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -393,14 +393,14 @@
   padding: 0.75rem 0.95rem 0.85rem;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   border-left: 3px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
 }
 
 #panel-elo .elo-next-moves-title {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -422,7 +422,7 @@
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
 }
 
 #panel-elo .elo-next-moves-list li::before {
@@ -437,7 +437,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
   border-radius: 50%;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--accent-text);
 }
 
@@ -448,13 +448,13 @@
 
 #panel-elo .elo-move-detail {
   color: var(--text-dim);
-  font-size: 0.76rem;
+  font-size: var(--type-md);
 }
 
 #panel-elo .elo-card {
   border: 1px solid var(--border);
   border-top-width: 2px;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   padding: 0.7rem 0.9rem 0.85rem;
 }
@@ -482,7 +482,7 @@
 #panel-elo .elo-card-head {
   margin: 0 0 0.3rem;
   font-family: var(--display);
-  font-size: 1.5rem;
+  font-size: var(--type-6xl);
   line-height: 1.05;
   letter-spacing: 0.01em;
   color: var(--text);
@@ -490,7 +490,7 @@
 
 #panel-elo .elo-card-line {
   margin: 0.15rem 0 0;
-  font-size: 0.76rem;
+  font-size: var(--type-md);
   line-height: 1.45;
   color: var(--text-dim);
 }
@@ -500,14 +500,14 @@
 #panel-elo .elo-chart {
   margin: 0;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   padding: 0.5rem 0.5rem 0.35rem;
 }
 
 #panel-elo .elo-chart-cap {
   margin: 0.25rem 0.3rem 0.1rem;
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   line-height: 1.4;
   color: var(--text-faint);
 }
@@ -530,7 +530,7 @@
   padding: 0;
   margin-bottom: 0.5rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -545,7 +545,7 @@
 #panel-elo .elo-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   min-width: 6.5rem;
   flex: 1 1 6.5rem;
 }
@@ -553,7 +553,7 @@
 #panel-elo .elo-field-wide { flex-basis: 10rem; }
 
 #panel-elo .elo-field-label {
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
 }
 
@@ -561,11 +561,11 @@
   width: 100%;
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
 }
 
 #panel-elo .elo-input:focus-visible {
@@ -574,7 +574,7 @@
 }
 
 #panel-elo .elo-hint {
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   line-height: 1.35;
   color: var(--text-faint);
   font-style: italic;
@@ -582,7 +582,7 @@
 
 #panel-elo .elo-advanced summary {
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
 }
 
@@ -610,7 +610,7 @@
 #panel-elo .elo-heroes-list li {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 /* Rows are toggle BUTTONS: click to count only highlighted heroes. The
@@ -632,9 +632,9 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.2rem 0.3rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
 }
 
 #panel-elo .elo-hero-row:hover {
@@ -664,11 +664,11 @@
 #panel-elo .elo-hero-select-btn {
   appearance: none;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 0.18rem 0.5rem;
@@ -701,11 +701,11 @@
 #panel-elo .elo-hero-tag {
   flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 0.54rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0.05rem 0.3rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
   color: var(--text-dim);
@@ -720,7 +720,7 @@
   flex: 1 1 auto;
   min-width: 3rem;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--text-faint) 18%, transparent);
   overflow: hidden;
 }
@@ -745,7 +745,7 @@
 #panel-elo .elo-hero-stat {
   flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-variant-numeric: tabular-nums;
   color: var(--text);
   white-space: nowrap;
@@ -759,9 +759,9 @@
 #panel-elo .elo-lown {
   flex: none;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   padding: 0 0.28rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--loss-soft);
   border: 1px solid var(--loss-line);
   color: var(--text);
@@ -773,7 +773,7 @@
   display: inline-flex;
   align-items: stretch;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -783,7 +783,7 @@
   padding: 0.28rem 0.38rem;
   background: var(--surface-2);
   color: var(--text-dim);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   line-height: 1;
   cursor: pointer;
 }
@@ -812,7 +812,7 @@
   border-inline: 1px solid var(--border);
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-faint);
 }
@@ -830,9 +830,9 @@
   margin: 0.55rem 0 0;
   padding: 0.45rem 0.6rem;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text);
 }
 
@@ -841,10 +841,10 @@
   flex: none;
   padding: 0.12rem 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text-dim);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   cursor: pointer;
 }
 
@@ -869,7 +869,7 @@
 #panel-elo .elo-cell {
   border: 1px solid var(--border);
   border-left-width: 3px;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   padding: 0.55rem 0.75rem 0.65rem;
 }
@@ -881,7 +881,7 @@
 #panel-elo .elo-cell-q {
   margin: 0 0 0.2rem;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -893,14 +893,14 @@
   align-items: baseline;
   gap: 0.4rem;
   font-family: var(--display);
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   letter-spacing: 0.01em;
   color: var(--text);
 }
 
 #panel-elo .elo-cell-note {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   line-height: 1.45;
   color: var(--text-dim);
 }

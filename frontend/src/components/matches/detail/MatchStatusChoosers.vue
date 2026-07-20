@@ -286,13 +286,13 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
   padding: 0.55rem 0.5rem 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   font-family: var(--mono);
   color: var(--text-dim);
   cursor: pointer;
   position: relative;
   isolation: isolate;
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease, transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .queue-chip:hover {
@@ -308,14 +308,14 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .queue-chip-glyph {
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   line-height: 1;
   color: var(--text-faint);
-  transition: color 140ms ease, transform 140ms ease;
+  transition: color var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .queue-chip-label {
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -400,13 +400,13 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
   padding: 0.55rem 0.5rem 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   font-family: var(--mono);
   color: var(--text-dim);
   cursor: pointer;
   position: relative;
   isolation: isolate;
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease, transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .play-mode-chip:hover {
@@ -422,14 +422,14 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .play-mode-chip-glyph {
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   line-height: 1;
   color: var(--text-faint);
-  transition: color 140ms ease, transform 140ms ease;
+  transition: color var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .play-mode-chip-label {
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -510,14 +510,14 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
   color: var(--text-dim);
   background: transparent;
   border: 1px dashed var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
   transition:
-    background 140ms ease,
-    color 140ms ease,
-    border-color 140ms ease,
-    box-shadow 140ms ease;
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .since-anchor-copy {
@@ -528,7 +528,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .since-anchor-label {
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -540,7 +540,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
    is jargon without context. Color is text-faint at idle, brighter
    on hover / when active. */
 .since-anchor-sublabel {
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.04em;
   text-transform: none;
   font-weight: 500;
@@ -572,7 +572,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .since-anchor-glyph {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
 }
 
@@ -598,13 +598,13 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
   padding: 0.55rem 0.5rem 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   font-family: var(--mono);
   color: var(--text-dim);
   cursor: pointer;
   position: relative;
   isolation: isolate;
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease, transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .review-chip:hover {
@@ -620,14 +620,14 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 }
 
 .review-chip-glyph {
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   line-height: 1;
   color: var(--text-faint);
-  transition: color 140ms ease, transform 140ms ease;
+  transition: color var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .review-chip-label {
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -680,7 +680,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
   position: absolute;
   top: -1px;
   right: 4px;
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   color: currentcolor;
   letter-spacing: 0;

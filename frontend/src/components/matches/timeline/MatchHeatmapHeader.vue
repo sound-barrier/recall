@@ -401,7 +401,7 @@ onBeforeUnmount(() => {
 
 .month-hit {
   fill: transparent;
-  transition: fill 140ms ease;
+  transition: fill var(--duration-fast) ease;
 }
 
 .month-label:hover .month-hit { fill: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -429,7 +429,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   stroke: color-mix(in srgb, var(--text) 8%, transparent);
   stroke-width: 0.5;
-  transition: stroke 140ms ease, transform 140ms ease;
+  transition: stroke var(--duration-fast) ease, transform var(--duration-fast) ease;
   transform-origin: center;
   transform-box: fill-box;
 }

@@ -105,7 +105,7 @@ async function submit() {
   max-height: 92vh;
   background: var(--surface);
   border: 1px solid var(--border-strong, var(--border));
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 45%);
   padding: 0.9rem 1rem 0;
   display: flex;
@@ -144,7 +144,7 @@ async function submit() {
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   margin: 0;
@@ -156,7 +156,7 @@ async function submit() {
   background: transparent;
   border: 0;
   color: var(--text-faint);
-  font-size: 1.2rem;
+  font-size: var(--type-4xl);
   line-height: 1;
   cursor: pointer;
   padding: 0 0.3rem;
@@ -176,7 +176,7 @@ async function submit() {
 
 .mm-foot-status {
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -190,10 +190,10 @@ async function submit() {
   appearance: none;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.4rem 0.9rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;

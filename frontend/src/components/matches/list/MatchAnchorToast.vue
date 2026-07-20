@@ -129,7 +129,7 @@ const headline = computed(() => {
   background: var(--surface);
   border: 1px solid var(--accent);
   border-left: 3px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 24px 48px -24px rgb(var(--shadow-rgb) / 50%);
   z-index: 110;
   isolation: isolate;
@@ -137,7 +137,7 @@ const headline = computed(() => {
 
 .match-anchor-toast-glyph {
   font-family: var(--mono);
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   font-weight: 700;
   color: var(--accent-text);
   line-height: 1;
@@ -152,7 +152,7 @@ const headline = computed(() => {
 .match-anchor-toast-name {
   font-family: var(--display);
   font-style: italic;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text);
@@ -163,7 +163,7 @@ const headline = computed(() => {
 
 .match-anchor-toast-sub {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   text-transform: lowercase;
   letter-spacing: 0.02em;
@@ -176,13 +176,13 @@ const headline = computed(() => {
   color: var(--surface);
   font-family: var(--mono);
   font-weight: 700;
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   padding: 0.4rem 0.85rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease;
+  transition: background var(--duration-fast) ease;
 }
 
 .match-anchor-toast-action:hover {
@@ -200,11 +200,11 @@ const headline = computed(() => {
   border: 0;
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   cursor: pointer;
   padding: 0.15rem 0.3rem;
   line-height: 1;
-  transition: color 140ms ease;
+  transition: color var(--duration-fast) ease;
 }
 
 .match-anchor-toast-dismiss:hover { color: var(--text); }
@@ -217,7 +217,7 @@ const headline = computed(() => {
 /* ── Slide-in / slide-out ── */
 .match-anchor-toast-enter-active,
 .match-anchor-toast-leave-active {
-  transition: opacity 200ms ease,
+  transition: opacity var(--duration-med) ease,
               transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 

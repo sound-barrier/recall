@@ -142,7 +142,7 @@ onMounted(refresh)
 .profile-mgmt-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   width: 100%;
   max-width: 28rem;
 }
@@ -163,9 +163,9 @@ onMounted(refresh)
   padding: 0.55rem 0.75rem;
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
 }
 
 .profile-mgmt-row.active {
@@ -176,7 +176,7 @@ onMounted(refresh)
 .profile-mgmt-name {
   flex: 1 1 auto;
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   letter-spacing: 0.04em;
   color: var(--text);
   word-break: break-all;
@@ -184,7 +184,7 @@ onMounted(refresh)
 
 .profile-mgmt-active-tag {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -195,7 +195,7 @@ onMounted(refresh)
   background: transparent;
   border: 1px solid var(--accent);
   padding: 0.2rem 0.45rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .profile-mgmt-delete,
@@ -203,14 +203,14 @@ onMounted(refresh)
 .profile-mgmt-delete-cancel {
   appearance: none;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.35rem 0.7rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .profile-mgmt-delete {
@@ -239,7 +239,7 @@ onMounted(refresh)
 .profile-mgmt-error {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--loss, #e74c3c);
 }
 </style>

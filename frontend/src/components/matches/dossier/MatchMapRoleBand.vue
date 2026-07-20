@@ -495,7 +495,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 42%),
     var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .mr-head {
@@ -508,7 +508,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 
 .mr-title {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 1.15rem;
+  font-size: var(--type-3xl);
   font-weight: 400;
   letter-spacing: 0.03em;
   margin: 0;
@@ -552,13 +552,13 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   align-self: end;
   padding: 0 0 0.2rem;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
   border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  transition: color 140ms ease;
+  transition: color var(--duration-fast) ease;
   text-align: left;
   white-space: nowrap;
 }
@@ -578,7 +578,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--mono);
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.02em;
   color: var(--text-faint);
 }
@@ -589,7 +589,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   align-items: center;
   padding-right: 0.5rem;
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   letter-spacing: 0.03em;
   color: var(--text);
 }
@@ -601,13 +601,13 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 .mr-rowhead.header-selected {
   color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .mr-cell {
   appearance: none;
   border: 0;
-  border-radius: 2px;
+  border-radius: var(--radius);
   min-height: var(--mr-row);
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease;
@@ -652,7 +652,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 .mr-loading {
   margin: 0.4rem 0;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 
@@ -663,11 +663,11 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   background: var(--accent-soft);
   color: var(--accent-text);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0.15rem 0.5rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 .mr-clear:hover { color: var(--text); background: color-mix(in srgb, var(--accent-soft) 55%, var(--accent)); }
@@ -709,7 +709,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   box-sizing: border-box;
   padding: 0.4rem 0.55rem;
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
@@ -722,7 +722,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   border-color: var(--border);
   background: transparent;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.03em;
   font-style: italic;
   color: var(--text-faint);
@@ -735,7 +735,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   flex: 1 1 auto;
   min-width: 0;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -747,7 +747,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 .mr-sel-hint {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   color: var(--text-faint);
   font-style: italic;
   max-width: 16rem;

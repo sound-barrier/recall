@@ -172,19 +172,19 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 22px 48px -20px rgb(var(--shadow-rgb) / 55%);
   padding: 0.5rem 0.45rem 0.4rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
 
 .dossier-manage-empty {
   margin: 0.3rem 0.4rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text-faint);
   font-style: italic;
 }
@@ -197,7 +197,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 
 .dossier-manage-group-title {
   font-family: var(--mono);
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -214,7 +214,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.34rem 0.45rem;
   cursor: pointer;
   color: var(--text);
@@ -230,13 +230,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 .dossier-manage-item-name {
   font-family: var(--display);
   font-style: italic;
-  font-size: 0.92rem;
+  font-size: var(--type-xl);
   letter-spacing: 0.02em;
 }
 
 .dossier-manage-item-add {
   font-family: var(--mono);
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   color: var(--accent-text);
   line-height: 1;
 }
@@ -260,11 +260,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
   background: transparent;
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   padding: 0.4rem 0.5rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
 }

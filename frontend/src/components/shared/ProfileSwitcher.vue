@@ -185,9 +185,9 @@ const { isReadOnly } = useActiveProfile()
   padding: 0.32rem 0.65rem 0.3rem;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text);
@@ -210,7 +210,7 @@ const { isReadOnly } = useActiveProfile()
 }
 
 .profile-glyph {
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
   color: var(--accent-text);
 }
@@ -223,12 +223,12 @@ const { isReadOnly } = useActiveProfile()
 }
 
 .profile-readonly {
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
 }
 
 .profile-chev {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   transition: transform 120ms ease;
   transform-origin: center;
@@ -248,7 +248,7 @@ const { isReadOnly } = useActiveProfile()
   padding: 0.35rem;
   border: 1px solid var(--accent);
   background: var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow:
     0 6px 22px color-mix(in srgb, var(--bg) 55%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
@@ -261,17 +261,17 @@ const { isReadOnly } = useActiveProfile()
   appearance: none;
   display: grid;
   grid-template-columns: 1.1rem 1fr;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
   width: 100%;
   padding: 0.4rem 0.55rem;
   border: 0;
   background: transparent;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text);
@@ -294,7 +294,7 @@ const { isReadOnly } = useActiveProfile()
 }
 
 .profile-item-tick {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--accent-text);
   text-align: center;
   line-height: 1;
@@ -326,10 +326,10 @@ const { isReadOnly } = useActiveProfile()
   appearance: none;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.4rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text);
   letter-spacing: 0.04em;
   text-transform: lowercase;
@@ -346,10 +346,10 @@ const { isReadOnly } = useActiveProfile()
 .profile-new-confirm,
 .profile-new-cancel {
   appearance: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.55rem;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
@@ -382,7 +382,7 @@ const { isReadOnly } = useActiveProfile()
 .profile-new-hint {
   margin: 0 0.5rem 0.2rem;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.1em;
   color: var(--text-faint);
   line-height: 1.3;
@@ -405,10 +405,10 @@ const { isReadOnly } = useActiveProfile()
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   line-height: 1;
   padding: 0.3rem 0.4rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   opacity: 0;
   transition: opacity 100ms ease, color 100ms ease, background 100ms ease;
 }
@@ -428,17 +428,17 @@ const { isReadOnly } = useActiveProfile()
   grid-template-columns: 1fr auto auto;
   gap: 0.3rem;
   align-items: center;
-  padding: 0.25rem;
+  padding: var(--space-1);
 }
 
 .profile-rename-input {
   appearance: none;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.4rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text);
   letter-spacing: 0.04em;
   line-height: 1;
@@ -454,10 +454,10 @@ const { isReadOnly } = useActiveProfile()
 .profile-rename-confirm,
 .profile-rename-cancel {
   appearance: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.55rem;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
@@ -490,7 +490,7 @@ const { isReadOnly } = useActiveProfile()
 .profile-error {
   margin: 0.35rem 0.5rem 0.1rem;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.06em;
   color: var(--loss);
   overflow-wrap: anywhere;

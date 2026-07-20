@@ -8,10 +8,10 @@
   padding: 0 3px;
   background: var(--draw);
   color: #1a1100;
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   font-family: var(--mono);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   line-height: 1;
   vertical-align: middle;
   margin-left: 0.2rem;
@@ -65,11 +65,11 @@
   border: 1px solid var(--border);
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   line-height: 1;
   cursor: help;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease, background var(--duration-fast) ease;
   vertical-align: middle;
 }
 
@@ -115,9 +115,9 @@
   padding: 0.6rem 0.75rem;
   background: var(--surface-3);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--body);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   font-weight: 400;
   line-height: 1.45;
   letter-spacing: 0;
@@ -125,7 +125,7 @@
   color: var(--text);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 140ms ease, transform 140ms ease;
+  transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
   z-index: 5;
   box-shadow: 0 8px 24px -8px rgb(var(--shadow-rgb) / 50%);
 }
@@ -144,10 +144,10 @@
 
 .setting-help-pop code {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   background: var(--surface);
   padding: 0.05rem 0.3rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--accent-text);
 }
 
@@ -173,12 +173,12 @@
   margin-top: 0.65rem;
   padding-right: 0.4rem;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.02em;
   line-height: 1.4;
   background: var(--surface);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-dim);
   max-width: 100%;
   overflow: hidden;
@@ -209,7 +209,7 @@
   align-items: center;
   justify-content: center;
   padding: 0 0.55rem 0 0.6rem;
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   font-weight: 700;
   line-height: 1;
 }
@@ -230,13 +230,13 @@
   border: 0;
   background: transparent;
   color: currentcolor;
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   line-height: 1;
   padding: 0 0.45rem;
   cursor: pointer;
   align-self: center;
-  border-radius: 1px;
-  transition: background 140ms ease;
+  border-radius: var(--radius-hair);
+  transition: background var(--duration-fast) ease;
 }
 
 .probe-chip-close:hover  { background: color-mix(in srgb, currentcolor 12%, transparent); }
@@ -249,14 +249,14 @@
 
 .probe-tried {
   margin-top: 0.45rem;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 
 .probe-tried > summary {
   cursor: pointer;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -265,7 +265,7 @@
 .probe-tried-list {
   margin: 0.35rem 0 0;
   padding-left: 1.3rem;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   word-break: break-all;
 }
@@ -307,14 +307,14 @@
   padding: 0.18rem 0.5rem 0.18rem 0.42rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   line-height: 1;
   text-transform: uppercase;
   color: var(--text-dim);
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease;
   white-space: nowrap;
 }
 
@@ -349,11 +349,11 @@
   border: 0;
   background: transparent;
   color: var(--text-faint);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   line-height: 1;
   cursor: pointer;
-  border-radius: 1px;
-  transition: color 140ms ease, background 140ms ease;
+  border-radius: var(--radius-hair);
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 .match-tag-x:hover         { color: var(--loss); background: var(--loss-soft); }
 .match-tag-x:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
@@ -365,15 +365,15 @@
   padding: 0.18rem 0.55rem 0.18rem 0.42rem;
   background: transparent;
   border: 1px dashed var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   line-height: 1;
   text-transform: uppercase;
   color: var(--text-faint);
   cursor: pointer;
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .match-tag-toggle:hover {
@@ -404,19 +404,19 @@
   padding: 0.2rem 0.45rem;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text);
   letter-spacing: 0.06em;
-  transition: border-color 140ms ease, background 140ms ease;
+  transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
 .match-tag-input::placeholder {
   color: var(--text-faint);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
 }
 
 .match-tag-input:focus {
@@ -451,7 +451,7 @@
   padding: 0.2rem 0;
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   max-height: 12rem;
   overflow-y: auto;
   box-shadow: 0 10px 22px -14px rgb(var(--shadow-rgb) / 50%);
@@ -460,7 +460,7 @@
 .match-tag-suggestions li {
   padding: 0.3rem 0.55rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.06em;
   color: var(--text);
   cursor: pointer;
@@ -530,12 +530,12 @@
   font-family: var(--display);
   font-style: italic;
   font-weight: 800;
-  font-size: 1.45rem;
+  font-size: var(--type-6xl);
   letter-spacing: -0.01em;
   color: var(--text);
   font-feature-settings: "tnum";
 }
-.kpi-value.kpi-text { font-size: 1.15rem; text-transform: uppercase; }
+.kpi-value.kpi-text { font-size: var(--type-3xl); text-transform: uppercase; }
 
 /* Supporting metadata under a headline kpi-value. Used by two
    tiles: the Total time played tile discloses partial coverage
@@ -545,7 +545,7 @@
    as secondary, never competing with the headline. */
 .kpi-sub {
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   color: var(--text-faint);
   font-feature-settings: "tnum";
@@ -556,7 +556,7 @@
    display-italic at 1.45rem is too wide for the kpi-tile minmax.
    Drop a notch so the row reads compactly without truncation. */
 .kpi-value.kda-value {
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   letter-spacing: -0.02em;
 }
 
@@ -568,7 +568,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .breakdown li {
@@ -581,7 +581,7 @@
      content reshape each li's private grid — ragged bars. */
   grid-template-columns: 110px minmax(0, 1fr) 5rem;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 
   /* Fixed row height so reserved placeholder rows match real ones exactly,
      keeping each top-N widget (and thus the dossier) a constant height
@@ -597,7 +597,7 @@
 .bd-name {
   font-family: var(--display);
   font-style: italic;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   text-transform: uppercase;
   color: var(--text);
 
@@ -612,7 +612,7 @@
 .bd-bar {
   background: var(--surface-2);
   height: 12px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   overflow: hidden;
   position: relative;
@@ -644,7 +644,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   color: var(--text);
   font-feature-settings: "tnum";
@@ -665,7 +665,7 @@
 
 .bd-stats {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   font-feature-settings: "tnum";
   text-align: right;
@@ -705,7 +705,7 @@
   background: var(--surface);
   z-index: 1;
 }
-.bd-total { color: var(--text-faint); font-size: 0.6rem; }
+.bd-total { color: var(--text-faint); font-size: var(--type-2xs); }
 
 /* Contextual multi-select checkbox — shared by the live leaf row
    (MatchesView) and the archive row (MatchesArchiveDrawer), so it
@@ -721,7 +721,7 @@
   width: 1.1rem;
   height: 1.1rem;
   border: 1.5px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface);
   display: inline-flex;
   align-items: center;
@@ -757,7 +757,7 @@
 .archive-checkbox-glyph {
   font-family: var(--mono);
   font-weight: 800;
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--primary-text-on-accent, #111);
   line-height: 1;
 }
@@ -768,7 +768,7 @@
    (override the <mark> UA black) so map / hero / tag legibility holds. */
 .search-hl {
   color: inherit;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0 0.06em;
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--accent) 62%, transparent);
@@ -780,11 +780,11 @@
 .bd-low-n {
   margin-left: 0.35rem;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.08em;
   padding: 0.05rem 0.3rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-faint);
   white-space: nowrap;
 }

@@ -294,7 +294,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   padding: 0.32rem 0.55rem;
   vertical-align: middle;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text);
   white-space: nowrap;
 }
@@ -331,13 +331,13 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   border-right: 1px solid var(--border-strong);
 }
 .tc-date-d { color: var(--text); font-weight: 700; letter-spacing: 0.03em; }
-.tc-date-t { color: var(--text-faint); margin-left: 0.35rem; font-size: 0.62rem; }
+.tc-date-t { color: var(--text-faint); margin-left: 0.35rem; font-size: var(--type-2xs); }
 
 .tc-map {
   font-family: var(--display);
   font-style: italic;
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: var(--type-xl);
   text-transform: uppercase;
   max-width: 12rem;
   overflow: hidden;
@@ -363,7 +363,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   font: inherit;
   color: inherit;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition: background 120ms ease, color 120ms ease;
 }
 .tc-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
@@ -382,16 +382,16 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition: background 120ms ease, color 120ms ease;
 }
 .tc-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
 .tc-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .tc-chip {
-  font-size: 0.52rem;
+  font-size: var(--type-4xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -404,7 +404,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -413,7 +413,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .tc-tags { white-space: normal; max-width: 12rem; }
 
 .tc-tag {
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   color: var(--accent-text);
   margin-right: 0.3rem;
 }
@@ -422,7 +422,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   font-weight: 800;
   color: var(--loss);
   margin-right: 0.3rem;
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
 }
 
 /* Provenance columns (Edited · User entered): a read-only checkbox per
@@ -444,12 +444,12 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .tc-result { text-align: right; }
 
 .tc-result-chip {
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 800;
   padding: 0.18rem 0.5rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text-faint);
@@ -510,20 +510,20 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .tc-map .tc-filter-cell {
   padding: 0 0.25rem;
   margin-inline: -0.25rem;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
 }
 .tc-map .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .tc-result .tc-filter-cell:hover:not(:disabled) { filter: brightness(1.12); }
 
 /* Mode / Queue cells are filter buttons now — give them padding + a hover wash. */
 .tc-mode .tc-filter-cell,
-.tc-queue .tc-filter-cell { padding: 0.05rem 0.3rem; border-radius: 3px; }
+.tc-queue .tc-filter-cell { padding: 0.05rem 0.3rem; border-radius: var(--radius-md); }
 
 .tc-mode .tc-filter-cell:hover,
 .tc-queue .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 
 /* Active filter — an accent outline (+ a soft fill on the non-result cells,
    which keep their result tint) so the live filters read at a glance. */
-.tc-filter-cell.is-filtered { box-shadow: inset 0 0 0 1px var(--accent); border-radius: 3px; }
+.tc-filter-cell.is-filtered { box-shadow: inset 0 0 0 1px var(--accent); border-radius: var(--radius-md); }
 .tc-filter-cell.is-filtered:not(.tc-result-chip) { background: var(--accent-soft); }
 </style>

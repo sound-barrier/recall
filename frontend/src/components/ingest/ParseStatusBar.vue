@@ -316,7 +316,7 @@ function onJumpToIngest(e: MouseEvent) {
   height: 16px;
   background: transparent;
   border: 1px solid var(--text-faint);
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
 }
 
 .tick-filled {
@@ -325,7 +325,7 @@ function onJumpToIngest(e: MouseEvent) {
 }
 
 .tick-active {
-  animation: tick-glow 360ms ease-out;
+  animation: tick-glow var(--duration-hero) ease-out;
 }
 
 @keyframes tick-glow {
@@ -352,7 +352,7 @@ function onJumpToIngest(e: MouseEvent) {
   color: var(--accent-text);
   background: var(--accent-soft);
   padding: 3px 6px 2px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .filename {
@@ -403,7 +403,7 @@ function onJumpToIngest(e: MouseEvent) {
   padding: 0 12px;
   background: transparent;
   border: 1px solid var(--loss);
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   color: var(--loss);
   font-family: var(--mono, ui-monospace, monospace);
   font-size: 11px;
@@ -411,7 +411,7 @@ function onJumpToIngest(e: MouseEvent) {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 140ms ease-out, color 140ms ease-out, transform 100ms ease-out;
+  transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform 100ms ease-out;
 }
 
 .abort-btn:hover:not(:disabled) {

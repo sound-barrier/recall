@@ -78,12 +78,12 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
   display: grid;
   grid-template-columns: 8rem 4.5rem 6rem 6rem 1fr;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0.32rem 0.5rem;
   background: var(--surface-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   color: var(--text);
   cursor: pointer;
   transition: background 120ms ease;
@@ -95,12 +95,12 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
 
 .hm-match-result {
   justify-self: start;
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.08rem 0.4rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .res-victory { background: color-mix(in srgb, var(--win) 22%, transparent); color: var(--win); }
 .res-defeat  { background: color-mix(in srgb, var(--loss) 22%, transparent); color: var(--loss); }
@@ -109,7 +109,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
 .hm-match-mode,
 .hm-match-queue {
   color: var(--text-faint);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   overflow: hidden;
@@ -129,7 +129,7 @@ function matchDateLabel(m: { date: string; finishedAt: string }): string {
 .hm-drill-empty {
   margin: 0.6rem 0 0.1rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }

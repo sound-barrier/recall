@@ -8,7 +8,7 @@
   border-left: 2px solid var(--loss);
   color: var(--loss);
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
 }
 
 .error-tick {
@@ -27,12 +27,12 @@
   border: 1px solid currentcolor;
   color: inherit;
   font-family: inherit;
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition: background var(--duration-fast);
 }
 
@@ -41,7 +41,7 @@
 
 .error-dismiss {
   padding: 0.25rem 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   letter-spacing: 0;
 }
 
@@ -62,7 +62,7 @@
 .empty-title {
   font-family: var(--display);
   font-style: italic;
-  font-size: 1.6rem;
+  font-size: var(--type-7xl);
   letter-spacing: -0.01em;
   text-transform: uppercase;
   color: var(--text);
@@ -71,7 +71,7 @@
 
 .empty-sub {
   color: var(--text-faint);
-  font-size: 0.88rem;
+  font-size: var(--type-lg);
 }
 .empty-sub strong { color: var(--accent-text); font-weight: 600; }
 
@@ -91,7 +91,7 @@
   gap: 0.35rem;
   margin-left: 0.4rem;
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }
@@ -99,7 +99,7 @@
 .count strong {
   color: var(--accent-text);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
 }
 
 /* .count-of moved to FilterRail.vue */
@@ -116,21 +116,21 @@
   align-items: center;
   gap: 0.3rem;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   font-feature-settings: "tnum";
 }
 
 .chev {
   color: var(--text-faint);
-  font-size: 1.2rem;
+  font-size: var(--type-4xl);
   line-height: 1;
-  transition: transform 200ms cubic-bezier(0.4, 0.0, 0.2, 1), color 200ms ease;
+  transition: transform var(--duration-med) cubic-bezier(0.4, 0.0, 0.2, 1), color var(--duration-med) ease;
   display: inline-block;
   font-weight: 300;
 }
 .chev.open { transform: rotate(90deg); color: var(--accent-text); }
-.chev.small { font-size: 0.9rem; }
+.chev.small { font-size: var(--type-xl); }
 
 /* Read-only sample-profile notice — shown on the Parse tab and Settings when
    the active profile is immutable (the tour's "test" sample). */
@@ -138,9 +138,9 @@
   margin: 0.5rem 0 0;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
   color: var(--text-dim);
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
   line-height: 1.4;
 }

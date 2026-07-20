@@ -380,7 +380,7 @@ const visibleGroups = computed(() =>
   z-index: 1000;
   display: grid;
   place-items: center;
-  padding: 2rem;
+  padding: var(--space-6);
   background: color-mix(in srgb, var(--bg) 90%, transparent);
 }
 
@@ -398,13 +398,13 @@ const visibleGroups = computed(() =>
 .kbd-modal-header {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   margin-bottom: 1.1rem;
 }
 
 .kbd-modal-tag {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.3em;
   color: var(--accent-text);
   text-transform: uppercase;
@@ -426,7 +426,7 @@ const visibleGroups = computed(() =>
 
 .kbd-group-title {
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.22em;
   color: var(--text-dim);
   text-transform: uppercase;
@@ -456,14 +456,14 @@ const visibleGroups = computed(() =>
   background: var(--surface-3);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--text-faint));
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text);
   line-height: 1.2;
 }
 
 .kbd-sep {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   color: var(--text-faint);
   text-transform: uppercase;
@@ -471,7 +471,7 @@ const visibleGroups = computed(() =>
 
 .kbd-action {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   align-self: center;
 }
@@ -487,12 +487,12 @@ const visibleGroups = computed(() =>
 
 .kbd-foot-hint {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 
 .kbd-fade-enter-active,
-.kbd-fade-leave-active { transition: opacity 200ms ease; }
+.kbd-fade-leave-active { transition: opacity var(--duration-med) ease; }
 
 .kbd-fade-enter-from,
 .kbd-fade-leave-to { opacity: 0; }
