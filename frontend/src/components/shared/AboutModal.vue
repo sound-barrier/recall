@@ -373,7 +373,7 @@ function openReleasePage() {
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   margin: 0 0 0.5rem;
 }
 
@@ -404,7 +404,7 @@ function openReleasePage() {
 }
 
 .update-check-modal-update-flag {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
   margin-left: 0.4rem;
 }
@@ -494,7 +494,7 @@ function openReleasePage() {
 
 .update-check-modal-btn-ghost:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 :deep(.update-check-modal-btn-primary) {
@@ -560,7 +560,7 @@ function openReleasePage() {
 }
 
 .about-wordmark-accent {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .about-version {
@@ -595,7 +595,7 @@ function openReleasePage() {
   font-family: var(--mono);
   font-size: 0.68rem;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   text-decoration: none;
 }

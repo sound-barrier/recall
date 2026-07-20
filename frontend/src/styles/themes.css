@@ -32,23 +32,46 @@
   --accent: #fa9c1b;
   --accent-bright: #fa3;
 
-  /* Deeper rust — clears WCAG AA (~6.0:1) on the cream --surface so
-     small uppercase callouts (.leaves-eyebrow, .hero-name etc.)
-     stay legible. The prior #b8650a sat at ~3.85:1 — over AA Large
-     but under AA Normal for 14px body text. */
-  --accent-text: #9e4d00;
+  /* Deeper rust, for accent-coloured TYPE (--accent stays the chrome
+     token: borders, fills, glows).
+
+     Tuned against the DARKEST surface tier, not just --surface. The
+     previous #9e4d00 cleared AA on --surface (5.4:1) but only reached
+     4.2:1 on --surface-3, so any accent label sitting on a raised
+     panel — Settings' .setting-info, the inline <code> chips — failed
+     while the identical label on the page ground passed. Per
+     .claude/rules/a11y.md, new text colours must clear 4.5:1 on ALL of
+     --surface / --surface-2 / --surface-3 / --bg; this value does
+     (4.9 / 5.5 / 6.3 / 5.9). */
+  --accent-text: #8f4500;
   --accent-soft: rgb(250 156 27 / 22%);
   --accent-glow: rgb(250 156 27 / 45%);
   --identity-accent: #9c4012; /* redder sienna — clears AA on the cream surfaces */
-  --win: #0f7a3a;
-  --win-soft: rgb(15 122 58 / 14%);
-  --win-line: rgb(15 122 58 / 60%);
-  --loss: #c0354a;
-  --loss-soft: rgb(192 53 74 / 12%);
-  --loss-line: rgb(192 53 74 / 55%);
-  --draw: #8b5c14;
-  --draw-soft: rgb(139 92 20 / 14%);
-  --draw-line: rgb(139 92 20 / 55%);
+
+  /* Win / loss / draw, darkened one step from the original
+     #0f7a3a / #c0354a / #8b5c14.
+
+     Those were tuned against the plain cream --surface, where they sat
+     at 4.9 / 5.7 / 5.2. But these tokens are overwhelmingly used AS TEXT
+     ON THEIR OWN SOFT TINT — a win chip is `color: var(--win)` over
+     `background: var(--win-soft)` — and that composite ground is darker
+     than --surface, which dropped every one of them to ~3.8–4.2:1.
+     Sub-AA for the 9.9px slot chips and 11.2px status labels that are
+     their main consumers.
+
+     Each value below clears 4.5:1 on its own soft-tint composite AND on
+     --surface-3, the darkest tier. The soft/line variants keep their
+     original alphas — only the base hue moved, so the tint strength and
+     the semantic read are unchanged. */
+  --win: #0c6b32;
+  --win-soft: rgb(12 107 50 / 14%);
+  --win-line: rgb(12 107 50 / 60%);
+  --loss: #a82a3d;
+  --loss-soft: rgb(168 42 61 / 12%);
+  --loss-line: rgb(168 42 61 / 55%);
+  --draw: #7a5010;
+  --draw-soft: rgb(122 80 16 / 14%);
+  --draw-line: rgb(122 80 16 / 55%);
   --unknown-line: rgb(74 74 74 / 40%);
   --tank: #1f5491;
   --tank-soft: rgb(31 84 145 / 14%);
@@ -56,6 +79,14 @@
   --dps-soft: rgb(196 69 31 / 13%);
   --support: #1e6f3a;
   --support-soft: rgb(30 111 58 / 13%);
+
+  /* Categorical chart slots 5–8, darkened for the cream ground. The
+     Night values are light tints that all but vanish here; these clear
+     the 3:1 WCAG bar for graphical objects against --bg. */
+  --chart-5: #1d6f96;
+  --chart-6: #6b3fa0;
+  --chart-7: #b3541e;
+  --chart-8: #0f7566;
   --atmos-orange: rgb(250 156 27 / 12%);
   --atmos-blue:   rgb(31 84 145 / 5%);
   --atmos-coral:  rgb(192 53 74 / 4%);
@@ -66,6 +97,14 @@
      value here (#fff8ef cream) fell to ~1.92:1 on the orange,
      well below AA. #1a0a00 on #fa9c1b clears AA + AAA at ~6.3:1. */
   --primary-text-on-accent: #1a0a00;
+
+  /* Elevation shadows tint with the OW brand gray instead of pure
+     black. At an identical alpha this composites far softer over the
+     cream ground — black at 50% reads as dirt on #efede6, warm gray
+     reads as depth — so every shadow keeps its tuned opacity and
+     geometry and only the hue changes. */
+  --shadow-rgb: 74 74 74;
+  --color-scheme: light;
 }
 
 /* DARK — sits between Day's cream and Night's near-black. Grounds
@@ -218,6 +257,13 @@
   --dps-soft: rgb(255 136 102 / 25%);
   --support: #8fa;
   --support-soft: rgb(136 255 170 / 25%);
+
+  /* Categorical chart slots 5–8, pushed to full saturation to match the
+     rest of this palette's read-from-across-the-room brief. */
+  --chart-5: #6df;
+  --chart-6: #c9f;
+  --chart-7: #fb6;
+  --chart-8: #6fd;
   --atmos-orange: rgb(255 191 77 / 10%);
   --atmos-blue:   rgb(102 221 255 / 6%);
   --atmos-coral:  rgb(255 51 85 / 5%);

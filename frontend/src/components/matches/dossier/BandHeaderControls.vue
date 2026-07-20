@@ -143,7 +143,7 @@ const emit = defineEmits<{
   border: 1px solid var(--accent);
   border-radius: 2px;
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--mono);
   font-size: 0.6rem;
   letter-spacing: 0.1em;
@@ -177,11 +177,11 @@ const emit = defineEmits<{
   transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
-.bh-gear:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.bh-gear:hover { color: var(--accent-text); border-color: var(--accent); background: var(--accent-soft); }
 .bh-gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .bh-gear-active {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 

@@ -430,7 +430,7 @@ onMounted(() => {
 .journal-apply-btn:hover,
 .journal-apply-btn:focus-visible {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .journal-apply-btn.undo {
@@ -455,7 +455,7 @@ onMounted(() => {
   opacity: 0.7;
 }
 
-.match-journal.populated .journal-head-meta { color: var(--accent); }
+.match-journal.populated .journal-head-meta { color: var(--accent-text); }
 .match-journal.populated .journal-head-meta .journal-head-pip { opacity: 1; }
 
 .journal-body {
@@ -551,12 +551,12 @@ onMounted(() => {
 }
 
 .journal-cell.filled .journal-eyebrow { color: var(--text-dim); }
-.journal-cell:focus-within .journal-eyebrow { color: var(--accent); }
+.journal-cell:focus-within .journal-eyebrow { color: var(--accent-text); }
 
 .journal-eyebrow-count {
   font-size: 0.58rem;
   letter-spacing: 0.12em;
-  color: var(--accent);
+  color: var(--accent-text);
   font-feature-settings: "tnum";
 }
 
@@ -612,7 +612,7 @@ onMounted(() => {
   right: 0.1rem;
   font-family: var(--mono);
   font-size: 0.8rem;
-  color: var(--accent);
+  color: var(--accent-text);
   opacity: 0.9;
   pointer-events: none;
 }
@@ -667,7 +667,7 @@ onMounted(() => {
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.02em;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .member-chip-tag {

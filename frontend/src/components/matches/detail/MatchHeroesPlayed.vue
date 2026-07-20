@@ -134,7 +134,7 @@ const topHeroesPlayed = computed(() => {
 .heroes-played .chev.small {
   display: inline-block;
   font-family: var(--mono);
-  color: var(--accent);
+  color: var(--accent-text);
   transition: transform 200ms ease;
   transform: rotate(90deg);
   width: 0.9rem;
@@ -194,7 +194,7 @@ const topHeroesPlayed = computed(() => {
   font-style: italic;
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -250,7 +250,7 @@ const topHeroesPlayed = computed(() => {
   font-style: italic;
   font-size: 1.15rem;
   font-weight: 800;
-  color: var(--accent);
+  color: var(--accent-text);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0 0.15rem;

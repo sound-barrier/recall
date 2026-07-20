@@ -343,7 +343,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   right: 0.5rem;
   font-size: 0.7rem;
   line-height: 1;
-  color: var(--accent);
+  color: var(--accent-text);
   pointer-events: auto;
   cursor: help;
 }
@@ -559,7 +559,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 
 /* 6. Annotations — tags + leaver. Always renders (may be empty). */
 .leaf-pin {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.8rem;
   line-height: 1;
 }
@@ -578,7 +578,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   padding: 0.12rem 0.36rem;
   border: 1px solid var(--accent-soft);
   border-radius: 2px;
-  color: var(--accent);
+  color: var(--accent-text);
   letter-spacing: 0.04em;
   text-transform: lowercase;
   white-space: nowrap;

@@ -251,8 +251,8 @@ function onBack()   { void tour.prev() }
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(60% 50% at 8% -10%, color-mix(in srgb, var(--accent, #d96a2e) 16%, transparent), transparent 60%),
-    radial-gradient(45% 40% at 100% 110%, color-mix(in srgb, var(--accent, #d96a2e) 10%, transparent), transparent 60%),
+    radial-gradient(60% 50% at 8% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    radial-gradient(45% 40% at 100% 110%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
     repeating-linear-gradient(120deg, transparent 0 14px, rgb(255 255 255 / 1.2%) 14px 15px);
   opacity: 0.6;
 }
@@ -270,11 +270,11 @@ function onBack()   { void tour.prev() }
   padding: 0.32rem 0.7rem 0.3rem 0.45rem;
   background: rgb(0 0 0 / 65%);
   border: 1px solid var(--border, #3a3a3a);
-  border-left: 2px solid var(--accent, #d96a2e);
+  border-left: 2px solid var(--accent);
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.22em;
-  color: var(--accent, #d96a2e);
+  color: var(--accent);
   user-select: none;
   animation: tour-marker-pulse 3.2s ease-in-out infinite;
 }
@@ -285,8 +285,8 @@ function onBack()   { void tour.prev() }
 }
 
 @keyframes tour-marker-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #d96a2e) 0%, transparent); }
-  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent, #d96a2e) 16%, transparent); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent); }
 }
 
 .onboarding-fade-enter-active,

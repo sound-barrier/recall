@@ -511,7 +511,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   font-size: 0.62rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -571,7 +571,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   text-align: left;
   white-space: nowrap;
 }
-.mr-modehead:hover { color: var(--accent); }
+.mr-modehead:hover { color: var(--accent-text); }
 
 .mr-modehead:focus-visible {
   outline: 2px solid var(--accent);
@@ -608,7 +608,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 .mr-modehead.header-selected,
 .mr-collabel.header-selected,
 .mr-rowhead.header-selected {
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   border-radius: 2px;
 }
@@ -670,7 +670,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   margin-left: 0.5rem;
   border: 1px solid var(--accent);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.1em;
@@ -697,13 +697,13 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 }
 
 .mr-collabel:hover,
-.mr-rowhead:hover { color: var(--accent); }
+.mr-rowhead:hover { color: var(--accent-text); }
 
 .mr-collabel:focus-visible,
 .mr-rowhead:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .mr-selection {
@@ -752,7 +752,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   text-overflow: ellipsis;
 }
 
-.mr-sel-stats strong { color: var(--accent); font-weight: 700; }
+.mr-sel-stats strong { color: var(--accent-text); font-weight: 700; }
 
 .mr-sel-hint {
   margin-left: auto;

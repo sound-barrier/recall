@@ -105,7 +105,7 @@ const { shouldShowBanner, daysSinceLastCheck, dismiss } = useUpdateReminder(upda
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .update-reminder-banner-help {

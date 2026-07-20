@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import TrendChart from '@/components/matches/trends/TrendChart.vue'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
+import { useTheme } from '@/composables/settings/useTheme'
 import { buildEloProjectionOption } from '@/components/elo/elo-chart-options'
 import { fmtRank } from '@/components/elo/elo-format'
 
@@ -12,8 +13,12 @@ import { fmtRank } from '@/components/elo/elo-format'
 const { curves, decay, targetScore, targetTier, targetDivision, seasonSim } = useEloCalc()
 
 const targetLabel = computed(() => fmtRank(targetTier.value, targetDivision.value))
+const { themeMode } = useTheme()
 
 const option = computed(() => {
+  // Series colours resolve from palette tokens at build time, so the
+  // option must be rebuilt on a theme switch — see elo-chart-options.
+  void themeMode.value
   if (!curves.value || targetScore.value === null) return null
   const capped = decay.value && decay.value.requiredWinRate !== null
   return buildEloProjectionOption(curves.value, {

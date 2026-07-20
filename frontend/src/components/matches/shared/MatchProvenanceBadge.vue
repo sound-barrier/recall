@@ -106,7 +106,7 @@ const tip = computed(() => {
 
 /* Edited — the user touched a parsed match: accent outline draws the eye. */
 .prov-edited {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent-soft);
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
 }
@@ -114,7 +114,7 @@ const tip = computed(() => {
 /* Manual — hand-entered: a filled accent wash distinguishes it from Edited
    at a glance even before the label registers. */
 .prov-manual {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent-soft);
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
 }

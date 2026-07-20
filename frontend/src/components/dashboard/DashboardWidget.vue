@@ -217,7 +217,7 @@ function idxOr(): number { return props.idx ?? 0 }
 
 .dashboard-grip:hover,
 .dashboard-gear:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
 }

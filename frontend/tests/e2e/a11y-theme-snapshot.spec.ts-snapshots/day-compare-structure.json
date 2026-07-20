@@ -11,7 +11,7 @@
   "mastheadPresent": true,
   "cssTokens": {
     "--accent": "#fa9c1b",
-    "--accent-text": "#9e4d00",
+    "--accent-text": "#8f4500",
     "--accent-glow": "#fa9c1b73",
     "--accent-soft": "#fa9c1b38",
     "--text": "#1a1a1a",
@@ -25,9 +25,9 @@
     "--border": "#4a4a4a",
     "--border-soft": "#b9b3a5",
     "--border-strong": "#2a2a2a",
-    "--win": "#0f7a3a",
-    "--loss": "#c0354a",
-    "--draw": "#8b5c14",
+    "--win": "#0c6b32",
+    "--loss": "#a82a3d",
+    "--draw": "#7a5010",
     "--tank": "#1f5491",
     "--dps": "#c4451f",
     "--support": "#1e6f3a",
@@ -133,7 +133,7 @@
         "rgb(26, 17, 0)"
       ],
       "backgroundColor": [
-        "rgb(139, 92, 20)"
+        "rgb(122, 80, 16)"
       ],
       "borderRadius": [
         "8px"

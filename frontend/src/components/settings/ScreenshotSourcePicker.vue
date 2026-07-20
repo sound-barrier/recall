@@ -362,7 +362,7 @@ void ({} as NamedCandidateStats)
 .src-card-custom:not(:disabled):hover,
 .src-card-custom:not(:disabled):focus-visible {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   background: color-mix(in srgb, var(--accent) 5%, transparent);
   outline: none;
 }

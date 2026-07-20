@@ -190,7 +190,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 
 .pivot-chip:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .pivot-chip:active {
@@ -212,7 +212,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 }
 
 .pivot-chip-values {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 
@@ -254,7 +254,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   background: var(--surface-3, var(--surface));
   border: 1px solid var(--border-strong);
   border-radius: 4px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 35%);
 }
 
 .pivot-chip-menu-head {
@@ -276,7 +276,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.1rem 0.35rem;
-  color: var(--accent);
+  color: var(--accent-text);
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border));
   border-radius: 2px;
@@ -302,7 +302,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
 .pivot-chip-menuitem:hover,
 .pivot-chip-menuitem:focus-visible {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
 }
 

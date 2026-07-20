@@ -178,7 +178,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 3px;
-  box-shadow: 0 18px 38px -16px rgb(0 0 0 / 55%);
+  box-shadow: 0 18px 38px -16px rgb(var(--shadow-rgb) / 55%);
   padding: 0.55rem;
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -255,7 +255,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   color: var(--text-faint);
 }
 
-.sgp-row.picked .sgp-glyph { color: var(--accent); }
+.sgp-row.picked .sgp-glyph { color: var(--accent-text); }
 
 @media (prefers-reduced-motion: reduce) {
   .sort-group-popover { transition: none; }

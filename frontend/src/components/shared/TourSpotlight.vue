@@ -244,7 +244,7 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
 }
 
 .tour-spotlight-outline {
-  stroke: var(--accent, #d96a2e);
+  stroke: var(--accent);
   stroke-width: 1.5;
   opacity: 0.55;
   transition: x 280ms ease, y 280ms ease, width 280ms ease, height 280ms ease;
@@ -256,7 +256,7 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
 
 .tour-spotlight-brackets {
   fill: none;
-  stroke: var(--accent, #d96a2e);
+  stroke: var(--accent);
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;

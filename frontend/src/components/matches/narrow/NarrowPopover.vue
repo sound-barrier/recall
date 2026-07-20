@@ -496,7 +496,7 @@ onUnmounted(() => {
   height: 100vh;
   background: var(--surface);
   border-right: 1px solid var(--accent);
-  box-shadow: 28px 0 60px -24px rgb(0 0 0 / 65%);
+  box-shadow: 28px 0 60px -24px rgb(var(--shadow-rgb) / 65%);
   padding: 0.9rem 1rem 0;
   display: flex;
   flex-direction: column;
@@ -563,7 +563,7 @@ onUnmounted(() => {
 }
 
 .np-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.np-btn.ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.np-btn.ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-text); }
 
 .np-btn.primary {
   background: var(--accent);

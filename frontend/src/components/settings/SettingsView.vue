@@ -198,7 +198,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
   font-size: 0.62rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   margin: 0 0 0.55rem;
 }
 

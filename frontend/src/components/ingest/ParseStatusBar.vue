@@ -220,7 +220,7 @@ function onJumpToIngest(e: MouseEvent) {
   padding: 0 18px;
   background: var(--surface-3);
   border-top: 1px solid var(--accent);
-  box-shadow: 0 -8px 24px -10px rgb(0 0 0 / 50%);
+  box-shadow: 0 -8px 24px -10px rgb(var(--shadow-rgb) / 50%);
   font-family: var(--mono, ui-monospace, 'SF Mono', menlo, monospace);
   cursor: pointer;
   user-select: none;
@@ -252,7 +252,12 @@ function onJumpToIngest(e: MouseEvent) {
 .rule {
   display: block;
   width: 1px;
-  background: var(--surface-2);
+
+  /* --border-soft, not --surface-2: this is a divider, and the surface
+     tiers run in opposite directions per family (Night steps UP in
+     luminance from the ground, Day steps DOWN), so a surface token
+     picked to read as a hairline on one theme inverts on the other. */
+  background: var(--border-soft);
   margin: 8px 0;
 }
 
@@ -294,7 +299,7 @@ function onJumpToIngest(e: MouseEvent) {
   font-feature-settings: 'tnum' on, 'lnum' on;
 }
 
-.counter-done { color: var(--accent); }
+.counter-done { color: var(--accent-text); }
 .counter-slash { color: var(--text-faint); opacity: 0.6; }
 .counter-total { color: var(--text-faint); }
 
@@ -463,22 +468,15 @@ function onJumpToIngest(e: MouseEvent) {
   .abort-btn:disabled { animation: none; }
 }
 
-/* Light-theme overrides — match the cream/orange palette without
-   the dark-mode glow. Need :global because scoped styles can't pierce
-   the [data-theme="light"] selector on <html> by default. */
-:global([data-theme="light"]) .status-bar {
-  background: var(--surface-2);
-  border-top: 1px solid var(--accent);
-  box-shadow: 0 -8px 24px -12px rgb(0 0 0 / 12%);
-}
-
-:global([data-theme="light"]) .rule {
-  background: var(--surface-3);
-}
-
-:global([data-theme="light"]) .dot {
-  box-shadow: 0 0 8px var(--accent-glow);
-}
+/* The three `:global([data-theme="light"])` overrides that used to sit
+   here are gone. They never applied — useTheme writes day|dark|night|
+   high-contrast and migrates the legacy "light" on read — and Vue
+   miscompiled the partial `:global(X) .y` form into a bare
+   `[data-theme=light]{…}` that shipped in index-*.css. Two of the three
+   were also no-ops (the border-top and the dot glow already matched the
+   base rule); the one real difference was the shadow, now handled by
+   --shadow-rgb tinting warm on Day, and the divider, now --border-soft.
+   See scripts/ci/check-css-theme-leak.sh. */
 
 /* Reduced motion: slide-in/out instant; tick glow off. The global
    media query in app.css already collapses transitions; this scoped

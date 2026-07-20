@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import TrendChart from '@/components/matches/trends/TrendChart.vue'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
+import { useTheme } from '@/composables/settings/useTheme'
 import { buildSkillCurveOption } from '@/components/elo/elo-chart-options'
 import { fmtPValue } from '@/components/elo/elo-format'
 
@@ -12,10 +13,16 @@ import { fmtPValue } from '@/components/elo/elo-format'
 // matchmaking noise — the sharpest "Elo Hell is mostly variance" number
 // the data supports.
 const { skillCurve, changePoint } = useEloCalc()
+const { themeMode } = useTheme()
 
-const option = computed(() => (skillCurve.value
-  ? buildSkillCurveOption(skillCurve.value, changePoint.value ? { breakAt: changePoint.value.point.t } : {})
-  : null))
+const option = computed(() => {
+  // Series colours resolve from palette tokens at build time, so the
+  // option must be rebuilt on a theme switch — see elo-chart-options.
+  void themeMode.value
+  return skillCurve.value
+    ? buildSkillCurveOption(skillCurve.value, changePoint.value ? { breakAt: changePoint.value.point.t } : {})
+    : null
+})
 
 // The dated break, with whatever the app can see changing around it.
 // Detection is deliberately conservative: only big, sustained shifts clear

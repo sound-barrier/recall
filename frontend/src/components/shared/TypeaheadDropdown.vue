@@ -288,10 +288,10 @@ defineExpose({
   transition: color 120ms ease, transform 160ms ease;
 }
 
-.combo-caret:hover { color: var(--accent); }
+.combo-caret:hover { color: var(--accent-text); }
 
 .combo-caret.open {
-  color: var(--accent);
+  color: var(--accent-text);
   transform: translateY(-50%) rotate(180deg);
 }
 
@@ -304,7 +304,7 @@ defineExpose({
   border-radius: 2px;
   max-height: 14rem;
   overflow-y: auto;
-  box-shadow: 0 12px 24px -16px rgb(0 0 0 / 50%);
+  box-shadow: 0 12px 24px -16px rgb(var(--shadow-rgb) / 50%);
 }
 
 .combo-list li {
@@ -328,7 +328,7 @@ defineExpose({
 }
 
 .combo-list li.picked {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
@@ -339,7 +339,7 @@ defineExpose({
 }
 
 .combo-check {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 800;
   text-align: center;
 }

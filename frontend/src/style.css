@@ -43,17 +43,23 @@
   font-weight: 700 900;
 }
 
-html {
-  background: #0a0b0d;
-  color: #ecedf0;
-  color-scheme: dark;
-  transition: background 220ms ease, color 220ms ease;
-}
+/* Root paint. Reads the palette tokens rather than restating them:
+   `:root` IS `html`, so `var(--bg)` here resolves against whichever
+   [data-theme] block is active and follows the theme for free. This
+   used to be two rules with four hardcoded hexes — a night pair and a
+   `html[data-theme="day"]` pair — which meant every palette edit had
+   to be made twice and the day values silently drifted from themes.css.
 
-html[data-theme="day"] {
-  background: #efede6;
-  color: #1a1a1a;
-  color-scheme: light;
+   Keeping it to ONE rule also matters for the build check: a bare
+   `[data-theme=X] { … }` block setting real properties is exactly the
+   signature of the scoped-style miscompile that
+   scripts/ci/check-css-theme-leak.sh hunts, so the per-theme bit is
+   expressed as the --color-scheme token instead of a second rule. */
+html {
+  background: var(--bg);
+  color: var(--text);
+  color-scheme: var(--color-scheme);
+  transition: background 220ms ease, color 220ms ease;
 }
 
 html, body, #app {

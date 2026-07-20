@@ -110,7 +110,7 @@ function unhide() {
 }
 
 .danger-prompt.hidden-prompt {
-  color: var(--accent);
+  color: var(--accent-text);
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -141,7 +141,7 @@ function unhide() {
 }
 
 .danger-btn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 
@@ -154,7 +154,7 @@ function unhide() {
    that this is the destructive step. The previous 12% alpha tint
    was too subtle on Day theme's cream surface to read as "armed". */
 .danger-btn.danger-confirm {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 24%, transparent);
   animation: danger-confirm-pulse 1.6s ease-in-out infinite;
@@ -178,7 +178,7 @@ function unhide() {
 }
 
 .danger-btn.danger-unhide {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 </style>

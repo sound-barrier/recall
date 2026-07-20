@@ -392,7 +392,7 @@ const visibleGroups = computed(() =>
   border: 1px solid var(--surface-3);
   border-left: 3px solid var(--accent);
   padding: 1.6rem 1.8rem 1.2rem 1.4rem;
-  box-shadow: 0 24px 64px rgb(0 0 0 / 55%);
+  box-shadow: 0 24px 64px rgb(var(--shadow-rgb) / 55%);
 }
 
 .kbd-modal-header {
@@ -406,7 +406,7 @@ const visibleGroups = computed(() =>
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.3em;
-  color: var(--accent);
+  color: var(--accent-text);
   text-transform: uppercase;
 }
 

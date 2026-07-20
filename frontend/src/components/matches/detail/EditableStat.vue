@@ -153,7 +153,7 @@ function cancel() {
 }
 
 .editable-stat.is-edited .stat-value {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .stat-input {
@@ -195,7 +195,7 @@ function cancel() {
   margin: 0;
   font-size: 0.7rem;
   line-height: 1;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
 }
 

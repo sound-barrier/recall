@@ -15,7 +15,7 @@
   background: linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%);
   border-radius: 2px;
   border: 1px solid var(--loss);
-  box-shadow: 0 14px 36px -14px rgb(0 0 0 / 55%);
+  box-shadow: 0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
   overflow: hidden;
   isolation: isolate;
 }
@@ -230,7 +230,7 @@
 .ver-btn-update {
   background: transparent;
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
 }
 
@@ -271,11 +271,11 @@
   padding: 2rem 2.2rem 1.6rem;
   max-width: 420px;
   width: calc(100% - 3rem);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 60%);
+  box-shadow: 0 24px 60px rgb(var(--shadow-rgb) / 60%);
 }
 
 .modal-icon {
-  color: var(--accent);
+  color: var(--accent-text);
   margin-bottom: 0.9rem;
 }
 
@@ -348,7 +348,7 @@
 }
 
 .empty-link {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
   cursor: pointer;
   border-bottom: 1px solid transparent;

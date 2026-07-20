@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, reactive, ref } from 'vue'
 
+import { useTheme } from '@/composables/settings/useTheme'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useDragReorder } from '@/composables/dashboard/useDragReorder'
 import { useNarrow } from '@/composables/matches/useNarrow'
@@ -102,7 +103,17 @@ interface ChartCard {
   interactive?: boolean
 }
 
-const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
+const { themeMode } = useTheme()
+
+const cardsById = computed<Record<TrendChartId, ChartCard>>(() => {
+  // Series colours are resolved from palette tokens when the option is
+  // BUILT (see trend-options' SERIES_TOKEN), so this computed has to
+  // re-run on a theme switch. Without the dependency, TrendChart
+  // re-registers its ECharts theme — repainting axes, grid and tooltip —
+  // while the series keep the outgoing theme's hues.
+  void themeMode.value
+
+  return ({
   'rank-ladder': {
     id: 'rank-ladder', title: 'Rank over time',
     caption: 'Rank progression over time, by role', option: rankLadderOption(rankSeries.value), hasData: someData(rankSeries.value),
@@ -148,7 +159,8 @@ const cardsById = computed<Record<TrendChartId, ChartCard>>(() => ({
     caption: 'Win rate by day of week and time of day', option: heatmapOption(bestTimesGrid.value), hasData: bestTimesGrid.value.cells.length > 0,
     empty: 'No decisive matches with a known date and time — nothing to chart yet.',
   },
-}))
+  })
+})
 
 const visibleCards = computed(() => visibleIds.value.map((id) => cardsById.value[id]))
 const hiddenCards = computed(() => hiddenIds.value.map((id) => cardsById.value[id]))

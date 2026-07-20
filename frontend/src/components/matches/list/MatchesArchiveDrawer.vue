@@ -399,7 +399,7 @@ const {
 .archive-unhide {
   border: 1px solid var(--accent);
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .archive-unhide:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 

@@ -85,13 +85,13 @@ const {
 
 .app-menu-trigger:hover {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .app-menu.open .app-menu-trigger {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-  color: var(--accent);
+  color: var(--accent-text);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
@@ -136,7 +136,7 @@ const {
 
 .app-menu-item:hover {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .app-menu-ext {
@@ -145,7 +145,7 @@ const {
 }
 
 .app-menu-item:hover .app-menu-ext {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .app-menu-sep {

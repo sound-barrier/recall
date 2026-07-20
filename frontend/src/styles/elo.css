@@ -7,12 +7,15 @@
    frontend/CLAUDE.md "Styles". */
 
 #panel-elo {
-  /* Fixed series hues shared with the projection chart lines so a colour
-     always means the same future: blue = if your wins hold, amber = as
-     opponents get tougher. These mirror trend-options' theme-independent
-     SERIES_COLOR palette. */
-  --elo-dream: #5ca8ff;
-  --elo-reality: #f5a623;
+  /* Series hues shared with the projection chart lines so a colour always
+     means the same future: blue = if your wins hold, amber = as opponents
+     get tougher. Aliases of the palette tokens rather than fixed hex, so
+     the card borders/swatches and the chart lines stay in lockstep AND
+     both follow the theme — elo-chart-options.ts resolves the same two
+     tokens. Previously both sides hardcoded the Night hues in two places,
+     which is exactly how they drift. */
+  --elo-dream: var(--tank);
+  --elo-reality: var(--accent);
 
   display: flex;
   flex-direction: column;
@@ -77,6 +80,16 @@
   margin-left: 0.4rem;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
+}
+
+/* The picked track's own label steps up to --text, but this count is a
+   child with its own colour, so it stayed --text-faint over the
+   accent-mixed background — 3.2:1 on Night. Inherit instead: the
+   selected control reads at full strength, and the de-emphasis that
+   --text-faint was providing is still carried by every UNpicked
+   sibling, which is where the contrast actually matters. */
+#panel-elo .elo-track-btn.picked .elo-track-n {
+  color: inherit;
 }
 
 /* ─── Section bands (mirror .compare-section-head) ─── */
@@ -288,7 +301,7 @@
   font-size: 0.62rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 #panel-elo .elo-timeline-line {
@@ -337,7 +350,7 @@
   font-size: 0.66rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   padding-bottom: 0.35rem;
 }
 

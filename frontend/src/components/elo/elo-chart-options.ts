@@ -8,16 +8,31 @@ import { TIER_ORDER } from '@/match/match-trends-helpers'
 import type { ProjectionCurves } from '@/match/elo-model'
 import type { SeasonSim } from '@/match/elo-simulate'
 import type { SkillCurve } from '@/match/elo-kalman'
+import { themeColor, withAlpha } from '@/match/theme-colors'
 
-// Fixed hues shared with the two future cards (see styles/elo.css): blue = if
-// your wins hold, amber = as opponents get tougher.
-const DREAM_COLOR = '#5ca8ff'
-const REALITY_COLOR = '#f5a623'
-const BAND_COLOR = 'rgba(92, 168, 255, 0.14)'
-const SIM_COLOR = 'rgba(160, 160, 160, 0.55)'
-const SIM_BAND_COLOR = 'rgba(160, 160, 160, 0.16)'
-const SKILL_COLOR = '#8bc7a0'
-const SKILL_BAND_COLOR = 'rgba(139, 199, 160, 0.16)'
+// Series hues shared with the two future cards (see styles/elo.css, which
+// aliases the same tokens as --elo-dream / --elo-reality): blue = if your
+// wins hold, amber = as opponents get tougher, green = fitted skill.
+//
+// Tokens rather than literals, and read per call rather than frozen into
+// module constants, so the chart follows the theme. Hardcoded, these drew
+// the Night palette on every theme — a light `#5ca8ff` line over Day's
+// cream while the card border beside it used the same token name resolved
+// to a dark blue.
+//
+// The underlying palette tokens are read directly rather than the --elo-*
+// aliases: alias resolution through getPropertyValue depends on the engine
+// substituting var() at computed-value time, and there's no reason to
+// depend on that here.
+const dreamColor = () => themeColor('--tank')
+const realityColor = () => themeColor('--accent')
+const skillColor = () => themeColor('--support')
+const bandColor = () => withAlpha(dreamColor(), 0.14)
+const skillBandColor = () => withAlpha(skillColor(), 0.16)
+// The simulated range is deliberately NEUTRAL — it reads as "noise around
+// the signal", so it tracks the muted text tone rather than a series hue.
+const simColor = () => withAlpha(themeColor('--text-mute'), 0.55)
+const simBandColor = () => withAlpha(themeColor('--text-mute'), 0.16)
 
 const DREAM_NAME = 'If your wins hold'
 const REALITY_NAME = 'As opponents get tougher'
@@ -105,11 +120,11 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
               name: SIM_NAME,
               type: 'line' as const,
               stack: 'sim',
-              color: SIM_COLOR,
+              color: simColor(),
               silent: true,
               showSymbol: false,
               lineStyle: { opacity: 0 },
-              areaStyle: { color: SIM_BAND_COLOR },
+              areaStyle: { color: simBandColor() },
               tooltip: { show: false },
               data: pairs(fan.games, fan.games.map((_, i) => (fan.p90[i] ?? 0) - (fan.p10[i] ?? 0))),
             },
@@ -135,14 +150,14 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
         silent: true,
         showSymbol: false,
         lineStyle: { opacity: 0 },
-        areaStyle: { color: BAND_COLOR },
+        areaStyle: { color: bandColor() },
         tooltip: { show: false },
         data: pairs(curves.games, curves.games.map((_, i) => (curves.bandHigh[i] ?? 0) - (curves.bandLow[i] ?? 0))),
       },
       {
         name: DREAM_NAME,
         type: 'line',
-        color: DREAM_COLOR,
+        color: dreamColor(),
         showSymbol: false,
         data: pairs(curves.games, curves.naive),
         markLine: {
@@ -158,7 +173,7 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
       {
         name: REALITY_NAME,
         type: 'line',
-        color: REALITY_COLOR,
+        color: realityColor(),
         showSymbol: false,
         data: pairs(curves.games, curves.decay),
         ...(opts.ceilingScore !== undefined
@@ -166,8 +181,8 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
               markLine: {
                 silent: true,
                 symbol: 'none',
-                label: { formatter: 'Your ceiling now', position: 'insideEndBottom', color: REALITY_COLOR },
-                lineStyle: { type: 'dotted', color: REALITY_COLOR },
+                label: { formatter: 'Your ceiling now', position: 'insideEndBottom', color: realityColor() },
+                lineStyle: { type: 'dotted', color: realityColor() },
                 data: [{ yAxis: opts.ceilingScore }],
               },
             }
@@ -229,14 +244,14 @@ export function buildSkillCurveOption(curve: SkillCurve, opts: { breakAt?: numbe
         silent: true,
         showSymbol: false,
         lineStyle: { opacity: 0 },
-        areaStyle: { color: SKILL_BAND_COLOR },
+        areaStyle: { color: skillBandColor() },
         tooltip: { show: false },
         data: at(curve.t.map((_, i) => (high[i] ?? 0) - (low[i] ?? 0))),
       },
       {
         name: 'True skill',
         type: 'line',
-        color: SKILL_COLOR,
+        color: skillColor(),
         showSymbol: false,
         smooth: true,
         data: at(curve.level),

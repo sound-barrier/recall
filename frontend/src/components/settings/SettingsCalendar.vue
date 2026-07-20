@@ -140,7 +140,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
 }
 
 .weekstart-cell.active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent);
 }

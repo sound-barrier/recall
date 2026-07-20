@@ -234,7 +234,7 @@ function pick(mode: ThemeMode) {
   box-shadow:
     0 0 0 1px var(--accent),
     0 6px 24px -12px var(--accent-glow);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .swatch-preview {

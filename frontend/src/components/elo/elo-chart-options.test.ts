@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 
 import { buildEloProjectionOption } from '@/components/elo/elo-chart-options'
 import type { ProjectionCurves } from '@/match/elo-model'
@@ -53,5 +53,42 @@ describe('buildEloProjectionOption', () => {
     expect(html).toContain('After 10 games')
     expect(html).toContain('If your wins hold: Gold')
     expect(fmt([])).toBe('') // nothing to show
+  })
+})
+
+// ─── Series colours follow the palette ──────────────────────────────
+//
+// The dream/reality/skill hues were module constants (`#5ca8ff`,
+// `#f5a623`, `#8bc7a0`), duplicating the values styles/elo.css held as
+// --elo-dream / --elo-reality. Two copies of the same intent in two
+// languages drift, and neither followed the theme — on Day the card
+// border resolved dark while the chart line beside it stayed light.
+// Both sides now resolve the same palette tokens.
+describe('elo-chart-options — series colours resolve from palette tokens', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('style')
+  })
+
+  function seriesNamed(name: string): { color?: unknown } | undefined {
+    const opt = buildEloProjectionOption(CURVES, { targetScore: 20, targetLabel: 'Plat 1' })
+    const series = opt.series as { name?: string; color?: unknown }[] | undefined
+    return series?.find((s) => s.name === name)
+  }
+
+  it('draws the optimistic future in --tank', () => {
+    document.documentElement.style.setProperty('--tank', '#1f5491')
+    expect(seriesNamed('If your wins hold')?.color).toBe('#1f5491')
+  })
+
+  it('draws the pessimistic future in --accent', () => {
+    document.documentElement.style.setProperty('--accent', '#fa9c1b')
+    expect(seriesNamed('As opponents get tougher')?.color).toBe('#fa9c1b')
+  })
+
+  it('rebuilds with the new hue after a palette change', () => {
+    document.documentElement.style.setProperty('--tank', '#1f5491')
+    const day = seriesNamed('If your wins hold')?.color
+    document.documentElement.style.setProperty('--tank', '#6ab8ff')
+    expect(seriesNamed('If your wins hold')?.color).not.toBe(day)
   })
 })

@@ -130,7 +130,7 @@ const headline = computed(() => {
   border: 1px solid var(--accent);
   border-left: 3px solid var(--accent);
   border-radius: 2px;
-  box-shadow: 0 24px 48px -24px rgb(0 0 0 / 50%);
+  box-shadow: 0 24px 48px -24px rgb(var(--shadow-rgb) / 50%);
   z-index: 110;
   isolation: isolate;
 }
@@ -139,7 +139,7 @@ const headline = computed(() => {
   font-family: var(--mono);
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
   line-height: 1;
 }
 
@@ -220,7 +220,7 @@ const headline = computed(() => {
 
 .match-anchor-toast-dismiss:focus-visible {
   outline: none;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 /* ── Slide-in / slide-out ── */

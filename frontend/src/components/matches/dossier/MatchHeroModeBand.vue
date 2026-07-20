@@ -331,7 +331,7 @@ const levelTitle = computed(() => {
   font-size: 0.62rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -347,7 +347,7 @@ const levelTitle = computed(() => {
   appearance: none;
   border: 1px solid var(--accent);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-family: var(--mono);
   font-size: 0.6rem;
   letter-spacing: 0.12em;
@@ -386,9 +386,9 @@ const levelTitle = computed(() => {
   color: var(--text-faint);
   cursor: pointer;
 }
-.hm-crumb:hover { color: var(--accent); }
+.hm-crumb:hover { color: var(--accent-text); }
 .hm-crumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.hm-crumb-current { color: var(--accent); font-weight: 700; }
+.hm-crumb-current { color: var(--accent-text); font-weight: 700; }
 .hm-crumb-sep { color: var(--text-faint); }
 
 .hm-title {

@@ -86,7 +86,7 @@ const ow = useOWData()
 
 .rare-pip {
   display: inline-block;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.7rem;
   transform: translateY(-0.05em);
   text-shadow: 0 0 8px var(--accent-glow);

@@ -102,7 +102,7 @@ function onSelect(value: string) {
   border-radius: 2px;
   font-family: var(--mono);
   font-size: 0.62rem;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
   text-transform: lowercase;
 }
@@ -122,7 +122,7 @@ function onSelect(value: string) {
   appearance: none;
   background: transparent;
   border: 0;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 0 0.3rem;
   cursor: pointer;
   font-size: 0.9rem;

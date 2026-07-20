@@ -1,6 +1,6 @@
 /* Cross-cutting global styles, split into topical files for navigability.
    The @import ORDER is the cascade order — keep it. Component-specific styles
-   belong in each SFC's <style scoped>; this file holds only what's genuinely
+   belong in each SFC's \3c style scoped>; this file holds only what's genuinely
    global (tokens, themes, shared families). See frontend/CLAUDE.md "Styles". */
 @import url('./tokens.css');
 @import url('./themes.css');

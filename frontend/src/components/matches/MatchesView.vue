@@ -652,7 +652,7 @@ const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.include
   font-size: 1.15rem;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
+  box-shadow: 0 6px 20px rgb(var(--shadow-rgb) / 35%);
   transition: background var(--duration-fast) ease,
               border-color var(--duration-fast) ease,
               color var(--duration-fast) ease,
@@ -663,7 +663,7 @@ const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.include
 .scroll-to-top:focus-visible {
   background: var(--surface);
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   outline: none;
   transform: translateY(-1px);
 }

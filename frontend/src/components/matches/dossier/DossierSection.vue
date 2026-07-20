@@ -123,7 +123,7 @@ function onGripKeydown(e: KeyboardEvent) {
   color: var(--text-faint);
   cursor: pointer;
   user-select: none;
-  box-shadow: 0 3px 8px -5px rgb(0 0 0 / 45%);
+  box-shadow: 0 3px 8px -5px rgb(var(--shadow-rgb) / 45%);
   transition: color var(--duration-fast) ease,
               border-color var(--duration-fast) ease,
               background var(--duration-fast) ease;
@@ -138,7 +138,7 @@ function onGripKeydown(e: KeyboardEvent) {
 .dossier-section-remove { font-size: 0.78rem; }
 
 .dossier-section-grip:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   background: var(--accent-soft);
 }

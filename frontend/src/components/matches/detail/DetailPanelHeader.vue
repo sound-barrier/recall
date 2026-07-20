@@ -168,7 +168,7 @@ const emit = defineEmits<{
 
 .detail-icon-btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-text);
   transform: translateY(-1px);
 }
 
@@ -237,7 +237,7 @@ const emit = defineEmits<{
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   background: transparent;
   border: 1px solid var(--accent-soft);
   border-radius: 2px;
