@@ -368,11 +368,11 @@ watch(
 .advanced-chev {
   margin-left: auto;
   font-family: var(--display);
-  font-size: 1.6rem;
+  font-size: var(--type-7xl);
   font-weight: 700;
   color: var(--text-faint);
   line-height: 1;
-  transition: transform 200ms ease, color 200ms ease;
+  transition: transform var(--duration-med) ease, color var(--duration-med) ease;
 }
 
 .advanced-section[open] .advanced-chev {
@@ -405,9 +405,9 @@ watch(
 .clear-keep-ignored {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-top: 0.55rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   cursor: pointer;
   line-height: 1.4;

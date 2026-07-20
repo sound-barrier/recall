@@ -73,9 +73,9 @@ onBeforeUnmount(clearTimer)
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   box-shadow: 0 12px 32px color-mix(in srgb, var(--bg) 55%, transparent);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text);
 }
 
@@ -90,9 +90,9 @@ onBeforeUnmount(clearTimer)
   color: var(--text-dim);
   width: 1.5rem;
   height: 1.5rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .sst-dismiss:hover,

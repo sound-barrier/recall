@@ -104,7 +104,7 @@ const emit = defineEmits<{
   align-items: center;
   margin-left: auto;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
 }
 
@@ -114,13 +114,13 @@ const emit = defineEmits<{
   border: 0;
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   font-weight: 600;
   padding: 0.22rem 0.55rem;
   cursor: pointer;
   border-right: 1px solid var(--border);
-  transition: color 140ms ease, background 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
 .bh-window-btn:last-child { border-right: 0; }
@@ -141,17 +141,17 @@ const emit = defineEmits<{
   appearance: none;
   margin-left: 0.4rem;
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--accent-text);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
   padding: 0.22rem 0.5rem;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 
 .bh-reset:hover { background: var(--accent); color: var(--primary-text-on-accent, var(--bg)); }
@@ -169,12 +169,12 @@ const emit = defineEmits<{
   height: 1.4rem;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text-faint);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
 .bh-gear:hover { color: var(--accent-text); border-color: var(--accent); background: var(--accent-soft); }
@@ -205,7 +205,7 @@ const emit = defineEmits<{
   margin: 0 0 0 0.6rem;
   padding: 0;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -221,7 +221,7 @@ const emit = defineEmits<{
   display: inline-block;
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
 }
 

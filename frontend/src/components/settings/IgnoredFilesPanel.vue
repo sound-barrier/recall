@@ -300,7 +300,7 @@ function onBackdropClick(e: MouseEvent) {
   background: rgb(0 0 0 / 70%);
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+  padding: var(--space-5);
 }
 
 .ignored-panel {
@@ -310,7 +310,7 @@ function onBackdropClick(e: MouseEvent) {
   flex-direction: column;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 16px 60px rgb(var(--shadow-rgb) / 45%);
 }
@@ -324,28 +324,28 @@ function onBackdropClick(e: MouseEvent) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border-soft, var(--border));
 }
 
 .ignored-title {
   font-family: var(--display-font, inherit);
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   margin: 0;
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .ignored-count {
   display: inline-block;
   padding: 0 0.4rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   line-height: 1.4;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-dim);
   font-family: var(--mono);
 }
@@ -358,12 +358,12 @@ function onBackdropClick(e: MouseEvent) {
   border: 1px solid var(--border);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
@@ -385,14 +385,14 @@ function onBackdropClick(e: MouseEvent) {
 .ignored-toolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0.7rem 1rem;
   border-bottom: 1px solid var(--border-soft, var(--border));
   background: var(--surface);
 }
 
 .ignored-armed-hint {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
 }
 
@@ -416,7 +416,7 @@ function onBackdropClick(e: MouseEvent) {
   height: 203px;
   object-fit: cover;
   border: 1px solid var(--border-strong, var(--border));
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 50%);
   pointer-events: none;
 }
@@ -427,7 +427,7 @@ function onBackdropClick(e: MouseEvent) {
   gap: 0.4rem;
   padding: 0.65rem 1rem;
   border-top: 1px solid var(--border-soft, var(--border));
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   background: var(--surface);
 }

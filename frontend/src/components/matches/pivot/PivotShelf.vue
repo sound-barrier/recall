@@ -56,7 +56,7 @@ function onDrop(e: DragEvent) {
   min-height: 3.5rem;
   padding: 0.5rem 0.55rem 0.6rem;
   border: 1px dashed color-mix(in srgb, var(--border-strong) 70%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
   transition: border-color 120ms ease, background 120ms ease;
 }
@@ -85,7 +85,7 @@ function onDrop(e: DragEvent) {
   margin: 0;
   padding: 0.1rem 0;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-style: italic;
   color: var(--text-dim);
 }

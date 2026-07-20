@@ -112,14 +112,14 @@ function onDismiss() {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 24px 48px -24px rgb(var(--shadow-rgb) / 50%);
   z-index: 110;
   isolation: isolate;
 }
 
 .match-undo-toast-glyph {
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   color: var(--text-faint);
   line-height: 1;
 }
@@ -133,7 +133,7 @@ function onDismiss() {
 .match-undo-toast-name {
   font-family: var(--display);
   font-style: italic;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text);
@@ -149,13 +149,13 @@ function onDismiss() {
   color: var(--surface);
   font-family: var(--mono);
   font-weight: 700;
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   padding: 0.4rem 0.85rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease;
+  transition: background var(--duration-fast) ease;
 }
 
 .match-undo-toast-action:hover {
@@ -173,11 +173,11 @@ function onDismiss() {
   border: 0;
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   cursor: pointer;
   padding: 0.15rem 0.3rem;
   line-height: 1;
-  transition: color 140ms ease;
+  transition: color var(--duration-fast) ease;
 }
 
 .match-undo-toast-dismiss:hover { color: var(--text); }
@@ -189,7 +189,7 @@ function onDismiss() {
 
 .match-undo-toast-enter-active,
 .match-undo-toast-leave-active {
-  transition: opacity 200ms ease,
+  transition: opacity var(--duration-med) ease,
               transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 

@@ -59,7 +59,7 @@ defineProps<{
 <style scoped>
 .update-check-modal-counts {
   font-family: var(--display);
-  font-size: 1.85rem;
+  font-size: var(--type-display-sm);
   font-weight: 400;
   letter-spacing: 0.06em;
   margin: 0.2rem 0 0.65rem;
@@ -67,7 +67,7 @@ defineProps<{
   align-items: baseline;
   gap: 0.55rem;
   line-height: 1.05;
-  transition: opacity 280ms ease;
+  transition: opacity var(--duration-slow) ease;
 }
 
 .update-check-modal-counts-added {
@@ -93,7 +93,7 @@ defineProps<{
   display: grid;
   grid-template-columns: max-content max-content 1fr;
   gap: 0.18rem 0.7rem;
-  transition: opacity 280ms ease;
+  transition: opacity var(--duration-slow) ease;
 }
 
 .update-check-modal-manifest-applied {
@@ -106,7 +106,7 @@ defineProps<{
 
 .update-check-modal-manifest-kind {
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -114,7 +114,7 @@ defineProps<{
   align-self: center;
   padding: 0.1rem 0.4rem;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: color-mix(in srgb, var(--accent) 4%, transparent);
   text-align: center;
   min-width: 3.6em;
@@ -122,7 +122,7 @@ defineProps<{
 
 .update-check-modal-manifest-sign {
   font-family: var(--mono);
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   font-weight: 700;
   align-self: center;
   text-align: center;
@@ -139,7 +139,7 @@ defineProps<{
 
 .update-check-modal-manifest-name {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text);
   align-self: center;
 }

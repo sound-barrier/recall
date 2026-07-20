@@ -227,13 +227,13 @@ async function copyPath(path: string, which: 'db' | 'settings') {
   padding: 0.65rem 0.7rem;
   background: var(--surface);
   border-left: 2px solid var(--accent);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   line-height: 1.45;
 }
 
 .data-loc-key {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);

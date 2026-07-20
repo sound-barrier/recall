@@ -262,10 +262,10 @@ defineExpose({
   appearance: none;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.36rem 2.4rem 0.36rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   color: var(--text);
   outline: 0;
 }
@@ -283,7 +283,7 @@ defineExpose({
   color: var(--text-faint);
   padding: 0.2rem 0.5rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
   transition: color 120ms ease, transform 160ms ease;
 }
@@ -301,7 +301,7 @@ defineExpose({
   padding: 0.2rem 0;
   border: 1px solid var(--accent);
   background: var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
   max-height: 14rem;
   overflow-y: auto;
   box-shadow: 0 12px 24px -16px rgb(var(--shadow-rgb) / 50%);
@@ -314,7 +314,7 @@ defineExpose({
   gap: 0.2rem;
   padding: 0.32rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   color: var(--text);
   cursor: pointer;
 }

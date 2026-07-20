@@ -138,13 +138,13 @@ const emit = defineEmits<{
   gap: 0.7rem;
   align-items: baseline;
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   line-height: 1.4;
 }
 
 .coverage-line-tag {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 700;
@@ -190,7 +190,7 @@ const emit = defineEmits<{
   cursor: pointer;
   user-select: none;
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.18em;
@@ -203,8 +203,8 @@ const emit = defineEmits<{
   background: var(--surface-3);
   color: var(--text-dim);
   padding: 0.05rem 0.4rem;
-  border-radius: 2px;
-  font-size: 0.6rem;
+  border-radius: var(--radius);
+  font-size: var(--type-2xs);
   letter-spacing: 0;
   margin-left: 0.2rem;
 }
@@ -238,9 +238,9 @@ const emit = defineEmits<{
   padding: 0.65rem 0.75rem;
   background: rgb(0 0 0 / 30%);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
 }
 
 /* .source-file / .source-name-text / .source-parsed-chip live in
@@ -250,7 +250,7 @@ const emit = defineEmits<{
 .source-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -259,9 +259,9 @@ const emit = defineEmits<{
   align-items: center;
   gap: 0.28rem;
   padding: 0.18rem 0.5rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -269,7 +269,7 @@ const emit = defineEmits<{
   flex-shrink: 0;
   cursor: default;
   user-select: none;
-  transition: filter 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+  transition: filter var(--duration-fast) ease, transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .source-type-chip.clickable { cursor: pointer; }

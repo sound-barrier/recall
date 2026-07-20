@@ -54,9 +54,9 @@ const emit = defineEmits<{
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--loss);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   box-shadow: 0 12px 32px color-mix(in srgb, var(--bg) 55%, transparent);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text);
 }
 
@@ -68,17 +68,17 @@ const emit = defineEmits<{
   appearance: none;
   flex-shrink: 0;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   padding: 0.3rem 0.6rem;
   background: transparent;
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text);
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .tilt-nudge-dismiss:hover,

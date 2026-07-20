@@ -66,7 +66,7 @@ const styleObj = computed(() => ({
   pointer-events: none;
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 2px;
   box-shadow: 0 18px 36px -18px rgb(var(--shadow-rgb) / 55%);
 
@@ -81,7 +81,7 @@ const styleObj = computed(() => ({
   height: auto;
   max-height: 180px;
   object-fit: cover;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
 }
 
 /* Provenance badge caption. Sits under the thumbnail when there is one,

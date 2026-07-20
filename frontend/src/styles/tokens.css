@@ -121,20 +121,37 @@
      RECALL masthead title. Russo One is the free visual fallback. */
   --brand: 'OW Wordmark', 'Russo One', 'Industry Black', 'Impact', sans-serif;
 
-  /* ─── System tokens — spacing / type / motion ──────────────────
+  /* ─── System tokens — spacing / type / radius / motion ─────────
      Theme-independent scale tokens that sit alongside the palette
-     tokens above. New components reach for these instead of
-     inlining raw rem / ms values; existing ad-hoc usage is
-     intentionally NOT swept in this PR — the token values match
-     the historical defaults so introducing them is a no-op at
-     paint time.
+     tokens above. Reach for these instead of inlining raw values.
 
+     These previously existed but had ZERO adoption — every --space-*
+     and --type-* was unused while the app inlined 53 distinct rem
+     font sizes and 20+ transition durations. The type ladder is
+     rebuilt below around what the app actually renders; the old one
+     started at 0.75rem, above the 0.55–0.72rem band where most of
+     this UI's labels live, so there was nothing to adopt.
+
+     - Type scale: fourteen stops from 0.5rem, ~1.08–1.10 per step.
+       Each stop sits on a value already in heavy use (0.6 = the
+       eyebrow/chip band, 0.78 = secondary copy, 0.85 = body copy),
+       so snapping the long tail onto it moves NOTHING by more than
+       4.8% — and the root size is fluid (16–19px via the clamp in
+       responsive.css), so that worst case is under half a pixel.
+       The stop count is deliberately generous: a coarser ladder
+       looked tidier but shifted heading sizes by 10%+, which is a
+       redesign, not a consolidation.
+       Sizes above 1.7rem are NOT on this ladder and stay raw — a
+       2.55rem masthead wordmark and a 5rem empty-state glyph are
+       per-surface editorial choices, not points on a text scale.
+       Three display stops are tuned to the OW Wordmark + Big Noodle
+       pair and are deliberately NOT on the body ratio.
      - Spacing scale: 4px → 48px in seven stops, roughly 1.5× per
-       step from --space-3 up.
-     - Type scale: 0.75rem → 1.5rem in five body stops on a
-       ~1.2 (minor-third) ratio; three display stops tuned to the
-       OW Wordmark + Big Noodle pair, NOT on the body ratio.
-       --type-md is the body baseline; consumers inherit.
+       step from --space-3 up. Adopted only where a value ALREADY
+       equals a stop exactly; off-scale values are optical
+       one-offs (0.28rem, 0.45rem) and keep their tuned value
+       rather than being rounded into a visible layout shift.
+     - Radius: four stops covering every corner in the app.
      - Motion: four canonical durations + two easings. Most
        transitions should reach for --duration-med + --easing-out;
        reserve --duration-hero for the rare page-level reveal. */
@@ -145,11 +162,30 @@
   --space-5: 1.5rem;
   --space-6: 2rem;
   --space-7: 3rem;
-  --type-xs: 0.75rem;
-  --type-sm: 0.875rem;
-  --type-md: 1rem;
-  --type-lg: 1.25rem;
-  --type-xl: 1.5rem;
+  --type-4xs: 0.5rem;
+  --type-3xs: 0.55rem;
+  --type-2xs: 0.6rem;
+  --type-xs: 0.66rem;
+  --type-sm: 0.72rem;
+  --type-md: 0.78rem;
+  --type-lg: 0.85rem;
+  --type-xl: 0.92rem;
+  --type-2xl: 1rem;
+  --type-3xl: 1.1rem;
+  --type-4xl: 1.2rem;
+  --type-5xl: 1.35rem;
+  --type-6xl: 1.5rem;
+  --type-7xl: 1.65rem;
+
+  /* Corners. 2px is the house default (200+ uses) — chips, buttons,
+     inputs, most cards; 3px the slightly softer card/panel; 4px the
+     modal box; 1px the hairline tag. --radius-pill for anything whose
+     radius should exceed its own height. */
+  --radius-hair: 1px;
+  --radius: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-pill: 999px;
   --type-display-sm: 1.85rem;
   --type-display-md: 2.5rem;
   --type-display-lg: 3.5rem;

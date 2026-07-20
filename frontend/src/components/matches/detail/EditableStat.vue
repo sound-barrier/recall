@@ -160,13 +160,13 @@ function cancel() {
   width: 100%;
   max-width: 6ch;
   font-family: var(--mono);
-  font-size: 1.3rem;
+  font-size: var(--type-5xl);
   font-weight: 700;
   text-align: center;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.05rem 0.1rem;
 }
 
@@ -179,7 +179,7 @@ function cancel() {
 .stat-error {
   display: block;
   margin-top: 0.15rem;
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   line-height: 1.1;
   color: var(--loss);
   max-width: 14ch;
@@ -193,7 +193,7 @@ function cancel() {
   border: 0;
   padding: 0 0 0 0.25rem;
   margin: 0;
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
   color: var(--accent-text);
   cursor: pointer;

@@ -315,7 +315,7 @@ const levelTitle = computed(() => {
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 42%),
     var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .hm-head {
@@ -340,14 +340,14 @@ const levelTitle = computed(() => {
   background: var(--accent-soft);
   color: var(--accent-text);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 700;
   padding: 0.2rem 0.55rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 .hm-back:hover { background: color-mix(in srgb, var(--accent-soft) 55%, var(--accent)); color: var(--text); }
 .hm-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -360,7 +360,7 @@ const levelTitle = computed(() => {
   margin: 0;
   padding: 0;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -384,7 +384,7 @@ const levelTitle = computed(() => {
 
 .hm-title {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 1.15rem;
+  font-size: var(--type-3xl);
   font-weight: 400;
   letter-spacing: 0.03em;
   margin: 0;
@@ -405,7 +405,7 @@ const levelTitle = computed(() => {
 }
 
 .hm-body::-webkit-scrollbar { width: 8px; }
-.hm-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.hm-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-lg); }
 .hm-body::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .hm-body::-webkit-scrollbar-track { background: transparent; }
 
@@ -420,7 +420,7 @@ const levelTitle = computed(() => {
 .hm-map-tile {
   appearance: none;
   border: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.4rem 0.5rem;
   cursor: pointer;
   display: flex;
@@ -450,21 +450,21 @@ const levelTitle = computed(() => {
 
 .hm-map-name {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 0.92rem;
+  font-size: var(--type-xl);
   letter-spacing: 0.02em;
   line-height: 1.05;
 }
 
 .hm-map-rate {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-weight: 700;
   line-height: 1;
 }
 
 .hm-map-vol {
   font-family: var(--mono);
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   opacity: 0.85;
   line-height: 1;
 }
@@ -473,7 +473,7 @@ const levelTitle = computed(() => {
 .hm-drill-empty {
   margin: 0.6rem 0 0.1rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }

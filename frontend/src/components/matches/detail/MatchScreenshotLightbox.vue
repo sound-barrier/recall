@@ -195,7 +195,7 @@ function onNextClick() {
   background: rgb(0 0 0 / 92%);
   display: grid;
   place-items: center;
-  padding: 1.5rem;
+  padding: var(--space-5);
   cursor: zoom-out;
 }
 
@@ -209,12 +209,12 @@ function onNextClick() {
   border: 1px solid var(--border);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 1.4rem;
+  font-size: var(--type-5xl);
   line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
@@ -239,10 +239,10 @@ function onNextClick() {
   padding: 0.25rem 0.55rem;
   background: rgb(0 0 0 / 65%);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-feature-settings: "tnum";
   letter-spacing: 0.08em;
   user-select: none;
@@ -264,12 +264,12 @@ function onNextClick() {
   border: 1px solid var(--border);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 1.6rem;
+  font-size: var(--type-7xl);
   line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
 }
 

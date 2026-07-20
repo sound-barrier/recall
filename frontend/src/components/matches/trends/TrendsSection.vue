@@ -310,13 +310,13 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 .trends-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .trends-toggle {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
   flex: 1;
   padding: 0.35rem 0.25rem;
   background: none;
@@ -327,13 +327,13 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 }
 
 .trends-title {
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   font-weight: 600;
 }
 
 .trends-hint {
   color: var(--text-dim);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
 }
 
 .trends-reset {
@@ -341,9 +341,9 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
   background: var(--surface-2);
   color: var(--text-dim);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   padding: 0.2rem 0.55rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   cursor: pointer;
 }
 
@@ -366,7 +366,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 
 .trends-window-label {
   color: var(--text-dim);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
 }
 
 .trends-body {
@@ -376,7 +376,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 .trends-empty,
 .trend-card-empty {
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   margin: 0;
 }
 
@@ -387,7 +387,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 .trends-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 @media (width <= 720px) {
@@ -399,10 +399,10 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 .trend-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
   min-width: 0;
-  transition: box-shadow 140ms ease, opacity 140ms ease;
+  transition: box-shadow var(--duration-fast) ease, opacity var(--duration-fast) ease;
 }
 
 /* The card being dragged dims; the card it will land in front of gets an
@@ -419,7 +419,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-bottom: 0.25rem;
 }
 
@@ -434,7 +434,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   line-height: 1;
   padding: 0 0.15rem;
   cursor: grab;
@@ -450,7 +450,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 
 .trend-card-title {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--type-xl);
   font-weight: 600;
   color: var(--text);
 }
@@ -465,16 +465,16 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   padding: 0.15rem 0.4rem;
-  font-size: 0.8rem;
+  font-size: var(--type-md);
 }
 
 .trend-card-close {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   line-height: 1;
   padding: 0 0.2rem;
   cursor: pointer;
@@ -499,16 +499,16 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 
 .trends-add-label {
   color: var(--text-dim);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
 }
 
 .trends-add-chip {
   background: var(--surface-2);
   color: var(--text-dim);
   border: 1px dashed var(--border-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.18rem 0.6rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   cursor: pointer;
 }
 

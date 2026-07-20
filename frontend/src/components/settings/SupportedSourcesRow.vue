@@ -87,7 +87,7 @@ const { data: owData } = useOWData()
   display: inline-block;
   margin-right: 0.4rem;
   color: var(--text-faint);
-  transition: transform 140ms ease;
+  transition: transform var(--duration-fast) ease;
 }
 
 details[open] > .capture-source-summary::before {
@@ -97,7 +97,7 @@ details[open] > .capture-source-summary::before {
 
 .capture-source-summary-hint {
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.06em;
   color: var(--text-faint);
 }
@@ -111,7 +111,7 @@ details[open] > .capture-source-summary::before {
   margin-top: 0.5rem;
   border-collapse: collapse;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
 }
 
 .capture-source-table th {
@@ -133,7 +133,7 @@ details[open] > .capture-source-summary::before {
 
 .capture-source-table code {
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   word-break: break-all;
 }
 
@@ -144,7 +144,7 @@ details[open] > .capture-source-summary::before {
 .reparse-progress-line {
   margin: 0.55rem 0 0;
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.06em;
   color: var(--accent-text);
   text-align: right;

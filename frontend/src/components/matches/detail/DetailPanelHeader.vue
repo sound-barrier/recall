@@ -157,13 +157,13 @@ const emit = defineEmits<{
   height: 28px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   line-height: 1;
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease, transform 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease, background var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .detail-icon-btn:hover:not(:disabled) {
@@ -193,7 +193,7 @@ const emit = defineEmits<{
   gap: 0.55rem;
   font-family: var(--display);
   font-style: italic;
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text);
@@ -211,13 +211,13 @@ const emit = defineEmits<{
 .detail-title-sep {
   color: var(--text-faint);
   font-style: normal;
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
 }
 
 .detail-title-result {
   font-family: var(--mono);
   font-style: normal;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.14em;
   font-weight: 700;
   color: var(--text-dim);
@@ -233,14 +233,14 @@ const emit = defineEmits<{
 .detail-reset-btn {
   appearance: none;
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent-text);
   background: transparent;
   border: 1px solid var(--accent-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.16rem 0.4rem;
   cursor: pointer;
 }
@@ -273,7 +273,7 @@ const emit = defineEmits<{
 
 .detail-prov-sub {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.04em;
   color: var(--text-dim);
 }
@@ -294,7 +294,7 @@ const emit = defineEmits<{
   gap: 0.3rem;
   padding: 0 0.35rem;
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.08em;
   color: var(--text-faint);
   font-feature-settings: "tnum";
@@ -303,9 +303,9 @@ const emit = defineEmits<{
 
 .detail-pos strong {
   color: var(--text);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-weight: 700;
 }
 
-.detail-pos-of { font-size: 0.6rem; }
+.detail-pos-of { font-size: var(--type-2xs); }
 </style>

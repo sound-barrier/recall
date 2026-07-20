@@ -346,7 +346,7 @@ onMounted(() => {
   margin: 0 0 0.85rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   overflow: hidden;
   transition: border-color 220ms ease, box-shadow 220ms ease;
 }
@@ -368,7 +368,7 @@ onMounted(() => {
   border: 1px solid var(--accent);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 200ms ease;
+  transition: opacity var(--duration-med) ease;
 }
 
 .match-journal::before {
@@ -393,7 +393,7 @@ onMounted(() => {
   background: repeating-linear-gradient(135deg, var(--surface-3) 0 14px, var(--surface-2) 14px 28px);
   border-bottom: 1px solid var(--border);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.24em;
   text-transform: uppercase;
 }
@@ -414,17 +414,17 @@ onMounted(() => {
 .journal-apply-btn {
   appearance: none;
   font-family: var(--mono);
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   padding: 0.18rem 0.5rem;
   background: transparent;
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text);
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .journal-apply-btn:hover,
@@ -442,7 +442,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.2em;
   color: var(--text-faint);
 }
@@ -489,7 +489,7 @@ onMounted(() => {
   padding: 0.5rem 0.6rem 0.55rem;
   background: var(--surface);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
@@ -549,7 +549,7 @@ onMounted(() => {
 .journal-cell:focus-within .journal-eyebrow { color: var(--accent-text); }
 
 .journal-eyebrow-count {
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   color: var(--accent-text);
   font-feature-settings: "tnum";
@@ -569,7 +569,7 @@ onMounted(() => {
   border: 0;
   color: var(--text);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1.45;
 }
 
@@ -606,7 +606,7 @@ onMounted(() => {
   top: 0.05rem;
   right: 0.1rem;
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
   color: var(--accent-text);
   opacity: 0.9;
   pointer-events: none;
@@ -627,7 +627,7 @@ onMounted(() => {
 
 @media (prefers-reduced-motion: no-preference) {
   .match-notes-preview :deep(mark.note-hit) {
-    animation: note-hit-acquire 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: note-hit-acquire 220ms var(--easing-out) both;
   }
 }
 
@@ -654,13 +654,13 @@ onMounted(() => {
 .member-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   padding: 0.18rem 0.2rem 0.18rem 0.5rem;
   background: var(--accent-soft);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.02em;
   color: var(--accent-text);
 }
@@ -676,10 +676,10 @@ onMounted(() => {
   padding: 0 0.2rem;
   color: currentcolor;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   line-height: 1;
-  border-radius: 1px;
-  transition: background 140ms ease;
+  border-radius: var(--radius-hair);
+  transition: background var(--duration-fast) ease;
 }
 
 .member-chip-remove:hover {
@@ -692,7 +692,7 @@ onMounted(() => {
   padding: 0.15rem 0;
   background: transparent;
   border: 0;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   outline: none;
 }
 

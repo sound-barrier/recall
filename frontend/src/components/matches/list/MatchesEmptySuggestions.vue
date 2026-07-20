@@ -70,9 +70,9 @@ defineProps<{
   padding: 0.55rem 0.85rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.04em;
   color: var(--text);
   cursor: pointer;

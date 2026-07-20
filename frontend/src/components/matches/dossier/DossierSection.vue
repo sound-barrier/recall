@@ -119,7 +119,7 @@ function onGripKeydown(e: KeyboardEvent) {
   line-height: 1;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-faint);
   cursor: pointer;
   user-select: none;
@@ -131,11 +131,11 @@ function onGripKeydown(e: KeyboardEvent) {
 
 .dossier-section-grip {
   cursor: grab;
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
 }
 .dossier-section-grip:active { cursor: grabbing; }
 
-.dossier-section-remove { font-size: 0.78rem; }
+.dossier-section-remove { font-size: var(--type-md); }
 
 .dossier-section-grip:hover {
   color: var(--accent-text);
@@ -169,7 +169,7 @@ function onGripKeydown(e: KeyboardEvent) {
   inset: -4px -2px auto;
   height: 3px;
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   z-index: 4;
 }
 

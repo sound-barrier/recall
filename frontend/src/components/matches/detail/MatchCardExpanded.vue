@@ -329,7 +329,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
   padding: 0.65rem 0.9rem 0.65rem 1.05rem;
   background: var(--accent-soft);
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-strong));
-  border-radius: 2px;
+  border-radius: var(--radius);
   border-left: 4px solid var(--accent);
   overflow: hidden;
 }
@@ -358,7 +358,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
   margin: 0 0 0.25rem;
   font-family: var(--display);
   font-style: italic;
-  font-size: 1.0rem;
+  font-size: var(--type-2xl);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text);
@@ -367,24 +367,24 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
 
 .unknown-alert-body {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   line-height: 1.4;
   color: var(--text);
 }
 
 .unknown-alert-ocr code {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   background: rgb(0 0 0 / 18%);
   padding: 0.05rem 0.3rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .unknown-alert-link {
   display: inline-block;
   margin-top: 0.45rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--accent-bright, var(--accent));
@@ -457,13 +457,13 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
 }
 
 .meta-cell-score .meta-value {
-  font-size: 1.45rem;
+  font-size: var(--type-6xl);
   color: var(--accent-bright, var(--accent));
   letter-spacing: 0.05em;
 }
 
 .meta-cell-parsed .meta-value {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   text-transform: none;
   letter-spacing: 0.02em;
   color: var(--text-dim);
@@ -478,7 +478,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
 
 .meta-value {
   font-family: var(--display);
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0.02em;

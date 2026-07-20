@@ -284,7 +284,7 @@ function toggleNarrow() {
     ),
     var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 1rem 1.2rem 0.9rem;
   display: flex;
   flex-direction: column;
@@ -314,7 +314,7 @@ function toggleNarrow() {
 .dashboard-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: start;
 
   /* Defensive: keep any descendant `position: absolute` (e.g. a
@@ -338,7 +338,7 @@ function toggleNarrow() {
   grid-column: span 2;
 }
 
-.dossier-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
+.dossier-actions { display: flex; align-items: center; gap: var(--space-2); margin-top: 0.2rem; }
 
 /* Anchors the Add dropdown below the Add button. */
 .dossier-manage-anchor { position: relative; }
@@ -397,10 +397,10 @@ function toggleNarrow() {
   appearance: none;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.45rem 0.9rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-dim);

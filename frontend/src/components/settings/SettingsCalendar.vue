@@ -107,9 +107,9 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
   grid-template-columns: repeat(7, 38px);
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 2px;
-  transition: border-color 140ms ease;
+  transition: border-color var(--duration-fast) ease;
 }
 
 .weekstart-grid:hover {
@@ -128,10 +128,10 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
   height: 38px;
   background: transparent;
   border: 0;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   color: var(--text-faint);
   cursor: pointer;
-  transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .weekstart-cell:hover {
@@ -148,7 +148,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
 .weekstart-letter {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
   font-style: italic;
-  font-size: 1.05rem;
+  font-size: var(--type-2xl);
   letter-spacing: 0.05em;
   line-height: 1;
 }
@@ -156,7 +156,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
 .weekstart-caption {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);

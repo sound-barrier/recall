@@ -300,7 +300,7 @@ watch(trapOpen, async (open) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: var(--space-5);
 }
 
 .first-run-modal-backdrop {
@@ -316,7 +316,7 @@ watch(trapOpen, async (open) => {
   width: min(28rem, 100%);
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   padding: 1.6rem 1.6rem 1.3rem;
   box-shadow:
     0 22px 60px color-mix(in srgb, var(--bg) 70%, transparent),
@@ -333,13 +333,13 @@ watch(trapOpen, async (open) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .first-run-steps {
   display: inline-flex;
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -349,7 +349,7 @@ watch(trapOpen, async (open) => {
 .first-run-title {
   margin: 0 0 0.6rem;
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 1.6rem;
+  font-size: var(--type-7xl);
   font-style: italic;
   letter-spacing: 0.02em;
   color: var(--text);
@@ -357,14 +357,14 @@ watch(trapOpen, async (open) => {
 
 .first-run-desc {
   margin: 0 0 1rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-faint);
   line-height: 1.5;
 }
 
 .first-run-desc code {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--text);
 }
 
@@ -372,7 +372,7 @@ watch(trapOpen, async (open) => {
   display: block;
   margin-bottom: 0.3rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -384,9 +384,9 @@ watch(trapOpen, async (open) => {
   padding: 0.55rem 0.7rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   letter-spacing: 0.03em;
   color: var(--text);
 }
@@ -401,7 +401,7 @@ watch(trapOpen, async (open) => {
 .first-run-error {
   margin: 0.4rem 0 0;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
 }
 
 .first-run-hint  { color: var(--text-faint); }
@@ -411,7 +411,7 @@ watch(trapOpen, async (open) => {
 .first-run-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: var(--space-2);
   margin-top: 1.1rem;
 }
 
@@ -425,14 +425,14 @@ watch(trapOpen, async (open) => {
 .first-run-skip {
   appearance: none;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   padding: 0.5rem 0.95rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .first-run-keep,

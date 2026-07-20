@@ -534,7 +534,7 @@ onUnmounted(() => {
 .lp-slide-leave-to     { transform: translateX(-100%); opacity: 0; }
 
 .lp-fade-enter-active,
-.lp-fade-leave-active { transition: opacity 200ms ease, backdrop-filter 200ms ease; }
+.lp-fade-leave-active { transition: opacity var(--duration-med) ease, backdrop-filter var(--duration-med) ease; }
 
 .lp-fade-enter-from,
 .lp-fade-leave-to { opacity: 0; backdrop-filter: none; }
@@ -550,10 +550,10 @@ onUnmounted(() => {
   appearance: none;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.35rem 0.75rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;

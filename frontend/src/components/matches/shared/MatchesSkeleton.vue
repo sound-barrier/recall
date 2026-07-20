@@ -39,7 +39,7 @@ withDefaults(defineProps<{
 .leaves-skeleton {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 1rem 0;
 }
 
@@ -81,18 +81,18 @@ withDefaults(defineProps<{
   padding: 0.55rem 0.85rem;
   border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   background: var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
   min-height: 3rem;
 }
 
-.lsk-checkbox { width: 1rem;   height: 1rem;   border-radius: 2px; }
-.lsk-strip    { width: 4px;    height: 28px;   border-radius: 2px; }
+.lsk-checkbox { width: 1rem;   height: 1rem;   border-radius: var(--radius); }
+.lsk-strip    { width: 4px;    height: 28px;   border-radius: var(--radius); }
 .lsk-when     { width: 64px;   height: 1.5rem; }
 .lsk-map      { width: 80%;    height: 1.4rem; }
 .lsk-hero     { width: 70%;    height: 1.2rem; }
 .lsk-stats    { width: 5.5rem; height: 1.4rem; }
 .lsk-meta     { width: 60%;    height: 1rem;   }
-.lsk-result   { width: 5.5rem; height: 1.4rem; border-radius: 2px; }
+.lsk-result   { width: 5.5rem; height: 1.4rem; border-radius: var(--radius); }
 
 .lsk-shimmer {
   display: block;
@@ -103,7 +103,7 @@ withDefaults(defineProps<{
     var(--surface-2) 100%
   );
   background-size: 200% 100%;
-  border-radius: 2px;
+  border-radius: var(--radius);
   animation: leaf-skeleton-shimmer 1.4s linear infinite;
 }
 

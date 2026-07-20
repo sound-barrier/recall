@@ -214,7 +214,7 @@ function onValueAct(index: number, payload: ChipActPayload) {
 .pivot {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 0.5rem 0;
 }
 
@@ -240,19 +240,19 @@ function onValueAct(index: number, payload: ChipActPayload) {
 .pivot-zones {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .pivot-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .pivot-count {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -260,14 +260,14 @@ function onValueAct(index: number, payload: ChipActPayload) {
 
 .pivot-reset {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0.3rem 0.6rem;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 

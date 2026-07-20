@@ -288,7 +288,7 @@ const configIsDefault = computed(
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 40%),
     var(--surface);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .hp-head {
@@ -302,7 +302,7 @@ const configIsDefault = computed(
 .hp-modes {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -312,7 +312,7 @@ const configIsDefault = computed(
   background: var(--surface-2);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.03em;
   padding: 0.35rem 0.65rem;
   cursor: pointer;
@@ -329,7 +329,7 @@ const configIsDefault = computed(
 
 .hp-showing {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.04em;
   color: var(--text-faint);
 }
@@ -337,11 +337,11 @@ const configIsDefault = computed(
 .hp-reset {
   appearance: none;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--accent-text);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0.25rem 0.55rem;
@@ -355,10 +355,10 @@ const configIsDefault = computed(
   appearance: none;
   margin-left: auto;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-faint);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   line-height: 1;
   padding: 0.25rem 0.4rem;
   cursor: pointer;
@@ -374,7 +374,7 @@ const configIsDefault = computed(
 
 .hp-empty {
   margin: 0.3rem 0 0.4rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   font-style: italic;
   color: var(--text-faint);
 }
@@ -388,7 +388,7 @@ const configIsDefault = computed(
 }
 
 .hp-scroll::-webkit-scrollbar { width: 8px; }
-.hp-scroll::-webkit-scrollbar-thumb { background: var(--border-strong, var(--border)); border-radius: 4px; }
+.hp-scroll::-webkit-scrollbar-thumb { background: var(--border-strong, var(--border)); border-radius: var(--radius-lg); }
 .hp-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .hp-scroll::-webkit-scrollbar-track { background: transparent; }
 
@@ -414,7 +414,7 @@ const configIsDefault = computed(
 
 .hp-role-name {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -423,7 +423,7 @@ const configIsDefault = computed(
 
 .hp-role-rate {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
 }
@@ -434,9 +434,9 @@ const configIsDefault = computed(
   margin: 0 0 0.4rem;
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -460,9 +460,9 @@ const configIsDefault = computed(
   width: 100%;
   background: transparent;
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   padding: 0.2rem 0.3rem;
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   cursor: pointer;
   text-align: left;
 }
@@ -482,11 +482,11 @@ const configIsDefault = computed(
 .hp-tag {
   flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 0.54rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0.05rem 0.3rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
   color: var(--text-dim);
@@ -500,7 +500,7 @@ const configIsDefault = computed(
 .hp-bar {
   flex: 1 1 auto;
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--text-faint) 18%, transparent);
   overflow: hidden;
 }
@@ -518,7 +518,7 @@ const configIsDefault = computed(
 .hp-stat {
   flex: 0 0 auto;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -534,10 +534,10 @@ const configIsDefault = computed(
   appearance: none;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   padding: 0.2rem 0.5rem;
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--type-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
   cursor: pointer;
@@ -556,11 +556,11 @@ const configIsDefault = computed(
   display: inline-block;
   margin-left: 0.25rem;
   padding: 0 0.28rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--loss-soft);
   color: var(--text);
   border: 1px solid var(--loss-line);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
 }
 </style>

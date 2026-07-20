@@ -363,7 +363,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 .mm-legend {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.04em;
   color: var(--text-faint);
 }
@@ -384,11 +384,11 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 .mm-input {
   appearance: none;
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.4rem 0.5rem;
   color-scheme: dark light;
 }
@@ -412,7 +412,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   gap: 0.3rem;
   padding: 0.3rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
 }
 
@@ -422,13 +422,13 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.12rem 0.4rem;
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--type-xs);
   color: var(--accent-text);
   cursor: pointer;
   letter-spacing: 0.02em;
@@ -453,22 +453,22 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   outline: 0;
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   padding: 0.1rem 0.2rem;
 }
 
 .mm-token-input::placeholder { color: var(--text-faint); }
 
-.mm-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.mm-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 
 .mm-chip {
   appearance: none;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.28rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--type-xs);
   color: var(--text-dim);
   cursor: pointer;
   letter-spacing: 0.04em;
@@ -487,11 +487,11 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
 .mm-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.mm-rank-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+.mm-rank-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
 
 .mm-rank-error {
   margin: 0.4rem 0 0;
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--loss);
 }
 
@@ -500,7 +500,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   flex-direction: column;
   gap: 0.22rem;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -511,7 +511,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   align-items: center;
   gap: 0.4rem;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text);
   cursor: pointer;
 }
@@ -521,11 +521,11 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 .mm-error {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
   color: var(--loss);
   border: 1px solid var(--loss);
   background: color-mix(in srgb, var(--loss) 10%, transparent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.5rem 0.6rem;
 }
 </style>

@@ -177,11 +177,11 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   min-width: 220px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   box-shadow: 0 18px 38px -16px rgb(var(--shadow-rgb) / 55%);
   padding: 0.55rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.04em;
   color: var(--text);
 }
@@ -201,14 +201,14 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
 .sgp-hint {
   margin: 0 0 0.3rem;
   padding: 0 0.15rem;
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.06em;
   color: var(--text-faint);
   font-style: italic;
 }
 
 .sgp-legend {
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -221,9 +221,9 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   align-items: center;
   gap: 0.45rem;
   padding: 0.32rem 0.45rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 
 .sgp-row input[type="radio"] {
@@ -251,7 +251,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
 }
 
 .sgp-glyph {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-faint);
 }
 

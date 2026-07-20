@@ -150,7 +150,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
   padding: 1.6rem 1.8rem 1.5rem;
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent),
     0 8px 36px -16px var(--accent-glow);
@@ -200,7 +200,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 .empty-hero-title {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 1.65rem;
+  font-size: var(--type-7xl);
   letter-spacing: -0.005em;
   line-height: 1.05;
   color: var(--text);
@@ -209,7 +209,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 }
 
 .empty-hero-desc {
-  font-size: 0.86rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   line-height: 1.55;
   max-width: 62ch;
@@ -218,10 +218,10 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 
 .empty-hero-desc code {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   background: var(--surface-3);
   padding: 0.05rem 0.35rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--accent-text);
 }
 
@@ -253,7 +253,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 .settings-sub {
   margin-top: 0.85rem;
   color: var(--text-dim);
-  font-size: 0.875rem;
+  font-size: var(--type-lg);
   line-height: 1.55;
   max-width: 60ch;
 }
@@ -297,8 +297,8 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
   padding-left: calc(1.4rem - 3px);
   background: var(--loss-soft);
   border-left: 3px solid var(--loss-line);
-  border-radius: 2px;
-  transition: background 200ms ease, border-color 200ms ease;
+  border-radius: var(--radius);
+  transition: background var(--duration-med) ease, border-color var(--duration-med) ease;
 }
 
 /* Light-mode override for .setting-row.danger-row lives in app.css. */
@@ -307,7 +307,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 /* Status meta strip shared between blocked + success states.
@@ -319,7 +319,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
   gap: 0.4rem;
   margin-top: 0.55rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   letter-spacing: 0.04em;
   font-feature-settings: "tnum";
@@ -330,7 +330,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 
 .block-mark {
   margin-right: 0.15rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   filter: saturate(0.85);
 }
 

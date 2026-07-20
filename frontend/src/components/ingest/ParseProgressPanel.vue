@@ -162,17 +162,17 @@ defineEmits<{
   margin-top: 0.85rem;
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   overflow: hidden;
-  animation: view-fade-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: view-fade-in 240ms var(--easing-out) both;
 }
 
 .pp-summary {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 0.65rem 1rem;
   cursor: pointer;
   user-select: none;
@@ -186,9 +186,9 @@ defineEmits<{
 }
 
 .pp-chev {
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   color: var(--text-faint);
-  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), color 120ms ease;
+  transition: transform var(--duration-med) var(--easing-emph), color 120ms ease;
   flex-shrink: 0;
 }
 
@@ -214,7 +214,7 @@ defineEmits<{
 
 .pp-scan-text {
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -224,7 +224,7 @@ defineEmits<{
 .pp-bar-track {
   height: 3px;
   background: var(--surface-3);
-  border-radius: 2px;
+  border-radius: var(--radius);
   overflow: hidden;
   min-width: 0;
 }
@@ -232,14 +232,14 @@ defineEmits<{
 .pp-bar-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 0 8px var(--accent-glow);
-  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 400ms var(--easing-emph);
 }
 
 .pp-fraction {
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -255,10 +255,10 @@ defineEmits<{
 .pp-stream-lost {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0.5rem 1rem;
   border-top: 1px solid var(--border-soft);
-  font-size: 0.74rem;
+  font-size: var(--type-sm);
 }
 
 .pp-stream-status {
@@ -287,12 +287,12 @@ defineEmits<{
 .pp-stream-refresh {
   appearance: none;
   border: 1px solid currentcolor;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: transparent;
   color: inherit;
   padding: 0.3rem 0.85rem;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 700;
@@ -312,7 +312,7 @@ defineEmits<{
 }
 
 .pp-arrow {
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   color: var(--accent-text);
   margin-top: 0.1rem;
   flex-shrink: 0;
@@ -321,7 +321,7 @@ defineEmits<{
 
 .pp-cur-filename {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text);
   letter-spacing: 0.01em;
   flex-shrink: 0;
@@ -333,11 +333,11 @@ defineEmits<{
 
 .pp-type-badge {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   padding: 0.1rem 0.4rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid transparent;
   flex-shrink: 0;
 }
@@ -359,14 +359,14 @@ defineEmits<{
 .pp-field {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.25rem;
-  font-size: 0.7rem;
+  gap: var(--space-1);
+  font-size: var(--type-sm);
   font-family: var(--mono);
 }
 
 .pp-fl {
   color: var(--text-faint);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -389,7 +389,7 @@ defineEmits<{
 .pp-log-entry {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0.22rem 1rem;
   transition: background 120ms ease;
 }
@@ -397,7 +397,7 @@ defineEmits<{
 .pp-log-entry:hover { background: var(--surface-3); }
 
 .pp-log-check {
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--win);
   flex-shrink: 0;
   opacity: 0.7;
@@ -405,7 +405,7 @@ defineEmits<{
 
 .pp-log-filename {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   color: var(--text-dim);
   flex: 1;
   min-width: 0;
@@ -416,7 +416,7 @@ defineEmits<{
 
 .pp-log-type {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.07em;
   color: var(--text-faint);
   flex-shrink: 0;

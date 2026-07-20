@@ -75,11 +75,11 @@ const tip = computed(() => {
   gap: 0.3rem;
   padding: 0.12rem 0.4rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
   color: var(--text-faint);
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;

@@ -398,7 +398,7 @@ const connector = computed(() => {
      `tour-callout-ready` modifier flips on). The transition: left/
      top declaration lives ONLY on `.tour-callout-ready` so that
      the FIRST application of the computed position is an instant
-     snap, not a 280ms glide from (0, 0). On subsequent updates
+     snap, not a var(--duration-slow) glide from (0, 0). On subsequent updates
      (window resize, target rect change), the class is already
      present and the transitions animate normally. */
   opacity: 0;
@@ -407,7 +407,7 @@ const connector = computed(() => {
 .tour-callout-ready {
   opacity: 1;
   animation: tour-callout-in 320ms cubic-bezier(0.18, 1, 0.32, 1) both;
-  transition: opacity 200ms ease 60ms, left 280ms ease, top 280ms ease;
+  transition: opacity var(--duration-med) ease 60ms, left var(--duration-slow) ease, top var(--duration-slow) ease;
 }
 
 @keyframes tour-callout-in {
@@ -419,7 +419,7 @@ const connector = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
 
   /* The header doubles as the drag handle. cursor: grab telegraphs
      it without needing a label; cursor: grabbing flips while the
@@ -434,7 +434,7 @@ const connector = computed(() => {
 
 .tour-callout-drag-handle {
   font-family: var(--mono);
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   letter-spacing: -0.1em;
   color: var(--text-faint, #6a6a6a);
   margin-right: 0.15rem;
@@ -458,7 +458,7 @@ const connector = computed(() => {
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
 }
 
 .tour-pip:hover,
@@ -474,7 +474,7 @@ const connector = computed(() => {
 
 .tour-callout-counter {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.18em;
   color: var(--text-faint, #6a6a6a);
   font-feature-settings: "tnum";
@@ -484,7 +484,7 @@ const connector = computed(() => {
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: end;
-  column-gap: 0.75rem;
+  column-gap: var(--space-3);
   margin-top: 0.05rem;
 }
 
@@ -502,7 +502,7 @@ const connector = computed(() => {
 .tour-callout-heading {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', Impact, sans-serif;
   font-weight: 400;
-  font-size: 1.35rem;
+  font-size: var(--type-5xl);
   line-height: 1.05;
   color: var(--text, #f0f0f0);
   margin: 0;
@@ -514,7 +514,7 @@ const connector = computed(() => {
 .tour-callout-body {
   margin: 0;
   color: var(--text-dim, #c0c0c0);
-  font-size: 0.86rem;
+  font-size: var(--type-lg);
   line-height: 1.55;
 }
 
@@ -537,7 +537,7 @@ const connector = computed(() => {
   border: 0;
   padding: 0.35rem 0.1rem;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint, #6a6a6a);

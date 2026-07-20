@@ -55,7 +55,7 @@ const ow = useOWData()
 .rank-block.rare {
   position: relative;
   padding: 0.85rem 1rem 0.9rem;
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--accent-soft);
   background:
     linear-gradient(135deg, rgb(245 166 35 / 7%) 0%, rgb(245 166 35 / 0%) 60%),
@@ -87,7 +87,7 @@ const ow = useOWData()
 .rare-pip {
   display: inline-block;
   color: var(--accent-text);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   transform: translateY(-0.05em);
   text-shadow: 0 0 8px var(--accent-glow);
 }
@@ -102,12 +102,12 @@ const ow = useOWData()
 
 .rank-tier {
   font-family: var(--display);
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   padding: 0.2rem 0.6rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
@@ -122,26 +122,26 @@ const ow = useOWData()
 
 .rank-progress {
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }
 
 .rank-change {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   color: var(--win);
   font-weight: 600;
   font-feature-settings: "tnum";
 }
 
 .rank-modifier {
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   padding: 0.18rem 0.5rem;
   background: var(--surface-3);
   color: var(--text-dim);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
@@ -155,12 +155,12 @@ const ow = useOWData()
   padding: 0.25rem 0.55rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
-  font-size: 0.78rem;
+  border-radius: var(--radius);
+  font-size: var(--type-md);
 }
-.sr-hero  { color: var(--text-dim); text-transform: capitalize; font-size: 0.75rem; }
+.sr-hero  { color: var(--text-dim); text-transform: capitalize; font-size: var(--type-sm); }
 .sr-value { font-family: var(--mono); color: var(--text); font-weight: 600; font-feature-settings: "tnum"; }
-.sr-delta { font-family: var(--mono); font-size: 0.7rem; font-weight: 600; font-feature-settings: "tnum"; }
+.sr-delta { font-family: var(--mono); font-size: var(--type-sm); font-weight: 600; font-feature-settings: "tnum"; }
 .sr-delta.up   { color: var(--win); }
 .sr-delta.down { color: var(--loss); }
 

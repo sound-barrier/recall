@@ -16,12 +16,12 @@
 .np-section-head {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .np-section-meta {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   color: var(--text-dim);
   margin-left: auto;
   text-transform: lowercase;
@@ -30,17 +30,17 @@
 .np-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .np-chip {
   appearance: none;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.22rem 0.5rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--text-dim);
   cursor: pointer;
   letter-spacing: 0.04em;
@@ -62,7 +62,7 @@
 
 .np-empty {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   color: var(--text-faint);
   font-style: italic;
 }
@@ -83,7 +83,7 @@
   font-family: var(--display);
   font-style: italic;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: var(--type-2xl);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   margin: 0;
@@ -92,7 +92,7 @@
 .np-meta {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }
@@ -102,7 +102,7 @@
   background: transparent;
   border: 0;
   color: var(--text-faint);
-  font-size: 1.2rem;
+  font-size: var(--type-4xl);
   line-height: 1;
   cursor: pointer;
   padding: 0 0.3rem;
@@ -118,12 +118,12 @@
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .np-search-glyph {
   color: var(--text-faint);
-  font-size: 0.95rem;
+  font-size: var(--type-xl);
 }
 
 .np-search-input {
@@ -133,7 +133,7 @@
   outline: 0;
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   width: 100%;
   padding: 0.1rem 0;
 }
@@ -142,10 +142,10 @@
 
 .np-search-kbd {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   padding: 0.05rem 0.4rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-faint);
   background: var(--surface);
 }
@@ -174,7 +174,7 @@
 .np-refine-hint {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   color: var(--text-faint);
   line-height: 1.4;
 }
@@ -187,7 +187,7 @@
 
 .np-thresholds-or {
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -200,7 +200,7 @@
   flex-direction: column;
   gap: 0.2rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -212,7 +212,7 @@
   gap: 0.3rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.2rem 0.45rem;
   width: max-content;
 }
@@ -224,14 +224,14 @@
   outline: 0;
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   width: 3.5rem;
 }
 
 .np-num::-webkit-outer-spin-button,
 .np-num::-webkit-inner-spin-button { appearance: none; margin: 0; }
 
-.np-num-unit { font-family: var(--mono); font-size: 0.6rem; color: var(--text-dim); }
+.np-num-unit { font-family: var(--mono); font-size: var(--type-2xs); color: var(--text-dim); }
 
 .np-toggle-label {
   flex-direction: row;
@@ -239,7 +239,7 @@
   gap: 0.45rem;
   text-transform: none;
   letter-spacing: 0.02em;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text);
 }
 
@@ -248,7 +248,7 @@
 .np-since-anchor {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .np-since-anchor-meta {
@@ -258,7 +258,7 @@
   justify-content: space-between;
   gap: 0.6rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
   flex-wrap: wrap;
 }
@@ -282,14 +282,14 @@
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   padding: 0.25rem 0.55rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .np-since-anchor-open:hover,
@@ -320,7 +320,7 @@
 
 .np-foot-status {
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }

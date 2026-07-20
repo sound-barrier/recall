@@ -262,7 +262,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   padding: 0.45rem 0 0.15rem;
 }
 .section-divider:first-child { padding-top: 0.1rem; }
@@ -280,13 +280,13 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   margin: 0;
   cursor: pointer;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;
   color: var(--text-faint);
-  border-radius: 3px;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .sd-toggle:hover {
@@ -303,7 +303,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 
 .sd-chevron {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   line-height: 1;
   color: var(--accent-text);
   transition: transform 160ms ease;
@@ -325,12 +325,12 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 
 .sd-count {
   font-family: var(--mono);
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.1em;
   color: var(--text-faint);
   padding: 0.05rem 0.35rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface-2);
 }
 
@@ -384,7 +384,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   padding: 0.9rem 0 1.1rem;
   text-align: center;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -413,10 +413,10 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   appearance: none;
   background: transparent;
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.35rem 0.85rem;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -428,7 +428,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 .sd-rollup {
   margin-left: 0.6rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.08em;
   color: var(--text-faint);
   white-space: nowrap;

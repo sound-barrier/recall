@@ -75,8 +75,8 @@
   align-items: center;
   gap: 0.28rem;
   padding: 0.18rem 0.45rem;
-  border-radius: 2px;
-  font-size: 0.62rem;
+  border-radius: var(--radius);
+  font-size: var(--type-2xs);
   font-family: var(--mono);
   font-weight: 600;
   letter-spacing: 0.07em;
@@ -118,8 +118,8 @@
 .slot-optional-tag {
   margin-left: 0.25rem;
   padding: 0 0.25rem;
-  border-radius: 1px;
-  font-size: 0.52rem;
+  border-radius: var(--radius-hair);
+  font-size: var(--type-4xs);
   letter-spacing: 0.1em;
   background: rgb(255 255 255 / 5%);
   color: var(--text-mute);

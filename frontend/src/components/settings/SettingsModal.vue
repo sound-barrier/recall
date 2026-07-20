@@ -67,7 +67,7 @@ useModalFocusTrap(toRef(props, 'open'), {
 .settings-modal-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
 
   /* Wide enough that the section rows (label column + the 4-up theme swatches /
      detect-binary controls) lay out as they do on the Settings tab, rather than
@@ -90,7 +90,7 @@ useModalFocusTrap(toRef(props, 'open'), {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   padding: 0.9rem 1.3rem 0.6rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border-soft);
@@ -99,7 +99,7 @@ useModalFocusTrap(toRef(props, 'open'), {
 .settings-modal-title {
   flex: 1 1 auto;
   font-family: var(--display);
-  font-size: 1.5rem;
+  font-size: var(--type-6xl);
   font-weight: 400;
   letter-spacing: 0.06em;
   margin: 0;
@@ -111,12 +111,12 @@ useModalFocusTrap(toRef(props, 'open'), {
   border: 1px solid var(--border-soft);
   background: transparent;
   color: var(--text-dim);
-  font-size: 1.1rem;
+  font-size: var(--type-3xl);
   width: 1.8rem;
   height: 1.8rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .settings-modal-close:hover {

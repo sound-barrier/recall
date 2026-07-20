@@ -113,7 +113,7 @@ function deltaClass(r: ComparisonRow) {
   width: 100%;
   margin-top: 1rem;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
 }
 
 .compare-table th,
@@ -125,7 +125,7 @@ function deltaClass(r: ComparisonRow) {
 
 .compare-table thead th {
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -142,7 +142,7 @@ function deltaClass(r: ComparisonRow) {
   padding: 1.1rem 0.6rem 0.35rem;
   text-align: left;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;
@@ -198,7 +198,7 @@ function deltaClass(r: ComparisonRow) {
 
 .compare-delta {
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   white-space: nowrap;
 }
 
@@ -222,7 +222,7 @@ function deltaClass(r: ComparisonRow) {
   display: inline-block;
   margin-left: 0.3rem;
   padding: 0 0.28rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
 
   /* Soft-loss fill + line carries the "warning" semantic, but the TEXT is the
      high-contrast --text so it clears WCAG-AA on every theme — a --loss-coloured
@@ -231,13 +231,13 @@ function deltaClass(r: ComparisonRow) {
   color: var(--text);
   border: 1px solid var(--loss-line);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.02em;
 }
 
 @media (width <= 560px) {
   .compare-table {
-    font-size: 0.78rem;
+    font-size: var(--type-md);
   }
 
   .compare-table th,

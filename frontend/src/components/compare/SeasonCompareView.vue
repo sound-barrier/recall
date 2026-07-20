@@ -244,14 +244,14 @@ const liveSummary = computed(() => {
 .compare-desc {
   margin: 0.35rem 0 0;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
 }
 
 .compare-mode {
   display: inline-flex;
   margin-top: 1.1rem;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -266,14 +266,14 @@ const liveSummary = computed(() => {
 .compare-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   min-width: 14rem;
   flex: 1 1 14rem;
 }
 
 .compare-field-label {
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -282,23 +282,23 @@ const liveSummary = computed(() => {
 .compare-select {
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
 }
 
 .compare-vs {
   padding-bottom: 0.5rem;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
 }
 
 .compare-scope {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -308,7 +308,7 @@ const liveSummary = computed(() => {
   background: var(--surface-2);
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.04em;
   padding: 0.45rem 0.7rem;
   cursor: pointer;
@@ -331,7 +331,7 @@ const liveSummary = computed(() => {
 .compare-scope-hint {
   margin: 0.1rem 0 0;
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--type-xs);
   color: var(--text-faint);
 }
 
@@ -341,7 +341,7 @@ const liveSummary = computed(() => {
 
 .compare-note {
   margin: 0.7rem 0 0;
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   color: var(--text-dim);
 }
 
@@ -358,7 +358,7 @@ const liveSummary = computed(() => {
   display: inline-block;
   margin-left: 0.3rem;
   padding: 0 0.28rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
 
   /* Mirrors CompareTable's badge treatment — --text on the loss tint clears
      WCAG-AA on every theme where a --loss glyph at this size would not. */
@@ -366,7 +366,7 @@ const liveSummary = computed(() => {
   color: var(--text);
   border: 1px solid var(--loss-line);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.02em;
 }
 </style>

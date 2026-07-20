@@ -37,6 +37,6 @@ const currentRank = dossier.currentRank
 .cr-empty {
   margin: 0;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
 }
 </style>

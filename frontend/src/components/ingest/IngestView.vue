@@ -234,7 +234,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   width: 56px; height: 30px;
   background: var(--surface-3);
   border: 1px solid var(--border-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
 }
 
@@ -265,7 +265,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
 .big-switch-state {
   min-width: 3.6rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.22em;
@@ -296,7 +296,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   gap: 0.4rem;
   margin-top: 0.55rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   letter-spacing: 0.04em;
   font-feature-settings: "tnum";
@@ -316,7 +316,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
 
 .block-mark {
   margin-right: 0.15rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   filter: saturate(0.85);
 }
 
@@ -335,7 +335,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
   display: flex;
   align-items: baseline;
   gap: 0.55rem;
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text);
 }
 

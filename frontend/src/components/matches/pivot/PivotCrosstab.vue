@@ -144,7 +144,7 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
 .pivot-crosstab {
   border-collapse: collapse;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -164,7 +164,7 @@ function cellStyle(value: number | null, v: number): Record<string, string> | un
   background: var(--surface-2);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 0.54rem;
+  font-size: var(--type-3xs);
   font-weight: 700;
   color: var(--text-faint);
 }

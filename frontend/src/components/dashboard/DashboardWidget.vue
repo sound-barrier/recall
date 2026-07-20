@@ -122,7 +122,7 @@ function idxOr(): number { return props.idx ?? 0 }
 .kpi-tile {
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.55rem 0.7rem 0.6rem;
   display: flex;
   flex-direction: column;
@@ -130,18 +130,18 @@ function idxOr(): number { return props.idx ?? 0 }
   position: relative;
   transition: transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
               box-shadow 180ms ease,
-              border-color 140ms ease;
+              border-color var(--duration-fast) ease;
 }
 
 .breakdown {
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--surface);
   padding: 0.55rem 0.7rem 0.65rem;
   position: relative;
   transition: transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
               box-shadow 180ms ease,
-              border-color 140ms ease;
+              border-color var(--duration-fast) ease;
 }
 
 /* Every widget is draggable from anywhere; the grip is the explicit
@@ -201,7 +201,7 @@ function idxOr(): number { return props.idx ?? 0 }
   line-height: 1;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-faint);
   cursor: pointer;
   user-select: none;
@@ -210,10 +210,10 @@ function idxOr(): number { return props.idx ?? 0 }
               background var(--duration-fast) ease;
 }
 
-.dashboard-grip { cursor: grab; font-size: 0.62rem; }
+.dashboard-grip { cursor: grab; font-size: var(--type-2xs); }
 .dashboard-grip:active { cursor: grabbing; }
-.dashboard-gear { font-size: 0.62rem; }
-.dashboard-trash { font-size: 0.78rem; }
+.dashboard-gear { font-size: var(--type-2xs); }
+.dashboard-trash { font-size: var(--type-md); }
 
 .dashboard-grip:hover,
 .dashboard-gear:hover {

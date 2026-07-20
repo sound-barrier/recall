@@ -34,7 +34,7 @@ function reload() {
   max-width: 32rem;
   padding: 1.4rem 1.6rem;
   border: 1px solid var(--loss);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
   background: var(--loss-soft);
   text-align: center;
 }
@@ -42,7 +42,7 @@ function reload() {
 .vle-title {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: var(--type-md);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 700;
@@ -51,7 +51,7 @@ function reload() {
 
 .vle-detail {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
   color: var(--text-faint);
 }
 
@@ -59,17 +59,17 @@ function reload() {
   appearance: none;
   margin-top: 0.3rem;
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--accent-text);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 700;
   padding: 0.4rem 0.9rem;
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 
 .vle-reload:hover {

@@ -49,7 +49,7 @@ const tooltip = computed(() => {
   align-items: center;
   gap: 0.35rem;
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--text-faint);

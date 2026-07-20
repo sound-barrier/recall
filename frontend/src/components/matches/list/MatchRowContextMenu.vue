@@ -284,10 +284,10 @@ const menuStyle = computed(() => {
   position: fixed;
   z-index: 130;
   min-width: 200px;
-  padding: 0.25rem;
+  padding: var(--space-1);
   background: var(--surface);
   border: 1px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 16px 32px -16px rgb(var(--shadow-rgb) / 50%);
   display: flex;
   flex-direction: column;
@@ -302,14 +302,14 @@ const menuStyle = computed(() => {
   gap: 0.55rem;
   padding: 0.45rem 0.6rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   letter-spacing: 0.08em;
   font-weight: 600;
   text-align: left;
   color: var(--text);
   background: transparent;
   border: 0;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: background 100ms ease, color 100ms ease;
 }
@@ -343,7 +343,7 @@ const menuStyle = computed(() => {
 }
 
 .match-row-ctx-glyph {
-  font-size: 0.85rem;
+  font-size: var(--type-lg);
   color: var(--text-dim);
   line-height: 1;
 }

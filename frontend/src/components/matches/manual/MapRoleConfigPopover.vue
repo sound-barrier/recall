@@ -220,7 +220,7 @@ const popoverStyle = computed(() => {
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 22px 48px -20px rgb(var(--shadow-rgb) / 55%);
   overflow-y: auto;
   scrollbar-width: thin;
@@ -239,11 +239,11 @@ const popoverStyle = computed(() => {
   background: transparent;
   color: var(--text-dim);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.22rem 0.5rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: color 130ms ease, border-color 130ms ease;
 }
@@ -262,7 +262,7 @@ const popoverStyle = computed(() => {
   align-items: center;
   gap: 0.35rem;
   font-family: var(--mono);
-  font-size: 0.56rem;
+  font-size: var(--type-3xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -270,10 +270,10 @@ const popoverStyle = computed(() => {
 }
 
 .mrc-count {
-  font-size: 0.55rem;
+  font-size: var(--type-3xs);
   color: var(--accent-text);
   background: var(--accent-soft);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0 0.35rem;
   letter-spacing: 0;
 }
@@ -291,10 +291,10 @@ const popoverStyle = computed(() => {
   color: var(--text-dim);
   font-family: var(--display);
   font-style: italic;
-  font-size: 0.82rem;
+  font-size: var(--type-lg);
   letter-spacing: 0.02em;
   padding: 0.18rem 0.6rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: color 130ms ease, border-color 130ms ease, background 130ms ease;
 }
@@ -314,9 +314,9 @@ const popoverStyle = computed(() => {
   background: var(--surface-2);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--type-sm);
   padding: 0.32rem 0.45rem;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .mrc-search:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 
@@ -327,7 +327,7 @@ const popoverStyle = computed(() => {
   max-height: 9.5rem;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
 }
@@ -344,7 +344,7 @@ const popoverStyle = computed(() => {
   color: var(--text-dim);
   font-family: var(--display);
   font-style: italic;
-  font-size: 0.86rem;
+  font-size: var(--type-lg);
   letter-spacing: 0.01em;
   text-align: left;
   padding: 0.26rem 0.45rem;
@@ -362,26 +362,26 @@ const popoverStyle = computed(() => {
   width: 0.9rem;
   color: var(--accent-text);
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: var(--type-md);
 }
 
 .mrc-empty {
   padding: 0.4rem 0.45rem;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--type-sm);
   color: var(--text-faint);
   font-style: italic;
 }
 
 .mrc-hint {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: var(--type-xs);
   color: var(--text-faint);
   font-style: italic;
 }
 
 .mrc-fade-enter-active,
-.mrc-fade-leave-active { transition: opacity 140ms ease, transform 140ms ease; }
+.mrc-fade-leave-active { transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease; }
 
 .mrc-fade-enter-from,
 .mrc-fade-leave-to { opacity: 0; transform: translateY(-6px); }

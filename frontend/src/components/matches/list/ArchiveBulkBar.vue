@@ -109,7 +109,7 @@ const {
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
-  border-radius: 2px;
+  border-radius: var(--radius);
   position: sticky;
   top: 0.4rem;
   z-index: 4;
@@ -117,11 +117,11 @@ const {
   margin: 0 0 0.45rem;
 }
 
-.bab-glyph { color: var(--accent-text); font-size: 0.95rem; line-height: 1; }
+.bab-glyph { color: var(--accent-text); font-size: var(--type-xl); line-height: 1; }
 
 .bab-count {
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;
@@ -130,11 +130,11 @@ const {
 
 .bab-spacer { flex: 1 1 auto; }
 
-.bab-warn { color: var(--loss); font-size: 0.95rem; line-height: 1; }
+.bab-warn { color: var(--loss); font-size: var(--type-xl); line-height: 1; }
 
 .bab-warn-text {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text);
@@ -143,10 +143,10 @@ const {
 
 .archive-action-bar button {
   appearance: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.7rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;
@@ -192,5 +192,5 @@ const {
   border-color: var(--text);
 }
 
-.bab-btn-glyph { font-size: 0.85rem; }
+.bab-btn-glyph { font-size: var(--type-lg); }
 </style>

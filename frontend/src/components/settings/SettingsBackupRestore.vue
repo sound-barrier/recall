@@ -235,9 +235,9 @@ const INTERVALS = [
   display: inline-flex;
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 2px;
-  transition: border-color 140ms ease;
+  transition: border-color var(--duration-fast) ease;
 }
 
 .auto-backup-grid:hover {
@@ -257,15 +257,15 @@ const INTERVALS = [
   padding: 0 0.7rem;
   background: transparent;
   border: 0;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
   cursor: pointer;
-  transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
 }
 
 .auto-backup-cell:hover {

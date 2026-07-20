@@ -272,18 +272,18 @@ function pickTag(v: string) {
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
-  border-radius: 2px;
+  border-radius: var(--radius);
   position: sticky;
   top: 0.4rem;
   z-index: 4;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
-.bab-glyph { color: var(--accent-text); font-size: 0.95rem; line-height: 1; }
+.bab-glyph { color: var(--accent-text); font-size: var(--type-xl); line-height: 1; }
 
 .bab-count {
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: var(--type-xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;
@@ -294,10 +294,10 @@ function pickTag(v: string) {
 
 .bulk-action-bar button {
   appearance: none;
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0.32rem 0.7rem;
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-weight: 700;
@@ -350,7 +350,7 @@ function pickTag(v: string) {
 
 .bab-prompt {
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -368,7 +368,7 @@ function pickTag(v: string) {
   border-color: var(--text);
 }
 
-.bab-btn-glyph { font-size: 0.85rem; }
+.bab-btn-glyph { font-size: var(--type-lg); }
 
 .bulk-mode {
   border: 1px solid var(--border);
@@ -390,7 +390,7 @@ function pickTag(v: string) {
   color: var(--accent-text);
 }
 
-.bab-caret { font-size: 0.7rem; }
+.bab-caret { font-size: var(--type-sm); }
 
 .bab-menu-wrap { position: relative; }
 
@@ -414,7 +414,7 @@ function pickTag(v: string) {
   margin: 0;
   background: var(--surface-3, var(--surface-2));
   border: 1px solid var(--border-strong);
-  border-radius: 2px;
+  border-radius: var(--radius);
   box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 30%);
 }
 
@@ -428,12 +428,12 @@ function pickTag(v: string) {
   background: transparent;
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--type-2xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition: background var(--duration-fast), color var(--duration-fast);
 }
 
