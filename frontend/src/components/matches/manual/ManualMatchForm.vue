@@ -103,7 +103,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Map (required) — the narrow panel's searchable, lowercase picker. -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">Map <span class="mm-req" aria-hidden="true">*</span></span>
+      <span class="eyebrow mm-eyebrow-label">Map <span class="mm-req" aria-hidden="true">*</span></span>
       <FilterCombobox
         combo-id="mm-map"
         label="Map"
@@ -120,7 +120,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Mode (required) -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">Mode <span class="mm-req" aria-hidden="true">*</span></span>
+      <span class="eyebrow mm-eyebrow-label">Mode <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button class="mm-chip" :class="{ picked: f.playMode.value === 'competitive' }" data-mode="competitive" @click="f.playMode.value = 'competitive'">
           Competitive
@@ -133,7 +133,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Queue (required) -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">Queue <span class="mm-req" aria-hidden="true">*</span></span>
+      <span class="eyebrow mm-eyebrow-label">Queue <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button class="mm-chip" :class="{ picked: f.queueType.value === 'role' }" data-queue="role" @click="f.queueType.value = 'role'">
           Role Queue
@@ -147,7 +147,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     <!-- Role category (required on role queue — a single-role queue, so
          it constrains the hero list to that one role) -->
     <section v-if="f.isRoleQueue.value" class="mm-section">
-      <span class="mm-eyebrow-label">Role <span class="mm-req" aria-hidden="true">*</span></span>
+      <span class="eyebrow mm-eyebrow-label">Role <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button
           v-for="r in (['tank', 'damage', 'support'] as const)"
@@ -164,7 +164,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Heroes (required) — same picker as Map; first selected is primary. -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">
+      <span class="eyebrow mm-eyebrow-label">
         Heroes played <span class="mm-req" aria-hidden="true">*</span>
         <span class="mm-optional">first = primary</span>
       </span>
@@ -185,7 +185,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Result (required) -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">Result <span class="mm-req" aria-hidden="true">*</span></span>
+      <span class="eyebrow mm-eyebrow-label">Result <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button
           v-for="r in (['victory', 'defeat', 'draw'] as const)"
@@ -202,7 +202,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Leaver (optional) -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">Leaver <span class="mm-optional">(optional)</span></span>
+      <span class="eyebrow mm-eyebrow-label">Leaver <span class="mm-optional">(optional)</span></span>
       <div class="mm-chips">
         <button
           v-for="opt in LEAVERS"
@@ -219,7 +219,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Replay code (optional) -->
     <section class="mm-section">
-      <label class="mm-eyebrow-label" for="mm-replay">Replay code <span class="mm-optional">(optional)</span></label>
+      <label class="eyebrow mm-eyebrow-label" for="mm-replay">Replay code <span class="mm-optional">(optional)</span></label>
       <input
         id="mm-replay"
         v-model="f.replayCode.value"
@@ -235,7 +235,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Notes (optional) -->
     <section class="mm-section">
-      <label class="mm-eyebrow-label" for="mm-note">Notes <span class="mm-optional">(optional)</span></label>
+      <label class="eyebrow mm-eyebrow-label" for="mm-note">Notes <span class="mm-optional">(optional)</span></label>
       <textarea
         id="mm-note"
         v-model="f.note.value"
@@ -247,7 +247,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Tags (optional) — type + Enter to add a chip. -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">Tags <span class="mm-optional">(optional)</span></span>
+      <span class="eyebrow mm-eyebrow-label">Tags <span class="mm-optional">(optional)</span></span>
       <div class="mm-tokens">
         <button
           v-for="t in f.tags.value"
@@ -276,7 +276,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Group / teammates (optional) -->
     <section class="mm-section">
-      <span class="mm-eyebrow-label">Group <span class="mm-optional">(teammates you queued with)</span></span>
+      <span class="eyebrow mm-eyebrow-label">Group <span class="mm-optional">(teammates you queued with)</span></span>
       <div class="mm-tokens">
         <button
           v-for="m in f.members.value"
@@ -305,13 +305,13 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- When (optional) -->
     <section class="mm-section">
-      <label class="mm-eyebrow-label" for="mm-when">When <span class="mm-optional">(defaults to now)</span></label>
+      <label class="eyebrow mm-eyebrow-label" for="mm-when">When <span class="mm-optional">(defaults to now)</span></label>
       <input id="mm-when" v-model="f.playedAt.value" class="mm-input mm-input-short" type="datetime-local">
     </section>
 
     <!-- Rank (competitive only, optional) -->
     <section v-if="f.isCompetitive.value" class="mm-section">
-      <span class="mm-eyebrow-label">Rank <span class="mm-optional">(optional)</span></span>
+      <span class="eyebrow mm-eyebrow-label">Rank <span class="mm-optional">(optional)</span></span>
       <div class="mm-rank-grid">
         <label class="mm-sublabel">Tier
           <select v-model="f.rankTier.value" class="mm-input">
@@ -377,15 +377,6 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-}
-
-.mm-eyebrow-label {
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 700;
 }
 
 .mm-optional { color: var(--text-faint); font-weight: 400; letter-spacing: 0.04em; }

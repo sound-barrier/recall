@@ -153,7 +153,7 @@ function onCancel() {
         @click.stop
       >
         <header class="wcp-head">
-          <span class="wcp-eyebrow">{{ def.eyebrow }}</span>
+          <span class="eyebrow accent wcp-eyebrow">{{ def.eyebrow }}</span>
           <span class="wcp-title">Settings</span>
         </header>
 
@@ -269,14 +269,6 @@ function onCancel() {
   padding-bottom: 0.55rem;
   margin-bottom: 0.55rem;
   border-bottom: 1px solid var(--border);
-}
-
-.wcp-eyebrow {
-  font-size: 0.6rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 .wcp-title {

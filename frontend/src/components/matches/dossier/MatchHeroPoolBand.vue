@@ -137,7 +137,7 @@ const configIsDefault = computed(
 <template>
   <section class="hero-pool-band" aria-labelledby="hp-eyebrow">
     <header class="hp-head">
-      <span id="hp-eyebrow" class="hp-eyebrow">Hero Pool</span>
+      <span id="hp-eyebrow" class="eyebrow accent hp-eyebrow">Hero Pool</span>
       <div class="hp-modes" role="group" aria-label="Queue">
         <button
           v-for="m in MODES"
@@ -297,15 +297,6 @@ const configIsDefault = computed(
   gap: 0.9rem;
   margin-bottom: 0.6rem;
   flex-wrap: wrap;
-}
-
-.hp-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 .hp-modes {

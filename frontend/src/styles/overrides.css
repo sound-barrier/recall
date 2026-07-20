@@ -58,7 +58,6 @@
 [data-theme="day"] .mf-panel-foot { background: var(--surface-3); }
 [data-theme="day"] .eyebrow-count { color: var(--accent-text); }
 
-
 /* All .unknown-* rules + .field-cell/.field-label/.field-value moved to
    UnknownMapsView.vue. Shared .slot-row, .slot-chip family, .slot-dot,
    .slot-optional-tag stay below — MatchCard's sources-coverage strip

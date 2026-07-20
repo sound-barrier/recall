@@ -100,11 +100,6 @@
 /* .match-expanded, .meta-row, .meta-eyebrow, .meta-value moved to MatchCard.vue */
 
 .block-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
   margin-bottom: 0.55rem;
 }
 
@@ -240,3 +235,40 @@
    (UnknownMapsView renders a slot-row instead of a per-file chip);
    they stay in MatchCard.vue. */
 
+/* ─── Eyebrow ──────────────────────────────────────────────────────
+   The small uppercase wide-tracked kicker that labels a section, card,
+   or field. ONE visual concept that had accumulated 40+ near-identical
+   definitions — .kpi-eyebrow, .breakdown-eyebrow, .np-section-eyebrow,
+   .elo-card-eyebrow, .timeline-eyebrow, … — spanning 6 font sizes, 6
+   letter-spacings and a 50/50 split on whether it was bold. Nobody
+   chose that; it accreted, one component at a time.
+
+   Canonical values are the plurality of what was already in use
+   (var(--mono) 40/42, 0.6rem, 0.22em 24/42, 700 22/42), so most call
+   sites are unchanged. Components keep their own class for LAYOUT
+   (margin, display, gap, border-bottom) and add `eyebrow` for the
+   type; the per-component typography declarations are gone.
+
+   Colour: --text-faint is the default; the modifiers cover the two
+   other roles that were genuinely in use. Don't add a fourth without
+   a reason — the point of this block is that there is one answer. */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Marks a PRIMARY section — the dossier, a band header, the narrow
+   panel. --accent-text (not --accent) because this is type: see the
+   Day palette note in themes.css. */
+.eyebrow.accent {
+  color: var(--accent-text);
+}
+
+/* Failure/attention labels — the system-alert banner. */
+.eyebrow.alert {
+  color: var(--loss);
+}

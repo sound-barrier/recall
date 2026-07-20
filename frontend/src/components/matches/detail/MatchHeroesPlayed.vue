@@ -45,7 +45,7 @@ const topHeroesPlayed = computed(() => {
       @click="toggleHeroesExpanded"
     >
       <span class="chev small" :class="{ open: heroesExpanded }" aria-hidden="true">›</span>
-      <span class="block-eyebrow">Heroes Played</span>
+      <span class="eyebrow block-eyebrow">Heroes Played</span>
       <span class="heroes-count" aria-hidden="true">{{ record.data.heroes_played.length }}</span>
       <span v-if="!heroesExpanded" class="heroes-summary">
         <span
@@ -143,14 +143,6 @@ const topHeroesPlayed = computed(() => {
 
 .heroes-played .chev.small.open { transform: rotate(90deg); }
 .heroes-played.collapsed .chev.small { transform: rotate(0deg); }
-
-.heroes-played-toggle .block-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
 
 .heroes-count {
   display: inline-flex;

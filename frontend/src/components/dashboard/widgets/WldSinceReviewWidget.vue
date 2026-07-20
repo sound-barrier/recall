@@ -5,7 +5,7 @@ const { wldSinceLastReview } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">W / L / D since last review</span>
+  <span class="eyebrow kpi-eyebrow">W / L / D since last review</span>
   <!-- Three slash-separated counts mirror the avg-K/D/A tile's tri-
        value layout so the eye reads them as one composite stat.
        Em-dash when nothing has been reviewed yet (no anchor to count

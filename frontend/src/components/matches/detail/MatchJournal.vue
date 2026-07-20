@@ -145,7 +145,7 @@ onMounted(() => {
         class="journal-cell journal-cell-note"
         :class="{ saved: savedFlash === 'note', filled: !!noteDraft.trim() }"
       >
-        <label class="journal-eyebrow" :for="`note-${record.match_key}`">Note</label>
+        <label class="eyebrow journal-eyebrow" :for="`note-${record.match_key}`">Note</label>
         <div
           v-if="!isEditingNote && noteDraft"
           class="match-notes-preview"
@@ -185,7 +185,7 @@ onMounted(() => {
           class="journal-cell journal-cell-replay"
           :class="{ saved: savedFlash === 'replay', filled: !!replayDraft.trim() }"
         >
-          <label class="journal-eyebrow" :for="`replay-${record.match_key}`">Replay code</label>
+          <label class="eyebrow journal-eyebrow" :for="`replay-${record.match_key}`">Replay code</label>
           <input
             :id="`replay-${record.match_key}`"
             v-model="replayDraft"
@@ -203,7 +203,7 @@ onMounted(() => {
           class="journal-cell journal-cell-squad"
           :class="{ saved: savedFlash === 'members', filled: memberDraft.length > 0 }"
         >
-          <label class="journal-eyebrow" :for="`members-${record.match_key}`">
+          <label class="eyebrow journal-eyebrow" :for="`members-${record.match_key}`">
             Group
             <span v-if="memberDraft.length" class="journal-eyebrow-count">· {{ memberDraft.length }}</span>
           </label>
@@ -244,7 +244,7 @@ onMounted(() => {
         class="journal-cell journal-cell-tags"
         :class="{ saved: savedFlash === 'tags', filled: tagDraft.length > 0 }"
       >
-        <span class="journal-eyebrow">
+        <span class="eyebrow journal-eyebrow">
           Tags
           <span v-if="tagDraft.length" class="journal-eyebrow-count">· {{ tagDraft.length }}</span>
         </span>
@@ -542,11 +542,6 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   gap: 0.35rem;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
   user-select: none;
 }
 

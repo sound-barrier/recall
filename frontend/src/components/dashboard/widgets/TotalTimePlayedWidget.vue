@@ -33,7 +33,7 @@ const displayLabel = computed(() => {
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Total time played</span>
+  <span class="eyebrow kpi-eyebrow">Total time played</span>
   <span class="kpi-value">{{ displayLabel }}</span>
   <!-- Surface coverage when not every record contributed a
        game_length — the sum is honest about what data fed it so the

@@ -17,7 +17,7 @@ const mostPlayedHero = dossier.mostPlayedHero(() => ({
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Most played hero</span>
+  <span class="eyebrow kpi-eyebrow">Most played hero</span>
   <span class="kpi-value kpi-text">{{ topHero[0]?.key || '—' }}</span>
   <!-- Win-rate for the time-ranked top hero, computed over matches
        where their percent_played cleared the user-tunable threshold

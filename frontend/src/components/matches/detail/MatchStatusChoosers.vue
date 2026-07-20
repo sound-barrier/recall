@@ -37,7 +37,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
     role="radiogroup"
     aria-label="Match queue type"
   >
-    <span class="queue-chooser-eyebrow" aria-hidden="true">Queue</span>
+    <span class="eyebrow queue-chooser-eyebrow" aria-hidden="true">Queue</span>
     <div class="queue-chips">
       <button
         type="button"
@@ -93,7 +93,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
     role="radiogroup"
     aria-label="Match play mode"
   >
-    <span class="play-mode-chooser-eyebrow" aria-hidden="true">Play mode</span>
+    <span class="eyebrow play-mode-chooser-eyebrow" aria-hidden="true">Play mode</span>
     <div class="play-mode-chips">
       <button
         type="button"
@@ -150,7 +150,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
     role="radiogroup"
     aria-label="Match review status"
   >
-    <span class="review-chooser-eyebrow" aria-hidden="true">Review status</span>
+    <span class="eyebrow review-chooser-eyebrow" aria-hidden="true">Review status</span>
     <div class="review-chips">
       <button
         type="button"
@@ -266,11 +266,6 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 
 .queue-chooser-eyebrow {
   display: block;
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--text-faint);
   border-bottom: 1px dashed var(--hairline);
   padding-bottom: 0.3rem;
 }
@@ -385,11 +380,6 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 
 .play-mode-chooser-eyebrow {
   display: block;
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--text-faint);
   border-bottom: 1px dashed var(--hairline);
   padding-bottom: 0.3rem;
 }
@@ -588,11 +578,6 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 
 .review-chooser-eyebrow {
   display: block;
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--text-faint);
   border-bottom: 1px dashed var(--hairline);
   padding-bottom: 0.3rem;
 }

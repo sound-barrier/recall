@@ -164,7 +164,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       role="alert"
       data-unknown-alert
     >
-      <span class="unknown-alert-eyebrow" aria-hidden="true">Reference data · gap</span>
+      <span class="eyebrow unknown-alert-eyebrow" aria-hidden="true">Reference data · gap</span>
       <h3 class="unknown-alert-title">
         {{ unknownHero ? 'Unknown hero detected' : 'Unknown map detected' }}
       </h3>
@@ -202,15 +202,15 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       class="detail-meta-strip"
     >
       <div v-if="fmtTime(record)" class="meta-cell meta-cell-when">
-        <span class="meta-eyebrow">When</span>
+        <span class="eyebrow meta-eyebrow">When</span>
         <span class="meta-value">{{ fmtTime(record) }}</span>
       </div>
       <div v-if="record.data?.final_score" class="meta-cell meta-cell-score">
-        <span class="meta-eyebrow">Final Score</span>
+        <span class="eyebrow meta-eyebrow">Final Score</span>
         <span class="meta-value">{{ record.data.final_score }}</span>
       </div>
       <div v-if="record.parsed_at" class="meta-cell meta-cell-parsed">
-        <span class="meta-eyebrow">Parsed</span>
+        <span class="eyebrow meta-eyebrow">Parsed</span>
         <span class="meta-value mono-value" :title="record.parsed_at">{{ formatParsedAt(record.parsed_at) }}</span>
       </div>
     </div>
@@ -221,7 +221,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
     />
 
     <section class="match-stats-block" aria-labelledby="match-stats-eyebrow">
-      <div id="match-stats-eyebrow" class="block-eyebrow">
+      <div id="match-stats-eyebrow" class="eyebrow block-eyebrow">
         Match Stats
       </div>
       <div class="stats">
@@ -350,12 +350,7 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
 
 .unknown-alert-eyebrow {
   display: inline-block;
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
   color: var(--accent-bright, var(--accent));
-  font-weight: 700;
   margin-bottom: 0.2rem;
 }
 
@@ -479,14 +474,6 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
   display: flex;
   align-items: baseline;
   gap: 0.7rem;
-}
-
-.meta-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
 }
 
 .meta-value {

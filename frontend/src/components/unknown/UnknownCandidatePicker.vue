@@ -53,7 +53,7 @@ function freshKey(): string | null {
 
 <template>
   <div class="candidate-picker">
-    <div class="block-eyebrow">
+    <div class="eyebrow block-eyebrow">
       Pick the match
     </div>
     <div class="candidate-picker-grid">

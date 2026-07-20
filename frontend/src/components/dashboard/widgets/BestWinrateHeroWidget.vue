@@ -20,7 +20,7 @@ const hero = dossier.bestWinrateHero(() => ({
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Best hero by winrate</span>
+  <span class="eyebrow kpi-eyebrow">Best hero by winrate</span>
   <span class="kpi-value kpi-text">{{ hero?.key || '—' }}</span>
   <!-- Surfaces "83% in 6 matches" so the user reads both the winrate
        AND the sample that produced it. Hidden when no hero clears

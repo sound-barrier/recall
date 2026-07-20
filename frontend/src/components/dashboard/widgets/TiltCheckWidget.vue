@@ -8,7 +8,7 @@ const { winrateAfterLoss, winrateAfterWin } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Win-rate after a loss</span>
+  <span class="eyebrow kpi-eyebrow">Win-rate after a loss</span>
   <span class="kpi-value">{{ winrateAfterLoss.winrate === null ? '—' : winrateAfterLoss.winrate + '%' }}</span>
   <span v-if="winrateAfterLoss.winrate !== null && winrateAfterWin.winrate !== null" class="kpi-sub">
     vs {{ winrateAfterWin.winrate }}% after a win · {{ winrateAfterLoss.sample }} game<span v-if="winrateAfterLoss.sample !== 1">s</span>

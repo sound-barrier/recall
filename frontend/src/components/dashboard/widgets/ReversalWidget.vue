@@ -9,7 +9,7 @@ const record = dossier.modifierRecord(() => ({ modifier: 'reversal' }))
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Reversals</span>
+  <span class="eyebrow kpi-eyebrow">Reversals</span>
   <span class="kpi-value">{{ record?.total ?? 0 }}</span>
   <span class="kpi-sub">losses when favoured</span>
 </template>

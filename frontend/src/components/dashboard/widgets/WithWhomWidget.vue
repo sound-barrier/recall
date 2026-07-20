@@ -17,7 +17,7 @@ const rows = dossier.withWhomBreakdown(() => ({ limit: config.value.limit }))
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Win rate by teammate</span>
+    <span class="eyebrow accent breakdown-eyebrow">Win rate by teammate</span>
   </header>
   <ul v-if="rows.length">
     <li v-for="row in rows" :key="row.key">

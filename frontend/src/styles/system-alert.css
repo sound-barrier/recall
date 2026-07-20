@@ -62,12 +62,6 @@
 }
 
 .system-alert-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--loss);
   margin-bottom: 0.3rem;
 }
 
@@ -267,7 +261,7 @@
   position: relative;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 2rem 2.2rem 1.6rem;
   max-width: 420px;
   width: calc(100% - 3rem);

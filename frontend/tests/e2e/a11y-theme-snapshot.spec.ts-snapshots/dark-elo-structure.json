@@ -38,16 +38,13 @@
     "eyebrow": {
       "count": 4,
       "fontSize": [
-        "10.4px",
         "9.6px"
       ],
       "letterSpacing": [
-        "1.344px",
-        "2.112px",
-        "2.496px"
+        "2.112px"
       ],
       "fontWeight": [
-        "400"
+        "700"
       ],
       "textTransform": [
         "uppercase"
@@ -72,11 +69,12 @@
       ],
       "letterSpacing": [
         "0.24px",
-        "1.344px",
+        "2.112px",
         "normal"
       ],
       "fontWeight": [
-        "400"
+        "400",
+        "700"
       ],
       "textTransform": [
         "none",
@@ -171,7 +169,7 @@
         "rgb(255, 211, 77)"
       ],
       "borderRadius": [
-        "8px"
+        "999px"
       ]
     },
     "chip": {

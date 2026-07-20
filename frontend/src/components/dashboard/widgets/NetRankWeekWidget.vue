@@ -9,7 +9,7 @@ const { netRankWeek } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Net rank (7 days)</span>
+  <span class="eyebrow kpi-eyebrow">Net rank (7 days)</span>
   <span class="kpi-value" :class="netRankWeek > 0 ? 'kpi-up' : netRankWeek < 0 ? 'kpi-down' : ''">
     {{ netRankWeek > 0 ? '+' : '' }}{{ netRankWeek }}%
   </span>

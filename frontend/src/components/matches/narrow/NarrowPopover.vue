@@ -112,7 +112,6 @@ const PROVENANCE_OPTIONS = [
   { value: 'manual', label: 'User entered' },
 ]
 
-
 const popoverRef     = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const comboOpen      = ref<'map' | 'hero' | null>(null)
@@ -232,7 +231,7 @@ onUnmounted(() => {
           aria-label="Filter matches"
         >
           <header class="np-head">
-            <span class="np-eyebrow">Narrow</span>
+            <span class="eyebrow accent np-eyebrow">Narrow</span>
             <h4 class="np-title">
               Filter the set
             </h4>
@@ -244,7 +243,7 @@ onUnmounted(() => {
 
           <!-- Search row, full-width. -->
           <section class="np-section np-search-section">
-            <label class="np-section-eyebrow" for="np-search">Search</label>
+            <label class="eyebrow np-section-eyebrow" for="np-search">Search</label>
             <div class="np-search-row">
               <span class="np-search-glyph" aria-hidden="true">⌕</span>
               <input
@@ -269,7 +268,7 @@ onUnmounted(() => {
               <!-- Map — combobox (31 maps, too many for chip cloud) -->
               <section class="np-section">
                 <div class="np-section-head">
-                  <span class="np-section-eyebrow">Map</span>
+                  <span class="eyebrow np-section-eyebrow">Map</span>
                   <span class="np-section-meta">
                     {{ pickedMaps.size ? `${pickedMaps.size} picked` : 'any' }}
                     · {{ availableMaps.length }} available
@@ -301,7 +300,7 @@ onUnmounted(() => {
               <!-- Hero — combobox (51 heroes, broad-match against heroes_played) -->
               <section class="np-section">
                 <div class="np-section-head">
-                  <span class="np-section-eyebrow">Hero</span>
+                  <span class="eyebrow np-section-eyebrow">Hero</span>
                   <span class="np-section-meta">
                     {{ pickedHeroes.size ? `${pickedHeroes.size} picked` : 'any' }}
                     · {{ availableHeroes.length }} available · matches any played

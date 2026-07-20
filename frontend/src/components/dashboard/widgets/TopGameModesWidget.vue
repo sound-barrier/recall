@@ -20,7 +20,7 @@ const reserveRows = fullDossier.topByCount(() => ({
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Most played game modes</span>
+    <span class="eyebrow accent breakdown-eyebrow">Most played game modes</span>
   </header>
   <ul>
     <li v-for="t in topGameModes" :key="t.key">

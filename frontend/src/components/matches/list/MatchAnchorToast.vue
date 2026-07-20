@@ -87,7 +87,7 @@ const headline = computed(() => {
       >
         <span class="match-anchor-toast-glyph" aria-hidden="true">{{ state.kind === 'set' ? '◆' : '◇' }}</span>
         <span class="match-anchor-toast-body">
-          <span class="match-anchor-toast-eyebrow">{{ headline }}</span>
+          <span class="eyebrow match-anchor-toast-eyebrow">{{ headline }}</span>
           <span v-if="state.kind === 'set'" class="match-anchor-toast-name">{{ state.label }}</span>
           <span v-else class="match-anchor-toast-sub">filter cleared</span>
         </span>
@@ -147,15 +147,6 @@ const headline = computed(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-.match-anchor-toast-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 700;
 }
 
 .match-anchor-toast-name {

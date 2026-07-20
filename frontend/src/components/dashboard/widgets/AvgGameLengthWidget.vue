@@ -8,6 +8,6 @@ const { avgGameLength } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Avg game length</span>
+  <span class="eyebrow kpi-eyebrow">Avg game length</span>
   <span class="kpi-value">{{ formatMinutesAsClock(avgGameLength) }}</span>
 </template>

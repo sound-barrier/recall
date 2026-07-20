@@ -5,7 +5,7 @@ const { reviewedCount } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Matches reviewed</span>
+  <span class="eyebrow kpi-eyebrow">Matches reviewed</span>
   <!-- Headline is the raw reviewed count; subtitle is the share
        against the full narrow so the user reads BOTH the absolute
        volume AND the workflow ratio. We render '—' when the narrow

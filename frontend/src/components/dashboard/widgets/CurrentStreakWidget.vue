@@ -5,7 +5,7 @@ const { currentStreak: streak } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Current streak</span>
+  <span class="eyebrow kpi-eyebrow">Current streak</span>
   <span
     class="kpi-value"
     :class="streak.result === 'victory' ? 'kpi-streak-win'

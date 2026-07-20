@@ -23,7 +23,7 @@ const buckets = dossier.dayOfWeekBuckets(() => ({
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Day of week</span>
+    <span class="eyebrow accent breakdown-eyebrow">Day of week</span>
   </header>
   <ul>
     <li v-for="b in buckets" :key="b.label">

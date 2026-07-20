@@ -54,7 +54,7 @@ function clearDates() {
   <!-- Time scope — preset + custom dates side-by-side. -->
   <section class="np-section">
     <div class="np-section-head">
-      <span class="np-section-eyebrow">Time scope</span>
+      <span class="eyebrow np-section-eyebrow">Time scope</span>
       <span class="np-section-meta">
         <template v-if="customFrom || customTo">{{ formatRangeBound(customFrom, customFromTime) }} → {{ formatRangeBound(customTo, customToTime) }}</template>
         <template v-else-if="pickedRange !== 'all'">last {{ pickedRange }}</template>

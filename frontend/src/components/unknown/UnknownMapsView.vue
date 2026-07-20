@@ -97,7 +97,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
 <template>
   <section id="panel-unknown" role="tabpanel" aria-labelledby="tab-unknown" tabindex="-1" class="settings unknown-view">
     <header class="settings-intro">
-      <p class="settings-eyebrow">
+      <p class="eyebrow settings-eyebrow">
         Diagnostic Review
       </p>
       <h2 v-if="unknownRecords.length === 0 && ambiguousList.length === 0" class="settings-heading">
@@ -172,7 +172,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                    candidate, instead of choosing blind from the match-
                    key strings alone. -->
               <div v-if="rec.source_files?.length" class="unknown-sources">
-                <div class="block-eyebrow">
+                <div class="eyebrow block-eyebrow">
                   Source Screenshot
                 </div>
                 <div v-for="f in rec.source_files" :key="f" class="source-file">

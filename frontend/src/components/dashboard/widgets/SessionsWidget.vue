@@ -7,6 +7,6 @@ const { sessions } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Play sessions</span>
+  <span class="eyebrow kpi-eyebrow">Play sessions</span>
   <span class="kpi-value">{{ sessions }}</span>
 </template>

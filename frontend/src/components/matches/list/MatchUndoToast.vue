@@ -72,7 +72,7 @@ function onDismiss() {
       >
         <span class="match-undo-toast-glyph" aria-hidden="true">⊘</span>
         <span class="match-undo-toast-body">
-          <span class="match-undo-toast-eyebrow">Match hidden</span>
+          <span class="eyebrow match-undo-toast-eyebrow">Match hidden</span>
           <span class="match-undo-toast-name">{{ state.label }}</span>
         </span>
         <button
@@ -128,15 +128,6 @@ function onDismiss() {
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-.match-undo-toast-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 700;
 }
 
 .match-undo-toast-name {

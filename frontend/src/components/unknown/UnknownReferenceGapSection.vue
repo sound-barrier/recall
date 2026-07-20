@@ -86,7 +86,7 @@ function recognisingRelease(rec: MatchRecord): { version: string; url: string; n
         class="reference-gap-fix"
         :data-fix-cta-key="rec.match_key"
       >
-        <span class="fix-eyebrow">Fixed in</span>
+        <span class="eyebrow accent fix-eyebrow">Fixed in</span>
         <a
           class="fix-link"
           :href="recognisingRelease(rec)!.url"

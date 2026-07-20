@@ -16,7 +16,7 @@ const ci = computed(() => {
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Winrate</span>
+  <span class="eyebrow kpi-eyebrow">Winrate</span>
   <span class="kpi-value">{{ winrate !== null ? `${winrate}%` : '—' }}</span>
   <span v-if="ci" class="kpi-sub winrate-ci">± {{ ci.margin }} pts · n={{ ci.n }}</span>
 </template>

@@ -638,7 +638,6 @@ function openReleasePage() {
   margin: 0 0 0.7rem;
 }
 
-
 .update-check-modal-apply-row {
   margin-top: 0.4rem;
 }

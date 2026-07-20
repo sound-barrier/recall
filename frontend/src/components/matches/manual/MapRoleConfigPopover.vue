@@ -118,7 +118,7 @@ const popoverStyle = computed(() => {
         :style="popoverStyle"
       >
         <header class="mrc-head">
-          <span class="mrc-eyebrow">Geography filters</span>
+          <span class="eyebrow accent mrc-eyebrow">Geography filters</span>
           <button
             type="button"
             class="mrc-reset"
@@ -231,15 +231,6 @@ const popoverStyle = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.mrc-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 .mrc-reset {

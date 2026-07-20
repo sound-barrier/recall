@@ -39,7 +39,7 @@ function onOpenAnchor() {
        the match detail panel; this section is the on-off switch for the filter. -->
   <section class="np-section">
     <div class="np-section-head">
-      <span class="np-section-eyebrow">Since this match</span>
+      <span class="eyebrow np-section-eyebrow">Since this match</span>
       <span class="np-section-meta">
         {{ anchorRecord ? 'anchor set' : 'pick a match in the detail panel' }}
       </span>

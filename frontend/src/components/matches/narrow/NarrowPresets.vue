@@ -26,7 +26,7 @@ function onSavePreset() {
 <template>
   <section class="np-presets" aria-label="Saved sets">
     <header class="np-presets-head">
-      <span class="np-presets-eyebrow">Saved sets</span>
+      <span class="eyebrow np-presets-eyebrow">Saved sets</span>
     </header>
     <div class="np-presets-save">
       <input
@@ -82,14 +82,6 @@ function onSavePreset() {
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 0.4rem;
-}
-
-.np-presets-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
 }
 
 .np-presets-save {

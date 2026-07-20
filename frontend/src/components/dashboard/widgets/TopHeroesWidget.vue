@@ -14,7 +14,7 @@ const reserveRows = fullDossier.topHeroesByMinutes(() => ({ limit: config.value.
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Most played heroes</span>
+    <span class="eyebrow accent breakdown-eyebrow">Most played heroes</span>
   </header>
   <ul>
     <li v-for="h in topHeroes" :key="h.key">

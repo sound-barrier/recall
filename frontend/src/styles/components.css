@@ -11,7 +11,7 @@
   font-size: 0.58rem;
   font-weight: 700;
   font-family: var(--mono);
-  border-radius: 8px;
+  border-radius: 999px;
   line-height: 1;
   vertical-align: middle;
   margin-left: 0.2rem;
@@ -480,15 +480,6 @@
   margin-top: 0.6rem;
 }
 
-.match-tags-editor-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-mute);
-  margin-right: 0.2rem;
-}
-
 .match-tags-row {
   display: inline-flex;
   flex-wrap: wrap;
@@ -534,13 +525,6 @@
    emitted by other components' templates. Class names are
    widget-specific (`.kpi-eyebrow` not `.eyebrow`) so promoting to
    global is leak-safe. */
-.kpi-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
 
 .kpi-value {
   font-family: var(--display);
@@ -577,15 +561,6 @@
 }
 
 .breakdown-head { margin-bottom: 0.3rem; }
-
-.breakdown-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
-}
 
 .breakdown ul {
   list-style: none;

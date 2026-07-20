@@ -15,7 +15,7 @@ const tiltWinrate = computed(() => {
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Tilt queues</span>
+  <span class="eyebrow kpi-eyebrow">Tilt queues</span>
   <span class="kpi-value">{{ tiltQueues.episodes }}</span>
   <span v-if="tiltQueues.episodes === 0" class="kpi-sub">no 5-loss sittings — discipline holds</span>
   <span v-else class="kpi-sub">

@@ -5,7 +5,7 @@ const { averageKDA } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Avg K/D/A per 10min</span>
+  <span class="eyebrow kpi-eyebrow">Avg K/D/A per 10min</span>
   <!-- K/D/A = Kills (eliminations) / Deaths / Assists, the canonical
        gaming-stat order. Each match's avg_per_10min is straight-
        averaged across qualifying records so each match counts equally

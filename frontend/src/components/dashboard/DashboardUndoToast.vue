@@ -113,7 +113,7 @@ const progressPct = computed(() => Math.round((remainingMs.value / DURATION_MS) 
       >
         <span class="dashboard-undo-toast-glyph" aria-hidden="true">↶</span>
         <span class="dashboard-undo-toast-body">
-          <span class="dashboard-undo-toast-eyebrow">Removed</span>
+          <span class="eyebrow dashboard-undo-toast-eyebrow">Removed</span>
           <span class="dashboard-undo-toast-name">{{ trashed.eyebrow }}</span>
         </span>
         <button
@@ -177,15 +177,6 @@ const progressPct = computed(() => Math.round((remainingMs.value / DURATION_MS) 
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-.dashboard-undo-toast-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 700;
 }
 
 .dashboard-undo-toast-name {

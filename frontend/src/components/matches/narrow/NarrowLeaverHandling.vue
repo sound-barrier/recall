@@ -15,7 +15,7 @@ const { leaverHandling } = props.narrow
   <!-- Leavers -->
   <section class="np-section">
     <div class="np-section-head">
-      <span class="np-section-eyebrow">Leavers</span>
+      <span class="eyebrow np-section-eyebrow">Leavers</span>
       <span class="np-section-meta">{{ leaverHandling }}</span>
     </div>
     <div class="np-chips">

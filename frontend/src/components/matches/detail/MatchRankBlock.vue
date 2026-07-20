@@ -23,7 +23,7 @@ const ow = useOWData()
          another stat row. Sits above the journal so the milestone
          is read alongside the stats that produced it. -->
   <div v-if="record.data?.rank" class="rank-block rare">
-    <div class="block-eyebrow rank-eyebrow">
+    <div class="eyebrow block-eyebrow rank-eyebrow">
       <span class="rare-pip" aria-hidden="true">◆</span>
       Rank Update
     </div>

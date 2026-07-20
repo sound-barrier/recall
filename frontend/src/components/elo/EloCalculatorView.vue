@@ -53,7 +53,7 @@ const target = computed(() => fmtRank(calc.targetTier.value, calc.targetDivision
     class="settings elo-view"
   >
     <header class="settings-intro">
-      <p class="settings-eyebrow">
+      <p class="eyebrow settings-eyebrow">
         {{ trackName }} · {{ rankNow }}
       </p>
       <h2 class="settings-heading">

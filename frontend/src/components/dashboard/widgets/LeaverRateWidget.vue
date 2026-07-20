@@ -7,7 +7,7 @@ const { leaverStats } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Leaver rate</span>
+  <span class="eyebrow kpi-eyebrow">Leaver rate</span>
   <span class="kpi-value">{{ leaverStats.rate === null ? '—' : leaverStats.rate + '%' }}</span>
   <span v-if="leaverStats.total > 0" class="kpi-sub">{{ leaverStats.leaverCount }} of {{ leaverStats.total }}</span>
 </template>

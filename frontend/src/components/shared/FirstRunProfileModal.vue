@@ -180,7 +180,7 @@ watch(trapOpen, async (open) => {
       :data-step="step"
       @submit.prevent="step === 'name' ? onSave() : undefined"
     >
-      <p class="first-run-eyebrow">
+      <p class="eyebrow accent first-run-eyebrow">
         <span>Welcome to Recall</span>
         <span
           class="first-run-steps"
@@ -330,12 +330,6 @@ watch(trapOpen, async (open) => {
 
 .first-run-eyebrow {
   margin: 0 0 0.3rem;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
   display: flex;
   justify-content: space-between;
   align-items: center;

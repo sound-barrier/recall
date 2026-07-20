@@ -12,7 +12,7 @@ const currentRank = dossier.currentRank
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Current rank</span>
+    <span class="eyebrow accent breakdown-eyebrow">Current rank</span>
   </header>
   <ul v-if="currentRank.length">
     <li v-for="r in currentRank" :key="r.key">
