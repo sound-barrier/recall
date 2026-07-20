@@ -332,7 +332,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 <template>
   <section class="match-map-role" aria-labelledby="mr-eyebrow">
     <header class="mr-head">
-      <span id="mr-eyebrow" class="mr-eyebrow">Geography</span>
+      <span id="mr-eyebrow" class="eyebrow accent mr-eyebrow">Geography</span>
       <h3 class="mr-title">
         Map × role performance
       </h3>
@@ -506,15 +506,6 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
   flex-wrap: wrap;
 }
 
-.mr-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
-}
-
 .mr-title {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
   font-size: 1.15rem;
@@ -681,7 +672,6 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
 }
 .mr-clear:hover { color: var(--text); background: color-mix(in srgb, var(--accent-soft) 55%, var(--accent)); }
 .mr-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
 
 /* ─── Selection: row/column label buttons + the combined-stats bar ─── */
 

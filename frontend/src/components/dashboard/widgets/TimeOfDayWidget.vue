@@ -10,7 +10,7 @@ const buckets = dossier.timeOfDayBuckets(() => ({ bucketCount: config.value.buck
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Time of day</span>
+    <span class="eyebrow accent breakdown-eyebrow">Time of day</span>
   </header>
   <ul>
     <li v-for="b in buckets" :key="b.label">

@@ -156,7 +156,7 @@ onBeforeUnmount(() => {
       class="export-bundle-modal-box"
       @submit.prevent="onSubmit"
     >
-      <p class="export-bundle-eyebrow">
+      <p class="eyebrow accent export-bundle-eyebrow">
         Data &amp; Export
       </p>
       <h2 id="export-bundle-title" class="export-bundle-title">
@@ -278,12 +278,6 @@ onBeforeUnmount(() => {
 
 .export-bundle-eyebrow {
   margin: 0 0 0.3rem;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
 }
 
 .export-bundle-title {

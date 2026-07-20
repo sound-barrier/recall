@@ -8,7 +8,7 @@ const { firstGameWinrate } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">First game of session</span>
+  <span class="eyebrow kpi-eyebrow">First game of session</span>
   <span class="kpi-value">{{ firstGameWinrate.winrate === null ? '—' : firstGameWinrate.winrate + '%' }}</span>
   <span v-if="firstGameWinrate.sample > 0" class="kpi-sub">
     win-rate over {{ firstGameWinrate.sample }} session<span v-if="firstGameWinrate.sample !== 1">s</span>

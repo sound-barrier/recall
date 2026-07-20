@@ -85,7 +85,6 @@
    .count + .count strong stay below — shared with MatchCard /
    MatchGroupSection / UnknownMapsView. */
 
-
 .count {
   display: inline-flex;
   align-items: baseline;
@@ -132,7 +131,6 @@
 }
 .chev.open { transform: rotate(90deg); color: var(--accent-text); }
 .chev.small { font-size: 0.9rem; }
-
 
 /* Read-only sample-profile notice — shown on the Parse tab and Settings when
    the active profile is immutable (the tour's "test" sample). */

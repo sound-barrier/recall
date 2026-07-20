@@ -310,7 +310,7 @@ function onBackdropClick(e: MouseEvent) {
   flex-direction: column;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 16px 60px rgb(var(--shadow-rgb) / 45%);
 }

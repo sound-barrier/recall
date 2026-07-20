@@ -21,7 +21,7 @@ function ciMargin(row: { wins?: number, total: number }): number | null {
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Winrate by play mode</span>
+    <span class="eyebrow accent breakdown-eyebrow">Winrate by play mode</span>
   </header>
   <ul>
     <li v-for="row in playModeBreakdown" :key="row.key">

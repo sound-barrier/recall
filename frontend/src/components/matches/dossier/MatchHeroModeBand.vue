@@ -222,7 +222,7 @@ const levelTitle = computed(() => {
           </li>
         </ol>
       </nav>
-      <span v-else id="hm-eyebrow" class="hm-eyebrow">Hero × Game-Mode</span>
+      <span v-else id="hm-eyebrow" class="eyebrow accent hm-eyebrow">Hero × Game-Mode</span>
 
       <h3 class="hm-title">
         {{ levelTitle }}
@@ -324,15 +324,6 @@ const levelTitle = computed(() => {
   gap: 1.1rem;
   margin-bottom: 0.6rem;
   flex-wrap: wrap;
-}
-
-.hm-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 /* Breadcrumb + Go-back (drill levels). */

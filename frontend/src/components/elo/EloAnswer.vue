@@ -54,7 +54,7 @@ const answer = computed(() => {
 <template>
   <div class="elo-answer" data-elo-answer>
     <template v-if="answer">
-      <p class="elo-answer-eyebrow">
+      <p class="eyebrow elo-answer-eyebrow">
         {{ answer.eyebrow }}
       </p>
       <p class="elo-answer-head" :class="answer.tone">

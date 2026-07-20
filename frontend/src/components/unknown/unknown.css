@@ -74,15 +74,6 @@
   flex-wrap: wrap;
 }
 
-.fix-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-}
-
 .fix-link {
   font-family: var(--mono);
   font-size: 0.78rem;

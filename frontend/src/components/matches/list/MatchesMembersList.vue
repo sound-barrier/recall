@@ -334,7 +334,6 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   background: var(--surface-2);
 }
 
-
 /* Compact density — tightens vertical rhythm so more rows fit on
    screen without going full data-table mode. Only the spacing and
    strip height change; grid template, fonts, and result-chip
@@ -345,7 +344,6 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 }
 .leaves-list.density-compact :deep(.leaf-strip) { height: 26px; }
 
-
 /* ─── Data density — the sortable match <table> ───────────────────
    A real semantic table replaces the leaf-row <ul> when density is
    `data`: hairline rows, a sticky sortable header, monospace cells.
@@ -355,7 +353,6 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 /* Bounded data-grid scroll pane — vertical (max-height) + horizontal
    (the table's min-width) scrolling in one box, so the uppercase header
    stays pinned (sticky to THIS pane) while wide rows scroll sideways. */
-
 
 .leaves-empty {
   margin: 0;

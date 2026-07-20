@@ -14,7 +14,7 @@ const { minPlayMinutes, minPlayPercent, includeUnknown } = props.narrow
   <!-- Min play threshold (both minutes + percent; OR semantics) + unknown toggle -->
   <section class="np-section">
     <div class="np-section-head">
-      <span class="np-section-eyebrow">Refinement</span>
+      <span class="eyebrow np-section-eyebrow">Refinement</span>
       <span class="np-section-meta">applies to picked heroes</span>
     </div>
     <div class="np-refine-row">

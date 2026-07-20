@@ -24,7 +24,7 @@ const reserveRows = fullDossier.topByCount(() => ({
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Most played maps</span>
+    <span class="eyebrow accent breakdown-eyebrow">Most played maps</span>
   </header>
   <ul>
     <li v-for="m in topMaps" :key="m.key">

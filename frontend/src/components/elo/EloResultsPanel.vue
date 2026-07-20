@@ -81,7 +81,7 @@ const knowLine = computed(() => {
   <div v-if="projInput" class="elo-results">
     <div class="elo-cards">
       <article class="elo-card elo-card-dream" data-elo-card="naive">
-        <p class="elo-card-eyebrow">
+        <p class="eyebrow elo-card-eyebrow">
           <span class="elo-card-swatch" aria-hidden="true" />If your wins keep coming
         </p>
         <p v-if="dream" class="elo-card-head">
@@ -93,7 +93,7 @@ const knowLine = computed(() => {
       </article>
 
       <article class="elo-card elo-card-reality" data-elo-card="decay">
-        <p class="elo-card-eyebrow">
+        <p class="eyebrow elo-card-eyebrow">
           <span class="elo-card-swatch" aria-hidden="true" />As opponents get tougher
         </p>
         <p v-if="reality" class="elo-card-head">

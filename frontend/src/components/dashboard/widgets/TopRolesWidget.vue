@@ -13,7 +13,7 @@ const { topRoles } = useDossier()
        three breakdowns read as one consistent grid. Title-tip on the
        bar surfaces the per-role winrate for power users. -->
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Most played roles</span>
+    <span class="eyebrow accent breakdown-eyebrow">Most played roles</span>
   </header>
   <ul>
     <li v-for="r in topRoles" :key="r.key">

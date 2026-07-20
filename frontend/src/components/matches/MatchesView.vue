@@ -150,7 +150,6 @@ watch(narrowedRecords, () => {
   })
 }, { flush: 'pre' })
 
-
 // ─── Selection state (Gmail-style, no mode toggle) ──────────
 //
 // Two parallel selection sets — one for live (visible) match rows,
@@ -207,7 +206,6 @@ const {
   onMove: (keys, target) => void onMoveMatches(keys, target),
 })
 
-
 // Single-row inline commit for hard-delete (per-archive-row Delete
 // button → Confirm/Cancel two-step). `confirmHardDelete` and
 // `cancelHardDelete` come from the composable; `commitHardDelete`
@@ -217,7 +215,6 @@ function commitHardDelete(key: string) {
   cancelHardDelete()
   void onHardDeleteMatch(key)
 }
-
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
 //
@@ -626,7 +623,6 @@ const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.include
   flex-direction: column;
   gap: 0.5rem;
 }
-
 
 /* ─── Scroll-to-top button ───────────────────────────────────────
    Fixed at the lower-left of the viewport, fades in once the user is

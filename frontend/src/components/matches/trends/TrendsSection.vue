@@ -399,7 +399,7 @@ const showWindowSelector = computed(() => visibleIds.value.some((id) => WINDOWED
 .trend-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 0.75rem;
   min-width: 0;
   transition: box-shadow 140ms ease, opacity 140ms ease;

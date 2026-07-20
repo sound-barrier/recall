@@ -110,7 +110,7 @@ const liveSummary = computed(() => {
     class="settings compare-view"
   >
     <header class="settings-intro">
-      <p class="settings-eyebrow">
+      <p class="eyebrow settings-eyebrow">
         Comparison
       </p>
       <h2 class="settings-heading">

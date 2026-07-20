@@ -274,7 +274,7 @@ function onBack()   { void tour.prev() }
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.22em;
-  color: var(--accent);
+  color: var(--accent-text);
   user-select: none;
   animation: tour-marker-pulse 3.2s ease-in-out infinite;
 }

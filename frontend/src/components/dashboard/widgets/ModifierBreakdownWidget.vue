@@ -12,7 +12,7 @@ const rows = dossier.modifierBreakdown(() => ({ limit: 12 }))
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Match modifiers</span>
+    <span class="eyebrow accent breakdown-eyebrow">Match modifiers</span>
   </header>
   <ul>
     <li v-for="row in rows" :key="row.key">

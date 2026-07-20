@@ -10,7 +10,7 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Recent matches</span>
+    <span class="eyebrow accent breakdown-eyebrow">Recent matches</span>
   </header>
   <div v-if="results.length > 0" class="recent-pills" :data-recent-count="results.length">
     <span

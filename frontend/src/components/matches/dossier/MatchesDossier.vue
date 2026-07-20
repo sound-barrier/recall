@@ -60,7 +60,7 @@ function sourceLabel(source: string): string {
 
 <template>
   <header class="dossier-head">
-    <span class="dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
+    <span class="eyebrow accent dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
     <h2 class="dossier-title">
       {{ setHeadline }}
     </h2>
@@ -213,15 +213,6 @@ function sourceLabel(source: string): string {
 
 <style scoped>
 .dossier-head { display: flex; flex-direction: column; gap: 0.2rem; }
-
-.dossier-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
-}
 
 .dossier-title {
   font-family: var(--display);

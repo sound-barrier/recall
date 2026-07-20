@@ -54,7 +54,7 @@ async function submit() {
         aria-labelledby="mm-title"
       >
         <header class="mm-head">
-          <span class="mm-eyebrow">Add</span>
+          <span class="eyebrow accent mm-eyebrow">Add</span>
           <h4 id="mm-title" class="mm-title">
             Hand-enter a match
           </h4>
@@ -138,15 +138,6 @@ async function submit() {
   gap: 0.65rem;
   padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--border);
-}
-
-.mm-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 .mm-title {

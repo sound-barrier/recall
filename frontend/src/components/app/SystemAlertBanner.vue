@@ -21,7 +21,7 @@ const { gotoEngineSettings } = settingsStore
       </svg>
     </div>
     <div class="system-alert-body">
-      <div class="system-alert-eyebrow">
+      <div class="eyebrow alert system-alert-eyebrow">
         System Halt · OCR Engine Offline
       </div>
       <h3 class="system-alert-title">

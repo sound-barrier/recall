@@ -21,7 +21,7 @@ defineProps<{
 
 <template>
   <div v-if="suggestions.length > 0" class="empty-suggestions">
-    <p class="empty-suggestions-eyebrow">
+    <p class="eyebrow empty-suggestions-eyebrow">
       Try removing one filter to see more matches
     </p>
     <ul class="empty-suggestions-list">
@@ -48,11 +48,6 @@ defineProps<{
 }
 
 .empty-suggestions-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
   margin: 0 0 0.6rem;
 }
 

@@ -243,7 +243,7 @@ function onCardHeadClick(rec: MatchRecord) {
       <template v-if="cardState.isSelected(rec.match_key)">
         <div class="unknown-expanded">
           <div v-if="rec.source_files?.length" class="unknown-sources">
-            <div class="block-eyebrow">
+            <div class="eyebrow block-eyebrow">
               Source Files
             </div>
             <div v-for="f in rec.source_files" :key="f" class="source-file">
@@ -277,7 +277,7 @@ function onCardHeadClick(rec: MatchRecord) {
           </div>
 
           <div v-if="rec.data?.eliminations != null || rec.data?.damage != null" class="unknown-stats">
-            <div class="block-eyebrow">
+            <div class="eyebrow block-eyebrow">
               Parsed Stats
             </div>
             <div class="stats">

@@ -36,7 +36,7 @@ function onDrop(e: DragEvent) {
     @dragleave="over = false"
     @drop.prevent="onDrop"
   >
-    <header class="pivot-shelf-eyebrow">
+    <header class="eyebrow pivot-shelf-eyebrow">
       {{ label }}
     </header>
     <div class="pivot-shelf-body">
@@ -72,15 +72,6 @@ function onDrop(e: DragEvent) {
 .pivot-shelf-tray {
   border-style: solid;
   border-color: color-mix(in srgb, var(--border) 60%, transparent);
-}
-
-.pivot-shelf-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.54rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--text-faint);
 }
 
 .pivot-shelf-body {

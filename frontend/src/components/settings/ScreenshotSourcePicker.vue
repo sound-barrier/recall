@@ -135,7 +135,7 @@ void ({} as NamedCandidateStats)
         :data-src-name="c.name"
         @click="onCardClick(c)"
       >
-        <span class="src-eyebrow">
+        <span class="eyebrow src-eyebrow">
           {{ c.name.toUpperCase() }} · {{ String(i + 1).padStart(2, '0') }}
         </span>
         <span class="src-title">{{ c.label }}</span>
@@ -263,11 +263,7 @@ void ({} as NamedCandidateStats)
 }
 
 .src-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  letter-spacing: 0.22em;
   color: var(--text-dim);
-  text-transform: uppercase;
 }
 
 .src-card:not(:disabled):hover .src-eyebrow,

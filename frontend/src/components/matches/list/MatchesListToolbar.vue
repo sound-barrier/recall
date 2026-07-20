@@ -43,7 +43,7 @@ const { isReadOnly } = useActiveProfile()
 <template>
   <header class="leaves-head">
     <div class="leaves-head-left">
-      <span class="leaves-eyebrow">Members</span>
+      <span class="eyebrow accent leaves-eyebrow">Members</span>
       <h3 class="leaves-title">
         {{ matchCount }} matches in this set
       </h3>
@@ -178,17 +178,10 @@ const { isReadOnly } = useActiveProfile()
 .leaves-head-left { display: flex; flex-direction: column; gap: 0.1rem; }
 
 .leaves-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-
   /* --accent-text is the theme-aware "accent for text" token: bright
      orange on dark themes (same as --accent), deep rust on day for
      AA contrast on cream. Using --accent directly here failed AA in
      day theme (1.92:1 on cream). */
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 .leaves-title {

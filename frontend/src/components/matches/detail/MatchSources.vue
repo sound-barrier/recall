@@ -174,7 +174,6 @@ const emit = defineEmits<{
   }
 }
 
-
 /* ─── Sources block ──────────────────────────────────────── */
 
 .sources-block {

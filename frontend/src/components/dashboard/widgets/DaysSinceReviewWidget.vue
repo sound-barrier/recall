@@ -5,7 +5,7 @@ const { daysSinceLastReview } = useDossier()
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Days since last review</span>
+  <span class="eyebrow kpi-eyebrow">Days since last review</span>
   <!-- 0 days reads as "today" — the units cell would otherwise be
        misleading (a review three hours ago is not "0 days"
        colloquially). Tile carries a title attribute with the precise

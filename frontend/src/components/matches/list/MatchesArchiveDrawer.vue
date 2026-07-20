@@ -66,7 +66,7 @@ const {
       aria-controls="archive-panel"
       @click="archiveOpen = !archiveOpen"
     >
-      <span class="archive-eyebrow">Archive</span>
+      <span class="eyebrow archive-eyebrow">Archive</span>
       <span class="archive-title">
         <span class="archive-count">{{ hiddenRecords.length }}</span>
         <span class="archive-noun">hidden {{ hiddenRecords.length === 1 ? 'match' : 'matches' }}</span>
@@ -214,14 +214,6 @@ const {
 }
 .archive-toggle:hover { background: color-mix(in srgb, var(--text-dim) 5%, transparent); }
 
-.archive-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 700;
-}
 .archive-title { display: inline-flex; align-items: baseline; gap: 0.5rem; }
 
 .archive-count {

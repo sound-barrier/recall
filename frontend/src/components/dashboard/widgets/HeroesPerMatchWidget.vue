@@ -15,7 +15,7 @@ const rows = dossier.heroCountBuckets(() => ({ thresholdPct: config.value.thresh
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Heroes per match</span>
+    <span class="eyebrow accent breakdown-eyebrow">Heroes per match</span>
   </header>
   <ul v-if="rows.length > 0">
     <li v-for="row in rows" :key="row.key">

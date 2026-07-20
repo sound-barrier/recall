@@ -12,7 +12,7 @@ const playModeBreakdown = dossier.playModeBreakdown
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Quickplay vs Competitive</span>
+    <span class="eyebrow accent breakdown-eyebrow">Quickplay vs Competitive</span>
   </header>
   <ul>
     <li v-for="row in playModeBreakdown" :key="row.key">

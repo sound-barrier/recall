@@ -9,7 +9,7 @@ const record = dossier.modifierRecord(() => ({ modifier: 'uphill battle' }))
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Uphill battles</span>
+  <span class="eyebrow kpi-eyebrow">Uphill battles</span>
   <span class="kpi-value">{{ record?.total ?? 0 }}</span>
   <span class="kpi-sub">wins as the underdog</span>
 </template>

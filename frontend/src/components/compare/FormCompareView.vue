@@ -429,7 +429,7 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 
     <!-- The verdict — the answer, before the evidence. -->
     <div class="form-verdict-card" :data-form-verdict-word="verdict.word">
-      <p class="form-verdict-eyebrow">
+      <p class="eyebrow form-verdict-eyebrow">
         Verdict
       </p>
       <p
@@ -671,11 +671,6 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
 
 .form-verdict-eyebrow {
   margin: 0;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
 }
 
 .form-verdict-word {

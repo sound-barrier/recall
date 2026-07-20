@@ -26,7 +26,7 @@ const fullRoster = computed(() => analysis.value.pool.map((p) => p.key).join(', 
 </script>
 
 <template>
-  <span class="kpi-eyebrow">Hero pool size</span>
+  <span class="eyebrow kpi-eyebrow">Hero pool size</span>
   <span class="kpi-value">{{ size > 0 ? size : '—' }}</span>
   <span v-if="size > 0" class="kpi-sub" :title="fullRoster">{{ names }}</span>
   <span v-else class="kpi-sub">no pool yet</span>

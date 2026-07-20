@@ -47,7 +47,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
 <template>
   <section id="panel-ingest" role="tabpanel" aria-labelledby="tab-ingest" tabindex="-1" class="settings ingest-view">
     <header class="settings-intro">
-      <p class="settings-eyebrow">
+      <p class="eyebrow settings-eyebrow">
         Parse Pipeline
       </p>
       <p v-if="isReadOnly" class="readonly-note" data-readonly-note>

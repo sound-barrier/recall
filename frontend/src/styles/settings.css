@@ -32,11 +32,6 @@
 }
 
 .settings-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
   margin-bottom: 0.45rem;
 }
 

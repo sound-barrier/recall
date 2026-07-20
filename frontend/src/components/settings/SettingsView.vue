@@ -61,7 +61,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 <template>
   <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" tabindex="-1" class="settings">
     <header class="settings-intro">
-      <p class="settings-eyebrow">
+      <p class="eyebrow settings-eyebrow">
         System Configuration
       </p>
       <h2 v-if="!screenshotsDir" class="settings-heading">
@@ -91,7 +91,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
         <span class="empty-hero-corner empty-hero-corner-bl" />
         <span class="empty-hero-corner empty-hero-corner-br" />
       </div>
-      <p class="empty-hero-eyebrow">
+      <p class="eyebrow accent empty-hero-eyebrow">
         First-Time Setup
       </p>
       <h3 class="empty-hero-title">
@@ -194,11 +194,6 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 .empty-hero-corner-br { bottom: 8px; right: 12px; border-left: 0;  border-top: 0; }
 
 .empty-hero-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--accent-text);
   margin: 0 0 0.55rem;
 }
 

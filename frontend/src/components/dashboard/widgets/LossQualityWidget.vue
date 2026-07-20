@@ -12,7 +12,7 @@ const breakdown = dossier.lossQualityBreakdown()
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Loss quality</span>
+    <span class="eyebrow accent breakdown-eyebrow">Loss quality</span>
   </header>
   <ul>
     <li v-for="row in breakdown.rows" :key="row.key" :data-loss-quality-row="row.key">

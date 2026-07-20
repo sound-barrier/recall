@@ -87,7 +87,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
     aria-labelledby="timeline-eyebrow"
   >
     <header class="timeline-head">
-      <span id="timeline-eyebrow" class="timeline-eyebrow">Campaign Log</span>
+      <span id="timeline-eyebrow" class="eyebrow accent timeline-eyebrow">Campaign Log</span>
       <span class="timeline-range">{{ windowLabel }}</span>
 
       <BandHeaderControls
@@ -177,15 +177,6 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
   gap: 1.1rem;
   margin-bottom: 0.55rem;
   flex-wrap: wrap;
-}
-
-.timeline-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  font-weight: 700;
 }
 
 .timeline-range {

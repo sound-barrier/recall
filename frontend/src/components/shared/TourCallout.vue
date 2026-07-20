@@ -92,7 +92,6 @@ function getTargetRect(): { x: number; y: number; w: number; h: number } | null 
   return { x: r.left, y: r.top, w: r.width, h: r.height }
 }
 
-
 function calloutHeight(): number {
   return calloutEl.value?.offsetHeight ?? CALLOUT_H_INITIAL
 }
@@ -293,7 +292,7 @@ const connector = computed(() => {
       @pointercancel="onDragPointerUp"
     >
       <span class="tour-callout-drag-handle" aria-hidden="true">⋮⋮</span>
-      <span class="tour-callout-eyebrow">{{ eyebrow }}</span>
+      <span class="eyebrow accent tour-callout-eyebrow">{{ eyebrow }}</span>
       <span class="tour-callout-counter">{{ counter }}</span>
       <nav class="tour-pips" aria-label="Jump to tour step">
         <button
@@ -442,14 +441,6 @@ const connector = computed(() => {
   opacity: 0.7;
 }
 
-.tour-callout-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
 .tour-pips {
   display: inline-flex;
   gap: 0.3rem;
@@ -501,7 +492,7 @@ const connector = computed(() => {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', Impact, sans-serif;
   font-size: 3.2rem;
   line-height: 0.82;
-  color: var(--accent);
+  color: var(--accent-text);
 
   /* Tilt that mirrors the masthead wordmark. Subtle — keeps
      proportions readable. */
