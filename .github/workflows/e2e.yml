@@ -80,11 +80,11 @@ jobs:
 
       # go (build serveronly) + node (frontend build + Playwright) from
       # mise.toml's pins; also loads [env] (GOTOOLCHAIN=local, …).
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         if: steps.changes.outputs.relevant == 'true'
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v6
         if: steps.changes.outputs.relevant == 'true'
         with:
           node-version-file: .node-version
