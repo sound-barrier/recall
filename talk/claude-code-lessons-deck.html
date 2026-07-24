@@ -1,0 +1,1014 @@
+<title>Lessons from Claude Code — Field Notes</title>
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    color-scheme: light dark;
+    --stage: #eae4d8;
+    --surface: #fffdf9;
+    --surface-2: #f4efe6;
+    --surface-3: #ece5d8;
+    --hairline: rgba(30, 26, 20, 0.12);
+    --hairline-strong: rgba(30, 26, 20, 0.22);
+    --ink: #221f1c;
+    --ink-dim: #5b564d;
+    --ink-faint: #948d80;
+    --amber: #c9700a;
+    --amber-ink: #6b3d05;
+    --amber-soft: rgba(201, 112, 10, 0.13);
+    --teal: #1f7a72;
+    --teal-soft: rgba(31, 122, 114, 0.12);
+    --shadow: 0 1px 2px rgba(30, 26, 20, 0.06), 0 12px 32px -16px rgba(30, 26, 20, 0.22);
+
+    --font-display: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: var(--font-display);
+
+    --dur: 260ms;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --stage: #17181a;
+      --surface: #232323;
+      --surface-2: #2b2b2a;
+      --surface-3: #363533;
+      --hairline: rgba(255, 255, 255, 0.09);
+      --hairline-strong: rgba(255, 255, 255, 0.16);
+      --ink: #ece9e4;
+      --ink-dim: #a29c92;
+      --ink-faint: #6f6a63;
+      --amber: #fa9c1b;
+      --amber-ink: #ffcb85;
+      --amber-soft: rgba(250, 156, 27, 0.14);
+      --teal: #6fc9c1;
+      --teal-soft: rgba(95, 184, 176, 0.14);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 20px 48px -20px rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --stage: #17181a;
+    --surface: #232323;
+    --surface-2: #2b2b2a;
+    --surface-3: #363533;
+    --hairline: rgba(255, 255, 255, 0.09);
+    --hairline-strong: rgba(255, 255, 255, 0.16);
+    --ink: #ece9e4;
+    --ink-dim: #a29c92;
+    --ink-faint: #6f6a63;
+    --amber: #fa9c1b;
+    --amber-ink: #ffcb85;
+    --amber-soft: rgba(250, 156, 27, 0.14);
+    --teal: #6fc9c1;
+    --teal-soft: rgba(95, 184, 176, 0.14);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 20px 48px -20px rgba(0, 0, 0, 0.6);
+  }
+
+  :root[data-theme="light"] {
+    --stage: #eae4d8;
+    --surface: #fffdf9;
+    --surface-2: #f4efe6;
+    --surface-3: #ece5d8;
+    --hairline: rgba(30, 26, 20, 0.12);
+    --hairline-strong: rgba(30, 26, 20, 0.22);
+    --ink: #221f1c;
+    --ink-dim: #5b564d;
+    --ink-faint: #948d80;
+    --amber: #c9700a;
+    --amber-ink: #6b3d05;
+    --amber-soft: rgba(201, 112, 10, 0.13);
+    --teal: #1f7a72;
+    --teal-soft: rgba(31, 122, 114, 0.12);
+    --shadow: 0 1px 2px rgba(30, 26, 20, 0.06), 0 12px 32px -16px rgba(30, 26, 20, 0.22);
+  }
+
+  /* ---------- reset ---------- */
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--stage);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image:
+      repeating-linear-gradient(180deg, rgba(128, 120, 100, 0.05) 0px, rgba(128, 120, 100, 0.05) 1px, transparent 1px, transparent 34px);
+  }
+  h1, h2, h3, p, ul, ol, dl, dd { margin: 0; }
+  ul { padding: 0; list-style: none; }
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  ::selection { background: var(--amber-soft); }
+
+  code, .mono { font-family: var(--font-mono); }
+  em.hl { font-style: normal; color: var(--amber-ink); }
+
+  /* ---------- deck shell ---------- */
+  .deck {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(0.75rem, 2.4vw, 2rem) clamp(0.75rem, 3vw, 2.5rem) clamp(3.6rem, 8vh, 4.6rem);
+    overflow: hidden;
+  }
+
+  .viewport {
+    position: relative;
+    width: min(1180px, 100%);
+    height: min(720px, 100%);
+    flex: 1 1 auto;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    padding: clamp(1.6rem, 4vw, 3.4rem) clamp(1.8rem, 5vw, 4rem);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.9rem, 2vh, 1.6rem);
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: opacity var(--dur) ease, transform var(--dur) ease;
+    overflow-y: auto;
+  }
+  .slide.is-active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slide { transition: none; }
+  }
+
+  .slide-index {
+    position: absolute;
+    top: clamp(1rem, 3vh, 1.8rem);
+    right: clamp(1.2rem, 4vw, 2.4rem);
+    font-family: var(--font-mono);
+    font-size: clamp(2.2rem, 6vw, 3.6rem);
+    font-weight: 500;
+    color: var(--ink);
+    opacity: 0.07;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* ---------- tags / eyebrows ---------- */
+  .eyebrow-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.28em 0.6em;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    line-height: 1;
+  }
+  .tag::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
+  .tag--rule { background: var(--amber-soft); color: var(--amber-ink); border-color: color-mix(in srgb, var(--amber) 35%, transparent); }
+  .tag--incident { background: var(--teal-soft); color: var(--teal); border-color: color-mix(in srgb, var(--teal) 35%, transparent); }
+  .tag--note { background: transparent; color: var(--ink-dim); border-color: var(--hairline-strong); }
+
+  /* ---------- typography ---------- */
+  .slide-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.35rem, 3.1vw, 2.15rem);
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    text-wrap: balance;
+    max-width: 30ch;
+  }
+  .slide-sub {
+    font-size: clamp(0.95rem, 1.4vw, 1.08rem);
+    line-height: 1.6;
+    color: var(--ink-dim);
+    max-width: 62ch;
+  }
+  .slide-body {
+    font-size: clamp(0.92rem, 1.25vw, 1rem);
+    line-height: 1.65;
+    color: var(--ink-dim);
+    max-width: 58ch;
+  }
+  .slide-body strong { color: var(--ink); font-weight: 600; }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(1.4rem, 3vw, 2.6rem);
+    align-items: start;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .content-grid.single { grid-template-columns: minmax(0, 1fr); max-width: 62ch; }
+  @media (max-width: 760px) {
+    .content-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .narrative { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+  .evidence { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; overflow-y: auto; padding-right: 2px; }
+
+  /* ---------- quote / evidence blocks ---------- */
+  .quote {
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--quote-accent, var(--ink-faint));
+    border-radius: 3px;
+    padding: 0.85rem 1rem;
+  }
+  .quote--rule { --quote-accent: var(--amber); }
+  .quote--incident { --quote-accent: var(--teal); }
+  .quote-cite {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    margin-bottom: 0.45rem;
+    display: block;
+  }
+  .quote-text {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.62;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+
+  .stat-row {
+    display: flex;
+    gap: clamp(1.4rem, 3vw, 2.6rem);
+    flex-wrap: wrap;
+    margin: 0.2rem 0 0.4rem;
+  }
+  .stat { display: flex; flex-direction: column; gap: 0.15rem; }
+  .stat-num {
+    font-family: var(--font-mono);
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- primer list (slide 2) ---------- */
+  .primer-list { display: flex; flex-direction: column; gap: 0.9rem; max-width: 58ch; }
+  .primer-item {
+    display: grid;
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+    gap: 0.9rem;
+    align-items: start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .primer-item:last-child { border-bottom: none; }
+  .primer-num {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    padding-top: 0.15rem;
+  }
+  .primer-name { font-weight: 600; color: var(--ink); font-family: var(--font-mono); font-size: 0.95rem; }
+  .primer-desc { color: var(--ink-dim); font-size: 0.9rem; line-height: 1.55; margin-top: 0.2rem; }
+
+  /* ---------- tier diagram (slide 3) ---------- */
+  .tiers { display: flex; flex-direction: column; gap: 0; max-width: 640px; }
+  .tier {
+    display: grid;
+    grid-template-columns: 5.6rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+  }
+  .tier--top { border-color: color-mix(in srgb, var(--amber) 45%, var(--hairline)); background: var(--amber-soft); }
+  .tier-badge {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align: right;
+  }
+  .tier--top .tier-badge { color: var(--amber-ink); }
+  .tier-name { font-weight: 600; font-size: 0.95rem; color: var(--ink); }
+  .tier-trigger {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-dim);
+    margin-top: 0.15rem;
+  }
+  .tier-connector {
+    display: flex;
+    justify-content: flex-start;
+    padding-left: 2.65rem;
+    color: var(--ink-faint);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1;
+    height: 1.1rem;
+    align-items: center;
+  }
+
+  /* ---------- act divider ---------- */
+  .divider-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1rem;
+  }
+  .divider-num {
+    font-family: var(--font-display);
+    font-size: clamp(3.2rem, 9vw, 5.2rem);
+    font-weight: 600;
+    color: var(--amber);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .divider-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* ---------- throughline list (slide 20) ---------- */
+  .through-list { display: flex; flex-direction: column; gap: 0.05rem; max-width: 62ch; }
+  .through-item {
+    display: grid;
+    grid-template-columns: 1.1rem minmax(0, 1fr);
+    gap: 0.7rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--hairline);
+    align-items: baseline;
+  }
+  .through-item:last-child { border-bottom: none; }
+  .through-dot { color: var(--amber); font-family: var(--font-mono); }
+  .through-item:nth-child(even) .through-dot { color: var(--teal); }
+  .through-text { font-size: 0.96rem; line-height: 1.55; color: var(--ink); }
+
+  /* ---------- cover ---------- */
+  .cover-wrap { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 1.3rem; }
+  .cover-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.9rem, 4.6vw, 3.1rem);
+    line-height: 1.14;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    max-width: 17ch;
+    text-wrap: balance;
+  }
+  .cover-sub { font-size: clamp(1rem, 1.6vw, 1.15rem); color: var(--ink-dim); max-width: 52ch; line-height: 1.6; }
+  .cover-meta {
+    display: flex;
+    gap: 1.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.03em;
+    flex-wrap: wrap;
+  }
+  .closer-meta { margin-top: 0.6rem; }
+
+  /* ---------- nav ---------- */
+  .navbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem clamp(1rem, 3vw, 2.5rem);
+    background: linear-gradient(0deg, var(--stage) 55%, transparent);
+  }
+  .nav-btn {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--hairline-strong);
+    border-radius: 4px;
+    width: 2.2rem;
+    height: 2.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 150ms ease, transform 150ms ease;
+    flex: none;
+  }
+  .nav-btn:hover:not(:disabled) { border-color: var(--amber); }
+  .nav-btn:active:not(:disabled) { transform: scale(0.94); }
+  .nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+  .nav-track {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+  .nav-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+  }
+  #nav-act { color: var(--ink-dim); }
+  .nav-bar-track {
+    position: relative;
+    height: 3px;
+    background: var(--hairline-strong);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .nav-bar-fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    background: var(--amber);
+    transition: width var(--dur) ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-bar-fill { transition: none; }
+  }
+  .nav-hint {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    flex: none;
+  }
+  @media (max-width: 640px) {
+    .nav-hint { display: none; }
+  }
+</style>
+
+<div class="deck">
+  <div class="viewport" id="viewport">
+
+    <!-- 0 -->
+    <section class="slide" data-act="Act 0 — Setup">
+      <div class="slide-index">00</div>
+      <div class="eyebrow-row"><span class="tag tag--note">Field notes</span></div>
+      <div class="cover-wrap">
+        <h1 class="cover-title">Lessons from running Claude Code on a real codebase</h1>
+        <p class="cover-sub">Recall / OWMetrics — one engineer, one repo, a season of instrumenting an agent to work inside a production Wails + Vue app.</p>
+        <div class="cover-meta">
+          <span>sound-barrier/recall</span>
+          <span>149 commits to CLAUDE.md</span>
+          <span>34 memory files</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1 -->
+    <section class="slide" data-act="Act 0 — Setup">
+      <div class="slide-index">01</div>
+      <div class="eyebrow-row"><span class="eyebrow">Before we start</span></div>
+      <h2 class="slide-title">Three places Claude Code keeps what it knows</h2>
+      <ul class="primer-list">
+        <li class="primer-item">
+          <span class="primer-num">01</span>
+          <div>
+            <div class="primer-name">CLAUDE.md files</div>
+            <p class="primer-desc">Written and reviewed by a human, checked in (mostly). The curated layer.</p>
+          </div>
+        </li>
+        <li class="primer-item">
+          <span class="primer-num">02</span>
+          <div>
+            <div class="primer-name">Auto-memory</div>
+            <p class="primer-desc">Written by Claude itself after a session, stored outside the repo. The reflexive layer.</p>
+          </div>
+        </li>
+        <li class="primer-item">
+          <span class="primer-num">03</span>
+          <div>
+            <div class="primer-name">settings.json</div>
+            <p class="primer-desc">Permission allowlists. What Claude may run — not what it should do.</p>
+          </div>
+        </li>
+      </ul>
+      <p class="slide-body">Everything after this slide is what happens when you actually use all three, for months, on one codebase.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide" data-act="Act 1 — Structure">
+      <div class="slide-index">02</div>
+      <div class="eyebrow-row"><span class="tag tag--rule">Rule</span><span class="eyebrow">Act one — structure</span></div>
+      <h2 class="slide-title">Four tiers, one rule: load only what a session needs</h2>
+      <div class="tiers">
+        <div class="tier tier--top">
+          <span class="tier-badge">Always<br>loaded</span>
+          <div><div class="tier-name">root CLAUDE.md</div><div class="tier-trigger">every session, no trigger needed</div></div>
+        </div>
+        <div class="tier-connector">↓</div>
+        <div class="tier">
+          <span class="tier-badge">Glob /<br>directory</span>
+          <div><div class="tier-name">.claude/rules/*.md + frontend/CLAUDE.md</div><div class="tier-trigger">loads when you touch a matching path</div></div>
+        </div>
+        <div class="tier-connector">↓</div>
+        <div class="tier">
+          <span class="tier-badge">On<br>demand</span>
+          <div><div class="tier-name">docs/dev-reference.md</div><div class="tier-trigger">never auto-loaded — read when needed</div></div>
+        </div>
+        <div class="tier-connector">↓</div>
+        <div class="tier">
+          <span class="tier-badge">Dynamic</span>
+          <div><div class="tier-name">auto-memory</div><div class="tier-trigger">written by Claude, recalled by relevance</div></div>
+        </div>
+      </div>
+      <div class="quote quote--rule">
+        <span class="quote-cite">root CLAUDE.md</span>
+        <p class="quote-text">"It holds only what's relevant in every session. Directory- and topic-specific detail lives in .claude/rules/*.md (each loads automatically when you touch matching files) and in docs/dev-reference.md (read on demand)."</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="slide" data-act="Act 1 — Structure">
+      <div class="slide-index">03</div>
+      <div class="eyebrow-row"><span class="tag tag--rule">Rule</span></div>
+      <h2 class="slide-title">The tiering isn't vibes — it's a frequency-of-need budget</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">Behavior that should shape <strong>every</strong> reply lives in CLAUDE.md. Behavior for <strong>one subsystem</strong> lives in a glob-triggered rule. Facts you look up instead of obey — full command catalogs, env-var tables — live in dev-reference, on demand only.</p>
+          <p class="slide-body">The doc even protects itself from going stale by refusing to duplicate anything that already has a canonical source.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--rule">
+            <span class="quote-cite">docs/dev-reference.md</span>
+            <p class="quote-text">"specific numeric gates (GO_COVERAGE_MIN, Vitest thresholds, bundle budgets) and version pins... are intentionally NOT duplicated here — read them from vitest.config.ts, mise.toml, go.mod, and Brewfile so this doc can't go stale."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide" data-act="Act 1 — Structure">
+      <div class="slide-index">04</div>
+      <div class="eyebrow-row"><span class="tag tag--rule">Rule</span></div>
+      <h2 class="slide-title">Write the "why," not just the "what"</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">A rule without a reason can't be judged on an edge case it didn't anticipate. The best rule in this repo doesn't say "don't touch this" — it says exactly which invariants break if you do.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--rule">
+            <span class="quote-cite">.claude/rules/database.md</span>
+            <p class="quote-text">"These three stay naive-local and are never converted: the correlator's corroborated() compares OCR finished_at HH:MM against the filename HH:MM, and RowsConflict/dedup do string equality — all correct only because the axes match. Re-encoding the key would also force a 19-table lockstep rewrite (no ON UPDATE CASCADE)."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide" data-act="Act 1 — Structure">
+      <div class="slide-index">05</div>
+      <div class="eyebrow-row"><span class="tag tag--rule">Rule</span></div>
+      <h2 class="slide-title">Content lives in exactly one place</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body"><code>frontend/CLAUDE.md</code> used to own the API-design and accessibility rules outright. Both sections are now one line each — pointing at the file that extracted them, and explaining exactly when it fires.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--rule">
+            <span class="quote-cite">frontend/CLAUDE.md</span>
+            <p class="quote-text">"The REST API design rules... now live in .claude/rules/api-design.md, which auto-loads when you touch frontend/src/api.ts... read it before adding or changing any /api/v1/... call."</p>
+          </div>
+          <div class="quote quote--rule">
+            <span class="quote-cite">frontend/CLAUDE.md</span>
+            <p class="quote-text">"Accessibility rules... now live in .claude/rules/a11y.md, which auto-loads when you touch components, styles, App.vue, or test specs."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide" data-act="Act 1 — Structure">
+      <div class="slide-index">06</div>
+      <div class="eyebrow-row"><span class="tag tag--note">Open tension</span></div>
+      <h2 class="slide-title">"Auto-loaded" and "version-controlled" are different axes</h2>
+      <div class="stat-row">
+        <div class="stat"><span class="stat-num">149</span><span class="stat-label">commits to root CLAUDE.md</span></div>
+        <div class="stat"><span class="stat-num">0</span><span class="stat-label">commits to .claude/rules/</span></div>
+        <div class="stat"><span class="stat-num">10d</span><span class="stat-label">since CLAUDE.md last touched</span></div>
+      </div>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">The layer that auto-loads topic detail for every matching session is invisible to <code>git log</code>, invisible to a fresh clone, and never lands in a PR. Line 40 of <code>.gitignore</code> sees to that. Deliberate local/shared split, or a gap — worth deciding on purpose, not by default.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote">
+            <span class="quote-cite">memory · reference_claude_dir_gitignored</span>
+            <p class="quote-text">".claude/ is in .gitignore... so everything under it — including .claude/rules/*.md — is untracked / local-only... Root CLAUDE.md IS tracked; the rule files it points to are not."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide" data-act="Act 1 — Structure">
+      <div class="slide-index">07</div>
+      <div class="eyebrow-row"><span class="tag tag--rule">Rule</span></div>
+      <h2 class="slide-title">Two tracks of memory, on purpose</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">Curated conventions — hand-edited, reviewed, incident-driven — and auto-captured memory aren't the same thing, and the repo says so out loud.</p>
+          <p class="slide-body">Doesn't mean CLAUDE.md stopped moving: the most recent commit is still a manual doc sweep — <em class="hl">"docs: document taplo/sqlfluff/Biome in the linter tables"</em>. Automation took over the debugging-insight layer, not the structural one.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--rule">
+            <span class="quote-cite">root CLAUDE.md</span>
+            <p class="quote-text">"Auto memory is on by default (Claude Code ≥ v2.1.59). New debugging insights get recorded automatically — you don't need to hand-append 'conventions' here anymore. Run /memory to review what's been saved."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 : act divider -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">08</div>
+      <div class="eyebrow-row"><span class="eyebrow">Act two</span></div>
+      <div class="divider-wrap">
+        <div class="divider-num">02</div>
+        <h2 class="divider-title">Lessons from real incidents</h2>
+        <p class="slide-body">The best rules in this repo don't read like style guides. They read like compressed post-mortems.</p>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">09</div>
+      <div class="eyebrow-row"><span class="tag tag--incident">Incident</span><span class="tag tag--rule">Rule</span></div>
+      <h2 class="slide-title">One incident, two durable artifacts</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">One bug. A local transport gotcha in the rule file that touches that code — <strong>and</strong> the standing reason a whole category of feature now requires a failing e2e first. The incident became two different kinds of memory, at two different altitudes.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--rule">
+            <span class="quote-cite">.claude/rules/api-design.md</span>
+            <p class="quote-text">"_fetch in api.ts returns undefined for HTTP 204 / 202. r.json() on a no-body response throws SyntaxError — silently broke every 204 writer... in server mode until the e2e caught it."</p>
+          </div>
+          <div class="quote quote--incident">
+            <span class="quote-cite">root CLAUDE.md</span>
+            <p class="quote-text">"'Stitching a known pattern across layers' is NOT an exemption — the match-deletion feature shipped with a latent r.json()-on-204 bug because no e2e exercised the POST → reload round-trip."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">10</div>
+      <div class="eyebrow-row"><span class="tag tag--incident">Incident</span></div>
+      <h2 class="slide-title">Name the failure class, not just the instance</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">The first fix patched one eager fetch. The second and third recurrences got the same treatment because the class had already been named — "leaked async path," not "that one flaky test."</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--incident">
+            <span class="quote-cite">memory · reference_app_test_3000_flake</span>
+            <p class="quote-text">"two more members of the same leaked-async class were root-fixed... Pattern for any future sighting: make the leaked async path deterministic and inert at the resolution layer — don't chase timing."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">11</div>
+      <div class="eyebrow-row"><span class="tag tag--incident">Incident</span></div>
+      <h2 class="slide-title">Real regression vs. environment flake — and revisiting the call</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">One is a real regression, pinned in the lockfile until upstream fixes it. The other used to be a coin-flip worth re-running — until a seed got pinned, and the standing triage policy had to change the moment the tooling did.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--incident">
+            <span class="quote-cite">memory · reference_playwright_161_webkit_crash</span>
+            <p class="quote-text">"Bumping to 1.61.0... ships a newer Linux WebKit that crashes two WebKit-only e2e specs on CI... reproducibly (failed two consecutive CI runs)... Revisit at 1.62."</p>
+          </div>
+          <div class="quote quote--incident">
+            <span class="quote-cite">memory · reference_schemathesis_flake</span>
+            <p class="quote-text">"schemathesis now runs with a pinned --seed 20260702... so a red run reproduces locally with identical inputs — treat failures as real, not re-run roulette."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12 -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">12</div>
+      <div class="eyebrow-row"><span class="tag tag--incident">Incident</span></div>
+      <h2 class="slide-title">The shell you're driving isn't the shell you think</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">The tool is called "Bash" on this Mac; the shell underneath is zsh. Same genre, different incident: bumping the pinned Go version left a stale GOROOT in every tool shell until the next session healed it. Environment mismatch isn't a one-off — it's a genre worth watching for on its own.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--incident">
+            <span class="quote-cite">memory · feedback_destructive_shell</span>
+            <p class="quote-text">"zsh does NOT word-split unquoted variables by default — so for ts in $KEEP where KEEP='a b c' iterates ONCE... I destroyed 23 of the maintainer's curated testdata PNG fixtures with exactly this bug... a real data-loss event... ~30MB of unreplicated, never-committed work."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">13</div>
+      <div class="eyebrow-row"><span class="tag tag--incident">Incident</span></div>
+      <h2 class="slide-title">Verify, don't trust — including the tool's own claims</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">Two different kinds of stale ground truth: a linter that hadn't caught up to the real toolchain, and a memory that described a fix that had quietly never landed. Neither is hypothetical caution — both cost a real debugging cycle.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--incident">
+            <span class="quote-cite">memory · reference_go126_new_value_modernizer</span>
+            <p class="quote-text">"The gopls/LSP in this environment uses PRE-1.26 semantics, so it flags new(value) as 'NotAType' — those diagnostics are STALE, not real. Verify with go build/go test... not the LSP."</p>
+          </div>
+          <div class="quote quote--incident">
+            <span class="quote-cite">memory · reference_vite_ipv6_wails_proxy</span>
+            <p class="quote-text">"This recurred... because the 07-19 'fix' was never committed... If the symptom comes back, FIRST check that block is still in the file; don't re-diagnose from scratch, and don't trust a memory that says a fix is applied without looking."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 14 -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">14</div>
+      <div class="eyebrow-row"><span class="tag tag--incident">Incident</span></div>
+      <h2 class="slide-title">Some actions are the human's to trigger, full stop</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">The boundary exists because it was crossed once. It ships with a named carve-out too — a reversible prep commit stays allowed, because the line is about irreversibility, not caution for its own sake.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--incident">
+            <span class="quote-cite">memory · feedback_release_maintainer_trigger</span>
+            <p class="quote-text">"I merged release-please's Release PR #484 to 'cut v0.19.0'... using --admin to bypass branch protection — which published the GitHub Release + signed container before the user had done their intended pre-release steps. A published release can't be cleanly unpublished."</p>
+          </div>
+          <div class="quote quote--rule">
+            <span class="quote-cite">root CLAUDE.md</span>
+            <p class="quote-text">"'Cut / ship / release vX.Y.Z' authorizes preparation only. Claude must not — without an instruction naming that exact action in the moment — merge release-please's Release PR..., push a v* tag, ...or gh pr merge --admin a release."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15 -->
+    <section class="slide" data-act="Act 2 — Incidents">
+      <div class="slide-index">15</div>
+      <div class="eyebrow-row"><span class="tag tag--rule">Rule</span></div>
+      <h2 class="slide-title">CI legibility is a design choice, not an accident</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">Three separate decisions, one throughline: a green check should mean what it says. Split the job so lint failures and test failures don't look alike. Let a retry show as "flaky," never silently pass. Make every skip explain itself in a file someone will actually read.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote quote--rule">
+            <span class="quote-cite">.claude/rules/ci-cd.md</span>
+            <p class="quote-text">"test-unit (split out 2026-07-10 so a failing test never reports as 'lint')"</p>
+          </div>
+          <div class="quote quote--rule">
+            <span class="quote-cite">.claude/rules/ci-cd.md</span>
+            <p class="quote-text">"CI retries once because shared runners starve rAF/transition chains under load (five distinct single-test failures across four runs on one PR forced this)."</p>
+          </div>
+          <div class="quote quote--rule">
+            <span class="quote-cite">.claude/rules/ci-cd.md</span>
+            <p class="quote-text">"every t.Skip in pkg/ must appear in scripts/test-skips-allow.txt with a one-line 'why' comment... not for hiding flakes."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 16 -->
+    <section class="slide" data-act="Act 3 — Collaboration">
+      <div class="slide-index">16</div>
+      <div class="eyebrow-row"><span class="tag tag--note">Working agreement</span><span class="eyebrow">Act three — collaboration</span></div>
+      <h2 class="slide-title">Two rules that look contradictory, and aren't</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">The line between them isn't ask-vs-don't-ask — it's scope-vs-execution. Direction decisions are the user's, always. Once scope is agreed, stalling for permission on the steps inside it reads as friction, not care.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote">
+            <span class="quote-cite">memory · feedback_wait_for_scope_answers</span>
+            <p class="quote-text">"an AskUserQuestion about phase slicing/scope timed out after 60s and Claude proceeded on its own recommendations. The user: 'why did you continue without an answer? that's not what i want.'"</p>
+          </div>
+          <div class="quote">
+            <span class="quote-cite">memory · feedback_autonomous_execution</span>
+            <p class="quote-text">"'continue, there's no need to ask me going forward' partway through the Wails v2→v3 migration... they value velocity on already-approved work; mid-task checkpoints read as stalling."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 17 -->
+    <section class="slide" data-act="Act 3 — Collaboration">
+      <div class="slide-index">17</div>
+      <div class="eyebrow-row"><span class="tag tag--note">Working agreement</span></div>
+      <h2 class="slide-title">Batch the fan-out</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">More parallelism isn't automatically more throughput when the constraint is a session budget, not wall-clock time. The fix wasn't a smaller task — it was matching the execution shape to the actual constraint.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote">
+            <span class="quote-cite">memory · feedback_session_limits_batching</span>
+            <p class="quote-text">"Large parallel subagent fan-outs (e.g. a 49-finding × 2-verifier workflow) exhausted the user's session limit twice mid-run... prefer inline verification over verifier subagents when each check is a targeted read... run them sequentially or in small batches, persist progress between batches."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 18 -->
+    <section class="slide" data-act="Act 3 — Collaboration">
+      <div class="slide-index">18</div>
+      <div class="eyebrow-row"><span class="tag tag--note">Working agreement</span></div>
+      <h2 class="slide-title">The letter of a convention isn't the spirit of it</h2>
+      <div class="content-grid">
+        <div class="narrative">
+          <p class="slide-body">A convention is only as real as the mechanism that enforces it. Renaming files to look compliant isn't the same as being compliant — check what actually gates the behavior you want, not what merely resembles it.</p>
+        </div>
+        <div class="evidence">
+          <div class="quote">
+            <span class="quote-cite">memory · feedback_blackbox_test_package</span>
+            <p class="quote-text">"the _test.go suffix is automatic; what makes a test black-box is the &lt;pkg&gt;_test package clause forcing it through the public API. Renaming files without changing the package declaration would not satisfy the requirement."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 19 -->
+    <section class="slide" data-act="Closing">
+      <div class="slide-index">19</div>
+      <div class="eyebrow-row"><span class="eyebrow">Closing</span></div>
+      <h2 class="slide-title">The throughline</h2>
+      <ul class="through-list">
+        <li class="through-item"><span class="through-dot">·</span><span class="through-text">Write the why, so the rule survives an edge case it didn't anticipate.</span></li>
+        <li class="through-item"><span class="through-dot">·</span><span class="through-text">Codify an incident immediately — twice, if it teaches two different lessons.</span></li>
+        <li class="through-item"><span class="through-dot">·</span><span class="through-text">Name the failure class. Patch the instance later, or not at all.</span></li>
+        <li class="through-item"><span class="through-dot">·</span><span class="through-text">Verify against ground truth — including the tool's claims, and your own memory of a past fix.</span></li>
+        <li class="through-item"><span class="through-dot">·</span><span class="through-text">Keep irreversible actions human-triggered. Everything else, keep moving.</span></li>
+        <li class="through-item"><span class="through-dot">·</span><span class="through-text">Let curated memory and auto-captured memory each do the job the other can't.</span></li>
+      </ul>
+    </section>
+
+    <!-- 20 -->
+    <section class="slide" data-act="Closing">
+      <div class="slide-index">20</div>
+      <div class="eyebrow-row"><span class="tag tag--note">Field notes</span></div>
+      <div class="cover-wrap">
+        <h2 class="cover-title" style="max-width:22ch; font-size: clamp(1.5rem, 3.4vw, 2.3rem);">This deck is the highlight reel</h2>
+        <p class="slide-body" style="max-width: 56ch;">The full index is 34 files deep — 10 corrections, 24 diagnosed incidents — under one repo's memory store. None of it was written for a slide deck; all of it was written because something broke, or someone said "no, not like that," and it was worth not learning twice.</p>
+        <div class="cover-meta closer-meta">
+          <span>sound-barrier/recall</span>
+          <span>MEMORY.md</span>
+          <span>Questions / discussion</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<nav class="navbar" aria-label="Slide navigation">
+  <button class="nav-btn" id="prev" aria-label="Previous slide">‹</button>
+  <div class="nav-track">
+    <div class="nav-meta">
+      <span id="nav-act">Act 0 — Setup</span>
+      <span><span id="nav-count">01</span> / <span id="nav-total">21</span></span>
+    </div>
+    <div class="nav-bar-track"><div class="nav-bar-fill" id="nav-fill"></div></div>
+  </div>
+  <button class="nav-btn" id="next" aria-label="Next slide">›</button>
+  <span class="nav-hint">← → to navigate</span>
+</nav>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var total = slides.length;
+    var idx = 0;
+
+    var prevBtn = document.getElementById('prev');
+    var nextBtn = document.getElementById('next');
+    var fill = document.getElementById('nav-fill');
+    var countEl = document.getElementById('nav-count');
+    var totalEl = document.getElementById('nav-total');
+    var actEl = document.getElementById('nav-act');
+
+    totalEl.textContent = String(total).padStart(2, '0');
+
+    function pad(n) { return String(n + 1).padStart(2, '0'); }
+
+    function render() {
+      slides.forEach(function (s, i) {
+        s.classList.toggle('is-active', i === idx);
+      });
+      countEl.textContent = pad(idx);
+      fill.style.width = (total > 1 ? (idx / (total - 1)) * 100 : 100) + '%';
+      actEl.textContent = slides[idx].getAttribute('data-act') || '';
+      prevBtn.disabled = idx === 0;
+      nextBtn.disabled = idx === total - 1;
+    }
+
+    function go(n) {
+      idx = Math.max(0, Math.min(total - 1, n));
+      render();
+    }
+
+    prevBtn.addEventListener('click', function () { go(idx - 1); });
+    nextBtn.addEventListener('click', function () { go(idx + 1); });
+
+    window.addEventListener('keydown', function (e) {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+        case 'PageDown':
+        case ' ':
+          e.preventDefault();
+          go(idx + 1);
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+        case 'PageUp':
+          e.preventDefault();
+          go(idx - 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          go(0);
+          break;
+        case 'End':
+          e.preventDefault();
+          go(total - 1);
+          break;
+      }
+    });
+
+    render();
+  })();
+</script>
