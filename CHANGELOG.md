@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.27.3](https://github.com/sound-barrier/recall/compare/v0.27.2...v0.27.3) (2026-07-28)
+
+
+### Bug Fixes
+
+* **ingest:** count pending screenshots off the parse's own skip set ([7bf5b31](https://github.com/sound-barrier/recall/commit/7bf5b319cdb1c01946aa5a1ebc222c407a0e24f8))
+
+
+### Documentation
+
+* **talk:** add Claude Code lessons-learned slide deck ([d0f6948](https://github.com/sound-barrier/recall/commit/d0f69481f8c3d3bfb3f1f9133531c5172094905f))
+
+
+### Tests
+
+* **e2e:** pin the profile list in the theme-audit rig ([95eaa81](https://github.com/sound-barrier/recall/commit/95eaa818fc92edbabd2ce819597375597f41e257))
+
 ## [0.27.2](https://github.com/sound-barrier/recall/compare/v0.27.1...v0.27.2) (2026-07-20)
 
 
