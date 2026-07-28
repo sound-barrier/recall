@@ -8,7 +8,7 @@
 # the spike ships nothing, so a vulnerable pin here fails CI on every unrelated
 # PR. Re-sync the venv (`pip install -r spike/requirements.txt`) after a bump.
 easyocr==1.7.2
-numpy==2.5.0
+numpy==2.5.1
 # 12.3.0 clears ten HIGH CVEs in 12.2.0 (CVE-2026-54058/54059/54060, -55379,
 # -55380, -59197, -59199, -59200, -59204, -59205): crafted McIdas/PCF/BDF/GD/PDF
 # inputs causing OOB writes, memory disclosure, or DoS.
