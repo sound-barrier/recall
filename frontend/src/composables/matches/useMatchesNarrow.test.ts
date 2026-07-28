@@ -15,7 +15,8 @@ function rec(opts: {
   finishedAt?: string
   parsedAt?: string
   tags?: string[]
-  leaver?: '' | 'self' | 'team' | 'enemy'
+  leavers?: ('self' | 'team' | 'enemy')[]
+  throwers?: ('self' | 'team' | 'enemy')[]
   note?: string
   members?: string[]
   replay?: string
@@ -38,9 +39,9 @@ function rec(opts: {
       finished_at: opts.finishedAt ?? '14:00',
       heroes_played: opts.heroesPlayed ?? [{ hero: opts.hero ?? 'lucio', percent_played: 100, play_time: '10:00' }],
     },
-    ...(opts.tags || opts.leaver || opts.note || opts.members || opts.replay
+    ...(opts.tags || opts.leavers?.length || opts.throwers?.length || opts.note || opts.members || opts.replay
       ? { annotation: {
-        tags: opts.tags ?? [], leaver: opts.leaver ?? '', note: opts.note ?? '',
+        tags: opts.tags ?? [], leavers: opts.leavers ?? [], throwers: opts.throwers ?? [], note: opts.note ?? '',
         members: opts.members ?? [], replay_code: opts.replay ?? '',
       } }
       : {}),
@@ -365,11 +366,55 @@ describe('useMatchesNarrow', () => {
     })
   })
 
+  describe('thrower side filter', () => {
+    // Independent of the leaver facet and of leaverHandling — a thrown match
+    // still counts in the tally, so there is no thrower "handling" control.
+    const corpus = () => ref([
+      rec({ key: 'enemy-thrower', throwers: ['enemy'] }),
+      rec({ key: 'team-thrower', throwers: ['team'] }),
+      rec({ key: 'both-throwers', throwers: ['team', 'enemy'] }),
+      rec({ key: 'leaver-only', leavers: ['team'] }),
+      rec({ key: 'clean' }),
+    ])
+
+    it('scopes to the picked side, counting a both-teams match once', () => {
+      const { narrowedRecords, pickThrower } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickThrower('enemy')
+      expect(narrowedRecords.value.map(r => r.match_key)).toEqual(['enemy-thrower', 'both-throwers'])
+    })
+
+    it('ORs two picked sides', () => {
+      const { narrowedRecords, pickThrower } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickThrower('enemy')
+      pickThrower('team')
+      expect(narrowedRecords.value).toHaveLength(3)
+    })
+
+    it('ignores a leaver-only match', () => {
+      const { narrowedRecords, pickThrower } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickThrower('team')
+      expect(narrowedRecords.value.map(r => r.match_key)).not.toContain('leaver-only')
+    })
+
+    it('only offers sides the corpus actually recorded', () => {
+      const { availableThrowerSides } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      expect(availableThrowerSides.value).toEqual(['team', 'enemy'])
+    })
+
+    it('is cleared by resetNarrow', () => {
+      const { anyNarrow, pickThrower, resetNarrow } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickThrower('enemy')
+      expect(anyNarrow.value).toBe(true)
+      resetNarrow()
+      expect(anyNarrow.value).toBe(false)
+    })
+  })
+
   describe('leaver handling', () => {
     it("'hide' drops leaver-annotated records", () => {
       const records = ref([
         rec({ key: 'clean' }),
-        rec({ key: 'tagged', leaver: 'self' }),
+        rec({ key: 'tagged', leavers: ['self'] }),
       ])
       const { narrowedRecords, leaverHandling } = useMatchesNarrow(records, createMatchesNarrowState())
       leaverHandling.value = 'hide'
@@ -379,7 +424,7 @@ describe('useMatchesNarrow', () => {
     it("'exclude-tally' keeps leaver records in the list (downstream tally drops them)", () => {
       const records = ref([
         rec({ key: 'clean' }),
-        rec({ key: 'tagged', leaver: 'self' }),
+        rec({ key: 'tagged', leavers: ['self'] }),
       ])
       const { narrowedRecords, leaverHandling } = useMatchesNarrow(records, createMatchesNarrowState())
       leaverHandling.value = 'exclude-tally'
@@ -389,7 +434,7 @@ describe('useMatchesNarrow', () => {
     it("'include' (default) keeps everything", () => {
       const records = ref([
         rec({ key: 'clean' }),
-        rec({ key: 'tagged', leaver: 'team' }),
+        rec({ key: 'tagged', leavers: ['team'] }),
       ])
       const { narrowedRecords } = useMatchesNarrow(records, createMatchesNarrowState())
       expect(narrowedRecords.value).toHaveLength(2)

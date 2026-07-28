@@ -223,7 +223,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     // Walk the panel body and read each top-level child's selector
     // signature. We assert the ORDER of major sections:
     //   1. .detail-meta-strip  (date + final score)
-    //   2. .leaver-chooser     (Leaver? scenario chips)
+    //   2. .dis-chooser        (Leavers? / Throwers? side chips)
     //   3. .stats              (Match Stats grid)
     //   4. .rank-block         (rank — only when present; bumped
     //                           above the journal so the milestone
@@ -235,7 +235,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     const order = await page.evaluate(() => {
       const body = document.querySelector('.detail-body')
       if (!body) return []
-      const interesting = ['detail-meta-strip', 'match-journal', 'leaver-chooser', 'stats', 'rank-block', 'heroes-played', 'sources-block']
+      const interesting = ['detail-meta-strip', 'match-journal', 'dis-chooser', 'stats', 'rank-block', 'heroes-played', 'sources-block']
       const out: string[] = []
       const seen = new Set<string>()
       const walker = body.querySelectorAll('*')
@@ -251,7 +251,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     })
     expect(order).toEqual([
       'detail-meta-strip',
-      'leaver-chooser',
+      'dis-chooser',
       'stats',
       'rank-block',
       'match-journal',

@@ -87,6 +87,28 @@ describe('parseSearchQuery', () => {
   })
 })
 
+describe('disruption tokens', () => {
+  // Scoped-only by design: the three side values are generic words, so they
+  // stay out of the bare-token blob (see narrowPredicates.matchesSearch).
+  it('recognises leaver: and thrower: in both singular and plural', () => {
+    expect(parseSearchQuery('leaver:team')).toEqual([{ field: 'leaver', value: 'team' }])
+    expect(parseSearchQuery('leavers:self')).toEqual([{ field: 'leaver', value: 'self' }])
+    expect(parseSearchQuery('thrower:enemy')).toEqual([{ field: 'thrower', value: 'enemy' }])
+    expect(parseSearchQuery('throwers:team')).toEqual([{ field: 'thrower', value: 'team' }])
+  })
+
+  it('ANDs a disruption token with other clauses', () => {
+    expect(parseSearchQuery('thrower:enemy tag:tilt')).toEqual([
+      { field: 'thrower', value: 'enemy' },
+      { field: 'tag', value: 'tilt' },
+    ])
+  })
+
+  it('leaves a bare "leaver" as an untyped token', () => {
+    expect(parseSearchQuery('leaver')).toEqual([{ field: null, value: 'leaver' }])
+  })
+})
+
 describe('highlightTermsFor', () => {
   it('returns terms from bare clauses for every field', () => {
     const clauses = parseSearchQuery('clutch')

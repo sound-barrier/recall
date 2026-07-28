@@ -19,6 +19,7 @@ import {
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
 } from '@/match/match-label-helpers'
+import { disruptionLabel, disruptionTint } from '@/match/match-disruption'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
 
@@ -214,10 +215,21 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
     </td>
     <td class="tc tc-tags" :data-col="9" :class="{ 'is-cell-selected': sel(9) }">
       <span
-        v-if="rec.annotation?.leaver"
-        class="tc-leaver"
-        :title="`Leaver: ${rec.annotation.leaver}`"
+        v-if="rec.annotation?.leavers?.length"
+        role="img"
+        class="tc-stamp"
+        :class="`stamp-${disruptionTint(rec.annotation.leavers)}`"
+        :aria-label="disruptionLabel('leavers', rec.annotation.leavers)"
+        :title="disruptionLabel('leavers', rec.annotation.leavers)"
       >L</span>
+      <span
+        v-if="rec.annotation?.throwers?.length"
+        role="img"
+        class="tc-stamp"
+        :class="`stamp-${disruptionTint(rec.annotation.throwers)}`"
+        :aria-label="disruptionLabel('throwers', rec.annotation.throwers)"
+        :title="disruptionLabel('throwers', rec.annotation.throwers)"
+      >T</span>
       <span
         v-for="t in rec.annotation?.tags ?? []"
         :key="t"
@@ -418,12 +430,18 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   margin-right: 0.3rem;
 }
 
-.tc-leaver {
+/* Same tint convention as .leaf-stamp; the table is denser so the stamp is
+   bare type with no plate. */
+.tc-stamp {
   font-weight: 800;
-  color: var(--loss);
   margin-right: 0.3rem;
   font-size: var(--type-2xs);
+  color: var(--text-dim);
 }
+
+.tc-stamp.stamp-own   { color: var(--loss); }
+.tc-stamp.stamp-enemy { color: var(--win); }
+.tc-stamp.stamp-both  { color: var(--accent-text); }
 
 /* Provenance columns (Edited · User entered): a read-only checkbox per
    row. `disabled` makes it a non-interactive indicator — the click

@@ -2,7 +2,7 @@
  * Per-match review-status toggle in the detail-panel sidebar.
  *
  * The toggle is the FIRST thing inside the panel body — above the
- * meta strip, leaver chooser, stats. Three mutually exclusive states:
+ * meta strip, disruption choosers, stats. Three mutually exclusive states:
  *
  *   ⬡  Not reviewed  (default; absent reviewed_by)
  *   ◐  Self-reviewed (user reviewed the VOD themselves)
@@ -11,7 +11,7 @@
  * REST shape: `PUT /api/v1/matches/{matchKey}/review {reviewed_by}`
  * to set; `DELETE` to clear. Both 204.
  *
- * Mirrors the leaver-chooser pattern (radiogroup, aria-pressed),
+ * Mirrors the disruption-chooser pattern (radiogroup, aria-pressed),
  * extended with the panel-top "first thing" placement contract.
  */
 import { test, expect } from './_fixtures'
@@ -58,7 +58,7 @@ test.describe('match review-status toggle — panel sidebar', () => {
     const firstSectionClass = await page.evaluate(() => {
       const body = document.querySelector('.detail-body')
       if (!body) return null
-      const known = ['review-chooser', 'detail-meta-strip', 'leaver-chooser', 'stats']
+      const known = ['review-chooser', 'detail-meta-strip', 'dis-chooser', 'stats']
       const walker = body.querySelectorAll('*')
       for (const el of Array.from(walker)) {
         for (const cls of known) {

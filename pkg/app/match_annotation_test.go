@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"recall/pkg/aggregate"
@@ -12,8 +13,8 @@ import (
 
 func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 	annos := map[string]db.Annotation{
-		"k1": {MatchKey: "k1", Leaver: "self", Note: "left at 2min"},
-		"k3": {MatchKey: "k3", Leaver: "enemy"},
+		"k1": {MatchKey: "k1", Leavers: []string{"self"}, Note: "left at 2min"},
+		"k3": {MatchKey: "k3", Leavers: []string{"enemy"}},
 	}
 	recs := []match.MatchRecord{
 		{MatchKey: "k1"},
@@ -21,13 +22,13 @@ func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 		{MatchKey: "k3"},
 	}
 	aggregate.AttachAnnotations(recs, annos)
-	if recs[0].Annotation == nil || recs[0].Annotation.Leaver != "self" {
+	if recs[0].Annotation == nil || !slices.Equal(recs[0].Annotation.Leavers, []string{"self"}) {
 		t.Errorf("k1 should have self annotation: %+v", recs[0].Annotation)
 	}
 	if recs[1].Annotation != nil {
 		t.Errorf("k2 should have no annotation: %+v", recs[1].Annotation)
 	}
-	if recs[2].Annotation == nil || recs[2].Annotation.Leaver != "enemy" {
+	if recs[2].Annotation == nil || !slices.Equal(recs[2].Annotation.Leavers, []string{"enemy"}) {
 		t.Errorf("k3 should have enemy annotation: %+v", recs[2].Annotation)
 	}
 }
@@ -37,7 +38,7 @@ func TestSetMatchAnnotation_AllFieldsRoundTrip(t *testing.T) {
 	a := app.NewWithStore(fs)
 	in := app.AnnotationInput{
 		MatchKey:   "k1",
-		Leaver:     "team",
+		Leavers:    []string{"team"},
 		Note:       "long set",
 		ReplayCode: "7H1K9P",
 		Members:    []string{"Apollo#11234", "Cheese#5678"},
@@ -47,7 +48,7 @@ func TestSetMatchAnnotation_AllFieldsRoundTrip(t *testing.T) {
 	}
 	got, _ := fs.LoadAnnotations()
 	out := got["k1"]
-	if out.Leaver != "team" || out.Note != "long set" || out.ReplayCode != "7H1K9P" {
+	if !slices.Equal(out.Leavers, []string{"team"}) || out.Note != "long set" || out.ReplayCode != "7H1K9P" {
 		t.Errorf("scalars wrong: %+v", out)
 	}
 	if len(out.Members) != 2 {
@@ -61,7 +62,7 @@ func TestSetMatchAnnotation_AllFieldsRoundTrip(t *testing.T) {
 func TestSetMatchAnnotation_AllEmptyRejected(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
-	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1", Leaver: "team", Note: "x"}); err != nil {
+	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1", Leavers: []string{"team"}, Note: "x"}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1"}); !errors.Is(err, app.ErrEmptyAnnotation) {
@@ -78,7 +79,7 @@ func TestSetMatchAnnotation_TrimsAndDedupesMembers(t *testing.T) {
 	a := app.NewWithStore(fs)
 	in := app.AnnotationInput{
 		MatchKey: "k1",
-		Leaver:   "team",
+		Leavers:  []string{"team"},
 		Members:  []string{"  Apollo#11234  ", "", "Cheese#5678", "Apollo#11234"},
 	}
 	if err := a.SetMatchAnnotation(in); err != nil {
@@ -162,7 +163,7 @@ func TestDeleteMatchAnnotation(t *testing.T) {
 func TestSetMatchAnnotation_RejectsInvalidLeaver(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
-	err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1", Leaver: "afk"})
+	err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1", Leavers: []string{"afk"}})
 	if err == nil || err.Error() != app.ErrInvalidLeaver.Error() {
 		t.Errorf("expected ErrInvalidLeaver, got %v", err)
 	}
@@ -182,26 +183,26 @@ func TestSetMatchAnnotation_NoteOnlyKeepsRow(t *testing.T) {
 	}
 }
 
-// Clearing a leaver via SetMatchAnnotation (empty Leaver, other
+// Clearing the leaver sides via SetMatchAnnotation (empty Leavers, other
 // fields preserved) is the canonical path now that the legacy
 // ClearLeaverAnnotation shim is gone.
 func TestSetMatchAnnotation_EmptyLeaverPreservesOtherFields(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
 	_ = a.SetMatchAnnotation(app.AnnotationInput{
-		MatchKey: "k", Leaver: "team", Note: "important",
+		MatchKey: "k", Leavers: []string{"team"}, Note: "important",
 		ReplayCode: "ABC", Members: []string{"Apollo#1"},
 	})
 	if err := a.SetMatchAnnotation(app.AnnotationInput{
-		MatchKey: "k", Leaver: "", Note: "important",
+		MatchKey: "k", Leavers: nil, Note: "important",
 		ReplayCode: "ABC", Members: []string{"Apollo#1"},
 	}); err != nil {
 		t.Fatalf("SetMatchAnnotation: %v", err)
 	}
 	got, _ := fs.LoadAnnotations()
 	out := got["k"]
-	if out.Leaver != "" {
-		t.Errorf("leaver should be cleared, got %q", out.Leaver)
+	if len(out.Leavers) != 0 {
+		t.Errorf("leaver sides should be cleared, got %v", out.Leavers)
 	}
 	if out.Note != "important" || out.ReplayCode != "ABC" || len(out.Members) != 1 {
 		t.Errorf("other fields lost: %+v", out)

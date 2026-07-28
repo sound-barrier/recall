@@ -184,7 +184,7 @@ deleting. No admin rights are needed.
 | Permanently lost — lives only in the database | Safe — untouched |
 |---|---|
 | match notes, tags, tagged teammates | your screenshots folder |
-| leaver flags, replay codes | settings (incl. the screenshots path) |
+| leaver + thrower flags, replay codes | settings (incl. the screenshots path) |
 | review state, queue / play-mode overrides | other profiles |
 | hidden-match flags | |
 

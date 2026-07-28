@@ -164,7 +164,8 @@ function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
   applyPending.value = false
   applySnapshot = null
   const outcome = emitAnnotation({
-    leaver:      (record().annotation?.leaver ?? '') as MatchAnnotationInput['leaver'],
+    leavers:     record().annotation?.leavers ?? [],
+    throwers:    record().annotation?.throwers ?? [],
     note:        noteDraft.value.trim(),
     replay_code: replayDraft.value.trim(),
     members:     memberDraft.value,

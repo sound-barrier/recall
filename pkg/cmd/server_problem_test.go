@@ -74,12 +74,22 @@ func TestProblem_InvalidBodyCarriesFieldError(t *testing.T) {
 	}
 }
 
-// A null annotation field is rejected with a field-scoped `errors` entry.
-func TestProblem_AnnotationNullLeaverFieldError(t *testing.T) {
+// A null MEMBER inside a disruption-side array is rejected with a field-scoped
+// `errors` entry rather than being silently dropped to "".
+func TestProblem_AnnotationNullLeaverSideFieldError(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := put(t, mux, annotationPath("m1"), map[string]any{"leaver": nil})
-	p := assertProblem(t, rec, http.StatusBadRequest, "invalid-body", "leaver")
-	if len(p.Errors) != 1 || p.Errors[0].Field != "leaver" {
-		t.Errorf("errors = %+v, want one field error for leaver", p.Errors)
+	rec := put(t, mux, annotationPath("m1"), map[string]any{"leavers": []any{"team", nil}})
+	p := assertProblem(t, rec, http.StatusBadRequest, "invalid-body", "leavers")
+	if len(p.Errors) != 1 || p.Errors[0].Field != "leavers" {
+		t.Errorf("errors = %+v, want one field error for leavers", p.Errors)
+	}
+}
+
+func TestProblem_AnnotationNullThrowerSideFieldError(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := put(t, mux, annotationPath("m1"), map[string]any{"throwers": []any{nil}})
+	p := assertProblem(t, rec, http.StatusBadRequest, "invalid-body", "throwers")
+	if len(p.Errors) != 1 || p.Errors[0].Field != "throwers" {
+		t.Errorf("errors = %+v, want one field error for throwers", p.Errors)
 	}
 }

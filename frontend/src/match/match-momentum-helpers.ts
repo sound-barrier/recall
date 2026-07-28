@@ -202,7 +202,7 @@ export function leaverRate(records: readonly MomentumInput[]): LeaverRate {
   let total = 0
   for (const rec of records) {
     total++
-    if (rec.annotation?.leaver) leaverCount++
+    if (rec.annotation?.leavers?.length) leaverCount++
   }
   return { rate: total === 0 ? null : Math.round((leaverCount / total) * 100), leaverCount, total }
 }

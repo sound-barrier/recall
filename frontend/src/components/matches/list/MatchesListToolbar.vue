@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Density } from '@/composables/matches/useDensity'
 import { useActiveProfile } from '@/composables/shared/useActiveProfile'
+import { useAddMatchMenu } from '@/composables/matches/useAddMatchMenu'
 
 // The Matches members-section header toolbar: the "N matches" title, the
 // Sort+Group trigger, the row-density segmented control, and the
@@ -27,6 +28,9 @@ const emit = defineEmits<{
   // primary entry point for the no-Tesseract persona; always reachable since
   // the toolbar renders even with an empty set.
   'add-match': []
+  // Open the same modal in its stripped leaver-exit mode — map + result only,
+  // for a match Overwatch dropped from history because you left early.
+  'add-leaver-exit': []
   // Merge matches from a shared bundle (.zip). Additive — the counterpart to
   // the selection-only "Export bundle" in the bulk action bar.
   'import-matches': []
@@ -38,6 +42,17 @@ const emit = defineEmits<{
 // Manual add + bundle import write matches — rejected (409) on the read-only
 // sample profile, so disable them there.
 const { isReadOnly } = useActiveProfile()
+// Destructured to top-level consts: a template `ref="…"` binds by NAME and
+// cannot take a dotted path, so `ref="addMenu.triggerEl"` would silently
+// register a ref literally called "addMenu.triggerEl" and leave the
+// composable's element refs null — breaking outside-click and Esc-restore.
+const {
+  open: addMenuOpen,
+  triggerEl: addMenuTrigger,
+  menuEl: addMenuPanel,
+  toggle: toggleAddMenu,
+  run: runAddMenuItem,
+} = useAddMatchMenu()
 </script>
 
 <template>
@@ -49,17 +64,50 @@ const { isReadOnly } = useActiveProfile()
       </h3>
     </div>
     <div class="leaves-head-controls">
-      <button
-        type="button"
-        class="add-match-btn"
-        data-add-match
-        :disabled="isReadOnly"
-        :title="isReadOnly ? 'This is a read-only sample profile.' : 'Hand-enter a match — no screenshots needed'"
-        @click="emit('add-match')"
-      >
-        <span class="add-match-plus" aria-hidden="true">+</span>
-        Add match
-      </button>
+      <div class="add-match" :class="{ open: addMenuOpen }">
+        <button
+          ref="addMenuTrigger"
+          type="button"
+          class="add-match-btn"
+          data-add-match
+          :disabled="isReadOnly"
+          :aria-expanded="addMenuOpen ? 'true' : 'false'"
+          aria-haspopup="menu"
+          :title="isReadOnly ? 'This is a read-only sample profile.' : 'Record a match by hand — no screenshots needed'"
+          @click="toggleAddMenu"
+        >
+          <span class="add-match-plus" aria-hidden="true">+</span>
+          Add match
+          <span class="add-match-caret" aria-hidden="true">▾</span>
+        </button>
+        <div
+          v-if="addMenuOpen"
+          ref="addMenuPanel"
+          class="add-match-menu"
+          role="menu"
+          aria-label="Add a match"
+        >
+          <button
+            type="button"
+            class="add-match-item"
+            role="menuitem"
+            data-add-match-full
+            @click="runAddMenuItem(() => emit('add-match'))"
+          >
+            Full entry…
+          </button>
+          <button
+            type="button"
+            class="add-match-item"
+            role="menuitem"
+            data-add-match-leaver-exit
+            title="Overwatch drops matches you leave early — record one with just the map and the result"
+            @click="runAddMenuItem(() => emit('add-leaver-exit'))"
+          >
+            Left after a leaver…
+          </button>
+        </div>
+      </div>
       <button
         type="button"
         class="import-matches-btn"
@@ -219,6 +267,10 @@ const { isReadOnly } = useActiveProfile()
 
 /* Primary "create" affordance — accent fill so it reads as the one action
    that adds data, distinct from the neutral sort / density controls. */
+
+/* The split trigger's popover anchor. */
+.add-match { position: relative; display: inline-flex; }
+
 .add-match-btn {
   appearance: none;
   display: inline-flex;
@@ -244,6 +296,40 @@ const { isReadOnly } = useActiveProfile()
 .add-match-btn:disabled,
 .import-matches-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .add-match-plus { font-size: var(--type-2xl); line-height: 1; }
+.add-match-caret { font-size: var(--type-3xs); line-height: 1; opacity: 0.85; }
+
+/* Dropdown: same plate + item rhythm as the masthead app menu, so the two
+   read as one pattern. */
+.add-match-menu {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  z-index: 40;
+  min-width: 15rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgb(var(--shadow-rgb) / 40%);
+  padding: 0.25rem;
+}
+
+.add-match-item {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  font-family: var(--body);
+  font-size: var(--type-md);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.add-match-item:hover { background: var(--surface-2); color: var(--text); }
+.add-match-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* Neutral secondary action — same outlined shape as the sort trigger so it
    reads as a peer control, not a second primary "create" button. */

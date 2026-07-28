@@ -7,7 +7,7 @@
  * into the open match's DRAFT — replacing the draft, firing no write —
  * and shows Confirm / Undo. Only Confirm persists (via the existing
  * PUT /annotation path); Undo restores the prior draft. Note, replay
- * code, and leaver are never copied.
+ * code, and the disruption sides are never copied.
  *
  * Round-trip proven here:
  *   1. GET /api/v1/matches returns an earlier annotated match + a later
@@ -15,7 +15,7 @@
  *   2. Open the later match's panel → the journal head shows Apply.
  *   3. Apply fills the Group + Tags cells with the copied values and
  *      NO PUT fires.
- *   4. Confirm PUTs members+tags (note/replay empty, leaver untouched).
+ *   4. Confirm PUTs members+tags (note/replay empty, sides untouched).
  *   5. Undo restores the draft with no PUT.
  *   6. A match with no annotated predecessor shows no button.
  */
@@ -39,7 +39,7 @@ const prevRecord = () => ({
     finished_at: '20:00',
   },
   parsed_at: '2026-05-10T20:30:00Z',
-  annotation: { leaver: '', members: ['Apollo', 'Zed'], tags: ['stack'] },
+  annotation: { leavers: [], throwers: [], members: ['Apollo', 'Zed'], tags: ['stack'] },
 })
 
 const curRecord = () => ({
@@ -96,7 +96,7 @@ test.describe('apply previous annotation — journal head', () => {
     await page.locator('[data-journal-apply-confirm]').click()
     await expect.poll(() => putCount).toBe(1)
     expect(putBody).toEqual({
-      leaver: '',
+      leavers: [], throwers: [],
       note: '',
       replay_code: '',
       members: ['Apollo', 'Zed'],

@@ -124,12 +124,17 @@ type AmbiguousAttribution struct {
 // MatchRecord. Mirrors the db.Annotation shape but lives in the domain
 // layer so the JSON contract doesn't leak SQL field names.
 //
-// All five user-settable fields (leaver / note / replay_code / members
-// / tags) are optional; the App-layer policy is "if every field is
+// Every user-settable field (leavers / throwers / note / replay_code /
+// members / tags) is optional; the App-layer policy is "if every field is
 // empty, delete the row". `members` and `tags` are omitted from the
 // JSON when empty so the wire shape stays compact for the common case.
+//
+// `leavers` and `throwers` are SETS of "self" / "team" / "enemy" — a match can
+// be disrupted on both teams at once. They are always present on the wire (no
+// omitempty) so clients can read `.length` without a nil check.
 type MatchAnnotation struct {
-	Leaver      string   `json:"leaver"`
+	Leavers     []string `json:"leavers"`
+	Throwers    []string `json:"throwers"`
 	Note        string   `json:"note,omitempty"`
 	ReplayCode  string   `json:"replay_code,omitempty"`
 	Members     []string `json:"members,omitempty"`

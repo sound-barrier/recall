@@ -30,9 +30,10 @@ var (
 		"close game, came down to the last fight",
 	}
 	annotationCustomTags = []string{"tilt", "smurf", "comeback", "thrower", "gg", "vod-review"}
-	// Leaver scenarios, weighted toward team/enemy leavers (a self-leave is the
-	// rarest); every value is one of validLeavers in the app layer.
-	annotationLeavers = []string{"team", "team", "enemy", "enemy", "self"}
+	// Disruption side draws, weighted toward team/enemy (a self-tag is the
+	// rarest); every value is one of validDisruptionSides in the app layer.
+	// Both leavers and throwers draw from this — the sides are the same three.
+	annotationSides = []string{"team", "team", "enemy", "enemy", "self"}
 )
 
 // appendAnnotationSeeds populates per-match annotations (members / note / tags /
@@ -74,7 +75,15 @@ func rollAnnotation(rng *rand.Rand, matchKey string) db.Annotation {
 		ann.ReplayCode = replayCode(rng)
 	}
 	if rng.Float64() < 0.04 {
-		ann.Leaver = annotationLeavers[rng.Intn(len(annotationLeavers))]
+		ann.Leavers = []string{annotationSides[rng.Intn(len(annotationSides))]}
+	}
+	// Throwers are rarer than leavers and occasionally land on both teams at
+	// once — the case the old single-value column couldn't represent.
+	if rng.Float64() < 0.03 {
+		ann.Throwers = []string{annotationSides[rng.Intn(len(annotationSides))]}
+		if rng.Float64() < 0.15 {
+			ann.Throwers = []string{"team", "enemy"}
+		}
 	}
 	return ann
 }
@@ -104,6 +113,6 @@ func replayCode(rng *rand.Rand) string {
 // roll is skipped rather than written as a content-free row (mirrors the app
 // layer's ErrEmptyAnnotation guard).
 func annotationHasContent(a db.Annotation) bool {
-	return a.Leaver != "" || a.Note != "" || a.ReplayCode != "" ||
-		len(a.Members) > 0 || len(a.Tags) > 0
+	return len(a.Leavers) > 0 || len(a.Throwers) > 0 || a.Note != "" ||
+		a.ReplayCode != "" || len(a.Members) > 0 || len(a.Tags) > 0
 }

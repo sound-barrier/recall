@@ -35,13 +35,21 @@ export type PlayModePick = 'quickplay' | 'competitive' | 'unknown'
 // drops pure-OCR rows) but has no chip of its own.
 export type SourcePick = 'ocr' | 'ocr_edited' | 'manual'
 
-// LeaverPick mirrors the `annotation.leaver` enum — who left the match.
-// The narrow exposes a side multi-select: 'self' (the user left, data
-// incomplete), 'team' (a teammate left), 'enemy' (an enemy left). This is
-// distinct from `leaverHandling` (which only governs the W/L TALLY) — the
-// side filter scopes the SET to matches that carried a leaver. Empty ≡ no
-// filter; matches with no leaver tag drop out when any side is picked.
-export type LeaverPick = 'self' | 'team' | 'enemy'
+// DisruptionSide mirrors the `annotation.leavers` / `annotation.throwers`
+// vocabulary — which side someone left from or threw on: 'self' (the user
+// themselves, so their own data is incomplete), 'team' (a teammate), 'enemy'.
+//
+// Both annotations are SETS, so a match can be tagged on both teams at once
+// and a single match can match either picked side. The two narrow facets are
+// independent multi-selects that OR within themselves: empty ≡ no filter, and
+// matches carrying no tag of that kind drop out once any side is picked.
+//
+// `leaverSide` is distinct from `leaverHandling`, which only governs the W/L
+// TALLY. There is deliberately no thrower equivalent of leaverHandling — a
+// thrown match still counts.
+export type DisruptionSide = 'self' | 'team' | 'enemy'
+export type LeaverPick = DisruptionSide
+export type ThrowerPick = DisruptionSide
 
 // Pool-membership filter — the Hero Pool band's In-pool / Out-of-pool
 // selection. Transient and band-driven (NOT saved in narrow presets): the band
@@ -74,6 +82,7 @@ export interface MatchesNarrowState {
   pickedPlayModes:   Ref<Set<PlayModePick>>
   pickedSources:     Ref<Set<SourcePick>>
   pickedLeavers:     Ref<Set<LeaverPick>>
+  pickedThrowers:    Ref<Set<ThrowerPick>>
   pickedModifiers:   Ref<Set<string>>
   pickedRanks:       Ref<Set<string>>
   pickedRange:       Ref<PresetRange>

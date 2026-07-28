@@ -3,7 +3,11 @@
 //
 //   • bare token        → matches anywhere in note/replay/members/tags
 //   • <field>:<value>   → matches only that field (note, replay,
-//                         member[s], tag[s])
+//                         member[s], tag[s], leaver[s], thrower[s])
+//
+// `leaver:` / `thrower:` are scoped-only — their three values (self / team /
+// enemy) are generic enough that folding them into the bare-token blob would
+// make a search for "team" match matches the user never tagged.
 //
 // Multiple tokens AND together. Values may be quoted with `"..."` to
 // preserve internal whitespace. Unknown field names fall through as
@@ -11,7 +15,7 @@
 // usefully). The parser is pure + side-effect-free so the live
 // reactive filter can re-parse on every keystroke without ceremony.
 
-export type SearchField = 'note' | 'replay' | 'member' | 'tag'
+export type SearchField = 'note' | 'replay' | 'member' | 'tag' | 'leaver' | 'thrower'
 
 export interface SearchClause {
   // null = bare clause (matches any field); otherwise the canonical
@@ -29,8 +33,12 @@ const FIELD_ALIASES: Record<string, SearchField> = {
   replays: 'replay',
   member:  'member',
   members: 'member',
-  tag:     'tag',
-  tags:    'tag',
+  tag:      'tag',
+  tags:     'tag',
+  leaver:   'leaver',
+  leavers:  'leaver',
+  thrower:  'thrower',
+  throwers: 'thrower',
 }
 
 // Detect a `<field>:` prefix at `i` — the run of non-space/colon/quote chars up

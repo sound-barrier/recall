@@ -16,15 +16,15 @@ export interface WLDTally {
 // victory/defeat/draw are silently ignored — partial rolls are fine
 // (W+L+D ≤ length).
 //
-// Optional `skipAnnotated` flag drops any record that carries a
-// non-empty `annotation.leaver` from the tally. Used by the
-// "Don't tally leaver matches" preference on the FilterRail — the
-// matches still appear in the list, they just don't count toward
-// the win-rate readouts.
+// Optional `skipAnnotated` flag drops any record carrying at least one
+// `annotation.leavers` side from the tally. Used by the "Don't tally leaver
+// matches" preference in the narrow panel — the matches still appear in the
+// list, they just don't count toward the win-rate readouts. Throwers are
+// deliberately NOT covered: a thrown match still counts.
 export function tallyWLD(
   records: {
     data?: { result?: string | null } | null
-    annotation?: { leaver?: string | null } | null
+    annotation?: { leavers?: string[] | null } | null
   }[],
   skipAnnotated = false,
 ): WLDTally {
@@ -32,7 +32,7 @@ export function tallyWLD(
   let l = 0
   let d = 0
   for (const r of records) {
-    if (skipAnnotated && r.annotation && r.annotation.leaver) continue
+    if (skipAnnotated && r.annotation?.leavers?.length) continue
     const result = (r.data?.result ?? '').toLowerCase()
     if (result === 'victory') w++
     else if (result === 'defeat') l++

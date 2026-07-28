@@ -66,38 +66,60 @@ describe('MatchCardExpanded — stats grid', () => {
   })
 })
 
-describe('MatchCardExpanded — leaver chips', () => {
-  // The three leaver chips emit `set-leaver-annotation` with either
-  // the new leaver string or "" (toggle-off) depending on whether
-  // the chip is already active. Find by .leaver-chip class — the
-  // first chip is "I left" (self), second is "Ally" (team), third
-  // is "Opponent" (enemy).
-  it('emits leaver=self when the first chip ("I left") is clicked from a non-leaver record', async () => {
+describe('MatchCardExpanded — disruption chips', () => {
+  // Two choosers are mounted (leavers, then throwers), each with three side
+  // chips. They are independent multi-select toggles, so the payload is the
+  // full side SET the chooser wants — picking a second side ADDS to it rather
+  // than replacing the first, which is what the old single-value column
+  // couldn't express.
+  const leaverChips = (w: ReturnType<typeof mountCard>) =>
+    w.findAll('[data-disruption^="leavers-"]')
+  const throwerChips = (w: ReturnType<typeof mountCard>) =>
+    w.findAll('[data-disruption^="throwers-"]')
+
+  it('emits the leavers set when a side chip is clicked from an untagged record', async () => {
     const wrapper = mountCard()
-    const chips = wrapper.findAll('.leaver-chip')
-    expect(chips.length).toBeGreaterThanOrEqual(3)
+    const chips = leaverChips(wrapper)
+    expect(chips.length).toBe(3)
     await chips[0]!.trigger('click')
-    const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([wrapper.props('record').match_key, 'self'])
+    const e = wrapper.emitted('set-disruption')!
+    expect(e[0]).toEqual([wrapper.props('record').match_key, 'leavers', ['self']])
   })
 
-  it('emits leaver="" when the first chip is clicked on a record already marked self', async () => {
-    const rec = makeRecord({}, { annotation: { leaver: 'self' } } as unknown as Partial<MatchRecord>)
+  it('adds a second side rather than replacing the first', async () => {
+    const rec = makeRecord({}, { annotation: { leavers: ['team'], throwers: [] } } as unknown as Partial<MatchRecord>)
     const wrapper = mountCard({ record: rec })
-    const chips = wrapper.findAll('.leaver-chip')
-    await chips[0]!.trigger('click')
-    const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([rec.match_key, ''])
+    await leaverChips(wrapper)[0]!.trigger('click')
+    const e = wrapper.emitted('set-disruption')!
+    expect(e[0]).toEqual([rec.match_key, 'leavers', ['team', 'self']])
   })
 
-  it('marks the active chip with aria-pressed="true"', () => {
-    const rec = makeRecord({}, { annotation: { leaver: 'team' } } as unknown as Partial<MatchRecord>)
+  it('removes a side when its already-active chip is re-clicked', async () => {
+    const rec = makeRecord({}, { annotation: { leavers: ['self', 'team'], throwers: [] } } as unknown as Partial<MatchRecord>)
     const wrapper = mountCard({ record: rec })
-    const chips = wrapper.findAll('.leaver-chip')
-    // First chip = self (false), second = team (true), third = enemy (false).
-    expect(chips[1]!.attributes('aria-pressed')).toBe('true')
-    expect(chips[0]!.attributes('aria-pressed')).toBe('false')
-    expect(chips[2]!.attributes('aria-pressed')).toBe('false')
+    await leaverChips(wrapper)[0]!.trigger('click')
+    const e = wrapper.emitted('set-disruption')!
+    expect(e[0]).toEqual([rec.match_key, 'leavers', ['team']])
+  })
+
+  it('keeps the thrower chooser independent of the leaver one', async () => {
+    const rec = makeRecord({}, { annotation: { leavers: ['team'], throwers: [] } } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec })
+    await throwerChips(wrapper)[2]!.trigger('click')
+    const e = wrapper.emitted('set-disruption')!
+    expect(e[0]).toEqual([rec.match_key, 'throwers', ['enemy']])
+  })
+
+  it('marks only the active side chips with aria-pressed="true"', () => {
+    const rec = makeRecord({}, { annotation: { leavers: ['team'], throwers: ['enemy'] } } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec })
+    const l = leaverChips(wrapper)
+    expect(l[0]!.attributes('aria-pressed')).toBe('false')
+    expect(l[1]!.attributes('aria-pressed')).toBe('true')
+    expect(l[2]!.attributes('aria-pressed')).toBe('false')
+    const t = throwerChips(wrapper)
+    expect(t[2]!.attributes('aria-pressed')).toBe('true')
+    expect(t[1]!.attributes('aria-pressed')).toBe('false')
   })
 })
 

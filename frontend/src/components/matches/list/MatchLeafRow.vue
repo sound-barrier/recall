@@ -16,6 +16,7 @@ import {
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
 } from '@/match/match-label-helpers'
+import { disruptionLabel, disruptionTint } from '@/match/match-disruption'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
@@ -248,11 +249,26 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
       <span class="stat-num stat-deaths">{{ rec.data?.deaths ?? '—' }}</span>
     </div>
 
-    <!-- 6. Annotations — provenance + leaver + tags. Empty when none. -->
+    <!-- 6. Annotations — provenance + disruption stamps + tags. Empty when none. -->
     <div class="leaf-meta-block">
       <span v-if="rec.pinned" class="leaf-pin" title="Pinned match" aria-label="Pinned">★</span>
       <MatchProvenanceBadge :source="rec.source" :edited-fields="rec.edited_fields" compact />
-      <span v-if="rec.annotation?.leaver" class="leaf-leaver" :title="`Leaver: ${rec.annotation.leaver}`">L</span>
+      <span
+        v-if="rec.annotation?.leavers?.length"
+        role="img"
+        class="leaf-stamp"
+        :class="`stamp-${disruptionTint(rec.annotation.leavers)}`"
+        :aria-label="disruptionLabel('leavers', rec.annotation.leavers)"
+        :title="disruptionLabel('leavers', rec.annotation.leavers)"
+      >L</span>
+      <span
+        v-if="rec.annotation?.throwers?.length"
+        role="img"
+        class="leaf-stamp"
+        :class="`stamp-${disruptionTint(rec.annotation.throwers)}`"
+        :aria-label="disruptionLabel('throwers', rec.annotation.throwers)"
+        :title="disruptionLabel('throwers', rec.annotation.throwers)"
+      >T</span>
       <span
         v-for="t in rec.annotation?.tags ?? []"
         :key="t"
@@ -584,16 +600,37 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
   white-space: nowrap;
 }
 
-.leaf-leaver {
+/* Disruption stamp: one letter per kind (L / T), with the SIDES collapsed
+   into a tint — your side of the scoreboard reads as a loss-tinted problem,
+   the enemy's as a win-tinted one, both teams as neutral. The tint is never
+   the sole carrier; the aria-label spells the sides out. */
+.leaf-stamp {
   font-family: var(--mono);
   font-size: var(--type-2xs);
   font-weight: 800;
   padding: 0.1rem 0.4rem;
-  border: 1px solid var(--loss);
-  color: var(--loss);
-  background: color-mix(in srgb, var(--loss) 12%, transparent);
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
   border-radius: var(--radius);
   letter-spacing: 0.14em;
+}
+
+.leaf-stamp.stamp-own {
+  border-color: var(--loss);
+  color: var(--loss);
+  background: color-mix(in srgb, var(--loss) 12%, transparent);
+}
+
+.leaf-stamp.stamp-enemy {
+  border-color: var(--win);
+  color: var(--win);
+  background: color-mix(in srgb, var(--win) 12%, transparent);
+}
+
+.leaf-stamp.stamp-both {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .leaf-result-chip {

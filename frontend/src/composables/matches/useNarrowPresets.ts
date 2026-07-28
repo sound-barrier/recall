@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue'
-import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, PresetRange } from '@/composables/matches/useMatchesNarrow'
+import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, ThrowerPick, PresetRange } from '@/composables/matches/useMatchesNarrow'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier'
 
 // Saved-set / preset feature.
@@ -29,6 +29,7 @@ interface SerializedNarrow {
   pickedPlayModes:   PlayModePick[]
   pickedSources:     SourcePick[]
   pickedLeavers:     LeaverPick[]
+  pickedThrowers:    ThrowerPick[]
   pickedModifiers:   string[]
   pickedRanks:       string[]
   pickedRange:       PresetRange
@@ -64,6 +65,7 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
     pickedPlayModes:   [...state.pickedPlayModes.value],
     pickedSources:     [...state.pickedSources.value],
     pickedLeavers:     [...state.pickedLeavers.value],
+    pickedThrowers:    [...state.pickedThrowers.value],
     pickedModifiers:   [...state.pickedModifiers.value].sort(),
     pickedRanks:       [...state.pickedRanks.value].sort(),
     pickedRange:       state.pickedRange.value,
@@ -96,6 +98,7 @@ function apply(state: MatchesNarrowState, s: SerializedNarrow): void {
   // `?? []` also RESETS the dimension for presets saved before it existed —
   // leaving the live picks in place would apply a merged half-preset.
   state.pickedLeavers.value     = new Set(s.pickedLeavers ?? [])
+  state.pickedThrowers.value    = new Set(s.pickedThrowers ?? [])
   state.pickedModifiers.value   = new Set(s.pickedModifiers ?? [])
   state.pickedRanks.value       = new Set(s.pickedRanks ?? [])
   state.pickedRange.value       = s.pickedRange

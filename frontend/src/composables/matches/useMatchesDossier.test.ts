@@ -52,7 +52,7 @@ function rec(opts: {
   result?: 'victory' | 'defeat' | 'draw'
   map?: string
   hero?: string
-  leaver?: '' | 'self' | 'team' | 'enemy'
+  leavers?: ('self' | 'team' | 'enemy')[]
   members?: string[]
   modifiers?: string[]
   reviewedBy?: 'self' | 'coach'
@@ -71,7 +71,7 @@ function rec(opts: {
       playlist: 'competitive',
       ...(opts.modifiers ? { modifiers: opts.modifiers } : {}),
     },
-    annotation: (opts.leaver || opts.members) ? { leaver: opts.leaver ?? '', members: opts.members ?? [] } : undefined,
+    annotation: (opts.leavers?.length || opts.members) ? { leavers: opts.leavers ?? [], throwers: [], members: opts.members ?? [] } : undefined,
     parsed_at: opts.parsedAt ?? '2026-05-10T14:00:00Z',
     ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
     ...(opts.reviewedAt ? { reviewed_at: opts.reviewedAt } : {}),
@@ -135,7 +135,7 @@ describe('useMatchesDossier', () => {
     it('exclude-tally drops leaver-annotated records from KPIs only', () => {
       const records = ref([
         rec({ key: 'w1', result: 'victory' }),
-        rec({ key: 'l1', result: 'defeat', leaver: 'self' }),
+        rec({ key: 'l1', result: 'defeat', leavers: ['self'] }),
         rec({ key: 'l2', result: 'defeat' }),
       ])
       const handling = ref<LeaverHandling>('exclude-tally')
@@ -148,7 +148,7 @@ describe('useMatchesDossier', () => {
     it('include counts leaver-annotated records normally', () => {
       const records = ref([
         rec({ result: 'victory' }),
-        rec({ result: 'defeat', leaver: 'team' }),
+        rec({ result: 'defeat', leavers: ['team'] }),
       ])
       const { wld } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
       expect(wld.value).toEqual({ w: 1, l: 1, d: 0, total: 2 })
@@ -380,7 +380,7 @@ describe('useMatchesDossier', () => {
     it('honors the leaver-exclude-tally rule, like wld/winrate', () => {
       const records = ref([
         recWithGameLength('10:00'),
-        { ...recWithGameLength('20:00'), annotation: { leaver: 'self' } } as MatchRecord,
+        { ...recWithGameLength('20:00'), annotation: { leavers: ['self'], throwers: [] } } as MatchRecord,
       ])
       const handling = ref<LeaverHandling>('include')
       const { totalTimePlayed } = legacy(useMatchesDossier(records, handling))
@@ -400,7 +400,7 @@ describe('useMatchesDossier', () => {
     function recWithPlay(
       heroes: { hero: string; percent_played: number }[],
       result: 'victory' | 'defeat' | 'draw' = 'victory',
-      leaver?: '' | 'self' | 'team' | 'enemy',
+      leavers?: ('self' | 'team' | 'enemy')[],
     ): MatchRecord {
       return {
         match_key: `m-${Math.random()}`,
@@ -415,7 +415,7 @@ describe('useMatchesDossier', () => {
             play_time: '10:00',
           })),
         },
-        annotation: leaver ? { leaver } : undefined,
+        annotation: leavers?.length ? { leavers, throwers: [] } : undefined,
         parsed_at: '2026-05-10T14:00:00Z',
       } as unknown as MatchRecord
     }
@@ -481,7 +481,7 @@ describe('useMatchesDossier', () => {
     it('honors leaver-exclude-tally — leaver matches drop from the win-rate denom', () => {
       const records = ref([
         recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'victory'),
-        recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'defeat', 'self'),
+        recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'defeat', ['self']),
       ])
       const handling = ref<LeaverHandling>('include')
       const { mostPlayedHero } = legacy(useMatchesDossier(records, handling))
@@ -513,7 +513,7 @@ describe('useMatchesDossier', () => {
       elim: number | undefined,
       deaths: number | undefined,
       assists: number | undefined,
-      opts: { leaver?: '' | 'self' | 'team' | 'enemy' } = {},
+      opts: { leavers?: ('self' | 'team' | 'enemy')[] } = {},
     ): MatchRecord {
       const perf = elim === undefined && deaths === undefined && assists === undefined
         ? undefined
@@ -531,7 +531,7 @@ describe('useMatchesDossier', () => {
           result: 'victory', date: '2026-05-10', finished_at: '14:00',
           ...(perf ? { performance: perf } : {}),
         },
-        annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
+        annotation: opts.leavers?.length ? { leavers: opts.leavers, throwers: [] } : undefined,
         parsed_at: '2026-05-10T14:00:00Z',
       } as unknown as MatchRecord
     }
@@ -583,7 +583,7 @@ describe('useMatchesDossier', () => {
     it('honors leaver-exclude-tally — leaver records drop from the average', () => {
       const records = ref([
         recWithKDA(10, 5, 8),
-        recWithKDA(30, 5, 8, { leaver: 'self' }),
+        recWithKDA(30, 5, 8, { leavers: ['self'] }),
       ])
       const handling = ref<LeaverHandling>('include')
       const { averageKDA } = legacy(useMatchesDossier(records, handling))
@@ -617,7 +617,7 @@ describe('useMatchesDossier', () => {
     it('updates when leaverHandling flips', () => {
       const records = ref([
         rec({ result: 'victory' }),
-        rec({ result: 'defeat', leaver: 'self' }),
+        rec({ result: 'defeat', leavers: ['self'] }),
       ])
       const handling = ref<LeaverHandling>('include')
       const { wld } = legacy(useMatchesDossier(records, handling))
@@ -662,7 +662,7 @@ describe('useMatchesDossier', () => {
       const records = ref([
         rec({ key: 'anchor', reviewedBy: 'self', reviewedAt: ANCHOR, parsedAt: ANCHOR }),
         rec({ key: 'new-w', result: 'victory', parsedAt: '2026-06-06T00:00:00Z' }),
-        rec({ key: 'new-l-leaver', result: 'defeat', leaver: 'self',
+        rec({ key: 'new-l-leaver', result: 'defeat', leavers: ['self'],
               parsedAt: '2026-06-07T00:00:00Z' }),
       ])
       const { wldSinceLastReview } = legacy(useMatchesDossier(records, ref<LeaverHandling>('exclude-tally')))
@@ -729,7 +729,7 @@ describe('useMatchesDossier', () => {
       primary?: string
       heroes?: string[]
       result?: 'victory' | 'defeat' | 'draw'
-      leaver?: 'self' | 'team' | 'enemy'
+      leavers?: ('self' | 'team' | 'enemy')[]
     }): MatchRecord {
       return {
         match_key: opts.key ?? `m-${Math.random()}`,
@@ -743,7 +743,7 @@ describe('useMatchesDossier', () => {
           date: '2026-05-10', finished_at: '14:00',
           heroes_played: (opts.heroes ?? []).map((h) => ({ hero: h, percent_played: 50, play_time: '05:00' })),
         },
-        annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
+        annotation: opts.leavers?.length ? { leavers: opts.leavers, throwers: [] } : undefined,
         parsed_at: '2026-05-10T14:00:00Z',
       } as unknown as MatchRecord
     }
@@ -832,7 +832,7 @@ describe('useMatchesDossier', () => {
       // exclusion at the breakdown layer.
       const records = ref([
         roleRec({ heroes: ['reinhardt'], result: 'victory' }),
-        roleRec({ heroes: ['lucio'],     result: 'defeat',  leaver: 'self' }),
+        roleRec({ heroes: ['lucio'],     result: 'defeat',  leavers: ['self'] }),
       ])
       const { topRoles } = legacy(useMatchesDossier(records, ref<LeaverHandling>('exclude-tally'), heroRole))
       const by = byKey(topRoles.value)
@@ -990,7 +990,7 @@ describe('useMatchesDossier', () => {
       // exclusion shouldn't shrink the denominator.
       const records = ref([
         rec({ key: 'a', reviewedBy: 'self' }),
-        rec({ key: 'b', reviewedBy: 'coach', leaver: 'self' }),
+        rec({ key: 'b', reviewedBy: 'coach', leavers: ['self'] }),
         rec({ key: 'c' }),
       ])
       const { reviewedCount } = legacy(useMatchesDossier(records, ref<LeaverHandling>('exclude-tally')))

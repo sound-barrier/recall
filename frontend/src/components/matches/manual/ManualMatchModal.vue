@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { provide, ref, toRef } from 'vue'
+import { computed, provide, ref, toRef } from 'vue'
 import { ApiError, CreateManualMatch, type MatchRecord } from '@/api-client'
-import { useManualMatchForm, manualMatchFormKey } from '@/composables/matches/useManualMatchForm'
+import { useManualMatchForm, manualMatchFormKey, type ManualMatchMode } from '@/composables/matches/useManualMatchForm'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import ManualMatchForm from '@/components/matches/manual/ManualMatchForm.vue'
 
@@ -11,10 +11,11 @@ import ManualMatchForm from '@/components/matches/manual/ManualMatchForm.vue'
 // lives in ManualMatchForm; this shell owns the backdrop, header, footer, focus
 // trap, and submit. Submit POSTs via CreateManualMatch; a 409 surfaces inline
 // (passed down to the form) without closing.
-const props = defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean; mode?: ManualMatchMode }>()
 const emit = defineEmits<{ close: []; created: [record: MatchRecord] }>()
 
-const f = useManualMatchForm()
+const quick = computed(() => props.mode === 'leaver-exit')
+const f = useManualMatchForm(props.mode ?? 'full')
 provide(manualMatchFormKey, f)
 
 useModalFocusTrap(toRef(props, 'open'), {
@@ -54,9 +55,10 @@ async function submit() {
         aria-labelledby="mm-title"
       >
         <header class="mm-head">
-          <span class="eyebrow accent mm-eyebrow">Add</span>
+          <span v-if="quick" class="eyebrow alert mm-eyebrow">Not in your match history</span>
+          <span v-else class="eyebrow accent mm-eyebrow">Add</span>
           <h4 id="mm-title" class="mm-title">
-            Hand-enter a match
+            {{ quick ? 'Left after a leaver' : 'Hand-enter a match' }}
           </h4>
           <button class="mm-close" aria-label="Close (Esc)" title="Close (Esc)" @click="emit('close')">
             ×

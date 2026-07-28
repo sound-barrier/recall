@@ -38,7 +38,7 @@ Curious how it works under the hood? See
 </td>
 <td valign="top" width="50%">
 <a href="docs/screenshots/match-detail-panel.png"><img src="docs/screenshots/match-detail-panel.png" alt="Recall right-side detail panel — Match Journal annotation, Match Stats grid, Heroes Played, source screenshots" width="100%"></a>
-<sub>Click a row (or press <code>e</code>) to slide in the per-match dossier: leaver chooser, Match Stats grid, Rank Update card, Match Journal (notes / replay code / group / tags), Heroes Played, and the source screenshots. <code>←/→</code> paginate; <code>Esc</code> closes.</sub>
+<sub>Click a row (or press <code>e</code>) to slide in the per-match dossier: leaver + thrower choosers, Match Stats grid, Rank Update card, Match Journal (notes / replay code / group / tags), Heroes Played, and the source screenshots. <code>←/→</code> paginate; <code>Esc</code> closes.</sub>
 </td>
 </tr>
 </table>

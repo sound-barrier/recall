@@ -30,7 +30,7 @@ function record(matchKey: string, members: string[], result = 'victory') {
       heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '11:25' }],
     },
     parsed_at: `2026-05-10T22:30:00Z`,
-    annotation: { tags: [], leaver: '', note: '', members, replay_code: '' },
+    annotation: { tags: [], leavers: [], throwers: [], note: '', members, replay_code: '' },
   }
 }
 

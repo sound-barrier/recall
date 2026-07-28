@@ -62,7 +62,7 @@ export function useMatchesDossier(
   // already filtered those rows out of `records`.
   const tallyRecords = computed(() => {
     if (leaverHandling.value === 'exclude-tally') {
-      return records.value.filter((r) => !r.annotation?.leaver)
+      return records.value.filter((r) => !r.annotation?.leavers?.length)
     }
     return records.value
   })

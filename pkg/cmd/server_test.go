@@ -709,10 +709,16 @@ func TestMatchAnnotations_InvalidLeaver400(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, annotationPath("k1"), map[string]any{
-		"leaver": "afk",
+		"leavers": []string{"afk"},
 	})
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("invalid leaver should 400, got %d (%s)", rec.Code, rec.Body.String())
+		t.Fatalf("invalid leaver side should 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec = put(t, mux, annotationPath("k1"), map[string]any{
+		"throwers": []string{"griefer"},
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid thrower side should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -720,7 +726,8 @@ func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, annotationPath("k1"), map[string]any{
-		"leaver":      "team",
+		"leavers":     []string{"team", "self"},
+		"throwers":    []string{"enemy"},
 		"note":        "ally rage-quit",
 		"replay_code": "7H1K9P",
 		"members":     []string{"Apollo#1", "Cheese#5"},
@@ -731,12 +738,12 @@ func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
 }
 
 func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
-	// All-empty leaver but a note present — the row should persist.
+	// No disruption sides but a note present — the row should persist.
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, annotationPath("k1"), map[string]any{
-		"leaver": "",
-		"note":   "no leaver tag yet",
+		"leavers": []string{},
+		"note":    "no leaver tag yet",
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("note-only should 204, got %d body=%s", rec.Code, rec.Body.String())
@@ -777,7 +784,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 
 	// PUT a full annotation.
 	rec := put(t, mux, annotationPath("match-e2e"), map[string]any{
-		"leaver":      "team",
+		"leavers":     []string{"team"},
 		"note":        "ally rage-quit",
 		"replay_code": "7H1K9P",
 		"members":     []string{"Apollo#11234", "Cheese#5678"},
@@ -807,8 +814,9 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	if !ok {
 		t.Fatalf("annotation not an object: %T", annoRaw)
 	}
-	if anno["leaver"] != "team" {
-		t.Errorf("annotation.leaver = %v, want team", anno["leaver"])
+	sides, _ := anno["leavers"].([]any)
+	if len(sides) != 1 || sides[0] != "team" {
+		t.Errorf("annotation.leavers = %v, want [team]", anno["leavers"])
 	}
 	if anno["note"] != "ally rage-quit" {
 		t.Errorf("annotation.note = %v", anno["note"])

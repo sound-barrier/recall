@@ -14,7 +14,7 @@ var seedAnnotationTags = map[string]bool{
 	"tilt": true, "smurf": true, "comeback": true, "thrower": true, "gg": true, "vod-review": true,
 }
 
-var seedAnnotationLeavers = map[string]bool{"self": true, "team": true, "enemy": true}
+var seedAnnotationSides = map[string]bool{"self": true, "team": true, "enemy": true}
 
 // TestAnnotationSeeds_RealisticAndDeterministic verifies the walkthrough-
 // equivalent corpus (chaos-free) carries believable per-match annotations, that
@@ -31,7 +31,7 @@ func TestAnnotationSeeds_RealisticAndDeterministic(t *testing.T) {
 	}
 
 	keys := make(map[string]bool, len(fx.Annotations))
-	var members, notes, tags, replays, leavers int
+	var members, notes, tags, replays, leavers, throwers int
 	for _, a := range fx.Annotations {
 		if a.MatchKey == "" {
 			t.Error("annotation with empty match key")
@@ -42,7 +42,8 @@ func TestAnnotationSeeds_RealisticAndDeterministic(t *testing.T) {
 		keys[a.MatchKey] = true
 
 		// No content-free rows — an all-empty annotation is dropped, not written.
-		if a.Note == "" && a.ReplayCode == "" && a.Leaver == "" && len(a.Members) == 0 && len(a.Tags) == 0 {
+		if a.Note == "" && a.ReplayCode == "" && len(a.Leavers) == 0 && len(a.Throwers) == 0 &&
+			len(a.Members) == 0 && len(a.Tags) == 0 {
 			t.Errorf("content-free annotation for %s", a.MatchKey)
 		}
 		for _, m := range a.Members {
@@ -70,11 +71,21 @@ func TestAnnotationSeeds_RealisticAndDeterministic(t *testing.T) {
 			}
 			replays++
 		}
-		if a.Leaver != "" {
-			if !seedAnnotationLeavers[a.Leaver] {
-				t.Errorf("invalid leaver %q (must be self/team/enemy)", a.Leaver)
+		if len(a.Leavers) > 0 {
+			for _, side := range a.Leavers {
+				if !seedAnnotationSides[side] {
+					t.Errorf("invalid leaver side %q (must be self/team/enemy)", side)
+				}
 			}
 			leavers++
+		}
+		if len(a.Throwers) > 0 {
+			for _, side := range a.Throwers {
+				if !seedAnnotationSides[side] {
+					t.Errorf("invalid thrower side %q (must be self/team/enemy)", side)
+				}
+			}
+			throwers++
 		}
 	}
 
@@ -88,6 +99,7 @@ func TestAnnotationSeeds_RealisticAndDeterministic(t *testing.T) {
 		{"tag", tags},
 		{"replay-code", replays},
 		{"leaver", leavers},
+		{"thrower", throwers},
 	} {
 		if c.n == 0 {
 			t.Errorf("no %s annotations seeded", c.kind)

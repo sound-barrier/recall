@@ -66,13 +66,15 @@ type ManualMatchInput struct {
 	Result    string           `json:"result"`     // "victory" | "defeat" | "draw"
 	PlayedAt  string           `json:"played_at,omitempty"`
 	Rank      *ManualRankInput `json:"rank,omitempty"`
-	// Leaver records who (if anyone) abandoned the match — "self" / "team" /
-	// "enemy", or "" for none. Written to the match annotation, not the
-	// user-data row (it shares the existing leaver-annotation surface).
-	Leaver string `json:"leaver,omitempty"`
+	// Leavers / Throwers record who (if anyone) abandoned or threw the match —
+	// any of "self" / "team" / "enemy", empty for none. Sets, not scalars: the
+	// leaver-exit quick-add records "a teammate left, then I left" as both
+	// sides at once. Written to the match annotation, not the user-data row.
+	Leavers  []string `json:"leavers,omitempty"`
+	Throwers []string `json:"throwers,omitempty"`
 	// Optional annotation fields, written to the match-annotation surface
-	// alongside Leaver (the same one the detail-panel choosers edit after
-	// creation). Empty values are dropped by SetMatchAnnotation.
+	// alongside the disruption sides (the same one the detail-panel choosers
+	// edit after creation). Empty values are dropped by SetMatchAnnotation.
 	ReplayCode string   `json:"replay_code,omitempty"`
 	Note       string   `json:"note,omitempty"`
 	Tags       []string `json:"tags,omitempty"`

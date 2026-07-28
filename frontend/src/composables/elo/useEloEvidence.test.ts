@@ -23,7 +23,7 @@ function rec(opts: Opts = {}): MatchRecord {
     queue_type: 'role',
     parsed_at: iso, // server timestamp: drives the "since last review" window
     ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy, reviewed_at: iso } : {}),
-    ...(opts.leaver ? { annotation: { leaver: true } } : {}),
+    ...(opts.leaver ? { annotation: { leavers: ['team'], throwers: [] } } : {}),
     data: {
       playlist: 'competitive',
       hero: opts.hero ?? 'lucio',

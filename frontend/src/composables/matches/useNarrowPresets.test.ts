@@ -16,7 +16,7 @@ vi.stubGlobal('localStorage', {
   get length() { return memStore.size },
 })
 import { useNarrowPresets } from '@/composables/matches/useNarrowPresets'
-import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, PresetRange } from '@/composables/matches/useMatchesNarrow'
+import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, LeaverPick, ThrowerPick, PresetRange } from '@/composables/matches/useMatchesNarrow'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier'
 
 function buildState(): MatchesNarrowState {
@@ -34,6 +34,7 @@ function buildState(): MatchesNarrowState {
     pickedPlayModes:   ref(new Set<PlayModePick>()),
     pickedSources:     ref(new Set<SourcePick>()),
     pickedLeavers:     ref(new Set<LeaverPick>()),
+    pickedThrowers:    ref(new Set<ThrowerPick>()),
     pickedModifiers:   ref(new Set<string>()),
     pickedRanks:       ref(new Set<string>()),
     pickedRange:       ref<PresetRange>('all'),
@@ -238,17 +239,20 @@ describe('preset round-trip of newer filter dimensions', () => {
   it('saves and applies leaver-side, modifier, and rank picks', () => {
     const state = buildState()
     state.pickedLeavers.value = new Set<LeaverPick>(['team'])
+    state.pickedThrowers.value = new Set<ThrowerPick>(['enemy', 'team'])
     state.pickedModifiers.value = new Set(['win streak'])
     state.pickedRanks.value = new Set(['diamond'])
     const { savePreset, applyPreset } = useNarrowPresets(state)
     savePreset('leaver hunts')
 
     state.pickedLeavers.value = new Set<LeaverPick>()
+    state.pickedThrowers.value = new Set<ThrowerPick>()
     state.pickedModifiers.value = new Set(['loss streak'])
     state.pickedRanks.value = new Set()
     applyPreset('leaver hunts')
 
     expect([...state.pickedLeavers.value]).toEqual(['team'])
+    expect([...state.pickedThrowers.value].sort()).toEqual(['enemy', 'team'])
     expect([...state.pickedModifiers.value]).toEqual(['win streak'])
     expect([...state.pickedRanks.value]).toEqual(['diamond'])
   })
@@ -261,6 +265,7 @@ describe('preset round-trip of newer filter dimensions', () => {
     // Simulate a pre-fix stored preset: strip the new keys.
     const raw = JSON.parse(localStorage.getItem('recall.narrowPresets.v2')!) as Array<{ state: Record<string, unknown> }>
     delete raw[0]!.state['pickedLeavers']
+    delete raw[0]!.state['pickedThrowers']
     delete raw[0]!.state['pickedModifiers']
     delete raw[0]!.state['pickedRanks']
     localStorage.setItem('recall.narrowPresets.v2', JSON.stringify(raw))

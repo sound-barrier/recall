@@ -74,20 +74,25 @@ const {
   searchText,
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
   pickedQueues, pickedPlayModes, pickedSources,
-  pickedLeavers, pickedModifiers, pickedRanks,
+  pickedLeavers, pickedThrowers, pickedModifiers, pickedRanks,
   pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource,
-  pickLeaver, pickModifier, pickRank,
+  pickLeaver, pickThrower, pickModifier, pickRank,
   resetNarrow,
   activeClauseCount, anyNarrow,
   availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
-  availableLeaverSides, availableModifiers, availableRanks,
+  availableLeaverSides, availableThrowerSides, availableModifiers, availableRanks,
   narrowedRecords,
 } = props.narrow
 void activeClauseCount; void anyNarrow
 
-// Friendlier labels for the leaver-side chips (the raw enum is terse).
+// Friendlier labels for the disruption-side chips (the raw enum is terse).
+// The verb only appears on the self chip, matching the existing asymmetry —
+// "Teammate" / "Enemy" read fine bare under a "With a leaver" heading.
 const LEAVER_LABELS: Record<'self' | 'team' | 'enemy', string> = {
   self: 'You left', team: 'Teammate', enemy: 'Enemy',
+}
+const THROWER_LABELS: Record<'self' | 'team' | 'enemy', string> = {
+  self: 'You threw', team: 'Teammate', enemy: 'Enemy',
 }
 
 // Fixed-enum facet options (value = the *Pick union member, label = display
@@ -252,7 +257,8 @@ onUnmounted(() => {
                 v-model="searchText"
                 type="search"
                 class="np-search-input"
-                placeholder="text · note: tag: member: replay:"
+                placeholder="text · or field:value"
+                title="Bare text searches map / hero / note / tags / teammates. Scoped tokens: note: tag: member: replay: leaver: thrower:"
                 autocomplete="off"
                 spellcheck="false"
               >
@@ -420,6 +426,21 @@ onUnmounted(() => {
               >
                 <template #label="{ option }">
                   {{ LEAVER_LABELS[option as 'self' | 'team' | 'enemy'] }}
+                </template>
+              </NarrowChipFacet>
+
+              <!-- With a thrower — the leaver facet's sibling. Deliberately
+                   has NO handling control: a thrown match still counts in
+                   the W/L tally. -->
+              <NarrowChipFacet
+                v-if="availableThrowerSides.length"
+                eyebrow="With a thrower"
+                :options="availableThrowerSides"
+                :picked="pickedThrowers"
+                @pick="(v) => pickThrower(v as 'self' | 'team' | 'enemy')"
+              >
+                <template #label="{ option }">
+                  {{ THROWER_LABELS[option as 'self' | 'team' | 'enemy'] }}
                 </template>
               </NarrowChipFacet>
 

@@ -17,6 +17,7 @@ import {
   matchesPoolSide,
   matchesSinceAnchor,
   matchesPickedSeason,
+  matchesAnySide,
   matchesLeaverHandling,
 } from '@/composables/matches/narrowPredicates'
 
@@ -102,6 +103,51 @@ describe('matchesDateRange', () => {
     expect(matchesDateRange(r, '2026-06-01', '')).toBe(false)
     // Against a time bound it reads as start-of-day.
     expect(matchesDateRange(r, '2026-05-10', '', '00:01')).toBe(false)
+  })
+})
+
+describe('matchesSearch — disruption tokens', () => {
+  const tagged = rec({
+    data: { map: 'rialto' },
+    annotation: { leavers: ['team'], throwers: ['enemy'] },
+  } as unknown as Partial<MatchRecord>)
+
+  it('matches a scoped leaver: / thrower: clause', () => {
+    expect(matchesSearch(tagged, [{ field: 'leaver', value: 'team' }])).toBe(true)
+    expect(matchesSearch(tagged, [{ field: 'leaver', value: 'enemy' }])).toBe(false)
+    expect(matchesSearch(tagged, [{ field: 'thrower', value: 'enemy' }])).toBe(true)
+    expect(matchesSearch(tagged, [{ field: 'thrower', value: 'team' }])).toBe(false)
+  })
+
+  it('keeps the sides OUT of the bare-token blob', () => {
+    // A bare "enemy" must not match just because a side is tagged — the words
+    // are too generic to fold into free-text search.
+    expect(matchesSearch(tagged, [{ field: null, value: 'enemy' }])).toBe(false)
+    expect(matchesSearch(tagged, [{ field: null, value: 'rialto' }])).toBe(true)
+  })
+})
+
+describe('matchesAnySide', () => {
+  it('is inert with an empty pick set', () => {
+    expect(matchesAnySide(['team'], new Set())).toBe(true)
+    expect(matchesAnySide(undefined, new Set())).toBe(true)
+  })
+
+  it('drops untagged matches once any side is picked', () => {
+    expect(matchesAnySide(undefined, new Set(['team']))).toBe(false)
+    expect(matchesAnySide([], new Set(['team']))).toBe(false)
+  })
+
+  it('ORs the picked sides', () => {
+    expect(matchesAnySide(['team'], new Set(['team', 'enemy']))).toBe(true)
+    expect(matchesAnySide(['self'], new Set(['team', 'enemy']))).toBe(false)
+  })
+
+  it('matches a both-teams tag under either picked side', () => {
+    const both = ['team', 'enemy']
+    expect(matchesAnySide(both, new Set(['team']))).toBe(true)
+    expect(matchesAnySide(both, new Set(['enemy']))).toBe(true)
+    expect(matchesAnySide(both, new Set(['self']))).toBe(false)
   })
 })
 
@@ -221,7 +267,7 @@ describe('matchesSinceAnchor', () => {
 
 describe('matchesLeaverHandling', () => {
   it('only filters in hide mode', () => {
-    const leaver = rec({ annotation: { leaver: 'team' } as MatchRecord['annotation'] })
+    const leaver = rec({ annotation: { leavers: ['team'] } as MatchRecord['annotation'] })
     expect(matchesLeaverHandling(leaver, 'include')).toBe(true)
     expect(matchesLeaverHandling(leaver, 'exclude-tally')).toBe(true)
     expect(matchesLeaverHandling(leaver, 'hide')).toBe(false)

@@ -272,12 +272,16 @@ export interface paths {
         get?: never;
         /**
          * Upsert a per-match user annotation
-         * @description Lets the user tag a match with up to four pieces of metadata:
+         * @description Lets the user tag a match with a few pieces of metadata:
          *
-         *       - **leaver** — `self` (user left, data incomplete) /
-         *         `team` (ally left, loss excused) / `enemy` (opponent left,
-         *         win tainted). Drives W/L/D tally exclusion via the
-         *         FilterRail leaver-handling setting.
+         *       - **leavers** — which sides had someone leave: `self` (user
+         *         left, data incomplete) / `team` (ally left, loss excused) /
+         *         `enemy` (opponent left, win tainted). A set, so "a teammate
+         *         left, then I left" is `["team", "self"]`. Drives W/L/D tally
+         *         exclusion via the narrow panel's leaver-handling setting.
+         *       - **throwers** — which sides had someone throwing, same three
+         *         values. Independent of `leavers`, and independent of the
+         *         tally: a thrown match still counts.
          *       - **note** — free-text per-match commentary.
          *       - **replay_code** — Overwatch's six-character replay ID so
          *         the match can be re-watched in the in-game viewer.
@@ -290,8 +294,9 @@ export interface paths {
          *     an annotation is an explicit `DELETE` on this same path, so the
          *     verb states the intent.
          *
-         *     Returns 204 on success, 400 on a malformed body or a `leaver`
-         *     outside the enum, 409 on an all-empty body, 500 on store error.
+         *     Returns 204 on success, 400 on a malformed body or a `leavers` /
+         *     `throwers` side outside the enum, 409 on an all-empty body, 500 on
+         *     store error.
          */
         put: operations["SetMatchAnnotation"];
         post?: never;
@@ -1823,17 +1828,20 @@ export interface components {
             scope: string;
         };
         /**
-         * @description Per-match leaver tag — who left the match.
-         *     - `self`: the user left (their data is incomplete).
-         *     - `team`: an ally left.
-         *     - `enemy`: an opponent left.
-         *     - `""` (empty string): no leaver tag set; functionally
-         *       identical to omitting the field. Sending the empty string
-         *       to the single-set endpoint is equivalent to a DELETE on
-         *       the field.
-         * @enum {string}
+         * @description Which sides a match was disrupted on — used by both `leavers`
+         *     and `throwers`.
+         *     - `self`: the user themselves (their own data is incomplete,
+         *       or they were the one throwing).
+         *     - `team`: an ally.
+         *     - `enemy`: an opponent.
+         *
+         *     A SET, not a single value: a match can carry a thrower on both
+         *     teams at once, and the leaver-exit quick-add records "a
+         *     teammate left, then I left" as `["team", "self"]`. An empty
+         *     array (or an omitted field) means "not tagged"; order is not
+         *     significant and duplicates are collapsed server-side.
          */
-        LeaverEnum: "" | "self" | "team" | "enemy";
+        DisruptionSides: ("self" | "team" | "enemy")[];
         /**
          * @description Queue format the match was played in. The single-set
          *     `PUT /matches/{match_key}/queue` endpoint only accepts
@@ -1943,20 +1951,28 @@ export interface components {
          * @description Hand-entered match for users without OCR. The server derives the
          *     `match_key` from `played_at` (default: now) and returns the created
          *     MatchRecord. `heroes[0]` is the primary hero.
+         *
+         *     Only `map` and `result` are required. `heroes`, `play_mode`, and
+         *     `queue_type` are optional because the leaver-exit quick-add records
+         *     a match Overwatch erased from history, where the user knows the map
+         *     and the outcome and nothing else — inventing a hero or a queue there
+         *     would be fabricating data. A value that IS supplied is still
+         *     validated; only omission is free.
          */
         ManualMatchInput: {
             /** @example ilios */
             map: string;
-            play_mode: components["schemas"]["PlayModeEnum"];
-            queue_type: components["schemas"]["QueueTypeEnum"];
+            play_mode?: components["schemas"]["PlayModeEnum"];
+            queue_type?: components["schemas"]["QueueTypeEnum"];
             /**
-             * @description Heroes played; first is the primary (need not be ordered by play time).
+             * @description Heroes played; first is the primary (need not be ordered by play
+             *     time). Omit entirely for a quick-add with no hero recorded.
              * @example [
              *       "ana",
              *       "kiriko"
              *     ]
              */
-            heroes: string[];
+            heroes?: string[];
             result: components["schemas"]["ResultEnum"];
             /**
              * Format: date-time
@@ -1970,7 +1986,8 @@ export interface components {
              */
             played_at?: string;
             rank?: components["schemas"]["ManualRankInput"];
-            leaver?: components["schemas"]["LeaverEnum"];
+            leavers?: components["schemas"]["DisruptionSides"];
+            throwers?: components["schemas"]["DisruptionSides"];
             /**
              * @description Optional Overwatch replay code; written to the match annotation.
              * @example A1B2C3
@@ -2557,16 +2574,19 @@ export interface components {
         };
         /**
          * @description User-curated per-match metadata embedded in a `MatchRecord`.
-         *     `leaver` is always present; `note` / `replay_code` / `members` /
-         *     `tags` are omitted when empty (the server marshals them
-         *     `omitempty`). The row only exists in the database if at least one
-         *     field carries content; absence of the row is signalled by a 404
-         *     on `GET /api/v1/matches/{match_key}/annotation`, and the whole
+         *     `leavers` and `throwers` are always present (possibly empty
+         *     arrays) so clients can read their length without a null check;
+         *     `note` / `replay_code` / `members` / `tags` are omitted when
+         *     empty (the server marshals them `omitempty`). The row only
+         *     exists in the database if at least one field carries content;
+         *     absence of the row is signalled by a 404 on
+         *     `GET /api/v1/matches/{match_key}/annotation`, and the whole
          *     annotation object is omitted from `MatchRecord` when the match is
          *     unannotated.
          */
         MatchAnnotation: {
-            leaver: components["schemas"]["LeaverEnum"];
+            leavers: components["schemas"]["DisruptionSides"];
+            throwers: components["schemas"]["DisruptionSides"];
             /** @description Free-text per-match commentary. */
             note?: string;
             /** @description Overwatch six-character replay ID. Stored verbatim. */
@@ -3222,11 +3242,13 @@ export interface operations {
             content: {
                 "application/json": {
                     /**
-                     * @description One of the three leaver scenarios, or `""` to leave
-                     *     untagged. An all-empty body (every field blank) is
-                     *     rejected with 409 — use `DELETE` to clear the row.
+                     * @description Which sides had someone leave. An all-empty body
+                     *     (every field blank) is rejected with 409 — use
+                     *     `DELETE` to clear the row.
                      */
-                    leaver?: components["schemas"]["LeaverEnum"];
+                    leavers?: components["schemas"]["DisruptionSides"];
+                    /** @description Which sides had someone throwing. */
+                    throwers?: components["schemas"]["DisruptionSides"];
                     /** @description Free-text per-match commentary. `null` = empty. */
                     note?: string;
                     /** @description Overwatch six-character replay ID. No format validation server-side. `null` = empty. */

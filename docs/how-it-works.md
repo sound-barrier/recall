@@ -156,7 +156,7 @@ That's it for setup. **Settings → Engine** should now show
    playing a stack session? **Apply previous** on the journal header
    copies the squad + tags from your last annotated match into the
    draft, and nothing saves until you hit Confirm),
-   the leaver chooser, the Match Stats grid, a Rank Update card (when
+   the leaver + thrower choosers, the Match Stats grid, a Rank Update card (when
    a rank screenshot was captured for this match), Heroes Played, and
    the source screenshots. Use `←` / `→` to step through the filtered
    list without closing the panel; `↑` / `↓` scroll inside the panel.

@@ -160,12 +160,12 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 		rec, err := a.CreateManualMatch(input)
 		if writeError(w, r, err,
 			errStatus{app.ErrManualNeedsMap, probInvalidBody},
-			errStatus{app.ErrManualNeedsHero, probInvalidBody},
 			errStatus{app.ErrInvalidResult, probInvalidBody},
 			errStatus{app.ErrInvalidPlayMode, probInvalidBody},
 			errStatus{app.ErrInvalidQueueType, probInvalidBody},
 			errStatus{app.ErrInvalidPlayedAt, probInvalidBody},
 			errStatus{app.ErrInvalidLeaver, probInvalidBody},
+			errStatus{app.ErrInvalidThrower, probInvalidBody},
 			errStatus{app.ErrInvalidRank, probInvalidBody},
 			errStatus{app.ErrUnknownMap, probConflict},
 			errStatus{app.ErrUnknownHero, probConflict},

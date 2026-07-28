@@ -1,12 +1,13 @@
 import type { MatchRecord } from '@/api-client'
 import type { SearchClause } from '@/match/search-query'
-import type { LeaverPick, MatchesNarrowState } from '@/composables/matches/matchesNarrow.types'
+import type { LeaverPick, MatchesNarrowState, ThrowerPick } from '@/composables/matches/matchesNarrow.types'
 import {
   matchesDateRange,
   matchesHero,
   matchesLeaverHandling,
   matchesMembers,
   matchesModifiers,
+  matchesAnySide,
   matchesPickedSet,
   matchesReviewedBy,
   matchesQueueType,
@@ -31,7 +32,7 @@ import {
 
 export type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
   | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
-  | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'modifiers' | 'ranks'
+  | 'playModes' | 'sources' | 'leaver' | 'leaverSide' | 'throwerSide' | 'modifiers' | 'ranks'
   | 'sinceAnchor' | 'minPlay' | 'includeUnknown' | 'season' | 'poolSide'
 
 // Per-pass inputs the predicates need beyond the raw state: the parsed
@@ -252,7 +253,7 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
   {
     id: 'leaverSide',
     restricts: (s) => s.pickedLeavers.value.size > 0,
-    passes: (r, s) => matchesPickedSet(r.annotation?.leaver, s.pickedLeavers.value as Set<string>),
+    passes: (r, s) => matchesAnySide(r.annotation?.leavers, s.pickedLeavers.value as Set<string>),
     label: (s) => pickedLabel(
       s.pickedLeavers.value as Set<string>,
       (v) => `${v as LeaverPick} leaver`,
@@ -260,6 +261,21 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     ),
     clear: (s) => { s.pickedLeavers.value = new Set() },
     chips: (s) => s.pickedLeavers.value.size,
+  },
+  {
+    // Independent of leaverSide AND of leaverHandling: a thrown match still
+    // counts in the W/L tally, so there is no thrower equivalent of the
+    // 3-way handling control.
+    id: 'throwerSide',
+    restricts: (s) => s.pickedThrowers.value.size > 0,
+    passes: (r, s) => matchesAnySide(r.annotation?.throwers, s.pickedThrowers.value as Set<string>),
+    label: (s) => pickedLabel(
+      s.pickedThrowers.value as Set<string>,
+      (v) => `${v as ThrowerPick} thrower`,
+      'thrower sides',
+    ),
+    clear: (s) => { s.pickedThrowers.value = new Set() },
+    chips: (s) => s.pickedThrowers.value.size,
   },
   {
     id: 'modifiers',
