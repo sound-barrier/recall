@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.4](https://github.com/sound-barrier/recall/compare/v0.27.3...v0.27.4) (2026-07-28)
+
+
+### Build & Packaging
+
+* **deps:** lift js-yaml and fast-uri onto their patched releases ([05fa34d](https://github.com/sound-barrier/recall/commit/05fa34d46c685c3c6340b9d304af812051c4f503))
+* **deps:** override brace-expansion and minimatch off a DoS advisory ([11f7a24](https://github.com/sound-barrier/recall/commit/11f7a2485e28566ff025d8f91719bc5a865382ad))
+
 ## [0.27.3](https://github.com/sound-barrier/recall/compare/v0.27.2...v0.27.3) (2026-07-28)
 
 
