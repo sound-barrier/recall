@@ -25,18 +25,18 @@ RECALL_DATA_DIR = "{{config_root}}/data"
 # and CI (was `tool-versions.env`). The matching tool binaries are pinned in
 # [tools] below; these strings drive the on-demand npx/pipx invocations and
 # the `task check-deps` upstream comparison.
-SPECTRAL_VERSION = "6.16.0"
-TYPOS_VERSION = "v1.47.2"
+SPECTRAL_VERSION = "6.16.2"
+TYPOS_VERSION = "v1.48.0"
 GOCYCLO_VERSION = "latest"
-SEMGREP_VERSION = "1.168.0"
+SEMGREP_VERSION = "1.170.0"
 HONKIT_VERSION = "6.2.2"
-SCHEMATHESIS_VERSION = "4.21.10"
+SCHEMATHESIS_VERSION = "4.24.0"
 TESSERACT_VERSION = "5.5.2"
-RUFF_VERSION = "0.15.20"
+RUFF_VERSION = "0.15.22"
 SQLFLUFF_VERSION = "4.2.2"
 # Biome runs on-demand via npx (like Spectral/markdownlint), so it's a version
 # string here rather than a [tools] binary.
-BIOME_VERSION = "2.5.3"
+BIOME_VERSION = "2.5.4"
 
 # Pin Go to the exact mise-installed toolchain so `go build`/`go test` never
 # auto-download a different one (parity with what actions/setup-go@v6 set in CI).
@@ -59,8 +59,8 @@ shellcheck = "latest"
 shfmt = "latest"
 actionlint = "latest"
 yamllint = "latest"
-typos = "1.47.2"
-ruff = "0.15.20"
+typos = "1.48.0"
+ruff = "0.15.22"
 taplo = "latest"
 trivy = "latest"
 lefthook = "latest"
@@ -86,6 +86,6 @@ jq = "latest"
 "go:github.com/boumenot/gocover-cobertura" = "latest"
 
 # Python tools (isolated venvs) → pipx backend.
-"pipx:semgrep" = "1.168.0"
-"pipx:schemathesis" = "4.21.10"
+"pipx:semgrep" = "1.170.0"
+"pipx:schemathesis" = "4.24.0"
 "pipx:sqlfluff" = "4.2.2"
