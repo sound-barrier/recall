@@ -114,6 +114,33 @@ var parseSingleFunc = ParseScreenshot
 // healthy file after it.
 type ProgressFunc func(done, total int, filename string, result *MatchResult, err error)
 
+// PendingFiles returns the supported image files in dir that aren't in skip,
+// in directory order. It is the single definition of "what a parse run will
+// process": ParseScreenshotsDir drives its loop off it, and the app reports
+// its length as the pending-screenshot count behind the "Run Parse · N"
+// button — so that number and the progress panel's "X / N files" denominator
+// are the same number by construction and can't drift apart.
+func PendingFiles(dir string, skip map[string]bool) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var pending []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			continue
+		}
+		if !skip[e.Name()] {
+			pending = append(pending, e.Name())
+		}
+	}
+	return pending, nil
+}
+
 // ParseScreenshotsDir OCRs every supported image in dir except those in skip
 // (a set of filenames already parsed and stored). The skip set lets the app
 // avoid re-running Tesseract on files that already belong to a DB row — OCR
@@ -130,23 +157,10 @@ type ProgressFunc func(done, total int, filename string, result *MatchResult, er
 // out per file and not context-aware — cancellation lands at the next
 // between-files boundary, not mid-OCR. Pass context.Background() to opt out.
 func ParseScreenshotsDir(ctx context.Context, dir string, skip map[string]bool, progress ProgressFunc) (map[string]*MatchResult, error) {
-	entries, err := os.ReadDir(dir)
+	// Collect files first so we know the total before the loop starts.
+	toProcess, err := PendingFiles(dir, skip)
 	if err != nil {
 		return nil, err
-	}
-	// Collect files first so we know the total before the loop starts.
-	var toProcess []string
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(e.Name()))
-		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
-			continue
-		}
-		if !skip[e.Name()] {
-			toProcess = append(toProcess, e.Name())
-		}
 	}
 	out := map[string]*MatchResult{}
 	for i, name := range toProcess {
