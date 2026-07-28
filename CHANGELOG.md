@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.28.0](https://github.com/sound-barrier/recall/compare/v0.27.4...v0.28.0) (2026-07-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** annotation.leaver (string) becomes annotation.leavers (array of side), and ManualMatchInput.leaver becomes .leavers. The match_annotations.leaver column is dropped in favour of match_annotation_leavers — an existing database keeps the now-dead column and stops reading its tags, so wipe it for a clean slate. ErrManualNeedsHero is gone: a hero-less manual match is valid now.
+
+### Features
+
+* **api:** track leavers and throwers as per-side sets ([db14c05](https://github.com/sound-barrier/recall/commit/db14c051895e2d6bbd7c864a9edf9f543de088ee))
+
 ## [0.27.4](https://github.com/sound-barrier/recall/compare/v0.27.3...v0.27.4) (2026-07-28)
 
 
