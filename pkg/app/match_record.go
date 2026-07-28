@@ -3,45 +3,37 @@ package app
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"recall/pkg/aggregate"
 	"recall/pkg/match"
+	"recall/pkg/parser"
 )
 
-// GetNewScreenshotCount returns the number of image files in the
-// configured screenshots directory that haven't been parsed yet.
+// GetNewScreenshotCount returns the number of image files in the configured
+// screenshots directory that the next parse run will OCR — the number behind
+// the "Run Parse · N" button. It answers off the SAME skip set and the SAME
+// directory scan the run itself uses (parsedSkipSet + parser.PendingFiles), so
+// it can't disagree with the progress panel's "X / N files". Computing it from
+// LoadAllFilenames alone used to leave out every All-Heroes screen, "Delete
+// forever" file, and registered duplicate, each of which inflated the button
+// permanently because none of them ever returns to a parent table.
 func (a *App) GetNewScreenshotCount() (int, error) {
 	dir := a.settingsSnapshot().ScreenshotsDir
 	if dir == "" {
 		return 0, nil
 	}
-	parsed, err := a.store.LoadAllFilenames()
+	skip, err := a.parsedSkipSet(false)
 	if err != nil {
 		return 0, err
 	}
-	entries, err := os.ReadDir(dir)
+	pending, err := parser.PendingFiles(dir, skip)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return 0, nil
 		}
 		return 0, err
 	}
-	count := 0
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(e.Name()))
-		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
-			continue
-		}
-		if !parsed[e.Name()] {
-			count++
-		}
-	}
-	return count, nil
+	return len(pending), nil
 }
 
 // GetMatchResults returns one match.MatchRecord per match, aggregated from
