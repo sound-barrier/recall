@@ -27,14 +27,12 @@ func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
 		logger.Error("load registry failed; skipping dedup", "err", err)
 		return
 	}
+	// Standing duplicates are already in `parsed` — parsedSkipSet owns that
+	// marking so the pending count sees the same set (standingDuplicates).
 	byHash := make(map[string]string, len(ingested))
 	for f, rec := range ingested {
 		if rec.DuplicateOf == "" {
 			byHash[rec.ContentHash] = f
-		} else {
-			// Standing duplicates stay skipped on every later run —
-			// including ReParseAll, where the canonical re-parses.
-			parsed[f] = true
 		}
 	}
 
@@ -79,6 +77,27 @@ func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
 		}
 		byHash[hash] = base
 	}
+}
+
+// standingDuplicates returns the filenames the registry already knows are
+// byte-identical copies of another ingested file. They skip OCR on every
+// later run — including ReParseAll, where the canonical re-parses instead —
+// and they carry no parent-table row, so LoadAllFilenames can't see them.
+// Best-effort like the rest of the skip set: a registry read failure just
+// means nothing is suppressed and the copies get re-OCR'd.
+func (a *App) standingDuplicates() map[string]bool {
+	ingested, err := a.store.LoadIngestedFiles()
+	if err != nil {
+		applog.Subsystem("dedup").Error("load registry failed; standing duplicates not skipped", "err", err)
+		return nil
+	}
+	dupes := map[string]bool{}
+	for f, rec := range ingested {
+		if rec.DuplicateOf != "" {
+			dupes[f] = true
+		}
+	}
+	return dupes
 }
 
 func hashFile(path string) (string, error) {

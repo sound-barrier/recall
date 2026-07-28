@@ -662,8 +662,13 @@ export interface paths {
         };
         /**
          * Count of screenshots awaiting parse
-         * @description Returns the number of files in the configured folder that are
-         *     not yet present in any per-screenshot-type table's `filename`.
+         * @description Returns the number of image files in the configured folder that
+         *     the next parse run will OCR — the count behind the "Run Parse · N"
+         *     button. Computed from the run's own skip set, so it matches the
+         *     total the `parse-progress` events will report. Beyond the files
+         *     already in a per-screenshot-type table, that skip set excludes
+         *     recognized All-Heroes screens, files on the "Delete forever"
+         *     suppress list, and registered byte-identical duplicates.
          */
         get: operations["GetPendingScreenshotCount"];
         put?: never;

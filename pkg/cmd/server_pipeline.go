@@ -9,11 +9,11 @@ import (
 // registerPipelineRoutes attaches the parse-trigger + screenshot-
 // inventory endpoints. The parse pipeline is the active half of
 // ingest (POST /parses kicks off a synchronous run); the pending-
-// count is the passive half (how many .png files in the watched
-// folder are not yet in the per-screenshot-type tables). Kept
-// together because they share the same underlying state machine
-// (a.ParseScreenshots writes to the tables that
-// a.GetNewScreenshotCount reads from).
+// count is the passive half (how many image files in the watched
+// folder the next run would OCR). Kept together because they share
+// the same underlying state machine — literally so: both answer off
+// a.parsedSkipSet, which is what keeps the count in agreement with
+// the total the parse-progress events report.
 func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// Kicks off a parse run in a BACKGROUND goroutine and returns 202
 	// Accepted immediately — the request is NOT held open for the

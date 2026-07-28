@@ -38,6 +38,37 @@ func makeFiles(t *testing.T, names ...string) string {
 	return dir
 }
 
+// PendingFiles is the shared definition of "what this run will process":
+// ParseScreenshotsDir reports its length as the progress total, and the app
+// reports it as the pending count behind "Run Parse · N". Its filtering is a
+// public contract, not an implementation detail.
+func TestPendingFiles_FiltersDirsExtensionsAndSkipSet(t *testing.T) {
+	dir := makeFiles(t, "a.png", "b.JPG", "c.jpeg", "d.png", "notes.txt", "archive.zip")
+	if err := os.Mkdir(filepath.Join(dir, "old"), 0o750); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	got, err := parser.PendingFiles(dir, map[string]bool{"d.png": true})
+	if err != nil {
+		t.Fatalf("PendingFiles: %v", err)
+	}
+	// os.ReadDir sorts by filename, so directory order is deterministic.
+	want := []string{"a.png", "b.JPG", "c.jpeg"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v — subdirectories, non-images and skip-set entries are excluded, and the extension match is case-insensitive", got, want)
+	}
+}
+
+// A missing directory must stay recognizable as os.IsNotExist: the app's
+// pending count reports 0 for an unset/vanished screenshots folder rather
+// than surfacing an error banner, and it leans on this to tell that case
+// apart from a real read failure.
+func TestPendingFiles_MissingDirIsNotExist(t *testing.T) {
+	if _, err := parser.PendingFiles("/no/such/directory/recall-test", nil); !os.IsNotExist(err) {
+		t.Errorf("err = %v, want an os.IsNotExist error", err)
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // The bug under test: when one file fails to parse, the others must still
 // be processed. Before the fix this test failed because ParseScreenshotsDir

@@ -340,11 +340,18 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 // already-parsed files (unless force) — plus the recognized-but-unstored
 // All-Heroes screens, which skip on a normal run but are re-examined on a
 // force ReParseAll exactly like already-parsed files — unioned with the
-// user-curated suppress-list ("Delete forever" in the Unknown tab). Errors
-// loading the ignored / recognized sets don't abort the parse — it's a UX
-// nicety, not a correctness invariant; an empty set just means nothing's
-// suppressed. The suppress list IS honoured even on ReParseAll (force) — the
-// user explicitly told us never to look at those files again.
+// user-curated suppress-list ("Delete forever" in the Unknown tab) and the
+// registry's standing byte-identical duplicates. Errors loading the ignored /
+// recognized / duplicate sets don't abort the parse — it's a UX nicety, not a
+// correctness invariant; an empty set just means nothing's suppressed. The
+// suppress list and the duplicate registry ARE honoured even on ReParseAll
+// (force) — the user explicitly told us never to look at those files again,
+// and a duplicate's canonical re-parses in its place.
+//
+// GetNewScreenshotCount reports the same set's complement as the pending
+// count, so the "Run Parse · N" button and the progress panel's "X / N files"
+// can't disagree. Anything new that suppresses a file belongs HERE, not in a
+// second skip set at the call site.
 func (a *App) parsedSkipSet(force bool) (map[string]bool, error) {
 	parsed := map[string]bool{}
 	if !force {
@@ -365,6 +372,9 @@ func (a *App) parsedSkipSet(force bool) (map[string]bool, error) {
 	}
 	ignored, _ := a.store.LoadIgnoredFilenames()
 	for f := range ignored {
+		parsed[f] = true
+	}
+	for f := range a.standingDuplicates() {
 		parsed[f] = true
 	}
 	return parsed, nil
