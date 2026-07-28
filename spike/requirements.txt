@@ -3,7 +3,13 @@
 #   screenshots/easyocr-project/.venv/bin/python spike/ocr-compare.py --corpus testdata
 #
 # Direct imports; easyocr pulls torch/torchvision/opencv transitively (~2.5 GB,
-# CPU-only on macOS). Versions pinned to what the scaffold venv ships.
+# CPU-only on macOS). Versions pinned to what the scaffold venv ships, EXCEPT
+# where a pin has to move off a CVE — `task trivy` scans this file even though
+# the spike ships nothing, so a vulnerable pin here fails CI on every unrelated
+# PR. Re-sync the venv (`pip install -r spike/requirements.txt`) after a bump.
 easyocr==1.7.2
 numpy==2.5.0
-Pillow==12.2.0
+# 12.3.0 clears ten HIGH CVEs in 12.2.0 (CVE-2026-54058/54059/54060, -55379,
+# -55380, -59197, -59199, -59200, -59204, -59205): crafted McIdas/PCF/BDF/GD/PDF
+# inputs causing OOB writes, memory disclosure, or DoS.
+Pillow==12.3.0
