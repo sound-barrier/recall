@@ -10,6 +10,15 @@
  *   - pinTheme()            set `recall.theme` before first paint
  *   - settleView()          wait out a lazy view's entrance fade
  *   - seedMatches()         a record corpus so the DENSE UI renders
+ *   - seedProfiles()        a fixed profile list, so leftover profiles
+ *                           from other specs can't move the counts
+ *
+ * The two seeds exist for opposite reasons: seedMatches puts content IN
+ * (an unseeded audit only ever sees empty states), seedProfiles keeps
+ * other specs' leftovers OUT. Anything else this audit renders that
+ * depends on accumulated server state wants the same treatment — the
+ * suite shares one server and one HOME across every spec, so "what the
+ * DB happens to contain by now" is never a stable baseline.
  *
  * Why seeding matters: the e2e server boots against an empty DB, so an
  * unseeded audit only ever sees empty states. The dossier widgets,
@@ -197,6 +206,45 @@ export async function seedMatches(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Pin the profile list to a single active profile.
+ *
+ * The suite shares ONE server and one HOME across every spec, and
+ * profiles live on disk — so whatever a profile-creating spec leaves
+ * behind is still there when the audit runs. The onboarding tour's
+ * read-only `test` sample (POST /profiles/test/seed) is the one that
+ * bit: `SettingsProfiles` renders a row per profile and gives every
+ * NON-active row a Delete button, so the moment `test` exists the
+ * Settings view gains a 42nd button. The structural snapshot's
+ * `designSystem.button.count` then flips 41↔42 depending on which
+ * specs happened to run first — and it survives Playwright's retry,
+ * because the retry re-reads the same on-disk state.
+ *
+ * That produced a real red CI job on four separate PRs (three
+ * dependabot npm bumps plus a dependency sweep) with byte-identical
+ * trees passing on one run and failing on the next. Every other value
+ * in the snapshot was unchanged: only the raw count moved, because the
+ * extra Delete button computes to styles already in the set.
+ *
+ * Stubbing the endpoint makes the audit independent of suite ordering,
+ * exactly as seedMatches makes it independent of the DB. Keep it to
+ * GET — `POST /api/v1/profiles` creates one, and the audit must not
+ * swallow a write it never makes.
+ */
+export async function seedProfiles(page: Page): Promise<void> {
+  await page.route('**/api/v1/profiles', async (route: Route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback()
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ active: 'main', profiles: ['main'], immutable: [] }),
+    })
+  })
+}
+
 /** Set the persisted theme before any of the page's own scripts run. */
 export async function pinTheme(page: Page, theme: string): Promise<void> {
   await page.addInitScript((t) => {
@@ -234,6 +282,7 @@ export async function settleView(page: Page, tabId: string): Promise<void> {
 export async function openView(page: Page, tabId: string, theme: string): Promise<void> {
   await pinTheme(page, theme)
   await seedMatches(page)
+  await seedProfiles(page)
   await page.goto('/')
   await page.locator(`#${tabId}`).click()
   await expect(page.locator(`#${tabId}`)).toHaveAttribute('aria-selected', 'true')
