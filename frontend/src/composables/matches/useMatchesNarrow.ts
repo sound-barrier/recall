@@ -7,7 +7,9 @@ import type {
   QueuePick,
   PlayModePick,
   SourcePick,
+  DisruptionSide,
   LeaverPick,
+  ThrowerPick,
   PoolFilter,
 } from '@/composables/matches/matchesNarrow.types'
 import { NARROW_CLAUSES, type ClauseCtx, type ClauseId } from '@/composables/matches/matchesNarrow.clauses'
@@ -53,7 +55,9 @@ export type {
   QueuePick,
   PlayModePick,
   SourcePick,
+  DisruptionSide,
   LeaverPick,
+  ThrowerPick,
   MatchesNarrowState,
 } from '@/composables/matches/matchesNarrow.types'
 export { createMatchesNarrowState } from '@/composables/matches/matchesNarrow.state'
@@ -90,7 +94,7 @@ export function useMatchesNarrow(
     searchText, pickedMaps, pickedGameModes, pickedHeroes,
     pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes, pickedSources,
-    pickedLeavers, pickedModifiers, pickedRanks,
+    pickedLeavers, pickedThrowers, pickedModifiers, pickedRanks,
     pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive, poolFilter,
@@ -126,6 +130,7 @@ export function useMatchesNarrow(
     pickedSources.value = toggleGameModedSet(pickedSources.value, v)
   }
   const pickLeaver   = (v: LeaverPick) => { pickedLeavers.value   = toggleGameModedSet(pickedLeavers.value, v) }
+  const pickThrower  = (v: ThrowerPick) => { pickedThrowers.value  = toggleGameModedSet(pickedThrowers.value, v) }
   const pickModifier = (v: string)     => { pickedModifiers.value = toggleSet(pickedModifiers.value, v) }
   const pickRank     = (v: string)     => { pickedRanks.value     = toggleSet(pickedRanks.value,     v) }
 
@@ -171,6 +176,7 @@ export function useMatchesNarrow(
     pickedPlayModes.value     = new Set()
     pickedSources.value       = new Set()
     pickedLeavers.value       = new Set()
+    pickedThrowers.value      = new Set()
     pickedModifiers.value     = new Set()
     pickedRanks.value         = new Set()
     pickedRange.value         = 'all'
@@ -230,12 +236,15 @@ export function useMatchesNarrow(
   // Leaver sides / modifiers / ranks present in the corpus, in canonical
   // order (not alphabetical) — fixed enums, so we only surface chips for
   // values the user has actually recorded but keep their meaningful order.
-  const LEAVER_SIDE_ORDER: LeaverPick[] = ['self', 'team', 'enemy']
-  const availableLeaverSides = computed<LeaverPick[]>(() => {
+  const DISRUPTION_SIDE_ORDER: DisruptionSide[] = ['self', 'team', 'enemy']
+  // Both annotations are sets, so one match can contribute several sides.
+  const sidesPresent = (pick: (r: MatchRecord) => string[] | undefined) => computed<DisruptionSide[]>(() => {
     const set = new Set<string>()
-    for (const r of records.value) { const l = r.annotation?.leaver; if (l) set.add(l) }
-    return LEAVER_SIDE_ORDER.filter((s) => set.has(s))
+    for (const r of records.value) for (const side of pick(r) ?? []) set.add(side)
+    return DISRUPTION_SIDE_ORDER.filter((s) => set.has(s))
   })
+  const availableLeaverSides = sidesPresent((r) => r.annotation?.leavers)
+  const availableThrowerSides = sidesPresent((r) => r.annotation?.throwers)
   const availableModifiers = computed<string[]>(() => {
     const set = new Set<string>()
     for (const r of records.value) {
@@ -366,20 +375,20 @@ export function useMatchesNarrow(
     searchText,
     pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes, pickedSources,
-    pickedLeavers, pickedModifiers, pickedRanks,
+    pickedLeavers, pickedThrowers, pickedModifiers, pickedRanks,
     pickedRange, customFrom, customTo, customFromTime, customToTime, pickedSeason,
     pickSeason,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive, poolFilter,
     // Actions
     pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource, pickRange,
-    pickLeaver, pickModifier, pickRank, setPoolFilter,
+    pickLeaver, pickThrower, pickModifier, pickRank, setPoolFilter,
     resetNarrow,
     // Derived
     activeClauseCount, anyNarrow,
     searchClauses,
     availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
-    availableLeaverSides, availableModifiers, availableRanks,
+    availableLeaverSides, availableThrowerSides, availableModifiers, availableRanks,
     narrowedRecords,
     narrowedExceptMapsRoles,
     narrowedExceptHeroesGameModes,

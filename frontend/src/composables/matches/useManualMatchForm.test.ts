@@ -128,11 +128,60 @@ describe('useManualMatchForm', () => {
     expect(f.canSubmit.value).toBe(true)
   })
 
-  it('includes leaver only when one is picked', () => {
+  describe("leaver-exit mode", () => {
+    it('pre-tags both leaver sides — a teammate left, then so did you', () => {
+      const f = useManualMatchForm('leaver-exit')
+      expect(f.leavers.value).toEqual(['team', 'self'])
+    })
+
+    it('needs only the map and the result', () => {
+      const f = useManualMatchForm('leaver-exit')
+      expect(f.missingRequired.value).toEqual(['map', 'result'])
+      f.map.value = 'ilios'
+      f.result.value = 'defeat'
+      expect(f.missingRequired.value).toEqual([])
+      expect(f.canSubmit.value).toBe(true)
+    })
+
+    it('omits hero / mode / queue from the payload rather than sending them empty', () => {
+      const f = useManualMatchForm('leaver-exit')
+      f.map.value = 'ilios'
+      f.result.value = 'defeat'
+      const input = f.toInput()
+      expect(input.map).toBe('ilios')
+      expect(input.result).toBe('defeat')
+      expect(input.leavers).toEqual(['team', 'self'])
+      expect(input.heroes).toBeUndefined()
+      expect(input.play_mode).toBeUndefined()
+      expect(input.queue_type).toBeUndefined()
+    })
+  })
+
+  it('includes disruption sides only when some are picked', () => {
     const f = useManualMatchForm()
-    expect(f.toInput().leaver).toBeUndefined()
-    f.leaver.value = 'team'
-    expect(f.toInput().leaver).toBe('team')
+    expect(f.toInput().leavers).toBeUndefined()
+    expect(f.toInput().throwers).toBeUndefined()
+    f.toggleLeaver('team')
+    expect(f.toInput().leavers).toEqual(['team'])
+  })
+
+  it('accumulates both leaver sides — a teammate left, then so did you', () => {
+    const f = useManualMatchForm()
+    f.toggleLeaver('team')
+    f.toggleLeaver('self')
+    expect(f.toInput().leavers).toEqual(['team', 'self'])
+    // Toggling the same side again removes it.
+    f.toggleLeaver('team')
+    expect(f.toInput().leavers).toEqual(['self'])
+  })
+
+  it('tracks throwers independently of leavers', () => {
+    const f = useManualMatchForm()
+    f.toggleLeaver('team')
+    f.toggleThrower('enemy')
+    f.toggleThrower('team')
+    expect(f.toInput().leavers).toEqual(['team'])
+    expect(f.toInput().throwers).toEqual(['enemy', 'team'])
   })
 
   it('carries optional replay code, note, lowercased tags, and verbatim group members', () => {

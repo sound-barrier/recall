@@ -390,12 +390,16 @@ paths:
       tags: [Matches]
       summary: Upsert a per-match user annotation
       description: |
-        Lets the user tag a match with up to four pieces of metadata:
+        Lets the user tag a match with a few pieces of metadata:
 
-          - **leaver** — `self` (user left, data incomplete) /
-            `team` (ally left, loss excused) / `enemy` (opponent left,
-            win tainted). Drives W/L/D tally exclusion via the
-            FilterRail leaver-handling setting.
+          - **leavers** — which sides had someone leave: `self` (user
+            left, data incomplete) / `team` (ally left, loss excused) /
+            `enemy` (opponent left, win tainted). A set, so "a teammate
+            left, then I left" is `["team", "self"]`. Drives W/L/D tally
+            exclusion via the narrow panel's leaver-handling setting.
+          - **throwers** — which sides had someone throwing, same three
+            values. Independent of `leavers`, and independent of the
+            tally: a thrown match still counts.
           - **note** — free-text per-match commentary.
           - **replay_code** — Overwatch's six-character replay ID so
             the match can be re-watched in the in-game viewer.
@@ -408,8 +412,9 @@ paths:
         an annotation is an explicit `DELETE` on this same path, so the
         verb states the intent.
 
-        Returns 204 on success, 400 on a malformed body or a `leaver`
-        outside the enum, 409 on an all-empty body, 500 on store error.
+        Returns 204 on success, 400 on a malformed body or a `leavers` /
+        `throwers` side outside the enum, 409 on an all-empty body, 500 on
+        store error.
       requestBody:
         required: true
         content:
@@ -419,19 +424,19 @@ paths:
               properties:
                 # `note` and `replay_code` treat `null` and `""` as
                 # the same "no value" — they're optional and the
-                # server decodes either form as empty. `leaver` keeps
-                # the strict enum because Spectral can't validate a
-                # null member mixed into an enum (the parser bails);
-                # the handler still tolerates `null` (Go decodes to
-                # "" which is the explicit "no leaver tag" enum
-                # value), so leaver: null lands as 204 — same outcome
-                # as leaver: "".
-                leaver:
-                  $ref: "#/components/schemas/LeaverEnum"
+                # server decodes either form as empty. The array
+                # fields accept `null` for the whole array (read as
+                # "not tagged") but reject a `null` MEMBER with a
+                # field-scoped 400.
+                leavers:
+                  $ref: "#/components/schemas/DisruptionSides"
                   description: |
-                    One of the three leaver scenarios, or `""` to leave
-                    untagged. An all-empty body (every field blank) is
-                    rejected with 409 — use `DELETE` to clear the row.
+                    Which sides had someone leave. An all-empty body
+                    (every field blank) is rejected with 409 — use
+                    `DELETE` to clear the row.
+                throwers:
+                  $ref: "#/components/schemas/DisruptionSides"
+                  description: Which sides had someone throwing.
                 note:
                   type: string
                   description: Free-text per-match commentary. `null` = empty.
@@ -2487,18 +2492,25 @@ components:
         scope:
           type: string
           description: '"new" (default parse) or "all" (re-parse); empty when idle.'
-    LeaverEnum:
-      type: string
-      enum: ["", "self", "team", "enemy"]
+    DisruptionSides:
+      type: array
+      uniqueItems: true
+      items:
+        type: string
+        enum: ["self", "team", "enemy"]
       description: |
-        Per-match leaver tag — who left the match.
-        - `self`: the user left (their data is incomplete).
-        - `team`: an ally left.
-        - `enemy`: an opponent left.
-        - `""` (empty string): no leaver tag set; functionally
-          identical to omitting the field. Sending the empty string
-          to the single-set endpoint is equivalent to a DELETE on
-          the field.
+        Which sides a match was disrupted on — used by both `leavers`
+        and `throwers`.
+        - `self`: the user themselves (their own data is incomplete,
+          or they were the one throwing).
+        - `team`: an ally.
+        - `enemy`: an opponent.
+
+        A SET, not a single value: a match can carry a thrower on both
+        teams at once, and the leaver-exit quick-add records "a
+        teammate left, then I left" as `["team", "self"]`. An empty
+        array (or an omitted field) means "not tagged"; order is not
+        significant and duplicates are collapsed server-side.
 
     QueueTypeEnum:
       type: string
@@ -2692,11 +2704,18 @@ components:
 
     ManualMatchInput:
       type: object
-      required: [map, play_mode, queue_type, heroes, result]
+      required: [map, result]
       description: |
         Hand-entered match for users without OCR. The server derives the
         `match_key` from `played_at` (default: now) and returns the created
         MatchRecord. `heroes[0]` is the primary hero.
+
+        Only `map` and `result` are required. `heroes`, `play_mode`, and
+        `queue_type` are optional because the leaver-exit quick-add records
+        a match Overwatch erased from history, where the user knows the map
+        and the outcome and nothing else — inventing a hero or a queue there
+        would be fabricating data. A value that IS supplied is still
+        validated; only omission is free.
       properties:
         map:
           type: string
@@ -2708,8 +2727,9 @@ components:
           $ref: "#/components/schemas/QueueTypeEnum"
         heroes:
           type: array
-          minItems: 1
-          description: Heroes played; first is the primary (need not be ordered by play time).
+          description: |
+            Heroes played; first is the primary (need not be ordered by play
+            time). Omit entirely for a quick-add with no hero recorded.
           items:
             type: string
             minLength: 1
@@ -2729,8 +2749,10 @@ components:
           example: "2026-06-15T14:30:00-08:00"
         rank:
           $ref: "#/components/schemas/ManualRankInput"
-        leaver:
-          $ref: "#/components/schemas/LeaverEnum"
+        leavers:
+          $ref: "#/components/schemas/DisruptionSides"
+        throwers:
+          $ref: "#/components/schemas/DisruptionSides"
         replay_code:
           type: string
           description: Optional Overwatch replay code; written to the match annotation.
@@ -3376,19 +3398,23 @@ components:
 
     MatchAnnotation:
       type: object
-      required: [leaver]
+      required: [leavers, throwers]
       description: |
         User-curated per-match metadata embedded in a `MatchRecord`.
-        `leaver` is always present; `note` / `replay_code` / `members` /
-        `tags` are omitted when empty (the server marshals them
-        `omitempty`). The row only exists in the database if at least one
-        field carries content; absence of the row is signalled by a 404
-        on `GET /api/v1/matches/{match_key}/annotation`, and the whole
+        `leavers` and `throwers` are always present (possibly empty
+        arrays) so clients can read their length without a null check;
+        `note` / `replay_code` / `members` / `tags` are omitted when
+        empty (the server marshals them `omitempty`). The row only
+        exists in the database if at least one field carries content;
+        absence of the row is signalled by a 404 on
+        `GET /api/v1/matches/{match_key}/annotation`, and the whole
         annotation object is omitted from `MatchRecord` when the match is
         unannotated.
       properties:
-        leaver:
-          $ref: "#/components/schemas/LeaverEnum"
+        leavers:
+          $ref: "#/components/schemas/DisruptionSides"
+        throwers:
+          $ref: "#/components/schemas/DisruptionSides"
         note:
           type: string
           description: Free-text per-match commentary.

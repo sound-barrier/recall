@@ -18,15 +18,17 @@ defineProps<{
 // The single form instance is provided by the parent ManualMatchModal; injecting
 // (rather than taking it as a prop) lets this child mutate the reactive bundle.
 const f = inject(manualMatchFormKey)!
+const quick = computed(() => f.mode === 'leaver-exit')
 const ow = useOWData()
 
 const TIERS = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster', 'Champion']
 const DIVISIONS = [1, 2, 3, 4, 5]
-const LEAVERS = [
-  { value: '', label: 'None' },
-  { value: 'self', label: 'I left' },
-  { value: 'team', label: 'Ally left' },
-  { value: 'enemy', label: 'Enemy left' },
+// Disruption sides are multi-select toggles, not a single pick: a match can
+// carry a leaver on both teams, and "a teammate left, then I left" is two.
+const SIDES = [
+  { value: 'self',  leaver: 'I left',     thrower: 'I threw' },
+  { value: 'team',  leaver: 'Ally left',  thrower: 'Ally threw' },
+  { value: 'enemy', leaver: 'Enemy left', thrower: 'Enemy threw' },
 ] as const
 
 // Only one combobox dropdown open at a time (mirrors the narrow panel).
@@ -97,13 +99,16 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
 <template>
   <div class="mm-body">
-    <p class="mm-legend">
+    <p v-if="quick" class="mm-lede">
+      Overwatch drops matches you leave early. Record the map and how it ended.
+    </p>
+    <p v-else class="mm-legend">
       <span class="mm-req" aria-hidden="true">*</span> required
     </p>
 
     <!-- Map (required) — the narrow panel's searchable, lowercase picker. -->
     <section class="mm-section">
-      <span class="eyebrow mm-eyebrow-label">Map <span class="mm-req" aria-hidden="true">*</span></span>
+      <span class="eyebrow mm-eyebrow-label">Map <span v-if="!quick" class="mm-req" aria-hidden="true">*</span></span>
       <FilterCombobox
         combo-id="mm-map"
         label="Map"
@@ -119,7 +124,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Mode (required) -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <span class="eyebrow mm-eyebrow-label">Mode <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button class="mm-chip" :class="{ picked: f.playMode.value === 'competitive' }" data-mode="competitive" @click="f.playMode.value = 'competitive'">
@@ -132,7 +137,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Queue (required) -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <span class="eyebrow mm-eyebrow-label">Queue <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button class="mm-chip" :class="{ picked: f.queueType.value === 'role' }" data-queue="role" @click="f.queueType.value = 'role'">
@@ -163,7 +168,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Heroes (required) — same picker as Map; first selected is primary. -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <span class="eyebrow mm-eyebrow-label">
         Heroes played <span class="mm-req" aria-hidden="true">*</span>
         <span class="mm-optional">first = primary</span>
@@ -185,7 +190,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
     <!-- Result (required) -->
     <section class="mm-section">
-      <span class="eyebrow mm-eyebrow-label">Result <span class="mm-req" aria-hidden="true">*</span></span>
+      <span class="eyebrow mm-eyebrow-label">Result <span v-if="!quick" class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
         <button
           v-for="r in (['victory', 'defeat', 'draw'] as const)"
@@ -200,25 +205,44 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
       </div>
     </section>
 
-    <!-- Leaver (optional) -->
-    <section class="mm-section">
-      <span class="eyebrow mm-eyebrow-label">Leaver <span class="mm-optional">(optional)</span></span>
+    <!-- Leavers (optional, multi-select) -->
+    <section v-if="!quick" class="mm-section">
+      <span class="eyebrow mm-eyebrow-label">Leavers <span class="mm-optional">(optional)</span></span>
       <div class="mm-chips">
         <button
-          v-for="opt in LEAVERS"
-          :key="opt.value || 'none'"
+          v-for="opt in SIDES"
+          :key="opt.value"
           class="mm-chip"
-          :class="{ picked: f.leaver.value === opt.value }"
-          :data-leaver="opt.value || 'none'"
-          @click="f.leaver.value = opt.value"
+          :class="{ picked: f.leavers.value.includes(opt.value) }"
+          :aria-pressed="f.leavers.value.includes(opt.value)"
+          :data-leaver="opt.value"
+          @click="f.toggleLeaver(opt.value)"
         >
-          {{ opt.label }}
+          {{ opt.leaver }}
+        </button>
+      </div>
+    </section>
+
+    <!-- Throwers (optional, multi-select) -->
+    <section v-if="!quick" class="mm-section">
+      <span class="eyebrow mm-eyebrow-label">Throwers <span class="mm-optional">(optional)</span></span>
+      <div class="mm-chips">
+        <button
+          v-for="opt in SIDES"
+          :key="opt.value"
+          class="mm-chip"
+          :class="{ picked: f.throwers.value.includes(opt.value) }"
+          :aria-pressed="f.throwers.value.includes(opt.value)"
+          :data-thrower="opt.value"
+          @click="f.toggleThrower(opt.value)"
+        >
+          {{ opt.thrower }}
         </button>
       </div>
     </section>
 
     <!-- Replay code (optional) -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <label class="eyebrow mm-eyebrow-label" for="mm-replay">Replay code <span class="mm-optional">(optional)</span></label>
       <input
         id="mm-replay"
@@ -234,7 +258,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Notes (optional) -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <label class="eyebrow mm-eyebrow-label" for="mm-note">Notes <span class="mm-optional">(optional)</span></label>
       <textarea
         id="mm-note"
@@ -246,7 +270,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Tags (optional) — type + Enter to add a chip. -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <span class="eyebrow mm-eyebrow-label">Tags <span class="mm-optional">(optional)</span></span>
       <div class="mm-tokens">
         <button
@@ -275,7 +299,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- Group / teammates (optional) -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <span class="eyebrow mm-eyebrow-label">Group <span class="mm-optional">(teammates you queued with)</span></span>
       <div class="mm-tokens">
         <button
@@ -304,7 +328,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     </section>
 
     <!-- When (optional) -->
-    <section class="mm-section">
+    <section v-if="!quick" class="mm-section">
       <label class="eyebrow mm-eyebrow-label" for="mm-when">When <span class="mm-optional">(defaults to now)</span></label>
       <input id="mm-when" v-model="f.playedAt.value" class="mm-input mm-input-short" type="datetime-local">
     </section>
@@ -358,6 +382,16 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* The quick-add's one line of explanation. Body face, not mono — it's a
+   sentence to read, unlike the mono legend it replaces. */
+.mm-lede {
+  margin: 0 0 0.2rem;
+  font-size: var(--type-xs);
+  line-height: 1.45;
+  color: var(--text-dim);
+  max-width: 46ch;
 }
 
 .mm-legend {

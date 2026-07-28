@@ -62,7 +62,7 @@ const {
   closeCheatsheet, closeSettingsDialog,
   onFirstRunDismiss, onFirstRunPickSource, onFirstRunPickCustomSource,
 } = uiStore
-const { manualMatchOpen, anchorToast, undoHideToast, cheatsheetOpen, firstRunModalOpen, settingsDialogOpen } = storeToRefs(uiStore)
+const { manualMatchOpen, manualMatchMode, anchorToast, undoHideToast, cheatsheetOpen, firstRunModalOpen, settingsDialogOpen } = storeToRefs(uiStore)
 
 // App store — About (version + update hub) + the non-dismissible startup gate.
 const {
@@ -181,7 +181,9 @@ const lightboxSrc = computed(() => {
   />
 
   <ManualMatchModal
+    :key="manualMatchMode"
     :open="manualMatchOpen"
+    :mode="manualMatchMode"
     @close="closeManualMatch"
     @created="onManualMatchCreated"
   />

@@ -34,8 +34,6 @@ var (
 	ErrInvalidResult = errors.New("invalid result: must be 'victory', 'defeat', or 'draw'")
 	// ErrManualNeedsMap maps to 400 — a manual match must name its map.
 	ErrManualNeedsMap = errors.New("map is required")
-	// ErrManualNeedsHero maps to 400 — a manual match needs at least one hero.
-	ErrManualNeedsHero = errors.New("at least one hero is required")
 	// ErrMatchKeyExists maps to 409 — a match already exists at that time.
 	ErrMatchKeyExists = errors.New("a match already exists for that time; pick a different minute")
 	// ErrInvalidPlayedAt maps to 400 — played_at wasn't valid RFC 3339.
@@ -114,19 +112,28 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.MatchRecord
 	if err := a.store.UpsertUserMatchData(data); err != nil {
 		return match.MatchRecord{}, err
 	}
-	if err := a.store.SetMatchPlayMode(key, input.PlayMode); err != nil {
-		return match.MatchRecord{}, err
+	// Both aux rows are skipped when omitted — a quick-add knows the map and
+	// the outcome, not how the game was queued, and writing "" would claim it
+	// did. The detail-panel choosers can set them later.
+	if input.PlayMode != "" {
+		if err := a.store.SetMatchPlayMode(key, input.PlayMode); err != nil {
+			return match.MatchRecord{}, err
+		}
 	}
-	if err := a.store.SetMatchQueue(key, input.QueueType); err != nil {
-		return match.MatchRecord{}, err
+	if input.QueueType != "" {
+		if err := a.store.SetMatchQueue(key, input.QueueType); err != nil {
+			return match.MatchRecord{}, err
+		}
 	}
-	// Leaver + the optional annotation fields (replay code / note / tags /
-	// the squad they grouped with) all ride the existing annotation surface
-	// in one upsert — the same row the detail-panel choosers edit later.
-	if input.Leaver != "" || input.ReplayCode != "" || input.Note != "" || len(input.Tags) > 0 || len(input.Members) > 0 {
+	// Disruption sides + the optional annotation fields (replay code / note /
+	// tags / the squad they grouped with) all ride the existing annotation
+	// surface in one upsert — the same row the detail-panel choosers edit later.
+	if len(input.Leavers) > 0 || len(input.Throwers) > 0 || input.ReplayCode != "" ||
+		input.Note != "" || len(input.Tags) > 0 || len(input.Members) > 0 {
 		if err := a.SetMatchAnnotation(AnnotationInput{
 			MatchKey:   key,
-			Leaver:     input.Leaver,
+			Leavers:    input.Leavers,
+			Throwers:   input.Throwers,
 			ReplayCode: input.ReplayCode,
 			Note:       input.Note,
 			Tags:       input.Tags,
@@ -145,20 +152,28 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.MatchRecord
 
 // validateManualMatchInput checks the manual form's required identity fields,
 // enum membership, rank ranges, and map/hero roster membership.
+//
+// Only map and result are required. Hero, play mode, and queue type are
+// optional because the leaver-exit quick-add records a match the game erased
+// from history, where the user knows the map and the outcome and nothing else —
+// inventing a hero or a queue there would be fabricating data. A value that IS
+// supplied still has to be valid; only omission is free.
 func validateManualMatchInput(input match.ManualMatchInput) error {
 	switch {
 	case input.Map == "":
 		return ErrManualNeedsMap
-	case len(input.Heroes) == 0 || input.Heroes[0] == "":
-		return ErrManualNeedsHero
 	case !validResults[input.Result]:
 		return ErrInvalidResult
-	case !validPlayModes[input.PlayMode]:
+	case input.PlayMode != "" && !validPlayModes[input.PlayMode]:
 		return ErrInvalidPlayMode
-	case !validQueueTypes[input.QueueType]:
+	case input.QueueType != "" && !validQueueTypes[input.QueueType]:
 		return ErrInvalidQueueType
-	case input.Leaver != "" && !validLeavers[input.Leaver]:
-		return ErrInvalidLeaver
+	}
+	if _, err := normalizeSides(input.Leavers, ErrInvalidLeaver); err != nil {
+		return err
+	}
+	if _, err := normalizeSides(input.Throwers, ErrInvalidThrower); err != nil {
+		return err
 	}
 	if input.Rank != nil {
 		if err := validateManualRank(*input.Rank); err != nil {
@@ -198,7 +213,14 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 	}
 	key := match.NewTrackedMatchKey(played.Format("2006-01-02T15-04-05")).String()
 
-	mapName, primary, result := input.Map, input.Heroes[0], input.Result
+	mapName, result := input.Map, input.Result
+	// A quick-add carries no hero at all; keep the column NULL rather than
+	// writing an empty override, so the record reads as "not recorded".
+	var primary *string
+	if len(input.Heroes) > 0 && input.Heroes[0] != "" {
+		hero := input.Heroes[0]
+		primary = &hero
+	}
 	// Naive local wall-clock for date/finished_at/key (axis consistency with
 	// OCR rows); canonical UTC is exact because played carries the wire offset.
 	date, finished := played.Format("2006-01-02"), played.Format("15:04")
@@ -206,7 +228,7 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 	data := db.UserMatchData{
 		MatchKey:    key,
 		Map:         &mapName,
-		Hero:        &primary,
+		Hero:        primary,
 		Result:      &result,
 		Date:        &date,
 		FinishedAt:  &finished,

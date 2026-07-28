@@ -139,7 +139,34 @@ func AttachHidden(recs []match.MatchRecord, hidden map[string]bool) {
 	}
 }
 
-// AttachAnnotations grafts user-curated leaver/note records onto the
+// sidesOrEmpty guarantees a non-nil slice. `leavers` / `throwers` are required
+// on the MatchAnnotation schema, and Go marshals a nil slice as `null` — which
+// violates `type: array` and trips schemathesis's response_schema_conformance.
+// Same rule as every other array on the wire (see .claude/rules/api-design.md).
+func sidesOrEmpty(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// annotationFromRow converts a stored annotation into its domain shape. Two
+// call sites attach annotations — the bulk aggregate and the single-record
+// sidecar path — and a field added to only one of them goes missing with no
+// compile error, so both go through here.
+func annotationFromRow(a db.Annotation) *match.MatchAnnotation {
+	return &match.MatchAnnotation{
+		Leavers:     sidesOrEmpty(a.Leavers),
+		Throwers:    sidesOrEmpty(a.Throwers),
+		Note:        a.Note,
+		ReplayCode:  a.ReplayCode,
+		Members:     a.Members,
+		Tags:        a.Tags,
+		AnnotatedAt: a.AnnotatedAt,
+	}
+}
+
+// AttachAnnotations grafts user-curated disruption/note records onto the
 // aggregated match.MatchRecord slice. Match-key lookup; missing → nil
 // (unannotated). Pure function, exported only via aggregateAll +
 // the streaming path in app_wails.go / app_server.go's emit.
@@ -149,14 +176,7 @@ func AttachAnnotations(recs []match.MatchRecord, annos map[string]db.Annotation)
 	}
 	for i := range recs {
 		if a, ok := annos[recs[i].MatchKey]; ok {
-			recs[i].Annotation = &match.MatchAnnotation{
-				Leaver:      a.Leaver,
-				Note:        a.Note,
-				ReplayCode:  a.ReplayCode,
-				Members:     a.Members,
-				Tags:        a.Tags,
-				AnnotatedAt: a.AnnotatedAt,
-			}
+			recs[i].Annotation = annotationFromRow(a)
 		}
 	}
 }

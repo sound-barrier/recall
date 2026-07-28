@@ -108,9 +108,6 @@ func RunServer(a *app.App, assets embed.FS) {
 // 400-shaped message regardless of whether the JSON failed to
 // decode or the field was empty — both shapes are spec-violating
 // the same way ("body must be {<field>: \"…\"}").
-//
-// Use `decodeOptionalString` (below) for fields that are part of a
-// larger body and may legitimately be absent.
 func decodeRequiredString(r *http.Request, field string) (string, error) {
 	// Decode into json.RawMessage so unrelated extra fields with
 	// non-string values don't break the decode — `additionalProperties:
@@ -133,31 +130,6 @@ func decodeRequiredString(r *http.Request, field string) (string, error) {
 		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
 	}
 	return v, nil
-}
-
-// decodeOptionalString decodes a json.RawMessage carrying a string
-// field that the OpenAPI spec declares as a strict (non-nullable)
-// string. Used where the schema can't be relaxed to `[string,
-// "null"]` because some other constraint (an `enum` member that
-// Spectral can't co-parse with a null) forces the type to stay
-// pure string. Three cases:
-//   - raw is empty / nil: field absent. Returns "" with no error.
-//   - raw is the literal `null`: field present but null. Returns
-//     a 400-shaped error.
-//   - raw is a JSON string: decoded into the return value.
-func decodeOptionalString(field string, raw json.RawMessage) (string, error) {
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 {
-		return "", nil
-	}
-	if bytes.Equal(trimmed, []byte("null")) {
-		return "", fmt.Errorf("%s must be a string, not null", field)
-	}
-	var s string
-	if err := json.Unmarshal(trimmed, &s); err != nil {
-		return "", fmt.Errorf("%s: %w", field, err)
-	}
-	return s, nil
 }
 
 // decodeRequiredStringArray decodes a required `type: array` body

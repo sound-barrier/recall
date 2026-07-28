@@ -62,14 +62,17 @@ type PlayModeState struct {
 }
 
 // Annotation is one row of match_annotations plus its joined-on child
-// member list. Every scalar is optional; the App-layer policy is "if
-// every field is empty, delete the row entirely" (see
-// App.SetMatchAnnotation). Leaver, when set, is one of
-// {"self", "team", "enemy"} — the SQL CHECK constraint enforces this
-// at the boundary too.
+// lists. Every field is optional; the App-layer policy is "if every field is
+// empty, delete the row entirely" (see App.SetMatchAnnotation).
+//
+// Leavers and Throwers are SETS of {"self", "team", "enemy"} — a match can
+// carry a disruption on both teams at once, and "a teammate left, then I left"
+// needs two leaver sides on one match. The SQL CHECK constraint on each side
+// table enforces the vocabulary at the boundary too.
 type Annotation struct {
 	MatchKey   string
-	Leaver     string
+	Leavers    []string
+	Throwers   []string
 	Note       string
 	ReplayCode string
 	Members    []string

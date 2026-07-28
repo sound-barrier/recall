@@ -42,7 +42,7 @@ const { selection, preview } = uiStore
 const { searchClauses } = storeToRefs(matchesStore)
 const { pendingFocusTarget: pendingFocus } = storeToRefs(uiStore)
 const {
-  onSetLeaverAnnotation, onSetMatchHidden, onSetMatchPinned, onSetMatchReview,
+  onSetDisruptionAnnotation, onSetMatchHidden, onSetMatchPinned, onSetMatchReview,
   onSetMatchQueue, onSetMatchPlayMode, onUpdateMatchData, onResetMatchData,
 } = useMatchActions()
 
@@ -229,7 +229,7 @@ function onBackdropClick(e: MouseEvent) {
             @preview-error="onPreviewError"
             @open-lightbox="openLightbox"
             @filter-toggle="toggleFilter"
-            @set-leaver-annotation="onSetLeaverAnnotation"
+            @set-disruption="onSetDisruptionAnnotation"
             @set-match-hidden="onSetMatchHidden"
             @set-match-review="onSetMatchReview"
             @set-match-queue="onSetMatchQueue"

@@ -7,22 +7,26 @@ import (
 	"recall/pkg/db"
 )
 
-// validLeavers enumerates the three scenarios users can annotate a
-// match with:
-//   - "self"  — the user themselves left the match (data is partial)
-//   - "team"  — an ally left the match
-//   - "enemy" — an opposing-team player left the match
+// validDisruptionSides enumerates who a leaver / thrower annotation can name:
+//   - "self"  — the user themselves (their own data is partial, or they threw)
+//   - "team"  — an ally
+//   - "enemy" — an opposing-team player
 //
-// The empty string means "no leaver tag set"; an annotation row can
-// exist without a leaver as long as at least one of note /
-// replay_code / members is populated.
-var validLeavers = map[string]bool{"self": true, "team": true, "enemy": true}
+// Both kinds are SETS: a match can carry a thrower on either team (or both),
+// and the leaver-exit quick-add records "a teammate left, then I left" as two
+// leaver sides on one match. An empty set means "not tagged"; an annotation row
+// can exist without either as long as note / replay_code / members / tags
+// carries something.
+var validDisruptionSides = map[string]bool{"self": true, "team": true, "enemy": true}
 
-// ErrInvalidLeaver is returned by SetMatchAnnotation when the leaver
-// value isn't one of the three allowed scenarios (or empty for "no
-// tag"). HTTP handlers map this to 400 (user-input error) rather than
-// 500.
-var ErrInvalidLeaver = errors.New("invalid leaver: must be 'self', 'team', or 'enemy'")
+// ErrInvalidLeaver is returned by SetMatchAnnotation when a leaver side isn't
+// one of the three allowed values. HTTP handlers map this to 400 (user-input
+// error) rather than 500.
+var ErrInvalidLeaver = errors.New("invalid leaver: each side must be 'self', 'team', or 'enemy'")
+
+// ErrInvalidThrower is the thrower-side twin of ErrInvalidLeaver. Separate
+// sentinels so the 400's message names the field the user actually got wrong.
+var ErrInvalidThrower = errors.New("invalid thrower: each side must be 'self', 'team', or 'enemy'")
 
 // ErrEmptyAnnotation is returned by SetMatchAnnotation when the input carries no
 // content after trimming. PUT /annotation is upsert-only; clearing an annotation
@@ -34,8 +38,11 @@ var ErrEmptyAnnotation = errors.New("annotation has no content; use DELETE to cl
 // field is optional, but at least one must carry content: an all-empty
 // input is rejected with ErrEmptyAnnotation (clearing is DeleteMatchAnnotation).
 type AnnotationInput struct {
-	MatchKey   string
-	Leaver     string
+	MatchKey string
+	// Leavers / Throwers are sets of validDisruptionSides values. Order is not
+	// significant; duplicates are collapsed before reaching SQL.
+	Leavers    []string
+	Throwers   []string
 	Note       string
 	ReplayCode string
 	Members    []string
@@ -54,7 +61,8 @@ type AnnotationInput struct {
 //
 // Validation:
 //   - match_key required.
-//   - leaver, when non-empty, must be in {self, team, enemy}.
+//   - every leaver / thrower side must be in {self, team, enemy}; each set is
+//     trimmed + deduped.
 //   - members are trimmed + deduped + dropped-if-empty before reaching
 //     SQL; the composite-PK on the child table also guards duplicates.
 //   - tags are lowercased + trimmed + deduped (case-insensitive
@@ -65,9 +73,13 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 	if in.MatchKey == "" {
 		return errors.New("match_key required")
 	}
-	leaver := strings.TrimSpace(in.Leaver)
-	if leaver != "" && !validLeavers[leaver] {
-		return ErrInvalidLeaver
+	leavers, err := normalizeSides(in.Leavers, ErrInvalidLeaver)
+	if err != nil {
+		return err
+	}
+	throwers, err := normalizeSides(in.Throwers, ErrInvalidThrower)
+	if err != nil {
+		return err
 	}
 	note := strings.TrimSpace(in.Note)
 	replay := strings.TrimSpace(in.ReplayCode)
@@ -76,17 +88,41 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 
 	// All-empty input is rejected — clearing an annotation is the explicit
 	// DeleteMatchAnnotation, not an all-empty upsert.
-	if leaver == "" && note == "" && replay == "" && len(members) == 0 && len(tags) == 0 {
+	if len(leavers) == 0 && len(throwers) == 0 && note == "" && replay == "" && len(members) == 0 && len(tags) == 0 {
 		return ErrEmptyAnnotation
 	}
 	return a.store.SetAnnotation(db.Annotation{
 		MatchKey:   in.MatchKey,
-		Leaver:     leaver,
+		Leavers:    leavers,
+		Throwers:   throwers,
 		Note:       note,
 		ReplayCode: replay,
 		Members:    members,
 		Tags:       tags,
 	})
+}
+
+// normalizeSides trims, drops empties, dedupes, and validates every side
+// against validDisruptionSides, returning invalidErr for the first bad value.
+// Empty input yields a nil set, which callers read as "not tagged".
+func normalizeSides(in []string, invalidErr error) ([]string, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	seen := make(map[string]bool, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" || seen[s] {
+			continue
+		}
+		if !validDisruptionSides[s] {
+			return nil, invalidErr
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+	return out, nil
 }
 
 // DeleteMatchAnnotation removes a match's annotation row entirely (members and

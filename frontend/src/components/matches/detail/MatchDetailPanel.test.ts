@@ -275,43 +275,43 @@ describe('MatchDetailPanel — parsed timestamps', () => {
   })
 })
 
-describe('MatchDetailPanel — leaver chooser', () => {
+describe('MatchDetailPanel — disruption chooser', () => {
   it('renders the three scenario chips + no Clear when unannotated', () => {
     const { wrapper } = mountPanel()
-    const chipTexts = wrapper.findAll('.leaver-chip').map(c => c.text())
+    const chipTexts = wrapper.findAll('[data-disruption^="leavers-"]').map(c => c.text())
     // Each chip's text includes its glyph prefix (⊘ / ↙ / ↗).
     expect(chipTexts.some(t => t.includes('I left'))).toBe(true)
     expect(chipTexts.some(t => t.includes('Ally left'))).toBe(true)
     expect(chipTexts.some(t => t.includes('Enemy left'))).toBe(true)
-    expect(wrapper.find('.leaver-chip.leaver-clear').exists()).toBe(false)
+    expect(wrapper.find('[data-disruption-clear="leavers"]').exists()).toBe(false)
   })
 
   it('marks the active chip when an annotation is set', () => {
     const annotated = makeRecord({}, {
-      annotation: { leaver: 'team' },
+      annotation: { leavers: ['team'], throwers: [] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper } = mountPanel({ record: annotated })
-    const team = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Ally left'))!
+    const team = wrapper.findAll('[data-disruption^="leavers-"]').find(c => c.text().includes('Ally left'))!
     expect(team.classes()).toContain('active')
     expect(team.attributes('aria-pressed')).toBe('true')
-    expect(wrapper.find('.leaver-chip.leaver-clear').exists()).toBe(true)
+    expect(wrapper.find('[data-disruption-clear="leavers"]').exists()).toBe(true)
   })
 
   it('writes the picked scenario via SetMatchAnnotation', async () => {
     const { wrapper, key } = mountPanel()
-    const self = wrapper.findAll('.leaver-chip').find(c => c.text().includes('I left'))!
+    const self = wrapper.findAll('[data-disruption^="leavers-"]').find(c => c.text().includes('I left'))!
     await self.trigger('click')
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: 'self', note: '', replay_code: '', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: ['self'], throwers: [], note: '', replay_code: '', members: [], tags: [] })
   })
 
   // Clearing the only populated field (leaver) leaves the annotation empty, so
   // it routes to DELETE — the explicit clear verb — not an all-empty PUT.
   it('clicking the active chip on a leaver-only annotation deletes it', async () => {
     const annotated = makeRecord({}, {
-      annotation: { leaver: 'enemy' },
+      annotation: { leavers: ['enemy'], throwers: [] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper, key } = mountPanel({ record: annotated })
-    const enemy = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Enemy'))!
+    const enemy = wrapper.findAll('[data-disruption^="leavers-"]').find(c => c.text().includes('Enemy'))!
     await enemy.trigger('click')
     expect(DeleteMatchAnnotation).toHaveBeenCalledWith(key)
     expect(SetMatchAnnotation).not.toHaveBeenCalled()
@@ -319,10 +319,10 @@ describe('MatchDetailPanel — leaver chooser', () => {
 
   it('clicking Clear on a leaver-only annotation deletes it', async () => {
     const annotated = makeRecord({}, {
-      annotation: { leaver: 'self' },
+      annotation: { leavers: ['self'], throwers: [] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper, key } = mountPanel({ record: annotated })
-    const clear = wrapper.find('.leaver-chip.leaver-clear')
+    const clear = wrapper.find('[data-disruption-clear="leavers"]')
     await clear.trigger('click')
     expect(DeleteMatchAnnotation).toHaveBeenCalledWith(key)
     expect(SetMatchAnnotation).not.toHaveBeenCalled()
@@ -331,12 +331,12 @@ describe('MatchDetailPanel — leaver chooser', () => {
   // But clearing the leaver when OTHER content remains is still an upsert.
   it('clearing the leaver with a note present still PUTs', async () => {
     const annotated = makeRecord({}, {
-      annotation: { leaver: 'enemy', note: 'kept' },
+      annotation: { leavers: ['enemy'], throwers: [], note: 'kept' },
     } as unknown as Partial<MatchRecord>)
     const { wrapper, key } = mountPanel({ record: annotated })
-    const enemy = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Enemy'))!
+    const enemy = wrapper.findAll('[data-disruption^="leavers-"]').find(c => c.text().includes('Enemy'))!
     await enemy.trigger('click')
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: '', note: 'kept', replay_code: '', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: 'kept', replay_code: '', members: [], tags: [] })
     expect(DeleteMatchAnnotation).not.toHaveBeenCalled()
   })
 })
@@ -351,7 +351,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
 
   it('hydrates from record.annotation values on first render', () => {
     const rec = makeRecord({}, {
-      annotation: { leaver: '', note: 'huge clutch', replay_code: 'A7B2C9', members: ['Apollo#1', 'Cheese#5'] },
+      annotation: { leavers: [], throwers: [], note: 'huge clutch', replay_code: 'A7B2C9', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper } = mountPanel({ record: rec })
     const preview = wrapper.find('.match-notes-preview')
@@ -368,7 +368,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     const ta = wrapper.find('.match-notes-textarea')
     await ta.setValue('  draft text  ')
     await ta.trigger('blur')
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: '', note: 'draft text', replay_code: '', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: 'draft text', replay_code: '', members: [], tags: [] })
   })
 
   it('writes the annotation on replay-code Enter', async () => {
@@ -376,7 +376,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     const replay = wrapper.find('.match-notes-input.mono')
     await replay.setValue('7H1K9P')
     await replay.trigger('keydown.enter')
-    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leaver: '', note: '', replay_code: '7H1K9P', members: [], tags: [] })
+    expect(SetMatchAnnotation).toHaveBeenCalledWith(key, { leavers: [], throwers: [], note: '', replay_code: '7H1K9P', members: [], tags: [] })
   })
 
   it('Enter on the member input adds a chip and writes the new list', async () => {
@@ -385,7 +385,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
     await memberInput.setValue('Apollo#11234')
     await memberInput.trigger('keydown', { key: 'Enter' })
     expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#11234'])
-    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: ['Apollo#11234'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#11234'], tags: [] })
   })
 
   it('comma key also commits the member chip', async () => {
@@ -398,29 +398,29 @@ describe('MatchDetailPanel — match notes / journal block', () => {
 
   it('removing a chip writes the annotation without that member', async () => {
     const rec = makeRecord({}, {
-      annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
+      annotation: { leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper } = mountPanel({ record: rec })
     const xButtons = wrapper.findAll('.member-chip-remove')
     expect(xButtons).toHaveLength(2)
     await xButtons[0]!.trigger('click')
-    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: ['Cheese#5'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Cheese#5'], tags: [] })
   })
 
   it('Backspace on empty member input removes the last chip', async () => {
     const rec = makeRecord({}, {
-      annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
+      annotation: { leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper } = mountPanel({ record: rec })
     const memberInput = wrapper.find('.member-input')
     expect((memberInput.element as HTMLInputElement).value).toBe('')
     await memberInput.trigger('keydown', { key: 'Backspace' })
-    expect(lastAnnotation()).toEqual({ leaver: '', note: '', replay_code: '', members: ['Apollo#1'], tags: [] })
+    expect(lastAnnotation()).toEqual({ leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#1'], tags: [] })
   })
 
   it('Backspace with text in the input does NOT remove a chip', async () => {
     const rec = makeRecord({}, {
-      annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
+      annotation: { leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper } = mountPanel({ record: rec })
     const memberInput = wrapper.find('.member-input')
@@ -432,7 +432,7 @@ describe('MatchDetailPanel — match notes / journal block', () => {
 
   it('adding a duplicate BattleTag clears the input without writing', async () => {
     const rec = makeRecord({}, {
-      annotation: { leaver: '', note: '', replay_code: '', members: ['Apollo#1'] },
+      annotation: { leavers: [], throwers: [], note: '', replay_code: '', members: ['Apollo#1'] },
     } as unknown as Partial<MatchRecord>)
     const { wrapper } = mountPanel({ record: rec })
     const memberInput = wrapper.find('.member-input')

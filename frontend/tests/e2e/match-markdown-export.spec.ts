@@ -34,7 +34,7 @@ const record = () => ({
     mitigation: 3310,
   },
   parsed_at: '2026-05-10T22:00:00Z',
-  annotation: { leaver: '', note: 'clutch overtime hold', replay_code: 'AB12CD', members: ['Apollo'], tags: ['stack'] },
+  annotation: { leavers: [], throwers: [], note: 'clutch overtime hold', replay_code: 'AB12CD', members: ['Apollo'], tags: ['stack'] },
 })
 
 test.describe('match markdown export', () => {

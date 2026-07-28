@@ -37,7 +37,7 @@ are immediately readable.
 ## What lives in the panel
 
 ```text
-Search        ⌕ map · hero · mode · note · tag       [/]
+Search        ⌕ text · or note: tag: leaver: …       [/]
 
 Time scope    [All] [7d] [30d] [90d]
               From [📅]   To [📅]   (Clear dates)
@@ -51,6 +51,8 @@ Role          [tank] [support] [dps]
 Result        [victory] [defeat] [draw]
 Tags          [#stack] [#stream] [#review] …
 Leavers       [Include] [Drop from tally] [Hide entirely]
+With a leaver  [You left] [Teammate] [Enemy]
+With a thrower [You threw] [Teammate] [Enemy]
 
 Refinement    Min play time  [__] min
               Min played %    [__] %
@@ -59,16 +61,31 @@ Refinement    Min play time  [__] min
 
 ### Search
 
-Free-text substring match across map, hero (primary + every
-heroes-played entry), playlist, role, game mode, annotation note, and
-annotation tags. Case-insensitive. The match shows as you type;
-clear the input to drop the clause.
+A bare token is a free-text substring match across map, playlist, role,
+game mode, hero (the primary plus every heroes-played entry), annotation
+note, tags, teammates, and replay code. Case-insensitive. The match
+shows as you type; clear the input to drop the clause.
 
-> **Note:** the previous vim-style scoped-clause syntax
-> (`note:clutch`, `tag:stack`, `member:Apollo`, `replay:7H1`)
-> isn't part of the current search — substring match only.
-> See FEATURES.md ("Scoped search clauses in the narrow panel") for the plan to restore scoped
-> clauses.
+A `field:value` token scopes the match to one field. Multiple tokens
+AND together, and a value may be `"quoted"` to keep internal spaces:
+
+| Token | Matches |
+|---|---|
+| `note:clutch` | annotation note |
+| `tag:stack` | annotation tags |
+| `member:Apollo` | tagged teammates |
+| `replay:7H1` | replay code |
+| `leaver:team` | leaver sides — `self` / `team` / `enemy` |
+| `thrower:enemy` | thrower sides — same three values |
+
+Plurals collapse (`tags:` ≡ `tag:`, `leavers:` ≡ `leaver:`), and an
+unknown field name falls through as bare text so a typo still
+searches.
+
+> **Note:** the disruption sides are reachable **only** through
+> `leaver:` / `thrower:`. They're deliberately kept out of bare-token
+> search — the three values are generic enough that searching `team`
+> would otherwise sweep in every match you'd tagged.
 
 ### Time scope
 
@@ -113,7 +130,7 @@ any match where Lúcio was the primary hero OR appeared in the
 To require a meaningful play duration, set a **Min play time** or
 **Min played %** threshold below (see [Refinement](#refinement)).
 
-### Result, Tags, Leavers
+### Result, Tags, Leavers, Throwers
 
 **Result** is one row with three chips: victory, defeat, draw.
 
@@ -122,7 +139,8 @@ conventional three are `stack`, `stream`, `placement`, but any tag
 the user added via the detail panel surfaces here. Multi-select
 with OR-within semantics ("any of these tags").
 
-**Leavers** is a segmented control. Three modes:
+**Leavers** is a segmented control governing how leaver-tagged
+matches count. Three modes:
 
 - **Include** (default) — every match, leaver-tagged or not,
   counts the same.
@@ -130,6 +148,16 @@ with OR-within semantics ("any of these tags").
   the leaves but the dossier W/L/D and winrate skip them.
 - **Hide entirely** — drop leaver-tagged matches from the leaves
   list and the dossier.
+
+**With a leaver** and **With a thrower** are separate chip rows
+that scope the *set* by which side was disrupted — You / Teammate
+/ Enemy. Both are multi-select with OR-within semantics, and both
+are sets: a match can be tagged on **both** teams at once (throwers
+on either side, or "a teammate left, then I left"), in which case
+it surfaces under either pick.
+
+Throwers deliberately have no tally control. A leaver is something
+that happened *to* the match; a thrown game still counts.
 
 ### Refinement
 
@@ -270,7 +298,7 @@ window persist per profile.
 
 Clicking any leaf row opens the **match detail panel** from the
 right edge. Inside the panel you can edit the annotation
-(note, replay code, group members, leaver flag, tags),
+(note, replay code, group members, leaver and thrower sides, tags),
 soft-delete the match, and see the full Heroes Played + Match
 Stats + Rank Update + Source Screenshots dossier. The panel
 honors ← / → for prev/next match against the *currently filtered*

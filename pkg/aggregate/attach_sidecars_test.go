@@ -1,7 +1,9 @@
 package aggregate_test
 
 import (
+	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 
 	"recall/pkg/aggregate"
@@ -60,7 +62,8 @@ func TestAttachAnnotations_GraftsFullAnnotation(t *testing.T) {
 	aggregate.AttachAnnotations(recs, map[string]db.Annotation{
 		"match-1": {
 			MatchKey:    "match-1",
-			Leaver:      "self",
+			Leavers:     []string{"self"},
+			Throwers:    []string{"team", "enemy"},
 			Note:        "threw round 1",
 			ReplayCode:  "A1B2C3",
 			Members:     []string{"ally#1234"},
@@ -73,8 +76,11 @@ func TestAttachAnnotations_GraftsFullAnnotation(t *testing.T) {
 	if a == nil {
 		t.Fatal("Annotation = nil, want grafted")
 	}
-	if a.Leaver != "self" || a.Note != "threw round 1" || a.ReplayCode != "A1B2C3" || a.AnnotatedAt != "2026-06-20T00:00:00Z" {
+	if a.Note != "threw round 1" || a.ReplayCode != "A1B2C3" || a.AnnotatedAt != "2026-06-20T00:00:00Z" {
 		t.Errorf("annotation scalars = %+v, want grafted", a)
+	}
+	if !slices.Equal(a.Leavers, []string{"self"}) || !slices.Equal(a.Throwers, []string{"team", "enemy"}) {
+		t.Errorf("disruption sides = leavers %v / throwers %v, want grafted", a.Leavers, a.Throwers)
 	}
 	if !slices.Equal(a.Members, []string{"ally#1234"}) || !slices.Equal(a.Tags, []string{"tilt"}) {
 		t.Errorf("annotation lists = members %v / tags %v", a.Members, a.Tags)
@@ -216,5 +222,26 @@ func TestAggregateMatchKey_DerivesDuplicateReasonFromDistance(t *testing.T) {
 	}
 	if len(rec.Candidates) != 1 || rec.Candidates[0].Reason != "duplicate_stats" {
 		t.Errorf("candidates = %+v, want one with reason duplicate_stats", rec.Candidates)
+	}
+}
+
+// The OpenAPI contract marks `leavers` and `throwers` required, so they must
+// reach the wire as `[]` when unset. Go marshals a nil slice as `null`, which
+// violates `type: array` — schemathesis's response_schema_conformance catches
+// it on GET /matches, GET /matches/{key}, and POST /matches.
+func TestAttachAnnotations_SidesMarshalAsEmptyArraysNotNull(t *testing.T) {
+	recs := []match.MatchRecord{{MatchKey: "match-1"}}
+	aggregate.AttachAnnotations(recs, map[string]db.Annotation{
+		"match-1": {MatchKey: "match-1", Note: "no sides tagged"},
+	})
+
+	blob, err := json.Marshal(recs[0].Annotation)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, field := range []string{`"leavers":[]`, `"throwers":[]`} {
+		if !strings.Contains(string(blob), field) {
+			t.Errorf("annotation JSON = %s, want %s (nil slices marshal as null)", blob, field)
+		}
 	}
 }

@@ -13,7 +13,7 @@ function rec(over: Partial<MatchRecord> = {}): MatchRecord {
       eliminations: 17, assists: 16, deaths: 11,
       damage: 12843, healing: 9021, mitigation: 3310,
     },
-    annotation: { leaver: '', note: 'clutch', replay_code: 'AB12CD', members: ['Apollo'], tags: ['stack'] },
+    annotation: { leavers: [], throwers: [], note: 'clutch', replay_code: 'AB12CD', members: ['Apollo'], tags: ['stack'] },
     ...over,
   } as unknown as MatchRecord
 }
@@ -43,7 +43,7 @@ describe('matchSummaryLine', () => {
   it('renders the compact one-liner with empty parts dropped', () => {
     expect(matchSummaryLine(rec())).toBe('rialto · lucio · 17/16/11 · victory · AB12CD')
     const noReplay = rec()
-    noReplay.annotation = { leaver: '', members: [], tags: [] } as MatchRecord['annotation']
+    noReplay.annotation = { leavers: [], throwers: [], members: [], tags: [] } as MatchRecord['annotation']
     expect(matchSummaryLine(noReplay)).toBe('rialto · lucio · 17/16/11 · victory')
   })
 })

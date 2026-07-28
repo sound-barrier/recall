@@ -206,10 +206,28 @@ CREATE TABLE IF NOT EXISTS rank_sr (
 
 CREATE TABLE IF NOT EXISTS match_annotations (
   match_key TEXT PRIMARY KEY,
-  leaver TEXT CHECK (leaver IS NULL OR leaver IN ('self', 'team', 'enemy')),
   note TEXT,
   replay_code TEXT,
   annotated_at TEXT DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
+-- Who disrupted the match, per side. Two sibling set tables rather than a
+-- scalar column: a match can carry a thrower on BOTH teams at once, and
+-- "a teammate left, then I left" needs two leaver sides on one match.
+CREATE TABLE IF NOT EXISTS match_annotation_leavers (
+  match_key TEXT NOT NULL,
+  side TEXT NOT NULL CHECK (side IN ('self', 'team', 'enemy')),
+  PRIMARY KEY (match_key, side),
+  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON DELETE CASCADE
+) STRICT;
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS match_annotation_throwers (
+  match_key TEXT NOT NULL,
+  side TEXT NOT NULL CHECK (side IN ('self', 'team', 'enemy')),
+  PRIMARY KEY (match_key, side),
+  FOREIGN KEY (match_key) REFERENCES match_annotations (match_key) ON DELETE CASCADE
 ) STRICT;
 -- statement-end
 

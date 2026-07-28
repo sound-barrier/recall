@@ -53,6 +53,13 @@ export function matchesSearch(r: MatchRecord, clauses: SearchClause[]): boolean 
   const tags = (ann?.tags ?? []).join(' ').toLowerCase()
   const members = (ann?.members ?? []).join(' ').toLowerCase()
   const replay = (ann?.replay_code ?? '').toLowerCase()
+  // Disruption sides are searchable ONLY through their scoped tokens
+  // (`leaver:team`, `thrower:enemy`). They stay out of the bare-token blob
+  // below on purpose: the values are three generic words, and folding them in
+  // would make a search for "self" or "team" match on a tag the user wasn't
+  // thinking about.
+  const leavers = (ann?.leavers ?? []).join(' ').toLowerCase()
+  const throwers = (ann?.throwers ?? []).join(' ').toLowerCase()
   const blob = [
     d.map, d.playlist, d.hero, d.role, d.game_mode,
     ann?.note,
@@ -67,6 +74,8 @@ export function matchesSearch(r: MatchRecord, clauses: SearchClause[]): boolean 
       case 'tag':    return tags.includes(c.value)
       case 'member': return members.includes(c.value)
       case 'replay': return replay.includes(c.value)
+      case 'leaver': return leavers.includes(c.value)
+      case 'thrower': return throwers.includes(c.value)
       default:       return blob.includes(c.value)
     }
   })
@@ -113,6 +122,17 @@ export function matchesDateRange(
 export function matchesPickedSet(value: string | undefined, picked: Set<string>): boolean {
   if (!picked.size) return true
   return picked.has(value ?? '')
+}
+
+// matchesAnySide is the set-valued sibling of matchesPickedSet, for the
+// disruption facets (leavers / throwers). A match passes if it carries ANY of
+// the picked sides — OR semantics, matching how tags and modifiers behave — so
+// a match tagged on both teams surfaces under either pick without counting
+// twice. Empty pick set ≡ no filter.
+export function matchesAnySide(sides: string[] | undefined, picked: Set<string>): boolean {
+  if (!picked.size) return true
+  if (!sides?.length) return false
+  return sides.some((s) => picked.has(s))
 }
 
 export function matchesHero(
@@ -265,7 +285,7 @@ export function matchesPickedSeason(
 
 export function matchesLeaverHandling(r: MatchRecord, mode: 'include' | 'exclude-tally' | 'hide'): boolean {
   if (mode !== 'hide') return true
-  return !r.annotation?.leaver
+  return !r.annotation?.leavers?.length
 }
 
 // matchesPoolSide gates a match against the Hero Pool band's In-pool /

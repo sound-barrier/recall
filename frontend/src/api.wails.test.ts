@@ -40,14 +40,15 @@ describe('SetMatchAnnotation (Wails mode)', () => {
   it('dispatches Call.ByName with the App FQN + exactly one AnnotationInput arg', async () => {
     const { SetMatchAnnotation } = await import('@/api')
     await SetMatchAnnotation('match-2026-05-10T22-21-11', {
-      leaver: 'team', note: 'ally rage-quit', replay_code: '7H1K9P', members: ['Apollo#1'],
+      leavers: ['team', 'self'], throwers: ['enemy'], note: 'ally rage-quit', replay_code: '7H1K9P', members: ['Apollo#1'],
     })
     expect(callByName).toHaveBeenCalledTimes(1)
     expect(callByName.mock.lastCall).toEqual([
       'recall/pkg/app.App.SetMatchAnnotation',
       {
         MatchKey:   'match-2026-05-10T22-21-11',
-        Leaver:     'team',
+        Leavers:    ['team', 'self'],
+        Throwers:   ['enemy'],
         Note:       'ally rage-quit',
         ReplayCode: '7H1K9P',
         Members:    ['Apollo#1'],
@@ -64,7 +65,7 @@ describe('SetMatchAnnotation (Wails mode)', () => {
     await SetMatchAnnotation('match:x', { note: 'just a note' })
     expect(callByName.mock.lastCall).toEqual([
       'recall/pkg/app.App.SetMatchAnnotation',
-      { MatchKey: 'match:x', Leaver: '', Note: 'just a note', ReplayCode: '', Members: [], Tags: [] },
+      { MatchKey: 'match:x', Leavers: [], Throwers: [], Note: 'just a note', ReplayCode: '', Members: [], Tags: [] },
     ])
   })
 
@@ -75,7 +76,8 @@ describe('SetMatchAnnotation (Wails mode)', () => {
       'recall/pkg/app.App.SetMatchAnnotation',
       {
         MatchKey: 'match:tags',
-        Leaver: '',
+        Leavers: [],
+        Throwers: [],
         Note: 'tagged',
         ReplayCode: '',
         Members: [],

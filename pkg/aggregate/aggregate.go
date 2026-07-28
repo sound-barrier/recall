@@ -83,14 +83,7 @@ func collectViewsForKey(snap db.Screenshots, key string) []ScreenshotView {
 // flag, review state, and ambiguous-attribution candidates.
 func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) {
 	if a, ok := annos[key]; ok {
-		rec.Annotation = &match.MatchAnnotation{
-			Leaver:      a.Leaver,
-			Note:        a.Note,
-			ReplayCode:  a.ReplayCode,
-			Members:     a.Members,
-			Tags:        a.Tags,
-			AnnotatedAt: a.AnnotatedAt,
-		}
+		rec.Annotation = annotationFromRow(a)
 	}
 	if hidden[key] {
 		rec.Hidden = true

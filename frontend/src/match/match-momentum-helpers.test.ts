@@ -16,7 +16,7 @@ import {
 function rec(
   date: string,
   time: string,
-  s: { result?: 'victory' | 'defeat' | 'draw'; change?: number; leaver?: 'self' | 'team' | 'enemy' } = {},
+  s: { result?: 'victory' | 'defeat' | 'draw'; change?: number; leavers?: ('self' | 'team' | 'enemy')[] } = {},
 ): MomentumInput {
   return {
     match_key: `match-${date}T${time.replace(':', '-')}-00`,
@@ -26,7 +26,7 @@ function rec(
       ...(s.result ? { result: s.result } : {}),
       ...(s.change != null ? { change_percent: s.change } : {}),
     },
-    annotation: s.leaver ? { leaver: s.leaver } : undefined,
+    annotation: s.leavers?.length ? { leavers: s.leavers, throwers: [] } : undefined,
   }
 }
 
@@ -94,7 +94,7 @@ describe('netRankProgress', () => {
 describe('leaverRate', () => {
   it('reports the share of matches flagged with a leaver', () => {
     expect(leaverRate([
-      rec('2026-05-10', '20:00', { leaver: 'team' }),
+      rec('2026-05-10', '20:00', { leavers: ['team'] }),
       rec('2026-05-10', '21:00', {}),
       rec('2026-05-10', '22:00', {}),
       rec('2026-05-10', '23:00', {}),

@@ -37,7 +37,7 @@ function record(matchKey: string, note?: string) {
       heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '11:25' }],
     },
     parsed_at: '2026-05-10T22:30:00Z',
-    ...(note ? { annotation: { leaver: '', note } } : {}),
+    ...(note ? { annotation: { leavers: [], throwers: [], note } } : {}),
   }
 }
 

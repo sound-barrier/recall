@@ -1,5 +1,5 @@
-import { computed, ref, type InjectionKey } from 'vue'
-import type { ManualMatchInput } from '@/api-client'
+import { computed, ref, type InjectionKey, type Ref } from 'vue'
+import type { DisruptionSide, ManualMatchInput } from '@/api-client'
 
 // Form state + light validation for hand-entering a match (no OCR). Required:
 // map, play mode, queue, result, ≥1 hero (heroes[0] is the primary). Rank is
@@ -27,7 +27,13 @@ function localOffsetISO(dtLocal: string): string {
   return `${dtLocal}:00${sign}${pad(Math.trunc(abs / 60))}:${pad(abs % 60)}`
 }
 
-export function useManualMatchForm() {
+// 'full' is the complete hand-entry form. 'leaver-exit' is the quick-add for a
+// match Overwatch erased from history: map + result and nothing else, because
+// that is genuinely all the user knows. It pre-tags both leaver sides — a
+// teammate left, which is what let you leave, and then you did.
+export type ManualMatchMode = 'full' | 'leaver-exit'
+
+export function useManualMatchForm(mode: ManualMatchMode = 'full') {
   const map = ref('')
   const playMode = ref<'' | 'quickplay' | 'competitive'>('')
   const queueType = ref<'' | 'role' | 'open'>('')
@@ -35,7 +41,17 @@ export function useManualMatchForm() {
   const heroes = ref<string[]>([])
   const heroDraft = ref('')
   const result = ref<'' | 'victory' | 'defeat' | 'draw'>('')
-  const leaver = ref<'' | 'self' | 'team' | 'enemy'>('')
+  // Disruption sides are SETS — "a teammate left, then I left" is both. The
+  // leaver-exit quick-add seeds exactly that pair.
+  const leavers = ref<DisruptionSide[]>(mode === 'leaver-exit' ? ['team', 'self'] : [])
+  const throwers = ref<DisruptionSide[]>([])
+  const toggleSide = (set: Ref<DisruptionSide[]>, side: DisruptionSide) => {
+    set.value = set.value.includes(side)
+      ? set.value.filter((s) => s !== side)
+      : [...set.value, side]
+  }
+  const toggleLeaver = (side: DisruptionSide) => toggleSide(leavers, side)
+  const toggleThrower = (side: DisruptionSide) => toggleSide(throwers, side)
   const playedAt = ref(localNowValue())
 
   // Optional annotation fields — replay code, a note, free-form tags, and the
@@ -91,6 +107,12 @@ export function useManualMatchForm() {
   const missingRequired = computed(() => {
     const out: string[] = []
     if (map.value.trim() === '') out.push('map')
+    // The quick-add asks for two things only; everything below is either
+    // unknown to the user or irrelevant to a match they walked out of.
+    if (mode === 'leaver-exit') {
+      if (result.value === '') out.push('result')
+      return out
+    }
     if (playMode.value === '') out.push('mode')
     if (queueType.value === '') out.push('queue')
     // Role queue is a single-role queue: you play one role the whole match, so
@@ -124,11 +146,13 @@ export function useManualMatchForm() {
   function toInput(): ManualMatchInput {
     const input: ManualMatchInput = {
       map: map.value.trim(),
-      play_mode: playMode.value as 'quickplay' | 'competitive',
-      queue_type: queueType.value as 'role' | 'open',
-      heroes: [...heroes.value],
       result: result.value as 'victory' | 'defeat' | 'draw',
     }
+    // Omitted rather than sent empty: the server treats an absent mode / queue
+    // / hero as "not recorded", which is the truth for a quick-add.
+    if (playMode.value !== '') input.play_mode = playMode.value
+    if (queueType.value !== '') input.queue_type = queueType.value
+    if (heroes.value.length) input.heroes = [...heroes.value]
     if (playedAt.value) {
       input.played_at = localOffsetISO(playedAt.value)
     }
@@ -141,9 +165,8 @@ export function useManualMatchForm() {
         demotion_protection: demotionProtection.value,
       }
     }
-    if (leaver.value) {
-      input.leaver = leaver.value
-    }
+    if (leavers.value.length) input.leavers = [...leavers.value]
+    if (throwers.value.length) input.throwers = [...throwers.value]
     // Optional annotation fields — only sent when the user filled them in.
     if (replayCode.value.trim()) input.replay_code = replayCode.value.trim()
     if (note.value.trim()) input.note = note.value.trim()
@@ -153,12 +176,13 @@ export function useManualMatchForm() {
   }
 
   return {
-    map, playMode, queueType, roleCategory, heroes, heroDraft, result, leaver, playedAt,
+    map, playMode, queueType, roleCategory, heroes, heroDraft, result, playedAt,
+    leavers, throwers, toggleLeaver, toggleThrower,
     replayCode, note, tags, tagDraft, members, memberDraft,
     rankTier, rankDivision, rankProgress, rankChange, demotionProtection,
     isCompetitive, isRoleQueue, primaryHero,
     addHero, removeHero, addTag, removeTag, addMember, removeMember,
-    canSubmit, missingRequired, rankActive, rankError, rankValid, toInput,
+    mode, canSubmit, missingRequired, rankActive, rankError, rankValid, toInput,
   }
 }
 

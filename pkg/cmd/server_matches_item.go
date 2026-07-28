@@ -171,11 +171,6 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 		// TestMatchAnnotations_RejectsNullInTags +
 		// TestMatchAnnotations_RejectsNullInMembers.
 		//
-		// `leaver` is json.RawMessage so we can detect explicit
-		// `leaver: null` (spec disallows it because Spectral can't
-		// parse a null member mixed into an enum). Plain `string`
-		// would silently decode `null` as "" — and "" IS a valid
-		// enum value, so the decoder couldn't differentiate.
 		// Read the raw body first so we can reject `null` (which Go's
 		// json silently decodes into the zero-value struct, then the
 		// SetMatchAnnotation "all-empty → delete" rule kicks in and
@@ -191,40 +186,48 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 			return
 		}
 		var body struct {
-			Leaver     json.RawMessage `json:"leaver"`
-			Note       string          `json:"note"`
-			ReplayCode string          `json:"replay_code"`
-			Members    []*string       `json:"members"`
-			Tags       []*string       `json:"tags"`
+			Leavers    []*string `json:"leavers"`
+			Throwers   []*string `json:"throwers"`
+			Note       string    `json:"note"`
+			ReplayCode string    `json:"replay_code"`
+			Members    []*string `json:"members"`
+			Tags       []*string `json:"tags"`
 		}
 		if err := json.Unmarshal(raw, &body); err != nil {
 			writeProblem(w, r, probInvalidBody, "invalid JSON body")
 			return
 		}
-		leaver, lErr := decodeOptionalString("leaver", body.Leaver)
-		if lErr != nil {
-			writeProblem(w, r, probInvalidBody, lErr.Error(), withFieldErrors(fieldError{"leaver", lErr.Error()}))
-			return
-		}
-		members, mErr := derefStringArray("members", body.Members)
-		if mErr != nil {
-			writeProblem(w, r, probInvalidBody, mErr.Error(), withFieldErrors(fieldError{"members", mErr.Error()}))
-			return
-		}
-		tags, tErr := derefStringArray("tags", body.Tags)
-		if tErr != nil {
-			writeProblem(w, r, probInvalidBody, tErr.Error(), withFieldErrors(fieldError{"tags", tErr.Error()}))
-			return
+		// Every list field rejects a null MEMBER (`["team", null]`) with a
+		// per-field error rather than silently dropping it to "".
+		var leavers, throwers, members, tags []string
+		for _, f := range []struct {
+			name string
+			in   []*string
+			out  *[]string
+		}{
+			{"leavers", body.Leavers, &leavers},
+			{"throwers", body.Throwers, &throwers},
+			{"members", body.Members, &members},
+			{"tags", body.Tags, &tags},
+		} {
+			v, err := derefStringArray(f.name, f.in)
+			if err != nil {
+				writeProblem(w, r, probInvalidBody, err.Error(), withFieldErrors(fieldError{f.name, err.Error()}))
+				return
+			}
+			*f.out = v
 		}
 		if writeError(w, r, a.SetMatchAnnotation(app.AnnotationInput{
 			MatchKey:   matchKey,
-			Leaver:     leaver,
+			Leavers:    leavers,
+			Throwers:   throwers,
 			Note:       body.Note,
 			ReplayCode: body.ReplayCode,
 			Members:    members,
 			Tags:       tags,
 		}),
 			errStatus{app.ErrInvalidLeaver, probInvalidBody},
+			errStatus{app.ErrInvalidThrower, probInvalidBody},
 			// Spec-valid body (parses fine) but no content to upsert → 409, the
 			// codebase's "semantic validation" code. 400 would trip schemathesis's
 			// positive_data_acceptance ("spec-valid input → no 400").

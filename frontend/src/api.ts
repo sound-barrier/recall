@@ -353,12 +353,16 @@ export const RevealScreenshotsDir = _dualVoid<[]>(
 
 // Per-match user annotation. All fields are optional but at least one
 // must carry content — PUT is upsert-only and rejects an all-empty body
-// (400). Clearing a row is DeleteMatchAnnotation (DELETE). `leaver`
-// ∈ {'self', 'team', 'enemy', ''}.
-type LeaverKind = 'self' | 'team' | 'enemy'
+// (400). Clearing a row is DeleteMatchAnnotation (DELETE).
+//
+// `leavers` and `throwers` are SETS of DisruptionSide: a match can be
+// disrupted on both teams at once, and the leaver-exit quick-add records
+// "a teammate left, then I left" as ['team', 'self'].
+export type DisruptionSide = 'self' | 'team' | 'enemy'
 
 export interface MatchAnnotationInput {
-  leaver?:      LeaverKind | ''
+  leavers?:     DisruptionSide[]
+  throwers?:    DisruptionSide[]
   note?:        string
   replay_code?: string
   members?:     string[]
@@ -389,7 +393,8 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
     // verbatim — anything else case-insensitive-fails to match.
     return _wails('SetMatchAnnotation', {
       MatchKey:   matchKey,
-      Leaver:     input.leaver ?? '',
+      Leavers:    input.leavers ?? [],
+      Throwers:   input.throwers ?? [],
       Note:       input.note ?? '',
       ReplayCode: input.replay_code ?? '',
       Members:    input.members ?? [],
@@ -398,7 +403,8 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
   }
   const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`
   return _send('PUT', path, {
-    leaver:      input.leaver ?? '',
+    leavers:     input.leavers ?? [],
+    throwers:    input.throwers ?? [],
     note:        input.note ?? '',
     replay_code: input.replay_code ?? '',
     members:     input.members ?? [],

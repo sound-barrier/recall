@@ -108,6 +108,7 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
 
   // 2) Hand-enter a match with the new hero + map (now offered by the pickers).
   await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
   await page.locator('[data-mode="competitive"]').click()
   await page.locator('[data-queue="role"]').click()

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import type { MatchRecord, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api-client'
+import type { DisruptionSide, MatchRecord, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api-client'
 import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 import { formatParsedAt, fmtTime } from '@/match/match-time-helpers'
 import { type SearchClause } from '@/match/search-query'
 import MatchCardDanger from '@/components/matches/detail/MatchCardDanger.vue'
 import MatchHeroesPlayed from '@/components/matches/detail/MatchHeroesPlayed.vue'
 import MatchJournal from '@/components/matches/detail/MatchJournal.vue'
-import MatchLeaverChooser from '@/components/matches/detail/MatchLeaverChooser.vue'
+import MatchDisruptionChooser from '@/components/matches/detail/MatchDisruptionChooser.vue'
 import MatchSources from '@/components/matches/detail/MatchSources.vue'
 import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
 import MatchStatusChoosers from '@/components/matches/detail/MatchStatusChoosers.vue'
@@ -68,11 +68,11 @@ const emit = defineEmits<{
   // without reaching back into the Vue tree for the record.
   'open-lightbox':  [filename: string, files: readonly string[], dirIDs: Record<string, number>]
   'filter-toggle':  [field: string, value: string]
-  // User clicks one of the four leaver-chooser buttons. App.vue
-  // listens, routes through SetMatchAnnotation with the existing
-  // annotation fields preserved, and re-loads records so the new
-  // Annotation reflects on the next render.
-  'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
+  // User toggled a side chip in either disruption chooser. The payload is
+  // the full side SET for that kind; the handler routes it through
+  // SetMatchAnnotation with the other annotation fields preserved, then
+  // re-loads records so the new Annotation reflects on the next render.
+  'set-disruption': [matchKey: string, kind: 'leavers' | 'throwers', sides: DisruptionSide[]]
   // User pressed Hide (after confirming) or Unhide on the expanded
   // danger row.
   'set-match-hidden':      [matchKey: string, hidden: boolean]
@@ -215,9 +215,15 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       </div>
     </div>
 
-    <MatchLeaverChooser
+    <MatchDisruptionChooser
       :record="record"
-      @set-leaver-annotation="(key, leaver) => emit('set-leaver-annotation', key, leaver)"
+      kind="leavers"
+      @set-disruption="(key, kind, sides) => emit('set-disruption', key, kind, sides)"
+    />
+    <MatchDisruptionChooser
+      :record="record"
+      kind="throwers"
+      @set-disruption="(key, kind, sides) => emit('set-disruption', key, kind, sides)"
     />
 
     <section class="match-stats-block" aria-labelledby="match-stats-eyebrow">

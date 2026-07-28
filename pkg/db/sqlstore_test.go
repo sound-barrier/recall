@@ -589,7 +589,7 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 	}
 
 	// Set one — round-trip.
-	want := db.Annotation{MatchKey: "match-k1", Leaver: "team", Note: "ally dc'd at 3min"}
+	want := db.Annotation{MatchKey: "match-k1", Leavers: []string{"team"}, Note: "ally dc'd at 3min"}
 	if err := s.SetAnnotation(want); err != nil {
 		t.Fatalf("SetAnnotation: %v", err)
 	}
@@ -601,19 +601,19 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 	if !ok {
 		t.Fatal("annotation not present after Set")
 	}
-	if rt.Leaver != "team" || rt.Note != want.Note {
+	if len(rt.Leavers) != 1 || rt.Leavers[0] != "team" || rt.Note != want.Note {
 		t.Errorf("round-trip mismatch: %+v", rt)
 	}
 	if rt.AnnotatedAt == "" {
 		t.Error("AnnotatedAt should be auto-populated by the DEFAULT")
 	}
 
-	// Upsert changes leaver in place without inserting a duplicate.
-	if err := s.SetAnnotation(db.Annotation{MatchKey: "match-k1", Leaver: "enemy"}); err != nil {
+	// Upsert changes the leaver side in place without inserting a duplicate.
+	if err := s.SetAnnotation(db.Annotation{MatchKey: "match-k1", Leavers: []string{"enemy"}}); err != nil {
 		t.Fatalf("Set upsert: %v", err)
 	}
 	got, _ = s.LoadAnnotations()
-	if got["match-k1"].Leaver != "enemy" {
+	if len(got["match-k1"].Leavers) != 1 || got["match-k1"].Leavers[0] != "enemy" {
 		t.Errorf("upsert didn't replace: %+v", got["match-k1"])
 	}
 	if len(got) != 1 {
@@ -635,22 +635,11 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 	}
 }
 
-func TestSQLStore_Annotation_LeaverCheckConstraint(t *testing.T) {
-	s := openMemory(t)
-	// Invalid leaver value should fail the CHECK constraint at the SQL
-	// layer. The App.SetMatchAnnotation validator catches this first
-	// in production; this test pins the belt-and-suspenders DB guard.
-	err := s.SetAnnotation(db.Annotation{MatchKey: "k", Leaver: "afk"})
-	if err == nil {
-		t.Fatal("expected CHECK constraint to reject 'afk'")
-	}
-}
-
 func TestSQLStore_Annotation_RoundTrip_AllFields(t *testing.T) {
 	s := openMemory(t)
 	want := db.Annotation{
 		MatchKey:   "match-nx",
-		Leaver:     "team",
+		Leavers:    []string{"team"},
 		Note:       "ally rage-quit at 3min",
 		ReplayCode: "7H1K9P",
 		Members:    []string{"Apollo#11234", "Cheese#5678"},
@@ -666,7 +655,7 @@ func TestSQLStore_Annotation_RoundTrip_AllFields(t *testing.T) {
 	if !ok {
 		t.Fatal("annotation missing after Set")
 	}
-	if a.Leaver != "team" || a.Note != want.Note || a.ReplayCode != want.ReplayCode {
+	if len(a.Leavers) != 1 || a.Leavers[0] != "team" || a.Note != want.Note || a.ReplayCode != want.ReplayCode {
 		t.Errorf("scalar round-trip mismatch: %+v", a)
 	}
 	if len(a.Members) != 2 {
@@ -684,16 +673,15 @@ func TestSQLStore_Annotation_RoundTrip_AllFields(t *testing.T) {
 
 func TestSQLStore_Annotation_LeaverlessNoteOnly(t *testing.T) {
 	s := openMemory(t)
-	// Annotation with empty leaver — should still persist because the
-	// CHECK constraint allows NULL after the relax migration.
+	// Annotation with no disruption sides at all — a note-only row is valid.
 	if err := s.SetAnnotation(db.Annotation{
-		MatchKey: "k", Leaver: "", Note: "no leaver here",
+		MatchKey: "k", Note: "no leaver here",
 	}); err != nil {
-		t.Fatalf("SetAnnotation with empty leaver: %v", err)
+		t.Fatalf("SetAnnotation with no sides: %v", err)
 	}
 	got, _ := s.LoadAnnotations()
-	if got["k"].Leaver != "" {
-		t.Errorf("leaver should be empty, got %q", got["k"].Leaver)
+	if len(got["k"].Leavers) != 0 {
+		t.Errorf("leavers should be empty, got %v", got["k"].Leavers)
 	}
 	if got["k"].Note != "no leaver here" {
 		t.Errorf("note round-trip lost: %q", got["k"].Note)
@@ -703,12 +691,12 @@ func TestSQLStore_Annotation_LeaverlessNoteOnly(t *testing.T) {
 func TestSQLStore_Annotation_MembersRewrittenWholesale(t *testing.T) {
 	s := openMemory(t)
 	_ = s.SetAnnotation(db.Annotation{
-		MatchKey: "k", Leaver: "team",
+		MatchKey: "k", Leavers: []string{"team"},
 		Members: []string{"a", "b", "c"},
 	})
 	// Re-Set with a smaller list — old members should be replaced.
 	_ = s.SetAnnotation(db.Annotation{
-		MatchKey: "k", Leaver: "team",
+		MatchKey: "k", Leavers: []string{"team"},
 		Members: []string{"x"},
 	})
 	got, _ := s.LoadAnnotations()
@@ -720,7 +708,7 @@ func TestSQLStore_Annotation_MembersRewrittenWholesale(t *testing.T) {
 func TestSQLStore_Annotation_DeleteCascadesMembers(t *testing.T) {
 	s := openMemory(t)
 	_ = s.SetAnnotation(db.Annotation{
-		MatchKey: "k", Leaver: "team",
+		MatchKey: "k", Leavers: []string{"team"},
 		Members: []string{"a", "b"},
 	})
 	if err := s.DeleteAnnotation("k"); err != nil {

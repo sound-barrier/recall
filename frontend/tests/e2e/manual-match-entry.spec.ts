@@ -58,6 +58,7 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   await page.locator('#tab-matches').click()
 
   await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
 
   // Esc inside a text field deselects it — it must NOT tear down the modal.
@@ -105,7 +106,7 @@ test('Add match → fill → save → the match appears with the Manual badge', 
 
   await expect.poll(() => postBody).not.toBeNull()
   const parsed = JSON.parse(postBody as string) as {
-    map: string; play_mode: string; queue_type: string; heroes: string[]; result: string; leaver: string
+    map: string; play_mode: string; queue_type: string; heroes: string[]; result: string; leavers: string[]
     replay_code: string; note: string; tags: string[]; members: string[]
   }
   expect(parsed.map).toBe('ilios')
@@ -113,7 +114,7 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   expect(parsed.queue_type).toBe('role')
   expect(parsed.heroes).toEqual(['ana'])
   expect(parsed.result).toBe('victory')
-  expect(parsed.leaver).toBe('team')
+  expect(parsed.leavers).toEqual(['team'])
   expect(parsed.replay_code).toBe('A1B2C3')
   expect(parsed.note).toBe('great comeback')
   expect(parsed.tags).toEqual(['clutch'])
@@ -134,6 +135,7 @@ test('role queue requires a single role and constrains the hero list', async ({ 
   await page.goto('/')
   await page.locator('#tab-matches').click()
   await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
 
   // Role queue → role is now a required field, surfaced in the footer hint.
@@ -172,6 +174,7 @@ test('an out-of-range rank progress blocks submit with an inline error', async (
   await page.goto('/')
   await page.locator('#tab-matches').click()
   await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
 
   await page.locator('[data-mode="competitive"]').click()

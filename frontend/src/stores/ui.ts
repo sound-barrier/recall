@@ -1,4 +1,5 @@
 import { computed, markRaw, ref } from 'vue'
+import type { ManualMatchMode } from '@/composables/matches/useManualMatchForm'
 import { defineStore } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
@@ -69,7 +70,13 @@ export const useUiStore = defineStore('ui', () => {
   function setNarrowOpen(open: boolean) { narrowOpen.value = open }
 
   const manualMatchOpen = ref(false)
-  function openManualMatch() { manualMatchOpen.value = true }
+  // Which entry point opened the modal — the toolbar's Add-match menu offers
+  // the full form and the leaver-exit quick-add, and they share one component.
+  const manualMatchMode = ref<ManualMatchMode>('full')
+  function openManualMatch(mode: ManualMatchMode = 'full') {
+    manualMatchMode.value = mode
+    manualMatchOpen.value = true
+  }
   function closeManualMatch() { manualMatchOpen.value = false }
 
   // Settings dialog — the ⌘, / app-menu / kebab entry point. A floating
@@ -129,6 +136,7 @@ export const useUiStore = defineStore('ui', () => {
     narrowOpen,
     setNarrowOpen,
     manualMatchOpen,
+    manualMatchMode,
     openManualMatch,
     closeManualMatch,
     onManualMatchCreated,

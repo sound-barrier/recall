@@ -18,7 +18,7 @@ import { test, expect } from './_fixtures'
 const KEY = 'match-2026-05-10T22-10-00'
 const ANNOTATION_PATH_GLOB = `**/api/v1/matches/${encodeURIComponent(KEY)}/annotation`
 
-function record(leaver: string) {
+function record(leavers: string[]) {
   return {
     match_key: KEY,
     source_files: [`${KEY}.png`],
@@ -38,13 +38,13 @@ function record(leaver: string) {
       heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '11:25' }],
     },
     parsed_at: '2026-05-10T22:30:00Z',
-    ...(leaver ? { annotation: { leaver } } : {}),
+    ...(leavers.length ? { annotation: { leavers, throwers: [] } } : {}),
   }
 }
 
 test.describe('annotation clear — DELETE verb', () => {
   test('clearing a leaver-only annotation fires DELETE, not an all-empty PUT', async ({ page }) => {
-    let leaver = 'enemy'
+    let leavers = ['enemy']
     let deleteCalls = 0
     let putCalls = 0
 
@@ -52,13 +52,13 @@ test.describe('annotation clear — DELETE verb', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([record(leaver)]),
+        body: JSON.stringify([record(leavers)]),
       })
     })
     await page.route(ANNOTATION_PATH_GLOB, async (route: Route) => {
       if (route.request().method() === 'DELETE') {
         deleteCalls += 1
-        leaver = ''
+        leavers = []
         await route.fulfill({ status: 204, body: '' })
         return
       }
@@ -74,7 +74,7 @@ test.describe('annotation clear — DELETE verb', () => {
 
     // Clear the leaver — the only content on this annotation — so the row goes
     // empty and the UI must route to DELETE.
-    await page.locator('.leaver-chip.leaver-clear').click()
+    await page.locator('[data-disruption-clear="leavers"]').click()
 
     await expect.poll(() => deleteCalls).toBe(1)
     expect(putCalls).toBe(0)

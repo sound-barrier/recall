@@ -78,7 +78,7 @@ and what's kept vs. lost — are in
 Your matches come back — your screenshots are the source of truth, and Recall
 re-parses them to rebuild the database. What you lose is anything that lives
 **only** in the database because it isn't on a screenshot: match notes, tags,
-tagged teammates, leaver flags, replay codes, review state, queue / play-mode
+tagged teammates, leaver + thrower flags, replay codes, review state, queue / play-mode
 overrides, and hidden-match flags. The Windows reset script backs the database
 up first, so you can copy it back if you change your mind.
 

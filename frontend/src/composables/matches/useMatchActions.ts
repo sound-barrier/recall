@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 
 import {
+  type DisruptionSide,
   type MatchAnnotationInput,
   type UserMatchDataInput,
   type ReviewedBy,
@@ -46,7 +47,8 @@ import type { MatchRecord } from '@/api-client'
 // Mirrors the server's normalization — whitespace-only members/tags don't count.
 function annotationHasContent(input: MatchAnnotationInput): boolean {
   const hasItem = (arr?: string[]) => (arr ?? []).some((s) => s.trim() !== '')
-  return Boolean(input.leaver) || Boolean(input.note?.trim()) || Boolean(input.replay_code?.trim())
+  return hasItem(input.leavers) || hasItem(input.throwers)
+    || Boolean(input.note?.trim()) || Boolean(input.replay_code?.trim())
     || hasItem(input.members) || hasItem(input.tags)
 }
 
@@ -120,7 +122,7 @@ export function useMatchActions() {
     try {
       // Snapshot records by key so each PUT carries the existing annotation
       // fields (the PUT replaces the whole annotation row, so a slim body
-      // would clear note / replay_code / members / leaver).
+      // would clear note / replay_code / members / the disruption sides).
       const byKey = new Map(records.value.map((r) => [r.match_key, r] as const))
       await Promise.all(matchKeys.map(async (key) => {
         const r = byKey.get(key)
@@ -128,7 +130,8 @@ export function useMatchActions() {
         const existingTags = existing?.tags ?? []
         if (existingTags.includes(norm)) return // already tagged
         await SetMatchAnnotation(key, {
-          leaver:      (existing?.leaver ?? '') as MatchAnnotationInput['leaver'],
+          leavers:     existing?.leavers ?? [],
+          throwers:    existing?.throwers ?? [],
           note:        existing?.note ?? undefined,
           replay_code: existing?.replay_code ?? undefined,
           members:     existing?.members ?? undefined,
@@ -187,12 +190,20 @@ export function useMatchActions() {
   }
 
   // ── Annotation + per-match data edits (detail panel / cards) ──────
-  async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'team' | 'enemy') {
+  // Replaces one disruption kind's whole side set (the chooser sends the set it
+  // wants, not a delta) while carrying every other annotation field through —
+  // the PUT replaces the entire row, so a slim body would null the rest.
+  async function onSetDisruptionAnnotation(
+    matchKey: string,
+    kind: 'leavers' | 'throwers',
+    sides: DisruptionSide[],
+  ) {
     try {
       const rec = records.value.find(r => r.match_key === matchKey)
       const prev = rec?.annotation
       await writeAnnotation(matchKey, {
-        leaver:      leaver as MatchAnnotationInput['leaver'],
+        leavers:     kind === 'leavers' ? sides : (prev?.leavers ?? []),
+        throwers:    kind === 'throwers' ? sides : (prev?.throwers ?? []),
         note:        prev?.note ?? '',
         replay_code: prev?.replay_code ?? '',
         members:     prev?.members ?? [],
@@ -278,7 +289,7 @@ export function useMatchActions() {
     onUnhideMatches,
     onHardDeleteMatches,
     onMoveMatches,
-    onSetLeaverAnnotation,
+    onSetDisruptionAnnotation,
     onSetMatchAnnotation,
     onUpdateMatchData,
     onResetMatchData,

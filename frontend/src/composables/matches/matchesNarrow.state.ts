@@ -9,6 +9,7 @@ import type {
   PlayModePick,
   SourcePick,
   LeaverPick,
+  ThrowerPick,
   PoolFilter,
 } from '@/composables/matches/matchesNarrow.types'
 
@@ -30,6 +31,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     pickedPlayModes:  ref(new Set<PlayModePick>()),
     pickedSources:    ref(new Set<SourcePick>()),
     pickedLeavers:    ref(new Set<LeaverPick>()),
+    pickedThrowers:   ref(new Set<ThrowerPick>()),
     pickedModifiers:  ref(new Set<string>()),
     pickedRanks:      ref(new Set<string>()),
     pickedRange:      ref<PresetRange>('all'),
