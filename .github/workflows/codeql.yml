@@ -67,7 +67,7 @@ jobs:
         with:
           real-assets: "false"
 
-      - uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+      - uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81  # v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -92,6 +92,6 @@ jobs:
           CGO_ENABLED: "0"
         run: go build -tags serveronly ./...
 
-      - uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+      - uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81  # v4
         with:
           category: /language:${{ matrix.language }}
