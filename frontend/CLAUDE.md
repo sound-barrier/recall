@@ -339,7 +339,7 @@ for you.
 
 - **knip project scope is `src/**/*.{ts,vue}`.** No `ignoreDependencies` needed: knip ≥6.23 resolves typescript-eslint's internal `@eslint/js` use (the old ignore entry now trips a "remove from ignoreDependencies" hint), and `@vitest/coverage-v8` is detected via `coverage.provider: 'v8'`. Run via `make dead-code-ts`.
 
-- **TypeScript 6.x blocked by `openapi-typescript@7.x`** (`peer typescript: "^5.x"`). Hold at `^5.x` until upstream supports TS 6. (Pin lives in `frontend/package.json` — check there for the current constraint.)
+- **The TypeScript ceiling has TWO blockers, and the lower one is not the binding one.** `openapi-typescript` (`peer typescript: "^5.x"`) caps us below TS 6; **typescript-eslint** (`>=4.8.4 <6.1.0`, every `@typescript-eslint/*` package) caps us below TS 7. So **swapping the OpenAPI generator does not unlock TS 7** — a migration to hey-api (whose peer does admit 7) buys nothing on its own, and dropping typescript-eslint isn't on the table given the 16 type-checked rules + `projectService` wired up in `eslint.config.js`. Hold `typescript` at `^5.x`. **Revisit when typescript-eslint publishes a `typescript` peer admitting ≥7** — check with `npm view typescript-eslint peerDependencies`, don't assume; openapi-typescript's `^5.x` then becomes the remaining blocker, and hey-api is the fallback if it's still unmaintained. (Pins live in `frontend/package.json`.)
 
 - **Bundle-size budget.** The KB thresholds live in
   `scripts/ci/check-bundle-size.sh` (run by the `ci.yml` "Enforce bundle-size
