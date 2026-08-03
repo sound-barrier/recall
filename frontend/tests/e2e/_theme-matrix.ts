@@ -9,16 +9,23 @@
  *   - VIEWS / THEMES        the matrix axes
  *   - pinTheme()            set `recall.theme` before first paint
  *   - settleView()          wait out a lazy view's entrance fade
+ *   - settleLayout()        wait out the frame AFTER that, where the
+ *                           browser is still sizing what just mounted
  *   - seedMatches()         a record corpus so the DENSE UI renders
  *   - seedProfiles()        a fixed profile list, so leftover profiles
  *                           from other specs can't move the counts
+ *   - silenceParseEvents()  an inert SSE stream, so a parse another
+ *                           spec started can't paint transient chrome
  *
- * The two seeds exist for opposite reasons: seedMatches puts content IN
- * (an unseeded audit only ever sees empty states), seedProfiles keeps
- * other specs' leftovers OUT. Anything else this audit renders that
- * depends on accumulated server state wants the same treatment — the
- * suite shares one server and one HOME across every spec, so "what the
- * DB happens to contain by now" is never a stable baseline.
+ * The seeds exist for opposite reasons: seedMatches puts content IN
+ * (an unseeded audit only ever sees empty states), seedProfiles and
+ * silenceParseEvents keep other specs' side effects OUT. Anything else
+ * this audit renders that depends on shared server state wants the same
+ * treatment — the suite shares one server and one HOME across every
+ * spec, so "whatever the server happens to be doing by now" is never a
+ * stable baseline. Note the two OUT seeds block different channels:
+ * seedProfiles covers state read over HTTP, silenceParseEvents covers
+ * state PUSHED over the event stream. A new stub has to ask which.
  *
  * Why seeding matters: the e2e server boots against an empty DB, so an
  * unseeded audit only ever sees empty states. The dossier widgets,
@@ -245,6 +252,98 @@ export async function seedProfiles(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Wait until the painted-element census stops moving.
+ *
+ * settleView only waits out ANIMATIONS. That is not the same as
+ * "layout is finished": a subtree can mount, pass its entrance fade,
+ * and still have children the browser has not laid out yet. Settings
+ * →Advanced does exactly that — the Database-health row's first
+ * button measures 0×0 for one frame after settleView resolves, while
+ * its two siblings are already 131×37, then pops to full size on the
+ * very next rAF (fonts loaded, readyState complete — this is layout
+ * timing, nothing else).
+ *
+ * captureStructure counts only elements with a non-zero box, so
+ * whether that one button is in the census is decided by whether the
+ * capture won a one-frame race. That is how `button.count` on the
+ * Settings cells flips 41↔42 with a byte-identical tree, and why it
+ * moves between themes as the runner's scheduling shifts — the count
+ * is not measuring the UI, it is measuring the scheduler.
+ *
+ * So: poll the census (element total + painted total) and return once
+ * two consecutive frames agree. The bound is a safety valve, not an
+ * expected path — a page that never settles should fail on the
+ * snapshot, not hang here. Any always-painted element the old capture
+ * happened to miss legitimately joins the baseline.
+ */
+export async function settleLayout(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const census = () => {
+      const all = document.querySelectorAll('*')
+      let painted = 0
+      for (const el of all) {
+        const r = (el as HTMLElement).getBoundingClientRect()
+        if (r.width > 0 && r.height > 0) painted++
+      }
+      return `${all.length}:${painted}`
+    }
+    let previous = ''
+    for (let frame = 0; frame < 60; frame++) {
+      const current = census()
+      if (current === previous) return
+      previous = current
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    }
+  })
+}
+
+/**
+ * Replace EventSource with an inert stub, so the audit never observes a
+ * parse another spec started.
+ *
+ * In server mode the app opens ONE `EventSource('/api/v1/events')` and
+ * feeds `parse-progress` into the matches store. That stream is the
+ * live SERVER's, shared by the whole suite — so while any spec is
+ * parsing, every other open page sees the ticks too. `ParseStatusBar`
+ * then slides in and renders its ABORT kill-switch, and the masthead
+ * grows a parse-queue chip: transient chrome this audit never asked
+ * for, on a page that is only looking at Settings.
+ *
+ * That is what flipped `designSystem.button.count` 41↔42 on the
+ * high-contrast Settings cell — the ABORT button. Same signature as
+ * the profile-leak this file's seedProfiles fixes, and just as
+ * ordering-dependent: which cell (if any) catches the parse depends
+ * purely on how the workers interleave, so it moves between themes as
+ * the runner's scheduling changes and survives retry when it lands.
+ * Every other value in the snapshot stayed put, because the extra
+ * button computes to styles already in the set.
+ *
+ * A no-op stub rather than a `page.route` fulfil: an aborted or
+ * empty-bodied SSE response puts EventSource into its reconnect loop,
+ * which is just a quieter form of the same nondeterminism. Nothing in
+ * this audit depends on receiving an event — the corpus arrives via
+ * seedMatches — so the stream is dead weight here.
+ */
+export async function silenceParseEvents(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    class InertEventSource {
+      url: string
+      readyState = 1
+      onerror: ((e: Event) => void) | null = null
+      onmessage: ((e: MessageEvent) => void) | null = null
+      onopen: ((e: Event) => void) | null = null
+      constructor(url: string) { this.url = url }
+      addEventListener() { /* the audit listens to nothing */ }
+      removeEventListener() { /* nothing to remove */ }
+      close() { this.readyState = 2 }
+      dispatchEvent(_e: Event): boolean { return true }
+    }
+    ;(window as unknown as { EventSource: typeof EventSource }).EventSource =
+      InertEventSource as unknown as typeof EventSource
+  })
+}
+
 /** Set the persisted theme before any of the page's own scripts run. */
 export async function pinTheme(page: Page, theme: string): Promise<void> {
   await page.addInitScript((t) => {
@@ -281,10 +380,12 @@ export async function settleView(page: Page, tabId: string): Promise<void> {
 /** Navigate to a view with the theme pinned and the corpus seeded. */
 export async function openView(page: Page, tabId: string, theme: string): Promise<void> {
   await pinTheme(page, theme)
+  await silenceParseEvents(page)
   await seedMatches(page)
   await seedProfiles(page)
   await page.goto('/')
   await page.locator(`#${tabId}`).click()
   await expect(page.locator(`#${tabId}`)).toHaveAttribute('aria-selected', 'true')
   await settleView(page, tabId)
+  await settleLayout(page)
 }
