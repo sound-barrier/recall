@@ -181,6 +181,27 @@ changed bullets carry an inline re-evaluation note:
   resolution) and transient, and the filename body is now base64url-encoded so the
   whole key is genuinely URL-safe. (RFC 9457 `problem+json` error bodies, previously
   deferred here, shipped — every 4xx/5xx is now a problem object.)
+- **OpenAPI type generator — hey-api evaluated, declined (2026-08-03).** `api.ts`
+  is not a thin HTTP client; it's an ADAPTER between two API shapes — Wails
+  RPC-by-Go-method-name (39 `_wails()` call sites across 54 exported functions)
+  and REST — and the two genuinely disagree in places (`GetWatchEnabled` unwraps
+  `{enabled}` → `boolean`, `SetExitOnClose` remaps to `{exit_on_close}`,
+  `PickTesseractBinary` prompts in server mode). Every OpenAPI generator emits
+  the REST half only, so the addressable surface is the ~60 lines of
+  `_fetch`/`_get`/`_send`/`_dualVoid` plumbing — the 54 wrappers stay either
+  way. **Not a hey-api-specific limit**: openapi-fetch, orval and kubb all model
+  HTTP, not an RPC-by-name transport, so re-evaluating a different generator on
+  the same hope is the thing to skip. The types side is already cheap:
+  `api.gen.d.ts` is type-only with exactly ONE consumer, so hey-api's named
+  exports would save the 14 alias lines in `api.ts` and nothing else.
+  Stability cuts the wrong way too — hey-api is 742 published versions with **no
+  1.x**, against this repo's exact pins, 7-day `min-release-age` cooldown, and
+  the `lefthook.yml` gate that fails if regeneration isn't a no-op.
+  **Revisit only if** `api.ts` ever loses the Wails branch (one transport would
+  change the arithmetic), or when the TypeScript ceiling forces it — see the
+  version-ceiling gotcha in `frontend/CLAUDE.md`, where openapi-typescript's
+  `peer typescript: "^5.x"` becomes the blocker once typescript-eslint admits a
+  newer major.
 - **`pkg/probe` (~58%) stays thin structurally, not for want of a test.** Its
   uncovered `firstExisting` / `resolveSteamScreenshots` / `CandidateSources` are
   Windows-only screenshot-source resolution — `CandidateSources()` returns `nil`
@@ -193,12 +214,16 @@ changed bullets carry an inline re-evaluation note:
   taking it to ~85%.)
 - **External CI flake** — the WebKit `match-detail-panel` e2e timeout is
   environmental (WebKit on the ubuntu runner; the spec itself is a
-  deterministic regression guard, and `@playwright/test` stays pinned at exact
-  1.60.0 because 1.61's Linux WebKit crashes the suite); not fixable in code —
-  re-run the job. (Re-evaluated 2026-07-06: the schemathesis half of this entry
-  was paid — the Hypothesis seed is now pinned in
-  `scripts/ci/check-api-drift.sh`, so a red schemathesis run reproduces locally
-  and is worth chasing, not re-running.)
+  deterministic regression guard, and `@playwright/test` stays pinned at an
+  EXACT version so a bump is always deliberate rather than a silent range
+  resolve); not fixable in code — re-run the job. (Re-evaluated 2026-07-06: the
+  schemathesis half of this entry was paid — the Hypothesis seed is now pinned
+  in `scripts/ci/check-api-drift.sh`, so a red schemathesis run reproduces
+  locally and is worth chasing, not re-running.) (Re-evaluated 2026-08-03: the
+  pin moved 1.60.0 → 1.62.0. It had been held at 1.60.0 because 1.61's Linux
+  WebKit crashed the suite; 1.62 doesn't — both WebKit specs pass locally and on
+  CI. The WebKit timeout above is a SEPARATE, still-live environmental flake and
+  is not fixed by that bump.)
 
 ## 5. Activate the schema-migration path — the deliberate last 1.0 commit
 
