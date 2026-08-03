@@ -75,9 +75,11 @@ jq = "latest"
 "go:golang.org/x/tools/cmd/deadcode" = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:github.com/fzipp/gocyclo/cmd/gocyclo" = "latest"
-# Wails v3 CLI (alpha) — drives the v3 Taskfile-native build under build/. Pinned
-# alongside v2 during the v2→v3 migration; v2 is dropped once the port lands.
-"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-alpha2.112"
+# Wails v3 CLI (beta) — drives the v3 Taskfile-native build under build/. Keep
+# in lockstep with the wails/v3 module in go.mod: the CLI generates bindings the
+# module has to understand, so a split between them fails at generate time, not
+# at build time.
+"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-beta.3"
 
 # CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
 # coverage job). Devs get them too via `mise install`; CI installs them
