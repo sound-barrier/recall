@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.29.0](https://github.com/sound-barrier/recall/compare/v0.28.0...v0.29.0) (2026-08-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** the app framework moves from the Wails v3 alpha channel to the beta channel (v3.0.0-alpha2.118 -> v3.0.0-beta.3), together with the wails3 CLI and the @wailsio/runtime JS package.
+
+### Documentation
+
+* **frontend:** record the real TypeScript version ceiling ([d9c1083](https://github.com/sound-barrier/recall/commit/d9c1083698f34fc782ce5963a7ca855a541870e1))
+* record the declined OpenAPI-generator migration ([635a2b2](https://github.com/sound-barrier/recall/commit/635a2b230ee2d4b502aba8f82a742d55ea499331))
+
+
+### Build & Packaging
+
+* **deps:** Bump the actions group with 4 updates ([8988800](https://github.com/sound-barrier/recall/commit/898880079a8b378745b0655c5f00ddf40edbacec))
+* **deps:** Bump the go-deps group with 2 updates ([b7c97cd](https://github.com/sound-barrier/recall/commit/b7c97cd3c22493dd18bacf2dedcb7bfbda173dff))
+* **deps:** move the app framework onto the Wails v3 beta channel ([a80ea76](https://github.com/sound-barrier/recall/commit/a80ea763af78ef053997e1f449c5bfb5d830992e))
+
+
+### Tests
+
+* **e2e:** settle layout before the theme audit's census ([d5ed182](https://github.com/sound-barrier/recall/commit/d5ed182a93f6177c037f8a67539a8756bbeaf8e2))
+
 ## [0.28.0](https://github.com/sound-barrier/recall/compare/v0.27.4...v0.28.0) (2026-07-28)
 
 
