@@ -73,13 +73,16 @@ async function captureCards(page: Page): Promise<string> {
     }
     return out
   }, CAPTURE_ATTRS)
-  // Dates from relative fixtures shift daily — normalize "Jul 28"-style
-  // fragments so snapshots survive the calendar. Month names only: a
-  // looser [A-Z][a-z]+ pattern would swallow rank names like "Silver 5".
+  // Relative fixtures shift with the calendar — normalize month-day
+  // fragments AND weekday names (the lift table buckets by day of week,
+  // so its labels rotate with the run date: a weekday-bomb that would
+  // fail CI on any other day). Month/day names only: a looser
+  // [A-Z][a-z]+ pattern would swallow rank names like "Silver 5".
   const normalized: Record<string, string> = {}
   const datePattern = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\b/g
+  const dayPattern = /\b(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day(s)?\b/g
   for (const key of Object.keys(raw).sort()) {
-    normalized[key] = raw[key]!.replace(datePattern, '<DATE>')
+    normalized[key] = raw[key]!.replace(datePattern, '<DATE>').replace(dayPattern, '<DAY>$2')
   }
   return JSON.stringify(normalized, null, 2)
 }
@@ -92,7 +95,9 @@ async function openScenario(page: Page, rows: unknown[]): Promise<void> {
   await page.goto('/')
   await page.locator('#tab-elo').click()
   await expect(page.locator('#panel-elo')).toBeVisible()
-  await expect(page.locator('[data-elo-answer]')).not.toHaveText('')
+  // A real verdict, not the empty-state fallback — not.toHaveText('') was
+  // vacuously satisfied by "Pick a track with ranked games…".
+  await expect(page.locator('[data-elo-answer]')).not.toContainText('Pick a track')
 }
 
 test.describe('Elo Calculator — 30-scenario wording/statistics captures', () => {

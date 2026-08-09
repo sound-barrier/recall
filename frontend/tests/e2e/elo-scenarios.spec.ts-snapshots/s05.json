@@ -1,7 +1,7 @@
 {
-  "data-elo-answer": "Early read — only 19 decisive gamesToo early to callPlaying your record out 4,000 times, 30% of simulated seasons touch Platinum 5 within ~89 games. 19 decisive games barely pins a win rate, so read this as a sketch: your form most likely tops out somewhere between Bronze 3–Diamond 2, and that range tightens with every game. Around 20 decisive games this becomes a real verdict.",
-  "data-elo-card=decay": "As opponents get tougher Levels off near Bronze 3–Diamond 2Tougher lobbies pull you level here at your current form.To make Platinum 5 your plateau, win about 54.1% — passing it takes a bit more.",
-  "data-elo-card=naive": "If your wins keep coming ~258 gamesBest case ~30; with only 19 games, a cold streak could stretch it out a lot≈ 35 weeks at your paceAn upper bound — it assumes matchmaking never stiffens; the simulated seasons are the honest number.",
+  "data-elo-answer": "Early read — only 19 decisive gamesToo early to callPlaying your record out 4,000 times, 30% of simulated seasons touch Platinum 5 within ~89 games. 19 decisive games barely pins a win rate, so read this as a sketch: your form most likely tops out around Bronze 2–Diamond 1, and that range tightens with every game. Around 20 decisive games this becomes a real verdict.",
+  "data-elo-card=decay": "As opponents get tougher Levels off near Bronze 2–Diamond 1Tougher lobbies pull you level here at your current form.To make Platinum 5 your plateau, win about 52.9% — passing it takes a bit more.",
+  "data-elo-card=naive": "If your wins keep coming ~175 gamesBest case ~29; with a sample of 19 games, a cold streak can't be ruled out≈ 24 weeks at your paceAn upper bound — it assumes matchmaking never stiffens; the simulated seasons are the honest number.",
   "data-elo-chart-caption": "Two futures on the way to Platinum 5: if your wins hold (blue) vs as opponents get tougher (amber). The shaded band is how much luck can swing it. The gray fan is the middle 80% of 4,000 simulated seasons replaying your real rank-card moves. The ceiling is shown as a range — it narrows as your sample grows.",
   "data-elo-current=division": "3",
   "data-elo-current=progress": "26",
@@ -14,7 +14,7 @@
   "data-elo-input=sample-n": "19",
   "data-elo-input=win-rate": "52.6",
   "data-elo-know": "Certainty has a price: ≈1028 more decisive games to pin your true win rate within ±3 points.",
-  "data-elo-plateau": "At 1.5 pts per division, your current form levels off near Gold 2.",
+  "data-elo-plateau": "At exactly 1.5 pts per division, your current form levels off near Gold 1 — the cards above quote it as a range because neither the slope nor your rate is exact.",
   "data-elo-sim": "Play the season out — 4,000 of them Each simulated season draws a true win rate from your record, then replays your own rank-card moves — streak boosts and all — with lobbies toughening as you climb. Every probability on this page comes from these seasons. Reach Platinum 5 this season?30%Share of 4,000 simulated seasons (~89 games at your pace) that touch Platinum 5 at least once — touching counts even when the season ends lower.End lower than today?39%Seasons that FINISH below where you sit right now. A season can do both — brush Platinum 5 on a heater and still slip back by the end — so this cell and the reach cell overlap by design.Where you landGold 3The median landing spot; the middle 80% of seasons end between Silver 1 and Platinum 4.",
   "data-elo-sim-stat=final": "Where you landGold 3The median landing spot; the middle 80% of seasons end between Silver 1 and Platinum 4.",
   "data-elo-sim-stat=lower": "End lower than today?39%Seasons that FINISH below where you sit right now. A season can do both — brush Platinum 5 on a heater and still slip back by the end — so this cell and the reach cell overlap by design.",
@@ -24,9 +24,9 @@
   "data-elo-stat=bayes": "Better than a coin?Genuinely even oddsStart from the harshest assumption — that you're a pure coin flip. Your 19 games move the odds to 56 in 100 that your true win rate beats even. The rate itself most likely sits in 36–67%, balanced almost evenly around 50 — dead even is a real place to be, and the playbook is how you leave it. At 19 games this is still mostly the skeptic prior talking — it starts you at 50-50 with ~20 pseudo-games of stubbornness. Play on before reading much into it.",
   "data-elo-stat=p-value": "Rigged MMR?Too few games to tellAt 19 games your record still looks like a coin flip — play more before blaming the system. (p = 1.00)",
   "data-elo-stat=percentile": "Where you standAhead of 29% of playersGold 3 beats 29% of ranked players. Platinum 5 would put you past 47%. (Blizzard, July 2025)",
-  "data-elo-stat=season": "This season?30% chancePlaying your 52.6% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Platinum 5 within ~89 games at your pace. Touching counts any moment of the season; you can brush it and still slip back. Holding Platinum 5 once you touch it would take about 54.1% — the playbook's job, not the queue's.",
+  "data-elo-stat=season": "This season?30% chancePlaying your 52.6% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Platinum 5 within ~89 games at your pace. Touching counts any moment of the season; you can brush it and still slip back. Holding Platinum 5 once you touch it would take about 52.9% — the playbook's job, not the queue's.",
   "data-elo-stat=streak": "Endless loss streaks?73% — normalA 5-loss streak in your next 100 games is 73% likely at 52.6%. Expected, not rigged.",
   "data-elo-target=division": "5",
   "data-elo-target=tier": "platinum",
-  "data-elo-timeline": "The honest timeline In 70% of 4,000 simulated seasons you never touch Platinum 5 within ~89 games at this form. Improvement — not more games — moves that number.Certainty has a price: ≈1028 more decisive games to pin your true win rate within ±3 points."
+  "data-elo-timeline": "The honest timeline In 70% of 4,000 simulated seasons you never touch Platinum 5 within ~89 games at this form. Improvement — or simply more games than one season holds — moves that number.Certainty has a price: ≈1028 more decisive games to pin your true win rate within ±3 points."
 }
