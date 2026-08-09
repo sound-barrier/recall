@@ -181,6 +181,19 @@ func TestExtractModifiers(t *testing.T) {
 			want: []string{"expected", "defeat"},
 		},
 		{
+			// 2026-07 UI chips, verbatim from the bundle's debug OCR dump.
+			// LOSING TREND replaced the old LOSS STREAK wording; DEMOTION is
+			// handled by parseRank's family disambiguation, not this list.
+			name: "losing trend (2026-07 chip)",
+			text: "x DEFEAT || € DEMOTION € LOSING TREND",
+			want: []string{"losing trend", "defeat"},
+		},
+		{
+			name: "winning trend (2026-07 chip)",
+			text: "WINNING TREND ¥ VICTORY",
+			want: []string{"winning trend", "victory"},
+		},
+		{
 			name: "no known modifiers → nil",
 			text: "asdf garbled",
 			want: nil,

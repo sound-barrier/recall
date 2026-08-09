@@ -26,6 +26,10 @@ var knownRanks = []string{
 var knownModifiers = []string{
 	"expected", "uphill battle", "reversal", "consolation",
 	"win streak", "loss streak", "calibration", "volatile",
+	// 2026-07 UI wording for the streak pair. Only LOSING TREND has a
+	// fixture; WINNING TREND is its symmetric sibling — a closed list that
+	// misses a chip drops it silently, so the pair lands together.
+	"winning trend", "losing trend",
 	"new map", "leaver compensation",
 	"victory", "defeat", "draw",
 }
@@ -156,8 +160,14 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 
 	// "DEMOTION PROTECTION" — a shield pill in the modifier row (a loss that
 	// didn't drop the tier). It rides the modifiers list (already persisted via
-	// the rank_modifiers table) rather than a bespoke field. OCR usually drops
-	// the trailing "N", so match on the "DEMOTION" stem.
+	// the rank_modifiers table) rather than a bespoke field. Match on the
+	// "DEMOTION" stem: old-UI OCR can lose everything after the stem (a real
+	// capture reads "< DEMOTION || a || Pe"), and the 2026-07 UI's chip
+	// renders as bare "DEMOTION" — whether that's a relabel of protection or
+	// a distinct demoted-this-game chip is unproven (the one capture sat at
+	// 52% progress, so no demotion visibly occurred). Until a capture shows
+	// an actual demotion's chip, both map here; splitting on text alone
+	// inverts the old UI's meaning when the tail truncates.
 	if strings.Contains(strings.ToUpper(modifierText), "DEMOTION") {
 		res.Modifiers = append(res.Modifiers, "demotion protection")
 	}

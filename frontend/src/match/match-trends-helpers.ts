@@ -339,7 +339,8 @@ export const RESULT_MODIFIERS: ReadonlySet<string> = new Set(['victory', 'defeat
 // the user can scope to "show my uphill battles / reversals / …".
 export const FILTERABLE_MODIFIERS = [
   'expected', 'uphill battle', 'reversal', 'consolation',
-  'win streak', 'loss streak', 'calibration', 'volatile',
+  'win streak', 'loss streak', 'winning trend', 'losing trend',
+  'calibration', 'volatile',
   'demotion protection',
 ] as const
 
