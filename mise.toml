@@ -25,18 +25,18 @@ RECALL_DATA_DIR = "{{config_root}}/data"
 # and CI (was `tool-versions.env`). The matching tool binaries are pinned in
 # [tools] below; these strings drive the on-demand npx/pipx invocations and
 # the `task check-deps` upstream comparison.
-SPECTRAL_VERSION = "6.16.2"
-TYPOS_VERSION = "v1.48.0"
+SPECTRAL_VERSION = "6.16.3"
+TYPOS_VERSION = "v1.49.0"
 GOCYCLO_VERSION = "latest"
-SEMGREP_VERSION = "1.170.0"
+SEMGREP_VERSION = "1.172.0"
 HONKIT_VERSION = "6.2.2"
-SCHEMATHESIS_VERSION = "4.24.0"
+SCHEMATHESIS_VERSION = "4.24.3"
 TESSERACT_VERSION = "5.5.2"
-RUFF_VERSION = "0.15.22"
-SQLFLUFF_VERSION = "4.2.2"
+RUFF_VERSION = "0.16.2"
+SQLFLUFF_VERSION = "4.3.0"
 # Biome runs on-demand via npx (like Spectral/markdownlint), so it's a version
 # string here rather than a [tools] binary.
-BIOME_VERSION = "2.5.4"
+BIOME_VERSION = "2.5.7"
 
 # Pin Go to the exact mise-installed toolchain so `go build`/`go test` never
 # auto-download a different one (parity with what actions/setup-go@v6 set in CI).
@@ -59,8 +59,8 @@ shellcheck = "latest"
 shfmt = "latest"
 actionlint = "latest"
 yamllint = "latest"
-typos = "1.48.0"
-ruff = "0.15.22"
+typos = "1.49.0"
+ruff = "0.16.2"
 taplo = "latest"
 trivy = "latest"
 lefthook = "latest"
@@ -79,7 +79,7 @@ jq = "latest"
 # in lockstep with the wails/v3 module in go.mod: the CLI generates bindings the
 # module has to understand, so a split between them fails at generate time, not
 # at build time.
-"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-beta.3"
+"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-beta.5"
 
 # CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
 # coverage job). Devs get them too via `mise install`; CI installs them
@@ -88,6 +88,6 @@ jq = "latest"
 "go:github.com/boumenot/gocover-cobertura" = "latest"
 
 # Python tools (isolated venvs) → pipx backend.
-"pipx:semgrep" = "1.170.0"
-"pipx:schemathesis" = "4.24.0"
-"pipx:sqlfluff" = "4.2.2"
+"pipx:semgrep" = "1.172.0"
+"pipx:schemathesis" = "4.24.3"
+"pipx:sqlfluff" = "4.3.0"

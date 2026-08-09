@@ -32,7 +32,7 @@ jobs:
       # loads mise.toml [env] (SPECTRAL_VERSION, …, GOTOOLCHAIN=local) into
       # $GITHUB_ENV regardless of install_args. Replaces setup-go + the
       # tool-versions.env grep + every per-tool `go install`/pipx step.
-      - uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14  # v4.2.3
+      - uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654  # v4.2.4
         with:
           install_args: >-
             go node task ruff shfmt shellcheck jq taplo pipx:sqlfluff
@@ -137,7 +137,7 @@ jobs:
       # typos binary so the runner doesn't need a separate install
       # step; config lives in _typos.toml at the repo root.
       - name: Spell-check (typos)
-        uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14  # v1.48.0
+        uses: crate-ci/typos@8a48f81b6c64dcfea44b3633223084c4be58ac5f  # v1.49.0
 
       # Markdown lint — mirrors `task lint-md`. Config in
       # .markdownlint-cli2.yaml at the repo root; npx pulls the
@@ -370,7 +370,7 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81  # v4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v4.37.6
         with:
           sarif_file: trivy.sarif
 
