@@ -85,7 +85,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # leaver:/thrower: search fields, and the leaver-exit quick-add's split menu +
 # stripped modal mode), ~5.9KB across the MatchesView chunk. New feature; the
 # spare ~2KB is the deliberate headroom the note above asks for, not slack.
-: "${MAX_TOTAL_JS_BYTES:=1528000}"
+# 2026-08: 1528000 -> 1534000 - Elo statistical-coherence pass (verdict engine
+# + ceiling ranges + decay-aware sim + the honest low-n copy), net +0.5KB in
+# the lazy Elo chunk after deleting the IG-mixture layer; the rest is the
+# deliberate ~5KB headroom the note above asks for.
+: "${MAX_TOTAL_JS_BYTES:=1534000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
