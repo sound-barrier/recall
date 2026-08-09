@@ -97,3 +97,11 @@ no soft-pedalling. Numbers that go down get a row too.
 - `.github/workflows/ci.yml` — the CI invocation.
 - `lefthook.yml` — the pre-push invocation (uses the script's
   defaults, no env overrides).
+
+## 2026-08 — total JS 1528000 → 1534000
+
+The Elo statistical-coherence pass: the pure verdict engine
+(`elo-verdict.ts`), ceiling credible ranges, the decay-aware simulator
+fields, and the honest low-n copy across the cards, net of deleting the
+IG-mixture timeline layer (`posteriorClimbQuantiles`). Measured overrun was
+536 B; the bump keeps the usual ~5 KB working headroom.
