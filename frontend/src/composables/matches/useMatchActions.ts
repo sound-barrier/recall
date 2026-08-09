@@ -24,6 +24,8 @@ import {
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
 } from '@/api-client'
+import { queryClient } from '@/queries/client'
+import { qk } from '@/queries/keys'
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
 import { useUiStore } from '@/stores/ui'
@@ -73,7 +75,12 @@ export function useMatchActions() {
   const appStore = useAppStore()
   const uiStore = useUiStore()
   const records = computed(() => matchesStore.records)
-  const reload = () => matchesStore.load()
+  // A match edit can't change the pending-screenshot count or the
+  // OCR-failure ledger, so the post-mutation reload refetches ONLY the
+  // records — one GET instead of the old full-cluster three. The two
+  // handlers whose writes DO reach wider state (ignore-screenshot,
+  // ambiguous-resolve) use their own scopes below.
+  const reload = () => queryClient.refetchQueries({ queryKey: qk.matches })
   const reloadIgnored = () => matchesStore.loadIgnored()
   const setError = (message: string) => appStore.setError(message)
   const onError = (raw: string) => appStore.setErrorFromRaw(raw)
@@ -276,8 +283,10 @@ export function useMatchActions() {
     try { await ResolveAmbiguousMatch(ambiguousKey, resolvedTo); await reload() } catch (e) { onError(String(e)) }
   }
   // "Delete forever" — suppress the filename + wipe the unmatched row.
+  // Suppressing a file DOES reach the wider cluster (it leaves the
+  // pending count and the failure ledger), so this one reloads all three.
   async function onIgnoreScreenshot(filename: string) {
-    try { await IgnoreScreenshot(filename); await reloadIgnored(); await reload() } catch (e) { onError(String(e)) }
+    try { await IgnoreScreenshot(filename); await reloadIgnored(); await matchesStore.load() } catch (e) { onError(String(e)) }
   }
 
   return {

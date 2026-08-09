@@ -1,5 +1,7 @@
 import { ref, computed, watch, type MaybeRefOrGetter, toValue } from 'vue'
 import { ApplyGameDataUpdate, ApiError, type UpdateInfo, type DataUpdateResult } from '@/api-client'
+import { queryClient } from '@/queries/client'
+import { qk } from '@/queries/keys'
 
 // The game-data half of the update-check modal: the from→to freshness
 // labels, the added/removed counts, the flat diff manifest, and the
@@ -99,6 +101,10 @@ export function useGameDataUpdate(
     applyState.value = { kind: 'applying' }
     try {
       const result = await ApplyGameDataUpdate()
+      // The parser dataset just changed — refresh the cached roster so
+      // hero/map lookups pick up the new names without a restart (the old
+      // session singleton never refreshed after an apply).
+      void queryClient.invalidateQueries({ queryKey: qk.system.referenceData })
       applyState.value = { kind: 'success', result }
       onApplied(result)
     } catch (err) {

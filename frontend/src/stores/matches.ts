@@ -448,7 +448,13 @@ export const useMatchesStore = defineStore('matches', () => {
     backup: BackupDatabase,
     restore: RestoreDatabase,
     importMatches: ImportMatches,
-    reload: () => load(),
+    // Restore replaces the whole database and an import can carry
+    // suppress-list entries — refresh the ignored list along with the
+    // cluster so the Settings panel doesn't show a stale one.
+    reload: async () => {
+      await load()
+      await loadIgnored()
+    },
   })
 
   // Export flows for the Matches set — the bundle-export modal + the flat CSV

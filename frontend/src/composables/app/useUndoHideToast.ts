@@ -1,8 +1,9 @@
 import { ref } from 'vue'
 
 import { SetMatchVisibility } from '@/api-client'
+import { queryClient } from '@/queries/client'
+import { qk } from '@/queries/keys'
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
 
 export interface UndoHideToastState { matchKeys: string[]; label: string; token: number }
 
@@ -15,7 +16,6 @@ export interface UndoHideToastState { matchKeys: string[]; label: string; token:
 // hide restarts the auto-dismiss countdown in the toast component.
 export function useUndoHideToast() {
   const appStore = useAppStore()
-  const matchesStore = useMatchesStore()
 
   const undoHideToast = ref<UndoHideToastState | null>(null)
   let token = 0
@@ -32,7 +32,8 @@ export function useUndoHideToast() {
     if (keys.length === 0) return
     try {
       await Promise.all(keys.map((k) => SetMatchVisibility(k, false)))
-      await matchesStore.load()
+      // Un-hiding only changes the records — matches-only refetch.
+      await queryClient.refetchQueries({ queryKey: qk.matches })
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
     }
