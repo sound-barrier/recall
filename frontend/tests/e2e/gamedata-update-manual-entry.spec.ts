@@ -15,6 +15,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 import { openAbout } from './_menu'
 
 // Roster BEFORE the update — no Testra / Proving Grounds.
@@ -92,6 +93,9 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
     }
   })
 
+  // The most-played breakdowns this flow asserts on are gallery
+  // opt-in under the climb-focused default — seed a layout with them.
+  await seedDossierLayout(page, { 1: [], 2: ['top-maps', 'top-heroes'] })
   // Wide viewport → the narrow rail (with #np-search) is always visible.
   await page.setViewportSize({ width: 1500, height: 1000 })
   await page.goto('/')

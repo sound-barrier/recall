@@ -10,6 +10,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 
 const matchWith = (
   key: string,
@@ -34,6 +35,12 @@ const matchWith = (
 })
 
 test.describe('dossier — Most played hero winrate annotation', () => {
+  // Most played hero is gallery opt-in under the climb-focused
+  // default — seed a layout that holds it.
+  test.beforeEach(async ({ page }) => {
+    await seedDossierLayout(page, { 1: ['most-played-hero'], 2: [] })
+  })
+
   test('surfaces "{n}% in {N} matches" for matches where the top hero ≥ 20%', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
