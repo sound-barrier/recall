@@ -105,3 +105,12 @@ The Elo statistical-coherence pass: the pure verdict engine
 fields, and the honest low-n copy across the cards, net of deleting the
 IG-mixture timeline layer (`posteriorClimbQuantiles`). Measured overrun was
 536 B; the bump keeps the usual ~5 KB working headroom.
+
+## 2026-08 — 1534000 → 1542000 (total JS)
+
+The climb-focused dossier rework: three new widgets (Recent form,
+After-N-losses, Session depth), the form/loss-streak momentum metrics,
+winrate-judged time buckets, layout migration v2, and the data-table's
+KDA + Source columns. Measured overrun was 2,898 B (~3.4 KB of feature
+code in the MatchesView chunk); the bump keeps the usual ~5 KB working
+headroom.

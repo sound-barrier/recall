@@ -1270,6 +1270,22 @@ describe('useMatchesDossier', () => {
       expect(counts).toEqual([2, 0, 0, 0, 1, 2])
     })
 
+    it('the bucket judgment honours exclude-tally; the volume read keeps every game', () => {
+      const at = (fa: string, result: 'victory' | 'defeat', leaver = false) => ({
+        ...rec({}),
+        data: { finished_at: fa, result },
+        ...(leaver ? { annotation: { leavers: ['team'], throwers: [] } } : {}),
+      } as unknown as MatchRecord)
+      const records = ref([
+        at('02:00', 'victory'),
+        at('03:00', 'defeat', true), // leaver game — out of the rate, still played
+      ])
+      const { timeOfDayBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('exclude-tally')))
+      expect(timeOfDayBuckets.value[0]!.count).toBe(2)
+      expect(timeOfDayBuckets.value[0]!.winrate).toBe(100)
+      expect(timeOfDayBuckets.value[0]!.decisive).toBe(1)
+    })
+
     it('judges each bucket by win rate over its decisive games', () => {
       const at = (fa: string, result?: 'victory' | 'defeat' | 'draw') => ({
         ...rec({}),
