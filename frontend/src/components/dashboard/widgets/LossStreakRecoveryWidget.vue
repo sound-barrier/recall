@@ -16,8 +16,8 @@ const { winrate } = dossier
 <template>
   <span class="eyebrow kpi-eyebrow">After {{ config.minStreak }}+ losses</span>
   <span class="kpi-value">{{ recovery.winrate === null ? '—' : `${recovery.winrate}%` }}</span>
+  <!-- "n=" mirrors the Winrate tile's sample vocabulary. -->
   <span v-if="recovery.winrate !== null" class="kpi-sub">
-    over {{ recovery.sample }} game<span v-if="recovery.sample !== 1">s</span><template v-if="winrate !== null">
-      · vs {{ winrate }}% overall</template>
+    <template v-if="winrate !== null">vs {{ winrate }}% overall · </template>n={{ recovery.sample }}
   </span>
 </template>

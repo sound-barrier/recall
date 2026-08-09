@@ -22,9 +22,10 @@ const gapClass = computed(() => {
 <template>
   <span class="eyebrow kpi-eyebrow">Recent form</span>
   <span class="kpi-value">{{ form.recent.winrate === null ? '—' : `${form.recent.winrate}%` }}</span>
+  <!-- "n=" mirrors the Winrate tile's sample vocabulary. -->
   <span v-if="form.deltaPts !== null" class="kpi-sub">
     <span class="form-gap" :class="gapClass">{{ form.deltaPts > 0 ? '+' : '' }}{{ form.deltaPts }} pts</span>
-    vs {{ form.overall.winrate }}% overall · last {{ form.recent.sample }}
+    vs {{ form.overall.winrate }}% overall · n={{ form.recent.sample }}
   </span>
 </template>
 

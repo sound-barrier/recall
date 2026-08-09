@@ -27,12 +27,15 @@ describe('Win-rate-by-X widgets', () => {
     expect(w.findAll('li')).toHaveLength(2)
   })
 
-  it('role widget capitalises the role name', () => {
+  it('role widget renders proper role labels — DPS, not "Dps"', () => {
     const w = mountWidget(WinrateByRoleWidget, {
-      dossier: { winrateBy: [{ key: 'tank', total: 6, winrate: 50, share: 50 }] },
+      dossier: { winrateBy: [
+        { key: 'dps', total: 6, winrate: 50, share: 50 },
+        { key: 'tank', total: 5, winrate: 40, share: 42 },
+      ] },
     })
     expect(w.find('.breakdown-eyebrow').text()).toBe('Win-rate by role')
-    expect(w.find('.bd-name').classes()).toContain('cap')
-    expect(w.find('.bd-name').text()).toBe('tank')
+    const names = w.findAll('.bd-name').map((n) => n.text())
+    expect(names).toEqual(['DPS', 'Tank'])
   })
 })
