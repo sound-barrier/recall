@@ -46,6 +46,14 @@ export function heatmapCellClass(c: { total: number; wins: number; losses: numbe
   return 'cell-mid'
 }
 
+// Judgment class for a distribution bucket (time-of-day / day-of-week /
+// session-depth rows) — adapts BucketEntry-shaped tallies to the shared
+// cell judgment so the widget bars and the bands can never disagree
+// about what a 53% means.
+export function bucketCellClass(b: { count: number; wins: number; decisive: number }): string {
+  return heatmapCellClass({ total: b.count, wins: b.wins, losses: b.decisive - b.wins })
+}
+
 // Volume-proportional opacity for a heatmap cell — faint at one game,
 // solid by ~10. undefined for an empty cell so the CSS default applies.
 export function heatmapCellOpacity(c: { total: number }): string | undefined {

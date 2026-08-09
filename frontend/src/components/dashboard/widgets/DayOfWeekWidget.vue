@@ -2,6 +2,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widgets'
+import { bucketCellClass } from '@/match/match-heatmap-helpers'
 import type { WeekStart } from '@/match/match-time-helpers'
 
 const dossier = useDossier()
@@ -29,10 +30,10 @@ const buckets = dossier.dayOfWeekBuckets(() => ({
     <li v-for="b in buckets" :key="b.label">
       <span class="bd-name">{{ b.label }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: b.share + '%' }" />
+        <span class="bd-fill" :class="bucketCellClass(b)" :style="{ width: b.share + '%' }" />
         <span class="bd-time">{{ b.count }}x</span>
       </span>
-      <span class="bd-stats">{{ b.share }}%</span>
+      <span class="bd-stats">{{ b.winrate === null ? '—' : `${b.winrate}%` }}</span>
     </li>
   </ul>
 </template>

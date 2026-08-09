@@ -624,6 +624,17 @@
   background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--win)));
 }
 
+/* Win-rate judgment recolour for the bars that judge rather than count
+   (Time of day / Day of week / Session depth). Colours come from the
+   same heatmapCellClass engine the bands use, so a 53% can never read
+   green here and grey there; bars without a judgment class keep the
+   accent gradient (the volume breakdowns). */
+.bd-fill.cell-win { background: var(--win); }
+.bd-fill.cell-loss { background: var(--loss); }
+
+.bd-fill.cell-mid,
+.bd-fill.cell-draw { background: var(--border-strong); }
+
 /* In-bar volume label for the Most-played-heroes + Most-played-maps
    breakdowns. The heroes row carries summed play-time ("7h32min" /
    "32min"); the maps row carries the play-count ("3x" / "1x"). Both
