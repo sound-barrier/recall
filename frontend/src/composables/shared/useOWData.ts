@@ -1,5 +1,6 @@
-import { ref, computed, type ComputedRef, type Ref } from 'vue'
-import { GetOWData, type OWData } from '@/api-client'
+import { ref, computed, watchEffect, type ComputedRef, type Ref } from 'vue'
+import type { OWData } from '@/api-client'
+import { useOWDataQuery } from '@/queries/system'
 
 // Season is one competitive-season window (from reference data). Start/end are
 // UTC RFC3339 strings; season assignment compares a match's canonical UTC
@@ -43,9 +44,9 @@ export type OWDataApi = {
   seasonWindow:    (name: string) => SeasonWindow | null
 }
 
-// Module-level singleton state. Set on first call, reused thereafter.
+// Module-level ref shared by every lookup helper below; each useOWData()
+// call syncs it from the shared query cache entry.
 const data = ref<OWData | null>(null)
-let fetchStarted = false
 
 function normalize(s: string): string {
   // Mirrors pkg/parser/owdata.go normalize(): lowercase, strip
@@ -139,11 +140,12 @@ function mapGameMode(input: string | null | undefined): string {
 }
 
 export function useOWData(): OWDataApi {
-  if (!fetchStarted) {
-    fetchStarted = true
-    GetOWData()
-      .then(d => { data.value = d })
-      .catch(() => { /* leave lookups empty; UI falls back to lowercase */ })
-  }
+  // Each caller registers its own observer on the shared cache entry (one
+  // GET per session; staleTime Infinity). The module-level `data` ref stays
+  // the reactive source for the lookup helpers; the sync is idempotent
+  // across instances. A fetch failure leaves the lookups empty and the UI
+  // falls back to the stored lowercase form.
+  const query = useOWDataQuery()
+  watchEffect(() => { data.value = query.data.value ?? null })
   return { data, heroDisplayName, mapDisplayName, heroRole, mapGameMode, heroIndex, mapIndex, seasons, seasonsByChapter, seasonWindow }
 }

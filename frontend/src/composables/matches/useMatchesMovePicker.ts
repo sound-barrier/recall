@@ -1,5 +1,5 @@
-import { ref, computed, onMounted } from 'vue'
-import { GetProfiles } from '@/api-client'
+import { ref, computed } from 'vue'
+import { useProfilesQuery } from '@/queries/profiles'
 
 // The cross-profile move picker shared by the live bulk-action bar and the
 // archive drawer: a two-step affordance (Move to… → pick a target profile
@@ -15,7 +15,15 @@ export function useMatchesMovePicker(opts: {
   clearArchive: () => void
   onMove: (keys: string[], targetProfile: string) => void
 }) {
-  const availableProfiles = ref<{ active: string; profiles: string[]; immutable: string[] }>({ active: '', profiles: [], immutable: [] })
+  // Backed by the shared profiles query — a fetch failure leaves the list
+  // empty, which suppresses the Move button rather than erroring.
+  const profilesQuery = useProfilesQuery()
+  const availableProfiles = computed(() => {
+    const res = profilesQuery.data.value
+    return res
+      ? { active: res.active, profiles: res.profiles, immutable: res.immutable ?? [] }
+      : { active: '', profiles: [], immutable: [] }
+  })
   const movePickerOpen = ref<'live' | 'archive' | null>(null)
 
   // Read-only profiles (the tour's sample) reject a move-in server-side, so
@@ -54,14 +62,6 @@ export function useMatchesMovePicker(opts: {
       opts.onMove(keys, target)
     }
   }
-
-  onMounted(() => {
-    // Best-effort: a fetch failure leaves availableProfiles empty, which
-    // suppresses the Move button rather than erroring.
-    GetProfiles()
-      .then((res) => { availableProfiles.value = { ...res, immutable: res.immutable ?? [] } })
-      .catch(() => undefined)
-  })
 
   return { availableProfiles, movePickerOpen, otherProfiles, beginMoveLive, beginMoveArchive, cancelMove, commitMove }
 }

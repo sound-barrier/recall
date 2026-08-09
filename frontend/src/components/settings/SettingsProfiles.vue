@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { GetProfiles, DeleteProfile } from '@/api-client'
+import { ref, computed } from 'vue'
+import { DeleteProfile } from '@/api-client'
+import { invalidateProfiles, useProfilesQuery } from '@/queries/profiles'
 
 // Profiles management panel of the Settings view. Lists every profile
 // on disk; non-active rows expose a two-step delete affordance that
@@ -8,10 +9,16 @@ import { GetProfiles, DeleteProfile } from '@/api-client'
 // reference). The active profile has no delete button — callers must
 // switch profiles first via the masthead chip.
 
-const profiles = ref<string[]>([])
-const active   = ref('')
+const profilesQuery = useProfilesQuery()
+const profiles = computed(() => profilesQuery.data.value?.profiles ?? [])
+const active   = computed(() => profilesQuery.data.value?.active ?? '')
 const busy     = ref(false)
-const error    = ref<string | null>(null)
+// Action failures land here; a load failure surfaces from the query so
+// the panel isn't silently empty.
+const actionError = ref<string | null>(null)
+const error = computed(() =>
+  actionError.value ?? (profilesQuery.error.value ? String(profilesQuery.error.value) : null),
+)
 
 // Which row (if any) is in two-step confirm mode. Null = nothing
 // armed; setting it to a profile name reveals Confirm + Cancel for
@@ -22,20 +29,10 @@ const sortedProfiles = computed(() =>
   [...profiles.value].sort((a, b) => a.localeCompare(b)),
 )
 
-async function refresh() {
-  try {
-    const res = await GetProfiles()
-    profiles.value = res.profiles
-    active.value   = res.active
-  } catch (e) {
-    error.value = String(e)
-  }
-}
-
 function armDelete(name: string) {
   if (busy.value) return
   confirmTarget.value = name
-  error.value = null
+  actionError.value = null
 }
 
 function cancelDelete() {
@@ -48,15 +45,13 @@ async function confirmDelete(name: string) {
   try {
     await DeleteProfile(name)
     confirmTarget.value = null
-    await refresh()
+    await invalidateProfiles()
   } catch (e) {
-    error.value = String(e)
+    actionError.value = String(e)
   } finally {
     busy.value = false
   }
 }
-
-onMounted(refresh)
 </script>
 
 <template>
