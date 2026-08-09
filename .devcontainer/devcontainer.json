@@ -104,8 +104,8 @@
           "source.fixAll.stylelint": "explicit"
         },
 
-        // Volar handles .vue and .ts files in this repo (api.ts +
-        // api.gen.d.ts under frontend/src).
+        // Volar handles .vue and .ts files in this repo (api.ts + the
+        // generated client under frontend/src).
         "[vue]": {
           "editor.defaultFormatter": "Vue.volar"
         },

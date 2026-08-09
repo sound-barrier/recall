@@ -22,8 +22,7 @@ export default tseslint.config(
       'coverage/',
       'wailsjs/',           // Wails v2-generated Go↔JS bindings
       'bindings/',          // wails3-generated bindings (gitignored; appear after any local `task build-mac`)
-      'src/api.gen.d.ts',   // openapi-typescript output (make gen-types)
-      'src/client/',        // @hey-api/openapi-ts output (make gen-types)
+      'src/client/',        // @hey-api/openapi-ts output (task gen-types)
       'test-results/',      // Playwright run output
       'playwright-report/', // Playwright HTML report
       '**/*-snapshots/',    // Playwright snapshot fixtures

@@ -40,9 +40,7 @@ pre-commit:
       # generated artifacts are ignored). The generated API types are
       # excluded so the hook doesn't pass an ignored file to eslint.
       glob: "**/*.{ts,vue,js,cjs}"
-      exclude:
-        - "src/api.gen.d.ts"
-        - "src/client/**"
+      exclude: "src/client/**"
       run: npx eslint --fix {staged_files}
       stage_fixed: true
 
@@ -184,14 +182,14 @@ pre-push:
       glob: "frontend/**"
       run: cd frontend && npx vitest run
 
-    # Generated-types drift — regenerating api.gen.d.ts + src/client must
-    # be a no-op; otherwise api/openapi.yaml changed without `task gen-types`.
+    # Generated-client drift — regenerating src/client must be a no-op;
+    # otherwise api/openapi.yaml changed without `task gen-types`.
     gen-types-drift:
-      glob: "{api/openapi.yaml,frontend/src/api.gen.d.ts,frontend/src/client/**}"
+      glob: "{api/openapi.yaml,frontend/src/client/**}"
       run: |
         set -e
         cd frontend && npm run gen:types && cd ..
-        if ! git diff --quiet frontend/src/api.gen.d.ts frontend/src/client; then
+        if ! git diff --quiet frontend/src/client; then
           echo "generated API client is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
           exit 1
         fi
