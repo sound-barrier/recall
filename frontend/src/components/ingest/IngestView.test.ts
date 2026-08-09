@@ -5,6 +5,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import IngestView from '@/components/ingest/IngestView.vue'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { qk } from '@/queries/keys'
+import { seedQuery } from '@/test-utils/queryTestUtils'
 import { useSettingsStore } from '@/stores/settings'
 import type { MatchRecord, TesseractStatus } from '@/api'
 
@@ -55,7 +57,7 @@ function mountIngest(over: IngestOver = {}) {
 
   matches.parseBusy = over.parseBusy ?? false
   matches.cancellingParse = over.cancellingParse ?? false
-  matches.newScreenshotCount = over.newScreenshotCount ?? 3
+  seedQuery(qk.pendingCount, over.newScreenshotCount ?? 3)
   matches.lastParsedAt = over.lastParsedAt ?? null
   matches.records = Array.from({ length: over.matchedCount ?? 0 }, (_, i) => rec(i))
 

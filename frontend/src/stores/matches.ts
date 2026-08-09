@@ -1,11 +1,8 @@
-import { computed, markRaw, ref } from 'vue'
+import { computed, markRaw, ref, watch } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
 
-import type { FailedFile, MatchRecord } from '@/api-client'
+import type { MatchRecord } from '@/api-client'
 import {
-  GetNewScreenshotCount,
-  GetFailedFiles,
-  GetMatchResults,
   ParseScreenshots,
   ReParseAll,
   CancelParse,
@@ -15,7 +12,11 @@ import {
   RestoreDatabase,
   ImportMatches,
 } from '@/api-client'
-import { plainLanguageError } from '@/error-helpers'
+import { queryClient } from '@/queries/client'
+import { qk } from '@/queries/keys'
+import {
+  refetchMatchesCluster, useFailedFilesQuery, useMatchesQuery, usePendingCountQuery,
+} from '@/queries/matches'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
 import { currentSessionSummary, type SessionSummary } from '@/match/match-momentum-helpers'
@@ -40,7 +41,24 @@ import { useSettingsStore } from '@/stores/settings'
 // loaders out at mount (this store's load() covers records + new-count);
 // parse lifecycle, narrow, and the dossier also live here.
 export const useMatchesStore = defineStore('matches', () => {
-  const records = ref<MatchRecord[]>([])
+  // The records live in the query cache; this store hosts the one
+  // app-lifetime observer. `records` is a WRITABLE computed: reads are
+  // tour-aware (demo data overlays the cache while the tour runs), and the
+  // few remaining writers (the match-updated upsert, test seeding) route
+  // through setQueryData so the cache stays the single source of truth.
+  const matchesQuery = useMatchesQuery()
+  const realRecords = computed(() => matchesQuery.data.value ?? [])
+  const records = computed({
+    get: () => (tourActive.value ? demoRecords.value : realRecords.value),
+    set: (next: MatchRecord[]) => {
+      // Cancel any in-flight fetch first: a direct write is newer than
+      // whatever that response would carry (the match-updated upsert in
+      // production, cache seeding in tests), and the authoritative
+      // parse-complete refetch follows anyway.
+      void queryClient.cancelQueries({ queryKey: qk.matches })
+      queryClient.setQueryData(qk.matches, next)
+    },
+  })
 
   // Records that couldn't be resolved to a named match — either the
   // screenshot filename had no parseable OW timestamp ("unmatched-…") or OCR
@@ -73,7 +91,9 @@ export const useMatchesStore = defineStore('matches', () => {
   // drives the Matches skeleton from boot until the first load() resolves.
   const parseBusy = ref(false)
   const cancellingParse = ref(false)
-  const firstLoadPending = ref(true)
+  // Drives the Matches skeleton from boot until the first fetch settles —
+  // isPending never flips back to true across invalidation refetches.
+  const firstLoadPending = computed(() => matchesQuery.isPending.value)
   // parseProgress: most-recent completed file during an active parse (null
   // when idle). parseLog: rolling completed-file log. newScreenshotCount:
   // image files in the dir not yet in the DB (null = not yet fetched).
@@ -88,13 +108,16 @@ export const useMatchesStore = defineStore('matches', () => {
     if (sessionToast.value?.token === token) sessionToast.value = null
   }
   const parseLog = ref<ParseProgressEvent[]>([])
-  const newScreenshotCount = ref<number | null>(null)
-  const failedFiles = ref<FailedFile[]>([])
+  // Cluster siblings of the records query — silent keep-last on failure.
+  const pendingCountQuery = usePendingCountQuery()
+  const newScreenshotCount = computed(() => pendingCountQuery.data.value ?? null)
+  const failedFilesQuery = useFailedFilesQuery()
+  const failedFiles = computed(() => failedFilesQuery.data.value ?? [])
   // Wall-clock of the last successful manual parse → Settings "Last run · X".
   const lastParsedAt = ref<number | null>(null)
 
   async function refreshNewCount() {
-    try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) { /* keep last */ }
+    await queryClient.refetchQueries({ queryKey: qk.pendingCount })
   }
 
   // Restore the persisted last-parse timestamp on boot so Settings shows
@@ -119,72 +142,47 @@ export const useMatchesStore = defineStore('matches', () => {
     if (recordsPulseTimer) clearTimeout(recordsPulseTimer)
     recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
   }
+  watch(() => realRecords.value.length, (after, before) => {
+    if (before > 0 && after > before) flashRecordsPulse()
+  })
 
-  // ── Onboarding tour — demo-records swap ───────────────────────────
+  // ── Onboarding tour — demo-records overlay ────────────────────────
   // Seeded from the same localStorage flag the tour reads so the welcome
   // modal stays hidden until the tour finishes (avoids a tick-0 overlay
-  // stack). While active, `records` carries DEMO_MATCHES and the real fetch
-  // is stashed in savedRecords (load() routes there too) for restore-on-close.
+  // stack). While active, `records` reads DEMO_MATCHES; the real data keeps
+  // flowing into the query cache underneath, so closing the tour is a pure
+  // flag flip — no stash/restore.
   function readTourWillOpen(): boolean {
     try { return localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== 'true' }
     catch (_) { return false }
   }
   const tourActive = ref(readTourWillOpen())
-  const savedRecords = ref<MatchRecord[]>([])
+  const demoRecords = ref<MatchRecord[]>([])
   async function onTourActiveChange(active: boolean) {
     if (active) {
       const { DEMO_MATCHES } = await import('@/composables/shared/useDemoMatches')
-      savedRecords.value = records.value
-      records.value = [...DEMO_MATCHES]
+      demoRecords.value = [...DEMO_MATCHES]
       tourActive.value = true
     } else {
-      records.value = savedRecords.value
-      savedRecords.value = []
+      demoRecords.value = []
       tourActive.value = false
     }
   }
 
-  // ── Boot coordinator ──────────────────────────────────────────────
-  // Promise.allSettled (NOT all): one endpoint failing MUST NOT blank the
-  // others or flash a false "Tesseract not detected". Fans the results into
-  // this store + the app/settings stores. Errors surface through the app
-  // store's banner with `load` itself as the Retry callback.
-  // Loads THIS store's domain: the match records + the new-screenshot
-  // count. Boot-time hydration of the settings store and the app store's
-  // data location lives in useAppBoot's fan-out — this used to be the
-  // de-facto boot coordinator, contradicting the documented thin-shell
-  // architecture, and every non-boot caller (parse-complete, retry,
-  // undo-hide) only ever needed the matches slice anyway.
-  async function load() {
-    const appStore = useAppStore()
-    const before = records.value.length
-    const [recs, newCount, failed] = await Promise.allSettled([
-      GetMatchResults(),
-      GetNewScreenshotCount(),
-      GetFailedFiles(),
-    ])
-    if (recs.status === 'fulfilled') {
-      if (tourActive.value) {
-        savedRecords.value = recs.value ?? []
-      } else {
-        records.value = recs.value ?? []
-        if (before > 0 && records.value.length > before) flashRecordsPulse()
-      }
-      if (appStore.errorRetry === load) appStore.clearError()
-    } else {
-      appStore.setError(`Could not load matches: ${plainLanguageError(String(recs.reason))}`, load)
-    }
-    newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
-    if (failed.status === 'fulfilled') failedFiles.value = failed.value ?? []
-    firstLoadPending.value = false
-  }
+  // ── Reload seam ───────────────────────────────────────────────────
+  // load() keeps its name as the awaitable cluster refetch — the callers
+  // (parse-complete, undo-hide, clear-DB, manual-match create) rely on
+  // "reload finished" ordering. Error/banner handling moved to the query
+  // layer: the matches query carries the banner meta, the siblings are
+  // silent keep-last, and per-subsystem isolation falls out of one query
+  // per endpoint.
+  const load = refetchMatchesCluster
 
   // The OCR-failure ledger backing the Unknown tab's "Failed to read"
-  // section. Refreshed by every load() (boot, parse-complete, clear,
-  // Delete forever via onIgnoreScreenshot's reload); loadFailed exists
-  // for callers that only need this slice.
+  // section — refreshed with every cluster reload; loadFailed exists for
+  // callers that only need this slice.
   async function loadFailed() {
-    try { failedFiles.value = (await GetFailedFiles()) ?? [] } catch (_) { /* keep last */ }
+    await queryClient.refetchQueries({ queryKey: qk.failedFiles })
   }
 
   // ── Parse run controls ────────────────────────────────────────────
@@ -387,14 +385,18 @@ export const useMatchesStore = defineStore('matches', () => {
     watchActivity,
     onParseComplete: async () => {
       await load()
-      const session = currentSessionSummary(records.value)
+      // Read the fresh records straight from the cache — the observer's
+      // reactive ref updates a notification tick later than the refetch
+      // resolves, and the session summary must see the new batch.
+      const fresh = queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []
+      const session = currentSessionSummary(fresh)
       sessionToast.value = session ? { ...session, token: Date.now() } : null
       lastParsedAt.value = Date.now()
       try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
       parseBusy.value = false
       parseProgress.value = null
       cancellingParse.value = false
-      const n = records.value.length
+      const n = fresh.length
       announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
     },
     onParseCancelled: async () => {
@@ -489,7 +491,6 @@ export const useMatchesStore = defineStore('matches', () => {
     recordsPulse,
     flashRecordsPulse,
     tourActive,
-    savedRecords,
     onTourActiveChange,
     load,
     parseProgressOpen,

@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
 import { useMatchesStore } from '@/stores/matches'
+import { qk } from '@/queries/keys'
+import { seedQuery } from '@/test-utils/queryTestUtils'
 import { ExportDiagnosticBundle, IgnoreScreenshot } from '@/api'
 import type { FailedFile } from '@/api'
 
@@ -35,8 +37,11 @@ const row = (over: Partial<FailedFile> = {}): FailedFile => ({
 
 function mountWith(rows: FailedFile[]) {
   setActivePinia(createPinia())
-  const matches = useMatchesStore()
-  matches.failedFiles = rows
+  // Seed BEFORE the store exists: pre-seeded data is fresh (staleTime is
+  // Infinity), so the store's observer never fires the initial fetch that
+  // would otherwise clobber the seed when its mock resolves.
+  seedQuery(qk.failedFiles, rows)
+  useMatchesStore()
   return mount(UnknownFailedSection)
 }
 
