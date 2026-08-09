@@ -59,7 +59,11 @@ func TestIsSummaryScreenshot_PositiveKeywords(t *testing.T) {
 	for _, text := range positives {
 		t.Run(text, func(t *testing.T) {
 			stubOCR(t, map[string]string{"detect_summary": text})
-			if !parser.IsSummaryScreenshot(tinyImage(), t.TempDir()) {
+			ok, err := parser.IsSummaryScreenshot(tinyImage(), t.TempDir())
+			if err != nil {
+				t.Fatalf("probe error: %v", err)
+			}
+			if !ok {
 				t.Errorf("expected SUMMARY detection for OCR text %q", text)
 			}
 		})
@@ -68,47 +72,49 @@ func TestIsSummaryScreenshot_PositiveKeywords(t *testing.T) {
 
 func TestIsSummaryScreenshot_NegativeAndError(t *testing.T) {
 	stubOCR(t, map[string]string{"detect_summary": "RANK PROGRESS\nALL HEROES"})
-	if parser.IsSummaryScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("non-SUMMARY text must not trigger SUMMARY detection")
+	if ok, err := parser.IsSummaryScreenshot(tinyImage(), t.TempDir()); err != nil || ok {
+		t.Errorf("non-SUMMARY text must not trigger SUMMARY detection (ok=%v err=%v)", ok, err)
 	}
 
+	// An OCR error must PROPAGATE — the old fail-closed false silently
+	// demoted the screenshot to the teams fall-through.
 	stubOCRError(t, errors.New("ocr blew up"))
-	if parser.IsSummaryScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("OCR error must return false (fail-closed)")
+	if ok, err := parser.IsSummaryScreenshot(tinyImage(), t.TempDir()); err == nil || ok {
+		t.Errorf("OCR error must propagate, got (ok=%v err=%v)", ok, err)
 	}
 }
 
 func TestIsRankScreenshot(t *testing.T) {
 	stubOCR(t, map[string]string{"detect_rank": "some banner\nRANK PROGRESS\nfooter"})
-	if !parser.IsRankScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("RANK PROGRESS keyword must trigger detection")
+	if ok, err := parser.IsRankScreenshot(tinyImage(), t.TempDir()); err != nil || !ok {
+		t.Errorf("RANK PROGRESS keyword must trigger detection (ok=%v err=%v)", ok, err)
 	}
 
 	stubOCR(t, map[string]string{"detect_rank": "HEROES PLAYED"})
-	if parser.IsRankScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("SUMMARY text must not trigger RANK detection")
+	if ok, err := parser.IsRankScreenshot(tinyImage(), t.TempDir()); err != nil || ok {
+		t.Errorf("SUMMARY text must not trigger RANK detection (ok=%v err=%v)", ok, err)
 	}
 
 	stubOCRError(t, errors.New("boom"))
-	if parser.IsRankScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("OCR error must return false (fail-closed)")
+	if ok, err := parser.IsRankScreenshot(tinyImage(), t.TempDir()); err == nil || ok {
+		t.Errorf("OCR error must propagate, got (ok=%v err=%v)", ok, err)
 	}
 }
 
 func TestIsPersonalScreenshot(t *testing.T) {
 	stubOCR(t, map[string]string{"detect_personal": "LUCIO\nKIRIKO\nALL HEROES"})
-	if !parser.IsPersonalScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("ALL HEROES keyword must trigger PERSONAL detection")
+	if ok, err := parser.IsPersonalScreenshot(tinyImage(), t.TempDir()); err != nil || !ok {
+		t.Errorf("ALL HEROES keyword must trigger PERSONAL detection (ok=%v err=%v)", ok, err)
 	}
 
 	stubOCR(t, map[string]string{"detect_personal": "HEROES PLAYED\nTOTAL PERFORMANCE"})
-	if parser.IsPersonalScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("SUMMARY text must not trigger PERSONAL detection")
+	if ok, err := parser.IsPersonalScreenshot(tinyImage(), t.TempDir()); err != nil || ok {
+		t.Errorf("SUMMARY text must not trigger PERSONAL detection (ok=%v err=%v)", ok, err)
 	}
 
 	stubOCRError(t, errors.New("boom"))
-	if parser.IsPersonalScreenshot(tinyImage(), t.TempDir()) {
-		t.Error("OCR error must return false (fail-closed)")
+	if ok, err := parser.IsPersonalScreenshot(tinyImage(), t.TempDir()); err == nil || ok {
+		t.Errorf("OCR error must propagate, got (ok=%v err=%v)", ok, err)
 	}
 }
 

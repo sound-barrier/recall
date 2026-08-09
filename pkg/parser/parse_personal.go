@@ -16,15 +16,15 @@ import (
 // position shifts down as more heroes get played in a match (single-hero
 // match: ~Y=20%; 3-hero match: ~Y=40%; many-hero match: even lower), so we
 // OCR the full vertical extent of the sidebar rather than just the top.
-func isPersonalScreenshot(img image.Image, work string) bool {
+func isPersonalScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rect := image.Rect(0, H*15/100, W*12/100, H*85/100)
 	text, err := ocrInverted(img, rect, work, "detect_personal", "11", "")
 	if err != nil {
-		return false
+		return false, err
 	}
-	return strings.Contains(strings.ToUpper(text), "ALL HEROES")
+	return strings.Contains(strings.ToUpper(text), "ALL HEROES"), nil
 }
 
 // parsePersonal handles the PERSONAL tab: a 3×3 grid where the top-left cell

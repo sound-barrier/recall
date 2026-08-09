@@ -13,18 +13,18 @@ import (
 // TEAMS tab has the same top-of-page tab strip ("SUMMARY TEAMS
 // PERSONAL") so we can't key on tab labels alone — "HEROES PLAYED" / "TOTAL
 // PERFORMANCE" / "PERCENT PLAYED" are unique to the SUMMARY layout.
-func isSummaryScreenshot(img image.Image, work string) bool {
+func isSummaryScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rect := image.Rect(W/40, H/12, W*3/4, H*3/10)
 	text, err := ocrInverted(img, rect, work, "detect_summary", "6", "")
 	if err != nil {
-		return false
+		return false, err
 	}
 	upper := strings.ToUpper(text)
 	return strings.Contains(upper, "HEROES PLAYED") ||
 		strings.Contains(upper, "TOTAL PERFORMANCE") ||
-		strings.Contains(upper, "PERCENT PLAYED")
+		strings.Contains(upper, "PERCENT PLAYED"), nil
 }
 
 // parseSummary handles the post-match SUMMARY tab: three columns (Heroes
