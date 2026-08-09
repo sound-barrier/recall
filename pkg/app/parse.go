@@ -580,6 +580,12 @@ func buildUnknownRow(filename, key string, dirID int64) db.UnknownRow {
 }
 
 func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.MatchResult) error {
+	// A re-parse can reclassify a file (a parser fix reading a screen that
+	// once stored as another type); wipe its rows from the sibling type
+	// tables first or the stale row aggregates beside the new one forever.
+	if err := a.store.DeleteScreenshotSiblings(filename, t); err != nil {
+		return err
+	}
 	switch t {
 	case "summary":
 		return a.store.UpsertSummary(buildSummaryRow(filename, key, dirID, r))
