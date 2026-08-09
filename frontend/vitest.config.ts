@@ -36,7 +36,9 @@ export default defineConfig({
       // artifact that CI does (one less drift risk).
       reporter: ['text', 'lcov', 'html', 'cobertura'],
       include: ['src/**/*.ts', 'src/**/*.vue'],
-      exclude: ['src/**/*.d.ts', 'src/**/*.test.ts'],
+      // src/client is generated (@hey-api/openapi-ts) — excluded so the
+      // coverage floors measure authored code only.
+      exclude: ['src/**/*.d.ts', 'src/**/*.test.ts', 'src/client/**'],
       // Project-wide floors. When `npm run test:coverage` (or
       // `make cover-frontend`) runs, vitest exits non-zero if any of
       // these aren't met. Tuned a few points below the current state

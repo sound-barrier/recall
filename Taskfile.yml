@@ -295,11 +295,11 @@ tasks:
       - echo "[ recall ] ✓  OpenAPI lint clean"
 
   gen-types:
-    desc: Regenerate frontend/src/api.gen.d.ts from api/openapi.yaml
+    desc: Regenerate frontend/src/api.gen.d.ts + frontend/src/client from api/openapi.yaml
     cmds:
-      - echo "[ recall ] Regenerating frontend TypeScript types from OpenAPI…"
+      - echo "[ recall ] Regenerating frontend TypeScript types + client from OpenAPI…"
       - cd frontend && npm run gen:types
-      - echo "[ recall ] ✓  frontend/src/api.gen.d.ts updated"
+      - echo "[ recall ] ✓  frontend/src/api.gen.d.ts + frontend/src/client updated"
 
   typecheck:
     desc: TypeScript type-check (frontend api.ts + api.gen.d.ts)
