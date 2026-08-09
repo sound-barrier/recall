@@ -291,15 +291,15 @@ jobs:
       - name: TypeScript type-check
         run: cd frontend && npm run typecheck
 
-      # Verify the committed types match the current OpenAPI spec.
-      # Catches "you forgot to run `task gen-types` after editing
-      # api/openapi.yaml" before it lands on main.
+      # Verify the committed types + generated client match the current
+      # OpenAPI spec. Catches "you forgot to run `task gen-types` after
+      # editing api/openapi.yaml" before it lands on main.
       - name: Verify generated types are in sync with OpenAPI spec
         run: |
           cd frontend && npm run gen:types && cd ..
-          if ! git diff --quiet frontend/src/api.gen.d.ts; then
-            echo "::error::frontend/src/api.gen.d.ts is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
-            git diff frontend/src/api.gen.d.ts | head -50
+          if ! git diff --quiet frontend/src/api.gen.d.ts frontend/src/client; then
+            echo "::error::the generated API client is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
+            git diff frontend/src/api.gen.d.ts frontend/src/client | head -50
             exit 1
           fi
 

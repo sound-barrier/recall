@@ -15,7 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "vue-tsc --noEmit",
-    "gen:types": "openapi-typescript ../api/openapi.yaml -o src/api.gen.d.ts",
+    "gen:types": "openapi-typescript ../api/openapi.yaml -o src/api.gen.d.ts && openapi-ts",
     "elo:catalog": "node scripts/elo-scenario-catalog.cjs",
     "dead:ts": "knip",
     "postinstall": "node ./scripts/seed-go-sentinel.cjs"
@@ -30,6 +30,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^10.0.1",
+    "@hey-api/openapi-ts": "0.99.0",
     "@playwright/test": "1.62.1",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vitest/coverage-v8": "^4.1.10",

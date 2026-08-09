@@ -30,6 +30,8 @@ extend-exclude = [
   # tasks use Apple's "UDID" term, which the dictionary flags as "UUID".
   "build/Taskfile.yml",
   "frontend/bindings/",
+  # @hey-api/openapi-ts output — generated identifiers, not prose.
+  "frontend/src/client/",
   # Lockfiles: tons of base64-y hashes, no source content worth
   # scanning. (frontend/node_modules/ is .gitignored already.)
   "frontend/package-lock.json",
