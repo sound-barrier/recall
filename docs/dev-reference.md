@@ -53,7 +53,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `task cover-e2e` | **Integration** coverage from one Playwright run → `coverage/e2e/` (`go/` + `frontend/`). Builds an instrumented frontend (`E2E_COVERAGE=1` inline maps) + server (`go build -cover`); Go counters flush on the server's graceful SIGTERM shutdown, frontend V8 coverage is remapped to source by monocart (Chromium only). Informational — no floor gate; kept out of the `cover` umbrella so pre-push stays fast. |
 | `task test-e2e` | Playwright. Builds frontend + `serveronly` into `/tmp/recall-e2e/recall-server`, installs Chromium + WebKit, runs with `HOME=/tmp/recall-e2e` on `127.0.0.1:7099`. |
 | `task test-all` | `task test` + `task test-e2e`. |
-| `task gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
+| `task gen-types` | Regenerate the `frontend/src/client` SDK from `api/openapi.yaml`. |
 | `task typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
 | `task fetch-fixtures` | Init/update the `recall-testdata` image submodule at `testdata/images/` (the parser golden tests read PNG images from there; they skip cleanly until it's fetched). |
 | `task update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). Reads images from the submodule, writes goldens to `testdata/`; depends on `fetch-fixtures`. |

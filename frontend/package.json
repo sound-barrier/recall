@@ -15,7 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "vue-tsc --noEmit",
-    "gen:types": "openapi-typescript ../api/openapi.yaml -o src/api.gen.d.ts && openapi-ts",
+    "gen:types": "openapi-ts",
     "elo:catalog": "node scripts/elo-scenario-catalog.cjs",
     "dead:ts": "knip",
     "postinstall": "node ./scripts/seed-go-sentinel.cjs"
@@ -46,7 +46,6 @@
     "htmlhint": "^1.9.2",
     "knip": "^6.29.0",
     "monocart-coverage-reports": "^2.12.12",
-    "openapi-typescript": "^7.13.0",
     "postcss-html": "^2.0.0",
     "stylelint": "^17.14.1",
     "stylelint-config-standard": "^40.0.0",
