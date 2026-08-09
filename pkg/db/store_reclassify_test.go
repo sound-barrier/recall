@@ -69,6 +69,48 @@ func TestDeleteScreenshotSiblings_Idempotent(t *testing.T) {
 	}
 }
 
+// When the sibling wipe removes a match key's LAST parent row, ambiguous
+// candidates referencing that key must go too — HardDeleteMatch's own
+// documented invariant: resolving a pending screenshot onto a dead key
+// would resurrect its identity as a match with only that screenshot.
+func TestDeleteScreenshotSiblings_DropsCandidatesOfOrphanedKeys(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			if err := s.UpsertSummary(db.SummaryRow{Filename: "f1.png", MatchKey: "match-2026-07-05T14-54-48"}); err != nil {
+				t.Fatalf("UpsertSummary: %v", err)
+			}
+			if err := s.UpsertSummary(db.SummaryRow{Filename: "survivor.png", MatchKey: "match-2026-07-06T10-00-00"}); err != nil {
+				t.Fatalf("UpsertSummary survivor: %v", err)
+			}
+			cands := []db.AmbiguousCandidate{
+				{MatchKey: "match-2026-07-05T14-54-48", DistanceSeconds: 400},
+				{MatchKey: "match-2026-07-06T10-00-00", DistanceSeconds: 500},
+			}
+			if err := s.ApplyAmbiguity("pending.png", cands); err != nil {
+				t.Fatalf("ApplyAmbiguity: %v", err)
+			}
+			// f1's reclassification to rank stores the new row under a
+			// DIFFERENT key (EAD bridge), so the old key dies with this wipe.
+			if err := s.DeleteScreenshotSiblings("f1.png", "rank"); err != nil {
+				t.Fatalf("DeleteScreenshotSiblings: %v", err)
+			}
+			got, err := s.LoadAmbiguousCandidatesFor("pending.png")
+			if err != nil {
+				t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
+			}
+			for _, c := range got {
+				if c.MatchKey == "match-2026-07-05T14-54-48" {
+					t.Errorf("candidate for the dead key survived: %+v", got)
+				}
+			}
+			if len(got) != 1 || got[0].MatchKey != "match-2026-07-06T10-00-00" {
+				t.Errorf("the live key's candidate must survive, got %+v", got)
+			}
+		})
+	}
+}
+
 // The all_heroes registry is a sibling too: a screenshot that once
 // classified all_heroes (and is skipped on future runs) must leave the
 // skip-store when a re-parse reclassifies it, or it can never heal.
