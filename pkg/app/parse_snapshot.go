@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"time"
 
 	"recall/pkg/db"
@@ -46,6 +47,15 @@ func upsertRowInSnapshot[T any](
 // snapshot. all_heroes records only a skip-list filename — no match row
 // to mirror.
 func (st *parseRunState) applyToSnapshot(filename, key, t string, r *parser.MatchResult) {
+	// Mirror the store's sibling wipe first: a reclassified file must
+	// vanish from the old type's slice, or every match-updated event and
+	// every later file's correlation in this run folds the purged row
+	// (first-non-empty prefers it — it has the older parsed_at). Skipped
+	// for all_heroes, matching insertParsed: a data-less registry entry
+	// never evicts a typed row.
+	if t != "all_heroes" {
+		st.dropSiblingRowsFromSnapshot(filename, t)
+	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	switch t {
 	case "summary":
@@ -80,6 +90,31 @@ func (st *parseRunState) applyToSnapshot(filename, key, t string, r *parser.Matc
 			func(x db.UnknownRow) string { return x.ParsedAt },
 			func(x *db.UnknownRow, ts string) { x.ParsedAt = ts })
 	}
+}
+
+// dropSiblingRowsFromSnapshot removes filename's row from every snapshot
+// slice except keepType's — the in-memory analog of
+// Store.DeleteScreenshotSiblings.
+func (st *parseRunState) dropSiblingRowsFromSnapshot(filename, keepType string) {
+	if keepType != "summary" {
+		st.snap.Summaries = dropRowByFilename(st.snap.Summaries, filename, func(x db.SummaryRow) string { return x.Filename })
+	}
+	if keepType != "teams" {
+		st.snap.Teams = dropRowByFilename(st.snap.Teams, filename, func(x db.TeamsRow) string { return x.Filename })
+	}
+	if keepType != "personal" {
+		st.snap.Personals = dropRowByFilename(st.snap.Personals, filename, func(x db.PersonalRow) string { return x.Filename })
+	}
+	if keepType != "rank" {
+		st.snap.Ranks = dropRowByFilename(st.snap.Ranks, filename, func(x db.RankRow) string { return x.Filename })
+	}
+	if keepType != "unknown" {
+		st.snap.Unknowns = dropRowByFilename(st.snap.Unknowns, filename, func(x db.UnknownRow) string { return x.Filename })
+	}
+}
+
+func dropRowByFilename[T any](rows []T, filename string, name func(T) string) []T {
+	return slices.DeleteFunc(rows, func(r T) bool { return name(r) == filename })
 }
 
 // applyAmbiguityToSnapshot mirrors ApplyAmbiguity: wipe the filename's

@@ -583,8 +583,14 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 	// A re-parse can reclassify a file (a parser fix reading a screen that
 	// once stored as another type); wipe its rows from the sibling type
 	// tables first or the stale row aggregates beside the new one forever.
-	if err := a.store.DeleteScreenshotSiblings(filename, t); err != nil {
-		return err
+	// EXCEPT toward all_heroes: it stores no data, only a skip-registry
+	// filename, so evicting a real typed row in its favor converts a probe
+	// false-positive into silent permanent loss (rowless, skip-listed, no
+	// ledger entry, and the deterministic misread repeats every re-parse).
+	if t != "all_heroes" {
+		if err := a.store.DeleteScreenshotSiblings(filename, t); err != nil {
+			return err
+		}
 	}
 	switch t {
 	case "summary":
