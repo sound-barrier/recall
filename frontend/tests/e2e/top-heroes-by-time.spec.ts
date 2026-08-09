@@ -14,6 +14,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 
 const matchWith = (key: string, hero: string, played: { hero: string; play_time: string }[]) => ({
   match_key: key,
@@ -46,6 +47,9 @@ const CORPUS = [
 
 test.describe('dossier — Top heroes by time', () => {
   test.beforeEach(async ({ page }) => {
+    // Both surfaces are gallery opt-in under the climb-focused
+    // default — seed a layout that holds them.
+    await seedDossierLayout(page, { 1: ['most-played-hero'], 2: ['top-heroes'] })
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,

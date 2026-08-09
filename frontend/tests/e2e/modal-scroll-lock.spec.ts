@@ -93,7 +93,7 @@ test.describe('modal scroll-lock', () => {
 
   test('the widget-config (gear) popover freezes the background; it no longer scrolls away', async ({ page }) => {
     // The reported bug: the gear popover scrolled out from under itself.
-    const gear = page.locator('[data-widget-config-trigger="top-heroes"]')
+    const gear = page.locator('[data-widget-config-trigger="form-delta"]')
     await gear.click()
     await expect(page.getByTestId('widget-config-popover')).toBeVisible()
 
