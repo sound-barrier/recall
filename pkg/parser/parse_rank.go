@@ -77,6 +77,21 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	tierRect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
 	tierText, _ := ocrInverted(img, tierRect, work, "rank_tier", "11", "")
 	res.Rank, res.Level = extractRank(tierText)
+	// The 2026-07 UI renders the division caption in a stylized face whose
+	// numerals the sparse pass misreads as letters ("GOLD 3" → "GOLD J",
+	// "PLATINUM 5" → "PI ATINUM J" — and J is ambiguous between 3 and 5, so
+	// no digitize mapping can recover it) or that corrupt the tier word
+	// itself ("FOLD?"). A PSM-6 re-read of the SAME band resolves the
+	// caption line cleanly; the whitelist pins the alphabet to tier words +
+	// levels 1-5 so the numeral cannot resolve to a letter. Fires only when
+	// the sparse pass came back incomplete — no committed old-UI golden has
+	// level 0, so the existing corpus never re-reads.
+	if res.Rank == "" || res.Level == 0 {
+		v2Text, _ := ocrInverted(img, tierRect, work, "rank_tier_v2", "6", rankTierWhitelist)
+		if rank, level := extractRank(v2Text); rank != "" && (res.Rank == "" || level != 0) {
+			res.Rank, res.Level = rank, level
+		}
+	}
 
 	// Rank progress bar — "RANK PROGRESS: 21%" caption plus a "+25%" delta
 	// pill inside the bar. OCR both in one wider crop and pull each via its
@@ -164,6 +179,11 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 
 	return res, nil
 }
+
+// rankTierWhitelist constrains the PSM-6 tier re-read to tier words, the
+// 1-5 level digits, and the RANK PROGRESS caption's own characters — an
+// alphabet with no letter the stylized numerals can escape into.
+const rankTierWhitelist = "ABCDEFGHIJKLMNOPQRSTUVWXYZ12345:% "
 
 // rankFuzzyMaxPct caps the tier-snap Levenshtein distance as a percentage of the
 // tier name's length (floor of 1, mirroring snapToKnownMap). It lets a mis-OCR'd

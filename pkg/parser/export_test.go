@@ -31,6 +31,7 @@ var (
 	IsSummaryScreenshot   = isSummaryScreenshot
 	IsRankScreenshot      = isRankScreenshot
 	IsPersonalScreenshot  = isPersonalScreenshot
+	ParseRank             = parseRank
 	GetTesseractPath      = getTesseractPath
 	KnownModifiers        = knownModifiers
 
