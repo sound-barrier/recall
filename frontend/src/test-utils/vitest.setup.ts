@@ -1,4 +1,12 @@
-import { afterAll, vi } from 'vitest'
+import { afterAll, afterEach, vi } from 'vitest'
+import { enableAutoUnmount } from '@vue/test-utils'
+
+// Unmount every test-utils wrapper after its test. Without this, mounted
+// components from earlier tests stay subscribed to the singleton query
+// cache — and a still-mounted observer resurrects a cleared query with its
+// last-known data (staleTime Infinity then suppresses the refetch), so a
+// later test's api mock never gets called.
+enableAutoUnmount(afterEach)
 
 // Fallback fetch for anything a test didn't stub. Two rules:
 //
@@ -42,6 +50,17 @@ globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
     json: async () => ({}),
   }
 }) as unknown as typeof fetch
+
+// Query-cache isolation. The app-wide QueryClient is a module singleton
+// with staleTime/gcTime Infinity — without a clear, the first test in a
+// file fills the cache and every later test reads that stale entry no
+// matter what it mocked (the pre-query code fetched per mount). Clearing
+// per TEST restores those semantics; mountApp additionally gets a whole
+// fresh client via its vi.resetModules().
+afterEach(async () => {
+  const { queryClient } = await import('@/queries/client')
+  queryClient.clear()
+})
 
 // Cross-file '@/api' isolation. After each test FILE, drop both the module
 // cache AND any '@/api' mock registration so the next file starts clean:

@@ -155,7 +155,9 @@ describe('useOWData', () => {
     getOWDataMock.mockResolvedValue(SAMPLE_DATA)
     const useOWData = await freshOWData()
     const ow = useOWData()
-    await Promise.resolve(); await Promise.resolve()
+    // The query pipeline resolves over several microtask turns — a macrotask
+    // tick (same as the other cases in this file) lets it settle.
+    await new Promise(r => setTimeout(r, 0))
 
     expect(ow.seasons.value).toHaveLength(2)
     expect(ow.seasonsByChapter.value).toEqual([

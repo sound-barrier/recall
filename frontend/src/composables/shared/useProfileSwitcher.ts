@@ -1,6 +1,7 @@
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } from '@/api-client'
+import { ref, computed, watchEffect, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { SwitchProfile, CreateProfile, RenameProfile } from '@/api-client'
 import { cacheActiveProfile } from '@/composables/shared/profileStorage'
+import { useProfilesQuery } from '@/queries/profiles'
 
 // Stateful logic for the masthead profile chip + dropdown: the profile
 // list, the open/creating/rename UI state, and the create / rename / switch
@@ -11,8 +12,19 @@ import { cacheActiveProfile } from '@/composables/shared/profileStorage'
 // profile, so every successful PUT/POST window.location.reload()s — every
 // composable re-fetches against the new active profile in one clean sweep.
 export function useProfileSwitcher() {
-  const profiles  = ref<string[]>([])
-  const active    = ref('')
+  // The shared profiles query feeds the chip + dropdown; an error leaves
+  // both empty (the chip renders unnamed), matching the old catch path.
+  const profilesQuery = useProfilesQuery()
+  const profiles = computed(() => profilesQuery.data.value?.profiles ?? [])
+  const active   = computed(() => profilesQuery.data.value?.active ?? '')
+  // Freshen the sync-readable scope for profile-scoped localStorage keys
+  // (profileStorage.ts) — setup-time reads used the previous session's
+  // cache; this heals any out-of-band change for the next boot.
+  watchEffect(() => {
+    const res = profilesQuery.data.value
+    if (res) cacheActiveProfile(res.active)
+  })
+
   const open      = ref(false)
   const creating  = ref(false)
   const newName   = ref('')
@@ -25,22 +37,6 @@ export function useProfileSwitcher() {
   const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/
 
   const newNameValid = computed(() => NAME_RE.test(newName.value))
-
-  async function refresh() {
-    try {
-      const res = await GetProfiles()
-      profiles.value = res.profiles
-      active.value   = res.active
-      // Freshen the sync-readable scope for profile-scoped
-      // localStorage keys (profileStorage.ts) — setup-time reads used
-      // the previous session's cache; this heals any out-of-band
-      // change for the next boot.
-      cacheActiveProfile(res.active)
-    } catch (_) {
-      profiles.value = []
-      active.value   = ''
-    }
-  }
 
   function toggleOpen() {
     open.value = !open.value
@@ -171,7 +167,6 @@ export function useProfileSwitcher() {
   }
 
   onMounted(() => {
-    void refresh()
     document.addEventListener('mousedown', onDocumentMousedown)
     document.addEventListener('keydown', onKeydown)
   })

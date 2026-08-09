@@ -7,6 +7,7 @@ import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { GetProfiles, SetMatchVisibility, HardDeleteMatch, MoveMatches } from '@/api'
 import type { MatchRecord } from '@/api'
+import { queryClient } from '@/queries/client'
 
 // MatchesView reads its mutations from useMatchActions (→ the api) + selection
 // from the UI store now, instead of emitting. Mock GetProfiles (the move picker
@@ -32,6 +33,13 @@ vi.mock('@/api', async (importOriginal) => ({
 // even with every test green (seen on CI's slow coverage pass).
 afterEach(async () => {
   await vi.dynamicImportSettled()
+  // Clear the query cache the statically-imported component tree uses.
+  // MUST be the static `queryClient` binding: after this hook's
+  // vi.resetModules(), any DYNAMIC import of '@/queries/client' (here or
+  // in the global vitest.setup hook) resolves a fresh module instance and
+  // misses this one — leaving stale profile data for every later test
+  // (staleTime is Infinity, so a stale entry never refetches).
+  queryClient.clear()
   vi.clearAllMocks()
   vi.resetModules()
 })
@@ -420,7 +428,9 @@ describe('MatchesView — Move to profile picker', () => {
     vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'], immutable: [] })
     const records = [makeRecord({ match_key: 'k1' })]
     const wrapper = mountView(records)
-    await flushPromises() // let the picker's onMount GetProfiles resolve
+    // Macrotask tick: the profiles query notifies observers through the
+    // notifyManager's setTimeout scheduling, which flushPromises misses.
+    await new Promise(r => setTimeout(r, 0))
 
     await wrapper.find('.leaf-checkbox').trigger('click')
     await wrapper.find('.bulk-move').trigger('click')
@@ -438,7 +448,7 @@ describe('MatchesView — Move to profile picker', () => {
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
     ]
     const wrapper = mountView(records)
-    await flushPromises()
+    await new Promise(r => setTimeout(r, 0))
 
     await wrapper.findAll('.leaf-checkbox')[0]!.trigger('click')
     await wrapper.findAll('.leaf-checkbox')[1]!.trigger('click')
@@ -457,7 +467,7 @@ describe('MatchesView — Move to profile picker', () => {
     vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'], immutable: [] })
     const records = [makeRecord({ match_key: 'k1' })]
     const wrapper = mountView(records)
-    await flushPromises()
+    await new Promise(r => setTimeout(r, 0))
 
     await wrapper.find('.leaf-checkbox').trigger('click')
     await wrapper.find('.bulk-move').trigger('click')
