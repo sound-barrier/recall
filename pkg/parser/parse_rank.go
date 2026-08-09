@@ -26,9 +26,9 @@ var knownRanks = []string{
 var knownModifiers = []string{
 	"expected", "uphill battle", "reversal", "consolation",
 	"win streak", "loss streak", "calibration", "volatile",
-	// 2026-07 UI wording for the streak pair. Only LOSING TREND has a
-	// fixture; WINNING TREND is its symmetric sibling — a closed list that
-	// misses a chip drops it silently, so the pair lands together.
+	// 2026-07 UI wording for the streak pair, both fixture-pinned (one
+	// LOSING TREND capture, two WINNING TREND) — a closed list that misses
+	// a chip drops it silently.
 	"winning trend", "losing trend",
 	"new map", "leaver compensation",
 	"victory", "defeat", "draw",

@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -55,8 +56,18 @@ func TestParseScreenshot_ProbeErrorFailsFast(t *testing.T) {
 	if err == nil {
 		t.Fatalf("persistent probe OCR error must fail the parse, got result %+v", res)
 	}
+	// Guard against a vacuous pass: if the fake binary fails LookPath (e.g.
+	// no executable extension on Windows), ParseScreenshot errors BEFORE any
+	// probe runs and the loop below asserts nothing. The error must be the
+	// probe's, and the probe must actually have been attempted.
+	if !strings.Contains(err.Error(), "rank probe") {
+		t.Fatalf("error must come from the failed probe, got: %v", err)
+	}
 	mu.Lock()
 	defer mu.Unlock()
+	if len(regions) == 0 {
+		t.Fatal("the rank probe was never OCR'd — the test asserted nothing")
+	}
 	for _, r := range regions {
 		if r != "detect_rank" {
 			t.Errorf("after the first probe errored, no further OCR may run; saw region %q (all: %v)", r, regions)
