@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "runasapi",
+    "game_mode": "push",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 10,
+    "assists": 5,
+    "deaths": 6,
+    "result": "defeat",
+    "final_score": "0-1",
+    "date": "2026-07-14",
+    "finished_at": "01:47",
+    "game_length": "10:00",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "10:00"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 10,
+        "avg_per_10min": 10
+      },
+      "assists": {
+        "total": 5,
+        "avg_per_10min": 5
+      },
+      "deaths": {
+        "total": 6,
+        "avg_per_10min": 6
+      }
+    }
+  }
+}

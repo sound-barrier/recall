@@ -1,0 +1,43 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "rialto",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "mizuki",
+    "eliminations": 7,
+    "assists": 7,
+    "deaths": 8,
+    "result": "defeat",
+    "final_score": "0-3",
+    "date": "2026-07-05",
+    "finished_at": "18:47",
+    "game_length": "12:51",
+    "heroes_played": [
+      {
+        "hero": "mizuki",
+        "percent_played": 95,
+        "play_time": "10:50"
+      },
+      {
+        "hero": "wuyang",
+        "percent_played": 5,
+        "play_time": "00:33"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 7,
+        "avg_per_10min": 2.63
+      },
+      "assists": {
+        "total": 7,
+        "avg_per_10min": 6.14
+      },
+      "deaths": {
+        "total": 8,
+        "avg_per_10min": 7.02
+      }
+    }
+  }
+}

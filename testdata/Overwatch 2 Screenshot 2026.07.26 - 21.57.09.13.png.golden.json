@@ -1,0 +1,23 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "victory",
+    "hero": "lucio",
+    "role": "support",
+    "rank": "gold",
+    "level": 0,
+    "rank_progress": 78,
+    "change_percent": 0,
+    "modifiers": [
+      "victory"
+    ],
+    "sr": [
+      {
+        "hero": "lucio",
+        "sr": 2750,
+        "change": 6
+      }
+    ]
+  }
+}

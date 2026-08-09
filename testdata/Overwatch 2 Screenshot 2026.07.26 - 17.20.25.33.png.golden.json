@@ -1,0 +1,29 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "victory",
+    "hero": "mizuki",
+    "role": "support",
+    "rank": "gold",
+    "level": 0,
+    "rank_progress": 52,
+    "change_percent": 27,
+    "modifiers": [
+      "uphill battle",
+      "victory"
+    ],
+    "sr": [
+      {
+        "hero": "mizuki",
+        "sr": 2458,
+        "change": 24
+      },
+      {
+        "hero": "wuyang",
+        "sr": 2233,
+        "change": 20
+      }
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "juno",
+    "role": "support",
+    "rank": "gold",
+    "level": 0,
+    "rank_progress": 52,
+    "change_percent": 0,
+    "modifiers": [
+      "leaver compensation",
+      "defeat"
+    ],
+    "sr": [
+      {
+        "hero": "juno",
+        "sr": 2154,
+        "change": 0
+      },
+      {
+        "hero": "brigitte",
+        "sr": 2888,
+        "change": 0
+      },
+      {
+        "hero": "mizuki",
+        "sr": 2434,
+        "change": -2
+      }
+    ]
+  }
+}

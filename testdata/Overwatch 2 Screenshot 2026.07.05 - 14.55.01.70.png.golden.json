@@ -1,0 +1,30 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "support",
+    "hero": "ana",
+    "heroes_played": [
+      {
+        "hero": "ana",
+        "percent_played": 32,
+        "play_time": "01:13",
+        "stats": {
+          "biotic_grenade_kills": 0,
+          "enemies_slept": 0,
+          "healing_amplified": 147,
+          "healing_prevented": 91,
+          "nano_boost_assists": 0,
+          "players_saved": 2,
+          "scoped_accuracy": 18,
+          "sleep_dart_accuracy": 0
+        }
+      },
+      {
+        "hero": "juno"
+      },
+      {
+        "hero": "lucio"
+      }
+    ]
+  }
+}
