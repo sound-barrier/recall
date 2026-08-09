@@ -170,10 +170,12 @@ export function streakMeterImpact(records: readonly Pick<MatchRecord, 'data'>[])
     if (typeof cp !== 'number' || cp === 0) continue
     const mods = rec.data?.modifiers ?? []
     if (mods.includes('calibration')) continue
-    if (mods.includes('win streak')) {
+    // 'winning trend' / 'losing trend' are the 2026-07 UI's wording for the
+    // same streak chips — bucket both generations together.
+    if (mods.includes('win streak') || mods.includes('winning trend')) {
       streak.push(Math.abs(cp))
       winStreakNet += cp
-    } else if (mods.includes('loss streak')) {
+    } else if (mods.includes('loss streak') || mods.includes('losing trend')) {
       streak.push(Math.abs(cp))
       lossStreakNet += cp
     } else {
