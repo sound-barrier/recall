@@ -2,7 +2,7 @@
   "screenshot_type": "rank",
   "result": {
     "playlist": "competitive",
-    "result": "",
+    "result": "victory",
     "hero": "kiriko",
     "role": "support",
     "rank": "",
@@ -10,7 +10,8 @@
     "rank_progress": 100,
     "change_percent": 0,
     "modifiers": [
-      "expected"
+      "expected",
+      "victory"
     ],
     "sr": [
       {
