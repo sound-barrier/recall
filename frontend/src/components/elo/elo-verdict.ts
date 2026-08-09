@@ -4,9 +4,9 @@
 // is a summary of the simulation, never a second model that can disagree
 // with the cards below it.
 
-import { PROVISIONAL_MIN_DECISIVE } from '@/match/elo-model'
+import { PROVISIONAL_MIN_DECISIVE, gamesToWeeks } from '@/match/elo-model'
 import type { CeilingRange } from '@/match/elo-bayes'
-import { fmtGames, fmtScoreRank } from '@/components/elo/elo-format'
+import { fmtGames, fmtScoreRank, fmtWeeks } from '@/components/elo/elo-format'
 
 interface VerdictSim {
   probReachTarget: number
@@ -24,10 +24,16 @@ export interface VerdictInput {
   requiredWinRate: number | null // decay's asymptotic hold-the-target rate
   expectedGamesDecay: number | null
   ceiling: CeilingRange
+  // The target in ladder units, so the capped branch can tell a range that
+  // falls short from one that straddles the target.
+  targetScoreLadder: number
   sim: VerdictSim | null
   horizonGames: number
   paceAssumed: boolean
-  weeksLabel: string | null
+  // Weeks labels derive from the SAME games number as each headline —
+  // pairing a sim/decay games count with the naive model's weeks made the
+  // flagship sentence contradict its own arithmetic.
+  gamesPerWeek: number | null
 }
 
 export interface Verdict {
@@ -46,6 +52,13 @@ export function fmtCeilingRange(c: CeilingRange): string {
   return lo === hi ? lo : `${lo}–${hi}`
 }
 const ceilingLabel = fmtCeilingRange
+
+// weeksFor prices a games count at the player's pace — always the SAME
+// games number the caller just put in the headline.
+function weeksFor(games: number | null, gamesPerWeek: number | null): string {
+  const label = fmtWeeks(gamesToWeeks(games, gamesPerWeek))
+  return label ? ` — ${label}` : ''
+}
 
 function reachClause(sim: VerdictSim | null, target: string, horizon: number, paceAssumed: boolean): string {
   if (sim === null) return ''
@@ -78,7 +91,7 @@ export function deriveVerdict(v: VerdictInput): Verdict {
       tone: 'is-early',
       eyebrow: `Early read — only ${games}${forEdits}`,
       head: reach >= 50 ? `${v.target} looks reachable` : 'Too early to call',
-      sub: `${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)} ${games} barely pins a win rate, so read this as a sketch: your form most likely tops out somewhere between ${ceiling}, and that range tightens with every game. Around ${PROVISIONAL_MIN_DECISIVE} decisive games this becomes a real verdict.`.trim(),
+      sub: `${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)} ${games} barely pins a win rate, so read this as a sketch: your form most likely tops out around ${ceiling}, and that range tightens with every game. Around ${PROVISIONAL_MIN_DECISIVE} decisive games this becomes a real verdict.`.trim(),
     }
   }
 
@@ -98,6 +111,16 @@ export function deriveVerdict(v: VerdictInput): Verdict {
         sub: `At ${v.winRatePct}% over ${v.n} games, the measured decay says you'd level off before ${v.target} — but your climb history is still consistent with an improver, so no hard ceiling is detectable yet. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)} ${holdLine}`,
       }
     }
+    // The range's top clears the target: "capped short of it" would
+    // contradict the range in the same breath. Borderline is the truth.
+    if (v.ceiling.hi >= v.targetScoreLadder) {
+      return {
+        tone: 'is-hard',
+        eyebrow: `Reality check${forEdits}`,
+        head: `${v.target} is borderline`,
+        sub: `At ${v.winRatePct}% over ${v.n} games, your ceiling range straddles ${v.target}: the measured middle lands short, the range's top clears it. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)} ${holdLine}`,
+      }
+    }
     return {
       tone: 'is-hard',
       eyebrow: `Reality check${forEdits}`,
@@ -112,15 +135,17 @@ export function deriveVerdict(v: VerdictInput): Verdict {
   // exactly that instead of claiming a median that never happened.
   const p50 = v.sim?.gamesToTargetP50 ?? null
   const lowerPct = v.sim === null ? null : Math.round(v.sim.probEndLower * 100)
-  const spread = lowerPct === null ? '' : ` ${lowerPct}% end lower than today — both numbers are ordinary spread at your rate, not the queue's mood.`
-  const pace = v.weeksLabel === null ? '' : ` — ${v.weeksLabel}`
-  const tail = ` Your form points to a ceiling around ${ceiling}, past ${v.target} — the climb should stick; you're underranked, not hardstuck.`
+  const spread = lowerPct === null ? '' : ` ${lowerPct}% end lower than today — ordinary spread at your rate, not the queue's mood.`
+  // Open-top label doesn't compose mid-sentence — give it its own tail.
+  const tail = v.ceiling.hi === null
+    ? ` Your climb history shows no hard ceiling yet — the climb should stick; you're underranked, not hardstuck.`
+    : ` Your form points to a ceiling around ${ceiling}, past ${v.target} — the climb should stick; you're underranked, not hardstuck.`
   if (p50 !== null) {
     return {
       tone: '',
       eyebrow: v.isEdited ? 'If your edits hold' : 'If your form holds',
       head: fmtGames(p50),
-      sub: `to reach ${v.target} in the median simulated season at ${v.winRatePct}%${pace}. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)}${spread}${tail}`,
+      sub: `to reach ${v.target} in the median simulated season at ${v.winRatePct}%${weeksFor(p50, v.gamesPerWeek)}. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)}${spread}${tail}`,
     }
   }
   const reach = v.sim === null ? null : Math.round(v.sim.probReachTarget * 100)
@@ -131,6 +156,6 @@ export function deriveVerdict(v: VerdictInput): Verdict {
     tone: '',
     eyebrow: v.isEdited ? 'If your edits hold' : 'If your form holds',
     head: fmtGames(v.expectedGamesDecay),
-    sub: `to reach ${v.target} at ${v.winRatePct}% if the tougher-lobbies pace holds${pace}.${seasonNote}${spread}${tail}`,
+    sub: `to reach ${v.target} at ${v.winRatePct}% if the tougher-lobbies pace holds${weeksFor(v.expectedGamesDecay, v.gamesPerWeek)}.${seasonNote}${spread}${tail}`,
   }
 }

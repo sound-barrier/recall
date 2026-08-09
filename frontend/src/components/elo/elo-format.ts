@@ -25,7 +25,8 @@ export function fmtGames(games: number | null): string {
   if (games === null) return '—'
   if (games === 0) return 'Already there'
   if (games > GAMES_DISPLAY_CAP) return 'Effectively never'
-  return `~${Math.ceil(games)} games`
+  const n = Math.ceil(games)
+  return `~${n} game${n === 1 ? '' : 's'}`
 }
 
 // fmtGamesRange turns the 95% interval into a best-case / unlucky-run spread —
@@ -35,7 +36,7 @@ export function fmtGamesRange(range: GamesRange, sampleN: number): string {
   if (range.lower === null) return ''
   const best = Math.ceil(range.lower)
   if (range.upper === null) {
-    return `Best case ~${best}; with only ${sampleN} games, a cold streak could stretch it out a lot`
+    return `Best case ~${best}; with a sample of ${sampleN} game${sampleN === 1 ? '' : 's'}, a cold streak can't be ruled out`
   }
   if (range.upper > GAMES_DISPLAY_CAP) {
     return `Best case ~${best}; an unlucky run, far longer`
@@ -66,6 +67,8 @@ export function fmtPct(value: number | null, digits = 0): string {
 
 export function fmtPValue(p: number | null): string {
   if (p === null) return '—'
-  if (p < 0.0001) return 'p < 0.0001'
+  // Three decimals floor at 0.001 — anything smaller printed the absurd
+  // "p = 0.000", which reads as exactly zero.
+  if (p < 0.001) return 'p < 0.001'
   return `p = ${p.toFixed(p < 0.01 ? 3 : 2)}`
 }

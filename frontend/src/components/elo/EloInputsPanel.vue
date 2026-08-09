@@ -50,7 +50,7 @@ const slopeHint = computed(() => {
 // ceiling the decay model levels off at. Changes as the user drags the knob.
 const plateauLine = computed(() => {
   if (!projInput.value || !decay.value) return null
-  return `At ${decaySlopePts.value} pts per division, your current form levels off near ${fmtScoreRank(decay.value.impliedTrueScore)}.`
+  return `At exactly ${decaySlopePts.value} pts per division, your current form levels off near ${fmtScoreRank(decay.value.impliedTrueScore)} — the cards above quote it as a range because neither the slope nor your rate is exact.`
 })
 </script>
 

@@ -13,10 +13,11 @@ function input(over: Partial<VerdictInput> = {}): VerdictInput {
     requiredWinRate: null,
     expectedGamesDecay: 90,
     ceiling: { lo: 15.2, hi: 18.1 },
+    targetScoreLadder: 20,
     sim: { probReachTarget: 0.47, probEndLower: 0.22, gamesToTargetP50: 96, sims: 4000 },
     horizonGames: 120,
     paceAssumed: false,
-    weeksLabel: '≈ 10 weeks',
+    gamesPerWeek: 10,
     ...over,
   }
 }
@@ -88,9 +89,31 @@ describe('deriveVerdict', () => {
     expect(deriveVerdict(input({ isEdited: true, n: 3 })).eyebrow).toContain('— for your edits')
   })
 
-  it('an open-top ceiling names the honest floor instead of a fake range', () => {
+  it('an open-top ceiling gets its own honest tail instead of a garbled range', () => {
     const v = deriveVerdict(input({ n: 25, ceiling: { lo: 16.4, hi: null } }))
-    expect(v.sub).toContain('no hard ceiling is detectable yet')
+    expect(v.sub).toContain('no hard ceiling yet')
+    expect(v.sub).not.toContain('or higher — no hard ceiling is detectable yet, past')
+  })
+
+  it('the weeks label prices the SAME games number as the headline', () => {
+    // p50 = 96 at 10 games/week → ≈ 10 weeks; a naive-model label here
+    // once printed weeks that contradicted the head by 2x near a plateau.
+    const v = deriveVerdict(input({}))
+    expect(v.sub).toContain('≈ 9.6 weeks')
+    const slow = deriveVerdict(input({
+      sim: { probReachTarget: 0.6, probEndLower: 0.2, gamesToTargetP50: 200, sims: 4000 },
+    }))
+    expect(slow.sub).toContain('≈ 20 weeks')
+  })
+
+  it('a ceiling range straddling the target reads borderline, not capped', () => {
+    const v = deriveVerdict(input({
+      requiredWinRate: 0.56, targetScoreLadder: 17, ceiling: { lo: 15.5, hi: 18.2 },
+      sim: { probReachTarget: 0.4, probEndLower: 0.35, gamesToTargetP50: null, sims: 4000 },
+    }))
+    expect(v.head).toBe('Platinum 5 is borderline')
+    expect(v.sub).toContain('straddles Platinum 5')
+    expect(v.sub).not.toContain('short of Platinum 5.')
   })
 
   it('an open-top slope CI softens the capped claim — never "Capped" + "no ceiling"', () => {

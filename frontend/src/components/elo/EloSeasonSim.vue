@@ -66,7 +66,7 @@ const cells = computed<Cell[]>(() => {
       </div>
     </div>
     <p v-if="!seasonSim.usedEmpiricalMeter" class="elo-band-sub elo-fine-print">
-      Not enough rank cards to resample your real moves — these seasons were simulated with the form's ± meter value instead.
+      Not enough rank cards to replay your real meter moves — these seasons use a flat ± typical move per game instead.
     </p>
   </section>
 </template>

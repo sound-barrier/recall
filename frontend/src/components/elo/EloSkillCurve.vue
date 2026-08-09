@@ -40,7 +40,10 @@ const shiftLine = computed(() => {
       : context.poolLeft.length > 0
         ? ` — around when ${context.poolLeft.join(' and ')} left your pool`
         : ''
-  return `Your win rate shifted around ${when}: ${cp.point.before.winrate}% → ${cp.point.after.winrate}% (${fmtPValue(cp.point.pValue)})${correlate}. Correlation, not causation — and a long climb sagging toward 50% can read as a downward shift.`
+  const sagCaveat = cp.point.after.winrate < cp.point.before.winrate
+    ? ' — and a long climb sagging toward 50% can read as a downward shift'
+    : ''
+  return `Your win rate shifted around ${when}: ${cp.point.before.winrate}% → ${cp.point.after.winrate}% (${fmtPValue(cp.point.pValue)})${correlate}. Correlation, not causation${sagCaveat}.`
 })
 
 const sharePct = computed(() =>

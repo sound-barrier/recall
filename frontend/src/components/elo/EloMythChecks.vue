@@ -38,7 +38,7 @@ function riggedCheck(): Check {
     return {
       id: 'rigged', stat: 'p-value', q: 'Rigged MMR?',
       a: 'No — that rate is real',
-      note: `Over ${sampleN.value} games, luck alone almost never lands on ${rate}%.${above ? '' : " It's really yours — which means the playbook above can really move it."} (${fmtPValue(p)})`,
+      note: `Over ${sampleN.value} game${sampleN.value === 1 ? '' : 's'}, luck alone almost never lands on ${rate}%.${above ? '' : " It's really yours — which means the playbook above can really move it."} (${fmtPValue(p)})`,
       tone: above ? 'good' : 'neutral',
     }
   }
@@ -72,7 +72,7 @@ function riggedCheck(): Check {
   return {
     id: 'rigged', stat: 'p-value', q: 'Rigged MMR?',
     a: 'Too few games to tell',
-    note: `At ${sampleN.value} games your record still looks like a coin flip — play more before blaming the system. (${fmtPValue(p)})`,
+    note: `At ${sampleN.value} game${sampleN.value === 1 ? '' : 's'} your record still looks like a coin flip — play more before blaming the system. (${fmtPValue(p)})`,
     tone: 'neutral',
   }
 }
@@ -116,19 +116,28 @@ const checks = computed<Check[]>(() => {
     out.push({
       id: 'skeptic', stat: 'bayes', q: 'Better than a coin?',
       a: coinAnswer(prob),
-      note: `Start from the harshest assumption — that you're a pure coin flip. Your ${sampleN.value} games move the odds to ${prob} in 100 that your true win rate beats even. The rate itself most likely sits in ${lo}–${hi}%, ${lean}.${priorNote}`,
+      note: `Start from the harshest assumption — that you're a pure coin flip. Your ${sampleN.value} game${sampleN.value === 1 ? '' : 's'} move the odds to ${prob} in 100 that your true win rate beats even. The rate itself most likely sits in ${lo}–${hi}%, ${lean}.${priorNote}`,
       tone: provisional.value ? 'neutral' : prob >= 90 ? 'good' : prob <= 50 ? 'warn' : 'neutral',
     })
   }
 
   if (lossStreak.value !== null) {
     const chance = lossStreak.value
+    // Below half a percent, "rare, but real" oversells a rounding artifact.
+    const a = chance >= 0.2
+      ? `${fmtPct(chance * 100)} — normal`
+      : chance >= 0.005
+        ? `${fmtPct(chance * 100)} — rare, but real`
+        : 'Effectively never at this rate'
+    const note = chance >= 0.2
+      ? `A ${streakLen}-loss streak in your next ${streakHorizon} games is ${fmtPct(chance * 100)} likely at ${effectiveWinRatePct.value}%. Expected, not rigged.`
+      : chance >= 0.005
+        ? `Even at ${effectiveWinRatePct.value}%, a ${streakLen}-loss run lands about ${fmtPct(chance * 100)} of the time over ${streakHorizon} games — rare enough to sting, still just variance.`
+        : `At ${effectiveWinRatePct.value}%, a ${streakLen}-loss run over ${streakHorizon} games rounds to zero — if one happens anyway, look at tilt before the matchmaker.`
     out.push({
       id: 'streaks', stat: 'streak', q: 'Endless loss streaks?',
-      a: `${fmtPct(chance * 100)} — ${chance >= 0.2 ? 'normal' : 'rare, but real'}`,
-      note: chance >= 0.2
-        ? `A ${streakLen}-loss streak in your next ${streakHorizon} games is ${fmtPct(chance * 100)} likely at ${effectiveWinRatePct.value}%. Expected, not rigged.`
-        : `Even at ${effectiveWinRatePct.value}%, a ${streakLen}-loss run lands about ${fmtPct(chance * 100)} of the time over ${streakHorizon} games — rare enough to sting, still just variance.`,
+      a,
+      note,
       tone: 'neutral',
     })
   }
@@ -176,7 +185,7 @@ const checks = computed<Check[]>(() => {
       note: `Playing your ${rate}% record out ${seasonSim.value.sims.toLocaleString()} times — lobbies toughening as you climb, like the amber curve — these are your odds of touching ${target.value} within ~${simHorizonGames.value} games${pace}. Touching counts any moment of the season; you can brush it and still slip back.${hold}`,
       tone: 'neutral',
     })
-  } else if (seasonGames.value !== null && projInput.value !== null) {
+  } else if (seasonGames.value !== null && projInput.value !== null && projInput.value.targetScore > projInput.value.currentScore) {
     const rate = effectiveWinRatePct.value
     const req = requiredWrForSeason.value
     out.push({
