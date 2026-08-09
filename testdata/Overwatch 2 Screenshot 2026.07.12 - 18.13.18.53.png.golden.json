@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "neon function",
+    "game_mode": "hybrid",
+    "role": "support",
+    "hero": "mizuki",
+    "eliminations": 20,
+    "assists": 16,
+    "deaths": 10,
+    "result": "defeat",
+    "final_score": "1-3",
+    "date": "2026-07-12",
+    "finished_at": "18:12",
+    "game_length": "14:51",
+    "heroes_played": [
+      {
+        "hero": "mizuki",
+        "percent_played": 100,
+        "play_time": "13:23"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 20,
+        "avg_per_10min": 14.93
+      },
+      "assists": {
+        "total": 16,
+        "avg_per_10min": 11.94
+      },
+      "deaths": {
+        "total": 10,
+        "avg_per_10min": 7.46
+      }
+    }
+  }
+}

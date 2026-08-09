@@ -1,0 +1,37 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "neon function",
+    "game_mode": "hybrid",
+    "role": "support",
+    "hero": "kiriko",
+    "eliminations": 19,
+    "assists": 30,
+    "deaths": 0,
+    "result": "victory",
+    "final_score": "3-1",
+    "date": "2026-07-26",
+    "finished_at": "19:10",
+    "game_length": "14:31",
+    "heroes_played": [
+      {
+        "hero": "kiriko",
+        "percent_played": 100,
+        "play_time": "13:04"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 19,
+        "avg_per_10min": 14.54
+      },
+      "assists": {
+        "total": 30,
+        "avg_per_10min": 22.96
+      },
+      "deaths": {
+        "total": 0
+      }
+    }
+  }
+}

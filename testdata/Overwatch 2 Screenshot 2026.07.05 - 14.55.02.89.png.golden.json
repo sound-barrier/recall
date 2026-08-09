@@ -1,0 +1,30 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "support",
+    "hero": "lucio",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 31,
+        "play_time": "01:10",
+        "stats": {
+          "environmental_kills": 0,
+          "healing_boost_usage": 44,
+          "knockback_kills": 0,
+          "players_knocked_back": 2,
+          "players_saved": 0,
+          "sound_barriers_provided": 0,
+          "speed_boost_usage": 56,
+          "weapon_accuracy": 21
+        }
+      },
+      {
+        "hero": "juno"
+      },
+      {
+        "hero": "ana"
+      }
+    ]
+  }
+}

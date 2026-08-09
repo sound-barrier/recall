@@ -1,0 +1,27 @@
+{
+  "screenshot_type": "unknown",
+  "result": {
+    "map": "",
+    "game_mode": "",
+    "playlist": "competitive",
+    "role": "support",
+    "hero": "kiriko",
+    "eliminations": 0,
+    "assists": 0,
+    "deaths": 0,
+    "damage": 0,
+    "healing": 0,
+    "mitigation": 0,
+    "modifiers": [
+      "expected"
+    ],
+    "rank_progress": 100,
+    "sr": [
+      {
+        "hero": "kiriko",
+        "sr": 1942,
+        "change": 25
+      }
+    ]
+  }
+}

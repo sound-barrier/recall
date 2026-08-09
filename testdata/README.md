@@ -130,6 +130,30 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
     on some captures (`GOLD` → `GOD` / `6010`), so `extractRank` returned no rank
     and the whole screen mis-classified as summary/unknown; the tier now reads
     from the same wide band the rank detector probes.
+- [x] rank screen — **2026-07 season UI** (×13, 2560×1440): the redesigned
+      rank-update screen. Pins the stylized-numeral level loss (the division
+      caption's italic digit OCRs as `J`/`?` under PSM 11 — `PI ATINUM J`,
+      `GOLD J`, `FOLD?` — recovered by a PSM-6 re-read of the same band),
+      modifier chips that track the progress-bar fill and clipped at the old
+      72% band edge (`VICTORY` → `VICTC`), the new `DEMOTION` + `LOSING TREND`
+      chips, leaver-compensation / consolation / uphill-battle / expected
+      states, two Platinum-5 captures, and one background-degraded tier band
+      (19.11.20.18) that must stay an honest partial rank row rather than
+      landing on the Unknown tab.
+- [x] SUMMARY — 2026-07 UI history-browser variant (×6): two NEON JUNCTION
+      games (regression pin for the "Neon Function" maps.yaml poisoning — OCR
+      garble must snap to the real name, never be canonicalized as one), two
+      captures taken long after match end (the ambiguous-key workflow:
+      screenshotting from the match-history browser lands captures in the
+      Ambiguous queue by design — resolve via the picker, don't "fix" it),
+      a three-hero card with the requeue banner, and Esperança (diacritic).
+- [x] PERSONAL — 2026-07 UI (×3): Mizuki ability-stat labels (HEALING KASA /
+      REMEDY AURA / BINDING CHAIN), NEW CAREER BEST badges, and a
+      percent-only stat-card set (Lúcio).
+- [x] TEAMS — 2026-07 UI (×1): decorated gradient nameplates, player titles,
+      and endorsement badges around names; the capturing player's team shows
+      an all-zero E/A column pair (correct reads — silent zeros are what the
+      parser must NOT confuse with failed reads).
 - [ ] in-game TAB screenshot (different layout, right panel populated)
 - [x] non-match screen → `unknown` — the career **HISTORY / Game Reports**
       browser (a list of past matches). Guards that the classifier leaves

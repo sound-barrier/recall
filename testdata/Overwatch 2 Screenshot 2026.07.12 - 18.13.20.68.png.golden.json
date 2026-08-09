@@ -1,0 +1,24 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "support",
+    "hero": "mizuki",
+    "heroes_played": [
+      {
+        "hero": "mizuki",
+        "percent_played": 100,
+        "play_time": "13:23",
+        "stats": {
+          "average_aura": 40,
+          "binding_chain_accuracy": 47,
+          "enemies_hindered": 15,
+          "healing_kasa_healing": 6461,
+          "players_saved": 14,
+          "remedy_aura_healing": 4637,
+          "ultimates_negated": 0,
+          "weapon_accuracy": 33
+        }
+      }
+    ]
+  }
+}
