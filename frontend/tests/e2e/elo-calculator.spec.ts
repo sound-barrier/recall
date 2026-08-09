@@ -159,10 +159,14 @@ test.describe('Elo Calculator', () => {
     // The headline verdict is the honest reality check, not a fantasy count.
     await expect(page.locator('[data-elo-answer]')).toContainText(/capped|reality|52\.4%/i)
 
-    // The season receipt ANSWERS the sub-50 case instead of vanishing.
+    // The season receipt ANSWERS the sub-50 case with the simulator's own
+    // odds — variance can still touch the target — plus the hold-rate
+    // counterweight. (The old closed form said "never completes", which
+    // contradicted the sim two cards below; one model now.)
     const season = page.locator('[data-elo-stat="season"]')
-    await expect(season).toContainText(/not at this rate/i)
-    await expect(season).toContainText(/you'd need about \d+(\.\d+)?%/i)
+    await expect(season).toContainText(/% chance|very unlikely/i)
+    await expect(season).toContainText(/playing your 48% record out/i)
+    await expect(season).toContainText(/holding .* would take about \d+(\.\d+)?%/i)
   })
 
   test('losing at volume gets the honest dip answer, not "near even"', async ({ page }) => {
@@ -271,11 +275,12 @@ test.describe('Elo Calculator', () => {
     await expect(coin).not.toContainText(/skeptic's own assumption/i)
     await expect(coin).not.toContainText(/forced 50-50/i)
 
-    // The season receipt names its assumption and carries the decay
-    // counterweight instead of silently contradicting the capped verdict.
+    // The season receipt quotes the decay-aware simulation itself — the
+    // same number the season band shows — instead of a second model that
+    // could contradict the verdict.
     const season = page.locator('[data-elo-stat="season"]')
-    await expect(season).toContainText(/if your 51% holds/i)
-    await expect(season).toContainText(/amber future/i)
+    await expect(season).toContainText(/playing your 51% record out/i)
+    await expect(season).toContainText(/lobbies toughening as you climb/i)
   })
 
   test('the page tells its story in order: truth, playbook, price, proof, receipts', async ({ page }) => {
