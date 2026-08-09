@@ -75,6 +75,15 @@ export interface SimInput {
   meter: MeterSamples | { symmetricPct: number }
   // Used when `meter` carries pools but one side is under MIN_POOL.
   symmetricFallbackPct?: number
+  // Win-rate FRACTION lost per division climbed (ProjectionInput.decaySlope).
+  // Applied per step: a season's win prob falls as its score rises above the
+  // start, so simulated seasons plateau where the decay model says they
+  // should — the one model every card shares. Default 0 = legacy behavior.
+  decaySlope?: number
+  // Hero what-if delta in POINTS (effective − measured rate). Shifts each
+  // season's drawn win prob without touching the posterior's sample counts —
+  // the dial moves projections, never the evidence about played games.
+  rateShiftPts?: number
 }
 
 export interface SimOpts {
@@ -129,8 +138,12 @@ export function simulateSeasons(input: SimInput, opts: SimOpts = {}): SeasonSim 
   let reached = 0
   let endedLower = 0
 
+  const slope = input.decaySlope ?? 0
+  const shift = (input.rateShiftPts ?? 0) / 100
+  const clamp01 = (x: number): number => Math.min(1, Math.max(0, x))
+
   for (let s = 0; s < sims; s++) {
-    const p = betaQuantile(rng(), alpha, beta)
+    const pSeason = clamp01(betaQuantile(rng(), alpha, beta) + shift)
     let score = input.currentScore
     let hit = -1
     let check = 0
@@ -140,7 +153,9 @@ export function simulateSeasons(input: SimInput, opts: SimOpts = {}): SeasonSim 
         check++
       }
       if (g === input.horizonGames) break
-      const win = rng() < p
+      // Tougher lobbies as you climb: the drawn form rate erodes by the
+      // decay slope per division above the start (and recovers below it).
+      const win = rng() < clamp01(pSeason - slope * (score - input.currentScore))
       const pool = win ? winMoves : lossMoves
       const step = pool[Math.floor(rng() * pool.length)] ?? 0
       score = Math.min(LADDER_MAX, Math.max(0, score + step / 100))

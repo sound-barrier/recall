@@ -205,6 +205,28 @@ describe('useEloCalculator — phase 2 (simulator + skill curve)', () => {
     expect(curve.signalShare).toBeLessThanOrEqual(1)
   })
 
+  it('the season probability IS the simulator reach share, decay included', () => {
+    seq = 0
+    const rows: MatchRecord[] = []
+    for (let i = 0; i < 60; i++) {
+      const old = i < 30
+      const win = old ? i % 10 < 7 : i % 10 < 6
+      rows.push(rec({
+        result: win ? 'victory' : 'defeat',
+        rank: { tier: 'gold', level: old ? 5 : 2, progress: 0, change: win ? 20 : -20 },
+      }))
+    }
+    const calc = useEloCalculator({ mapGameMode, records: rows.reverse(), heroRole })
+    const sim = calc.seasonSim.value!
+    expect(sim).not.toBeNull()
+    expect(calc.probThisSeason.value).toBe(sim.probReachTarget)
+    // Measured pace exists on this corpus — no assumed-pace disclaimer.
+    expect(calc.paceAssumed.value).toBe(false)
+    expect(calc.simHorizonGames.value).toBe(calc.seasonGames.value)
+    // The measured-baseline sim exists and agrees before any edits.
+    expect(calc.measuredSeasonSim.value?.probReachTarget).toBe(sim.probReachTarget)
+  })
+
   it('nulls both when there is nothing to simulate or filter', () => {
     const calc = useEloCalculator({ records: [], heroRole, mapGameMode })
     expect(calc.seasonSim.value).toBeNull()

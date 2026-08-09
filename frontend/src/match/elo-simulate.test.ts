@@ -78,6 +78,61 @@ describe('simulateSeasons', () => {
     expect(out.probReachTarget).toBeGreaterThan(0.95)
   })
 
+  it('omitting decaySlope and rateShiftPts reproduces the legacy output bit-for-bit', () => {
+    const legacy = simulateSeasons(base, { sims: 500, seed: 3 })
+    const explicit = simulateSeasons({ ...base, decaySlope: 0, rateShiftPts: 0 }, { sims: 500, seed: 3 })
+    expect(explicit).toEqual(legacy)
+  })
+
+  it('decay lowers the reach probability and stretches the median climb', () => {
+    // p ≈ 0.7 with slope 0.03 plateaus near 20.1 — a target past the plateau
+    // separates the models: the flat walk arrives comfortably inside 300
+    // games, the decayed one almost never does.
+    const flat = simulateSeasons({ ...base, currentScore: 13.4, targetScore: 25 }, { sims: 4000, seed: 1 })
+    const decayed = simulateSeasons(
+      { ...base, currentScore: 13.4, targetScore: 25, decaySlope: 0.03 },
+      { sims: 4000, seed: 1 },
+    )
+    expect(flat.probReachTarget).toBeGreaterThan(0.9)
+    expect(decayed.probReachTarget).toBeLessThan(0.1)
+    expect(decayed.gamesToTarget.p50 ?? Infinity).toBeGreaterThan(flat.gamesToTarget.p50 ?? 0)
+  })
+
+  it('a decayed season plateaus near the implied true score', () => {
+    // p pinned ≈ 0.7 → plateau at x0 + (p − 0.5)/s = 10 + 0.2/0.03 ≈ 16.7.
+    const out = simulateSeasons(
+      {
+        currentScore: 10, targetScore: 30, sampleWins: 700_000_000, sampleLosses: 300_000_000,
+        horizonGames: 2000, meter: { symmetricPct: 20 }, decaySlope: 0.03,
+      },
+      { sims: 400, seed: 1 },
+    )
+    expect(out.finalScore.p50).toBeGreaterThan(15.7)
+    expect(out.finalScore.p50).toBeLessThan(17.7)
+    expect(out.probReachTarget).toBe(0)
+  })
+
+  it('a positive rate shift raises reach; a zero shift is a no-op', () => {
+    const plain = simulateSeasons({ ...base, currentScore: 13.4, targetScore: 15 }, { sims: 2000, seed: 5 })
+    const zero = simulateSeasons({ ...base, currentScore: 13.4, targetScore: 15, rateShiftPts: 0 }, { sims: 2000, seed: 5 })
+    const shifted = simulateSeasons(
+      { ...base, currentScore: 13.4, targetScore: 15, sampleWins: 500, sampleLosses: 500, rateShiftPts: 10 },
+      { sims: 2000, seed: 5 },
+    )
+    const unshifted = simulateSeasons(
+      { ...base, currentScore: 13.4, targetScore: 15, sampleWins: 500, sampleLosses: 500 },
+      { sims: 2000, seed: 5 },
+    )
+    expect(zero).toEqual(plain)
+    expect(shifted.probReachTarget).toBeGreaterThan(unshifted.probReachTarget)
+  })
+
+  it('stays seed-deterministic with decay active', () => {
+    const a = simulateSeasons({ ...base, decaySlope: 0.02, rateShiftPts: 3 }, { sims: 300, seed: 9 })
+    const b = simulateSeasons({ ...base, decaySlope: 0.02, rateShiftPts: 3 }, { sims: 300, seed: 9 })
+    expect(a).toEqual(b)
+  })
+
   it('a coin-flip posterior ends lower about half the time', () => {
     const out = simulateSeasons(
       {
