@@ -125,12 +125,14 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 		res.ChangePercent, _ = strconv.Atoi(m[1])
 	}
 
-	// Modifier pills below the progress bar. The right edge reaches 72% (not 55%):
-	// the pills are centered under the bar and drift right-of-center as rank
-	// progress climbs, so a 55% cut clipped a lone "VICTORY" pill (and the tail of
-	// multi-pill rows like the truncated "CONSOLAT[ION]") entirely. 72% stops short
-	// of the right-hand rank-tier badge (~78%+), so no icon noise bleeds in.
-	modifierRect := image.Rect(W*10/100, H*78/100, W*72/100, H*90/100)
+	// Modifier pills below the progress bar. The right edge reaches 76% (was
+	// 55%, then 72%): the pills are centered under the bar and drift
+	// right-of-center as rank progress climbs — on the 2026-07 UI a lone
+	// "VICTORY" chip at 100% progress sits at ~68-73% W and clipped to
+	// "VICTC" at the 72% cut, losing the modifier AND the result fallback.
+	// 76% still stops short of the right-hand rank-tier badge (~78%+), so no
+	// icon noise bleeds in; the old-UI corpus goldens pin that.
+	modifierRect := image.Rect(W*10/100, H*78/100, W*76/100, H*90/100)
 	modifierText, _ := ocrInverted(img, modifierRect, work, "rank_modifiers", "11", "")
 	res.Modifiers = extractModifiers(modifierText)
 
