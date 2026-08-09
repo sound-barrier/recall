@@ -1,11 +1,11 @@
 import { computed, nextTick, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import {
-  CheckForUpdate, GetDataLocation, GetVersion, StartSelfUpdate, RestartToApply, EventsOn,
-  type UpdateInfo, type DataLocation,
-} from '@/api-client'
+import { StartSelfUpdate, RestartToApply, EventsOn } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
+import {
+  runUpdateCheck, useDataLocationQuery, useUpdateCheckQuery, useVersionQuery,
+} from '@/queries/system'
 import {
   SelfUpdateEvents,
   type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
@@ -66,44 +66,33 @@ export const useAppStore = defineStore('app', () => {
   // ── Version + About (the update hub) ──────────────────────────────
   // Modeled on Chrome/Firefox: the update check lives inside About, not as a
   // standalone affordance. `openAbout` opens the dialog and kicks the check;
-  // the dialog renders version/license/links plus the result.
-  const appVersion = ref('')
-  const updateInfo = ref<UpdateInfo | null>(null)
-  // Gates the About dialog's update section while the GitHub releases
-  // roundtrip is in flight. The check is user-triggered (NOT on mount) so
-  // metered/locked-down setups don't pay for a lookup they didn't ask for.
-  const updateCheckBusy = ref(false)
-  const aboutOpen = ref(false)
+  // the dialog renders version/license/links plus the result. Server state
+  // lives in the query cache; the store exposes same-named computeds so
+  // consumers (storeToRefs) are untouched.
+  const versionQuery = useVersionQuery()
+  const appVersion = computed(() => versionQuery.data.value ?? '')
 
-  async function loadVersion() {
-    try { appVersion.value = await GetVersion() } catch (_) { /* leave blank */ }
-  }
+  // The update-check query is permanently disabled (user-pulled ONLY, so
+  // metered/locked-down setups don't pay for a lookup they didn't ask for);
+  // runUpdateCheck() is the single trigger and isFetching is the busy gate.
+  const updateQuery = useUpdateCheckQuery()
+  const updateInfo = computed(() => updateQuery.data.value ?? null)
+  const updateCheckBusy = computed(() => updateQuery.isFetching.value)
+  const aboutOpen = ref(false)
 
   // Open the About dialog and run the release check (Chrome's "About" auto-
   // checks on open). The dialog is the single entry point now that the
   // standalone masthead button is gone.
   function openAbout() {
     aboutOpen.value = true
-    void checkForUpdates()
+    void runUpdateCheck()
   }
   function closeAbout() { aboutOpen.value = false }
 
-  // GitHub release check. Idempotent — re-runs in flight are no-ops; re-runs
-  // after a result silently replace updateInfo. Does NOT open the dialog
-  // itself (openAbout owns that), so the About dialog can offer a re-check.
-  async function checkForUpdates() {
-    if (updateCheckBusy.value) return
-    updateCheckBusy.value = true
-    try {
-      const u = await CheckForUpdate()
-      if (u.checked) updateInfo.value = u
-    } catch (_) {
-      // Silent — the dialog shows the cached result or a network-failure
-      // message via its !info branch.
-    } finally {
-      updateCheckBusy.value = false
-    }
-  }
+  // GitHub release check — kept as a store action name for the About
+  // dialog's re-check button; in-flight dedup and the checked:false /
+  // failure semantics live in the query layer.
+  const checkForUpdates = runUpdateCheck
 
   // ── In-app self-update ────────────────────────────────────────────
   // Drives the About dialog's Install / progress / Restart affordance,
@@ -163,15 +152,10 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // ── Data location (Settings → Backup) ─────────────────────────────
-  // Hydrated by useAppBoot's fan-out at mount.
-  const dataLocation = ref<DataLocation | null>(null)
-  async function loadDataLocation() {
-    try {
-      dataLocation.value = await GetDataLocation()
-    } catch (_) {
-      dataLocation.value = null
-    }
-  }
+  // Fetched once by the query at store setup (an error reads as null —
+  // Settings hides the path grid).
+  const dataLocationQuery = useDataLocationQuery()
+  const dataLocation = computed(() => dataLocationQuery.data.value ?? null)
 
   // ── Startup failure ───────────────────────────────────────────────
   // Filled by useAppBoot from GetStartupError(); the modal is open iff the
@@ -193,7 +177,6 @@ export const useAppStore = defineStore('app', () => {
     updateInfo,
     updateCheckBusy,
     aboutOpen,
-    loadVersion,
     openAbout,
     closeAbout,
     checkForUpdates,
@@ -201,7 +184,6 @@ export const useAppStore = defineStore('app', () => {
     startSelfUpdate,
     restartToApply,
     dataLocation,
-    loadDataLocation,
     startupError,
     showStartupErrorModal,
     setStartupError,

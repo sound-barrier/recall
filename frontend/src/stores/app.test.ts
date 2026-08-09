@@ -42,6 +42,12 @@ beforeEach(() => {
 })
 
 describe('app store — About + checkForUpdates', () => {
+  it('never fires CheckForUpdate at store setup — the check is user-pulled only', async () => {
+    useAppStore()
+    await flushPromises()
+    expect(api.CheckForUpdate).not.toHaveBeenCalled()
+  })
+
   it('openAbout opens the dialog, kicks the check, and lands updateInfo', async () => {
     api.CheckForUpdate.mockResolvedValue({ checked: true, current: '1.0.0', latest: '1.1.0' })
     const app = useAppStore()

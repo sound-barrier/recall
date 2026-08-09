@@ -67,7 +67,10 @@ describe('matches store — load() boot coordinator', () => {
     const app = useAppStore()
     expect(matches.firstLoadPending).toBe(true)
 
-    await Promise.all([matches.load(), settings.load(), app.loadDataLocation()])
+    // dataLocation hydrates from its query at store setup — no loader call;
+    // a macrotask tick lets the observer land the mocked payload.
+    await Promise.all([matches.load(), settings.load()])
+    await new Promise(r => setTimeout(r, 0))
 
     expect(matches.records.map(r => r.match_key)).toEqual(['m-1', 'm-2'])
     expect(settings.screenshotsDir).toBe('/srv/recall')
