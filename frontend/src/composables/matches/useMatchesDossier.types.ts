@@ -225,6 +225,9 @@ export interface BucketEntry {
   count: number
   share: number
   winrate: number | null
+  // Raw win tally + decisive count so judgment consumers
+  // (bucketCellClass) read the exact fraction, never the rounded rate.
+  wins: number
   decisive: number
 }
 
