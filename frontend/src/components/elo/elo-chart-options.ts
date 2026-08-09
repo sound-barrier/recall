@@ -56,6 +56,11 @@ export interface EloChartOpts {
   // When the target is above the player's current ceiling, draw a dotted line
   // there so the plateau reads visually.
   ceilingScore?: number
+  // The ceiling's credible range — drawn as a translucent band around the
+  // dotted line so the plateau reads as an estimate, not a fact. hi=null
+  // (no ceiling detectable) suppresses the band; a degenerate range keeps
+  // just the line.
+  ceilingBand?: { lo: number; hi: number }
   // The simulator's 10–90% envelope over games — drawn as a second silent
   // band (gray) behind the model curves.
   fan?: SeasonSim['fan']
@@ -184,6 +189,15 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
                 label: { formatter: 'Your ceiling now', position: 'insideEndBottom', color: realityColor() },
                 lineStyle: { type: 'dotted', color: realityColor() },
                 data: [{ yAxis: opts.ceilingScore }],
+              },
+            }
+          : {}),
+        ...(opts.ceilingBand !== undefined && opts.ceilingBand.hi > opts.ceilingBand.lo
+          ? {
+              markArea: {
+                silent: true,
+                itemStyle: { color: realityColor(), opacity: 0.08 },
+                data: [[{ yAxis: opts.ceilingBand.lo }, { yAxis: opts.ceilingBand.hi }]],
               },
             }
           : {}),

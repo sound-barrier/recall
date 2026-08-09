@@ -11,11 +11,13 @@ import {
 import {
   decayProjection, gamesToWeeks, naiveProjection, projectionCurves,
   requiredWinRateForGames, DEFAULT_DECAY_SLOPE, DEFAULT_METER_MOVE_PCT,
+  PROVISIONAL_MIN_DECISIVE,
   type DecayProjection, type NaiveProjection, type ProjectionCurves, type ProjectionInput,
 } from '@/match/elo-model'
 import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo-stats'
 import {
-  credibleInterval, gamesToKnow, posteriorClimbQuantiles, probTrueWinRateAbove,
+  ceilingRange, credibleInterval, gamesToKnow, posteriorClimbQuantiles, probTrueWinRateAbove,
+  type CeilingRange, type SlopeCI,
 } from '@/match/elo-bayes'
 import { decisiveResults, decisiveTimeline } from '@/match/elo-streaks'
 import { meterMoveSamples, simulateSeasons, type SeasonSim } from '@/match/elo-simulate'
@@ -296,6 +298,19 @@ export function useEloCalculator(opts: EloCalcOpts) {
     }
   })
 
+  // The ceiling as a credible RANGE: win-rate posterior × measured slope CI
+  // through the plateau identity. The slope CI drops out when the user
+  // overrides the dial (a chosen slope has no sampling uncertainty).
+  const measuredSlopeCI = computed<SlopeCI | null>(() => {
+    if (editedFields.value.decaySlopePts) return null
+    const m = lastSeed.value?.decaySlope ?? null
+    return m === null ? null : { lowerPts: m.lowerPts, upperPts: m.upperPts }
+  })
+  const ceiling = computed<CeilingRange | null>(() =>
+    (projInput.value ? ceilingRange(projInput.value, measuredSlopeCI.value) : null))
+  // Below the floor the verdict hedges and the cards disclose the prior.
+  const provisional = computed(() => sampleN.value > 0 && sampleN.value < PROVISIONAL_MIN_DECISIVE)
+
   const naive = computed<NaiveProjection | null>(() => (projInput.value ? naiveProjection(projInput.value) : null))
   const decay = computed<DecayProjection | null>(() => (projInput.value ? decayProjection(projInput.value) : null))
   const curves = computed<ProjectionCurves | null>(() => (projInput.value ? projectionCurves(projInput.value) : null))
@@ -456,6 +471,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     heroAdjustPts, bumpHero, resetHeroAdjust, whatIf, effectiveWinRatePct,
     // derived
     trackRecs, currentScore, targetScore, projInput, naive, decay, curves,
+    ceiling, provisional,
     pValue, percentileNow, percentileTarget, weeksNaive, weeksDecay,
     seasonGames, simHorizonGames, paceAssumed, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,

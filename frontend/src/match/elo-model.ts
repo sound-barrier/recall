@@ -26,6 +26,12 @@ export const DEFAULT_DECAY_SLOPE = 0.015
 // LADDER_MAX is Champion 1 @ 100% in ladderScore units.
 export const LADDER_MAX = 40
 
+// Below this many decisive games the verdict is an "Early read": the win
+// rate barely constrains the ceiling (a 1W-2L record once printed "Capped
+// near Bronze 5 — Reality check" with full confidence), so the page hedges,
+// shows the ceiling as a range, and never says Capped.
+export const PROVISIONAL_MIN_DECISIVE = 20
+
 export interface ProjectionInput {
   currentScore: number
   targetScore: number

@@ -1,53 +1,44 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
-import { fmtGames, fmtRank, fmtScoreRank, fmtWeeks } from '@/components/elo/elo-format'
+import { fmtRank, fmtWeeks } from '@/components/elo/elo-format'
+import { deriveVerdict } from '@/components/elo/elo-verdict'
 
-// The one loud element: a plain-English answer to "how long?", adapted to the
-// three cases a climber actually faces —
-//   already there · underranked (climb sticks) · capped (Elo-Hell reality).
+// The one loud element: a plain-English answer to "how long?". All logic
+// lives in deriveVerdict (pure, branch-tested); this SFC only assembles its
+// input from the calculator. Four cases: already there · Early read (too few
+// decisive games to call a ceiling) · capped (the decay plateau, quoted as a
+// credible RANGE with the simulator's own odds) · underranked (the median
+// simulated season).
 const {
-  projInput, naive, decay, winRatePct, weeksNaive,
-  targetTier, targetDivision, isEdited,
+  projInput, naive, decay, effectiveWinRatePct, sampleN, isEdited,
+  targetTier, targetDivision, ceiling, seasonSim, simHorizonGames,
+  paceAssumed, weeksNaive,
 } = useEloCalc()
 
-const target = computed(() => fmtRank(targetTier.value, targetDivision.value))
-
 const answer = computed(() => {
-  if (!projInput.value || !naive.value || !decay.value || winRatePct.value === null) return null
-  const wr = winRatePct.value
-
-  if (naive.value.expectedGames === 0) {
-    return {
-      tone: 'is-good',
-      eyebrow: "You're there",
-      head: `${target.value} reached`,
-      sub: 'Your current rank is already at or above your target — aim higher to see a projection.',
-    }
-  }
-
-  // Capped: the target sits above the rank your current form implies.
-  if (decay.value.requiredWinRate !== null) {
-    const reqPct = decay.value.requiredWinRate * 100
-    const extra = Math.max(1, Math.round(reqPct - wr))
-    const ceiling = fmtScoreRank(decay.value.impliedTrueScore)
-    return {
-      tone: 'is-hard',
-      eyebrow: isEdited.value ? 'Reality check — for your edits' : 'Reality check',
-      head: `Capped near ${ceiling}`,
-      sub: `At ${wr}%, tougher opponents pull you back before ${target.value}. To climb past it you'd need to win about ${reqPct.toFixed(1)}% — roughly ${extra} more win${extra === 1 ? '' : 's'} per 100 games. That's improvement, not luck — and the playbook below is how you close the gap.`,
-    }
-  }
-
-  // Underranked: both futures reach the target; the climb should stick.
-  const ceiling = fmtScoreRank(decay.value.impliedTrueScore)
-  const pace = weeksNaive.value === null ? '' : ` — ${fmtWeeks(weeksNaive.value)}`
-  return {
-    tone: '',
-    eyebrow: isEdited.value ? 'If your edits hold' : 'If your form holds',
-    head: fmtGames(naive.value.expectedGames),
-    sub: `to reach ${target.value} at ${wr}%${pace}. Your recent form points to around ${ceiling}, so the climb should stick — you're underranked, not hardstuck. That's an effort price, not a wall; the playbook below is where those games come from.`,
-  }
+  if (!projInput.value || !naive.value || !decay.value) return null
+  if (effectiveWinRatePct.value === null || ceiling.value === null) return null
+  const sim = seasonSim.value
+  return deriveVerdict({
+    target: fmtRank(targetTier.value, targetDivision.value),
+    winRatePct: effectiveWinRatePct.value,
+    n: sampleN.value,
+    isEdited: isEdited.value,
+    alreadyThere: naive.value.expectedGames === 0,
+    requiredWinRate: decay.value.requiredWinRate,
+    expectedGamesDecay: decay.value.expectedGames,
+    ceiling: ceiling.value,
+    sim: sim === null ? null : {
+      probReachTarget: sim.probReachTarget,
+      probEndLower: sim.probEndLower,
+      gamesToTargetP50: sim.gamesToTarget.p50,
+      sims: sim.sims,
+    },
+    horizonGames: simHorizonGames.value,
+    paceAssumed: paceAssumed.value,
+    weeksLabel: fmtWeeks(weeksNaive.value) || null,
+  })
 })
 </script>
 

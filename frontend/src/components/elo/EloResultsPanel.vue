@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { fmtGames, fmtGamesRange, fmtRank, fmtScoreRank, fmtWeeks } from '@/components/elo/elo-format'
+import { fmtCeilingRange } from '@/components/elo/elo-verdict'
 
 // The two futures, side by side. The GAP between them is the whole lesson: a
 // steady win rate says "grind N games"; tougher opponents say "you level off
@@ -11,7 +12,7 @@ import { fmtGames, fmtGamesRange, fmtRank, fmtScoreRank, fmtWeeks } from '@/comp
 // plus how many more games it takes to actually pin the rate down.
 const {
   naive, decay, projInput, sampleN, winRatePct, targetTier, targetDivision,
-  weeksNaive, weeksDecay, climbQuantiles, gamesToCertainty,
+  weeksNaive, weeksDecay, climbQuantiles, gamesToCertainty, ceiling,
 } = useEloCalc()
 
 const target = computed(() => fmtRank(targetTier.value, targetDivision.value))
@@ -30,25 +31,29 @@ const dream = computed(() => {
   return { head: fmtGames(n.expectedGames), lines }
 })
 
-// As opponents get tougher — the regression-to-form future.
+// As opponents get tougher — the regression-to-form future. The ceiling is
+// quoted as its credible RANGE (win-rate posterior × slope CI), matching
+// the verdict card — a point rank here overstated three-game samples.
 const reality = computed(() => {
   const d = decay.value
   if (!d) return null
-  const ceiling = fmtScoreRank(d.impliedTrueScore)
+  const range = ceiling.value !== null ? fmtCeilingRange(ceiling.value) : fmtScoreRank(d.impliedTrueScore)
   if (d.expectedGames === 0) return { head: 'Already there', lines: [] }
   if (!d.reachable && d.requiredWinRate !== null) {
     return {
-      head: `Levels off near ${ceiling}`,
+      head: `Levels off near ${range}`,
       lines: [
-        'Tougher lobbies cap you here at your current form.',
-        `To pass ${target.value}, win about ${(d.requiredWinRate * 100).toFixed(1)}%.`,
+        'Tougher lobbies pull you level here at your current form.',
+        // requiredWinRate is the ASYMPTOTE — the rate whose plateau lands
+        // exactly on the target — so it holds the rank, it doesn't pass it.
+        `To make ${target.value} your plateau, win about ${(d.requiredWinRate * 100).toFixed(1)}% — passing it takes a bit more.`,
       ],
     }
   }
   if (!d.reachable) {
-    return { head: `Levels off near ${ceiling}`, lines: ['A losing record settles below the target.'] }
+    return { head: `Levels off near ${range}`, lines: ['A losing record settles below the target.'] }
   }
-  const lines = [`A bit slower, but ${winRatePct.value}% is high enough to break through.`, `Your ceiling right now: ${ceiling}.`]
+  const lines = [`A bit slower, but ${winRatePct.value}% is high enough to break through.`, `Your ceiling right now: ${range}.`]
   const weeks = fmtWeeks(weeksDecay.value)
   if (weeks) lines.push(weeks)
   return { head: fmtGames(d.expectedGames), lines }
