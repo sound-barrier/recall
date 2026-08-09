@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.29.0](https://github.com/sound-barrier/recall/compare/v0.28.0...v0.29.0) (2026-08-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** the app framework moves from the Wails v3 alpha channel to the beta channel (v3.0.0-alpha2.118 -> v3.0.0-beta.3), together with the wails3 CLI and the @wailsio/runtime JS package.
+
+### Features
+
+* **elo:** ceiling as a credible range; intervals follow the dial ([5d27e23](https://github.com/sound-barrier/recall/commit/5d27e232ddc6d0ca8ef9caa85dc8246542bfdf8d))
+* **elo:** make the season simulator decay-aware — the one model ([34da1e6](https://github.com/sound-barrier/recall/commit/34da1e6454e1f7359847301fe9bc522c7b4e0c34))
+* **elo:** verdict from the simulator, with an Early-read floor ([2728409](https://github.com/sound-barrier/recall/commit/2728409e95d8ff060219419ef572c18f37e4ef2b))
+
+
+### Bug Fixes
+
+* **app:** harden the reclassification wipe per adversarial review ([1295525](https://github.com/sound-barrier/recall/commit/129552596d6bd9e9de9c88774a06c9fb54427665))
+* **db:** wipe stale sibling-type rows when a re-parse reclassifies a file ([8f33b6a](https://github.com/sound-barrier/recall/commit/8f33b6a606b8dc562bd8b5510ecf12189af1b724))
+* **deps:** pin nanoid 3.3.17 for CVE-2026-67213 ([1ac6847](https://github.com/sound-barrier/recall/commit/1ac6847e8aa41bf1b4dd2b1c8bf6584483ae2d1e))
+* **elo:** bucket the 2026-07 trend chips as streak games ([1b01933](https://github.com/sound-barrier/recall/commit/1b01933a0ac9a3536dc44c922290d198a7d017d7))
+* **elo:** copy-coherence round two, from the adversarial diff review ([2cbd026](https://github.com/sound-barrier/recall/commit/2cbd0264c36340086c6594af4b8e0409ed9027f3))
+* **elo:** nudges stop forging sample counts; pooled hero n capped ([9417397](https://github.com/sound-barrier/recall/commit/9417397f422b16ab9f2ea3392a5d7167b7c76608))
+* **elo:** unify the plateau on the meter's real break-even rate ([2095c0e](https://github.com/sound-barrier/recall/commit/2095c0e37248eacedc0eb0ee057d0310023705bf))
+* **parser:** classify rank screens by parse marker, not extracted tier ([41372bf](https://github.com/sound-barrier/recall/commit/41372bf10edef13d8d04c5a4a2e48aa9dc64bda4))
+* **parser:** propagate detector-probe OCR errors instead of demoting ([01e077e](https://github.com/sound-barrier/recall/commit/01e077ea7fa807494722a9119a491e43eeda3d04))
+* **parser:** recognize the 2026-07 WINNING/LOSING TREND modifier chips ([5702711](https://github.com/sound-barrier/recall/commit/5702711013d1911c58e69575f232cab91f8bf915))
+* **parser:** recover the stylized rank division via a PSM-6 re-read ([f50149f](https://github.com/sound-barrier/recall/commit/f50149fbfa06d01a46b8501074c8e1b18907261c))
+* **parser:** rename the poisoned Neon Function roster entry to Neon Junction ([b3b284e](https://github.com/sound-barrier/recall/commit/b3b284e8814e37decfae9cb246abbed27d08b4d7))
+* **parser:** widen the rank modifier band to 76% for drifted chips ([20b8b2e](https://github.com/sound-barrier/recall/commit/20b8b2e56d655fa5dbff13ac1e94af2ce5af08b3))
+
+
+### Refactors
+
+* **elo:** one model per card — coherence pass over every stat ([bd2c891](https://github.com/sound-barrier/recall/commit/bd2c89131af7314e66fac303a193606fb90a8622))
+
+
+### Documentation
+
+* **frontend:** record the real TypeScript version ceiling ([d9c1083](https://github.com/sound-barrier/recall/commit/d9c1083698f34fc782ce5963a7ca855a541870e1))
+* record the declined OpenAPI-generator migration ([635a2b2](https://github.com/sound-barrier/recall/commit/635a2b230ee2d4b502aba8f82a742d55ea499331))
+
+
+### Build & Packaging
+
+* **deps:** Bump the actions group with 4 updates ([8988800](https://github.com/sound-barrier/recall/commit/898880079a8b378745b0655c5f00ddf40edbacec))
+* **deps:** Bump the go-deps group with 2 updates ([b7c97cd](https://github.com/sound-barrier/recall/commit/b7c97cd3c22493dd18bacf2dedcb7bfbda173dff))
+* **deps:** move the app framework onto the Wails v3 beta channel ([a80ea76](https://github.com/sound-barrier/recall/commit/a80ea763af78ef053997e1f449c5bfb5d830992e))
+
+
+### Tests
+
+* **e2e:** settle layout before the theme audit's census ([d5ed182](https://github.com/sound-barrier/recall/commit/d5ed182a93f6177c037f8a67539a8756bbeaf8e2))
+* **elo:** 30-scenario capture harness, snapshots, and catalog ([2052d4e](https://github.com/sound-barrier/recall/commit/2052d4e19df4870489094877afde831fa243808f))
+* **elo:** align the calculator specs and theme snapshots with one-model copy ([02d23c2](https://github.com/sound-barrier/recall/commit/02d23c21edd4f0b817c2b27f1ca7811ddd0b19de))
+* **elo:** harden the scenario harness; re-baseline after the review ([db82108](https://github.com/sound-barrier/recall/commit/db821082e6e66e5bf4cb000545cc1ec778cd9d52))
+* **parser:** guard the probe fail-fast test against a vacuous pass ([1b9b792](https://github.com/sound-barrier/recall/commit/1b9b792b9308ed2596aadc098eec0bd79c214c6c))
+* **testdata:** add 23 new-UI fixtures pinning 2026-07 parser drift ([55383a6](https://github.com/sound-barrier/recall/commit/55383a6162dc9b624c12fa46b030338c889c8aaa))
+
 ## [0.28.0](https://github.com/sound-barrier/recall/compare/v0.27.4...v0.28.0) (2026-07-28)
 
 
