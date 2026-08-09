@@ -36,18 +36,18 @@ beforeEach(() => {
 })
 
 describe('settings store — screenshot candidates', () => {
-  it('loadScreenshotCandidates stores the fetched list', async () => {
+  it('hydrates the candidate list from its query at store setup', async () => {
     api.GetScreenshotsFolderCandidates.mockResolvedValue([{ name: 'Steam', path: '/captures/steam', exists: true }])
     const s = useSettingsStore()
-    await s.loadScreenshotCandidates()
+    await new Promise(r => setTimeout(r, 0))
     expect(s.screenshotCandidates).toHaveLength(1)
     expect(s.screenshotCandidates[0]?.path).toBe('/captures/steam')
   })
 
-  it('loadScreenshotCandidates falls back to [] when the probe fails', async () => {
+  it('falls back to [] when the probe fails', async () => {
     api.GetScreenshotsFolderCandidates.mockRejectedValue(new Error('probe failed'))
     const s = useSettingsStore()
-    await s.loadScreenshotCandidates()
+    await new Promise(r => setTimeout(r, 0))
     expect(s.screenshotCandidates).toEqual([])
   })
 })
