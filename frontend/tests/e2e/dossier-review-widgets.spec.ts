@@ -8,6 +8,7 @@
  * pin the subtitle / value cells.
  */
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 import type { Route } from '@playwright/test'
 
 function record(matchKey: string, opts: {
@@ -35,6 +36,15 @@ function record(matchKey: string, opts: {
 }
 
 test.describe('dossier — review-coverage widgets', () => {
+  // The review trio is gallery opt-in under the climb-focused
+  // default — seed a layout that holds it.
+  test.beforeEach(async ({ page }) => {
+    await seedDossierLayout(page, {
+      1: ['reviewed-count', 'days-since-review', 'wld-since-review'],
+      2: [],
+    })
+  })
+
   test('renders Matches reviewed count + percentage subtitle', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       // 2 reviewed (one self + one coach), 2 not reviewed → 50%.

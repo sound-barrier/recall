@@ -56,16 +56,18 @@ describe('dashboard widget registry', () => {
     expect(widgetById('this-id-does-not-exist')).toBeUndefined()
   })
 
-  it('default layout matches the pre-refactor visual order', () => {
-    // The first row was the KPI row in the pre-refactor MatchesView,
-    // ordered: Winrate, Avg K/D/A, Total time, Most played hero,
-    // Matches reviewed, Days since review, W/L/D since review.
+  it('default layout leads with the climb-focused set', () => {
+    // Row 1: rank velocity, form, streak, and tilt — "am I climbing
+    // right now". The review-workflow and volume KPIs are demoted to
+    // the "+ Add" gallery, not deleted.
     expect(DEFAULT_ROW_LAYOUT[1]).toEqual([
-      'winrate', 'avg-kda', 'total-time', 'most-played-hero',
-      'reviewed-count', 'days-since-review', 'wld-since-review',
+      'winrate', 'form-delta', 'net-rank-week', 'current-streak',
+      'tilt-check', 'avg-kda',
     ])
-    // Second row was the breakdown row: maps, heroes, roles — plus the
-    // default-visible hero-swap buckets added in the hero-pool PR.
-    expect(DEFAULT_ROW_LAYOUT[2]).toEqual(['top-maps', 'top-heroes', 'top-roles', 'heroes-per-match'])
+    // Row 2: winrate-judged breakdowns — "what am I good at". The
+    // volume ("most played") breakdowns live in the gallery.
+    expect(DEFAULT_ROW_LAYOUT[2]).toEqual([
+      'current-rank', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role',
+    ])
   })
 })

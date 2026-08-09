@@ -124,22 +124,22 @@ test.describe('dashboard live-reflow drag', () => {
   })
 
   test('dragging over a sibling reflows the row so the dragged widget sits at the drop position', async ({ page }) => {
-    // Initial: row 1 = winrate, avg-kda, total-time, …
+    // Initial: row 1 = winrate, form-delta, net-rank-week, …
     const before = await widgetOrder(page, 1)
     expect(before[0]).toBe('winrate')
-    expect(before[1]).toBe('avg-kda')
+    expect(before[1]).toBe('form-delta')
 
     await startDrag(page, 'winrate')
-    // Hover total-time (originally at idx 2). The preview should
-    // place winrate at idx 2 of the row, with avg-kda + total-time
+    // Hover net-rank-week (originally at idx 2). The preview should
+    // place winrate at idx 2 of the row, with form-delta + net-rank-week
     // shifting left to fill the gap.
-    await dragOver(page, 'total-time')
+    await dragOver(page, 'net-rank-week')
 
     const preview = await widgetOrder(page, 1)
     expect(preview.indexOf('winrate')).toBe(2)
-    // avg-kda used to be at idx 1; it should now be at idx 0 (after
+    // form-delta used to be at idx 1; it should now be at idx 0 (after
     // winrate's source slot vanished).
-    expect(preview[0]).toBe('avg-kda')
+    expect(preview[0]).toBe('form-delta')
 
     await endDrag(page, 'winrate')
   })
@@ -148,7 +148,7 @@ test.describe('dashboard live-reflow drag', () => {
     const before = await widgetOrder(page, 1)
 
     await startDrag(page, 'winrate')
-    await dragOver(page, 'total-time')
+    await dragOver(page, 'net-rank-week')
     // No drop event — just dragend (mimics releasing outside any drop target).
     await endDrag(page, 'winrate')
 
@@ -170,7 +170,7 @@ test.describe('dashboard live-reflow drag', () => {
   // drag read as stutter.
   test('crossing a mid-row gap keeps the preview in place (no tail bounce)', async ({ page }) => {
     await startDrag(page, 'winrate')
-    await dragOver(page, 'total-time')
+    await dragOver(page, 'net-rank-week')
     expect((await widgetOrder(page, 1)).indexOf('winrate')).toBe(2)
 
     await page.evaluate(() => {
@@ -213,15 +213,15 @@ test.describe('dashboard live-reflow drag', () => {
       )
       const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-      over('[data-widget-id="total-time"]')
+      over('[data-widget-id="net-rank-week"]')
       await wait(50) // inside the 240ms settle window
       const afterFirst = order()
-      const sibling = document.querySelector('[data-widget-id="avg-kda"]')
+      const sibling = document.querySelector('[data-widget-id="form-delta"]')
       const siblingSettling = sibling?.classList.contains('dashboard-widget-move') ?? false
-      // avg-kda's box is gliding 1 → 0 under the pointer; its props
+      // form-delta's box is gliding 1 → 0 under the pointer; its props
       // already say idx 0. Old behavior: this re-hints idx 0 and the
       // whole preview snaps back.
-      over('[data-widget-id="avg-kda"]')
+      over('[data-widget-id="form-delta"]')
       await wait(50)
       return { afterFirst, siblingSettling, afterSecond: order() }
     })
@@ -242,8 +242,8 @@ test.describe('dashboard live-reflow drag', () => {
 
     const probe = await page.evaluate(async () => {
       const dt = (window as unknown as { __dragDT?: DataTransfer }).__dragDT ?? new DataTransfer()
-      const target = document.querySelector('[data-widget-id="top-maps"]')
-      if (!target) throw new Error('top-maps not found')
+      const target = document.querySelector('[data-widget-id="current-rank"]')
+      if (!target) throw new Error('current-rank not found')
       target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
       await new Promise((r) => setTimeout(r, 80))
       return {
