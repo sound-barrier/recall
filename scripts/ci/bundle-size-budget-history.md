@@ -114,3 +114,13 @@ winrate-judged time buckets, layout migration v2, and the data-table's
 KDA + Source columns. Measured overrun was 2,898 B (~3.4 KB of feature
 code in the MatchesView chunk); the bump keeps the usual ~5 KB working
 headroom.
+
+## 2026-08 — 1542000 → 1553000 (total JS)
+
+The single-transport migration: the hand-written dual-transport api.ts
+(Call.ByName RPC + fetch, 1,178 lines) became a thin facade over the
+@hey-api/openapi-ts generated SDK, whose bundled fetch client + typed
+operations land in the lazy api-client chunk. Measured overrun was
+5,529 B (+10.6 KB of generated client, net of ~700 deleted hand-written
+lines; initial JS unchanged). The bump keeps the usual ~5 KB working
+headroom.
