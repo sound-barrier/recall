@@ -152,3 +152,30 @@ describe('ceilingRange', () => {
     expect(nudged.hi! - nudged.lo).toBeCloseTo(measured.hi! - measured.lo, 1)
   })
 })
+
+describe('ceilingRange — slope-CI honesty and the asymmetric break-even', () => {
+  const base: ProjectionInput = {
+    currentScore: 13.4, targetScore: 15, winRate: 0.55,
+    sampleWins: 110, sampleLosses: 90, meterMovePct: 20, decaySlope: 0.015,
+  }
+
+  it('a measured lower bound below the 0.5-pt floor opens the top honestly', () => {
+    // 0.2 pts is inside the CI but below the floor: flooring it to 0.5
+    // would quote a hard edge the envelope does not cover.
+    const r = ceilingRange(base, { lowerPts: 0.2, upperPts: 2.0 })
+    expect(r.hi).toBeNull()
+  })
+
+  it('the slope CI clamps to the dial maximum like every other decay figure', () => {
+    const wild = ceilingRange(base, { lowerPts: 1, upperPts: 40 })
+    const capped = ceilingRange(base, { lowerPts: 1, upperPts: 5 })
+    expect(wild).toEqual(capped)
+  })
+
+  it('an asymmetric break-even shifts the whole range', () => {
+    const sym = ceilingRange(base, null)
+    const asym = ceilingRange({ ...base, plateauRate: 0.625 }, null)
+    expect(asym.hi!).toBeLessThan(sym.hi!)
+    expect(asym.lo).toBeLessThanOrEqual(sym.lo)
+  })
+})

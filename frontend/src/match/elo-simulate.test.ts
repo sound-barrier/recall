@@ -192,3 +192,36 @@ describe('expectedMeterDelta', () => {
     expect(expectedMeterDelta({ winMoves: [20, 21], lossMoves: Array<number>(8).fill(-20) }, 0.5)).toBeNull()
   })
 })
+
+describe('decay with asymmetric empirical pools', () => {
+  it('plateaus where the closed forms now plateau: p_eff = |L|/(W+|L|)', () => {
+    // Win moves +22, loss moves −19 → break-even p* = 19/41 ≈ 0.4634.
+    // With p pinned ≈ 0.53 and slope 0.015, the sim's equilibrium sits at
+    // x0 + (p − p*)/s ≈ 10 + 0.0666/0.015 ≈ 14.4 — the SAME plateau the
+    // decay model reports once plateauRate carries the pool asymmetry.
+    const out = simulateSeasons(
+      {
+        currentScore: 10, targetScore: 30, sampleWins: 530_000_000, sampleLosses: 470_000_000,
+        horizonGames: 3000, decaySlope: 0.015,
+        meter: { winMoves: Array<number>(8).fill(22), lossMoves: Array<number>(8).fill(-19) },
+      },
+      { sims: 300, seed: 1 },
+    )
+    const expected = 10 + (0.53 - 19 / 41) / 0.015
+    expect(out.finalScore.p50).toBeGreaterThan(expected - 1)
+    expect(out.finalScore.p50).toBeLessThan(expected + 1)
+  })
+
+  it('short horizons dedupe fan checkpoints instead of jamming at the start', () => {
+    const out = simulateSeasons(
+      {
+        currentScore: 10, targetScore: 12, sampleWins: 1_000_000, sampleLosses: 0,
+        horizonGames: 6, meter: { symmetricPct: 20 },
+      },
+      { sims: 50, seed: 1 },
+    )
+    expect(new Set(out.fan.games).size).toBe(out.fan.games.length)
+    // The last checkpoint reflects real movement, not the start score.
+    expect(out.fan.p50[out.fan.p50.length - 1]!).toBeGreaterThan(10)
+  })
+})

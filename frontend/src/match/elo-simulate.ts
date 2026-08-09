@@ -128,9 +128,12 @@ export function simulateSeasons(input: SimInput, opts: SimOpts = {}): SeasonSim 
   // from reading one game late.
   const EPS = 1e-9
 
-  // Checkpoint game indices (0 .. horizon, inclusive) for the fan.
-  const checkGames = Array.from({ length: checkpoints + 1 }, (_, i) =>
-    Math.round((input.horizonGames * i) / checkpoints))
+  // Checkpoint game indices (0 .. horizon, inclusive) for the fan —
+  // deduped: a horizon shorter than the checkpoint count would repeat
+  // indices, and the g === checkGames[check] walk only matches each game
+  // number once, jamming every later checkpoint at the start score.
+  const checkGames = [...new Set(Array.from({ length: checkpoints + 1 }, (_, i) =>
+    Math.round((input.horizonGames * i) / checkpoints)))]
 
   const finals: number[] = []
   const hits: number[] = [] // games-to-target per season that reached it

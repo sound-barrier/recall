@@ -40,6 +40,17 @@ export interface ProjectionInput {
   sampleLosses: number
   meterMovePct: number // m: progress-% the meter moves per decisive game
   decaySlope: number // s: WR fraction lost per division climbed
+  // The break-even win rate where the meter's drift zeroes. 0.5 for a
+  // symmetric ±m meter; with the player's REAL pools it is |L̄|/(W̄+|L̄|)
+  // (win moves averaging +15 vs losses −25 break even at 62.5%). The
+  // simulator's equilibrium falls out of its pools automatically — these
+  // closed forms must use the SAME break-even or the verdict and the
+  // season cards plateau in different places and contradict each other.
+  plateauRate?: number
+}
+
+function breakEven(input: ProjectionInput): number {
+  return input.plateauRate ?? 0.5
 }
 
 // GamesRange is a 95% CI on the games count; a null upper bound means
@@ -60,8 +71,10 @@ export interface NaiveProjection {
 
 // naiveGamesAt is E[games] to cover distance D at win rate p with step
 // s_m — null when the drift is zero or points away from the target.
-function naiveGamesAt(distance: number, stepUnits: number, p: number): number | null {
-  const drift = stepUnits * (2 * p - 1)
+// Drift = 2·s_m·(p − p*): identical to s_m·(2p−1) at the symmetric
+// break-even, shifted when the meter pools are asymmetric.
+function naiveGamesAt(distance: number, stepUnits: number, p: number, pStar: number): number | null {
+  const drift = 2 * stepUnits * (p - pStar)
   if (distance === 0) return 0
   if (drift === 0 || distance * drift < 0) return null
   return distance / drift
@@ -92,12 +105,13 @@ function wilsonGamesRange(
 export function naiveProjection(input: ProjectionInput): NaiveProjection {
   const stepUnits = input.meterMovePct / 100
   const distance = input.targetScore - input.currentScore
-  const drift = stepUnits * (2 * input.winRate - 1)
-  const expected = naiveGamesAt(distance, stepUnits, input.winRate)
+  const pStar = breakEven(input)
+  const drift = 2 * stepUnits * (input.winRate - pStar)
+  const expected = naiveGamesAt(distance, stepUnits, input.winRate, pStar)
   return {
     reachable: expected !== null,
     expectedGames: expected,
-    games95: wilsonGamesRange(input, (p) => naiveGamesAt(distance, stepUnits, p)),
+    games95: wilsonGamesRange(input, (p) => naiveGamesAt(distance, stepUnits, p, pStar)),
     walkStdGames: naiveWalkStd(distance, stepUnits, input.winRate, drift),
     driftPerGame: drift,
   }
@@ -118,7 +132,7 @@ export function probWithinGames(input: ProjectionInput, games: number): number |
   const stepUnits = input.meterMovePct / 100
   const distance = input.targetScore - input.currentScore
   if (distance === 0) return 1
-  const expected = naiveGamesAt(distance, stepUnits, input.winRate)
+  const expected = naiveGamesAt(distance, stepUnits, input.winRate, breakEven(input))
   if (expected === null) return null
   const sigma2 = stepUnits * stepUnits * 4 * input.winRate * (1 - input.winRate)
   if (sigma2 === 0) return games >= expected ? 1 : 0
@@ -132,7 +146,7 @@ export function probWithinGames(input: ProjectionInput, games: number): number |
 export function requiredWinRateForGames(input: ProjectionInput, games: number): number | null {
   const distance = input.targetScore - input.currentScore
   if (distance <= 0 || games <= 0) return null
-  const p = 0.5 + (50 * distance) / (input.meterMovePct * games)
+  const p = breakEven(input) + (50 * distance) / (input.meterMovePct * games)
   return p <= 1 ? p : null
 }
 
@@ -150,7 +164,7 @@ export interface DecayProjection {
 function decayGamesAt(input: ProjectionInput, p: number): number | null {
   const s = input.decaySlope
   const stepUnits = input.meterMovePct / 100
-  const trueScore = input.currentScore + (p - 0.5) / s
+  const trueScore = input.currentScore + (p - breakEven(input)) / s
   const gapNow = trueScore - input.currentScore
   const gapTarget = trueScore - input.targetScore
   if (input.targetScore === input.currentScore) return 0
@@ -159,7 +173,7 @@ function decayGamesAt(input: ProjectionInput, p: number): number | null {
 }
 
 export function decayProjection(input: ProjectionInput): DecayProjection {
-  const trueScore = input.currentScore + (input.winRate - 0.5) / input.decaySlope
+  const trueScore = input.currentScore + (input.winRate - breakEven(input)) / input.decaySlope
   const expected = decayGamesAt(input, input.winRate)
   const distance = input.targetScore - input.currentScore
   const unreachableClimb = expected === null && distance > 0
@@ -168,7 +182,7 @@ export function decayProjection(input: ProjectionInput): DecayProjection {
     reachable: expected !== null,
     expectedGames: expected,
     games95: wilsonGamesRange(input, (p) => decayGamesAt(input, p)),
-    requiredWinRate: unreachableClimb ? 0.5 + input.decaySlope * distance : null,
+    requiredWinRate: unreachableClimb ? breakEven(input) + input.decaySlope * distance : null,
   }
 }
 
@@ -202,9 +216,10 @@ export function projectionCurves(
   const horizon = opts?.horizonGames ?? curveHorizon(input)
   const points = opts?.points ?? 120
   const stepUnits = input.meterMovePct / 100
-  const drift = stepUnits * (2 * input.winRate - 1)
+  const pStar = breakEven(input)
+  const drift = 2 * stepUnits * (input.winRate - pStar)
   const sigma2 = stepUnits * stepUnits * 4 * input.winRate * (1 - input.winRate)
-  const trueScore = input.currentScore + (input.winRate - 0.5) / input.decaySlope
+  const trueScore = input.currentScore + (input.winRate - pStar) / input.decaySlope
   const iv = wilsonInterval(input.sampleWins, input.sampleWins + input.sampleLosses)
   const seP = iv === null ? 0 : (iv.upper - iv.lower) / (2 * 1.96)
   const clamp = (v: number) => Math.min(LADDER_MAX, Math.max(0, v))

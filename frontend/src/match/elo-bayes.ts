@@ -113,9 +113,13 @@ export interface CeilingRange {
 
 // The slope denominator's floor, in win-rate points per division: below this
 // the plateau identity divides by ~0 and the "ceiling" explodes into
-// meaninglessness — and a measured CI reaching ≤0 means the data can't rule
-// out an improver with no detectable ceiling at all.
+// meaninglessness. A measured CI whose LOWER bound sits below the floor
+// means the data can't bound the top at all — silently flooring it to 0.5
+// would quote a hard upper edge the propagated envelope doesn't cover, so
+// that case is open-top instead. The upper bound clamps to the dial's own
+// maximum (5 pts/division), matching every other decay figure on the page.
 const SLOPE_FLOOR_PTS = 0.5
+const SLOPE_CAP_PTS = 5
 
 // ceilingRange propagates BOTH uncertainties the "capped" verdict rests on —
 // the true win rate (Beta posterior credible interval, shifted by any manual
@@ -138,18 +142,21 @@ export function ceilingRange(
   const pHi = clamp01(iv.upper + delta)
 
   const floorFrac = SLOPE_FLOOR_PTS / 100
-  const openTop = slopeCI !== null && slopeCI.lowerPts <= 0
-  const sLo = Math.max(floorFrac, (slopeCI?.lowerPts ?? input.decaySlope * 100) / 100)
-  const sHi = Math.max(floorFrac, (slopeCI?.upperPts ?? input.decaySlope * 100) / 100)
+  const capFrac = SLOPE_CAP_PTS / 100
+  const openTop = slopeCI !== null && slopeCI.lowerPts < SLOPE_FLOOR_PTS
+  const clampSlope = (pts: number): number => Math.min(capFrac, Math.max(floorFrac, pts / 100))
+  const sLo = clampSlope(slopeCI?.lowerPts ?? input.decaySlope * 100)
+  const sHi = clampSlope(slopeCI?.upperPts ?? input.decaySlope * 100)
 
+  const pStar = input.plateauRate ?? 0.5
   const clampLadder = (v: number): number => Math.min(LADDER_MAX, Math.max(0, v))
-  // T(p, s) = x0 + (p − 0.5)/s is monotone in p but flips direction in s
-  // with the sign of (p − 0.5), so the honest envelope is the four corners.
+  // T(p, s) = x0 + (p − p*)/s is monotone in p but flips direction in s
+  // with the sign of (p − p*), so the honest envelope is the four corners.
   const corners = [
-    input.currentScore + (pLo - 0.5) / sLo,
-    input.currentScore + (pLo - 0.5) / sHi,
-    input.currentScore + (pHi - 0.5) / sLo,
-    input.currentScore + (pHi - 0.5) / sHi,
+    input.currentScore + (pLo - pStar) / sLo,
+    input.currentScore + (pLo - pStar) / sHi,
+    input.currentScore + (pHi - pStar) / sLo,
+    input.currentScore + (pHi - pStar) / sHi,
   ]
   const lo = clampLadder(Math.min(...corners))
   const hi = openTop ? null : clampLadder(Math.max(...corners))
