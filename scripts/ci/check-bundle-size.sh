@@ -89,7 +89,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # + ceiling ranges + decay-aware sim + the honest low-n copy), net +0.5KB in
 # the lazy Elo chunk after deleting the IG-mixture layer; the rest is the
 # deliberate ~5KB headroom the note above asks for.
-: "${MAX_TOTAL_JS_BYTES:=1534000}"
+# 2026-08: 1534000 -> 1542000 - climb-focused dossier (Recent form /
+# After-N-losses / Session depth widgets, form + loss-streak metrics, layout
+# migration v2, KDA + Source table columns), ~3.4KB in the MatchesView chunk;
+# the rest is the deliberate ~5KB headroom. New feature.
+: "${MAX_TOTAL_JS_BYTES:=1542000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

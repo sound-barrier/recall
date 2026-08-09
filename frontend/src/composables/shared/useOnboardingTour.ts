@@ -184,7 +184,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
     id: 'matches-tab',
     heading: 'Matches (03)',
-    body: 'Your history. The dossier on top summarises winrate, K/D/A, top heroes and maps. Every screenshot you parse rolls up into this view.',
+    body: 'Your history. The dossier on top leads with the climb read — winrate, recent form, rank movement, streak. Every screenshot you parse rolls up into this view.',
     target: '#tab-matches',
     placement: 'bottom',
     view: 'matches',
@@ -192,13 +192,13 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   // ── 9. Dossier — the rolled-up summary ─────────────────────
   // The "set dossier" framing: this isn't a static report of your
   // whole history, it's a live description of the SET of matches
-  // you've narrowed to. Every aggregate — winrate, K/D/A, time
-  // played, top heroes, top maps — answers a question about THAT
-  // set. The next step shows what makes the set the way it is.
+  // you've narrowed to. Every aggregate — winrate, form, rank,
+  // the win-rate breakdowns — answers a question about THAT set.
+  // The next step shows what makes the set the way it is.
   {
     id: 'matches-dossier',
     heading: 'The set dossier',
-    body: 'Everything above the matches list describes the active SET — the subset of your history you currently care about. Winrate, K/D/A, total time played, most-played hero and maps; each KPI recomputes the instant you narrow the set. Default set is "all matches."',
+    body: 'Everything above the matches list describes the active SET — the subset of your history you currently care about. Winrate, recent form, rank movement, and win-rate by hero, map and role; each widget recomputes the instant you narrow the set. Default set is "all matches."',
     target: '.set-dossier',
     placement: 'bottom',
     view: 'matches',

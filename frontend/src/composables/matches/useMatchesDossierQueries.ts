@@ -42,6 +42,7 @@ function toBucketEntry(
     count: tally.count,
     share: denom === 0 ? 0 : Math.round((tally.count / denom) * 100),
     winrate: decisive === 0 ? null : Math.round((tally.w / decisive) * 100),
+    wins: tally.w,
     decisive,
   }
 }
@@ -663,6 +664,9 @@ export function useDossierQueries(
       const { bucketCount } = toValue(opts)
       const hoursPerBucket = 24 / bucketCount
       const tallies = Array.from({ length: bucketCount }, () => ({ count: 0, w: 0, l: 0 }))
+      // The judgment follows the same exclude-tally rule as every
+      // other win rate; the volume read keeps every played game.
+      const inTally = new Set(tallyRecords.value)
       let denom = 0
       for (const r of records.value) {
         const fa = r.data?.finished_at
@@ -672,6 +676,7 @@ export function useDossierQueries(
         const bucket = tallies[Math.floor(hour / hoursPerBucket)]!
         bucket.count++
         denom++
+        if (!inTally.has(r)) continue
         if (r.data?.result === 'victory') bucket.w++
         else if (r.data?.result === 'defeat') bucket.l++
       }
@@ -693,6 +698,8 @@ export function useDossierQueries(
     return computed(() => {
       const { weekStartOverride } = toValue(opts)
       const tallies = Array.from({ length: 7 }, () => ({ count: 0, w: 0, l: 0 }))
+      // Same exclude-tally split as timeOfDayBuckets.
+      const inTally = new Set(tallyRecords.value)
       let denom = 0
       for (const r of records.value) {
         const date = r.data?.date
@@ -707,6 +714,7 @@ export function useDossierQueries(
         const bucket = tallies[day]!
         bucket.count++
         denom++
+        if (!inTally.has(r)) continue
         if (r.data?.result === 'victory') bucket.w++
         else if (r.data?.result === 'defeat') bucket.l++
       }
