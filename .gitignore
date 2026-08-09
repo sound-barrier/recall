@@ -294,3 +294,7 @@ build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 build/windows/info.generated.json
 # wails3 build output (bin/Recall, .app, .exe, installer)
 bin/
+
+# schemathesis crash-cache (task check-api-drift leaves it behind; Biome
+# walks the repo and chokes on its JSON — vcs-ignored means Biome skips it)
+.schemathesis/
