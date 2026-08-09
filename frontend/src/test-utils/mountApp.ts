@@ -246,10 +246,15 @@ export async function mountApp(overrides: MountOverrides = {}) {
     import('@/components/settings/SettingsView.vue'),
     import('@/components/unknown/UnknownMapsView.vue'),
   ])
+  // The query client is imported post-resetModules, so every mount gets a
+  // fresh cache (same isolation story as the api-client seam above).
+  const { VueQueryPlugin } = await import('@tanstack/vue-query')
+  const { queryClient } = await import('@/queries/client')
+
   const App = (await import('@/App.vue')).default
   const wrapper = mount(App, {
     attachTo: document.body,
-    global: { plugins: [createPinia()] },
+    global: { plugins: [createPinia(), [VueQueryPlugin, { queryClient }]] },
   })
   // First flush: App.vue's onMounted load() chain
   // (CheckForUpdate, GetVersion, GetMatchResults). Second: the async

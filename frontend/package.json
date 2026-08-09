@@ -21,6 +21,7 @@
     "postinstall": "node ./scripts/seed-go-sentinel.cjs"
   },
   "dependencies": {
+    "@tanstack/vue-query": "^5.101.4",
     "@wailsio/runtime": "3.0.0-beta.5",
     "echarts": "^6.1.0",
     "pinia": "^4.0.2",
