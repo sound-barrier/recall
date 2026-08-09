@@ -160,8 +160,6 @@ describe('useEloCalculator — statistics layer', () => {
     expect(calc.skepticVerdict.value).toBeLessThanOrEqual(1)
     const iv = calc.trueRateRange.value!
     expect(iv.lower).toBeLessThan(iv.upper)
-    const q = calc.climbQuantiles.value!
-    expect(q.p50).not.toBeNull()
     expect(calc.gamesToCertainty.value).toBeGreaterThan(0)
     const runs = calc.runs.value!
     expect(runs.pValue).toBeGreaterThan(0)
@@ -172,7 +170,6 @@ describe('useEloCalculator — statistics layer', () => {
     const calc = useEloCalculator({ records: [], heroRole, mapGameMode })
     expect(calc.skepticVerdict.value).toBeNull()
     expect(calc.trueRateRange.value).toBeNull()
-    expect(calc.climbQuantiles.value).toBeNull()
     expect(calc.gamesToCertainty.value).toBeNull()
     expect(calc.runs.value).toBeNull()
   })

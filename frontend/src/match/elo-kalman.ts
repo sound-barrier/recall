@@ -17,6 +17,13 @@ export interface SkillCurve {
   q: number // process (skill-drift) variance per step
   r: number // observation (matchmaking noise) variance
   signalShare: number // Q / (Q + 2R) — share of movement that is skill
+  // True when the R clamp fired: the diffs were positively autocorrelated
+  // (a steady one-way climb), which the local-level model cannot produce —
+  // cov₁(d) = −R ≤ 0 by construction — so the ~100% signalShare is a
+  // model-misfit artifact, not a measurement, and the UI must refuse it.
+  // (The Q clamp is different: var ≤ 2R honestly reads "no drift evidence",
+  // so a ~0% share stands.)
+  saturated: boolean
   n: number
 }
 
@@ -49,6 +56,7 @@ export function skillCurve(points: readonly { t: number; score: number }[]): Ski
 
   const r = Math.max(EPS, -cov1)
   const q = Math.max(EPS, variance - 2 * r)
+  const saturated = r === EPS
 
   // Forward pass (filter): x₀ = y₀, P₀ = R.
   const filtLevel = new Array<number>(n)
@@ -79,6 +87,7 @@ export function skillCurve(points: readonly { t: number; score: number }[]): Ski
     q,
     r,
     signalShare: q / (q + 2 * r),
+    saturated,
     n,
   }
 }

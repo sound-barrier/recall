@@ -122,20 +122,21 @@ describe('useEloEvidence — streaks', () => {
 
   it('surfaces the streak meter impact from streak-modified rank cards', () => {
     seq = 0
+    // Eight readings per side — the floor now matches the sim's MIN_POOL.
     const rows = [
-      ...Array.from({ length: 4 }, () => {
+      ...Array.from({ length: 5 }, () => {
         const r = rec({ result: 'victory' })
         ;(r.data as Record<string, unknown>).change_percent = 30
         ;(r.data as Record<string, unknown>).modifiers = ['victory', 'win streak']
         return r
       }),
-      ...Array.from({ length: 2 }, () => {
+      ...Array.from({ length: 3 }, () => {
         const r = rec({ result: 'defeat' })
         ;(r.data as Record<string, unknown>).change_percent = -30
         ;(r.data as Record<string, unknown>).modifiers = ['defeat', 'loss streak']
         return r
       }),
-      ...Array.from({ length: 4 }, (_, i) => {
+      ...Array.from({ length: 8 }, (_, i) => {
         const r = rec({ result: i % 2 ? 'victory' : 'defeat' })
         ;(r.data as Record<string, unknown>).change_percent = i % 2 ? 20 : -20
         ;(r.data as Record<string, unknown>).modifiers = [i % 2 ? 'victory' : 'defeat']

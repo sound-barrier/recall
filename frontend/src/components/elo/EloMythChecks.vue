@@ -12,6 +12,7 @@ const {
   percentileNow, percentileTarget, probThisSeason, seasonGames, requiredWrForSeason,
   targetTier, targetDivision, currentTier, currentDivision,
   skepticVerdict, trueRateRange, runs, decay, effectiveWinRatePct,
+  seasonSim, simHorizonGames, paceAssumed, provisional,
 } = useEloCalc()
 
 const rankNow = computed(() => fmtRank(currentTier.value, currentDivision.value))
@@ -107,11 +108,16 @@ const checks = computed<Check[]>(() => {
       : prob <= 40
         ? `with more of it below even than above (${100 - prob} to ${prob}) — the playbook above is the way out`
         : 'balanced almost evenly around 50 — dead even is a real place to be, and the playbook is how you leave it'
+    // Below the verdict floor this number is mostly the prior — say so,
+    // and never colour it as a finding.
+    const priorNote = provisional.value
+      ? ` At ${sampleN.value} games this is still mostly the skeptic prior talking — it starts you at 50-50 with ~20 pseudo-games of stubbornness. Play on before reading much into it.`
+      : ''
     out.push({
       id: 'skeptic', stat: 'bayes', q: 'Better than a coin?',
       a: coinAnswer(prob),
-      note: `Start from the harshest assumption — that you're a pure coin flip. Your ${sampleN.value} games move the odds to ${prob} in 100 that your true win rate beats even. The rate itself most likely sits in ${lo}–${hi}%, ${lean}.`,
-      tone: prob >= 90 ? 'good' : prob <= 50 ? 'warn' : 'neutral',
+      note: `Start from the harshest assumption — that you're a pure coin flip. Your ${sampleN.value} games move the odds to ${prob} in 100 that your true win rate beats even. The rate itself most likely sits in ${lo}–${hi}%, ${lean}.${priorNote}`,
+      tone: provisional.value ? 'neutral' : prob >= 90 ? 'good' : prob <= 50 ? 'warn' : 'neutral',
     })
   }
 
@@ -142,36 +148,43 @@ const checks = computed<Check[]>(() => {
   }
 
   if (percentileNow.value !== null) {
+    // The rank is a fact at any sample size; the "hardstuck" DIAGNOSIS
+    // isn't — below the verdict floor, drop the framing and keep the fact.
     out.push({
-      id: 'hardstuck', stat: 'percentile', q: 'Hardstuck?',
+      id: 'hardstuck', stat: 'percentile', q: provisional.value ? 'Where you stand' : 'Hardstuck?',
       a: `Ahead of ${fmtPct(percentileNow.value)} of players`,
       note: `${rankNow.value} beats ${fmtPct(percentileNow.value)} of ranked players. ${target.value} would put you past ${fmtPct(percentileTarget.value)}. (Blizzard, July 2025)`,
       tone: 'neutral',
     })
   }
 
-  if (seasonGames.value !== null && projInput.value !== null) {
+  if (projInput.value !== null && probThisSeason.value !== null && seasonSim.value !== null) {
+    // One model: this IS the simulator's reach share — the same number the
+    // season band shows, decay included, so this card can never contradict
+    // the verdict again. (The old copy quoted a no-decay closed form here
+    // while the verdict used the decay plateau; the "80% next to Capped"
+    // confusion was born on this card.)
     const rate = effectiveWinRatePct.value
-    if (probThisSeason.value !== null) {
-      const req = decay.value?.requiredWinRate
-      const capped = req !== null && req !== undefined
-        ? ` The amber future is less kind: to STAY there you'd need about ${(req * 100).toFixed(1)}%.`
-        : ''
-      out.push({
-        id: 'season', stat: 'season', q: 'This season?',
-        a: fmtProb(probThisSeason.value),
-        note: `If your ${rate}% holds — the blue future on the chart — these are your odds of touching ${target.value} within ~${seasonGames.value} games, roughly 12 weeks at your pace.${capped}`,
-        tone: 'neutral',
-      })
-    } else {
-      const req = requiredWrForSeason.value
-      out.push({
-        id: 'season', stat: 'season', q: 'This season?',
-        a: 'Not at this rate',
-        note: `At ${rate}% the climb to ${target.value} never completes — you'd need about ${req !== null ? `${(req * 100).toFixed(1)}%` : 'more than this season allows'} to get there within ~${seasonGames.value} games. That number is the playbook's job, not the queue's.`,
-        tone: 'neutral',
-      })
-    }
+    const req = decay.value?.requiredWinRate
+    const hold = req !== null && req !== undefined
+      ? ` Holding ${target.value} once you touch it would take about ${(req * 100).toFixed(1)}% — the playbook's job, not the queue's.`
+      : ''
+    const pace = paceAssumed.value ? ', assuming ~10 games a week' : ' at your pace'
+    out.push({
+      id: 'season', stat: 'season', q: 'This season?',
+      a: fmtProb(probThisSeason.value),
+      note: `Playing your ${rate}% record out ${seasonSim.value.sims.toLocaleString()} times — lobbies toughening as you climb, like the amber curve — these are your odds of touching ${target.value} within ~${simHorizonGames.value} games${pace}. Touching counts any moment of the season; you can brush it and still slip back.${hold}`,
+      tone: 'neutral',
+    })
+  } else if (seasonGames.value !== null && projInput.value !== null) {
+    const rate = effectiveWinRatePct.value
+    const req = requiredWrForSeason.value
+    out.push({
+      id: 'season', stat: 'season', q: 'This season?',
+      a: 'Not at this rate',
+      note: `At ${rate}% the climb to ${target.value} never completes — you'd need about ${req !== null ? `${(req * 100).toFixed(1)}%` : 'more than this season allows'} to get there within ~${seasonGames.value} games. That number is the playbook's job, not the queue's.`,
+      tone: 'neutral',
+    })
   }
 
   return out

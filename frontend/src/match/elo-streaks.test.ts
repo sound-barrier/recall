@@ -60,16 +60,27 @@ describe('winrateByStreakDepth', () => {
 })
 
 describe('streakMeterImpact', () => {
+  // Eight qualifying readings per side — the floor now matches the season
+  // simulator's MIN_POOL, so the fixture carries a full pool of each.
   function meterRecords(): Rec[] {
-    return [
-      { match_key: 'a', data: { change_percent: 20, modifiers: ['victory', 'expected'] } },
-      { match_key: 'b', data: { change_percent: -20, modifiers: ['defeat'] } },
-      { match_key: 'c', data: { change_percent: 20, modifiers: ['victory'] } },
+    const normal: Rec[] = Array.from({ length: 8 }, (_, i) => ({
+      match_key: `n${i}`,
+      data: { change_percent: i % 2 === 0 ? 20 : -20, modifiers: [i % 2 === 0 ? 'victory' : 'defeat'] },
+    }))
+    const streak: Rec[] = [
       { match_key: 'd', data: { change_percent: 30, modifiers: ['victory', 'win streak'] } },
       // 2026-07 UI wording — must bucket with the streak games, not 'normal'
       { match_key: 'e', data: { change_percent: 30, modifiers: ['victory', 'winning trend'] } },
+      { match_key: 's1', data: { change_percent: 30, modifiers: ['victory', 'win streak'] } },
+      { match_key: 's2', data: { change_percent: 30, modifiers: ['victory', 'win streak'] } },
       { match_key: 'f', data: { change_percent: -30, modifiers: ['defeat', 'loss streak'] } },
       { match_key: 'g', data: { change_percent: -30, modifiers: ['defeat', 'loss streak'] } },
+      { match_key: 's3', data: { change_percent: -30, modifiers: ['defeat', 'losing trend'] } },
+      { match_key: 's4', data: { change_percent: -30, modifiers: ['defeat', 'loss streak'] } },
+    ]
+    return [
+      ...normal,
+      ...streak,
       // Excluded: calibration reading + an exact zero.
       { match_key: 'h', data: { change_percent: 35, modifiers: ['victory', 'calibration'] } },
       { match_key: 'i', data: { change_percent: 0, modifiers: ['victory'] } },
@@ -79,16 +90,18 @@ describe('streakMeterImpact', () => {
   it('splits streak-modified meter moves from normal ones', () => {
     const m = streakMeterImpact(meterRecords())!
     expect(m.normalAbsMean).toBe(20)
-    expect(m.normalN).toBe(3)
+    expect(m.normalN).toBe(8)
     expect(m.streakAbsMean).toBe(30)
-    expect(m.streakN).toBe(4)
+    expect(m.streakN).toBe(8)
     expect(m.ratio).toBeCloseTo(1.5, 10)
-    expect(m.winStreakNet).toBe(60)
-    expect(m.lossStreakNet).toBe(-60)
+    expect(m.winStreakNet).toBe(120)
+    expect(m.lossStreakNet).toBe(-120)
   })
 
-  it('is null until both sides have at least three readings', () => {
-    expect(streakMeterImpact(meterRecords().slice(0, 4))).toBeNull()
+  it('is null until both sides have at least eight readings', () => {
+    // Seven per side — one short of the floor on both.
+    const thin = meterRecords().filter((r) => !['n7', 's4'].includes(r.match_key))
+    expect(streakMeterImpact(thin)).toBeNull()
     expect(streakMeterImpact([])).toBeNull()
   })
 })
