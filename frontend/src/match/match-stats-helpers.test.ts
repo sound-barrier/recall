@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   tallyWLD,
   formatToHundredths,
+  formatKda,
+  kdaRatio,
   modeOf,
   avgGameLengthMinutes,
 } from '@/match/match-stats-helpers'
@@ -167,5 +169,32 @@ describe('avgGameLengthMinutes', () => {
 
   it('handles records with no data object at all', () => {
     expect(avgGameLengthMinutes([{ data: null }])).toBeNull()
+  })
+})
+
+describe('kdaRatio + formatKda', () => {
+  it('computes (E + A) / D', () => {
+    expect(kdaRatio({ eliminations: 20, assists: 10, deaths: 8 })).toBe(3.75)
+  })
+
+  it('floors deaths at 1 so a deathless game divides by one, not zero', () => {
+    expect(kdaRatio({ eliminations: 5, assists: 5, deaths: 0 })).toBe(10)
+  })
+
+  it('treats a missing stat as 0 when at least one is present', () => {
+    expect(kdaRatio({ eliminations: 12 })).toBe(12)
+    expect(kdaRatio({ deaths: 4 })).toBe(0)
+  })
+
+  it('is null when the record carries none of the three stats', () => {
+    expect(kdaRatio({})).toBeNull()
+    expect(kdaRatio(undefined)).toBeNull()
+  })
+
+  it('formats to at most two decimals, trimming trailing zeros', () => {
+    expect(formatKda(3.75)).toBe('3.75')
+    expect(formatKda(10)).toBe('10')
+    expect(formatKda(10 / 3)).toBe('3.33')
+    expect(formatKda(null)).toBe('')
   })
 })

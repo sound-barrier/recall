@@ -9,6 +9,7 @@ import {
   sortedHeroPlays,
 } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
+import { formatKda, kdaRatio } from '@/match/match-stats-helpers'
 
 type HeroRole = (hero: string | null | undefined) => string
 
@@ -27,9 +28,9 @@ export function cellText(rec: MatchRecord, col: TableSortCol, heroRole: HeroRole
     case 'eliminations': return d?.eliminations != null ? String(d.eliminations) : ''
     case 'assists':      return d?.assists != null ? String(d.assists) : ''
     case 'deaths':       return d?.deaths != null ? String(d.deaths) : ''
+    case 'kda':          return formatKda(kdaRatio(d))
     case 'tags':         return (rec.annotation?.tags ?? []).join('; ')
-    case 'edited':       return isEditedMatch(rec) ? 'yes' : ''
-    case 'manual':       return isManualMatch(rec) ? 'yes' : ''
+    case 'source':       return isManualMatch(rec) ? 'manual' : isEditedMatch(rec) ? 'edited' : 'ocr'
     case 'result':       return d?.result ?? ''
   }
 }

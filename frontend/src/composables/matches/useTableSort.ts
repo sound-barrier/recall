@@ -6,6 +6,7 @@ import {
 } from '@/composables/shared/usePersistedRef'
 import { heroesForHeader, isEditedMatch, isManualMatch } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
+import { kdaRatio } from '@/match/match-stats-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 
 // Multi-column ("Excel-style") sort for the `data`-density match table.
@@ -17,6 +18,7 @@ import { matchTime } from '@/match/match-time-helpers'
 
 export type TableSortCol =
   | 'date'
+  | 'result'
   | 'map'
   | 'playMode'
   | 'queue'
@@ -25,10 +27,9 @@ export type TableSortCol =
   | 'eliminations'
   | 'assists'
   | 'deaths'
-  | 'result'
+  | 'kda'
   | 'tags'
-  | 'edited'
-  | 'manual'
+  | 'source'
 
 export type SortDir = 'asc' | 'desc'
 
@@ -42,18 +43,20 @@ export interface SortLevel {
 // of truth for which columns exist and what they're called.
 export const TABLE_SORT_COLUMNS: ReadonlyArray<{ col: TableSortCol; label: string }> = [
   { col: 'date', label: 'When' },
+  // Outcome right after the timestamp — the first thing scanned per
+  // row, not the last.
+  { col: 'result', label: 'Result' },
   { col: 'map', label: 'Map' },
   { col: 'playMode', label: 'Mode' },
   { col: 'queue', label: 'Queue' },
   { col: 'hero', label: 'Hero' },
   { col: 'role', label: 'Role' },
-  { col: 'eliminations', label: 'E' },
-  { col: 'assists', label: 'A' },
-  { col: 'deaths', label: 'D' },
+  { col: 'eliminations', label: 'Elims' },
+  { col: 'assists', label: 'Assists' },
+  { col: 'deaths', label: 'Deaths' },
+  { col: 'kda', label: 'KDA' },
   { col: 'tags', label: 'Tags' },
-  { col: 'edited', label: 'Edited' },
-  { col: 'manual', label: 'User entered' },
-  { col: 'result', label: 'Result' },
+  { col: 'source', label: 'Source' },
 ]
 
 const SORT_COLS = new Set<TableSortCol>(TABLE_SORT_COLUMNS.map((c) => c.col))
@@ -86,15 +89,18 @@ function compareCol(col: TableSortCol, a: MatchRecord, b: MatchRecord): number {
     case 'eliminations': return (da?.eliminations ?? 0) - (db?.eliminations ?? 0)
     case 'assists':      return (da?.assists ?? 0) - (db?.assists ?? 0)
     case 'deaths':       return (da?.deaths ?? 0) - (db?.deaths ?? 0)
+    case 'kda':          return (kdaRatio(da) ?? 0) - (kdaRatio(db) ?? 0)
     case 'result':       return (RESULT_RANK[da?.result ?? ''] ?? 9) - (RESULT_RANK[db?.result ?? ''] ?? 9)
     case 'tags':         return (a.annotation?.tags?.[0] ?? '').localeCompare(b.annotation?.tags?.[0] ?? '')
-    // Boolean provenance columns: unticked (false→0) sorts before
-    // ticked (true→1) ascending, so one header click clusters the
-    // untouched rows and a second flips to surface the edited /
-    // hand-entered ones at the top.
-    case 'edited':       return Number(isEditedMatch(a)) - Number(isEditedMatch(b))
-    case 'manual':       return Number(isManualMatch(a)) - Number(isManualMatch(b))
+    // Provenance ladder: untouched OCR rows first ascending, then
+    // edited, then hand-entered — one click clusters machine truth,
+    // a second surfaces the human-touched rows.
+    case 'source':       return sourceRank(a) - sourceRank(b)
   }
+}
+
+function sourceRank(rec: MatchRecord): number {
+  return isManualMatch(rec) ? 2 : isEditedMatch(rec) ? 1 : 0
 }
 
 // Fold the sort stack: the first level that separates a and b wins;

@@ -191,26 +191,25 @@ describe('useTableSort — single level (default + per-column)', () => {
     expect(keysAfterSort(corpus, 'tags', 1)).toEqual(['none', 'a', 'z'])
   })
 
-  it('sorts the edited column with untouched rows first ascending', () => {
+  it('sorts the source column OCR < edited < manual ascending', () => {
     const corpus = [
-      rec('edited', { source: 'ocr_edited' }),
-      rec('ocr', {}),
       rec('manual', { source: 'manual' }),
+      rec('ocr', {}),
+      rec('edited', { source: 'ocr_edited' }),
     ]
-    // Only the ocr_edited row ticks the Edited box; OCR + manual are
-    // both "not edited" (false) and sort ahead of it ascending. The
-    // two false rows tie on the column, so newest-first breaks it —
-    // here both share the default parsed_at, so insertion order holds.
-    expect(keysAfterSort(corpus, 'edited', 1)).toEqual(['ocr', 'manual', 'edited'])
+    expect(keysAfterSort(corpus, 'source', 1)).toEqual(['ocr', 'edited', 'manual'])
   })
 
-  it('sorts the manual column with non-manual rows first ascending', () => {
+  it('sorts the KDA column by (E+A)/D with deaths floored at 1', () => {
     const corpus = [
-      rec('manual', { source: 'manual' }),
-      rec('ocr', {}),
-      rec('edited', { source: 'ocr_edited' }),
+      // More elims, worse ratio: 20/10 = 2.
+      rec('high-elims', { elims: 20, assists: 0, deaths: 10 }),
+      // Deathless: (5+5)/max(1,0) = 10.
+      rec('deathless', { elims: 5, assists: 5, deaths: 0 }),
+      // 10+10 over 4 = 5.
+      rec('mid', { elims: 10, assists: 10, deaths: 4 }),
     ]
-    expect(keysAfterSort(corpus, 'manual', 1)).toEqual(['ocr', 'edited', 'manual'])
+    expect(keysAfterSort(corpus, 'kda', 1)).toEqual(['high-elims', 'mid', 'deathless'])
   })
 
   it('breaks ties by newest-first regardless of sort direction', () => {

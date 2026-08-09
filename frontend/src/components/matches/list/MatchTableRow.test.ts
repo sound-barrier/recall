@@ -136,40 +136,38 @@ describe('MatchTableRow', () => {
     expect(w.find('.tc-tags mark.search-hl').text()).toBe('clutch')
   })
 
-  describe('provenance columns', () => {
-    // The two read-only checkbox columns that replaced the in-row
-    // provenance badge: [0] = Edited, [1] = User entered.
-    function boxes(w: ReturnType<typeof mountRow>) {
-      const found = w.findAll('.tc-prov-box')
-      return found.map((b) => b.element as HTMLInputElement)
-    }
-
-    it('ticks the Edited box (only) for an OCR-then-edited match', () => {
+  describe('source column', () => {
+    // One provenance column — the same compact badge the leaf rows
+    // wear, replacing the old Edited / User-entered checkbox pair.
+    it('renders the Edited badge for an OCR-then-edited match', () => {
       const w = mountRow({ rec: { ...rec(), source: 'ocr_edited', edited_fields: ['data.damage'] } as MatchRecord })
-      const [edited, entered] = boxes(w)
-      expect(edited!.checked).toBe(true)
-      expect(entered!.checked).toBe(false)
+      expect(w.find('.tc-prov .prov-badge').attributes('aria-label')).toContain('Source: Edited')
     })
 
-    it('ticks the User-entered box (only) for a manual match', () => {
+    it('renders the User-entered badge for a manual match', () => {
       const w = mountRow({ rec: { ...rec(), source: 'manual' } as MatchRecord })
-      const [edited, entered] = boxes(w)
-      expect(edited!.checked).toBe(false)
-      expect(entered!.checked).toBe(true)
+      expect(w.find('.tc-prov .prov-badge').attributes('aria-label')).toContain('Source: User entered')
     })
 
-    it('leaves both boxes unticked and disabled for a pure-OCR match', () => {
-      const [edited, entered] = boxes(mountRow())
-      expect(edited!.checked).toBe(false)
-      expect(entered!.checked).toBe(false)
-      // Read-only indicators — clicks fall through to the row.
-      expect(edited!.disabled).toBe(true)
-      expect(entered!.disabled).toBe(true)
+    it('renders the OCR badge for a pure-OCR match', () => {
+      const w = mountRow()
+      expect(w.find('.tc-prov .prov-badge').attributes('aria-label')).toContain('Source: OCR')
+    })
+  })
+
+  describe('KDA column', () => {
+    it('renders (E+A)/D trimmed to two decimals', () => {
+      const w = mountRow({
+        rec: { ...rec(), data: { ...rec().data, eliminations: 20, assists: 10, deaths: 8 } } as MatchRecord,
+      })
+      expect(w.find('.tc-kda').text()).toBe('3.75')
     })
 
-    it('no longer renders the provenance badge inline (moved to the columns)', () => {
-      const w = mountRow({ rec: { ...rec(), source: 'manual' } as MatchRecord })
-      expect(w.find('.prov-badge').exists()).toBe(false)
+    it('renders an em-dash when the record carries no stats', () => {
+      const base = rec()
+      const { eliminations: _e, assists: _a, deaths: _d, ...bare } = base.data as Record<string, unknown>
+      const w = mountRow({ rec: { ...base, data: bare } as MatchRecord })
+      expect(w.find('.tc-kda').text()).toBe('—')
     })
   })
 })

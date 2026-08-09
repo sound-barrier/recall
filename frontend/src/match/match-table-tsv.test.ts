@@ -57,11 +57,17 @@ describe('match-table-tsv', () => {
     expect(cellText(rec('b', {}), 'tags', heroRole)).toBe('')
   })
 
-  it('marks edited and manual provenance with "yes" / ""', () => {
-    expect(cellText(rec('a', {}, { source: 'ocr_edited' } as Partial<MatchRecord>), 'edited', heroRole)).toBe('yes')
-    expect(cellText(rec('b', {}, { source: 'ocr' } as Partial<MatchRecord>), 'edited', heroRole)).toBe('')
-    expect(cellText(rec('c', {}, { source: 'manual' } as Partial<MatchRecord>), 'manual', heroRole)).toBe('yes')
-    expect(cellText(rec('d', {}, { source: 'ocr' } as Partial<MatchRecord>), 'manual', heroRole)).toBe('')
+  it('renders the source cell with the badge vocabulary', () => {
+    expect(cellText(rec('a', {}, { source: 'ocr_edited' } as Partial<MatchRecord>), 'source', heroRole)).toBe('edited')
+    expect(cellText(rec('b', {}, { source: 'manual' } as Partial<MatchRecord>), 'source', heroRole)).toBe('manual')
+    expect(cellText(rec('c', {}, { source: 'ocr' } as Partial<MatchRecord>), 'source', heroRole)).toBe('ocr')
+    expect(cellText(rec('d', {}), 'source', heroRole)).toBe('ocr')
+  })
+
+  it('renders the KDA cell as (E+A)/D floored at one death, blank without stats', () => {
+    expect(cellText(rec('a', { eliminations: 20, assists: 10, deaths: 8 }), 'kda', heroRole)).toBe('3.75')
+    expect(cellText(rec('b', { eliminations: 5, assists: 5, deaths: 0 }), 'kda', heroRole)).toBe('10')
+    expect(cellText(rec('c', {}), 'kda', heroRole)).toBe('')
   })
 
   it('renders delegated play-mode / queue labels', () => {

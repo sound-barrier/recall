@@ -57,6 +57,29 @@ export function formatToHundredths(n: number | null | undefined): string {
   return (Math.round((n + epsilon) * 100) / 100).toFixed(2)
 }
 
+// KDA = (eliminations + assists) / deaths, with deaths floored at 1 so
+// a deathless game divides by one rather than exploding. Duration
+// cancels out of the ratio, so it is already normalized without the
+// per-10min fields. A present-but-partial stat line treats the missing
+// stats as 0; a record carrying none of the three has no performance
+// read at all and returns null (render as absent, never as 0).
+export function kdaRatio(
+  data: { eliminations?: number | null; assists?: number | null; deaths?: number | null } | null | undefined,
+): number | null {
+  if (data == null) return null
+  const { eliminations, assists, deaths } = data
+  if (eliminations == null && assists == null && deaths == null) return null
+  return ((eliminations ?? 0) + (assists ?? 0)) / Math.max(1, deaths ?? 0)
+}
+
+// Table-cell rendering for a KDA ratio: at most two decimals with
+// trailing zeros trimmed ("3.75", "10", "3.33"); empty for null so a
+// stat-less row's cell stays blank in the TSV copy path.
+export function formatKda(ratio: number | null): string {
+  if (ratio == null || !Number.isFinite(ratio)) return ''
+  return String(Math.round(ratio * 100) / 100)
+}
+
 // Top-N value picker for a set of records. Walks the record list and
 // counts via the picker; returns the most-common value plus its count,
 // or null when no record produced a non-empty value. Used by the
