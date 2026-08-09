@@ -5,7 +5,7 @@ import {
 import type { MatchRecord } from '@/api-client'
 import { TIER_ORDER, ladderScore, rankLadderSeries, type Tier } from '@/match/match-trends-helpers'
 import {
-  availableTracks, heroPickerStats, pooledWinLoss, seedTrack, trackRecords,
+  availableTracks, heroPickerStats, pooledDecisiveMatches, pooledWinLoss, seedTrack, trackRecords,
   TRACK_LABELS, type HeroPickStat, type TrackKey, type TrackSeed,
 } from '@/match/elo-seed'
 import {
@@ -193,7 +193,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
     }
     const { wins, losses } = pooledWinLoss(heroStats.value, selection)
     winRatePct.value = wins + losses > 0 ? round1((wins / (wins + losses)) * 100) : null
-    sampleN.value = wins + losses
+    // Per-hero rates pool by credit, but evidence pools by MATCH: a game
+    // meaningfully played on two selected heroes is one game, not two.
+    sampleN.value = Math.min(wins + losses, pooledDecisiveMatches(trackRecs.value, selection))
   }
 
   // ── Hero what-if nudges (1-point arrows, capped at ±5) ─────────────
@@ -275,8 +277,14 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const projInput = computed<ProjectionInput | null>(() => {
     if (currentScore.value === null || targetScore.value === null) return null
     const rate = effectiveWinRatePct.value
-    if (rate === null || sampleN.value <= 0 || meterMovePct.value <= 0) return null
-    const wins = Math.round((sampleN.value * rate) / 100)
+    const measured = winRatePct.value
+    if (rate === null || measured === null || sampleN.value <= 0 || meterMovePct.value <= 0) return null
+    // The sample counts come from the MEASURED (or manually edited) rate —
+    // never the hero-nudged one. A nudge is a hypothesis about future games;
+    // baking it into sampleWins forged evidence and moved the p-value, the
+    // posterior, and every interval toward games never played. winRate stays
+    // the dialed rate so projections follow the what-if.
+    const wins = Math.round((sampleN.value * measured) / 100)
     return {
       currentScore: currentScore.value,
       targetScore: targetScore.value,
@@ -400,6 +408,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const seasonSim = computed<SeasonSim | null>(() => {
     const inp = projInput.value
     if (!inp || inp.targetScore <= inp.currentScore) return null
+    const measured = winRatePct.value
     return simulateSeasons({
       currentScore: inp.currentScore,
       targetScore: inp.targetScore,
@@ -409,6 +418,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
       meter: meterSamples.value,
       symmetricFallbackPct: inp.meterMovePct,
       decaySlope: inp.decaySlope,
+      // The hero what-if enters as a location shift on the drawn form —
+      // the posterior keeps the real sample's width.
+      rateShiftPts: measured === null ? 0 : (effectiveWinRatePct.value ?? measured) - measured,
     })
   })
   // The skill curve is pure history: the track's rank readings, de-noised.

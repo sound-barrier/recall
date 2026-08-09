@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import type { MatchRecord } from '@/api-client'
 import {
   isCompetitive, trackRecords, seedTrack, availableTracks, heroPickerStats, pooledWinLoss,
-  measuredDecaySlope,
+  pooledDecisiveMatches, measuredDecaySlope,
 } from '@/match/elo-seed'
 import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
 
@@ -240,5 +240,23 @@ describe('heroPickerStats — adjusted rates', () => {
     expect(stats.find((s) => s.key === 'ana')!.adjustedWinrate).toBe(57)
     // lucio raw 75% → (6 + 6.364)/18 = 68.7% → 69.
     expect(stats.find((s) => s.key === 'lucio')!.adjustedWinrate).toBe(69)
+  })
+})
+
+describe('pooledDecisiveMatches', () => {
+  it('counts a two-hero match once where pooled credit counts it twice', () => {
+    seq = 0
+    const two = rec({ result: 'victory', hero: 'lucio' })
+    ;(two.data as { heroes_played: unknown[] }).heroes_played = [
+      { hero: 'lucio', percent_played: 60, play_time: '06:00' },
+      { hero: 'ana', percent_played: 40, play_time: '04:00' },
+    ]
+    const solo = rec({ result: 'defeat', hero: 'ana' })
+    const draw = rec({ result: 'draw', hero: 'lucio' })
+    const records = [two, solo, draw] as unknown as MatchRecord[]
+    const both = new Set(['lucio', 'ana'])
+    expect(pooledDecisiveMatches(records, both)).toBe(2) // two + solo; draw excluded
+    expect(pooledDecisiveMatches(records, new Set(['lucio']))).toBe(1)
+    expect(pooledDecisiveMatches(records, new Set(['ashe']))).toBe(0)
   })
 })

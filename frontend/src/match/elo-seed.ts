@@ -8,7 +8,7 @@ import {
   TIER_ORDER, currentRankByRole, ladderScore, matchEpoch, roleBucket, type RankNow,
 } from '@/match/match-trends-helpers'
 import {
-  analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT,
+  analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT, meaningfulHeroes,
 } from '@/match/match-hero-pool-helpers'
 import { wilsonMargin } from '@/match/match-sample-helpers'
 import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
@@ -252,6 +252,26 @@ export function heroPickerStats(
       }
     })
     .sort((a, b) => Number(b.inPool) - Number(a.inPool) || (b.wins + b.losses) - (a.wins + a.losses))
+}
+
+// pooledDecisiveMatches counts the REAL decisive matches whose meaningful
+// heroes intersect the selection. A multi-hero match rightly credits every
+// hero's RATE, but it is still one game of evidence — pooled per-hero sums
+// exceed it, and a sample size that exceeds the games actually played
+// narrows every downstream interval beyond what the data supports. This is
+// the honest cap.
+export function pooledDecisiveMatches(
+  records: readonly MatchRecord[],
+  selected: ReadonlySet<string>,
+  thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
+): number {
+  let n = 0
+  for (const rec of records) {
+    const result = rec.data?.result
+    if (result !== 'victory' && result !== 'defeat') continue
+    if (meaningfulHeroes(rec, thresholdPct).some((h) => selected.has(h))) n++
+  }
+  return n
 }
 
 // pooledWinLoss sums the selected heroes' decisive records — the "what
