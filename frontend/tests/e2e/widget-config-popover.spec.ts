@@ -22,6 +22,7 @@
  * the gear button.
  */
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 import type { Route } from '@playwright/test'
 
 // 12 distinct heroes worth of play time so the limit-10 selection
@@ -50,6 +51,10 @@ function manyHeroMatches() {
 
 test.describe('widget-config popover — gear → save → persist', () => {
   test.beforeEach(async ({ page }) => {
+    // Top heroes (the config exemplar) is gallery opt-in under the
+    // climb-focused default — seed a layout that holds it; winrate
+    // stays for the no-gear case.
+    await seedDossierLayout(page, { 1: ['winrate'], 2: ['top-heroes'] })
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',

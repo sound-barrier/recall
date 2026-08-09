@@ -23,6 +23,7 @@ import type { Page, Route } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 
 function localYMD(offset: number): string {
   const d = new Date()
@@ -86,6 +87,9 @@ async function addWidget(page: Page, id: string) {
 
 test.describe('hero-count buckets + hero pool', () => {
   test.beforeEach(async ({ page }) => {
+    // Heroes per match is gallery opt-in under the climb-focused
+    // default — seed a layout that holds it (the band ships visible).
+    await seedDossierLayout(page, { 1: [], 2: ['heroes-per-match'] })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.route('**/api/v1/system/reference-data', (r: Route) =>
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(REFERENCE_DATA) }))
@@ -97,7 +101,7 @@ test.describe('hero-count buckets + hero pool', () => {
   })
 
   test('buckets games by meaningful hero count — a <5% touch is not a swap', async ({ page }) => {
-    // Ships default-visible — no Add-menu trip needed.
+    // Seeded into the layout above — no Add-menu trip needed.
     const widget = page.locator('.breakdown', { hasText: 'Heroes per match' })
     await expect(widget).toBeVisible()
     const rows = widget.locator('li:not(.bd-placeholder)')
@@ -185,8 +189,8 @@ test.describe('hero-count buckets + hero pool', () => {
       await page.goto('/')
       await page.locator('#tab-matches').click()
       await expect(page.locator('.set-dossier')).toBeVisible()
-      // Both surfaces ship default-visible: the buckets widget in the grid,
-      // the Hero Pool band below it.
+      // Both surfaces are present: the seeded buckets widget in the grid,
+      // the Hero Pool band below it (default-visible).
       await expect(page.locator('[data-pool-hero]').first()).toBeVisible()
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
