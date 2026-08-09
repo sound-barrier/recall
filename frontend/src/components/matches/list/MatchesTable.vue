@@ -480,6 +480,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   z-index: 3;
   border-right: 1px solid var(--border-strong);
 }
+
 /* Numeric Elims / Assists / Deaths / KDA headers right-align to sit
    over their tabular-num cells (MatchTableRow .tc-stat-cell). */
 .leaves-thead .th[data-sort-col="eliminations"],
