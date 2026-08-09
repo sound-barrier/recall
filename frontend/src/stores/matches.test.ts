@@ -127,16 +127,19 @@ describe('matches store — load() boot coordinator', () => {
     expect(matches.records).toHaveLength(2)
   })
 
-  it('stashes the fetched records into savedRecords while the tour is active (keeps demo data showing)', async () => {
+  it('keeps demo records showing while the tour is active — the real fetch lands in the cache', async () => {
     const matches = useMatchesStore()
-    await matches.onTourActiveChange(true) // swaps in DEMO_MATCHES + flags tourActive
+    await matches.onTourActiveChange(true) // overlays DEMO_MATCHES + flags tourActive
     const demoCount = matches.records.length
     expect(demoCount).toBeGreaterThan(0)
 
     await matches.load()
+    await new Promise(r => setTimeout(r, 0))
 
-    // Demo data still on screen; the real fetch parked in savedRecords for restore.
+    // Demo data still on screen; the real fetch flowed into the cache and
+    // shows the moment the tour closes — no stash/restore step.
     expect(matches.records).toHaveLength(demoCount)
-    expect(matches.savedRecords.map(r => r.match_key)).toEqual(['m-1', 'm-2'])
+    await matches.onTourActiveChange(false)
+    expect(matches.records.map(r => r.match_key)).toEqual(['m-1', 'm-2'])
   })
 })
