@@ -45,16 +45,24 @@ func TestRoster_RecognizesNewHeroShion(t *testing.T) {
 	}
 }
 
-// TestRoster_RecognizesNewMapNeonFunction guards the Neon Function roster
-// addition: the new hybrid map must resolve as known and register under the
-// hybrid game mode (so map validation accepts it and the dossier groups it
-// correctly).
-func TestRoster_RecognizesNewMapNeonFunction(t *testing.T) {
-	if !parser.IsKnownMap("neon function") {
-		t.Error(`IsKnownMap("neon function") = false, want true`)
+// TestRoster_NeonJunctionCanonical guards the Neon Junction roster entry.
+// The map originally landed in maps.yaml as "Neon Function" — an OCR garble
+// (J→F) transcribed from the parser's own output, which then made every
+// future read canonicalize to the wrong name. The canonical entry must be
+// the real map; the garble must snap TO it via the fuzzy matcher, never
+// resolve as a known map itself.
+func TestRoster_NeonJunctionCanonical(t *testing.T) {
+	if !parser.IsKnownMap("neon junction") {
+		t.Error(`IsKnownMap("neon junction") = false, want true`)
 	}
-	if hybrid := parser.MapsByGameMode()["hybrid"]; !slices.Contains(hybrid, "Neon Function") {
-		t.Errorf(`MapsByGameMode()["hybrid"] = %v, want it to contain "Neon Function"`, hybrid)
+	if parser.IsKnownMap("neon function") {
+		t.Error(`IsKnownMap("neon function") = true, want false — the OCR garble must not be canonical`)
+	}
+	if hybrid := parser.MapsByGameMode()["hybrid"]; !slices.Contains(hybrid, "Neon Junction") {
+		t.Errorf(`MapsByGameMode()["hybrid"] = %v, want it to contain "Neon Junction"`, hybrid)
+	}
+	if got := parser.SnapToKnownMap("NEON FUNCTION"); got != "neon junction" {
+		t.Errorf(`SnapToKnownMap("NEON FUNCTION") = %q, want "neon junction"`, got)
 	}
 }
 
