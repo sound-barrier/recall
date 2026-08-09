@@ -126,7 +126,7 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
   it('renders nothing when parseProgress carries no re-parse counters', () => {
     const wrapper = mount(SettingsAdvanced, {
       props: {
-        parseProgress: { done: 5, total: 47, filename: 'x.png' },
+        parseProgress: { done: 5, total: 47, filename: 'x.png', screenshot_type: 'teams' },
       },
     })
     expect(wrapper.find('[data-reparse-progress-line]').exists()).toBe(false)
@@ -140,6 +140,7 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
           done: 47,
           total: 47,
           filename: 'x.png',
+          screenshot_type: 'teams',
           matches_updated: 12,
           hero_corrections: 3,
           map_corrections: 1,
@@ -160,6 +161,7 @@ describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
           done: 47,
           total: 47,
           filename: 'x.png',
+          screenshot_type: 'teams',
           matches_updated: 12,
           hero_corrections: 0,
           map_corrections: 0,

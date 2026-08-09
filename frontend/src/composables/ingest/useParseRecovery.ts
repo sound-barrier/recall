@@ -65,11 +65,13 @@ export function useParseRecovery(api: ParseRecoveryApi) {
     }
     if (active.running) {
       api.parseBusy.value = true
+      // Synthetic resync event — the snapshot has no per-file detail, so
+      // filename/type are empty (the wire always carries both fields).
       api.parseProgress.value = {
         done: active.done,
         total: active.total,
         filename: '',
-        screenshot_type: undefined,
+        screenshot_type: '',
       }
     } else if (api.parseBusy.value) {
       // We thought a parse was running but the server says it finished —

@@ -1263,17 +1263,8 @@ export const importMatches = <ThrowOnError extends boolean = false>(options: Opt
  * Server-Sent Events stream
  *
  * Long-lived `text/event-stream` connection. Subscribers receive:
- * * `parse-progress` — fired per OCR'd file during a parse run,
- * carries `{done, total, filename, screenshot_type, match_key?, data?, error?, matches_updated?, hero_corrections?, map_corrections?}`.
- * `match_key` is the resolved key for the just-inserted row
- * (present on post-insert events; absent on the mid-OCR
- * preview event). `error` is set when that single file failed
- * to parse; the batch continues to the next file regardless,
- * so the client should render a warning without aborting the
- * in-flight UI. `matches_updated` / `hero_corrections` /
- * `map_corrections` are cumulative re-parse counters since
- * the run began; absent (zero) on a regular parse run, so
- * consumers that ignore them are unaffected.
+ * * `parse-progress` — fired per OCR'd file during a parse run;
+ * payload is `ParseProgressEvent` (see `components.schemas`).
  * * `match-updated` — fired immediately after each successful
  * per-screenshot insert, carrying the fully-aggregated
  * `MatchRecord` for the affected `match_key`. Lets the
@@ -1282,20 +1273,26 @@ export const importMatches = <ThrowOnError extends boolean = false>(options: Opt
  * element of `GET /api/v1/matches`. May fire multiple
  * times for the same match within a single parse batch as
  * additional screenshots refine its fields.
- * * `parse-complete` — fired after a parse run finishes
+ * * `parse-complete` — fired after a parse run finishes; no
+ * payload.
+ * * `parse-cancelled` — fired when an in-flight run is aborted
+ * via `DELETE /api/v1/parses/active`; no payload.
+ * * `tesseract-status` — fired when the background engine probe
+ * resolves; payload is `TesseractStatus`.
  * * `watch-activity` — fired when the folder watcher sees a new
- * screenshot and when a parse run starts, carrying
- * `{pending, last_seen_at?}`: `pending` counts files queued
- * since the last parse run began (0 when a run consumes the
- * queue) and `last_seen_at` (RFC 3339) stamps the most recent
- * file event. Drives the masthead's "watching · N new" dot;
- * not replayed — a reconnecting client simply starts idle.
+ * screenshot and when a parse run starts; payload is
+ * `WatchActivityEvent`. Drives the masthead's
+ * "watching · N new" dot.
  * * Keepalive comment lines every 25 s so reverse proxies
  * don't close the connection
  *
  * Clients should reconnect on disconnect; messages are not
  * replayed. After reconnect, the client should re-fetch
  * `GET /api/v1/matches` as the authoritative reconciliation.
+ *
+ * The desktop build delivers the same events over the Wails event
+ * bus instead (the asset server cannot stream), so the payload
+ * schemas here are the contract for BOTH transports.
  *
  */
 export const events = <ThrowOnError extends boolean = false>(options?: Options<EventsData, ThrowOnError, EventsResponse>): Promise<ServerSentEventsResult<EventsResponses>> => (options?.client ?? client).sse.get<EventsResponses, unknown, ThrowOnError>({ url: '/api/v1/events', ...options });
