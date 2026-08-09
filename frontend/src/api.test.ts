@@ -1,20 +1,56 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ApiError, GetMatchResults, GetNewScreenshotCount, ParseScreenshots, SetWatchEnabled } from '@/api'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import {
+  ApiError,
+  ClearDatabase,
+  GetDataLocation,
+  GetMatchResults,
+  GetNewScreenshotCount,
+  GetVersion,
+  IgnoreScreenshot,
+  ParseScreenshots,
+  ReParseAll,
+  SetMatchAnnotation,
+  SetMatchReview,
+  SetWatchEnabled,
+} from '@/api'
 
-// IS_WAILS is evaluated at module load time. In the test environment
-// window.go is absent, so IS_WAILS = false and all calls go through fetch.
+// The generated hey-api client dispatches every JSON call as a single
+// Request object through global fetch — ONE transport for both the Wails
+// asset-server origin and server mode. These tests stub global fetch and
+// assert on the Request the client built. The binary/dialog paths keep
+// their own raw fetch(url, init) shape — see the blocks at the bottom.
 
-function mockFetch(status: number, payload: unknown, contentType?: string) {
-  const body = typeof payload === 'string' ? payload : JSON.stringify(payload)
-  const ct = contentType ?? (typeof payload === 'string' ? 'text/plain' : 'application/json')
-  return vi.fn().mockResolvedValue({
-    ok: status >= 200 && status < 300,
+function stubFetch(makeResponse: (req: Request) => Response) {
+  const spy = vi.fn(async (req: Request) => makeResponse(req))
+  vi.stubGlobal('fetch', spy)
+  return spy
+}
+
+function jsonReply(status: number, payload: unknown): (req: Request) => Response {
+  return () => new Response(JSON.stringify(payload), {
     status,
-    headers: { get: (k: string) => (k.toLowerCase() === 'content-type' ? ct : null) },
-    text: () => Promise.resolve(body),
-    json: () => Promise.resolve(payload),
+    headers: { 'Content-Type': 'application/json' },
   })
 }
+
+function textReply(status: number, body: string): (req: Request) => Response {
+  return () => new Response(body, {
+    status,
+    headers: { 'Content-Type': 'text/plain' },
+  })
+}
+
+function emptyReply(status: number): (req: Request) => Response {
+  return () => new Response(null, { status })
+}
+
+function lastRequest(spy: ReturnType<typeof vi.fn>): Request {
+  const req = spy.mock.lastCall?.[0] as Request | undefined
+  if (!req) throw new Error('fetch was not called')
+  return req
+}
+
+afterEach(() => { vi.unstubAllGlobals() })
 
 // ── ApiError ─────────────────────────────────────────────────────────────
 
@@ -39,45 +75,90 @@ describe('ApiError', () => {
   })
 })
 
-// ── fetch success path ────────────────────────────────────────────────────
+// ── URL construction ──────────────────────────────────────────────────────
+// The spec's servers[] must never be baked into request URLs: every call
+// stays root-relative so it resolves against the serving origin (the Wails
+// asset server or RECALL_SERVER_ADDR) and the e2e page.route mocks match.
+
+describe('URL construction', () => {
+  it('requests resolve against the serving origin, not a baked server URL', async () => {
+    const spy = stubFetch(jsonReply(200, []))
+    await GetMatchResults()
+    const url = new URL(lastRequest(spy).url)
+    expect(url.origin).toBe(window.location.origin)
+    expect(url.pathname).toBe('/api/v1/matches')
+  })
+
+  it('percent-encodes path parameters', async () => {
+    const spy = stubFetch(emptyReply(204))
+    await IgnoreScreenshot('file with space.png')
+    const req = lastRequest(spy)
+    expect(req.method).toBe('PUT')
+    expect(new URL(req.url).pathname).toBe('/api/v1/screenshots/file%20with%20space.png/ignore')
+  })
+
+  it('ReParseAll posts to /api/v1/parses?scope=all', async () => {
+    const spy = stubFetch(emptyReply(202))
+    await ReParseAll()
+    const req = lastRequest(spy)
+    expect(req.method).toBe('POST')
+    const url = new URL(req.url)
+    expect(url.pathname).toBe('/api/v1/parses')
+    expect(url.search).toBe('?scope=all')
+  })
+
+  it('ClearDatabase adds ?keep_ignored=true only when asked', async () => {
+    const spy = stubFetch(emptyReply(204))
+    await ClearDatabase()
+    expect(new URL(lastRequest(spy).url).search).toBe('')
+    await ClearDatabase(true)
+    const req = lastRequest(spy)
+    expect(req.method).toBe('DELETE')
+    const url = new URL(req.url)
+    expect(url.pathname).toBe('/api/v1/matches')
+    expect(url.search).toBe('?keep_ignored=true')
+  })
+})
+
+// ── GET success ───────────────────────────────────────────────────────────
 
 describe('GET success', () => {
-  beforeEach(() => { vi.stubGlobal('fetch', mockFetch(200, [])) })
-  afterEach(() => { vi.unstubAllGlobals() })
-
   it('resolves with the parsed JSON body', async () => {
-    vi.stubGlobal('fetch', mockFetch(200, [{ match_key: 'match:x', source_files: [], data: {} }]))
+    stubFetch(jsonReply(200, [{ match_key: 'match:x', source_files: [], data: {} }]))
     const result = await GetMatchResults()
     expect(result).toHaveLength(1)
     expect(result[0]?.match_key).toBe('match:x')
   })
 
-  it('resolves a numeric unwrap correctly', async () => {
-    vi.stubGlobal('fetch', mockFetch(200, { count: 7 }))
+  it('unwraps the {count} envelope to a number', async () => {
+    stubFetch(jsonReply(200, { count: 7 }))
     const n = await GetNewScreenshotCount()
     expect(n).toBe(7)
   })
+
+  it('unwraps the {version} envelope to a string', async () => {
+    stubFetch(jsonReply(200, { version: '0.26.0' }))
+    expect(await GetVersion()).toBe('0.26.0')
+  })
 })
 
-// ── fetch error path ──────────────────────────────────────────────────────
+// ── error paths ───────────────────────────────────────────────────────────
 
 describe('GET 4xx error', () => {
-  afterEach(() => { vi.unstubAllGlobals() })
-
   it('throws ApiError with the HTTP status', async () => {
-    vi.stubGlobal('fetch', mockFetch(400, 'bad request'))
+    stubFetch(textReply(400, 'bad request'))
     await expect(GetMatchResults()).rejects.toBeInstanceOf(ApiError)
   })
 
   it('preserves the status code', async () => {
-    vi.stubGlobal('fetch', mockFetch(403, 'forbidden'))
+    stubFetch(textReply(403, 'forbidden'))
     const err = await GetMatchResults().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(403)
   })
 
   it('preserves the response body text', async () => {
-    vi.stubGlobal('fetch', mockFetch(400, 'validation error detail'))
+    stubFetch(textReply(400, 'validation error detail'))
     const err = await GetMatchResults().catch(e => e)
     expect((err as ApiError).body).toBe('validation error detail')
   })
@@ -90,7 +171,10 @@ describe('GET 4xx error', () => {
       detail: 'body must be {"hidden":<bool>}',
       errors: [{ field: 'hidden', detail: 'must be a boolean' }],
     }
-    vi.stubGlobal('fetch', mockFetch(400, problem, 'application/problem+json'))
+    stubFetch(() => new Response(JSON.stringify(problem), {
+      status: 400,
+      headers: { 'Content-Type': 'application/problem+json' },
+    }))
     const err = await GetMatchResults().catch(e => e) as ApiError
     expect(err.status).toBe(400)
     // The detail is kept on .body so existing display call sites keep working.
@@ -101,63 +185,82 @@ describe('GET 4xx error', () => {
 })
 
 describe('GET 5xx error', () => {
-  afterEach(() => { vi.unstubAllGlobals() })
-
   it('throws ApiError for 500', async () => {
-    vi.stubGlobal('fetch', mockFetch(500, 'internal server error'))
+    stubFetch(textReply(500, 'internal server error'))
     const err = await GetMatchResults().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(500)
   })
 
   it('is distinguishable from 4xx by status', async () => {
-    vi.stubGlobal('fetch', mockFetch(502, 'bad gateway'))
+    stubFetch(textReply(502, 'bad gateway'))
     const err = await GetMatchResults().catch(e => e) as ApiError
     expect(err.status >= 500).toBe(true)
   })
 })
 
-// ── POST path ─────────────────────────────────────────────────────────────
+// ── writers ───────────────────────────────────────────────────────────────
 
-describe('POST success', () => {
-  afterEach(() => { vi.unstubAllGlobals() })
-
-  it('resolves without throwing on 200', async () => {
-    vi.stubGlobal('fetch', mockFetch(200, null))
-    await expect(ParseScreenshots()).resolves.not.toThrow()
+describe('writers', () => {
+  it('204 resolves to undefined (the r.json()-on-204 regression)', async () => {
+    stubFetch(emptyReply(204))
+    await expect(SetWatchEnabled(true)).resolves.toBeUndefined()
   })
 
-  it('sends the body as JSON', async () => {
-    const spy = mockFetch(200, null)
-    vi.stubGlobal('fetch', spy)
+  it('202 resolves to undefined', async () => {
+    stubFetch(emptyReply(202))
+    await expect(ParseScreenshots()).resolves.toBeUndefined()
+  })
+
+  it('sends the body as JSON with the content-type header', async () => {
+    const spy = stubFetch(emptyReply(204))
     await SetWatchEnabled(true)
-    expect(spy).toHaveBeenCalledWith(
-      '/api/v1/settings/watcher',
-      expect.objectContaining({
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: true }),
-      }),
-    )
+    const req = lastRequest(spy)
+    expect(req.method).toBe('PUT')
+    expect(new URL(req.url).pathname).toBe('/api/v1/settings/watcher')
+    expect(req.headers.get('content-type')).toBe('application/json')
+    expect(await req.text()).toBe(JSON.stringify({ enabled: true }))
   })
-})
 
-describe('POST 4xx error', () => {
-  afterEach(() => { vi.unstubAllGlobals() })
-
-  it('throws ApiError with the right status', async () => {
-    vi.stubGlobal('fetch', mockFetch(422, 'invalid path'))
+  it('throws ApiError with the right status on a rejected write', async () => {
+    stubFetch(textReply(422, 'invalid path'))
     const err = await ParseScreenshots().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(422)
   })
+
+  it('SetMatchReview maps "" to DELETE and a value to PUT', async () => {
+    const spy = stubFetch(emptyReply(204))
+    await SetMatchReview('match-2026-05-10T22-21-11', '')
+    let req = lastRequest(spy)
+    expect(req.method).toBe('DELETE')
+    expect(new URL(req.url).pathname).toBe('/api/v1/matches/match-2026-05-10T22-21-11/review')
+
+    await SetMatchReview('match-2026-05-10T22-21-11', 'self')
+    req = lastRequest(spy)
+    expect(req.method).toBe('PUT')
+    expect(await req.text()).toBe(JSON.stringify({ reviewed_by: 'self' }))
+  })
+
+  // AnnotationInput is upsert-only server-side: partial TS inputs must
+  // still send the complete six-field row so empty fields read as "" / []
+  // rather than nulling out values the user typed elsewhere. (This pin
+  // replaced the Wails-RPC Go-field-name pin when the RPC branch died.)
+  it('SetMatchAnnotation always sends the complete annotation row', async () => {
+    const spy = stubFetch(emptyReply(204))
+    await SetMatchAnnotation('match:x', { note: 'just a note' })
+    const req = lastRequest(spy)
+    expect(req.method).toBe('PUT')
+    expect(new URL(req.url).pathname).toBe('/api/v1/matches/match%3Ax/annotation')
+    expect(JSON.parse(await req.text())).toEqual({
+      leavers: [], throwers: [], note: 'just a note', replay_code: '', members: [], tags: [],
+    })
+  })
 })
 
-// ── Data location + export/import ────────────────────────────────────────
+// ── Data location ─────────────────────────────────────────────────────────
 
 describe('GetDataLocation', () => {
-  afterEach(() => { vi.unstubAllGlobals() })
-
   it('GETs /api/v1/system/data-location and resolves to the payload', async () => {
     const payload = {
       base_dir: '/Users/jacob/Library/Application Support/Recall',
@@ -165,17 +268,29 @@ describe('GetDataLocation', () => {
       database_path: '/Users/jacob/Library/Application Support/Recall/db/recall.db',
       screenshots_dir: '/Users/jacob/Documents/Overwatch/Screenshots',
     }
-    const spy = mockFetch(200, payload)
-    vi.stubGlobal('fetch', spy)
-    const { GetDataLocation } = await import('@/api')
+    const spy = stubFetch(jsonReply(200, payload))
     const got = await GetDataLocation()
-    // fetch is called as fetch(url, init) — the GET path passes undefined.
-    expect(spy).toHaveBeenCalledWith('/api/v1/system/data-location', undefined)
+    expect(new URL(lastRequest(spy).url).pathname).toBe('/api/v1/system/data-location')
     expect(got).toEqual(payload)
   })
 })
 
 // ── BackupDatabase (browser/server mode) ──────────────────────────────────
+// The binary download/upload paths deliberately bypass the generated SDK
+// (blob + Content-Disposition + native-dialog twins live in api-platform),
+// so they keep the raw fetch(url, init) call shape.
+
+function mockFetch(status: number, payload: unknown, contentType?: string) {
+  const body = typeof payload === 'string' ? payload : JSON.stringify(payload)
+  const ct = contentType ?? (typeof payload === 'string' ? 'text/plain' : 'application/json')
+  return vi.fn().mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (k: string) => (k.toLowerCase() === 'content-type' ? ct : null) },
+    text: () => Promise.resolve(body),
+    json: () => Promise.resolve(payload),
+  })
+}
 
 describe('BackupDatabase (browser mode)', () => {
   afterEach(() => {
@@ -343,7 +458,7 @@ describe('RestoreDatabase + ImportMatches (browser mode)', () => {
   })
 })
 
-// Wails-mode tests for api.ts live in src/api.wails.test.ts — the
-// module-cache reset they require pollutes any later test in the
-// same file that depends on global state (e.g. happy-dom's URL),
+// Wails-mode tests (native dialogs, events, single-transport pin) live in
+// src/api-platform.wails.test.ts — the module-cache reset they require
+// pollutes any later test in the same file that depends on global state,
 // so Vitest's file-level worker isolation is the cleanest fix.

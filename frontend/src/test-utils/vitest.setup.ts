@@ -22,11 +22,15 @@ import { afterAll, vi } from 'vitest'
 globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
   const url = input instanceof Request ? input.url : String(input)
   if (url.includes('/system/reference-data')) {
+    // The hey-api client reads the body via text() and content-type via
+    // headers — keep all three response views serving the same payload.
+    const payload = { heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [] }
     return {
       ok: true,
       status: 200,
-      json: async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [] }),
-      text: async () => '{}',
+      headers: { get: (k: string) => (k.toLowerCase() === 'content-type' ? 'application/json' : null) },
+      json: async () => payload,
+      text: async () => JSON.stringify(payload),
     }
   }
   console.error('[vitest.setup] unmocked fetch in a unit test (resolved as 503):', url)
