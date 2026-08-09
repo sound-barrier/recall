@@ -9,7 +9,7 @@ import {
   TRACK_LABELS, type HeroPickStat, type TrackKey, type TrackSeed,
 } from '@/match/elo-seed'
 import {
-  decayProjection, gamesToWeeks, naiveProjection, probWithinGames, projectionCurves,
+  decayProjection, gamesToWeeks, naiveProjection, projectionCurves,
   requiredWinRateForGames, DEFAULT_DECAY_SLOPE, DEFAULT_METER_MOVE_PCT,
   type DecayProjection, type NaiveProjection, type ProjectionCurves, type ProjectionInput,
 } from '@/match/elo-model'
@@ -57,6 +57,9 @@ interface SeededForm {
 
 // SEASON_WEEKS sizes the "this season" probability window.
 const SEASON_WEEKS = 12
+// With no measured pace the simulator assumes a typical week so the verdict
+// still has a season to quote; paceAssumed flags the copy.
+const FALLBACK_GAMES_PER_WEEK = 10
 // The loss-streak reality check: odds of a run this long within this many
 // decisive games — the "streaks are normal, not rigged" number.
 const STREAK_LEN = 5
@@ -303,10 +306,10 @@ export function useEloCalculator(opts: EloCalcOpts) {
     const pace = gamesPerWeekInput.value
     return pace === null || pace <= 0 ? null : Math.round(pace * SEASON_WEEKS)
   })
-  const probThisSeason = computed(() => {
-    if (projInput.value === null || seasonGames.value === null) return null
-    return probWithinGames(projInput.value, seasonGames.value)
-  })
+  // The season probability IS the simulator's reach share — one model for
+  // every number on the page (the old IG first-passage layer ignored decay
+  // and contradicted the verdict by construction).
+  const probThisSeason = computed(() => seasonSim.value?.probReachTarget ?? null)
   const requiredWrForSeason = computed(() => {
     if (projInput.value === null || seasonGames.value === null) return null
     return requiredWinRateForGames(projInput.value, seasonGames.value)
@@ -334,11 +337,26 @@ export function useEloCalculator(opts: EloCalcOpts) {
     (measuredProjInput.value ? naiveProjection(measuredProjInput.value) : null))
   const measuredWeeks = computed(() =>
     gamesToWeeks(measuredNaive.value?.expectedGames ?? null, seededForm.value?.gamesPerWeekInput ?? null))
-  const measuredProbSeason = computed(() => {
+  // The measured baseline runs the SAME simulator (recomputes only on
+  // re-seed), so the delta strip prices edits against comparable odds.
+  const measuredSeasonSim = computed<SeasonSim | null>(() => {
+    const inp = measuredProjInput.value
     const f = seededForm.value
-    if (measuredProjInput.value === null || f === null || f.gamesPerWeekInput === null || f.gamesPerWeekInput <= 0) return null
-    return probWithinGames(measuredProjInput.value, Math.round(f.gamesPerWeekInput * SEASON_WEEKS))
+    if (!inp || inp.targetScore <= inp.currentScore) return null
+    const pace = f?.gamesPerWeekInput ?? null
+    const horizon = pace !== null && pace > 0 ? Math.round(pace * SEASON_WEEKS) : FALLBACK_GAMES_PER_WEEK * SEASON_WEEKS
+    return simulateSeasons({
+      currentScore: inp.currentScore,
+      targetScore: inp.targetScore,
+      sampleWins: inp.sampleWins,
+      sampleLosses: inp.sampleLosses,
+      horizonGames: horizon,
+      meter: meterSamples.value,
+      symmetricFallbackPct: inp.meterMovePct,
+      decaySlope: inp.decaySlope,
+    })
   })
+  const measuredProbSeason = computed(() => measuredSeasonSim.value?.probReachTarget ?? null)
 
   // Odds of a STREAK_LEN-loss run in the next STREAK_HORIZON games at the
   // current win rate — the anti-"rigged" reality check.
@@ -372,20 +390,25 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // ── Phase 2: the bootstrap season simulator + the Kalman skill curve ──
   // The sim follows the FORM (posterior sample + target + pace) but replays
   // the player's real rank-card moves; a manual meter edit only matters as
-  // the fallback when the empirical pools are thin.
+  // the fallback when the empirical pools are thin. It carries the decay
+  // slope too — the ONE model every probability on the page derives from —
+  // and, with no measured pace, assumes a typical week so the verdict is
+  // still quotable (paceAssumed flags the copy).
   const meterSamples = computed(() => meterMoveSamples(trackRecs.value))
+  const paceAssumed = computed(() => seasonGames.value === null)
+  const simHorizonGames = computed(() => seasonGames.value ?? FALLBACK_GAMES_PER_WEEK * SEASON_WEEKS)
   const seasonSim = computed<SeasonSim | null>(() => {
     const inp = projInput.value
-    const horizon = seasonGames.value
-    if (!inp || horizon === null || inp.targetScore <= inp.currentScore) return null
+    if (!inp || inp.targetScore <= inp.currentScore) return null
     return simulateSeasons({
       currentScore: inp.currentScore,
       targetScore: inp.targetScore,
       sampleWins: inp.sampleWins,
       sampleLosses: inp.sampleLosses,
-      horizonGames: horizon,
+      horizonGames: simHorizonGames.value,
       meter: meterSamples.value,
       symmetricFallbackPct: inp.meterMovePct,
+      decaySlope: inp.decaySlope,
     })
   })
   // The skill curve is pure history: the track's rank readings, de-noised.
@@ -422,10 +445,10 @@ export function useEloCalculator(opts: EloCalcOpts) {
     // derived
     trackRecs, currentScore, targetScore, projInput, naive, decay, curves,
     pValue, percentileNow, percentileTarget, weeksNaive, weeksDecay,
-    seasonGames, probThisSeason, requiredWrForSeason,
+    seasonGames, simHorizonGames, paceAssumed, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
     skepticVerdict, trueRateRange, climbQuantiles, gamesToCertainty,
-    runs, seasonSim, skillCurve, changePoint, lift, heroGap,
+    runs, seasonSim, measuredSeasonSim, skillCurve, changePoint, lift, heroGap,
   }
 }
 
