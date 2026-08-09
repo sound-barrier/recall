@@ -67,7 +67,7 @@ jobs:
         run: bash scripts/release/package-wails-windows.sh
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
           # The raw exe (`…-windows-amd64.exe`) is the in-app updater target;
           # the installer (`…-windows-amd64-installer.exe`) is the human
@@ -211,7 +211,7 @@ jobs:
       #   gh attestation verify recall-X.Y.Z-heroes.yaml \
       #     --repo sound-barrier/recall
       - name: Attest reference data provenance
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
           subject-path: |
             recall-*-heroes.yaml
@@ -232,7 +232,7 @@ jobs:
       #   gh attestation verify <file>.sha256 → sha256sum --check <file>.sha256
       # This closes the loop: even the fallback verification path is signed.
       - name: Attest SHA256 checksums
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
         with:
           subject-path: |
             recall-*.exe.sha256
