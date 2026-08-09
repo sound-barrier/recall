@@ -18,18 +18,18 @@ const MIN_WIDTH = 36
 export const DEFAULT_COLUMN_WIDTHS: Readonly<Record<string, number>> = {
   select: 34,
   date: 132,
+  result: 86,
   map: 132,
   playMode: 96,
   queue: 96,
   hero: 150,
   role: 72,
-  eliminations: 44,
-  assists: 44,
-  deaths: 44,
+  eliminations: 58,
+  assists: 64,
+  deaths: 60,
+  kda: 52,
   tags: 112,
-  edited: 56,
-  manual: 64,
-  result: 86,
+  source: 64,
 }
 
 function isWidthMap(decoded: unknown): decoded is Record<string, number> {

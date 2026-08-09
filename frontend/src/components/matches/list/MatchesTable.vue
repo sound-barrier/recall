@@ -480,18 +480,17 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   z-index: 3;
   border-right: 1px solid var(--border-strong);
 }
-.leaves-thead .th[data-sort-col="result"] { text-align: right; }
-.leaves-thead .th[data-sort-col="result"] .th-inner { flex-direction: row-reverse; }
-
-/* Numeric E / A / D headers right-align to sit over their tabular-num
-   cells (MatchTableRow .tc-stat-cell). */
+/* Numeric Elims / Assists / Deaths / KDA headers right-align to sit
+   over their tabular-num cells (MatchTableRow .tc-stat-cell). */
 .leaves-thead .th[data-sort-col="eliminations"],
 .leaves-thead .th[data-sort-col="assists"],
-.leaves-thead .th[data-sort-col="deaths"] { text-align: right; }
+.leaves-thead .th[data-sort-col="deaths"],
+.leaves-thead .th[data-sort-col="kda"] { text-align: right; }
 
 .leaves-thead .th[data-sort-col="eliminations"] .th-inner,
 .leaves-thead .th[data-sort-col="assists"] .th-inner,
-.leaves-thead .th[data-sort-col="deaths"] .th-inner { flex-direction: row-reverse; }
+.leaves-thead .th[data-sort-col="deaths"] .th-inner,
+.leaves-thead .th[data-sort-col="kda"] .th-inner { flex-direction: row-reverse; }
 
 .th-sortable {
   cursor: pointer;

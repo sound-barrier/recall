@@ -50,8 +50,10 @@ test.describe('data table — cell range-select + copy', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await routeMatches(page, [record('m1', 'rialto', 17), record('m2', 'busan', 9)])
 
-    const start = (await page.locator('tr.table-row[data-match-key="m1"] td[data-col="1"]').boundingBox())!
-    const end = (await page.locator('tr.table-row[data-match-key="m2"] td[data-col="6"]').boundingBox())!
+    // Start on the Map cell (col 2) — col 1 is the Result chip, whose
+    // button rightly swallows the mousedown for click-to-filter.
+    const start = (await page.locator('tr.table-row[data-match-key="m1"] td[data-col="2"]').boundingBox())!
+    const end = (await page.locator('tr.table-row[data-match-key="m2"] td[data-col="7"]').boundingBox())!
     await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2)
     await page.mouse.down()
     await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 8 })

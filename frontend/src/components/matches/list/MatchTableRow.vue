@@ -6,9 +6,7 @@ import { useOWData } from '@/composables/shared/useOWData'
 import {
   formatRowDate,
   formatFinishedAt,
-  isEditedMatch,
   isHeroUnknown,
-  isManualMatch,
   isMapUnknown,
   rolePlays,
   sortedHeroPlays,
@@ -19,9 +17,11 @@ import {
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
 } from '@/match/match-label-helpers'
+import { formatKda, kdaRatio } from '@/match/match-stats-helpers'
 import { disruptionLabel, disruptionTint } from '@/match/match-disruption'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
+import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 
 // One <tr> in the data-density match table. Carries the SAME props +
 // emits as MatchLeafRow so MatchesView wires every interaction (click →
@@ -92,6 +92,7 @@ const isFocused = computed(
 )
 const bareTerms = computed(() => props.searchClauses.filter((c) => c.field === null).map((c) => c.value))
 const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
+const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
 </script>
 
 <template>
@@ -132,7 +133,19 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
       <span class="tc-date-d">{{ formatRowDate(rec) }}</span>
       <span class="tc-date-t">{{ formatFinishedAt(rec) }}</span>
     </td>
-    <td class="tc tc-map" :data-col="1" :class="{ 'is-cell-selected': sel(1) }">
+    <td class="tc tc-result" :data-col="1" :class="{ 'is-cell-selected': sel(1) }">
+      <button
+        type="button"
+        class="tc-result-chip tc-filter-cell"
+        :class="[`result-${rec.data?.result || 'unknown'}`, { 'is-filtered': resultFiltered }]"
+        :disabled="!rec.data?.result"
+        :title="!rec.data?.result ? undefined : resultFiltered ? `Filtering by ${rec.data.result} — click to clear` : `Filter the set to ${rec.data.result}`"
+        @click.stop="rec.data?.result && emit('filter-cell', 'result', rec.data.result)"
+      >
+        {{ rec.data?.result || '—' }}
+      </button>
+    </td>
+    <td class="tc tc-map" :data-col="2" :class="{ 'is-cell-selected': sel(2) }">
       <span
         v-if="isMapUnknown(rec)"
         class="tc-unknown"
@@ -149,7 +162,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         <HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" />
       </button>
     </td>
-    <td class="tc tc-mode" :data-col="2" :class="{ 'is-cell-selected': sel(2) }">
+    <td class="tc tc-mode" :data-col="3" :class="{ 'is-cell-selected': sel(3) }">
       <button
         type="button"
         class="tc-chip tc-filter-cell"
@@ -160,7 +173,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         {{ formatPlayModeLabel(rec) }}
       </button>
     </td>
-    <td class="tc tc-queue" :data-col="3" :class="{ 'is-cell-selected': sel(3) }">
+    <td class="tc tc-queue" :data-col="4" :class="{ 'is-cell-selected': sel(4) }">
       <button
         type="button"
         class="tc-chip tc-filter-cell"
@@ -171,7 +184,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         {{ formatQueueTypeLabel(rec) }}
       </button>
     </td>
-    <td class="tc tc-hero" :data-col="4" :class="{ 'is-cell-selected': sel(4) }">
+    <td class="tc tc-hero" :data-col="5" :class="{ 'is-cell-selected': sel(5) }">
       <span
         v-if="isHeroUnknown(rec)"
         class="tc-unknown"
@@ -190,7 +203,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         ><HighlightedText :text="h.hero" :terms="bareTerms" /></button>
       </span>
     </td>
-    <td class="tc tc-role" :data-col="5" :class="{ 'is-cell-selected': sel(5) }">
+    <td class="tc tc-role" :data-col="6" :class="{ 'is-cell-selected': sel(6) }">
       <span class="tc-role-chips">
         <button
           v-for="r in rolePlays(rec, ow.heroRole)"
@@ -204,16 +217,19 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         >{{ r.role }}</button>
       </span>
     </td>
-    <td class="tc tc-stat-cell tc-elim" :data-col="6" :class="{ 'is-cell-selected': sel(6) }">
+    <td class="tc tc-stat-cell tc-elim" :data-col="7" :class="{ 'is-cell-selected': sel(7) }">
       {{ rec.data?.eliminations ?? '—' }}
     </td>
-    <td class="tc tc-stat-cell tc-assist" :data-col="7" :class="{ 'is-cell-selected': sel(7) }">
+    <td class="tc tc-stat-cell tc-assist" :data-col="8" :class="{ 'is-cell-selected': sel(8) }">
       {{ rec.data?.assists ?? '—' }}
     </td>
-    <td class="tc tc-stat-cell tc-death" :data-col="8" :class="{ 'is-cell-selected': sel(8) }">
+    <td class="tc tc-stat-cell tc-death" :data-col="9" :class="{ 'is-cell-selected': sel(9) }">
       {{ rec.data?.deaths ?? '—' }}
     </td>
-    <td class="tc tc-tags" :data-col="9" :class="{ 'is-cell-selected': sel(9) }">
+    <td class="tc tc-stat-cell tc-kda" :data-col="10" :class="{ 'is-cell-selected': sel(10) }">
+      {{ kda || '—' }}
+    </td>
+    <td class="tc tc-tags" :data-col="11" :class="{ 'is-cell-selected': sel(11) }">
       <span
         v-if="rec.annotation?.leavers?.length"
         role="img"
@@ -236,35 +252,8 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         class="tc-tag"
       >#<HighlightedText :text="t" :terms="tagTerms" /></span>
     </td>
-    <td class="tc tc-prov" :data-col="10" :class="{ 'is-cell-selected': sel(10) }">
-      <input
-        type="checkbox"
-        class="tc-prov-box"
-        disabled
-        :checked="isEditedMatch(rec)"
-        :aria-label="isEditedMatch(rec) ? 'Edited after parsing' : 'Not edited'"
-      >
-    </td>
-    <td class="tc tc-prov" :data-col="11" :class="{ 'is-cell-selected': sel(11) }">
-      <input
-        type="checkbox"
-        class="tc-prov-box"
-        disabled
-        :checked="isManualMatch(rec)"
-        :aria-label="isManualMatch(rec) ? 'Hand-entered match' : 'Not hand-entered'"
-      >
-    </td>
-    <td class="tc tc-result" :data-col="12" :class="{ 'is-cell-selected': sel(12) }">
-      <button
-        type="button"
-        class="tc-result-chip tc-filter-cell"
-        :class="[`result-${rec.data?.result || 'unknown'}`, { 'is-filtered': resultFiltered }]"
-        :disabled="!rec.data?.result"
-        :title="!rec.data?.result ? undefined : resultFiltered ? `Filtering by ${rec.data.result} — click to clear` : `Filter the set to ${rec.data.result}`"
-        @click.stop="rec.data?.result && emit('filter-cell', 'result', rec.data.result)"
-      >
-        {{ rec.data?.result || '—' }}
-      </button>
+    <td class="tc tc-prov" :data-col="12" :class="{ 'is-cell-selected': sel(12) }">
+      <MatchProvenanceBadge :source="rec.source" :edited-fields="rec.edited_fields" compact />
     </td>
   </tr>
 </template>
@@ -443,23 +432,11 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .tc-stamp.stamp-enemy { color: var(--win); }
 .tc-stamp.stamp-both  { color: var(--accent-text); }
 
-/* Provenance columns (Edited · User entered): a read-only checkbox per
-   row. `disabled` makes it a non-interactive indicator — the click
-   falls through to the row's open-match handler — while still reading
-   as a checkbox to assistive tech. `opacity: 1` overrides the UA's
-   greyed-disabled wash so a ticked box stays clearly visible. */
+/* Source column: the same compact provenance badge the leaf rows wear
+   (OCR / edited / manual), one glyph per row. */
 .tc-prov { text-align: center; }
 
-.tc-prov-box {
-  margin: 0;
-  accent-color: var(--accent);
-  opacity: 1;
-  cursor: default;
-}
-
 .tc-unknown { color: var(--accent-bright, var(--accent)); cursor: help; }
-
-.tc-result { text-align: right; }
 
 .tc-result-chip {
   font-size: var(--type-2xs);
