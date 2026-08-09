@@ -124,3 +124,13 @@ operations land in the lazy api-client chunk. Measured overrun was
 5,529 B (+10.6 KB of generated client, net of ~700 deleted hand-written
 lines; initial JS unchanged). The bump keeps the usual ~5 KB working
 headroom.
+
+## 2026-08 — initial JS 162000 → 190500, total JS 1553000 → 1581000
+
+@tanstack/vue-query lands in the eager shell (the QueryClient + plugin
+register in main.ts so store-setup-time observers work). Measured
+overruns: initial +23,293 B over budget (+28,029 B of library + the
+queries/client defaults + banner wiring), total +22,558 B. Server state
+moves out of the Pinia stores into the query cache over the following
+commits, which deletes hand-rolled loader/invalidation code from the
+lazy chunks. Both bumps keep the usual ~5 KB working headroom.

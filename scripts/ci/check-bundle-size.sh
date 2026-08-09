@@ -32,7 +32,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # scripts/ci/bundle-size-budget-history.md — append a row there when
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
-: "${MAX_INITIAL_JS_BYTES:=162000}"
+: "${MAX_INITIAL_JS_BYTES:=190500}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -93,7 +93,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # After-N-losses / Session depth widgets, form + loss-streak metrics, layout
 # migration v2, KDA + Source table columns), ~3.4KB in the MatchesView chunk;
 # the rest is the deliberate ~5KB headroom. New feature.
-: "${MAX_TOTAL_JS_BYTES:=1553000}"
+: "${MAX_TOTAL_JS_BYTES:=1581000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
