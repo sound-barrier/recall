@@ -64,13 +64,19 @@ function naiveGamesAt(distance: number, stepUnits: number, p: number): number | 
 // wilsonGamesRange propagates the win-rate sample's Wilson 95% interval
 // through a games-at-p function: the CI's fast side uses the favourable
 // bound, the slow side the unfavourable one (null = unreachable there).
+// When input.winRate departs from the sample rate (a manual edit or hero
+// nudge), the interval recenters on the dialed rate at the REAL sample's
+// width — the dial moves the projection, it never fakes a sample.
 function wilsonGamesRange(
   input: ProjectionInput,
   gamesAt: (p: number) => number | null,
 ): GamesRange {
-  const iv = wilsonInterval(input.sampleWins, input.sampleWins + input.sampleLosses)
+  const n = input.sampleWins + input.sampleLosses
+  const iv = wilsonInterval(input.sampleWins, n)
   if (iv === null) return { lower: null, upper: null }
-  const candidates = [gamesAt(iv.lower), gamesAt(iv.upper)]
+  const delta = n > 0 ? input.winRate - input.sampleWins / n : 0
+  const clamp01 = (p: number): number => Math.min(1, Math.max(0, p))
+  const candidates = [gamesAt(clamp01(iv.lower + delta)), gamesAt(clamp01(iv.upper + delta))]
   const finite = candidates.filter((g): g is number => g !== null)
   if (finite.length === 0) return { lower: null, upper: null }
   const lower = Math.min(...finite)

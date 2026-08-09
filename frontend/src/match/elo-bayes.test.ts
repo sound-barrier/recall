@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 
 import {
   SKEPTIC_PRIOR, probTrueWinRateAbove, credibleInterval, gamesToKnow,
-  posteriorClimbQuantiles, shrunkWinRate,
+  posteriorClimbQuantiles, shrunkWinRate, ceilingRange,
 } from '@/match/elo-bayes'
 import { inverseGaussianCdf } from '@/match/elo-stats'
+import { LADDER_MAX } from '@/match/elo-model'
 import type { ProjectionInput } from '@/match/elo-model'
 
 describe('probTrueWinRateAbove', () => {
@@ -136,5 +137,61 @@ describe('posteriorClimbQuantiles', () => {
 
   it('exports the skeptic prior the UI documents', () => {
     expect(SKEPTIC_PRIOR).toEqual({ alpha: 10, beta: 10 })
+  })
+})
+
+describe('ceilingRange', () => {
+  const base: ProjectionInput = {
+    currentScore: 13.4,
+    targetScore: 15,
+    winRate: 0.55,
+    sampleWins: 110,
+    sampleLosses: 90,
+    meterMovePct: 20,
+    decaySlope: 0.015,
+  }
+
+  it('brackets the point plateau on a well-measured sample', () => {
+    // Point plateau: 13.4 + 0.05/0.015 ≈ 16.7. A 200-game sample keeps the
+    // posterior tight, so the range surrounds it without exploding.
+    const r = ceilingRange(base, null)
+    expect(r.lo).toBeLessThan(16.7)
+    expect(r.hi).not.toBeNull()
+    expect(r.hi!).toBeGreaterThan(16.7)
+    expect(r.hi! - r.lo).toBeLessThan(10)
+  })
+
+  it('is honestly enormous on three games', () => {
+    const r = ceilingRange({ ...base, winRate: 1 / 3, sampleWins: 1, sampleLosses: 2 }, null)
+    expect(r.hi === null || r.hi - r.lo > 10).toBe(true)
+  })
+
+  it('a slope CI admitting an improver leaves the top open', () => {
+    const r = ceilingRange(base, { lowerPts: -0.2, upperPts: 2.5 })
+    expect(r.hi).toBeNull()
+  })
+
+  it('a wide positive slope CI widens the range beyond the fixed-slope one', () => {
+    const fixed = ceilingRange(base, null)
+    const wide = ceilingRange(base, { lowerPts: 1, upperPts: 3 })
+    expect(wide.hi!).toBeGreaterThan(fixed.hi!)
+    expect(wide.lo).toBeLessThanOrEqual(fixed.lo)
+  })
+
+  it('clamps to the ladder', () => {
+    const r = ceilingRange({ ...base, winRate: 0.95, sampleWins: 190, sampleLosses: 10 }, null)
+    expect(r.hi === null || r.hi <= LADDER_MAX).toBe(true)
+    const low = ceilingRange({ ...base, winRate: 0.05, sampleWins: 10, sampleLosses: 190 }, null)
+    expect(low.lo).toBeGreaterThanOrEqual(0)
+  })
+
+  it('an edited rate shifts the range without narrowing it', () => {
+    // Same real 200-game sample; the dial says 60% instead of the measured
+    // 55%. The range must move up but keep honest real-n width.
+    const measured = ceilingRange(base, null)
+    const nudged = ceilingRange({ ...base, winRate: 0.6 }, null)
+    expect(nudged.lo).toBeGreaterThan(measured.lo)
+    expect(nudged.hi!).toBeGreaterThan(measured.hi!)
+    expect(nudged.hi! - nudged.lo).toBeCloseTo(measured.hi! - measured.lo, 1)
   })
 })

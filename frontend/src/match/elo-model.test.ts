@@ -47,6 +47,18 @@ describe('naiveProjection', () => {
     expect(p.expectedGames).toBeCloseTo(25, 9) // −1 / (0.2·−0.2)
   })
 
+  it('games95 follows a dialed rate at real-sample width', () => {
+    // The real sample is 140/60 (70%) but the dial says 55%: the interval
+    // must recenter on the dialed rate — glued to the sample rate it would
+    // exclude the projection's own expected games (80 > the sample-rate
+    // interval's slow bound of ~30).
+    const dialed = naiveProjection(input({ winRate: 0.55 }))
+    expect(dialed.expectedGames).not.toBeNull()
+    expect(dialed.games95.lower).not.toBeNull()
+    expect(dialed.games95.lower!).toBeLessThanOrEqual(dialed.expectedGames!)
+    expect(dialed.games95.upper === null || dialed.games95.upper >= dialed.expectedGames!).toBe(true)
+  })
+
   it('propagates the Wilson interval: a thin sample cannot rule out never', () => {
     // 9W/5L ≈ 64% but Wilson lower ≈ 39% < 50% → upper CI unbounded.
     const p = naiveProjection(input({ sampleWins: 9, sampleLosses: 5 }))

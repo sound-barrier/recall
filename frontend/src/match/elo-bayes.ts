@@ -10,6 +10,7 @@
 // have to argue their way past the myth.
 
 import { betaCdf, inverseGaussianCdf } from '@/match/elo-stats'
+import { LADDER_MAX } from '@/match/elo-model'
 import type { ProjectionInput } from '@/match/elo-model'
 
 export interface BetaPrior {
@@ -157,4 +158,59 @@ export function posteriorClimbQuantiles(
   }
 
   return { p10: quantile(0.1), p50: quantile(0.5), p90: quantile(0.9), pNever }
+}
+
+export interface SlopeCI {
+  lowerPts: number
+  upperPts: number
+}
+
+export interface CeilingRange {
+  lo: number
+  hi: number | null // null: the slope's own lower bound admits "no ceiling in sight"
+}
+
+// The slope denominator's floor, in win-rate points per division: below this
+// the plateau identity divides by ~0 and the "ceiling" explodes into
+// meaninglessness — and a measured CI reaching ≤0 means the data can't rule
+// out an improver with no detectable ceiling at all.
+const SLOPE_FLOOR_PTS = 0.5
+
+// ceilingRange propagates BOTH uncertainties the "capped" verdict rests on —
+// the true win rate (Beta posterior credible interval, shifted by any manual
+// or hero-nudge delta so the range brackets the dialed rate at honest
+// real-sample width) and the decay slope (its measured CI when available) —
+// through the plateau identity T(p) = x0 + (p − 0.5)/s. The result is the
+// honest alternative to the old single-point "Capped near X": tight on a
+// well-measured 200-game form, enormous on three games.
+export function ceilingRange(
+  input: ProjectionInput,
+  slopeCI: SlopeCI | null,
+  prior: BetaPrior = SKEPTIC_PRIOR,
+): CeilingRange {
+  const n = input.sampleWins + input.sampleLosses
+  const sampleRate = n > 0 ? input.sampleWins / n : 0.5
+  const delta = input.winRate - sampleRate
+  const iv = credibleInterval(input.sampleWins, input.sampleLosses, prior)
+  const clamp01 = (x: number): number => Math.min(1, Math.max(0, x))
+  const pLo = clamp01(iv.lower + delta)
+  const pHi = clamp01(iv.upper + delta)
+
+  const floorFrac = SLOPE_FLOOR_PTS / 100
+  const openTop = slopeCI !== null && slopeCI.lowerPts <= 0
+  const sLo = Math.max(floorFrac, (slopeCI?.lowerPts ?? input.decaySlope * 100) / 100)
+  const sHi = Math.max(floorFrac, (slopeCI?.upperPts ?? input.decaySlope * 100) / 100)
+
+  const clampLadder = (v: number): number => Math.min(LADDER_MAX, Math.max(0, v))
+  // T(p, s) = x0 + (p − 0.5)/s is monotone in p but flips direction in s
+  // with the sign of (p − 0.5), so the honest envelope is the four corners.
+  const corners = [
+    input.currentScore + (pLo - 0.5) / sLo,
+    input.currentScore + (pLo - 0.5) / sHi,
+    input.currentScore + (pHi - 0.5) / sLo,
+    input.currentScore + (pHi - 0.5) / sHi,
+  ]
+  const lo = clampLadder(Math.min(...corners))
+  const hi = openTop ? null : clampLadder(Math.max(...corners))
+  return { lo, hi }
 }
