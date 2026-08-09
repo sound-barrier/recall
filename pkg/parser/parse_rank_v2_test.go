@@ -59,6 +59,44 @@ func TestParseRank_TierV2FallbackRecoversStylizedNumerals(t *testing.T) {
 	}
 }
 
+// Every DEMOTION-stem chip maps to "demotion protection", on BOTH UI
+// generations. This is deliberate conservatism, not laziness: old-UI OCR
+// can lose everything after the stem (a real corpus capture reads
+// "< DEMOTION || a || Pe"), so a text split like "PROTEC present ⇒
+// protection, else bare demotion" inverts the old UI's meaning exactly
+// when truncation bites. The 2026-07 UI's bare "DEMOTION" chip has no
+// capture yet proving it means demoted-this-game rather than a relabel
+// (the one fixture sat at 52% progress — nothing demoted). If such a
+// capture lands, split THEN, with the fixture as the RED test.
+func TestParseRank_DemotionStemAlwaysMapsToProtection(t *testing.T) {
+	cases := []struct {
+		name, chips string
+	}{
+		{"old UI, tail truncated to nothing", "x DEFEAT||> CONSOLATION < DEMOTION||a |||Pe"},
+		{"old UI, PROTEC survives", "X DEFEAT (©) DEMOTION PROTEC"},
+		{"2026-07 bare demotion chip", "x DEFEAT || € DEMOTION € LOSING TREND"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			stubOCR(t, map[string]string{"rank_modifiers": c.chips})
+			res, err := parser.ParseRank(tinyImage(), t.TempDir())
+			if err != nil {
+				t.Fatalf("ParseRank: %v", err)
+			}
+			got := map[string]bool{}
+			for _, m := range res.Modifiers {
+				got[m] = true
+			}
+			if !got["demotion protection"] {
+				t.Errorf("modifiers %v must include \"demotion protection\"", res.Modifiers)
+			}
+			if got["demotion"] {
+				t.Errorf("modifiers %v must not mint an unproven \"demotion\" value", res.Modifiers)
+			}
+		})
+	}
+}
+
 // A clean sparse-pass read must NOT trigger the fallback — old-UI captures
 // keep their single-read behavior byte-for-byte (no old golden has level 0,
 // so the fallback can never fire on the existing corpus).

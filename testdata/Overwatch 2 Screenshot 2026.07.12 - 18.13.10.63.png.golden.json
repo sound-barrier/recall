@@ -10,6 +10,7 @@
     "rank_progress": 52,
     "change_percent": 0,
     "modifiers": [
+      "losing trend",
       "defeat",
       "demotion protection"
     ],
