@@ -149,6 +149,7 @@
 
 #panel-elo .elo-answer-head.is-good { color: var(--win); }
 #panel-elo .elo-answer-head.is-hard { color: var(--loss); }
+#panel-elo .elo-answer-head.is-early { color: var(--muted); }
 
 #panel-elo .elo-answer-sub {
   margin: 0.55rem 0 0;
