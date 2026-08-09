@@ -84,16 +84,28 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		_ = os.MkdirAll(work, 0o700)
 	}
 
-	if isRankScreenshot(img, work) {
+	// A probe error that survived the OCR retry ladder means no probe result
+	// is trustworthy — fail the file (ledger + retry next run) instead of
+	// falling through to parseTeams, whose pixel heuristics can manufacture
+	// an all-zero row from a rank screen's blue background.
+	if ok, err := isRankScreenshot(img, work); err != nil {
+		return nil, fmt.Errorf("rank probe: %w", err)
+	} else if ok {
 		return parseRank(img, work)
 	}
-	if isSummaryScreenshot(img, work) {
+	if ok, err := isSummaryScreenshot(img, work); err != nil {
+		return nil, fmt.Errorf("summary probe: %w", err)
+	} else if ok {
 		return parseSummary(img, work)
 	}
-	if isAllHeroesScreenshot(img, work) {
+	if ok, err := isAllHeroesScreenshot(img, work); err != nil {
+		return nil, fmt.Errorf("all-heroes probe: %w", err)
+	} else if ok {
 		return parseAllHeroes(img, work)
 	}
-	if isPersonalScreenshot(img, work) {
+	if ok, err := isPersonalScreenshot(img, work); err != nil {
+		return nil, fmt.Errorf("personal probe: %w", err)
+	} else if ok {
 		return parsePersonal(img, work)
 	}
 	return parseTeams(img, work)

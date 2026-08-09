@@ -1,0 +1,65 @@
+package parser_test
+
+import (
+	"errors"
+	"image"
+	"image/png"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+
+	"recall/pkg/parser"
+)
+
+// A probe OCR error that survives the retry ladder means no probe result is
+// trustworthy: falling through demotes the screenshot to the teams parser,
+// which can manufacture an all-zero row from a rank screen's blue background
+// (the 2026-07 bundle stored one as "unknown" that way). ParseScreenshot
+// must fail fast instead — the per-file error lands in the failed-files
+// ledger and the file is retried next run.
+func TestParseScreenshot_ProbeErrorFailsFast(t *testing.T) {
+	dir := t.TempDir()
+	fakeTess := filepath.Join(dir, "tesseract")
+	if err := os.WriteFile(fakeTess, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	shot := filepath.Join(dir, "shot.png")
+	f, err := os.Create(shot) // #nosec G304 -- temp dir path
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, image.NewRGBA(image.Rect(0, 0, 640, 360))); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	parser.SetTesseractPath(fakeTess)
+	t.Cleanup(func() { parser.SetTesseractPath("tesseract") })
+
+	prevDelays := *parser.TesseractRetryDelays
+	*parser.TesseractRetryDelays = nil
+	t.Cleanup(func() { *parser.TesseractRetryDelays = prevDelays })
+
+	var mu sync.Mutex
+	var regions []string
+	original := *parser.RunTesseractFunc
+	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) {
+		mu.Lock()
+		regions = append(regions, name)
+		mu.Unlock()
+		return "", errors.New("ocr exploded")
+	}
+	t.Cleanup(func() { *parser.RunTesseractFunc = original })
+
+	res, err := parser.ParseScreenshot(shot)
+	if err == nil {
+		t.Fatalf("persistent probe OCR error must fail the parse, got result %+v", res)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, r := range regions {
+		if r != "detect_rank" {
+			t.Errorf("after the first probe errored, no further OCR may run; saw region %q (all: %v)", r, regions)
+		}
+	}
+}

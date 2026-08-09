@@ -33,15 +33,15 @@ var knownModifiers = []string{
 // isRankScreenshot detects the post-match competitive RANK PROGRESS screen.
 // "RANK PROGRESS" sits in the middle of the screen and is unique to this
 // view (SUMMARY / TEAMS / PERSONAL never show it).
-func isRankScreenshot(img image.Image, work string) bool {
+func isRankScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
 	text, err := ocrInverted(img, rect, work, "detect_rank", "11", "")
 	if err != nil {
-		return false
+		return false, err
 	}
-	return strings.Contains(strings.ToUpper(text), "RANK PROGRESS")
+	return strings.Contains(strings.ToUpper(text), "RANK PROGRESS"), nil
 }
 
 // parseRank handles the post-match competitive rank screen: the tier badge
