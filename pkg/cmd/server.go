@@ -220,6 +220,58 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// instead of returning 405. Isolating /api/v1/ in its own mux
 	// preserves the REST-conventional 405 behavior because the sub-mux
 	// has no catch-all.
+	apiMux := newAPIMux(a)
+
+	// ── Server-Sent Events ──────────────────────────────────────────
+	// /api/v1/events registers in server_events.go — server mode only.
+	// See newAPIMux for why the desktop asset-server path must never
+	// mount it.
+	registerEventsRoutes(apiMux, a)
+
+	// Mount the API sub-mux. Subtree pattern (`/api/v1/`) wins over
+	// `/` for any request whose path starts with the prefix, so the
+	// SPA fallback never sees these requests; method-mismatched calls
+	// stay inside apiMux where they correctly return 405.
+	mux.Handle("/api/v1/", apiMux)
+
+	// ── Screenshot image serving ────────────────────────────────────
+	// Stays at /_screenshot/{filename} — binary asset, not part of the
+	// JSON API surface, so deliberately outside /api/v1/.
+	mux.Handle("/_screenshot/", a.ScreenshotHandler())
+
+	// ── pprof (opt-in via RECALL_PPROF) ──────────────────────────────
+	// Off by default — only mounted when RECALL_PPROF is set to something
+	// truthy. Wires the standard net/http/pprof handlers under
+	// /debug/pprof/. Use with `go tool pprof http://127.0.0.1:7000/debug/pprof/heap`
+	// (or profile, goroutine, allocs, …). Bind locally only — never expose
+	// pprof on a public address.
+	if pprofEnabled() {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		applog.Subsystem("server").Info("pprof endpoints enabled", "prefix", "/debug/pprof/")
+	}
+
+	// ── Static frontend assets ──────────────────────────────────────
+	mux.Handle("/", http.FileServer(http.FS(assets)))
+
+	return mux
+}
+
+// newAPIMux builds the /api/v1/ sub-mux shared by RunServer's NewMux and
+// the desktop asset-server middleware (wails.go). It deliberately EXCLUDES
+// the /api/v1/events SSE route: the Wails asset server on Windows buffers
+// the whole response body and only delivers it when the handler returns —
+// Flush() is a no-op and the request context is never cancelled — so a
+// streaming handler hangs the webview request and leaks its goroutine.
+// a.SSEHub is also only assigned in RunServer, so Subscribe() would panic
+// on the desktop path. Desktop events ride the Wails event bus instead;
+// NewMux mounts registerEventsRoutes on top of this mux for the HTTP/SSE
+// contract. Any future streaming endpoint must follow the same
+// server-only registration pattern.
+func newAPIMux(a *app.App) *http.ServeMux {
 	apiMux := http.NewServeMux()
 
 	// ── Matches ─────────────────────────────────────────────────────
@@ -255,45 +307,12 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// register in server_backup.go.
 	registerBackupRoutes(apiMux, a)
 
-	// ── Server-Sent Events ──────────────────────────────────────────
-	// /api/v1/events registers in server_events.go.
-	registerEventsRoutes(apiMux, a)
-
 	// ── Test-harness-only routes ────────────────────────────────────
 	// No-op unless RECALL_E2E=1 (the Playwright e2e harness). Never in
 	// production. See server_test_reset.go.
 	registerE2ERoutes(apiMux, a)
 
-	// Mount the API sub-mux. Subtree pattern (`/api/v1/`) wins over
-	// `/` for any request whose path starts with the prefix, so the
-	// SPA fallback never sees these requests; method-mismatched calls
-	// stay inside apiMux where they correctly return 405.
-	mux.Handle("/api/v1/", apiMux)
-
-	// ── Screenshot image serving ────────────────────────────────────
-	// Stays at /_screenshot/{filename} — binary asset, not part of the
-	// JSON API surface, so deliberately outside /api/v1/.
-	mux.Handle("/_screenshot/", a.ScreenshotHandler())
-
-	// ── pprof (opt-in via RECALL_PPROF) ──────────────────────────────
-	// Off by default — only mounted when RECALL_PPROF is set to something
-	// truthy. Wires the standard net/http/pprof handlers under
-	// /debug/pprof/. Use with `go tool pprof http://127.0.0.1:7000/debug/pprof/heap`
-	// (or profile, goroutine, allocs, …). Bind locally only — never expose
-	// pprof on a public address.
-	if pprofEnabled() {
-		mux.HandleFunc("/debug/pprof/", pprof.Index)
-		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		applog.Subsystem("server").Info("pprof endpoints enabled", "prefix", "/debug/pprof/")
-	}
-
-	// ── Static frontend assets ──────────────────────────────────────
-	mux.Handle("/", http.FileServer(http.FS(assets)))
-
-	return mux
+	return apiMux
 }
 
 // methodNotAllowed returns a handler that responds 405 with an
