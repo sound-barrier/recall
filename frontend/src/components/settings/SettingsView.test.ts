@@ -86,7 +86,7 @@ function mountSettings(opts: { props?: SettingsOver } = {}) {
   settings.setScreenshotsDir(over.screenshotsDir ?? '/srv/recall')
   settings.setTheme(over.themeMode ?? 'dark')
   settings.setWeekStart(over.weekStart ?? 0)
-  settings.screenshotCandidates = over.screenshotCandidates ?? []
+  seedQuery(qk.candidates, over.screenshotCandidates ?? [])
   settings.probing = over.probing ?? false
   settings.probeMessage = over.probeMessage ?? ''
   settings.probeStatus = over.probeStatus ?? ''

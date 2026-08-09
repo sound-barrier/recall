@@ -1,14 +1,8 @@
-import { ref, nextTick } from 'vue'
+import { computed, nextTick, watchEffect } from 'vue'
 import { defineStore } from 'pinia'
 
-import type { AutoBackupStatus, NamedCandidate } from '@/api-client'
 import {
-  GetAutoBackupStatus,
-  GetScreenshotsDir,
-  GetWatchEnabled,
   SetAutoBackupInterval,
-  GetExitOnClose,
-  GetTesseractStatus,
   PickTesseractBinary,
   ResetTesseractPath,
   ProbeTesseractBinary,
@@ -21,6 +15,12 @@ import {
   RevealScreenshotsDir,
   ResetScreenshotsDir,
 } from '@/api-client'
+import { queryClient } from '@/queries/client'
+import { qk } from '@/queries/keys'
+import {
+  useAutoBackupQuery, useCandidatesQuery, useExitOnCloseQuery,
+  useScreenshotsDirQuery, useTesseractQuery, useWatchEnabledQuery,
+} from '@/queries/settings'
 import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
 import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
 import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
@@ -88,14 +88,15 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   // ── Automatic backups ─────────────────────────────────────────────
-  // Schedule + newest-snapshot status from GET /settings/auto-backup;
-  // the setter echoes the refreshed status so the row updates in one
+  // Schedule + newest-snapshot status live in the query cache; the setter
+  // echoes the refreshed status into it so the row updates in one
   // round-trip. Round-trip failures surface on the app error banner and
-  // leave the last-known status in place.
-  const autoBackup = ref<AutoBackupStatus | null>(null)
+  // leave the last-known status in place (the cache is untouched).
+  const autoBackupQuery = useAutoBackupQuery()
+  const autoBackup = computed(() => autoBackupQuery.data.value ?? null)
   async function setAutoBackupInterval(days: number) {
     try {
-      autoBackup.value = await SetAutoBackupInterval(days)
+      queryClient.setQueryData(qk.settings.autoBackup, await SetAutoBackupInterval(days))
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
     }
@@ -151,20 +152,12 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // ── Screenshots source picker (Windows auto-detect) ───────────────
   // The four canonical capture sources (Nvidia Overlay / OW PrntScn / Snip /
-  // Steam), loaded once on the empty-state mount. pickDetectedSource commits an
-  // auto-detected card's path; separate from pickDir (native dialog) so the
-  // error path is tighter — the path came from our own probe.
-  const screenshotCandidates = ref<NamedCandidate[]>([])
-  async function loadScreenshotCandidates() {
-    try {
-      screenshotCandidates.value = await GetScreenshotsFolderCandidates()
-    } catch (_) {
-      // Best-effort hint for the empty-state + first-run pickers — on failure
-      // (server mode / probe error) fall back to an empty list so the manual
-      // "Choose folder…" path still shows; nothing here is user-blocking.
-      screenshotCandidates.value = []
-    }
-  }
+  // Steam), fetched once per session by the candidates query.
+  // pickDetectedSource commits an auto-detected card's path; separate from
+  // pickDir (native dialog) so the error path is tighter — the path came
+  // from our own probe.
+  const candidatesQuery = useCandidatesQuery()
+  const screenshotCandidates = computed(() => candidatesQuery.data.value ?? [])
   async function pickDetectedSource(path: string) {
     try {
       await SetScreenshotsDir(path)
@@ -183,28 +176,36 @@ export const useSettingsStore = defineStore('settings', () => {
   // the matches-store dossier all read ONE instance.
   const { weekStart, setWeekStart } = useWeekStart()
 
-  // Boot loader for this store's server-backed fields — useAppBoot fans
-  // out here at mount. Per-subsystem isolation: one failed call never
-  // blocks the others, and a failed Tesseract probe reports found:false
-  // (a real "not detected" state) rather than leaving stale status.
-  async function load() {
-    const [dir, watchOn, exitClose, tess, autoBk] = await Promise.allSettled([
-      GetScreenshotsDir(),
-      GetWatchEnabled(),
-      GetExitOnClose(),
-      GetTesseractStatus(),
-      GetAutoBackupStatus(),
-    ])
-    if (dir.status === 'fulfilled') setScreenshotsDir(dir.value || '')
-    if (watchOn.status === 'fulfilled') setWatchEnabled(!!watchOn.value)
-    if (exitClose.status === 'fulfilled') setExitOnClose(!!exitClose.value)
-    if (autoBk.status === 'fulfilled') autoBackup.value = autoBk.value
-    if (tess.status === 'fulfilled') setTesseractStatus(tess.value)
-    else setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
-  }
+  // ── Server-state hydration ────────────────────────────────────────
+  // The settings reads live in the query cache (one query per endpoint —
+  // per-subsystem isolation falls out of that: one failed call never
+  // blocks the others). These effects push arrivals into the composable
+  // state machines above, which keep their commit/rollback semantics for
+  // writes. Replaces the old load() Promise.allSettled fan-out.
+  const dirQuery = useScreenshotsDirQuery()
+  watchEffect(() => {
+    const dir = dirQuery.data.value
+    if (dir !== undefined) setScreenshotsDir(dir || '')
+  })
+  const watchQuery = useWatchEnabledQuery()
+  watchEffect(() => {
+    const on = watchQuery.data.value
+    if (on !== undefined) setWatchEnabled(!!on)
+  })
+  const exitQuery = useExitOnCloseQuery()
+  watchEffect(() => {
+    const exit = exitQuery.data.value
+    if (exit !== undefined) setExitOnClose(!!exit)
+  })
+  // The tesseract queryFn never throws — a failed probe arrives as a real
+  // found:false status (with the error string the Engine section renders).
+  const tesseractQuery = useTesseractQuery()
+  watchEffect(() => {
+    const status = tesseractQuery.data.value
+    if (status !== undefined) setTesseractStatus(status)
+  })
 
   return {
-    load,
     themeMode,
     setTheme,
     weekStart,
@@ -241,7 +242,6 @@ export const useSettingsStore = defineStore('settings', () => {
     revealDir,
     resetDir,
     screenshotCandidates,
-    loadScreenshotCandidates,
     pickDetectedSource,
   }
 })

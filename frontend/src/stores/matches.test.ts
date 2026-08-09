@@ -67,9 +67,9 @@ describe('matches store — load() boot coordinator', () => {
     const app = useAppStore()
     expect(matches.firstLoadPending).toBe(true)
 
-    // dataLocation hydrates from its query at store setup — no loader call;
-    // a macrotask tick lets the observer land the mocked payload.
-    await Promise.all([matches.load(), settings.load()])
+    // dataLocation + the settings fields hydrate from their queries at
+    // store setup — a macrotask tick lets the observers land the payloads.
+    await matches.load()
     await new Promise(r => setTimeout(r, 0))
 
     expect(matches.records.map(r => r.match_key)).toEqual(['m-1', 'm-2'])
@@ -87,7 +87,8 @@ describe('matches store — load() boot coordinator', () => {
     const settings = useSettingsStore()
     const app = useAppStore()
 
-    await Promise.all([matches.load(), settings.load()])
+    await matches.load()
+    await new Promise(r => setTimeout(r, 0))
 
     // The records ref is NOT blanked by the failure...
     expect(matches.records).toEqual([])
@@ -118,7 +119,8 @@ describe('matches store — load() boot coordinator', () => {
     const matches = useMatchesStore()
     const settings = useSettingsStore()
 
-    await Promise.all([matches.load(), settings.load()])
+    await matches.load()
+    await new Promise(r => setTimeout(r, 0))
 
     // Probe failure → found:false (NOT a false "detected"), and matches still loaded.
     expect(settings.tesseractReady).toBe(false)
