@@ -276,6 +276,20 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const currentScore = computed(() => ladderScore(currentTier.value, currentDivision.value, currentProgress.value))
   const targetScore = computed(() => ladderScore(targetTier.value, targetDivision.value, 0))
 
+  // The meter's break-even rate: where the player's REAL pools zero the
+  // drift (|L̄|/(W̄+|L̄|)). The simulator equilibrates there automatically;
+  // the closed forms must share it or the verdict plateaus in a different
+  // place than the seasons it quotes. Symmetric 0.5 until both pools are
+  // deep enough to trust (the sim's own MIN_POOL rule).
+  const plateauRate = computed<number>(() => {
+    const { winMoves, lossMoves } = meterSamples.value
+    if (winMoves.length < 8 || lossMoves.length < 8) return 0.5
+    const mean = (xs: readonly number[]): number => xs.reduce((s, v) => s + v, 0) / xs.length
+    const w = mean(winMoves)
+    const l = Math.abs(mean(lossMoves))
+    return w + l > 0 ? l / (w + l) : 0.5
+  })
+
   const projInput = computed<ProjectionInput | null>(() => {
     if (currentScore.value === null || targetScore.value === null) return null
     const rate = effectiveWinRatePct.value
@@ -295,6 +309,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
       sampleLosses: sampleN.value - wins,
       meterMovePct: meterMovePct.value,
       decaySlope: decaySlopePts.value / 100,
+      plateauRate: plateauRate.value,
     }
   })
 
@@ -354,6 +369,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
       sampleLosses: f.sampleN - wins,
       meterMovePct: f.meterMovePct,
       decaySlope: f.decaySlopePts / 100,
+      plateauRate: plateauRate.value,
     }
   })
   const measuredNaive = computed<NaiveProjection | null>(() =>

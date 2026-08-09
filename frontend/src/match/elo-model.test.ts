@@ -168,3 +168,34 @@ describe('gamesToWeeks', () => {
     expect(gamesToWeeks(120, 0)).toBeNull()
   })
 })
+
+describe('plateauRate — asymmetric-meter break-even', () => {
+  // With win moves averaging +15 and loss moves −25, the drift zeroes at
+  // p* = 25/40 = 0.625, not 0.5: a 55% player SINKS. Every closed form
+  // must agree with the simulator's equilibrium or the verdict and the
+  // season cards contradict each other again.
+  const asym = { plateauRate: 0.625 }
+
+  it('decay plateau lands at x0 + (p − p*)/s', () => {
+    const d = decayProjection(input({ ...asym, winRate: 0.7, sampleWins: 140, sampleLosses: 60 }))
+    expect(d.impliedTrueScore).toBeCloseTo(13.4 + (0.7 - 0.625) / DEFAULT_DECAY_SLOPE, 6)
+  })
+
+  it('a 55% rate is CAPPED below an asymmetric break-even', () => {
+    const d = decayProjection(input({ ...asym, winRate: 0.55, sampleWins: 110, sampleLosses: 90 }))
+    expect(d.reachable).toBe(false)
+    expect(d.requiredWinRate).toBeCloseTo(0.625 + DEFAULT_DECAY_SLOPE * 1.6, 6)
+  })
+
+  it('the naive drift zeroes at p* too', () => {
+    const flat = naiveProjection(input({ ...asym, winRate: 0.625 }))
+    expect(flat.reachable).toBe(false)
+    const up = naiveProjection(input({ ...asym, winRate: 0.7 }))
+    expect(up.reachable).toBe(true)
+  })
+
+  it('defaults to the symmetric 0.5 when unset', () => {
+    const d = decayProjection(input({ winRate: 0.6 }))
+    expect(d.impliedTrueScore).toBeCloseTo(13.4 + 0.1 / DEFAULT_DECAY_SLOPE, 6)
+  })
+})
