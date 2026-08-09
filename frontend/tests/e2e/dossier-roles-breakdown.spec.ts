@@ -10,6 +10,7 @@
  * resolver returns canonical roles for the corpus.
  */
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 import type { Route } from '@playwright/test'
 
 const REFERENCE_DATA = {
@@ -48,6 +49,9 @@ function record(matchKey: string, opts: {
 
 test.describe('dossier — Most played roles breakdown', () => {
   test.beforeEach(async ({ page }) => {
+    // Most played roles is gallery opt-in under the climb-focused
+    // default — seed a layout that holds it.
+    await seedDossierLayout(page, { 1: [], 2: ['top-roles'] })
     await page.route('**/api/v1/system/reference-data', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',

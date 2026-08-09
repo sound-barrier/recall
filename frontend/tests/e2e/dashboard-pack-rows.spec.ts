@@ -54,19 +54,21 @@ test.describe('dashboard pack rows migration', () => {
   })
 
   test('one-time migration packs single-widget overflow rows into denser rows', async ({ page }) => {
-    // Before: 9 rows. After: defaults (rows 1, 2) + one packed KPI row
-    // (3) + one packed breakdown row (4) = 4 widget rows.
+    // Before: 9 rows. v1 packs the overflow into one KPI + one
+    // breakdown row; v2 then re-seeds rows 1–2 to the climb defaults,
+    // absorbing current-streak (now a default) out of the packed KPI
+    // row. After: 4 widget rows.
     const rows = page.locator('.dashboard-row')
     await expect(rows).toHaveCount(4)
 
-    await expect(page.locator('.dashboard-row[data-row="3"] [data-widget-id]')).toHaveCount(4)
+    await expect(page.locator('.dashboard-row[data-row="3"] [data-widget-id]')).toHaveCount(3)
     await expect(page.locator('.dashboard-row[data-row="4"] [data-widget-id]')).toHaveCount(3)
 
     const stored = await page.evaluate(() => ({
       layout: JSON.parse(localStorage.getItem('recall.dashboard.layout') ?? '{}'),
       version: localStorage.getItem('recall.dashboard.layoutVersion'),
     }))
-    expect(stored.version).toBe('1')
+    expect(stored.version).toBe('2')
     expect(Object.keys(stored.layout)).toEqual(['1', '2', '3', '4'])
   })
 })

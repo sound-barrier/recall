@@ -17,6 +17,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 
 const match = (key: string, map: string) => ({
   match_key: key,
@@ -49,6 +50,9 @@ const CORPUS = [
 
 test.describe('dossier — Most played maps in-bar count', () => {
   test.beforeEach(async ({ page }) => {
+    // Most played maps is gallery opt-in under the climb-focused
+    // default — seed a layout that holds it.
+    await seedDossierLayout(page, { 1: [], 2: ['top-maps'] })
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',

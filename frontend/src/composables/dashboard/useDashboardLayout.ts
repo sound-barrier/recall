@@ -39,10 +39,10 @@ import {
 
 export const LAYOUT_STORAGE_KEY = 'recall.dashboard.layout'
 
-const LAYOUT_VERSION_KEY = 'recall.dashboard.layoutVersion'
+export const LAYOUT_VERSION_KEY = 'recall.dashboard.layoutVersion'
 
-// Bumped to schedule a one-shot consolidation migration. The runner
-// in `useDashboardLayout()` compares the stored version against this
+// Bumped to schedule a one-shot migration. The runner in
+// `useDashboardLayout()` compares the stored version against this
 // constant; if older (incl. unset), runs the migration pipeline once,
 // persists the result, and stamps the new version. Subsequent reads
 // trust the stored layout verbatim — never re-shape an already-
@@ -54,7 +54,19 @@ const LAYOUT_VERSION_KEY = 'recall.dashboard.layoutVersion'
 //       pre-row-packing `appendToRow`: users who clicked "+ Add" on
 //       every opt-in widget ended up with one widget per row past
 //       the install defaults.
-const CURRENT_LAYOUT_VERSION = 1
+//   2 — re-seed the default rows to the climb-focused layout.
+//       Demoted v1 defaults drop (each stays one "+ Add" away);
+//       widgets the user added themselves keep their stored row.
+export const CURRENT_LAYOUT_VERSION = 2
+
+// The pre-v2 install defaults, frozen for the re-seed migration —
+// membership decides which stored widgets were OUR defaults (safe to
+// drop) vs the user's own adds (keep).
+const V1_DEFAULT_IDS: ReadonlySet<string> = new Set([
+  'winrate', 'avg-kda', 'total-time', 'most-played-hero', 'reviewed-count',
+  'days-since-review', 'wld-since-review',
+  'top-maps', 'top-heroes', 'top-roles', 'heroes-per-match',
+])
 
 // Soft-thresholds for `appendToRow`. Adding a widget to a row that
 // already holds this many of its shape kicks the new widget into a
@@ -376,6 +388,9 @@ function runLayoutMigrationsOnce(): void {
     if (storedVersion < 1) {
       next = consolidateOverflowRows(next)
     }
+    if (storedVersion < 2) {
+      next = reseedClimbDefaults(next)
+    }
     if (!shallowLayoutEqual(layout, next)) {
       try {
         localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(next))
@@ -459,6 +474,29 @@ function consolidateOverflowRows(stored: RowLayout): RowLayout {
   }
   flush()
   return out
+}
+
+// v2: re-seed the default rows to the climb-focused layout. The new
+// DEFAULT_ROW_LAYOUT replaces rows 1–2 wholesale; every stored widget
+// that belongs to NEITHER the v1 nor the current default set is the
+// user's own add and keeps its stored row (deduped — a user-added
+// copy of a now-promoted widget collapses into its default slot).
+// Demoted v1 defaults drop: each stays one "+ Add" away.
+function reseedClimbDefaults(stored: RowLayout): RowLayout {
+  const next = defaultLayout()
+  const keep = new Set<string>(Object.values(next).flat())
+  const rowKeys = Object.keys(stored)
+    .map((k) => Number(k))
+    .filter((n) => Number.isInteger(n))
+    .sort((a, b) => a - b)
+  for (const rowIdx of rowKeys) {
+    for (const id of stored[rowIdx] ?? []) {
+      if (V1_DEFAULT_IDS.has(id) || keep.has(id)) continue
+      keep.add(id)
+      ;(next[rowIdx] ??= []).push(id)
+    }
+  }
+  return next
 }
 
 function shallowLayoutEqual(a: RowLayout, b: RowLayout): boolean {

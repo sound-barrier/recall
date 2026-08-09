@@ -16,6 +16,7 @@
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+import { seedDossierLayout } from './_layout'
 
 const match = (key: string, gameLength: string | null, map = 'rialto', hero = 'lucio') => ({
   match_key: key,
@@ -35,6 +36,15 @@ const match = (key: string, gameLength: string | null, map = 'rialto', hero = 'l
 })
 
 test.describe('dossier — Most played labels + Total time played', () => {
+  // Volume widgets are gallery opt-in under the climb-focused
+  // default — seed a layout that holds the ones this file pins.
+  test.beforeEach(async ({ page }) => {
+    await seedDossierLayout(page, {
+      1: ['total-time', 'most-played-hero'],
+      2: ['top-maps', 'top-heroes'],
+    })
+  })
+
   test('renames every "Top X" eyebrow to "Most played X"', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({

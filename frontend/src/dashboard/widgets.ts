@@ -53,11 +53,11 @@ import SessionDepthWidget from '@/components/dashboard/widgets/SessionDepthWidge
 // to any row.
 //
 // `DEFAULT_ROW_LAYOUT` is the source of truth for "what ships visible
-// on first install" AND for the reconciler's re-add-when-missing
-// pass. A widget that lives in `WIDGET_REGISTRY` but NOT in
-// `DEFAULT_ROW_LAYOUT` is opt-in only — it shows up in the
+// on first install". A widget that lives in `WIDGET_REGISTRY` but NOT
+// in `DEFAULT_ROW_LAYOUT` is opt-in only — it shows up in the
 // customizer's "+ Add" gallery but never appears on a user's dossier
-// until they explicitly add it.
+// until they explicitly add it. A stored layout is authoritative:
+// the reconciler never re-adds absent defaults.
 //
 // IDs are stable, kebab-case, and live in user localStorage —
 // NEVER rename. If a widget is removed, drop the entry; the
@@ -318,13 +318,21 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'session-depth',        eyebrow: 'Session depth',          shape: 'breakdown', defaultRow: 2, component: SessionDepthWidget,       config: EMPTY_SCHEMA             },
 ]
 
-// Row-keyed install-default layout. Membership here means "auto-add
-// on first install" AND "re-add if missing from a user's stored
-// layout" — widgets registered but absent from this map are opt-in
-// via the customizer.
+// Row-keyed install-default layout — what a fresh install renders.
+// Widgets registered but absent from this map are opt-in via the
+// customizer's "+ Add" gallery. Once a user has a stored layout it is
+// authoritative: the reconciler drops orphans but never re-adds
+// absent defaults (see useDashboardLayout), so changing this map only
+// affects fresh installs — plus whatever a one-shot layout migration
+// explicitly re-seeds.
+//
+// The climb-focused default: row 1 answers "am I climbing right now"
+// (rate, form, velocity, streak, tilt, output); row 2 answers "what
+// am I good at" (rank + winrate-judged breakdowns). Volume and
+// review-workflow widgets live in the gallery.
 export const DEFAULT_ROW_LAYOUT: Readonly<Record<number, readonly string[]>> = {
-  1: ['winrate', 'avg-kda', 'total-time', 'most-played-hero', 'reviewed-count', 'days-since-review', 'wld-since-review'],
-  2: ['top-maps', 'top-heroes', 'top-roles', 'heroes-per-match'],
+  1: ['winrate', 'form-delta', 'net-rank-week', 'current-streak', 'tilt-check', 'avg-kda'],
+  2: ['current-rank', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role'],
 }
 
 // Lookup helper. Returns undefined for unknown ids so callers can

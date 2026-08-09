@@ -87,7 +87,7 @@ test.describe('dashboard drag-reorder', () => {
 
     const initial = await widgetOrder(page, 1)
     expect(initial[0]).toBe('winrate')
-    expect(initial[1]).toBe('avg-kda')
+    expect(initial[1]).toBe('form-delta')
 
     // Focus the Winrate handle and press ArrowRight.
     await page.locator('[data-drag-handle="winrate"]').focus()
@@ -95,7 +95,7 @@ test.describe('dashboard drag-reorder', () => {
 
     // Winrate should now be at idx 1, Avg K/D/A at idx 0.
     const afterMove = await widgetOrder(page, 1)
-    expect(afterMove[0]).toBe('avg-kda')
+    expect(afterMove[0]).toBe('form-delta')
     expect(afterMove[1]).toBe('winrate')
   })
 
@@ -119,7 +119,7 @@ test.describe('dashboard drag-reorder', () => {
     // BEFORE reloading, so the persisted write provably happened.
     await page.locator('[data-drag-handle="winrate"]').focus()
     await page.keyboard.press('ArrowRight')
-    await expect.poll(async () => (await widgetOrder(page, 1))[0]).toBe('avg-kda')
+    await expect.poll(async () => (await widgetOrder(page, 1))[0]).toBe('form-delta')
 
     // Reload + reopen Matches tab, gating on hydration again.
     await page.reload()
@@ -127,14 +127,14 @@ test.describe('dashboard drag-reorder', () => {
     await expect(page.locator('[data-widget-id="winrate"]')).toBeVisible()
 
     const afterReload = await widgetOrder(page, 1)
-    expect(afterReload[0]).toBe('avg-kda')
+    expect(afterReload[0]).toBe('form-delta')
     expect(afterReload[1]).toBe('winrate')
 
     // localStorage carries the row-keyed JSON shape.
     const stored = await page.evaluate(() => localStorage.getItem('recall.dashboard.layout'))
     expect(stored).not.toBeNull()
     const parsed = JSON.parse(stored!) as Record<string, string[]>
-    expect(parsed['1']![0]).toBe('avg-kda')
+    expect(parsed['1']![0]).toBe('form-delta')
     expect(parsed['1']![1]).toBe('winrate')
   })
 

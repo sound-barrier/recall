@@ -9,9 +9,19 @@ import {
   isRowLayout,
   defaultLayout,
   LAYOUT_STORAGE_KEY,
+  LAYOUT_VERSION_KEY,
+  CURRENT_LAYOUT_VERSION,
   type RowLayout,
 } from '@/composables/dashboard/useDashboardLayout'
 import { WIDGET_REGISTRY, DEFAULT_ROW_LAYOUT } from '@/dashboard/widgets'
+
+// The pre-v2 install defaults, as a v1 user's storage held them —
+// the raw material for the climb-defaults re-seed migration tests.
+const V1_ROW1 = [
+  'winrate', 'avg-kda', 'total-time', 'most-played-hero',
+  'reviewed-count', 'days-since-review', 'wld-since-review',
+] as const
+const V1_ROW2 = ['top-maps', 'top-heroes', 'top-roles', 'heroes-per-match'] as const
 
 let storage: Record<string, string> = {}
 function stubLocalStorage() {
@@ -26,9 +36,13 @@ function stubLocalStorage() {
   })
 }
 
-async function mountHost(seed?: RowLayout | string) {
+// Seeded layouts stamp the CURRENT version by default so behavioural
+// tests exercise the post-migration state; migration tests pass the
+// version they're migrating FROM ('none' = pre-versioning storage).
+async function mountHost(seed?: RowLayout | string, version: number | 'none' = CURRENT_LAYOUT_VERSION) {
   if (seed !== undefined) {
     storage[LAYOUT_STORAGE_KEY] = typeof seed === 'string' ? seed : JSON.stringify(seed)
+    if (version !== 'none') storage[LAYOUT_VERSION_KEY] = String(version)
   }
   let api!: ReturnType<typeof useDashboardLayout>
   const Host = defineComponent({
@@ -43,7 +57,6 @@ async function mountHost(seed?: RowLayout | string) {
 }
 
 const KPI_IDS = WIDGET_REGISTRY.filter((w) => w.shape === 'kpi').map((w) => w.id)
-const BREAKDOWN_IDS = WIDGET_REGISTRY.filter((w) => w.shape === 'breakdown').map((w) => w.id)
 
 describe('isRowLayout', () => {
   it('accepts the default layout shape', () => {
@@ -154,27 +167,27 @@ describe('useDashboardLayout', () => {
     api.move('winrate', 1, 0, 1, 2)
     const row = api.rows.value[1]!
     // toIdx is the destination idx in the POST-REMOVAL row.
-    // After removing winrate at idx 0, row = [avg-kda, total-time,
-    // most-played-hero, ...]; inserting at idx 2 lands winrate
-    // between total-time and most-played-hero → final idx 2.
+    // After removing winrate at idx 0, row = [form-delta,
+    // net-rank-week, current-streak, ...]; inserting at idx 2 lands
+    // winrate between net-rank-week and current-streak → final idx 2.
     expect(row.indexOf('winrate')).toBe(2)
-    expect(row[0]).toBe('avg-kda')
-    expect(row[1]).toBe('total-time')
+    expect(row[0]).toBe('form-delta')
+    expect(row[1]).toBe('net-rank-week')
   })
 
   it('move() across rows works in one operation', async () => {
     const { api } = await mountHost()
-    // Pull Top maps (row 2 idx 0) up to row 1 idx 0.
-    api.move('top-maps', 2, 0, 1, 0)
-    expect(api.rows.value[1]![0]).toBe('top-maps')
-    expect(api.rows.value[2]).not.toContain('top-maps')
+    // Pull Current rank (row 2 idx 0) up to row 1 idx 0.
+    api.move('current-rank', 2, 0, 1, 0)
+    expect(api.rows.value[1]![0]).toBe('current-rank')
+    expect(api.rows.value[2]).not.toContain('current-rank')
   })
 
   it('move() persists to localStorage', async () => {
     const { api } = await mountHost()
-    api.move('top-maps', 2, 0, 1, 0)
+    api.move('current-rank', 2, 0, 1, 0)
     const stored = JSON.parse(storage[LAYOUT_STORAGE_KEY] ?? '{}')
-    expect(stored[1]).toContain('top-maps')
+    expect(stored[1]).toContain('current-rank')
   })
 
   it('move() with stale fromIdx still finds the widget', async () => {
@@ -189,11 +202,11 @@ describe('useDashboardLayout', () => {
 
   it('reset() restores the registry default', async () => {
     const { api } = await mountHost()
-    api.move('top-maps', 2, 0, 1, 0)
-    expect(api.rows.value[1]).toContain('top-maps')
+    api.move('current-rank', 2, 0, 1, 0)
+    expect(api.rows.value[1]).toContain('current-rank')
     api.reset()
-    expect(api.rows.value[1]).not.toContain('top-maps')
-    expect(api.rows.value[2]![0]).toBe('top-maps')
+    expect(api.rows.value[1]).not.toContain('current-rank')
+    expect(api.rows.value[2]![0]).toBe('current-rank')
   })
 
   it('setRow() filters orphan IDs out of the writeback', async () => {
@@ -238,7 +251,7 @@ describe('useDashboardLayout', () => {
     const defaultIds = new Set(Object.values(DEFAULT_ROW_LAYOUT).flat())
     const { api } = await mountHost()
     api.move('winrate', 1, 0, 2, 0)
-    api.move('top-maps', 2, 0, 1, 0)
+    api.move('current-rank', 2, 0, 1, 0)
     const all = Object.values(api.rows.value).flat()
     for (const def of WIDGET_REGISTRY) {
       if (!defaultIds.has(def.id)) continue
@@ -266,9 +279,9 @@ describe('useDashboardLayout', () => {
 
   it('Breakdown-shape widgets can land in the KPI row', async () => {
     const { api } = await mountHost()
-    const someBreakdown = BREAKDOWN_IDS[0]!
-    api.move(someBreakdown, 2, 0, 1, 0)
-    expect(api.rows.value[1]![0]).toBe(someBreakdown)
+    // current-rank: the first default-install breakdown (row 2 idx 0).
+    api.move('current-rank', 2, 0, 1, 0)
+    expect(api.rows.value[1]![0]).toBe('current-rank')
   })
 
   // ─── appendToRow ─────────────────────────────────────────────
@@ -278,12 +291,13 @@ describe('useDashboardLayout', () => {
 
   it('appendToRow puts the id at the tail of the requested row when under threshold', async () => {
     const { api } = await mountHost()
-    const someBreakdown = BREAKDOWN_IDS[0]!
-    api.removeFromRow(someBreakdown)
-    expect(api.rows.value[2]).not.toContain(someBreakdown)
-    api.appendToRow(2, someBreakdown)
+    // Remove a default-install breakdown so row 2 sits under the
+    // 4-breakdown cap, then re-add it.
+    api.removeFromRow('current-rank')
+    expect(api.rows.value[2]).not.toContain('current-rank')
+    api.appendToRow(2, 'current-rank')
     const row2 = api.rows.value[2]!
-    expect(row2[row2.length - 1]).toBe(someBreakdown)
+    expect(row2[row2.length - 1]).toBe('current-rank')
   })
 
   it('appendToRow is a no-op when the id already lives in the layout', async () => {
@@ -296,7 +310,7 @@ describe('useDashboardLayout', () => {
 
   it('appendToRow spills to a fresh overflow row when KPIs >= 5', async () => {
     const { api } = await mountHost()
-    // Default row 1 ships with 7 KPIs (already >= 5). Adding any
+    // Default row 1 ships with 6 KPIs (already >= 5). Adding any
     // KPI now should land on row 3, not row 1.
     const kpi = KPI_IDS[0]!
     api.removeFromRow(kpi)
@@ -350,7 +364,7 @@ describe('useDashboardLayout', () => {
 
   it('removeFromRow auto-prunes an emptied overflow row past the last default row', async () => {
     const { api } = await mountHost()
-    // Default row 1 ships with 7 KPIs (over the 5-KPI cap), so
+    // Default row 1 ships with 6 KPIs (over the 5-KPI cap), so
     // adding a KPI to row 1 spills into row 3 automatically.
     const kpi = KPI_IDS[0]!
     api.removeFromRow(kpi)
@@ -442,15 +456,16 @@ describe('useDashboardLayout', () => {
     expect(api.rows.value[3]).toEqual([sixth])
   })
 
-  // ─── one-shot consolidation migration ─────────────────────
+  // ─── one-shot migrations (v1 pack + v2 climb re-seed) ──────
 
-  it('migrates a buggy "each-add-on-its-own-row" layout into shape-packed rows', async () => {
-    // Reproduces the user's exact broken state from localStorage:
-    // 11 KPIs + 7 breakdowns, the 4 opt-in KPIs and 3 opt-in
-    // breakdowns each stranded in their own single-widget row.
+  it('migrates a buggy pre-versioning layout: packs overflow rows, then re-seeds the defaults', async () => {
+    // Reproduces the user's exact broken state from localStorage —
+    // opt-in widgets each stranded in their own single-widget row —
+    // with no stored version, so BOTH migrations run: v1 packs the
+    // overflow rows, v2 re-seeds the default rows to the climb set.
     const seed: RowLayout = {
-      1: [...DEFAULT_ROW_LAYOUT[1]!],
-      2: [...DEFAULT_ROW_LAYOUT[2]!, 'recent-5-matches'],
+      1: [...V1_ROW1],
+      2: [...V1_ROW2, 'recent-5-matches'],
       3: ['current-streak'],
       4: ['hero-pool-size'],
       5: ['longest-win-streak'],
@@ -459,26 +474,28 @@ describe('useDashboardLayout', () => {
       8: ['day-of-week'],
       9: ['top-game-modes'],
     }
-    const { api } = await mountHost(seed)
-    // Default rows untouched — migration only re-packs overflow
-    // rows past the highest default row.
+    const { api } = await mountHost(seed, 'none')
+    // Default rows re-seeded to the climb set; the user-added
+    // recent-5-matches survives in its stored row.
     expect(api.rows.value[1]).toEqual(DEFAULT_ROW_LAYOUT[1])
     expect(api.rows.value[2]).toEqual([...DEFAULT_ROW_LAYOUT[2]!, 'recent-5-matches'])
-    // The 4 single-KPI rows pack into row 3.
+    // The packed overflow KPIs survive minus current-streak, which
+    // the re-seed absorbed into default row 1.
     expect(api.rows.value[3]).toEqual([
-      'current-streak', 'hero-pool-size', 'longest-win-streak', 'best-winrate-hero',
+      'hero-pool-size', 'longest-win-streak', 'best-winrate-hero',
     ])
-    // The 3 single-breakdown rows pack into row 4.
+    // The packed breakdown row survives intact.
     expect(api.rows.value[4]).toEqual(['time-of-day', 'day-of-week', 'top-game-modes'])
     // Stale higher-index rows are gone.
     expect(api.rows.value[5]).toBeUndefined()
     expect(api.rows.value[9]).toBeUndefined()
   })
 
-  it('migration respects same-shape soft cap when packing', async () => {
-    // 6 single-KPI rows; with the cap of 5, packing must split into
-    // a 5-and-1 pair rather than smushing all 6 into one row.
-    const kpis = WIDGET_REGISTRY.filter((w) => w.shape === 'kpi').map((w) => w.id)
+  it('v1 packing respects the same-shape soft cap', async () => {
+    // 6 single-KPI rows of pure opt-ins (in neither default set, so
+    // the v2 re-seed leaves them where packing put them); with the
+    // cap of 5, packing must split into a 5-and-1 pair.
+    const kpis = ['longest-win-streak', 'hero-pool-size', 'tilt-queues', 'first-game-winrate', 'leaver-rate', 'sessions']
     const seed: RowLayout = {
       1: [],
       2: [],
@@ -489,36 +506,74 @@ describe('useDashboardLayout', () => {
       7: [kpis[4]!],
       8: [kpis[5]!],
     }
-    const { api } = await mountHost(seed)
+    const { api } = await mountHost(seed, 'none')
     expect(api.rows.value[3]).toEqual(kpis.slice(0, 5))
     expect(api.rows.value[4]).toEqual([kpis[5]])
   })
 
-  it('migration is one-shot — subsequent mounts do not re-pack', async () => {
+  it('migrations are one-shot — subsequent mounts do not re-shape', async () => {
     // First mount migrates a broken layout. Second mount, after a
     // mutation that re-introduces a single-widget overflow row,
     // leaves it alone — the layoutVersion sentinel records "already
     // migrated."
     const seed: RowLayout = {
-      1: [...DEFAULT_ROW_LAYOUT[1]!],
-      2: [...DEFAULT_ROW_LAYOUT[2]!],
-      3: ['current-streak'],
+      1: [...V1_ROW1],
+      2: [...V1_ROW2],
+      3: ['tilt-queues'],
       4: ['hero-pool-size'],
     }
-    const { api: first } = await mountHost(seed)
-    expect(first.rows.value[3]).toEqual(['current-streak', 'hero-pool-size'])
+    const { api: first } = await mountHost(seed, 'none')
+    expect(first.rows.value[3]).toEqual(['tilt-queues', 'hero-pool-size'])
     // User intentionally separates the two via setLayout — recreates
     // the "single widget in row 4" shape on purpose.
     first.setLayout({
       ...first.rows.value,
-      3: ['current-streak'],
+      3: ['tilt-queues'],
       4: ['hero-pool-size'],
     })
-    // Second mount of the cached layout — the migration must NOT
+    // Second mount of the cached layout — the migrations must NOT
     // run again. Re-import to bust the module cache.
     _resetDashboardLayoutForTest()
     const { api: second } = await mountHost()
-    expect(second.rows.value[3]).toEqual(['current-streak'])
+    expect(second.rows.value[3]).toEqual(['tilt-queues'])
     expect(second.rows.value[4]).toEqual(['hero-pool-size'])
+  })
+
+  // ─── v2: climb-defaults re-seed ────────────────────────────
+
+  it('re-seeds a stored v1 default layout to the climb defaults', async () => {
+    const { api } = await mountHost({ 1: [...V1_ROW1], 2: [...V1_ROW2] }, 1)
+    expect(api.rows.value[1]).toEqual(DEFAULT_ROW_LAYOUT[1])
+    expect(api.rows.value[2]).toEqual(DEFAULT_ROW_LAYOUT[2])
+    // The demoted v1 defaults are gone from the layout (they stay
+    // one "+ Add" away in the gallery).
+    const all = Object.values(api.rows.value).flat()
+    expect(all).not.toContain('total-time')
+    expect(all).not.toContain('reviewed-count')
+    expect(all).not.toContain('top-maps')
+  })
+
+  it('the re-seed keeps user-added widgets at their stored row', async () => {
+    const seed: RowLayout = {
+      1: [...V1_ROW1, 'sessions'],
+      2: [...V1_ROW2],
+      3: ['time-of-day'],
+    }
+    const { api } = await mountHost(seed, 1)
+    expect(api.rows.value[1]).toEqual([...DEFAULT_ROW_LAYOUT[1]!, 'sessions'])
+    expect(api.rows.value[3]).toEqual(['time-of-day'])
+  })
+
+  it('the re-seed never duplicates a promoted widget the user had already added', async () => {
+    // current-rank was opt-in pre-v2; this user had added it. The
+    // re-seed puts it in default row 2 — once.
+    const seed: RowLayout = {
+      1: [...V1_ROW1],
+      2: [...V1_ROW2, 'current-rank'],
+    }
+    const { api } = await mountHost(seed, 1)
+    const all = Object.values(api.rows.value).flat()
+    expect(all.filter((id) => id === 'current-rank')).toHaveLength(1)
+    expect(api.rows.value[2]).toEqual(DEFAULT_ROW_LAYOUT[2])
   })
 })
