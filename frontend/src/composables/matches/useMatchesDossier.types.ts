@@ -216,11 +216,16 @@ export interface BestWinrateHero {
 }
 
 // Fixed-bucket distribution row for the time-of-day + day-of-week
-// breakdowns. Labels are pre-formatted display strings.
+// breakdowns. Labels are pre-formatted display strings. `winrate`
+// judges the bucket over its decisive games (null with none — a
+// played-but-undecided bucket must read as no-sample, not 0%);
+// `count`/`share` keep the volume read for the bar footprint.
 export interface BucketEntry {
   label: string
   count: number
   share: number
+  winrate: number | null
+  decisive: number
 }
 
 // Default minimum qualifying matches for the best-winrate-hero KPI

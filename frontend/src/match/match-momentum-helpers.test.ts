@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 
 import {
   breakRust,
+  formDelta,
+  winrateAfterLossStreak,
   winrateAfterResult,
   firstGameOfSessionWinrate,
   netRankProgress,
@@ -298,5 +300,97 @@ describe('breakRust', () => {
     const r = breakRust([])
     expect(r.breaks).toBe(0)
     expect(r.back).toEqual({ winrate: null, sample: 0 })
+  })
+})
+
+describe('formDelta', () => {
+  // V V D D V D chronological — overall 3W-3L (50%), last 4 = D D V D
+  // (25%) → the form read is 25% recent, -25 pts vs overall.
+  const FORM = [
+    rec('2026-05-10', '20:00', { result: 'victory' }),
+    rec('2026-05-10', '20:30', { result: 'victory' }),
+    rec('2026-05-10', '21:00', { result: 'defeat' }),
+    rec('2026-05-10', '21:30', { result: 'defeat' }),
+    rec('2026-05-10', '22:00', { result: 'victory' }),
+    rec('2026-05-10', '22:30', { result: 'defeat' }),
+  ]
+
+  it('compares the recent window against the overall rate', () => {
+    expect(formDelta(FORM, 4)).toEqual({
+      recent:   { winrate: 25, sample: 4 },
+      overall:  { winrate: 50, sample: 6 },
+      deltaPts: -25,
+    })
+  })
+
+  it('collapses to a zero delta when the corpus fits inside the window', () => {
+    const r = formDelta(FORM, 20)
+    expect(r.recent).toEqual(r.overall)
+    expect(r.deltaPts).toBe(0)
+  })
+
+  it('returns null rates and a null delta on an empty set', () => {
+    expect(formDelta([], 20)).toEqual({
+      recent:   { winrate: null, sample: 0 },
+      overall:  { winrate: null, sample: 0 },
+      deltaPts: null,
+    })
+  })
+
+  it('ignores draws — only decisive games fill the window', () => {
+    const withDraw = [
+      rec('2026-05-10', '20:00', { result: 'victory' }),
+      rec('2026-05-10', '20:30', { result: 'draw' }),
+      rec('2026-05-10', '21:00', { result: 'defeat' }),
+      rec('2026-05-10', '21:30', { result: 'defeat' }),
+      rec('2026-05-10', '22:00', { result: 'victory' }),
+    ]
+    // Decisive sequence: V L L V. Window 3 → L L V = 33%; overall 50%.
+    expect(formDelta(withDraw, 3)).toEqual({
+      recent:   { winrate: 33, sample: 3 },
+      overall:  { winrate: 50, sample: 4 },
+      deltaPts: -17,
+    })
+  })
+})
+
+describe('winrateAfterLossStreak', () => {
+  it('measures games that follow 2+ consecutive losses', () => {
+    // V L L V L L L V V — qualifying games: idx 3 (after LL) = V,
+    // idx 6 (after LL) = L, idx 7 (after LLL → still ≥2) = V.
+    const rows = [
+      rec('2026-05-10', '20:00', { result: 'victory' }),
+      rec('2026-05-10', '20:30', { result: 'defeat' }),
+      rec('2026-05-10', '21:00', { result: 'defeat' }),
+      rec('2026-05-10', '21:30', { result: 'victory' }),
+      rec('2026-05-10', '22:00', { result: 'defeat' }),
+      rec('2026-05-10', '22:30', { result: 'defeat' }),
+      rec('2026-05-10', '23:00', { result: 'defeat' }),
+      rec('2026-05-10', '23:30', { result: 'victory' }),
+      rec('2026-05-11', '00:00', { result: 'victory' }),
+    ]
+    expect(winrateAfterLossStreak(rows, 2)).toEqual({ winrate: 67, sample: 3 })
+  })
+
+  it('needs the full streak length — single losses never qualify', () => {
+    const rows = [
+      rec('2026-05-10', '20:00', { result: 'victory' }),
+      rec('2026-05-10', '20:30', { result: 'defeat' }),
+      rec('2026-05-10', '21:00', { result: 'victory' }),
+      rec('2026-05-10', '21:30', { result: 'defeat' }),
+      rec('2026-05-10', '22:00', { result: 'victory' }),
+    ]
+    expect(winrateAfterLossStreak(rows, 2)).toEqual({ winrate: null, sample: 0 })
+  })
+
+  it('a longer floor tightens the trigger', () => {
+    // L L V … only a 2-streak exists, so minStreak 3 finds nothing.
+    const rows = [
+      rec('2026-05-10', '20:00', { result: 'defeat' }),
+      rec('2026-05-10', '20:30', { result: 'defeat' }),
+      rec('2026-05-10', '21:00', { result: 'victory' }),
+    ]
+    expect(winrateAfterLossStreak(rows, 2)).toEqual({ winrate: 100, sample: 1 })
+    expect(winrateAfterLossStreak(rows, 3)).toEqual({ winrate: null, sample: 0 })
   })
 })

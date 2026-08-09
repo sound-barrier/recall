@@ -27,6 +27,25 @@ import {
   DAY_OF_WEEK_LABELS,
 } from '@/composables/matches/useMatchesDossier.types'
 
+// Rolls one bucket tally into the BucketEntry the time-of-day +
+// day-of-week widgets render: volume (count/share) plus the win-rate
+// judgment over the bucket's decisive games (null with none, so a
+// played-but-undecided bucket reads as no-sample rather than 0%).
+function toBucketEntry(
+  label: string,
+  tally: { count: number; w: number; l: number },
+  denom: number,
+): BucketEntry {
+  const decisive = tally.w + tally.l
+  return {
+    label,
+    count: tally.count,
+    share: denom === 0 ? 0 : Math.round((tally.count / denom) * 100),
+    winrate: decisive === 0 ? null : Math.round((tally.w / decisive) * 100),
+    decisive,
+  }
+}
+
 // The dossier's parameterized query-helper tier (the panel-options
 // side). Each helper takes a MaybeRefOrGetter<Opts> and
 // opens its own computed() so widgets can wire reactive config through
@@ -643,22 +662,20 @@ export function useDossierQueries(
     return computed(() => {
       const { bucketCount } = toValue(opts)
       const hoursPerBucket = 24 / bucketCount
-      const counts = new Array<number>(bucketCount).fill(0)
+      const tallies = Array.from({ length: bucketCount }, () => ({ count: 0, w: 0, l: 0 }))
       let denom = 0
       for (const r of records.value) {
         const fa = r.data?.finished_at
         if (!fa || fa.length < 2) continue
         const hour = Number.parseInt(fa.slice(0, 2), 10)
         if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue
-        const bucket = Math.floor(hour / hoursPerBucket)
-        counts[bucket]!++
+        const bucket = tallies[Math.floor(hour / hoursPerBucket)]!
+        bucket.count++
         denom++
+        if (r.data?.result === 'victory') bucket.w++
+        else if (r.data?.result === 'defeat') bucket.l++
       }
-      return makeTimeOfDayLabels(bucketCount).map((label, i) => ({
-        label,
-        count: counts[i]!,
-        share: denom === 0 ? 0 : Math.round((counts[i]! / denom) * 100),
-      }))
+      return makeTimeOfDayLabels(bucketCount).map((label, i) => toBucketEntry(label, tallies[i]!, denom))
     })
   }
 
@@ -675,7 +692,7 @@ export function useDossierQueries(
   ): ComputedRef<BucketEntry[]> {
     return computed(() => {
       const { weekStartOverride } = toValue(opts)
-      const counts = [0, 0, 0, 0, 0, 0, 0]
+      const tallies = Array.from({ length: 7 }, () => ({ count: 0, w: 0, l: 0 }))
       let denom = 0
       for (const r of records.value) {
         const date = r.data?.date
@@ -687,18 +704,17 @@ export function useDossierQueries(
         const d = new Date(date + 'T00:00:00Z')
         const day = d.getUTCDay()
         if (!Number.isFinite(day) || day < 0 || day > 6) continue
-        counts[day]!++
+        const bucket = tallies[day]!
+        bucket.count++
         denom++
+        if (r.data?.result === 'victory') bucket.w++
+        else if (r.data?.result === 'defeat') bucket.l++
       }
       const start = weekStartOverride ?? weekStart?.value ?? 0
       const rotated: BucketEntry[] = []
       for (let i = 0; i < 7; i++) {
         const srcIdx = (start + i) % 7
-        rotated.push({
-          label: DAY_OF_WEEK_LABELS[srcIdx]!,
-          count: counts[srcIdx]!,
-          share: denom === 0 ? 0 : Math.round((counts[srcIdx]! / denom) * 100),
-        })
+        rotated.push(toBucketEntry(DAY_OF_WEEK_LABELS[srcIdx]!, tallies[srcIdx]!, denom))
       }
       return rotated
     })

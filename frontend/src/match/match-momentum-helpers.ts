@@ -62,6 +62,50 @@ export function winrateAfterResult(records: readonly MomentumInput[], prev: 'vic
   return { winrate: n === 0 ? null : Math.round((wins / n) * 100), sample: n }
 }
 
+// The recent-form read: win-rate over the last `window` decisive games
+// against the overall rate, with the signed gap in percentage points.
+// Answers "am I trending up or down right now" at a glance.
+export interface FormDelta {
+  recent: RateSample
+  overall: RateSample
+  deltaPts: number | null
+}
+
+export function formDelta(records: readonly MomentumInput[], window: number): FormDelta {
+  const seq = decisiveSequence(records)
+  const rate = (games: readonly { win: boolean }[]): RateSample => {
+    const wins = games.filter((g) => g.win).length
+    return { winrate: games.length === 0 ? null : Math.round((wins / games.length) * 100), sample: games.length }
+  }
+  const overall = rate(seq)
+  const recent = rate(seq.slice(-window))
+  return {
+    recent,
+    overall,
+    deltaPts: recent.winrate === null || overall.winrate === null
+      ? null
+      : recent.winrate - overall.winrate,
+  }
+}
+
+// Win-rate of games played right after `minStreak`+ consecutive losses —
+// the stop-loss signal. Sharper than the single-loss tilt check: two
+// losses in a row is where "one more game" starts costing rank.
+export function winrateAfterLossStreak(records: readonly MomentumInput[], minStreak: number): RateSample {
+  const seq = decisiveSequence(records)
+  let losses = 0
+  let wins = 0
+  let n = 0
+  for (const game of seq) {
+    if (losses >= minStreak) {
+      n++
+      if (game.win) wins++
+    }
+    losses = game.win ? 0 : losses + 1
+  }
+  return { winrate: n === 0 ? null : Math.round((wins / n) * 100), sample: n }
+}
+
 interface SessionIndexBucket {
   index: number // 1-based; the last bucket pools maxIndex and deeper
   winrate: number | null // integer %, null with no sample

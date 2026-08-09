@@ -1270,6 +1270,25 @@ describe('useMatchesDossier', () => {
       expect(counts).toEqual([2, 0, 0, 0, 1, 2])
     })
 
+    it('judges each bucket by win rate over its decisive games', () => {
+      const at = (fa: string, result?: 'victory' | 'defeat' | 'draw') => ({
+        ...rec({}),
+        data: { finished_at: fa, ...(result ? { result } : {}) },
+      } as unknown as MatchRecord)
+      const records = ref([
+        at('02:00', 'victory'), at('03:00', 'defeat'), at('03:30', 'victory'), // bucket 0: 2W-1L
+        at('12:00'),            // bucket 3: played, but no decisive result
+        at('12:30', 'draw'),    // bucket 3: draws don't decide a rate
+      ])
+      const { timeOfDayBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
+      expect(timeOfDayBuckets.value[0]!.winrate).toBe(67)
+      expect(timeOfDayBuckets.value[0]!.decisive).toBe(3)
+      // A bucket with games but no decisive ones reads as no-sample.
+      expect(timeOfDayBuckets.value[3]!.count).toBe(2)
+      expect(timeOfDayBuckets.value[3]!.winrate).toBeNull()
+      expect(timeOfDayBuckets.value[3]!.decisive).toBe(0)
+    })
+
     it('skips records without a parseable finished_at hour', () => {
       const at = (fa: string | undefined) => ({
         ...rec({}),
@@ -1292,6 +1311,23 @@ describe('useMatchesDossier', () => {
       const records = ref<MatchRecord[]>([])
       const { dayOfWeekBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
       expect(dayOfWeekBuckets.value).toHaveLength(7)
+    })
+
+    it('judges each day by win rate over its decisive games', () => {
+      const on = (date: string, result?: 'victory' | 'defeat') => ({
+        ...rec({}),
+        data: { date, ...(result ? { result } : {}) },
+      } as unknown as MatchRecord)
+      // 2026-05-10 = Sunday: 1W-1L → 50%. 2026-05-13 = Wednesday: no result.
+      const records = ref([
+        on('2026-05-10', 'victory'), on('2026-05-10', 'defeat'),
+        on('2026-05-13'),
+      ])
+      const ws = ref<0 | 1 | 2 | 3 | 4 | 5 | 6>(0)
+      const { dayOfWeekBuckets } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include'), undefined, ws))
+      expect(dayOfWeekBuckets.value[0]!.winrate).toBe(50) // Sun
+      expect(dayOfWeekBuckets.value[0]!.decisive).toBe(2)
+      expect(dayOfWeekBuckets.value[3]!.winrate).toBeNull() // Wed — played, undecided
     })
 
     it('counts records by day-of-week and rotates by weekStart', () => {
