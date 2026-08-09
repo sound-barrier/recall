@@ -22,7 +22,12 @@ func ScreenshotType(r *MatchResult) string {
 	if r.AllHeroes {
 		return "all_heroes"
 	}
-	if r.Rank != "" {
+	// The parseRank marker outranks field sniffing: a rank screen whose
+	// tier OCR garbled still has rank-shaped partials (result pill,
+	// progress, SR cards) that would otherwise land it in summary/unknown.
+	// r.Rank != "" stays for results built from stored rows, which never
+	// carry parse-time markers.
+	if r.RankScreen || r.Rank != "" {
 		return "rank"
 	}
 	if r.Result != "" || r.Date != "" || r.GameLength != "" {

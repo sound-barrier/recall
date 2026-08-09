@@ -61,6 +61,13 @@ type MatchResult struct {
 	// parsed (redundant with TEAMS; the cards' icons defeat the OCR). The
 	// write path skips storing it.
 	AllHeroes bool `json:"all_heroes,omitempty"`
+
+	// RankScreen marks that parseRank produced this result, so classification
+	// survives a garbled tier read: without it, a rank screen whose division
+	// text OCR'd to nothing masquerades as a summary (readable result pill)
+	// or unknown (nothing readable), and the fake row poisons correlation.
+	// Parse-time only — never stored; mirrors the AllHeroes marker.
+	RankScreen bool `json:"rank_screen,omitempty"`
 }
 
 type HeroSR struct {
