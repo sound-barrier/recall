@@ -51,10 +51,16 @@ func RunWails(a *app.App, assets embed.FS) {
 			application.NewService(notifier),
 		},
 		Assets: application.AssetOptions{
-			// Embedded frontend/dist, with the /_screenshot/ handler short-
-			// circuited ahead of it (same contract as the v2 AssetServer).
-			Handler:    application.AssetFileServerFS(assets),
-			Middleware: screenshotsMiddleware(a.ScreenshotHandler()),
+			// Embedded frontend/dist, with the /_screenshot/ handler and the
+			// REST API short-circuited ahead of it. The API middleware serves
+			// the same mux RunServer exposes, so the frontend talks plain
+			// HTTP in both desktop and server modes. Handler stays the FS
+			// server — it is the Vite dev-proxy in non-production builds.
+			Handler: application.AssetFileServerFS(assets),
+			Middleware: application.ChainMiddleware(
+				screenshotsMiddleware(a.ScreenshotHandler()),
+				apiMiddleware(desktopAPIHandler(a)),
+			),
 		},
 		Mac: application.MacOptions{
 			// false so closing the window keeps Recall alive in the menu-bar tray
@@ -207,6 +213,33 @@ func desktopMenu(goos string) *application.Menu {
 	help.Add("About Recall").OnClick(emit("menu:about"))
 
 	return menu
+}
+
+// apiMiddleware short-circuits `/api/v1/...` requests to the REST API
+// handler before the AssetServer's downstream pipeline (Vite proxy in dev,
+// embedded assets in production), mirroring screenshotsMiddleware. This is
+// what lets the frontend use one fetch-based client in both desktop and
+// server modes instead of the old Call.ByName RPC branch.
+//
+// Extracted for testability — see api_middleware_test.go.
+func apiMiddleware(api http.Handler) application.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api/v1/") {
+				api.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// desktopAPIHandler wraps the shared API mux in the same middlewares
+// RunServer applies, so desktop HTTP behavior (request IDs, body-size
+// caps, nosniff) matches server mode exactly. The SSE route is absent by
+// construction — see newAPIMux.
+func desktopAPIHandler(a *app.App) http.Handler {
+	return withRequestID(withSecurityHardening(newAPIMux(a)))
 }
 
 // screenshotsMiddleware short-circuits `/_screenshot/...` requests to the
