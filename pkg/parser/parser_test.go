@@ -348,6 +348,14 @@ func TestBestKnownMapInText(t *testing.T) {
 			in:   "BRAND NEW UNKNOWN MAP",
 			want: "",
 		},
+		{
+			// The J→F OCR garble that once poisoned maps.yaml itself:
+			// the misread must fuzzy-snap to the real map, and the
+			// summary-card context must not break the window slide.
+			name: "neon junction OCR garble snaps to canonical",
+			in:   "© HYBRID - COMPETITIVE] NEON FUNCTION [/MF'7:/]5",
+			want: "neon junction",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
