@@ -11,7 +11,7 @@ import { fmtCeilingRange } from '@/components/elo/elo-verdict'
 // folds the win-rate sample's uncertainty in (Beta posterior × first-passage),
 // plus how many more games it takes to actually pin the rate down.
 const {
-  naive, decay, projInput, sampleN, winRatePct, targetTier, targetDivision,
+  naive, decay, projInput, sampleN, effectiveWinRatePct, targetTier, targetDivision,
   weeksNaive, weeksDecay, gamesToCertainty, ceiling, seasonSim, simHorizonGames,
 } = useEloCalc()
 
@@ -39,11 +39,14 @@ const dream = computed(() => {
 const reality = computed(() => {
   const d = decay.value
   if (!d) return null
+  const openTop = ceiling.value !== null && ceiling.value.hi === null
   const range = ceiling.value !== null ? fmtCeilingRange(ceiling.value) : fmtScoreRank(d.impliedTrueScore)
   if (d.expectedGames === 0) return { head: 'Already there', lines: [] }
   if (!d.reachable && d.requiredWinRate !== null) {
     return {
-      head: `Levels off near ${range}`,
+      // "Levels off near X or higher — no hard ceiling" contradicts itself
+      // in one line; when the slope CI can't bound the top, say that.
+      head: openTop ? 'No hard ceiling detectable yet' : `Levels off near ${range}`,
       lines: [
         'Tougher lobbies pull you level here at your current form.',
         // requiredWinRate is the ASYMPTOTE — the rate whose plateau lands
@@ -53,9 +56,9 @@ const reality = computed(() => {
     }
   }
   if (!d.reachable) {
-    return { head: `Levels off near ${range}`, lines: ['A losing record settles below the target.'] }
+    return { head: openTop ? 'No hard ceiling detectable yet' : `Levels off near ${range}`, lines: ['A losing record settles below the target.'] }
   }
-  const lines = [`A bit slower, but ${winRatePct.value}% is high enough to break through.`, `Your ceiling right now: ${range}.`]
+  const lines = [`A bit slower, but ${effectiveWinRatePct.value}% is high enough to break through.`, `Your ceiling right now: ${range}.`]
   const weeks = fmtWeeks(weeksDecay.value)
   if (weeks) lines.push(weeks)
   return { head: fmtGames(d.expectedGames), lines }
@@ -71,7 +74,7 @@ const timelineLine = computed(() => {
   const neverPct = sim.neverShare >= 0.005 ? Math.round(sim.neverShare * 100) : null
   const horizon = simHorizonGames.value
   if (sim.gamesToTarget.p50 === null) {
-    return `In ${neverPct}% of ${sim.sims.toLocaleString()} simulated seasons you never touch ${target.value} within ~${horizon} games at this form. Improvement — not more games — moves that number.`
+    return `In ${neverPct}% of ${sim.sims.toLocaleString()} simulated seasons you never touch ${target.value} within ~${horizon} games at this form. Improvement — or simply more games than one season holds — moves that number.`
   }
   const parts = [`the fastest tenth touch ${target.value} by ~${sim.gamesToTarget.p10} games`, `the median by ~${sim.gamesToTarget.p50}`]
   if (sim.gamesToTarget.p90 !== null) parts.push(`the slowest tenth by ~${sim.gamesToTarget.p90}`)

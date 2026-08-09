@@ -35,7 +35,9 @@ describe('fmtGamesRange', () => {
 
   it('phrases an open upper bound as a possible cold streak', () => {
     const r: GamesRange = { lower: 12.2, upper: null }
-    expect(fmtGamesRange(r, 14)).toMatch(/Best case ~13;.*only 14 games.*cold streak/)
+    expect(fmtGamesRange(r, 14)).toMatch(/Best case ~13;.*sample of 14 games.*cold streak/)
+    // n=1 must not read "1 games".
+    expect(fmtGamesRange(r, 1)).toContain('sample of 1 game,')
   })
 
   it('caps an absurd upper bound', () => {
@@ -77,7 +79,9 @@ describe('fmtPct', () => {
 describe('fmtPValue', () => {
   it('covers null, the tiny-tail floor, and the two precision bands', () => {
     expect(fmtPValue(null)).toBe('—')
-    expect(fmtPValue(0.00001)).toBe('p < 0.0001')
+    expect(fmtPValue(0.00001)).toBe('p < 0.001')
+    // The [0.0001, 0.001) band once printed the absurd "p = 0.000".
+    expect(fmtPValue(0.0004)).toBe('p < 0.001')
     expect(fmtPValue(0.004)).toBe('p = 0.004')
     expect(fmtPValue(0.34)).toBe('p = 0.34')
   })
