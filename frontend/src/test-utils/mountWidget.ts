@@ -23,7 +23,7 @@ import type {
   WLDSinceLastReview,
 } from '@/composables/matches/useMatchesDossier'
 import type { RankNow } from '@/match/match-trends-helpers'
-import type { RateSample, LeaverRate } from '@/match/match-momentum-helpers'
+import type { FormDelta, RateSample, LeaverRate, SessionIndexBreakdown } from '@/match/match-momentum-helpers'
 import type { TiltEpisodes } from '@/match/elo-streaks'
 import type { HeroCountBucket, HeroPoolAnalysis } from '@/match/match-hero-pool-helpers'
 
@@ -100,6 +100,10 @@ type DossierOverride = {
   leaverStats?:        LeaverRate
   sessions?:           number
   tiltQueues?:         TiltEpisodes
+  sessionDepth?:       SessionIndexBreakdown
+  // Query helpers — climb-form widgets.
+  formDelta?:          FormDelta
+  lossStreakRecovery?: RateSample
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -138,6 +142,13 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     leaverStats:         wrap(over.leaverStats, { rate: null, leaverCount: 0, total: 0 } as LeaverRate),
     sessions:            wrap(over.sessions, 0),
     tiltQueues:          wrap(over.tiltQueues, { episodes: 0, tiltGames: 0, tiltWins: 0 } as TiltEpisodes),
+    sessionDepth:        wrap(over.sessionDepth, { buckets: [], slope: null, sessions: 0 } as SessionIndexBreakdown),
+    formDelta:           wrapQuery(over.formDelta, {
+      recent:   { winrate: null, sample: 0 },
+      overall:  { winrate: null, sample: 0 },
+      deltaPts: null,
+    } as FormDelta),
+    lossStreakRecovery:  wrapQuery(over.lossStreakRecovery, { winrate: null, sample: 0 } as RateSample),
     withWhomBreakdown:   wrapQuery(over.withWhomBreakdown, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),
     mostPlayedHero:      wrapQuery(over.mostPlayedHero, null),

@@ -40,6 +40,9 @@ import LossQualityWidget from '@/components/dashboard/widgets/LossQualityWidget.
 import UphillBattleWidget from '@/components/dashboard/widgets/UphillBattleWidget.vue'
 import ReversalWidget from '@/components/dashboard/widgets/ReversalWidget.vue'
 import HeroesPerMatchWidget from '@/components/dashboard/widgets/HeroesPerMatchWidget.vue'
+import FormDeltaWidget from '@/components/dashboard/widgets/FormDeltaWidget.vue'
+import LossStreakRecoveryWidget from '@/components/dashboard/widgets/LossStreakRecoveryWidget.vue'
+import SessionDepthWidget from '@/components/dashboard/widgets/SessionDepthWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -232,6 +235,32 @@ export const heroGameModeHeatmapSchema = makeSchema<HeroGameModeHeatmapConfig>([
   },
 ])
 
+export interface FormDeltaConfig extends Record<string, unknown> {
+  window: number
+}
+export const formDeltaSchema = makeSchema<FormDeltaConfig>([
+  {
+    kind:    'integer-choice',
+    key:     'window',
+    label:   'Recent window (games)',
+    choices: [10, 20, 30],
+    default: 20,
+  },
+])
+
+export interface LossStreakRecoveryConfig extends Record<string, unknown> {
+  minStreak: number
+}
+export const lossStreakRecoverySchema = makeSchema<LossStreakRecoveryConfig>([
+  {
+    kind:    'integer-choice',
+    key:     'minStreak',
+    label:   'Losses in a row to trigger',
+    choices: [2, 3],
+    default: 2,
+  },
+])
+
 export interface RecentMatchesConfig extends Record<string, unknown> {
   count: number
 }
@@ -284,6 +313,9 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'uphill-battle',       eyebrow: 'Uphill battles',         shape: 'kpi',       defaultRow: 1, component: UphillBattleWidget,    config: EMPTY_SCHEMA          },
   { id: 'reversal',            eyebrow: 'Reversals',              shape: 'kpi',       defaultRow: 1, component: ReversalWidget,        config: EMPTY_SCHEMA          },
   { id: 'heroes-per-match',    eyebrow: 'Heroes per match',       shape: 'breakdown', defaultRow: 2, component: HeroesPerMatchWidget,  config: heroDisciplineSchema  },
+  { id: 'form-delta',           eyebrow: 'Recent form',            shape: 'kpi',       defaultRow: 1, component: FormDeltaWidget,          config: formDeltaSchema          },
+  { id: 'loss-streak-recovery', eyebrow: 'After a loss streak',    shape: 'kpi',       defaultRow: 1, component: LossStreakRecoveryWidget, config: lossStreakRecoverySchema },
+  { id: 'session-depth',        eyebrow: 'Session depth',          shape: 'breakdown', defaultRow: 2, component: SessionDepthWidget,       config: EMPTY_SCHEMA             },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add
