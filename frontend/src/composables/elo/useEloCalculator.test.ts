@@ -291,6 +291,48 @@ describe('useEloCalculator — hero what-if nudges', () => {
     expect(calc.effectiveWinRatePct.value).toBeCloseTo(57.1, 1)
   })
 
+  it('a nudge never rewrites the sample the statistics are computed from', () => {
+    // The what-if dial prices hypothetical games; the p-value, posterior,
+    // credible interval and games-to-certainty are statements about games
+    // actually played. Pre-fix, a nudge forged sampleWins from the nudged
+    // rate and every one of them moved.
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    const before = {
+      p: calc.pValue.value,
+      skeptic: calc.skepticVerdict.value,
+      range: calc.trueRateRange.value,
+      know: calc.gamesToCertainty.value,
+      wins: calc.projInput.value!.sampleWins,
+    }
+    for (let i = 0; i < 5; i++) calc.bumpHero('lucio', 1)
+    expect(calc.projInput.value!.sampleWins).toBe(before.wins)
+    expect(calc.pValue.value).toBe(before.p)
+    expect(calc.skepticVerdict.value).toBe(before.skeptic)
+    expect(calc.trueRateRange.value).toEqual(before.range)
+    expect(calc.gamesToCertainty.value).toBe(before.know)
+    // The projections DO follow the dial.
+    expect(calc.projInput.value!.winRate).toBeGreaterThan(0.571)
+  })
+
+  it('the season sim follows a nudge as a location shift, not extra games', () => {
+    seq = 0
+    const rows: MatchRecord[] = []
+    for (let i = 0; i < 60; i++) {
+      const win = i % 10 < 6
+      rows.push(rec({
+        result: win ? 'victory' : 'defeat',
+        rank: { tier: 'gold', level: i < 30 ? 4 : 3, progress: 0, change: win ? 20 : -20 },
+      }))
+    }
+    const calc = useEloCalculator({ records: rows.reverse(), heroRole, mapGameMode })
+    const before = calc.seasonSim.value!
+    for (let i = 0; i < 5; i++) calc.bumpHero('lucio', 1)
+    const after = calc.seasonSim.value!
+    expect(after.probReachTarget).toBeGreaterThan(before.probReachTarget)
+    // Same real sample feeds the posterior width in both runs.
+    expect(calc.projInput.value!.sampleWins + calc.projInput.value!.sampleLosses).toBe(calc.sampleN.value)
+  })
+
   it('saturates 5 points from the measured rate', () => {
     const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     for (let i = 0; i < 9; i++) calc.bumpHero('lucio', 1)
@@ -310,6 +352,25 @@ describe('useEloCalculator — hero what-if nudges', () => {
     calc.bumpHero('ana', 1) // out of scope — no effect while selected
     expect(calc.effectiveWinRatePct.value).toBeCloseTo(64.6, 1)
     expect(calc.whatIf.value.perHero.has('ana')).toBe(false)
+  })
+
+  it('selecting overlapping heroes caps the sample at real matches', () => {
+    // Ten matches, every one meaningfully played on BOTH lucio and ana:
+    // pooled per-hero credit says 20 games; the evidence is 10.
+    seq = 0
+    const rows: MatchRecord[] = []
+    for (let i = 0; i < 10; i++) {
+      const r = rec({ result: i % 2 === 0 ? 'victory' : 'defeat', hero: 'lucio' })
+      ;(r.data as { heroes_played: unknown[] }).heroes_played = [
+        { hero: 'lucio', percent_played: 60, play_time: '06:00' },
+        { hero: 'ana', percent_played: 40, play_time: '04:00' },
+      ]
+      rows.push(r)
+    }
+    const calc = useEloCalculator({ records: rows, heroRole, mapGameMode })
+    calc.toggleHero('lucio')
+    calc.toggleHero('ana')
+    expect(calc.sampleN.value).toBe(10)
   })
 
   it('reset, track re-seed, and a detaching manual edit all clear the nudges', () => {
