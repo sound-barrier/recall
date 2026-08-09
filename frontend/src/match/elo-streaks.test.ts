@@ -66,7 +66,8 @@ describe('streakMeterImpact', () => {
       { match_key: 'b', data: { change_percent: -20, modifiers: ['defeat'] } },
       { match_key: 'c', data: { change_percent: 20, modifiers: ['victory'] } },
       { match_key: 'd', data: { change_percent: 30, modifiers: ['victory', 'win streak'] } },
-      { match_key: 'e', data: { change_percent: 30, modifiers: ['victory', 'win streak'] } },
+      // 2026-07 UI wording — must bucket with the streak games, not 'normal'
+      { match_key: 'e', data: { change_percent: 30, modifiers: ['victory', 'winning trend'] } },
       { match_key: 'f', data: { change_percent: -30, modifiers: ['defeat', 'loss streak'] } },
       { match_key: 'g', data: { change_percent: -30, modifiers: ['defeat', 'loss streak'] } },
       // Excluded: calibration reading + an exact zero.
