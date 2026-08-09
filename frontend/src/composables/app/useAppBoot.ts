@@ -1,7 +1,7 @@
 import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 
-import { GetStartupError } from '@/api-client'
+import { fetchStartupError } from '@/queries/system'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
@@ -33,13 +33,11 @@ export function useAppBoot() {
 
   onMounted(() => {
     matchesStore.restoreLastParsedAt()
-    void appStore.loadVersion()
-    void appStore.loadDataLocation()
     void matchesStore.load()
     void matchesStore.loadIgnored()
     void settingsStore.load()
     void settingsStore.loadScreenshotCandidates()
-    GetStartupError()
+    fetchStartupError()
       .then(msg => { if (msg) appStore.setStartupError(msg) })
       .catch(() => {})
   })

@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/vue-query'
 
-import { GetOWData } from '@/api-client'
+import {
+  CheckForUpdate, GetDataLocation, GetOWData, GetStartupError, GetVersion,
+  type UpdateInfo,
+} from '@/api-client'
 import { queryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
@@ -10,4 +13,50 @@ import { qk } from '@/queries/keys'
 // ApplyGameDataUpdate invalidates the key to refresh the roster in place.
 export function useOWDataQuery() {
   return useQuery({ queryKey: qk.system.referenceData, queryFn: GetOWData }, queryClient)
+}
+
+export function useVersionQuery() {
+  return useQuery({ queryKey: qk.system.version, queryFn: GetVersion }, queryClient)
+}
+
+export function useDataLocationQuery() {
+  return useQuery({ queryKey: qk.system.dataLocation, queryFn: GetDataLocation }, queryClient)
+}
+
+// The GitHub release check is USER-PULLED only ("no network calls on mount
+// unless the user asked") — the observer is permanently disabled and
+// runUpdateCheck() is the single trigger. A result with checked:false (the
+// backend couldn't complete the check) keeps the previous answer rather
+// than clobbering it.
+async function fetchUpdateInfoKeepingLast(): Promise<UpdateInfo | null> {
+  const u = await CheckForUpdate()
+  if (u.checked) return u
+  return queryClient.getQueryData<UpdateInfo | null>(qk.system.update) ?? null
+}
+
+export function useUpdateCheckQuery() {
+  return useQuery({
+    queryKey: qk.system.update,
+    queryFn: fetchUpdateInfoKeepingLast,
+    enabled: false,
+  }, queryClient)
+}
+
+// Imperative trigger — the About dialog's auto-check-on-open and its
+// re-check button. staleTime 0 forces a real roundtrip per explicit ask
+// while an in-flight one is joined, not duplicated (the old busy guard).
+// Failures are silent: the dialog shows the cached result or its
+// network-failure copy.
+export function runUpdateCheck(): Promise<void> {
+  return queryClient.fetchQuery({
+    queryKey: qk.system.update,
+    queryFn: fetchUpdateInfoKeepingLast,
+    staleTime: 0,
+  }).then(() => undefined, () => undefined)
+}
+
+// One-shot boot read for the startup-failure gate — no observer needed,
+// the app store keeps the message.
+export function fetchStartupError(): Promise<string> {
+  return queryClient.fetchQuery({ queryKey: qk.system.startupError, queryFn: GetStartupError })
 }

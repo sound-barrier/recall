@@ -10,6 +10,8 @@ import { useSettingsStore } from '@/stores/settings'
 import type { ThemeMode } from '@/composables/settings/useTheme'
 import type { WeekStart } from '@/composables/shared/useWeekStart'
 import type { MatchRecord, TesseractStatus, DataLocation, NamedCandidate } from '@/api'
+import { qk } from '@/queries/keys'
+import { seedQuery } from '@/test-utils/queryTestUtils'
 
 // SettingsView reads everything from the stores now + distributes to its
 // sub-section components, so these tests seed the stores (the same shape the
@@ -104,7 +106,7 @@ function mountSettings(opts: { props?: SettingsOver } = {}) {
     matches.ignoredScreenshots = Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' }))
   }
 
-  app.dataLocation = over.dataLocation ?? null
+  seedQuery(qk.system.dataLocation, over.dataLocation ?? null)
 
   const spies = {
     pickDir:               vi.spyOn(settings, 'pickDir').mockResolvedValue(undefined),

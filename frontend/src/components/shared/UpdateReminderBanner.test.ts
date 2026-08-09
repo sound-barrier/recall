@@ -5,6 +5,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 import { useAppStore } from '@/stores/app'
 import type { UpdateInfo } from '@/api'
+import { qk } from '@/queries/keys'
+import { seedQuery } from '@/test-utils/queryTestUtils'
 
 // The banner now owns the whole reminder feature (useUpdateReminder derives the
 // gate + day-count from the app store's updateInfo), so these seed updateInfo —
@@ -17,7 +19,7 @@ function mountWith(last_checked_at: string) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const appStore = useAppStore()
-  appStore.updateInfo = { checked: true, current: '1.0.0', latest: '1.0.0', last_checked_at } as unknown as UpdateInfo
+  seedQuery(qk.system.update, { checked: true, current: '1.0.0', latest: '1.0.0', last_checked_at } as unknown as UpdateInfo)
   // Spy before mount — the component destructures openAbout at setup. "Check
   // now" opens About (the update hub), which runs the check.
   const checkSpy = vi.spyOn(appStore, 'openAbout').mockImplementation(() => {})

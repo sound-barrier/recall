@@ -8,6 +8,8 @@ import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { ResolveAmbiguousMatch } from '@/api'
 import type { MatchRecord, UpdateInfo } from '@/api'
+import { qk } from '@/queries/keys'
+import { seedQuery } from '@/test-utils/queryTestUtils'
 
 // UnknownMapsView reads its triage lists + per-card state + actions from the
 // stores now: the unknown/ambiguous/reference-gap getters off the matches
@@ -55,7 +57,7 @@ function mountWith(records: MatchRecord[], extras: Extras = {}) {
     return true
   })
   const app = useAppStore()
-  app.updateInfo = extras.updateInfo ?? null
+  seedQuery(qk.system.update, extras.updateInfo ?? null)
   const ui = useUiStore()
   const preloadSpy = vi.spyOn(ui.preview, 'preload')
   const openLightboxSpy = vi.spyOn(ui.preview, 'openLightbox')
