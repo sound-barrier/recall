@@ -8,7 +8,7 @@ import { PROVISIONAL_MIN_DECISIVE } from '@/match/elo-model'
 import type { CeilingRange } from '@/match/elo-bayes'
 import { fmtGames, fmtScoreRank } from '@/components/elo/elo-format'
 
-export interface VerdictSim {
+interface VerdictSim {
   probReachTarget: number
   probEndLower: number
   gamesToTargetP50: number | null

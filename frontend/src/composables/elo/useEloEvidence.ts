@@ -10,6 +10,10 @@ import { normalCdf } from '@/match/elo-stats'
 import { twoByTwoChiSquareP } from '@/match/elo-stats'
 import { LOW_SAMPLE_N } from '@/match/match-sample-helpers'
 
+// The tilt warn card's corpus floor — aligned with the verdict's
+// PROVISIONAL_MIN_DECISIVE: below it, one bad sitting dominates the read.
+const TILT_MIN_DECISIVE = 20
+
 // "What actually moves your rank" — the levers a player controls, each an item
 // pairing one measured number with a plain-language gloss. The myth-busting
 // stats (rigged MMR, streaks, percentile) live in EloMythChecks; this is the
@@ -167,6 +171,9 @@ function streakMeter(recs: readonly MatchRecord[]): EvidenceItem | null {
 function tiltQueueing(recs: readonly MatchRecord[]): EvidenceItem | null {
   const t = tiltEpisodes(recs)
   const decisive = recs.filter((r) => r.data?.result === 'victory' || r.data?.result === 'defeat').length
+  // The warn card needs a real corpus behind it too: one bad evening inside
+  // a 10-game history is an anecdote, not a pattern worth a warning tone.
+  if (decisive < TILT_MIN_DECISIVE) return null
   if (t.episodes === 0) {
     if (decisive < 30) return null
     return {

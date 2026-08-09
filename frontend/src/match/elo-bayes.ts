@@ -9,7 +9,7 @@
 // probability shown is therefore conservative — the player's own games
 // have to argue their way past the myth.
 
-import { betaCdf, inverseGaussianCdf } from '@/match/elo-stats'
+import { betaCdf } from '@/match/elo-stats'
 import { LADDER_MAX } from '@/match/elo-model'
 import type { ProjectionInput } from '@/match/elo-model'
 
@@ -99,65 +99,6 @@ export function shrunkWinRate(
   if (poolN <= 0 || strength <= 0) return null
   const poolRate = poolWins / poolN
   return (wins + strength * poolRate) / (wins + losses + strength)
-}
-
-export interface ClimbQuantiles {
-  p10: number | null // fastest-decile games; null when swallowed by never-mass
-  p50: number | null
-  p90: number | null
-  pNever: number // posterior mass at or below the 50% wall — futures that never arrive
-}
-
-// posteriorClimbQuantiles folds BOTH uncertainties into one distribution of
-// games-to-target: the posterior over the true win rate (sample size) and
-// the walk's own luck (first-passage inverse Gaussian at each rate). The
-// posterior is discretised into equal-mass slices; each slice above the
-// 50% wall contributes its IG first-passage CDF, slices at or below it
-// contribute never-mass. Climbs only (D > 0) — descent reads as null.
-export function posteriorClimbQuantiles(
-  input: ProjectionInput,
-  prior: BetaPrior = SKEPTIC_PRIOR,
-  slices = 101,
-): ClimbQuantiles | null {
-  const distance = input.targetScore - input.currentScore
-  const step = input.meterMovePct / 100
-  if (distance <= 0 || step <= 0) return null
-  const a = prior.alpha + input.sampleWins
-  const b = prior.beta + input.sampleLosses
-
-  const climbing: { mu: number; lambda: number }[] = []
-  let neverSlices = 0
-  for (let j = 0; j < slices; j++) {
-    const p = betaQuantile((j + 0.5) / slices, a, b)
-    if (p <= 0.5) {
-      neverSlices++
-      continue
-    }
-    const drift = step * (2 * p - 1)
-    const sigma2 = step * step * 4 * p * (1 - p)
-    climbing.push({ mu: distance / drift, lambda: (distance * distance) / sigma2 })
-  }
-  const pNever = neverSlices / slices
-
-  const mixtureCdf = (t: number): number => {
-    let sum = 0
-    for (const s of climbing) sum += inverseGaussianCdf(t, s.mu, s.lambda)
-    return sum / slices
-  }
-  const quantile = (q: number): number | null => {
-    if (q > 1 - pNever - 1e-9) return null
-    let hi = 64
-    while (mixtureCdf(hi) < q && hi < 1e7) hi *= 2
-    let lo = 0
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2
-      if (mixtureCdf(mid) < q) lo = mid
-      else hi = mid
-    }
-    return Math.max(1, Math.round((lo + hi) / 2))
-  }
-
-  return { p10: quantile(0.1), p50: quantile(0.5), p90: quantile(0.9), pNever }
 }
 
 export interface SlopeCI {

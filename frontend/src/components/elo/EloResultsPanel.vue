@@ -12,12 +12,13 @@ import { fmtCeilingRange } from '@/components/elo/elo-verdict'
 // plus how many more games it takes to actually pin the rate down.
 const {
   naive, decay, projInput, sampleN, winRatePct, targetTier, targetDivision,
-  weeksNaive, weeksDecay, climbQuantiles, gamesToCertainty, ceiling,
+  weeksNaive, weeksDecay, gamesToCertainty, ceiling, seasonSim, simHorizonGames,
 } = useEloCalc()
 
 const target = computed(() => fmtRank(targetTier.value, targetDivision.value))
 
-// If your wins keep coming — the steady-win-rate future.
+// If your wins keep coming — the steady-win-rate future. An upper bound by
+// construction: it assumes matchmaking never stiffens.
 const dream = computed(() => {
   const n = naive.value
   if (!n) return null
@@ -28,6 +29,7 @@ const dream = computed(() => {
   const lines = [fmtGamesRange(n.games95, sampleN.value)]
   const weeks = fmtWeeks(weeksNaive.value)
   if (weeks) lines.push(weeks)
+  lines.push('An upper bound — it assumes matchmaking never stiffens; the simulated seasons are the honest number.')
   return { head: fmtGames(n.expectedGames), lines }
 })
 
@@ -59,19 +61,22 @@ const reality = computed(() => {
   return { head: fmtGames(d.expectedGames), lines }
 })
 
-// Percentiles of the games-to-target distribution, with the never-mass
-// (the posterior share at or below the 50% wall) reported honestly.
+// The honest timeline now reads straight off the simulated seasons — the
+// SAME distribution as every other probability on the page (the old
+// IG-mixture quantiles ignored decay and could promise arrivals the
+// verdict had just ruled out).
 const timelineLine = computed(() => {
-  const q = climbQuantiles.value
-  if (!q) return null
-  const neverPct = q.pNever >= 0.005 ? Math.round(q.pNever * 100) : null
-  if (q.p50 === null) {
-    return `At this record, most futures never arrive: a ${neverPct}% chance your true rate sits at or below the 50% wall. Improvement — not more games — moves that.`
+  const sim = seasonSim.value
+  if (!sim) return null
+  const neverPct = sim.neverShare >= 0.005 ? Math.round(sim.neverShare * 100) : null
+  const horizon = simHorizonGames.value
+  if (sim.gamesToTarget.p50 === null) {
+    return `In ${neverPct}% of ${sim.sims.toLocaleString()} simulated seasons you never touch ${target.value} within ~${horizon} games at this form. Improvement — not more games — moves that number.`
   }
-  const parts = [`the fastest tenth ~${q.p10} games`, `median ~${q.p50}`]
-  if (q.p90 !== null) parts.push(`the slowest tenth ~${q.p90}`)
-  const never = neverPct !== null ? ` · a ${neverPct}% chance you never arrive at this form` : ''
-  return `Folding your sample size in: ${parts.join(' · ')}${never}.`
+  const parts = [`the fastest tenth touch ${target.value} by ~${sim.gamesToTarget.p10} games`, `the median by ~${sim.gamesToTarget.p50}`]
+  if (sim.gamesToTarget.p90 !== null) parts.push(`the slowest tenth by ~${sim.gamesToTarget.p90}`)
+  const never = neverPct !== null ? ` · ${neverPct}% never arrive within ~${horizon} games` : ''
+  return `Across ${sim.sims.toLocaleString()} simulated seasons: ${parts.join(' · ')}${never}.`
 })
 
 const knowLine = computed(() => {

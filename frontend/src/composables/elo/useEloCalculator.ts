@@ -16,7 +16,7 @@ import {
 } from '@/match/elo-model'
 import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo-stats'
 import {
-  ceilingRange, credibleInterval, gamesToKnow, posteriorClimbQuantiles, probTrueWinRateAbove,
+  ceilingRange, credibleInterval, gamesToKnow, probTrueWinRateAbove,
   type CeilingRange, type SlopeCI,
 } from '@/match/elo-bayes'
 import { decisiveResults, decisiveTimeline } from '@/match/elo-streaks'
@@ -400,7 +400,6 @@ export function useEloCalculator(opts: EloCalcOpts) {
     const inp = projInput.value
     return inp ? credibleInterval(inp.sampleWins, inp.sampleLosses) : null
   })
-  const climbQuantiles = computed(() => (projInput.value ? posteriorClimbQuantiles(projInput.value) : null))
   const gamesToCertainty = computed(() => {
     const inp = projInput.value
     return inp ? gamesToKnow(inp.sampleWins, inp.sampleLosses, KNOW_HALF_WIDTH) : null
@@ -475,7 +474,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     pValue, percentileNow, percentileTarget, weeksNaive, weeksDecay,
     seasonGames, simHorizonGames, paceAssumed, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
-    skepticVerdict, trueRateRange, climbQuantiles, gamesToCertainty,
+    skepticVerdict, trueRateRange, gamesToCertainty,
     runs, seasonSim, measuredSeasonSim, skillCurve, changePoint, lift, heroGap,
   }
 }

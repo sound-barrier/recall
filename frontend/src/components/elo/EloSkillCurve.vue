@@ -48,6 +48,12 @@ const sharePct = computed(() =>
 
 const shareLine = computed(() => {
   if (sharePct.value === null || skillCurve.value === null) return null
+  // A clamp-saturated split is an artifact of degenerate moment estimates
+  // (e.g. a steady one-way climb), not a measurement — printing "100% skill"
+  // off it would be the same overclaim the verdict floor exists to prevent.
+  if (skillCurve.value.saturated) {
+    return `The skill-vs-noise split isn't measurable yet: these ${skillCurve.value.n} readings don't move in a way the filter can separate, so no percentage would be honest. It needs more varied rank movement.`
+  }
   const noise = 100 - sharePct.value
   const read = sharePct.value < 40
     ? `most of the jitter you feel is the matchmaker, not you`

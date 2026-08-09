@@ -154,8 +154,11 @@ export interface StreakMeterImpact {
 }
 
 // METER_IMPACT_FLOOR: fewer qualifying readings than this on either side
-// and the split is noise, not a finding.
-const METER_IMPACT_FLOOR = 3
+// and the split is noise, not a finding. Matches the season simulator's
+// MIN_POOL — a ratio of two three-sample means once shipped as "2.4×
+// inside streaks", which is exactly the low-n overclaim this page stopped
+// making.
+const METER_IMPACT_FLOOR = 8
 
 // streakMeterImpact splits the player's own rank-card meter moves by the
 // parser's streak modifiers. Calibration readings and exact zeroes are

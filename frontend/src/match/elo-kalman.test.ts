@@ -57,3 +57,30 @@ describe('skillCurve', () => {
     expect(curve.t.length).toBe(curve.halfWidth.length)
   })
 })
+
+describe('saturation flag', () => {
+  it('marks a clamp-saturated split so the UI can refuse the number', () => {
+    // A strict one-way staircase: consecutive diffs identical (all +0.5) →
+    // cov₁ of the diffs ≥ 0 → R floors at EPS → share saturates near 100%.
+    const staircase = Array.from({ length: 14 }, (_, i) => ({ t: i, score: 10 + i * 0.5 }))
+    // Identical diffs have zero variance → flat-series null instead.
+    expect(skillCurve(staircase)).toBeNull()
+    // A climb whose step sizes come in runs (four big, four small, repeat):
+    // the diffs are positively autocorrelated — cov₁(d) > 0 — which the
+    // local-level model cannot produce, so R floors and the share pins.
+    const steps = Array.from({ length: 19 }, (_, i) => (i % 8 < 4 ? 1 : 0.1))
+    let s = 10
+    const wobble = [{ t: 0, score: s }, ...steps.map((step, i) => ({ t: i + 1, score: (s += step) }))]
+    const c = skillCurve(wobble)!
+    expect(c).not.toBeNull()
+    expect(c.saturated).toBe(true)
+    expect(c.signalShare).toBeGreaterThan(0.95)
+    // Alternating white noise must NOT be marked saturated: its diffs are
+    // honestly negatively autocorrelated, and even its Q-floored ~0% share
+    // is a valid "no drift evidence" reading, not a model-misfit artifact.
+    const noisy = Array.from({ length: 30 }, (_, i) => ({ t: i, score: 10 + (i % 2 === 0 ? 1 : -1) }))
+    const n = skillCurve(noisy)!
+    expect(n.saturated).toBe(false)
+    expect(n.signalShare).toBeLessThan(0.05)
+  })
+})

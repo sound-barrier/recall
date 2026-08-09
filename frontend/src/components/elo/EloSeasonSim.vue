@@ -5,11 +5,12 @@ import { fmtRank, fmtScoreRank } from '@/components/elo/elo-format'
 
 // "Play the season out" — a bootstrap simulation: each season draws a true
 // win rate from the player's record (Beta posterior) and replays it with
-// their OWN rank-card meter moves, streak amplification and asymmetry
-// included. The three cells are the numbers the closed forms can't give
-// honestly: season odds under the real meter, the chance of ending LOWER
-// than today, and the distribution of where the season actually lands.
-const { seasonSim, seasonGames, probThisSeason, targetTier, targetDivision } = useEloCalc()
+// their OWN rank-card meter moves — streak amplification, asymmetry, and
+// lobbies that toughen as the season climbs (the same decay the verdict
+// uses; every probability on the page comes from THIS simulation). The
+// three cells: season odds, the chance of ending LOWER than today, and
+// where the season actually lands.
+const { seasonSim, simHorizonGames, paceAssumed, targetTier, targetDivision } = useEloCalc()
 
 const target = computed(() => fmtRank(targetTier.value, targetDivision.value))
 const pct = (v: number) => `${Math.round(v * 100)}%`
@@ -18,20 +19,19 @@ interface Cell { id: string; q: string; a: string; note: string; tone: string }
 
 const cells = computed<Cell[]>(() => {
   const sim = seasonSim.value
-  if (!sim || seasonGames.value === null) return []
-  const closed = probThisSeason.value === null ? '' :
-    ` The even-±meter closed form says ${pct(probThisSeason.value)} — the gap is what your real moves change.`
+  if (!sim) return []
+  const paceClause = paceAssumed.value ? ', assuming ~10 games a week' : ' at your pace'
   return [
     {
       id: 'reach', q: `Reach ${target.value} this season?`,
       a: pct(sim.probReachTarget),
-      note: `Share of ${sim.sims.toLocaleString()} simulated seasons (~${seasonGames.value} games at your pace) that touch ${target.value}.${closed}`,
+      note: `Share of ${sim.sims.toLocaleString()} simulated seasons (~${simHorizonGames.value} games${paceClause}) that touch ${target.value} at least once — touching counts even when the season ends lower.`,
       tone: sim.probReachTarget >= 0.5 ? 'good' : 'neutral',
     },
     {
       id: 'lower', q: 'End lower than today?',
       a: pct(sim.probEndLower),
-      note: 'Seasons that finish BELOW where you sit right now — the risk side of grinding at this win rate that nobody prices in.',
+      note: `Seasons that FINISH below where you sit right now. A season can do both — brush ${target.value} on a heater and still slip back by the end — so this cell and the reach cell overlap by design.`,
       tone: sim.probEndLower > 0.35 ? 'warn' : 'neutral',
     },
     {
@@ -50,7 +50,7 @@ const cells = computed<Cell[]>(() => {
       Play the season out — {{ seasonSim.sims.toLocaleString() }} of them
     </h3>
     <p class="elo-band-sub">
-      Each simulated season draws a true win rate from your record, then replays your own rank-card moves — streak boosts and all.
+      Each simulated season draws a true win rate from your record, then replays your own rank-card moves — streak boosts and all — with lobbies toughening as you climb. Every probability on this page comes from these seasons.
     </p>
     <div class="elo-grid">
       <div v-for="c in cells" :key="c.id" class="elo-cell" :class="c.tone" :data-elo-sim-stat="c.id">

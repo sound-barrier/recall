@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest'
 
 import {
   SKEPTIC_PRIOR, probTrueWinRateAbove, credibleInterval, gamesToKnow,
-  posteriorClimbQuantiles, shrunkWinRate, ceilingRange,
+  shrunkWinRate, ceilingRange,
 } from '@/match/elo-bayes'
-import { inverseGaussianCdf } from '@/match/elo-stats'
 import { LADDER_MAX } from '@/match/elo-model'
 import type { ProjectionInput } from '@/match/elo-model'
 
@@ -92,49 +91,7 @@ describe('shrunkWinRate', () => {
   })
 })
 
-describe('posteriorClimbQuantiles', () => {
-  const base: ProjectionInput = {
-    currentScore: 13, targetScore: 15, winRate: 0.7, sampleWins: 700, sampleLosses: 300,
-    meterMovePct: 20, decaySlope: 0.015,
-  }
-
-  it('collapses to the plain first-passage quantiles when the posterior is a point', () => {
-    // A huge sample pins p ≈ 0.7, so the mixture ≈ IG(μ, λ) at that p:
-    // D = 2, step 0.2, drift 0.08 → μ = 25; σ² = 0.2²·4·0.21 = 0.0336,
-    // λ = 4/0.0336 = 119.05. Invert its CDF directly for the reference.
-    const q = posteriorClimbQuantiles({ ...base, sampleWins: 70000, sampleLosses: 30000 })!
-    const invert = (target: number): number => {
-      let lo = 0
-      let hi = 400
-      for (let i = 0; i < 80; i++) {
-        const mid = (lo + hi) / 2
-        if (inverseGaussianCdf(mid, 25, 4 / 0.0336) < target) lo = mid
-        else hi = mid
-      }
-      return (lo + hi) / 2
-    }
-    expect(q.pNever).toBeCloseTo(0, 3)
-    expect(q.p50!).toBeCloseTo(invert(0.5), 0)
-    expect(q.p10!).toBeCloseTo(invert(0.1), 0)
-    expect(q.p90!).toBeCloseTo(invert(0.9), 0)
-    expect(q.p10!).toBeLessThan(q.p50!)
-    expect(q.p50!).toBeLessThan(q.p90!)
-  })
-
-  it('reports never-mass for a posterior straddling the 50% wall', () => {
-    // 26W/24L + Beta(10,10) → posterior Beta(36,34), mean 51.4% — a big
-    // slice of the posterior sits at or below 50%, where the climb never
-    // completes. The never-mass must show up and swallow the p90.
-    const q = posteriorClimbQuantiles({ ...base, winRate: 0.52, sampleWins: 26, sampleLosses: 24 })!
-    expect(q.pNever).toBeGreaterThan(0.3)
-    expect(q.p90).toBeNull()
-  })
-
-  it('is null for a non-climb', () => {
-    expect(posteriorClimbQuantiles({ ...base, targetScore: 13 })).toBeNull()
-    expect(posteriorClimbQuantiles({ ...base, targetScore: 12 })).toBeNull()
-  })
-
+describe('SKEPTIC_PRIOR', () => {
   it('exports the skeptic prior the UI documents', () => {
     expect(SKEPTIC_PRIOR).toEqual({ alpha: 10, beta: 10 })
   })
