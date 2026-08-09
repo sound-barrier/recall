@@ -40,7 +40,7 @@ export interface Verdict {
 // fmtCeilingRange renders the ceiling's credible range for display —
 // shared by the verdict and the results panel so the two never disagree.
 export function fmtCeilingRange(c: CeilingRange): string {
-  if (c.hi === null) return `${fmtScoreRank(c.lo)} or higher — no ceiling detectable yet`
+  if (c.hi === null) return `${fmtScoreRank(c.lo)} or higher — no hard ceiling is detectable yet`
   const lo = fmtScoreRank(c.lo)
   const hi = fmtScoreRank(c.hi)
   return lo === hi ? lo : `${lo}–${hi}`
@@ -86,23 +86,51 @@ export function deriveVerdict(v: VerdictInput): Verdict {
   if (v.requiredWinRate !== null) {
     const reqPct = v.requiredWinRate * 100
     const extra = Math.max(1, Math.round(reqPct - v.winRatePct))
+    const holdLine = `Holding ${v.target} would take about ${reqPct.toFixed(1)}% — roughly ${extra} more win${extra === 1 ? '' : 's'} per 100 games. That's improvement, not luck — and the playbook below is how you close the gap.`
+    // When the measured slope's own CI admits an improver, asserting a cap
+    // would contradict the range in the same sentence — soften to "short
+    // of the target at today's form" and say the ceiling isn't pinned.
+    if (v.ceiling.hi === null) {
+      return {
+        tone: 'is-hard',
+        eyebrow: `Reality check${forEdits}`,
+        head: `Short of ${v.target} at today's form`,
+        sub: `At ${v.winRatePct}% over ${v.n} games, the measured decay says you'd level off before ${v.target} — but your climb history is still consistent with an improver, so no hard ceiling is detectable yet. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)} ${holdLine}`,
+      }
+    }
     return {
       tone: 'is-hard',
       eyebrow: `Reality check${forEdits}`,
       head: `Capped near ${ceiling}`,
-      sub: `At ${v.winRatePct}% over ${v.n} games, tougher opponents pull you level around ${ceiling} — short of ${v.target}. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)} Holding ${v.target} would take about ${reqPct.toFixed(1)}% — roughly ${extra} more win${extra === 1 ? '' : 's'} per 100 games. That's improvement, not luck — and the playbook below is how you close the gap.`,
+      sub: `At ${v.winRatePct}% over ${v.n} games, tougher opponents pull you level around ${ceiling} — short of ${v.target}. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)} ${holdLine}`,
     }
   }
 
-  // Reachable: the median simulated season is the headline number.
-  const head = fmtGames(v.sim?.gamesToTargetP50 ?? v.expectedGamesDecay)
+  // Reachable: the median simulated season is the headline — unless the
+  // median season doesn't arrive within the horizon (reach < 50% swallows
+  // the p50), in which case the decay expectation leads and the copy says
+  // exactly that instead of claiming a median that never happened.
+  const p50 = v.sim?.gamesToTargetP50 ?? null
   const lowerPct = v.sim === null ? null : Math.round(v.sim.probEndLower * 100)
   const spread = lowerPct === null ? '' : ` ${lowerPct}% end lower than today — both numbers are ordinary spread at your rate, not the queue's mood.`
   const pace = v.weeksLabel === null ? '' : ` — ${v.weeksLabel}`
+  const tail = ` Your form points to a ceiling around ${ceiling}, past ${v.target} — the climb should stick; you're underranked, not hardstuck.`
+  if (p50 !== null) {
+    return {
+      tone: '',
+      eyebrow: v.isEdited ? 'If your edits hold' : 'If your form holds',
+      head: fmtGames(p50),
+      sub: `to reach ${v.target} in the median simulated season at ${v.winRatePct}%${pace}. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)}${spread}${tail}`,
+    }
+  }
+  const reach = v.sim === null ? null : Math.round(v.sim.probReachTarget * 100)
+  const seasonNote = reach === null
+    ? ''
+    : ` Only ${reach}% of simulated seasons get there within ~${v.horizonGames} games — most need longer than one season.`
   return {
     tone: '',
     eyebrow: v.isEdited ? 'If your edits hold' : 'If your form holds',
-    head,
-    sub: `to reach ${v.target} in the median simulated season at ${v.winRatePct}%${pace}. ${reachClause(v.sim, v.target, v.horizonGames, v.paceAssumed)}${spread} Your form points to a ceiling around ${ceiling}, past ${v.target} — the climb should stick; you're underranked, not hardstuck.`,
+    head: fmtGames(v.expectedGamesDecay),
+    sub: `to reach ${v.target} at ${v.winRatePct}% if the tougher-lobbies pace holds${pace}.${seasonNote}${spread}${tail}`,
   }
 }
