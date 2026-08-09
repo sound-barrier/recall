@@ -18,6 +18,13 @@ type Store interface {
 	UpsertRank(r RankRow) error
 	UpsertUnknown(r UnknownRow) error
 
+	// DeleteScreenshotSiblings removes filename's rows from every
+	// screenshot table except keepType's (children CASCADE), including
+	// the all_heroes skip registry. The write path calls it on every
+	// insert so a re-parse that reclassifies a screenshot doesn't strand
+	// the old-type row beside the new one. Idempotent.
+	DeleteScreenshotSiblings(filename, keepType string) error
+
 	// EnsureScreenshotsDir inserts a screenshots_dirs row for path if
 	// one doesn't exist and returns its id. Idempotent — repeated calls
 	// with the same path return the same id. Empty path returns the
