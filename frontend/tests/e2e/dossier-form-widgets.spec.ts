@@ -81,7 +81,7 @@ test.describe('climb-form widgets', () => {
     const widget = page.locator('[data-widget-id="loss-streak-recovery"]')
     await expect(widget).toBeVisible()
     await expect(widget.locator('.kpi-value')).toHaveText('83%')
-    await expect(widget).toContainText('6 games')
+    await expect(widget).toContainText('n=6')
   })
 
   test('Session depth buckets win rate by game number within a session', async ({ page }) => {

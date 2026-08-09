@@ -18,7 +18,7 @@ describe('FormDeltaWidget', () => {
     expect(w.find('.kpi-value').text()).toBe('65%')
     expect(w.find('.kpi-sub').text()).toContain('+2 pts')
     expect(w.find('.kpi-sub').text()).toContain('vs 63% overall')
-    expect(w.find('.kpi-sub').text()).toContain('last 20')
+    expect(w.find('.kpi-sub').text()).toContain('n=20')
     expect(w.find('.form-gap').classes()).toContain('gap-up')
   })
 
@@ -61,7 +61,7 @@ describe('LossStreakRecoveryWidget', () => {
     })
     expect(w.find('.kpi-eyebrow').text()).toBe('After 2+ losses')
     expect(w.find('.kpi-value').text()).toBe('83%')
-    expect(w.find('.kpi-sub').text()).toContain('over 6 games')
+    expect(w.find('.kpi-sub').text()).toContain('n=6')
     expect(w.find('.kpi-sub').text()).toContain('vs 63% overall')
   })
 

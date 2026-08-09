@@ -22,6 +22,12 @@ function ciMargin(row: { wins?: number, total: number }): number | null {
   if (row.wins == null || row.total >= 30) return null
   return wilsonMargin(row.wins, row.total)
 }
+
+// Proper role casing — CSS `capitalize` renders "dps" as "Dps".
+const ROLE_LABEL: Record<string, string> = { tank: 'Tank', dps: 'DPS', support: 'Support' }
+function roleLabel(key: string): string {
+  return ROLE_LABEL[key] ?? key
+}
 </script>
 
 <template>
@@ -30,7 +36,7 @@ function ciMargin(row: { wins?: number, total: number }): number | null {
   </header>
   <ul>
     <li v-for="row in rows" :key="row.key">
-      <span class="bd-name cap">{{ row.key }}</span>
+      <span class="bd-name">{{ roleLabel(row.key) }}</span>
       <span class="bd-bar">
         <span class="bd-fill" :style="{ width: row.winrate + '%' }" />
         <span class="bd-time">{{ row.total }}x</span>
@@ -46,8 +52,3 @@ function ciMargin(row: { wins?: number, total: number }): number | null {
   </ul>
 </template>
 
-<style scoped>
-.cap {
-  text-transform: capitalize;
-}
-</style>
