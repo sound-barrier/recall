@@ -86,27 +86,19 @@ test.describe('Matches — provenance surfacing', () => {
     await expect(page.locator('.np-foot-status')).toContainText('2 matches')
   })
 
-  test('Data density shows Edited + User-entered checkbox columns ticked by provenance', async ({ page }) => {
+  test('Data density shows one Source column with the provenance badge per row', async ({ page }) => {
     await toDataDensity(page)
 
-    // Both new column headers render with the right labels.
-    await expect(page.locator('th[data-sort-col="edited"]')).toContainText('Edited')
-    await expect(page.locator('th[data-sort-col="manual"]')).toContainText('User entered')
+    // One provenance column, not the old Edited / User-entered pair.
+    await expect(page.locator('th[data-sort-col="source"]')).toContainText('Source')
+    await expect(page.locator('th[data-sort-col="edited"]')).toHaveCount(0)
+    await expect(page.locator('th[data-sort-col="manual"]')).toHaveCount(0)
 
-    const editedBox = (key: string) => page.locator(`tr.table-row[data-match-key="${key}"] .tc-prov-box`).nth(0)
-    const enteredBox = (key: string) => page.locator(`tr.table-row[data-match-key="${key}"] .tc-prov-box`).nth(1)
+    const badge = (key: string) => page.locator(`tr.table-row[data-match-key="${key}"] .tc-prov .prov-badge`)
 
-    // Pure OCR — neither box ticked.
-    await expect(editedBox('ocr-1')).not.toBeChecked()
-    await expect(enteredBox('ocr-1')).not.toBeChecked()
-
-    // Edited — only the Edited box.
-    await expect(editedBox('edited-1')).toBeChecked()
-    await expect(enteredBox('edited-1')).not.toBeChecked()
-
-    // Manual — only the User-entered box.
-    await expect(editedBox('manual-1')).not.toBeChecked()
-    await expect(enteredBox('manual-1')).toBeChecked()
+    await expect(badge('ocr-1')).toHaveAttribute('aria-label', /Source: OCR/)
+    await expect(badge('edited-1')).toHaveAttribute('aria-label', /Source: Edited/)
+    await expect(badge('manual-1')).toHaveAttribute('aria-label', /Source: User entered/)
   })
 
   test('cozy/compact leaf rows surface provenance in the hover preview', async ({ page }) => {
