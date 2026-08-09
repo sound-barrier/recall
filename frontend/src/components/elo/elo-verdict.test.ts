@@ -90,7 +90,33 @@ describe('deriveVerdict', () => {
 
   it('an open-top ceiling names the honest floor instead of a fake range', () => {
     const v = deriveVerdict(input({ n: 25, ceiling: { lo: 16.4, hi: null } }))
-    expect(v.sub).toContain('or higher — no ceiling detectable yet')
+    expect(v.sub).toContain('no hard ceiling is detectable yet')
+  })
+
+  it('an open-top slope CI softens the capped claim — never "Capped" + "no ceiling"', () => {
+    // The measured slope's own CI admits an improver: asserting a cap while
+    // admitting no ceiling is detectable contradicts itself in one line.
+    const v = deriveVerdict(input({
+      requiredWinRate: 0.575, ceiling: { lo: 0, hi: null },
+      sim: { probReachTarget: 0.34, probEndLower: 0.3, gamesToTargetP50: null, sims: 4000 },
+    }))
+    expect(v.head).not.toContain('Capped')
+    expect(v.head).toContain('Short of Platinum 5')
+    expect(v.sub).toContain('no hard ceiling is detectable yet')
+    expect(v.sub).toContain('34% of simulated seasons')
+  })
+
+  it('a swallowed sim median never masquerades as one', () => {
+    // reach < 50% ⇒ the median season doesn't arrive; the head falls back
+    // to the decay expectation and the copy must say so, not claim the
+    // median simulated season got there.
+    const v = deriveVerdict(input({
+      expectedGamesDecay: 257,
+      sim: { probReachTarget: 0.41, probEndLower: 0.31, gamesToTargetP50: null, sims: 4000 },
+    }))
+    expect(v.head).toBe('~257 games')
+    expect(v.sub).not.toContain('median simulated season')
+    expect(v.sub).toContain('Only 41% of simulated seasons get there within ~120 games')
   })
 
   it('an assumed pace is disclosed wherever the sim is quoted', () => {
