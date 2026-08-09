@@ -22,6 +22,45 @@ export type DbHealth = {
 };
 
 /**
+ * Payload of the `parse-progress` event (SSE in server mode, the
+ * desktop event bus in Wails mode) — fired per OCR'd file during a
+ * parse run. `match_key` is the resolved key for the just-inserted
+ * row (present on post-insert events; absent on the mid-OCR preview
+ * event). `error` is set when that single file failed to parse; the
+ * batch continues to the next file regardless, so clients render a
+ * warning without aborting the in-flight UI. `matches_updated` /
+ * `hero_corrections` / `map_corrections` are cumulative re-parse
+ * counters since the run began; absent (zero) on a regular parse
+ * run, so consumers that ignore them are unaffected.
+ *
+ */
+export type ParseProgressEvent = {
+    done: number;
+    total: number;
+    filename: string;
+    screenshot_type: string;
+    match_key?: string;
+    data?: MatchResult;
+    error?: string;
+    matches_updated?: number;
+    hero_corrections?: number;
+    map_corrections?: number;
+};
+
+/**
+ * Payload of the `watch-activity` event — the folder watcher's
+ * pending-file tally. `pending` counts files queued since the last
+ * parse run began (0 when a run consumes the queue); `last_seen_at`
+ * (RFC 3339) stamps the most recent file event. Session-scoped and
+ * never replayed — a reconnecting client simply starts idle.
+ *
+ */
+export type WatchActivityEvent = {
+    pending: number;
+    last_seen_at?: string;
+};
+
+/**
  * RFC 9457 (Problem Details for HTTP APIs) error body, returned as
  * `application/problem+json` for every 4xx/5xx the API surfaces. `type`
  * is a stable URI under

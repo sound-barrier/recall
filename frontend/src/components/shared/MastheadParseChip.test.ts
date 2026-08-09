@@ -7,6 +7,7 @@ const evt = (over: Partial<ParseProgressEvent> = {}): ParseProgressEvent => ({
   done: 0,
   total: 0,
   filename: '',
+  screenshot_type: '',
   ...over,
 })
 
