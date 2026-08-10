@@ -73,6 +73,41 @@ type migration struct {
 // Errors when any `.up.sql` lacks a paired `.down.sql` (or
 // vice-versa) or the filename doesn't parse as
 // `NNNN_<name>.{up,down}.sql`.
+// foldMigrationFile classifies one migrations/ entry by its
+// .up.sql/.down.sql suffix and folds its body into the pair keyed by
+// the shared `NNNN_<name>` stem. Non-SQL entries are skipped.
+func foldMigrationFile(byKey map[string]*migration, name string) error {
+	var dir string
+	switch {
+	case strings.HasSuffix(name, ".up.sql"):
+		dir = "up"
+	case strings.HasSuffix(name, ".down.sql"):
+		dir = "down"
+	default:
+		return nil
+	}
+	key := strings.TrimSuffix(name, "."+dir+".sql")
+	num, _, err := splitVersion(key)
+	if err != nil {
+		return fmt.Errorf("parse %q: %w", name, err)
+	}
+	body, err := fs.ReadFile(migrationsFS, "migrations/"+name)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", name, err)
+	}
+	m, ok := byKey[key]
+	if !ok {
+		m = &migration{version: num, name: key}
+		byKey[key] = m
+	}
+	if dir == "up" {
+		m.up = string(body)
+	} else {
+		m.down = string(body)
+	}
+	return nil
+}
+
 func loadMigrations() ([]migration, error) {
 	entries, err := fs.ReadDir(migrationsFS, "migrations")
 	if err != nil {
@@ -83,34 +118,8 @@ func loadMigrations() ([]migration, error) {
 		if e.IsDir() {
 			continue
 		}
-		name := e.Name()
-		var dir string
-		switch {
-		case strings.HasSuffix(name, ".up.sql"):
-			dir = "up"
-		case strings.HasSuffix(name, ".down.sql"):
-			dir = "down"
-		default:
-			continue
-		}
-		key := strings.TrimSuffix(name, "."+dir+".sql")
-		num, _, err := splitVersion(key)
-		if err != nil {
-			return nil, fmt.Errorf("parse %q: %w", name, err)
-		}
-		body, err := fs.ReadFile(migrationsFS, "migrations/"+name)
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", name, err)
-		}
-		m, ok := byKey[key]
-		if !ok {
-			m = &migration{version: num, name: key}
-			byKey[key] = m
-		}
-		if dir == "up" {
-			m.up = string(body)
-		} else {
-			m.down = string(body)
+		if err := foldMigrationFile(byKey, e.Name()); err != nil {
+			return nil, err
 		}
 	}
 	out := make([]migration, 0, len(byKey))

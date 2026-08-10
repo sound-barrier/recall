@@ -91,39 +91,53 @@ func loadRanks(q querier) ([]RankRow, error) {
 		byID[out[i].ID] = &out[i]
 	}
 
-	modRows, err := q.Query(`SELECT rank_screenshot_id, modifier FROM rank_modifiers`)
-	if err != nil {
+	if err := attachRankModifiers(q, byID); err != nil {
 		return nil, err
 	}
-	defer modRows.Close()
-	for modRows.Next() {
+	if err := attachRankSR(q, byID); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// attachRankModifiers folds rank_modifiers child rows onto their parents
+// (one bulk SELECT; own function so one defer covers every return —
+// the sqlclosecheck pattern).
+func attachRankModifiers(q querier, byID map[int64]*RankRow) error {
+	rows, err := q.Query(`SELECT rank_screenshot_id, modifier FROM rank_modifiers`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
 		var id int64
 		var m string
-		if err := modRows.Scan(&id, &m); err != nil {
-			return nil, err
+		if err := rows.Scan(&id, &m); err != nil {
+			return err
 		}
 		if parent, ok := byID[id]; ok {
 			parent.Modifiers = append(parent.Modifiers, m)
 		}
 	}
-	if err := modRows.Err(); err != nil {
-		return nil, err
-	}
+	return rows.Err()
+}
 
-	srRows, err := q.Query(`SELECT rank_screenshot_id, hero, sr, change FROM rank_sr`)
+// attachRankSR folds rank_sr child rows onto their parents.
+func attachRankSR(q querier, byID map[int64]*RankRow) error {
+	rows, err := q.Query(`SELECT rank_screenshot_id, hero, sr, change FROM rank_sr`)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer srRows.Close()
-	for srRows.Next() {
+	defer rows.Close()
+	for rows.Next() {
 		var id int64
 		var sr HeroSR
-		if err := srRows.Scan(&id, &sr.Hero, &sr.SR, &sr.Change); err != nil {
-			return nil, err
+		if err := rows.Scan(&id, &sr.Hero, &sr.SR, &sr.Change); err != nil {
+			return err
 		}
 		if parent, ok := byID[id]; ok {
 			parent.SR = append(parent.SR, sr)
 		}
 	}
-	return out, srRows.Err()
+	return rows.Err()
 }
