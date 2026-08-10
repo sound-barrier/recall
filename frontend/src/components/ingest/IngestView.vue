@@ -166,7 +166,7 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
                  (tesseract is shelled out per file and not
                  context-aware), so the button shows
                  "Cancelling…" between click and the SSE
-                 parse-cancelled confirmation. -->
+                 parse-canceled confirmation. -->
             <button
               v-if="parseBusy"
               class="btn danger big"

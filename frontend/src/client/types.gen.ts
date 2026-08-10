@@ -2144,7 +2144,7 @@ export type CancelParseError = CancelParseErrors[keyof CancelParseErrors];
 
 export type CancelParseResponses = {
     /**
-     * Cancellation signalled; SSE `parse-cancelled` follows once the loop unwinds.
+     * Cancellation signalled; SSE `parse-canceled` follows once the loop unwinds.
      */
     202: unknown;
 };

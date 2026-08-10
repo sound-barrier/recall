@@ -124,7 +124,7 @@ func (a *App) ParseScreenshots() error {
 // StartParse kicks off a parse in a BACKGROUND goroutine and returns
 // immediately — the server's POST /api/v1/parses path. Progress +
 // completion reach the client over SSE (parse-progress / parse-complete
-// / parse-cancelled); GET /api/v1/parses/active is the resync anchor.
+// / parse-canceled); GET /api/v1/parses/active is the resync anchor.
 // Preconditions are validated synchronously so the caller still gets a
 // 409/500 before the 202; a parse already in flight returns
 // ErrParseInFlight. This is what makes the run survive a client network
@@ -310,11 +310,11 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	_, err = ParseScreenshotsDirFunc(ctx, screenshotsDir, parsed, st.handleFile)
 	// User pressed Stop mid-batch. The partial state already committed to
 	// SQLite stays put (each per-file insert ran inside the callback before
-	// the next iteration). Emit parse-cancelled so the frontend can flip the
+	// the next iteration). Emit parse-canceled so the frontend can flip the
 	// Stop button back to Run; skip the normal error return because the user
 	// asked for this.
 	if errors.Is(err, context.Canceled) {
-		a.emitParseCancelled()
+		a.emitParseCanceled()
 		return nil
 	}
 	if err != nil {

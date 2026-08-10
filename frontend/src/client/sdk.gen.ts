@@ -490,7 +490,7 @@ export const parseScreenshots = <ThrowOnError extends boolean = false>(options?:
  * Any per-screenshot rows already committed to SQLite stay put;
  * a follow-up `GET /api/v1/matches` reflects the partial state.
  * The frontend learns about completion via the SSE
- * `parse-cancelled` event so it can flip the Stop button back
+ * `parse-canceled` event so it can flip the Stop button back
  * to Run without polling.
  *
  * `202` on success, `409` when no parse is in flight.
@@ -1275,7 +1275,7 @@ export const importMatches = <ThrowOnError extends boolean = false>(options: Opt
  * additional screenshots refine its fields.
  * * `parse-complete` — fired after a parse run finishes; no
  * payload.
- * * `parse-cancelled` — fired when an in-flight run is aborted
+ * * `parse-canceled` — fired when an in-flight run is aborted
  * via `DELETE /api/v1/parses/active`; no payload.
  * * `tesseract-status` — fired when the background engine probe
  * resolves; payload is `TesseractStatus`.

@@ -46,11 +46,11 @@ func (a *App) emitParseComplete(int) {
 	a.SSEHub.Broadcast("parse-complete")
 }
 
-// emitParseCancelled is the SSE-only sibling of emitParseCancelled
-// in app_wails.go. Lets the frontend distinguish "stopped" from
-// "done" without polling.
-func (a *App) emitParseCancelled() {
-	a.SSEHub.Broadcast("parse-cancelled")
+// emitParseCanceled is the SSE-only sibling of the Wails twin in
+// app_wails.go (which also emits on the desktop event bus). Lets the
+// frontend distinguish "stopped" from "done" without polling.
+func (a *App) emitParseCanceled() {
+	a.SSEHub.Broadcast("parse-canceled")
 }
 
 // SaveBackupToFile is not available in server mode (no native dialogs).
