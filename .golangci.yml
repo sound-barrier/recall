@@ -182,12 +182,6 @@ linters:
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/store_visibility\.go
       - linters: [gocyclo, gocognit, funlen]
-        path: pkg/fixtures/fixtures_annotations_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/fixtures/fixtures_chaos\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/fixtures/fixtures_emit\.go
-      - linters: [gocyclo, gocognit, funlen]
         path: pkg/fixtures/fixtures_heroes\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/fixtures/fixtures_rank_test\.go

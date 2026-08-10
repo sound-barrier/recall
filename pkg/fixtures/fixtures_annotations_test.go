@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"recall/pkg/db"
 	"recall/pkg/fixtures"
 )
 
@@ -15,6 +16,95 @@ var seedAnnotationTags = map[string]bool{
 }
 
 var seedAnnotationSides = map[string]bool{"self": true, "team": true, "enemy": true}
+
+// annotationTally counts which annotation kinds appeared across the
+// corpus so the coverage assertion reads as one call.
+type annotationTally struct {
+	members, notes, tags, replays, leavers, throwers int
+}
+
+func (c *annotationTally) observe(a db.Annotation) {
+	if len(a.Members) > 0 {
+		c.members++
+	}
+	if a.Note != "" {
+		c.notes++
+	}
+	if len(a.Tags) > 0 {
+		c.tags++
+	}
+	if a.ReplayCode != "" {
+		c.replays++
+	}
+	if len(a.Leavers) > 0 {
+		c.leavers++
+	}
+	if len(a.Throwers) > 0 {
+		c.throwers++
+	}
+}
+
+// assertEveryKindSeeded checks each annotation kind appears at least
+// once in a 500-match corpus.
+func (c *annotationTally) assertEveryKindSeeded(t *testing.T) {
+	t.Helper()
+	for _, kind := range []struct {
+		name string
+		n    int
+	}{
+		{"member (BattleTag)", c.members},
+		{"note", c.notes},
+		{"tag", c.tags},
+		{"replay-code", c.replays},
+		{"leaver", c.leavers},
+		{"thrower", c.throwers},
+	} {
+		if kind.n == 0 {
+			t.Errorf("no %s annotations seeded", kind.name)
+		}
+	}
+}
+
+// assertSides checks every side value against the self/team/enemy set.
+func assertSides(t *testing.T, kind string, sides []string) {
+	t.Helper()
+	for _, side := range sides {
+		if !seedAnnotationSides[side] {
+			t.Errorf("invalid %s side %q (must be self/team/enemy)", kind, side)
+		}
+	}
+}
+
+// assertNotContentFree pins that an all-empty annotation is dropped by
+// the generator, never written.
+func assertNotContentFree(t *testing.T, a db.Annotation) {
+	t.Helper()
+	if a.Note == "" && a.ReplayCode == "" && len(a.Leavers) == 0 && len(a.Throwers) == 0 &&
+		len(a.Members) == 0 && len(a.Tags) == 0 {
+		t.Errorf("content-free annotation for %s", a.MatchKey)
+	}
+}
+
+// assertAnnotationContent validates one annotation's field shapes.
+func assertAnnotationContent(t *testing.T, a db.Annotation) {
+	t.Helper()
+	assertNotContentFree(t, a)
+	for _, m := range a.Members {
+		if !strings.Contains(m, "#") {
+			t.Errorf("member %q is not a BattleTag (name#digits)", m)
+		}
+	}
+	for _, tg := range a.Tags {
+		if !seedAnnotationTags[tg] {
+			t.Errorf("unexpected tag %q", tg)
+		}
+	}
+	if a.ReplayCode != "" && len(a.ReplayCode) != 6 {
+		t.Errorf("replay code %q is not 6 chars", a.ReplayCode)
+	}
+	assertSides(t, "leaver", a.Leavers)
+	assertSides(t, "thrower", a.Throwers)
+}
 
 // TestAnnotationSeeds_RealisticAndDeterministic verifies the walkthrough-
 // equivalent corpus (chaos-free) carries believable per-match annotations, that
@@ -31,7 +121,7 @@ func TestAnnotationSeeds_RealisticAndDeterministic(t *testing.T) {
 	}
 
 	keys := make(map[string]bool, len(fx.Annotations))
-	var members, notes, tags, replays, leavers, throwers int
+	var tally annotationTally
 	for _, a := range fx.Annotations {
 		if a.MatchKey == "" {
 			t.Error("annotation with empty match key")
@@ -40,71 +130,10 @@ func TestAnnotationSeeds_RealisticAndDeterministic(t *testing.T) {
 			t.Errorf("duplicate annotation for %s", a.MatchKey)
 		}
 		keys[a.MatchKey] = true
-
-		// No content-free rows — an all-empty annotation is dropped, not written.
-		if a.Note == "" && a.ReplayCode == "" && len(a.Leavers) == 0 && len(a.Throwers) == 0 &&
-			len(a.Members) == 0 && len(a.Tags) == 0 {
-			t.Errorf("content-free annotation for %s", a.MatchKey)
-		}
-		for _, m := range a.Members {
-			if !strings.Contains(m, "#") {
-				t.Errorf("member %q is not a BattleTag (name#digits)", m)
-			}
-		}
-		if len(a.Members) > 0 {
-			members++
-		}
-		if a.Note != "" {
-			notes++
-		}
-		for _, tg := range a.Tags {
-			if !seedAnnotationTags[tg] {
-				t.Errorf("unexpected tag %q", tg)
-			}
-		}
-		if len(a.Tags) > 0 {
-			tags++
-		}
-		if a.ReplayCode != "" {
-			if len(a.ReplayCode) != 6 {
-				t.Errorf("replay code %q is not 6 chars", a.ReplayCode)
-			}
-			replays++
-		}
-		if len(a.Leavers) > 0 {
-			for _, side := range a.Leavers {
-				if !seedAnnotationSides[side] {
-					t.Errorf("invalid leaver side %q (must be self/team/enemy)", side)
-				}
-			}
-			leavers++
-		}
-		if len(a.Throwers) > 0 {
-			for _, side := range a.Throwers {
-				if !seedAnnotationSides[side] {
-					t.Errorf("invalid thrower side %q (must be self/team/enemy)", side)
-				}
-			}
-			throwers++
-		}
+		assertAnnotationContent(t, a)
+		tally.observe(a)
 	}
-
-	// Every annotation kind should appear at least once in a 500-match corpus.
-	for _, c := range []struct {
-		kind string
-		n    int
-	}{
-		{"member (BattleTag)", members},
-		{"note", notes},
-		{"tag", tags},
-		{"replay-code", replays},
-		{"leaver", leavers},
-		{"thrower", throwers},
-	} {
-		if c.n == 0 {
-			t.Errorf("no %s annotations seeded", c.kind)
-		}
-	}
+	tally.assertEveryKindSeeded(t)
 
 	// Deterministic: same seed → same annotation set.
 	again := fixtures.GenerateMatchFixtureWithChaos(500, 8, "flex", 0)

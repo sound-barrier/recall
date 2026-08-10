@@ -110,6 +110,101 @@ func GenerateMatchFixtureWithChaos(n int, seed int64, style string, chaosRatio f
 	return fx
 }
 
+// chaosCtx carries what every chaos shape mutates: the summary row
+// under attack (s), its optional teams sibling (sb, nil when the match
+// has none), the whole fixture, the run RNG, and the accumulator for
+// aggregation-conflict extra rows.
+type chaosCtx struct {
+	rng    *rand.Rand
+	fx     *Fixture
+	s      *db.SummaryRow
+	sb     *db.TeamsRow
+	extras *[]db.SummaryRow
+}
+
+// chaosShapes maps each category to its mutation. A map loses the
+// exhaustive check a switch had, so TestChaosShapes_CoversEveryCategory
+// pins registry completeness instead (the NARROW_CLAUSES pattern).
+var chaosShapes = map[chaosCategory]func(*chaosCtx){
+	chaosLongStrings: func(c *chaosCtx) {
+		c.s.Hero = strings.Repeat("x", 200)
+		c.s.Map = strings.Repeat("ABCDEFGHIJ", 15) // 150 chars
+	},
+	chaosUnicode: func(c *chaosCtx) {
+		emoji := chaosEmojis[c.rng.Intn(len(chaosEmojis))]
+		c.s.Map = emoji + " " + chaosZalgo + " map"
+		c.s.Hero = emoji + " " + c.s.Hero
+	},
+	chaosNumericExtreme: func(c *chaosCtx) {
+		c.s.PerfElimTotal = 1 << (20 + c.rng.Intn(8)) // 1M – 256M
+		c.s.PerfAssistsTotal = -1 * c.rng.Intn(100)   // negative
+		if c.sb != nil {
+			c.sb.Damage = 1 << 28
+			c.sb.Healing = -1 * c.rng.Intn(50000)
+			c.sb.Eliminations = 1 << 18
+		}
+	},
+	chaosCardinality: func(c *chaosCtx) {
+		c.s.HeroesPlayed = make([]db.SummaryHeroPlayed, 0, 50)
+		for i := range 50 {
+			c.s.HeroesPlayed = append(c.s.HeroesPlayed, db.SummaryHeroPlayed{
+				Hero:          fmt.Sprintf("synthetic-hero-%02d", i),
+				PercentPlayed: c.rng.Intn(200) - 50, // some out of [0,100]
+				PlayTime:      "00:30",
+			})
+		}
+		if c.sb != nil {
+			c.sb.HeroStats = make([]db.HeroStat, 0, 200)
+			for i := range 200 {
+				c.sb.HeroStats = append(c.sb.HeroStats, db.HeroStat{
+					Hero:      fmt.Sprintf("synthetic-hero-%02d", i%50),
+					StatKey:   fmt.Sprintf("stat-%d", i),
+					StatValue: c.rng.Intn(100000),
+				})
+			}
+		}
+	},
+	chaosDateExtreme: func(c *chaosCtx) {
+		switch c.rng.Intn(3) {
+		case 0:
+			c.s.Date = "1970-01-01"
+		case 1:
+			c.s.Date = "2099-12-31"
+		default:
+			c.s.Date = "yesterday" // malformed; surfaces date-parsing assumptions
+		}
+	},
+	chaosAggregationConflict: func(c *chaosCtx) {
+		// 1-2 extra summaries sharing the same match_key but with a
+		// different map / hero / result so the fold has to pick one.
+		for k := 0; k <= c.rng.Intn(2); k++ {
+			extra := *c.s
+			extra.Filename = fmt.Sprintf("summary-conflict-%d-%s.png", k, c.s.MatchKey)
+			extra.Map = fixtureMaps[c.rng.Intn(len(fixtureMaps))]
+			extra.Hero = fixtureTanks[c.rng.Intn(len(fixtureTanks))]
+			extra.Result = fixtureResults[c.rng.Intn(len(fixtureResults))]
+			*c.extras = append(*c.extras, extra)
+		}
+	},
+	chaosMissingPlayMode: func(c *chaosCtx) {
+		// Wipe the OCR-derived mode on every screenshot row sharing
+		// this match_key AND drop the user-override PlayModeSeed
+		// for the same key. Result: both code paths that hand the
+		// frontend a play-mode value come up empty, so the leaf-row
+		// chip renders the "Unknown mode" fallback — the previously-
+		// untested empty-field rendering path.
+		c.s.Playlist = ""
+		c.fx.PlayModes = dropPlayModeSeed(c.fx.PlayModes, c.s.MatchKey)
+	},
+	chaosMissingQueueType: func(c *chaosCtx) {
+		// Queue type has no OCR source — it's user-override only,
+		// stored as a QueueSeed by the seed tool. Dropping the seed
+		// is the only path to the "Unknown mode type" chip
+		// rendering.
+		c.fx.Queues = dropQueueSeed(c.fx.Queues, c.s.MatchKey)
+	},
+}
+
 func applyChaosShape(
 	rng *rand.Rand,
 	fx *Fixture,
@@ -123,84 +218,8 @@ func applyChaosShape(
 	if idx, ok := teamsByKey[s.MatchKey]; ok {
 		sb = &fx.Teams[idx]
 	}
-
-	switch cat {
-	case chaosLongStrings:
-		s.Hero = strings.Repeat("x", 200)
-		s.Map = strings.Repeat("ABCDEFGHIJ", 15) // 150 chars
-
-	case chaosUnicode:
-		emoji := chaosEmojis[rng.Intn(len(chaosEmojis))]
-		s.Map = emoji + " " + chaosZalgo + " map"
-		s.Hero = emoji + " " + s.Hero
-
-	case chaosNumericExtreme:
-		s.PerfElimTotal = 1 << (20 + rng.Intn(8)) // 1M – 256M
-		s.PerfAssistsTotal = -1 * rng.Intn(100)   // negative
-		if sb != nil {
-			sb.Damage = 1 << 28
-			sb.Healing = -1 * rng.Intn(50000)
-			sb.Eliminations = 1 << 18
-		}
-
-	case chaosCardinality:
-		s.HeroesPlayed = make([]db.SummaryHeroPlayed, 0, 50)
-		for i := range 50 {
-			s.HeroesPlayed = append(s.HeroesPlayed, db.SummaryHeroPlayed{
-				Hero:          fmt.Sprintf("synthetic-hero-%02d", i),
-				PercentPlayed: rng.Intn(200) - 50, // some out of [0,100]
-				PlayTime:      "00:30",
-			})
-		}
-		if sb != nil {
-			sb.HeroStats = make([]db.HeroStat, 0, 200)
-			for i := range 200 {
-				sb.HeroStats = append(sb.HeroStats, db.HeroStat{
-					Hero:      fmt.Sprintf("synthetic-hero-%02d", i%50),
-					StatKey:   fmt.Sprintf("stat-%d", i),
-					StatValue: rng.Intn(100000),
-				})
-			}
-		}
-
-	case chaosDateExtreme:
-		switch rng.Intn(3) {
-		case 0:
-			s.Date = "1970-01-01"
-		case 1:
-			s.Date = "2099-12-31"
-		default:
-			s.Date = "yesterday" // malformed; surfaces date-parsing assumptions
-		}
-
-	case chaosAggregationConflict:
-		// 1-2 extra summaries sharing the same match_key but with a
-		// different map / hero / result so the fold has to pick one.
-		for k := 0; k <= rng.Intn(2); k++ {
-			extra := *s
-			extra.Filename = fmt.Sprintf("summary-conflict-%d-%s.png", k, s.MatchKey)
-			extra.Map = fixtureMaps[rng.Intn(len(fixtureMaps))]
-			extra.Hero = fixtureTanks[rng.Intn(len(fixtureTanks))]
-			extra.Result = fixtureResults[rng.Intn(len(fixtureResults))]
-			*extras = append(*extras, extra)
-		}
-
-	case chaosMissingPlayMode:
-		// Wipe the OCR-derived mode on every screenshot row sharing
-		// this match_key AND drop the user-override PlayModeSeed
-		// for the same key. Result: both code paths that hand the
-		// frontend a play-mode value come up empty, so the leaf-row
-		// chip renders the "Unknown mode" fallback — the previously-
-		// untested empty-field rendering path.
-		s.Playlist = ""
-		fx.PlayModes = dropPlayModeSeed(fx.PlayModes, s.MatchKey)
-
-	case chaosMissingQueueType:
-		// Queue type has no OCR source — it's user-override only,
-		// stored as a QueueSeed by the seed tool. Dropping the seed
-		// is the only path to the "Unknown mode type" chip
-		// rendering.
-		fx.Queues = dropQueueSeed(fx.Queues, s.MatchKey)
+	if shape, ok := chaosShapes[cat]; ok {
+		shape(&chaosCtx{rng: rng, fx: fx, s: s, sb: sb, extras: extras})
 	}
 }
 

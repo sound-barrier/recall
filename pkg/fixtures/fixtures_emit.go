@@ -9,37 +9,84 @@ import (
 	"recall/pkg/match"
 )
 
-// appendGeneratedMatch builds one match's screenshot rows (driven by the
-// per-match capture-habit dice) and appends them to fx, keeping the
-// parallel queue/play-mode slices aligned with fx.Summaries. Returns the
-// match's primary hero so the caller can thread it as the next match's
-// prevHero.
-func (fx *Fixture) appendGeneratedMatch(rng *rand.Rand, profile playerProfile, md mapDistribution, t time.Time, playMode, queueType, prevHero string, summaryQueueTypes, summaryPlayModes *[]string) string {
-	day := t.Format("2006-01-02")
-	plays := pickMatchHeroes(rng, profile, prevHero, playMode, queueType)
-	primary := plays[0]
+// matchSpec bundles the caller-planned inputs for one generated match:
+// who is playing (profile), where (md), when (t), the pre-planned
+// mode/queue for the slot, and the previous match's hero for
+// consecutive-pick damping.
+type matchSpec struct {
+	profile   playerProfile
+	md        mapDistribution
+	t         time.Time
+	playMode  string
+	queueType string
+	prevHero  string
+}
 
-	ts := t.Format("2006-01-02T15-04-05")
-	finishedAt := t.Format("15:04:05")
-	key := match.NewTrackedMatchKey(ts).String()
+// emitState keeps the parallel queue/play-mode slices aligned with
+// fx.Summaries by emit order — appended only when a summary row lands,
+// consumed by appendQueueAndPlayModeSeeds and the rank post-pass.
+type emitState struct {
+	queueTypes []string
+	playModes  []string
+}
 
-	gameMap := md.pick(rng)
-	result := pickWeightedResult(rng)
+// matchPlan is everything the per-match dice decided. FinalScore is
+// deliberately NOT here: its rolls happen inside the summary emit
+// branch, and hoisting them would shift the RNG stream for every
+// seeded corpus (the seed-pinned story test would flag it).
+type matchPlan struct {
+	spec         matchSpec
+	primary      heroPlay
+	heroesPlayed []db.SummaryHeroPlayed
+	key          string
+	ts           string
+	day          string
+	finishedAt   string
+	gameMap      string
+	result       string
+	gameLength   string
+	elims        int
+	assists      int
+	deaths       int
+	gameMinutes  int
+	damage       int
+	healing      int
+	mitigation   int
+	hasSummary   bool
+	hasTeams     bool
+	hasPersonal  bool
+}
 
-	elims := 6 + rng.Intn(20)
-	assists := 4 + rng.Intn(12)
-	deaths := 2 + rng.Intn(9)
-	gameMinutes := 8 + rng.Intn(12)
+// planMatch rolls one match's dice in the exact historical order —
+// heroes, map, result, combat line, capture habits, damage profile —
+// so seeded corpora reproduce byte-for-byte.
+func planMatch(rng *rand.Rand, spec matchSpec) matchPlan {
+	plays := pickMatchHeroes(rng, spec.profile, spec.prevHero, spec.playMode, spec.queueType)
+	p := matchPlan{
+		spec:       spec,
+		primary:    plays[0],
+		day:        spec.t.Format("2006-01-02"),
+		ts:         spec.t.Format("2006-01-02T15-04-05"),
+		finishedAt: spec.t.Format("15:04:05"),
+	}
+	p.key = match.NewTrackedMatchKey(p.ts).String()
+	p.gameMap = spec.md.pick(rng)
+	p.result = pickWeightedResult(rng)
+
+	p.elims = 6 + rng.Intn(20)
+	p.assists = 4 + rng.Intn(12)
+	p.deaths = 2 + rng.Intn(9)
+	p.gameMinutes = 8 + rng.Intn(12)
 	gameSeconds := rng.Intn(60)
-	gameLength := fmt.Sprintf("%02d:%02d", gameMinutes, gameSeconds)
-	totalGameSec := gameMinutes*60 + gameSeconds
+	p.gameLength = fmt.Sprintf("%02d:%02d", p.gameMinutes, gameSeconds)
+	totalGameSec := p.gameMinutes*60 + gameSeconds
 
-	heroesPlayed := make([]db.SummaryHeroPlayed, 0, len(plays))
-	for _, p := range plays {
-		heroesPlayed = append(heroesPlayed, db.SummaryHeroPlayed{
-			Hero:          p.Hero,
-			PercentPlayed: p.Percent,
-			PlayTime:      formatPlayTime(totalGameSec, p.Percent),
+	p.heroesPlayed = make([]db.SummaryHeroPlayed, 0, len(plays))
+	for _, hp := range plays {
+		p.heroesPlayed = append(p.heroesPlayed, db.SummaryHeroPlayed{
+			Hero:          hp.Hero,
+			PercentPlayed: hp.Percent,
+			PlayTime:      formatPlayTime(totalGameSec, hp.Percent),
 		})
 	}
 
@@ -53,78 +100,93 @@ func (fx *Fixture) appendGeneratedMatch(rng *rand.Rand, profile playerProfile, m
 	// one screenshot row. RANK is NOT rolled here — competitive rank
 	// readings are emitted by applyRankProgression as a post-pass so they
 	// form a coherent per-track climb instead of random per-match noise.
-	hasSummary := rng.Float64() < 0.95
-	hasTeams := rng.Float64() < 0.80
-	hasPersonal := rng.Float64() < 0.70
-	if !hasSummary && !hasTeams && !hasPersonal {
-		hasSummary = true
+	p.hasSummary = rng.Float64() < 0.95
+	p.hasTeams = rng.Float64() < 0.80
+	p.hasPersonal = rng.Float64() < 0.70
+	if !p.hasSummary && !p.hasTeams && !p.hasPersonal {
+		p.hasSummary = true
 	}
 
-	damage := 4000 + rng.Intn(12000)
-	healing := 0
-	mitigation := 0
-	switch primary.Role {
+	p.damage = 4000 + rng.Intn(12000)
+	switch p.primary.Role {
 	case "support":
-		healing = 6000 + rng.Intn(8000)
+		p.healing = 6000 + rng.Intn(8000)
 	case "tank":
-		mitigation = 5000 + rng.Intn(12000)
+		p.mitigation = 5000 + rng.Intn(12000)
 	}
+	return p
+}
 
-	if hasSummary {
-		fx.Summaries = append(fx.Summaries, db.SummaryRow{
-			Filename:               "summary-" + ts + ".png",
-			MatchKey:               key,
-			Map:                    gameMap,
-			Playlist:               playMode,
-			Hero:                   primary.Hero,
-			Result:                 result,
-			FinalScore:             fmt.Sprintf("%d-%d", rng.Intn(5), rng.Intn(5)),
-			Date:                   day,
-			FinishedAt:             finishedAt,
-			GameLength:             gameLength,
-			PerfElimTotal:          elims,
-			PerfElimAvgPer10Min:    float64(elims) * 10.0 / float64(gameMinutes),
-			PerfAssistsTotal:       assists,
-			PerfAssistsAvgPer10Min: float64(assists) * 10.0 / float64(gameMinutes),
-			PerfDeathsTotal:        deaths,
-			PerfDeathsAvgPer10Min:  float64(deaths) * 10.0 / float64(gameMinutes),
-			HeroesPlayed:           heroesPlayed,
-		})
-		*summaryQueueTypes = append(*summaryQueueTypes, queueType)
-		*summaryPlayModes = append(*summaryPlayModes, playMode)
+// appendGeneratedMatch plans one match's dice and emits its screenshot
+// rows, keeping emit's parallel slices aligned with fx.Summaries.
+// Returns the match's primary hero so the caller can thread it as the
+// next match's prevHero.
+func (fx *Fixture) appendGeneratedMatch(rng *rand.Rand, spec matchSpec, emit *emitState) string {
+	p := planMatch(rng, spec)
+	if p.hasSummary {
+		fx.appendPlannedSummary(rng, p, emit)
 	}
-
-	if hasTeams {
-		fx.Teams = append(fx.Teams, db.TeamsRow{
-			Filename:     "teams-" + ts + ".png",
-			MatchKey:     key,
-			Eliminations: elims,
-			Assists:      assists,
-			Deaths:       deaths,
-			Damage:       damage,
-			Healing:      healing,
-			Mitigation:   mitigation,
-			// Mirror real parsing: the teams carries the detected
-			// queue, so a match surfaces a queue even without a user
-			// override (the Queues seed is the override subset).
-			QueueType: queueType,
-		})
+	if p.hasTeams {
+		fx.appendPlannedTeams(p)
 	}
-
-	if hasPersonal {
-		fx.Personals = append(fx.Personals, db.PersonalRow{
-			Filename: "personal-" + ts + ".png",
-			MatchKey: key,
-			Hero:     primary.Hero,
-			HeroStats: []db.HeroStat{
-				{Hero: primary.Hero, StatKey: "eliminations", StatValue: elims},
-				{Hero: primary.Hero, StatKey: "deaths", StatValue: deaths},
-				{Hero: primary.Hero, StatKey: "damage", StatValue: damage},
-			},
-		})
+	if p.hasPersonal {
+		fx.appendPlannedPersonal(p)
 	}
+	return p.primary.Hero
+}
 
-	return primary.Hero
+func (fx *Fixture) appendPlannedSummary(rng *rand.Rand, p matchPlan, emit *emitState) {
+	fx.Summaries = append(fx.Summaries, db.SummaryRow{
+		Filename:               "summary-" + p.ts + ".png",
+		MatchKey:               p.key,
+		Map:                    p.gameMap,
+		Playlist:               p.spec.playMode,
+		Hero:                   p.primary.Hero,
+		Result:                 p.result,
+		FinalScore:             fmt.Sprintf("%d-%d", rng.Intn(5), rng.Intn(5)),
+		Date:                   p.day,
+		FinishedAt:             p.finishedAt,
+		GameLength:             p.gameLength,
+		PerfElimTotal:          p.elims,
+		PerfElimAvgPer10Min:    float64(p.elims) * 10.0 / float64(p.gameMinutes),
+		PerfAssistsTotal:       p.assists,
+		PerfAssistsAvgPer10Min: float64(p.assists) * 10.0 / float64(p.gameMinutes),
+		PerfDeathsTotal:        p.deaths,
+		PerfDeathsAvgPer10Min:  float64(p.deaths) * 10.0 / float64(p.gameMinutes),
+		HeroesPlayed:           p.heroesPlayed,
+	})
+	emit.queueTypes = append(emit.queueTypes, p.spec.queueType)
+	emit.playModes = append(emit.playModes, p.spec.playMode)
+}
+
+func (fx *Fixture) appendPlannedTeams(p matchPlan) {
+	fx.Teams = append(fx.Teams, db.TeamsRow{
+		Filename:     "teams-" + p.ts + ".png",
+		MatchKey:     p.key,
+		Eliminations: p.elims,
+		Assists:      p.assists,
+		Deaths:       p.deaths,
+		Damage:       p.damage,
+		Healing:      p.healing,
+		Mitigation:   p.mitigation,
+		// Mirror real parsing: the teams carries the detected
+		// queue, so a match surfaces a queue even without a user
+		// override (the Queues seed is the override subset).
+		QueueType: p.spec.queueType,
+	})
+}
+
+func (fx *Fixture) appendPlannedPersonal(p matchPlan) {
+	fx.Personals = append(fx.Personals, db.PersonalRow{
+		Filename: "personal-" + p.ts + ".png",
+		MatchKey: p.key,
+		Hero:     p.primary.Hero,
+		HeroStats: []db.HeroStat{
+			{Hero: p.primary.Hero, StatKey: "eliminations", StatValue: p.elims},
+			{Hero: p.primary.Hero, StatKey: "deaths", StatValue: p.deaths},
+			{Hero: p.primary.Hero, StatKey: "damage", StatValue: p.damage},
+		},
+	})
 }
 
 // appendReviewSeeds seeds review rows on ~1.5% of summaries (70% self,

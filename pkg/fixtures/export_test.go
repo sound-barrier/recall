@@ -103,3 +103,11 @@ func (ps *playerState) Observe(day string) float64 { return ps.observe(day) }
 func (ps *playerState) Record(result string)       { ps.record(result) }
 func (ps *playerState) LastDay() string            { return ps.lastDay }
 func (ps *playerState) DayLossRun() int            { return ps.dayLossRun }
+
+// Chaos-shape registry surface — the completeness test pins that every
+// category has a registered mutation (a map dispatch loses the
+// `exhaustive` switch check).
+var (
+	AllChaosCategories = allChaosCategories
+	ChaosShapes        = chaosShapes
+)
