@@ -11,6 +11,7 @@
  * Drives the full api.ts ↔ /api/v1 ↔ Go ↔ store ↔ aggregate chain — the e2e
  * that guards the 204/r.json() transport trap.
  */
+import { routeCapture } from './_capture'
 import { test, expect } from './_fixtures'
 import type { Route } from '@playwright/test'
 
@@ -40,12 +41,12 @@ test.describe('inline match-data editing', () => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([record(state)]) })
     })
-    let lastPutBody: string | null = null
+    const lastPutBody = routeCapture<string>('stat-edit PUT body')
     await page.route('**/api/v1/matches/m1/data', async (route: Route) => {
       const req = route.request()
       if (req.method() === 'PUT') {
-        lastPutBody = req.postData()
-        const body = JSON.parse(lastPutBody ?? '{}') as { damage?: number }
+        lastPutBody.set(req.postData() ?? '{}')
+        const body = JSON.parse(lastPutBody.get()) as { damage?: number }
         if (body.damage !== undefined) state.damage = body.damage
         await route.fulfill({ status: 204, body: '' })
       } else if (req.method() === 'DELETE') {
@@ -66,8 +67,8 @@ test.describe('inline match-data editing', () => {
     await input.fill('9999')
     await input.press('Enter')
 
-    await expect.poll(() => lastPutBody).not.toBeNull()
-    expect(JSON.parse(lastPutBody as string)).toEqual({ damage: 9999 })
+    await expect.poll(() => lastPutBody.seen()).toBe(true)
+    expect(JSON.parse(lastPutBody.get())).toEqual({ damage: 9999 })
 
     await expect(page.locator('.detail-reset-btn')).toBeVisible()
     await expect(page.locator('button[aria-label^="Damage"]')).toContainText('9,999')

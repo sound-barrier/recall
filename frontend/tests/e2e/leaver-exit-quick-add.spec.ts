@@ -11,6 +11,7 @@
  */
 import type { Route } from '@playwright/test'
 
+import { routeCapture } from './_capture'
 import { test, expect } from './_fixtures'
 
 const refData = {
@@ -36,7 +37,7 @@ async function openQuickAdd(page: import('@playwright/test').Page) {
 }
 
 test('Left after a leaver → map + result → the match is recorded', async ({ page }) => {
-  let postBody: string | null = null
+  const postBody = routeCapture<string>('quick-add POST body')
   const created: unknown[] = []
   await page.route('**/api/v1/system/reference-data', (route: Route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }),
@@ -44,8 +45,8 @@ test('Left after a leaver → map + result → the match is recorded', async ({ 
   await page.route('**/api/v1/matches', async (route: Route) => {
     const req = route.request()
     if (req.method() === 'POST') {
-      postBody = req.postData()
-      const rec = quickRecord(JSON.parse(postBody ?? '{}'))
+      postBody.set(req.postData() ?? '{}')
+      const rec = quickRecord(JSON.parse(postBody.get()))
       created.push(rec)
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(rec) })
     } else {
@@ -72,8 +73,8 @@ test('Left after a leaver → map + result → the match is recorded', async ({ 
   await expect(page.locator('[data-mm-submit]')).toBeEnabled()
   await page.locator('[data-mm-submit]').click()
 
-  await expect.poll(() => postBody).not.toBeNull()
-  const parsed = JSON.parse(postBody as string) as {
+  await expect.poll(() => postBody.seen()).toBe(true)
+  const parsed = JSON.parse(postBody.get()) as {
     map: string; result: string; leavers: string[]; heroes?: string[]
     play_mode?: string; queue_type?: string
   }

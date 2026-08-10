@@ -8,6 +8,7 @@
  *   2. Cross-profile move: POST /matches/transfers — source loses the match, the
  *      target gains it, and the hidden sidecar survives the transfer.
  */
+import { must } from './_capture'
 import { expect, test } from './_fixtures'
 import { createMatch, getProfiles, listMatches, manual, reset, switchProfile } from './_real-server'
 
@@ -72,7 +73,8 @@ test.describe('profiles (real server)', () => {
     await switchProfile(request, 'archive')
     const archive = await listMatches(request)
     expect(archive).toHaveLength(1)
-    expect(archive[0].match_key).toBe(m1.match_key)
-    expect(archive[0].hidden).toBe(true)
+    const moved = must(archive[0], 'the moved match')
+    expect(moved.match_key).toBe(m1.match_key)
+    expect(moved.hidden).toBe(true)
   })
 })

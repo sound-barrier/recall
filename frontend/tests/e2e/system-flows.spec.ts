@@ -5,6 +5,7 @@
  * export_csv.go) run for real; the mocked specs never reach them. Isolated by
  * the reset seam.
  */
+import { must } from './_capture'
 import { expect, test } from './_fixtures'
 import { createMatch, listMatches, manual, reset } from './_real-server'
 
@@ -18,10 +19,10 @@ test.describe('system flows (real server)', () => {
     const key = encodeURIComponent(m.match_key)
 
     expect((await request.put(`/api/v1/matches/${key}/review`, { data: { reviewed_by: 'self' } })).status()).toBe(204)
-    expect((await listMatches(request))[0].reviewed_by).toBe('self')
+    expect(must((await listMatches(request))[0], 'the reviewed match').reviewed_by).toBe('self')
 
     expect((await request.delete(`/api/v1/matches/${key}/review`)).status()).toBe(204)
-    expect((await listMatches(request))[0].reviewed_by).toBeUndefined()
+    expect(must((await listMatches(request))[0], 'the cleared match').reviewed_by).toBeUndefined()
   })
 
   test('ignore a screenshot, list it, then restore it', async ({ request }) => {
