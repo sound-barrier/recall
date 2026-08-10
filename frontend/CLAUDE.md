@@ -87,14 +87,18 @@ lives in `api-platform.ts`; `ApiError` + the problem+json mapping in
 binary paths go through the SDK — only their DOM plumbing (`<a download>`,
 `<input type=file>`) is hand-written.
 
-**`IS_WAILS` (from `@/api-platform`) is the ONE runtime detector — never
+**`IS_WAILS` (from `@/platform`) is the ONE runtime detector — never
 re-derive it.** It keys off the serving origin (`wails:` scheme on macOS,
 `wails.localhost` host on Windows). A `navigator.userAgent.includes('wails')`
 copy reads **false in the Windows desktop build** — Wails appends that
 marker to outgoing request headers only, never to the JS-visible UA — which
 is how every API call once 404'd on the shipped platform, and how a
 context-menu item later went missing there. Import the constant; do not
-write a local one-liner.
+write a local one-liner. It lives in the dependency-free `@/platform` leaf
+(not `api-platform.ts`, which pulls the generated SDK + the Wails runtime)
+so leaf components can read it without dragging the api chain into their
+chunk — that import weight is exactly why the duplicated one-liners existed.
+`platform.test.ts` pins the origin matrix.
 
 **The query layer (`src/queries/`)**: server state lives in the
 **@tanstack/vue-query** cache, not in store refs. `queries/client.ts` owns

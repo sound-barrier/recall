@@ -147,10 +147,28 @@ fi
 # user ever saw.
 INDEX_HTML="$(dirname "${DIST_DIR}")/index.html"
 if [[ -f "${INDEX_HTML}" ]]; then
-  init_js=$(grep -oE '(src|href)="[^"]*/assets/[^"]+\.js"' "${INDEX_HTML}" \
-    | sed -E 's/.*\/assets\/([^"]+)"/\1/' | sort -u \
-    | while read -r f; do [[ -f "${DIST_DIR}/${f}" ]] && wc -c <"${DIST_DIR}/${f}"; done \
-    | awk '{s+=$1} END{print s}')
+  # Collect first, sum second. Under `set -euo pipefail` a grep that matches
+  # nothing (exit 1) or a missing chunk in the loop would otherwise kill the
+  # script with a bare "exit 1" and no clue why — and an EMPTY index.html is a
+  # real artifact here: prepare-frontend-dist's stub path touches one for jobs
+  # that only need the //go:embed to resolve.
+  entry_files=$(grep -oE '(src|href)="[^"]*/assets/[^"]+\.js"' "${INDEX_HTML}" \
+    | sed -E 's/.*\/assets\/([^"]+)"/\1/' | sort -u || true)
+  if [[ -z "${entry_files}" ]]; then
+    echo "::error::${INDEX_HTML} references no /assets/*.js — stub or failed build?" >&2
+    exit 1
+  fi
+  init_js=0
+  # Here-string, not a pipe: a `while read` in a pipeline runs in a subshell
+  # and the accumulator would not survive it.
+  while read -r f; do
+    [[ -n "${f}" ]] || continue
+    if [[ ! -f "${DIST_DIR}/${f}" ]]; then
+      echo "::error::${INDEX_HTML} references ${f}, absent from ${DIST_DIR} — stale dist?" >&2
+      exit 1
+    fi
+    init_js=$((init_js + $(wc -c <"${DIST_DIR}/${f}")))
+  done <<<"${entry_files}"
 else
   echo "::warning::${INDEX_HTML} not found — falling back to index-*.js only" >&2
   init_js=$(find "${DIST_DIR}" -name 'index-*.js' -exec wc -c {} + | awk 'END{print $1}')
