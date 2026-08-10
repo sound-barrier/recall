@@ -1,11 +1,24 @@
 import { afterAll, afterEach, vi } from 'vitest'
 import { enableAutoUnmount } from '@vue/test-utils'
+import { cleanup } from '@testing-library/vue'
+// Registers the jest-dom matchers (toBeInTheDocument, toBeDisabled, …)
+// on vitest's expect. Static import is safe: it touches only the
+// matcher registry, never the @/api module graph.
+import '@testing-library/jest-dom/vitest'
 
 // Unmount every test-utils wrapper after its test — plain hygiene now that
 // the per-test client reset (below) already stops a stale observer from
 // reaching the next test's cache: it keeps DOM, listeners and timers from
-// piling up across a file.
+// piling up across a file. (Retired in the Testing Library migration's
+// final batch — TL's cleanup below covers migrated files.)
 enableAutoUnmount(afterEach)
+
+// Testing Library teardown. TL only auto-registers its cleanup when
+// test.globals is set (it isn't here), so the explicit hook is
+// mandatory — without it every render()'s container div stays in
+// document.body and screen queries start matching stale DOM from
+// earlier tests in the same file.
+afterEach(cleanup)
 
 // Fallback fetch for anything a test didn't stub. Two rules:
 //
