@@ -177,6 +177,12 @@ func fetchLatestReleaseMeta() (releaseMeta, bool) {
 		return releaseMeta{}, false
 	}
 	defer func() { _ = resp.Body.Close() }()
+	// An intercepting proxy or CDN error page can answer 5xx with a JSON
+	// body; without this gate a plausible tag_name in that body walked
+	// through the decoder and produced a phantom "update available".
+	if resp.StatusCode != http.StatusOK {
+		return releaseMeta{}, false
+	}
 
 	var release struct {
 		TagName string `json:"tag_name"`

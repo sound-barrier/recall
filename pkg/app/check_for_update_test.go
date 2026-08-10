@@ -499,6 +499,25 @@ func fakeReleasesServer(t *testing.T, status int, body string) *httptest.Server 
 	return srv
 }
 
+// A non-200 response must never surface as an available update, even
+// when its body happens to decode as a plausible release — intercepting
+// proxies and CDN error pages can return 5xx with a JSON body, and
+// before the status check landed such a body walked straight through
+// the decoder and produced a phantom "update available".
+func TestCheckForUpdate_Non200IsNotAnUpdate(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	srv := fakeReleasesServer(t, http.StatusInternalServerError,
+		`{"tag_name":"v99.0.0","html_url":"https://example/v99.0.0"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.2.0")
+
+	got := (&app.App{}).CheckForUpdate()
+
+	if got.Available {
+		t.Errorf("Available = true from a 500 response; a non-200 must not report an update (latest=%q)", got.Latest)
+	}
+}
+
 func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 	srv := fakeReleasesServer(t, http.StatusOK,
