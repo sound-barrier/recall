@@ -178,26 +178,6 @@ changed bullets carry an inline re-evaluation note:
   `DisplayVersion` goes stale** after an in-app update (the installer writes it,
   the updater doesn't) until the next installer run — cosmetic, only visible in
   Add/Remove Programs.
-- **Report-only cyclomatic-complexity** — the sweep
-  (`scripts/ci/check-complexity.sh`: gocyclo over Go + ESLint's `complexity`
-  rule over `frontend/src`, threshold 10) stays REPORT-ONLY by design.
-  Re-swept 2026-07-06: frontend max is still **50** (`compareCol` in
-  `useTableSort.ts` — a flat 13-case column-comparator switch whose `??`
-  fallbacks inflate the metric; accepted as a dispatch table). The old
-  `useMatchesNarrow.ts` cluster (`passesNarrow` / `clauseLabel` /
-  `activeClauses` / `clearClause`, once 43/33/25/21) is now all ≤10 and
-  unflagged — the clause-registry refactor shipped
-  (`matchesNarrow.clauses.ts`'s `NARROW_CLAUSES` drives all four off one
-  registry), dissolving the parallel-list enumeration spread; that debt is
-  paid and its old section-8 pointer is gone with it. The remaining frontend
-  flags are dispatch/lambda/keydown churn (`onKeydown` in
-  `useDetailPanelKeyboard.ts` 30, dossier-query reducers in
-  `useMatchesDossierQueries.ts` up to 30, the `cellText` formatter switch in
-  `match-table-tsv.ts` 28) — noise, not signal. Go-side max (non-test):
-  `HardDeleteMatch` 25 (the `dbtest` fake), then `importUserLayer` 24,
-  `writeFixture` 23, `loadBundleUserLayer` 22; `parsePersonalStatCell` holds
-  at 17. Everything else: refactor only if a real readability/bug problem
-  surfaces.
 - **DRY hotspots to *watch*, not pre-abstract** — the nine `register*Routes` in
   `pkg/cmd/server_*.go` (eight per-resource registrars plus the test-only
   `registerE2ERoutes`, a no-op unless `RECALL_E2E=1`; all wired in `server.go`)

@@ -25,6 +25,13 @@ linters:
     - nestif         # deep-nesting guard (CLAUDE.md "Deep nesting / arrow code")
     - gocritic       # Go micro-smells (CLAUDE.md smells catalog)
     - unparam        # unused parameters / always-same results are dead weight
+    # The complexity gate (CLAUDE.md "McCabe cyclomatic complexity ≤ 10 —
+    # enforced"). Files still above threshold carry an entry in the
+    # campaign carve-out block under exclusions.rules below; every cleanup
+    # commit deletes its own entries, and warn-unused flags stale ones.
+    - gocyclo
+    - gocognit       # cognitive backstop — catches nested-but-≤10-McCabe code
+    - funlen         # length backstop for straight-line sprawl the others miss
     # --- Added on review (drop any you don't want) ---
     - errorlint      # errors.Is/As + %w wrapping correctness; complements nilerr
     - noctx          # HTTP requests issued without a context.Context
@@ -51,6 +58,18 @@ linters:
         - G104  # "unhandled errors" — same check as errcheck; double-reports now both run
         # G304 (file path from variable) and G302/G306 (file perms) will still
         # fire in prod — review those case-by-case rather than excluding globally.
+    gocyclo:
+      # ≤ 10 allowed; VERIFIED against known-complexity functions that the
+      # linter flags strictly-greater-than this value.
+      min-complexity: 10
+    gocognit:
+      min-complexity: 20
+    funlen:
+      lines: 60
+      statements: 40
+      # Load-bearing: this codebase documents densely (parseRank is ~half
+      # comments) — don't tax documentation as length.
+      ignore-comments: true
     misspell:
       # American English (CLAUDE.md "Language: American English") — without
       # a locale, misspell passes valid British spellings straight through.
@@ -82,6 +101,172 @@ linters:
       # codec); nothing under node_modules is ours to lint.
       - frontend/node_modules
     rules:
+      # ── COMPLEXITY-CAMPAIGN CARVE-OUTS ──────────────────────────────
+      # Files still above the gocyclo/gocognit/funlen gate. Each cleanup
+      # commit deletes its own entries; the campaign finale deletes the
+      # whole block. warn-unused (above) flags any entry that goes stale.
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/aggregate/aggregate\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/aggregate/attach\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/bundle_validate_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/check_for_update_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/dedup\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/diagnostic_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/duplicate_sweep\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/duplicate_sweep_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/export_bundle_roundtrip_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/export_bundle_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/import_matches_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/parse_complete_match_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/profile_app\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/profile_immutable_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/profile_move_override_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/profile_move_review_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/profile_move_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/screenshot_handler\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/screenshot_handler_fuzz_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/seed\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/seed_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/store_integration_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/thumbnail\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/usermatch\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/app/usermatch_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/bundle/diagnostic_bundle\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/bundle/diagnostic_bundle_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/bundle/export_bundle\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/bundle/import_matches\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/cmd/server_system\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/cmd/server_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/cmd/wails\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/correlate/correlation\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/correlate/correlation_duplicate\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/correlate/correlation_ead\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/correlate/correlation_stress_fixtures_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/correlate/correlation_stress_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/dbtest/fake\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/dbtest/fake_ignored_ambiguity\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/dbtest/fake_reclassify\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/migrate\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/schema_additive_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/sqlstore_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_contract_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_failed_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_legacy_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_loadall_snapshot_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_play_mode_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_queue_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_rank\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_reaggregate_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_reclassify\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_reclassify_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_review_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_screenshots_dir_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_summary\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_usermatch_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/db/store_visibility\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_annotations_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_chaos\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_emit\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_heroes\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_rank_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_roles\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_story_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/fixtures/fixtures_usermatch_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/gamedata/update_gamedata\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/classify\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/heroes\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/integration_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/parse_dir_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/parse_personal\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/parse_rank\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/parse_summary\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/parse_teams\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/parser\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/parser_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/parser/screenshot_sources_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/probe/probe_test\.go
+      - linters: [gocyclo, gocognit, funlen]
+        path: pkg/profiles/move\.go
       # gosec is rolled in from the standalone `gosec` job, which ran with its
       # default `-tests=false` — it never scanned test files. Mirror that: a
       # test's 0755 fixture dir (G301), 0644 fixture file (G302/G306), or

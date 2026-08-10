@@ -413,47 +413,7 @@ jobs:
   # hook — so contributors get fast feedback before push without
   # duplicating coverage with CodeQL.
 
-  # ── Job 6: Cyclomatic complexity (REPORT ONLY) ───────────────────────────
-  # gocyclo (Go) + ESLint's `complexity` rule (frontend) at threshold 10.
-  # `continue-on-error: true` keeps the job NON-BLOCKING — a high number
-  # never fails the build, it just shows up in the job log. We watch the
-  # trend across PRs to know when to refactor; tightening into a hard
-  # gate is its own deliberate decision, not a side-effect of this job.
-  # Threshold + tooling pins both live in scripts/ci/check-complexity.sh +
-  # mise.toml (gocyclo).
-  complexity:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
-        with:
-          go-version-file: go.mod
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
-        with:
-          node-version-file: .node-version
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install gocyclo
-        run: go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
-      # gocyclo doesn't need real frontend assets — Go source only.
-      - name: Prepare frontend/dist (stub for //go:embed)
-        uses: ./.github/actions/prepare-frontend-dist
-        with:
-          real-assets: "false"
-      - name: Install frontend deps (for the eslint pass)
-        run: npm --prefix frontend ci
-      - name: Run complexity sweep (Go + frontend, threshold 10)
-        run: bash scripts/ci/check-complexity.sh
-      # Diff the current Go scores against the checked-in top-20
-      # baseline. Same threshold, same exclusions; emits a summary
-      # line + per-jump/newcomer record. continue-on-error keeps the
-      # job non-blocking; a future PR-comment step can hook into
-      # this output once the baseline shape stabilises.
-      - name: Diff against baseline (report-only)
-        run: bash scripts/ci/check-complexity-baseline.sh
-
-  # ── Job 7: Dead code analysis ────────────────────────────────────────────
+  # ── Job 6: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant
   # only — the Wails variant registers App methods via reflection so deadcode
   # would report false positives; golangci-lint `unused` covers that variant).
@@ -490,7 +450,7 @@ jobs:
       - name: Dead TypeScript code (knip)
         run: cd frontend && npm run dead:ts
 
-  # ── Job 8: Frontend coverage report ─────────────────────────────────────
+  # ── Job 7: Frontend coverage report ─────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and lcov
   # file are uploaded as a workflow artifact so they can be downloaded from
   # the Actions run page for any push or PR.
@@ -534,7 +494,7 @@ jobs:
           path: frontend/coverage/
           retention-days: 30
 
-  # ── Job 9: Go coverage report ───────────────────────────────────────────
+  # ── Job 8: Go coverage report ───────────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and func
   # summary are uploaded as a workflow artifact so they can be downloaded
   # from the Actions run page for any push or PR.
@@ -600,7 +560,7 @@ jobs:
           path: coverage/go/
           retention-days: 30
 
-  # ── Job 10: OpenAPI ↔ implementation drift check ─────────────────────────
+  # ── Job 9: OpenAPI ↔ implementation drift check ─────────────────────────
   # Spectral checks the spec is well-formed; schemathesis checks the spec
   # matches the running server. Fuzzes spec-derived requests against a
   # freshly-built serveronly binary and verifies every response conforms to
