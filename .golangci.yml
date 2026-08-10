@@ -158,12 +158,6 @@ linters:
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/cmd/wails\.go
       - linters: [gocyclo, gocognit, funlen]
-        path: pkg/db/dbtest/fake\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/db/dbtest/fake_ignored_ambiguity\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/db/dbtest/fake_reclassify\.go
-      - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/migrate\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/schema_additive_test\.go
@@ -219,28 +213,6 @@ linters:
         path: pkg/fixtures/fixtures_usermatch_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/gamedata/update_gamedata\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/classify\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/heroes\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/integration_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/parse_dir_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/parse_personal\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/parse_rank\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/parse_summary\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/parse_teams\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/parser\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/parser_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/parser/screenshot_sources_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/probe/probe_test\.go
       - linters: [gocyclo, gocognit, funlen]

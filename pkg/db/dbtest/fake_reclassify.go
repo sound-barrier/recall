@@ -16,55 +16,31 @@ func (f *Fake) DeleteScreenshotSiblings(filename, keepType string) error {
 	oldKeys := map[string]bool{}
 	collect := func(key string) { oldKeys[key] = true }
 	if keepType != "summary" {
-		f.Summaries = slices.DeleteFunc(f.Summaries, func(r db.SummaryRow) bool {
-			if r.Filename == filename {
-				collect(r.MatchKey)
-				return true
-			}
-			return false
-		})
+		f.Summaries = deleteByFilename(f.Summaries, filename, collect)
 	}
 	if keepType != "teams" {
-		f.Teams = slices.DeleteFunc(f.Teams, func(r db.TeamsRow) bool {
-			if r.Filename == filename {
-				collect(r.MatchKey)
-				return true
-			}
-			return false
-		})
+		f.Teams = deleteByFilename(f.Teams, filename, collect)
 	}
 	if keepType != "personal" {
-		f.Personals = slices.DeleteFunc(f.Personals, func(r db.PersonalRow) bool {
-			if r.Filename == filename {
-				collect(r.MatchKey)
-				return true
-			}
-			return false
-		})
+		f.Personals = deleteByFilename(f.Personals, filename, collect)
 	}
 	if keepType != "rank" {
-		f.Ranks = slices.DeleteFunc(f.Ranks, func(r db.RankRow) bool {
-			if r.Filename == filename {
-				collect(r.MatchKey)
-				return true
-			}
-			return false
-		})
+		f.Ranks = deleteByFilename(f.Ranks, filename, collect)
 	}
 	if keepType != "unknown" {
-		f.Unknowns = slices.DeleteFunc(f.Unknowns, func(r db.UnknownRow) bool {
-			if r.Filename == filename {
-				collect(r.MatchKey)
-				return true
-			}
-			return false
-		})
+		f.Unknowns = deleteByFilename(f.Unknowns, filename, collect)
 	}
 	if keepType != "all_heroes" {
 		delete(f.AllHeroes, filename)
 	}
-	// Mirror SQLStore: candidates referencing a key with no remaining
-	// parent rows must go (HardDeleteMatch's dead-key invariant).
+	f.scrubDeadKeyCandidatesLocked(oldKeys)
+	return nil
+}
+
+// scrubDeadKeyCandidatesLocked mirrors SQLStore: candidates referencing
+// a key with no remaining parent rows must go (HardDeleteMatch's
+// dead-key invariant). Caller holds f.mu.
+func (f *Fake) scrubDeadKeyCandidatesLocked(oldKeys map[string]bool) {
 	for key := range oldKeys {
 		if f.matchKeyHasRowsLocked(key) {
 			continue
@@ -78,34 +54,12 @@ func (f *Fake) DeleteScreenshotSiblings(filename, keepType string) error {
 			}
 		}
 	}
-	return nil
 }
 
 func (f *Fake) matchKeyHasRowsLocked(key string) bool {
-	for _, r := range f.Summaries {
-		if r.MatchKey == key {
-			return true
-		}
-	}
-	for _, r := range f.Teams {
-		if r.MatchKey == key {
-			return true
-		}
-	}
-	for _, r := range f.Personals {
-		if r.MatchKey == key {
-			return true
-		}
-	}
-	for _, r := range f.Ranks {
-		if r.MatchKey == key {
-			return true
-		}
-	}
-	for _, r := range f.Unknowns {
-		if r.MatchKey == key {
-			return true
-		}
-	}
-	return false
+	return hasMatchKey(f.Summaries, key) ||
+		hasMatchKey(f.Teams, key) ||
+		hasMatchKey(f.Personals, key) ||
+		hasMatchKey(f.Ranks, key) ||
+		hasMatchKey(f.Unknowns, key)
 }
