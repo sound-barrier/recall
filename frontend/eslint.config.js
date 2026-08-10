@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import pluginVue from 'eslint-plugin-vue'
 import pluginVitest from '@vitest/eslint-plugin'
+import pluginTestingLibrary from 'eslint-plugin-testing-library'
 import pluginPlaywright from 'eslint-plugin-playwright'
 import pluginA11y from 'eslint-plugin-vuejs-accessibility'
 import globals from 'globals'
@@ -185,6 +186,105 @@ export default tseslint.config(
       // Vitest describe > describe > it nesting is structural test grouping,
       // not a callback pyramid — the rule can't tell the difference.
       'max-nested-callbacks': 'off',
+    },
+  },
+  {
+    // Testing Library rules for the unit suite (flat/vue). The plugin runs
+    // in non-aggressive mode because utils-module is set: rules engage only
+    // in files that import from an official @testing-library/* package or
+    // from the '@/test-utils' barrel — i.e. exactly the migrated files.
+    // The setting must be the full '@/test-utils' specifier, not the
+    // conventional bare 'test-utils': detection is endsWith(), and
+    // '@vue/test-utils' ends with 'test-utils', which would drag every
+    // not-yet-migrated VTU file into the rules. Unmigrated tests import the
+    // retiring '@/test-utils/mountApp' / '@/test-utils/mountWidget'
+    // modules, which the detection deliberately does not match.
+    // custom-renders teaches the plugin that renderApp/renderWidget
+    // produce render results.
+    ...pluginTestingLibrary.configs['flat/vue'],
+    files: ['src/**/*.test.ts'],
+    settings: {
+      'testing-library/utils-module': '@/test-utils',
+      'testing-library/custom-renders': ['renderApp', 'renderWidget'],
+    },
+  },
+  {
+    // @vue/test-utils is banned from unit tests — Testing Library is the
+    // suite's convention. `ignores` is the shrinking allowlist of not-yet-
+    // migrated files: each migration batch deletes its files here until the
+    // teardown batch removes the allowlist (and the dependency) entirely.
+    // The test-utils harness modules themselves (non-.test.ts) are outside
+    // this block's files glob and stay free to wrap @vue/test-utils.
+    files: ['src/**/*.test.ts'],
+    ignores: [
+      'src/App.test.ts',
+      'src/components/dashboard/DashboardUndoToast.test.ts',
+      'src/components/dashboard/DashboardWidget.test.ts',
+      'src/components/dashboard/WidgetConfigPopover.test.ts',
+      'src/components/ingest/IngestView.test.ts',
+      'src/components/ingest/ParseProgressPanel.test.ts',
+      'src/components/ingest/ParseStatusBar.test.ts',
+      'src/components/matches/detail/EditableStat.test.ts',
+      'src/components/matches/detail/MatchCardExpanded.test.ts',
+      'src/components/matches/detail/MatchDetailPanel.test.ts',
+      'src/components/matches/detail/MatchScreenshotLightbox.test.ts',
+      'src/components/matches/dossier/MatchMapRoleBand.test.ts',
+      'src/components/matches/list/LeafHoverPreview.test.ts',
+      'src/components/matches/list/MatchAnchorToast.test.ts',
+      'src/components/matches/list/MatchesEmptySuggestions.test.ts',
+      'src/components/matches/list/MatchesListToolbar.readonly.test.ts',
+      'src/components/matches/list/MatchesTableSortPopover.test.ts',
+      'src/components/matches/list/MatchRowContextMenu.test.ts',
+      'src/components/matches/list/MatchTableRow.test.ts',
+      'src/components/matches/MatchesView.test.ts',
+      'src/components/matches/shared/HighlightedText.test.ts',
+      'src/components/matches/shared/MatchesSkeleton.test.ts',
+      'src/components/matches/shared/MatchProvenanceBadge.test.ts',
+      'src/components/matches/timeline/MatchHeatmapHeader.test.ts',
+      'src/components/settings/ExportBundleModal.test.ts',
+      'src/components/settings/IgnoredFilesPanel.test.ts',
+      'src/components/settings/ScreenshotSourcePicker.test.ts',
+      'src/components/settings/SettingsProfiles.test.ts',
+      'src/components/settings/SettingsView.test.ts',
+      'src/components/shared/AboutModal.test.ts',
+      'src/components/shared/ContextualCallout.test.ts',
+      'src/components/shared/FilterCombobox.test.ts',
+      'src/components/shared/FirstRunProfileModal.test.ts',
+      'src/components/shared/MastheadParseChip.test.ts',
+      'src/components/shared/ProfileSwitcher.test.ts',
+      'src/components/shared/TypeaheadDropdown.test.ts',
+      'src/components/shared/UpdateReminderBanner.test.ts',
+      'src/components/unknown/UnknownFailedSection.test.ts',
+      'src/components/unknown/UnknownMapsView.test.ts',
+      'src/composables/dashboard/useDashboardLayout.test.ts',
+      'src/composables/dashboard/useDossier.test.ts',
+      'src/composables/dashboard/useWidgetConfig.test.ts',
+      'src/composables/ingest/useParseRecovery.test.ts',
+      'src/composables/matches/useColumnResize.test.ts',
+      'src/composables/matches/useMapRoleConfig.test.ts',
+      'src/composables/matches/useMatchAnchor.test.ts',
+      'src/composables/matches/useMatchPivot.test.ts',
+      'src/composables/matches/useScrollAffordance.test.ts',
+      'src/composables/matches/useSectionLayout.test.ts',
+      'src/composables/matches/useTableSort.test.ts',
+      'src/composables/matches/useVirtualWindow.test.ts',
+      'src/composables/shared/useActiveProfile.test.ts',
+      'src/composables/shared/useContextualCallout.test.ts',
+      'src/composables/shared/useEventStream.test.ts',
+      'src/composables/shared/useGlobalKeyboard.test.ts',
+      'src/composables/shared/useKeyboardShortcuts.test.ts',
+      'src/composables/shared/useOnboardingTour.test.ts',
+      'src/composables/shared/useScrollLock.test.ts',
+      'src/composables/shared/useUpdateReminder.test.ts',
+      'src/stores/app.test.ts',
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: '@vue/test-utils',
+          message: 'Unit tests use Testing Library — render via @/test-utils (renderApp/renderWidget) and query via @testing-library/vue.',
+        }],
+      }],
     },
   },
   {

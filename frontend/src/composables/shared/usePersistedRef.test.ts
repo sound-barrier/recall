@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
+import { flushPromises } from '@/test-utils'
 import {
   usePersistedRef,
   parseBoolish,
@@ -19,7 +20,7 @@ function mountWith<T>(opts: Parameters<typeof usePersistedRef<T>>[0]) {
       return () => h('div')
     },
   })
-  mount(Comp)
+  render(Comp)
   return api
 }
 

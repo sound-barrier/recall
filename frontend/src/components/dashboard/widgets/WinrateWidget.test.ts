@@ -1,20 +1,22 @@
 import { describe, it, expect } from 'vitest'
+import { screen } from '@testing-library/vue'
 import WinrateWidget from '@/components/dashboard/widgets/WinrateWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 
 describe('WinrateWidget', () => {
   it('renders the winrate as a percentage when set', () => {
-    const w = mountWidget(WinrateWidget, { dossier: { winrate: 67 } })
-    expect(w.text()).toContain('67%')
+    renderWidget(WinrateWidget, { dossier: { winrate: 67 } })
+    expect(screen.getByText('67%')).toBeInTheDocument()
   })
 
   it('renders an em-dash when winrate is null (no decisive matches)', () => {
-    const w = mountWidget(WinrateWidget, { dossier: { winrate: null } })
-    expect(w.find('.kpi-value').text()).toBe('—')
+    renderWidget(WinrateWidget, { dossier: { winrate: null } })
+    expect(screen.getByText('—')).toBeInTheDocument()
   })
 
   it('handles 0% without falling back to em-dash', () => {
-    const w = mountWidget(WinrateWidget, { dossier: { winrate: 0 } })
-    expect(w.find('.kpi-value').text()).toBe('0%')
+    renderWidget(WinrateWidget, { dossier: { winrate: 0 } })
+    expect(screen.getByText('0%')).toBeInTheDocument()
+    expect(screen.queryByText('—')).not.toBeInTheDocument()
   })
 })
