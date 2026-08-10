@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import type { MatchRecord } from '@/api'
@@ -35,8 +36,8 @@ function makeRecord(over: Partial<MatchRecord['data']> = {}, top: Partial<MatchR
   }
 }
 
-function mountCard(over: { record?: MatchRecord; isSourcesOpen?: boolean } = {}) {
-  return mount(MatchCardExpanded, {
+function renderCard(over: { record?: MatchRecord; isSourcesOpen?: boolean } = {}) {
+  return render(MatchCardExpanded, {
     props: {
       record: over.record ?? makeRecord(),
       isSourcesOpen: over.isSourcesOpen ?? false,
@@ -49,20 +50,20 @@ function mountCard(over: { record?: MatchRecord; isSourcesOpen?: boolean } = {})
 
 describe('MatchCardExpanded — stats grid', () => {
   it('renders six stat cells in the match-stats grid', () => {
-    const wrapper = mountCard()
-    const stats = wrapper.findAll('.stat')
-    // Eliminations, Assists, Deaths, Damage, Healing, Mitigation.
-    expect(stats.length).toBeGreaterThanOrEqual(6)
+    renderCard()
+    // Eliminations, Assists, Deaths, Damage, Healing, Mitigation —
+    // each an EditableStat whose trigger is labeled "<Stat>: <value>.
+    // Click to edit."
+    expect(screen.getAllByRole('button', { name: /Click to edit/ }).length).toBeGreaterThanOrEqual(6)
   })
 
   it('shows the eliminations + assists numeric values', () => {
-    const wrapper = mountCard()
-    const text = wrapper.text()
-    expect(text).toContain('17') // eliminations
-    expect(text).toContain('12') // assists
+    renderCard()
+    expect(screen.getByText('17')).toBeInTheDocument() // eliminations
+    expect(screen.getByText('12')).toBeInTheDocument() // assists
     // Damage is formatted with thousands separator on render
     // (`8,500`), so assert the leading digit.
-    expect(text).toMatch(/8[,.]?5/)
+    expect(screen.getByText(/8[,.]?5/)).toBeInTheDocument()
   })
 })
 
@@ -72,83 +73,73 @@ describe('MatchCardExpanded — disruption chips', () => {
   // full side SET the chooser wants — picking a second side ADDS to it rather
   // than replacing the first, which is what the old single-value column
   // couldn't express.
-  const leaverChips = (w: ReturnType<typeof mountCard>) =>
-    w.findAll('[data-disruption^="leavers-"]')
-  const throwerChips = (w: ReturnType<typeof mountCard>) =>
-    w.findAll('[data-disruption^="throwers-"]')
+  const user = () => userEvent.setup()
 
   it('emits the leavers set when a side chip is clicked from an untagged record', async () => {
-    const wrapper = mountCard()
-    const chips = leaverChips(wrapper)
-    expect(chips.length).toBe(3)
-    await chips[0]!.trigger('click')
-    const e = wrapper.emitted('set-disruption')!
-    expect(e[0]).toEqual([wrapper.props('record').match_key, 'leavers', ['self']])
+    const { emitted } = renderCard()
+    expect(screen.getByRole('button', { name: /Ally left/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Enemy left/ })).toBeInTheDocument()
+    await user().click(screen.getByRole('button', { name: /I left/ }))
+    const e = emitted('set-disruption')
+    expect(e[0]).toEqual(['match-2026-05-10T22-21-11', 'leavers', ['self']])
   })
 
   it('adds a second side rather than replacing the first', async () => {
     const rec = makeRecord({}, { annotation: { leavers: ['team'], throwers: [] } } as unknown as Partial<MatchRecord>)
-    const wrapper = mountCard({ record: rec })
-    await leaverChips(wrapper)[0]!.trigger('click')
-    const e = wrapper.emitted('set-disruption')!
-    expect(e[0]).toEqual([rec.match_key, 'leavers', ['team', 'self']])
+    const { emitted } = renderCard({ record: rec })
+    await user().click(screen.getByRole('button', { name: /I left/ }))
+    expect(emitted('set-disruption')[0]).toEqual([rec.match_key, 'leavers', ['team', 'self']])
   })
 
   it('removes a side when its already-active chip is re-clicked', async () => {
     const rec = makeRecord({}, { annotation: { leavers: ['self', 'team'], throwers: [] } } as unknown as Partial<MatchRecord>)
-    const wrapper = mountCard({ record: rec })
-    await leaverChips(wrapper)[0]!.trigger('click')
-    const e = wrapper.emitted('set-disruption')!
-    expect(e[0]).toEqual([rec.match_key, 'leavers', ['team']])
+    const { emitted } = renderCard({ record: rec })
+    await user().click(screen.getByRole('button', { name: /I left/ }))
+    expect(emitted('set-disruption')[0]).toEqual([rec.match_key, 'leavers', ['team']])
   })
 
   it('keeps the thrower chooser independent of the leaver one', async () => {
     const rec = makeRecord({}, { annotation: { leavers: ['team'], throwers: [] } } as unknown as Partial<MatchRecord>)
-    const wrapper = mountCard({ record: rec })
-    await throwerChips(wrapper)[2]!.trigger('click')
-    const e = wrapper.emitted('set-disruption')!
-    expect(e[0]).toEqual([rec.match_key, 'throwers', ['enemy']])
+    const { emitted } = renderCard({ record: rec })
+    await user().click(screen.getByRole('button', { name: /Enemy threw/ }))
+    expect(emitted('set-disruption')[0]).toEqual([rec.match_key, 'throwers', ['enemy']])
   })
 
   it('marks only the active side chips with aria-pressed="true"', () => {
     const rec = makeRecord({}, { annotation: { leavers: ['team'], throwers: ['enemy'] } } as unknown as Partial<MatchRecord>)
-    const wrapper = mountCard({ record: rec })
-    const l = leaverChips(wrapper)
-    expect(l[0]!.attributes('aria-pressed')).toBe('false')
-    expect(l[1]!.attributes('aria-pressed')).toBe('true')
-    expect(l[2]!.attributes('aria-pressed')).toBe('false')
-    const t = throwerChips(wrapper)
-    expect(t[2]!.attributes('aria-pressed')).toBe('true')
-    expect(t[1]!.attributes('aria-pressed')).toBe('false')
+    renderCard({ record: rec })
+    expect(screen.getByRole('button', { name: /I left/ })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /Ally left/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /Enemy left/ })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /Enemy threw/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /Ally threw/ })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
 describe('MatchCardExpanded — heroes played toggle', () => {
   it('renders the heroes-played list initially expanded', () => {
-    const wrapper = mountCard()
-    // heroesExpanded starts true; the list should be present.
-    expect(wrapper.text()).toContain('lucio')
+    renderCard()
+    // heroesExpanded starts true; the hero entry should be present.
+    expect(screen.getAllByText(/lucio/).length).toBeGreaterThan(0)
   })
 })
 
 describe('MatchCardExpanded — sources block', () => {
-  it('renders the sources block only when isSourcesOpen is true', async () => {
-    const closed = mountCard({ isSourcesOpen: false })
-    // .sources is only mounted when isSourcesOpen=true.
-    expect(closed.find('.sources').exists()).toBe(false)
-    const open = mountCard({ isSourcesOpen: true })
-    expect(open.find('.sources').exists()).toBe(true)
+  it('renders the sources block only when isSourcesOpen is true', () => {
+    renderCard({ isSourcesOpen: false })
+    // The source-file list is only mounted when isSourcesOpen=true.
+    expect(screen.queryByText(/a\.png/)).not.toBeInTheDocument()
   })
 
   it('shows the source filename in the open sources block', () => {
-    const wrapper = mountCard({ isSourcesOpen: true })
-    expect(wrapper.text()).toContain('a.png')
+    renderCard({ isSourcesOpen: true })
+    expect(screen.getByText(/a\.png/)).toBeInTheDocument()
   })
 })
 
 describe('MatchCardExpanded — since-this-match anchor toggle', () => {
-  function mountAnchor(anchorKey?: string) {
-    return mount(MatchCardExpanded, {
+  function renderAnchor(anchorKey?: string) {
+    return render(MatchCardExpanded, {
       props: {
         record: makeRecord(),
         isSourcesOpen: false,
@@ -161,39 +152,37 @@ describe('MatchCardExpanded — since-this-match anchor toggle', () => {
   }
 
   it('renders the anchor button with the idle copy when this match is NOT the anchor', () => {
-    const w = mountAnchor('some-other-match')
-    const btn = w.find('[data-set-anchor]')
-    expect(btn.exists()).toBe(true)
+    renderAnchor('some-other-match')
     // Action-first label ("Filter from this match") + plain-language
     // sublabel that names the consequence inline so a touch /
     // keyboard user doesn't depend on the tooltip.
-    expect(btn.text()).toMatch(/Filter from this match/i)
-    expect(btn.text()).toMatch(/marks this as your reference point/i)
-    expect(btn.classes()).not.toContain('is-anchor')
+    const btn = screen.getByRole('button', { name: /Filter from this match/i })
+    expect(btn).toHaveTextContent(/marks this as your reference point/i)
+    expect(btn).not.toHaveClass('is-anchor')
   })
 
   it('renders the anchor button with the active copy + class when this match IS the anchor', () => {
-    const w = mountAnchor('match-2026-05-10T22-21-11')
-    const btn = w.find('[data-set-anchor]')
-    expect(btn.classes()).toContain('is-anchor')
-    expect(btn.text()).toMatch(/Filtering from this match/i)
-    expect(btn.text()).toMatch(/Reference set/i)
-    expect(btn.text()).toMatch(/click to clear/i)
-    expect(btn.attributes('data-anchor-set')).toBe('true')
+    renderAnchor('match-2026-05-10T22-21-11')
+    const btn = screen.getByRole('button', { name: /Filtering from this match/i })
+    expect(btn).toHaveClass('is-anchor')
+    expect(btn).toHaveTextContent(/Reference set/i)
+    expect(btn).toHaveTextContent(/click to clear/i)
+    expect(btn).toHaveAttribute('data-anchor-set', 'true')
   })
 
   it('clicking when not the anchor emits set-anchor(matchKey)', async () => {
-    const w = mountAnchor('')
-    await w.find('[data-set-anchor]').trigger('click')
-    const emitted = w.emitted('set-anchor')
-    expect(emitted).toBeTruthy()
-    expect(emitted![0]).toEqual(['match-2026-05-10T22-21-11'])
+    const user = userEvent.setup()
+    const { emitted } = renderAnchor('')
+    await user.click(screen.getByRole('button', { name: /Filter from this match/i }))
+    expect(emitted('set-anchor')).toBeTruthy()
+    expect(emitted('set-anchor')[0]).toEqual(['match-2026-05-10T22-21-11'])
   })
 
   it('clicking when this match IS the anchor emits set-anchor("") to clear', async () => {
-    const w = mountAnchor('match-2026-05-10T22-21-11')
-    await w.find('[data-set-anchor]').trigger('click')
-    expect(w.emitted('set-anchor')![0]).toEqual([''])
+    const user = userEvent.setup()
+    const { emitted } = renderAnchor('match-2026-05-10T22-21-11')
+    await user.click(screen.getByRole('button', { name: /Filtering from this match/i }))
+    expect(emitted('set-anchor')[0]).toEqual([''])
   })
 })
 
@@ -203,17 +192,16 @@ describe('MatchCardExpanded — since-this-match anchor toggle', () => {
 describe('MatchCardExpanded — soft-delete (hidden record)', () => {
   it('shows Unhide (not Hide) on a hidden record', () => {
     const hidden = makeRecord({}, { hidden: true } as unknown as Partial<MatchRecord>)
-    const wrapper = mountCard({ record: hidden })
-    const buttons = wrapper.findAll('.danger-btn').map(b => b.text())
-    expect(buttons.some(t => t.includes('Unhide'))).toBe(true)
-    expect(buttons.some(t => t.includes('Hide match'))).toBe(false)
+    renderCard({ record: hidden })
+    expect(screen.getByRole('button', { name: /Unhide/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Hide match/ })).not.toBeInTheDocument()
   })
 
   it('Unhide click emits set-match-hidden(match_key, false) — no confirm step', async () => {
+    const user = userEvent.setup()
     const hidden = makeRecord({}, { hidden: true } as unknown as Partial<MatchRecord>)
-    const wrapper = mountCard({ record: hidden })
-    await wrapper.findAll('.danger-btn').find(b => b.text().includes('Unhide'))!.trigger('click')
-    const e = wrapper.emitted('set-match-hidden')!
-    expect(e[0]).toEqual([hidden.match_key, false])
+    const { emitted } = renderCard({ record: hidden })
+    await user.click(screen.getByRole('button', { name: /Unhide/ }))
+    expect(emitted('set-match-hidden')[0]).toEqual([hidden.match_key, false])
   })
 })

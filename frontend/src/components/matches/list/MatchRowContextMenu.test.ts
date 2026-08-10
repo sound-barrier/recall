@@ -1,110 +1,100 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.vue'
 
-const wrappers: VueWrapper[] = []
-function mountMenu(props: {
+// The menu teleports to <body> as a role="menu", so queries run
+// through screen (document-scoped) rather than the container.
+function renderMenu(props: {
   position: { x: number; y: number } | null
   matchKey?: string
   isAnchor?: boolean
 }) {
-  const w = mount(MatchRowContextMenu, {
+  return render(MatchRowContextMenu, {
     props: {
       matchKey: props.matchKey ?? 'm1',
       isAnchor: props.isAnchor ?? false,
       ...props,
     },
-    attachTo: document.body,
   })
-  wrappers.push(w)
-  return w
 }
 
 describe('MatchRowContextMenu', () => {
-  afterEach(() => {
-    while (wrappers.length) wrappers.pop()!.unmount()
-  })
-
   it('renders nothing when position is null', () => {
-    mountMenu({ position: null })
-    expect(document.body.querySelector('[data-row-ctx]')).toBeNull()
+    renderMenu({ position: null })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('renders the menu at the supplied (x, y) coordinates', () => {
-    mountMenu({ position: { x: 100, y: 200 } })
-    const menu = document.body.querySelector('[data-row-ctx]') as HTMLElement
-    expect(menu).not.toBeNull()
-    expect(menu.style.left).toBe('100px')
-    expect(menu.style.top).toBe('200px')
+    renderMenu({ position: { x: 100, y: 200 } })
+    const menu = screen.getByRole('menu')
+    expect(menu).toHaveStyle({ left: '100px', top: '200px' })
   })
 
   it('shows "Filter from this match" when the row is NOT the anchor', () => {
-    mountMenu({ position: { x: 0, y: 0 }, isAnchor: false })
-    const menu = document.body.querySelector('[data-row-ctx]')!
-    expect(menu.textContent).toMatch(/filter from this match/i)
-    expect(menu.textContent).not.toMatch(/clear.*anchor/i)
+    renderMenu({ position: { x: 0, y: 0 }, isAnchor: false })
+    expect(screen.getByRole('menuitem', { name: 'Filter from this match' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /clear.*anchor/i })).not.toBeInTheDocument()
   })
 
   it('shows "Clear since-anchor" when the row IS the anchor', () => {
-    mountMenu({ position: { x: 0, y: 0 }, isAnchor: true })
-    const menu = document.body.querySelector('[data-row-ctx]')!
-    expect(menu.textContent).toMatch(/clear.*anchor/i)
+    renderMenu({ position: { x: 0, y: 0 }, isAnchor: true })
+    expect(screen.getByRole('menuitem', { name: 'Clear since-anchor' })).toBeInTheDocument()
   })
 
-  it('clicking "Open detail" emits open-detail(matchKey) + close', () => {
-    const w = mountMenu({ position: { x: 0, y: 0 }, matchKey: 'match-A' })
-    const btn = document.body.querySelector('[data-row-ctx-open]') as HTMLButtonElement
-    btn.click()
-    expect(w.emitted('open-detail')).toBeTruthy()
-    expect(w.emitted('open-detail')![0]).toEqual(['match-A'])
-    expect(w.emitted('close')).toBeTruthy()
+  it('clicking "Open detail" emits open-detail(matchKey) + close', async () => {
+    const user = userEvent.setup()
+    const { emitted } = renderMenu({ position: { x: 0, y: 0 }, matchKey: 'match-A' })
+    await user.click(screen.getByRole('menuitem', { name: 'Open detail' }))
+    expect(emitted('open-detail')).toBeTruthy()
+    expect(emitted('open-detail')[0]).toEqual(['match-A'])
+    expect(emitted('close')).toBeTruthy()
   })
 
-  it('clicking the anchor item emits set-anchor(matchKey) + close when idle', () => {
-    const w = mountMenu({ position: { x: 0, y: 0 }, matchKey: 'match-B', isAnchor: false })
-    const btn = document.body.querySelector('[data-row-ctx-anchor]') as HTMLButtonElement
-    btn.click()
-    expect(w.emitted('set-anchor')).toBeTruthy()
-    expect(w.emitted('set-anchor')![0]).toEqual(['match-B'])
-    expect(w.emitted('close')).toBeTruthy()
+  it('clicking the anchor item emits set-anchor(matchKey) + close when idle', async () => {
+    const user = userEvent.setup()
+    const { emitted } = renderMenu({ position: { x: 0, y: 0 }, matchKey: 'match-B', isAnchor: false })
+    await user.click(screen.getByRole('menuitem', { name: 'Filter from this match' }))
+    expect(emitted('set-anchor')).toBeTruthy()
+    expect(emitted('set-anchor')[0]).toEqual(['match-B'])
+    expect(emitted('close')).toBeTruthy()
   })
 
-  it('clicking the anchor item emits set-anchor("") + close when active', () => {
-    const w = mountMenu({ position: { x: 0, y: 0 }, matchKey: 'match-C', isAnchor: true })
-    const btn = document.body.querySelector('[data-row-ctx-anchor]') as HTMLButtonElement
-    btn.click()
-    expect(w.emitted('set-anchor')![0]).toEqual([''])
+  it('clicking the anchor item emits set-anchor("") + close when active', async () => {
+    const user = userEvent.setup()
+    const { emitted } = renderMenu({ position: { x: 0, y: 0 }, matchKey: 'match-C', isAnchor: true })
+    await user.click(screen.getByRole('menuitem', { name: 'Clear since-anchor' }))
+    expect(emitted('set-anchor')[0]).toEqual([''])
   })
 
   it('pressing Escape emits close', async () => {
-    const w = mountMenu({ position: { x: 0, y: 0 } })
+    const { emitted } = renderMenu({ position: { x: 0, y: 0 } })
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    expect(w.emitted('close')).toBeTruthy()
+    expect(emitted('close')).toBeTruthy()
   })
 
-  it('click outside the menu emits close', () => {
-    const w = mountMenu({ position: { x: 0, y: 0 } })
+  it('click outside the menu emits close', async () => {
+    const user = userEvent.setup()
+    const { emitted } = renderMenu({ position: { x: 0, y: 0 } })
     const outside = document.createElement('div')
     document.body.appendChild(outside)
-    outside.click()
-    expect(w.emitted('close')).toBeTruthy()
-    document.body.removeChild(outside)
+    await user.click(outside)
+    expect(emitted('close')).toBeTruthy()
+    outside.remove()
   })
 
   it('renders the "Hide match" item', () => {
-    mountMenu({ position: { x: 0, y: 0 } })
-    const menu = document.body.querySelector('[data-row-ctx]')!
-    expect(menu.textContent).toMatch(/hide match/i)
-    expect(document.body.querySelector('[data-row-ctx-hide]')).not.toBeNull()
+    renderMenu({ position: { x: 0, y: 0 } })
+    expect(screen.getByRole('menuitem', { name: 'Hide match' })).toBeInTheDocument()
   })
 
-  it('clicking "Hide match" emits hide(matchKey) + close', () => {
-    const w = mountMenu({ position: { x: 0, y: 0 }, matchKey: 'match-D' })
-    const btn = document.body.querySelector('[data-row-ctx-hide]') as HTMLButtonElement
-    btn.click()
-    expect(w.emitted('hide')).toBeTruthy()
-    expect(w.emitted('hide')![0]).toEqual(['match-D'])
-    expect(w.emitted('close')).toBeTruthy()
+  it('clicking "Hide match" emits hide(matchKey) + close', async () => {
+    const user = userEvent.setup()
+    const { emitted } = renderMenu({ position: { x: 0, y: 0 }, matchKey: 'match-D' })
+    await user.click(screen.getByRole('menuitem', { name: 'Hide match' }))
+    expect(emitted('hide')).toBeTruthy()
+    expect(emitted('hide')[0]).toEqual(['match-D'])
+    expect(emitted('close')).toBeTruthy()
   })
 })

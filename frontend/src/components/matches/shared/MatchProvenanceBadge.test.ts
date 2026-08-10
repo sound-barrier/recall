@@ -1,39 +1,40 @@
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
 import { describe, it, expect } from 'vitest'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 
 describe('MatchProvenanceBadge', () => {
   it('defaults to OCR when source is absent', () => {
-    const w = mount(MatchProvenanceBadge, { props: {} })
-    expect(w.text()).toContain('OCR')
-    expect(w.attributes('aria-label')).toContain('Source: OCR')
+    render(MatchProvenanceBadge, { props: {} })
+    expect(screen.getByText('OCR')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Source: OCR/ })).toBeInTheDocument()
   })
 
   it('shows Edited with the edited-field count in the tooltip', () => {
-    const w = mount(MatchProvenanceBadge, {
+    render(MatchProvenanceBadge, {
       props: { source: 'ocr_edited', editedFields: ['data.map', 'data.damage'] },
     })
-    expect(w.text()).toContain('Edited')
-    expect(w.attributes('title')).toContain('2 fields')
+    expect(screen.getByText('Edited')).toBeInTheDocument()
+    expect(screen.getByRole('img')).toHaveAttribute('title', expect.stringContaining('2 fields'))
   })
 
   it('singularizes a single edited field', () => {
-    const w = mount(MatchProvenanceBadge, {
+    render(MatchProvenanceBadge, {
       props: { source: 'ocr_edited', editedFields: ['data.map'] },
     })
-    expect(w.attributes('title')).toContain('1 field')
-    expect(w.attributes('title')).not.toContain('1 fields')
+    const badge = screen.getByRole('img')
+    expect(badge).toHaveAttribute('title', expect.stringContaining('1 field'))
+    expect(badge).not.toHaveAttribute('title', expect.stringContaining('1 fields'))
   })
 
   it('shows "User entered" for a hand-entered match', () => {
-    const w = mount(MatchProvenanceBadge, { props: { source: 'manual' } })
-    expect(w.text()).toContain('User entered')
-    expect(w.attributes('aria-label')).toContain('Hand-entered')
+    render(MatchProvenanceBadge, { props: { source: 'manual' } })
+    expect(screen.getByText('User entered')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Hand-entered/ })).toBeInTheDocument()
   })
 
   it('hides the text label in compact mode but keeps the aria-label', () => {
-    const w = mount(MatchProvenanceBadge, { props: { source: 'manual', compact: true } })
-    expect(w.text()).not.toContain('User entered')
-    expect(w.attributes('aria-label')).toContain('User entered')
+    render(MatchProvenanceBadge, { props: { source: 'manual', compact: true } })
+    expect(screen.queryByText('User entered')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /User entered/ })).toBeInTheDocument()
   })
 })

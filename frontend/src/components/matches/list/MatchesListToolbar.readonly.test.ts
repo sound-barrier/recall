@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
 import { ref } from 'vue'
 
 // A read-only active profile disables the write affordances in the toolbar.
@@ -20,9 +20,10 @@ const props = {
 
 describe('MatchesListToolbar — read-only profile', () => {
   it('disables Add match + Import matches', () => {
-    const w = mount(MatchesListToolbar, { props })
-    expect(w.find('[data-add-match]').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-import-matches]').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-add-match]').attributes('title')).toContain('read-only')
+    render(MatchesListToolbar, { props })
+    const addMatch = screen.getByRole('button', { name: 'Add match' })
+    expect(addMatch).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Import/ })).toBeDisabled()
+    expect(addMatch).toHaveAttribute('title', expect.stringContaining('read-only'))
   })
 })

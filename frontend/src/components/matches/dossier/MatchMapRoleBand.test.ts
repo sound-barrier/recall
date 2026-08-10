@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
-import type { VueWrapper } from '@vue/test-utils'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import { renderWidget } from '@/test-utils'
 import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 
 // Stub the reference-data singleton so the column roster is
@@ -41,7 +42,7 @@ const CELLS: MapRoleCell[] = [
 ]
 
 // The band reads narrow.pickedMaps / pickedRoles (for the selected highlight)
-// and writes them on click (single-select), so every mount needs those refs.
+// and writes them on click (single-select), so every render needs those refs.
 function makeNarrow(overrides: Record<string, unknown> = {}) {
   return {
     pickedMaps:  ref(new Set<string>()),
@@ -50,46 +51,63 @@ function makeNarrow(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function mountBand(narrow: ReturnType<typeof makeNarrow> = makeNarrow()) {
-  return mountWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: CELLS }, narrow })
+function renderBand(narrow: ReturnType<typeof makeNarrow> = makeNarrow()) {
+  return renderWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: CELLS }, narrow })
 }
+
+// Accessible-name helpers — the band labels every interactive surface.
+const rowheads  = () => screen.queryAllByLabelText(/^Select all maps for /)
+const collabels = () => screen.queryAllByLabelText(/^Select all roles on /)
+const modeheads = () => screen.queryAllByLabelText(/^Select all .+ maps$/)
+const cells     = () => screen.queryAllByLabelText(/^(Tank|DPS|Support) on /)
+const selectedCells = () => cells().filter((c) => c.getAttribute('aria-pressed') === 'true')
+const collabelTexts = () => collabels().map((n) => n.textContent?.trim())
+// The selection bar and the "select a cell" prompt are a v-if/v-else
+// pair in one reserved slot — the prompt's absence means the bar shows.
+const emptyPrompt = () => screen.queryByText(/combined stats appear here/)
+
+const user = () => userEvent.setup()
 
 // A bare cell press: mousedown begins the gesture (the engine arms window
 // listeners), a window mouseup with no movement commits it as a click.
-async function press(cell: ReturnType<VueWrapper['find']>) {
-  await cell.trigger('mousedown')
-  window.dispatchEvent(new MouseEvent('mouseup'))
+async function press(cell: Element, init: MouseEventInit = {}) {
+  cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, ...init }))
+  window.dispatchEvent(new MouseEvent('mouseup', init))
   await nextTick()
 }
 
 describe('MatchMapRoleBand', () => {
   it('renders 3 role rows × all map columns grouped by game mode', () => {
-    const w = mountBand()
-    expect(w.findAll('.mr-rowhead')).toHaveLength(3)
-    expect(w.findAll('.mr-collabel')).toHaveLength(3) // ilios + dorado + rialto (Hanaoka/clash hidden)
-    expect(w.findAll('.mr-modehead')).toHaveLength(2) // control + escort (no clash group)
-    expect(w.findAll('.mr-cell')).toHaveLength(3 * 3) // 3 roles × 3 maps
+    renderBand()
+    expect(rowheads()).toHaveLength(3)
+    expect(collabels()).toHaveLength(3) // ilios + dorado + rialto (Hanaoka/clash hidden)
+    expect(modeheads()).toHaveLength(2) // control + escort (no clash group)
+    expect(cells()).toHaveLength(3 * 3) // 3 roles × 3 maps
   })
 
   it('hides Clash maps (non-competitive) until there is data for them', () => {
     // No Clash data → Hanaoka gets no column.
-    expect(mountBand().findAll('.mr-collabel').map((n) => n.text())).not.toContain('Hanaoka')
+    renderBand()
+    expect(collabelTexts()).not.toContain('Hanaoka')
+  })
+
+  it('shows the Clash column once there is data for it', () => {
     // A Clash match → the column (and its game-mode group) appears.
-    const withClash = mountWidget(MatchMapRoleBand, {
+    renderWidget(MatchMapRoleBand, {
       dossier: { mapRoleCounts: [
         ...CELLS,
         { map: 'hanaoka', role: 'tank', wins: 1, losses: 0, draws: 0, total: 1, winrate: 100 },
       ] },
       narrow: makeNarrow(),
     })
-    expect(withClash.findAll('.mr-collabel').map((n) => n.text())).toContain('Hanaoka')
+    expect(collabelTexts()).toContain('Hanaoka')
   })
 
   it('takes rows + selectable cells from the UNFILTERED dossier so a narrow never collapses the grid', () => {
     // Narrowed view = a single map+role (as if that cell were picked); the
     // unfiltered view still has all three roles played. The grid must stay at
     // three rows — the calendar-consistent "structure stays put" contract.
-    const w = mountWidget(MatchMapRoleBand, {
+    renderWidget(MatchMapRoleBand, {
       dossier:     { mapRoleCounts: [CELLS[0]!] }, // narrowed → only rialto/support has data
       fullDossier: { mapRoleCounts: CELLS },        // unfiltered → all 3 roles played
       narrow: makeNarrow({
@@ -98,27 +116,26 @@ describe('MatchMapRoleBand', () => {
       }),
     })
     // Rows come from the full structure (3 roles), not the one the narrow leaves.
-    expect(w.findAll('.mr-rowhead')).toHaveLength(3)
+    expect(rowheads()).toHaveLength(3)
     // All three cells played in the window stay playable (not flagged empty), even
     // though only one has data under the narrow — calendar-style switching / click-off.
-    const playable = w.findAll('.mr-cell').filter((c) => c.attributes('data-mr-empty') === undefined)
+    const playable = cells().filter((c) => !c.hasAttribute('data-mr-empty'))
     expect(playable).toHaveLength(3)
   })
 
   it('orders maps alphabetically within a type group', () => {
-    const w = mountBand()
-    const labels = w.findAll('.mr-collabel').map((n) => n.text())
+    renderBand()
+    const labels = collabelTexts()
     // Escort group: Dorado precedes Rialto.
     expect(labels.indexOf('Dorado')).toBeLessThan(labels.indexOf('Rialto'))
   })
 
   it('flags unplayed cells empty (clickable to reset) and labels them no matches', () => {
-    const w = mountBand()
-    const empty = w.find('[aria-label="Support on Ilios: no matches"]')
-    expect(empty.exists()).toBe(true)
-    expect(empty.attributes('data-mr-empty')).toBeDefined()
+    renderBand()
+    const empty = screen.getByLabelText('Support on Ilios: no matches')
+    expect(empty).toHaveAttribute('data-mr-empty')
     // No longer :disabled — an empty cell is clickable so a click can reset.
-    expect(empty.attributes('disabled')).toBeUndefined()
+    expect(empty).toBeEnabled()
   })
 
   it('clicking an empty cell resets this band\'s filter', async () => {
@@ -126,8 +143,8 @@ describe('MatchMapRoleBand', () => {
       pickedMaps:  ref(new Set(['rialto'])),
       pickedRoles: ref(new Set(['support'])),
     })
-    const w = mountBand(narrow)
-    await press(w.find('[aria-label="Support on Ilios: no matches"]')) // empty cell
+    renderBand(narrow)
+    await press(screen.getByLabelText('Support on Ilios: no matches')) // empty cell
     expect(narrow.pickedMaps.value.size).toBe(0)
     expect(narrow.pickedRoles.value.size).toBe(0)
   })
@@ -137,132 +154,128 @@ describe('MatchMapRoleBand', () => {
       pickedMaps:  ref(new Set(['rialto'])),
       pickedRoles: ref(new Set(['support'])),
     })
-    const w = mountBand(narrow)
-    const reset = w.find('[data-mr-reset]')
-    expect(reset.exists()).toBe(true)
-    await reset.trigger('click')
+    renderBand(narrow)
+    const reset = screen.getByTitle('Clear the maps × roles filter this band applied')
+    await user().click(reset)
     expect(narrow.pickedMaps.value.size).toBe(0)
     expect(narrow.pickedRoles.value.size).toBe(0)
-    expect(w.find('[data-mr-reset]').exists()).toBe(false) // hides once cleared
+    // Hides once cleared.
+    expect(screen.queryByTitle('Clear the maps × roles filter this band applied')).not.toBeInTheDocument()
   })
 
   it('selecting a cell highlights it AND live-filters the set (no button)', async () => {
     const narrow = makeNarrow()
-    const w = mountBand(narrow)
-    const cell = () => w.find('[aria-label^="Support on Rialto"]')
+    renderBand(narrow)
+    const cell = () => screen.getByLabelText(/^Support on Rialto/)
     await press(cell())
-    expect(cell().classes()).toContain('selected')
-    expect(cell().attributes('aria-pressed')).toBe('true')
-    expect(w.findAll('.mr-cell.selected')).toHaveLength(1)
+    expect(cell()).toHaveClass('selected')
+    expect(cell()).toHaveAttribute('aria-pressed', 'true')
+    expect(selectedCells()).toHaveLength(1)
     // Selecting now narrows immediately — no "Filter to selection" step.
     expect([...narrow.pickedMaps.value]).toEqual(['rialto'])
     expect([...narrow.pickedRoles.value]).toEqual(['support'])
   })
 
   it('clicking the selected cell again clears it (click off)', async () => {
-    const w = mountBand()
-    const cell = () => w.find('[aria-label^="Support on Rialto"]')
+    renderBand()
+    const cell = () => screen.getByLabelText(/^Support on Rialto/)
     await press(cell())
     await press(cell())
-    expect(cell().classes()).not.toContain('selected')
-    expect(w.find('[data-mr-selection-bar]').exists()).toBe(false)
+    expect(cell()).not.toHaveClass('selected')
+    expect(emptyPrompt()).toBeInTheDocument() // selection bar gone
   })
 
   it('clicking another cell replaces the selection — never two highlighted cells', async () => {
-    const w = mountBand()
-    await press(w.find('[aria-label^="Support on Rialto"]'))
-    await press(w.find('[aria-label^="Tank on Ilios"]'))
-    expect(w.findAll('.mr-cell.selected')).toHaveLength(1)
-    expect(w.find('[aria-label^="Tank on Ilios"]').classes()).toContain('selected')
+    renderBand()
+    await press(screen.getByLabelText(/^Support on Rialto/))
+    await press(screen.getByLabelText(/^Tank on Ilios/))
+    expect(selectedCells()).toHaveLength(1)
+    expect(screen.getByLabelText(/^Tank on Ilios/)).toHaveClass('selected')
   })
 
   it('clicking a role label selects the whole row', async () => {
-    const w = mountBand()
-    await w.find('[data-mr-row="support"]').trigger('click')
+    renderBand()
+    await user().click(screen.getByLabelText('Select all maps for Support'))
     // The two played support cells (rialto, dorado/ilios are inert for support) light up.
-    expect(w.find('[aria-label^="Support on Rialto"]').classes()).toContain('selected')
-    expect(w.find('[data-mr-selection-bar]').exists()).toBe(true)
+    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveClass('selected')
+    expect(emptyPrompt()).not.toBeInTheDocument() // selection bar shown
   })
 
   it('clicking a map name selects the whole column', async () => {
-    const w = mountBand()
-    await w.find('[data-mr-col="rialto"]').trigger('click')
-    expect(w.find('[aria-label^="Support on Rialto"]').classes()).toContain('selected')
+    renderBand()
+    await user().click(screen.getByLabelText('Select all roles on Rialto'))
+    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveClass('selected')
   })
 
   it('keeps the selected map / role / game-mode headers highlighted', async () => {
-    const w = mountBand()
-    await w.find('[data-mr-col="rialto"]').trigger('click')
-    expect(w.find('[data-mr-col="rialto"]').classes()).toContain('header-selected')
-    expect(w.find('[data-mr-col="rialto"]').attributes('aria-pressed')).toBe('true')
+    renderBand()
+    const rialtoCol = () => screen.getByLabelText('Select all roles on Rialto')
+    await user().click(rialtoCol())
+    expect(rialtoCol()).toHaveClass('header-selected')
+    expect(rialtoCol()).toHaveAttribute('aria-pressed', 'true')
     // Narrow to a role within Rialto → the role header lights, Rialto stays lit.
-    await w.find('[data-mr-row="support"]').trigger('click')
-    expect(w.find('[data-mr-row="support"]').classes()).toContain('header-selected')
-    expect(w.find('[data-mr-col="rialto"]').classes()).toContain('header-selected')
+    const supportRow = () => screen.getByLabelText('Select all maps for Support')
+    await user().click(supportRow())
+    expect(supportRow()).toHaveClass('header-selected')
+    expect(rialtoCol()).toHaveClass('header-selected')
     // A game-mode group header lights when all its maps are selected.
-    const escort = w.findAll('.mr-modehead').find((n) => n.text() === 'Escort')
-    await escort?.trigger('click')
-    expect(escort?.classes()).toContain('header-selected')
+    const escort = screen.getByLabelText('Select all Escort maps')
+    await user().click(escort)
+    expect(escort).toHaveClass('header-selected')
   })
 
   it('Ctrl-clicking a second cell live-filters to the rectangular hull', async () => {
     const narrow = makeNarrow()
-    const w = mountBand(narrow)
-    await press(w.find('[aria-label^="Support on Rialto"]'))
-    const tank = w.find('[aria-label^="Tank on Ilios"]')
-    await tank.trigger('mousedown', { ctrlKey: true })
-    window.dispatchEvent(new MouseEvent('mouseup', { ctrlKey: true }))
-    await nextTick()
-    expect(w.findAll('.mr-cell.selected')).toHaveLength(2)
+    renderBand(narrow)
+    await press(screen.getByLabelText(/^Support on Rialto/))
+    await press(screen.getByLabelText(/^Tank on Ilios/), { ctrlKey: true })
+    expect(selectedCells()).toHaveLength(2)
     // The narrow tracks the selection's hull (maps × roles) live, no button.
     expect([...narrow.pickedMaps.value].sort()).toEqual(['ilios', 'rialto'])
     expect([...narrow.pickedRoles.value].sort()).toEqual(['support', 'tank'])
   })
 
   it('shows the combined-stats readout for the selection', async () => {
-    const w = mountBand()
-    await press(w.find('[aria-label^="Support on Rialto"]'))
-    const stats = w.find('[data-mr-selection-stats]')
-    expect(stats.exists()).toBe(true)
+    renderBand()
+    await press(screen.getByLabelText(/^Support on Rialto/))
     // rialto/support = 8-4-0, 67% WR over 12 games
-    expect(stats.text()).toContain('8–4–0')
-    expect(stats.text()).toContain('67% WR')
-    expect(stats.text()).toContain('12 games')
+    const stats = screen.getByText(/8–4–0/)
+    expect(stats).toHaveTextContent('67% WR')
+    expect(stats).toHaveTextContent('12 games')
   })
 
   it('reserves the readout slot — an empty prompt shows until a cell is selected', async () => {
-    const w = mountBand()
+    renderBand()
     // Nothing selected: the prompt fills the slot, the active bar is absent.
-    expect(w.find('[data-mr-selection-empty]').exists()).toBe(true)
-    expect(w.find('[data-mr-selection-bar]').exists()).toBe(false)
+    expect(emptyPrompt()).toBeInTheDocument()
+    expect(screen.queryByText(/8–4–0/)).not.toBeInTheDocument()
     // Selecting swaps the prompt for the active bar in the same slot (no shift).
-    await press(w.find('[aria-label^="Support on Rialto"]'))
-    expect(w.find('[data-mr-selection-bar]').exists()).toBe(true)
-    expect(w.find('[data-mr-selection-empty]').exists()).toBe(false)
+    await press(screen.getByLabelText(/^Support on Rialto/))
+    expect(screen.getByText(/8–4–0/)).toBeInTheDocument()
+    expect(emptyPrompt()).not.toBeInTheDocument()
   })
 
   it("clicking a game-mode group header selects that group's columns", async () => {
-    const w = mountBand()
-    const escort = w.findAll('.mr-modehead').find((n) => n.text() === 'Escort')
-    await escort?.trigger('click')
+    renderBand()
+    await user().click(screen.getByLabelText('Select all Escort maps'))
     // Escort = Dorado + Rialto; played cells there: dorado|dps + rialto|support.
-    expect(w.findAll('.mr-cell.selected')).toHaveLength(2)
-    expect(w.find('[data-mr-selection-bar]').exists()).toBe(true)
+    expect(selectedCells()).toHaveLength(2)
+    expect(emptyPrompt()).not.toBeInTheDocument() // selection bar shown
   })
 
   it('offers a 1M/3M/6M/12M window toggle defaulting to 6M', () => {
-    const w = mountBand()
-    const btns = w.findAll('.bh-window-btn')
-    expect(btns.map((b) => b.text())).toEqual(['1M', '3M', '6M', '12M'])
-    const active = btns.find((b) => b.attributes('aria-pressed') === 'true')
-    expect(active?.text()).toBe('6M')
+    renderBand()
+    const btns = screen.getAllByRole('button', { name: /^\d+M$/ })
+    expect(btns.map((b) => b.textContent?.trim())).toEqual(['1M', '3M', '6M', '12M'])
+    const active = btns.find((b) => b.getAttribute('aria-pressed') === 'true')
+    expect(active).toHaveTextContent('6M')
   })
 
   it('persists the chosen window and marks it active', async () => {
-    const w = mountBand()
-    const oneMonth = w.findAll('.bh-window-btn').find((b) => b.text() === '1M')
-    await oneMonth?.trigger('click')
-    expect(oneMonth?.attributes('aria-pressed')).toBe('true')
+    renderBand()
+    const oneMonth = screen.getByRole('button', { name: '1M' })
+    await user().click(oneMonth)
+    expect(oneMonth).toHaveAttribute('aria-pressed', 'true')
     expect(localStorage.getItem('recall.mapRoleWindowMonths')).toBe('1')
   })
 
@@ -272,20 +285,20 @@ describe('MatchMapRoleBand', () => {
       { map: 'rialto', role: 'support', wins: 8, losses: 4, draws: 0, total: 12, winrate: 67 },
       { map: 'ilios', role: 'tank', wins: 2, losses: 2, draws: 0, total: 4, winrate: 50 },
     ]
-    const w = mountWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: noDps }, narrow: makeNarrow() })
-    const rows = w.findAll('.mr-rowhead').map((n) => n.text())
+    renderWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: noDps }, narrow: makeNarrow() })
+    const rows = rowheads().map((n) => n.textContent?.trim())
     expect(rows).toEqual(['Tank', 'Support'])
     expect(rows).not.toContain('DPS')
   })
 
   it('prompts to play a match when there are none, instead of an empty grid', () => {
-    const w = mountWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: [] }, narrow: makeNarrow() })
-    expect(w.find('.mr-grid').exists()).toBe(false)
-    expect(w.text().toLowerCase()).toContain('at least 1 match must be played to display data')
+    renderWidget(MatchMapRoleBand, { dossier: { mapRoleCounts: [] }, narrow: makeNarrow() })
+    expect(screen.queryByRole('group', { name: /Map × role performance/ })).not.toBeInTheDocument()
+    expect(screen.getByText(/at least 1 match must be played to display data/i)).toBeInTheDocument()
   })
 
   it('cells carry the shared judgment classes: green past the band, grey under the floor', () => {
-    const w = mountWidget(MatchMapRoleBand, {
+    renderWidget(MatchMapRoleBand, {
       dossier: { mapRoleCounts: [
         // 53.3% over 30 decisive — a modest edge with real volume, green.
         { map: 'rialto', role: 'support', wins: 16, losses: 14, draws: 0, total: 30, winrate: 53 },
@@ -294,8 +307,8 @@ describe('MatchMapRoleBand', () => {
       ] },
       narrow: makeNarrow(),
     })
-    expect(w.find('.mr-cell[aria-label*="Support on Rialto"]').classes()).toContain('cell-win')
-    expect(w.find('.mr-cell[aria-label*="Tank on Ilios"]').classes()).toContain('cell-mid')
-    expect(w.find('.mr-cell[aria-label*="Support on Ilios"]').classes()).toContain('cell-empty')
+    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveClass('cell-win')
+    expect(screen.getByLabelText(/^Tank on Ilios/)).toHaveClass('cell-mid')
+    expect(screen.getByLabelText(/^Support on Ilios/)).toHaveClass('cell-empty')
   })
 })

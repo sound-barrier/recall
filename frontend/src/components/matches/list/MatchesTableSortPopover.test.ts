@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import MatchesTableSortPopover from '@/components/matches/list/MatchesTableSortPopover.vue'
 
@@ -19,81 +20,85 @@ afterEach(() => vi.unstubAllGlobals())
 
 const ANCHOR = { top: 100, bottom: 120, left: 40, right: 200, width: 160, height: 20 } as DOMRect
 
-function mountPopover(open = true) {
-  return mount(MatchesTableSortPopover, {
-    props: { open, anchor: ANCHOR },
-    // Stub Teleport so the dialog body renders inline in the wrapper.
-    global: { stubs: { teleport: true } },
-  })
+// The dialog teleports to <body>, so queries run through screen.
+function renderPopover(open = true) {
+  return render(MatchesTableSortPopover, { props: { open, anchor: ANCHOR } })
 }
 
-const isDisabled = (el: Element | undefined) => (el as HTMLButtonElement | undefined)?.disabled
+const levels = () => screen.queryAllByRole('combobox')
+const addLevel = () => screen.getByRole('button', { name: /Add level/ })
 
 describe('MatchesTableSortPopover', () => {
   it('renders nothing until open', () => {
-    const w = mountPopover(false)
-    expect(w.find('[data-testid="table-sort-popover"]').exists()).toBe(false)
+    renderPopover(false)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders the single date-descending default level when open', () => {
-    const w = mountPopover(true)
-    expect(w.find('[data-testid="table-sort-popover"]').exists()).toBe(true)
-    const levels = w.findAll('[data-sort-level]')
-    expect(levels).toHaveLength(1)
-    expect((w.find('[data-level-col]').element as HTMLSelectElement).value).toBe('date')
-    expect(w.find('[data-level-dir]').text()).toContain('Desc')
+    renderPopover(true)
+    expect(screen.getByRole('dialog', { name: 'Custom sort for the match table' })).toBeInTheDocument()
+    expect(levels()).toHaveLength(1)
+    expect(screen.getByRole('combobox', { name: 'Sort column for level 1' })).toHaveValue('date')
+    expect(screen.getByRole('button', { name: /Toggle direction for level 1/ })).toHaveTextContent('Desc')
   })
 
   it('Add level appends a level and disables reorder at the ends', async () => {
-    const w = mountPopover(true)
-    await w.find('[data-add-level]').trigger('click')
-    expect(w.findAll('[data-sort-level]')).toHaveLength(2)
+    const user = userEvent.setup()
+    renderPopover(true)
+    await user.click(addLevel())
+    expect(levels()).toHaveLength(2)
     // First level can't move up; last can't move down.
-    expect(isDisabled(w.findAll('[data-level-up]')[0]?.element)).toBe(true)
-    const downs = w.findAll('[data-level-down]')
-    expect(isDisabled(downs[downs.length - 1]?.element)).toBe(true)
+    expect(screen.getAllByRole('button', { name: 'Move level up' })[0]).toBeDisabled()
+    const downs = screen.getAllByRole('button', { name: 'Move level down' })
+    expect(downs[downs.length - 1]).toBeDisabled()
   })
 
   it('disables Add level once every column is a sort level', async () => {
-    const w = mountPopover(true)
+    const user = userEvent.setup()
+    renderPopover(true)
     for (let i = 0; i < 14; i++) {
-      const add = w.find('[data-add-level]')
-      if (isDisabled(add.element)) break
-      await add.trigger('click')
+      const add = addLevel()
+      if ((add as HTMLButtonElement).disabled) break
+      await user.click(add)
     }
     // One sort level per sortable column (TABLE_SORT_COLUMNS): When,
     // Map, Mode, Queue, Hero, Role, E, A, D, Tags, Edited, User entered,
     // Result.
-    expect(w.findAll('[data-sort-level]')).toHaveLength(13)
-    expect(isDisabled(w.find('[data-add-level]').element)).toBe(true)
+    expect(levels()).toHaveLength(13)
+    expect(addLevel()).toBeDisabled()
   })
 
   it('toggling a level’s direction flips its label', async () => {
-    const w = mountPopover(true)
-    expect(w.find('[data-level-dir]').text()).toContain('Desc')
-    await w.find('[data-level-dir]').trigger('click')
-    expect(w.find('[data-level-dir]').text()).toContain('Asc')
+    const user = userEvent.setup()
+    renderPopover(true)
+    const dir = () => screen.getByRole('button', { name: /Toggle direction for level 1/ })
+    expect(dir()).toHaveTextContent('Desc')
+    await user.click(dir())
+    expect(dir()).toHaveTextContent('Asc')
   })
 
   it('Reset returns to the single date-descending default', async () => {
-    const w = mountPopover(true)
-    await w.find('[data-add-level]').trigger('click')
-    expect(w.findAll('[data-sort-level]')).toHaveLength(2)
-    await w.find('[data-clear-sort]').trigger('click')
-    expect(w.findAll('[data-sort-level]')).toHaveLength(1)
-    expect((w.find('[data-level-col]').element as HTMLSelectElement).value).toBe('date')
+    const user = userEvent.setup()
+    renderPopover(true)
+    await user.click(addLevel())
+    expect(levels()).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: 'Reset' }))
+    expect(levels()).toHaveLength(1)
+    expect(screen.getByRole('combobox', { name: 'Sort column for level 1' })).toHaveValue('date')
   })
 
   it('removing the last level shows the empty hint', async () => {
-    const w = mountPopover(true)
-    await w.find('[data-level-remove]').trigger('click')
-    expect(w.findAll('[data-sort-level]')).toHaveLength(0)
-    expect(w.find('[data-sort-empty]').exists()).toBe(true)
+    const user = userEvent.setup()
+    renderPopover(true)
+    await user.click(screen.getByRole('button', { name: 'Remove level 1' }))
+    expect(levels()).toHaveLength(0)
+    expect(screen.getByText(/No sort levels — add one below/)).toBeInTheDocument()
   })
 
   it('emits close when the close button is clicked', async () => {
-    const w = mountPopover(true)
-    await w.find('.tsp-close').trigger('click')
-    expect(w.emitted('close')).toBeTruthy()
+    const user = userEvent.setup()
+    const { emitted } = renderPopover(true)
+    await user.click(screen.getByRole('button', { name: 'Close custom sort' }))
+    expect(emitted('close')).toBeTruthy()
   })
 })

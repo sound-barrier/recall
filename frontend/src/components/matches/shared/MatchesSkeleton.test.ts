@@ -1,29 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
+
+// The skeleton rows are aria-hidden shimmer placeholders by design, so
+// counting them requires reaching past the accessibility tree.
 
 describe('MatchesSkeleton', () => {
   it('renders the default six skeleton rows', () => {
-    const w = mount(MatchesSkeleton)
-    expect(w.findAll('.leaf-skeleton').length).toBe(6)
+    const { baseElement } = render(MatchesSkeleton)
+    // eslint-disable-next-line testing-library/no-node-access -- skeleton rows are aria-hidden shimmer placeholders
+    expect(baseElement.querySelectorAll('.leaf-skeleton')).toHaveLength(6)
   })
 
   it('honors the rows prop', () => {
-    const w = mount(MatchesSkeleton, { props: { rows: 3 } })
-    expect(w.findAll('.leaf-skeleton').length).toBe(3)
+    const { baseElement } = render(MatchesSkeleton, { props: { rows: 3 } })
+    // eslint-disable-next-line testing-library/no-node-access -- skeleton rows are aria-hidden shimmer placeholders
+    expect(baseElement.querySelectorAll('.leaf-skeleton')).toHaveLength(3)
   })
 
   it('announces busy state for assistive tech', () => {
-    const w = mount(MatchesSkeleton)
-    expect(w.find('[data-matches-loading="true"]').exists()).toBe(true)
-    expect(w.find('[aria-busy="true"]').exists()).toBe(true)
-    expect(w.find('section').attributes('aria-label')).toBe('Loading matches')
+    render(MatchesSkeleton)
+    const region = screen.getByRole('region', { name: 'Loading matches' })
+    expect(region).toHaveAttribute('data-matches-loading', 'true')
+    expect(screen.getByRole('list')).toHaveAttribute('aria-busy', 'true')
   })
 
   it('each skeleton row exposes the eight grid cells', () => {
-    const w = mount(MatchesSkeleton, { props: { rows: 1 } })
-    const row = w.find('.leaf-skeleton')
+    const { baseElement } = render(MatchesSkeleton, { props: { rows: 1 } })
     // checkbox, strip, when, map, hero, stats, meta, result — 8 children.
-    expect(row.element.children.length).toBe(8)
+    // eslint-disable-next-line testing-library/no-node-access -- pins the skeleton's grid-cell structure, invisible to the a11y tree
+    expect(baseElement.querySelector('.leaf-skeleton')?.children).toHaveLength(8)
   })
 })

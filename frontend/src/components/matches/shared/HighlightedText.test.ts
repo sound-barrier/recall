@@ -1,31 +1,33 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
 
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
 
 describe('HighlightedText', () => {
   it('wraps a case-insensitive hit in <mark class="search-hl">, preserving the original case', () => {
-    const w = mount(HighlightedText, { props: { text: 'Rialto', terms: ['rialto'] } })
-    const mark = w.find('mark.search-hl')
-    expect(mark.exists()).toBe(true)
-    expect(mark.text()).toBe('Rialto')
+    render(HighlightedText, { props: { text: 'Rialto', terms: ['rialto'] } })
+    const mark = screen.getByText('Rialto')
+    expect(mark.tagName).toBe('MARK')
+    expect(mark).toHaveClass('search-hl')
   })
 
   it('renders plain text (no marks) when no term hits', () => {
-    const w = mount(HighlightedText, { props: { text: 'numbani', terms: ['rialto'] } })
-    expect(w.find('mark').exists()).toBe(false)
-    expect(w.text()).toBe('numbani')
+    const { container } = render(HighlightedText, { props: { text: 'numbani', terms: ['rialto'] } })
+    expect(screen.queryByText(/.+/, { selector: 'mark' })).not.toBeInTheDocument()
+    expect(container).toHaveTextContent(/^numbani$/)
   })
 
   it('renders plain text when there are no terms', () => {
-    const w = mount(HighlightedText, { props: { text: 'lucio', terms: [] } })
-    expect(w.find('mark').exists()).toBe(false)
-    expect(w.text()).toBe('lucio')
+    const { container } = render(HighlightedText, { props: { text: 'lucio', terms: [] } })
+    expect(screen.queryByText(/.+/, { selector: 'mark' })).not.toBeInTheDocument()
+    expect(container).toHaveTextContent(/^lucio$/)
   })
 
   it('splits a partial hit without gaining stray whitespace', () => {
-    const w = mount(HighlightedText, { props: { text: 'rialto', terms: ['rial'] } })
-    expect(w.find('mark.search-hl').text()).toBe('rial')
-    expect(w.text()).toBe('rialto')
+    const { container } = render(HighlightedText, { props: { text: 'rialto', terms: ['rial'] } })
+    const mark = screen.getByText('rial')
+    expect(mark.tagName).toBe('MARK')
+    expect(mark).toHaveClass('search-hl')
+    expect(container).toHaveTextContent(/^rialto$/)
   })
 })

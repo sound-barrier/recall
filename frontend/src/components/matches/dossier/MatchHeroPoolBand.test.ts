@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
+import { screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import type { MatchRecord } from '@/api-client'
 import type { NarrowApi } from '@/composables/matches/useNarrow'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 
 // Stub reference data so hero→role is deterministic (no fetch, no singleton
 // cross-test state).
@@ -44,37 +46,45 @@ function makeNarrow() {
     pickedQueues: ref(new Set<string>()), pickedPlayModes: ref(new Set<string>()),
   }
 }
-function mountBand(narrow = makeNarrow()) {
-  return mountWidget(MatchHeroPoolBand, { dossier: { records: corpus() }, narrow: narrow as unknown as Partial<NarrowApi> })
+function renderBand(narrow = makeNarrow()) {
+  return renderWidget(MatchHeroPoolBand, { dossier: { records: corpus() }, narrow: narrow as unknown as Partial<NarrowApi> })
 }
 
 describe('MatchHeroPoolBand', () => {
   it('defaults to Role Queue with a 3-mode toggle and per-role pools', () => {
-    const w = mountBand()
-    expect(w.find('.hp-eyebrow').text()).toBe('Hero Pool')
-    expect(w.findAll('[data-pool-mode]')).toHaveLength(3)
-    expect(w.find('[data-pool-mode="role"]').attributes('aria-pressed')).toBe('true')
+    renderBand()
+    expect(screen.getByText('Hero Pool')).toBeInTheDocument()
+    const modes = within(screen.getByRole('group', { name: 'Queue' })).getAllByRole('button')
+    expect(modes).toHaveLength(3)
+    expect(screen.getByRole('button', { name: 'Role Queue', pressed: true })).toBeInTheDocument()
     // Per-role pools: tank (reinhardt) + support (lucio in, ana out).
-    expect(w.find('[data-pool-role-header="tank"]').text()).toContain('%')
-    expect(w.find('[data-pool-role-header="support"]').exists()).toBe(true)
-    expect(w.find('[data-pool-hero="reinhardt"]').exists()).toBe(true)
-    expect(w.find('[data-pool-hero="lucio"]').exists()).toBe(true)
-    expect(w.find('[data-pool-hero="ana"]').exists()).toBe(true) // out-of-pool support
+    expect(screen.getByRole('button', { name: /^Tank/ })).toHaveTextContent('%')
+    expect(screen.getByRole('button', { name: /^Support/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /reinhardt/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /lucio/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ana/ })).toBeInTheDocument() // out-of-pool support
   })
 
   it('clicking a hero scopes to the queue mode and picks the hero', async () => {
+    const user = userEvent.setup()
     const narrow = makeNarrow()
-    const w = mountBand(narrow)
-    await w.find('[data-pool-hero="reinhardt"]').trigger('click')
+    renderBand(narrow)
+    await user.click(screen.getByRole('button', { name: /reinhardt/ }))
     expect(narrow.pickHero).toHaveBeenCalledWith('reinhardt')
     expect(narrow.pickedPlayModes.value.has('competitive')).toBe(true)
     expect(narrow.pickedQueues.value.has('role')).toBe(true)
   })
 
   it('selecting Support Out-of-pool sets a role-scoped off-pool filter', async () => {
+    const user = userEvent.setup()
     const narrow = makeNarrow()
-    const w = mountBand(narrow)
-    await w.find('[data-pool-side="off"][data-pool-role="support"]').trigger('click')
+    const { baseElement } = renderBand(narrow)
+    // The In/Out-of-pool buttons repeat per role group and the group
+    // containers carry no accessible name — the compound data-attr
+    // (side + role) is the identity contract the e2e specs share.
+    // eslint-disable-next-line testing-library/no-node-access -- compound data-attr (side+role) identity shared with e2e; role groups have no accessible name
+    const offSupport = baseElement.querySelector('[data-pool-side="off"][data-pool-role="support"]') as HTMLElement
+    await user.click(offSupport)
     expect(narrow.setPoolFilter).toHaveBeenCalled()
     const arg = (narrow.setPoolFilter.mock.calls[0]![0]) as { side: string; keys: string[] }
     expect(arg.side).toBe('off')
@@ -83,11 +93,13 @@ describe('MatchHeroPoolBand', () => {
   })
 
   it('switching to Open Queue shows one combined pool (no role headers)', async () => {
+    const user = userEvent.setup()
     const narrow = makeNarrow()
-    const w = mountBand(narrow)
-    await w.find('[data-pool-mode="open"]').trigger('click')
-    expect(w.findAll('[data-pool-role-header]')).toHaveLength(0)
-    expect(w.find('.hp-combined-head').exists()).toBe(true)
+    renderBand(narrow)
+    await user.click(screen.getByRole('button', { name: 'Open Queue' }))
+    // Role headers carry the "Filter to <Role> matches" affordance.
+    expect(screen.queryByTitle(/Filter to .+ matches/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Combined pool/)).toBeInTheDocument()
     expect(narrow.pickedQueues.value.has('open')).toBe(true)
   })
 })

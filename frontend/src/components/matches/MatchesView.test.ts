@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { render, screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
 
+import { flushPromises } from '@/test-utils'
 import MatchesView from '@/components/matches/MatchesView.vue'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
@@ -24,7 +26,7 @@ vi.mock('@/api', async (importOriginal) => ({
 
 // This file imports the matches store, which statically imports '@/api'. Reset
 // the module registry after each test so the cached store + its real '@/api'
-// binding don't leak into a later mountApp test (whose vi.doMock('@/api')
+// binding don't leak into a later renderApp test (whose api mock
 // can't reach an already-imported store). See reference_store_api_mock_isolation.
 // Settle in-flight lazy-child imports (detail panel, lightbox, …) INSIDE
 // the test env — a loader that resolves after teardown throws
@@ -68,17 +70,43 @@ function makeRecord(over: Partial<MatchRecord> = {}, dataOver: Partial<MatchReco
   }
 }
 
-function mountView(records: MatchRecord[]) {
+function renderView(records: MatchRecord[]) {
   const pinia = createPinia()
   setActivePinia(pinia)
   // Seed the store records; the store builds matchesNarrow off them and
   // MatchesView reads it from the store (no narrow prop any more).
   useMatchesStore().records = records
-  return mount(MatchesView, {
+  return render(MatchesView, {
     global: { plugins: [pinia] },
-    attachTo: document.body,
   })
 }
+
+const user = () => userEvent.setup()
+
+// ── Structural helpers ───────────────────────────────────────────────
+// The view is a composite surface — the dossier widgets inside it render
+// scores of generic lists and buttons — so row counting and the is-ticked
+// CSS-state pin select on the scoped list classes, which no accessible
+// query can express unambiguously here.
+/* eslint-disable testing-library/no-node-access -- row structure + tick-state CSS pins; role queries are ambiguous on this composite surface */
+const leafRows      = () => [...document.querySelectorAll('.leaf-row')]
+const tickedLeaves  = () => [...document.querySelectorAll('.leaf-row.is-ticked')]
+const archiveRows   = () => [...document.querySelectorAll('.archive-row')]
+const tickedArchive = () => [...document.querySelectorAll('.archive-row.is-ticked')]
+const archiveChev   = () => document.querySelector('.archive-chev')
+const campaignLog   = () => document.querySelector('.campaign-log')
+/* eslint-enable testing-library/no-node-access */
+
+const leafChecks    = () => screen.getAllByRole('checkbox', { name: /^Select match / })
+const archiveChecks = () => screen.getAllByRole('checkbox', { name: /^Select hidden match / })
+
+const bulkBar    = () => screen.queryByRole('region', { name: 'Bulk action bar' })
+const archiveBar = () => screen.queryByRole('region', { name: 'Archive bulk action bar' })
+const inBulkBar    = () => within(screen.getByRole('region', { name: 'Bulk action bar' }))
+const inArchiveBar = () => within(screen.getByRole('region', { name: 'Archive bulk action bar' }))
+const archiveRegion = () => screen.queryByRole('region', { name: 'Hidden matches archive' })
+const archiveToggle = () => within(screen.getByRole('region', { name: 'Hidden matches archive' }))
+  .getByRole('button', { name: /hidden match/ })
 
 describe('MatchesView — contextual multi-select (live rows)', () => {
   it('checkboxes are always in the DOM — no mode toggle needed', () => {
@@ -86,24 +114,22 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
       makeRecord({ match_key: 'k1' }),
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
+    renderView(records)
 
-    expect(wrapper.find('.bulk-select-toggle').exists()).toBe(false)
-    expect(wrapper.findAll('.leaf-row')).toHaveLength(2)
-    expect(wrapper.findAll('.leaf-checkbox')).toHaveLength(2)
-    expect(wrapper.find('.bulk-action-bar').exists()).toBe(false)
+    expect(leafRows()).toHaveLength(2)
+    expect(leafChecks()).toHaveLength(2)
+    expect(bulkBar()).not.toBeInTheDocument()
   })
 
   it('checkbox click ticks the row and stops the row body click from firing open-match', async () => {
-    const records = [makeRecord({ match_key: 'k1' })]
-    const wrapper = mountView(records)
+    renderView([makeRecord({ match_key: 'k1' })])
 
-    await wrapper.find('.leaf-checkbox').trigger('click')
+    await user().click(screen.getByRole('checkbox', { name: 'Select match k1' }))
 
-    expect(wrapper.find('.leaf-row').classes()).toContain('is-ticked')
-    expect(wrapper.find('.leaf-row').classes()).toContain('has-selection')
-    expect(wrapper.find('.bulk-action-bar').exists()).toBe(true)
-    expect(wrapper.find('.bab-count').text()).toContain('1 selected')
+    expect(leafRows()[0]).toHaveClass('is-ticked')
+    expect(leafRows()[0]).toHaveClass('has-selection')
+    expect(bulkBar()).toBeInTheDocument()
+    expect(inBulkBar().getByText(/1 selected/)).toBeInTheDocument()
     // The checkbox click must NOT have bubbled into the row's open-match handler.
     expect(useUiStore().selection.isOpen.value).toBe(false)
   })
@@ -113,17 +139,17 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
       makeRecord({ match_key: 'k1' }),
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
+    renderView(records)
 
     // Tick the first row, then click the body of the second row.
-    await wrapper.findAll('.leaf-checkbox')[0]!.trigger('click')
-    await wrapper.findAll('.leaf-row')[1]!.trigger('click')
+    await user().click(leafChecks()[0]!)
+    await user().click(leafRows()[1]!)
 
     // Row click opens the detail; the second row should NOT have been
     // ticked, and the existing selection should still be 1.
     expect(useUiStore().selection.isOpen.value).toBe(true)
-    expect(wrapper.findAll('.leaf-row')[1]!.classes()).not.toContain('is-ticked')
-    expect(wrapper.find('.bab-count').text()).toContain('1 selected')
+    expect(leafRows()[1]).not.toHaveClass('is-ticked')
+    expect(inBulkBar().getByText(/1 selected/)).toBeInTheDocument()
   })
 
   it('Select all targets every visible row; the button hides once everything is ticked', async () => {
@@ -132,18 +158,18 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
       makeRecord({ match_key: 'k3' }, { finished_at: '23:00' }),
     ]
-    const wrapper = mountView(records)
+    renderView(records)
 
     // Tick one to surface the action bar.
-    await wrapper.findAll('.leaf-checkbox')[0]!.trigger('click')
-    expect(wrapper.find('.bulk-select-all').text()).toContain('Select all (3)')
+    await user().click(leafChecks()[0]!)
+    const selectAll = inBulkBar().getByRole('button', { name: 'Select all (3)' })
 
-    await wrapper.find('.bulk-select-all').trigger('click')
-    expect(wrapper.findAll('.leaf-row.is-ticked')).toHaveLength(3)
-    expect(wrapper.find('.bab-count').text()).toContain('3 selected')
+    await user().click(selectAll)
+    expect(tickedLeaves()).toHaveLength(3)
+    expect(inBulkBar().getByText(/3 selected/)).toBeInTheDocument()
     // When the selection covers everything visible, Select all is
     // redundant and disappears.
-    expect(wrapper.find('.bulk-select-all').exists()).toBe(false)
+    expect(inBulkBar().queryByRole('button', { name: /Select all/ })).not.toBeInTheDocument()
   })
 
   it('Hide emits hide-matches with every ticked key and clears the selection', async () => {
@@ -151,49 +177,46 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
       makeRecord({ match_key: 'k1' }),
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.findAll('.leaf-checkbox')[0]!.trigger('click')
-    await wrapper.findAll('.leaf-checkbox')[1]!.trigger('click')
+    renderView(records)
+    await user().click(leafChecks()[0]!)
+    await user().click(leafChecks()[1]!)
 
-    await wrapper.find('.bulk-hide').trigger('click')
+    await user().click(inBulkBar().getByRole('button', { name: 'Hide' }))
 
     await flushPromises()
     expect(SetMatchVisibility).toHaveBeenCalledWith('k1', true)
     expect(SetMatchVisibility).toHaveBeenCalledWith('k2', true)
-    expect(wrapper.find('.bulk-action-bar').exists()).toBe(false)
-    expect(wrapper.findAll('.leaf-row.is-ticked')).toHaveLength(0)
+    expect(bulkBar()).not.toBeInTheDocument()
+    expect(tickedLeaves()).toHaveLength(0)
   })
 
   it('Clear empties the selection without emitting', async () => {
-    const records = [makeRecord({ match_key: 'k1' })]
-    const wrapper = mountView(records)
-    await wrapper.find('.leaf-checkbox').trigger('click')
+    renderView([makeRecord({ match_key: 'k1' })])
+    await user().click(leafChecks()[0]!)
 
-    await wrapper.find('.bulk-cancel').trigger('click')
+    await user().click(inBulkBar().getByRole('button', { name: 'Clear' }))
 
-    expect(wrapper.find('.bulk-action-bar').exists()).toBe(false)
-    expect(wrapper.find('.leaf-row').classes()).not.toContain('is-ticked')
+    expect(bulkBar()).not.toBeInTheDocument()
+    expect(leafRows()[0]).not.toHaveClass('is-ticked')
     expect(SetMatchVisibility).not.toHaveBeenCalled()
   })
 
   it('un-ticking the last row removes the action bar', async () => {
-    const records = [makeRecord({ match_key: 'k1' })]
-    const wrapper = mountView(records)
+    renderView([makeRecord({ match_key: 'k1' })])
 
-    await wrapper.find('.leaf-checkbox').trigger('click')
-    expect(wrapper.find('.bulk-action-bar').exists()).toBe(true)
+    await user().click(leafChecks()[0]!)
+    expect(bulkBar()).toBeInTheDocument()
 
-    await wrapper.find('.leaf-checkbox').trigger('click')
-    expect(wrapper.find('.bulk-action-bar').exists()).toBe(false)
-    expect(wrapper.find('.leaf-row').classes()).not.toContain('is-ticked')
+    await user().click(leafChecks()[0]!)
+    expect(bulkBar()).not.toBeInTheDocument()
+    expect(leafRows()[0]).not.toHaveClass('is-ticked')
   })
 })
 
 describe('MatchesView — Hidden drawer', () => {
   it('does not render the Archive section when nothing is hidden', () => {
-    const records = [makeRecord({ match_key: 'k1' })]
-    const wrapper = mountView(records)
-    expect(wrapper.find('.archive').exists()).toBe(false)
+    renderView([makeRecord({ match_key: 'k1' })])
+    expect(archiveRegion()).not.toBeInTheDocument()
   })
 
   it('surfaces a count chip and singular noun for one hidden match', () => {
@@ -201,12 +224,13 @@ describe('MatchesView — Hidden drawer', () => {
       makeRecord({ match_key: 'k1' }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
+    renderView(records)
 
-    expect(wrapper.find('.archive').exists()).toBe(true)
-    expect(wrapper.find('.archive-count').text()).toBe('1')
-    expect(wrapper.find('.archive-noun').text()).toBe('hidden match')
-    expect(wrapper.findAll('.archive-row')).toHaveLength(0)
+    expect(archiveRegion()).toBeInTheDocument()
+    const toggle = archiveToggle()
+    expect(toggle).toHaveTextContent('1')
+    expect(toggle).toHaveTextContent(/hidden match(?!es)/)
+    expect(archiveRows()).toHaveLength(0)
   })
 
   it('pluralizes the noun for multiple hidden matches', () => {
@@ -214,8 +238,8 @@ describe('MatchesView — Hidden drawer', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    expect(wrapper.find('.archive-noun').text()).toBe('hidden matches')
+    renderView(records)
+    expect(archiveToggle()).toHaveTextContent('hidden matches')
   })
 
   it('expand reveals the hidden rows with per-row checkbox + Unhide + Delete forever', async () => {
@@ -223,51 +247,48 @@ describe('MatchesView — Hidden drawer', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
+    renderView(records)
+    await user().click(archiveToggle())
 
-    expect(wrapper.findAll('.archive-row')).toHaveLength(2)
-    expect(wrapper.findAll('.archive-checkbox')).toHaveLength(2)
-    expect(wrapper.findAll('.archive-unhide')).toHaveLength(2)
-    expect(wrapper.findAll('.archive-delete')).toHaveLength(2)
-    expect(wrapper.find('.archive-chev').classes()).toContain('open')
+    expect(archiveRows()).toHaveLength(2)
+    expect(archiveChecks()).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Unhide' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Delete forever' })).toHaveLength(2)
+    expect(archiveChev()).toHaveClass('open')
   })
 
   it('per-row Unhide still works as a single-target action', async () => {
-    const records = [makeRecord({ match_key: 'k1', hidden: true })]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.find('.archive-unhide').trigger('click')
+    renderView([makeRecord({ match_key: 'k1', hidden: true })])
+    await user().click(archiveToggle())
+    await user().click(screen.getByRole('button', { name: 'Unhide' }))
 
     await flushPromises()
     expect(SetMatchVisibility).toHaveBeenCalledWith('k1', false)
   })
 
   it('per-row Delete forever is a two-step inline confirm', async () => {
-    const records = [makeRecord({ match_key: 'k1', hidden: true })]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
+    renderView([makeRecord({ match_key: 'k1', hidden: true })])
+    await user().click(archiveToggle())
 
-    await wrapper.find('.archive-delete').trigger('click')
-    expect(wrapper.find('.archive-confirm').exists()).toBe(true)
-    expect(wrapper.find('.archive-cancel').exists()).toBe(true)
-    expect(wrapper.find('.archive-delete').exists()).toBe(false)
+    await user().click(screen.getByRole('button', { name: 'Delete forever' }))
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete forever' })).not.toBeInTheDocument()
     expect(HardDeleteMatch).not.toHaveBeenCalled()
 
-    await wrapper.find('.archive-confirm').trigger('click')
+    await user().click(screen.getByRole('button', { name: 'Confirm' }))
     await flushPromises()
     expect(HardDeleteMatch).toHaveBeenCalledWith('k1')
   })
 
   it('per-row Delete forever Cancel reverts to action buttons without emitting', async () => {
-    const records = [makeRecord({ match_key: 'k1', hidden: true })]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.find('.archive-delete').trigger('click')
-    await wrapper.find('.archive-cancel').trigger('click')
+    renderView([makeRecord({ match_key: 'k1', hidden: true })])
+    await user().click(archiveToggle())
+    await user().click(screen.getByRole('button', { name: 'Delete forever' }))
+    await user().click(screen.getByRole('button', { name: 'Cancel' }))
 
-    expect(wrapper.find('.archive-delete').exists()).toBe(true)
-    expect(wrapper.find('.archive-confirm').exists()).toBe(false)
+    expect(screen.getByRole('button', { name: 'Delete forever' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
     expect(HardDeleteMatch).not.toHaveBeenCalled()
   })
 })
@@ -278,15 +299,15 @@ describe('MatchesView — Archive bulk selection', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
+    renderView(records)
+    await user().click(archiveToggle())
 
-    expect(wrapper.find('.archive-action-bar').exists()).toBe(false)
-    await wrapper.findAll('.archive-checkbox')[0]!.trigger('click')
+    expect(archiveBar()).not.toBeInTheDocument()
+    await user().click(archiveChecks()[0]!)
 
-    expect(wrapper.findAll('.archive-row')[0]!.classes()).toContain('is-ticked')
-    expect(wrapper.find('.archive-action-bar').exists()).toBe(true)
-    expect(wrapper.find('.archive-action-bar .bab-count').text()).toContain('1 selected')
+    expect(tickedArchive()).toHaveLength(1)
+    expect(archiveBar()).toBeInTheDocument()
+    expect(inArchiveBar().getByText(/1 selected/)).toBeInTheDocument()
   })
 
   it('archive Select all targets every hidden row; button hides at full coverage', async () => {
@@ -295,16 +316,16 @@ describe('MatchesView — Archive bulk selection', () => {
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
       makeRecord({ match_key: 'k3', hidden: true }, { finished_at: '23:00' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.findAll('.archive-checkbox')[0]!.trigger('click')
+    renderView(records)
+    await user().click(archiveToggle())
+    await user().click(archiveChecks()[0]!)
 
-    expect(wrapper.find('.archive-action-bar .bulk-select-all').text()).toContain('Select all (3)')
+    const selectAll = inArchiveBar().getByRole('button', { name: 'Select all (3)' })
 
-    await wrapper.find('.archive-action-bar .bulk-select-all').trigger('click')
-    expect(wrapper.findAll('.archive-row.is-ticked')).toHaveLength(3)
-    expect(wrapper.find('.archive-action-bar .bab-count').text()).toContain('3 selected')
-    expect(wrapper.find('.archive-action-bar .bulk-select-all').exists()).toBe(false)
+    await user().click(selectAll)
+    expect(tickedArchive()).toHaveLength(3)
+    expect(inArchiveBar().getByText(/3 selected/)).toBeInTheDocument()
+    expect(inArchiveBar().queryByRole('button', { name: /Select all/ })).not.toBeInTheDocument()
   })
 
   it('Unhide on the archive action bar emits unhide-matches and clears the selection', async () => {
@@ -312,17 +333,17 @@ describe('MatchesView — Archive bulk selection', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.findAll('.archive-checkbox')[0]!.trigger('click')
-    await wrapper.findAll('.archive-checkbox')[1]!.trigger('click')
+    renderView(records)
+    await user().click(archiveToggle())
+    await user().click(archiveChecks()[0]!)
+    await user().click(archiveChecks()[1]!)
 
-    await wrapper.find('.bulk-unhide').trigger('click')
+    await user().click(inArchiveBar().getByRole('button', { name: 'Unhide' }))
 
     await flushPromises()
     expect(SetMatchVisibility).toHaveBeenCalledWith('k1', false)
     expect(SetMatchVisibility).toHaveBeenCalledWith('k2', false)
-    expect(wrapper.find('.archive-action-bar').exists()).toBe(false)
+    expect(archiveBar()).not.toBeInTheDocument()
   })
 
   it('bulk Delete forever is a two-step confirm; Confirm emits hard-delete-matches', async () => {
@@ -330,26 +351,25 @@ describe('MatchesView — Archive bulk selection', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.findAll('.archive-checkbox')[0]!.trigger('click')
-    await wrapper.findAll('.archive-checkbox')[1]!.trigger('click')
+    renderView(records)
+    await user().click(archiveToggle())
+    await user().click(archiveChecks()[0]!)
+    await user().click(archiveChecks()[1]!)
 
-    await wrapper.find('.bulk-delete').trigger('click')
+    await user().click(inArchiveBar().getByRole('button', { name: 'Delete forever' }))
     // Confirm UI takes over the bar; primary actions disappear.
-    expect(wrapper.find('.bab-warn-text').exists()).toBe(true)
-    expect(wrapper.find('.bab-warn-text').text()).toContain('Delete 2 matches from the database')
-    expect(wrapper.find('.bulk-confirm').exists()).toBe(true)
-    expect(wrapper.find('.bulk-delete').exists()).toBe(false)
-    expect(wrapper.find('.bulk-unhide').exists()).toBe(false)
+    expect(inArchiveBar().getByText('Delete 2 matches from the database?')).toBeInTheDocument()
+    expect(inArchiveBar().getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
+    expect(inArchiveBar().queryByRole('button', { name: 'Delete forever' })).not.toBeInTheDocument()
+    expect(inArchiveBar().queryByRole('button', { name: 'Unhide' })).not.toBeInTheDocument()
     expect(HardDeleteMatch).not.toHaveBeenCalled()
 
-    await wrapper.find('.bulk-confirm').trigger('click')
+    await user().click(inArchiveBar().getByRole('button', { name: 'Confirm' }))
     await flushPromises()
     expect(HardDeleteMatch).toHaveBeenCalledWith('k1')
     expect(HardDeleteMatch).toHaveBeenCalledWith('k2')
     // Selection cleared.
-    expect(wrapper.find('.archive-action-bar').exists()).toBe(false)
+    expect(archiveBar()).not.toBeInTheDocument()
   })
 
   it('bulk Delete forever warn-text uses singular noun for one ticked match', async () => {
@@ -357,12 +377,12 @@ describe('MatchesView — Archive bulk selection', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.findAll('.archive-checkbox')[0]!.trigger('click')
+    renderView(records)
+    await user().click(archiveToggle())
+    await user().click(archiveChecks()[0]!)
 
-    await wrapper.find('.bulk-delete').trigger('click')
-    expect(wrapper.find('.bab-warn-text').text()).toContain('Delete 1 match from the database')
+    await user().click(inArchiveBar().getByRole('button', { name: 'Delete forever' }))
+    expect(inArchiveBar().getByText('Delete 1 match from the database?')).toBeInTheDocument()
   })
 
   it('bulk Delete forever Cancel reverts to primary actions without emitting', async () => {
@@ -370,18 +390,18 @@ describe('MatchesView — Archive bulk selection', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.findAll('.archive-checkbox')[0]!.trigger('click')
-    await wrapper.find('.bulk-delete').trigger('click')
+    renderView(records)
+    await user().click(archiveToggle())
+    await user().click(archiveChecks()[0]!)
+    await user().click(inArchiveBar().getByRole('button', { name: 'Delete forever' }))
 
-    await wrapper.find('.bulk-cancel').trigger('click')
+    await user().click(inArchiveBar().getByRole('button', { name: 'Cancel' }))
 
-    expect(wrapper.find('.bulk-delete').exists()).toBe(true)
-    expect(wrapper.find('.bulk-unhide').exists()).toBe(true)
-    expect(wrapper.find('.bulk-confirm').exists()).toBe(false)
+    expect(inArchiveBar().getByRole('button', { name: 'Delete forever' })).toBeInTheDocument()
+    expect(inArchiveBar().getByRole('button', { name: 'Unhide' })).toBeInTheDocument()
+    expect(inArchiveBar().queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
     // Selection survives the cancel — user can revise it before retrying.
-    expect(wrapper.findAll('.archive-row.is-ticked')).toHaveLength(1)
+    expect(tickedArchive()).toHaveLength(1)
     expect(HardDeleteMatch).not.toHaveBeenCalled()
   })
 
@@ -390,17 +410,17 @@ describe('MatchesView — Archive bulk selection', () => {
       makeRecord({ match_key: 'k1', hidden: true }),
       makeRecord({ match_key: 'k2', hidden: true }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
-    await wrapper.find('.archive-toggle').trigger('click')
-    await wrapper.findAll('.archive-checkbox')[0]!.trigger('click')
-    await wrapper.find('.bulk-delete').trigger('click')
-    expect(wrapper.find('.bulk-confirm').exists()).toBe(true)
+    renderView(records)
+    await user().click(archiveToggle())
+    await user().click(archiveChecks()[0]!)
+    await user().click(inArchiveBar().getByRole('button', { name: 'Delete forever' }))
+    expect(inArchiveBar().getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
 
     // Add the second row to the selection — the prior "Confirm" no
     // longer means the same thing, so the bar reverts to primaries.
-    await wrapper.findAll('.archive-checkbox')[1]!.trigger('click')
-    expect(wrapper.find('.bulk-confirm').exists()).toBe(false)
-    expect(wrapper.find('.bulk-delete').exists()).toBe(true)
+    await user().click(archiveChecks()[1]!)
+    expect(inArchiveBar().queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
+    expect(inArchiveBar().getByRole('button', { name: 'Delete forever' })).toBeInTheDocument()
   })
 })
 
@@ -409,28 +429,24 @@ describe('MatchesView — Move to profile picker', () => {
   // api module so the SFC sees a fixture state with one other
   // profile available.
   it('Move to… is suppressed when no other profile exists', async () => {
-    const records = [makeRecord({ match_key: 'k1' })]
-    const wrapper = mountView(records)
-    await wrapper.find('.leaf-checkbox').trigger('click')
-    // Default mountApp mock returns profiles=['main'] — no others.
-    expect(wrapper.find('.bulk-move').exists()).toBe(false)
+    renderView([makeRecord({ match_key: 'k1' })])
+    await user().click(leafChecks()[0]!)
+    // Default mock returns profiles=['main'] — no others.
+    expect(inBulkBar().queryByRole('button', { name: 'Move to…' })).not.toBeInTheDocument()
   })
 
   it('clicking Move to… reveals the target picker (when other profiles exist)', async () => {
     vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'], immutable: [] })
-    const records = [makeRecord({ match_key: 'k1' })]
-    const wrapper = mountView(records)
+    renderView([makeRecord({ match_key: 'k1' })])
     // Macrotask tick: the profiles query notifies observers through the
     // notifyManager's setTimeout scheduling, which flushPromises misses.
     await new Promise(r => setTimeout(r, 0))
 
-    await wrapper.find('.leaf-checkbox').trigger('click')
-    await wrapper.find('.bulk-move').trigger('click')
+    await user().click(leafChecks()[0]!)
+    await user().click(inBulkBar().getByRole('button', { name: 'Move to…' }))
 
-    expect(wrapper.find('.bab-prompt').exists()).toBe(true)
-    const targets = wrapper.findAll('.bulk-move-target')
-    expect(targets).toHaveLength(1)
-    expect(targets[0]!.text()).toBe('alt')
+    expect(inBulkBar().getByText('Move to:')).toBeInTheDocument()
+    expect(inBulkBar().getByRole('button', { name: 'alt' })).toBeInTheDocument()
   })
 
   it('clicking a target chip emits move-matches with the ticked keys + target', async () => {
@@ -439,43 +455,41 @@ describe('MatchesView — Move to profile picker', () => {
       makeRecord({ match_key: 'k1' }),
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
     ]
-    const wrapper = mountView(records)
+    renderView(records)
     await new Promise(r => setTimeout(r, 0))
 
-    await wrapper.findAll('.leaf-checkbox')[0]!.trigger('click')
-    await wrapper.findAll('.leaf-checkbox')[1]!.trigger('click')
-    await wrapper.find('.bulk-move').trigger('click')
-    await wrapper.find('.bulk-move-target').trigger('click')
+    await user().click(leafChecks()[0]!)
+    await user().click(leafChecks()[1]!)
+    await user().click(inBulkBar().getByRole('button', { name: 'Move to…' }))
+    await user().click(inBulkBar().getByRole('button', { name: 'alt' }))
 
     await flushPromises()
     const call = vi.mocked(MoveMatches).mock.calls[0]!
     expect([...(call[0] as string[])].sort()).toEqual(['k1', 'k2'])
     expect(call[1]).toBe('alt')
     // Picker resets after commit.
-    expect(wrapper.find('.bab-prompt').exists()).toBe(false)
+    expect(screen.queryByText('Move to:')).not.toBeInTheDocument()
   })
 
   it('Cancel reverts the picker without emitting', async () => {
     vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'], immutable: [] })
-    const records = [makeRecord({ match_key: 'k1' })]
-    const wrapper = mountView(records)
+    renderView([makeRecord({ match_key: 'k1' })])
     await new Promise(r => setTimeout(r, 0))
 
-    await wrapper.find('.leaf-checkbox').trigger('click')
-    await wrapper.find('.bulk-move').trigger('click')
-    await wrapper.find('.bulk-cancel').trigger('click')
+    await user().click(leafChecks()[0]!)
+    await user().click(inBulkBar().getByRole('button', { name: 'Move to…' }))
+    await user().click(inBulkBar().getByRole('button', { name: 'Cancel' }))
 
-    expect(wrapper.find('.bab-prompt').exists()).toBe(false)
-    expect(wrapper.find('.bulk-move').exists()).toBe(true)
+    expect(screen.queryByText('Move to:')).not.toBeInTheDocument()
+    expect(inBulkBar().getByRole('button', { name: 'Move to…' })).toBeInTheDocument()
     expect(MoveMatches).not.toHaveBeenCalled()
   })
 })
 
 describe('MatchesView — campaign log hidden filter', () => {
   it('hidden matches drop out of the timeline (visibleRecords feeds it)', () => {
-    const records = [makeRecord({ match_key: 'k1', hidden: true })]
-    const wrapper = mountView(records)
-    expect(wrapper.find('.campaign-log').exists()).toBe(false)
+    renderView([makeRecord({ match_key: 'k1', hidden: true })])
+    expect(campaignLog()).toBeNull()
   })
 })
 
@@ -495,35 +509,33 @@ describe('MatchesView — infinite-scroll window', () => {
   }
 
   it('renders exactly DEFAULT_PAGE_SIZE (20) leaf-rows for a 50-row corpus', () => {
-    const wrapper = mountView(fillCorpus(50))
-    expect(wrapper.findAll('.leaf-row')).toHaveLength(20)
+    renderView(fillCorpus(50))
+    expect(leafRows()).toHaveLength(20)
   })
 
   it('shows the sentinel + "Showing 20 of 50 matches" foot', () => {
-    const wrapper = mountView(fillCorpus(50))
-    expect(wrapper.find('[data-testid="leaves-sentinel"]').exists()).toBe(true)
-    const foot = wrapper.find('[data-testid="leaves-foot"]')
-    expect(foot.exists()).toBe(true)
-    expect(foot.text()).toContain('Showing 20 of 50 matches')
+    renderView(fillCorpus(50))
+    expect(screen.getByTestId('leaves-sentinel')).toBeInTheDocument()
+    expect(screen.getByTestId('leaves-foot')).toHaveTextContent('Showing 20 of 50 matches')
   })
 
   it('omits the sentinel + reads "End · N matches" when corpus fits', () => {
-    const wrapper = mountView(fillCorpus(7))
-    expect(wrapper.findAll('.leaf-row')).toHaveLength(7)
-    expect(wrapper.find('[data-testid="leaves-sentinel"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="leaves-foot"]').text()).toContain('End · 7')
-    expect(wrapper.findAll('.leaves-foot-rule')).toHaveLength(2)
+    renderView(fillCorpus(7))
+    expect(leafRows()).toHaveLength(7)
+    expect(screen.queryByTestId('leaves-sentinel')).not.toBeInTheDocument()
+    expect(screen.getByTestId('leaves-foot')).toHaveTextContent('End · 7')
+    // eslint-disable-next-line testing-library/no-node-access -- decorative foot rules have no accessible surface
+    expect(document.querySelectorAll('.leaves-foot-rule')).toHaveLength(2)
   })
 
   it('foot carries an aria-live=polite status INSIDE the listitem (a role=status li is an invalid list child)', () => {
-    const wrapper = mountView(fillCorpus(50))
-    const foot = wrapper.find('[data-testid="leaves-foot"]')
+    renderView(fillCorpus(50))
+    const foot = screen.getByTestId('leaves-foot')
     // The li keeps its implicit listitem role…
-    expect(foot.attributes('role')).toBeUndefined()
+    expect(foot).not.toHaveAttribute('role')
     // …and the live region is a nested span.
-    const status = foot.find('[role="status"]')
-    expect(status.exists()).toBe(true)
-    expect(status.attributes('aria-live')).toBe('polite')
+    const status = within(foot).getByRole('status')
+    expect(status).toHaveAttribute('aria-live', 'polite')
   })
 })
 
@@ -537,24 +549,20 @@ describe('MatchesView — infinite-scroll window', () => {
 
 describe('MatchesView — scroll-to-top button', () => {
   it('is hidden by default (the user mounts the view at the top of the page)', () => {
-    const wrapper = mountView([makeRecord({ match_key: 'k1' })])
-    expect(wrapper.find('[data-scroll-to-top]').exists()).toBe(false)
+    renderView([makeRecord({ match_key: 'k1' })])
+    expect(screen.queryByRole('button', { name: 'Scroll to top of page' })).not.toBeInTheDocument()
   })
 
   it('appears once window.scrollY crosses the threshold; click resets scrollY to 0', async () => {
-    const wrapper = mountView([makeRecord({ match_key: 'k1' })])
+    renderView([makeRecord({ match_key: 'k1' })])
     // useScrollAffordance reads window.scrollY on every scroll event;
     // simulate the deep-scroll state by patching the value and
     // dispatching the listener it installs on mount.
     Object.defineProperty(window, 'scrollY', { value: 800, writable: true, configurable: true })
     window.dispatchEvent(new Event('scroll'))
-    // requestAnimationFrame coalesces; flush by waiting a microtask
-    // tick + a frame.
+    // requestAnimationFrame coalesces; flush by waiting a frame.
     await new Promise(resolve => requestAnimationFrame(resolve))
-    await wrapper.vm.$nextTick()
-    const btn = wrapper.find('[data-scroll-to-top]')
-    expect(btn.exists()).toBe(true)
-    expect(btn.attributes('aria-label')).toBe('Scroll to top of page')
+    expect(await screen.findByRole('button', { name: 'Scroll to top of page' })).toBeInTheDocument()
   })
 })
 
@@ -565,29 +573,24 @@ describe('MatchesView — jump-to-undated button', () => {
       makeRecord({ match_key: 'k2' }, { date: undefined }),
       makeRecord({ match_key: 'k3' }, { date: '' }),
     ]
-    const wrapper = mountView(records)
-    const btn = wrapper.find('[data-jump-to-undated]')
-    expect(btn.exists()).toBe(true)
+    renderView(records)
     // 2 of the 3 records have no usable date.
-    expect(btn.text()).toContain('2 undated')
-    expect(btn.attributes('disabled')).toBeUndefined()
-    expect(btn.attributes('title')).toMatch(/Jump to 2 undated matches/)
+    const btn = screen.getByRole('button', { name: /2 undated/ })
+    expect(btn).toBeEnabled()
+    expect(btn).toHaveAttribute('title', expect.stringMatching(/Jump to 2 undated matches/))
     // Soft-emphasis class lights up when count > 0 — the orange wash
     // hints "there's something to triage" without shouting.
-    expect(btn.classes()).toContain('has-undated')
+    expect(btn).toHaveClass('has-undated')
   })
 
   it('is disabled with an empty-state tooltip when no undated matches exist', () => {
-    const records = [makeRecord({ match_key: 'k1' }, { date: '2026-05-10' })]
-    const wrapper = mountView(records)
-    const btn = wrapper.find('[data-jump-to-undated]')
-    expect(btn.exists()).toBe(true)
-    expect(btn.text()).toContain('0 undated')
-    expect(btn.attributes('disabled')).toBeDefined()
-    expect(btn.attributes('title')).toBe('No undated matches in this view')
+    renderView([makeRecord({ match_key: 'k1' }, { date: '2026-05-10' })])
+    const btn = screen.getByRole('button', { name: /0 undated/ })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveAttribute('title', 'No undated matches in this view')
     // Empty state drops the soft-emphasis class — the button falls
     // back to the inherited .btn ghost disabled look.
-    expect(btn.classes()).not.toContain('has-undated')
+    expect(btn).not.toHaveClass('has-undated')
   })
 
   it('singular wording when exactly one undated match', () => {
@@ -595,8 +598,8 @@ describe('MatchesView — jump-to-undated button', () => {
       makeRecord({ match_key: 'k1' }, { date: '2026-05-10' }),
       makeRecord({ match_key: 'k2' }, { date: undefined }),
     ]
-    const wrapper = mountView(records)
-    const btn = wrapper.find('[data-jump-to-undated]')
-    expect(btn.attributes('title')).toMatch(/Jump to 1 undated match$/)
+    renderView(records)
+    const btn = screen.getByRole('button', { name: /1 undated/ })
+    expect(btn).toHaveAttribute('title', expect.stringMatching(/Jump to 1 undated match$/))
   })
 })
