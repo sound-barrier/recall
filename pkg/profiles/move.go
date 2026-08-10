@@ -20,11 +20,16 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 //     UpsertSummary / UpsertTeams / etc. APIs production parse uses) +
 //     the user-override layer (user_match_data + the queue / play-mode
 //     aux rows — a manual match or an edited OCR match lives entirely
-//     there) + every annotation + the hidden_matches flag. Filenames
-//     carry over verbatim so a future re-parse of the same source PNG
-//     on the new profile is a no-op.
+//     there) + every annotation + the hidden_matches and pinned_matches
+//     flags + the review status. Filenames carry over verbatim so a
+//     future re-parse of the same source PNG on the new profile is a
+//     no-op.
 //  2. Hard-delete the rows on src. Per-key HardDeleteMatch so a
 //     single bad key doesn't strand the rest.
+//
+// Phase 1's copy set MUST cover every table HardDeleteMatch wipes:
+// phase 2 destroys the source row outright, so a sidecar phase 1
+// forgets is lost, not merely left behind.
 //
 // If phase 1 succeeds but phase 2 fails, the user is left with the
 // match present in BOTH profiles. The retry on the same keys
@@ -38,7 +43,7 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 // pass through as zero (null). Name/target validation is the
 // caller's job (ValidateName + Contains + the active-target check).
 func Move(src, dst db.Store, matchKeys []string) error {
-	snap, annotations, hidden, reviews, err := loadMoveSource(src)
+	source, err := loadMoveSource(src)
 	if err != nil {
 		return err
 	}
@@ -48,11 +53,11 @@ func Move(src, dst db.Store, matchKeys []string) error {
 		keep[k] = true
 	}
 
-	resolveDirID := dirIDResolver(dst, snap.ScreenshotsDirs)
-	if err := movePhase1Parents(dst, snap, keep, resolveDirID); err != nil {
+	resolveDirID := dirIDResolver(dst, source.snap.ScreenshotsDirs)
+	if err := movePhase1Parents(dst, source.snap, keep, resolveDirID); err != nil {
 		return err
 	}
-	if err := movePhase1Sidecars(dst, matchKeys, annotations, hidden, reviews); err != nil {
+	if err := movePhase1Sidecars(dst, matchKeys, source); err != nil {
 		return err
 	}
 	if err := movePhase1Overrides(src, dst, matchKeys); err != nil {
@@ -66,24 +71,38 @@ func Move(src, dst db.Store, matchKeys []string) error {
 // same shape; in-memory filter is fine until profile sizes get into the
 // 10k+ match range, at which point a SQL-side LoadForKeys filter is the
 // natural next step (existing read paths stay unchanged).
-func loadMoveSource(src db.Store) (db.Screenshots, map[string]db.Annotation, map[string]bool, map[string]db.ReviewState, error) {
+func loadMoveSource(src db.Store) (moveSource, error) {
+	var out moveSource
 	snap, err := src.LoadAll()
 	if err != nil {
-		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load source: %w", err)
+		return moveSource{}, fmt.Errorf("move: load source: %w", err)
 	}
-	annotations, err := src.LoadAnnotations()
-	if err != nil {
-		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load annotations: %w", err)
+	out.snap = snap
+	if out.annotations, err = src.LoadAnnotations(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load annotations: %w", err)
 	}
-	hidden, err := src.LoadHiddenKeys()
-	if err != nil {
-		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load hidden keys: %w", err)
+	if out.hidden, err = src.LoadHiddenKeys(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load hidden keys: %w", err)
 	}
-	reviews, err := src.LoadReviews()
-	if err != nil {
-		return db.Screenshots{}, nil, nil, nil, fmt.Errorf("move: load reviews: %w", err)
+	if out.pinned, err = src.LoadPinnedKeys(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load pinned keys: %w", err)
 	}
-	return snap, annotations, hidden, reviews, nil
+	if out.reviews, err = src.LoadReviews(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load reviews: %w", err)
+	}
+	return out, nil
+}
+
+// moveSource is the source profile's state, read once up front. A struct
+// rather than a positional return list because hidden and pinned share the
+// same `map[string]bool` type — as adjacent positional returns a swap of the
+// two would compile silently.
+type moveSource struct {
+	snap        db.Screenshots
+	annotations map[string]db.Annotation
+	hidden      map[string]bool
+	pinned      map[string]bool
+	reviews     map[string]db.ReviewState
 }
 
 // dirIDResolver re-maps a source screenshots_dir_id onto the target by
@@ -188,25 +207,47 @@ func movePhase1Parents(targetStore db.Store, src db.Screenshots, keep map[string
 }
 
 // movePhase1Sidecars copies the per-key sidecar state (annotations,
-// hidden flag, review status) into the target. SetReview stamps a fresh
-// reviewed_at on the target — the same timestamp-refresh convention
+// hidden / pinned flags, review status) into the target. SetReview stamps a
+// fresh reviewed_at on the target — the same timestamp-refresh convention
 // HideMatch already applies to hidden_at on move.
-func movePhase1Sidecars(targetStore db.Store, matchKeys []string, annotations map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) error {
+func movePhase1Sidecars(targetStore db.Store, matchKeys []string, src moveSource) error {
 	for _, k := range matchKeys {
-		if ann, ok := annotations[k]; ok {
-			if err := targetStore.SetAnnotation(ann); err != nil {
-				return fmt.Errorf("move: copy annotation for %q: %w", k, err)
-			}
+		if err := copyMatchSidecars(targetStore, k, src); err != nil {
+			return err
 		}
-		if hidden[k] {
-			if err := targetStore.HideMatch(k); err != nil {
-				return fmt.Errorf("move: copy hidden flag for %q: %w", k, err)
-			}
+	}
+	return nil
+}
+
+// copyMatchSidecars reproduces one match's sidecar rows on the target.
+func copyMatchSidecars(targetStore db.Store, k string, src moveSource) error {
+	if ann, ok := src.annotations[k]; ok {
+		if err := targetStore.SetAnnotation(ann); err != nil {
+			return fmt.Errorf("move: copy annotation for %q: %w", k, err)
 		}
-		if r, ok := reviews[k]; ok && r.ReviewedBy != "" {
-			if err := targetStore.SetReview(k, r.ReviewedBy); err != nil {
-				return fmt.Errorf("move: copy review for %q: %w", k, err)
-			}
+	}
+	if err := copyPresenceFlags(targetStore, k, src); err != nil {
+		return err
+	}
+	if r, ok := src.reviews[k]; ok && r.ReviewedBy != "" {
+		if err := targetStore.SetReview(k, r.ReviewedBy); err != nil {
+			return fmt.Errorf("move: copy review for %q: %w", k, err)
+		}
+	}
+	return nil
+}
+
+// copyPresenceFlags copies the presence-is-state sidecars, where the row's
+// existence IS the value: hidden_matches and pinned_matches.
+func copyPresenceFlags(targetStore db.Store, k string, src moveSource) error {
+	if src.hidden[k] {
+		if err := targetStore.HideMatch(k); err != nil {
+			return fmt.Errorf("move: copy hidden flag for %q: %w", k, err)
+		}
+	}
+	if src.pinned[k] {
+		if err := targetStore.PinMatch(k); err != nil {
+			return fmt.Errorf("move: copy pinned flag for %q: %w", k, err)
 		}
 	}
 	return nil

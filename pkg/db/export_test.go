@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"io/fs"
+)
 
 // RawDB exposes the store's internal handle to the external `db_test` package
 // so black-box tests can assert on child-table state (cascade cleanup, server-
@@ -14,13 +17,38 @@ func RawDB(s *SQLStore) *sql.DB { return s.db }
 // Compiled only under test.
 var (
 	ApplyMigrations          = applyMigrations
-	LoadMigrations           = loadMigrations
+	ApplyMigrationsFrom      = applyMigrationsFrom
+	LoadMigrations           = func() ([]migration, error) { return loadMigrationsFrom(migrationsFS) }
 	SplitVersion             = splitVersion
 	SchemaVersion            = schemaVersion
 	EnsureSchemaVersionTable = ensureSchemaVersionTable
 	ApplyOne                 = applyOne
 	RevertOne                = revertOne
 )
+
+// LoadedMigration is the readable view of a parsed migration pair. The real
+// `migration` struct is unexported in every field, so the black-box tests
+// assert on this instead of reaching inside it.
+type LoadedMigration struct {
+	Version int
+	Name    string
+	Up      string
+	Down    string
+}
+
+// LoadMigrationsFrom parses a synthetic migration directory out of any fs.FS
+// (the shipped one is empty pre-1.0) and returns the pairs in load order.
+func LoadMigrationsFrom(fsys fs.FS) ([]LoadedMigration, error) {
+	migs, err := loadMigrationsFrom(fsys)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]LoadedMigration, 0, len(migs))
+	for _, m := range migs {
+		out = append(out, LoadedMigration{Version: m.version, Name: m.name, Up: m.up, Down: m.down})
+	}
+	return out, nil
+}
 
 // NewMigration builds a synthetic migration (unexported fields) for the
 // apply/revert round-trip test.

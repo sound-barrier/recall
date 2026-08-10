@@ -12,6 +12,10 @@ type OCRSpec = ocrSpec
 
 func SpecName(s OCRSpec) string { return s.name }
 
+// SpecPSM exposes the page-segmentation mode so a stub can answer
+// differently per attempt in ocrRowCells' PSM escalation ladder.
+func SpecPSM(s OCRSpec) string { return s.psm }
+
 // NewOCRSpec builds a spec from outside the package (fields are
 // unexported) — used by the seam-swappability sanity test.
 func NewOCRSpec(workDir, name, psm, whitelist string) OCRSpec {
@@ -38,6 +42,12 @@ var (
 	ParsePersonalStatCell = parsePersonalStatCell
 	ClassifyQueueByCount  = classifyQueueByCount
 	CountDigitLines       = countDigitLines
+	CandidateNameFromOCR  = candidateNameFromOCR
+	DetectQueueType       = detectQueueType
+	TeamBlockY            = teamBlockY
+	IsBlueTablePixel      = isBlueTablePixel
+	IsRedTablePixel       = isRedTablePixel
+	ParseTeams            = parseTeams
 	FindStatColumns       = findStatColumns
 	FindHighlightedRowY   = findHighlightedRowY
 	FindRowXExtent        = findRowXExtent
@@ -46,6 +56,8 @@ var (
 	IsRankScreenshot      = isRankScreenshot
 	IsPersonalScreenshot  = isPersonalScreenshot
 	ParseRank             = parseRank
+	ParseSummary          = parseSummary
+	ParsePersonal         = parsePersonal
 	GetTesseractPath      = getTesseractPath
 	KnownModifiers        = knownModifiers
 

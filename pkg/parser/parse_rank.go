@@ -336,7 +336,7 @@ func extractSR(text string) []HeroSR {
 	if len(heroes) == 0 {
 		return nil
 	}
-	lower := strings.ToLower(text)
+	lower := asciiLower(text)
 	type card struct {
 		hero string
 		at   int
@@ -357,7 +357,7 @@ func extractSR(text string) []HeroSR {
 		if i+1 < len(cards) {
 			end = cards[i+1].at
 		}
-		orig := text[min(c.at, len(text)):end]
+		orig := text[c.at:end]
 		// digitize (length-preserving) recovers O/Q/I/l/L → digit confusion so the
 		// 4-digit SR run reads; the change reads from the ORIGINAL slice at the same
 		// offsets, since digitizing there would mint false digits out of the card's
@@ -373,6 +373,24 @@ func extractSR(text string) []HeroSR {
 		out = append(out, entry)
 	}
 	return out
+}
+
+// asciiLower folds A-Z byte for byte, leaving every other byte alone.
+// extractSR needs a lowercase copy whose byte offsets still address the
+// ORIGINAL text, and strings.ToLower is not length-preserving: U+0130 (İ)
+// lowercases to a 1-byte "i" and U+023A (Ⱥ) to a 3-byte "ⱥ", so one cased
+// multi-byte rune ahead of the cards shifts every later offset — sliding a
+// card's window (a silently wrong SR change) or running it past the end of
+// the string (a slice-bounds panic that kills the parse). Hero keys are
+// ASCII after normalize(), so an ASCII-only fold still finds all of them.
+func asciiLower(s string) string {
+	b := []byte(s)
+	for i, c := range b {
+		if c >= 'A' && c <= 'Z' {
+			b[i] = c + ('a' - 'A')
+		}
+	}
+	return string(b)
 }
 
 func anyZeroSR(srs []HeroSR) bool {

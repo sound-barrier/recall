@@ -581,6 +581,11 @@ tasks:
       # exercising leaf statements must count for the leaf — per-package
       # attribution alone undercounts every carved line as 0%.
       - go test -race -short -coverpkg=./... -coverprofile=coverage/go/coverage.out ./...
+      # Drop vendored Go that npm dragged in: `flatted` ships a stray
+      # golang/pkg/flatted/flatted.go under frontend/node_modules, which -coverpkg
+      # credits at 0% across ~160 statements we neither wrote nor ship. Same
+      # spirit as vitest excluding the generated src/client/**.
+      - grep -v '/frontend/node_modules/' coverage/go/coverage.out > coverage/go/coverage.filtered && mv coverage/go/coverage.filtered coverage/go/coverage.out
       - go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
       - go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
       - |

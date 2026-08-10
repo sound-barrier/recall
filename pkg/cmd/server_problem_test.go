@@ -1,11 +1,15 @@
 package cmd_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
+
+	"recall/pkg/cmd"
 )
 
 // problemBody mirrors the RFC 9457 object the server emits, including the §3.2
@@ -91,5 +95,31 @@ func TestProblem_AnnotationNullThrowerSideFieldError(t *testing.T) {
 	p := assertProblem(t, rec, http.StatusBadRequest, "invalid-body", "throwers")
 	if len(p.Errors) != 1 || p.Errors[0].Field != "throwers" {
 		t.Errorf("errors = %+v, want one field error for throwers", p.Errors)
+	}
+}
+
+// The data-verification 422 carries the RFC 9457 §3.2 `failed_assets`
+// member naming every asset whose SHA-256 sidecar didn't match — the
+// modal lists them so the user knows which file upstream broke. The
+// member is a JSON ARRAY that accumulates, and it is absent (not
+// `null`, not `[]`) on problems that don't set it.
+func TestProblem_FailedAssetsExtensionMember(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/v1/system/data-update", nil)
+	cmd.WriteProblem(rec, req, cmd.ProbDataVerify, "verification failed",
+		cmd.WithFailedAssets("heroes.yaml"), cmd.WithFailedAssets("maps.yaml"))
+
+	p := assertProblem(t, rec, http.StatusUnprocessableEntity, "data-verification-failed", "verification failed")
+	if !slices.Equal(p.FailedAssets, []string{"heroes.yaml", "maps.yaml"}) {
+		t.Errorf("failed_assets = %v, want both assets in call order", p.FailedAssets)
+	}
+}
+
+func TestProblem_FailedAssetsOmittedWhenUnset(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, matchByKeyPath("does-not-exist"))
+	assertProblem(t, rec, http.StatusNotFound, "not-found", "")
+	if bytes.Contains(rec.Body.Bytes(), []byte("failed_assets")) {
+		t.Errorf("problems that set no assets must omit the member: %s", rec.Body.String())
 	}
 }

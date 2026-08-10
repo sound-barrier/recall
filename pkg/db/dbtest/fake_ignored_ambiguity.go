@@ -1,13 +1,27 @@
 package dbtest
 
 import (
+	"cmp"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"recall/pkg/db"
 )
+
+// sortedCandidates copies a candidate list into ascending-distance order,
+// mirroring the `ORDER BY distance_seconds ASC` every SQLStore read surface
+// applies — the order the review card ranks candidates in. Stable, so ties
+// keep insertion order the way SQLite's rowid tiebreak does.
+func sortedCandidates(cands []db.AmbiguousCandidate) []db.AmbiguousCandidate {
+	out := append([]db.AmbiguousCandidate(nil), cands...)
+	slices.SortStableFunc(out, func(a, b db.AmbiguousCandidate) int {
+		return cmp.Compare(a.DistanceSeconds, b.DistanceSeconds)
+	})
+	return out
+}
 
 func (f *Fake) UpsertIngestedFile(filename, contentHash, duplicateOf string) error {
 	f.mu.Lock()
@@ -102,8 +116,7 @@ func (f *Fake) ApplyAmbiguity(filename string, cands []db.AmbiguousCandidate) er
 func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandidate, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	cands := f.Ambiguous[filename]
-	return append([]db.AmbiguousCandidate(nil), cands...), nil
+	return sortedCandidates(f.Ambiguous[filename]), nil
 }
 
 func (f *Fake) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename string, cands []db.AmbiguousCandidate) (bool, error) {

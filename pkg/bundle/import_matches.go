@@ -59,70 +59,71 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 	if err != nil {
 		return ImportSummary{}, err
 	}
-	fresh, imported, skipped := partitionByMatchKey(incoming, existing)
+	fresh := partitionByMatchKey(incoming, existing)
 
 	toSentinel := func(int64) int64 { return db.SentinelScreenshotsDirID }
 	if err := importAllParentTables(store, "import", fresh, toSentinel); err != nil {
 		return ImportSummary{}, err
 	}
-	manualImported, err := importUserLayer(store, data, existing)
-	if err != nil {
+	if err := importUserLayer(store, data, existing); err != nil {
 		return ImportSummary{}, err
 	}
-	return ImportSummary{Imported: len(imported) + manualImported, Skipped: len(skipped)}, nil
+	return summarizeImport(data, existing), nil
+}
+
+// summarizeImport counts every distinct match_key the bundle carries — parent
+// rows AND user-layer-only (manual) keys — against what the database already
+// had. Counting the key set rather than the rows written is what keeps the two
+// counters symmetric: a manual match lands in exactly one of them, so
+// re-importing a bundle of hand-entered matches reports them as skipped instead
+// of vanishing from both totals.
+func summarizeImport(data DataV2, existing map[string]struct{}) ImportSummary {
+	var summary ImportSummary
+	for key := range dataMatchKeys(data) {
+		if _, ok := existing[key]; ok {
+			summary.Skipped++
+			continue
+		}
+		summary.Imported++
+	}
+	return summary
 }
 
 // importUserLayer writes the v2 user-layer sections for keys not already
 // present locally (the same skip-existing rule the parent rows follow).
-// Returns how many MANUAL matches it imported — keys that exist only in
-// the user layer, which the parent-row partition can't count.
-func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) (int, error) {
-	manual, err := importUserMatchData(store, data, existing)
-	if err != nil {
-		return 0, err
+func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) error {
+	if err := importUserMatchData(store, data.UserMatchData, existing); err != nil {
+		return err
 	}
 	if err := importAnnotations(store, data.Annotations, existing); err != nil {
-		return 0, err
+		return err
 	}
 	if err := importKeyedSection(data.Reviews, existing, "review",
 		func(r db.ReviewState) string { return r.ReviewedBy }, store.SetReview); err != nil {
-		return 0, err
+		return err
 	}
 	if err := importKeyedSection(data.Queues, existing, "queue",
 		func(q db.QueueState) string { return q.QueueType }, store.SetMatchQueue); err != nil {
-		return 0, err
+		return err
 	}
 	if err := importKeyedSection(data.PlayModes, existing, "play mode",
 		func(pm db.PlayModeState) string { return pm.PlayMode }, store.SetMatchPlayMode); err != nil {
-		return 0, err
+		return err
 	}
-	if err := importHidden(store, data.Hidden, existing); err != nil {
-		return 0, err
-	}
-	return manual, nil
+	return importHidden(store, data.Hidden, existing)
 }
 
-// importUserMatchData upserts the incoming user-data rows whose keys are
-// new, returning how many were MANUAL matches — keys with no incoming
-// parent row.
-func importUserMatchData(store db.Store, data DataV2, existing map[string]struct{}) (int, error) {
-	incomingParents := dataMatchKeys(DataV2{
-		Summaries: data.Summaries, Teams: data.Teams, Personals: data.Personals,
-		Ranks: data.Ranks, Unknowns: data.Unknowns,
-	})
-	manual := 0
-	for _, ud := range data.UserMatchData {
+// importUserMatchData upserts the incoming user-data rows whose keys are new.
+func importUserMatchData(store db.Store, rows []db.UserMatchData, existing map[string]struct{}) error {
+	for _, ud := range rows {
 		if _, ok := existing[ud.MatchKey]; ok {
 			continue
 		}
 		if err := store.UpsertUserMatchData(ud); err != nil {
-			return 0, fmt.Errorf("import: user data for %q: %w", ud.MatchKey, err)
-		}
-		if _, hasParents := incomingParents[ud.MatchKey]; !hasParents {
-			manual++
+			return fmt.Errorf("import: user data for %q: %w", ud.MatchKey, err)
 		}
 	}
-	return manual, nil
+	return nil
 }
 
 // importAnnotations writes the incoming annotations whose keys are new.
@@ -197,7 +198,7 @@ func readBundleData(payload []byte) (DataV2, error) {
 	}
 	var data DataV2
 	if err := json.Unmarshal(dataBytes, &data); err != nil {
-		return DataV2{}, fmt.Errorf("import: data.json decode: %w", err)
+		return DataV2{}, fmt.Errorf("%w: data.json decode: %w", ErrImportMalformed, err)
 	}
 	if data.Schema != exportSchemaV1 && data.Schema != exportSchemaV2 {
 		return DataV2{}, fmt.Errorf("import: unsupported data schema %q (this build accepts %q and %q)", data.Schema, exportSchemaV1, exportSchemaV2)
@@ -239,28 +240,22 @@ func existingMatchKeys(store db.Store) (map[string]struct{}, error) {
 	return keys, nil
 }
 
-// partitionByMatchKey splits incoming parent rows into the subset whose
-// match_key is new (kept) versus already-present (dropped), and returns the
-// distinct imported / skipped key sets so the caller can report counts.
-func partitionByMatchKey(t parentTables, existing map[string]struct{}) (fresh parentTables, imported, skipped map[string]struct{}) {
-	imported = make(map[string]struct{})
-	skipped = make(map[string]struct{})
+// partitionByMatchKey keeps the incoming parent rows whose match_key is new and
+// drops the ones the database already holds — a merge never overwrites. The
+// counts the caller reports come from summarizeImport, which sees the
+// user-layer-only keys these row tables can't.
+func partitionByMatchKey(t parentTables, existing map[string]struct{}) parentTables {
 	keep := func(matchKey string) bool {
-		if _, ok := existing[matchKey]; ok {
-			skipped[matchKey] = struct{}{}
-			return false
-		}
-		imported[matchKey] = struct{}{}
-		return true
+		_, ok := existing[matchKey]
+		return !ok
 	}
-	fresh = parentTables{
+	return parentTables{
 		summaries: filterRows(t.summaries, keep, func(r db.SummaryRow) string { return r.MatchKey }),
 		teams:     filterRows(t.teams, keep, func(r db.TeamsRow) string { return r.MatchKey }),
 		personals: filterRows(t.personals, keep, func(r db.PersonalRow) string { return r.MatchKey }),
 		ranks:     filterRows(t.ranks, keep, func(r db.RankRow) string { return r.MatchKey }),
 		unknowns:  filterRows(t.unknowns, keep, func(r db.UnknownRow) string { return r.MatchKey }),
 	}
-	return fresh, imported, skipped
 }
 
 // validateParentFilenames fails if any incoming parent row has an empty

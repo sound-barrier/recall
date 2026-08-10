@@ -67,15 +67,11 @@ func extractHeroes(text string) []string {
 	// and "Lúcio" wouldn't match "lucio". See owdata.go's normalize()
 	// for the full rule list.
 	normText := normalize(text)
-	seen := map[string]bool{}
 	var found []string
-	// Pass 1: exact substring match.
+	// Pass 1: exact substring match. heroNamesByLength ranges over the
+	// roster map's keys, so a name can't repeat — no dedup needed.
 	for _, hero := range heroNamesByLength() {
-		if seen[hero] {
-			continue
-		}
 		if strings.Contains(normText, hero) {
-			seen[hero] = true
 			found = append(found, hero)
 		}
 	}
