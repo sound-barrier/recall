@@ -55,7 +55,7 @@ test('Left after a leaver → map + result → the match is recorded', async ({ 
   })
 
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await openQuickAdd(page)
 
   // The whole point: no hero, no mode, no queue, no rank — two fields only.
@@ -99,7 +99,7 @@ test('submit stays blocked until both the map and the result are set', async ({ 
   )
 
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await openQuickAdd(page)
 
   await expect(page.locator('[data-mm-submit]')).toBeDisabled()
@@ -124,7 +124,7 @@ test('the full-entry menu item still opens the complete form', async ({ page }) 
   )
 
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await page.locator('[data-add-match]').click()
   await page.locator('[data-add-match-full]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()

@@ -34,7 +34,7 @@ async function mountInDataDensity(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   await page.locator('.seg-btn', { hasText: 'Data' }).click()
   await expect(page.locator('table.leaves-table')).toBeVisible()
@@ -42,10 +42,10 @@ async function mountInDataDensity(page: Page) {
 
 test('flipping to Pivot swaps the flat table for the crosstab', async ({ page }) => {
   await mountInDataDensity(page)
-  await expect(page.locator('[data-testid="pivot-table"]')).toBeHidden()
+  await expect(page.getByTestId('pivot-table')).toBeHidden()
 
   await page.locator('[data-table-mode-pick="pivot"]').click()
-  await expect(page.locator('[data-testid="pivot-table"]')).toBeVisible()
+  await expect(page.getByTestId('pivot-table')).toBeVisible()
   await expect(page.locator('.pivot-crosstab')).toBeVisible()
   await expect(page.locator('table.leaves-table')).toBeHidden()
 
@@ -60,16 +60,16 @@ test('flipping back to Flat restores the sortable table', async ({ page }) => {
   await expect(page.locator('.pivot-crosstab')).toBeVisible()
   await page.locator('[data-table-mode-pick="flat"]').click()
   await expect(page.locator('table.leaves-table')).toBeVisible()
-  await expect(page.locator('[data-testid="pivot-table"]')).toBeHidden()
+  await expect(page.getByTestId('pivot-table')).toBeHidden()
 })
 
 test('the Pivot choice persists across a reload', async ({ page }) => {
   await mountInDataDensity(page)
   await page.locator('[data-table-mode-pick="pivot"]').click()
-  await expect(page.locator('[data-testid="pivot-table"]')).toBeVisible()
+  await expect(page.getByTestId('pivot-table')).toBeVisible()
 
   await page.reload()
   // Matches is the default landing tab; density + mode are persisted.
-  await expect(page.locator('[data-testid="pivot-table"]')).toBeVisible()
+  await expect(page.getByTestId('pivot-table')).toBeVisible()
   await expect(page.locator('.pivot-crosstab')).toBeVisible()
 })

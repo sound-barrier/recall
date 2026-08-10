@@ -38,7 +38,7 @@ const CORPUS = [
 
 async function addWithWhomWidget(page: Page) {
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await page.locator('[data-dossier-add]').click()
   await page.locator('[data-widget-add="with-whom"]').click()
   await expect(page.locator('[data-widget-id="with-whom"]')).toBeVisible()
@@ -55,10 +55,10 @@ test.describe('dossier — Win rate by teammate', () => {
     await addWithWhomWidget(page)
     const widget = page.locator('[data-widget-id="with-whom"]')
     await expect(widget.locator('.breakdown-eyebrow')).toHaveText('Win rate by teammate')
-    await expect(widget.locator('li')).toHaveCount(3)
+    await expect(widget.getByRole('listitem')).toHaveCount(3)
 
     // Alice leads (3 games), win rate on the bar + count overlay.
-    const first = widget.locator('li').first()
+    const first = widget.getByRole('listitem').first()
     await expect(first.locator('.bd-name')).toHaveText('Alice')
     await expect(first.locator('.bd-time')).toHaveText('3x')
     await expect(first.locator('.bd-stats')).toHaveText('67%')
@@ -74,7 +74,7 @@ test.describe('dossier — Win rate by teammate', () => {
     })
     await addWithWhomWidget(page)
     const widget = page.locator('[data-widget-id="with-whom"]')
-    await expect(widget.locator('li')).toHaveCount(0)
+    await expect(widget.getByRole('listitem')).toHaveCount(0)
     await expect(widget.locator('.breakdown-empty')).toContainText(/tag teammates/i)
   })
 })

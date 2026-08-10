@@ -56,7 +56,7 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   })
 
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
 
   await page.locator('[data-add-match]').click()
   await page.locator('[data-add-match-full]').click()
@@ -88,7 +88,7 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   // Hero — same picker; first selected is the primary.
   const heroCombo = page.locator('[data-combo-id="mm-hero"]')
   await heroCombo.locator('.combo-input').click()
-  await heroCombo.locator('.combo-list li:has-text("ana")').click()
+  await heroCombo.getByRole('option', { name: 'ana' }).click()
   await expect(heroCombo.locator('.combo-pill')).toContainText('ana')
   await page.locator('#mm-title').click()
 
@@ -134,7 +134,7 @@ test('role queue requires a single role and constrains the hero list', async ({ 
   )
 
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await page.locator('[data-add-match]').click()
   await page.locator('[data-add-match-full]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
@@ -160,7 +160,7 @@ test('role queue requires a single role and constrains the hero list', async ({ 
 
   // Selecting reinhardt, then switching the role to support, drops the
   // now-illegal tank pick — the selection can never span two roles.
-  await heroCombo.locator('.combo-list li:has-text("reinhardt")').click()
+  await heroCombo.getByRole('option', { name: 'reinhardt' }).click()
   await expect(heroCombo.locator('.combo-pill')).toContainText('reinhardt')
   await page.locator('[data-role="support"]').click()
   await expect(heroCombo.locator('.combo-pill')).toHaveCount(0)
@@ -173,7 +173,7 @@ test('an out-of-range rank progress blocks submit with an inline error', async (
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }))
 
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await page.locator('[data-add-match]').click()
   await page.locator('[data-add-match-full]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
@@ -189,7 +189,7 @@ test('an out-of-range rank progress blocks submit with an inline error', async (
   await expect(mapCombo.locator('.combo-pill')).toContainText('ilios')
   const heroCombo = page.locator('[data-combo-id="mm-hero"]')
   await heroCombo.locator('.combo-input').click()
-  await heroCombo.locator('.combo-list li:has-text("ana")').click()
+  await heroCombo.getByRole('option', { name: 'ana' }).click()
   await page.locator('#mm-title').click()
   await expect(page.locator('[data-mm-submit]')).toBeEnabled()
 

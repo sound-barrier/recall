@@ -50,7 +50,7 @@ test.describe('supported capture-source rules', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     // Open the Advanced section — it's collapsed by default.
     const advancedDetails = page.locator('details:has(summary:has-text("Advanced"))').first()
     if (await advancedDetails.count() > 0) {

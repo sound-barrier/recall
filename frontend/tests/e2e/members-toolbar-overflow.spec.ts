@@ -35,7 +35,7 @@ test.describe('members toolbar', () => {
 
       await page.setViewportSize({ width: w, height: 1000 })
       await page.goto('/')
-      await page.locator('#tab-matches').click()
+      await page.getByRole('tab', { name: /^Matches/ }).click()
       const btn = page.locator('[data-jump-to-undated]').first()
       await btn.scrollIntoViewIfNeeded()
       await expect(btn).toBeVisible()

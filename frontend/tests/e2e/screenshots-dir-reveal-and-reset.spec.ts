@@ -70,7 +70,7 @@ test.describe('settings — Reveal button calls the new backend action', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // The steady-state row should render with the persisted path.
     await expect(page.locator('.setting-value.mono')).toContainText(PERSISTED_PATH)
@@ -80,7 +80,7 @@ test.describe('settings — Reveal button calls the new backend action', () => {
     // spec we ALSO want the button visible in server mode — the
     // backend can open the file manager on its own host, so this
     // is the right behavior whether the user runs Wails or server.
-    const revealBtn = page.locator('button:has-text("Reveal")')
+    const revealBtn = page.getByRole('button', { name: 'Reveal' })
     await expect(revealBtn).toBeVisible()
     await revealBtn.click()
 
@@ -94,7 +94,7 @@ test.describe('settings — Reset clears the persisted path', () => {
     const settings = installSettingsRoute(page, PERSISTED_PATH)
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // Steady-state row visible, persisted path shown.
     await expect(page.locator('.setting-value.mono')).toContainText(PERSISTED_PATH)
@@ -102,7 +102,7 @@ test.describe('settings — Reset clears the persisted path', () => {
 
     // Click Reset. The Engine row ALSO has a Reset button now, so
     // scope to the directories section to avoid strict-mode failures.
-    const resetBtn = page.locator('#sec-directories button:has-text("Reset")')
+    const resetBtn = page.locator('#sec-directories').getByRole('button', { name: 'Reset' })
     await expect(resetBtn).toBeVisible()
     await resetBtn.click()
 
@@ -120,7 +120,7 @@ test.describe('settings — Detect is disabled in the steady-state row', () => {
     installSettingsRoute(page, PERSISTED_PATH)
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // In the steady-state row, Detect renders but is disabled.
     // Scope to the directories section because Engine ALSO has a
@@ -134,7 +134,7 @@ test.describe('settings — Detect is disabled in the steady-state row', () => {
     // (the old "Auto-Detect Folder" / "Choose Manually" CTA pair
     // was replaced by the picker grid + custom-pick tile in the
     // ScreenshotSourcePicker PR).
-    await page.locator('#sec-directories button:has-text("Reset")').click()
+    await page.locator('#sec-directories').getByRole('button', { name: 'Reset' }).click()
 
     await expect(page.locator('.empty-hero .src-picker')).toBeVisible()
     await expect(page.locator('.empty-hero [data-src-pick-custom]')).toBeVisible()

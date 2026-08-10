@@ -60,7 +60,7 @@ test.describe('dashboard drag-reorder', () => {
   // 0 — one lost race reds the whole job; this spec flaked twice on CI).
   async function openDashboard(page: import('@playwright/test').Page) {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('[data-widget-id="winrate"]')).toBeVisible()
   }
 
@@ -123,7 +123,7 @@ test.describe('dashboard drag-reorder', () => {
 
     // Reload + reopen Matches tab, gating on hydration again.
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('[data-widget-id="winrate"]')).toBeVisible()
 
     const afterReload = await widgetOrder(page, 1)

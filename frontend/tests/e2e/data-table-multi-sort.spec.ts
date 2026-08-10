@@ -58,7 +58,7 @@ async function mountCorpus(page: Page, corpus: unknown[]) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(corpus.length)
 }
 
@@ -103,7 +103,7 @@ test.describe('data density — multi-column sort', () => {
     expect(await rowKeys(page)).toEqual(['ashe-loss', 'busan-win', 'busan-loss'])
 
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('table.leaves-table')).toBeVisible()
     // No re-click: the persisted [map asc, result asc] stack is restored.
     expect(await rowKeys(page)).toEqual(['ashe-loss', 'busan-win', 'busan-loss'])
@@ -134,7 +134,7 @@ const DLG_CORPUS = [
 
 async function openSortDialog(page: Page) {
   await page.locator('[data-sort-group-trigger]').click()
-  await expect(page.locator('[data-testid="table-sort-popover"]')).toBeVisible()
+  await expect(page.getByTestId('table-sort-popover')).toBeVisible()
 }
 
 test.describe('data density — Custom Sort dialog', () => {
@@ -147,7 +147,7 @@ test.describe('data density — Custom Sort dialog', () => {
     await openSortDialog(page)
     await expect(page.locator('[data-sort-level]')).toHaveCount(1)
     await expect(page.locator('[data-sort-level] [data-level-col]')).toHaveValue('date')
-    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeHidden()
+    await expect(page.getByTestId('sort-group-popover')).toBeHidden()
   })
 
   test('changing a level’s column then direction re-sorts the whole table', async ({ page }) => {
@@ -203,7 +203,7 @@ test.describe('data density — Custom Sort dialog', () => {
     expect(await rowKeys(page)).toEqual(['e30', 'e20', 'e10'])
 
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('table.leaves-table')).toBeVisible()
     expect(await rowKeys(page)).toEqual(['e30', 'e20', 'e10'])
   })

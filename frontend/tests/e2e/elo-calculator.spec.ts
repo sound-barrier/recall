@@ -95,8 +95,8 @@ async function mockCorpus(page: import('@playwright/test').Page, rows: unknown[]
 
 async function openCalculator(page: import('@playwright/test').Page) {
   await page.goto('/')
-  await page.locator('#tab-elo').click()
-  await expect(page.locator('#panel-elo')).toBeVisible()
+  await page.getByRole('tab', { name: 'Elo Calculator' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Elo Calculator' })).toBeVisible()
 }
 
 test.describe('Elo Calculator', () => {
@@ -104,7 +104,7 @@ test.describe('Elo Calculator', () => {
     await mockCorpus(page, corpus70())
     await openCalculator(page)
 
-    const panel = page.locator('#panel-elo')
+    const panel = page.getByRole('tabpanel', { name: 'Elo Calculator' })
     await expect(panel).toHaveAttribute('role', 'tabpanel')
     await expect(panel).toHaveAttribute('aria-labelledby', 'tab-elo')
 
@@ -287,7 +287,7 @@ test.describe('Elo Calculator', () => {
     await mockCorpus(page, corpus70())
     await openCalculator(page)
 
-    const bandLocator = page.locator('#panel-elo section.elo-band[aria-labelledby]')
+    const bandLocator = page.getByRole('tabpanel', { name: 'Elo Calculator' }).locator('section.elo-band[aria-labelledby]')
     const bands: (string | null)[] = []
     for (let i = 0; i < await bandLocator.count(); i++) {
       bands.push(await bandLocator.nth(i).getAttribute('aria-labelledby'))

@@ -121,8 +121,8 @@ async function openCalculator(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/matches', (r: Route) =>
     r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(climb60()) }))
   await page.goto('/')
-  await page.locator('#tab-elo').click()
-  await expect(page.locator('#panel-elo')).toBeVisible()
+  await page.getByRole('tab', { name: 'Elo Calculator' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Elo Calculator' })).toBeVisible()
 }
 
 test.describe('Elo Calculator — statistics layer', () => {
@@ -244,8 +244,8 @@ test.describe('Elo Calculator — phase 3 (sessions, change-point, lift)', () =>
     await page.route('**/api/v1/matches', (r: Route) =>
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) }))
     await page.goto('/')
-    await page.locator('#tab-elo').click()
-    await expect(page.locator('#panel-elo')).toBeVisible()
+    await page.getByRole('tab', { name: 'Elo Calculator' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Elo Calculator' })).toBeVisible()
   }
 
   function baseRec(
@@ -352,8 +352,8 @@ test.describe('Elo Calculator — consistency & tilt (breaks, rust, tilt queues)
     await page.route('**/api/v1/matches', (r: Route) =>
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) }))
     await page.goto('/')
-    await page.locator('#tab-elo').click()
-    await expect(page.locator('#panel-elo')).toBeVisible()
+    await page.getByRole('tab', { name: 'Elo Calculator' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Elo Calculator' })).toBeVisible()
   }
 
   function rec(seqNo: number, day: string, hourMin: string, win: boolean) {

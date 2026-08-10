@@ -74,7 +74,7 @@ async function mountCorpus(page: Page, corpus: unknown[]) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(corpus.length)
 }
 
@@ -190,7 +190,7 @@ test.describe('data density — spreadsheet sort semantics', () => {
     await page.locator('[data-sort-group-trigger]').click()
     // Data density sorts by column header — the trigger opens the
     // multi-column Custom Sort dialog, not the leaf sort/group popover.
-    await expect(page.locator('[data-testid="table-sort-popover"]')).toBeVisible()
-    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeHidden()
+    await expect(page.getByTestId('table-sort-popover')).toBeVisible()
+    await expect(page.getByTestId('sort-group-popover')).toBeHidden()
   })
 })

@@ -104,7 +104,7 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
 
     // Click Run Parse — POST stays pending; parseBusy flips true;
     // the Stop button replaces Run Parse.
@@ -142,7 +142,7 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
 
     // Bare boot: no Stop affordance anywhere.
     await expect(page.getByTestId('cancel-parse-btn')).toHaveCount(0)
@@ -169,7 +169,7 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     await page.goto('/')
     // Stay on Matches (the default landing) — the whole point of
     // the bar's button is "kill the parse without navigating."
-    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
 
     // Drive a parse-progress event through the SSE mock — the bar
     // appears, the ABORT tile mounts with it.
@@ -194,6 +194,6 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     // Confirm the click was NOT also interpreted as a
     // jump-to-Ingest by the bar's outer handler (regression guard
     // for data-no-jump + @click.stop).
-    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
   })
 })

@@ -36,7 +36,7 @@ test.describe('session grouping', () => {
     await page.route('**/api/v1/matches', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }))
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
   })
 
   test('grouping by session splits on the time gap and rolls up W/L + span', async ({ page }) => {

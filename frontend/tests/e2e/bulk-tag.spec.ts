@@ -63,7 +63,7 @@ test.describe('bulk-tag', () => {
     }
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Tick two of the three rows via the per-row checkbox affordance.
     const checkboxes = page.locator('.leaf-row .leaf-checkbox')

@@ -37,15 +37,15 @@ async function mountPivotWithMapFilter(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   await page.locator('.seg-btn', { hasText: 'Data' }).click()
   await page.locator('[data-table-mode-pick="pivot"]').click()
-  await expect(page.locator('[data-testid="pivot-table"]')).toBeVisible()
+  await expect(page.getByTestId('pivot-table')).toBeVisible()
 
   // Add Map to Filters via the keyboard menu (DnD is flaky cross-engine).
   await page.locator('[data-pivot-zone="tray"] [data-pivot-chip="map"]').click()
-  await page.locator('button[role="menuitem"]', { hasText: 'Add to Filters' }).click()
+  await page.getByRole('menuitem', { name: 'Add to Filters' }).click()
   await expect(page.locator('[data-pivot-zone="filters"] [data-pivot-chip="map"]')).toBeVisible()
 }
 
@@ -53,7 +53,7 @@ test('a filter value unchecks on click in WebKit (menu stays open)', async ({ pa
   await mountPivotWithMapFilter(page)
 
   await page.locator('[data-pivot-zone="filters"] [data-pivot-chip="map"]').click()
-  const busan = page.locator('[role="menuitemcheckbox"]', { hasText: 'busan' })
+  const busan = page.getByRole('menuitemcheckbox', { name: 'busan' })
   await expect(busan).toHaveAttribute('aria-checked', 'true')
 
   await busan.click()

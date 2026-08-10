@@ -59,7 +59,7 @@ test.describe('dossier — Most played hero winrate annotation', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Most played hero' })
@@ -79,7 +79,7 @@ test.describe('dossier — Most played hero winrate annotation', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Most played hero' })
@@ -105,7 +105,7 @@ test.describe('dossier — Most played hero winrate annotation', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Most played hero' })

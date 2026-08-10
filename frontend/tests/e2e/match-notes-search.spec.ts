@@ -53,7 +53,7 @@ test.describe('match notes — preview / textarea swap', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -91,7 +91,7 @@ test.describe('match notes — preview / textarea swap', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.match-notes-preview').click()
@@ -119,7 +119,7 @@ test.describe('match notes — preview / textarea swap', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Open the narrow popover via `/` BEFORE opening the detail
     // panel — the panel's focus trap captures keystrokes once open,
@@ -158,7 +158,7 @@ test.describe('match notes — preview / textarea swap', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     // No preview at all — the editor is ready to receive the user's

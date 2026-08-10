@@ -103,6 +103,6 @@ test.describe('update reminder banner', () => {
     await page.locator('.update-check-modal-close').click()
 
     await page.locator('[data-update-reminder-check]').click()
-    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.getByRole('dialog')).toBeVisible()
   })
 })

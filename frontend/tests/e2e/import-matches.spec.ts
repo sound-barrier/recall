@@ -27,8 +27,8 @@ test.describe('Import matches (merge)', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 
     const fileChooserPromise = page.waitForEvent('filechooser')
     await page.getByRole('button', { name: /import matches/i }).click()
@@ -51,8 +51,8 @@ test.describe('Import matches (merge)', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
-    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
 
     const fileChooserPromise = page.waitForEvent('filechooser')
     await page.locator('[data-import-matches]').click()

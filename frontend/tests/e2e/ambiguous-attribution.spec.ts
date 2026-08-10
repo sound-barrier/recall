@@ -89,7 +89,7 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const heading = page.locator('.needs-review-heading')
     await expect(heading).toBeVisible()
@@ -107,7 +107,7 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     // Click into the ambiguous card.
     const card = page.locator('.ambiguous-card').first()
@@ -119,7 +119,7 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     await expect(candidateRow).toBeVisible()
     await expect(candidateRow).toContainText(/rialto/i)
     await expect(candidateRow).toContainText(/12 min/i)
-    await expect(candidateRow.locator('button', { hasText: /Attach/ })).toBeVisible()
+    await expect(candidateRow.getByRole('button', { name: /Attach/ })).toBeVisible()
   })
 
   test('expanding auto-opens the source-screenshot preview', async ({ page }) => {
@@ -152,7 +152,7 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const card = page.locator('.ambiguous-card').first()
     await card.locator('.unknown-card-head').click()
@@ -190,7 +190,7 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await page.locator('.ambiguous-card .unknown-card-head').first().click()
 
     // Pane defaults to the first candidate.
@@ -225,7 +225,7 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     // Expand the ambiguous row.
     await page.locator('.ambiguous-card').first().locator('.unknown-card-head').click()
@@ -263,7 +263,7 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await page.locator('.ambiguous-card').first().locator('.unknown-card-head').click()
 
     // Thumb button appears with the right src + aria-label.

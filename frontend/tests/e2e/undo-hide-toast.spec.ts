@@ -54,7 +54,7 @@ test.describe('undo-hide toast', () => {
     await mock(page, state, visibilityCalls)
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click({ button: 'right' })
     await page.locator('[data-row-ctx-hide]').click()
 

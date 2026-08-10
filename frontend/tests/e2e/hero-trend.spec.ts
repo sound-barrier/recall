@@ -40,7 +40,7 @@ test.describe('per-hero win-rate trend', () => {
   test('renders the hero win-rate chart with a per-hero caption', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.trends-toggle').click()
 
     const card = page.locator('[data-trend-card="hero-winrate"]')
@@ -56,7 +56,7 @@ test.describe('per-hero win-rate trend', () => {
       { match_key: 'm1', source_files: ['m1.png'], data: { map: 'rialto', role: 'support', result: 'victory', date: '2026-05-01', finished_at: '20:00' } },
     ])
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.trends-toggle').click()
 
     const card = page.locator('[data-trend-card="hero-winrate"]')

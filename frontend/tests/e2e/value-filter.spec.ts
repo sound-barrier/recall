@@ -53,7 +53,7 @@ async function mount(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(2)
 }
 
@@ -147,7 +147,7 @@ test.describe('value-click filtering', () => {
       }),
     )
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(2)
 
     // The tank chip only exists once the reference data resolves the roles.
@@ -171,7 +171,7 @@ test.describe('value-click filtering', () => {
       }),
     )
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(2)
 
     await page.locator('.leaf-row[data-match-key="m1"] .leaf-strip').click()

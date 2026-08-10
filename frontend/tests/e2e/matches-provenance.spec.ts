@@ -55,7 +55,7 @@ async function mountCorpus(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
 }
 

@@ -94,7 +94,7 @@ async function seed(page: import('@playwright/test').Page) {
 // Drill in: Matches tab → open the multi-file match's detail panel
 // → expand Source Screenshots → open the lightbox on file #1.
 async function openLightboxOnFirstFile(page: import('@playwright/test').Page) {
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   // The leaf row for the multi-file match — find by hero.
   await page.locator('.leaf-row', { hasText: 'lucio' }).click()
   await expect(page.locator('aside.detail-panel')).toBeVisible()
@@ -202,7 +202,7 @@ test.describe('lightbox — navigate between screenshots of the same match', () 
     // source file. With files.length === 1 the user has no navigation
     // affordance — the < and > render but stay disabled, the caption
     // suppresses (no `1 of 1` noise).
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row', { hasText: 'soldier-76' }).click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
     await page.locator('.sources-toggle .sources-label').click()

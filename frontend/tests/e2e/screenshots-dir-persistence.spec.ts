@@ -65,7 +65,7 @@ test.describe('settings — screenshots folder persists across reloads', () => {
     }, pickedPath)
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // Confirm the steady-state row is HIDDEN initially (no folder).
     await expect(page.locator('.setting-value.mono')).toHaveCount(0)
@@ -83,7 +83,7 @@ test.describe('settings — screenshots folder persists across reloads', () => {
     // RELOAD simulating an app restart. The route handler stays
     // armed; the GET should now return the persisted path.
     await page.reload()
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // PIN THE BUG: the path must still be visible after reload.
     await expect(page.locator('.setting-value.mono')).toContainText(pickedPath)
@@ -108,7 +108,7 @@ test.describe('settings — screenshots folder persists across reloads', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     await expect(page.locator('.setting-value.mono')).toContainText(persistedPath)
     // Empty-state hero must NOT render — the user already has a folder.

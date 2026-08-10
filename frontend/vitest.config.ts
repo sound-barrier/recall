@@ -34,7 +34,9 @@ export default defineConfig({
       // into irongut/CodeCoverageSummary; keeping it on the local
       // reporter list means `make cover-frontend` produces the same
       // artifact that CI does (one less drift risk).
-      reporter: ['text', 'lcov', 'html', 'cobertura'],
+      // json-summary is the machine-readable per-file table a coverage push
+      // works from (which files still carry uncovered branches, and how many).
+      reporter: ['text', 'lcov', 'html', 'cobertura', 'json-summary'],
       include: ['src/**/*.ts', 'src/**/*.vue'],
       // src/client is generated (@hey-api/openapi-ts) — excluded so the
       // coverage floors measure authored code only.

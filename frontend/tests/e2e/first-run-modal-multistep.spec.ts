@@ -69,11 +69,11 @@ test.describe('first-run modal — multi-step (Save / Keep → picker)', () => {
 
     const modal = page.locator('.first-run-modal')
     await expect(modal).toBeVisible()
-    await expect(modal.locator('[data-testid="first-run-step-label"]')).toHaveText('Step 1 of 2')
+    await expect(modal.getByTestId('first-run-step-label')).toHaveText('Step 1 of 2')
     await modal.locator('[data-step-keep]').click()
 
-    await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
-    await expect(modal.locator('[data-testid="first-run-step-label"]')).toHaveText('Step 2 of 2')
+    await expect(modal.getByRole('heading', { level: 2 })).toContainText('Where do your screenshots live?')
+    await expect(modal.getByTestId('first-run-step-label')).toHaveText('Step 2 of 2')
     await expect(modal.locator('.src-card')).toHaveCount(4)
     await expect(modal.locator('[data-step-back]')).toBeVisible()
   })
@@ -119,12 +119,12 @@ test.describe('first-run modal — multi-step (Save / Keep → picker)', () => {
       })
     })
     await modal.locator('[data-step-save]').click()
-    await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
+    await expect(modal.getByRole('heading', { level: 2 })).toContainText('Where do your screenshots live?')
 
     // Back returns to step 1; the input shows the typed value still
     // and is focused.
     await modal.locator('[data-step-back]').click()
-    await expect(modal.locator('h2')).toContainText('Main account name')
+    await expect(modal.getByRole('heading', { level: 2 })).toContainText('Main account name')
     await expect(modal.locator('.first-run-input')).toBeFocused()
     await expect(modal.locator('.first-run-input')).toHaveValue('SilentStorm')
   })

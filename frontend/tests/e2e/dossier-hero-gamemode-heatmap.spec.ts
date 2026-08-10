@@ -94,7 +94,7 @@ test.describe('dossier — Hero × Game-Mode row', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
@@ -126,7 +126,7 @@ test.describe('dossier — Hero × Game-Mode row', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
     })
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     const band = page.locator('.hero-mode-band')
     await expect(band).toBeVisible()
 
@@ -158,7 +158,7 @@ test.describe('dossier — Hero × Game-Mode row', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
     })
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     const band = page.locator('.hero-mode-band')
     await expect(band.locator('.heatmap-grid')).toBeVisible()
     await expect(band.locator('.heatmap-colhead')).toHaveCount(5)
@@ -250,11 +250,11 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     const band = page.locator('.hero-mode-band')
     await expect(band.locator('.heatmap-grid')).toBeVisible() // 22 decisive ≥ 20
     await band.locator('[data-hero-mode-config-trigger]').click()
-    const popover = page.locator('[data-testid="widget-config-popover"]')
+    const popover = page.getByTestId('widget-config-popover')
     await expect(popover).toBeVisible()
     // Raise the floor to 50 → 22 decisive is now below it.
     await popover.locator('[data-widget-config-choice="minMatches=50"]').click()
-    await popover.locator('[data-testid="widget-config-save"]').click()
+    await popover.getByTestId('widget-config-save').click()
     await expect(band.locator('.heatmap-empty')).toBeVisible()
   })
 
@@ -278,7 +278,7 @@ test.describe('dossier — Hero × Game-Mode row', () => {
       })
     })
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     const band = page.locator('.hero-mode-band')
     await expect(band.locator('.heatmap-empty')).toBeVisible()
     await expect(band.locator('.heatmap-empty')).toContainText('decisive matches')
@@ -319,7 +319,7 @@ test.describe('dossier — Hero × Game-Mode drill-down', () => {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DRILL) }),
     )
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.hero-mode-band')).toBeVisible()
   })
 

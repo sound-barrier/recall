@@ -96,7 +96,7 @@ test.describe('hero-count buckets + hero pool', () => {
     await page.route('**/api/v1/matches', (r: Route) =>
       r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus()) }))
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
@@ -120,7 +120,7 @@ test.describe('hero-count buckets + hero pool', () => {
   test('raising the threshold to 10% reclassifies the borderline 7% swap', async ({ page }) => {
     await page.locator('[data-widget-config-trigger="heroes-per-match"]').click()
     await page.locator('[data-widget-config-choice="thresholdPct=10"]').click()
-    await page.locator('[data-testid="widget-config-save"]').click()
+    await page.getByTestId('widget-config-save').click()
 
     const widget = page.locator('.breakdown', { hasText: 'Heroes per match' })
     const rows = widget.locator('li:not(.bd-placeholder)')
@@ -167,7 +167,7 @@ test.describe('hero-count buckets + hero pool', () => {
   test("the Hero Pool band's gear re-derives the analysis at 10%", async ({ page }) => {
     await page.locator('[data-hero-pool-config-trigger]').click()
     await page.locator('[data-widget-config-choice="thresholdPct=10"]').click()
-    await page.locator('[data-testid="widget-config-save"]').click()
+    await page.getByTestId('widget-config-save').click()
 
     const widget = page.locator('.hero-pool-band')
     // X1's 7% genji no longer counts: it becomes a pure single-lucio game, so
@@ -187,7 +187,7 @@ test.describe('hero-count buckets + hero pool', () => {
         try { localStorage.setItem('recall.theme', t) } catch (_) { /* ignore */ }
       }, theme)
       await page.goto('/')
-      await page.locator('#tab-matches').click()
+      await page.getByRole('tab', { name: /^Matches/ }).click()
       await expect(page.locator('.set-dossier')).toBeVisible()
       // Both surfaces are present: the seeded buckets widget in the grid,
       // the Hero Pool band below it (default-visible).
@@ -200,7 +200,7 @@ test.describe('hero-count buckets + hero pool', () => {
   }
 
   test('the Compare tab carries the pool + split rows', async ({ page }) => {
-    await page.locator('#tab-compare').click()
+    await page.getByRole('tab', { name: 'Compare' }).click()
     await expect(page.locator('[data-compare-row="heroPool"]')).toBeVisible()
     // Every match is in This Season (column B).
     await expect(page.locator('[data-compare-row="heroPool"] .compare-b')).toContainText(/cio/i)

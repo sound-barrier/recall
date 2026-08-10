@@ -122,7 +122,7 @@ test.describe('masthead watch dot', () => {
     await page.goto('/')
 
     // The masthead is up (nav renders) but no watch dot.
-    await expect(page.locator('#tab-matches')).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('.masthead-watch-dot')).toHaveCount(0)
   })
 })

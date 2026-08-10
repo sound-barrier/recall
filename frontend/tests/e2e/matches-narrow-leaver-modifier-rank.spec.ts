@@ -48,7 +48,7 @@ test.describe('Matches narrow — leaver / modifier / rank', () => {
     })
     await page.setViewportSize({ width: 1500, height: 1000 })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.left-panel-rail')).toBeVisible()
     await expect.poll(() => page.locator('.leaf-row').count()).toBe(6)
   })

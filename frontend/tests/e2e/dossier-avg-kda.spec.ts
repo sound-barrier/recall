@@ -57,7 +57,7 @@ test.describe('dossier — Avg K/D/A per 10min', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     // Old eyebrow is gone.
@@ -81,7 +81,7 @@ test.describe('dossier — Avg K/D/A per 10min', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Avg K/D/A per 10min' })
@@ -101,7 +101,7 @@ test.describe('dossier — Avg K/D/A per 10min', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Avg K/D/A per 10min' })

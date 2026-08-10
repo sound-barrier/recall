@@ -34,7 +34,7 @@ async function mountInDataDensity(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   await page.locator('.seg-btn', { hasText: 'Data' }).click()
   await expect(page.locator('table.leaves-table')).toBeVisible()
@@ -48,7 +48,7 @@ test('exports every narrowed match when nothing is selected', async ({ page }) =
   await mountInDataDensity(page)
 
   const downloadPromise = page.waitForEvent('download')
-  await page.locator('[data-testid="export-csv"]').click()
+  await page.getByTestId('export-csv').click()
   const download = await downloadPromise
 
   expect(download.suggestedFilename()).toMatch(/^recall-matches-.*\.csv$/)
@@ -70,7 +70,7 @@ test('exports only the ticked subset when rows are selected', async ({ page }) =
   await expect(row).toHaveClass(/is-ticked/)
 
   const downloadPromise = page.waitForEvent('download')
-  await page.locator('[data-testid="export-csv"]').click()
+  await page.getByTestId('export-csv').click()
   const download = await downloadPromise
 
   const rows = dataRows(readFileSync((await download.path())!, 'utf8'))
@@ -86,7 +86,7 @@ test('the bulk action bar also exports the selection to CSV', async ({ page }) =
   await row.locator('.leaf-checkbox').click()
 
   const downloadPromise = page.waitForEvent('download')
-  await page.locator('[data-testid="bulk-export-csv"]').click()
+  await page.getByTestId('bulk-export-csv').click()
   const download = await downloadPromise
 
   const rows = dataRows(readFileSync((await download.path())!, 'utf8'))

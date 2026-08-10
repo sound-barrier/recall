@@ -85,7 +85,7 @@ test.describe('matches — export bundle', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // Tick the first two rows. Use `.leaf-checkbox` — the same
@@ -95,22 +95,22 @@ test.describe('matches — export bundle', () => {
     await page.locator('.leaf-row').nth(1).locator('.leaf-checkbox').click()
 
     // The bulk-action bar shows the new Export bundle button.
-    const exportBtn = page.locator('[data-testid="bulk-export-bundle"]')
+    const exportBtn = page.getByTestId('bulk-export-bundle')
     await expect(exportBtn).toBeVisible()
     await exportBtn.click()
 
     // Modal opens with the selected count.
-    const modal = page.locator('[data-testid="export-bundle-modal"]')
+    const modal = page.getByTestId('export-bundle-modal')
     await expect(modal).toBeVisible()
     await expect(modal.locator('.export-bundle-value')).toContainText('2')
 
     // Filename default matches the recall-bundle-<timestamp>.zip pattern.
-    const filenameInput = modal.locator('[data-testid="filename"]')
+    const filenameInput = modal.getByTestId('filename')
     await expect(filenameInput).toHaveValue(/^recall-bundle-\d{8}-\d{6}\.zip$/)
 
     // Click Export. The POST /api/v1/exports/bundle handler records
     // the body so we can assert match_keys + the toggle values.
-    await modal.locator('[data-testid="export-submit"]').click()
+    await modal.getByTestId('export-submit').click()
 
     await expect.poll(() => bundleBody.seen()).toBe(true)
     // Rendered order is newest-first (Sort=Newest default), so the

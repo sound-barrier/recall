@@ -95,7 +95,7 @@ test.describe('match search — narrow-panel scoped-clause filter', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(4)
   })
 

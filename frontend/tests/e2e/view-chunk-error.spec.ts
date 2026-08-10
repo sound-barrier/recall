@@ -16,7 +16,7 @@ test.describe('lazy view chunk failure', () => {
     await page.route('**/assets/IngestView-*.js', (route) => route.abort())
 
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
 
     const errorState = page.locator('[data-view-error]')
     await expect(errorState).toBeVisible()
@@ -34,15 +34,15 @@ test.describe('lazy view chunk failure', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.locator('[data-view-error]')).toBeVisible()
 
     // The chunk becomes servable again (deploy finished / network
     // back); the reload button recovers the app.
     block = false
     await page.locator('[data-view-error]').getByRole('button', { name: /reload/i }).click()
-    await page.locator('#tab-ingest').click()
-    await expect(page.locator('#panel-ingest')).toBeVisible()
+    await page.getByRole('tab', { name: 'Parse' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Parse' })).toBeVisible()
     await expect(page.locator('[data-view-error]')).toHaveCount(0)
   })
 })

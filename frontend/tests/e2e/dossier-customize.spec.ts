@@ -41,7 +41,7 @@ test.describe('dossier customize — no edit mode', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
@@ -64,7 +64,7 @@ test.describe('dossier customize — no edit mode', () => {
     await expect(page.locator('[data-widget-id="winrate"]')).toHaveCount(0)
 
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('[data-widget-id="winrate"]')).toHaveCount(0)
   })
 
@@ -127,7 +127,7 @@ test.describe('dossier customize — no edit mode', () => {
     await expect.poll(order).toEqual(['geography', 'campaign-log', 'hero-game-mode', 'hero-pool'])
 
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect.poll(order).toEqual(['geography', 'campaign-log', 'hero-game-mode', 'hero-pool'])
   })
 

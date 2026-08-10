@@ -176,7 +176,7 @@ test.describe('matches — Move to profile', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(2)
 
     // Tick both rows.

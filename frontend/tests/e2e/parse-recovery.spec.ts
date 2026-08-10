@@ -80,7 +80,7 @@ test.describe('parse-stream recovery', () => {
     await installSSEMock(page)
     await routeBackend(page, () => ({ running: true, done: 6, total: 20, scope: 'new' }))
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     // No Parse click — the panel comes back purely from the resync.
     await expect(page.locator(panel)).toBeVisible()
     await expect(page.locator('.pp-total')).toHaveText('20')
@@ -90,7 +90,7 @@ test.describe('parse-stream recovery', () => {
     await installSSEMock(page)
     await routeBackend(page, () => ({ running: true, done: 6, total: 20, scope: 'new' }))
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.locator(panel)).toBeVisible()
 
     await page.evaluate(() => (window as unknown as { __sse: { drop: () => void } }).__sse.drop())
@@ -106,7 +106,7 @@ test.describe('parse-stream recovery', () => {
     let running = true
     await routeBackend(page, () => ({ running, done: 6, total: 20, scope: 'new' }))
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.locator(panel)).toBeVisible()
 
     await page.evaluate(() => (window as unknown as { __sse: { drop: () => void } }).__sse.drop())

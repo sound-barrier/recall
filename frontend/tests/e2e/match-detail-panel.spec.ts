@@ -46,7 +46,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
   })
 
@@ -364,7 +364,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     // Open the cheatsheet with `?` (no Shift+/ keys needed —
     // useKeyboardShortcuts maps the `?` key directly).
     await page.keyboard.press('?')
-    const cheatsheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    const cheatsheet = page.getByTestId('kbd-shortcuts-modal')
     await expect(cheatsheet).toBeVisible()
 
     // Group headings inside the cheatsheet — when the panel is up,
@@ -393,7 +393,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
     await page.keyboard.press('?')
-    const cheatsheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    const cheatsheet = page.getByTestId('kbd-shortcuts-modal')
     await expect(cheatsheet).toBeVisible()
 
     // ↓ scrolls the modal body down.
@@ -431,7 +431,11 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await page.keyboard.press('s')
     await page.waitForTimeout(150)
     await expect(cheatsheet).toBeVisible()
-    // And underlying view didn't change.
+    // And underlying view didn't change. This is one of the places the
+    // structural selector is the RIGHT tool: the open cheatsheet marks the
+    // whole background inert + aria-hidden, so the tab is deliberately out
+    // of the accessibility tree and no role query — includeHidden included —
+    // can reach it.
     const onMatchesTab = page.locator('#tab-matches[aria-selected="true"]')
     await expect(onMatchesTab).toHaveCount(1)
 

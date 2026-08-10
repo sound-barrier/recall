@@ -161,7 +161,7 @@ test.describe('vim motions — Narrow panel Tab rule', () => {
   test('Tab from the empty search input lands on a toggle, not a text input', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     // Park focus on a non-input first so `/` reaches the global
     // dispatcher cleanly (mirrors keyboard-shortcuts.spec).
     await page.locator('.brand').first().click()

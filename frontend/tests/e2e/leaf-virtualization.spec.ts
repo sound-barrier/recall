@@ -57,7 +57,7 @@ test.describe('Matches — leaf-row virtualization', () => {
 
   test('flat groupBy=none renders only the in-viewport slice (under 60 leaf-rows)', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
     // Open the toolbar group menu + pick "None". The group menu
     // sits inside `.leaves-toolbar` per the existing template; we
@@ -68,7 +68,7 @@ test.describe('Matches — leaf-row virtualization', () => {
     // data-attribute selector, then click the "No grouping" pick
     // (data-group-pick="none").
     await page.locator('[data-sort-group-trigger]').click()
-    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeVisible()
+    await expect(page.getByTestId('sort-group-popover')).toBeVisible()
     await page.locator('[data-group-pick="none"]').click()
     // Wait for the spacer to surface — that's the virtualization
     // signal (groupBy='day' has no spacers).
@@ -83,13 +83,13 @@ test.describe('Matches — leaf-row virtualization', () => {
 
   test('scrolling reveals rows further down the corpus', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     // The sort/group popover trigger is the segmented control in the
     // toolbar above the leaves list. Open it via its stable
     // data-attribute selector, then click the "No grouping" pick
     // (data-group-pick="none").
     await page.locator('[data-sort-group-trigger]').click()
-    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeVisible()
+    await expect(page.getByTestId('sort-group-popover')).toBeVisible()
     await page.locator('[data-group-pick="none"]').click()
     await expect(page.locator('[data-virt-bottom-spacer]')).toBeVisible()
     // Initially, a row deep in the corpus isn't in the DOM — the
@@ -122,13 +122,13 @@ test.describe('Matches — leaf-row virtualization', () => {
 
   test('clicking a virtualized row opens the detail panel', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     // The sort/group popover trigger is the segmented control in the
     // toolbar above the leaves list. Open it via its stable
     // data-attribute selector, then click the "No grouping" pick
     // (data-group-pick="none").
     await page.locator('[data-sort-group-trigger]').click()
-    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeVisible()
+    await expect(page.getByTestId('sort-group-popover')).toBeVisible()
     await page.locator('[data-group-pick="none"]').click()
     await expect(page.locator('[data-virt-bottom-spacer]')).toBeVisible()
     // Click the first visible row.
@@ -140,7 +140,7 @@ test.describe('Matches — leaf-row virtualization', () => {
 
   test('grouped mode (default) renders every row in view — no virtualization spacers', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
     // Default groupBy is 'day' — no virtualization in PR scope.
     await expect(page.locator('[data-virt-top-spacer]')).toHaveCount(0)

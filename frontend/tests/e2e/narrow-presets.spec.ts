@@ -48,7 +48,7 @@ test.describe('saved-set / narrow presets', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Open narrow popover (the trigger button is on the dossier).
     await page.locator('[data-narrow-trigger]').click()
@@ -69,7 +69,7 @@ test.describe('saved-set / narrow presets', () => {
     await expect(page.locator('[data-preset-name="comp clutch"]')).toBeVisible()
 
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('[data-narrow-trigger]').click()
     await expect(page.locator('[data-preset-name="comp clutch"]')).toBeVisible()
 

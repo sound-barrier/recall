@@ -70,8 +70,8 @@ test.describe('picker per-source diagnostics', () => {
   test('every card surfaces its stats line with the right copy', async ({ page }) => {
     await mockBoot(page)
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
-    await expect(page.locator('#panel-settings')).toBeVisible()
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Settings' })).toBeVisible()
     await expect(page.locator('[data-src-grid]')).toBeVisible()
 
     // Nvidia — 47 files, all recognized, recent: "47 files · Xh ago".
@@ -107,7 +107,7 @@ test.describe('picker per-source diagnostics', () => {
       status: 500, contentType: 'text/plain', body: 'stats unavailable',
     }))
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await expect(page.locator('[data-src-grid]')).toBeVisible()
     // Cards still render with name/path/status; stats line stays absent.
     await expect(page.locator('.src-card')).toHaveCount(4)

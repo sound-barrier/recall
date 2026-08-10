@@ -39,8 +39,8 @@ test.describe('Settings — Re-parse all screenshots', () => {
 
     await page.goto('/')
     // Switch to Settings tab.
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
-    await expect(page.locator('#panel-settings')).toBeVisible()
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Settings' })).toBeVisible()
 
     // Open the Advanced collapsible (native <details>). Force the
     // open attribute directly because the empty-hero picker now
@@ -86,7 +86,7 @@ test.describe('Settings — Re-parse all screenshots', () => {
     })
 
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('#sec-advanced').evaluate(el => (el as HTMLDetailsElement).open = true)
     await page.locator('[data-reparse-all-arm]').click()
     // Click Cancel inside the confirm group.

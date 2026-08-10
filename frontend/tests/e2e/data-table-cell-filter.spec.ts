@@ -50,7 +50,7 @@ test.describe('data table — click a cell to filter', () => {
       }),
     )
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await toDataDensity(page)
     await expect(page.locator('tr.table-row')).toHaveCount(3)
 

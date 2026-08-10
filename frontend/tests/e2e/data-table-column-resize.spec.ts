@@ -61,7 +61,7 @@ test.describe('data table — column resize', () => {
       }),
     )
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await toDataDensity(page)
   })
 
@@ -73,7 +73,7 @@ test.describe('data table — column resize', () => {
 
     // Persists across a reload.
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await toDataDensity(page)
     expect(Math.abs((await mapWidth(page)) - after)).toBeLessThan(8)
   })

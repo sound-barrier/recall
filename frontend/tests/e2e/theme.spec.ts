@@ -12,7 +12,7 @@ import { test, expect } from './_fixtures'
 test.describe('theme — swatch selection', () => {
   test('clicking the High contrast swatch flips data-theme and persists', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // Four swatches, named via aria-label on the radiogroup +
     // role=radio on each. The High contrast swatch is the rightmost.
@@ -30,7 +30,7 @@ test.describe('theme — swatch selection', () => {
 
   test('Day / Dark / Night swatches switch live', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     await page.locator('button.theme-swatch.day-swatch').click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'day')
@@ -44,7 +44,7 @@ test.describe('theme — swatch selection', () => {
 
   test('active swatch carries aria-checked=true', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     await page.locator('button.theme-swatch.contrast-swatch').click()
     await expect(page.locator('button.theme-swatch.contrast-swatch')).toHaveAttribute('aria-checked', 'true')
@@ -109,7 +109,7 @@ test.describe('theme — OS preference on fresh install', () => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
     await clearTheme(page)
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('button.theme-swatch.day-swatch').click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'day')
 

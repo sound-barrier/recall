@@ -37,7 +37,7 @@ test.describe('unknown tab — reference-data-gaps contextual callout', () => {
       body: JSON.stringify([gap('miya', 'miyazaki')]),
     }))
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await expect(page.locator('#section-reference-gaps')).toBeVisible()
     const callout = page.locator('[data-ctx-callout]')
     await expect(callout).toBeVisible()
@@ -63,7 +63,7 @@ test.describe('unknown tab — reference-data-gaps contextual callout', () => {
       }]),
     }))
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     // Section absent, callout absent.
     await expect(page.locator('#section-reference-gaps')).toHaveCount(0)
     await expect(page.locator('[data-ctx-callout]')).toHaveCount(0)
@@ -78,7 +78,7 @@ test.describe('unknown tab — reference-data-gaps contextual callout', () => {
       body: JSON.stringify([gap('miya', 'miyazaki')]),
     }))
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await expect(page.locator('#section-reference-gaps')).toBeVisible()
     await expect(page.locator('[data-ctx-callout]')).toHaveCount(0)
   })

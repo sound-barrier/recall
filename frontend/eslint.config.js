@@ -221,6 +221,40 @@ export default tseslint.config(
           message: 'Unit tests use Testing Library — render via @/test-utils (renderApp/renderWidget) and query via @testing-library/vue.',
         }],
       }],
+      // Assert the CONTRACT, not the paint. Each selector below is scoped to
+      // expect(), so setup-time writes (seeding el.style.width in a fixture)
+      // stay legal — only assertions are policed. The escape is an annotated
+      // `eslint-disable-next-line no-restricted-syntax -- <reason>`;
+      // reportUnusedDisableDirectives keeps those honest. Sanctioned reasons:
+      // aria-hidden decoration, a visual tint encoding a threshold, and a
+      // data-* attribute production code reads back (data-widget-id → the
+      // drag engine, data-combo-id → click-outside detection).
+      'no-restricted-syntax': ['error',
+        {
+          selector: "CallExpression[callee.property.name='toHaveClass']",
+          message: 'Assert ARIA state or visible text, not CSS classes (root CLAUDE.md). A class that encodes a threshold tint is the sanctioned exception: eslint-disable-next-line no-restricted-syntax -- <reason>.',
+        },
+        {
+          selector: "CallExpression[callee.property.name='toHaveStyle']",
+          message: 'Style assertions pin the paint, not the contract — assert the ARIA value that drives it (a meter exposes aria-valuenow).',
+        },
+        {
+          selector: "CallExpression[callee.name='expect'] MemberExpression[object.property.name='style']",
+          message: 'Reading .style.* inside expect() asserts presentation — assert the semantic state instead.',
+        },
+        {
+          selector: "CallExpression[callee.name='expect'] MemberExpression[property.name=/^(className|classList)$/]",
+          message: 'Class inspection inside expect() — assert semantics, not classes.',
+        },
+        {
+          selector: "CallExpression[callee.property.name='toHaveAttribute'][arguments.0.value=/^data-/]",
+          message: 'data-* is internal wiring in a unit test — assert the user-facing contract. A data-* the app itself reads back is the sanctioned exception (annotated disable).',
+        },
+        {
+          selector: "CallExpression[callee.property.name='getAttribute'][arguments.0.value=/^data-/]",
+          message: 'data-* is internal wiring in a unit test — assert the user-facing contract. A data-* the app itself reads back is the sanctioned exception (annotated disable).',
+        },
+      ],
     },
   },
   {
@@ -233,6 +267,13 @@ export default tseslint.config(
       ...pluginPlaywright.configs['flat/recommended'].rules,
       'playwright/no-focused-test': 'error',
       'playwright/no-skipped-test': 'error',
+      // Native queries over CSS-attribute selectors: locator('[role=x]') →
+      // getByRole('x'), locator('[data-testid=x]') → getByTestId('x'), and the
+      // aria-label / title / placeholder / alt forms. The e2e suite still pins
+      // structure through data-* and class hooks where the page has no
+      // accessible handle (see the root CLAUDE.md e2e convention) — this rule
+      // only forbids spelling an ALREADY-accessible query as a CSS selector.
+      'playwright/prefer-native-locators': 'error',
       // no-wait-for-timeout: OFF. The suite uses fixed waits deliberately (~36
       // sites — animation/debounce settles) and runs with retries: 0, so flakes
       // surface immediately. Rewriting each to a web-first wait is a separate,

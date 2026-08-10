@@ -96,7 +96,7 @@ test.describe('masthead parse-queue chip', () => {
 
     // Click jumps to the Parse tab (the detailed log lives there).
     await chip.click()
-    await expect(page.locator('#tab-ingest')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Parse' })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('chip disappears once done === total and a settle window passes', async ({ page }) => {

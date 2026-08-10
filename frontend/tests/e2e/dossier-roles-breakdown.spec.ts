@@ -73,17 +73,17 @@ test.describe('dossier — Most played roles breakdown', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     const article = page.locator('[data-breakdown="roles"]')
     await expect(article).toBeVisible()
     await expect(article.locator('.breakdown-eyebrow')).toHaveText('Most played roles')
 
     // 3 rows always — tank, dps, support.
-    await expect(article.locator('li')).toHaveCount(3)
+    await expect(article.getByRole('listitem')).toHaveCount(3)
 
     // Tank is dominant (2/4) → first row, "2x", 50%.
-    const first = article.locator('li').first()
+    const first = article.getByRole('listitem').first()
     await expect(first.locator('.bd-name')).toHaveText(/tank/i)
     await expect(first.locator('.bd-time')).toHaveText('2x')
     await expect(first.locator('.bd-stats')).toHaveText('50%')
@@ -102,7 +102,7 @@ test.describe('dossier — Most played roles breakdown', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     const article = page.locator('[data-breakdown="roles"]')
     await expect(article).toBeVisible()
@@ -118,7 +118,7 @@ test.describe('dossier — Most played roles breakdown', () => {
       .toBeGreaterThan(100)
 
     // Dominant row (tank, 2x, 100%) sits first.
-    const first = article.locator('li').first()
+    const first = article.getByRole('listitem').first()
     await expect(first.locator('.bd-name')).toHaveText(/tank/i)
     await expect(first.locator('.bd-time')).toHaveText('2x')
     await expect(first.locator('.bd-stats')).toHaveText('100%')
@@ -129,9 +129,9 @@ test.describe('dossier — Most played roles breakdown', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     const article = page.locator('[data-breakdown="roles"]')
-    await expect(article.locator('li')).toHaveCount(3)
+    await expect(article.getByRole('listitem')).toHaveCount(3)
     for (const txt of await article.locator('.bd-stats').allTextContents()) {
       expect(txt).toBe('0%')
     }

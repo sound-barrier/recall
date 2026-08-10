@@ -18,7 +18,7 @@ async function walkToHeading(page: Page, re: RegExp, max = 30) {
   const heading = page.locator('.tour-callout-heading')
   for (let i = 0; i < max; i++) {
     if (re.test((await heading.textContent()) ?? '')) return
-    await page.locator('button:has-text("Next")').click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.waitForTimeout(120)
   }
   throw new Error(`tour never reached a heading matching ${re}`)
@@ -38,7 +38,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
 
   test('appears on first visit (empty localStorage)', async ({ page }) => {
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
     await expect(tour).toBeVisible()
     // Step 1/N indicator + the welcome heading.
     await expect(tour).toContainText(/welcome to recall/i)
@@ -68,7 +68,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
     })
 
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
     await expect(tour).toBeVisible()
     await expect(tour).toContainText(/welcome to recall/i)
 
@@ -113,7 +113,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
     })
 
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
     await expect(tour).toBeVisible()
     await expect(tour).toContainText(/welcome to recall/i)
 
@@ -124,7 +124,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
     // Step 3: Settings tab — the tour switches the underlying view.
     await tour.getByRole('button', { name: /next/i }).click()
     await expect(tour).toContainText(/settings/i)
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 
     // Walk the rest of the way to the second-to-last "Explore with real
     // data" step (per-step copy assertions live in the spotlight spec).
@@ -150,7 +150,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
 
   test('does NOT re-appear after completion (reload)', async ({ page }) => {
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
     await expect(tour).toBeVisible()
     // Escape is the pure-dismiss path (Skip now seeds + reloads into the
     // sample profile); use it to close, then prove the persisted completion
@@ -166,7 +166,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
 
   test('Previous navigates to the previous step (and is disabled on step 1)', async ({ page }) => {
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
 
     // Previous should be disabled on step 1 — there's no earlier step.
     const previous = tour.getByRole('button', { name: /previous/i })
@@ -182,7 +182,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
 
   test('Escape key dismisses the tour (matches modal a11y convention)', async ({ page }) => {
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
     await expect(tour).toBeVisible()
 
     await page.keyboard.press('Escape')
@@ -223,10 +223,10 @@ test.describe('onboarding tour — replay from Settings', () => {
       } catch (_) { /* ignore */ }
     })
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
     await expect(tour).toBeHidden() // completed → no auto-open
 
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('.advanced-summary').click()
     await page.locator('[data-replay-tour]').click()
 

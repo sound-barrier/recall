@@ -51,7 +51,7 @@ test.describe('data table — frozen leading columns', () => {
       }),
     )
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await toDataDensity(page)
 
     const dateBefore = await thX(page, 'date')

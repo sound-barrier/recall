@@ -58,7 +58,7 @@ test.describe('inline match-data editing', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -85,7 +85,7 @@ test.describe('inline match-data editing', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -121,11 +121,11 @@ test.describe('inline match-data editing', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await expect(page.locator('.detail-reset-btn')).toBeVisible()
-    await page.locator('[aria-label="Revert Damage to the scanned value"]').click()
+    await page.getByLabel('Revert Damage to the scanned value').click()
 
     await expect.poll(() => sawDelete).toBe(true)
     await expect(page.locator('.detail-reset-btn')).toHaveCount(0)

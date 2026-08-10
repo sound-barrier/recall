@@ -50,7 +50,7 @@ test.describe('dashboard pack rows migration', () => {
       localStorage.removeItem('recall.dashboard.layoutVersion')
     }, BROKEN_LAYOUT)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
   })
 
   test('one-time migration packs single-widget overflow rows into denser rows', async ({ page }) => {

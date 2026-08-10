@@ -82,7 +82,7 @@ test.describe('Matches — Trends section', () => {
   test('expands to render the eight default trend charts (Modifiers opt-in)', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const toggle = page.locator('.trends-toggle')
@@ -115,7 +115,7 @@ test.describe('Matches — Trends section', () => {
   test('the window selector re-renders the rolling win-rate chart', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.trends-toggle').click()
 
     // The window selector lives in the section toolbar, not on a chart card.
@@ -135,7 +135,7 @@ test.describe('Matches — Trends section', () => {
       { match_key: 'unmatched-a.png', source_files: ['a.png'], data: { map: 'rialto', result: 'victory' } },
     ])
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.trends-toggle').click()
 
     await expect(page.locator('.trends-empty')).toBeVisible()

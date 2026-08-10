@@ -61,8 +61,8 @@ test.describe('Settings — first-run screenshot source picker', () => {
   test('Windows: renders 4 cards + custom-pick tile', async ({ page }) => {
     await mockBoot(page, { platform: 'windows', candidates: CANDIDATES_WINDOWS })
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
-    await expect(page.locator('#panel-settings')).toBeVisible()
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Settings' })).toBeVisible()
     await expect(page.locator('[data-src-grid]')).toBeVisible()
     await expect(page.locator('.src-card')).toHaveCount(4)
     await expect(page.locator('[data-src-pick-custom]')).toBeVisible()
@@ -80,7 +80,7 @@ test.describe('Settings — first-run screenshot source picker', () => {
     })
 
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('[data-src-name="nvidia"]').click()
     await expect.poll(() => put).not.toBeNull()
     expect((put!.body as { path: string }).path).toBe('C:\\Users\\J\\Videos\\Overwatch')
@@ -98,7 +98,7 @@ test.describe('Settings — first-run screenshot source picker', () => {
     })
 
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('[data-src-name="prntscn"]').click({ force: true })
     await page.waitForTimeout(200)
     expect(putFired).toBe(false)
@@ -107,7 +107,7 @@ test.describe('Settings — first-run screenshot source picker', () => {
   test('macOS: hides the grid and shows the platform note', async ({ page }) => {
     await mockBoot(page, { platform: 'darwin', candidates: [] })
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await expect(page.locator('[data-src-grid]')).toHaveCount(0)
     await expect(page.locator('[data-src-platform-note]')).toContainText('WINDOWS ONLY')
     // Custom-pick tile still renders so the Mac user can pick their folder.
@@ -131,7 +131,7 @@ test.describe('Settings — first-run screenshot source picker', () => {
     })
 
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     const grid = page.locator('[data-src-grid]')
     await expect(grid).toBeVisible()
 

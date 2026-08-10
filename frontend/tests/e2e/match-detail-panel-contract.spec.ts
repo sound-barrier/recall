@@ -36,7 +36,7 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -66,7 +66,7 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -85,9 +85,9 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
     await page.goto('/')
     // Navigate to Settings via the tab — panel + matches groups
     // should drop out of the rendered cheatsheet.
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.keyboard.press('?')
-    const cheatsheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    const cheatsheet = page.getByTestId('kbd-shortcuts-modal')
     await expect(cheatsheet).toBeVisible()
 
     const titles = await cheatsheet.locator('.kbd-group-title').allTextContents()
@@ -103,9 +103,9 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.keyboard.press('?')
-    const cheatsheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    const cheatsheet = page.getByTestId('kbd-shortcuts-modal')
     await expect(cheatsheet).toBeVisible()
 
     // The overlay is the cheatsheet's outermost element; the modal
@@ -138,7 +138,7 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 

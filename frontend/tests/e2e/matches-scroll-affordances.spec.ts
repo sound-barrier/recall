@@ -75,7 +75,7 @@ test.describe('Matches — scroll affordances', () => {
     await page.goto('/')
     // Default landing is Matches; no explicit click needed, but
     // assert the panel is mounted before reading the button state.
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     const btn = page.locator('[data-scroll-to-top]')
     await expect(btn).toHaveCount(0)
@@ -106,7 +106,7 @@ test.describe('Matches — scroll affordances', () => {
       })
     })
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     const btn = page.locator('[data-jump-to-undated]')
     await expect(btn).toBeVisible()
@@ -136,7 +136,7 @@ test.describe('Matches — scroll affordances', () => {
       })
     })
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     // Initially the leaves list is windowed at 20 rows — the
     // "No date" divider is NOT in the DOM yet.
@@ -166,7 +166,7 @@ test.describe('Matches — scroll affordances', () => {
       })
     })
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     const btn = page.locator('[data-jump-to-undated]')
     await expect(btn).toBeVisible()

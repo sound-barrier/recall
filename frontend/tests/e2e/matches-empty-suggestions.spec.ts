@@ -48,7 +48,7 @@ test.describe('smart-empty filter suggestions', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Open the narrow popover and search for a string that doesn't
     // appear anywhere — that excludes every record without needing

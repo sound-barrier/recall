@@ -11,8 +11,8 @@
  */
 import { test, expect } from './_fixtures'
 
-async function widthOf(page: import('@playwright/test').Page, selector: string): Promise<number> {
-  const box = await page.locator(selector).first().boundingBox()
+async function widthOf(target: import('@playwright/test').Locator): Promise<number> {
+  const box = await target.first().boundingBox()
   return box?.width ?? 0
 }
 
@@ -22,7 +22,7 @@ test.describe('wide-window layout', () => {
     // the ceiling: ~1532, comfortably past the 1140 floor.
     await page.setViewportSize({ width: 1920, height: 1080 })
     await page.goto('/')
-    const container = await widthOf(page, '.container')
+    const container = await widthOf(page.locator('.container'))
     expect(container).toBeGreaterThan(1450)
     expect(container).toBeLessThan(1600)
   })
@@ -30,7 +30,7 @@ test.describe('wide-window layout', () => {
   test('a 1440p-class window reaches the wider ceiling (not stranded at 1600)', async ({ page }) => {
     await page.setViewportSize({ width: 2560, height: 1440 })
     await page.goto('/')
-    const container = await widthOf(page, '.container')
+    const container = await widthOf(page.locator('.container'))
     expect(container).toBeGreaterThanOrEqual(1700)
     expect(container).toBeLessThanOrEqual(1780)
   })
@@ -38,11 +38,11 @@ test.describe('wide-window layout', () => {
   test('the text-heavy Settings view stays capped at a readable measure', async ({ page }) => {
     await page.setViewportSize({ width: 2000, height: 1200 })
     await page.goto('/')
-    await page.locator('#tab-settings').click()
-    await expect(page.locator('#panel-settings')).toBeVisible()
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Settings' })).toBeVisible()
 
-    const panel = await widthOf(page, '#panel-settings')
-    const container = await widthOf(page, '.container')
+    const panel = await widthOf(page.getByRole('tabpanel', { name: 'Settings' }))
+    const container = await widthOf(page.locator('.container'))
     // ~1180 cap — comfortably narrower than the wide container around it.
     expect(panel).toBeLessThanOrEqual(1240)
     expect(container - panel).toBeGreaterThan(200)
@@ -51,7 +51,7 @@ test.describe('wide-window layout', () => {
   test('the default-size window keeps the ~1140 floor (no regression)', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/')
-    const container = await widthOf(page, '.container')
+    const container = await widthOf(page.locator('.container'))
     expect(container).toBeGreaterThanOrEqual(1100)
     expect(container).toBeLessThanOrEqual(1200)
   })
