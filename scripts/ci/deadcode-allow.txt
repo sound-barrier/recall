@@ -72,13 +72,13 @@ FromContext
 # future production rollback path has a tested base.
 revertOne
 
-# app.MatchKey type + helpers. Reachable now from pkg/app/ambiguous.go,
-# pkg/app/aggregate.go, pkg/app/correlation.go. The constructors +
-# IsUnmatched helper exist for future call sites + the round-trip
-# test even though no in-package consumer reaches them yet.
+# match.Key type + helpers (renamed from MatchKey in the de-stutter
+# pass). The constructors + IsUnmatched helper exist for future call
+# sites + the round-trip test even though no production consumer
+# reaches them yet.
 NewTrackedMatchKey
 NewUnmatchedMatchKey
-MatchKey\.IsUnmatched
+Key\.IsUnmatched
 
 # cmd.parseMatchesPagination — lenient pagination parser exercised by
 # TestGetMatches_LimitClampedTo1000 / _InvalidLimit_DisablesPagination.
