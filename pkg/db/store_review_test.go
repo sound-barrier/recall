@@ -8,17 +8,11 @@ import (
 func TestSQLStore_Review_SetLoadClearRoundTrip(t *testing.T) {
 	s := openMemory(t)
 
-	if err := s.SetReview("match-A", "self"); err != nil {
-		t.Fatalf("SetReview self: %v", err)
-	}
-	if err := s.SetReview("match-B", "coach"); err != nil {
-		t.Fatalf("SetReview coach: %v", err)
-	}
+	mustNoErr(t, s.SetReview("match-A", "self"))
+	mustNoErr(t, s.SetReview("match-B", "coach"))
 
 	got, err := s.LoadReviews()
-	if err != nil {
-		t.Fatalf("LoadReviews: %v", err)
-	}
+	mustNoErr(t, err)
 	if got["match-A"].ReviewedBy != "self" || got["match-B"].ReviewedBy != "coach" {
 		t.Errorf("after seed, got %+v", got)
 	}
@@ -30,23 +24,17 @@ func TestSQLStore_Review_SetLoadClearRoundTrip(t *testing.T) {
 	}
 
 	// Idempotent upsert: same value, no error.
-	if err := s.SetReview("match-A", "self"); err != nil {
-		t.Fatalf("re-set same value: %v", err)
-	}
+	mustNoErr(t, s.SetReview("match-A", "self"))
 
 	// Overwrite to a different reviewer.
-	if err := s.SetReview("match-A", "coach"); err != nil {
-		t.Fatalf("overwrite: %v", err)
-	}
+	mustNoErr(t, s.SetReview("match-A", "coach"))
 	got, _ = s.LoadReviews()
 	if got["match-A"].ReviewedBy != "coach" {
 		t.Errorf("after overwrite, match-A = %q, want coach", got["match-A"])
 	}
 
 	// Clear one; the other survives.
-	if err := s.ClearReview("match-A"); err != nil {
-		t.Fatalf("Clear: %v", err)
-	}
+	mustNoErr(t, s.ClearReview("match-A"))
 	got, _ = s.LoadReviews()
 	if _, ok := got["match-A"]; ok {
 		t.Errorf("match-A should be cleared, got %+v", got)
@@ -56,9 +44,7 @@ func TestSQLStore_Review_SetLoadClearRoundTrip(t *testing.T) {
 	}
 
 	// Clear on absent key — no error.
-	if err := s.ClearReview("never-reviewed"); err != nil {
-		t.Fatalf("Clear absent: %v", err)
-	}
+	mustNoErr(t, s.ClearReview("never-reviewed"))
 }
 
 func TestSQLStore_Review_CheckConstraintRejectsBadValue(t *testing.T) {

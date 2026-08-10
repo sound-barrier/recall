@@ -8,17 +8,11 @@ import (
 func TestSQLStore_MatchQueue_SetLoadClearRoundTrip(t *testing.T) {
 	s := openMemory(t)
 
-	if err := s.SetMatchQueue("match-A", "role"); err != nil {
-		t.Fatalf("SetMatchQueue role: %v", err)
-	}
-	if err := s.SetMatchQueue("match-B", "open"); err != nil {
-		t.Fatalf("SetMatchQueue open: %v", err)
-	}
+	mustNoErr(t, s.SetMatchQueue("match-A", "role"))
+	mustNoErr(t, s.SetMatchQueue("match-B", "open"))
 
 	got, err := s.LoadMatchQueues()
-	if err != nil {
-		t.Fatalf("LoadMatchQueues: %v", err)
-	}
+	mustNoErr(t, err)
 	if got["match-A"].QueueType != "role" || got["match-B"].QueueType != "open" {
 		t.Errorf("after seed, got %+v", got)
 	}
@@ -27,23 +21,17 @@ func TestSQLStore_MatchQueue_SetLoadClearRoundTrip(t *testing.T) {
 	}
 
 	// Idempotent upsert.
-	if err := s.SetMatchQueue("match-A", "role"); err != nil {
-		t.Fatalf("re-set same value: %v", err)
-	}
+	mustNoErr(t, s.SetMatchQueue("match-A", "role"))
 
 	// Overwrite to the other queue.
-	if err := s.SetMatchQueue("match-A", "open"); err != nil {
-		t.Fatalf("overwrite: %v", err)
-	}
+	mustNoErr(t, s.SetMatchQueue("match-A", "open"))
 	got, _ = s.LoadMatchQueues()
 	if got["match-A"].QueueType != "open" {
 		t.Errorf("after overwrite, match-A = %q, want open", got["match-A"])
 	}
 
 	// Clear one; the other survives.
-	if err := s.ClearMatchQueue("match-A"); err != nil {
-		t.Fatalf("Clear: %v", err)
-	}
+	mustNoErr(t, s.ClearMatchQueue("match-A"))
 	got, _ = s.LoadMatchQueues()
 	if _, ok := got["match-A"]; ok {
 		t.Errorf("match-A should be cleared, got %+v", got)
@@ -53,9 +41,7 @@ func TestSQLStore_MatchQueue_SetLoadClearRoundTrip(t *testing.T) {
 	}
 
 	// Clear on absent key — no error.
-	if err := s.ClearMatchQueue("never-set"); err != nil {
-		t.Fatalf("Clear absent: %v", err)
-	}
+	mustNoErr(t, s.ClearMatchQueue("never-set"))
 }
 
 func TestSQLStore_MatchQueue_CheckConstraintRejectsBadValue(t *testing.T) {

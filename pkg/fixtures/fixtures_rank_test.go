@@ -176,50 +176,45 @@ func TestPerMatchDelta_SignsAndBands(t *testing.T) {
 	gold := tierIdx("gold")
 
 	for range 500 {
-		win := fixtures.PerMatchDelta(rng, gold, 1, "victory", "expected")
-		if win < 19 || win > 23 {
-			t.Fatalf("standard win delta %d out of [19,23]", win)
-		}
-		loss := fixtures.PerMatchDelta(rng, gold, 1, "defeat", "expected")
-		if loss > -19 || loss < -23 {
-			t.Fatalf("standard loss delta %d out of [-23,-19]", loss)
-		}
-		streakWin := fixtures.PerMatchDelta(rng, gold, 6, "victory", "win streak")
-		if streakWin < 26 || streakWin > 30 {
-			t.Fatalf("streak win delta %d out of [26,30] (no double-amplify expected)", streakWin)
-		}
-		// Consolation softens a loss below the standard band floor.
-		cons := fixtures.PerMatchDelta(rng, gold, 1, "defeat", "consolation")
-		if cons <= -19 || cons >= 0 {
-			t.Fatalf("consolation loss %d should be a softened negative (> -19)", cons)
-		}
+		assertDeltaInBand(t, "standard win",
+			fixtures.PerMatchDelta(rng, gold, 1, "victory", "expected"), 19, 23)
+		assertDeltaInBand(t, "standard loss",
+			fixtures.PerMatchDelta(rng, gold, 1, "defeat", "expected"), -23, -19)
+		assertDeltaInBand(t, "streak win (no double-amplify expected)",
+			fixtures.PerMatchDelta(rng, gold, 6, "victory", "win streak"), 26, 30)
+		// Consolation softens a loss below the standard band floor: a
+		// negative delta strictly above -19.
+		assertDeltaInBand(t, "consolation loss (softened negative)",
+			fixtures.PerMatchDelta(rng, gold, 1, "defeat", "consolation"), -18, -1)
 	}
 	if d := fixtures.PerMatchDelta(rng, gold, 1, "draw", "draw"); d != 0 {
 		t.Fatalf("draw delta = %d; want 0", d)
 	}
 }
 
-func TestPickModifier_OnlyEnumValues(t *testing.T) {
-	valid := map[string]bool{}
-	for _, m := range []string{
-		"expected", "uphill battle", "reversal", "consolation", "win streak",
-		"loss streak", "calibration", "volatile", "draw",
-	} {
-		valid[m] = true
+// assertDeltaInBand pins one per-match delta inside its inclusive band.
+func assertDeltaInBand(t *testing.T, label string, delta, lo, hi int) {
+	t.Helper()
+	if delta < lo || delta > hi {
+		t.Fatalf("%s delta %d out of [%d,%d]", label, delta, lo, hi)
 	}
+}
+
+// validPickModifiers is the rank_modifiers CHECK-enum subset pickModifier
+// may emit.
+var validPickModifiers = map[string]bool{
+	"expected": true, "uphill battle": true, "reversal": true, "consolation": true,
+	"win streak": true, "loss streak": true, "calibration": true, "volatile": true,
+	"draw": true,
+}
+
+func TestPickModifier_OnlyEnumValues(t *testing.T) {
 	rng := rand.New(rand.NewSource(7))
 	sawCalibration, sawStreak := false, false
 	for g := 1; g <= 400; g++ {
-		result := "victory"
-		if g%3 == 0 {
-			result = "defeat"
-		}
-		streak := 1
-		if g%20 == 0 {
-			streak = 8
-		}
+		result, streak := modifierGameInputs(g)
 		m := fixtures.PickModifier(rng, result, streak, g)
-		if !valid[m] {
+		if !validPickModifiers[m] {
 			t.Fatalf("pickModifier returned %q, not in the CHECK enum", m)
 		}
 		if g <= fixtures.CalibrationGames && m == "calibration" {
@@ -235,6 +230,20 @@ func TestPickModifier_OnlyEnumValues(t *testing.T) {
 	if !sawStreak {
 		t.Error("expected a streak pill at streak>=6")
 	}
+}
+
+// modifierGameInputs derives game g's result (every 3rd a defeat) and streak
+// (every 20th a streak game).
+func modifierGameInputs(g int) (result string, streak int) {
+	result = "victory"
+	if g%3 == 0 {
+		result = "defeat"
+	}
+	streak = 1
+	if g%20 == 0 {
+		streak = 8
+	}
+	return result, streak
 }
 
 func TestRankTrackKey(t *testing.T) {

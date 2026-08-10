@@ -8,6 +8,13 @@ import (
 	"recall/pkg/db"
 )
 
+// The fixed screenshot the snapshot-consistency probe resolves over and the
+// ambiguous sentinel derived from it.
+const (
+	snapshotProbeFile     = "pending.png"
+	snapshotProbeSentinel = "ambiguous-cGVuZGluZy5wbmc"
+)
+
 // LoadAll must be snapshot-consistent. Its bulk selects previously ran as
 // independent queries on pooled connections, so a cross-table write landing
 // between them was visible half-applied. ResolveAmbiguous is the sharpest
@@ -22,59 +29,66 @@ func TestSQLStore_LoadAllIsSnapshotConsistent(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
-	const filename = "pending.png"
-	const sentinel = "ambiguous-cGVuZGluZy5wbmc"
-	const readers = 4
-
 	for i := range 40 {
 		resolved := fmt.Sprintf("match-2026-01-01T12-00-%02d", i)
-		// Seed quiescently: sentinel parent + one candidate.
-		if err := s.UpsertUnknown(db.UnknownRow{Filename: filename, MatchKey: sentinel}); err != nil {
-			t.Fatal(err)
+		resolveUnderConcurrentLoadAll(t, s, resolved)
+		if t.Failed() {
+			return
 		}
-		if err := s.ApplyAmbiguity(filename, []db.AmbiguousCandidate{{MatchKey: resolved, DistanceSeconds: 60}}); err != nil {
-			t.Fatal(err)
-		}
+	}
+}
 
-		done := make(chan struct{})
-		var wg sync.WaitGroup
-		for range readers {
-			wg.Go(func() {
-				for {
-					select {
-					case <-done:
-						return
-					default:
-					}
-					snap, err := s.LoadAll()
-					if err != nil {
-						t.Errorf("LoadAll: %v", err)
-						return
-					}
-					var parentKey string
-					for _, u := range snap.Unknowns {
-						if u.Filename == filename {
-							parentKey = u.MatchKey
-						}
-					}
-					cands := len(snap.AmbiguousCandidates[filename])
-					sentinelPending := parentKey == sentinel && cands == 1
-					fullyResolved := parentKey == resolved && cands == 0
-					if !sentinelPending && !fullyResolved {
-						t.Errorf("torn snapshot: parent=%q candidates=%d (want sentinel+1 or resolved+0)", parentKey, cands)
-						return
-					}
-				}
-			})
-		}
-		if ok, err := s.ResolveAmbiguous(filename, sentinel, resolved); err != nil || !ok {
-			close(done)
-			wg.Wait()
-			t.Fatalf("ResolveAmbiguous = (%v, %v)", ok, err)
-		}
+// resolveUnderConcurrentLoadAll seeds the sentinel parent + one candidate
+// quiescently, then races LoadAll readers against a single ResolveAmbiguous.
+func resolveUnderConcurrentLoadAll(t *testing.T, s *db.SQLStore, resolved string) {
+	t.Helper()
+	const readers = 4
+	mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: snapshotProbeFile, MatchKey: snapshotProbeSentinel}))
+	mustNoErr(t, s.ApplyAmbiguity(snapshotProbeFile, []db.AmbiguousCandidate{{MatchKey: resolved, DistanceSeconds: 60}}))
+
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	for range readers {
+		wg.Go(func() {
+			watchForTornSnapshot(t, s, done, resolved)
+		})
+	}
+	if ok, err := s.ResolveAmbiguous(snapshotProbeFile, snapshotProbeSentinel, resolved); err != nil || !ok {
 		close(done)
 		wg.Wait()
-		if t.Failed() {
+		t.Fatalf("ResolveAmbiguous = (%v, %v)", ok, err)
+	}
+	close(done)
+	wg.Wait()
+}
+
+// watchForTornSnapshot loads snapshots until done closes, failing on any
+// snapshot that is neither fully pre-resolve (sentinel parent + 1 candidate)
+// nor fully post-resolve (rewritten parent + 0 candidates).
+func watchForTornSnapshot(t *testing.T, s *db.SQLStore, done <-chan struct{}, resolved string) {
+	t.Helper()
+	for {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		snap, err := s.LoadAll()
+		if err != nil {
+			t.Errorf("LoadAll: %v", err)
+			return
+		}
+		var parentKey string
+		for _, u := range snap.Unknowns {
+			if u.Filename == snapshotProbeFile {
+				parentKey = u.MatchKey
+			}
+		}
+		cands := len(snap.AmbiguousCandidates[snapshotProbeFile])
+		sentinelPending := parentKey == snapshotProbeSentinel && cands == 1
+		fullyResolved := parentKey == resolved && cands == 0
+		if !sentinelPending && !fullyResolved {
+			t.Errorf("torn snapshot: parent=%q candidates=%d (want sentinel+1 or resolved+0)", parentKey, cands)
 			return
 		}
 	}

@@ -4,11 +4,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"recall/pkg/applog"
+	"recall/pkg/db"
 )
 
 // Content-hash dedup pre-scan. Before the OCR loop runs, every new
@@ -42,41 +44,54 @@ func (a *App) dedupNewFiles(dir string, parsed map[string]bool) {
 		return
 	}
 	for _, e := range entries {
-		if e.IsDir() {
+		if outsideDedupScope(e, parsed, ingested) {
 			continue
 		}
-		base := e.Name()
-		ext := strings.ToLower(filepath.Ext(base))
-		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
-			continue
-		}
-		if parsed[base] {
-			continue
-		}
-		if _, seen := ingested[base]; seen {
-			continue // original already registered on a prior run
-		}
-		hash, err := hashFile(filepath.Join(dir, base))
-		if err != nil {
-			logger.Error("hash failed", "file", base, "err", err)
-			continue
-		}
-		canonical, dup := byHash[hash]
-		if dup && canonical != base {
-			if err := a.store.UpsertIngestedFile(base, hash, canonical); err != nil {
-				logger.Error("record duplicate failed", "file", base, "err", err)
-				continue
-			}
-			parsed[base] = true
-			logger.Info("byte-identical copy skipped", "file", base, "duplicate_of", canonical)
-			continue
-		}
-		if err := a.store.UpsertIngestedFile(base, hash, ""); err != nil {
-			logger.Error("record original failed", "file", base, "err", err)
-			continue
-		}
-		byHash[hash] = base
+		a.registerIngestedImage(logger, dir, e.Name(), parsed, byHash)
 	}
+}
+
+// outsideDedupScope reports whether a directory entry needs no dedup work:
+// not an image, already in the skip set, or already registered on a prior run.
+func outsideDedupScope(e os.DirEntry, parsed map[string]bool, ingested map[string]db.IngestedFile) bool {
+	if e.IsDir() {
+		return true
+	}
+	base := e.Name()
+	ext := strings.ToLower(filepath.Ext(base))
+	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
+		return true
+	}
+	if parsed[base] {
+		return true
+	}
+	_, seen := ingested[base]
+	return seen // original already registered on a prior run
+}
+
+// registerIngestedImage hashes one new image and records it: a byte-identical
+// copy of a registered original joins the skip set as a duplicate; anything
+// else registers as a fresh original future copies can match.
+func (a *App) registerIngestedImage(logger *slog.Logger, dir, base string, parsed map[string]bool, byHash map[string]string) {
+	hash, err := hashFile(filepath.Join(dir, base))
+	if err != nil {
+		logger.Error("hash failed", "file", base, "err", err)
+		return
+	}
+	if canonical, dup := byHash[hash]; dup && canonical != base {
+		if err := a.store.UpsertIngestedFile(base, hash, canonical); err != nil {
+			logger.Error("record duplicate failed", "file", base, "err", err)
+			return
+		}
+		parsed[base] = true
+		logger.Info("byte-identical copy skipped", "file", base, "duplicate_of", canonical)
+		return
+	}
+	if err := a.store.UpsertIngestedFile(base, hash, ""); err != nil {
+		logger.Error("record original failed", "file", base, "err", err)
+		return
+	}
+	byHash[hash] = base
 }
 
 // standingDuplicates returns the filenames the registry already knows are

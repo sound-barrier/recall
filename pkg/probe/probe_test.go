@@ -137,24 +137,7 @@ func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognized(t *testi
 	}
 	home := t.TempDir()
 	setHome(t, home)
-
-	// Materialize the Nvidia candidate dir + drop three files: two
-	// canonical Nvidia-format names, one stray PDF that should NOT
-	// count as recognized.
-	nvidiaDir := filepath.Join(home, "Videos", "NVIDIA", "Overwatch 2")
-	if err := os.MkdirAll(nvidiaDir, 0o755); err != nil {
-		t.Fatalf("mkdir %s: %v", nvidiaDir, err)
-	}
-	for _, name := range []string{
-		"Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png",
-		"Overwatch 2 Screenshot 2026.05.11 - 20.13.22.15.png",
-		"random-document.pdf",
-	} {
-		p := filepath.Join(nvidiaDir, name)
-		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
-			t.Fatalf("write %s: %v", p, err)
-		}
-	}
+	materializeNvidiaCaptures(t, home)
 
 	got := probe.ScreenshotsCandidateStats()
 	if len(got) != 4 {
@@ -176,6 +159,27 @@ func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognized(t *testi
 	}
 	if nvidia.LastModified == "" {
 		t.Error("nvidia.LastModified should be populated when files exist")
+	}
+}
+
+// materializeNvidiaCaptures makes the Nvidia candidate dir and drops three
+// files: two canonical Nvidia-format names, one stray PDF that should NOT
+// count as recognized.
+func materializeNvidiaCaptures(t *testing.T, home string) {
+	t.Helper()
+	nvidiaDir := filepath.Join(home, "Videos", "NVIDIA", "Overwatch 2")
+	if err := os.MkdirAll(nvidiaDir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", nvidiaDir, err)
+	}
+	for _, name := range []string{
+		"Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png",
+		"Overwatch 2 Screenshot 2026.05.11 - 20.13.22.15.png",
+		"random-document.pdf",
+	} {
+		p := filepath.Join(nvidiaDir, name)
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", p, err)
+		}
 	}
 }
 

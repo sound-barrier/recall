@@ -53,6 +53,20 @@ func seedOriginalMatch(fake *fakeStore) {
 // ambiguous queue with the original as its duplicate candidate.
 func assertDemoted(t *testing.T, fake *fakeStore) {
 	t.Helper()
+	assertRowsDemoted(t, fake)
+	cands := fake.Ambiguous[dupTeamsFile]
+	if len(cands) != 1 || cands[0].MatchKey != origKey {
+		t.Fatalf("expected the original as the sole duplicate candidate, got %+v", fake.Ambiguous)
+	}
+	if cands[0].DistanceSeconds != 11321 {
+		t.Errorf("wrong candidate distance: %d (want 11321)", cands[0].DistanceSeconds)
+	}
+}
+
+// assertRowsDemoted verifies the dup capture's rows moved onto the sentinel
+// while the original's rows stayed untouched.
+func assertRowsDemoted(t *testing.T, fake *fakeStore) {
+	t.Helper()
 	for _, r := range fake.Teams {
 		if r.Filename == dupTeamsFile && r.MatchKey != dupSentinel {
 			t.Errorf("dup teams row not demoted: %q", r.MatchKey)
@@ -65,13 +79,6 @@ func assertDemoted(t *testing.T, fake *fakeStore) {
 		if r.Filename == dupSummaryFile && r.MatchKey != dupSentinel {
 			t.Errorf("dup summary row not demoted: %q", r.MatchKey)
 		}
-	}
-	cands := fake.Ambiguous[dupTeamsFile]
-	if len(cands) != 1 || cands[0].MatchKey != origKey {
-		t.Fatalf("expected the original as the sole duplicate candidate, got %+v", fake.Ambiguous)
-	}
-	if cands[0].DistanceSeconds != 11321 {
-		t.Errorf("wrong candidate distance: %d (want 11321)", cands[0].DistanceSeconds)
 	}
 }
 

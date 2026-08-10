@@ -23,7 +23,38 @@ import (
 // keeping the wipe-and-relaunch model for everything non-additive.
 func TestNewSQLStore_HealsLegacyNullPlaylist(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "legacy.db")
+	writeLegacyDB(t, path)
 
+	store, err := db.NewSQLStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLStore on legacy db: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	shots, err := store.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll on healed legacy db: %v", err)
+	}
+	if len(shots.Summaries) != 1 {
+		t.Fatalf("summaries = %d, want 1", len(shots.Summaries))
+	}
+	if got := shots.Summaries[0].Playlist; got != "" {
+		t.Errorf("playlist = %q, want the healed empty string", got)
+	}
+	if shots.Summaries[0].Hero != "lucio" {
+		t.Errorf("hero = %q — the legacy row's real data must survive the heal", shots.Summaries[0].Hero)
+	}
+	if len(shots.Ranks) != 1 {
+		t.Fatalf("ranks = %d, want 1", len(shots.Ranks))
+	}
+	if got := shots.Ranks[0].Rank; got != "" {
+		t.Errorf("rank = %q, want the healed empty string", got)
+	}
+}
+
+// writeLegacyDB lays down the pre-rename schema + rows the heal must fix.
+func writeLegacyDB(t *testing.T, path string) {
+	t.Helper()
 	// The exact legacy summary_screenshots shape observed in the wild
 	// (nullable scalars, no played_at_utc yet), with one row predating the
 	// playlist column — its playlist is NULL.
@@ -84,31 +115,5 @@ func TestNewSQLStore_HealsLegacyNullPlaylist(t *testing.T) {
 	}
 	if err := raw.Close(); err != nil {
 		t.Fatalf("close raw: %v", err)
-	}
-
-	store, err := db.NewSQLStore(path)
-	if err != nil {
-		t.Fatalf("NewSQLStore on legacy db: %v", err)
-	}
-	defer func() { _ = store.Close() }()
-
-	shots, err := store.LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll on healed legacy db: %v", err)
-	}
-	if len(shots.Summaries) != 1 {
-		t.Fatalf("summaries = %d, want 1", len(shots.Summaries))
-	}
-	if got := shots.Summaries[0].Playlist; got != "" {
-		t.Errorf("playlist = %q, want the healed empty string", got)
-	}
-	if shots.Summaries[0].Hero != "lucio" {
-		t.Errorf("hero = %q — the legacy row's real data must survive the heal", shots.Summaries[0].Hero)
-	}
-	if len(shots.Ranks) != 1 {
-		t.Fatalf("ranks = %d, want 1", len(shots.Ranks))
-	}
-	if got := shots.Ranks[0].Rank; got != "" {
-		t.Errorf("rank = %q, want the healed empty string", got)
 	}
 }

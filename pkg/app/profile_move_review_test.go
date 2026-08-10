@@ -18,35 +18,21 @@ func TestApp_MoveMatches_TransfersReviewState(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 	a := app.New()
 	a.Startup(context.Background())
-	if err := a.CreateProfile("alt"); err != nil {
-		t.Fatalf("CreateProfile: %v", err)
-	}
-	if err := a.SwitchProfile("main"); err != nil {
-		t.Fatalf("SwitchProfile main: %v", err)
-	}
+	mustNoErr(t, a.CreateProfile("alt"))
+	mustNoErr(t, a.SwitchProfile("main"))
 
 	const key = "match-2026-05-10T22-00-00"
 	mapName := "rialto"
-	if err := app.Store(a).UpsertUserMatchData(db.UserMatchData{
+	mustNoErr(t, app.Store(a).UpsertUserMatchData(db.UserMatchData{
 		MatchKey: key, Map: &mapName,
-	}); err != nil {
-		t.Fatalf("seed user_match_data: %v", err)
-	}
-	if err := a.SetMatchReview(key, "coach"); err != nil {
-		t.Fatalf("SetMatchReview: %v", err)
-	}
+	}))
+	mustNoErr(t, a.SetMatchReview(key, "coach"))
 
-	if err := a.MoveMatches([]string{key}, "alt"); err != nil {
-		t.Fatalf("MoveMatches: %v", err)
-	}
+	mustNoErr(t, a.MoveMatches([]string{key}, "alt"))
 
-	if err := a.SwitchProfile("alt"); err != nil {
-		t.Fatalf("SwitchProfile alt: %v", err)
-	}
+	mustNoErr(t, a.SwitchProfile("alt"))
 	recs, err := a.GetMatchResults()
-	if err != nil {
-		t.Fatalf("GetMatchResults: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(recs) != 1 || recs[0].MatchKey != key {
 		t.Fatalf("target matches = %+v, want 1 with key %s", recs, key)
 	}

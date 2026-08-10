@@ -15,19 +15,15 @@ import (
 // All backfill without wiping history.
 func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 	d, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
+	mustNoErr(t, err)
 	defer func() { _ = d.Close() }()
 
 	// An "old" summary_screenshots without played_at_utc.
-	if _, err := d.Exec(`CREATE TABLE summary_screenshots (
-		id INTEGER PRIMARY KEY, filename TEXT, date TEXT, finished_at TEXT)`); err != nil {
-		t.Fatalf("create old table: %v", err)
-	}
-	if _, err := d.Exec(`CREATE TABLE user_match_data (match_key TEXT PRIMARY KEY)`); err != nil {
-		t.Fatalf("create old user_match_data: %v", err)
-	}
+	_, err = d.Exec(`CREATE TABLE summary_screenshots (
+		id INTEGER PRIMARY KEY, filename TEXT, date TEXT, finished_at TEXT)`)
+	mustNoErr(t, err)
+	_, err = d.Exec(`CREATE TABLE user_match_data (match_key TEXT PRIMARY KEY)`)
+	mustNoErr(t, err)
 
 	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
 		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)

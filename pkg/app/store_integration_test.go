@@ -179,32 +179,24 @@ func TestApp_GetMatchResults_EmptyTableReturnsNonNilSlice(t *testing.T) {
 
 func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	s, err := db.NewSQLStore(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLStore: %v", err)
-	}
+	mustNoErr(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 	a := app.NewWithStore(s)
 
 	// Insert a SUMMARY + TEAMS for the same match.
-	if err := s.UpsertSummary(db.SummaryRow{
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{
 		Filename: "s.png", MatchKey: "match-2026-05-10T21-29-28",
 		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
-	}); err != nil {
-		t.Fatalf("UpsertSummary: %v", err)
-	}
-	if err := s.UpsertTeams(db.TeamsRow{
+	}))
+	mustNoErr(t, s.UpsertTeams(db.TeamsRow{
 		Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
-	}); err != nil {
-		t.Fatalf("UpsertTeams: %v", err)
-	}
+	}))
 
 	got, err := a.GetMatchResults()
-	if err != nil {
-		t.Fatalf("GetMatchResults: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(got) != 1 {
 		t.Fatalf("expected 1 record, got %d", len(got))
 	}

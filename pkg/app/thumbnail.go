@@ -54,8 +54,19 @@ func (a *App) attachThumbnails(recs []match.Record) {
 // SUMMARY screenshot (the most recognizable thumbnail), then TEAMS, then any
 // remaining source file. Empty when the match has no on-disk image.
 func pickThumbnail(rec match.Record, onDisk func(dirID int64, filename string) bool) string {
-	exists := func(f string) bool { return onDisk(rec.SourceDirIDs[f], f) }
+	for _, f := range thumbnailCandidates(rec) {
+		if onDisk(rec.SourceDirIDs[f], f) {
+			return f
+		}
+	}
+	return ""
+}
 
+// thumbnailCandidates orders a match's source files for the thumbnail pick:
+// the first SUMMARY screenshot, then the first TEAMS, then every source file
+// in original order (re-listing the two leaders is harmless — the directory
+// listing behind the on-disk check is memoized).
+func thumbnailCandidates(rec match.Record) []string {
 	var summary, teams string
 	for _, f := range rec.SourceFiles {
 		switch rec.SourceTypes[f] {
@@ -69,16 +80,12 @@ func pickThumbnail(rec match.Record, onDisk func(dirID int64, filename string) b
 			}
 		}
 	}
-	if summary != "" && exists(summary) {
-		return summary
+	candidates := make([]string, 0, len(rec.SourceFiles)+2)
+	if summary != "" {
+		candidates = append(candidates, summary)
 	}
-	if teams != "" && exists(teams) {
-		return teams
+	if teams != "" {
+		candidates = append(candidates, teams)
 	}
-	for _, f := range rec.SourceFiles {
-		if exists(f) {
-			return f
-		}
-	}
-	return ""
+	return append(candidates, rec.SourceFiles...)
 }

@@ -104,49 +104,12 @@ func pickCompRole(rng *rand.Rand, mainRole string) string {
 // match is role queue (locked role for the entire match).
 func (p playerProfile) pickHeroConstrained(rng *rand.Rand, prevHero, playMode, role string) (string, string) {
 	pool := poolForRole(role)
-
-	// "Favorites" are the player's preferred heroes within this role,
-	// derived from their style. For non-main roles the player has no
-	// favorites — pickHeroConstrained falls through to pool-uniform.
-	var favorites []string
-	switch p.style {
-	case styleOneTrick:
-		if role == p.mainRole {
-			favorites = []string{p.favoriteHero}
-		}
-	case styleOneRole:
-		if role == p.mainRole {
-			favorites = p.mainPool
-		}
-	case styleFlex:
-		for _, h := range p.flexHeroes {
-			if roleOfHero(h) == role {
-				favorites = append(favorites, h)
-			}
-		}
-	}
-
+	favorites := p.constrainedFavorites(role)
 	// Off-mains in role = pool minus favorites.
-	favSet := make(map[string]bool, len(favorites))
-	for _, h := range favorites {
-		favSet[h] = true
-	}
-	offMainsInRole := make([]string, 0, len(pool))
-	for _, h := range pool {
-		if !favSet[h] {
-			offMainsInRole = append(offMainsInRole, h)
-		}
-	}
+	offMains := heroesExcluding(pool, favorites)
 
-	// Streak: only fires when prev is in this role.
-	if prevHero != "" && roleOfHero(prevHero) == role {
-		streakProb := 0.25
-		if playMode == "quickplay" {
-			streakProb = 0.10
-		}
-		if rng.Float64() < streakProb {
-			return role, prevHero
-		}
+	if constrainedStreakFires(rng, prevHero, playMode, role) {
+		return role, prevHero
 	}
 
 	// Favorite probability — style + playMode aware.
@@ -154,11 +117,58 @@ func (p playerProfile) pickHeroConstrained(rng *rand.Rand, prevHero, playMode, r
 	if len(favorites) > 0 && rng.Float64() < favProb {
 		return role, favorites[rng.Intn(len(favorites))]
 	}
-	if len(offMainsInRole) > 0 {
-		return role, offMainsInRole[rng.Intn(len(offMainsInRole))]
+	if len(offMains) > 0 {
+		return role, offMains[rng.Intn(len(offMains))]
 	}
 	// Last-resort fall-through (should be unreachable — pool is never empty).
 	return role, pool[rng.Intn(len(pool))]
+}
+
+// constrainedFavorites is the player's preferred heroes within one role,
+// derived from their style. For non-main roles the player has no favorites —
+// pickHeroConstrained falls through to pool-uniform.
+func (p playerProfile) constrainedFavorites(role string) []string {
+	switch p.style {
+	case styleOneTrick:
+		if role == p.mainRole {
+			return []string{p.favoriteHero}
+		}
+	case styleOneRole:
+		if role == p.mainRole {
+			return p.mainPool
+		}
+	case styleFlex:
+		return p.favoritesInRole(role)
+	}
+	return nil
+}
+
+// constrainedStreakFires rolls the repeat-previous-hero streak: it only fires
+// when prev is in this role, at 25% in competitive / 10% in quickplay.
+func constrainedStreakFires(rng *rand.Rand, prevHero, playMode, role string) bool {
+	if prevHero == "" || roleOfHero(prevHero) != role {
+		return false
+	}
+	streakProb := 0.25
+	if playMode == "quickplay" {
+		streakProb = 0.10
+	}
+	return rng.Float64() < streakProb
+}
+
+// heroesExcluding returns pool minus the excluded heroes, preserving order.
+func heroesExcluding(pool, excluded []string) []string {
+	excludedSet := make(map[string]bool, len(excluded))
+	for _, h := range excluded {
+		excludedSet[h] = true
+	}
+	out := make([]string, 0, len(pool))
+	for _, h := range pool {
+		if !excludedSet[h] {
+			out = append(out, h)
+		}
+	}
+	return out
 }
 
 // constrainedFavoriteProb returns the probability of picking a

@@ -93,20 +93,7 @@ func (a *App) resolveScreenshotPath(w http.ResponseWriter, r *http.Request, rest
 		http.Error(w, "bad name", http.StatusBadRequest)
 		return "", false
 	}
-	// Reject anything that isn't a plain basename — guards against path
-	// traversal even though the filenames in source_files are always
-	// basenames produced by the parser. Runs BEFORE the dir lookup so an
-	// attacker can't trigger a DB query with a poisoned name.
-	//
-	// Also caps filename length at 255 bytes (the POSIX NAME_MAX floor;
-	// ext4/NTFS/HFS+ all enforce ≤255 octets) so an overlong path doesn't
-	// escape the 4xx routing into a downstream os.Open "file name too
-	// long" 5xx. Pinned by FuzzScreenshotHandler_URL in
-	// screenshot_handler_fuzz_test.go.
-	if name == "" ||
-		len(name) > 255 ||
-		strings.ContainsAny(name, "/\\") ||
-		strings.Contains(name, "..") {
+	if !validScreenshotBasename(name) {
 		http.NotFound(w, r)
 		return "", false
 	}
@@ -120,13 +107,37 @@ func (a *App) resolveScreenshotPath(w http.ResponseWriter, r *http.Request, rest
 	// Safety belt: confirm the resolved path is actually inside the
 	// source directory — whichever branch supplied it. CodeQL flagged
 	// this file before; both code paths clear the same containment gate.
-	dirAbs, err1 := filepath.Abs(dir)
-	fullAbs, err2 := filepath.Abs(full)
-	if err1 != nil || err2 != nil || !strings.HasPrefix(fullAbs+string(filepath.Separator), dirAbs+string(filepath.Separator)) {
+	if !pathWithinDir(dir, full) {
 		http.NotFound(w, r)
 		return "", false
 	}
 	return full, true
+}
+
+// validScreenshotBasename rejects anything that isn't a plain basename —
+// guards against path traversal even though the filenames in source_files
+// are always basenames produced by the parser. Runs BEFORE the dir lookup so
+// an attacker can't trigger a DB query with a poisoned name.
+//
+// Also caps filename length at 255 bytes (the POSIX NAME_MAX floor;
+// ext4/NTFS/HFS+ all enforce ≤255 octets) so an overlong path doesn't
+// escape the 4xx routing into a downstream os.Open "file name too
+// long" 5xx. Pinned by FuzzScreenshotHandler_URL in
+// screenshot_handler_fuzz_test.go.
+func validScreenshotBasename(name string) bool {
+	return name != "" &&
+		len(name) <= 255 &&
+		!strings.ContainsAny(name, "/\\") &&
+		!strings.Contains(name, "..")
+}
+
+// pathWithinDir reports whether full resolves inside dir once both are made
+// absolute — the shared containment gate for the lookup and fallback dirs.
+func pathWithinDir(dir, full string) bool {
+	dirAbs, err1 := filepath.Abs(dir)
+	fullAbs, err2 := filepath.Abs(full)
+	return err1 == nil && err2 == nil &&
+		strings.HasPrefix(fullAbs+string(filepath.Separator), dirAbs+string(filepath.Separator))
 }
 
 // resolveScreenshotDir picks the on-disk directory for a screenshot:

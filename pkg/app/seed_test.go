@@ -20,17 +20,22 @@ func loadStore(t *testing.T, p *app.Profiles, name string) db.Store {
 	return store
 }
 
+// mustNoErr fails the test immediately on an unexpected error — the plumbing
+// around the behavior under test, not the assertion itself.
+func mustNoErr(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSeedProfile_CreatesAndSeeds(t *testing.T) {
 	p, err := app.LoadProfiles(t.TempDir())
-	if err != nil {
-		t.Fatalf("LoadProfiles: %v", err)
-	}
+	mustNoErr(t, err)
 
 	// Chaos-free, exactly as the walkthrough seeds (SeedTestProfile).
 	res, err := app.SeedProfile(p, "test", app.SeedOptions{N: 250, Seed: 8, Style: "flex"})
-	if err != nil {
-		t.Fatalf("SeedProfile: %v", err)
-	}
+	mustNoErr(t, err)
 	if res.AlreadySeeded {
 		t.Fatal("AlreadySeeded = true on a fresh profile")
 	}
@@ -55,15 +60,20 @@ func TestSeedProfile_CreatesAndSeeds(t *testing.T) {
 	}
 	store := loadStore(t, p, "test")
 	snap, err := store.LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(snap.Summaries) != res.Matches {
 		t.Fatalf("store has %d summaries, result reported %d", len(snap.Summaries), res.Matches)
 	}
-	// No chaos → only real OW heroes/maps reach the demo: no synthetic-hero-NN,
-	// no 200-char strings, no zalgo/emoji map names.
-	for _, s := range snap.Summaries {
+	assertChaosFreeSummaries(t, snap.Summaries)
+	assertAnnotationsPersisted(t, store, res.Annotated)
+}
+
+// assertChaosFreeSummaries pins that no chaos leaked in: only real OW
+// heroes/maps reach the demo — no synthetic-hero-NN, no 200-char strings,
+// no zalgo/emoji map names.
+func assertChaosFreeSummaries(t *testing.T, summaries []db.SummaryRow) {
+	t.Helper()
+	for _, s := range summaries {
 		if strings.Contains(s.Hero, "synthetic") || len(s.Hero) > 60 {
 			t.Errorf("garbage hero in chaos-free seed: %q", s.Hero)
 		}
@@ -71,15 +81,19 @@ func TestSeedProfile_CreatesAndSeeds(t *testing.T) {
 			t.Errorf("garbage map in chaos-free seed: %q", s.Map)
 		}
 	}
+}
 
-	// Annotations actually round-trip to SQLite (not just counted in the result),
-	// and the friends' BattleTags survive the member child-table write/read.
+// assertAnnotationsPersisted pins that annotations actually round-trip to
+// SQLite (not just counted in the result), and the friends' BattleTags
+// survive the member child-table write/read.
+func assertAnnotationsPersisted(t *testing.T, store db.Store, wantAnnotated int) {
+	t.Helper()
 	anns, err := store.LoadAnnotations()
 	if err != nil {
 		t.Fatalf("LoadAnnotations: %v", err)
 	}
-	if len(anns) != res.Annotated {
-		t.Errorf("store persisted %d annotations, result reported %d", len(anns), res.Annotated)
+	if len(anns) != wantAnnotated {
+		t.Errorf("store persisted %d annotations, result reported %d", len(anns), wantAnnotated)
 	}
 	var withMembers int
 	for _, a := range anns {

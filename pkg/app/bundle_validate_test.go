@@ -51,22 +51,16 @@ func TestValidateBundle_RealBundleHasNoIssues(t *testing.T) {
 func modifyBundle(t *testing.T, in []byte, fn func(name string, body []byte) (keepName string, replaceBody []byte, drop bool)) []byte {
 	t.Helper()
 	zr, err := zip.NewReader(bytes.NewReader(in), int64(len(in)))
-	if err != nil {
-		t.Fatalf("read in: %v", err)
-	}
+	mustNoErr(t, err)
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	now := time.Now().UTC()
 	for _, f := range zr.File {
 		rc, err := f.Open()
-		if err != nil {
-			t.Fatal(err)
-		}
+		mustNoErr(t, err)
 		body, err := io.ReadAll(rc)
 		_ = rc.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
+		mustNoErr(t, err)
 		name, replaced, drop := fn(f.Name, body)
 		if drop {
 			continue
@@ -78,16 +72,11 @@ func modifyBundle(t *testing.T, in []byte, fn func(name string, body []byte) (ke
 			replaced = body
 		}
 		w, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Deflate, Modified: now})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := w.Write(replaced); err != nil {
-			t.Fatal(err)
-		}
+		mustNoErr(t, err)
+		_, err = w.Write(replaced)
+		mustNoErr(t, err)
 	}
-	if err := zw.Close(); err != nil {
-		t.Fatal(err)
-	}
+	mustNoErr(t, zw.Close())
 	return buf.Bytes()
 }
 

@@ -14,29 +14,21 @@ func TestApp_ImportMatches_AddsNewSkipsExisting(t *testing.T) {
 	seedSummary(t, a, "b.png", "match-B")
 
 	bundle, err := a.ExportBundle(app.ExportBundleOptions{MatchKeys: []string{"match-A", "match-B"}})
-	if err != nil {
-		t.Fatalf("ExportBundle: %v", err)
-	}
+	mustNoErr(t, err)
 
 	// Reset to a DB that already contains match-A only, then merge the
 	// two-match bundle: A is skipped, B is added.
-	if err := app.Store(a).Clear(); err != nil {
-		t.Fatalf("clear: %v", err)
-	}
+	mustNoErr(t, app.Store(a).Clear())
 	seedSummary(t, a, "a.png", "match-A")
 
 	summary, err := a.ImportMatches(bundle)
-	if err != nil {
-		t.Fatalf("ImportMatches: %v", err)
-	}
+	mustNoErr(t, err)
 	if summary.Imported != 1 || summary.Skipped != 1 {
 		t.Fatalf("summary = %+v, want {Imported:1, Skipped:1}", summary)
 	}
 
 	snap, err := app.Store(a).LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	keys := map[string]bool{}
 	for _, r := range snap.Summaries {
 		keys[r.MatchKey] = true

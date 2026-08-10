@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/fixtures"
 	"recall/pkg/match"
@@ -49,34 +50,28 @@ func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
 	}
 
 	fs := dbtest.New()
-	for _, r := range fx.Summaries {
-		if err := fs.UpsertSummary(r); err != nil {
-			t.Fatalf("UpsertSummary(%s): %v", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Teams {
-		if err := fs.UpsertTeams(r); err != nil {
-			t.Fatalf("UpsertTeams(%s): %v", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Personals {
-		if err := fs.UpsertPersonal(r); err != nil {
-			t.Fatalf("UpsertPersonal(%s): %v", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Ranks {
-		if err := fs.UpsertRank(r); err != nil {
-			t.Fatalf("UpsertRank(%s): %v", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Unknowns {
-		if err := fs.UpsertUnknown(r); err != nil {
-			t.Fatalf("UpsertUnknown(%s): %v", r.Filename, err)
-		}
-	}
-	for _, a := range fx.Ambiguous {
-		if err := fs.ApplyAmbiguity(a.Filename, a.Candidates); err != nil {
-			t.Fatalf("ApplyAmbiguity(%s): %v", a.Filename, err)
+	mustWriteAll(t, "UpsertSummary", fx.Summaries,
+		func(r db.SummaryRow) string { return r.MatchKey }, fs.UpsertSummary)
+	mustWriteAll(t, "UpsertTeams", fx.Teams,
+		func(r db.TeamsRow) string { return r.MatchKey }, fs.UpsertTeams)
+	mustWriteAll(t, "UpsertPersonal", fx.Personals,
+		func(r db.PersonalRow) string { return r.MatchKey }, fs.UpsertPersonal)
+	mustWriteAll(t, "UpsertRank", fx.Ranks,
+		func(r db.RankRow) string { return r.MatchKey }, fs.UpsertRank)
+	mustWriteAll(t, "UpsertUnknown", fx.Unknowns,
+		func(r db.UnknownRow) string { return r.Filename }, fs.UpsertUnknown)
+	mustWriteAll(t, "ApplyAmbiguity", fx.Ambiguous,
+		func(a fixtures.AmbiguousSeed) string { return a.Filename },
+		func(a fixtures.AmbiguousSeed) error { return fs.ApplyAmbiguity(a.Filename, a.Candidates) })
+}
+
+// mustWriteAll writes each record via write, failing the test with the store
+// operation's name and the record's identity on the first error.
+func mustWriteAll[T any](t *testing.T, op string, records []T, identity func(T) string, write func(T) error) {
+	t.Helper()
+	for _, r := range records {
+		if err := write(r); err != nil {
+			t.Fatalf("%s(%s): %v", op, identity(r), err)
 		}
 	}
 }
@@ -425,30 +420,51 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 	// band so per-seed variance doesn't flake.
 	// Manual matches add play-mode seeds on fresh (non-summary) keys; count
 	// only the OCR-backed ones against the summary rate.
-	ocrKeys := make(map[string]bool, len(fx.Summaries))
-	for _, s := range fx.Summaries {
-		ocrKeys[s.MatchKey] = true
-	}
-	ocrPlayModes := 0
-	for _, pm := range fx.PlayModes {
-		if ocrKeys[pm.MatchKey] {
-			ocrPlayModes++
-		}
-	}
+	ocrPlayModes := countOCRTagged(fx, fx.PlayModes, func(pm fixtures.PlayModeSeed) string { return pm.MatchKey })
 	if ocrPlayModes < n*90/100 || ocrPlayModes > n {
 		t.Fatalf("expected ~95%% of OCR matches to be play-mode-tagged (got %d/%d)", ocrPlayModes, n)
 	}
 
-	// The ~90/10 play-mode ASSIGNMENT is a separate mechanism from the
-	// clash→quickplay forcing (Clash is quickplay-only). A seed whose map
-	// shuffle puts a Clash map on top would swell quickplay well past 10% —
-	// legitimately, not a regression — so isolate the assignment by measuring
-	// only NON-Clash OCR matches, whose play mode follows the raw 90/10 dice.
+	comp, qp := tallyNonClashPlayModes(t, fx)
+	total := comp + qp
+	if comp*100 < total*85 || comp*100 > total*95 {
+		t.Errorf("competitive rate %.2f%% outside [85%%, 95%%] (non-Clash)", float64(comp)*100/float64(total))
+	}
+	if qp*100 < total*5 || qp*100 > total*15 {
+		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%] (non-Clash)", float64(qp)*100/float64(total))
+	}
+
+	assertSeedKeysExist(t, fx, "play-mode", fx.PlayModes, func(pm fixtures.PlayModeSeed) string { return pm.MatchKey })
+}
+
+// countOCRTagged counts the seeds whose match_key belongs to an OCR summary
+// (manual matches carry seeds on fresh, non-summary keys).
+func countOCRTagged[T any](fx fixtures.Fixture, seeds []T, key func(T) string) int {
+	ocrKeys := make(map[string]bool, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		ocrKeys[s.MatchKey] = true
+	}
+	tagged := 0
+	for _, sd := range seeds {
+		if ocrKeys[key(sd)] {
+			tagged++
+		}
+	}
+	return tagged
+}
+
+// tallyNonClashPlayModes tallies competitive vs quickplay over non-Clash OCR
+// matches. The ~90/10 play-mode ASSIGNMENT is a separate mechanism from the
+// clash→quickplay forcing (Clash is quickplay-only). A seed whose map
+// shuffle puts a Clash map on top would swell quickplay well past 10% —
+// legitimately, not a regression — so isolate the assignment by measuring
+// only NON-Clash OCR matches, whose play mode follows the raw 90/10 dice.
+func tallyNonClashPlayModes(t *testing.T, fx fixtures.Fixture) (comp, qp int) {
+	t.Helper()
 	mapByKey := make(map[string]string, len(fx.Summaries))
 	for _, s := range fx.Summaries {
 		mapByKey[s.MatchKey] = s.Map
 	}
-	comp, qp := 0, 0
 	for _, p := range fx.PlayModes {
 		switch p.PlayMode {
 		case "competitive", "quickplay":
@@ -465,16 +481,14 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 			qp++
 		}
 	}
-	total := comp + qp
-	if comp*100 < total*85 || comp*100 > total*95 {
-		t.Errorf("competitive rate %.2f%% outside [85%%, 95%%] (non-Clash)", float64(comp)*100/float64(total))
-	}
-	if qp*100 < total*5 || qp*100 > total*15 {
-		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%] (non-Clash)", float64(qp)*100/float64(total))
-	}
+	return comp, qp
+}
 
-	// Every play-mode entry must reference a real match_key — an OCR summary
-	// OR a hand-entered (manual) match in the user-data layer.
+// assertSeedKeysExist pins that every seeded entry references a real
+// match_key — an OCR summary OR a hand-entered (manual) match in the
+// user-data layer.
+func assertSeedKeysExist[T any](t *testing.T, fx fixtures.Fixture, kind string, seeds []T, key func(T) string) {
+	t.Helper()
 	keys := make(map[string]bool, len(fx.Summaries)+len(fx.UserData))
 	for _, s := range fx.Summaries {
 		keys[s.MatchKey] = true
@@ -482,9 +496,9 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 	for _, ud := range fx.UserData {
 		keys[ud.MatchKey] = true
 	}
-	for _, p := range fx.PlayModes {
-		if !keys[p.MatchKey] {
-			t.Fatalf("play-mode references unknown match_key %s", p.MatchKey)
+	for _, sd := range seeds {
+		if !keys[key(sd)] {
+			t.Fatalf("%s references unknown match_key %s", kind, key(sd))
 		}
 	}
 }
@@ -547,22 +561,27 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 	// count tracks the summary count, not n. Manual matches add their own
 	// queue seeds on fresh (non-summary) keys, so count only the OCR-backed
 	// ones here.
-	ocrKeys := make(map[string]bool, len(fx.Summaries))
-	for _, s := range fx.Summaries {
-		ocrKeys[s.MatchKey] = true
-	}
-	ocrQueues := 0
-	for _, q := range fx.Queues {
-		if ocrKeys[q.MatchKey] {
-			ocrQueues++
-		}
-	}
+	ocrQueues := countOCRTagged(fx, fx.Queues, func(q fixtures.QueueSeed) string { return q.MatchKey })
 	if ocrQueues < n*90/100 || ocrQueues > n {
 		t.Fatalf("expected ~95%% of OCR matches to be queue-tagged (got %d/%d)", ocrQueues, n)
 	}
 
-	role, open := 0, 0
-	for _, q := range fx.Queues {
+	role, open := tallyQueueTypes(t, fx.Queues)
+	total := len(fx.Queues)
+	if role*100 < total*75 || role*100 > total*85 {
+		t.Errorf("role-queue rate %.2f%% outside [75%%, 85%%]", float64(role)*100/float64(total))
+	}
+	if open*100 < total*15 || open*100 > total*25 {
+		t.Errorf("open-queue rate %.2f%% outside [15%%, 25%%]", float64(open)*100/float64(total))
+	}
+
+	assertSeedKeysExist(t, fx, "queue", fx.Queues, func(q fixtures.QueueSeed) string { return q.MatchKey })
+}
+
+// tallyQueueTypes counts role vs open seeds, failing on any other value.
+func tallyQueueTypes(t *testing.T, queues []fixtures.QueueSeed) (role, open int) {
+	t.Helper()
+	for _, q := range queues {
 		switch q.QueueType {
 		case "role":
 			role++
@@ -572,28 +591,7 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 			t.Fatalf("queue carries invalid QueueType %q (must be role or open)", q.QueueType)
 		}
 	}
-	total := len(fx.Queues)
-	if role*100 < total*75 || role*100 > total*85 {
-		t.Errorf("role-queue rate %.2f%% outside [75%%, 85%%]", float64(role)*100/float64(total))
-	}
-	if open*100 < total*15 || open*100 > total*25 {
-		t.Errorf("open-queue rate %.2f%% outside [15%%, 25%%]", float64(open)*100/float64(total))
-	}
-
-	// Every queue must reference a real match_key — an OCR summary OR a
-	// hand-entered (manual) match in the user-data layer.
-	keys := make(map[string]bool, len(fx.Summaries)+len(fx.UserData))
-	for _, s := range fx.Summaries {
-		keys[s.MatchKey] = true
-	}
-	for _, ud := range fx.UserData {
-		keys[ud.MatchKey] = true
-	}
-	for _, q := range fx.Queues {
-		if !keys[q.MatchKey] {
-			t.Fatalf("queue references unknown match_key %s", q.MatchKey)
-		}
-	}
+	return role, open
 }
 
 func TestGenerateMatchFixture_ScreenshotTypeDistribution(t *testing.T) {
@@ -614,11 +612,16 @@ func TestGenerateMatchFixture_ScreenshotTypeDistribution(t *testing.T) {
 	if r := float64(len(fx.Personals)) * 100 / float64(n); r < 66 || r > 74 {
 		t.Errorf("personal rate %.2f%% outside [66%%, 74%%]", r)
 	}
-	// Rank is no longer a per-match dice roll — applyRankProgression emits
-	// periodic cards on competitive matches only. Assert the structural
-	// invariants instead of a fixed share: some ranks exist, never more than
-	// the competitive-summary count, and every rank row is on a competitive
-	// match (never quickplay/clash).
+	assertRanksOnCompetitiveOnly(t, fx)
+}
+
+// assertRanksOnCompetitiveOnly pins the rank-emission structure. Rank is no
+// longer a per-match dice roll — applyRankProgression emits periodic cards on
+// competitive matches only. Assert the structural invariants instead of a
+// fixed share: some ranks exist, never more than the competitive-summary
+// count, and every rank row is on a competitive match (never quickplay/clash).
+func assertRanksOnCompetitiveOnly(t *testing.T, fx fixtures.Fixture) {
+	t.Helper()
 	comp := competitiveKeys(fx)
 	if len(fx.Ranks) == 0 {
 		t.Fatal("no rank readings emitted")
@@ -669,9 +672,14 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 		}
 	}
 
-	// Every ambiguous seed pairs with a teams row carrying an
-	// ambiguous- match key for its filename, and points at 2-3 real
-	// tracked match_keys from the main corpus.
+	assertAmbiguousStructure(t, fx)
+}
+
+// assertAmbiguousStructure pins each ambiguous seed's shape: every one pairs
+// with a teams row carrying an ambiguous- match key for its filename, and
+// points at 2-3 real tracked match_keys from the main corpus.
+func assertAmbiguousStructure(t *testing.T, fx fixtures.Fixture) {
+	t.Helper()
 	trackedSet := make(map[string]bool, len(fx.Summaries))
 	for _, s := range fx.Summaries {
 		if mk, err := match.ParseKey(s.MatchKey); err == nil && mk.IsTracked() {
@@ -683,22 +691,28 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 		teamsByFilename[sb.Filename] = sb.MatchKey
 	}
 	for _, a := range fx.Ambiguous {
-		if c := len(a.Candidates); c < 2 || c > 3 {
-			t.Errorf("ambiguous %s has %d candidates, want 2 or 3", a.Filename, c)
-		}
+		assertAmbiguousCandidates(t, a, trackedSet)
 		gotKey, ok := teamsByFilename[a.Filename]
 		if !ok {
 			t.Errorf("ambiguous %s has no companion teams row", a.Filename)
 			continue
 		}
-		mk, err := match.ParseKey(gotKey)
-		if err != nil || !mk.IsAmbiguous() {
+		if mk, err := match.ParseKey(gotKey); err != nil || !mk.IsAmbiguous() {
 			t.Errorf("ambiguous %s companion teams key %q isn't ambiguous-shaped", a.Filename, gotKey)
 		}
-		for _, c := range a.Candidates {
-			if !trackedSet[c.MatchKey] {
-				t.Errorf("ambiguous %s candidate %s isn't a real tracked match_key from the corpus", a.Filename, c.MatchKey)
-			}
+	}
+}
+
+// assertAmbiguousCandidates pins one seed's candidate list: 2-3 entries, all
+// drawn from real tracked corpus keys.
+func assertAmbiguousCandidates(t *testing.T, a fixtures.AmbiguousSeed, trackedSet map[string]bool) {
+	t.Helper()
+	if c := len(a.Candidates); c < 2 || c > 3 {
+		t.Errorf("ambiguous %s has %d candidates, want 2 or 3", a.Filename, c)
+	}
+	for _, c := range a.Candidates {
+		if !trackedSet[c.MatchKey] {
+			t.Errorf("ambiguous %s candidate %s isn't a real tracked match_key from the corpus", a.Filename, c.MatchKey)
 		}
 	}
 }
@@ -787,7 +801,6 @@ func TestGenerateMatchFixture_RankClimbsMainTrack(t *testing.T) {
 	// gap-reversion model — they may drift a shade below their start on a
 	// given seed, but never collapse or run away. DPS stays busiest + highest.
 	fx := fixtures.GenerateMatchFixture(1300, 8, "")
-	queueBy := queueByMatchKey(fx)
 
 	start := map[string]float64{
 		"tank":    ladderScoreOf("silver", 1, 0),
@@ -795,19 +808,7 @@ func TestGenerateMatchFixture_RankClimbsMainTrack(t *testing.T) {
 		"support": ladderScoreOf("gold", 3, 0),
 		"open":    ladderScoreOf("gold", 5, 0),
 	}
-	lastScore := map[string]float64{}
-	count := map[string]int{}
-	for _, r := range fx.Ranks {
-		track := queueBy[r.MatchKey]
-		if track != "open" {
-			if len(r.SR) == 0 {
-				t.Fatalf("rank row %s has no SR hero to resolve its role", r.MatchKey)
-			}
-			track = fixtures.RoleOfHero(r.SR[0].Hero)
-		}
-		lastScore[track] = ladderScoreOf(r.Rank, r.Level, r.RankProgress)
-		count[track]++
-	}
+	lastScore, count := foldRankCardsByTrack(t, fx)
 
 	for track, s0 := range start {
 		if count[track] == 0 {
@@ -836,6 +837,28 @@ func TestGenerateMatchFixture_RankClimbsMainTrack(t *testing.T) {
 			t.Errorf("dps final %.2f should be the highest role track, but %s is %.2f", lastScore["dps"], off, lastScore[off])
 		}
 	}
+}
+
+// foldRankCardsByTrack resolves each rank card onto its track (open queue
+// stays "open"; role-queue cards route via the SR hero's role) and returns
+// the last ladder score + card count per track.
+func foldRankCardsByTrack(t *testing.T, fx fixtures.Fixture) (lastScore map[string]float64, count map[string]int) {
+	t.Helper()
+	queueBy := queueByMatchKey(fx)
+	lastScore = map[string]float64{}
+	count = map[string]int{}
+	for _, r := range fx.Ranks {
+		track := queueBy[r.MatchKey]
+		if track != "open" {
+			if len(r.SR) == 0 {
+				t.Fatalf("rank row %s has no SR hero to resolve its role", r.MatchKey)
+			}
+			track = fixtures.RoleOfHero(r.SR[0].Hero)
+		}
+		lastScore[track] = ladderScoreOf(r.Rank, r.Level, r.RankProgress)
+		count[track]++
+	}
+	return lastScore, count
 }
 
 func TestGenerateMatchFixture_RankChangePercentSigns(t *testing.T) {

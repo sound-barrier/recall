@@ -39,28 +39,33 @@ import (
 
 const fuzzCanaryContent = "fuzz-canary-content"
 
+// fuzzSeedPaths covers the rejection vectors the unit tests already pin
+// (legacy URL shape, non-int dir-id, malformed escapes, path-traversal
+// attempts, empty/double slashes) plus a handful of obviously-malicious
+// shapes.
+var fuzzSeedPaths = []string{
+	"/_screenshot/0/canary.png",
+	"/_screenshot/1/canary.png",
+	"/_screenshot/canary.png",
+	"/_screenshot/",
+	"/_screenshot/0/",
+	"/_screenshot//canary.png",
+	"/_screenshot/-1/canary.png",
+	"/_screenshot/abc/canary.png",
+	"/_screenshot/0/..%2Fetc%2Fpasswd",
+	"/_screenshot/0/../etc/passwd",
+	"/_screenshot/0/foo%2Fbar.png",
+	"/_screenshot/0/foo bar.png",
+	"/_screenshot/0/" + strings.Repeat("A", 1024),
+	"/_screenshot/0/canary.png?query=evil",
+	"/_screenshot/0/canary.png#frag",
+	"/something-else/canary.png",
+	"",
+	"/",
+}
+
 func FuzzScreenshotHandler_URL(f *testing.F) {
-	seeds := []string{
-		"/_screenshot/0/canary.png",
-		"/_screenshot/1/canary.png",
-		"/_screenshot/canary.png",
-		"/_screenshot/",
-		"/_screenshot/0/",
-		"/_screenshot//canary.png",
-		"/_screenshot/-1/canary.png",
-		"/_screenshot/abc/canary.png",
-		"/_screenshot/0/..%2Fetc%2Fpasswd",
-		"/_screenshot/0/../etc/passwd",
-		"/_screenshot/0/foo%2Fbar.png",
-		"/_screenshot/0/foo bar.png",
-		"/_screenshot/0/" + strings.Repeat("A", 1024),
-		"/_screenshot/0/canary.png?query=evil",
-		"/_screenshot/0/canary.png#frag",
-		"/something-else/canary.png",
-		"",
-		"/",
-	}
-	for _, s := range seeds {
+	for _, s := range fuzzSeedPaths {
 		f.Add(s)
 	}
 

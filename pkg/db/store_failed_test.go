@@ -1,42 +1,20 @@
 package db_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/db"
+)
 
 func TestSQLStore_RecordFailedFile_UpsertIncrementsAttempts(t *testing.T) {
 	s := openMemory(t)
 
-	if err := s.RecordFailedFile("bad.png", 1, "decoding image: png: invalid format"); err != nil {
-		t.Fatalf("record: %v", err)
-	}
-	rows, err := s.ListFailedFiles()
-	if err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Fatalf("want 1 row, got %d", len(rows))
-	}
-	first := rows[0]
-	if first.Filename != "bad.png" || first.Attempts != 1 {
-		t.Errorf("first record = %+v, want bad.png attempts=1", first)
-	}
-	if first.Error != "decoding image: png: invalid format" {
-		t.Errorf("error = %q", first.Error)
-	}
-	if first.FirstFailedAt == "" || first.LastFailedAt == "" {
-		t.Errorf("timestamps unset: %+v", first)
-	}
+	mustNoErr(t, s.RecordFailedFile("bad.png", 1, "decoding image: png: invalid format"))
+	first := onlyFailedFile(t, s)
+	assertInitialFailedRecord(t, first)
 
-	if err := s.RecordFailedFile("bad.png", 1, "tesseract failed: exit status 1"); err != nil {
-		t.Fatalf("re-record: %v", err)
-	}
-	rows, err = s.ListFailedFiles()
-	if err != nil {
-		t.Fatalf("list after upsert: %v", err)
-	}
-	if len(rows) != 1 {
-		t.Fatalf("upsert must not add a row, got %d", len(rows))
-	}
-	second := rows[0]
+	mustNoErr(t, s.RecordFailedFile("bad.png", 1, "tesseract failed: exit status 1"))
+	second := onlyFailedFile(t, s) // upsert must not add a row
 	if second.Attempts != 2 {
 		t.Errorf("attempts = %d, want 2", second.Attempts)
 	}
@@ -45,6 +23,33 @@ func TestSQLStore_RecordFailedFile_UpsertIncrementsAttempts(t *testing.T) {
 	}
 	if second.FirstFailedAt != first.FirstFailedAt {
 		t.Errorf("first_failed_at must be preserved: %q -> %q", first.FirstFailedAt, second.FirstFailedAt)
+	}
+}
+
+// onlyFailedFile returns the ledger's single row, failing when the count
+// strays from exactly one.
+func onlyFailedFile(t *testing.T, s *db.SQLStore) db.FailedFileRow {
+	t.Helper()
+	rows, err := s.ListFailedFiles()
+	mustNoErr(t, err)
+	if len(rows) != 1 {
+		t.Fatalf("want exactly 1 ledger row, got %d", len(rows))
+	}
+	return rows[0]
+}
+
+// assertInitialFailedRecord pins the first record's fields and the
+// server-stamped timestamps.
+func assertInitialFailedRecord(t *testing.T, first db.FailedFileRow) {
+	t.Helper()
+	if first.Filename != "bad.png" || first.Attempts != 1 {
+		t.Errorf("first record = %+v, want bad.png attempts=1", first)
+	}
+	if first.Error != "decoding image: png: invalid format" {
+		t.Errorf("error = %q", first.Error)
+	}
+	if first.FirstFailedAt == "" || first.LastFailedAt == "" {
+		t.Errorf("timestamps unset: %+v", first)
 	}
 }
 

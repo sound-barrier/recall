@@ -125,7 +125,34 @@ func TestExportBundle_OnlySelectedMatchKeys(t *testing.T) {
 		t.Fatalf("ExportBundle: %v", err)
 	}
 
-	// Manifest schema + screenshot map.
+	assertSelectedManifest(t, payload)
+
+	// data.json is the v1 export shape, filtered.
+	db := unzip(t, payload, "data.json")
+	if len(db) == 0 {
+		t.Fatal("data.json missing from bundle")
+	}
+	if !strings.Contains(string(db), `"match-1"`) {
+		t.Errorf("data.json should contain match-1: %s", string(db[:200]))
+	}
+	if strings.Contains(string(db), `"match-2"`) {
+		t.Errorf("data.json should NOT contain unknown match-2")
+	}
+
+	// screenshots/ entries match exactly what the manifest declares.
+	bytes := unzip(t, payload, "screenshots/s1.png")
+	if string(bytes) != "PNG-s1.png" {
+		t.Errorf("screenshots/s1.png = %q, want %q", string(bytes), "PNG-s1.png")
+	}
+	if unzip(t, payload, "screenshots/sb1.png") == nil {
+		t.Errorf("screenshots/sb1.png missing")
+	}
+}
+
+// assertSelectedManifest pins the manifest schema + screenshot map: exactly
+// the selected match's screenshots, with no unknown/hidden leaks.
+func assertSelectedManifest(t *testing.T, payload []byte) {
+	t.Helper()
 	mb := unzip(t, payload, "manifest.json")
 	if len(mb) == 0 {
 		t.Fatal("manifest.json missing from bundle")
@@ -152,27 +179,6 @@ func TestExportBundle_OnlySelectedMatchKeys(t *testing.T) {
 	}
 	if _, ok := m.Screenshots["s3.png"]; ok {
 		t.Errorf("hidden match's screenshot leaked into the bundle: s3.png")
-	}
-
-	// data.json is the v1 export shape, filtered.
-	db := unzip(t, payload, "data.json")
-	if len(db) == 0 {
-		t.Fatal("data.json missing from bundle")
-	}
-	if !strings.Contains(string(db), `"match-1"`) {
-		t.Errorf("data.json should contain match-1: %s", string(db[:200]))
-	}
-	if strings.Contains(string(db), `"match-2"`) {
-		t.Errorf("data.json should NOT contain unknown match-2")
-	}
-
-	// screenshots/ entries match exactly what the manifest declares.
-	bytes := unzip(t, payload, "screenshots/s1.png")
-	if string(bytes) != "PNG-s1.png" {
-		t.Errorf("screenshots/s1.png = %q, want %q", string(bytes), "PNG-s1.png")
-	}
-	if unzip(t, payload, "screenshots/sb1.png") == nil {
-		t.Errorf("screenshots/sb1.png missing")
 	}
 }
 

@@ -15,19 +15,11 @@ func TestDeleteScreenshotSiblings_RemovesStaleTypeRows(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			if err := s.UpsertSummary(db.SummaryRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", Result: "defeat"}); err != nil {
-				t.Fatalf("UpsertSummary: %v", err)
-			}
-			if err := s.UpsertRank(db.RankRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", Rank: "platinum"}); err != nil {
-				t.Fatalf("UpsertRank: %v", err)
-			}
-			if err := s.DeleteScreenshotSiblings("f.png", "rank"); err != nil {
-				t.Fatalf("DeleteScreenshotSiblings: %v", err)
-			}
+			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", Result: "defeat"}))
+			mustNoErr(t, s.UpsertRank(db.RankRow{Filename: "f.png", MatchKey: "match-2026-07-05T14-54-48", Rank: "platinum"}))
+			mustNoErr(t, s.DeleteScreenshotSiblings("f.png", "rank"))
 			shots, err := s.LoadAll()
-			if err != nil {
-				t.Fatalf("LoadAll: %v", err)
-			}
+			mustNoErr(t, err)
 			if len(shots.Summaries) != 0 {
 				t.Errorf("stale summary row survived reclassification: %+v", shots.Summaries)
 			}
@@ -50,18 +42,12 @@ func TestDeleteScreenshotSiblings_Idempotent(t *testing.T) {
 			if err := s.DeleteScreenshotSiblings("never-seen.png", "summary"); err != nil {
 				t.Fatalf("unknown filename must not error: %v", err)
 			}
-			if err := s.UpsertUnknown(db.UnknownRow{Filename: "u.png", MatchKey: "unmatched-dQ"}); err != nil {
-				t.Fatalf("UpsertUnknown: %v", err)
-			}
+			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "u.png", MatchKey: "unmatched-dQ"}))
 			for range 2 {
-				if err := s.DeleteScreenshotSiblings("u.png", "unknown"); err != nil {
-					t.Fatalf("DeleteScreenshotSiblings: %v", err)
-				}
+				mustNoErr(t, s.DeleteScreenshotSiblings("u.png", "unknown"))
 			}
 			shots, err := s.LoadAll()
-			if err != nil {
-				t.Fatalf("LoadAll: %v", err)
-			}
+			mustNoErr(t, err)
 			if len(shots.Unknowns) != 1 {
 				t.Errorf("kept unknown row must survive repeat sibling wipes, got %d rows", len(shots.Unknowns))
 			}
@@ -77,28 +63,18 @@ func TestDeleteScreenshotSiblings_DropsCandidatesOfOrphanedKeys(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			if err := s.UpsertSummary(db.SummaryRow{Filename: "f1.png", MatchKey: "match-2026-07-05T14-54-48"}); err != nil {
-				t.Fatalf("UpsertSummary: %v", err)
-			}
-			if err := s.UpsertSummary(db.SummaryRow{Filename: "survivor.png", MatchKey: "match-2026-07-06T10-00-00"}); err != nil {
-				t.Fatalf("UpsertSummary survivor: %v", err)
-			}
+			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "f1.png", MatchKey: "match-2026-07-05T14-54-48"}))
+			mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "survivor.png", MatchKey: "match-2026-07-06T10-00-00"}))
 			cands := []db.AmbiguousCandidate{
 				{MatchKey: "match-2026-07-05T14-54-48", DistanceSeconds: 400},
 				{MatchKey: "match-2026-07-06T10-00-00", DistanceSeconds: 500},
 			}
-			if err := s.ApplyAmbiguity("pending.png", cands); err != nil {
-				t.Fatalf("ApplyAmbiguity: %v", err)
-			}
+			mustNoErr(t, s.ApplyAmbiguity("pending.png", cands))
 			// f1's reclassification to rank stores the new row under a
 			// DIFFERENT key (EAD bridge), so the old key dies with this wipe.
-			if err := s.DeleteScreenshotSiblings("f1.png", "rank"); err != nil {
-				t.Fatalf("DeleteScreenshotSiblings: %v", err)
-			}
+			mustNoErr(t, s.DeleteScreenshotSiblings("f1.png", "rank"))
 			got, err := s.LoadAmbiguousCandidatesFor("pending.png")
-			if err != nil {
-				t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
-			}
+			mustNoErr(t, err)
 			for _, c := range got {
 				if c.MatchKey == "match-2026-07-05T14-54-48" {
 					t.Errorf("candidate for the dead key survived: %+v", got)
@@ -118,30 +94,18 @@ func TestDeleteScreenshotSiblings_ClearsAllHeroesRegistry(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {
 			s := impl.open(t)
-			if err := s.UpsertAllHeroesScreenshot("ah.png"); err != nil {
-				t.Fatalf("UpsertAllHeroesScreenshot: %v", err)
-			}
-			if err := s.DeleteScreenshotSiblings("ah.png", "summary"); err != nil {
-				t.Fatalf("DeleteScreenshotSiblings: %v", err)
-			}
+			mustNoErr(t, s.UpsertAllHeroesScreenshot("ah.png"))
+			mustNoErr(t, s.DeleteScreenshotSiblings("ah.png", "summary"))
 			skips, err := s.LoadAllHeroesFilenames()
-			if err != nil {
-				t.Fatalf("LoadAllHeroesFilenames: %v", err)
-			}
+			mustNoErr(t, err)
 			if skips["ah.png"] {
 				t.Error("all_heroes registry must forget a reclassified file")
 			}
 			// Keeping all_heroes must preserve its registry row.
-			if err := s.UpsertAllHeroesScreenshot("keep.png"); err != nil {
-				t.Fatalf("UpsertAllHeroesScreenshot: %v", err)
-			}
-			if err := s.DeleteScreenshotSiblings("keep.png", "all_heroes"); err != nil {
-				t.Fatalf("DeleteScreenshotSiblings: %v", err)
-			}
+			mustNoErr(t, s.UpsertAllHeroesScreenshot("keep.png"))
+			mustNoErr(t, s.DeleteScreenshotSiblings("keep.png", "all_heroes"))
 			skips, err = s.LoadAllHeroesFilenames()
-			if err != nil {
-				t.Fatalf("LoadAllHeroesFilenames: %v", err)
-			}
+			mustNoErr(t, err)
 			if !skips["keep.png"] {
 				t.Error("all_heroes keepType must preserve the registry row")
 			}
