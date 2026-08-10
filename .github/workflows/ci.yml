@@ -287,9 +287,10 @@ jobs:
           fail_on: test failures
 
       # TypeScript type-check — confirms api.ts agrees with the
-      # OpenAPI-generated types in api.gen.d.ts.
+      # OpenAPI-generated types in api.gen.d.ts. The second program covers
+      # tests/e2e/**/*.ts + the root *.config.ts files (frontend/tsconfig.e2e.json).
       - name: TypeScript type-check
-        run: cd frontend && npm run typecheck
+        run: cd frontend && npm run typecheck && npm run typecheck:e2e
 
       # Verify the committed generated client matches the current OpenAPI
       # spec. Catches "you forgot to run `task gen-types` after editing

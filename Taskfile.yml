@@ -298,10 +298,13 @@ tasks:
       - echo "[ recall ] ✓  frontend/src/client updated"
 
   typecheck:
-    desc: TypeScript type-check (frontend api.ts + the generated client)
+    desc: TypeScript type-check (frontend src + the generated client, then the e2e specs + build configs)
     cmds:
       - echo "[ recall ] Type-checking frontend (tsc --noEmit)…"
       - cd frontend && npm run typecheck
+      # Second program: tests/e2e/**/*.ts + the root *.config.ts files, which
+      # tsconfig.json (src-only) never covered. See frontend/tsconfig.e2e.json.
+      - cd frontend && npm run typecheck:e2e
       - echo "[ recall ] ✓  TypeScript clean"
 
   # PROBE, not a gate — deliberately absent from `task lint` / `task verify`.
@@ -410,7 +413,7 @@ tasks:
       - golangci-lint run --build-tags serveronly ./...
       - GOOS=windows golangci-lint run ./...
       - GOOS=windows golangci-lint run --build-tags serveronly ./...
-      - cd frontend && npm run lint:js && npm run lint:css && npx vue-tsc --noEmit
+      - cd frontend && npm run lint:js && npm run lint:css && npx vue-tsc --noEmit && npm run typecheck:e2e
       - echo "[ recall ] verify — coverage gate…"
       - task: cover
       - echo "[ recall ] verify — bundle budget (fresh build)…"
