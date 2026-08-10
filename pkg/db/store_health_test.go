@@ -10,7 +10,7 @@ import (
 // The DB health surface (Settings → Advanced): integrity_check +
 // size/freelist stats, plus the optimize / vacuum maintenance ops.
 
-func newFileStore(t *testing.T) (*db.SQLStore, string) {
+func newFileStore(t *testing.T) *db.SQLStore {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "recall.db")
 	store, err := db.NewSQLStore(path)
@@ -18,11 +18,11 @@ func newFileStore(t *testing.T) (*db.SQLStore, string) {
 		t.Fatalf("NewSQLStore: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	return store, path
+	return store
 }
 
 func TestSQLStore_Health_ReportsIntegrityAndSizes(t *testing.T) {
-	store, _ := newFileStore(t)
+	store := newFileStore(t)
 
 	h, err := store.Health()
 	if err != nil {
@@ -43,14 +43,14 @@ func TestSQLStore_Health_ReportsIntegrityAndSizes(t *testing.T) {
 }
 
 func TestSQLStore_Optimize_RunsClean(t *testing.T) {
-	store, _ := newFileStore(t)
+	store := newFileStore(t)
 	if err := store.Optimize(); err != nil {
 		t.Fatalf("Optimize: %v", err)
 	}
 }
 
 func TestSQLStore_Vacuum_ReclaimsFreelistPages(t *testing.T) {
-	store, _ := newFileStore(t)
+	store := newFileStore(t)
 
 	// Write then delete rows so the freelist is non-trivial.
 	for i := range 200 {

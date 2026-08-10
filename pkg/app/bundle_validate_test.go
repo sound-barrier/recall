@@ -18,7 +18,7 @@ import (
 // validator test plus as the base for the tampered-payload tests.
 func realBundleBytes(t *testing.T) []byte {
 	t.Helper()
-	a, _, _ := seedBundleFixture(t)
+	a, _ := seedBundleFixture(t)
 	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys:      []string{"match-1"},
 		IncludeUnknown: true,

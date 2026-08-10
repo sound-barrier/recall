@@ -63,7 +63,7 @@ func TestServerMux_Import_ValidBundle_Returns200WithSummary(t *testing.T) {
 }
 
 func TestServerMux_Backup_ReturnsSQLiteSnapshot(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := get(t, mux, "/api/v1/database")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%q", rec.Code, rec.Body.String())
@@ -77,7 +77,7 @@ func TestServerMux_Backup_ReturnsSQLiteSnapshot(t *testing.T) {
 }
 
 func TestServerMux_Restore_RoundTrips(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	snapshot := get(t, mux, "/api/v1/database").Body.Bytes()
 
 	rec := putBytes(t, mux, "/api/v1/database", snapshot)
@@ -87,7 +87,7 @@ func TestServerMux_Restore_RoundTrips(t *testing.T) {
 }
 
 func TestServerMux_Restore_RejectsGarbage_Returns422(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := putBytes(t, mux, "/api/v1/database", []byte("not a sqlite database"))
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want 422; body=%q", rec.Code, rec.Body.String())

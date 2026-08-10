@@ -84,7 +84,7 @@ func resolutionPath(matchKey string) string {
 // profile manager is fully wired (Create / Switch / Delete are no-ops
 // without an initialized Profiles). Uses the production SQLStore at
 // <tempdir>/profiles/<active>/db/recall.db.
-func newTestAppWithProfiles(t *testing.T) (*app.App, *http.ServeMux) {
+func newTestAppWithProfiles(t *testing.T) *http.ServeMux {
 	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
@@ -93,7 +93,7 @@ func newTestAppWithProfiles(t *testing.T) (*app.App, *http.ServeMux) {
 	a.SSEHub = app.NewSSEHub()
 	a.Startup(context.Background())
 	mux := cmd.NewMux(a, fstest.MapFS{})
-	return a, mux
+	return mux
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -444,7 +444,7 @@ func TestServerMux_WatchEnabled_RoundTrip(t *testing.T) {
 }
 
 func TestServerMux_CloseBehavior_RoundTrip(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	// GET initial — defaults to false (hide to tray, keep watching).
 	rec := get(t, mux, "/api/v1/settings/close-behavior")
 	if rec.Code != 200 {
@@ -863,7 +863,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestProfiles_GetReturnsDefaultOnFreshInstall(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := get(t, mux, "/api/v1/profiles")
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
@@ -884,7 +884,7 @@ func TestProfiles_GetReturnsDefaultOnFreshInstall(t *testing.T) {
 }
 
 func TestProfiles_PostCreatesAndActivates(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
@@ -912,7 +912,7 @@ func TestProfiles_PostCreatesAndActivates(t *testing.T) {
 }
 
 func TestProfiles_PostRejectsInvalidNameAs400(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "../traversal"})
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
@@ -920,7 +920,7 @@ func TestProfiles_PostRejectsInvalidNameAs400(t *testing.T) {
 }
 
 func TestProfiles_PostRejectsDuplicateAs409(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "main"})
 	if rec.Code != http.StatusConflict {
 		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
@@ -928,7 +928,7 @@ func TestProfiles_PostRejectsDuplicateAs409(t *testing.T) {
 }
 
 func TestProfiles_PutActiveSwitches(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
 
 	rec := put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
@@ -946,7 +946,7 @@ func TestProfiles_PutActiveSwitches(t *testing.T) {
 }
 
 func TestProfiles_PutActiveUnknownReturns404(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "nope"})
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status %d, want 404; body=%s", rec.Code, rec.Body.String())
@@ -954,7 +954,7 @@ func TestProfiles_PutActiveUnknownReturns404(t *testing.T) {
 }
 
 func TestProfiles_DeleteRemovesNonActive(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
 	// alt was activated by POST — switch back to main so we can delete alt.
 	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
@@ -974,7 +974,7 @@ func TestProfiles_DeleteRemovesNonActive(t *testing.T) {
 }
 
 func TestProfiles_DeleteActiveReturns409(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := del(t, mux, "/api/v1/profiles/main")
 	if rec.Code != http.StatusConflict {
 		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
@@ -982,7 +982,7 @@ func TestProfiles_DeleteActiveReturns409(t *testing.T) {
 }
 
 func TestProfiles_PutRenameRoundTrip(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := put(t, mux, "/api/v1/profiles/main", map[string]string{"new_name": "silentstorm"})
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
@@ -1002,7 +1002,7 @@ func TestProfiles_PutRenameRoundTrip(t *testing.T) {
 }
 
 func TestProfiles_PutRenameInvalidName400(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := put(t, mux, "/api/v1/profiles/main", map[string]string{"new_name": "../traversal"})
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
@@ -1010,7 +1010,7 @@ func TestProfiles_PutRenameInvalidName400(t *testing.T) {
 }
 
 func TestProfiles_PutRenameUnknownSource404(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := put(t, mux, "/api/v1/profiles/nope", map[string]string{"new_name": "manny"})
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status %d, want 404; body=%s", rec.Code, rec.Body.String())
@@ -1018,7 +1018,7 @@ func TestProfiles_PutRenameUnknownSource404(t *testing.T) {
 }
 
 func TestProfiles_PutRenameCollision409(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
 	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
 	rec := put(t, mux, "/api/v1/profiles/alt", map[string]string{"new_name": "main"})
@@ -1028,7 +1028,7 @@ func TestProfiles_PutRenameCollision409(t *testing.T) {
 }
 
 func TestProfiles_PostMatchTransfers_204AndDelegates(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	// Create alt and switch back to main so main is source, alt is target.
 	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
 	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
@@ -1043,7 +1043,7 @@ func TestProfiles_PostMatchTransfers_204AndDelegates(t *testing.T) {
 }
 
 func TestProfiles_PostMatchTransfers_TargetUnknown404(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
 		"match_keys":     []string{"k1"},
 		"target_profile": "nope",
@@ -1054,7 +1054,7 @@ func TestProfiles_PostMatchTransfers_TargetUnknown404(t *testing.T) {
 }
 
 func TestProfiles_PostMatchTransfers_TargetActive409(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
 		"match_keys":     []string{"k1"},
 		"target_profile": "main",
@@ -1071,7 +1071,7 @@ func TestProfiles_PostMatchTransfers_InvalidTargetName409(t *testing.T) {
 	// conflict — the named profile can't exist), NOT 404 (which the
 	// in-list membership check would have produced if the format
 	// passed).
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
 		"match_keys":     []string{"k1"},
 		"target_profile": "../traversal",
@@ -1135,7 +1135,7 @@ func TestMatchAnnotations_RejectsNullInMembers(t *testing.T) {
 }
 
 func TestProfiles_PostMatchTransfers_RejectsNullTargetProfile(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	rec := postRaw(t, mux, "/api/v1/matches/transfers",
 		`{"match_keys": [], "target_profile": null}`)
 	if rec.Code != http.StatusBadRequest {
@@ -1144,7 +1144,7 @@ func TestProfiles_PostMatchTransfers_RejectsNullTargetProfile(t *testing.T) {
 }
 
 func TestProfiles_PostMatchTransfers_RejectsNullInMatchKeys(t *testing.T) {
-	_, mux := newTestAppWithProfiles(t)
+	mux := newTestAppWithProfiles(t)
 	// Create alt + switch back to main so target_profile resolves.
 	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
 	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})

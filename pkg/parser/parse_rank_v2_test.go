@@ -15,7 +15,7 @@ func recordingStubOCR(t *testing.T, table map[string]string) *[]string {
 	var mu sync.Mutex
 	regions := &[]string{}
 	original := *parser.RunTesseractFunc
-	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) {
+	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) { //nolint:unparam // signature fixed by RunTesseractFunc
 		mu.Lock()
 		*regions = append(*regions, name)
 		mu.Unlock()

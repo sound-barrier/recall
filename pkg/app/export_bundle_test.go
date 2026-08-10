@@ -27,7 +27,7 @@ import (
 //	match-3 — hidden, has a SUMMARY (s3.png)
 //
 // Returns the App, store, and the screenshots tmpdir for cleanup.
-func seedBundleFixture(t *testing.T) (*app.App, *fakeStore, string) {
+func seedBundleFixture(t *testing.T) (*app.App, string) {
 	t.Helper()
 	dir := t.TempDir()
 	// Real files so the bundle can copy them.
@@ -72,7 +72,7 @@ func seedBundleFixture(t *testing.T) (*app.App, *fakeStore, string) {
 	}))
 	must(fs.HideMatch("match-3"))
 
-	return a, fs, dir
+	return a, dir
 }
 
 // unzip reads `name` from the ZIP `data` and returns the bytes.
@@ -117,7 +117,7 @@ func zipNames(t *testing.T, data []byte) []string {
 // TestExportBundle_OnlySelectedMatchKeys includes exactly the keys the
 // caller named, without picking up the unknown or hidden matches.
 func TestExportBundle_OnlySelectedMatchKeys(t *testing.T) {
-	a, _, _ := seedBundleFixture(t)
+	a, _ := seedBundleFixture(t)
 	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},
 	})
@@ -177,7 +177,7 @@ func TestExportBundle_OnlySelectedMatchKeys(t *testing.T) {
 }
 
 func TestExportBundle_IncludeUnknownAddsUnknownMatches(t *testing.T) {
-	a, _, _ := seedBundleFixture(t)
+	a, _ := seedBundleFixture(t)
 	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys:      []string{"match-1"},
 		IncludeUnknown: true,
@@ -200,7 +200,7 @@ func TestExportBundle_IncludeUnknownAddsUnknownMatches(t *testing.T) {
 }
 
 func TestExportBundle_IncludeHiddenAddsHiddenMatches(t *testing.T) {
-	a, _, _ := seedBundleFixture(t)
+	a, _ := seedBundleFixture(t)
 	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys:     []string{"match-1"},
 		IncludeHidden: true,
@@ -223,7 +223,7 @@ func TestExportBundle_IncludeHiddenAddsHiddenMatches(t *testing.T) {
 }
 
 func TestExportBundle_EmptySelectionAndNoToggles_ProducesEmptyBundle(t *testing.T) {
-	a, _, _ := seedBundleFixture(t)
+	a, _ := seedBundleFixture(t)
 	payload, err := a.ExportBundle(app.ExportBundleOptions{})
 	if err != nil {
 		t.Fatalf("ExportBundle: %v", err)
@@ -246,11 +246,10 @@ func TestExportBundle_EmptySelectionAndNoToggles_ProducesEmptyBundle(t *testing.
 func TestExportBundle_MissingScreenshotIsSkippedNotErrored(t *testing.T) {
 	// A row whose on-disk file was deleted between parse and export
 	// should be omitted from the ZIP without failing the whole bundle.
-	a, fs, dir := seedBundleFixture(t)
+	a, dir := seedBundleFixture(t)
 	if err := os.Remove(filepath.Join(dir, "s1.png")); err != nil {
 		t.Fatal(err)
 	}
-	_ = fs
 	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},
 	})
@@ -276,7 +275,7 @@ func TestExportBundle_MissingScreenshotIsSkippedNotErrored(t *testing.T) {
 // path map. Restore via POST /api/v1/imports remaps every row's
 // ScreenshotsDirID to 0 (use configured dir) naturally.
 func TestExportBundle_DataJSONOmitsScreenshotsDirs(t *testing.T) {
-	a, _, _ := seedBundleFixture(t)
+	a, _ := seedBundleFixture(t)
 	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},
 	})
@@ -295,7 +294,7 @@ func TestExportBundle_DataJSONOmitsScreenshotsDirs(t *testing.T) {
 // not the MS-DOS epoch the default zip writer falls back to when
 // no Modified field is set.
 func TestExportBundle_ZIPEntriesCarryCurrentTimestamp(t *testing.T) {
-	a, _, _ := seedBundleFixture(t)
+	a, _ := seedBundleFixture(t)
 	before := time.Now().Add(-2 * time.Second)
 	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},

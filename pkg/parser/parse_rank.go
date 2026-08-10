@@ -358,8 +358,8 @@ func anyZeroSR(srs []HeroSR) bool {
 // alone. Recovered SR-range values are assigned, in reading order, to the
 // still-zero cards; a value already read from the card text is kept and excluded
 // from the candidate pool so it can't be double-assigned.
-func backfillSRDigits(srs []HeroSR, img image.Image, work string, W, H int) {
-	region := image.Rect(W*82/100, H*28/100, W*99/100, H*75/100)
+func backfillSRDigits(srs []HeroSR, img image.Image, work string, w, h int) {
+	region := image.Rect(w*82/100, h*28/100, w*99/100, h*75/100)
 	assigned := map[int]bool{}
 	for _, s := range srs {
 		if s.SR != 0 {
