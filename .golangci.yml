@@ -152,12 +152,6 @@ linters:
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/app/usermatch_test\.go
       - linters: [gocyclo, gocognit, funlen]
-        path: pkg/cmd/server_system\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/cmd/server_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/cmd/wails\.go
-      - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/schema_additive_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/sqlstore_test\.go

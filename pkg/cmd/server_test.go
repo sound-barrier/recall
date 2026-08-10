@@ -750,6 +750,49 @@ func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
 	}
 }
 
+// annotationFromMatches decodes GET /api/v1/matches' body and returns
+// the single record's annotation object, failing on any shape mismatch.
+func annotationFromMatches(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+	var records []map[string]any
+	if err := json.Unmarshal(body, &records); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+	annoRaw, ok := records[0]["annotation"]
+	if !ok {
+		t.Fatalf("record missing annotation: %+v", records[0])
+	}
+	anno, ok := annoRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("annotation not an object: %T", annoRaw)
+	}
+	return anno
+}
+
+// assertAnnotationSurfaces checks the record carries the exact
+// annotation the E2E round-trip PUT.
+func assertAnnotationSurfaces(t *testing.T, body []byte) {
+	t.Helper()
+	anno := annotationFromMatches(t, body)
+	sides, _ := anno["leavers"].([]any)
+	if len(sides) != 1 || sides[0] != "team" {
+		t.Errorf("annotation.leavers = %v, want [team]", anno["leavers"])
+	}
+	if anno["note"] != "ally rage-quit" {
+		t.Errorf("annotation.note = %v", anno["note"])
+	}
+	if anno["replay_code"] != "7H1K9P" {
+		t.Errorf("annotation.replay_code = %v", anno["replay_code"])
+	}
+	members, ok := anno["members"].([]any)
+	if !ok || len(members) != 2 {
+		t.Errorf("annotation.members shape wrong: %v", anno["members"])
+	}
+}
+
 func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	// End-to-end: write a real SQLite store (in-memory), seed a
 	// SUMMARY screenshot so a match exists, PUT an annotation via
@@ -799,44 +842,20 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("matches status %d", rec.Code)
 	}
-	var records []map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &records); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if len(records) != 1 {
-		t.Fatalf("expected 1 record, got %d", len(records))
-	}
-	annoRaw, ok := records[0]["annotation"]
-	if !ok {
-		t.Fatalf("record missing annotation: %+v", records[0])
-	}
-	anno, ok := annoRaw.(map[string]any)
-	if !ok {
-		t.Fatalf("annotation not an object: %T", annoRaw)
-	}
-	sides, _ := anno["leavers"].([]any)
-	if len(sides) != 1 || sides[0] != "team" {
-		t.Errorf("annotation.leavers = %v, want [team]", anno["leavers"])
-	}
-	if anno["note"] != "ally rage-quit" {
-		t.Errorf("annotation.note = %v", anno["note"])
-	}
-	if anno["replay_code"] != "7H1K9P" {
-		t.Errorf("annotation.replay_code = %v", anno["replay_code"])
-	}
-	members, ok := anno["members"].([]any)
-	if !ok || len(members) != 2 {
-		t.Errorf("annotation.members shape wrong: %v", anno["members"])
-	}
+	assertAnnotationSurfaces(t, rec.Body.Bytes())
 
-	// Clearing is an explicit DELETE (PUT is upsert-only); the next GET
-	// should drop the annotation field entirely.
-	rec = del(t, mux, annotationPath("match-e2e"))
+	assertAnnotationClears(t, mux, store)
+}
+
+// assertAnnotationClears issues the annotation DELETE (PUT is upsert-only)
+// and verifies the deletion in the store AND on the next GET, so a
+// stale row can't hide behind the JSON round-trip.
+func assertAnnotationClears(t *testing.T, mux *http.ServeMux, store *db.SQLStore) {
+	t.Helper()
+	rec := del(t, mux, annotationPath("match-e2e"))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("clear DELETE status %d, body %s", rec.Code, rec.Body.String())
 	}
-	// Verify the deletion landed in the store, independent of the
-	// JSON round-trip below.
 	annos, err := store.LoadAnnotations()
 	if err != nil {
 		t.Fatalf("LoadAnnotations after clear: %v", err)
@@ -845,15 +864,12 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 		t.Errorf("annotation row not deleted from store: %+v", a)
 	}
 	rec = get(t, mux, "/api/v1/matches")
-	// json.Unmarshal merges into a non-nil slice destination — without
-	// resetting, residual keys from the first decode survive and the
-	// "annotation absent" assertion below would be a false positive.
-	records = nil
-	_ = json.Unmarshal(rec.Body.Bytes(), &records)
-	if len(records) != 1 {
-		t.Fatalf("expected 1 record after clear, got %d", len(records))
+	var cleared []map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &cleared)
+	if len(cleared) != 1 {
+		t.Fatalf("expected 1 record after clear, got %d", len(cleared))
 	}
-	if v, present := records[0]["annotation"]; present && v != nil {
+	if v, present := cleared[0]["annotation"]; present && v != nil {
 		t.Errorf("annotation should be absent or null after clear: %+v", v)
 	}
 }

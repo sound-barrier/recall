@@ -107,24 +107,30 @@ func RunWails(a *app.App, assets embed.FS) {
 	// (RunServer is a different entry point; this file is !serveronly).
 	a.SelfUpdate = initSelfUpdater(wailsApp, a)
 
-	// Wire native parse-complete notifications — but only when notifications can
-	// initialize without aborting (see notificationsSupported). Authorization is
-	// requested once on a goroutine (the macOS prompt needs the run loop that Run
-	// starts below); SendNotification degrades gracefully until/unless granted.
-	if notificationsSupported() {
-		go func() { _, _ = notifier.RequestNotificationAuthorization() }()
-		app.SetParseCompleteNotifier(func(matchCount int) {
-			_ = notifier.SendNotification(notifications.NotificationOptions{
-				ID:    "recall-parse-complete",
-				Title: "Recall",
-				Body:  parseCompleteBody(matchCount),
-			})
-		})
-	}
+	wireParseNotifications(notifier)
 
 	if err := wailsApp.Run(); err != nil {
 		applog.Subsystem("desktop").Error("wails run failed", "err", err)
 	}
+}
+
+// wireParseNotifications wires native parse-complete notifications — but
+// only when notifications can initialize without aborting (see
+// notificationsSupported). Authorization is requested once on a goroutine
+// (the macOS prompt needs the run loop RunWails starts right after);
+// SendNotification degrades gracefully until/unless granted.
+func wireParseNotifications(notifier *notifications.NotificationService) {
+	if !notificationsSupported() {
+		return
+	}
+	go func() { _, _ = notifier.RequestNotificationAuthorization() }()
+	app.SetParseCompleteNotifier(func(matchCount int) {
+		_ = notifier.SendNotification(notifications.NotificationOptions{
+			ID:    "recall-parse-complete",
+			Title: "Recall",
+			Body:  parseCompleteBody(matchCount),
+		})
+	})
 }
 
 // parseCompleteBody renders the parse-complete notification body, pluralizing
