@@ -1048,10 +1048,10 @@ export const getScreenshotsFolderCandidates = <ThrowOnError extends boolean = fa
  *
  * Walks the first-existing path of each candidate source and
  * returns the file count, last-write timestamp, and the count
- * of files whose names match the parser's recognised filename
+ * of files whose names match the parser's recognized filename
  * grammars. Surfaced as a second metadata line on each picker
  * card — "47 files · 2h ago" / "0 files" / "12 files · 0
- * recognised" — so the user instantly knows which source their
+ * recognized" — so the user instantly knows which source their
  * captures are landing in.
  *
  * Decoupled from the picker's primary fetch because the dir

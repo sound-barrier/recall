@@ -47,9 +47,9 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	})
 	// Per-source diagnostic stats — the picker grid fetches this AFTER
 	// the cards mount so the directory walk doesn't block the visible
-	// UI. Each entry's file_count / last_modified / recognised_count
+	// UI. Each entry's file_count / last_modified / recognized_count
 	// reads at a glance: "47 files · 2h ago" vs "0 files" vs "12 files
-	// · 0 recognised" (the last one tells the user the folder isn't
+	// · 0 recognized" (the last one tells the user the folder isn't
 	// the right source). Bounded to 1000 entries per source so a
 	// synced cloud folder doesn't spin forever.
 	apiMux.HandleFunc("GET /api/v1/system/screenshots-folder-candidates/stats", func(w http.ResponseWriter, r *http.Request) {

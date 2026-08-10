@@ -76,7 +76,7 @@ export type OWData = GetReferenceDataResponses[200]
 
 // NamedCandidateStats is the per-source diagnostic blob the picker grid
 // hydrates AFTER the cards mount (file_count + last_modified +
-// recognised_count). The shape is the spec's inline response schema.
+// recognized_count). The shape is the spec's inline response schema.
 export type NamedCandidateStats = GetScreenshotsFolderCandidateStatsResponses[200][number]
 
 // The platform-bound surface (native dialogs, events, OpenURL, binary
