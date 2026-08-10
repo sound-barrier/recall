@@ -5,6 +5,19 @@ package parser
 // no public string→string (or image→geometry) entry point — the public surface
 // is ParseScreenshot, which needs Tesseract. Compiled only under test, so none
 // of this widens the shipped API.
+// OCRSpec re-exports the invocation-spec type so external stubs can
+// declare the seam's signature; SpecName exposes the region identifier
+// stubs key their canned output on.
+type OCRSpec = ocrSpec
+
+func SpecName(s OCRSpec) string { return s.name }
+
+// NewOCRSpec builds a spec from outside the package (fields are
+// unexported) — used by the seam-swappability sanity test.
+func NewOCRSpec(workDir, name, psm, whitelist string) OCRSpec {
+	return OCRSpec{workDir: workDir, name: name, psm: psm, whitelist: whitelist}
+}
+
 var (
 	RunTesseractWithRetry = runTesseractWithRetry
 	ErrTesseractTimeout   = errTesseractTimeout

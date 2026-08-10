@@ -32,6 +32,17 @@ import (
 // Settings → Advanced → Re-parse all screenshots is the only
 // path (it re-runs Tesseract, which now correctly rejects the
 // short-name fuzzy match).
+// loadSidecars materializes the user-layer decoration maps best-effort:
+// a failed load mutes annotations/flags on the result, never the
+// operation itself (matching the per-file loads it replaced).
+func (a *App) loadSidecars() aggregate.Sidecars {
+	annos, _ := a.store.LoadAnnotations()
+	hidden, _ := a.store.LoadHiddenKeys()
+	reviews, _ := a.store.LoadReviews()
+	pinned, _ := a.store.LoadPinnedKeys()
+	return aggregate.Sidecars{Annotations: annos, Hidden: hidden, Reviews: reviews, Pinned: pinned}
+}
+
 func (a *App) reAggregateUnknowns() (int, error) {
 	return a.store.ReAggregateUnknowns(parser.FirstKnownHeroIn, parser.FirstKnownMapIn)
 }

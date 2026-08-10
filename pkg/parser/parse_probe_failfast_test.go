@@ -44,9 +44,9 @@ func TestParseScreenshot_ProbeErrorFailsFast(t *testing.T) {
 	var mu sync.Mutex
 	var regions []string
 	original := *parser.RunTesseractFunc
-	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) {
+	*parser.RunTesseractFunc = func(_ image.Image, spec parser.OCRSpec) (string, error) {
 		mu.Lock()
-		regions = append(regions, name)
+		regions = append(regions, parser.SpecName(spec))
 		mu.Unlock()
 		return "", errors.New("ocr exploded")
 	}

@@ -298,13 +298,9 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
-	annos, _ := a.store.LoadAnnotations()
-	hidden, _ := a.store.LoadHiddenKeys()
-	reviews, _ := a.store.LoadReviews()
-	pinned, _ := a.store.LoadPinnedKeys()
 	st := &parseRunState{
 		app: a, dirID: dirID, matchesUpdated: map[string]struct{}{},
-		snap: snap, annos: annos, hidden: hidden, reviews: reviews, pinned: pinned,
+		snap: snap, sidecars: a.loadSidecars(),
 		preRunKeys: snapshotMatchKeys(snap),
 	}
 	_, err = ParseScreenshotsDirFunc(ctx, screenshotsDir, parsed, st.handleFile)
@@ -391,11 +387,8 @@ type parseRunState struct {
 	mapCorrections  int
 	// Run-scoped correlation snapshot + sidecars: loaded once at run
 	// start, patched in-memory after each insert (parse_snapshot.go).
-	snap    db.Screenshots
-	annos   map[string]db.Annotation
-	hidden  map[string]bool
-	reviews map[string]db.ReviewState
-	pinned  map[string]bool
+	snap     db.Screenshots
+	sidecars aggregate.Sidecars
 	// Match keys that existed before this run started — the duplicate
 	// sweep (duplicate_sweep.go) only judges keys minted during the
 	// run, so pre-existing history is never demoted and ReParseAll
@@ -448,7 +441,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	ev.MatchKey = key
 	// The pre-insert aggregate for this key, from the carried snapshot —
 	// the correction tallies diff against it after the write lands.
-	beforeRec, beforeOk := aggregate.MatchKey(key, st.snap, st.annos, st.hidden, st.reviews, st.pinned)
+	beforeRec, beforeOk := aggregate.MatchKey(key, st.snap, st.sidecars)
 
 	if err := a.insertParsed(filename, key, ev.Type, st.dirID, result); err != nil {
 		ev.Error = "insert: " + err.Error()
@@ -481,7 +474,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 // updated — they emerged from this run; corrections only fire when both
 // sides resolve a record and the field changed.
 func (st *parseRunState) recordMatchUpdate(key string, beforeRec match.Record, beforeOk bool) {
-	rec, ok := aggregate.MatchKey(key, st.snap, st.annos, st.hidden, st.reviews, st.pinned)
+	rec, ok := aggregate.MatchKey(key, st.snap, st.sidecars)
 	if !ok {
 		return
 	}

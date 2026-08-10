@@ -121,7 +121,7 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 			{"8", ""},
 		}
 		for _, a := range attempts {
-			text, err := ocrInverted(img, rect, workDir, cellNames[i], a.psm, a.whitelist)
+			text, err := ocrInverted(img, rect, ocrSpec{workDir: workDir, name: cellNames[i], psm: a.psm, whitelist: a.whitelist})
 			if err != nil {
 				return out, fmt.Errorf("%s: %w", cellNames[i], err)
 			}

@@ -74,7 +74,7 @@ func countTeamRows(img image.Image, col image.Rectangle, yTop, yBot int, workDir
 	}
 	margin := img.Bounds().Dx() / 100
 	rect := image.Rect(col.Min.X-margin, yTop, col.Max.X+margin, yBot)
-	text, err := ocrInverted(img, rect, workDir, name, "6", "0123456789,")
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: workDir, name: name, psm: "6", whitelist: "0123456789,"})
 	if err != nil {
 		return 0
 	}
