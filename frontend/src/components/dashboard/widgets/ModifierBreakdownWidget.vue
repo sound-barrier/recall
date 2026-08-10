@@ -18,7 +18,15 @@ const rows = dossier.modifierBreakdown(() => ({ limit: 12 }))
     <li v-for="row in rows" :key="row.key">
       <span class="bd-name mod-name">{{ row.key }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: row.share + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(row.share)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${row.key} share`"
+          :style="{ width: row.share + '%' }"
+        />
         <span class="bd-time">{{ row.total }}x</span>
       </span>
       <span class="bd-stats">{{ row.winrate }}%</span>

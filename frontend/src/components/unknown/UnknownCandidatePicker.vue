@@ -63,6 +63,7 @@ function freshKey(): string | null {
           :key="cand.match_key"
           class="candidate-row"
           :class="{ active: activeCandidateKey() === cand.match_key }"
+          :aria-current="activeCandidateKey() === cand.match_key || undefined"
           @mouseenter="setActive(cand.match_key)"
           @focusin="setActive(cand.match_key)"
         >

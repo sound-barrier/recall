@@ -116,7 +116,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
         <button
           type="button"
           class="probe-chip-close"
-          aria-label="Dismiss"
+          aria-label="Dismiss detection result"
           @click="probeDismissed = true"
         >
           ×

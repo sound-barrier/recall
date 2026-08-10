@@ -31,7 +31,16 @@ const rows = computed(() => {
     <li v-for="row in rows" :key="row.label">
       <span class="bd-name">{{ row.label }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :class="row.judgment" :style="{ width: row.share + '%' }" />
+        <span
+          class="bd-fill"
+          :class="row.judgment"
+          role="progressbar"
+          :aria-valuenow="Math.round(row.share)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${row.label} share`"
+          :style="{ width: row.share + '%' }"
+        />
         <span class="bd-time">{{ row.sample }}x</span>
       </span>
       <span class="bd-stats">{{ row.winrate === null ? '—' : `${row.winrate}%` }}</span>

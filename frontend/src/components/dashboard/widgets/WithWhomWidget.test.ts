@@ -15,11 +15,12 @@ describe('WithWhomWidget', () => {
     expect(within(rows[0]!).getByText('Alice')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('3x')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('67%')).toBeInTheDocument()
-    // Bar width binds to WIN RATE (the comparison axis), not share.
-    // The bar communicates only through its width style — no text or
-    // role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only winrate bar has no accessible surface
-    expect((rows[0]!.querySelector('.bd-fill') as HTMLElement).style.width).toBe('67%')
+    // The meter reports WIN RATE (the comparison axis), not share — one
+    // per teammate, named for the teammate, in rank order.
+    expect(screen.getByRole('progressbar', { name: 'Alice winrate' }))
+      .toHaveAttribute('aria-valuenow', '67')
+    expect(screen.getAllByRole('progressbar').map((b) => b.getAttribute('aria-valuenow')))
+      .toEqual(['67', '50', '100'])
   })
 
   it('shows the teach-me empty state when no teammates are tagged', () => {

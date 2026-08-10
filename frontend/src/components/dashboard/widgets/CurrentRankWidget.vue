@@ -18,7 +18,15 @@ const currentRank = dossier.currentRank
     <li v-for="r in currentRank" :key="r.key">
       <span class="bd-name">{{ r.label }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: Math.max(0, r.progress) + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(Math.max(0, r.progress))"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${r.label} progress`"
+          :style="{ width: Math.max(0, r.progress) + '%' }"
+        />
         <span class="bd-time cap">{{ r.tier }} {{ r.level }}</span>
       </span>
       <span class="bd-stats">{{ r.progress }}%</span>

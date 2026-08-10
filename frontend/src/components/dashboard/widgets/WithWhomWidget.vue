@@ -23,7 +23,15 @@ const rows = dossier.withWhomBreakdown(() => ({ limit: config.value.limit }))
     <li v-for="row in rows" :key="row.key">
       <span class="bd-name">{{ row.key }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: row.winrate + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(row.winrate)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${row.key} winrate`"
+          :style="{ width: row.winrate + '%' }"
+        />
         <span class="bd-time">{{ row.total }}x</span>
       </span>
       <span class="bd-stats">{{ row.winrate }}%</span>

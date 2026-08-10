@@ -17,10 +17,13 @@ describe('Recent5MatchesWidget', () => {
     const pills = screen.getAllByTitle(/victory|defeat|draw/)
     expect(pills).toHaveLength(5)
     expect(pills[0]).toHaveTextContent(/^W$/)
+    // eslint-disable-next-line no-restricted-syntax -- result tint; the pill title + W/L/D text already pin the result mapping
     expect(pills[0]).toHaveClass('recent-pill-victory')
     expect(pills[1]).toHaveTextContent(/^L$/)
+    // eslint-disable-next-line no-restricted-syntax -- result tint; the pill title + W/L/D text already pin the result mapping
     expect(pills[1]).toHaveClass('recent-pill-defeat')
     expect(pills[4]).toHaveTextContent(/^D$/)
+    // eslint-disable-next-line no-restricted-syntax -- result tint; the pill title + W/L/D text already pin the result mapping
     expect(pills[4]).toHaveClass('recent-pill-draw')
   })
 
@@ -30,7 +33,7 @@ describe('Recent5MatchesWidget', () => {
     })
     // This test PINS the selector contract (data-recent-count) that
     // e2e specs rely on, so the node access is the point.
-    // eslint-disable-next-line testing-library/no-node-access -- pins the data-recent-count selector contract used by e2e
+    // eslint-disable-next-line testing-library/no-node-access, no-restricted-syntax -- pins the data-recent-count selector contract used by e2e
     expect(baseElement.querySelector('.recent-pills')?.getAttribute('data-recent-count')).toBe('3')
   })
 })

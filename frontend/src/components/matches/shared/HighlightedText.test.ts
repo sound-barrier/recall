@@ -4,11 +4,9 @@ import { render, screen } from '@testing-library/vue'
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
 
 describe('HighlightedText', () => {
-  it('wraps a case-insensitive hit in <mark class="search-hl">, preserving the original case', () => {
+  it('wraps a case-insensitive hit in a <mark>, preserving the original case', () => {
     render(HighlightedText, { props: { text: 'Rialto', terms: ['rialto'] } })
-    const mark = screen.getByText('Rialto')
-    expect(mark.tagName).toBe('MARK')
-    expect(mark).toHaveClass('search-hl')
+    expect(screen.getByText('Rialto').tagName).toBe('MARK')
   })
 
   it('renders plain text (no marks) when no term hits', () => {
@@ -25,9 +23,7 @@ describe('HighlightedText', () => {
 
   it('splits a partial hit without gaining stray whitespace', () => {
     const { container } = render(HighlightedText, { props: { text: 'rialto', terms: ['rial'] } })
-    const mark = screen.getByText('rial')
-    expect(mark.tagName).toBe('MARK')
-    expect(mark).toHaveClass('search-hl')
+    expect(screen.getByText('rial').tagName).toBe('MARK')
     expect(container).toHaveTextContent(/^rialto$/)
   })
 })

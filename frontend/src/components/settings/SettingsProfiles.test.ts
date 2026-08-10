@@ -27,7 +27,9 @@ afterEach(() => {
 
 const user = () => userEvent.setup()
 const rows = () => screen.getAllByRole('listitem')
-const rowNames = () => rows().map((r) => r.getAttribute('data-profile'))
+// Each row names itself with its profile, so the rendered order reads off
+// the accessible names.
+const rowNames = () => rows().map((r) => r.getAttribute('aria-label'))
 
 describe('SettingsProfiles', () => {
   it('renders every profile sorted alphabetically and tags the active one', async () => {
@@ -36,8 +38,9 @@ describe('SettingsProfiles', () => {
     await flushPromises()
     expect(rowNames()).toEqual(['alt', 'main', 'smurf'])
     // Active is marked + has no Delete button.
-    const active = rows()[1]!
-    expect(active).toHaveClass('active')
+    const active = screen.getByRole('listitem', { name: 'main' })
+    expect(active).toHaveAttribute('aria-current', 'true')
+    expect(rows()[1]).toBe(active)
     expect(within(active).getByText('Active')).toBeInTheDocument()
     expect(within(active).queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument()
   })

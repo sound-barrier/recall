@@ -121,6 +121,11 @@ describe('MatchHeroModeBand', () => {
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
     })
     const cell = winCell()
+    // heatmapCellClass is a THRESHOLD verdict rendered purely as a tint —
+    // no text, name, or ARIA state carries it, and the shared engine's
+    // contract is that the same win rate paints the same class here and in
+    // the Map × Role band.
+    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
     expect(cell).toHaveClass('cell-win')
     await user().click(cell)
     // Global narrow applied.

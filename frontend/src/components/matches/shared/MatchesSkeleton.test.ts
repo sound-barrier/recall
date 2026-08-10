@@ -20,8 +20,9 @@ describe('MatchesSkeleton', () => {
 
   it('announces busy state for assistive tech', () => {
     render(MatchesSkeleton)
-    const region = screen.getByRole('region', { name: 'Loading matches' })
-    expect(region).toHaveAttribute('data-matches-loading', 'true')
+    // The named region + the busy list ARE the announcement; the
+    // [data-matches-loading] hook the e2e spec waits on rides the same node.
+    expect(screen.getByRole('region', { name: 'Loading matches' })).toBeInTheDocument()
     expect(screen.getByRole('list')).toHaveAttribute('aria-busy', 'true')
   })
 

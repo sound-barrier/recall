@@ -18,17 +18,21 @@ describe('CurrentRankWidget', () => {
     expect(within(rows[0]!).getByText('Tank')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('platinum 1')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('60%')).toBeInTheDocument()
-    // The bar fill clamps the within-division progress to width %.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only progress bar has no accessible surface
-    expect(rows[0]!.querySelector('.bd-fill')?.getAttribute('style')).toContain('60%')
+    // Within-division progress is a progressbar meter named for the role
+    // line; the percentage lives in aria-valuenow.
+    expect(screen.getByRole('progressbar', { name: 'Tank progress' }))
+      .toHaveAttribute('aria-valuenow', '60')
+    expect(screen.getByRole('progressbar', { name: 'DPS progress' }))
+      .toHaveAttribute('aria-valuenow', '20')
   })
 
-  it('clamps a negative (demotion) progress to a non-negative bar width', () => {
-    const { baseElement } = renderWidget(CurrentRankWidget, {
+  it('clamps a negative (demotion) progress to a non-negative meter value', () => {
+    renderWidget(CurrentRankWidget, {
       dossier: { currentRank: [{ key: 'tank', label: 'Tank', tier: 'gold', level: 1, progress: -19 }] },
     })
-    // eslint-disable-next-line testing-library/no-node-access -- style-only progress bar has no accessible surface
-    expect(baseElement.querySelector('.bd-fill')?.getAttribute('style')).toContain('0%')
+    // aria-valuenow reports the same clamped quantity the bar paints.
+    expect(screen.getByRole('progressbar', { name: 'Tank progress' }))
+      .toHaveAttribute('aria-valuenow', '0')
     expect(screen.getByText('-19%')).toBeInTheDocument()
   })
 

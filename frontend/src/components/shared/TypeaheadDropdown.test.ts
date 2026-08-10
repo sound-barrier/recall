@@ -38,6 +38,13 @@ const input   = (label = 'Heroes') => screen.getByRole('combobox', { name: label
 const listbox = (label = 'Heroes') => screen.queryByRole('listbox', { name: label })
 const options = () => screen.queryAllByRole('option')
 const option  = (name: string) => options().find((o) => o.textContent?.includes(name))!
+// The keyboard highlight is published as aria-activedescendant on the
+// combobox (aria-selected is already spoken for by multi-select "picked"),
+// so "which option is highlighted" resolves through that pointer.
+const activeOption = () => {
+  const id = input().getAttribute('aria-activedescendant')
+  return id ? options().find((o) => o.id === id) : undefined
+}
 
 describe('TypeaheadDropdown', () => {
   describe('closed', () => {
@@ -161,8 +168,8 @@ describe('TypeaheadDropdown', () => {
     it('pre-highlights the first match while typing so Enter selects it without Tab', async () => {
       const { emitted } = renderDropdown({ open: true, autoHighlightFirst: true })
       await fireEvent.update(input(), 'luc')
-      // The first (and here only) match carries the cursor highlight.
-      expect(options()[0]).toHaveClass('cursor')
+      // The first (and here only) match carries the keyboard highlight.
+      expect(activeOption()).toBe(options()[0])
       // Enter selects it — no Arrow / Tab needed.
       await fireEvent.keyDown(input(), { key: 'Enter' })
       expect(emitted('select')).toEqual([['lucio']])
@@ -190,27 +197,27 @@ describe('TypeaheadDropdown', () => {
     it('ArrowDown advances the cursor', async () => {
       renderDropdown({ open: true })
       await fireEvent.keyDown(input(), { key: 'ArrowDown' })
-      expect(options()[0]).toHaveClass('cursor')
+      expect(activeOption()).toBe(options()[0])
     })
 
     it('ArrowUp from cursor=0 wraps to the end', async () => {
       renderDropdown({ open: true })
       await fireEvent.keyDown(input(), { key: 'ArrowDown' }) // cursor → 0
       await fireEvent.keyDown(input(), { key: 'ArrowUp' })   // wraps → HEROES.length - 1
-      expect(options()[HEROES.length - 1]).toHaveClass('cursor')
+      expect(activeOption()).toBe(options()[HEROES.length - 1])
     })
 
     it('Home jumps to the first option', async () => {
       renderDropdown({ open: true })
       await fireEvent.keyDown(input(), { key: 'End' })
       await fireEvent.keyDown(input(), { key: 'Home' })
-      expect(options()[0]).toHaveClass('cursor')
+      expect(activeOption()).toBe(options()[0])
     })
 
     it('End jumps to the last option', async () => {
       renderDropdown({ open: true })
       await fireEvent.keyDown(input(), { key: 'End' })
-      expect(options()[HEROES.length - 1]).toHaveClass('cursor')
+      expect(activeOption()).toBe(options()[HEROES.length - 1])
     })
 
     it('Escape emits close', async () => {
@@ -234,7 +241,7 @@ describe('TypeaheadDropdown', () => {
       const { emitted } = renderDropdown({ open: true })
       await fireEvent.update(input(), 'luc') // filters to lucio
       await fireEvent.keyDown(input(), { key: 'Tab' })
-      expect(options()[0]).toHaveClass('cursor')
+      expect(activeOption()).toBe(options()[0])
       await fireEvent.keyDown(input(), { key: 'Enter' })
       expect(emitted('select')).toEqual([['lucio']])
     })
@@ -243,7 +250,7 @@ describe('TypeaheadDropdown', () => {
       renderDropdown({ open: true })
       await fireEvent.keyDown(input(), { key: 'Tab' })                 // -1 → 0
       await fireEvent.keyDown(input(), { key: 'Tab', shiftKey: true }) // 0 → last (wrap)
-      expect(options()[HEROES.length - 1]).toHaveClass('cursor')
+      expect(activeOption()).toBe(options()[HEROES.length - 1])
     })
 
     it('Tab keeps its normal focus move when closed (no match to complete)', async () => {

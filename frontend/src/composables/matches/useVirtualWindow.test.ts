@@ -163,9 +163,9 @@ describe('useVirtualWindow', () => {
     await nextTick()
     // Overscan-only batch (2 * overscan = 10 items). The indices are
     // painted as data attributes on the harness's own container.
-    // eslint-disable-next-line testing-library/no-node-access -- harness-owned container; the painted attribute IS the assertion
+    // eslint-disable-next-line testing-library/no-node-access, no-restricted-syntax -- harness-owned container; the painted attribute IS the assertion
     expect(el.querySelector('[data-start]')?.getAttribute('data-start')).toBe('0')
-    // eslint-disable-next-line testing-library/no-node-access -- harness-owned container; the painted attribute IS the assertion
+    // eslint-disable-next-line testing-library/no-node-access, no-restricted-syntax -- harness-owned container; the painted attribute IS the assertion
     expect(el.querySelector('[data-end]')?.getAttribute('data-end')).toBe('10')
     view.unmount()
   })

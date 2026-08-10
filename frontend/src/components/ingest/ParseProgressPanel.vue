@@ -32,6 +32,11 @@ defineEmits<{
       <div class="pp-bar-track">
         <div
           class="pp-bar-fill"
+          role="progressbar"
+          aria-label="Parse progress"
+          :aria-valuemin="0"
+          :aria-valuemax="parseProgress?.total || undefined"
+          :aria-valuenow="parseProgress?.total ? parseProgress.done : undefined"
           :style="parseProgress && parseProgress.total
             ? { width: `${(parseProgress.done / parseProgress.total) * 100}%` }
             : { width: '0%' }"

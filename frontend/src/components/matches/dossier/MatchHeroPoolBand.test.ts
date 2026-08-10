@@ -78,12 +78,11 @@ describe('MatchHeroPoolBand', () => {
   it('selecting Support Out-of-pool sets a role-scoped off-pool filter', async () => {
     const user = userEvent.setup()
     const narrow = makeNarrow()
-    const { baseElement } = renderBand(narrow)
-    // The In/Out-of-pool buttons repeat per role group and the group
-    // containers carry no accessible name — the compound data-attr
-    // (side + role) is the identity contract the e2e specs share.
-    // eslint-disable-next-line testing-library/no-node-access -- compound data-attr (side+role) identity shared with e2e; role groups have no accessible name
-    const offSupport = baseElement.querySelector('[data-pool-side="off"][data-pool-role="support"]') as HTMLElement
+    renderBand(narrow)
+    // The In/Out-of-pool buttons repeat per role and read identically, so
+    // the role group they sit in is what tells them apart.
+    const offSupport = within(screen.getByRole('group', { name: 'Support' }))
+      .getByRole('button', { name: /^Out of pool/ })
     await user.click(offSupport)
     expect(narrow.setPoolFilter).toHaveBeenCalled()
     const arg = (narrow.setPoolFilter.mock.calls[0]![0]) as { side: string; keys: string[] }

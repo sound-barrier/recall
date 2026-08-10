@@ -83,9 +83,10 @@ describe('WidgetConfigPopover', () => {
     expect(segments[0]).toHaveTextContent(/^3$/)
     expect(segments[1]).toHaveTextContent(/^5$/)
     expect(segments[2]).toHaveTextContent(/^10$/)
-    // Default value (5) is marked active (aria-checked + active class).
+    // Default value (5) is the checked segment; the others are not.
     expect(segments[1]).toBeChecked()
-    expect(segments[1]).toHaveClass('wcp-segment-active')
+    expect(segments[0]).not.toBeChecked()
+    expect(segments[2]).not.toBeChecked()
   })
 
   it('renders a radio list for an enum schema', async () => {

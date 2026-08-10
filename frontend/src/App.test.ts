@@ -37,8 +37,11 @@ const container  = () => document.querySelector('.container')
 const modalBox   = () => document.querySelector('.modal-box')
 const modalButtons = () => [...document.querySelectorAll('.modal-actions button')]
 const skipLink   = () => document.querySelector('a.skip-link')
-const systemAlert = () => document.querySelector('.system-alert')
 /* eslint-enable testing-library/no-node-access */
+
+// The tesseract-gate banner announces itself as role="alert" — the only
+// live alert on the page in these fixtures.
+const systemAlert = () => screen.queryByRole('alert')
 
 describe('App.vue', () => {
   // 15s budget: the first App render pays the whole SFC tree's
@@ -135,6 +138,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
       } },
     ]
     await renderApp({ records: initial })
+    // eslint-disable-next-line no-restricted-syntax -- the pulse flash is a purely visual attention cue with no ARIA state
     expect(scoreboard()).not.toHaveClass('pulse')
 
     // Re-mock GetMatchResults so the next load() returns one more record.
@@ -152,6 +156,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
     // Promise.all + the post-load reactive update settle.
     expect(fireBackendEvent('parse-complete')).toBe(true)
     await flushPromises()
+    // eslint-disable-next-line no-restricted-syntax -- the pulse flash is a purely visual attention cue with no ARIA state
     expect(scoreboard()).toHaveClass('pulse')
   })
 
@@ -164,6 +169,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
     await renderApp({ records: seed })
     expect(fireBackendEvent('parse-complete')).toBe(true)
     await flushPromises()
+    // eslint-disable-next-line no-restricted-syntax -- the pulse flash is a purely visual attention cue with no ARIA state
     expect(scoreboard()).not.toHaveClass('pulse')
   })
 })

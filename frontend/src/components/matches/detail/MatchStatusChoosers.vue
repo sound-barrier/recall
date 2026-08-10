@@ -207,6 +207,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
       type="button"
       class="since-anchor-btn"
       :class="{ 'is-anchor': isAnchor }"
+      :aria-pressed="isAnchor"
       :data-anchor-set="isAnchor || undefined"
       data-set-anchor
       :title="isAnchor

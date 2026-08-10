@@ -67,7 +67,16 @@ const topHeroesPlayed = computed(() => {
       :id="`heroes-played-${record.match_key}`"
       class="heroes-played-items"
     >
-      <div v-for="hp in record.data.heroes_played" :key="hp.hero" class="hero-block">
+      <!-- One group per hero, named by the hero: the percent-played and
+           play-time cells carry no label of their own, so the group is what
+           binds them to the hero they describe. -->
+      <div
+        v-for="hp in record.data.heroes_played"
+        :key="hp.hero"
+        class="hero-block"
+        role="group"
+        :aria-label="ow.heroDisplayName(hp.hero)"
+      >
         <div class="hero-header">
           <button
             type="button"

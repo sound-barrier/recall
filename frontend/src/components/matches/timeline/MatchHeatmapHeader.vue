@@ -363,6 +363,7 @@ onBeforeUnmount(() => {
           :fill="cellFill(cell)"
           :aria-label="cellLabel(cell)"
           role="button"
+          :aria-pressed="isActive(cell)"
           :tabindex="cell.empty ? -1 : 0"
           @mousedown="onCellDown(cell, $event)"
           @keydown.enter.prevent="$event.shiftKey ? extendRangeTo(cell.date) : commitClick(cell.date)"

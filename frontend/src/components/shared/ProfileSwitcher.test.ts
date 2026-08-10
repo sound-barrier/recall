@@ -71,8 +71,9 @@ describe('ProfileSwitcher — masthead chip', () => {
     // The "+ New profile…" item shares the menuitem role — slice it off.
     const names = items.slice(0, 2).map((n) => n.textContent?.trim())
     expect(names).toEqual(['alt', '✓main'])
-    // Active profile carries the .active class.
-    expect(screen.getByRole('menuitem', { name: 'main' })).toHaveClass('active')
+    // The active profile is the current item in the menu.
+    expect(screen.getByRole('menuitem', { name: 'main' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('menuitem', { name: 'alt' })).not.toHaveAttribute('aria-current')
   })
 
   it('clicking a non-active profile fires SwitchProfile and reloads', async () => {

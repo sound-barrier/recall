@@ -26,7 +26,15 @@ const reserveRows = fullDossier.topByCount(() => ({
     <li v-for="t in topGameModes" :key="t.key">
       <span class="bd-name">{{ t.key }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: t.share + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(t.share)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${t.key} share`"
+          :style="{ width: t.share + '%' }"
+        />
         <span class="bd-time">{{ t.total }}x</span>
       </span>
       <span class="bd-stats">{{ t.share }}%</span>

@@ -21,12 +21,11 @@ describe('ModifierBreakdownWidget', () => {
     expect(rows).toHaveLength(2)
     expect(within(rows[0]!).getByText('6x')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('100%')).toBeInTheDocument()
-    // The share bar communicates only through its width style — no
-    // text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only share bar has no accessible surface
-    expect(rows[0]!.querySelector('.bd-fill')?.getAttribute('style')).toContain('40%')
-    // Title-cased for display via CSS (mod-name carries the transform).
-    expect(within(rows[0]!).getByText('uphill battle')).toHaveClass('mod-name')
+    // The bar paints share of all modifier appearances; the stat column
+    // carries the win-rate.
+    expect(screen.getByRole('progressbar', { name: 'uphill battle share' }))
+      .toHaveAttribute('aria-valuenow', '40')
+    expect(within(rows[0]!).getByText('uphill battle')).toBeInTheDocument()
   })
 
   it('renders nothing when the set carries no modifiers', () => {

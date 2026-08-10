@@ -30,7 +30,15 @@ const reserveRows = fullDossier.topByCount(() => ({
     <li v-for="m in topMaps" :key="m.key">
       <span class="bd-name">{{ m.key }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: m.share + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(m.share)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${m.key} share`"
+          :style="{ width: m.share + '%' }"
+        />
         <span class="bd-time">{{ m.total }}x</span>
       </span>
       <span class="bd-stats">{{ m.share }}%</span>

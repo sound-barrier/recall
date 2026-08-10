@@ -18,7 +18,15 @@ const breakdown = dossier.lossQualityBreakdown()
     <li v-for="row in breakdown.rows" :key="row.key" :data-loss-quality-row="row.key">
       <span class="bd-name lq-name">{{ row.key }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: row.share + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(row.share)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${row.key} share`"
+          :style="{ width: row.share + '%' }"
+        />
         <span class="bd-time">{{ row.total }}x</span>
       </span>
       <span class="bd-stats">{{ row.share }}%</span>

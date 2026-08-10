@@ -61,14 +61,20 @@ function renderRow(props: Partial<Record<string, unknown>> = {}) {
 }
 
 describe('MatchTableRow', () => {
+  // These two data-attrs are a RUNTIME contract, not test wiring: App.vue's
+  // j/k keyboard nav resolves the focused row through [data-card-index], and
+  // seven e2e specs address rows by [data-match-key]. Pinning them here is
+  // what keeps that shared surface from being renamed silently.
   it('renders a <tr> carrying the keyboard-nav data attributes', () => {
     renderRow({ cardIndex: 3 })
     const row = screen.getByRole('row')
+    // eslint-disable-next-line no-restricted-syntax -- data-match-key is a runtime contract: the keyboard-nav engine and seven e2e specs address rows by it
     expect(row).toHaveAttribute('data-match-key', 'm-1')
+    // eslint-disable-next-line no-restricted-syntax -- data-card-index is a runtime contract: the keyboard-nav engine reads it to move the focus cursor
     expect(row).toHaveAttribute('data-card-index', '3')
   })
 
-  it('renders the map, split E/A/D cells, and a result chip tinted by outcome', () => {
+  it('renders the map, split E/A/D cells, and a result chip naming the outcome', () => {
     renderRow({ rec: rec({ result: 'defeat' }) })
     expect(screen.getByText('rialto')).toBeInTheDocument()
     // E/A/D each own a column now, not one slash-joined cell.
@@ -76,7 +82,7 @@ describe('MatchTableRow', () => {
     expect(screen.getByText('10')).toBeInTheDocument()
     expect(screen.getByText('8')).toBeInTheDocument()
     expect(screen.queryByText('20 / 10 / 8')).not.toBeInTheDocument()
-    expect(screen.getByTitle('Filter the set to defeat')).toHaveClass('result-defeat')
+    expect(screen.getByTitle('Filter the set to defeat')).toHaveTextContent('defeat')
   })
 
   it('splits play-mode and queue into their own cells', () => {
@@ -112,11 +118,9 @@ describe('MatchTableRow', () => {
     expect(screen.getByRole('row')).not.toHaveAttribute('aria-current')
   })
 
-  it('highlights a bare-term hit in the map cell via <mark class="search-hl">', () => {
+  it('highlights a bare-term hit in the map cell with a <mark>', () => {
     renderRow({ searchClauses: [{ field: null, value: 'rialto' }] satisfies SearchClause[] })
-    const mark = screen.getByText('rialto')
-    expect(mark.tagName).toBe('MARK')
-    expect(mark).toHaveClass('search-hl')
+    expect(screen.getByText('rialto').tagName).toBe('MARK')
   })
 
   it('renders tag chips with a leading # and highlights a tag-scoped hit', () => {
@@ -137,9 +141,7 @@ describe('MatchTableRow', () => {
       },
     })
     expect(screen.getByRole('row')).toHaveTextContent('#clutch')
-    const mark = screen.getByText('clutch')
-    expect(mark.tagName).toBe('MARK')
-    expect(mark).toHaveClass('search-hl')
+    expect(screen.getByText('clutch').tagName).toBe('MARK')
   })
 
   describe('source column', () => {
@@ -166,18 +168,16 @@ describe('MatchTableRow', () => {
       renderRow({
         rec: { ...rec(), data: { ...rec().data, eliminations: 20, assists: 10, deaths: 8 } } as MatchRecord,
       })
-      expect(screen.getByText('3.75')).toBeInTheDocument()
+      expect(screen.getByLabelText('KDA 3.75')).toHaveTextContent('3.75')
     })
 
     it('renders an em-dash when the record carries no stats', () => {
       const base = rec()
       const { eliminations: _e, assists: _a, deaths: _d, ...bare } = base.data as Record<string, unknown>
-      const { baseElement } = renderRow({ rec: { ...base, data: bare } as MatchRecord })
-      // Several cells legitimately render an em-dash for missing data,
-      // and a lone-row render carries no column headers to bind the KDA
-      // cell to an accessible name — select the column class directly.
-      // eslint-disable-next-line testing-library/no-node-access -- lone-row render has no column-header binding for the KDA cell
-      expect(baseElement.querySelector('.tc-kda')?.textContent?.trim()).toBe('—')
+      renderRow({ rec: { ...base, data: bare } as MatchRecord })
+      // Several cells legitimately render a bare em-dash for missing data, so
+      // the derived KDA cell names itself rather than relying on position.
+      expect(screen.getByLabelText('KDA unavailable')).toHaveTextContent('—')
     })
   })
 })

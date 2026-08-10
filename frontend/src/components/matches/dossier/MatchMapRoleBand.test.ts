@@ -60,6 +60,8 @@ const rowheads  = () => screen.queryAllByLabelText(/^Select all maps for /)
 const collabels = () => screen.queryAllByLabelText(/^Select all roles on /)
 const modeheads = () => screen.queryAllByLabelText(/^Select all .+ maps$/)
 const cells     = () => screen.queryAllByLabelText(/^(Tank|DPS|Support) on /)
+// An unplayed cell says so in its own accessible name.
+const playedCells = () => screen.queryAllByLabelText(/^(Tank|DPS|Support) on (?!.*: no matches$)/)
 const selectedCells = () => cells().filter((c) => c.getAttribute('aria-pressed') === 'true')
 const collabelTexts = () => collabels().map((n) => n.textContent?.trim())
 // The selection bar and the "select a cell" prompt are a v-if/v-else
@@ -119,8 +121,7 @@ describe('MatchMapRoleBand', () => {
     expect(rowheads()).toHaveLength(3)
     // All three cells played in the window stay playable (not flagged empty), even
     // though only one has data under the narrow — calendar-style switching / click-off.
-    const playable = cells().filter((c) => !c.hasAttribute('data-mr-empty'))
-    expect(playable).toHaveLength(3)
+    expect(playedCells()).toHaveLength(3)
   })
 
   it('orders maps alphabetically within a type group', () => {
@@ -133,7 +134,8 @@ describe('MatchMapRoleBand', () => {
   it('flags unplayed cells empty (clickable to reset) and labels them no matches', () => {
     renderBand()
     const empty = screen.getByLabelText('Support on Ilios: no matches')
-    expect(empty).toHaveAttribute('data-mr-empty')
+    // The name IS the empty flag, and it stays out of the played set.
+    expect(playedCells()).not.toContain(empty)
     // No longer :disabled — an empty cell is clickable so a click can reset.
     expect(empty).toBeEnabled()
   })
@@ -168,7 +170,6 @@ describe('MatchMapRoleBand', () => {
     renderBand(narrow)
     const cell = () => screen.getByLabelText(/^Support on Rialto/)
     await press(cell())
-    expect(cell()).toHaveClass('selected')
     expect(cell()).toHaveAttribute('aria-pressed', 'true')
     expect(selectedCells()).toHaveLength(1)
     // Selecting now narrows immediately — no "Filter to selection" step.
@@ -181,7 +182,7 @@ describe('MatchMapRoleBand', () => {
     const cell = () => screen.getByLabelText(/^Support on Rialto/)
     await press(cell())
     await press(cell())
-    expect(cell()).not.toHaveClass('selected')
+    expect(cell()).toHaveAttribute('aria-pressed', 'false')
     expect(emptyPrompt()).toBeInTheDocument() // selection bar gone
   })
 
@@ -190,38 +191,37 @@ describe('MatchMapRoleBand', () => {
     await press(screen.getByLabelText(/^Support on Rialto/))
     await press(screen.getByLabelText(/^Tank on Ilios/))
     expect(selectedCells()).toHaveLength(1)
-    expect(screen.getByLabelText(/^Tank on Ilios/)).toHaveClass('selected')
+    expect(screen.getByLabelText(/^Tank on Ilios/)).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('clicking a role label selects the whole row', async () => {
     renderBand()
     await user().click(screen.getByLabelText('Select all maps for Support'))
     // The two played support cells (rialto, dorado/ilios are inert for support) light up.
-    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveClass('selected')
+    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveAttribute('aria-pressed', 'true')
     expect(emptyPrompt()).not.toBeInTheDocument() // selection bar shown
   })
 
   it('clicking a map name selects the whole column', async () => {
     renderBand()
     await user().click(screen.getByLabelText('Select all roles on Rialto'))
-    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveClass('selected')
+    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('keeps the selected map / role / game-mode headers highlighted', async () => {
     renderBand()
     const rialtoCol = () => screen.getByLabelText('Select all roles on Rialto')
     await user().click(rialtoCol())
-    expect(rialtoCol()).toHaveClass('header-selected')
     expect(rialtoCol()).toHaveAttribute('aria-pressed', 'true')
     // Narrow to a role within Rialto → the role header lights, Rialto stays lit.
     const supportRow = () => screen.getByLabelText('Select all maps for Support')
     await user().click(supportRow())
-    expect(supportRow()).toHaveClass('header-selected')
-    expect(rialtoCol()).toHaveClass('header-selected')
+    expect(supportRow()).toHaveAttribute('aria-pressed', 'true')
+    expect(rialtoCol()).toHaveAttribute('aria-pressed', 'true')
     // A game-mode group header lights when all its maps are selected.
     const escort = screen.getByLabelText('Select all Escort maps')
     await user().click(escort)
-    expect(escort).toHaveClass('header-selected')
+    expect(escort).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('Ctrl-clicking a second cell live-filters to the rectangular hull', async () => {
@@ -297,6 +297,11 @@ describe('MatchMapRoleBand', () => {
     expect(screen.getByText(/at least 1 match must be played to display data/i)).toBeInTheDocument()
   })
 
+  // The one place a class assertion survives: heatmapCellClass is a
+  // THRESHOLD verdict (green past the band, grey under the evidence floor)
+  // rendered purely as a tint — there is no text, name, or ARIA state that
+  // carries it, and the shared engine's contract is exactly that the same
+  // win rate paints the same class in this band and in Hero × Game-Mode.
   it('cells carry the shared judgment classes: green past the band, grey under the floor', () => {
     renderWidget(MatchMapRoleBand, {
       dossier: { mapRoleCounts: [
@@ -307,8 +312,11 @@ describe('MatchMapRoleBand', () => {
       ] },
       narrow: makeNarrow(),
     })
+    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
     expect(screen.getByLabelText(/^Support on Rialto/)).toHaveClass('cell-win')
+    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
     expect(screen.getByLabelText(/^Tank on Ilios/)).toHaveClass('cell-mid')
+    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
     expect(screen.getByLabelText(/^Support on Ilios/)).toHaveClass('cell-empty')
   })
 })

@@ -33,8 +33,12 @@ describe('behavioral KPI widgets', () => {
 
   it('NetRankWeek signs + colors positive and negative movement', () => {
     renderWidget(NetRankWeekWidget, { dossier: { netRankWeek: 45 } })
+    // Visual tint pins: the sign is already in the visible text, the
+    // class only carries the up/down color. No ARIA encoding exists.
+    // eslint-disable-next-line no-restricted-syntax -- sign tint on the weekly net rank; the +/- in the text carries the direction
     expect(screen.getByText('+45%')).toHaveClass('kpi-up')
     renderWidget(NetRankWeekWidget, { dossier: { netRankWeek: -20 } })
+    // eslint-disable-next-line no-restricted-syntax -- sign tint on the weekly net rank; the +/- in the text carries the direction
     expect(screen.getByText('-20%')).toHaveClass('kpi-down')
   })
 

@@ -174,11 +174,16 @@ const engineSection = () => document.querySelector('#sec-engine') as HTMLElement
 const engineStatus  = () => document.querySelector('.engine-status')
 const engineRow     = () => document.querySelector('.engine-row')
 const engineDesc    = () => document.querySelector('.engine-row .setting-desc')
-const probeChip     = () => document.querySelector('.probe-chip')
 const dataLocGrid   = () => document.querySelector('.data-loc-grid')
 const dataLocActions = () => [...document.querySelectorAll('.data-loc-actions')] as HTMLElement[]
 const settingValue  = () => document.querySelector('.setting-value')
 /* eslint-enable testing-library/no-node-access */
+
+// The first-run detection chip announces itself as role="status" and is the
+// only live status region rendered in the empty-folder fixtures these tests
+// use (the Engine chip is bound to a separate probe, the Directories chip
+// only renders once a folder is set).
+const probeChip = () => screen.queryByRole('status')
 
 const engineButton = (text: string) =>
   within(engineSection()).getAllByRole('button').find((b) => b.textContent?.trim() === text)
@@ -242,16 +247,16 @@ describe('SettingsView', () => {
     renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    expect(screen.getByRole('radio', { name: /Dark/ })).toHaveClass('active')
-    expect(screen.getByRole('radio', { name: /Day/ })).not.toHaveClass('active')
+    expect(screen.getByRole('radio', { name: /Dark/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /Day/ })).not.toBeChecked()
   })
 
   it('marks the active theme swatch per themeMode (day)', () => {
     renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'day', weekStart: 0 },
     })
-    expect(screen.getByRole('radio', { name: /Day/ })).toHaveClass('active')
-    expect(screen.getByRole('radio', { name: /Dark/ })).not.toHaveClass('active')
+    expect(screen.getByRole('radio', { name: /Day/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /Dark/ })).not.toBeChecked()
   })
 
   it('aria-checked mirrors themeMode on each swatch', () => {
@@ -297,8 +302,8 @@ describe('SettingsView', () => {
         props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: day as 0 | 1 | 2 | 3 | 4 | 5 | 6 },
       })
       weekCells().forEach((cell, i) => {
-        if (i === day) expect(cell).toHaveClass('active')
-        else expect(cell).not.toHaveClass('active')
+        if (i === day) expect(cell).toBeChecked()
+        else expect(cell).not.toBeChecked()
       })
       view.unmount()
     }
@@ -376,6 +381,7 @@ describe('SettingsView — Engine section', () => {
   it('shows the engine-status panel as "Detected" when Tesseract is ready', () => {
     renderSettings({ props: baseEngineProps })
     const status = engineStatus()
+    // eslint-disable-next-line no-restricted-syntax -- ok/fail is a status TINT; the readable state is asserted below
     expect(status).toHaveClass('ok')
     expect(status).toHaveTextContent('Detected')
   })
@@ -388,7 +394,9 @@ describe('SettingsView — Engine section', () => {
         tesseractStatus: readyTesseract({ found: false, error: 'binary not found' }),
       },
     })
+    // eslint-disable-next-line no-restricted-syntax -- the alert row treatment is a visual tint with no ARIA equivalent
     expect(engineRow()).toHaveClass('alert')
+    // eslint-disable-next-line no-restricted-syntax -- ok/fail is a status TINT; the readable state is the "Not Found" copy
     expect(engineStatus()).toHaveClass('fail')
     expect(screen.getByText(/binary not found/)).toBeInTheDocument()
   })
@@ -430,6 +438,7 @@ describe('SettingsView — Engine section', () => {
     })
     const btn = engineButton('Detect')!
     expect(btn).toBeDefined()
+    // eslint-disable-next-line no-restricted-syntax -- "primary CTA" is pure visual emphasis; nothing in ARIA ranks two enabled buttons
     expect(btn).toHaveClass('primary')
     expect(btn).toBeEnabled()
   })
@@ -583,6 +592,7 @@ describe('SettingsView — Backup & Restore', () => {
       },
     })
     const chip = screen.getByText('Saved: /tmp/recall.db')
+    // eslint-disable-next-line no-restricted-syntax -- success/blocked is a status TINT; the message itself is the readable contract
     expect(chip).toHaveClass('success')
   })
 
@@ -594,11 +604,13 @@ describe('SettingsView — Backup & Restore', () => {
       },
     })
     const chip = screen.getByText('Backup failed: boom')
+    // eslint-disable-next-line no-restricted-syntax -- success/blocked is a status TINT; the message itself is the readable contract
     expect(chip).toHaveClass('blocked')
   })
 
   it('shows the unarmed "Restore (.db)…" button by default', () => {
     renderSettings({ props: baseProps })
+    // eslint-disable-next-line no-restricted-syntax -- the unarmed/armed destructive treatment is a visual tint, not an ARIA state
     expect(button(/Restore \(\.db\)/)).toHaveClass('danger-outline')
   })
 
@@ -903,6 +915,7 @@ describe('SettingsView — Probe chip', () => {
       },
     })
     const chip = probeChip()
+    // eslint-disable-next-line no-restricted-syntax -- success/blocked is a status TINT; the announced copy is asserted alongside
     expect(chip).toHaveClass('success')
     expect(chip).toHaveTextContent('Detected')
   })
@@ -916,6 +929,7 @@ describe('SettingsView — Probe chip', () => {
         probeTried: ['/a/path', '/b/path'],
       },
     })
+    // eslint-disable-next-line no-restricted-syntax -- success/blocked is a status TINT; the announced copy is asserted alongside
     expect(probeChip()).toHaveClass('blocked')
     expect(screen.getByText('/a/path')).toBeInTheDocument()
     expect(screen.getByText('/b/path')).toBeInTheDocument()
@@ -947,8 +961,7 @@ describe('SettingsView — Probe chip', () => {
       },
     })
     expect(probeChip()).not.toBeNull()
-    // eslint-disable-next-line testing-library/no-node-access -- the chip close glyph carries no accessible name; scoped by the chip class the e2e shares
-    await fireEvent.click(document.querySelector('.probe-chip-close')!)
+    await fireEvent.click(screen.getByRole('button', { name: 'Dismiss detection result' }))
     expect(probeChip()).toBeNull()
   })
 
@@ -960,8 +973,7 @@ describe('SettingsView — Probe chip', () => {
         probeMessage: 'No default on this machine.',
       },
     })
-    // eslint-disable-next-line testing-library/no-node-access -- the chip close glyph carries no accessible name; scoped by the chip class the e2e shares
-    await fireEvent.click(document.querySelector('.probe-chip-close')!)
+    await fireEvent.click(screen.getByRole('button', { name: 'Dismiss detection result' }))
     expect(probeChip()).toBeNull()
 
     settings.probeStatus = 'success'

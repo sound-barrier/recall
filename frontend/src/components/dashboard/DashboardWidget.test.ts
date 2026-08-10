@@ -7,6 +7,8 @@ import DashboardWidget from '@/components/dashboard/DashboardWidget.vue'
 // data-breakdown, draggable) ARE the contract under test — the drag
 // engine and the e2e specs select on them — so the structural
 // assertions below reach for baseElement.querySelector deliberately.
+// Same for the shape/drag-state classes: the CSS family a widget lands
+// in and its mid-drag visual state have no ARIA expression at all.
 /* eslint-disable testing-library/no-node-access -- data-attr shell contract consumed by the drag engine + e2e selectors */
 
 describe('DashboardWidget', () => {
@@ -18,6 +20,7 @@ describe('DashboardWidget', () => {
     const root = baseElement.querySelector('[data-widget-id="winrate"]')
     expect(root).not.toBeNull()
     expect(root!.tagName).toBe('DIV')
+    // eslint-disable-next-line no-restricted-syntax -- the kpi/breakdown shape class IS the CSS shell contract; no ARIA equivalent
     expect(root).toHaveClass('kpi-tile')
     expect(screen.getByText('x')).toBeInTheDocument()
   })
@@ -27,7 +30,9 @@ describe('DashboardWidget', () => {
       props: { id: 'top-maps', shape: 'breakdown' },
     })
     const root = screen.getByRole('article')
+    // eslint-disable-next-line no-restricted-syntax -- data-widget-id is the drag engine's runtime lookup key
     expect(root).toHaveAttribute('data-widget-id', 'top-maps')
+    // eslint-disable-next-line no-restricted-syntax -- the kpi/breakdown shape class IS the CSS shell contract; no ARIA equivalent
     expect(root).toHaveClass('breakdown')
   })
 
@@ -80,8 +85,10 @@ describe('DashboardWidget', () => {
       props: { id: 'winrate', shape: 'kpi', dragging: false },
     })
     const root = baseElement.querySelector('[data-widget-id="winrate"]')
+    // eslint-disable-next-line no-restricted-syntax -- mid-drag visual state; ARIA retired aria-grabbed and has no replacement
     expect(root).not.toHaveClass('dashboard-widget-dragging')
     await rerender({ dragging: true })
+    // eslint-disable-next-line no-restricted-syntax -- mid-drag visual state; ARIA retired aria-grabbed and has no replacement
     expect(root).toHaveClass('dashboard-widget-dragging')
   })
 
@@ -90,8 +97,10 @@ describe('DashboardWidget', () => {
       props: { id: 'winrate', shape: 'kpi', dropTarget: false },
     })
     const root = baseElement.querySelector('[data-widget-id="winrate"]')
+    // eslint-disable-next-line no-restricted-syntax -- drop-target highlight is a drag-engine visual; ARIA has no dropeffect replacement
     expect(root).not.toHaveClass('dashboard-widget-drop-target')
     await rerender({ dropTarget: true })
+    // eslint-disable-next-line no-restricted-syntax -- drop-target highlight is a drag-engine visual; ARIA has no dropeffect replacement
     expect(root).toHaveClass('dashboard-widget-drop-target')
   })
 
