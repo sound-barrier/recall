@@ -1,7 +1,7 @@
 import { ref, computed, watchEffect, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { SwitchProfile, CreateProfile, RenameProfile } from '@/api-client'
 import { cacheActiveProfile } from '@/composables/shared/profileStorage'
-import { useProfilesQuery } from '@/queries/profiles'
+import { useProfilesData } from '@/queries/profiles'
 
 // Stateful logic for the masthead profile chip + dropdown: the profile
 // list, the open/creating/rename UI state, and the create / rename / switch
@@ -12,11 +12,10 @@ import { useProfilesQuery } from '@/queries/profiles'
 // profile, so every successful PUT/POST window.location.reload()s — every
 // composable re-fetches against the new active profile in one clean sweep.
 export function useProfileSwitcher() {
-  // The shared profiles query feeds the chip + dropdown; an error leaves
-  // both empty (the chip renders unnamed), matching the old catch path.
-  const profilesQuery = useProfilesQuery()
-  const profiles = computed(() => profilesQuery.data.value?.profiles ?? [])
-  const active   = computed(() => profilesQuery.data.value?.active ?? '')
+  // The shared profiles derivation feeds the chip + dropdown; an error
+  // leaves both empty (the chip renders unnamed), matching the old catch
+  // path.
+  const { query: profilesQuery, profiles, active } = useProfilesData()
   // Freshen the sync-readable scope for profile-scoped localStorage keys
   // (profileStorage.ts) — setup-time reads used the previous session's
   // cache; this heals any out-of-band change for the next boot.

@@ -13,15 +13,17 @@ describe('useActiveProfile', () => {
     const { useActiveProfile } = await import('@/composables/shared/useActiveProfile')
     const api = useActiveProfile()
     await flushPromises()
+    // The profiles query settles through the notifyManager's scheduling —
+    // a macrotask tick, not just microtask flushing.
+    await new Promise(r => setTimeout(r, 0))
     return api
   }
 
   it('flags a read-only active profile', async () => {
-    const { isReadOnly, activeName } = await load(async () => ({
+    const { isReadOnly } = await load(async () => ({
       active: 'test', profiles: ['main', 'test'], immutable: ['test'],
     }))
     expect(isReadOnly.value).toBe(true)
-    expect(activeName.value).toBe('test')
   })
 
   it('leaves a normal profile mutable', async () => {

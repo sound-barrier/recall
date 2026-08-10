@@ -1,6 +1,4 @@
-import { computed } from 'vue'
-
-import { invalidateProfiles, useProfilesQuery } from '@/queries/profiles'
+import { useProfilesData } from '@/queries/profiles'
 
 // Whether the ACTIVE profile is read-only (the tour's sample "test"
 // profile). Read by the surfaces that would otherwise let a user attempt a
@@ -10,13 +8,8 @@ import { invalidateProfiles, useProfilesQuery } from '@/queries/profiles'
 // Backed by the shared profiles query, so all consumers ride one GET per
 // page load. A profile switch always does a full window.location.reload()
 // (see useProfileSwitcher), so that single fetch is always fresh. An error
-// leaves both values at their permissive defaults (writable, unnamed).
+// leaves the value at its permissive default (writable).
 export function useActiveProfile() {
-  const query = useProfilesQuery()
-  const isReadOnly = computed(() => {
-    const res = query.data.value
-    return res ? (res.immutable ?? []).includes(res.active) : false
-  })
-  const activeName = computed(() => query.data.value?.active ?? '')
-  return { isReadOnly, activeName, reloadActiveProfile: invalidateProfiles }
+  const { isReadOnly } = useProfilesData()
+  return { isReadOnly }
 }
