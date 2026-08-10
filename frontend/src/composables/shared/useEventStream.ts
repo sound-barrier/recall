@@ -26,9 +26,9 @@ export interface EventStreamApi {
   // Called when a parse run was aborted via CancelParse. Distinct
   // hook so the consumer can flip a "cancelling…" state back to
   // idle, render different toast copy, etc. Optional — if absent,
-  // parse-cancelled is treated the same as parse-complete (still
+  // parse-canceled is treated the same as parse-complete (still
   // safe; the records ref reflects the partial state).
-  onParseCancelled?: () => Promise<void> | void
+  onParseCanceled?: () => Promise<void> | void
   // Called when the backend's background Tesseract probe publishes a fresh
   // status (a cold-boot Defender scan finally let the binary run). Lets the
   // engine banner self-heal without an app restart.
@@ -63,15 +63,15 @@ export function useEventStream(api: EventStreamApi) {
       api.parseProgress.value = data
       api.parseLog.value = [...api.parseLog.value, data].slice(-cap)
     })
-    // parse-cancelled is the third terminal lifecycle event (the
+    // parse-canceled is the third terminal lifecycle event (the
     // other two are parse-complete and the implicit
     // "no-more-progress-ticks"). The records ref already reflects
     // any partial state because the per-file inserts ran inside the
     // OCR callback; the consumer just needs to know to flip the
     // Stop button + "cancelling…" indicator back to idle.
-    EventsOn('parse-cancelled', () => {
-      if (api.onParseCancelled) {
-        void api.onParseCancelled()
+    EventsOn('parse-canceled', () => {
+      if (api.onParseCanceled) {
+        void api.onParseCanceled()
       } else {
         void api.onParseComplete()
       }
@@ -97,7 +97,7 @@ export function useEventStream(api: EventStreamApi) {
   function unsubscribe() {
     EventsOff('parse-complete')
     EventsOff('parse-progress')
-    EventsOff('parse-cancelled')
+    EventsOff('parse-canceled')
     EventsOff('match-updated')
     EventsOff('tesseract-status')
     EventsOff('watch-activity')

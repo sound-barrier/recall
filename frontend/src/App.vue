@@ -114,7 +114,7 @@ useServerEvents()
     <a class="skip-link" href="#main-content" @click="focusMain">Skip to main content</a>
 
     <!-- Polite parse-lifecycle announcer. Sets briefly on
-         parse-complete + parse-cancelled, then clears so the next
+         parse-complete + parse-canceled, then clears so the next
          terminal state re-announces. Invisible to sighted users —
          the masthead chip + status bar carry the visual signal. -->
     <div class="sr-only" role="status" aria-live="polite">

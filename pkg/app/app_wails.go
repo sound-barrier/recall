@@ -87,12 +87,12 @@ func notifyParseComplete(matchCount int) {
 	}
 }
 
-// emitParseCancelled notifies the frontend that a parse run was aborted via
+// emitParseCanceled notifies the frontend that a parse run was aborted via
 // CancelParse. Distinct from parse-complete so the UI can render "stopped" vs
 // "done" copy.
-func (a *App) emitParseCancelled() {
-	emitEvent("parse-cancelled")
-	a.SSEHub.Broadcast("parse-cancelled")
+func (a *App) emitParseCanceled() {
+	emitEvent("parse-canceled")
+	a.SSEHub.Broadcast("parse-canceled")
 }
 
 // PickTesseractBinary opens a native file chooser and applies the selection

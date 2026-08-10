@@ -40,7 +40,7 @@ export function useServerEvents() {
     parseLog,
     watchActivity,
     onParseComplete: () => matchesStore.finishParseRun('complete'),
-    onParseCancelled: () => matchesStore.finishParseRun('cancelled'),
+    onParseCanceled: () => matchesStore.finishParseRun('canceled'),
     // The backend probes Tesseract in the background after boot (so a
     // cold-boot Defender scan can't stall startup); push each result into
     // the settings store so the System Alert banner self-heals without an

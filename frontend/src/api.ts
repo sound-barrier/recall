@@ -351,7 +351,7 @@ export function ReParseAll(): Promise<void> {
 }
 
 // Cancel an in-flight parse. The OCR loop checks ctx.Err() between
-// screenshots. Callers await the `parse-cancelled` event to flip the Stop
+// screenshots. Callers await the `parse-canceled` event to flip the Stop
 // button back; a 409 (parse already finished) rejects with ApiError and
 // is deliberately swallowed at the call site.
 export function CancelParse(): Promise<void> {

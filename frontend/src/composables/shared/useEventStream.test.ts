@@ -66,7 +66,7 @@ describe('useEventStream', () => {
     mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
     expect(onCalls.map(c => c.name).sort()).toEqual([
       'match-updated',
-      'parse-cancelled',
+      'parse-canceled',
       'parse-complete',
       'parse-progress',
       'tesseract-status',
@@ -82,7 +82,7 @@ describe('useEventStream', () => {
     wrapper.unmount()
     expect(offCalls.map(c => c.name).sort()).toEqual([
       'match-updated',
-      'parse-cancelled',
+      'parse-canceled',
       'parse-complete',
       'parse-progress',
       'tesseract-status',
@@ -101,25 +101,25 @@ describe('useEventStream', () => {
     expect(onTesseractStatus).toHaveBeenCalledWith(status)
   })
 
-  it('parse-cancelled fires the caller-supplied onParseCancelled when provided', () => {
+  it('parse-canceled fires the caller-supplied onParseCanceled when provided', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
     const onParseComplete = vi.fn()
-    const onParseCancelled = vi.fn()
-    mountComposable({ records, parseProgress, parseLog, onParseComplete, onParseCancelled })
-    handlers['parse-cancelled']!(null)
-    expect(onParseCancelled).toHaveBeenCalled()
+    const onParseCanceled = vi.fn()
+    mountComposable({ records, parseProgress, parseLog, onParseComplete, onParseCanceled })
+    handlers['parse-canceled']!(null)
+    expect(onParseCanceled).toHaveBeenCalled()
     expect(onParseComplete).not.toHaveBeenCalled()
   })
 
-  it('parse-cancelled falls back to onParseComplete when no cancel hook supplied', () => {
+  it('parse-canceled falls back to onParseComplete when no cancel hook supplied', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
     const onParseComplete = vi.fn()
     mountComposable({ records, parseProgress, parseLog, onParseComplete })
-    handlers['parse-cancelled']!(null)
+    handlers['parse-canceled']!(null)
     expect(onParseComplete).toHaveBeenCalled()
   })
 

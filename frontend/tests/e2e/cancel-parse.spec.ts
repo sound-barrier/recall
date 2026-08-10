@@ -5,15 +5,15 @@
  *
  *   user clicks Stop
  *     → DELETE /api/v1/parses/active hits the server
- *     → SSE parse-cancelled fires
- *     → useEventStream calls onParseCancelled
+ *     → SSE parse-canceled fires
+ *     → useEventStream calls onParseCanceled
  *     → App.vue clears cancellingParse + reloads records
  *     → IngestView's Stop button flips back to Run
  *
  * The POST /parses mock never resolves (keeps parseBusy=true) so
  * the spec can deterministically exercise the Stop affordance.
  * The SSE mock from parse-queue-and-skeletons.spec.ts is reused
- * to drive the parse-cancelled event after the DELETE lands.
+ * to drive the parse-canceled event after the DELETE lands.
  */
 import type { Route } from '@playwright/test'
 
@@ -58,7 +58,7 @@ async function installSSEMock(page: import('@playwright/test').Page) {
 }
 
 test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
-  test('Stop click fires DELETE + flips the button back on parse-cancelled', async ({ page }) => {
+  test('Stop click fires DELETE + flips the button back on parse-canceled', async ({ page }) => {
     await installSSEMock(page)
 
     // Boot mocks: clean records, configured screenshots dir, found
@@ -122,11 +122,11 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     await expect(stopBtn).toContainText('Cancelling…')
     await expect(stopBtn).toBeDisabled()
 
-    // Server fires parse-cancelled over SSE → App.vue clears
-    // cancellingParse + parseBusy via the onParseCancelled hook
+    // Server fires parse-canceled over SSE → App.vue clears
+    // cancellingParse + parseBusy via the onParseCanceled hook
     // (which calls load()). Run Parse comes back.
     await page.evaluate(() => {
-      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-cancelled')
+      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-canceled')
     })
     // Release the pending POST so the runParse() finally block fires.
     parsePending()

@@ -33,7 +33,7 @@ func (h *SSEHub) Unsubscribe(ch chan sseMsg) {
 
 // Broadcast sends a no-payload event to all subscribers with
 // guaranteed delivery: these are the terminal lifecycle events
-// (parse-complete / parse-cancelled) the client's spinner hangs on,
+// (parse-complete / parse-canceled) the client's spinner hangs on,
 // so a full buffer evicts its oldest message rather than dropping
 // the terminal one. Nil-safe: calling on a nil receiver is a no-op,
 // so the parse loop can fire without a TOCTOU check between

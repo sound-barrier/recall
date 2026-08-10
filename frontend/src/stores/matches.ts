@@ -85,7 +85,7 @@ export const useMatchesStore = defineStore('matches', () => {
 
   // ── Parse lifecycle state ─────────────────────────────────────────
   // parseBusy gates the manual Parse button + peers; cancellingParse spans
-  // the Stop click → SSE parse-cancelled confirmation; firstLoadPending
+  // the Stop click → SSE parse-canceled confirmation; firstLoadPending
   // drives the Matches skeleton from boot until the first load() resolves.
   const parseBusy = ref(false)
   const cancellingParse = ref(false)
@@ -207,7 +207,7 @@ export const useMatchesStore = defineStore('matches', () => {
   }
 
   // Stop from IngestView's button OR the status-bar ABORT tile. Flips the
-  // cancelling flag immediately; the clear happens on parse-cancelled.
+  // cancelling flag immediately; the clear happens on parse-canceled.
   // Swallows 409 (parse finished before the Stop landed).
   async function onCancelParse() {
     if (cancellingParse.value) return
@@ -367,8 +367,8 @@ export const useMatchesStore = defineStore('matches', () => {
 
   // ── Parse-run terminal transitions ────────────────────────────────
   // The store owns the state, so it owns the transitions; useServerEvents
-  // merely wires the parse-complete / parse-cancelled events to these.
-  async function finishParseRun(outcome: 'complete' | 'cancelled') {
+  // merely wires the parse-complete / parse-canceled events to these.
+  async function finishParseRun(outcome: 'complete' | 'canceled') {
     await load()
     // Read the fresh records straight from the cache — the observer's
     // reactive ref updates a notification tick later than the refetch
@@ -387,7 +387,7 @@ export const useMatchesStore = defineStore('matches', () => {
       const n = fresh.length
       announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
     } else {
-      announceParse('Parse cancelled.')
+      announceParse('Parse canceled.')
     }
   }
 

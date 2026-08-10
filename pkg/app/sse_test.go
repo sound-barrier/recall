@@ -137,7 +137,7 @@ func TestSSEHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 	}
 }
 
-// Terminal lifecycle events (parse-complete / parse-cancelled — the
+// Terminal lifecycle events (parse-complete / parse-canceled — the
 // no-payload Broadcast surface) must reach a connected client even when
 // a progress burst has filled its buffer, or the parse spinner strands
 // until a manual reload (TECHNICAL_DEBT.md section 9). The hub may drop
