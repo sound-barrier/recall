@@ -4,10 +4,11 @@ import {
   parseJsonRecord,
   serializeJsonRecord,
 } from '@/composables/shared/usePersistedRef'
-import { heroesForHeader, isEditedMatch, isManualMatch } from '@/match/match-helpers'
-import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
-import { kdaRatio } from '@/match/match-stats-helpers'
-import { matchTime } from '@/match/match-time-helpers'
+import {
+  TABLE_COLUMNS,
+  TABLE_COLUMN_ORDER,
+  type TableSortCol,
+} from '@/match/match-table-columns'
 
 // Multi-column ("Excel-style") sort for the `data`-density match table.
 // Data density is a flat spreadsheet: the headers drive an ordered STACK
@@ -15,21 +16,12 @@ import { matchTime } from '@/match/match-time-helpers'
 // sorts by that column alone; Shift+click appends the column as the next
 // tie-break level. The stack persists across sessions. Default is a
 // single date-descending key — newest match first, matching the leaf list.
+//
+// The column axis itself — labels, comparators, cell text — lives in the
+// TABLE_COLUMNS registry (@/match/match-table-columns); this composable
+// owns only the persisted stack and its manipulation.
 
-export type TableSortCol =
-  | 'date'
-  | 'result'
-  | 'map'
-  | 'playMode'
-  | 'queue'
-  | 'hero'
-  | 'role'
-  | 'eliminations'
-  | 'assists'
-  | 'deaths'
-  | 'kda'
-  | 'tags'
-  | 'source'
+export type { TableSortCol } from '@/match/match-table-columns'
 
 export type SortDir = 'asc' | 'desc'
 
@@ -38,79 +30,22 @@ export interface SortLevel {
   dir: SortDir
 }
 
-// The sortable columns in render order, with their header labels. Shared
-// by the table headers and the Custom Sort dialog so both read one source
-// of truth for which columns exist and what they're called.
-export const TABLE_SORT_COLUMNS: ReadonlyArray<{ col: TableSortCol; label: string }> = [
-  { col: 'date', label: 'When' },
-  // Outcome right after the timestamp — the first thing scanned per
-  // row, not the last.
-  { col: 'result', label: 'Result' },
-  { col: 'map', label: 'Map' },
-  { col: 'playMode', label: 'Mode' },
-  { col: 'queue', label: 'Queue' },
-  { col: 'hero', label: 'Hero' },
-  { col: 'role', label: 'Role' },
-  { col: 'eliminations', label: 'Elims' },
-  { col: 'assists', label: 'Assists' },
-  { col: 'deaths', label: 'Deaths' },
-  { col: 'kda', label: 'KDA' },
-  { col: 'tags', label: 'Tags' },
-  { col: 'source', label: 'Source' },
-]
+// The sortable columns in render order, with their header labels — the
+// {col,label} projection of the registry the table headers and the
+// Custom Sort dialog both consume.
+export const TABLE_SORT_COLUMNS: ReadonlyArray<{ col: TableSortCol; label: string }> =
+  TABLE_COLUMN_ORDER.map((col) => ({ col, label: TABLE_COLUMNS[col].label }))
 
-const SORT_COLS = new Set<TableSortCol>(TABLE_SORT_COLUMNS.map((c) => c.col))
+const SORT_COLS = new Set<TableSortCol>(TABLE_COLUMN_ORDER)
 const STORAGE_KEY = 'recall.matchesTableSort'
 const DEFAULT_STACK: readonly SortLevel[] = [{ col: 'date', dir: 'desc' }]
-
-// Victory above draw above defeat when sorting ascending.
-const RESULT_RANK: Record<string, number> = { victory: 0, draw: 1, defeat: 2 }
-
-// Ascending comparison for one column; the caller flips for descending.
-function compareCol(col: TableSortCol, a: MatchRecord, b: MatchRecord): number {
-  const da = a.data
-  const db = b.data
-  switch (col) {
-    // The match's own date + time (data.date + finished_at), NOT
-    // parsed_at — the user sorts by when they PLAYED, not when the file
-    // was ingested. matchTime() returns a sortable ISO key.
-    case 'date':         return matchTime(a).localeCompare(matchTime(b))
-    case 'map':          return (da?.map ?? '').localeCompare(db?.map ?? '')
-    // Mode + Queue sort by the EFFECTIVE label the cell shows, not the
-    // raw data.playlist / queue_type — playMode prefers the user's
-    // play_mode override, queue resolves the auto-detected value — so a
-    // header click orders rows the way the user reads them.
-    case 'playMode':     return formatPlayModeLabel(a).localeCompare(formatPlayModeLabel(b))
-    case 'queue':        return formatQueueTypeLabel(a).localeCompare(formatQueueTypeLabel(b))
-    // The MOST-PLAYED hero (heroesForHeader sorts by percent_played
-    // desc), not the primary data.hero.
-    case 'hero':         return (heroesForHeader(a)[0]?.hero ?? '').localeCompare(heroesForHeader(b)[0]?.hero ?? '')
-    case 'role':         return (da?.role ?? '').localeCompare(db?.role ?? '')
-    case 'eliminations': return (da?.eliminations ?? 0) - (db?.eliminations ?? 0)
-    case 'assists':      return (da?.assists ?? 0) - (db?.assists ?? 0)
-    case 'deaths':       return (da?.deaths ?? 0) - (db?.deaths ?? 0)
-    case 'kda':          return (kdaRatio(da) ?? 0) - (kdaRatio(db) ?? 0)
-    case 'result':       return (RESULT_RANK[da?.result ?? ''] ?? 9) - (RESULT_RANK[db?.result ?? ''] ?? 9)
-    case 'tags':         return (a.annotation?.tags?.[0] ?? '').localeCompare(b.annotation?.tags?.[0] ?? '')
-    // Provenance ladder: untouched OCR rows first ascending, then
-    // edited, then hand-entered — one click clusters machine truth,
-    // a second surfaces the human-touched rows.
-    case 'source':       return sourceRank(a) - sourceRank(b)
-  }
-}
-
-function sourceRank(rec: MatchRecord): number {
-  if (isManualMatch(rec)) return 2
-  if (isEditedMatch(rec)) return 1
-  return 0
-}
 
 // Fold the sort stack: the first level that separates a and b wins;
 // when every level ties, fall back to newest-ingested-first so the order
 // stays deterministic.
 function compareMulti(levels: readonly SortLevel[], a: MatchRecord, b: MatchRecord): number {
   for (const { col, dir } of levels) {
-    const c = compareCol(col, a, b) * (dir === 'asc' ? 1 : -1)
+    const c = TABLE_COLUMNS[col].compare(a, b) * (dir === 'asc' ? 1 : -1)
     if (c !== 0) return c
   }
   return (b.parsed_at ?? '').localeCompare(a.parsed_at ?? '')

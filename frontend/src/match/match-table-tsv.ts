@@ -1,44 +1,16 @@
 import type { MatchRecord } from '@/api-client'
-import type { TableSortCol } from '@/composables/matches/useTableSort'
 import {
-  formatRowDate,
-  formatFinishedAt,
-  isEditedMatch,
-  isManualMatch,
-  rolePlays,
-  sortedHeroPlays,
-} from '@/match/match-helpers'
-import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
-import { formatKda, kdaRatio } from '@/match/match-stats-helpers'
-
-type HeroRole = (hero: string | null | undefined) => string
-
-function sourceCellText(rec: MatchRecord): string {
-  if (isManualMatch(rec)) return 'manual'
-  if (isEditedMatch(rec)) return 'edited'
-  return 'ocr'
-}
+  TABLE_COLUMNS,
+  type HeroRole,
+  type TableSortCol,
+} from '@/match/match-table-columns'
 
 // cellText is the displayed value of a data-table cell, used to build the TSV
-// clipboard payload from a cell-range selection. Mirrors what the cell renders
-// (multi-value hero/role/tags join with their in-cell separators).
+// clipboard payload from a cell-range selection. The per-column rendering
+// lives on the TABLE_COLUMNS registry so it can never drift from the sort
+// axis or the header labels.
 export function cellText(rec: MatchRecord, col: TableSortCol, heroRole: HeroRole): string {
-  const d = rec.data
-  switch (col) {
-    case 'date':         return [formatRowDate(rec), formatFinishedAt(rec)].filter(Boolean).join(' ')
-    case 'map':          return d?.map ?? ''
-    case 'playMode':     return formatPlayModeLabel(rec)
-    case 'queue':        return formatQueueTypeLabel(rec)
-    case 'hero':         return sortedHeroPlays(rec).map((h) => h.hero).join(', ')
-    case 'role':         return rolePlays(rec, heroRole).map((r) => r.role).join(', ')
-    case 'eliminations': return d?.eliminations != null ? String(d.eliminations) : ''
-    case 'assists':      return d?.assists != null ? String(d.assists) : ''
-    case 'deaths':       return d?.deaths != null ? String(d.deaths) : ''
-    case 'kda':          return formatKda(kdaRatio(d))
-    case 'tags':         return (rec.annotation?.tags ?? []).join('; ')
-    case 'source':       return sourceCellText(rec)
-    case 'result':       return d?.result ?? ''
-  }
+  return TABLE_COLUMNS[col].text(rec, heroRole)
 }
 
 // buildSelectionTsv renders the selected rectangle as tab-separated rows — one
