@@ -60,22 +60,7 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping golden-file parser tests in -short mode")
 	}
-
-	// Images come from the recall-testdata submodule; their goldens live
-	// one level up in testdata/. Setting RECALL_FIXTURE_DIR alone collapses
-	// to single-dir mode (goldens beside the images) so the ad-hoc
-	// gen-goldens.sh workflow can parse an arbitrary capture folder.
-	imageDir := os.Getenv("RECALL_FIXTURE_DIR")
-	goldenDir := os.Getenv("RECALL_GOLDEN_DIR")
-	switch {
-	case imageDir == "":
-		imageDir = "../../testdata/images"
-		if goldenDir == "" {
-			goldenDir = "../../testdata"
-		}
-	case goldenDir == "":
-		goldenDir = imageDir
-	}
+	imageDir, goldenDir := fixtureDirs()
 
 	// Resolve Tesseract early — ParseScreenshot will fail with a generic
 	// "not available" error otherwise, which masks the real problem.
@@ -86,6 +71,39 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 
 	update := os.Getenv("RECALL_FIXTURE_UPDATE") != ""
 
+	for _, name := range fixtureImages(t, imageDir) {
+		t.Run(name, func(t *testing.T) {
+			imgPath := filepath.Join(imageDir, name)
+			goldenPath := filepath.Join(goldenDir, name+".golden.json")
+			assertGoldenFixture(t, imgPath, goldenPath, update)
+		})
+	}
+}
+
+// fixtureDirs resolves the image + golden directories. Images come from the
+// recall-testdata submodule; their goldens live one level up in testdata/.
+// Setting RECALL_FIXTURE_DIR alone collapses to single-dir mode (goldens
+// beside the images) so the ad-hoc gen-goldens.sh workflow can parse an
+// arbitrary capture folder.
+func fixtureDirs() (imageDir, goldenDir string) {
+	imageDir = os.Getenv("RECALL_FIXTURE_DIR")
+	goldenDir = os.Getenv("RECALL_GOLDEN_DIR")
+	switch {
+	case imageDir == "":
+		imageDir = "../../testdata/images"
+		if goldenDir == "" {
+			goldenDir = "../../testdata"
+		}
+	case goldenDir == "":
+		goldenDir = imageDir
+	}
+	return imageDir, goldenDir
+}
+
+// fixtureImages lists the fixture image filenames in imageDir, skipping the
+// whole test when the submodule isn't initialized (missing dir or no images).
+func fixtureImages(t *testing.T, imageDir string) []string {
+	t.Helper()
 	entries, err := os.ReadDir(imageDir)
 	if os.IsNotExist(err) {
 		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
@@ -106,51 +124,50 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 	if len(pngs) == 0 {
 		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
 	}
+	return pngs
+}
 
-	for _, name := range pngs {
-		t.Run(name, func(t *testing.T) {
-			imgPath := filepath.Join(imageDir, name)
-			goldenPath := filepath.Join(goldenDir, name+".golden.json")
+// assertGoldenFixture parses one fixture and byte-compares its snapshot
+// against the sidecar golden — or rewrites the golden in update mode.
+func assertGoldenFixture(t *testing.T, imgPath, goldenPath string, update bool) {
+	t.Helper()
+	got, err := parser.ParseScreenshot(imgPath)
+	if err != nil {
+		t.Fatalf("ParseScreenshot(%s): %v", imgPath, err)
+	}
+	gotJSON, err := json.MarshalIndent(goldenSnapshot{
+		ScreenshotType: parser.ScreenshotType(got),
+		Result:         parser.ToGolden(got),
+	}, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal golden: %v", err)
+	}
+	gotJSON = append(gotJSON, '\n')
 
-			got, err := parser.ParseScreenshot(imgPath)
-			if err != nil {
-				t.Fatalf("ParseScreenshot(%s): %v", imgPath, err)
-			}
-			gotJSON, err := json.MarshalIndent(goldenSnapshot{
-				ScreenshotType: parser.ScreenshotType(got),
-				Result:         parser.ToGolden(got),
-			}, "", "  ")
-			if err != nil {
-				t.Fatalf("marshal golden: %v", err)
-			}
-			gotJSON = append(gotJSON, '\n')
+	if update {
+		if err := os.WriteFile(goldenPath, gotJSON, 0o644); err != nil {
+			t.Fatalf("write golden: %v", err)
+		}
+		t.Logf("updated %s", goldenPath)
+		return
+	}
 
-			if update {
-				if err := os.WriteFile(goldenPath, gotJSON, 0o644); err != nil {
-					t.Fatalf("write golden: %v", err)
-				}
-				t.Logf("updated %s", goldenPath)
-				return
-			}
+	wantJSON, err := os.ReadFile(goldenPath)
+	if os.IsNotExist(err) {
+		t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
+	}
+	if err != nil {
+		t.Fatalf("read golden: %v", err)
+	}
 
-			wantJSON, err := os.ReadFile(goldenPath)
-			if os.IsNotExist(err) {
-				t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
-			}
-			if err != nil {
-				t.Fatalf("read golden: %v", err)
-			}
-
-			// Byte-equal compare: marshal output is deterministic per
-			// struct declaration order, so a stable parser produces a
-			// byte-identical golden. Drift in either the parser or the
-			// per-type golden shape (pkg/parser/golden.go) flips the
-			// comparison loudly.
-			if !bytes.Equal(gotJSON, wantJSON) {
-				t.Errorf("parse mismatch for %s\n--- got ---\n%s\n--- want ---\n%s",
-					name, gotJSON, wantJSON)
-			}
-		})
+	// Byte-equal compare: marshal output is deterministic per
+	// struct declaration order, so a stable parser produces a
+	// byte-identical golden. Drift in either the parser or the
+	// per-type golden shape (pkg/parser/golden.go) flips the
+	// comparison loudly.
+	if !bytes.Equal(gotJSON, wantJSON) {
+		t.Errorf("parse mismatch for %s\n--- got ---\n%s\n--- want ---\n%s",
+			imgPath, gotJSON, wantJSON)
 	}
 }
 

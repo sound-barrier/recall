@@ -30,6 +30,7 @@ var (
 	ExtractSR             = extractSR
 	SRFromRun             = srFromRun
 	NormalizeDate         = normalizeDate
+	DetectResult          = detectResult
 	SnapToKnownMap        = snapToKnownMap
 	BestKnownMapInText    = bestKnownMapInText
 	ParseHeroesPlayed     = parseHeroesPlayed

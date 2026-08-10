@@ -33,19 +33,24 @@ func isPersonalScreenshot(img image.Image, work string) (bool, error) {
 // Cards are OCR'd individually because PSM 11 on the whole grid interleaves
 // the columns and makes value-label pairing unreliable. Cell labels are kept
 // open-ended (snake_case map keys) so we don't need a per-hero allowlist.
-//
-//nolint:unparam // signature fixed by the classify dispatch table; error is part of the shared parse-func shape
+// The always-nil error is part of the shared parse-func shape the
+// screenshotProbes dispatch table requires.
 func parsePersonal(img image.Image, work string) (*MatchResult, error) {
+	res := &MatchResult{}
+	parsePersonalGrid(img, work, res)
+	appendSidebarHeroes(img, work, res)
+	return res, nil
+}
+
+// parsePersonalGrid OCRs the 3×3 stat grid cell by cell: the hero-info card
+// at r0c0 first, then each stat card. X boundaries calibrated against the
+// actual card positions at 2560×1440 by scanning for the dark card background
+// between the sidebar and the right edge: cards run roughly X=20.5%..96.5% of
+// W, not X=11%..99% (that earlier guess put cell 0 mostly inside the
+// sidebar). 7px inter-card gaps are absorbed by the integer cell math.
+func parsePersonalGrid(img image.Image, work string, res *MatchResult) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
-
-	res := &MatchResult{}
-
-	// 3×3 stat grid. X boundaries calibrated against the actual card
-	// positions at 2560×1440 by scanning for the dark card background between
-	// the sidebar and the right edge: cards run roughly X=20.5%..96.5% of W,
-	// not X=11%..99% (that earlier guess put cell 0 mostly inside the
-	// sidebar). 7px inter-card gaps are absorbed by the integer cell math.
 	gridLeft := W * 20 / 100
 	gridRight := W * 97 / 100
 	gridTop := H * 16 / 100
@@ -56,60 +61,75 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 	for row := range 3 {
 		for col := range 3 {
 			name := fmt.Sprintf("personal_r%dc%d", row, col)
-
-			// Primary pass: full cell, dual-PSM. PSM 11 (sparse) gets large
-			// values cleanly; PSM 6 (uniform block) catches what 11 drops.
 			fullRect := image.Rect(
 				gridLeft+col*cellW, gridTop+row*cellH,
 				gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
 			)
-			text11, _ := ocrInverted(img, fullRect, ocrSpec{workDir: work, name: name, psm: "11", whitelist: ""})
-			text6, _ := ocrInverted(img, fullRect, ocrSpec{workDir: work, name: name + "_b", psm: "6", whitelist: ""})
-			cellText := text11 + "\n" + text6
-
-			// Stat cells: also OCR with the left 30% (tick + icon) cropped
-			// out. The icon often gets misread as a lowercase letter run
-			// glued to the first word of the label (Juno's orbital-ring
-			// icon → "orn" before "BITAL RAY ASSISTS"). Stripping it
-			// produces a clean label that the regex picks over the
-			// glued-prefix version on length. We keep the full-cell text
-			// in cellText too because the strip sometimes loses the value
-			// (a lone "1" digit next to the icon edge).
-			if row != 0 || col != 0 {
-				stripRect := image.Rect(
-					gridLeft+col*cellW+cellW*30/100, gridTop+row*cellH,
-					gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
-				)
-				strip11, _ := ocrInverted(img, stripRect, ocrSpec{workDir: work, name: name + "_s", psm: "11", whitelist: ""})
-				cellText += "\n" + strip11
-			}
-
-			if row == 0 && col == 0 {
+			stripRect := image.Rect(
+				gridLeft+col*cellW+cellW*30/100, gridTop+row*cellH,
+				gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
+			)
+			statCell := row != 0 || col != 0
+			cellText := ocrPersonalCell(img, work, name, fullRect, stripRect, statCell)
+			if !statCell {
 				parsePersonalHeroCell(cellText, res)
 				continue
 			}
-			// Stats with no hero card is a parse failure on the hero-info
-			// cell — skip rather than dropping the stat into a nameless
-			// bucket. The hero card (r0c0) is parsed first, so its play time
-			// is available here to AVG-anchor each stat value.
-			if len(res.HeroesPlayed) == 0 {
-				continue
-			}
-			playMin := playTimeMinutes(res.HeroesPlayed[0].PlayTime)
-			if key, val, ok := parsePersonalStatCell(cellText, playMin); ok {
-				if res.HeroesPlayed[0].Stats == nil {
-					res.HeroesPlayed[0].Stats = map[string]int{}
-				}
-				res.HeroesPlayed[0].Stats[SnapHeroStatKey(res.Hero, key)] = val
-			}
+			recordPersonalStat(cellText, res)
 		}
 	}
+}
 
-	// The left sidebar lists every hero played (the per-hero filter buttons
-	// above "ALL HEROES"). Only the SELECTED hero's stats are on screen, but
-	// capturing the full roster lets one PERSONAL capture correlate by
-	// hero-set with the SUMMARY. Append the heroes the selected-hero card
-	// didn't already carry; they have a name but no per-hero stats.
+// ocrPersonalCell OCRs one grid cell. Primary pass: full cell, dual-PSM —
+// PSM 11 (sparse) gets large values cleanly; PSM 6 (uniform block) catches
+// what 11 drops.
+//
+// Stat cells also OCR with the left 30% (tick + icon) cropped out. The icon
+// often gets misread as a lowercase letter run glued to the first word of the
+// label (Juno's orbital-ring icon → "orn" before "BITAL RAY ASSISTS").
+// Stripping it produces a clean label that the regex picks over the
+// glued-prefix version on length. We keep the full-cell text too because the
+// strip sometimes loses the value (a lone "1" digit next to the icon edge).
+func ocrPersonalCell(img image.Image, work, name string, full, strip image.Rectangle, statCell bool) string {
+	text11, _ := ocrInverted(img, full, ocrSpec{workDir: work, name: name, psm: "11", whitelist: ""})
+	text6, _ := ocrInverted(img, full, ocrSpec{workDir: work, name: name + "_b", psm: "6", whitelist: ""})
+	cellText := text11 + "\n" + text6
+	if statCell {
+		strip11, _ := ocrInverted(img, strip, ocrSpec{workDir: work, name: name + "_s", psm: "11", whitelist: ""})
+		cellText += "\n" + strip11
+	}
+	return cellText
+}
+
+// recordPersonalStat parses one stat card's OCR text and files the (key,
+// value) under the selected hero. Stats with no hero card is a parse failure
+// on the hero-info cell — skip rather than dropping the stat into a nameless
+// bucket. The hero card (r0c0) is parsed first, so its play time is available
+// here to AVG-anchor each stat value.
+func recordPersonalStat(cellText string, res *MatchResult) {
+	if len(res.HeroesPlayed) == 0 {
+		return
+	}
+	playMin := playTimeMinutes(res.HeroesPlayed[0].PlayTime)
+	key, val, ok := parsePersonalStatCell(cellText, playMin)
+	if !ok {
+		return
+	}
+	if res.HeroesPlayed[0].Stats == nil {
+		res.HeroesPlayed[0].Stats = map[string]int{}
+	}
+	res.HeroesPlayed[0].Stats[SnapHeroStatKey(res.Hero, key)] = val
+}
+
+// appendSidebarHeroes reads the left sidebar, which lists every hero played
+// (the per-hero filter buttons above "ALL HEROES"). Only the SELECTED hero's
+// stats are on screen, but capturing the full roster lets one PERSONAL
+// capture correlate by hero-set with the SUMMARY. Append the heroes the
+// selected-hero card didn't already carry; they have a name but no per-hero
+// stats.
+func appendSidebarHeroes(img image.Image, work string, res *MatchResult) {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
 	sidebarText, _ := ocrInverted(img, image.Rect(0, H*15/100, W*12/100, H*85/100), ocrSpec{workDir: work, name: "personal_sidebar", psm: "11"})
 	seen := map[string]bool{}
 	for _, hp := range res.HeroesPlayed {
@@ -128,8 +148,6 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 			seen[h] = true
 		}
 	}
-
-	return res, nil
 }
 
 // parsePersonalHeroCell parses the top-left hero info card (hero name, %
@@ -181,16 +199,29 @@ var (
 )
 
 func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool) {
+	val := personalStatValue(text, playMinutes)
+	if val < 0 {
+		return "", 0, false
+	}
+	label := personalStatLabel(text)
+	if label == "" {
+		return "", 0, false
+	}
+	return labelToKey(label), val, true
+}
+
+// personalStatValue picks the stat card's numeric value, or -1 when the cell
+// has none.
+func personalStatValue(text string, playMinutes float64) int {
 	// Pass 1: prefer a %-suffixed digit. Percent stats always have a %, and
 	// the % is a strong disambiguator against icon-misread digits like "a7?".
-	val := -1
 	for line := range strings.SplitSeq(text, "\n") {
 		if strings.Contains(strings.ToUpper(line), "AVG") {
 			continue
 		}
 		if m := personalPctRe.FindStringSubmatch(line); m != nil {
-			val, _ = strconv.Atoi(m[1])
-			break
+			val, _ := strconv.Atoi(m[1])
+			return val
 		}
 	}
 	// Pass 2: the integer value. A hero-ability icon OCRs as a spurious
@@ -199,26 +230,27 @@ func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool)
 	// unreliable. Anchor on the cell's "AVG PER 10 MIN" line instead: a real
 	// value ≈ avg × playMinutes/10, which cleanly separates the true digit
 	// from icon noise.
-	if val < 0 {
-		expected := -1.0
-		if m := perfAvgRe.FindStringSubmatch(text); m != nil && playMinutes > 0 {
-			if avg, err := strconv.ParseFloat(m[1], 64); err == nil {
-				expected = avg * playMinutes / 10
-			}
-		}
-		val = pickStatValue(text, expected)
-		// Last resort: a small value (0/1) sitting next to the card icon often
-		// OCRs as a letter ("0"→"O", "1"→"T"), leaving no digit for
-		// pickStatValue. When the cell still has a clean AVG line, recover the
-		// value from it — value = avg × play/10, rounded — rather than dropping
-		// the whole stat cell. The label is read fine; only the lone digit isn't.
-		if val < 0 && expected >= 0 {
-			val = int(math.Round(expected))
+	expected := -1.0
+	if m := perfAvgRe.FindStringSubmatch(text); m != nil && playMinutes > 0 {
+		if avg, err := strconv.ParseFloat(m[1], 64); err == nil {
+			expected = avg * playMinutes / 10
 		}
 	}
-	if val < 0 {
-		return "", 0, false
+	val := pickStatValue(text, expected)
+	// Last resort: a small value (0/1) sitting next to the card icon often
+	// OCRs as a letter ("0"→"O", "1"→"T"), leaving no digit for
+	// pickStatValue. When the cell still has a clean AVG line, recover the
+	// value from it — value = avg × play/10, rounded — rather than dropping
+	// the whole stat cell. The label is read fine; only the lone digit isn't.
+	if val < 0 && expected >= 0 {
+		return int(math.Round(expected))
 	}
+	return val
+}
+
+// personalStatLabel picks the stat card's label: the longest uppercase phrase
+// across all OCR passes, icon-noise trimmed. "" when no plausible label.
+func personalStatLabel(text string) string {
 	var label string
 	for line := range strings.SplitSeq(text, "\n") {
 		upper := strings.ToUpper(line)
@@ -238,10 +270,7 @@ func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool)
 			}
 		}
 	}
-	if label == "" {
-		return "", 0, false
-	}
-	return labelToKey(label), val, true
+	return label
 }
 
 // pickStatValue chooses the stat's integer from the cell OCR. The longest

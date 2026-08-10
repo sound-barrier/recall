@@ -39,26 +39,7 @@ func parseTeams(img image.Image, work string) (*MatchResult, error) {
 func findHighlightedRowY(img image.Image) (int, int) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
-
-	// For each Y, average (G+B) over blue-background pixels in the table area.
-	xMin, xMax := W/8, W*9/16
-	rowAvg := make([]int, H)
-	for y := range H {
-		var sum, count int
-		for x := xMin; x < xMax; x++ {
-			r, g, b, _ := img.At(x, y).RGBA()
-			r8, g8, b8 := int(r>>8), int(g>>8), int(b>>8)
-			// Blue table background: low R, mid G, mid-high B.
-			if r8 < 60 && g8 > 60 && b8 > 90 && b8 > r8+40 {
-				sum += g8 + b8
-				count++
-			}
-		}
-		// Require enough blue pixels in the row for it to count as table content.
-		if count > (xMax-xMin)/4 {
-			rowAvg[y] = sum / count
-		}
-	}
+	rowAvg := blueRowAverages(img, W/8, W*9/16)
 
 	// Slide a single-row-height window and pick the position with highest
 	// average brightness. Row height is roughly H/24 — covers a single row but
@@ -80,6 +61,31 @@ func findHighlightedRowY(img image.Image) (int, int) {
 		return -1, -1
 	}
 	return bestY, bestY + rowHeight
+}
+
+// blueRowAverages computes, for each Y, the average (G+B) over
+// blue-background pixels in the table area [xMin, xMax). Rows without enough
+// blue pixels to count as table content stay 0.
+func blueRowAverages(img image.Image, xMin, xMax int) []int {
+	H := img.Bounds().Dy()
+	rowAvg := make([]int, H)
+	for y := range H {
+		var sum, count int
+		for x := xMin; x < xMax; x++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			r8, g8, b8 := int(r>>8), int(g>>8), int(b>>8)
+			// Blue table background: low R, mid G, mid-high B.
+			if r8 < 60 && g8 > 60 && b8 > 90 && b8 > r8+40 {
+				sum += g8 + b8
+				count++
+			}
+		}
+		// Require enough blue pixels in the row for it to count as table content.
+		if count > (xMax-xMin)/4 {
+			rowAvg[y] = sum / count
+		}
+	}
+	return rowAvg
 }
 
 // ocrRowCells finds the 6 stat columns inside the highlighted row by detecting
@@ -146,26 +152,34 @@ func findRowXExtent(img image.Image, yT, yB int) (xLeft, xRight int) {
 	W := bounds.Dx()
 	yMid := (yT + yB) / 2
 
-	isBlue := func(x, y int) bool {
-		r, g, b, _ := img.At(x, y).RGBA()
-		r8, g8, b8 := int(r>>8), int(g>>8), int(b>>8)
-		return r8 < 80 && g8 > 60 && b8 > 90 && b8 > r8+30
-	}
-
 	xLeft, xRight = -1, -1
 	for x := range W {
-		if isBlue(x, yMid) || isBlue(x, yMid-3) || isBlue(x, yMid+3) {
+		if rowBlueNear(img, x, yMid) {
 			xLeft = x
 			break
 		}
 	}
 	for x := W - 1; x >= 0; x-- {
-		if isBlue(x, yMid) || isBlue(x, yMid-3) || isBlue(x, yMid+3) {
+		if rowBlueNear(img, x, yMid) {
 			xRight = x
 			break
 		}
 	}
 	return
+}
+
+// rowBlueNear reports whether the highlighted row's blue background is
+// present at column x, sampling the row midline and ±3 px.
+func rowBlueNear(img image.Image, x, yMid int) bool {
+	return isRowBlue(img, x, yMid) || isRowBlue(img, x, yMid-3) || isRowBlue(img, x, yMid+3)
+}
+
+// isRowBlue is the extent scan's blue-background test — slightly looser
+// thresholds than blueRowAverages' background filter.
+func isRowBlue(img image.Image, x, y int) bool {
+	r, g, b, _ := img.At(x, y).RGBA()
+	r8, g8, b8 := int(r>>8), int(g>>8), int(b>>8)
+	return r8 < 80 && g8 > 60 && b8 > 90 && b8 > r8+30
 }
 
 // findStatColumns scans for white-text X clusters inside the highlighted row
