@@ -9,10 +9,17 @@ import (
 
 // registerSystemRoutes attaches the /api/v1/system/... handlers.
 // Read-only meta endpoints (version, update-check, data-location,
-// reference-data) + two probe endpoints (screenshots-folder and
-// tesseract, which return current resolved state without writing)
-// + the screenshots-folder reveal action.
+// reference-data — delegated to registerSystemMetaRoutes) + two probe
+// endpoints (screenshots-folder and tesseract, which return current
+// resolved state without writing) + the screenshots-folder reveal and
+// data-update actions.
 func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
+	registerSystemMetaRoutes(apiMux, a)
+	registerSystemProbeAndActionRoutes(apiMux, a)
+}
+
+// registerSystemMetaRoutes attaches the read-only meta endpoints.
+func registerSystemMetaRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/system/version", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, map[string]string{"version": a.GetVersion()}, nil)
 	})
@@ -35,6 +42,11 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/system/reference-data", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, a.GetOWData(), nil)
 	})
+}
+
+// registerSystemProbeAndActionRoutes attaches the probe endpoints and
+// the reveal / data-update actions.
+func registerSystemProbeAndActionRoutes(apiMux *http.ServeMux, a *app.App) {
 	// Per-source picker — Windows-only auto-detection of the four
 	// canonical capture methods (Nvidia Overlay, OW PrntScn default,
 	// Win Snip tool, Steam install). Returns an empty array on macOS
