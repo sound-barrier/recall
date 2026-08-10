@@ -1,4 +1,4 @@
-import { computed, nextTick, watchEffect } from 'vue'
+import { computed, nextTick, watchEffect, type Ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
@@ -179,31 +179,21 @@ export const useSettingsStore = defineStore('settings', () => {
   // ── Server-state hydration ────────────────────────────────────────
   // The settings reads live in the query cache (one query per endpoint —
   // per-subsystem isolation falls out of that: one failed call never
-  // blocks the others). These effects push arrivals into the composable
+  // blocks the others). hydrate() pushes arrivals into the composable
   // state machines above, which keep their commit/rollback semantics for
-  // writes. Replaces the old load() Promise.allSettled fan-out.
-  const dirQuery = useScreenshotsDirQuery()
-  watchEffect(() => {
-    const dir = dirQuery.data.value
-    if (dir !== undefined) setScreenshotsDir(dir || '')
-  })
-  const watchQuery = useWatchEnabledQuery()
-  watchEffect(() => {
-    const on = watchQuery.data.value
-    if (on !== undefined) setWatchEnabled(!!on)
-  })
-  const exitQuery = useExitOnCloseQuery()
-  watchEffect(() => {
-    const exit = exitQuery.data.value
-    if (exit !== undefined) setExitOnClose(!!exit)
-  })
-  // The tesseract queryFn never throws — a failed probe arrives as a real
+  // writes. Replaces the old load() Promise.allSettled fan-out. The
+  // tesseract queryFn never throws — a failed probe arrives as a real
   // found:false status (with the error string the Engine section renders).
-  const tesseractQuery = useTesseractQuery()
-  watchEffect(() => {
-    const status = tesseractQuery.data.value
-    if (status !== undefined) setTesseractStatus(status)
-  })
+  function hydrate<T>(data: Ref<T | undefined>, apply: (value: T) => void) {
+    watchEffect(() => {
+      const value = data.value
+      if (value !== undefined) apply(value)
+    })
+  }
+  hydrate(useScreenshotsDirQuery().data, dir => setScreenshotsDir(dir || ''))
+  hydrate(useWatchEnabledQuery().data, on => setWatchEnabled(!!on))
+  hydrate(useExitOnCloseQuery().data, exit => setExitOnClose(!!exit))
+  hydrate(useTesseractQuery().data, setTesseractStatus)
 
   return {
     themeMode,

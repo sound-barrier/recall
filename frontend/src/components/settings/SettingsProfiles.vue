@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { DeleteProfile } from '@/api-client'
-import { invalidateProfiles, useProfilesQuery } from '@/queries/profiles'
+import { plainLanguageError } from '@/error-helpers'
+import { invalidateProfiles, useProfilesData } from '@/queries/profiles'
 
 // Profiles management panel of the Settings view. Lists every profile
 // on disk; non-active rows expose a two-step delete affordance that
@@ -9,15 +10,15 @@ import { invalidateProfiles, useProfilesQuery } from '@/queries/profiles'
 // reference). The active profile has no delete button — callers must
 // switch profiles first via the masthead chip.
 
-const profilesQuery = useProfilesQuery()
-const profiles = computed(() => profilesQuery.data.value?.profiles ?? [])
-const active   = computed(() => profilesQuery.data.value?.active ?? '')
+const { query: profilesQuery, profiles, active } = useProfilesData()
 const busy     = ref(false)
 // Action failures land here; a load failure surfaces from the query so
-// the panel isn't silently empty.
+// the panel isn't silently empty. Both route through plainLanguageError —
+// the panel renders a CTA, not a raw Go/HTTP diagnostic.
 const actionError = ref<string | null>(null)
 const error = computed(() =>
-  actionError.value ?? (profilesQuery.error.value ? String(profilesQuery.error.value) : null),
+  actionError.value
+    ?? (profilesQuery.error.value ? plainLanguageError(String(profilesQuery.error.value)) : null),
 )
 
 // Which row (if any) is in two-step confirm mode. Null = nothing
@@ -47,7 +48,7 @@ async function confirmDelete(name: string) {
     confirmTarget.value = null
     await invalidateProfiles()
   } catch (e) {
-    actionError.value = String(e)
+    actionError.value = plainLanguageError(String(e))
   } finally {
     busy.value = false
   }

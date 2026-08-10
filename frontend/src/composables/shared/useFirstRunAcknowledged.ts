@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { useProfilesQuery } from '@/queries/profiles'
+import { useProfilesData } from '@/queries/profiles'
 
 // Persisted flag for the first-run "Main account name" modal. Two
 // signals decide whether the modal shows on launch:
@@ -37,9 +37,9 @@ export function useFirstRunAcknowledged() {
   // device) because the user's already named their profile elsewhere, so a
   // brief flash of the modal is a non-issue. On a query error the value
   // stays true so the localStorage gate still governs.
-  const query = useProfilesQuery()
+  const { active } = useProfilesData()
   const profileIsDefault = computed(() =>
-    (query.data.value?.active ?? DEFAULT_PROFILE_NAME) === DEFAULT_PROFILE_NAME,
+    (active.value || DEFAULT_PROFILE_NAME) === DEFAULT_PROFILE_NAME,
   )
 
   function ack() {
