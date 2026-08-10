@@ -21,16 +21,16 @@ describe('WinrateByPlayModeWidget', () => {
 
     expect(within(rows[0]!).getByText('quickplay')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('65%')).toBeInTheDocument()
-    // The winrate bar communicates only through its width style — no
-    // text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only winrate bar has no accessible surface
-    expect((rows[0]!.querySelector('.bd-fill') as HTMLElement).style.width).toBe('65%')
+    // The bar is a meter over winrate, not share — that's what
+    // separates this widget from QuickplayVsCompetitive.
+    expect(screen.getByRole('progressbar', { name: 'quickplay winrate' }))
+      .toHaveAttribute('aria-valuenow', '65')
     // The count overlay carries the sample size so the user can read
     // significance.
     expect(within(rows[0]!).getByText('23x')).toBeInTheDocument()
 
-    // eslint-disable-next-line testing-library/no-node-access -- style-only winrate bar has no accessible surface
-    expect((rows[1]!.querySelector('.bd-fill') as HTMLElement).style.width).toBe('51%')
+    expect(screen.getByRole('progressbar', { name: 'competitive winrate' }))
+      .toHaveAttribute('aria-valuenow', '51')
     expect(within(rows[2]!).getByText('35%')).toBeInTheDocument()
   })
 

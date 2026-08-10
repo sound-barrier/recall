@@ -149,6 +149,7 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
           :key="rec.match_key"
           class="unknown-card ambiguous-card"
           :class="{ expanded: cardState.isSelected(rec.match_key) }"
+          :aria-label="`Ambiguous screenshot ${rec.source_files?.[0] ?? rec.match_key}`"
         >
           <div class="unknown-card-head" @click="onAmbiguousHeadClick(rec)">
             <div class="unknown-head-lhs">

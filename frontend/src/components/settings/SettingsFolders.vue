@@ -103,7 +103,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             <button
               type="button"
               class="probe-chip-close"
-              aria-label="Dismiss"
+              aria-label="Dismiss detection result"
               @click="probeDismissed = true"
             >
               ×

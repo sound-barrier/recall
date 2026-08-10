@@ -226,7 +226,14 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
     <td class="tc tc-stat-cell tc-death" :data-col="9" :class="{ 'is-cell-selected': sel(9) }">
       {{ rec.data?.deaths ?? '—' }}
     </td>
-    <td class="tc tc-stat-cell tc-kda" :data-col="10" :class="{ 'is-cell-selected': sel(10) }">
+    <!-- The derived (E+A)/D cell names itself: several columns render a bare
+         em-dash for missing data, so the number alone doesn't say what it is. -->
+    <td
+      class="tc tc-stat-cell tc-kda"
+      :data-col="10"
+      :class="{ 'is-cell-selected': sel(10) }"
+      :aria-label="kda ? `KDA ${kda}` : 'KDA unavailable'"
+    >
       {{ kda || '—' }}
     </td>
     <td class="tc tc-tags" :data-col="11" :class="{ 'is-cell-selected': sel(11) }">

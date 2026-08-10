@@ -84,21 +84,20 @@ function renderView(records: MatchRecord[]) {
 const user = () => userEvent.setup()
 
 // ── Structural helpers ───────────────────────────────────────────────
-// The view is a composite surface — the dossier widgets inside it render
-// scores of generic lists and buttons — so row counting and the is-ticked
-// CSS-state pin select on the scoped list classes, which no accessible
-// query can express unambiguously here.
-/* eslint-disable testing-library/no-node-access -- row structure + tick-state CSS pins; role queries are ambiguous on this composite surface */
+// A row body is deliberately NOT a control (see frontend/CLAUDE.md: a
+// clickable container holding interactive chips can't be role=button), so
+// clicking one has no accessible handle — those two helpers reach for the
+// element. Everything about SELECTION reads off the per-row checkbox.
+/* eslint-disable testing-library/no-node-access -- the row body is intentionally role-less; clicking it has no accessible handle */
 const leafRows      = () => [...document.querySelectorAll('.leaf-row')]
-const tickedLeaves  = () => [...document.querySelectorAll('.leaf-row.is-ticked')]
 const archiveRows   = () => [...document.querySelectorAll('.archive-row')]
-const tickedArchive = () => [...document.querySelectorAll('.archive-row.is-ticked')]
-const archiveChev   = () => document.querySelector('.archive-chev')
 const campaignLog   = () => document.querySelector('.match-timeline')
 /* eslint-enable testing-library/no-node-access */
 
 const leafChecks    = () => screen.getAllByRole('checkbox', { name: /^Select match / })
 const archiveChecks = () => screen.getAllByRole('checkbox', { name: /^Select hidden match / })
+const tickedLeaves  = () => screen.queryAllByRole('checkbox', { name: /^Select match /, checked: true })
+const tickedArchive = () => screen.queryAllByRole('checkbox', { name: /^Select hidden match /, checked: true })
 
 const bulkBar    = () => screen.queryByRole('region', { name: 'Bulk action bar' })
 const archiveBar = () => screen.queryByRole('region', { name: 'Archive bulk action bar' })
@@ -126,8 +125,7 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
 
     await user().click(screen.getByRole('checkbox', { name: 'Select match k1' }))
 
-    expect(leafRows()[0]).toHaveClass('is-ticked')
-    expect(leafRows()[0]).toHaveClass('has-selection')
+    expect(screen.getByRole('checkbox', { name: 'Select match k1' })).toBeChecked()
     expect(bulkBar()).toBeInTheDocument()
     expect(inBulkBar().getByText(/1 selected/)).toBeInTheDocument()
     // The checkbox click must NOT have bubbled into the row's open-match handler.
@@ -148,7 +146,7 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
     // Row click opens the detail; the second row should NOT have been
     // ticked, and the existing selection should still be 1.
     expect(useUiStore().selection.isOpen.value).toBe(true)
-    expect(leafRows()[1]).not.toHaveClass('is-ticked')
+    expect(leafChecks()[1]).not.toBeChecked()
     expect(inBulkBar().getByText(/1 selected/)).toBeInTheDocument()
   })
 
@@ -197,7 +195,7 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
     await user().click(inBulkBar().getByRole('button', { name: 'Clear' }))
 
     expect(bulkBar()).not.toBeInTheDocument()
-    expect(leafRows()[0]).not.toHaveClass('is-ticked')
+    expect(leafChecks()[0]).not.toBeChecked()
     expect(SetMatchVisibility).not.toHaveBeenCalled()
   })
 
@@ -209,7 +207,7 @@ describe('MatchesView — contextual multi-select (live rows)', () => {
 
     await user().click(leafChecks()[0]!)
     expect(bulkBar()).not.toBeInTheDocument()
-    expect(leafRows()[0]).not.toHaveClass('is-ticked')
+    expect(leafChecks()[0]).not.toBeChecked()
   })
 })
 
@@ -254,7 +252,7 @@ describe('MatchesView — Hidden drawer', () => {
     expect(archiveChecks()).toHaveLength(2)
     expect(screen.getAllByRole('button', { name: 'Unhide' })).toHaveLength(2)
     expect(screen.getAllByRole('button', { name: 'Delete forever' })).toHaveLength(2)
-    expect(archiveChev()).toHaveClass('open')
+    expect(archiveToggle()).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('per-row Unhide still works as a single-target action', async () => {
@@ -591,9 +589,6 @@ describe('MatchesView — jump-to-undated button', () => {
     const btn = screen.getByRole('button', { name: /2 undated/ })
     expect(btn).toBeEnabled()
     expect(btn).toHaveAttribute('title', expect.stringMatching(/Jump to 2 undated matches/))
-    // Soft-emphasis class lights up when count > 0 — the orange wash
-    // hints "there's something to triage" without shouting.
-    expect(btn).toHaveClass('has-undated')
   })
 
   it('is disabled with an empty-state tooltip when no undated matches exist', () => {
@@ -601,9 +596,6 @@ describe('MatchesView — jump-to-undated button', () => {
     const btn = screen.getByRole('button', { name: /0 undated/ })
     expect(btn).toBeDisabled()
     expect(btn).toHaveAttribute('title', 'No undated matches in this view')
-    // Empty state drops the soft-emphasis class — the button falls
-    // back to the inherited .btn ghost disabled look.
-    expect(btn).not.toHaveClass('has-undated')
   })
 
   it('singular wording when exactly one undated match', () => {

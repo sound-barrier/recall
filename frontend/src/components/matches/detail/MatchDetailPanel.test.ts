@@ -132,14 +132,12 @@ describe('MatchDetailPanel — match stats + heroes + rank', () => {
   })
 
   it('renders heroes_played list with percent + play time + stats', () => {
-    const { view } = renderPanel()
-    // The per-hero pct/time cells are unlabeled tabular spans (and the
-    // play time collides textually with the game-length meta), so pick
-    // them by their column class.
-    // eslint-disable-next-line testing-library/no-node-access -- unlabeled per-hero table cells; play time text collides with the game-length meta
-    expect(view.baseElement.querySelector('.hero-pct')?.textContent).toBe('100%')
-    // eslint-disable-next-line testing-library/no-node-access -- unlabeled per-hero table cells; play time text collides with the game-length meta
-    expect(view.baseElement.querySelector('.hero-time')?.textContent).toBe('11:25')
+    renderPanel()
+    // Each hero's cells sit in a group named for that hero — which is what
+    // disambiguates the play time from the identical game-length meta.
+    const lucio = within(screen.getByRole('group', { name: 'lucio' }))
+    expect(lucio.getByText('100%')).toBeInTheDocument()
+    expect(lucio.getByText('11:25')).toBeInTheDocument()
     expect(screen.getByText(/weapon accuracy/)).toBeInTheDocument()
     expect(screen.getByText(/24/)).toBeInTheDocument()
   })
@@ -157,28 +155,29 @@ describe('MatchDetailPanel — match stats + heroes + rank', () => {
     expect(screen.getByText(/platinum 3/)).toBeInTheDocument()
     expect(screen.getByText('40% progress')).toBeInTheDocument()
     expect(screen.getByText('+5%')).toBeInTheDocument()
-    // Modifier order and per-line SR grouping are positional contracts
-    // with no accessible-name binding — select the columns directly.
+    // Modifier chips are an unlabeled run inside a heterogeneous flex row
+    // (tier / progress / change / modifiers); their ORDER has no accessible
+    // expression short of restructuring that row into a list.
     // eslint-disable-next-line testing-library/no-node-access -- pins modifier ORDER, which no accessible query expresses
     const modifiers = [...view.baseElement.querySelectorAll('.rank-modifier')].map((m) => m.textContent?.trim())
     expect(modifiers).toEqual(['expected', 'victory'])
-    // eslint-disable-next-line testing-library/no-node-access -- pins per-LINE grouping of hero/SR/delta, which no accessible query expresses
-    const srLines = [...view.baseElement.querySelectorAll('.sr-entry')].map((e) => e.textContent ?? '')
+    // The SR entries ARE a list, so both the per-line grouping of
+    // hero/SR/delta and their order read straight off the a11y tree.
+    const srLines = within(screen.getByRole('list', { name: 'SR changes' })).getAllByRole('listitem')
     expect(srLines).toHaveLength(2)
-    expect(srLines[0]).toContain('lucio')
-    expect(srLines[0]).toContain('3200')
-    expect(srLines[0]).toContain('+30')
-    expect(srLines[1]).toContain('-10')
+    expect(srLines[0]).toHaveTextContent('lucio')
+    expect(srLines[0]).toHaveTextContent('3200')
+    expect(srLines[0]).toHaveTextContent('+30')
+    expect(srLines[1]).toHaveTextContent('-10')
   })
 })
 
 describe('MatchDetailPanel — sources panel', () => {
   it('renders the sources toggle with file count', () => {
-    const { view } = renderPanel()
+    renderPanel()
     expect(screen.getByText('Source Screenshots')).toBeInTheDocument()
-    // The count badge is an unlabeled span next to the toggle label.
-    // eslint-disable-next-line testing-library/no-node-access -- unlabeled count badge; the number alone is ambiguous as text
-    expect(view.baseElement.querySelector('.sources-count')?.textContent).toBe('2')
+    // The count badge names itself — a bare "2" says nothing on its own.
+    expect(screen.getByRole('img', { name: '2 source screenshots' })).toBeInTheDocument()
   })
 
   it('clicking the sources toggle flips the shared sources-open state', async () => {
@@ -212,39 +211,36 @@ describe('MatchDetailPanel — sources panel', () => {
     expect(ui.preview.isPreviewOpen('summary.png')).toBe(true)
   })
 
+  // The preview thumbnail's alt text is the filename it previews, so the
+  // img role query names it.
+  const previewImg = () => screen.queryByRole('img', { name: 'summary.png' })
+
   it('renders <img> when previewOpen[file]=true and no error', () => {
-    const { view } = renderPanel({
+    renderPanel({
       isSourcesOpen: true,
       previewOpen: { 'summary.png': true },
     })
-    // The preview thumbnails are decorative (no alt text), so they are
-    // invisible to the img role query.
-    // eslint-disable-next-line testing-library/no-node-access -- decorative preview img carries no alt/role
-    const imgs = view.baseElement.querySelectorAll('img.source-preview')
-    expect(imgs).toHaveLength(1)
     // URL shape: /_screenshot/<dir-id>/<filename>. Test record has
     // no source_dir_ids so dir-id is 0 (configured-folder fallback).
-    expect(imgs[0]!.getAttribute('src')).toContain('/_screenshot/0/summary.png')
+    expect(previewImg()).toHaveAttribute('src', expect.stringContaining('/_screenshot/0/summary.png'))
   })
 
   it('renders preview error message when previewError[file]=true', () => {
-    const { view } = renderPanel({
+    renderPanel({
       isSourcesOpen: true,
       previewOpen: { 'summary.png': true },
       previewError: { 'summary.png': true },
     })
-    // eslint-disable-next-line testing-library/no-node-access -- decorative preview img carries no alt/role
-    expect(view.baseElement.querySelector('img.source-preview')).toBeNull()
+    expect(previewImg()).not.toBeInTheDocument()
     expect(screen.getByText(/Could not load image/)).toBeInTheDocument()
   })
 
   it('img @error records a preview error in the shared state', async () => {
-    const { view, ui } = renderPanel({
+    const { ui } = renderPanel({
       isSourcesOpen: true,
       previewOpen: { 'summary.png': true },
     })
-    // eslint-disable-next-line testing-library/no-node-access -- decorative preview img carries no alt/role
-    await fireEvent.error(view.baseElement.querySelector('img.source-preview')!)
+    await fireEvent.error(previewImg()!)
     expect(ui.preview.hasPreviewError('summary.png')).toBe(true)
   })
 
@@ -295,14 +291,17 @@ describe('MatchDetailPanel — parsed timestamps', () => {
     expect(screen.getAllByTitle(/^Inserted into the database at/)).toHaveLength(1)
   })
 
-  it('the per-source chip is NOT a filter trigger (no click handler, no clickable class)', () => {
+  it('the per-source chip is NOT a filter trigger (inert span, unlike the source-type chip)', () => {
     const rec = makeRecord({}, {
       source_parsed_at: { 'summary.png': '2026-05-10T21:30:00Z' },
     })
     renderPanel({ record: rec, isSourcesOpen: true })
     const chip = screen.getByTitle(/^Inserted into the database at/)
-    expect(chip).not.toHaveClass('clickable')
+    // A plain span with no role and no tabstop: nothing an AT or a keyboard
+    // user can activate — the sibling source-type chip is a real button.
     expect(chip.tagName.toLowerCase()).toBe('span')
+    expect(chip).not.toHaveAttribute('role')
+    expect(chip).not.toHaveAttribute('tabindex')
   })
 })
 
@@ -321,7 +320,6 @@ describe('MatchDetailPanel — disruption chooser', () => {
     } as unknown as Partial<MatchRecord>)
     renderPanel({ record: annotated })
     const team = screen.getByRole('button', { name: /Ally left/ })
-    expect(team).toHaveClass('active')
     expect(team).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByTitle('Remove the leaver annotation.')).toBeInTheDocument()
   })
@@ -540,33 +538,29 @@ describe('MatchDetailPanel — pagination toolbar', () => {
 })
 
 describe('MatchDetailPanel — provenance banner', () => {
-  // The banner is the e2e-shared [data-prov-banner] surface; its tint
-  // classes (is-edited / is-manual) have no accessible-query equivalent.
-  const banner = (base: Element) =>
-    // eslint-disable-next-line testing-library/no-node-access -- e2e-shared data-attr surface; tint class has no accessible equivalent
-    base.querySelector('[data-prov-banner]')
+  // The banner's whole payload is the provenance badge (a named role=img)
+  // plus a one-line summary; the is-edited / is-manual tints are the visual
+  // echo of the same `source` the badge names.
+  const provBadge = () => screen.queryByRole('img', { name: /^Source: / })
 
   it('shows no banner for a pure-OCR match', () => {
-    const { view } = renderPanel({ record: makeRecord({}, { source: 'ocr' }) })
-    expect(banner(view.baseElement)).toBeNull()
+    renderPanel({ record: makeRecord({}, { source: 'ocr' }) })
+    expect(provBadge()).not.toBeInTheDocument()
   })
 
   it('shows an "Edited" banner with the field count + a Reset-to-OCR button', () => {
-    const { view } = renderPanel({
+    renderPanel({
       record: makeRecord({}, { source: 'ocr_edited', edited_fields: ['data.map', 'data.damage'] }),
     })
-    const el = banner(view.baseElement)
-    expect(el).toHaveClass('is-edited')
-    expect(el).toHaveTextContent('Edited')
-    expect(el).toHaveTextContent('2 fields')
+    expect(provBadge()).toHaveAccessibleName(/^Source: Edited\./)
+    expect(screen.getByText('2 fields changed from the OCR scan.')).toBeInTheDocument()
     expect(screen.getByTitle('Discard every edit and restore the scanned (OCR) values')).toBeInTheDocument()
   })
 
   it('shows a "User entered" banner with NO reset button for a manual match', () => {
-    const { view } = renderPanel({ record: makeRecord({}, { source: 'manual' }) })
-    const el = banner(view.baseElement)
-    expect(el).toHaveClass('is-manual')
-    expect(el).toHaveTextContent('User entered')
+    renderPanel({ record: makeRecord({}, { source: 'manual' }) })
+    expect(provBadge()).toHaveAccessibleName(/^Source: User entered\./)
+    expect(screen.getByText('Logged by hand — no screenshots to parse.')).toBeInTheDocument()
     // Nothing to reset to — a manual match has no OCR baseline.
     expect(screen.queryByTitle('Discard every edit and restore the scanned (OCR) values')).not.toBeInTheDocument()
   })

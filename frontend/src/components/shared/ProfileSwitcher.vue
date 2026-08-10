@@ -70,6 +70,7 @@ const { isReadOnly } = useActiveProfile()
             class="profile-item"
             :class="{ active: p === active }"
             role="menuitem"
+            :aria-current="p === active || undefined"
             :disabled="busy"
             @click="pickProfile(p)"
           >

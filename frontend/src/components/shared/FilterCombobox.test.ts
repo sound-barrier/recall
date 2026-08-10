@@ -148,13 +148,12 @@ describe('FilterCombobox', () => {
     })
 
     it('renders the empty-message row when no options match', async () => {
-      const { baseElement } = renderCombo({ open: true })
+      renderCombo({ open: true })
       await fireEvent.update(input(), 'zzz')
       expect(options()).toHaveLength(0)
-      // With no emptyMessage prop the row renders blank, so presence is
-      // only observable structurally.
-      // eslint-disable-next-line testing-library/no-node-access -- the default empty row carries no text to query
-      expect(baseElement.querySelector('.combo-empty')).not.toBeNull()
+      // With no emptyMessage prop the row falls through to the
+      // primitive's own default copy.
+      expect(screen.getByText('no matches')).toBeInTheDocument()
     })
 
     it('emptyMessage prop customizes the no-matches row', async () => {

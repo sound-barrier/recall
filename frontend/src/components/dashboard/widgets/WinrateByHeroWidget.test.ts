@@ -19,10 +19,11 @@ describe('Win-rate-by-X widgets', () => {
     expect(within(rows[0]!).getByText('ana')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('75%')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('8x')).toBeInTheDocument()
-    // The winrate bar communicates only through its width style — no
-    // text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only winrate bar has no accessible surface
-    expect(rows[0]!.querySelector('.bd-fill')?.getAttribute('style')).toContain('75%')
+    // The bar is a meter: its value is the win-rate its width paints.
+    expect(screen.getByRole('progressbar', { name: 'ana winrate' }))
+      .toHaveAttribute('aria-valuenow', '75')
+    expect(screen.getByRole('progressbar', { name: 'lucio winrate' }))
+      .toHaveAttribute('aria-valuenow', '60')
   })
 
   it('map widget renders under its own eyebrow', () => {
@@ -42,5 +43,8 @@ describe('Win-rate-by-X widgets', () => {
     const rows = screen.getAllByRole('listitem')
     expect(within(rows[0]!).getByText('DPS')).toBeInTheDocument()
     expect(within(rows[1]!).getByText('Tank')).toBeInTheDocument()
+    // The bar's accessible name uses the same display label, never the raw slug.
+    expect(screen.getByRole('progressbar', { name: 'DPS winrate' }))
+      .toHaveAttribute('aria-valuenow', '50')
   })
 })

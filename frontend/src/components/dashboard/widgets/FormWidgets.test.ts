@@ -17,6 +17,9 @@ describe('FormDeltaWidget', () => {
       },
     })
     expect(screen.getByText('65%')).toBeInTheDocument()
+    // Visual tint pin: the sign is already in the visible text, the
+    // class only carries the up/down color. No ARIA encoding exists.
+    // eslint-disable-next-line no-restricted-syntax -- sign tint on the form delta; the +/- in the text carries the direction
     expect(screen.getByText('+2 pts')).toHaveClass('gap-up')
     expect(screen.getByText(/vs 63% overall/)).toHaveTextContent('n=20')
   })
@@ -31,6 +34,8 @@ describe('FormDeltaWidget', () => {
         },
       },
     })
+    // Visual tint pin — see the up-trend case above.
+    // eslint-disable-next-line no-restricted-syntax -- sign tint on the form delta; the +/- in the text carries the direction
     expect(screen.getByText('-15 pts')).toHaveClass('gap-down')
   })
 
@@ -101,6 +106,10 @@ describe('SessionDepthWidget', () => {
     expect(within(rows[0]!).getByText('50%')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('10x')).toBeInTheDocument()
     expect(within(rows[2]!).getByText('80%')).toBeInTheDocument()
+    // Bar width — and so the meter value — is the share of games at
+    // that depth, not the win rate the stat column reports.
+    expect(screen.getByRole('progressbar', { name: 'Game 1 share' }))
+      .toHaveAttribute('aria-valuenow', '33')
     // The tail bucket pools everything at max depth and deeper.
     expect(within(rows[3]!).getByText('Game 4+')).toBeInTheDocument()
     // No sample reads as no-sample, never 0%.

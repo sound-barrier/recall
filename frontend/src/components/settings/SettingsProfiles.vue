@@ -88,7 +88,8 @@ async function confirmDelete(name: string) {
               :key="p"
               class="profile-mgmt-row"
               :class="{ active: p === active }"
-              :data-profile="p"
+              :aria-label="p"
+              :aria-current="p === active || undefined"
             >
               <span class="profile-mgmt-name">{{ p }}</span>
               <span v-if="p === active" class="profile-mgmt-active-tag">Active</span>

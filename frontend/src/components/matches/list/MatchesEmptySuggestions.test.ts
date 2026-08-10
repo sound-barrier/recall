@@ -21,8 +21,8 @@ describe('MatchesEmptySuggestions', () => {
       },
     })
     expect(screen.getAllByRole('button')).toHaveLength(2)
+    // The accessible name already carries the clause identity + the payoff.
     const mapsBtn = screen.getByRole('button', { name: 'Remove map filter — would surface 12 matches' })
-    expect(mapsBtn).toHaveAttribute('data-clause-id', 'maps')
     expect(mapsBtn).toHaveTextContent('Remove map filter')
     expect(mapsBtn).toHaveTextContent('12 matches')
   })

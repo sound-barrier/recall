@@ -35,16 +35,17 @@ describe('TimeOfDayWidget', () => {
     // The stat column carries the judgment, not the share.
     expect(within(rows[4]!).getByText('61%')).toBeInTheDocument()
     expect(within(rows[5]!).getByText('40%')).toBeInTheDocument()
-    // Width stays the volume share; color comes from the shared
-    // judgment engine (18 decisive at 61% clears the evidence floor).
-    // The bar communicates only through style + judgment class — no
-    // text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only judged bar has no accessible surface
-    const winBar = rows[4]!.querySelector('.bd-fill')
-    expect(winBar?.getAttribute('style')).toContain('width: 60%')
+    // The meter value is the volume share, matching what the width paints.
+    const winBar = screen.getByRole('progressbar', { name: '16–20 share' })
+    expect(winBar).toHaveAttribute('aria-valuenow', '60')
+    // Color comes from the shared judgment engine (18 decisive at 61%
+    // clears the evidence floor). A threshold tint has no ARIA
+    // encoding — the stat column already carries the rate — so the
+    // class stays as the visual pin.
+    // eslint-disable-next-line no-restricted-syntax -- bucketCellClass judgment tint — the winrate THRESHOLD, which aria-valuenow (the share) cannot express
     expect(winBar).toHaveClass('cell-win')
-    // eslint-disable-next-line testing-library/no-node-access -- style-only judged bar has no accessible surface
-    expect(rows[5]!.querySelector('.bd-fill')).toHaveClass('cell-loss')
+    // eslint-disable-next-line no-restricted-syntax -- bucketCellClass judgment tint — the winrate THRESHOLD, which aria-valuenow (the share) cannot express
+    expect(screen.getByRole('progressbar', { name: '20–24 share' })).toHaveClass('cell-loss')
   })
 
   it('a played-but-undecided bucket shows volume with a no-sample stat', () => {

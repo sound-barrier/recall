@@ -183,6 +183,7 @@ function onCardHeadClick(rec: MatchRecord) {
       :key="rec.match_key"
       class="unknown-card"
       :class="{ expanded: cardState.isSelected(rec.match_key) }"
+      :aria-label="`Unmatched screenshot ${rec.match_key}`"
       @mouseenter="(e) => onHoverUnknown(rec, e)"
       @mousemove="(e) => onMoveUnknown(rec, e)"
       @mouseleave="onLeaveUnknown"

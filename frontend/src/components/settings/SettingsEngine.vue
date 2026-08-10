@@ -118,7 +118,7 @@ const showProbeChip = computed(
             <button
               type="button"
               class="probe-chip-close"
-              aria-label="Dismiss"
+              aria-label="Dismiss Tesseract detection result"
               @click="probeDismissed = true"
             >
               ×

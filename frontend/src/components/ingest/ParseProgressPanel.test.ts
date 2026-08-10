@@ -53,28 +53,32 @@ describe('ParseProgressPanel', () => {
     expect(screen.getByText('7')).toBeInTheDocument()
   })
 
-  it('progress bar width reflects done/total ratio', () => {
-    const { baseElement } = renderPanel({
+  it('reports progress through the progressbar value attributes', () => {
+    renderPanel({
       parseBusy: true,
       parseProgress: progress({ done: 2, total: 5 }),
       parseLog: [],
       isOpen: false,
     })
-    // The fill communicates only through its width style — no text or
-    // role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only progress fill has no accessible surface
-    expect(baseElement.querySelector('.pp-bar-fill')?.getAttribute('style')).toContain('width: 40%')
+    const meter = screen.getByRole('progressbar', { name: 'Parse progress' })
+    expect(meter).toHaveAttribute('aria-valuemin', '0')
+    expect(meter).toHaveAttribute('aria-valuemax', '5')
+    expect(meter).toHaveAttribute('aria-valuenow', '2')
   })
 
-  it('bar collapses to 0% when total is 0', () => {
-    const { baseElement } = renderPanel({
+  it('is an indeterminate progressbar until a total arrives', () => {
+    renderPanel({
       parseBusy: true,
       parseProgress: progress({ done: 0, total: 0 }),
       parseLog: [],
       isOpen: false,
     })
-    // eslint-disable-next-line testing-library/no-node-access -- style-only progress fill has no accessible surface
-    expect(baseElement.querySelector('.pp-bar-fill')?.getAttribute('style')).toContain('width: 0%')
+    // No total means no known range: an indeterminate progressbar omits
+    // both bounds rather than claiming a max of 0 / a value of 0.
+    const meter = screen.getByRole('progressbar', { name: 'Parse progress' })
+    expect(meter).not.toHaveAttribute('aria-valuenow')
+    expect(meter).not.toHaveAttribute('aria-valuemax')
+    expect(meter).toHaveAttribute('aria-valuemin', '0')
   })
 
   it('does not render the expanded details when isOpen=false', () => {
@@ -141,13 +145,13 @@ describe('ParseProgressPanel', () => {
     const { baseElement } = renderPanel({ parseBusy: true, parseProgress: null, parseLog: [], isOpen: true })
     // The chevron is a decorative aria-hidden glyph; its rotation class
     // is the only expression of the open state.
-    // eslint-disable-next-line testing-library/no-node-access -- decorative aria-hidden chevron; rotation class is the only open-state signal
+    // eslint-disable-next-line testing-library/no-node-access, no-restricted-syntax -- decorative aria-hidden chevron; rotation class is the only open-state signal
     expect(baseElement.querySelector('.pp-chev')).toHaveClass('open')
   })
 
   it('chevron drops the .open class when isOpen=false', () => {
     const { baseElement } = renderPanel({ parseBusy: true, parseProgress: null, parseLog: [], isOpen: false })
-    // eslint-disable-next-line testing-library/no-node-access -- decorative aria-hidden chevron; rotation class is the only open-state signal
+    // eslint-disable-next-line testing-library/no-node-access, no-restricted-syntax -- decorative aria-hidden chevron; rotation class is the only open-state signal
     expect(baseElement.querySelector('.pp-chev')).not.toHaveClass('open')
   })
 })

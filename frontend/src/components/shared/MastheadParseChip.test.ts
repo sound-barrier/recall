@@ -21,15 +21,25 @@ describe('MastheadParseChip', () => {
     expect(chip()).not.toBeInTheDocument()
   })
 
-  it('renders the done / total counter and a progress bar fill', () => {
-    const { baseElement } = render(MastheadParseChip, {
+  it('renders the done / total counter', () => {
+    render(MastheadParseChip, {
       props: { parseProgress: evt({ done: 12, total: 47, filename: 'x.png' }) },
     })
     expect(screen.getByText('12')).toBeInTheDocument()
     expect(screen.getByText('47')).toBeInTheDocument()
-    // 12/47 ≈ 25.5% → Math.round → 26%. The fill communicates only
-    // through its width style — no text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only progress fill has no accessible surface
+  })
+
+  it('paints the fill to the rounded percentage', () => {
+    const { baseElement } = render(MastheadParseChip, {
+      props: { parseProgress: evt({ done: 12, total: 47, filename: 'x.png' }) },
+    })
+    // 12/47 ≈ 25.5% → Math.round → 26%. This width is the ONLY expression
+    // of the rounded + clamped pct, and it can never gain an accessible
+    // surface: the fill sits in an aria-hidden track inside the chip
+    // <button>, and a button's descendants are presentational, so a role
+    // put here would never reach the a11y tree. Style assertion by
+    // necessity — the counter test above covers the user-facing numbers.
+    // eslint-disable-next-line testing-library/no-node-access, no-restricted-syntax -- decorative fill inside an aria-hidden track inside a button; no queryable surface exists
     expect((baseElement.querySelector('.mpc-fill') as HTMLElement).style.width).toBe('26%')
   })
 

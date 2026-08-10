@@ -19,7 +19,15 @@ const { topRoles } = useDossier()
     <li v-for="r in topRoles" :key="r.key">
       <span class="bd-name">{{ r.key }}</span>
       <span class="bd-bar" :title="r.total > 0 ? `${r.winrate}% winrate` : undefined">
-        <span class="bd-fill" :style="{ width: Math.min(r.share, 100) + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(Math.min(r.share, 100))"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${r.key} share`"
+          :style="{ width: Math.min(r.share, 100) + '%' }"
+        />
         <span class="bd-time">{{ r.total }}x</span>
       </span>
       <span class="bd-stats">{{ r.share }}%</span>

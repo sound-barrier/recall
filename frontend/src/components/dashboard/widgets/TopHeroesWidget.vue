@@ -20,7 +20,15 @@ const reserveRows = fullDossier.topHeroesByMinutes(() => ({ limit: config.value.
     <li v-for="h in topHeroes" :key="h.key">
       <span class="bd-name">{{ h.key }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :style="{ width: h.share + '%' }" />
+        <span
+          class="bd-fill"
+          role="progressbar"
+          :aria-valuenow="Math.round(h.share)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${h.key} share`"
+          :style="{ width: h.share + '%' }"
+        />
         <span class="bd-time">{{ h.timeLabel }}</span>
       </span>
       <span class="bd-stats">{{ h.share }}%</span>

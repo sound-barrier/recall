@@ -33,13 +33,16 @@ const ow = useOWData()
       <span v-if="record.data.change_percent" class="rank-change">+{{ record.data.change_percent }}%</span>
       <span v-for="m in record.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
     </div>
-    <div v-if="record.data.sr?.length" class="sr-line">
-      <span v-for="s in record.data.sr" :key="s.hero" class="sr-entry">
+    <!-- One entry per hero — a real list so the per-hero grouping (hero /
+         SR / delta belong together) and the reading ORDER are carried by
+         the accessibility tree, not by the flex layout alone. -->
+    <ul v-if="record.data.sr?.length" class="sr-line" aria-label="SR changes">
+      <li v-for="s in record.data.sr" :key="s.hero" class="sr-entry">
         <span class="sr-hero">{{ ow.heroDisplayName(s.hero) }}</span>
         <span class="sr-value">{{ s.sr }}</span>
         <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
-      </span>
-    </div>
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -149,7 +152,9 @@ const ow = useOWData()
   letter-spacing: 0.14em;
 }
 
-.sr-line { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+/* A <ul> for the semantics; the UA list box model is reset so the row
+   paints exactly as the former flex <div> did. */
+.sr-line { display: flex; flex-wrap: wrap; gap: 0.7rem; list-style: none; margin: 0; padding: 0; }
 
 .sr-entry {
   display: inline-flex;

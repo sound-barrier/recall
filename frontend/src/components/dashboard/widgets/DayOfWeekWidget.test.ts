@@ -36,10 +36,9 @@ describe('DayOfWeekWidget', () => {
     expect(within(rows[2]!).getByText('Wed')).toBeInTheDocument()
     // The stat column carries the judgment, not the share.
     expect(within(rows[2]!).getByText('43%')).toBeInTheDocument()
-    // The bar keeps the volume footprint. It communicates only through
-    // its width style — no text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only volume bar has no accessible surface
-    expect(rows[2]!.querySelector('.bd-fill')?.getAttribute('style')).toContain('width: 70%')
+    // The bar keeps the volume footprint; the meter value matches it.
+    expect(screen.getByRole('progressbar', { name: 'Wed share' }))
+      .toHaveAttribute('aria-valuenow', '70')
     // A no-play day reads as no-sample.
     expect(within(rows[1]!).getByText('—')).toBeInTheDocument()
   })

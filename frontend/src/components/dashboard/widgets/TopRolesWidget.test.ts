@@ -22,16 +22,20 @@ describe('TopRolesWidget', () => {
     expect(within(rows[0]!).getByText('tank')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('5x')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('50%')).toBeInTheDocument()
+    // One share meter per role, named for the role, in rank order.
+    expect(screen.getAllByRole('progressbar').map((b) => b.getAttribute('aria-valuenow')))
+      .toEqual(['50', '30', '20'])
+    expect(screen.getByRole('progressbar', { name: 'support share' }))
+      .toHaveAttribute('aria-valuenow', '30')
   })
 
-  it('clamps the fill width at 100% even when share exceeds 100 (open-queue overlap)', () => {
-    const { baseElement } = renderWidget(TopRolesWidget, {
+  it('clamps the meter at 100% even when share exceeds 100 (open-queue overlap)', () => {
+    renderWidget(TopRolesWidget, {
       dossier: { topRoles: [role('tank', 15, 150, 60)] },
     })
-    // The share bar communicates only through its width style — no
-    // text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only share bar has no accessible surface
-    expect((baseElement.querySelector('.bd-fill') as HTMLElement).style.width).toBe('100%')
+    // aria-valuenow reports the same clamped quantity the bar paints.
+    expect(screen.getByRole('progressbar', { name: 'tank share' }))
+      .toHaveAttribute('aria-valuenow', '100')
     // The stat column still shows the raw share so the user knows
     // open-queue overlap pushed the sum past 100.
     expect(screen.getByText('150%')).toBeInTheDocument()

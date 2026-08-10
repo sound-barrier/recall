@@ -65,16 +65,26 @@ function renderWith(records: MatchRecord[], extras: Extras = {}) {
   return { view, app, ui, preloadSpy, openLightboxSpy }
 }
 
+// ── Accessible handles ───────────────────────────────────────────────
+// Each triage card is an <article> that names itself after the
+// screenshot it is about, so cards + the candidate preview pane are
+// reachable by role + name. Interactions use TL fireEvent throughout,
+// matching the original trigger() dispatch.
+const unknownCards   = () => screen.queryAllByRole('article', { name: /^Unmatched screenshot / })
+const ambiguousCards = () => screen.queryAllByRole('article', { name: /^Ambiguous screenshot / })
+const unknownCard    = () => unknownCards()[0]!
+// The active candidate's preview pane is an <aside> labeled with the
+// candidate it is previewing, so "which candidate drives the pane" is a
+// role + name lookup.
+const previewPaneFor = (key: string) => screen.queryByRole('complementary', { name: `Preview of ${key}` })
+
 // ── Structural helpers ───────────────────────────────────────────────
-// The triage cards are clickable containers (plain divs per the
-// documented interaction pattern — the keyboard affordance lives on the
-// inner buttons), the diagnostic strip's filled/vacant state and the
-// teleported hover thumb are presentational, and the fix-CTA rows carry
-// their e2e-shared data-key identity. None of those surfaces have an
-// accessible-name equivalent, so they are selected directly. Interactions
-// use TL fireEvent throughout, matching the original trigger() dispatch.
-/* eslint-disable testing-library/no-node-access -- clickable-container cards, presentational strips, and e2e-shared data-keys have no accessible-query equivalent */
-const unknownCards   = () => document.querySelectorAll('.unknown-card')
+// The card head is a clickable container (a plain div per the documented
+// interaction pattern), the diagnostic strip's filled/vacant state and
+// the teleported hover thumb are presentational, and the fix-CTA rows
+// carry their e2e-shared data-key identity. None of those surfaces have
+// an accessible-name equivalent, so they are selected directly.
+/* eslint-disable testing-library/no-node-access -- clickable-container heads, presentational strips, and e2e-shared data-keys have no accessible-query equivalent */
 const cardHead       = () => document.querySelector('.unknown-card-head')!
 const ambiguousHead  = () => document.querySelector('.ambiguous-card .unknown-card-head')!
 const ambiguousPreviewImg = () => document.querySelector('.ambiguous-card img.source-preview')
@@ -82,9 +92,7 @@ const sourcePreviewImg    = () => document.querySelector('img.source-preview')
 const hoverThumb     = () => document.querySelector<HTMLElement>('.unknown-hover-thumb')
 const fieldCells     = (kind: 'filled' | 'vacant') => document.querySelectorAll(`.field-cell.${kind}`)
 const candidateRows  = () => document.querySelectorAll('.candidate-row')
-const previewPane    = () => document.querySelector('.candidate-preview-pane')
 const fixCta         = (key: string) => document.querySelector(`[data-fix-cta-key="${key}"]`)
-const unknownCard    = () => document.querySelector('.unknown-card')!
 /* eslint-enable testing-library/no-node-access */
 
 describe('UnknownMapsView', () => {
@@ -146,8 +154,7 @@ describe('UnknownMapsView', () => {
     ]
     renderWith([], { ambiguousRecords: ambig })
     expect(screen.getByText(/Needs your review — 1/)).toBeInTheDocument()
-    // eslint-disable-next-line testing-library/no-node-access -- ambiguous cards are clickable containers without an accessible name
-    expect(document.querySelectorAll('.ambiguous-card')).toHaveLength(1)
+    expect(ambiguousCards()).toHaveLength(1)
   })
 
   it('expanding an ambiguous card surfaces the candidate picker', async () => {
@@ -239,12 +246,12 @@ describe('UnknownMapsView', () => {
     ]
     renderWith([], { ambiguousRecords: ambig })
     await fireEvent.click(ambiguousHead())
-    const pane = previewPane()
-    expect(pane).not.toBeNull()
-    // eslint-disable-next-line testing-library/no-node-access -- decorative preview img inside the pane carries no alt/role
-    expect(pane!.querySelector('img')?.getAttribute('src')).toContain(encodeURIComponent('a-sum.png'))
-    // eslint-disable-next-line testing-library/no-node-access -- active-row highlight class has no accessible equivalent
-    expect(document.querySelector('.candidate-row.active')).not.toBeNull()
+    // The pane names the candidate it previews, so its accessible name IS
+    // the "first candidate by default" contract.
+    expect(previewPaneFor('match:a')).toBeInTheDocument()
+    expect(previewPaneFor('match:b')).not.toBeInTheDocument()
+    expect(candidateRows()[0]).toHaveAttribute('aria-current', 'true')
+    expect(candidateRows()[1]).not.toHaveAttribute('aria-current')
   })
 
   it('hovering a different candidate updates the preview pane', async () => {
@@ -258,8 +265,8 @@ describe('UnknownMapsView', () => {
     renderWith([], { ambiguousRecords: ambig })
     await fireEvent.click(ambiguousHead())
     await fireEvent.mouseEnter(candidateRows()[1]!)
-    // eslint-disable-next-line testing-library/no-node-access -- decorative preview img inside the pane carries no alt/role
-    expect(previewPane()!.querySelector('img')?.getAttribute('src')).toContain(encodeURIComponent('b-sum.png'))
+    expect(previewPaneFor('match:b')).toBeInTheDocument()
+    expect(candidateRows()[1]).toHaveAttribute('aria-current', 'true')
   })
 
   // ── Hover thumbnail (Teleport'd to <body>) ──────────────────
@@ -310,6 +317,7 @@ describe('UnknownMapsView', () => {
       const thumb = hoverThumb()!
       const firstLeft = thumb.style.left
       await fireEvent.mouseMove(unknownCard(), { clientX: 240, clientY: 380 })
+      // eslint-disable-next-line no-restricted-syntax -- the cursor-anchored thumb is aria-hidden decoration; its inline offset IS the behavior
       expect(thumb.style.left).not.toBe(firstLeft)
     })
   })

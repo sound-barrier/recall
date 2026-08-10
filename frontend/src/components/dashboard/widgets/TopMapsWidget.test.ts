@@ -17,10 +17,20 @@ describe('TopMapsWidget', () => {
     expect(within(rows[0]!).getByText('hanamura')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('3x')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('38%')).toBeInTheDocument()
-    // The share bar communicates only through its width style — no
-    // text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only share bar has no accessible surface
-    expect((rows[0]!.querySelector('.bd-fill') as HTMLElement).style.width).toBe('38%')
+    // The share bar exposes its value as a progressbar meter, named for
+    // the map alone — the number lives in aria-valuenow, not the name.
+    expect(screen.getByRole('progressbar', { name: 'hanamura share' }))
+      .toHaveAttribute('aria-valuenow', '38')
+    expect(screen.getByRole('progressbar', { name: 'kings row share' }))
+      .toHaveAttribute('aria-valuenow', '25')
+  })
+
+  it('orders the share meters by rank', () => {
+    renderWidget(TopMapsWidget, {
+      dossier: { topByCount: [entry('hanamura', 3, 38), entry('kings row', 2, 25)] },
+    })
+    expect(screen.getAllByRole('progressbar').map((b) => b.getAttribute('aria-label')))
+      .toEqual(['hanamura share', 'kings row share'])
   })
 
   it('renders no real rows when no maps fed it', () => {

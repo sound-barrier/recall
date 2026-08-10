@@ -26,9 +26,14 @@ describe('MatchRowContextMenu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
+  // The one style assertion that survives: this menu's whole contract at
+  // (x, y) IS the paint — a fixed-position popover has no text, name, or
+  // ARIA state that says where it landed, and the clamp math it exercises
+  // is only observable as left/top.
   it('renders the menu at the supplied (x, y) coordinates', () => {
     renderMenu({ position: { x: 100, y: 200 } })
     const menu = screen.getByRole('menu')
+    // eslint-disable-next-line no-restricted-syntax -- a fixed-position popover has no ARIA for WHERE it landed; left/top IS the clamp contract
     expect(menu).toHaveStyle({ left: '100px', top: '200px' })
   })
 

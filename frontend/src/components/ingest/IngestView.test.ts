@@ -124,7 +124,7 @@ describe('IngestView (Parse tab)', () => {
 
   it('Run Parse button drives the matches-store parse action on click', async () => {
     const { spies } = renderIngest({ newScreenshotCount: 5 })
-    await fireEvent.click(screen.getByTestId('run-parse-btn'))
+    await fireEvent.click(screen.getByRole('button', { name: /Run Parse/ }))
     expect(spies.parse).toHaveBeenCalled()
   })
 
@@ -133,7 +133,6 @@ describe('IngestView (Parse tab)', () => {
     const btn = screen.getByRole('button', { name: /All parsed/ })
     expect(btn).toBeDisabled()
     expect(btn).toHaveTextContent('nothing new')
-    expect(btn).toHaveClass('ghost')
   })
 
   it('toggles watch via the settings store on the Watch Folder checkbox change', async () => {
@@ -157,9 +156,12 @@ describe('IngestView (Parse tab)', () => {
   })
 
   it('renders only the Parse section — no Engine / Export / Data sections', () => {
-    const { view } = renderIngest()
-    // eslint-disable-next-line testing-library/no-node-access -- pins the single-section layout; sections carry no distinguishing accessible name
-    expect(view.baseElement.querySelectorAll('.settings-section')).toHaveLength(1)
+    renderIngest()
+    // Every settings section is titled by exactly one level-3 heading, so
+    // the heading outline IS the section count: an Engine / Export / Data
+    // section returning here would show up as a second one.
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 3, name: 'Parse' })).toBeInTheDocument()
     expect(screen.queryByText(/Engine/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Export Data/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Clear Database/)).not.toBeInTheDocument()
@@ -170,7 +172,7 @@ describe('IngestView — Stop Parse button', () => {
   it('renders Run Parse when not busy; no Stop button in the DOM', () => {
     renderIngest({ parseBusy: false })
     expect(stopBtn()).not.toBeInTheDocument()
-    expect(screen.getByTestId('run-parse-btn')).toHaveTextContent('Run Parse')
+    expect(screen.getByRole('button', { name: /Run Parse/ })).toBeInTheDocument()
   })
 
   it('renders Stop Parse when parseBusy and not yet canceling', () => {

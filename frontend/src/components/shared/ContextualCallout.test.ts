@@ -85,6 +85,7 @@ describe('ContextualCallout', () => {
     // reach for the element directly.
     // eslint-disable-next-line testing-library/no-node-access -- the display:none inline style IS the contract under test
     const callout = document.querySelector<HTMLElement>('[data-ctx-callout]')
+    // eslint-disable-next-line no-restricted-syntax -- "mounted but hidden" is only expressible through the inline style the reposition writes
     expect(callout?.style.display).toBe('none')
   })
 

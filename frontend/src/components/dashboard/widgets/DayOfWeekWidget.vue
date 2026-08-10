@@ -30,7 +30,16 @@ const buckets = dossier.dayOfWeekBuckets(() => ({
     <li v-for="b in buckets" :key="b.label">
       <span class="bd-name">{{ b.label }}</span>
       <span class="bd-bar">
-        <span class="bd-fill" :class="bucketCellClass(b)" :style="{ width: b.share + '%' }" />
+        <span
+          class="bd-fill"
+          :class="bucketCellClass(b)"
+          role="progressbar"
+          :aria-valuenow="Math.round(b.share)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="`${b.label} share`"
+          :style="{ width: b.share + '%' }"
+        />
         <span class="bd-time">{{ b.count }}x</span>
       </span>
       <span class="bd-stats">{{ b.winrate === null ? '—' : `${b.winrate}%` }}</span>

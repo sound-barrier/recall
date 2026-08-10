@@ -39,7 +39,13 @@ const emit = defineEmits<{
     <div class="sources-toggle" @click="emit('toggle-sources')">
       <span class="chev small" :class="{ open: isSourcesOpen }">›</span>
       <span class="sources-label">Source Screenshots</span>
-      <span class="sources-count">{{ record.source_files.length }}</span>
+      <!-- The bare number is meaningless out of context, so the badge names
+           itself the way the sibling provenance badge does. -->
+      <span
+        class="sources-count"
+        role="img"
+        :aria-label="`${record.source_files.length} source screenshot${record.source_files.length === 1 ? '' : 's'}`"
+      >{{ record.source_files.length }}</span>
       <span class="sources-coverage" :title="`${detectScreenshotSlots(record).filter(s => s.present).length} of ${detectScreenshotSlots(record).length} screenshot types captured`">
         <component
           :is="slot.present ? 'button' : 'span'"

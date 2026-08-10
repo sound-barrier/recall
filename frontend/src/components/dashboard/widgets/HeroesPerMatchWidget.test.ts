@@ -18,10 +18,12 @@ describe('HeroesPerMatchWidget', () => {
     expect(within(rows[0]!).getByText('1 hero')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('13x')).toBeInTheDocument()
     expect(within(rows[0]!).getByText('69%')).toBeInTheDocument()
-    // The winrate bar communicates only through its width style — no
-    // text or role to query.
-    // eslint-disable-next-line testing-library/no-node-access -- style-only winrate bar has no accessible surface
-    expect(rows[0]!.querySelector('.bd-fill')?.getAttribute('style')).toContain('69%')
+    // The winrate bar exposes its value as a progressbar meter named for
+    // the bucket; the rate itself lives in aria-valuenow.
+    expect(screen.getByRole('progressbar', { name: '1 hero winrate' }))
+      .toHaveAttribute('aria-valuenow', '69')
+    expect(screen.getByRole('progressbar', { name: '2 heroes winrate' }))
+      .toHaveAttribute('aria-valuenow', '25')
     expect(within(rows[0]!).queryByText('n<5')).not.toBeInTheDocument()
     expect(within(rows[1]!).getByText('n<5')).toBeInTheDocument()
   })

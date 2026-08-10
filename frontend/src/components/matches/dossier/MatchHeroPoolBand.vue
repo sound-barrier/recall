@@ -185,7 +185,17 @@ const configIsDefault = computed(
 
     <div v-else class="hp-scroll" data-pool-scroll>
       <template v-if="viewMode === 'role'">
-        <div v-for="group in roleGroups" :key="group.role" class="hp-role-group" :data-pool-role="group.role">
+        <!-- role=group named by the role: the In/Out-of-pool buttons repeat
+             per role and read identically, so the group is what tells them
+             apart. -->
+        <div
+          v-for="group in roleGroups"
+          :key="group.role"
+          class="hp-role-group"
+          role="group"
+          :aria-label="group.label"
+          :data-pool-role="group.role"
+        >
           <button
             type="button"
             class="hp-role-header"

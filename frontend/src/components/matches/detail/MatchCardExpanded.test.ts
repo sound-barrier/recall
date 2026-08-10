@@ -158,16 +158,15 @@ describe('MatchCardExpanded — since-this-match anchor toggle', () => {
     // keyboard user doesn't depend on the tooltip.
     const btn = screen.getByRole('button', { name: /Filter from this match/i })
     expect(btn).toHaveTextContent(/marks this as your reference point/i)
-    expect(btn).not.toHaveClass('is-anchor')
+    expect(btn).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('renders the anchor button with the active copy + class when this match IS the anchor', () => {
+  it('renders the anchor button pressed with the active copy when this match IS the anchor', () => {
     renderAnchor('match-2026-05-10T22-21-11')
     const btn = screen.getByRole('button', { name: /Filtering from this match/i })
-    expect(btn).toHaveClass('is-anchor')
+    expect(btn).toHaveAttribute('aria-pressed', 'true')
     expect(btn).toHaveTextContent(/Reference set/i)
     expect(btn).toHaveTextContent(/click to clear/i)
-    expect(btn).toHaveAttribute('data-anchor-set', 'true')
   })
 
   it('clicking when not the anchor emits set-anchor(matchKey)', async () => {
