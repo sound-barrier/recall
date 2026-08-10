@@ -77,41 +77,51 @@ export function computeCalloutPosition(
   }
   const tt = target
 
-  // Produce coords for a given side, clamped into the viewport. When
-  // `checkOverlap` is true (auto-placement path), also reject sides where
-  // the clamped rect would still cover the target. When false (explicit
-  // step-level placement), honor the requested side as long as it fits.
+  const clampX = (x: number) => Math.max(safety, Math.min(vw - calloutW - safety, x))
+  const clampY = (y: number) => Math.max(safety, Math.min(vh - h - safety, y))
+
+  // Coords for a given side, clamped into the viewport along the cross
+  // axis; null when the side doesn't fit at all.
+  function sideCoords(side: CalloutPlacement): { left: number; top: number } | null {
+    if (side === 'bottom') {
+      const top = tt.y + tt.h + gap
+      if (top + h + safety > vh) return null
+      return { left: clampX(tt.x + tt.w / 2 - calloutW / 2), top }
+    }
+    if (side === 'top') {
+      const top = tt.y - gap - h
+      if (top < safety) return null
+      return { left: clampX(tt.x + tt.w / 2 - calloutW / 2), top }
+    }
+    if (side === 'right') {
+      const left = tt.x + tt.w + gap
+      if (left + calloutW + safety > vw) return null
+      return { left, top: clampY(tt.y + tt.h / 2 - h / 2) }
+    }
+    if (side === 'left') {
+      const left = tt.x - gap - calloutW
+      if (left < safety) return null
+      return { left, top: clampY(tt.y + tt.h / 2 - h / 2) }
+    }
+    return null
+  }
+
+  // Produce coords for a given side. When `checkOverlap` is true
+  // (auto-placement path), also reject sides where the clamped rect
+  // would still cover the target. When false (explicit step-level
+  // placement), honor the requested side as long as it fits.
   function place(
     side: CalloutPlacement,
     checkOverlap: boolean,
   ): { left: number; top: number } | null {
-    let left: number
-    let top: number
-    if (side === 'bottom') {
-      top = tt.y + tt.h + gap
-      if (top + h + safety > vh) return null
-      left = Math.max(safety, Math.min(vw - calloutW - safety, tt.x + tt.w / 2 - calloutW / 2))
-    } else if (side === 'top') {
-      top = tt.y - gap - h
-      if (top < safety) return null
-      left = Math.max(safety, Math.min(vw - calloutW - safety, tt.x + tt.w / 2 - calloutW / 2))
-    } else if (side === 'right') {
-      left = tt.x + tt.w + gap
-      if (left + calloutW + safety > vw) return null
-      top = Math.max(safety, Math.min(vh - h - safety, tt.y + tt.h / 2 - h / 2))
-    } else if (side === 'left') {
-      left = tt.x - gap - calloutW
-      if (left < safety) return null
-      top = Math.max(safety, Math.min(vh - h - safety, tt.y + tt.h / 2 - h / 2))
-    } else {
-      return null
-    }
+    const coords = sideCoords(side)
+    if (!coords) return null
     if (checkOverlap) {
-      const calloutRect = { x: left, y: top, w: calloutW, h }
+      const calloutRect = { x: coords.left, y: coords.top, w: calloutW, h }
       const targetWithMargin = { x: tt.x - 4, y: tt.y - 4, w: tt.w + 8, h: tt.h + 8 }
       if (rectsOverlap(calloutRect, targetWithMargin)) return null
     }
-    return { left, top }
+    return coords
   }
 
   if (preferred !== 'auto') {

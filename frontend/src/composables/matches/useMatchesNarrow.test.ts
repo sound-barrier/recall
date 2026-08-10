@@ -10,7 +10,7 @@ function mapField(map: string | null | undefined): { map?: string } {
   return { map }
 }
 
-function rec(opts: {
+interface RecOpts {
   key?: string
   map?: string | null
   hero?: string
@@ -30,31 +30,51 @@ function rec(opts: {
   reviewedBy?: 'self' | 'coach'
   source?: 'ocr' | 'ocr_edited' | 'manual'
   heroesPlayed?: { hero: string; percent_played?: number; play_time?: string }[]
-} = {}): MatchRecord {
+}
+
+const REC_BASE = {
+  hero: 'lucio',
+  role: 'support',
+  type: 'control',
+  mode: 'competitive',
+  result: 'victory',
+  date: '2026-05-10',
+  finishedAt: '14:00',
+} as const
+
+function wantsAnnotation(opts: RecOpts): boolean {
+  return Boolean(opts.tags || opts.leavers?.length || opts.throwers?.length || opts.note || opts.members || opts.replay)
+}
+
+function annotationField(opts: RecOpts): Record<string, unknown> {
+  if (!wantsAnnotation(opts)) return {}
+  return { annotation: {
+    tags: opts.tags ?? [], leavers: opts.leavers ?? [], throwers: opts.throwers ?? [], note: opts.note ?? '',
+    members: opts.members ?? [], replay_code: opts.replay ?? '',
+  } }
+}
+
+function rec(opts: RecOpts = {}): MatchRecord {
+  const o = { ...REC_BASE, ...opts }
   return {
-    match_key: opts.key ?? `m-${Math.random()}`,
+    match_key: o.key ?? `m-${Math.random()}`,
     source_files: ['a.png'],
     source_types: { 'a.png': 'summary' },
     data: {
-      ...mapField(opts.map),
-      mode: opts.mode ?? 'competitive',
-      type: opts.type ?? 'control',
-      role: opts.role ?? 'support',
-      hero: opts.hero ?? 'lucio',
-      result: opts.result ?? 'victory',
-      date: opts.date ?? '2026-05-10',
-      finished_at: opts.finishedAt ?? '14:00',
-      heroes_played: opts.heroesPlayed ?? [{ hero: opts.hero ?? 'lucio', percent_played: 100, play_time: '10:00' }],
+      ...mapField(o.map),
+      mode: o.mode,
+      type: o.type,
+      role: o.role,
+      hero: o.hero,
+      result: o.result,
+      date: o.date,
+      finished_at: o.finishedAt,
+      heroes_played: o.heroesPlayed ?? [{ hero: o.hero, percent_played: 100, play_time: '10:00' }],
     },
-    ...(opts.tags || opts.leavers?.length || opts.throwers?.length || opts.note || opts.members || opts.replay
-      ? { annotation: {
-        tags: opts.tags ?? [], leavers: opts.leavers ?? [], throwers: opts.throwers ?? [], note: opts.note ?? '',
-        members: opts.members ?? [], replay_code: opts.replay ?? '',
-      } }
-      : {}),
-    ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
-    ...(opts.source ? { source: opts.source } : {}),
-    parsed_at: opts.parsedAt ?? `${opts.date ?? '2026-05-10'}T${opts.finishedAt ?? '14:00'}:00Z`,
+    ...annotationField(opts),
+    ...(o.reviewedBy ? { reviewed_by: o.reviewedBy } : {}),
+    ...(o.source ? { source: o.source } : {}),
+    parsed_at: o.parsedAt ?? `${o.date}T${o.finishedAt}:00Z`,
   } as unknown as MatchRecord
 }
 

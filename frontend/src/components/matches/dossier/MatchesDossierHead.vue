@@ -84,20 +84,37 @@ const {
 } = useDashboardGrid()
 
 // ─── Set summary headline / subline / anchor chip ──────────────
+
+// The date clause: an explicit custom range wins over the preset.
+function dateRangeParts(): string[] {
+  if (customFrom.value || customTo.value) {
+    return [`${formatRangeBound(customFrom.value, customFromTime.value)} → ${formatRangeBound(customTo.value, customToTime.value)}`]
+  }
+  if (pickedRange.value !== 'all') return [`last ${pickedRange.value}`]
+  return []
+}
+
+// Each picked-set clause in display order; empty sets contribute nothing.
+function pickedSetParts(): string[] {
+  const sections: [ReadonlySet<string>, (vals: string[]) => string][] = [
+    [pickedGameModes.value, (v) => v.join('/')],
+    [pickedMaps.value,      (v) => v.join(' · ')],
+    [pickedRoles.value,     (v) => v.join('/')],
+    [pickedHeroes.value,    (v) => v.join(' · ')],
+    [pickedResults.value,   (v) => v.join('/')],
+    [pickedTags.value,      (v) => v.map((t) => `#${t}`).join(' ')],
+    [pickedMembers.value,   (v) => 'with ' + v.join(' + ')],
+  ]
+  return sections.filter(([set]) => set.size > 0).map(([set, fmt]) => fmt([...set]))
+}
+
 const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
   const parts: string[] = []
   if (searchText.value.trim()) parts.push(`"${searchText.value.trim()}"`)
-  if (customFrom.value || customTo.value) parts.push(`${formatRangeBound(customFrom.value, customFromTime.value)} → ${formatRangeBound(customTo.value, customToTime.value)}`)
-  else if (pickedRange.value !== 'all') parts.push(`last ${pickedRange.value}`)
+  parts.push(...dateRangeParts())
   if (pickedSeason.value) parts.push(pickedSeason.value)
-  if (pickedGameModes.value.size) parts.push([...pickedGameModes.value].join('/'))
-  if (pickedMaps.value.size)     parts.push([...pickedMaps.value].join(' · '))
-  if (pickedRoles.value.size)    parts.push([...pickedRoles.value].join('/'))
-  if (pickedHeroes.value.size)   parts.push([...pickedHeroes.value].join(' · '))
-  if (pickedResults.value.size)  parts.push([...pickedResults.value].join('/'))
-  if (pickedTags.value.size)     parts.push([...pickedTags.value].map((t) => `#${t}`).join(' '))
-  if (pickedMembers.value.size)  parts.push('with ' + [...pickedMembers.value].join(' + '))
+  parts.push(...pickedSetParts())
   return parts.join(' — ') || 'Active narrow'
 })
 

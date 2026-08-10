@@ -97,35 +97,31 @@ function nudgeScroll(deltaPx: number) {
 // Modified keys (Ctrl/Cmd/Alt) pass through untouched so browser
 // shortcuts (Cmd+W, F5, etc.) still work; Tab stays untouched so
 // the focus trap can move focus inside the modal.
+const hasModifier = (e: KeyboardEvent) => e.ctrlKey || e.metaKey || e.altKey
+
+// Keys the modal leaves entirely alone: Tab for the focus trap, bare
+// modifier presses for the browser.
+const PASSTHROUGH_KEYS = new Set(['Tab', 'Shift', 'Control', 'Alt', 'Meta'])
+
+// preventDefault + stopImmediatePropagation + the action — the shape
+// every handled key shares.
+function absorb(e: KeyboardEvent, action: () => void) {
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  action()
+}
+
 function onCaptureKey(e: KeyboardEvent) {
-  if (!props.open) return
-  if (e.ctrlKey || e.metaKey || e.altKey) return
+  if (!props.open || hasModifier(e)) return
 
   switch (e.key) {
-    case 'Escape':
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      emit('close')
-      return
+    case 'Escape':    absorb(e, () => emit('close')); return
     case 'j':
-    case 'ArrowDown':
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      nudgeScroll(SCROLL_STEP_PX)
-      return
+    case 'ArrowDown': absorb(e, () => nudgeScroll(SCROLL_STEP_PX)); return
     case 'k':
-    case 'ArrowUp':
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      nudgeScroll(-SCROLL_STEP_PX)
-      return
-    case 'Tab':
-    case 'Shift':
-    case 'Control':
-    case 'Alt':
-    case 'Meta':
-      return
+    case 'ArrowUp':   absorb(e, () => nudgeScroll(-SCROLL_STEP_PX)); return
   }
+  if (PASSTHROUGH_KEYS.has(e.key)) return
 
   // Any other key: swallow so app shortcuts behind the modal don't
   // fire. Don't preventDefault — leave OS / browser defaults

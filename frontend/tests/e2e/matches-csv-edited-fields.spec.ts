@@ -67,47 +67,62 @@ const TORTURE_TAGS = ['a,b', 'c"d']
  * This is what proves the file would import into a spreadsheet as one table —
  * a `split('\n')` cannot, which is the whole point.
  */
+interface CsvState {
+  rows: string[][]
+  row: string[]
+  field: string
+  quoted: boolean
+}
+
+function endField(s: CsvState) {
+  s.row.push(s.field)
+  s.field = ''
+}
+
+function endRow(s: CsvState) {
+  endField(s)
+  s.rows.push(s.row)
+  s.row = []
+}
+
+// One char inside a quoted field; returns how many chars were consumed
+// (2 when a doubled quote collapses to one literal quote).
+function quotedStep(s: CsvState, text: string, i: number): number {
+  const c = text.charAt(i)
+  if (c !== '"') {
+    s.field += c
+    return 1
+  }
+  if (text.charAt(i + 1) === '"') {
+    s.field += '"'
+    return 2
+  }
+  s.quoted = false
+  return 1
+}
+
+function unquotedStep(s: CsvState, c: string) {
+  if (c === '"') s.quoted = true
+  else if (c === ',') endField(s)
+  else if (c === '\n') endRow(s)
+  // '\r' is swallowed — the paired '\n' closes the row.
+  else if (c !== '\r') s.field += c
+}
+
 function parseCSV(input: string): string[][] {
-  let text = input
-  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1) // strip UTF-8 BOM
-  const rows: string[][] = []
-  let row: string[] = []
-  let field = ''
-  let quoted = false
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]
-    if (quoted) {
-      if (c === '"') {
-        if (text[i + 1] === '"') {
-          field += '"'
-          i++
-        } else {
-          quoted = false
-        }
-      } else {
-        field += c
-      }
-    } else if (c === '"') {
-      quoted = true
-    } else if (c === ',') {
-      row.push(field)
-      field = ''
-    } else if (c === '\r') {
-      // swallow — the paired \n closes the row
-    } else if (c === '\n') {
-      row.push(field)
-      rows.push(row)
-      row = []
-      field = ''
+  const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input // strip UTF-8 BOM
+  const s: CsvState = { rows: [], row: [], field: '', quoted: false }
+  let i = 0
+  while (i < text.length) {
+    if (s.quoted) {
+      i += quotedStep(s, text, i)
     } else {
-      field += c
+      unquotedStep(s, text.charAt(i))
+      i++
     }
   }
-  if (field !== '' || row.length > 0) {
-    row.push(field)
-    rows.push(row)
-  }
-  return rows
+  if (s.field !== '' || s.row.length > 0) endRow(s)
+  return s.rows
 }
 
 // sheetByKey turns the parsed grid into a header->cell map per match_key.

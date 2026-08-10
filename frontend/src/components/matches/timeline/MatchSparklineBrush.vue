@@ -130,24 +130,31 @@ function seasonBandIndices(from: string, to: string): [number | null, number | n
   return [lo, hi]
 }
 
-// Visible selection band — during a drag this reflects the user's
-// in-flight choice; otherwise it reflects the currently-applied
-// filterFrom/filterTo so the user can SEE the active range.
-const selectionBand = computed<{ x: number; width: number } | null>(() => {
-  let a: number | null = null
-  let b: number | null = null
+// The band endpoints: during a drag the user's in-flight choice;
+// otherwise the applied filterFrom/filterTo; otherwise the picked
+// season. The season's bounds can fall outside the visible window (a
+// season that started before the grid), so those clamp to the in-grid
+// span: first cell on/after seasonFrom → last cell on/before seasonTo.
+function bandEndpoints(): [number | null, number | null] {
   if (isDragging.value) {
-    a = dragStartIndex.value
-    b = dragEndIndex.value ?? dragStartIndex.value
-  } else if (props.filterFrom && props.filterTo) {
-    a = model.value.cells.findIndex(c => c.date === props.filterFrom.slice(0, 10))
-    b = model.value.cells.findIndex(c => c.date === props.filterTo.slice(0, 10))
-  } else if (props.seasonFrom && props.seasonTo) {
-    // The picked-season band. Its bounds can fall outside the visible window
-    // (a season that started before the grid), so clamp to the in-grid span:
-    // first cell on/after seasonFrom → last cell on/before seasonTo.
-    ;[a, b] = seasonBandIndices(props.seasonFrom, props.seasonTo)
+    return [dragStartIndex.value, dragEndIndex.value ?? dragStartIndex.value]
   }
+  if (props.filterFrom && props.filterTo) {
+    return [
+      model.value.cells.findIndex(c => c.date === props.filterFrom.slice(0, 10)),
+      model.value.cells.findIndex(c => c.date === props.filterTo.slice(0, 10)),
+    ]
+  }
+  if (props.seasonFrom && props.seasonTo) {
+    return seasonBandIndices(props.seasonFrom, props.seasonTo)
+  }
+  return [null, null]
+}
+
+// Visible selection band — reflects bandEndpoints so the user can SEE
+// the active range while dragging or once a filter is applied.
+const selectionBand = computed<{ x: number; width: number } | null>(() => {
+  const [a, b] = bandEndpoints()
   if (a == null || b == null || a < 0 || b < 0) return null
   const lo = Math.min(a, b)
   const hi = Math.max(a, b)

@@ -141,6 +141,29 @@ export function useManualMatchForm(mode: ManualMatchMode = 'full') {
 
   const canSubmit = computed(() => missingRequired.value.length === 0 && rankValid.value)
 
+  // Rank is only sent for a competitive match with a tier picked.
+  function applyRank(input: ManualMatchInput): void {
+    if (isCompetitive.value && rankTier.value.trim() !== '') {
+      input.rank = {
+        tier: rankTier.value.trim(),
+        division: rankDivision.value,
+        progress: rankProgress.value,
+        change_percent: rankChange.value,
+        demotion_protection: demotionProtection.value,
+      }
+    }
+  }
+
+  // Optional annotation fields — only sent when the user filled them in.
+  function applyAnnotationFields(input: ManualMatchInput): void {
+    if (leavers.value.length) input.leavers = [...leavers.value]
+    if (throwers.value.length) input.throwers = [...throwers.value]
+    if (replayCode.value.trim()) input.replay_code = replayCode.value.trim()
+    if (note.value.trim()) input.note = note.value.trim()
+    if (tags.value.length) input.tags = [...tags.value]
+    if (members.value.length) input.members = [...members.value]
+  }
+
   // Assemble the wire payload. Pre-condition: canSubmit (the casts below are
   // safe once the required enums are non-empty).
   function toInput(): ManualMatchInput {
@@ -156,22 +179,8 @@ export function useManualMatchForm(mode: ManualMatchMode = 'full') {
     if (playedAt.value) {
       input.played_at = localOffsetISO(playedAt.value)
     }
-    if (isCompetitive.value && rankTier.value.trim() !== '') {
-      input.rank = {
-        tier: rankTier.value.trim(),
-        division: rankDivision.value,
-        progress: rankProgress.value,
-        change_percent: rankChange.value,
-        demotion_protection: demotionProtection.value,
-      }
-    }
-    if (leavers.value.length) input.leavers = [...leavers.value]
-    if (throwers.value.length) input.throwers = [...throwers.value]
-    // Optional annotation fields — only sent when the user filled them in.
-    if (replayCode.value.trim()) input.replay_code = replayCode.value.trim()
-    if (note.value.trim()) input.note = note.value.trim()
-    if (tags.value.length) input.tags = [...tags.value]
-    if (members.value.length) input.members = [...members.value]
+    applyRank(input)
+    applyAnnotationFields(input)
     return input
   }
 

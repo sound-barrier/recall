@@ -98,43 +98,46 @@ const counter = computed(() =>
 // so the tour absorbs navigation keys before the panel underneath
 // can react. ←/h step back, →/l step forward, Enter advances, Esc
 // dismisses.
-function onKeydown(e: KeyboardEvent) {
-  if (!tour.open.value) return
+// Don't intercept in an input — the user can type "h" in a search
+// box without ending the tour.
+function inEditableTarget(): boolean {
   const target = document.activeElement as HTMLElement | null
   const tag = target?.tagName ?? ''
-  const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || !!target?.isContentEditable
-  // Don't intercept in an input — the user can type "h" in a search
-  // box without ending the tour.
-  if (inEditable) return
+  return tag === 'INPUT' || tag === 'TEXTAREA' || !!target?.isContentEditable
+}
 
-  if (e.key === 'Escape') {
-    e.preventDefault()
-    e.stopImmediatePropagation()
-    // Escape is a pure dismiss — close + persist, no side effects. The
-    // "Skip tour" button (onSkip) is the one that seeds the sample profile;
-    // reloading into a seeded profile on an Escape keypress would surprise.
-    tour.finish()
-    return
+// What each navigation key does; null = not a tour key.
+function keyAction(key: string): (() => void) | null {
+  switch (key) {
+    case 'Escape':
+      // Escape is a pure dismiss — close + persist, no side effects. The
+      // "Skip tour" button (onSkip) is the one that seeds the sample profile;
+      // reloading into a seeded profile on an Escape keypress would surprise.
+      return () => tour.finish()
+    case 'Enter':
+      return () => {
+        if (tour.isLastStep.value) tour.finish()
+        else void tour.next()
+      }
+    case 'ArrowRight':
+    case 'l':
+      return () => { void tour.next() }
+    case 'ArrowLeft':
+    case 'h':
+      return () => { void tour.prev() }
+    default:
+      return null
   }
-  if (e.key === 'Enter') {
-    e.preventDefault()
-    e.stopImmediatePropagation()
-    if (tour.isLastStep.value) tour.finish()
-    else void tour.next()
-    return
-  }
-  if (e.key === 'ArrowRight' || e.key === 'l') {
-    e.preventDefault()
-    e.stopImmediatePropagation()
-    void tour.next()
-    return
-  }
-  if (e.key === 'ArrowLeft' || e.key === 'h') {
-    e.preventDefault()
-    e.stopImmediatePropagation()
-    void tour.prev()
-    return
-  }
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (!tour.open.value) return
+  if (inEditableTarget()) return
+  const action = keyAction(e.key)
+  if (!action) return
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  action()
 }
 
 // Body scroll lock — freeze the underlying page so the user can't

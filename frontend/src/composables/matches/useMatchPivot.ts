@@ -63,26 +63,30 @@ function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === 'string')
 }
 
+function isDimensionList(v: unknown): boolean {
+  return isStringArray(v) && v.every((id) => DIMENSION_IDS.has(id))
+}
+
+function isValueSpec(v: unknown): boolean {
+  if (!v || typeof v !== 'object') return false
+  const spec = v as Record<string, unknown>
+  if (typeof spec.field !== 'string' || !MEASURE_IDS.has(spec.field)) return false
+  return typeof spec.agg === 'string' && AGGS.has(spec.agg as AggFn)
+}
+
+function isFilterSpec(f: unknown): boolean {
+  if (!f || typeof f !== 'object') return false
+  const flt = f as Record<string, unknown>
+  if (typeof flt.field !== 'string' || !DIMENSION_IDS.has(flt.field)) return false
+  return isStringArray(flt.allowed)
+}
+
 function isPivotConfig(decoded: unknown): decoded is PivotConfig {
   if (!decoded || typeof decoded !== 'object') return false
   const c = decoded as Record<string, unknown>
-  if (!isStringArray(c.rows) || !c.rows.every((id) => DIMENSION_IDS.has(id))) return false
-  if (!isStringArray(c.columns) || !c.columns.every((id) => DIMENSION_IDS.has(id))) return false
-  if (!Array.isArray(c.values)) return false
-  for (const v of c.values) {
-    if (!v || typeof v !== 'object') return false
-    const spec = v as Record<string, unknown>
-    if (typeof spec.field !== 'string' || !MEASURE_IDS.has(spec.field)) return false
-    if (typeof spec.agg !== 'string' || !AGGS.has(spec.agg as AggFn)) return false
-  }
-  if (!Array.isArray(c.filters)) return false
-  for (const f of c.filters) {
-    if (!f || typeof f !== 'object') return false
-    const flt = f as Record<string, unknown>
-    if (typeof flt.field !== 'string' || !DIMENSION_IDS.has(flt.field)) return false
-    if (!isStringArray(flt.allowed)) return false
-  }
-  return true
+  if (!isDimensionList(c.rows) || !isDimensionList(c.columns)) return false
+  if (!Array.isArray(c.values) || !c.values.every(isValueSpec)) return false
+  return Array.isArray(c.filters) && c.filters.every(isFilterSpec)
 }
 
 function reorder<T>(list: T[], from: number, delta: number): T[] {

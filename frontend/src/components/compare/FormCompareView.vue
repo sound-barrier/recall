@@ -17,7 +17,7 @@ import { leaverRate, sessionCount } from '@/match/match-momentum-helpers'
 import {
   buildCondition, conditionDrillable, conditionPredicate, mirrorPreviousWindow, pairByMatches,
   pairByTime, rollingWinrate, samePointWindows, trailingWindow, windowDays,
-  type FormPair, type TimeWindow,
+  type FormCondition, type FormPair, type TimeWindow,
 } from '@/match/match-form-slices'
 
 // FORM — the Compare tab's second mode. Two adjacent windows of play — this
@@ -241,16 +241,20 @@ function windowIsExact(col: 'a' | 'b'): boolean {
   return rematched.length === sliced.length
 }
 
+// A role row under a DIFFERENT role condition can't be expressed — the
+// narrow's role picks OR together, so two picks widen instead of intersect.
+function roleRowConflicts(rowKey: string, cond: FormCondition): boolean {
+  const rowRole = ROLE_ROW_KEYS[rowKey]
+  return Boolean(rowRole && cond.kind === 'role' && cond.role !== rowRole)
+}
+
 function drillable(row: ComparisonRow, col: 'a' | 'b'): boolean {
   if (NON_DRILLABLE_ROWS.has(row.key)) return false
   const window = col === 'a' ? pair.value.aWindow : pair.value.bWindow
   const cond = col === 'a' ? condA.value : condB.value
   const display = col === 'a' ? row.aDisplay : row.bDisplay
   if (window === null || display === '—' || !conditionDrillable(cond)) return false
-  // A role row under a DIFFERENT role condition can't be expressed — the
-  // narrow's role picks OR together, so two picks widen instead of intersect.
-  const rowRole = ROLE_ROW_KEYS[row.key]
-  if (rowRole && cond.kind === 'role' && cond.role !== rowRole) return false
+  if (roleRowConflicts(row.key, cond)) return false
   return windowIsExact(col)
 }
 

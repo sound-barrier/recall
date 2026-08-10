@@ -47,7 +47,7 @@ function legacy(dossier: ReturnType<typeof useMatchesDossier>) {
   }
 }
 
-function rec(opts: {
+interface RecOpts {
   key?: string
   result?: 'victory' | 'defeat' | 'draw'
   map?: string
@@ -58,23 +58,38 @@ function rec(opts: {
   reviewedBy?: 'self' | 'coach'
   reviewedAt?: string
   parsedAt?: string
-}): MatchRecord {
+}
+
+const REC_BASE = {
+  map: 'rialto',
+  hero: 'lucio',
+  result: 'victory',
+  parsedAt: '2026-05-10T14:00:00Z',
+} as const
+
+function annotationValue(opts: RecOpts): Record<string, unknown> | undefined {
+  if (!(opts.leavers?.length || opts.members)) return undefined
+  return { leavers: opts.leavers ?? [], throwers: [], members: opts.members ?? [] }
+}
+
+function rec(opts: RecOpts): MatchRecord {
+  const o = { ...REC_BASE, ...opts }
   return {
-    match_key: opts.key ?? `m-${Math.random()}`,
+    match_key: o.key ?? `m-${Math.random()}`,
     source_files: ['a.png'],
     source_types: { 'a.png': 'summary' },
     data: {
-      map: opts.map ?? 'rialto',
-      hero: opts.hero ?? 'lucio',
-      result: opts.result ?? 'victory',
+      map: o.map,
+      hero: o.hero,
+      result: o.result,
       date: '2026-05-10', finished_at: '14:00',
       playlist: 'competitive',
-      ...(opts.modifiers ? { modifiers: opts.modifiers } : {}),
+      ...(o.modifiers ? { modifiers: o.modifiers } : {}),
     },
-    annotation: (opts.leavers?.length || opts.members) ? { leavers: opts.leavers ?? [], throwers: [], members: opts.members ?? [] } : undefined,
-    parsed_at: opts.parsedAt ?? '2026-05-10T14:00:00Z',
-    ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
-    ...(opts.reviewedAt ? { reviewed_at: opts.reviewedAt } : {}),
+    annotation: annotationValue(opts),
+    parsed_at: o.parsedAt,
+    ...(o.reviewedBy ? { reviewed_by: o.reviewedBy } : {}),
+    ...(o.reviewedAt ? { reviewed_at: o.reviewedAt } : {}),
   } as unknown as MatchRecord
 }
 
@@ -509,6 +524,10 @@ describe('useMatchesDossier', () => {
     // field set. K/D/A order matches gaming convention (Kills /
     // Deaths / Assists), so the display row reads
     // "12.14 / 5.08 / 10.16" with eliminations on the left.
+    function statField(rate: number | undefined): { total: number; avg_per_10min: number } | undefined {
+      return rate !== undefined ? { total: 0, avg_per_10min: rate } : undefined
+    }
+
     function recWithKDA(
       elim: number | undefined,
       deaths: number | undefined,
@@ -517,11 +536,7 @@ describe('useMatchesDossier', () => {
     ): MatchRecord {
       const perf = elim === undefined && deaths === undefined && assists === undefined
         ? undefined
-        : {
-          eliminations: elim !== undefined ? { total: 0, avg_per_10min: elim } : undefined,
-          deaths:       deaths !== undefined ? { total: 0, avg_per_10min: deaths } : undefined,
-          assists:      assists !== undefined ? { total: 0, avg_per_10min: assists } : undefined,
-        }
+        : { eliminations: statField(elim), deaths: statField(deaths), assists: statField(assists) }
       return {
         match_key: `m-${Math.random()}`,
         source_files: ['a.png'],

@@ -67,16 +67,22 @@ export function useModalFocusTrap(
     else open.value = false
   }
 
+  // Escape landed while focus was in a text field: deselect the field
+  // (closing any open combo dropdown via the field's own Esc handler)
+  // and report handled, so the modal itself stays open.
+  function fieldEscapeHandled(): boolean {
+    const active = document.activeElement as HTMLElement | null
+    const tag = active?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active?.isContentEditable) {
+      active?.blur()
+      return true
+    }
+    return false
+  }
+
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
-      if (keepOpenOnFieldEscape) {
-        const active = document.activeElement as HTMLElement | null
-        const tag = active?.tagName
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active?.isContentEditable) {
-          active?.blur()
-          return
-        }
-      }
+      if (keepOpenOnFieldEscape && fieldEscapeHandled()) return
       e.preventDefault()
       close()
       return

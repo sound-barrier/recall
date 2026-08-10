@@ -50,46 +50,42 @@ interface SeqOpts {
 // Deterministic result order without Math.random: 'spread' distributes wins
 // evenly (Bresenham), 'streaky' groups runs of 5, 'alternating' strictly
 // interleaves, 'firstHalfHot' front-loads wins (the change-point shape).
-function resultOrder(wins: number, losses: number, order: Order): Res[] {
+function streakyOrder(wins: number, losses: number): Res[] {
+  const out: Res[] = []
+  let w = wins
+  let l = losses
+  let onWins = true
+  while (w + l > 0) {
+    const take = onWins ? Math.min(5, w) : Math.min(5, l)
+    for (let i = 0; i < take; i++) out.push(onWins ? 'victory' : 'defeat')
+    if (onWins) w -= take
+    else l -= take
+    onWins = !onWins
+    if (onWins && w === 0) onWins = false
+    if (!onWins && l === 0) onWins = true
+  }
+  return out
+}
+
+function alternatingOrder(wins: number, losses: number): Res[] {
+  const out: Res[] = []
+  let w = wins
+  let l = losses
+  while (w + l > 0) {
+    if (w > 0 && (l === 0 || (out.length % 2 === 0))) {
+      out.push('victory')
+      w--
+    } else if (l > 0) {
+      out.push('defeat')
+      l--
+    }
+  }
+  return out
+}
+
+function spreadOrder(wins: number, losses: number): Res[] {
   const n = wins + losses
   const out: Res[] = []
-  if (order === 'streaky') {
-    let w = wins
-    let l = losses
-    let onWins = true
-    while (w + l > 0) {
-      const take = onWins ? Math.min(5, w) : Math.min(5, l)
-      for (let i = 0; i < take; i++) out.push(onWins ? 'victory' : 'defeat')
-      if (onWins) w -= take
-      else l -= take
-      onWins = !onWins
-      if (onWins && w === 0) onWins = false
-      if (!onWins && l === 0) onWins = true
-    }
-    return out
-  }
-  if (order === 'alternating') {
-    let w = wins
-    let l = losses
-    while (w + l > 0) {
-      if (w > 0 && (l === 0 || (out.length % 2 === 0))) {
-        out.push('victory')
-        w--
-      } else if (l > 0) {
-        out.push('defeat')
-        l--
-      }
-    }
-    return out
-  }
-  if (order === 'firstHalfHot') {
-    // First half at 80% wins, second half at 40% — the form-break corpus.
-    const half = Math.floor(n / 2)
-    const firstW = Math.min(wins, Math.round(half * 0.8))
-    const first = resultOrder(firstW, half - firstW, 'spread')
-    const second = resultOrder(wins - firstW, losses - (half - firstW), 'spread')
-    return [...first, ...second]
-  }
   let acc = 0
   for (let i = 0; i < n; i++) {
     acc += wins
@@ -101,6 +97,26 @@ function resultOrder(wins: number, losses: number, order: Order): Res[] {
     }
   }
   return out
+}
+
+function firstHalfHotOrder(wins: number, losses: number): Res[] {
+  // First half at 80% wins, second half at 40% — the form-break corpus.
+  const half = Math.floor((wins + losses) / 2)
+  const firstW = Math.min(wins, Math.round(half * 0.8))
+  const first = spreadOrder(firstW, half - firstW)
+  const second = spreadOrder(wins - firstW, losses - (half - firstW))
+  return [...first, ...second]
+}
+
+const ORDER_BUILDERS: Record<Order, (wins: number, losses: number) => Res[]> = {
+  spread:       spreadOrder,
+  streaky:      streakyOrder,
+  alternating:  alternatingOrder,
+  firstHalfHot: firstHalfHotOrder,
+}
+
+function resultOrder(wins: number, losses: number, order: Order): Res[] {
+  return ORDER_BUILDERS[order](wins, losses)
 }
 
 function interleaveDraws(results: Res[], draws: number): Res[] {
@@ -118,6 +134,59 @@ function streakLabel(r: Res, runLen: number): Game['streak'] {
   return r === 'victory' ? 'win streak' : 'loss streak'
 }
 
+// The change_percent meter for one game; undefined = no meter reading.
+function meterChange(meter: NonNullable<SeqOpts['meter']>, r: Res, streak: Game['streak'], i: number): number | undefined {
+  if (r === 'draw') return undefined
+  if (meter === 'rich') return (r === 'victory' ? 1 : -1) * (streak ? 30 : 20)
+  if (meter === 'thin5') {
+    if (i >= 5) return undefined
+    return r === 'victory' ? 20 : -20
+  }
+  if (meter === 'none') return undefined
+  return r === 'victory' ? meter.win : meter.loss
+}
+
+function walkLevel(o: SeqOpts, i: number, n: number): number | undefined {
+  if (o.climb && o.tier && o.level !== undefined) {
+    // Two-band walk: older half one division lower, mirroring the
+    // canonical slope-bearing corpus.
+    return i < n / 2 ? Math.min(5, o.level + 1) : o.level
+  }
+  return o.level
+}
+
+// The layoff gap (gapAfter) is applied after the loop by shifting the
+// pre-gap games' base — see applyGap.
+function gameDay(o: SeqOpts, i: number, n: number): number {
+  if (o.daysSpan !== undefined) return -o.daysSpan + Math.floor((i * o.daysSpan) / n)
+  return -(n - i)
+}
+
+function applyGap(games: Game[], gap: SeqOpts['gapAfter']): void {
+  if (!gap) return
+  for (let i = 0; i <= gap.index && i < games.length; i++) games[i]!.day -= gap.days
+}
+
+interface GameFrame {
+  i: number
+  n: number
+  r: Res
+  streak: Game['streak']
+  cp: number | undefined
+}
+
+function buildGame(o: SeqOpts, f: GameFrame): Game {
+  return {
+    r: f.r,
+    day: gameDay(o, f.i, f.n),
+    time: `12:${String((f.i * 7) % 60).padStart(2, '0')}`,
+    ...(o.tier ? { tier: o.tier, level: walkLevel(o, f.i, f.n), progress: (f.i * 7) % 100 } : {}),
+    ...(f.cp !== undefined ? { cp: f.cp } : {}),
+    ...(f.streak ? { streak: f.streak } : {}),
+    ...(o.hero ? { hero: o.hero } : {}),
+  }
+}
+
 export function seq(o: SeqOpts): Game[] {
   const results = interleaveDraws(resultOrder(o.wins, o.losses, o.order ?? 'spread'), o.draws ?? 0)
   const n = results.length
@@ -130,43 +199,9 @@ export function seq(o: SeqOpts): Game[] {
     runLen = r !== 'draw' && r === prev ? runLen + 1 : 1
     prev = r
     const streak = streakLabel(r, runLen)
-
-    let cp: number | undefined
-    if (r !== 'draw') {
-      if (meter === 'rich') cp = (r === 'victory' ? 1 : -1) * (streak ? 30 : 20)
-      else if (meter === 'thin5') { if (i < 5) cp = r === 'victory' ? 20 : -20 }
-      else if (meter === 'none') cp = undefined
-      else cp = r === 'victory' ? meter.win : meter.loss
-    }
-
-    let level = o.level
-    if (o.climb && o.tier && o.level !== undefined) {
-      // Two-band walk: older half one division lower, mirroring the
-      // canonical slope-bearing corpus.
-      level = i < n / 2 ? Math.min(5, o.level + 1) : o.level
-    }
-
-    let day: number
-    if (o.daysSpan !== undefined) {
-      day = -o.daysSpan + Math.floor((i * o.daysSpan) / n)
-    } else {
-      day = -(n - i)
-    }
-    if (o.gapAfter && i > o.gapAfter.index) day -= 0 // gap applied below via base shift
-    games.push({
-      r,
-      day,
-      time: `12:${String((i * 7) % 60).padStart(2, '0')}`,
-      ...(o.tier ? { tier: o.tier, level, progress: (i * 7) % 100 } : {}),
-      ...(cp !== undefined ? { cp } : {}),
-      ...(streak ? { streak } : {}),
-      ...(o.hero ? { hero: o.hero } : {}),
-    })
+    games.push(buildGame(o, { i, n, r, streak, cp: meterChange(meter, r, streak, i) }))
   }
-  if (o.gapAfter) {
-    const g = o.gapAfter
-    for (let i = 0; i <= g.index && i < games.length; i++) games[i]!.day -= g.days
-  }
+  applyGap(games, o.gapAfter)
   return games
 }
 

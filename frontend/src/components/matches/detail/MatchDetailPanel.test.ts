@@ -75,6 +75,12 @@ interface PanelMountOver {
   previewError?:  Record<string, boolean>
 }
 
+// Flips the per-match preview UI flags the panel forwards to MatchCardExpanded.
+function seedPreviewFlags(ui: ReturnType<typeof useUiStore>, over: PanelMountOver) {
+  for (const [f, on] of Object.entries(over.previewOpen ?? {})) if (on) ui.preview.togglePreview(f)
+  for (const [f, on] of Object.entries(over.previewError ?? {})) if (on) ui.preview.onPreviewError(f)
+}
+
 // Seeds the matches store with the record(s), opens the selection (the panel
 // reads selectedRecord from the narrowed set), and flips the per-match
 // preview/sources UI state the panel forwards to MatchCardExpanded.
@@ -89,8 +95,7 @@ function mountPanel(over: PanelMountOver = {}) {
   const key = over.selectKey ?? record.match_key
   ui.selection.open(key)
   if (over.isSourcesOpen) ui.toggleSources(key)
-  for (const [f, on] of Object.entries(over.previewOpen ?? {})) if (on) ui.preview.togglePreview(f)
-  for (const [f, on] of Object.entries(over.previewError ?? {})) if (on) ui.preview.onPreviewError(f)
+  seedPreviewFlags(ui, over)
   const wrapper = mount(MatchDetailPanel)
   return { wrapper, ui, matches, record, key }
 }

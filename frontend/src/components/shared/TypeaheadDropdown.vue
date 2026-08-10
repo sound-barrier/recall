@@ -122,51 +122,58 @@ function onMousedownOption(value: string) {
   emit('select', value)
 }
 
+const NAV_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
+
+// Where each navigation key parks the cursor; -1 when the list is empty.
+function cursorTarget(key: string, len: number): number {
+  if (len === 0) return -1
+  switch (key) {
+    case 'ArrowDown': return (cursor.value + 1) % len
+    case 'ArrowUp':   return (cursor.value - 1 + len) % len
+    case 'Home':      return 0
+    default:          return len - 1 // 'End'
+  }
+}
+
+// Enter selects the highlighted option; with no highlight, a non-empty
+// free-typed value is emitted instead.
+function commitCursorOrFreeText(len: number) {
+  const hit = cursor.value >= 0 && cursor.value < len
+  if (hit) {
+    emit('select', filteredOptions.value[cursor.value]!)
+  } else if (search.value.trim()) {
+    emit('free-text', search.value.trim())
+  }
+}
+
+// Tab completes the typeahead: highlight the next match (Enter then
+// selects it) rather than leaving the field. Only while the dropdown is
+// open with matches — otherwise Tab keeps its normal focus move.
+// Shift+Tab steps back through the matches.
+function onTabCycle(e: KeyboardEvent, len: number) {
+  if (len === 0) return
+  e.preventDefault()
+  e.stopPropagation()
+  cursor.value = e.shiftKey ? (cursor.value - 1 + len) % len : (cursor.value + 1) % len
+  void scrollCursorIntoView()
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (!props.open) return
   const len = filteredOptions.value.length
+  if (NAV_KEYS.has(e.key)) {
+    e.preventDefault()
+    cursor.value = cursorTarget(e.key, len)
+    void scrollCursorIntoView()
+    return
+  }
   switch (e.key) {
-    case 'ArrowDown':
+    case 'Enter':
       e.preventDefault()
-      cursor.value = len === 0 ? -1 : (cursor.value + 1) % len
-      void scrollCursorIntoView()
+      commitCursorOrFreeText(len)
       break
-    case 'ArrowUp':
-      e.preventDefault()
-      cursor.value = len === 0 ? -1 : (cursor.value - 1 + len) % len
-      void scrollCursorIntoView()
-      break
-    case 'Home':
-      e.preventDefault()
-      cursor.value = len === 0 ? -1 : 0
-      void scrollCursorIntoView()
-      break
-    case 'End':
-      e.preventDefault()
-      cursor.value = len === 0 ? -1 : len - 1
-      void scrollCursorIntoView()
-      break
-    case 'Enter': {
-      e.preventDefault()
-      const hit = cursor.value >= 0 && cursor.value < len
-      if (hit) {
-        emit('select', filteredOptions.value[cursor.value]!)
-      } else if (search.value.trim()) {
-        emit('free-text', search.value.trim())
-      }
-      break
-    }
     case 'Tab':
-      // Tab completes the typeahead: highlight the next match (Enter then
-      // selects it) rather than leaving the field. Only while the dropdown is
-      // open with matches — otherwise Tab keeps its normal focus move.
-      // Shift+Tab steps back through the matches.
-      if (len > 0) {
-        e.preventDefault()
-        e.stopPropagation()
-        cursor.value = e.shiftKey ? (cursor.value - 1 + len) % len : (cursor.value + 1) % len
-        void scrollCursorIntoView()
-      }
+      onTabCycle(e, len)
       break
     case 'Escape':
       e.preventDefault()

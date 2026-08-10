@@ -282,6 +282,17 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
     if (shift && anchor.value) replace(boxKeys(anchor.value, next))
   }
 
+  // Space toggles the focused cell (Ctrl/Cmd optional — same here).
+  function toggleFocusedCell(map: string, role: string) {
+    if (opts.isSelectable(map, role)) { toggle(map, role); anchor.value = { map, role } }
+  }
+
+  // Enter collapses to just the focused cell; empty cell → reset.
+  function collapseToCell(map: string, role: string) {
+    if (opts.isSelectable(map, role)) clickCell(map, role, { ctrl: false, shift: false })
+    else { clear(); opts.onClear?.() }
+  }
+
   function onCellKeydown(map: string, role: string, e: KeyboardEvent) {
     focused.value = { map, role }
     const shift = e.shiftKey
@@ -290,16 +301,9 @@ export function useMapRoleSelection(opts: MapRoleSelectionOptions): MapRoleSelec
       case 'ArrowLeft':  e.preventDefault(); moveFocus(-1, 0, shift); break
       case 'ArrowDown':  e.preventDefault(); moveFocus(0, 1, shift); break
       case 'ArrowUp':    e.preventDefault(); moveFocus(0, -1, shift); break
-      case ' ': // Space toggles the focused cell (Ctrl/Cmd optional — same here)
-        e.preventDefault()
-        if (opts.isSelectable(map, role)) { toggle(map, role); anchor.value = { map, role } }
-        break
-      case 'Enter': // collapse to just the focused cell; empty cell → reset
-        e.preventDefault()
-        if (opts.isSelectable(map, role)) clickCell(map, role, { ctrl: false, shift: false })
-        else { clear(); opts.onClear?.() }
-        break
-      case 'Escape': e.preventDefault(); clear(); break
+      case ' ':          e.preventDefault(); toggleFocusedCell(map, role); break
+      case 'Enter':      e.preventDefault(); collapseToCell(map, role); break
+      case 'Escape':     e.preventDefault(); clear(); break
     }
   }
 

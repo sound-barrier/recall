@@ -5,6 +5,16 @@ import TypeaheadDropdown from '@/components/shared/TypeaheadDropdown.vue'
 
 const HEROES = ['ana', 'kiriko', 'lucio', 'mercy', 'soldier', 'zenyatta']
 
+// The base carries the four required props; optional props (placeholder,
+// emptyMessage, isSelected, showCheckmark, autoHighlightFirst) reach the
+// component only when a caller passes them, so component defaults still apply.
+const DROPDOWN_BASE = {
+  listboxId: 'td-test',
+  label: 'Heroes',
+  options: HEROES,
+  open: false,
+}
+
 function mountDropdown(overrides: Partial<{
   listboxId: string
   label: string
@@ -18,17 +28,7 @@ function mountDropdown(overrides: Partial<{
 }> = {}) {
   return mount(TypeaheadDropdown, {
     attachTo: document.body,
-    props: {
-      listboxId: overrides.listboxId ?? 'td-test',
-      label: overrides.label ?? 'Heroes',
-      options: overrides.options ?? HEROES,
-      open: overrides.open ?? false,
-      ...(overrides.placeholder !== undefined ? { placeholder: overrides.placeholder } : {}),
-      ...(overrides.emptyMessage !== undefined ? { emptyMessage: overrides.emptyMessage } : {}),
-      ...(overrides.isSelected !== undefined ? { isSelected: overrides.isSelected } : {}),
-      ...(overrides.showCheckmark !== undefined ? { showCheckmark: overrides.showCheckmark } : {}),
-      ...(overrides.autoHighlightFirst !== undefined ? { autoHighlightFirst: overrides.autoHighlightFirst } : {}),
-    },
+    props: { ...DROPDOWN_BASE, ...overrides },
   })
 }
 

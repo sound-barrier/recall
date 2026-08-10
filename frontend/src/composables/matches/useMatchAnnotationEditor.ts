@@ -346,43 +346,49 @@ function adoptSuggestion(t: string) {
   tagCursor.value = -1
 }
 
+// Arrow keys wrap around the open suggestion list; no-op when closed.
+function moveTagCursor(e: KeyboardEvent, delta: number, open: boolean, len: number) {
+  if (!open) return
+  e.preventDefault()
+  tagCursor.value = (tagCursor.value + delta + len) % len
+}
+
+// Enter/comma adopt the highlighted suggestion when one is under the
+// cursor; otherwise they commit the free-typed input as a custom tag.
+function commitTagKey(e: KeyboardEvent, open: boolean, sugs: string[]) {
+  e.preventDefault()
+  if (open && tagCursor.value >= 0 && tagCursor.value < sugs.length) {
+    adoptSuggestion(sugs[tagCursor.value]!)
+    return
+  }
+  addCustomTag()
+}
+
+function closeTagSuggestions(e: KeyboardEvent, open: boolean) {
+  if (!open) return
+  e.preventDefault()
+  tagSuggestionsOpen.value = false
+  tagCursor.value = -1
+}
+
+// Backspace in an empty input pops the most recently added tag.
+function popLastTag(e: KeyboardEvent) {
+  if (tagInput.value === '' && tagDraft.value.length > 0) {
+    e.preventDefault()
+    removeTag(tagDraft.value[tagDraft.value.length - 1]!)
+  }
+}
+
 function onTagKeydown(e: KeyboardEvent) {
   const sugs = tagSuggestions.value
-  const len  = sugs.length
-  const open = tagSuggestionsOpen.value && len > 0
+  const open = tagSuggestionsOpen.value && sugs.length > 0
   switch (e.key) {
-    case 'ArrowDown':
-      if (!open) return
-      e.preventDefault()
-      tagCursor.value = (tagCursor.value + 1) % len
-      return
-    case 'ArrowUp':
-      if (!open) return
-      e.preventDefault()
-      tagCursor.value = (tagCursor.value - 1 + len) % len
-      return
+    case 'ArrowDown': moveTagCursor(e, 1, open, sugs.length); return
+    case 'ArrowUp':   moveTagCursor(e, -1, open, sugs.length); return
     case 'Enter':
-    case ',':
-      e.preventDefault()
-      if (open && tagCursor.value >= 0 && tagCursor.value < len) {
-        adoptSuggestion(sugs[tagCursor.value]!)
-        return
-      }
-      addCustomTag()
-      return
-    case 'Escape':
-      if (open) {
-        e.preventDefault()
-        tagSuggestionsOpen.value = false
-        tagCursor.value = -1
-      }
-      return
-    case 'Backspace':
-      if (tagInput.value === '' && tagDraft.value.length > 0) {
-        e.preventDefault()
-        removeTag(tagDraft.value[tagDraft.value.length - 1]!)
-      }
-      return
+    case ',':         commitTagKey(e, open, sugs); return
+    case 'Escape':    closeTagSuggestions(e, open); return
+    case 'Backspace': popLastTag(e); return
   }
 }
 

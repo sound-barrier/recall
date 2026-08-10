@@ -35,6 +35,29 @@ function isVisible(el: HTMLElement): boolean {
   return el.offsetParent !== null || el.getClientRects().length > 0
 }
 
+// The next (or, going backwards for Shift+Tab, the previous) toggle
+// button relative to the active element in document order.
+function adjacentButton(
+  buttons: HTMLElement[],
+  active: Element,
+  backwards: boolean,
+): HTMLElement | undefined {
+  if (backwards) {
+    return [...buttons]
+      .reverse()
+      .find(
+        (b) =>
+          (active.compareDocumentPosition(b) &
+            Node.DOCUMENT_POSITION_PRECEDING) !== 0,
+      )
+  }
+  return buttons.find(
+    (b) =>
+      (active.compareDocumentPosition(b) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+  )
+}
+
 export function useNarrowTabNav(container: Ref<HTMLElement | null>): void {
   function toggleButtons(root: HTMLElement): HTMLElement[] {
     return Array.from(
@@ -51,22 +74,7 @@ export function useNarrowTabNav(container: Ref<HTMLElement | null>): void {
     const buttons = toggleButtons(root)
     if (buttons.length === 0) return
 
-    let target: HTMLElement | undefined
-    if (!e.shiftKey) {
-      target = buttons.find(
-        (b) =>
-          (active.compareDocumentPosition(b) &
-            Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-      )
-    } else {
-      target = [...buttons]
-        .reverse()
-        .find(
-          (b) =>
-            (active.compareDocumentPosition(b) &
-              Node.DOCUMENT_POSITION_PRECEDING) !== 0,
-        )
-    }
+    const target = adjacentButton(buttons, active, e.shiftKey)
     // No toggle left this way → let native Tab carry focus out (no trap).
     if (!target) return
     e.preventDefault()

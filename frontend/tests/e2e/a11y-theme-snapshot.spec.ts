@@ -50,6 +50,8 @@ import { test, expect } from './_fixtures'
 import { VIEWS, THEMES, openView } from './_theme-matrix'
 
 async function captureStructure(page: Page, tabId: string) {
+  // NB: everything below runs serialized inside the browser, so the helper
+  // functions must stay INSIDE the evaluate callback.
   return page.evaluate((tabIdInner) => {
     const rootStyle = getComputedStyle(document.documentElement)
     const tabBtn = document.getElementById(tabIdInner) as HTMLElement | null
@@ -88,9 +90,8 @@ async function captureStructure(page: Page, tabId: string) {
       'color', 'backgroundColor', 'borderRadius',
     ] as const
 
-    const designSystem: Record<string, unknown> = {}
-    for (const [family, selectors] of Object.entries(families)) {
-      const els = Array.from(document.querySelectorAll(selectors.join(',')))
+    function paintedElements(selectors: string[]): Element[] {
+      return Array.from(document.querySelectorAll(selectors.join(',')))
         .filter((el) => {
           // Ignore elements that aren't actually painted — a hidden
           // modal's styles are real but not part of this view's look,
@@ -98,13 +99,17 @@ async function captureStructure(page: Page, tabId: string) {
           const r = (el as HTMLElement).getBoundingClientRect()
           return r.width > 0 && r.height > 0
         })
+    }
+
+    function familyProbe(selectors: string[]) {
+      const els = paintedElements(selectors)
       const values: Record<string, Set<string>> = {}
       for (const p of probeProps) values[p] = new Set<string>()
       for (const el of els) {
         const cs = getComputedStyle(el)
         for (const p of probeProps) values[p]!.add(cs[p] as string)
       }
-      designSystem[family] = {
+      return {
         count: els.length,
         ...Object.fromEntries(
           probeProps.map((p) => [p, Array.from(values[p]!).sort()]),
@@ -112,13 +117,22 @@ async function captureStructure(page: Page, tabId: string) {
       }
     }
 
+    function activeTabProbe(btn: HTMLElement | null) {
+      return {
+        id:           btn?.id ?? null,
+        ariaSelected: btn?.getAttribute('aria-selected') ?? null,
+        textContent:  btn?.textContent?.trim() ?? null,
+      }
+    }
+
+    const designSystem: Record<string, unknown> = {}
+    for (const [family, selectors] of Object.entries(families)) {
+      designSystem[family] = familyProbe(selectors)
+    }
+
     return {
       htmlAttr: { dataTheme: document.documentElement.getAttribute('data-theme') },
-      activeTab: {
-        id:           tabBtn?.id ?? null,
-        ariaSelected: tabBtn?.getAttribute('aria-selected') ?? null,
-        textContent:  tabBtn?.textContent?.trim() ?? null,
-      },
+      activeTab: activeTabProbe(tabBtn),
       mainPresent:     !!main,
       mastheadPresent: !!masthead,
       cssTokens,

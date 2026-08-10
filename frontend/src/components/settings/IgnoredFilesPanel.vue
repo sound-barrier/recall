@@ -122,6 +122,24 @@ const {
 const dialogRef = ref<HTMLElement | null>(null)
 const lastFocus = ref<HTMLElement | null>(null)
 
+// aria-modal="true" promises focus can't Tab out of the dialog —
+// cycle within it (same shape as ExportBundleModal's trap).
+function cycleTab(e: KeyboardEvent, dialog: HTMLElement) {
+  const sel = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  const items = Array.from(dialog.querySelectorAll<HTMLElement>(sel))
+  if (items.length === 0) return
+  const first = items[0]!
+  const last = items[items.length - 1]!
+  const active = document.activeElement as HTMLElement | null
+  if (e.shiftKey && (active === first || active === dialog)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && active === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (!props.isOpen) return
   if (e.key === 'Escape') {
@@ -130,22 +148,8 @@ function onKeydown(e: KeyboardEvent) {
     emit('close')
     return
   }
-  // aria-modal="true" promises focus can't Tab out of the dialog —
-  // cycle within it (same shape as ExportBundleModal's trap).
   if (e.key !== 'Tab' || !dialogRef.value) return
-  const sel = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-  const items = Array.from(dialogRef.value.querySelectorAll<HTMLElement>(sel))
-  if (items.length === 0) return
-  const first = items[0]!
-  const last = items[items.length - 1]!
-  const active = document.activeElement as HTMLElement | null
-  if (e.shiftKey && (active === first || active === dialogRef.value)) {
-    e.preventDefault()
-    last.focus()
-  } else if (!e.shiftKey && active === last) {
-    e.preventDefault()
-    first.focus()
-  }
+  cycleTab(e, dialogRef.value)
 }
 
 watch(

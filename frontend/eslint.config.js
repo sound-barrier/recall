@@ -147,11 +147,10 @@ export default tseslint.config(
       'no-param-reassign': 'error',
       'max-nested-callbacks': ['error', 3],
       // The complexity gate (root CLAUDE.md "McCabe cyclomatic complexity
-      // ≤ 10 — enforced") — parity with the Go side's gocyclo(10). Files
-      // still above threshold sit in the campaign carve-out block at the
-      // BOTTOM of this config (flat-config order: later wins); every
-      // cleanup commit deletes its own entries and the campaign finale
-      // deletes the block. Must be 'error' — lint:js runs --max-warnings 0.
+      // ≤ 10 — enforced") — parity with the Go side's gocyclo(10). The
+      // whole tree is under the gate; the campaign carve-out block that
+      // once exempted stragglers is gone — keep it that way. Must be
+      // 'error' — lint:js runs --max-warnings 0.
       complexity: ['error', 10],
     },
   },
@@ -228,60 +227,4 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
-  // ── COMPLEXITY-CAMPAIGN CARVE-OUTS ─────────────────────────────────────
-  // Files still above the complexity:10 gate. Flat-config order makes this
-  // block win over the rule above; each cleanup commit deletes its own
-  // entries and the campaign finale deletes the whole block. Must be 'off',
-  // not 'warn' — lint:js runs --max-warnings 0.
-  {
-    files: [
-      'src/components/compare/FormCompareView.vue',
-      'src/components/elo/EloResultsPanel.vue',
-      'src/components/matches/detail/MatchDetailPanel.test.ts',
-      'src/components/matches/dossier/MatchMapRoleBand.vue',
-      'src/components/matches/dossier/MatchesDossierHead.vue',
-      'src/components/matches/timeline/MatchSparklineBrush.vue',
-      'src/components/matches/timeline/MatchTimelineHeader.vue',
-      'src/components/settings/IgnoredFilesPanel.vue',
-      'src/components/settings/SettingsView.test.ts',
-      'src/components/shared/KeyboardShortcutsModal.vue',
-      'src/components/shared/OnboardingTour.vue',
-      'src/components/shared/TourCallout.vue',
-      'src/components/shared/TypeaheadDropdown.test.ts',
-      'src/components/shared/TypeaheadDropdown.vue',
-      'src/components/shared/tour-callout-helpers.ts',
-      'src/components/unknown/UnknownReferenceGapSection.vue',
-      'src/composables/dashboard/useDashboardLayout.ts',
-      'src/composables/dashboard/useDragReorder.ts',
-      'src/composables/elo/useEloCalculator.ts',
-      'src/composables/elo/useEloEvidence.ts',
-      'src/composables/matches/narrowPredicates.ts',
-      'src/composables/matches/useManualMatchForm.ts',
-      'src/composables/matches/useMapRoleSelection.ts',
-      'src/composables/matches/useMatchActions.ts',
-      'src/composables/matches/useMatchAnnotationEditor.ts',
-      'src/composables/matches/useMatchHeatmap.ts',
-      'src/composables/matches/useMatchPivot.ts',
-      'src/composables/matches/useMatchesDossier.test.ts',
-      'src/composables/matches/useMatchesDossier.ts',
-      'src/composables/matches/useMatchesGroup.ts',
-      'src/composables/matches/useMatchesNarrow.test.ts',
-      'src/composables/matches/useNarrowTabNav.ts',
-      'src/composables/matches/useTableSort.test.ts',
-      'src/composables/shared/useGameDataUpdate.ts',
-      'src/composables/shared/useKeyboardShortcuts.ts',
-      'src/composables/shared/useModalFocusTrap.ts',
-      'src/composables/shared/useScrollLock.ts',
-      'src/composables/shared/useTabKeyboardNav.ts',
-      'src/match/elo-seed.test.ts',
-      'tests/e2e/_elo-scenarios.ts',
-      'tests/e2e/a11y-theme-snapshot.spec.ts',
-      'tests/e2e/backup-roundtrip.spec.ts',
-      'tests/e2e/data-table-columns.spec.ts',
-      'tests/e2e/data-table-density.spec.ts',
-      'tests/e2e/matches-csv-edited-fields.spec.ts',
-    ],
-    rules: { complexity: 'off' },
-  },
-
 )

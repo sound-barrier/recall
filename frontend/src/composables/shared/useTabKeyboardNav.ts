@@ -19,27 +19,35 @@ export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown', 'compare',
 
 export type TabId = typeof TAB_ORDER[number]
 
+// h/l act as vim aliases for ArrowLeft/ArrowRight. The tab buttons
+// are not editable, so absorbing single-letter keys is safe.
+const isLeftKey  = (key: string) => key === 'ArrowLeft'  || key === 'h'
+const isRightKey = (key: string) => key === 'ArrowRight' || key === 'l'
+
+function isTabNavKey(key: string): boolean {
+  return isLeftKey(key) || isRightKey(key) || key === 'Home' || key === 'End'
+}
+
+// The wrap-around cycle: Left/Right step (mod length), Home/End jump.
+// Only called with keys isTabNavKey accepts, so the fall-through is 'End'.
+function nextTabIndex(key: string, current: number, length: number): number {
+  if (isLeftKey(key))  return (current - 1 + length) % length
+  if (isRightKey(key)) return (current + 1) % length
+  if (key === 'Home')  return 0
+  return length - 1
+}
+
 export function useTabKeyboardNav(
   view: Readonly<Ref<string>>,
   goToView: (next: TabId) => void | Promise<void>,
 ) {
   function onTabKeydown(e: KeyboardEvent) {
-    const key = e.key
-    // h/l act as vim aliases for ArrowLeft/ArrowRight. The tab buttons
-    // are not editable, so absorbing single-letter keys is safe.
-    const isLeft  = key === 'ArrowLeft'  || key === 'h'
-    const isRight = key === 'ArrowRight' || key === 'l'
-    if (!isLeft && !isRight && key !== 'Home' && key !== 'End') return
+    if (!isTabNavKey(e.key)) return
     e.preventDefault()
     const order = TAB_ORDER
     const current = order.indexOf(view.value as TabId)
     if (current === -1) return
-    let next = current
-    if (isLeft)         next = (current - 1 + order.length) % order.length
-    if (isRight)        next = (current + 1) % order.length
-    if (key === 'Home') next = 0
-    if (key === 'End')  next = order.length - 1
-    const target = order[next]!
+    const target = order[nextTabIndex(e.key, current, order.length)]!
     void goToView(target)
     // Move focus from the now-inactive tab to the newly-active one
     // so the tab pattern's "automatic activation" matches the focus
