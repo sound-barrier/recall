@@ -74,7 +74,7 @@ function onCardClick(c: NamedCandidate) {
   emit('pick', c.name, c.path)
 }
 
-// Compact "47 files · 2h ago" / "0 files" / "12 files · 0 recognised"
+// Compact "47 files · 2h ago" / "0 files" / "12 files · 0 recognized"
 // for the second metadata line. Returns '' when no stats yet so the
 // span stays empty (CSS treats it as not-rendered via :empty).
 function statsLine(c: NamedCandidate): string {
@@ -84,12 +84,12 @@ function statsLine(c: NamedCandidate): string {
   const parts: string[] = [`${s.file_count} files`]
   const rel = relativeAge(s.last_modified)
   if (rel) parts.push(rel)
-  // Only surface the "recognised" subset when the user is mismatched
+  // Only surface the "recognized" subset when the user is mismatched
   // — i.e. files exist but none are OW captures. Hide the noise when
-  // every file is recognised (the common happy case for a correct
+  // every file is recognized (the common happy case for a correct
   // source).
-  if (s.recognised_count < s.file_count) {
-    parts.push(`${s.recognised_count} recognised`)
+  if (s.recognized_count < s.file_count) {
+    parts.push(`${s.recognized_count} recognized`)
   }
   return parts.join(' · ')
 }

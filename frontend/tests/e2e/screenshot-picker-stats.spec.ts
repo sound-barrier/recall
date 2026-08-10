@@ -5,7 +5,7 @@
  * candidate folder is more useful than its mere existence:
  *   - "Nvidia Overlay · 47 files · 2h ago" — capturing here.
  *   - "OW PrntScn · 0 files"                — empty source.
- *   - "Win Snip · 12 files · 0 recognised"  — folder has files but
+ *   - "Win Snip · 12 files · 0 recognized"  — folder has files but
  *     none look like OW screenshots.
  *
  * The stats endpoint runs AFTER the grid renders so the dir walk
@@ -25,13 +25,13 @@ const CANDIDATES = [
 ]
 
 // Mock stats: nvidia is the active source (lots of files, all
-// recognised); prntscn is empty; snip has files but none look like
-// OW captures (recognised_count = 0); steam is absent.
+// recognized); prntscn is empty; snip has files but none look like
+// OW captures (recognized_count = 0); steam is absent.
 const STATS = [
-  { name: 'nvidia',  file_count: 47, last_modified: new Date(Date.now() - 2 * 3600_000).toISOString(), recognised_count: 47 },
-  { name: 'prntscn', file_count: 0,  last_modified: '',                                                recognised_count: 0  },
-  { name: 'snip',    file_count: 12, last_modified: new Date(Date.now() - 86400_000).toISOString(),    recognised_count: 0  },
-  { name: 'steam',   file_count: 0,  last_modified: '',                                                recognised_count: 0  },
+  { name: 'nvidia',  file_count: 47, last_modified: new Date(Date.now() - 2 * 3600_000).toISOString(), recognized_count: 47 },
+  { name: 'prntscn', file_count: 0,  last_modified: '',                                                recognized_count: 0  },
+  { name: 'snip',    file_count: 12, last_modified: new Date(Date.now() - 86400_000).toISOString(),    recognized_count: 0  },
+  { name: 'steam',   file_count: 0,  last_modified: '',                                                recognized_count: 0  },
 ]
 
 function tessStatus() {
@@ -74,24 +74,24 @@ test.describe('picker per-source diagnostics', () => {
     await expect(page.locator('#panel-settings')).toBeVisible()
     await expect(page.locator('[data-src-grid]')).toBeVisible()
 
-    // Nvidia — 47 files, all recognised, recent: "47 files · Xh ago".
+    // Nvidia — 47 files, all recognized, recent: "47 files · Xh ago".
     const nvidiaStats = page.locator('[data-src-stats="nvidia"]')
     await expect(nvidiaStats).toBeVisible()
     await expect(nvidiaStats).toContainText('47 files')
     await expect(nvidiaStats).toContainText('ago')
-    // Recognised count omitted when everything is recognised (happy path).
-    await expect(nvidiaStats).not.toContainText('recognised')
+    // Recognized count omitted when everything is recognized (happy path).
+    await expect(nvidiaStats).not.toContainText('recognized')
 
     // PrntScn — empty source: just "0 files".
     const prntStats = page.locator('[data-src-stats="prntscn"]')
     await expect(prntStats).toBeVisible()
     await expect(prntStats).toContainText('0 files')
 
-    // Snip — files exist but none recognised: surfaces the mismatch.
+    // Snip — files exist but none recognized: surfaces the mismatch.
     const snipStats = page.locator('[data-src-stats="snip"]')
     await expect(snipStats).toBeVisible()
     await expect(snipStats).toContainText('12 files')
-    await expect(snipStats).toContainText('0 recognised')
+    await expect(snipStats).toContainText('0 recognized')
 
     // Steam — absent path; stats endpoint returns zero so we surface
     // "0 files" same as PrntScn. The card already shows "not found"

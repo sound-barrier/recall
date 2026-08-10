@@ -3209,7 +3209,7 @@ export type GetScreenshotsFolderCandidateStatsResponses = {
         /**
          * Subset of file_count whose name matches one of the parser's filename grammars.
          */
-        recognised_count: number;
+        recognized_count: number;
     }>;
 };
 

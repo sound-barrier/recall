@@ -149,7 +149,7 @@ func ScreenshotsCandidates() []NamedCandidate {
 
 // NamedCandidateStats is the per-source diagnostic blob the picker
 // hydrates after the cards mount. file_count, last_modified, and
-// recognised_count tell the user which source their captures are
+// recognized_count tell the user which source their captures are
 // actually landing in — a card with "0 files" vs "47 files · 2h ago"
 // reads at a glance.
 //
@@ -157,16 +157,16 @@ func ScreenshotsCandidates() []NamedCandidate {
 // synced cloud folder with thousands of unrelated files (Pictures
 // holding a lifetime of phone backups) doesn't block the response.
 //
-// "Recognised" means the filename starts with one of the per-tool
+// "Recognized" means the filename starts with one of the per-tool
 // prefixes from parser.ScreenshotSources — i.e. would be picked up
 // by the parser. A folder full of Win Snip captures shows
-// "12 files · 0 recognised" so the user immediately knows the
+// "12 files · 0 recognized" so the user immediately knows the
 // folder isn't the right source.
 type NamedCandidateStats struct {
 	Name            string `json:"name"`
 	FileCount       int    `json:"file_count"`
 	LastModified    string `json:"last_modified"` // RFC3339 UTC, empty if no files
-	RecognisedCount int    `json:"recognised_count"`
+	RecognizedCount int    `json:"recognized_count"`
 }
 
 // candidateStatsMaxEntries is the hard upper bound on the directory
@@ -195,7 +195,7 @@ func ScreenshotsCandidateStats() []NamedCandidateStats {
 			if !latest.IsZero() {
 				stats.LastModified = latest.UTC().Format(time.RFC3339)
 			}
-			stats.RecognisedCount = CountRecognised(files)
+			stats.RecognizedCount = CountRecognized(files)
 		}
 		out = append(out, stats)
 	}
@@ -236,11 +236,11 @@ func WalkSourceDir(dir string) ([]string, time.Time) {
 	return names, latest
 }
 
-// CountRecognised tallies how many filenames the parser's filename
+// CountRecognized tallies how many filenames the parser's filename
 // grammars would accept. A "Win Snip" folder full of generic
-// "Screenshot 2026-06-07 224855.png" reads as fully recognised; a
+// "Screenshot 2026-06-07 224855.png" reads as fully recognized; a
 // generic Pictures folder reads as zero.
-func CountRecognised(names []string) int {
+func CountRecognized(names []string) int {
 	sources := parser.Sources()
 	if len(sources) == 0 {
 		return 0

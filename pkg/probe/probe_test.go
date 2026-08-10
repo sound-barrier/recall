@@ -131,7 +131,7 @@ func TestProbeScreenshotsCandidateStats_NonWindowsReturnsEmpty(t *testing.T) {
 	}
 }
 
-func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognised(t *testing.T) {
+func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognized(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows-only behaviour")
 	}
@@ -140,7 +140,7 @@ func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognised(t *testi
 
 	// Materialise the Nvidia candidate dir + drop three files: two
 	// canonical Nvidia-format names, one stray PDF that should NOT
-	// count as recognised.
+	// count as recognized.
 	nvidiaDir := filepath.Join(home, "Videos", "NVIDIA", "Overwatch 2")
 	if err := os.MkdirAll(nvidiaDir, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", nvidiaDir, err)
@@ -171,8 +171,8 @@ func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognised(t *testi
 	if nvidia.FileCount != 3 {
 		t.Errorf("nvidia.FileCount = %d; want 3", nvidia.FileCount)
 	}
-	if nvidia.RecognisedCount != 2 {
-		t.Errorf("nvidia.RecognisedCount = %d; want 2", nvidia.RecognisedCount)
+	if nvidia.RecognizedCount != 2 {
+		t.Errorf("nvidia.RecognizedCount = %d; want 2", nvidia.RecognizedCount)
 	}
 	if nvidia.LastModified == "" {
 		t.Error("nvidia.LastModified should be populated when files exist")
@@ -191,7 +191,7 @@ func TestProbeScreenshotsCandidateStats_NonExistentSourcesReturnEmpty(t *testing
 		t.Fatalf("want 4 cards on Windows; got %d", len(got))
 	}
 	for _, s := range got {
-		if s.FileCount != 0 || s.RecognisedCount != 0 || s.LastModified != "" {
+		if s.FileCount != 0 || s.RecognizedCount != 0 || s.LastModified != "" {
 			t.Errorf("source %q with non-existent path should be zero-valued, got %+v", s.Name, s)
 		}
 	}
@@ -227,7 +227,7 @@ func TestWalkSourceDir_MissingDirReturnsEmpty(t *testing.T) {
 	}
 }
 
-func TestCountRecognised_MatchesParserGrammar(t *testing.T) {
+func TestCountRecognized_MatchesParserGrammar(t *testing.T) {
 	names := []string{
 		"Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png", // nvidia ✓
 		"ScreenShot_26-06-07_22-59-52-000.jpg",                // prntscn ✓
@@ -235,9 +235,9 @@ func TestCountRecognised_MatchesParserGrammar(t *testing.T) {
 		"IMG_1234.png",                                        // none
 		"random.pdf",                                          // none
 	}
-	n := probe.CountRecognised(names)
+	n := probe.CountRecognized(names)
 	if n != 3 {
-		t.Errorf("countRecognised = %d; want 3", n)
+		t.Errorf("countRecognized = %d; want 3", n)
 	}
 }
 
