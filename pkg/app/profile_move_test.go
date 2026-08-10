@@ -44,21 +44,21 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	const movedKey = "match-2026-05-10T22-00-00"
 	const stayedKey = "match-2026-05-10T23-00-00"
 
-	if err := app.AppStore(a).UpsertSummary(db.SummaryRow{
+	if err := app.Store(a).UpsertSummary(db.SummaryRow{
 		Filename: "moved-summary.png", MatchKey: movedKey,
 		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
 	}); err != nil {
 		t.Fatalf("seed summary: %v", err)
 	}
-	if err := app.AppStore(a).UpsertTeams(db.TeamsRow{
+	if err := app.Store(a).UpsertTeams(db.TeamsRow{
 		Filename: "moved-teams.png", MatchKey: movedKey,
 		Eliminations: 17,
 		HeroStats:    []db.HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
 	}); err != nil {
 		t.Fatalf("seed teams: %v", err)
 	}
-	if err := app.AppStore(a).UpsertSummary(db.SummaryRow{
+	if err := app.Store(a).UpsertSummary(db.SummaryRow{
 		Filename: "stayed-summary.png", MatchKey: stayedKey,
 		Map: "ilios", Playlist: "competitive", Hero: "ana",
 	}); err != nil {
@@ -77,7 +77,7 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	}
 
 	// Source: movedKey rows are gone, stayedKey rows survive.
-	srcData, err := app.AppStore(a).LoadAll()
+	srcData, err := app.Store(a).LoadAll()
 	if err != nil {
 		t.Fatalf("source LoadAll: %v", err)
 	}
@@ -89,17 +89,17 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	if !hasSummaryKey(srcData.Summaries, stayedKey) {
 		t.Errorf("source lost the stayed summary")
 	}
-	srcAnns, _ := app.AppStore(a).LoadAnnotations()
+	srcAnns, _ := app.Store(a).LoadAnnotations()
 	if _, ok := srcAnns[movedKey]; ok {
 		t.Errorf("source annotation survived the move")
 	}
-	srcHidden, _ := app.AppStore(a).LoadHiddenKeys()
+	srcHidden, _ := app.Store(a).LoadHiddenKeys()
 	if srcHidden[movedKey] {
 		t.Errorf("source hidden flag survived the move")
 	}
 
 	// Target: the moved rows arrived (open the alt's DB directly).
-	altDBPath := filepath.Join(app.AppProfiles(a).ProfileDir("alt"), "db", "recall.db")
+	altDBPath := filepath.Join(app.ProfilesOf(a).ProfileDir("alt"), "db", "recall.db")
 	altStore, err := db.NewSQLStore(altDBPath)
 	if err != nil {
 		t.Fatalf("open alt store: %v", err)
@@ -140,13 +140,13 @@ func TestApp_MoveMatches_RemapsScreenshotsDirIDOnTarget(t *testing.T) {
 	if err := a.SetScreenshotsDir(srcShotsDir); err != nil {
 		t.Fatalf("SetScreenshotsDir: %v", err)
 	}
-	dirID, err := app.AppStore(a).EnsureScreenshotsDir(srcShotsDir)
+	dirID, err := app.Store(a).EnsureScreenshotsDir(srcShotsDir)
 	if err != nil {
 		t.Fatalf("EnsureScreenshotsDir: %v", err)
 	}
 
 	const key = "match-2026-05-10T22-00-00"
-	if err := app.AppStore(a).UpsertSummary(db.SummaryRow{
+	if err := app.Store(a).UpsertSummary(db.SummaryRow{
 		Filename: "with-dir.png", MatchKey: key, ScreenshotsDirID: dirID,
 	}); err != nil {
 		t.Fatalf("seed: %v", err)
@@ -156,7 +156,7 @@ func TestApp_MoveMatches_RemapsScreenshotsDirIDOnTarget(t *testing.T) {
 		t.Fatalf("MoveMatches: %v", err)
 	}
 
-	altStore, err := db.NewSQLStore(filepath.Join(app.AppProfiles(a).ProfileDir("alt"), "db", "recall.db"))
+	altStore, err := db.NewSQLStore(filepath.Join(app.ProfilesOf(a).ProfileDir("alt"), "db", "recall.db"))
 	if err != nil {
 		t.Fatalf("open alt: %v", err)
 	}

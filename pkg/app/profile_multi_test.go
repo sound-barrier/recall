@@ -50,7 +50,7 @@ func TestProfiles_AllowsArbitraryProfileCount(t *testing.T) {
 	}
 	// Sanity: every directory exists.
 	for _, name := range append([]string{"main"}, names...) {
-		dir := app.AppProfiles(a).ProfileDir(name)
+		dir := app.ProfilesOf(a).ProfileDir(name)
 		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 			t.Errorf("profile dir for %q missing or not a dir: %v", name, err)
 		}
@@ -89,7 +89,7 @@ func TestProfiles_ScreenshotsDirIsPerProfile(t *testing.T) {
 	if err := a.SwitchProfile("main"); err != nil {
 		t.Fatalf("SwitchProfile main: %v", err)
 	}
-	if got := app.AppSettings(a).ScreenshotsDir; got != mainDir {
+	if got := app.SettingsOf(a).ScreenshotsDir; got != mainDir {
 		t.Errorf("main ScreenshotsDir after switch back = %q, want %q", got, mainDir)
 	}
 
@@ -97,14 +97,14 @@ func TestProfiles_ScreenshotsDirIsPerProfile(t *testing.T) {
 	if err := a.SwitchProfile("alt"); err != nil {
 		t.Fatalf("SwitchProfile alt: %v", err)
 	}
-	if got := app.AppSettings(a).ScreenshotsDir; got != altDir {
+	if got := app.SettingsOf(a).ScreenshotsDir; got != altDir {
 		t.Errorf("alt ScreenshotsDir after switch = %q, want %q", got, altDir)
 	}
 
 	// And the on-disk shape matches: each profile's settings.json
 	// is a sibling of the other, not a shared file.
-	mainSettings := filepath.Join(app.AppProfiles(a).ProfileDir("main"), "settings.json")
-	altSettings := filepath.Join(app.AppProfiles(a).ProfileDir("alt"), "settings.json")
+	mainSettings := filepath.Join(app.ProfilesOf(a).ProfileDir("main"), "settings.json")
+	altSettings := filepath.Join(app.ProfilesOf(a).ProfileDir("alt"), "settings.json")
 	if _, err := os.Stat(mainSettings); err != nil {
 		t.Errorf("main settings.json missing: %v", err)
 	}

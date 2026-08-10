@@ -1,7 +1,9 @@
-package fixtures
+package fixtures_test
 
 import (
 	"testing"
+
+	"recall/pkg/fixtures"
 )
 
 // The tour tuple — MUST mirror pkg/app/profile_app.go (testProfileSeed /
@@ -16,14 +18,14 @@ const (
 
 // tourStory bundles the per-match facts the assertions below slice.
 type tourStory struct {
-	fx        Fixture
-	queueOf   map[string]string // match_key → role|open
-	compRole  []int             // indices of competitive role-queue summaries
-	comp      []int             // indices of all competitive summaries
-	dpsCards  []ladderPos       // chronological rank cards on the dps track
-	dpsFracs  []float64         // season fraction of each dps card's match
-	dpsGames  []string          // chronological results of dps role-queue games
-	heroGames map[string]int    // per-primary-hero competitive game counts
+	fx        fixtures.Fixture
+	queueOf   map[string]string    // match_key → role|open
+	compRole  []int                // indices of competitive role-queue summaries
+	comp      []int                // indices of all competitive summaries
+	dpsCards  []fixtures.LadderPos // chronological rank cards on the dps track
+	dpsFracs  []float64            // season fraction of each dps card's match
+	dpsGames  []string             // chronological results of dps role-queue games
+	heroGames map[string]int       // per-primary-hero competitive game counts
 }
 
 // tourStoryCache memoizes the corpus across the story tests — package tests
@@ -36,7 +38,7 @@ func buildTourStory(t *testing.T) tourStory {
 	if tourStoryCache != nil {
 		return *tourStoryCache
 	}
-	fx := GenerateMatchFixture(tourN, tourSeed, "flex")
+	fx := fixtures.GenerateMatchFixture(tourN, tourSeed, "flex")
 	st := tourStory{fx: fx, queueOf: map[string]string{}, heroGames: map[string]int{}}
 	for _, q := range fx.Queues {
 		st.queueOf[q.MatchKey] = q.QueueType
@@ -45,9 +47,9 @@ func buildTourStory(t *testing.T) tourStory {
 	for _, pm := range fx.PlayModes {
 		playModeOf[pm.MatchKey] = pm.PlayMode
 	}
-	cardByKey := map[string]ladderPos{}
+	cardByKey := map[string]fixtures.LadderPos{}
 	for _, r := range fx.Ranks {
-		cardByKey[r.MatchKey] = ladderPos{tier: tierIndex(r.Rank), div: r.Level, prog: r.RankProgress}
+		cardByKey[r.MatchKey] = fixtures.NewLadderPos(tierIndex(r.Rank), r.Level, r.RankProgress)
 	}
 	total := len(fx.Summaries)
 	for i, s := range fx.Summaries {
@@ -60,7 +62,7 @@ func buildTourStory(t *testing.T) tourStory {
 			continue
 		}
 		st.compRole = append(st.compRole, i)
-		if roleOfHero(s.Hero) != "dps" {
+		if fixtures.RoleOfHero(s.Hero) != "dps" {
 			continue
 		}
 		st.dpsGames = append(st.dpsGames, s.Result)
@@ -74,7 +76,7 @@ func buildTourStory(t *testing.T) tourStory {
 }
 
 func tierIndex(name string) int {
-	for i, t := range tierNames {
+	for i, t := range fixtures.TierNames {
 		if t == name {
 			return i
 		}
@@ -118,7 +120,7 @@ func TestTourStory_CompetitiveRoleSplit(t *testing.T) {
 	st := buildTourStory(t)
 	counts := map[string]int{}
 	for _, i := range st.compRole {
-		counts[roleOfHero(st.fx.Summaries[i].Hero)]++
+		counts[fixtures.RoleOfHero(st.fx.Summaries[i].Hero)]++
 	}
 	total := float64(len(st.compRole))
 	if total == 0 {
@@ -147,7 +149,7 @@ func TestTourStory_MultiHeroShareAndCost(t *testing.T) {
 		s := st.fx.Summaries[i]
 		meaningful := 0
 		for _, hp := range s.HeroesPlayed {
-			if hp.PercentPlayed >= meaningfulHeroPct {
+			if hp.PercentPlayed >= fixtures.MeaningfulHeroPct {
 				meaningful++
 			}
 		}
@@ -210,8 +212,8 @@ func TestTourStory_SlowClimbWithDrawdown(t *testing.T) {
 	if len(st.dpsCards) < 30 {
 		t.Fatalf("only %d dps rank cards; the main track should print plenty", len(st.dpsCards))
 	}
-	first := ladderScore(st.dpsCards[0])
-	last := ladderScore(st.dpsCards[len(st.dpsCards)-1])
+	first := fixtures.LadderScore(st.dpsCards[0])
+	last := fixtures.LadderScore(st.dpsCards[len(st.dpsCards)-1])
 	net := last - first
 	if net < 3 || net > 8 {
 		t.Errorf("dps net climb = %.2f divisions; want slow growth in [3, 8]", net)
@@ -223,7 +225,7 @@ func TestTourStory_SlowClimbWithDrawdown(t *testing.T) {
 	// A real slump: some card sits ≥ 0.6 divisions below the running peak.
 	runningMax, maxDrawdown := first, 0.0
 	for _, c := range st.dpsCards {
-		score := ladderScore(c)
+		score := fixtures.LadderScore(c)
 		runningMax = max(runningMax, score)
 		maxDrawdown = max(maxDrawdown, runningMax-score)
 	}
@@ -275,26 +277,26 @@ func TestTourStory_BreaksAndRustyReturns(t *testing.T) {
 	st := buildTourStory(t)
 	// Replay the model's own player state over the competitive sequence so
 	// the measurement flags EXACTLY the games the model played rusty.
-	ps := &playerState{}
+	ps := &fixtures.PlayerState{}
 	gaps := 0
 	var rusty, rest []string
 	for _, i := range st.comp {
 		s := st.fx.Summaries[i]
-		if ps.lastDay != "" && s.Date != ps.lastDay && daysBetween(ps.lastDay, s.Date) >= rustGapDays {
+		if ps.LastDay() != "" && s.Date != ps.LastDay() && fixtures.DaysBetween(ps.LastDay(), s.Date) >= fixtures.RustGapDays {
 			gaps++
 		}
-		pen := ps.observe(s.Date)
+		pen := ps.Observe(s.Date)
 		// Strong-rust games only (first half of the fade), tilt excluded so
 		// the read isn't contaminated.
-		if ps.dayLossRun < tiltRunStart && pen > rustMaxPts/2 {
+		if ps.DayLossRun() < fixtures.TiltRunStart && pen > fixtures.RustMaxPts/2 {
 			rusty = append(rusty, s.Result)
 		} else if pen == 0 {
 			rest = append(rest, s.Result)
 		}
-		ps.record(s.Result)
+		ps.Record(s.Result)
 	}
 	if gaps < 1 {
-		t.Fatalf("season has no %d+ day break — vacations should be carved into the calendar", rustGapDays)
+		t.Fatalf("season has no %d+ day break — vacations should be carved into the calendar", fixtures.RustGapDays)
 	}
 	rustyWR, rustyN := winrate(rusty)
 	restWR, _ := winrate(rest)
@@ -344,7 +346,7 @@ func TestTourStory_MeanRevertsAroundSkillLine(t *testing.T) {
 	crossings, lastSign := 0, 0
 	maxAbove, maxBelow := 0.0, 0.0
 	for i, c := range st.dpsCards {
-		gap := ladderScore(c) - trueSkillAt("dps", st.dpsFracs[i])
+		gap := fixtures.LadderScore(c) - fixtures.TrueSkillAt("dps", st.dpsFracs[i])
 		maxAbove = max(maxAbove, gap)
 		maxBelow = max(maxBelow, -gap)
 		sign := 0

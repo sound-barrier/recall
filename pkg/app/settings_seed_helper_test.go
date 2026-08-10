@@ -26,7 +26,7 @@ func seedSettings(t *testing.T, s app.Settings) {
 	// Startup may have stamped defaults (e.g. TesseractPath) into
 	// a.settings — overlay the test-supplied seed on top so the
 	// caller sees exactly what they asked for.
-	*app.AppSettings(a) = s
+	*app.SettingsOf(a) = s
 	if err := app.SaveSettings(a, s); err != nil {
 		t.Fatalf("seed settings: %v", err)
 	}

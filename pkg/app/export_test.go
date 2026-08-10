@@ -22,7 +22,6 @@ var (
 	DefaultSettings      = defaultSettings
 	LoadSettingsFrom     = loadSettingsFrom
 	MarshalSettings      = marshalSettings
-	AppBaseDir           = appBaseDir
 	DefaultTesseractPath = defaultTesseractPath
 	ValidateScreenshots  = validateScreenshotsDir
 	ValidateTesseract    = validateTesseractPath
@@ -72,35 +71,38 @@ var (
 )
 
 // ── Unexported *App field accessors ───────────────────────────────────────
+// Accessors carry the bare field name; where that collides with an exported
+// package symbol (the Settings type, the Profiles alias) they take an -Of
+// suffix instead.
 
-// AppSettings returns a pointer so tests can both read sub-fields and mutate
+// SettingsOf returns a pointer so tests can both read sub-fields and mutate
 // them in place (the documented App-handler test pattern that avoids the
 // IO-performing public setters).
-func AppSettings(a *App) *Settings { return &a.settings }
+func SettingsOf(a *App) *Settings { return &a.settings }
 
-// AppStore / SetAppStore bridge the persistence handle.
-func AppStore(a *App) db.Store       { return a.store }
-func SetAppStore(a *App, s db.Store) { a.store = s }
+// Store / SetStore bridge the persistence handle.
+func Store(a *App) db.Store       { return a.store }
+func SetStore(a *App, s db.Store) { a.store = s }
 
-// AppTessStatus exposes the cached Tesseract status so a parse test can mark
+// TessStatus exposes the cached Tesseract status so a parse test can mark
 // the engine "found" without shelling out to a real binary.
-func AppTessStatus(a *App) *TesseractStatus { return &a.tessStatus }
+func TessStatus(a *App) *TesseractStatus { return &a.tessStatus }
 
-func AppProfiles(a *App) *Profiles        { return a.profiles }
-func AppWatcher(a *App) *fsnotify.Watcher { return a.watcher }
+func ProfilesOf(a *App) *Profiles      { return a.profiles }
+func Watcher(a *App) *fsnotify.Watcher { return a.watcher }
 
-// AppWatchActivity snapshots the watcher's pending tally + last-seen
+// WatchActivity snapshots the watcher's pending tally + last-seen
 // stamp for the masthead-dot lifecycle tests.
-func AppWatchActivity(a *App) (int, string) {
+func WatchActivity(a *App) (int, string) {
 	a.watchMu.Lock()
 	defer a.watchMu.Unlock()
 	ev := a.watchActivityLocked()
 	return ev.Pending, ev.LastSeenAt
 }
-func AppWatchedDir(a *App) string               { return a.watchedDir }
-func AppParseCancel(a *App) *context.CancelFunc { return &a.parseCancel }
-func AppParseRunning(a *App) *bool              { return &a.parseRunning }
-func AppParseCancelMu(a *App) *sync.Mutex       { return &a.parseCancelMu }
+func WatchedDir(a *App) string               { return a.watchedDir }
+func ParseCancel(a *App) *context.CancelFunc { return &a.parseCancel }
+func ParseRunning(a *App) *bool              { return &a.parseRunning }
+func ParseCancelMu(a *App) *sync.Mutex       { return &a.parseCancelMu }
 
 // SseMsg aliases the unexported SSE message envelope (exported fields) so the
 // SSE test can type its channels.

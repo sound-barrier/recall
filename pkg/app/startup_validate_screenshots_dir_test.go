@@ -41,8 +41,8 @@ func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if app.AppSettings(a).ScreenshotsDir != "" {
-		t.Errorf("Startup must clear an invalid ScreenshotsDir; got %q", app.AppSettings(a).ScreenshotsDir)
+	if app.SettingsOf(a).ScreenshotsDir != "" {
+		t.Errorf("Startup must clear an invalid ScreenshotsDir; got %q", app.SettingsOf(a).ScreenshotsDir)
 	}
 
 	// Persisted state must match the in-memory clear — otherwise the
@@ -73,8 +73,8 @@ func TestStartup_ClearsScreenshotsDirWhenPathIsAFile(t *testing.T) {
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if app.AppSettings(a).ScreenshotsDir != "" {
-		t.Errorf("Startup must clear a ScreenshotsDir that's a file, not a dir; got %q", app.AppSettings(a).ScreenshotsDir)
+	if app.SettingsOf(a).ScreenshotsDir != "" {
+		t.Errorf("Startup must clear a ScreenshotsDir that's a file, not a dir; got %q", app.SettingsOf(a).ScreenshotsDir)
 	}
 }
 
@@ -89,9 +89,9 @@ func TestStartup_PreservesValidScreenshotsDir(t *testing.T) {
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if app.AppSettings(a).ScreenshotsDir != good {
+	if app.SettingsOf(a).ScreenshotsDir != good {
 		t.Errorf("Startup must not touch a valid ScreenshotsDir; got %q want %q",
-			app.AppSettings(a).ScreenshotsDir, good)
+			app.SettingsOf(a).ScreenshotsDir, good)
 	}
 }
 
@@ -124,9 +124,9 @@ func TestStartup_ClearsDefaultRelativePathWhenItDoesNotResolve(t *testing.T) {
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if app.AppSettings(a).ScreenshotsDir != "" {
+	if app.SettingsOf(a).ScreenshotsDir != "" {
 		t.Errorf("Startup must clear the relative 'screenshots' default when it doesn't resolve; got %q",
-			app.AppSettings(a).ScreenshotsDir)
+			app.SettingsOf(a).ScreenshotsDir)
 	}
 }
 
@@ -157,7 +157,7 @@ func TestStartup_ClearsLeakedTempDirPathFromAPriorTestRun(t *testing.T) {
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if app.AppSettings(a).ScreenshotsDir != "" {
-		t.Errorf("Startup must clear a leaked deleted-temp path; got %q", app.AppSettings(a).ScreenshotsDir)
+	if app.SettingsOf(a).ScreenshotsDir != "" {
+		t.Errorf("Startup must clear a leaked deleted-temp path; got %q", app.SettingsOf(a).ScreenshotsDir)
 	}
 }

@@ -35,8 +35,8 @@ func TestAutoProbeOnFirstRun_AppliesWhenSettingIsEmpty(t *testing.T) {
 
 	a := &app.App{}
 	app.AutoProbeOnFirstRun(a)
-	if app.AppSettings(a).ScreenshotsDir != want {
-		t.Fatalf("settings.ScreenshotsDir = %q; want %q", app.AppSettings(a).ScreenshotsDir, want)
+	if app.SettingsOf(a).ScreenshotsDir != want {
+		t.Fatalf("settings.ScreenshotsDir = %q; want %q", app.SettingsOf(a).ScreenshotsDir, want)
 	}
 }
 
@@ -58,9 +58,9 @@ func TestAutoProbeOnFirstRun_NoOpWhenAlreadyConfigured(t *testing.T) {
 	}
 
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = preset
+	app.SettingsOf(a).ScreenshotsDir = preset
 	app.AutoProbeOnFirstRun(a)
-	if app.AppSettings(a).ScreenshotsDir != preset {
-		t.Fatalf("settings.ScreenshotsDir overwrote preset: got %q want %q", app.AppSettings(a).ScreenshotsDir, preset)
+	if app.SettingsOf(a).ScreenshotsDir != preset {
+		t.Fatalf("settings.ScreenshotsDir overwrote preset: got %q want %q", app.SettingsOf(a).ScreenshotsDir, preset)
 	}
 }

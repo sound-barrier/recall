@@ -39,8 +39,8 @@ func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 	if err := a1.SetScreenshotsDir(dir); err != nil {
 		t.Fatalf("session 1 SetScreenshotsDir: %v", err)
 	}
-	if app.AppSettings(a1).ScreenshotsDir != dir {
-		t.Fatalf("session 1 in-memory dir = %q; want %q", app.AppSettings(a1).ScreenshotsDir, dir)
+	if app.SettingsOf(a1).ScreenshotsDir != dir {
+		t.Fatalf("session 1 in-memory dir = %q; want %q", app.SettingsOf(a1).ScreenshotsDir, dir)
 	}
 	// Sanity: the write reached disk so a fresh loadSettings sees it.
 	persisted := app.LoadSettings(a1)
@@ -54,8 +54,8 @@ func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 	a2 := app.NewWithStore(&fakeStore{})
 	a2.Startup(context.Background())
 
-	if app.AppSettings(a2).ScreenshotsDir != dir {
-		t.Errorf("session 2 ScreenshotsDir = %q; want %q (the dir did NOT persist across the simulated app restart)", app.AppSettings(a2).ScreenshotsDir, dir)
+	if app.SettingsOf(a2).ScreenshotsDir != dir {
+		t.Errorf("session 2 ScreenshotsDir = %q; want %q (the dir did NOT persist across the simulated app restart)", app.SettingsOf(a2).ScreenshotsDir, dir)
 	}
 	if got := a2.GetScreenshotsDir(); got != dir {
 		t.Errorf("session 2 GetScreenshotsDir() = %q; want %q (the public getter sees the cleared value)", got, dir)
@@ -82,8 +82,8 @@ func TestScreenshotsDir_PersistsAcrossMultipleRestarts(t *testing.T) {
 	for i := range 5 {
 		a := app.NewWithStore(&fakeStore{})
 		a.Startup(context.Background())
-		if app.AppSettings(a).ScreenshotsDir != dir {
-			t.Errorf("restart #%d: ScreenshotsDir = %q; want %q", i+1, app.AppSettings(a).ScreenshotsDir, dir)
+		if app.SettingsOf(a).ScreenshotsDir != dir {
+			t.Errorf("restart #%d: ScreenshotsDir = %q; want %q", i+1, app.SettingsOf(a).ScreenshotsDir, dir)
 		}
 	}
 }
@@ -122,8 +122,8 @@ func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if app.AppSettings(a).ScreenshotsDir != dir {
-		t.Errorf("Startup wiped a perfectly-valid path because it was temporarily unreadable; got %q want %q", app.AppSettings(a).ScreenshotsDir, dir)
+	if app.SettingsOf(a).ScreenshotsDir != dir {
+		t.Errorf("Startup wiped a perfectly-valid path because it was temporarily unreadable; got %q want %q", app.SettingsOf(a).ScreenshotsDir, dir)
 	}
 	// And the persisted shape must match: if Startup re-saved an
 	// empty value, the next session reads it back as "" and the bug
@@ -158,7 +158,7 @@ func TestScreenshotsDir_PersistsWhenDirContainsCommonRealWorldChars(t *testing.T
 
 	a2 := app.NewWithStore(&fakeStore{})
 	a2.Startup(context.Background())
-	if app.AppSettings(a2).ScreenshotsDir != dir {
-		t.Errorf("ScreenshotsDir = %q; want %q (space-containing path did not survive restart)", app.AppSettings(a2).ScreenshotsDir, dir)
+	if app.SettingsOf(a2).ScreenshotsDir != dir {
+		t.Errorf("ScreenshotsDir = %q; want %q (space-containing path did not survive restart)", app.SettingsOf(a2).ScreenshotsDir, dir)
 	}
 }

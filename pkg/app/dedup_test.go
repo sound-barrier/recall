@@ -38,7 +38,7 @@ func writeFile(t *testing.T, dir, name string, content []byte) {
 
 func TestDedup_ByteIdenticalCopySkipsOCRAndLinks(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	dir := app.AppSettings(a).ScreenshotsDir
+	dir := app.SettingsOf(a).ScreenshotsDir
 	// Lexical scan order makes a-original.png the canonical copy.
 	writeFile(t, dir, "a-original.png", []byte("same-bytes"))
 	writeFile(t, dir, "b-copy.png", []byte("same-bytes"))
@@ -69,7 +69,7 @@ func TestDedup_ByteIdenticalCopySkipsOCRAndLinks(t *testing.T) {
 
 func TestDedup_StandingDuplicateStaysSkippedOnLaterRuns(t *testing.T) {
 	a, _ := newParseReadyApp(t)
-	dir := app.AppSettings(a).ScreenshotsDir
+	dir := app.SettingsOf(a).ScreenshotsDir
 	writeFile(t, dir, "a-original.png", []byte("same-bytes"))
 	writeFile(t, dir, "b-copy.png", []byte("same-bytes"))
 

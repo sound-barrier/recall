@@ -62,7 +62,7 @@ func TestApplyGameDataUpdate_HappyPath_WritesFilesAndManifest(t *testing.T) {
 	}
 
 	// Files written to <RECALL_DATA_DIR>/data/.
-	dataDir := filepath.Join(app.AppBaseDir(), "data")
+	dataDir := filepath.Join(app.BaseDir(), "data")
 	for _, name := range []string{"heroes.yaml", "maps.yaml", "screenshot_sources.yaml"} {
 		if _, err := os.Stat(filepath.Join(dataDir, name)); err != nil {
 			t.Errorf("expected %s to exist after apply: %v", name, err)
@@ -134,7 +134,7 @@ func TestApplyGameDataUpdate_SHAMismatch_RejectsWithoutWriting(t *testing.T) {
 
 	// No files written under <data dir>.
 	for _, name := range []string{"heroes.yaml", "maps.yaml", "screenshot_sources.yaml"} {
-		path := filepath.Join(app.AppBaseDir(), "data", name)
+		path := filepath.Join(app.BaseDir(), "data", name)
 		if _, err := os.Stat(path); err == nil {
 			t.Errorf("expected %s NOT written after SHA mismatch", name)
 		}

@@ -1,10 +1,12 @@
-package db
+package db_test
 
 import (
 	"database/sql"
 	"testing"
 
 	_ "modernc.org/sqlite"
+
+	"recall/pkg/db"
 )
 
 // Simulates upgrading a DB created before played_at_utc existed: a table
@@ -27,15 +29,15 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 		t.Fatalf("create old user_match_data: %v", err)
 	}
 
-	if has, err := columnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
+	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
 		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)
 	}
 
-	if err := ensureAdditiveColumns(d); err != nil {
+	if err := db.EnsureAdditiveColumns(d); err != nil {
 		t.Fatalf("ensureAdditiveColumns: %v", err)
 	}
 	for _, tbl := range []string{"summary_screenshots", "user_match_data"} {
-		if has, err := columnExists(d, tbl, "played_at_utc"); err != nil || !has {
+		if has, err := db.ColumnExists(d, tbl, "played_at_utc"); err != nil || !has {
 			t.Errorf("%s.played_at_utc missing after ensure (has=%v err=%v)", tbl, has, err)
 		}
 	}
@@ -45,7 +47,7 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 	}
 
 	// Idempotent: a second run is a no-op, not a "duplicate column" error.
-	if err := ensureAdditiveColumns(d); err != nil {
+	if err := db.EnsureAdditiveColumns(d); err != nil {
 		t.Errorf("second ensure should be a no-op: %v", err)
 	}
 }

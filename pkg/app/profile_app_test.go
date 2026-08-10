@@ -103,8 +103,8 @@ func TestApp_SwitchProfile_ReinitializesStoreAndSettings(t *testing.T) {
 	// CreateProfile already activated; verify settings are fresh
 	// (alt is a brand new profile so its settings should be defaults
 	// with no screenshots dir).
-	if app.AppSettings(a).ScreenshotsDir != "" {
-		t.Errorf("after switching to alt, ScreenshotsDir = %q; want empty (fresh profile)", app.AppSettings(a).ScreenshotsDir)
+	if app.SettingsOf(a).ScreenshotsDir != "" {
+		t.Errorf("after switching to alt, ScreenshotsDir = %q; want empty (fresh profile)", app.SettingsOf(a).ScreenshotsDir)
 	}
 
 	// And the store's underlying DB path moved to alt's dir.
@@ -117,8 +117,8 @@ func TestApp_SwitchProfile_ReinitializesStoreAndSettings(t *testing.T) {
 	if err := a.SwitchProfile("main"); err != nil {
 		t.Fatalf("SwitchProfile main: %v", err)
 	}
-	if app.AppSettings(a).ScreenshotsDir != mainDir {
-		t.Errorf("after switching back to main, ScreenshotsDir = %q; want %q (main's persisted value)", app.AppSettings(a).ScreenshotsDir, mainDir)
+	if app.SettingsOf(a).ScreenshotsDir != mainDir {
+		t.Errorf("after switching back to main, ScreenshotsDir = %q; want %q (main's persisted value)", app.SettingsOf(a).ScreenshotsDir, mainDir)
 	}
 }
 
@@ -246,10 +246,10 @@ func TestApp_RenameProfile_Active_PreservesData(t *testing.T) {
 		t.Errorf("active = %q, want silentstorm", got.Active)
 	}
 	// In-memory settings carried through and the store was re-opened.
-	if app.AppSettings(a).ScreenshotsDir != mainDir {
-		t.Errorf("ScreenshotsDir lost after active rename; got %q want %q", app.AppSettings(a).ScreenshotsDir, mainDir)
+	if app.SettingsOf(a).ScreenshotsDir != mainDir {
+		t.Errorf("ScreenshotsDir lost after active rename; got %q want %q", app.SettingsOf(a).ScreenshotsDir, mainDir)
 	}
-	if app.AppStore(a) == nil {
+	if app.Store(a) == nil {
 		t.Error("store should have been re-opened after active rename")
 	}
 	// Re-loading from disk also sees the renamed profile + its dir.

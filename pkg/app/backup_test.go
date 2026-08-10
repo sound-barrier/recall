@@ -17,7 +17,7 @@ func newRealApp(t *testing.T) *app.App {
 	a := app.New()
 	a.Startup(context.Background())
 	t.Cleanup(func() {
-		if s := app.AppStore(a); s != nil {
+		if s := app.Store(a); s != nil {
 			_ = s.Close()
 		}
 	})
@@ -26,7 +26,7 @@ func newRealApp(t *testing.T) *app.App {
 
 func seedSummary(t *testing.T, a *app.App, filename, key string) {
 	t.Helper()
-	if err := app.AppStore(a).UpsertSummary(db.SummaryRow{
+	if err := app.Store(a).UpsertSummary(db.SummaryRow{
 		Filename:   filename,
 		MatchKey:   key,
 		Map:        "rialto",
@@ -61,7 +61,7 @@ func TestApp_RestoreDatabase_ReplacesAndReopens(t *testing.T) {
 	}
 
 	// Diverge the live DB after the snapshot was taken.
-	if err := app.AppStore(a).Clear(); err != nil {
+	if err := app.Store(a).Clear(); err != nil {
 		t.Fatalf("clear: %v", err)
 	}
 	seedSummary(t, a, "b.png", "match-B")
@@ -70,7 +70,7 @@ func TestApp_RestoreDatabase_ReplacesAndReopens(t *testing.T) {
 		t.Fatalf("RestoreDatabase: %v", err)
 	}
 
-	snap, err := app.AppStore(a).LoadAll()
+	snap, err := app.Store(a).LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll after restore: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestApp_RestoreDatabase_RejectsGarbageLeavingDBIntact(t *testing.T) {
 		t.Fatalf("err = %v, want ErrRestoreInvalid", err)
 	}
 
-	snap, err := app.AppStore(a).LoadAll()
+	snap, err := app.Store(a).LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll after rejected restore: %v", err)
 	}

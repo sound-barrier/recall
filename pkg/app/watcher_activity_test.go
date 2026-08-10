@@ -18,7 +18,7 @@ func TestWatchActivity_FileEventsIncrement_ParseRunResets(t *testing.T) {
 
 	app.NoteWatchActivity(a)
 	app.NoteWatchActivity(a)
-	pending, lastSeen := app.AppWatchActivity(a)
+	pending, lastSeen := app.WatchActivity(a)
 	if pending != 2 {
 		t.Fatalf("pending after two file events = %d, want 2", pending)
 	}
@@ -30,7 +30,7 @@ func TestWatchActivity_FileEventsIncrement_ParseRunResets(t *testing.T) {
 	if err := a.ParseScreenshots(); err != nil {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
-	pending, lastSeen = app.AppWatchActivity(a)
+	pending, lastSeen = app.WatchActivity(a)
 	if pending != 0 {
 		t.Errorf("pending after a parse run = %d, want 0 (run consumes the queue)", pending)
 	}
@@ -42,7 +42,7 @@ func TestWatchActivity_FileEventsIncrement_ParseRunResets(t *testing.T) {
 func TestWatchActivity_ResetIsIdempotentWhenNothingPending(t *testing.T) {
 	a, _ := newParseReadyApp(t)
 	app.ResetWatchActivity(a)
-	if pending, _ := app.AppWatchActivity(a); pending != 0 {
+	if pending, _ := app.WatchActivity(a); pending != 0 {
 		t.Errorf("pending = %d, want 0", pending)
 	}
 }

@@ -198,15 +198,21 @@ func TestGenerateMatchFixture_FlexCoversEveryMapAndHero(t *testing.T) {
 			seenHeroes[hp.Hero] = true
 		}
 	}
-	for _, m := range fixtures.FixtureMaps {
+	if len(fixtures.FixtureMaps()) == 0 {
+		t.Fatal("FixtureMaps is empty — the coverage assertions below would be vacuous")
+	}
+	for _, m := range fixtures.FixtureMaps() {
 		if !seenMaps[m] {
 			t.Errorf("map %q missing from default-flex corpus", m)
 		}
 	}
-	allHeroes := make([]string, 0, len(fixtures.FixtureTanks)+len(fixtures.FixtureSupports)+len(fixtures.FixtureDPS))
-	allHeroes = append(allHeroes, fixtures.FixtureTanks...)
-	allHeroes = append(allHeroes, fixtures.FixtureSupports...)
-	allHeroes = append(allHeroes, fixtures.FixtureDPS...)
+	allHeroes := make([]string, 0, len(fixtures.FixtureTanks())+len(fixtures.FixtureSupports())+len(fixtures.FixtureDPS()))
+	allHeroes = append(allHeroes, fixtures.FixtureTanks()...)
+	allHeroes = append(allHeroes, fixtures.FixtureSupports()...)
+	allHeroes = append(allHeroes, fixtures.FixtureDPS()...)
+	if len(allHeroes) == 0 {
+		t.Fatal("hero pools are empty — the coverage assertions below would be vacuous")
+	}
 	for _, h := range allHeroes {
 		if !seenHeroes[h] {
 			t.Errorf("hero %q missing from default-flex corpus", h)

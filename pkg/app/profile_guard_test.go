@@ -23,9 +23,9 @@ func TestSwitchProfile_RefusesWhileParseInFlight(t *testing.T) {
 	}
 
 	// Occupy the parse slot exactly as claimParse does.
-	app.AppParseCancelMu(a).Lock()
-	*app.AppParseRunning(a) = true
-	app.AppParseCancelMu(a).Unlock()
+	app.ParseCancelMu(a).Lock()
+	*app.ParseRunning(a) = true
+	app.ParseCancelMu(a).Unlock()
 
 	if err := a.SwitchProfile("main"); !errors.Is(err, app.ErrProfileSwitchDuringParse) {
 		t.Fatalf("SwitchProfile during parse = %v, want ErrProfileSwitchDuringParse", err)
@@ -42,9 +42,9 @@ func TestSwitchProfile_RefusesWhileParseInFlight(t *testing.T) {
 	}
 
 	// Slot released → the switch proceeds normally.
-	app.AppParseCancelMu(a).Lock()
-	*app.AppParseRunning(a) = false
-	app.AppParseCancelMu(a).Unlock()
+	app.ParseCancelMu(a).Lock()
+	*app.ParseRunning(a) = false
+	app.ParseCancelMu(a).Unlock()
 	if err := a.SwitchProfile("main2"); err != nil {
 		t.Fatalf("SwitchProfile after parse ended = %v, want nil", err)
 	}

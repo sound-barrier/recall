@@ -27,3 +27,11 @@ var (
 func NewMigration(version int, name, up, down string) migration {
 	return migration{version: version, name: name, up: up, down: down}
 }
+
+// Additive-schema bridges: ensureAdditiveColumns runs inside NewSQLStore, so
+// the graceful-upgrade path has no public driver over a bare *sql.DB. Compiled
+// only under test.
+var (
+	EnsureAdditiveColumns = ensureAdditiveColumns
+	ColumnExists          = columnExists
+)
