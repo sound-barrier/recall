@@ -314,7 +314,28 @@ user-event) — `@vue/test-utils` is banned in `src/**/*.test.ts` (eslint
 `no-restricted-imports`; it survives only as a transitive dep of
 `@testing-library/vue`). Query ladder: `getByRole(name)` > `getByLabelText` >
 `getByText` > a justified `querySelector` escape hatch annotated with
-`eslint-disable-next-line testing-library/no-node-access -- <reason>`. App-level
+`eslint-disable-next-line testing-library/no-node-access -- <reason>`.
+
+**What you may NOT assert** (`no-restricted-syntax`, error): `toHaveClass`,
+`toHaveStyle`, a `.style` / `.className` / `.classList` read inside `expect()`,
+and `toHaveAttribute` / `getAttribute` on a `data-*` name. Setup-time writes
+(`el.style.width = …` in a fixture) stay legal — the rules are scoped to
+`expect()`. The escape is an annotated
+`// eslint-disable-next-line no-restricted-syntax -- <reason>`; the sanctioned
+reasons are aria-hidden decoration, a visual tint encoding a threshold
+(`bucketCellClass`, `row.judgment`, diff row tints), a `data-*` the app itself
+reads back (`data-widget-id` → drag engine, `data-combo-id` → click-outside),
+and focus/source-order pins no TL query expresses.
+
+**Meters carry their value in ARIA.** A share/winrate/progress bar puts
+`role="progressbar"` + `aria-valuenow` (+ `aria-valuemin`/`max`, or
+`aria-valuetext` for non-percent units) on the **fill** element, never on the
+`.bd-bar` track — a progressbar makes its children presentational, and the
+track holds visible text (`.bd-time`) that must stay in the a11y tree. The
+accessible name is identity-only (`` `${row.key} winrate` ``); the number
+lives in `aria-valuenow`, so tests read
+`getByRole('progressbar', { name: 'ana winrate' })` and assert the attribute.
+An indeterminate bar omits `aria-valuenow` rather than lying with 0. App-level
 tests use `renderApp(overrides?)` from `@/test-utils` (installs an api mock via
 `setApiBacking()` on the `@/api-client` seam, so the Wails/fetch shim never
 fires): `await renderApp({ records: [...] })` then assert via `screen`. The
@@ -353,6 +374,23 @@ await a macrotask (`await new Promise(r => setTimeout(r, 0))`), not just
 **Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via Testing Library `render()`). Playwright → `frontend/tests/e2e/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 
 **Playwright e2e.** Specs in `frontend/tests/e2e/`. `make test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Existing files: `smoke.spec.ts` (loads, tab nav, skip-link), `a11y.spec.ts` (axe per view). Per the root `CLAUDE.md` TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation.
+
+**The e2e locator ladder is NOT the unit ban list.** Native queries come first
+and `playwright/prefer-native-locators` enforces it: `locator('[role=tab]')`,
+`locator('[data-testid=x]')`, `locator('[aria-label=…]')` and the
+title/placeholder/alt forms are errors, because each spells an already-accessible
+query as CSS. Below that tier, `data-*` and class-state pins are **sanctioned** —
+the built page is the public surface here, and a compact hook beats a brittle
+text match on rows/chips/panels with no accessible handle. Tabs and panels are
+queried by role; the two whose accessible name grows a suffix use an anchored
+regex (`getByRole('tab', { name: /^Matches/ })` — the filters dot; `/^Unknown/` —
+the badge count). Named exemptions from the rule, deliberately structural:
+`elo-scenarios.spec.ts` (its 21-attribute sweep — the attribute NAMES are the
+snapshot schema) and `a11y-theme-snapshot.spec.ts` (`[class*=…]` family probes).
+Route-callback captures go through `routeCapture<T>()` in `tests/e2e/_capture.ts`,
+and nullable reads through its `must()` — the specs are type-checked by
+`tsconfig.e2e.json` (`npm run typecheck:e2e`), so `as`-casting past a null is a
+build failure, not a habit.
 
 **Local iteration loop.** `reuseExistingServer: !process.env.CI` keeps
 `recall-server` running across `npx playwright test` runs, but the binary embeds

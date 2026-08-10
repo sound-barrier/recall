@@ -397,9 +397,36 @@ the `setApiBacking` seam. Assert on user-facing semantics (visible text, ARIA
 state, behavior), never on styling classes. Tests coupled to internal data
 structures are brittle, resist refactoring, and should be rewritten or
 deleted. If something seems untestable black-box, that is a design smell —
-fix the API, don't white-box the test. (Playwright e2e keeps its `data-*`
-hook convention — those attributes are the deliberate public test surface of
-the built page.)
+fix the API, don't white-box the test.
+
+**The unit ban list is mechanical.** `no-restricted-syntax` in
+`frontend/eslint.config.js` fails the build on `toHaveClass`, `toHaveStyle`,
+a `.style`/`.className`/`.classList` read inside `expect()`, and
+`toHaveAttribute`/`getAttribute` on a `data-*` name — because each of those
+asserts the paint or the wiring instead of the contract. The escape is an
+annotated `// eslint-disable-next-line no-restricted-syntax -- <reason>`, kept
+honest by `reportUnusedDisableDirectives`. Legitimate reasons are narrow:
+aria-hidden decoration, a visual tint encoding a threshold, and a `data-*`
+attribute **production code reads back** (`data-widget-id` for the drag
+engine, `data-combo-id` for click-outside). When a test wants a value the
+markup only paints, give the markup the semantics instead: a meter carries
+`role="progressbar"` + `aria-valuenow` on its FILL element (never the track,
+whose visible text must stay in the a11y tree), and the test reads
+`getByRole('progressbar', { name: 'lijiang tower share' })`.
+
+**Playwright e2e has its own ladder**, and it is not the unit ban list.
+Native queries first — `getByRole` / `getByLabel` / `getByText` /
+`getByTestId` — enforced by `playwright/prefer-native-locators`, which
+forbids spelling an already-accessible query as a CSS selector
+(`locator('[role=tab]')`, `locator('[data-testid=x]')`). Below that,
+`data-*` and class-state pins ARE sanctioned: the built page is the public
+surface here, and a compact structural hook beats a brittle text match for
+rows, chips, and panels that carry no accessible handle. Two harnesses are
+named exemptions that must not be "fixed": `elo-scenarios.spec.ts` sweeps 21
+attributes whose NAMES are the snapshot schema, and `a11y-theme-snapshot.spec.ts`
+probes `[class*=…]` families by documented design. Tabs whose accessible name
+grows a suffix (Matches' filters dot, Unknown's badge count) are queried with
+an anchored regex — `{ name: /^Matches/ }` — never an exact string.
 
 **Coverage floors live in the gates, not this file:** Go = `GO_COVERAGE_MIN`
 in `Taskfile.yml`; frontend = `coverage.thresholds` in
