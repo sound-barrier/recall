@@ -75,6 +75,12 @@ without agreement on direction.
   implementations — including any leaf packages carved out of `pkg/app` — add the
   assertion in the same file as the type.
 
+- **Language: American English.** All identifiers, comments, docs, commit
+  messages, and user-facing copy use American spellings — color, canceled,
+  organize; never the British forms (colour, cancelled, organise). Enforced
+  mechanically by `misspell` (Go, `locale: US` in `.golangci.yml`) and `typos`
+  (repo-wide, `locale = "en-us"` in `_typos.toml`), both wired into CI.
+
 - **Naming**: identifiers must reveal intent without a comment. If you find
   yourself writing a comment to explain a name, the name is wrong — rename it.
   Abbreviations only where universally understood (`ctx`, `err`, `buf`). No
@@ -114,11 +120,16 @@ without agreement on direction.
   Same best-effort spirit as File length — this is the direction of travel, not a
   gate; call out (don't silently grow) a grouping that sprawls across concerns.
 
-- **McCabe cyclomatic complexity**: aspire to keep per-function complexity ≤ 10.
-  Anything above 15 is a refactor candidate and should be called out in review.
-  Reaching the ideal isn't always realistic — deeply nested parser logic or
-  generated code may exceed it — but complexity should always be the direction
-  of travel, never an afterthought.
+- **McCabe cyclomatic complexity ≤ 10 — enforced, not aspirational.**
+  `gocyclo`/`gocognit`/`funlen` (Go, `.golangci.yml`) and ESLint's
+  `complexity` rule (frontend) fail the build past the threshold, production
+  and test code alike — extract instead of growing branches. A justified
+  inline disable (`//nolint:gocyclo // <reason>` /
+  `// eslint-disable-next-line complexity -- <reason>`) is reserved for code
+  where splitting genuinely hides the one algorithm (single-pass parser pixel
+  scans are the canonical case); `nolintlint` and
+  `reportUnusedDisableDirectives` police that every disable stays specific,
+  explained, and live.
 
 - **TypeScript / Vue**: idiomatic TS — no `any`, narrow types at boundaries
   (`Pick<>` or permissive interfaces so callers aren't forced to satisfy fields
@@ -129,6 +140,14 @@ without agreement on direction.
   Follow the [Vue 3 Style Guide](https://vuejs.org/style-guide/) for component
   conventions not covered explicitly here (naming, prop casing, SFC element
   ordering).
+
+- **Accessibility is enforced, not aspirational.**
+  `eslint-plugin-vuejs-accessibility` runs in `task lint`; the axe e2e suite
+  (`frontend/tests/e2e/a11y.spec.ts`) fails `task test-e2e` on any WCAG 2.1
+  A/AA violation across every theme × view combination. Keep both green:
+  label every control, clear AA contrast on every surface AND on a token's
+  own tint, preserve the skip link, focus traps, and keyboard operability.
+  Detailed patterns live in `.claude/rules/a11y.md` and `frontend/CLAUDE.md`.
 
 - **Shell scripts**: follow the
   [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html).
@@ -148,10 +167,36 @@ without agreement on direction.
 
 ### Design principles
 
-- **SRP / DIP — dependency-inject seams that make testing possible.** Production
-  wires the real implementation; tests wire a fake. Examples in the codebase:
-  the `db.Store` interface threaded into `*App` via `NewWithStore`; the
-  `mountApp` helper's `vi.doMock('./api', …)` boundary for SFC tests.
+- **SOLID — a priority for TypeScript, a lens for Go.** In the Vue/TS code,
+  treat all five as first-class design rules. In Go (not OOP) they are
+  *suggestions*: apply the underlying idea where it improves testability or
+  readability, never as OOP ceremony.
+  - **S — Single responsibility.** A component, composable, function, or type
+    does one thing (*see Function size*, *File length*). Data fetching
+    (`src/queries/`), state (stores), and presentation (SFCs) are separable
+    concerns; pure helpers live in `@/match/`, never inside an SFC.
+  - **O — Open/closed.** Adding a variant should *extend*, not edit — prefer a
+    registry keyed by a discriminant over a `switch` every new case must
+    touch. Exemplars: `NARROW_CLAUSES`
+    (`frontend/src/composables/matches/matchesNarrow.clauses.ts`),
+    `WIDGET_REGISTRY` (`frontend/src/dashboard/widgets.ts`),
+    `additiveColumns` (`pkg/db/schema.go`).
+  - **L — Liskov substitution.** An implementation must honor the contract its
+    callers rely on — `dbtest.Fake` passes the same Store contract suite as
+    `*SQLStore`; a fake that cuts corners is a broken fake, not a shortcut.
+  - **I — Interface segregation.** Depend only on what you use: small (1–3
+    method) consumer-side interfaces in Go; the narrowest prop or `Pick<>` in
+    TS (*see TypeScript / Vue*).
+  - **D — Dependency inversion.** High-level logic depends on a seam, not a
+    concrete: production wires the real implementation, tests wire a fake —
+    the `db.Store` interface threaded into `*App` via `NewWithStore`; the
+    frontend's `@/api-client` seam swapped with `setApiBacking()`.
+
+- **Composition over inheritance.** Build behavior by assembling small
+  collaborators, not by extending a base type. In Go, embed for behavior
+  delegation only (*see Code style*) and prefer a composed interface over one
+  fat type. In Vue/TS, compose components and composables; a deep hierarchy is
+  a design smell, a flat set of composed parts is the goal.
 
 - **Prefer function-variable seams over interfaces for one-method dependencies**
   (duck typing in Go). When the seam has a single method and a single fake, an
@@ -178,6 +223,145 @@ without agreement on direction.
   for keeping the codebase readable and maintainable long-term. This is not
   optional on feature or fix commits — it is part of the definition of done.
 
+### Code smells
+
+A smell is a *hint* to look closer, not a defect to reflexively refactor —
+weigh it against YAGNI and the rule of three first (a two-case `switch` is
+not yet a registry). Many below are caught mechanically: a parenthetical
+marks which linter catches it (**lint**) or which rule above it restates
+(*see*). The rest are review-time judgment.
+
+**Bloaters** — grown too big to hold in your head:
+
+- *Long method* — does more than one thing → extract (*see Function size*;
+  **lint** gocyclo/gocognit/funlen, ESLint `complexity`).
+- *Large class / God object* — too many responsibilities → split by concern
+  (*see File length*, *Package & directory size*; the former `pkg/app`
+  god-package is the in-repo cautionary tale).
+- *Primitive obsession* — a bare `string`/`int` carrying domain meaning (a
+  match key, a hero slug) → a named type the compiler can track.
+- *Long parameter list* — 5+ positional params → bundle the cohesive ones
+  into a struct/options object, or split (*see Law of Demeter*; **lint**
+  ESLint `max-params` ≤ 4; Go by review).
+- *Data clumps* — the same few fields travel together everywhere → give them
+  a type (the `aggregate.Sidecars` shape).
+
+**Object-orientation abusers:**
+
+- *Type/kind `switch` every new case must edit* → a registry keyed by the
+  discriminant (*see Open/closed*; **lint** `exhaustive` keeps a genuine Go
+  switch honest — a Go registry *map* loses that check, so pair it with a
+  completeness test, the `NARROW_CLAUSES` pattern).
+- *Temporary field* — set in some flows, nil otherwise → a separate type or a
+  parameter.
+
+**Change preventers:**
+
+- *Divergent change* — one file edited for unrelated reasons → split by
+  reason to change (*see Single responsibility*).
+- *Shotgun surgery* — one conceptual change touches many files → centralize
+  the knowledge (one registry, constant, or helper — the pre-registry narrow
+  clauses shipped a bug exactly this way).
+
+**Dispensables:**
+
+- *Comments as deodorant* — a comment covering for a bad name → rename; keep
+  only WHY comments (*see Comments*).
+- *Duplicated code* → extract on the third occurrence (*see DRY*).
+- *Dead code* — unused funcs/params/vars/branches → delete (**lint** unused,
+  ineffassign, unparam; deadcode + knip in CI).
+- *Speculative generality* — abstraction for a caller that doesn't exist →
+  delete (*see YAGNI*).
+- *Middle man / lazy class* — a type that only delegates → inline it.
+
+**Couplers:**
+
+- *Feature envy* — a method uses another type's data more than its own →
+  move it onto that type.
+- *Inappropriate intimacy* — reaching into another unit's internals; tests
+  asserting on privates → use the public surface (*see Test public
+  interfaces*).
+- *Message chains* — `a.b().c().d()` threaded through layers → pass the one
+  bundled value needed (*see Law of Demeter*).
+
+**Modern additions:**
+
+- *Boolean/flag parameter* — `f(…, true)` that forks behavior → two
+  functions or a named enum/union, so the call site reads.
+- *Magic number/string* — an unexplained literal → a named constant
+  (prose-only: number-literal linters over-fire on legitimate values here —
+  catch it in review).
+- *Deep nesting / arrow code* — pyramids of `if`/callbacks → early returns,
+  guard clauses, extracted helpers (**lint** nestif; ESLint `max-depth` ≤ 4,
+  `max-nested-callbacks` ≤ 3 outside tests).
+- *Nested ternary* — `a ? … : b ? … : …` → a helper, lookup, or early return
+  (**lint** `no-nested-ternary`).
+- *Mutating a parameter* — reassigning an argument in place → return a new
+  value (**lint** `no-param-reassign`).
+
+**Go-specific:**
+
+- `any` as a shortcut → a concrete type or a small (1–3 method) interface;
+  legitimate only at true marshal/variadic boundaries (`writeJSON`,
+  `emitEvent`). `gocritic` flags a range of Go micro-smells (**lint**).
+- *Interface pollution* — an interface with one implementation, or defined on
+  the producer side → declare it at the *consumer*, only once a second impl
+  or a fake earns it; a one-method seam is a func var, not an interface
+  (*see Design principles*).
+- *Ignored error* — `_ = f()` dropping a real error → handle or return it
+  (**lint** errcheck, nilerr; *see Error handling*).
+- *Sentinel zero-value as "no result"* — `""`/`0`/`nil` meaning absence → a
+  typed result or an explicit error (*see Error handling*).
+- *Naked return* in more than a couple of lines → explicit values (**lint**
+  nakedret).
+- *Stutter* — `match.MatchRecord`, `db.DBHealth` → drop the package prefix:
+  `match.Record`, `db.Health` (**lint** revive).
+- *Premature goroutines/channels* — concurrency with no measured need →
+  simple synchronous code first (*see YAGNI*).
+
+**Vue-specific:**
+
+- *`watch`/`watchEffect` as derived state* — writing a ref a `computed`
+  could express declaratively → derive during render; an effect is for real
+  external side effects.
+- *Side effects in a `computed`* — a getter that writes state, fires
+  requests, or touches the DOM → move the effect out; getters stay pure.
+- *Shadow state* — copying a prop/store value into a local `ref` "for
+  editing" with no explicit sync contract → `computed` get/set or an
+  explicit draft+commit.
+- *Prop mutation* — assigning to a prop or mutating a prop-passed object
+  (**lint** vue/no-mutating-props). Data flows down; store actions flow up.
+- *Giant SFC* — markup + business logic + styles past ~500 lines → pure
+  logic to `@/match/`, stateful logic to a composable, style bulk to a
+  scoped sibling stylesheet (`<style scoped src="./x.css">` keeps hash
+  scoping and chunk placement).
+- *Fetch outside the query layer* — a component or watcher fetching server
+  state directly → `src/queries/` owns server state (see
+  `frontend/CLAUDE.md`).
+- *Prop drilling / emit relay chains* — threading values through layers that
+  don't read them → components read the Pinia stores directly (this repo's
+  documented inversion of the generic advice).
+- *Un-`markRaw`'d composable bundle on a store* — Pinia's `reactive()`
+  deep-unwraps the bundle's inner refs and silently breaks them
+  (load-bearing gotcha in `frontend/CLAUDE.md`).
+- *`v-if` with `v-for` on one node; array index as `:key`* on reorderable
+  lists (**lint** vue flat/recommended).
+- *Manual DOM access* — `document.querySelector` in a component → template
+  refs (destructured to top-level consts — dotted `ref="obj.prop"` silently
+  registers nothing).
+
+**TypeScript-specific:**
+
+- `any` → a real type, or `unknown` narrowed at the boundary (**lint**
+  `no-explicit-any`).
+- *Assertion over narrowing* — `x as T` / non-null `x!` to silence the
+  checker → a type guard or an honest check (`noUncheckedIndexedAccess`
+  index access in numeric kernels is the accepted exception).
+- `enum` → a union of string literals, which needs no runtime shape.
+- *Over-wide boundary type* — forcing callers to satisfy fields you never
+  read → narrow with `Pick<>` or a permissive local interface (*see
+  TypeScript / Vue*).
+
 ### TDD process
 
 For **new features and bug fixes**:
@@ -194,18 +378,30 @@ valuable artifact in the commit — it documents both the bug and the contract
 that prevents its return. Do **not** write the fix first and add a test "to
 cover it"; ordering matters.
 
-**Test public interfaces, not internals.** Unit tests and e2e tests must exercise
-exported functions, public handler surfaces, and user-visible behavior. Do not
-write tests that reach into unexported helpers, assert on private struct fields,
-or import internal packages from outside their own package. If the behavior of
-an internal component matters, test it through the exported surface that
-exercises it. Tests that are coupled to internal data structures are brittle,
-resist refactoring, and should be rewritten or deleted.
+**Test public interfaces, not internals — black-box only.** Go tests declare
+`package <pkg>_test` (the external test package), so only exported identifiers
+are even reachable; unexported access goes through one `export_test.go` shim
+per package that re-exports what the external tests need (exemplars:
+`pkg/cmd/export_test.go`, `pkg/parser/export_test.go`). Frontend unit tests
+drive components through Testing Library queries — role, then label, then
+visible text; a structural selector (`data-*`, class) is an escape hatch that
+carries a justified lint-disable — and stores through their public actions +
+the `setApiBacking` seam. Assert on user-facing semantics (visible text, ARIA
+state, behavior), never on styling classes. Tests coupled to internal data
+structures are brittle, resist refactoring, and should be rewritten or
+deleted. If something seems untestable black-box, that is a design smell —
+fix the API, don't white-box the test. (Playwright e2e keeps its `data-*`
+hook convention — those attributes are the deliberate public test surface of
+the built page.)
 
-**Coverage floor: 60% line coverage and 60% branch coverage**, measured by
-`task cover`. This is a minimum, not a target — aim higher where the code is
-consequential (parser logic, aggregation, error paths). PRs that regress either
-metric without explicit justification should not merge.
+**Coverage floors live in the gates, not this file:** Go = `GO_COVERAGE_MIN`
+in `Taskfile.yml`; frontend = `coverage.thresholds` in
+`frontend/vitest.config.ts`. Read the numbers there — prose restatements
+drift (they did, three ways). Floors are minimums, not targets: aim higher
+where the code is consequential (parser logic, aggregation, error paths),
+and ratchet a floor deliberately when a campaign lifts real coverage
+(release-time ratchet policy in CONTRIBUTING.md). PRs that regress a gate
+without explicit justification should not merge.
 
 **Exempt** (no TDD ceremony): typo fixes, doc-only edits, formatter/linter
 passes, dependency bumps, configuration-only changes. Use judgement for
@@ -228,11 +424,12 @@ build is red or tests are failing — say what's broken and why instead.
 
 ### What to avoid
 
-Speculative interfaces; abstract layers without a second concrete caller;
-backwards-compat shims for unreleased code; "just in case" error handling for
-impossible conditions; over-engineering for hypothetical future requirements;
-tests that assert on unexported identifiers or internal data structures rather
-than observable, public behavior.
+The quick list; see **Code smells** above for the full catalog and what's
+lint-enforced. Speculative interfaces; abstract layers without a second
+concrete caller; backwards-compat shims for unreleased code; "just in case"
+error handling for impossible conditions; over-engineering for hypothetical
+future requirements; tests that assert on unexported identifiers or internal
+data structures rather than observable, public behavior.
 
 ## Cross-cutting conventions
 
@@ -241,6 +438,32 @@ than observable, public behavior.
   approval. Prefer the standard library and packages already in `go.mod` /
   `package.json`. When a new dep is genuinely the right call, name it and
   explain why before adding it.
+
+- **Week-long dependency age gate, both ecosystems.** Never adopt a version
+  published less than 7 days ago — freshly compromised releases are usually
+  detected and yanked within days. npm enforces it mechanically
+  (`frontend/.npmrc` `min-release-age=7`; details in CONTRIBUTING.md). Go has
+  no native gate: before `go get`, check the version's publish date
+  (`curl https://proxy.golang.org/<module>/@v/<version>.info`) and pick an
+  older one if it's younger than a week — and read `go get`'s retraction
+  warnings while you're there (a cooldown once selected a retracted
+  `modernc.org/libc` while excluding its fix). **Known-CVE fixes override the
+  cooldown — always**: the gate guards against *unknown* freshly compromised
+  releases, not *published* security fixes. npm: `--min-release-age=0` +
+  name the CVE in the commit body; Go: just `go get` the fixed version.
+
+- **Deliberate version holds — behind latest for a reason, not neglect.** Do
+  not bump these without clearing the stated blocker: **typescript** `~6.0.x`
+  (tilde-pinned — typescript-eslint peers `typescript <6.1.0`; revisit when
+  `npm view typescript-eslint peerDependencies` admits ≥6.1);
+  **@playwright/test** exact pin (bumps are deliberate, never a silent range
+  resolve — 1.61's Linux WebKit crashed two e2e specs on CI; verify both
+  WebKit specs per bump); **@hey-api/openapi-ts** exact pin (ships hundreds
+  of 0.x versions — pick a new one deliberately, ≥7 days old, regenerate +
+  diff `src/client`); **wails/v3 + wails3 CLI + @wailsio/runtime** move in
+  lockstep (the CLI generates bindings the module must understand — bump all
+  three in one commit); the **npm `overrides` block** pins transitive-CVE
+  fixes (drop an entry once the direct dep ships a fixed tree).
 
 - **Use `tmp/` under the repo root for ad-hoc scratch files — never `/tmp/...`
   or any path outside the repo root.** PR-body drafts, intermediate `jq` output,
