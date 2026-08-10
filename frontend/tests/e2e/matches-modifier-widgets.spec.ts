@@ -40,7 +40,7 @@ test.describe('Matches — modifier widgets', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
     await page.locator('[data-dossier-add]').click()
     for (const id of ['uphill-battle', 'reversal', 'modifier-breakdown']) {

@@ -47,7 +47,7 @@ test.describe('match queue-type toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -80,7 +80,7 @@ test.describe('match queue-type toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await expect(page.locator('.queue-chip[data-state="none"]')).toHaveAttribute('aria-checked', 'true')
@@ -113,7 +113,7 @@ test.describe('match queue-type toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.queue-chip[data-state="role"]').click()
@@ -149,7 +149,7 @@ test.describe('match queue-type toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await expect(page.locator('.queue-chip[data-state="open"]')).toHaveAttribute('aria-checked', 'true')
@@ -176,11 +176,11 @@ test.describe('narrow this set — Queue filter', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // Open the narrow panel and pick Open Queue.
-    await page.locator('button:has-text("Filter matches")').click()
+    await page.getByRole('button', { name: 'Filter matches' }).click()
     await page.locator('.np-chip[data-queue-type="open"]').click()
 
     await expect(page.locator('.leaf-row')).toHaveCount(1)

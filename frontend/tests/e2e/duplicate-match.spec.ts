@@ -101,7 +101,7 @@ test.describe('duplicate capture — flagged for triage via Unknown tab', () => 
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     // Lands in "Needs your review" with an explicit duplicate badge.
     await expect(page.locator('.needs-review-heading')).toContainText('1')
@@ -143,7 +143,7 @@ test.describe('duplicate capture — flagged for triage via Unknown tab', () => 
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await page.locator('.ambiguous-card').first().locator('.unknown-card-head').click()
 
     await page.locator('.candidate-row button.candidate-attach').first().evaluate((b) => (b as HTMLButtonElement).click())
@@ -173,7 +173,7 @@ test.describe('duplicate capture — flagged for triage via Unknown tab', () => 
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await page.locator('.ambiguous-card').first().locator('.unknown-card-head').click()
 
     await page.locator('button.candidate-fresh').evaluate((b) => (b as HTMLButtonElement).click())
@@ -206,7 +206,7 @@ test.describe('duplicate capture — flagged for triage via Unknown tab', () => 
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const card = page.locator('.ambiguous-card').first()
     await expect(card).toBeVisible()

@@ -70,7 +70,7 @@ test.describe('source picker — contextual callout', () => {
     })
     await mockBoot(page)
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await expect(page.locator('[data-src-grid]')).toBeVisible()
     // Callout surfaces.
     const callout = page.locator('[data-ctx-callout]')
@@ -90,7 +90,7 @@ test.describe('source picker — contextual callout', () => {
     })
     await mockBoot(page)
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await expect(page.locator('[data-src-grid]')).toBeVisible()
     // Cards present, callout absent.
     await expect(page.locator('.src-card')).toHaveCount(4)
@@ -103,7 +103,7 @@ test.describe('source picker — contextual callout', () => {
     })
     await mockBoot(page)
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await expect(page.locator('[data-ctx-callout]')).toBeVisible()
     // Click a found card (nvidia, first row).
     await page.locator('.src-card[data-src-name="nvidia"]').click()

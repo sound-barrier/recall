@@ -63,7 +63,7 @@ test.describe('climb-form widgets', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
@@ -90,7 +90,7 @@ test.describe('climb-form widgets', () => {
     const widget = page.locator('[data-widget-id="session-depth"]')
     await expect(widget).toBeVisible()
 
-    const rows = widget.locator('li')
+    const rows = widget.getByRole('listitem')
     await expect(rows).toHaveCount(4)
     await expect(rows.nth(0)).toContainText('Game 1')
     await expect(rows.nth(0)).toContainText('50%')

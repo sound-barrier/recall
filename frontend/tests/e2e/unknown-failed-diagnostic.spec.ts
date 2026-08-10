@@ -45,7 +45,7 @@ test.describe('Unknown tab — diagnostic bundle', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const btn = page.locator('[data-diagnostic-bundle]')
     await expect(btn).toBeVisible()
@@ -64,9 +64,9 @@ test.describe('Unknown tab — diagnostic bundle', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
-    await expect(page.locator('#panel-unknown, #tab-panel-unknown').first()).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Unknown/ })).toBeVisible()
     await expect(page.locator('[data-diagnostic-bundle]')).toHaveCount(0)
   })
 })

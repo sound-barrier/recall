@@ -65,7 +65,7 @@ test.describe('widget-config popover — gear → save → persist', () => {
 
   test('empty-schema widgets do not render the gear icon', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     // No edit-mode toggle needed — gear visibility is independent of
     // layout edits and lives wherever a widget has a config schema.
     await expect(page.locator('[data-widget-config-trigger="winrate"]')).toHaveCount(0)
@@ -73,7 +73,7 @@ test.describe('widget-config popover — gear → save → persist', () => {
 
   test('gear opens popover; Save persists; widget re-renders', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Default top-heroes renders 3 rows.
     const heroList = page.locator('[data-widget-id="top-heroes"] li')
@@ -96,13 +96,13 @@ test.describe('widget-config popover — gear → save → persist', () => {
 
     // Reload — config persists.
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('[data-widget-id="top-heroes"] li')).toHaveCount(10)
   })
 
   test('Cancel discards the draft', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('[data-widget-config-trigger="top-heroes"]').click()
     await page.locator('[data-widget-config-choice="limit=10"]').click()
     await page.getByTestId('widget-config-cancel').click()

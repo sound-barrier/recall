@@ -64,7 +64,7 @@ test.describe('Matches — open-queue role label', () => {
       })
     })
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     // The leaf rows render with the most-recently-finished match
     // first. All three matches share the same date + finished_at,
@@ -91,7 +91,7 @@ test.describe('Matches — open-queue role label', () => {
       })
     })
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     await expect(page.locator('.leaf-row').first().locator('.leaf-role-chip'))
       .toHaveText(['dps', 'tank', 'support'])

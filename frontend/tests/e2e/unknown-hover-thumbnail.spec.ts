@@ -51,7 +51,7 @@ test.describe('Unknown tab — hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const card = page.locator('.unknown-card').first()
     await expect(card).toBeVisible()
@@ -82,7 +82,7 @@ test.describe('Unknown tab — hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     // Expand the card.
     await page.locator('.unknown-card .unknown-card-head').first().click()
@@ -102,7 +102,7 @@ test.describe('Unknown tab — hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     // Hover the card near the left side of the viewport — the
     // 360 px-wide thumb should anchor below-right of the cursor,
@@ -152,7 +152,7 @@ test.describe('Unknown tab — hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await expect(page.locator('.unknown-card')).toHaveCount(2)
 
     // The preload should fire on view mount — both records' first
@@ -184,7 +184,7 @@ test.describe('Unknown tab — hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await page.locator('.unknown-card').first().hover()
     await expect(page.locator('.unknown-hover-thumb')).toHaveCount(0)
   })
@@ -203,7 +203,7 @@ test.describe('Unknown tab — hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const card = page.locator('.unknown-card').first()
     await expect(card).toBeVisible()
@@ -259,7 +259,7 @@ test.describe('Unknown tab — hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const card = page.locator('.unknown-card').first()
     const box = await card.boundingBox()

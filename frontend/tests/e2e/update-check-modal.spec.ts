@@ -65,7 +65,7 @@ test.describe('update-check modal', () => {
     await page.goto('/')
 
     await openAbout(page)
-    await expect(page.locator('[role="dialog"][aria-modal="true"]')).toBeVisible()
+    await expect(page.getByRole('dialog')).toBeVisible()
   })
 
   test('renders both Recall app + Game data sections', async ({ page }) => {
@@ -109,8 +109,8 @@ test.describe('update-check modal', () => {
     await expect(page.locator('[data-update-check-freshness]')).toContainText('A roster update is available')
     await expect(page.locator('[data-update-check-freshness]')).not.toContainText('days old')
     // The meaningless commit SHAs are gone from the entire modal.
-    await expect(page.locator('[role="dialog"][aria-modal="true"]')).not.toContainText('MAIN @')
-    await expect(page.locator('[role="dialog"][aria-modal="true"]')).not.toContainText('abc1234')
+    await expect(page.getByRole('dialog')).not.toContainText('MAIN @')
+    await expect(page.getByRole('dialog')).not.toContainText('abc1234')
   })
 
   test('frames a dev build as ahead of the latest release', async ({ page }) => {
@@ -180,8 +180,8 @@ test.describe('update-check modal', () => {
     await page.locator('[data-update-check-apply]').click()
     // Modal-scoped role=alert — the page also carries a System Alert
     // ("Tesseract not detected") with role=alert in the e2e harness.
-    const dialog = page.locator('[role="dialog"]')
-    await expect(dialog.locator('[role="alert"]')).toContainText(/SHA-256/i)
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('alert')).toContainText(/SHA-256/i)
     await expect(dialog).toBeVisible()
   })
 
@@ -194,7 +194,7 @@ test.describe('update-check modal', () => {
     await page.goto('/')
 
     await openAbout(page)
-    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.locator('[data-update-check-main-unreachable]')).toBeVisible()
     await expect(page.locator('[data-update-check-apply]')).toHaveCount(0)
   })
@@ -217,8 +217,8 @@ test.describe('update-check modal', () => {
 
     await openAbout(page)
     await page.locator('[data-update-check-apply]').click()
-    const dialog = page.locator('[role="dialog"]')
-    await expect(dialog.locator('[role="alert"]')).toContainText(/main fetch failed/i)
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('alert')).toContainText(/main fetch failed/i)
     await expect(dialog).toBeVisible()
   })
 
@@ -231,8 +231,8 @@ test.describe('update-check modal', () => {
     await page.goto('/')
 
     await openAbout(page)
-    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.getByRole('dialog')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('[role="dialog"]')).toBeHidden()
+    await expect(page.getByRole('dialog')).toBeHidden()
   })
 })

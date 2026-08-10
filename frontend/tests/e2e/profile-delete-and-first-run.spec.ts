@@ -47,7 +47,7 @@ test.describe('settings — Profiles section delete affordance', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // Profiles section is present.
     const section = page.locator('#sec-profiles')
@@ -92,7 +92,7 @@ test.describe('settings — Profiles section delete affordance', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     const altRow = page.locator('.profile-mgmt-row').filter({ hasText: 'alt' })
     await altRow.locator('.profile-mgmt-delete').click()
@@ -128,7 +128,7 @@ test.describe('settings — Profiles section delete affordance', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     const altRow = page.locator('.profile-mgmt-row').filter({ hasText: 'alt' })
     await altRow.locator('.profile-mgmt-delete').click()
     await altRow.locator('.profile-mgmt-delete-cancel').click()
@@ -166,7 +166,7 @@ test.describe('first-run profile-name modal', () => {
 
     const modal = page.locator('.first-run-modal')
     await expect(modal).toBeVisible()
-    await expect(modal.locator('h2')).toContainText('Main account name')
+    await expect(modal.getByRole('heading', { level: 2 })).toContainText('Main account name')
 
     // Background container is inert + aria-hidden while the modal is up.
     await expect(page.locator('.container').first()).toHaveAttribute('aria-hidden', 'true')
@@ -210,8 +210,8 @@ test.describe('first-run profile-name modal', () => {
 
     // After Save, the modal advances to step 2 (pick a screenshots
     // folder) — it does NOT dismiss until the user finishes step 2.
-    await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
-    await expect(modal.locator('[data-testid="first-run-step-label"]')).toHaveText('Step 2 of 2')
+    await expect(modal.getByRole('heading', { level: 2 })).toContainText('Where do your screenshots live?')
+    await expect(modal.getByTestId('first-run-step-label')).toHaveText('Step 2 of 2')
   })
 
   test('Save reloads so the masthead chip immediately reflects the new name', async ({ page }) => {
@@ -274,7 +274,7 @@ test.describe('first-run profile-name modal', () => {
 
     // After Keep, the modal advances to step 2 — it does NOT dismiss
     // until the user finishes step 2. Skip the picker to finalize.
-    await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
+    await expect(modal.getByRole('heading', { level: 2 })).toContainText('Where do your screenshots live?')
     await modal.locator('[data-step-skip]').click()
     await expect(modal).toHaveCount(0)
 
@@ -350,7 +350,7 @@ test.describe('first-run modal — onboarding-tour interaction', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     // Modal stays out of the DOM while the tour drives the page.
     await expect(page.locator('.first-run-modal')).toHaveCount(0)
   })
@@ -367,7 +367,7 @@ test.describe('first-run modal — onboarding-tour interaction', () => {
     })
 
     await page.goto('/')
-    const tour = page.locator('[data-testid="onboarding-tour"]')
+    const tour = page.getByTestId('onboarding-tour')
     await expect(tour).toBeVisible()
     // Dismiss the tour. Escape is the pure-dismiss path — the "Skip tour"
     // button now seeds the sample profile and reloads, which wouldn't close

@@ -109,7 +109,7 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
 
   // useOWData is one-shot per session → reload so the new roster is live.
   await page.reload()
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
 
   // 2) Hand-enter a match with the new hero + map (now offered by the pickers).
   await page.locator('[data-add-match]').click()
@@ -128,7 +128,7 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
 
   const heroCombo = page.locator('[data-combo-id="mm-hero"]')
   await heroCombo.locator('.combo-input').click()
-  await heroCombo.locator('.combo-list li:has-text("testra")').click()
+  await heroCombo.getByRole('option', { name: 'testra' }).click()
   await expect(heroCombo.locator('.combo-pill')).toContainText('testra')
   await page.locator('#mm-title').click()
 
@@ -142,7 +142,7 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
   // detail panel (which would inert the rail). After reload the match
   // persists via the matches GET and the roster stays updated.
   await page.reload()
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
 
   // 3) The new match is searchable by both its hero and its map…
   await expect(page.locator('.leaf-row')).toHaveCount(1)

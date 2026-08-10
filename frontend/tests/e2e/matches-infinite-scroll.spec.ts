@@ -70,7 +70,7 @@ test.describe('matches — client-side window (item 6)', () => {
   test('boots with exactly 20 leaf-rows + sentinel + "Showing 20 of 60"', async ({ page }) => {
     await mockCorpus(page, 60)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     await expect(page.locator('.leaf-row')).toHaveCount(20)
     await expect(page.getByTestId('leaves-sentinel')).toHaveCount(1)
@@ -80,7 +80,7 @@ test.describe('matches — client-side window (item 6)', () => {
   test('scrolling the sentinel into view grows the window by a page', async ({ page }) => {
     await mockCorpus(page, 60)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(20)
 
     // First sentinel hit → 40.
@@ -102,7 +102,7 @@ test.describe('matches — client-side window (item 6)', () => {
   test('foot reads "End · N matches" when the corpus fits in one page', async ({ page }) => {
     await mockCorpus(page, 7)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(7)
     await expect(page.getByTestId('leaves-sentinel')).toHaveCount(0)
     await expect(page.getByTestId('leaves-foot')).toContainText('End · 7 matches')

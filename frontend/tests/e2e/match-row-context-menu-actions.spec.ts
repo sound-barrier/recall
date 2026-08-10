@@ -55,7 +55,7 @@ test.describe('match row context menu — extended actions', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click({ button: 'right' })
     await page.locator('[data-row-ctx-tag]').click()
 
@@ -74,7 +74,7 @@ test.describe('match row context menu — extended actions', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click({ button: 'right' })
     await page.locator('[data-row-ctx-edit-annotation]').click()
 
@@ -93,7 +93,7 @@ test.describe('match row context menu — extended actions', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click({ button: 'right' })
     await page.locator('[data-row-ctx-copy-link]').click()
 
@@ -112,7 +112,7 @@ test.describe('match row context menu — extended actions', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click({ button: 'right' })
     await page.locator('[data-row-ctx-copy-replay]').click()
 
@@ -130,7 +130,7 @@ test.describe('match row context menu — extended actions', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click({ button: 'right' })
 
     await expect(page.locator('[data-row-ctx-open-folder]')).toHaveCount(0)

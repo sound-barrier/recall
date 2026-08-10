@@ -51,7 +51,7 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     // Clear any leftover anchor from previous specs so the
     // "no anchor" branch in the narrow panel is observable. The
     // anchor is profile-scoped (profileStorage.ts); the bare key is
@@ -62,7 +62,7 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
       localStorage.removeItem('recall.matches.sinceAnchor')
     })
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
   })
 
   async function openNarrow(page: import('@playwright/test').Page) {
@@ -255,7 +255,7 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
       await route.fulfill({ status: 204, body: '' })
     })
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row[data-match-key="d4-unrevwd"]')).toHaveCount(1)
 
     // Right-click → Hide match.

@@ -74,7 +74,7 @@ test.describe('leaf-row hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     const row = page.locator('.leaf-row').first()
     await row.hover()
@@ -100,7 +100,7 @@ test.describe('leaf-row hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().hover()
 
     // No thumbnail appears, and the frontend never even tried to fetch one.
@@ -121,7 +121,7 @@ test.describe('leaf-row hover preview', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     const row = page.locator('.leaf-row').first()
     await row.hover()
     await expect(page.locator('.leaf-hover-preview')).toBeVisible()

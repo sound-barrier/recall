@@ -36,34 +36,34 @@ test.describe('a11y patterns — keyboard navigation', () => {
     //
     // Click Settings first to set view='settings' as the baseline
     // (the handler reads view.value, not focus).
-    await page.locator('#tab-settings').click()
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 
     // ArrowRight → Ingest. The handler re-focuses the new tab after
     // goToView completes (see App.vue onTabKeydown), so subsequent
     // presses can target whichever button is currently active.
-    await page.locator('#tab-settings').press('ArrowRight')
-    await expect(page.locator('#tab-ingest')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Settings' }).press('ArrowRight')
+    await expect(page.getByRole('tab', { name: 'Parse' })).toHaveAttribute('aria-selected', 'true')
 
     // End → Elo Calculator (last tab)
-    await page.locator('#tab-ingest').press('End')
-    await expect(page.locator('#tab-elo')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Parse' }).press('End')
+    await expect(page.getByRole('tab', { name: 'Elo Calculator' })).toHaveAttribute('aria-selected', 'true')
 
     // Home → Settings (first tab)
-    await page.locator('#tab-elo').press('Home')
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Elo Calculator' }).press('Home')
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 
     // ArrowLeft from Settings wraps to the Elo Calculator
-    await page.locator('#tab-settings').press('ArrowLeft')
-    await expect(page.locator('#tab-elo')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Settings' }).press('ArrowLeft')
+    await expect(page.getByRole('tab', { name: 'Elo Calculator' })).toHaveAttribute('aria-selected', 'true')
 
     // Vim-style h / l aliases — l advances right, h walks left.
     // Same handler as ArrowLeft/ArrowRight, just an alternate key.
-    await page.locator('#tab-settings').click()
-    await page.locator('#tab-settings').press('l')
-    await expect(page.locator('#tab-ingest')).toHaveAttribute('aria-selected', 'true')
-    await page.locator('#tab-ingest').press('h')
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: 'Settings' }).press('l')
+    await expect(page.getByRole('tab', { name: 'Parse' })).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Parse' }).press('h')
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('skip-link is the first focusable + jumps to <main>', async ({ page }) => {

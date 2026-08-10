@@ -38,7 +38,7 @@ test.describe('loss quality widget', () => {
     await page.route('**/api/v1/matches', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }))
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
   })
 
   test('buckets the narrowed losses into close / normal / stomp', async ({ page }) => {

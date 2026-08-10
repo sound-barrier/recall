@@ -81,7 +81,7 @@ test.describe('Matches — leaf row queue-type chip', () => {
       })
     })
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     await expect(page.locator('.leaf-mode-chip')).toHaveText([
       'Competitive',
@@ -108,7 +108,7 @@ test.describe('Matches — leaf row queue-type chip', () => {
       })
     })
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('.leaf-mode-chip').first()).toHaveText('Quickplay')
     await expect(page.locator('.leaf-queue-chip').first()).toHaveText('Role Queue')
   })

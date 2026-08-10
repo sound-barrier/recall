@@ -44,7 +44,7 @@ test.describe('match play-mode toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -77,7 +77,7 @@ test.describe('match play-mode toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await expect(page.locator('.play-mode-chip[data-state="none"]')).toHaveAttribute('aria-checked', 'true')
@@ -110,7 +110,7 @@ test.describe('match play-mode toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.play-mode-chip[data-state="quickplay"]').click()
@@ -146,7 +146,7 @@ test.describe('match play-mode toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await expect(page.locator('.play-mode-chip[data-state="competitive"]')).toHaveAttribute('aria-checked', 'true')
@@ -173,10 +173,10 @@ test.describe('narrow this set — Play mode filter', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
-    await page.locator('button:has-text("Filter matches")').click()
+    await page.getByRole('button', { name: 'Filter matches' }).click()
     await page.locator('.np-chip[data-play-mode="quickplay"]').click()
 
     await expect(page.locator('.leaf-row')).toHaveCount(1)

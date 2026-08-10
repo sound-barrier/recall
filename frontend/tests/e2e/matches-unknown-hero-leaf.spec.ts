@@ -42,7 +42,7 @@ test.describe('Matches — Unknown hero / map leaf chip', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('.leaf-hero-unknown').first()).toHaveText('Unknown hero (miyazaki?)')
     await expect(page.locator('[data-unknown-hero="miyazaki"]').first()).toBeVisible()
   })
@@ -77,8 +77,8 @@ test.describe('Matches — Unknown hero / map leaf chip', () => {
     })
 
     await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Unknown' }).click()
-    await expect(page.locator('#panel-unknown')).toBeVisible()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
+    await expect(page.getByRole('tabpanel', { name: /^Unknown/ })).toBeVisible()
     const gapCard = page.locator('[data-reference-gap-key="k2"]')
     await expect(gapCard).toBeVisible()
     await expect(gapCard).toContainText('new-junk-city')
@@ -110,7 +110,7 @@ test.describe('Matches — Unknown hero / map leaf chip', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
     // No hero_raw → the row should NOT render the unknown variant
     // (isHeroUnknown requires hero_raw to be truthy).
     await expect(page.locator('.leaf-hero-unknown')).toHaveCount(0)

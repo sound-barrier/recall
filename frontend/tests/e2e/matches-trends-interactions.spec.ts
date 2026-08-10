@@ -34,7 +34,7 @@ function mock(page: import('@playwright/test').Page, body: unknown) {
 }
 
 async function openRankChart(page: import('@playwright/test').Page) {
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await page.locator('.trends-toggle').click()
   const canvas = page.locator('.trend-card', { hasText: 'Rank over time' }).locator('canvas')
   await canvas.waitFor()

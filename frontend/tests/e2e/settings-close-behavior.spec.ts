@@ -38,9 +38,9 @@ test.describe('window close-behavior toggle', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
-    const toggle = page.locator('[data-testid="exit-on-close-toggle"]')
+    const toggle = page.getByTestId('exit-on-close-toggle')
     await expect(toggle).toBeVisible()
     await expect(toggle).not.toBeChecked()
 
@@ -57,7 +57,7 @@ test.describe('window close-behavior on macOS', () => {
 
   test('the Window section is hidden (macOS stays in the menu bar)', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await expect(page.locator('#sec-window')).toHaveCount(0)
   })
 })

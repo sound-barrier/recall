@@ -54,7 +54,7 @@ test.describe('Unknown tab — Delete forever', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const card = page.locator('.unknown-card').first()
     await expect(card).toBeVisible()
@@ -117,7 +117,7 @@ test.describe('Unknown tab — Delete forever', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await page.locator('.unknown-card .unknown-card-head').first().click()
     const btn = page.locator(`[data-ignore-btn="${TRACKED_KEY}"]`)
     await expect(btn).toBeVisible()
@@ -146,7 +146,7 @@ test.describe('Unknown tab — Delete forever', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     await page.locator('.unknown-card .unknown-card-head').first().click()
     const btn = page.locator(`[data-ignore-btn="${MATCH_KEY}"]`)

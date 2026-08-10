@@ -73,7 +73,7 @@ test.describe('match deletion — soft delete + unhide', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     // Click the row → detail panel opens with the MatchCardDanger
@@ -121,7 +121,7 @@ test.describe('match deletion — soft delete + unhide', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.danger-btn', { hasText: 'Hide match' }).click()
@@ -154,7 +154,7 @@ test.describe('match deletion — soft delete + unhide', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Hidden row isn't in the leaves list but surfaces in the
     // archive drawer.

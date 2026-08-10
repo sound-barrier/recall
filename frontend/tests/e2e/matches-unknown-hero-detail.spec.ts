@@ -36,9 +36,9 @@ test.describe('Matches — Unknown hero / map detail-panel banner', () => {
     await page.route('**/api/v1/matches/*/play-mode', route => route.fulfill({ status: 204, body: '' }))
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
     await page.locator('[data-match-key="k1"]').click()
-    await expect(page.locator('[role="dialog"]').first()).toBeVisible()
+    await expect(page.getByRole('dialog').first()).toBeVisible()
 
     const banner = page.locator('[data-unknown-alert]')
     await expect(banner).toBeVisible()
@@ -74,7 +74,7 @@ test.describe('Matches — Unknown hero / map detail-panel banner', () => {
 
     await page.goto('/')
     await page.locator('[data-match-key="k2"]').click()
-    await expect(page.locator('[role="dialog"]').first()).toBeVisible()
+    await expect(page.getByRole('dialog').first()).toBeVisible()
     await expect(page.locator('[data-unknown-alert]')).toHaveCount(0)
   })
 })

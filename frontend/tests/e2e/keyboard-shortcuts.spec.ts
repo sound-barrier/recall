@@ -64,10 +64,10 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
   test('? opens the cheatsheet; Esc closes', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toHaveCount(0)
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toHaveCount(0)
 
     await page.keyboard.press('?')
-    const sheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    const sheet = page.getByTestId('kbd-shortcuts-modal')
     await expect(sheet).toBeVisible()
     await expect(sheet).toContainText(/keyboard shortcuts/i)
 
@@ -77,7 +77,7 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
     // headless Chrome the transition occasionally takes longer than the
     // 5 s poll window so toHaveCount(0) flakes. Visibility resolves as
     // soon as opacity hits 0 — same semantic, more robust.
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeHidden()
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toBeHidden()
   })
 
   // Regression: useModalFocusTrap used to mutate `toRef(props, 'open').value`
@@ -93,20 +93,20 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
 
     // First cycle.
     await page.keyboard.press('?')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeVisible()
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeHidden()
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toBeHidden()
 
     // Second cycle — the bug: parent ref stayed true after Esc, so this
     // press was a no-op and the modal never reopened.
     await page.keyboard.press('?')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeVisible()
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeHidden()
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toBeHidden()
 
     // Third — make sure repeated cycles keep working.
     await page.keyboard.press('?')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeVisible()
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toBeVisible()
   })
 
   test('j / ArrowDown scroll the cheatsheet down; k / ArrowUp scroll it up', async ({ page }) => {
@@ -142,7 +142,7 @@ test.describe('keyboard shortcuts — global bindings', () => {
   test('/ opens the Narrow panel and focuses #np-search', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Focus must not start in an input — click the brand link.
     await page.locator('.brand').first().click()
@@ -158,31 +158,31 @@ test.describe('keyboard shortcuts — global bindings', () => {
     await page.goto('/')
     await page.keyboard.press('g')
     await page.keyboard.press('s')
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('g then m switches to the Matches view', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-settings').click()
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 
     await page.keyboard.press('g')
     await page.keyboard.press('m')
-    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('g prefix expires after timeout — slow follow-up does NOT navigate', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     await page.keyboard.press('g')
     await page.waitForTimeout(1200) // SEQUENCE_TIMEOUT_MS (1000) + 200ms slack
     await page.keyboard.press('s')
 
     // Still on Matches — `s` alone is not a registered shortcut.
-    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
   })
 })
 
@@ -190,7 +190,7 @@ test.describe('keyboard shortcuts — Matches view per-row', () => {
   test('j moves leaf-row focus through the list; no wrap at the end', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // Focus must not start in an input — click the brand link.
@@ -212,7 +212,7 @@ test.describe('keyboard shortcuts — Matches view per-row', () => {
   test('k steps backward; clamps at 0', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.brand').first().click()
 
     await page.keyboard.press('j') // → 0
@@ -236,7 +236,7 @@ test.describe('keyboard shortcuts — Matches view per-row', () => {
   test('j respects Sort=Oldest (focus follows rendered order, not narrowedRecords order)', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // Open the Sort+Group popover and flip Sort=Oldest. (PR 6
@@ -260,7 +260,7 @@ test.describe('keyboard shortcuts — Matches view per-row', () => {
   test('e opens the detail panel for the focused row; e again closes it', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.brand').first().click()
 
     await page.keyboard.press('j')
@@ -280,7 +280,7 @@ test.describe('keyboard shortcuts — input gating', () => {
   test('j typed in the np-search input does NOT navigate rows', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Open the narrow panel + focus the search via the / binding,
     // then type `j`.
@@ -299,13 +299,13 @@ test.describe('keyboard shortcuts — input gating', () => {
   test('? typed in the np-search input STILL opens the cheatsheet (allowInInput)', async ({ page }) => {
     await seed(page)
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     await page.locator('.brand').first().click()
     await page.keyboard.press('/')
     await expect(page.locator('#np-search')).toBeFocused()
     // Inside the input — `?` should still pop the cheatsheet.
     await page.keyboard.press('?')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeVisible()
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toBeVisible()
   })
 })

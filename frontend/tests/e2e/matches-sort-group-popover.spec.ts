@@ -46,7 +46,7 @@ test.describe('Matches — Sort + Group dropdown', () => {
 
   test('trigger shows the current Sort · Group label', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     const trigger = page.locator('[data-sort-group-trigger]')
     await expect(trigger).toBeVisible()
@@ -57,7 +57,7 @@ test.describe('Matches — Sort + Group dropdown', () => {
 
   test('clicking the trigger opens the popover with two radio groups', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     const popover = page.getByTestId('sort-group-popover')
     await expect(popover).toHaveCount(0)
@@ -72,7 +72,7 @@ test.describe('Matches — Sort + Group dropdown', () => {
 
   test('picking Oldest updates the trigger label and the leaves order', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     const trigger = page.locator('[data-sort-group-trigger]')
     const firstDate = await page.locator('.leaf-row').first().textContent()
 
@@ -86,7 +86,7 @@ test.describe('Matches — Sort + Group dropdown', () => {
 
   test('clicking outside closes the popover', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('[data-sort-group-trigger]').click()
     await expect(page.getByTestId('sort-group-popover')).toBeVisible()
 
@@ -112,7 +112,7 @@ test.describe('Matches — Sort + Group dropdown', () => {
     )
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('[data-sort-group-trigger]').click()
     await page.locator('[data-group-pick="provenance"]').click()
 
@@ -139,7 +139,7 @@ test.describe('Matches — Sort + Group dropdown', () => {
     )
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('[data-sort-group-trigger]').click()
     await page.locator('[data-group-pick="provenance"]').click()
     await page.keyboard.press('Escape') // dismiss the popover to reach the list

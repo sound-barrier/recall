@@ -57,7 +57,7 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
     const manageBtn = page.getByRole('button', { name: 'Manage…' })
     await expect(manageBtn).toBeDisabled()
@@ -81,7 +81,7 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
     const manageBtn = page.getByRole('button', { name: 'Manage…' })
     await expect(manageBtn).toBeEnabled()
@@ -116,11 +116,11 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
     await page.getByRole('button', { name: 'Manage…' }).click()
 
-    await page.locator('.ignored-row').first().locator('button', { hasText: 'Restore' }).click()
+    await page.locator('.ignored-row').first().getByRole('button', { name: 'Restore' }).click()
     await expect(page.locator('.ignored-row')).toHaveCount(1)
     await expect(page.locator('.ignored-foot')).toContainText('Restored.')
   })
@@ -151,7 +151,7 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
     await page.getByRole('button', { name: 'Manage…' }).click()
 
@@ -183,7 +183,7 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
 
     // Arm Clear Database — the checkbox row only renders inside the
@@ -216,7 +216,7 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
     await page.getByRole('button', { name: 'Clear Database…' }).click()
     // Don't tick the checkbox — default factory-reset path.
@@ -245,7 +245,7 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
     await page.getByRole('button', { name: 'Manage…' }).click()
 
@@ -302,7 +302,7 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
     await page.locator('summary.advanced-summary').click()
     // Wait for the suppress-list GET to land so the checkbox row mounts
     // alongside the rest of the arm step (the v-if gates on ignoredCount).

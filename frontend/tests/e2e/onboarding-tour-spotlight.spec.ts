@@ -28,7 +28,7 @@ async function walkToHeading(page: Page, re: RegExp, max = 30) {
   const heading = page.locator('.tour-callout-heading')
   for (let i = 0; i < max; i++) {
     if (re.test((await heading.textContent()) ?? '')) return
-    await page.locator('button:has-text("Next")').click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.waitForTimeout(120)
   }
   throw new Error(`tour never reached a heading matching ${re}`)
@@ -54,7 +54,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
 
   test('auto-opens on first visit and walks every step to "Explore with real data"', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     await expect(page.locator('.tour-callout-heading')).toContainText(/welcome to recall/i)
 
     // The first step is no-target — cutout collapses, tour-spotlight
@@ -62,15 +62,15 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-spotlight')).toHaveClass(/tour-spotlight-no-cutout/)
 
     // Step 2 → tablist. After Next, a real cutout appears.
-    await page.locator('button:has-text("Next")').click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await expect(page.locator('.tour-callout-heading')).toContainText(/five tabs/i)
     await expect(page.locator('.tour-spotlight')).not.toHaveClass(/tour-spotlight-no-cutout/)
 
     // Walk to "Settings (01)" — the tour drives the underlying view
     // change so #tab-settings ends up aria-selected.
-    await page.locator('button:has-text("Next")').click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await expect(page.locator('.tour-callout-heading')).toContainText(/settings/i)
-    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 
     // Walk the rest of the way to the second-to-last "Explore with
     // real data" step. The final Done step lives BEHIND the seed +
@@ -81,7 +81,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-callout-heading')).toContainText(/explore with real data/i)
     // It's the second-to-last step, so the button is still Next (the
     // seed+switch), not Done.
-    await expect(page.locator('button:has-text("Next")')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeVisible()
   })
 
   test('Skip seeds the sample profile and resumes on Done', async ({ page }) => {
@@ -96,8 +96,8 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
         body: JSON.stringify({ active: 'test', profiles: ['main', 'test'] }) }))
 
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
-    await page.locator('button:has-text("Skip tour")').click()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
+    await page.getByRole('button', { name: 'Skip tour' }).click()
     // Reopens on the final Done step, now in the test profile.
     await expect(page.locator('.tour-callout-heading'))
       .toContainText(/explore, then clean up/i, { timeout: 15000 })
@@ -105,12 +105,12 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
 
   test('Esc dismisses the tour and persists completion', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toHaveCount(0)
+    await expect(page.getByTestId('onboarding-tour')).toHaveCount(0)
     await page.reload()
     await page.waitForTimeout(500)
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toHaveCount(0)
+    await expect(page.getByTestId('onboarding-tour')).toHaveCount(0)
   })
 
   test('demo data lights up the dossier with mock records (no real records leaked)', async ({ page }) => {
@@ -121,11 +121,11 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     })
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     // Click Next to land on the dossier step — 8 clicks from
     // welcome lands on step 9 (matches-dossier) in the 15-step list.
     for (let i = 0; i < 8; i++) {
-      await page.locator('button:has-text("Next")').click()
+      await page.getByRole('button', { name: 'Next', exact: true }).click()
       await page.waitForTimeout(120)
     }
     // Demo dossier — winrate non-empty even though /api/matches was
@@ -143,10 +143,10 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     })
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     // 9 Next clicks: welcome → matches-narrow (step 10).
     for (let i = 0; i < 9; i++) {
-      await page.locator('button:has-text("Next")').click()
+      await page.getByRole('button', { name: 'Next', exact: true }).click()
       await page.waitForTimeout(120)
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/narrow to one hero/i)
@@ -160,10 +160,10 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     })
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     // 11 Next clicks: welcome → matches-detail (step 12).
     for (let i = 0; i < 11; i++) {
-      await page.locator('button:has-text("Next")').click()
+      await page.getByRole('button', { name: 'Next', exact: true }).click()
       await page.waitForTimeout(120)
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/the detail panel/i)
@@ -185,9 +185,9 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     // waiting on the class is the cheap way to be sure the position is
     // final before asserting.
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     for (let i = 0; i < 9; i++) {
-      await page.locator('button:has-text("Next")').click()
+      await page.getByRole('button', { name: 'Next', exact: true }).click()
       await page.waitForTimeout(120)
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/narrow to one hero/i)
@@ -220,9 +220,9 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     })
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     for (let i = 0; i < 11; i++) {
-      await page.locator('button:has-text("Next")').click()
+      await page.getByRole('button', { name: 'Next', exact: true }).click()
       await page.waitForTimeout(120)
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/the detail panel/i)
@@ -250,26 +250,26 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
 
   test('ambiguous-attribution step lights up the .ambiguous-card', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     // Welcome is step 1; ambiguous-attribution is step 14 in the
     // 18-step list (after unknown-tab, before cheatsheet). 13 Next
     // clicks lands on it.
     for (let i = 0; i < 13; i++) {
-      await page.locator('button:has-text("Next")').click()
+      await page.getByRole('button', { name: 'Next', exact: true }).click()
       await page.waitForTimeout(120)
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/ambiguous attribution/i)
     // The Unknown tab is active + the ambiguous demo record renders
     // its card. Without an ambiguous record in DEMO_MATCHES this
     // assertion would catch a regression that drops the seed.
-    await expect(page.locator('#tab-unknown')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Unknown/ })).toHaveAttribute('aria-selected', 'true')
     await expect(page.locator('.ambiguous-card')).toBeVisible()
     await expect(page.locator('.needs-review-heading')).toContainText(/needs your review/i)
   })
 
   test('locks page scroll while the tour is open', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    await expect(page.getByTestId('onboarding-tour')).toBeVisible()
     // body overflow must be hidden so the user can't scroll out from
     // under the spotlight. The composable restores the original
     // value on close — tested below by closing + asserting the
@@ -282,7 +282,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     // Close via Escape (the pure-dismiss path) — the "Skip tour" button now
     // seeds + reloads, which wouldn't exercise the scroll-lock release here.
     await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="onboarding-tour"]')).toHaveCount(0)
+    await expect(page.getByTestId('onboarding-tour')).toHaveCount(0)
     const unlockedOverflow = await page.evaluate(() =>
       window.getComputedStyle(document.body).overflow,
     )

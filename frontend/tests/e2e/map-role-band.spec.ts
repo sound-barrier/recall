@@ -100,7 +100,7 @@ test.describe('Geography — Map × Role band', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
@@ -343,7 +343,7 @@ test.describe('Geography — never-played roles + empty state', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(REFERENCE_DATA) })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
   }
 

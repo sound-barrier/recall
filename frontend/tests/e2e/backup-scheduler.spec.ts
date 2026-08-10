@@ -45,7 +45,7 @@ test.describe('automatic backup scheduler — Settings row', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     await expect(page.locator('[data-auto-backup-interval="7"]')).toHaveClass(/active/)
     await expect(page.locator('[data-auto-backup-last]')).toContainText(/last automatic backup/i)
@@ -61,7 +61,7 @@ test.describe('automatic backup scheduler — Settings row', () => {
     await mockAutoBackup(page, { interval_days: 7, last_backup_at: '', stale: true })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     await expect(page.locator('[data-auto-backup-last]')).toContainText(/no automatic backup yet/i)
     await expect(page.locator('.auto-backup-stale')).toBeVisible()
@@ -71,7 +71,7 @@ test.describe('automatic backup scheduler — Settings row', () => {
     await mockAutoBackup(page, { interval_days: -1, last_backup_at: '', stale: false })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     await expect(page.locator('[data-auto-backup-interval="-1"]')).toHaveClass(/active/)
     await expect(page.locator('.auto-backup-stale')).toHaveCount(0)

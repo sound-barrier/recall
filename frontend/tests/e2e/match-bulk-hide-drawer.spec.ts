@@ -96,7 +96,7 @@ test.describe('matches — contextual multi-select + Archive bulk ops', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // ── Contextual selection: checkboxes are always present (no toggle).
@@ -173,7 +173,7 @@ test.describe('matches — contextual multi-select + Archive bulk ops', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row')).toHaveCount(2)
 
     // Tick row 0 — action bar appears.

@@ -46,7 +46,7 @@ test.describe('match review-status toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -79,7 +79,7 @@ test.describe('match review-status toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await expect(
@@ -118,7 +118,7 @@ test.describe('match review-status toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.review-chip[data-state="self"]').click()
@@ -158,7 +158,7 @@ test.describe('match review-status toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     // Sanity: starts on coach.
@@ -197,7 +197,7 @@ test.describe('match review-status toggle — panel sidebar', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.review-chip[data-state="coach"]').click()

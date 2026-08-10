@@ -44,7 +44,7 @@ test.describe('Matches — narrow rail vs popover by viewport', () => {
   test('rail mode renders the panel inline at ≥1400 px viewport', async ({ page }) => {
     await page.setViewportSize({ width: 1500, height: 900 })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // The panel is always visible in rail mode — no trigger needed.
     await expect(page.locator('.matches-set-workspace-rail')).toBeVisible()
@@ -62,7 +62,7 @@ test.describe('Matches — narrow rail vs popover by viewport', () => {
   test('popover mode still works at narrower viewport', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 800 })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // No rail at narrow viewport — the trigger button + modal
     // contract returns.

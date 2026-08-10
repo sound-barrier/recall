@@ -54,7 +54,7 @@ test.describe('dossier — Most played labels + Total time played', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     // Old labels are gone.
@@ -82,7 +82,7 @@ test.describe('dossier — Most played labels + Total time played', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const firstStats = page.locator('.breakdown', { hasText: 'Most played maps' })
@@ -103,7 +103,7 @@ test.describe('dossier — Most played labels + Total time played', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Total time played' })
@@ -127,7 +127,7 @@ test.describe('dossier — Most played labels + Total time played', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Total time played' })
@@ -147,7 +147,7 @@ test.describe('dossier — Most played labels + Total time played', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
 
     const tile = page.locator('.kpi-tile', { hasText: 'Total time played' })

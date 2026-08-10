@@ -94,10 +94,10 @@ test.describe('settings — Engine row Detect / Reset', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // Detect button is the primary CTA on the unhealthy Engine row.
-    const detect = page.locator('#sec-engine button:has-text("Detect")')
+    const detect = page.locator('#sec-engine').getByRole('button', { name: 'Detect' })
     await expect(detect).toBeVisible()
     await expect(detect).toBeEnabled()
     await detect.click()
@@ -126,8 +126,8 @@ test.describe('settings — Engine row Detect / Reset', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
-    await page.locator('#sec-engine button:has-text("Detect")').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await page.locator('#sec-engine').getByRole('button', { name: 'Detect' }).click()
 
     // Failure chip surfaces with the "blocked" styling + "Looked in"
     // disclosure carrying the candidate list.
@@ -152,11 +152,11 @@ test.describe('settings — Engine row Detect / Reset', () => {
     }))
 
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     // Path is the override; Reset is enabled.
     await expect(page.locator('#sec-engine .engine-path')).toContainText('/elsewhere/tesseract')
-    const reset = page.locator('#sec-engine button:has-text("Reset")')
+    const reset = page.locator('#sec-engine').getByRole('button', { name: 'Reset' })
     await expect(reset).toBeEnabled()
 
     await reset.click()

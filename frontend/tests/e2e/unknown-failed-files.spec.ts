@@ -51,7 +51,7 @@ test.describe('Unknown tab — failed files', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     const section = page.locator('#section-failed')
     await expect(section).toBeVisible()
@@ -81,9 +81,9 @@ test.describe('Unknown tab — failed files', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
-    await expect(page.locator('#tab-panel-unknown, #panel-unknown').first()).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Unknown/ })).toBeVisible()
     await expect(page.locator('#section-failed')).toHaveCount(0)
   })
 })

@@ -71,7 +71,7 @@ test.describe('match tag autocomplete', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     // The blank-tag record is row index 0 (newest by date).
     await page.locator(`.leaf-row[data-match-key="${KEY_BLANK}"]`).click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
@@ -123,7 +123,7 @@ test.describe('match tag autocomplete', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator(`.leaf-row[data-match-key="${KEY_BLANK}"]`).click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
@@ -146,7 +146,7 @@ test.describe('match tag autocomplete', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator(`.leaf-row[data-match-key="${KEY_BLANK}"]`).click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 

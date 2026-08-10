@@ -61,12 +61,12 @@ test.describe('tilt nudge', () => {
     await expect(toast).toBeVisible()
     await expect(toast).toContainText(/3 losses/i)
 
-    await toast.locator('button', { hasText: /dismiss|got it/i }).click()
+    await toast.getByRole('button', { name: /dismiss|got it/i }).click()
     await expect(toast).toHaveCount(0)
 
     // Navigating around must not resurrect it for the same streak.
-    await page.locator('#tab-settings').click()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.tilt-nudge-toast')).toHaveCount(0)
   })
 
@@ -81,7 +81,7 @@ test.describe('tilt nudge', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#tab-matches')).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('.tilt-nudge-toast')).toHaveCount(0)
   })
 })

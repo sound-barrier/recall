@@ -41,7 +41,7 @@ async function routeMatches(page: Page, corpus: unknown[]) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await toDataDensity(page)
 }
 

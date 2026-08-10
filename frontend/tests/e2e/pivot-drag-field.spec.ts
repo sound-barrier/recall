@@ -35,11 +35,11 @@ async function mountPivot(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
   )
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   await page.locator('.seg-btn', { hasText: 'Data' }).click()
   await page.locator('[data-table-mode-pick="pivot"]').click()
-  await expect(page.locator('[data-testid="pivot-table"]')).toBeVisible()
+  await expect(page.getByTestId('pivot-table')).toBeVisible()
 }
 
 test('the keyboard menu adds a tray field to a shelf and re-pivots', async ({ page }) => {
@@ -50,7 +50,7 @@ test('the keyboard menu adds a tray field to a shelf and re-pivots', async ({ pa
 
   await trayMap.focus()
   await trayMap.press('Enter') // opens the chip menu
-  await page.locator('button[role="menuitem"]', { hasText: 'Add to Rows' }).click()
+  await page.getByRole('menuitem', { name: 'Add to Rows' }).click()
 
   // Map now lives on the Rows shelf and the crosstab gained a map axis.
   await expect(page.locator('[data-pivot-zone="rows"] [data-pivot-chip="map"]')).toBeVisible()
@@ -70,7 +70,7 @@ test('the chip menu removes a placed field from its shelf', async ({ page }) => 
   const rowsHero = page.locator('[data-pivot-zone="rows"] [data-pivot-chip="hero"]')
   await expect(rowsHero).toBeVisible()
   await rowsHero.click() // open menu
-  await page.locator('button[role="menuitem"]', { hasText: 'Remove' }).first().click()
+  await page.getByRole('menuitem', { name: 'Remove' }).first().click()
   await expect(page.locator('[data-pivot-zone="rows"] [data-pivot-chip="hero"]')).toHaveCount(0)
   // Removed dimensions return to the tray.
   await expect(page.locator('[data-pivot-zone="tray"] [data-pivot-chip="hero"]')).toBeVisible()
@@ -83,7 +83,7 @@ test('a Filters-shelf value checklist slices the crosstab', async ({ page }) => 
   await expect(filterChip).toBeVisible()
 
   await filterChip.click() // open the menu → value checklist
-  const checks = page.locator('[role="menuitemcheckbox"]')
+  const checks = page.getByRole('menuitemcheckbox')
   await expect(checks).toHaveCount(2) // rialto + busan, both included by default
   await expect(page.locator('.pivot-count')).toContainText('3 matches')
   await expect(page.locator('.pivot-chip-menu-head')).toContainText('2 of 2 shown')
@@ -92,7 +92,7 @@ test('a Filters-shelf value checklist slices the crosstab', async ({ page }) => 
   // stuck checkbox), the label strikes through so exclusion is obvious,
   // the "N of M shown" counter ticks down, and only the rialto match
   // (m-1) survives the filter.
-  const busan = page.locator('[role="menuitemcheckbox"]', { hasText: 'busan' })
+  const busan = page.getByRole('menuitemcheckbox', { name: 'busan' })
   await expect(busan).toHaveAttribute('aria-checked', 'true')
   await busan.click()
   await expect(busan).toHaveAttribute('aria-checked', 'false')
@@ -112,7 +112,7 @@ test('changing a value aggregation re-folds the crosstab', async ({ page }) => {
   // first value chip's menu and switch its aggregation to Win rate.
   const valueChip = page.locator('[data-pivot-zone="values"] [data-pivot-chip="matches"]').first()
   await valueChip.click()
-  await page.locator('button[role="menuitem"]', { hasText: 'Win rate' }).first().click()
+  await page.getByRole('menuitem', { name: 'Win rate' }).first().click()
   // A win-rate cell reads as a percentage somewhere in the crosstab.
   await expect(page.locator('.pivot-crosstab')).toContainText('%')
 })

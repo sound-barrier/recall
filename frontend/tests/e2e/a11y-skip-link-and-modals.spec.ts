@@ -111,7 +111,7 @@ test.describe('a11y — nested-modal focus-trap Esc sequence', () => {
     })
 
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     const row = page.locator('.leaf-row').first()
     await row.click()
 
@@ -121,7 +121,7 @@ test.describe('a11y — nested-modal focus-trap Esc sequence', () => {
 
     // Open the cheatsheet on top.
     await page.keyboard.press('?')
-    const cheat = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    const cheat = page.getByTestId('kbd-shortcuts-modal')
     await expect(cheat).toBeVisible()
     await expect(panel).toBeVisible()
 

@@ -50,13 +50,13 @@ test.describe('immutable sample profile', () => {
     await expect(page.locator('[data-profile-readonly]')).toBeVisible()
 
     // Parse tab: the read-only note shows and Run Parse + Watch are disabled.
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.locator('[data-readonly-note]')).toBeVisible()
-    await expect(page.locator('[data-testid="run-parse-btn"]')).toBeDisabled()
+    await expect(page.getByTestId('run-parse-btn')).toBeDisabled()
     await expect(page.locator('.big-switch input[type="checkbox"]')).toBeDisabled()
 
     // Matches tab: Add match + Import are disabled.
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('[data-add-match]')).toBeDisabled()
     await expect(page.locator('[data-import-matches]')).toBeDisabled()
   })
@@ -66,7 +66,7 @@ test.describe('immutable sample profile', () => {
     await page.goto('/')
 
     await expect(page.locator('[data-profile-readonly]')).toHaveCount(0)
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('[data-add-match]')).toBeEnabled()
     await expect(page.locator('[data-import-matches]')).toBeEnabled()
   })

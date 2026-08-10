@@ -69,7 +69,7 @@ test.describe('Matches — bulk play-mode and queue-type setters', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('[data-match-key]')).toHaveCount(3)
 
     // Tick one row to reveal the toolbar, then "Select all (3)".
@@ -105,7 +105,7 @@ test.describe('Matches — bulk play-mode and queue-type setters', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     await page.locator('[data-match-key="a"] .leaf-checkbox').click()
     await page.locator('[data-match-key="b"] .leaf-checkbox').click()
@@ -133,7 +133,7 @@ test.describe('Matches — bulk play-mode and queue-type setters', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     await page.locator('[data-match-key="a"] .leaf-checkbox').click()
     await page.locator('[data-bulk-menu="play-mode"]').click()

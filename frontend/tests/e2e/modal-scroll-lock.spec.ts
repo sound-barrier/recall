@@ -42,7 +42,7 @@ test.describe('modal scroll-lock', () => {
     // the always-present rail; tall enough to exercise the scroll.
     await page.setViewportSize({ width: 1100, height: 720 })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.leaf-row').first()).toBeVisible()
     // Sanity: the page is actually scrollable.
     const scrollable = await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight + 50)

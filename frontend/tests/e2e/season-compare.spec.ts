@@ -85,8 +85,8 @@ test.describe('season comparison', () => {
   })
 
   test('the Compare tab shows two seasons side by side with deltas and an excluded count', async ({ page }) => {
-    await page.locator('#tab-compare').click()
-    await expect(page.locator('#panel-compare')).toBeVisible()
+    await page.getByRole('tab', { name: 'Compare' }).click()
+    await expect(page.getByRole('tabpanel', { name: 'Compare' })).toBeVisible()
 
     // Defaults to the two most recent seasons.
     await expect(page.locator('[data-compare-a]')).toHaveValue(S1)
@@ -105,18 +105,18 @@ test.describe('season comparison', () => {
   })
 
   test('the scope toggle compares the current Matches filter instead of full seasons', async ({ page }) => {
-    await page.locator('#tab-compare').click()
+    await page.getByRole('tab', { name: 'Compare' }).click()
     // Full-season scope: season B has all 4 Nepal games.
     await expect(cell(page, 'games', 'b')).toHaveText('4')
 
     // Apply a search narrow on the Matches tab that keeps only the Ilios (S1) games.
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('[data-narrow-trigger]').click()
     await page.locator('#np-search').fill('ilios')
     await page.getByRole('button', { name: /close filter panel/i }).click()
 
     // Back on Compare, switch to the current-filter scope.
-    await page.locator('#tab-compare').click()
+    await page.getByRole('tab', { name: 'Compare' }).click()
     await page.locator('[data-compare-scope="filtered"]').click()
 
     // Season A (Ilios) keeps its 3 games; season B (Nepal) drops to 0.
@@ -143,8 +143,8 @@ test.describe('season comparison — accessibility', () => {
         try { localStorage.setItem('recall.theme', t) } catch (_) { /* ignore */ }
       }, theme)
       await page.goto('/')
-      await page.locator('#tab-compare').click()
-      const panel = page.locator('#panel-compare')
+      await page.getByRole('tab', { name: 'Compare' }).click()
+      const panel = page.getByRole('tabpanel', { name: 'Compare' })
       await expect(panel).toBeVisible()
       // Guard: the low-sample badge must be on screen, or this proves nothing.
       await expect(page.locator('.compare-lown').first()).toBeVisible()

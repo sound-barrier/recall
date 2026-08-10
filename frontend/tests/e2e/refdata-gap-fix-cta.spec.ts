@@ -55,7 +55,7 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     // Open About (the update hub) so updateInfo hydrates — the gap CTA
     // reads the upcoming-roster fields off that response.
     await openAbout(page)
@@ -86,7 +86,7 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
     await openAbout(page)
     // No CTA element for this card.
     await expect(page.locator('[data-fix-cta-key="miya"]')).toHaveCount(0)

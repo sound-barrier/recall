@@ -76,12 +76,12 @@ test.describe('Matches — auto-sync + Unknown filter chips', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('.leaf-mode-chip').first()).toHaveText('Competitive')
 
     // Open the detail panel by clicking the row.
     await page.locator('[data-match-key="k1"]').click()
-    await expect(page.locator('[role="dialog"]').first()).toBeVisible()
+    await expect(page.getByRole('dialog').first()).toBeVisible()
 
     // The auto-write fires on mount.
     await expect.poll(() => put).not.toBeNull()
@@ -104,7 +104,7 @@ test.describe('Matches — auto-sync + Unknown filter chips', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('[data-match-key]')).toHaveCount(3)
 
     // Open the narrow popover and pick the new Unknown chip.
@@ -137,7 +137,7 @@ test.describe('Matches — auto-sync + Unknown filter chips', () => {
     await page.route('**/api/v1/matches/*/play-mode', (route: Route) => route.fulfill({ status: 204, body: '' }))
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     await page.locator('[data-narrow-trigger]').click()
     await page.locator('button[data-play-mode="competitive"]').click()
@@ -161,7 +161,7 @@ test.describe('Matches — auto-sync + Unknown filter chips', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#panel-matches')).toBeVisible()
+    await expect(page.getByRole('tabpanel', { name: /^Matches/ })).toBeVisible()
 
     await page.locator('[data-narrow-trigger]').click()
     await page.locator('button[data-queue-type="unknown"]').click()

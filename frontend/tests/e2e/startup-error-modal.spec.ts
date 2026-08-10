@@ -47,7 +47,7 @@ test.describe('startup-error modal', () => {
     await page.goto('/')
     // Wait for one full tab nav cycle so the load() chain has settled
     // before asserting the absence of the modal.
-    await page.locator('#tab-matches').waitFor({ state: 'visible' })
+    await page.getByRole('tab', { name: /^Matches/ }).waitFor({ state: 'visible' })
 
     await expect(page.getByTestId('startup-error-modal')).toHaveCount(0)
   })

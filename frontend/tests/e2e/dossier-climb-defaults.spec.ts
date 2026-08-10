@@ -54,7 +54,7 @@ async function openMatches(page: import('@playwright/test').Page) {
     })
   })
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await expect(page.locator('.set-dossier')).toBeVisible()
 }
 
@@ -124,7 +124,7 @@ test.describe('layout migration v2 — re-seed to climb defaults', () => {
     await expect(page.locator('[data-widget-id="winrate"]')).toHaveCount(0)
 
     await page.reload()
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await expect(page.locator('.set-dossier')).toBeVisible()
     // Still gone — the migration didn't stomp the user's v2 choice.
     await expect(page.locator('[data-widget-id="winrate"]')).toHaveCount(0)

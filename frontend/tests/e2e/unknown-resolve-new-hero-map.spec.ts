@@ -72,7 +72,7 @@ test('an ambiguous screenshot can be attached to a candidate featuring a newly-a
   })
 
   await page.goto('/')
-  await page.locator('#tab-unknown').click()
+  await page.getByRole('tab', { name: /^Unknown/ }).click()
 
   // Expand the ambiguous card → its candidate shows the new map/hero.
   await page.locator('.ambiguous-card').first().locator('.unknown-card-head').click()

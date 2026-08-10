@@ -51,7 +51,7 @@ test.describe('first-run modal — hint always visible + step label', () => {
 
   test('step indicator is a readable "Step 1 of 2" label', async ({ page }) => {
     await page.goto('/')
-    const label = page.locator('[data-testid="first-run-step-label"]')
+    const label = page.getByTestId('first-run-step-label')
     await expect(label).toBeVisible()
     await expect(label).toHaveText('Step 1 of 2')
   })
@@ -91,7 +91,7 @@ test.describe('parse button — empty-folder copy + ghost style', () => {
     }))
 
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     const btn = page.locator('button.btn.primary.big').filter({ hasText: /All parsed|Run Parse/ })
     await expect(btn).toBeVisible()
     await expect(btn).toBeDisabled()
@@ -127,14 +127,14 @@ test.describe('error banner — retry CTA on load failures', () => {
     }))
 
     await page.goto('/')
-    const banner = page.locator('[data-testid="error-banner"]')
+    const banner = page.getByTestId('error-banner')
     await expect(banner).toBeVisible()
     // Plain-language translation: the raw "permission denied" was
     // mapped to a CTA, not surfaced verbatim.
     await expect(banner).toContainText(/Cannot access.*read access/i)
     await expect(banner).not.toContainText(/permission denied/i)
 
-    const retry = page.locator('[data-testid="error-retry"]')
+    const retry = page.getByTestId('error-retry')
     await expect(retry).toBeVisible()
     await retry.click()
     await expect.poll(() => calls).toBeGreaterThanOrEqual(2)
@@ -151,7 +151,7 @@ test.describe('error banner — retry CTA on load failures', () => {
     }))
 
     await page.goto('/')
-    const banner = page.locator('[data-testid="error-banner"]')
+    const banner = page.getByTestId('error-banner')
     await expect(banner).toBeVisible()
     // A failure is an announcement, not ambient chrome.
     await expect(banner).toHaveAttribute('role', 'alert')
@@ -165,7 +165,7 @@ test.describe('error banner — retry CTA on load failures', () => {
     await expect(page.locator('[data-about-modal]')).toBeVisible()
 
     await expect(banner).toBeVisible()
-    await page.locator('[data-testid="error-dismiss"]').click()
+    await page.getByTestId('error-dismiss').click()
     await expect(banner).toBeHidden()
   })
 })

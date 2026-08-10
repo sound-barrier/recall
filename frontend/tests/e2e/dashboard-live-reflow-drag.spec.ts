@@ -104,7 +104,7 @@ test.describe('dashboard live-reflow drag', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     // The drag helpers reach the DOM via page.evaluate, which — unlike a
     // locator — does not auto-wait. Gate every test on the widget grid having
     // hydrated so a dragstart can't race the render and throw "source widget

@@ -43,7 +43,7 @@ test.describe('settings — Engine description per OS', () => {
   test('darwin renders only the Homebrew paths', async ({ page }) => {
     await mockTesseract(page, 'darwin')
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     const desc = page.locator('.engine-row .setting-desc')
     await expect(desc).toContainText('/opt/homebrew/bin')
@@ -55,7 +55,7 @@ test.describe('settings — Engine description per OS', () => {
   test('linux renders only the apt path', async ({ page }) => {
     await mockTesseract(page, 'linux')
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     const desc = page.locator('.engine-row .setting-desc')
     await expect(desc).toContainText('/usr/bin')
@@ -66,7 +66,7 @@ test.describe('settings — Engine description per OS', () => {
   test('windows renders only the Program Files path', async ({ page }) => {
     await mockTesseract(page, 'windows')
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     const desc = page.locator('.engine-row .setting-desc')
     await expect(desc).toContainText('Program Files')
@@ -78,7 +78,7 @@ test.describe('settings — Engine description per OS', () => {
   test('unknown platform falls back to just the lead sentence', async ({ page }) => {
     await mockTesseract(page, 'plan9')
     await page.goto('/')
-    await page.locator('#tab-settings').click()
+    await page.getByRole('tab', { name: 'Settings' }).click()
 
     const desc = page.locator('.engine-row .setting-desc')
     // Lead sentence stays so the row doesn't look broken.

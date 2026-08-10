@@ -45,7 +45,7 @@ test.describe('Parse-tab readiness checklist', () => {
   test('first run shows both blockers (Tesseract + folder) as outstanding', async ({ page }) => {
     await mockBoot(page, { found: false, folder: '' })
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     const checklist = page.locator('[data-readiness-checklist]')
     await expect(checklist).toBeVisible()
     await expect(checklist.locator('[data-readiness-item="tesseract"]')).not.toHaveClass(/done/)
@@ -55,7 +55,7 @@ test.describe('Parse-tab readiness checklist', () => {
   test('with Tesseract ready but no folder, only the folder item is outstanding', async ({ page }) => {
     await mockBoot(page, { found: true, folder: '' })
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     const checklist = page.locator('[data-readiness-checklist]')
     await expect(checklist).toBeVisible()
     await expect(checklist.locator('[data-readiness-item="tesseract"]')).toHaveClass(/done/)
@@ -65,7 +65,7 @@ test.describe('Parse-tab readiness checklist', () => {
   test('both prerequisites satisfied hides the checklist', async ({ page }) => {
     await mockBoot(page, { found: true, folder: '/captures/ow' })
     await page.goto('/')
-    await page.locator('#tab-ingest').click()
+    await page.getByRole('tab', { name: 'Parse' }).click()
     await expect(page.locator('[data-readiness-checklist]')).toHaveCount(0)
   })
 })

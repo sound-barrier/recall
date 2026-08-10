@@ -33,10 +33,10 @@ test.describe('Parse tab refreshes the pending-screenshot count', () => {
     await expect.poll(() => calls).toBeGreaterThanOrEqual(1)
 
     // Open the Parse tab — this must re-fetch and render the current value.
-    await page.locator('#tab-ingest').click()
-    await expect(page.locator('#tab-ingest')).toHaveAttribute('aria-selected', 'true')
+    await page.getByRole('tab', { name: 'Parse' }).click()
+    await expect(page.getByRole('tab', { name: 'Parse' })).toHaveAttribute('aria-selected', 'true')
 
     // Re-fetched: the button shows 8, not the stale load-time 3.
-    await expect(page.locator('[data-testid="run-parse-btn"]')).toContainText('Run Parse · 8')
+    await expect(page.getByTestId('run-parse-btn')).toContainText('Run Parse · 8')
   })
 })

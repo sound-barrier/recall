@@ -37,7 +37,7 @@ test.describe('winrate breakdown sample-size honesty', () => {
     await page.route('**/api/v1/matches', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }))
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
   })
 
   test('ranks the solid 75% sample above the thin 100% one', async ({ page }) => {

@@ -184,7 +184,7 @@ test.describe('flat CSV export of a mixed match set (real server)', () => {
 
     // ── Drive the real UI: data density, tick three rows, export ───────────
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
     await page.locator('.seg-btn', { hasText: 'Data' }).click()
     await expect(page.locator('table.leaves-table')).toBeVisible()
 
@@ -197,7 +197,7 @@ test.describe('flat CSV export of a mixed match set (real server)', () => {
     }
 
     const downloadPromise = page.waitForEvent('download')
-    await page.locator('[data-testid="export-csv"]').click()
+    await page.getByTestId('export-csv').click()
     const download = await downloadPromise
 
     const content = fs.readFileSync((await download.path())!, 'utf8')

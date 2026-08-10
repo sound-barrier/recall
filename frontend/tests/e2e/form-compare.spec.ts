@@ -70,7 +70,7 @@ const FILLER: [number, string, string][] = [
 const corpus = () => [...WEEK_RECENT, ...WEEK_PRIOR, ...FILLER].map(([o, h, r]) => rec(o, h, r))
 
 async function openForm(page: Page) {
-  await page.locator('#tab-compare').click()
+  await page.getByRole('tab', { name: 'Compare' }).click()
   await page.locator('[data-compare-mode="form"]').click()
 }
 
@@ -85,7 +85,7 @@ test.describe('form comparison', () => {
   })
 
   test('the Form mode shows a verdict over the evidence table; Seasons stays default', async ({ page }) => {
-    await page.locator('#tab-compare').click()
+    await page.getByRole('tab', { name: 'Compare' }).click()
     // Seasons mode is the default and keeps its selectors.
     await expect(page.locator('[data-compare-a]')).toBeVisible()
     await expect(page.locator('[data-form-verdict]')).toHaveCount(0)
@@ -160,7 +160,7 @@ test.describe('form comparison', () => {
 
     await page.locator('[data-compare-row="roleTank"] .compare-b').click()
     // Lands on Matches, narrowed to the recent week + tank → the 4 Reinhardt games.
-    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('aria-selected', 'true')
     await expect.poll(() => page.locator('.leaf-row').count()).toBe(4)
   })
 
@@ -172,7 +172,7 @@ test.describe('form comparison', () => {
       await page.goto('/')
       await openForm(page)
       await expect(page.locator('[data-form-verdict]')).toBeVisible()
-      const panel = page.locator('#panel-compare')
+      const panel = page.getByRole('tabpanel', { name: 'Compare' })
       await panel.evaluate((el) =>
         Promise.all(
           el.getAnimations({ subtree: true })

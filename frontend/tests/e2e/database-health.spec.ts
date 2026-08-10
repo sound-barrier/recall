@@ -27,7 +27,7 @@ const AFTER_VACUUM = {
 
 async function openAdvanced(page: Page) {
   await page.goto('/')
-  await page.locator('#tab-settings').click()
+  await page.getByRole('tab', { name: 'Settings' }).click()
   await page.locator('.advanced-summary').click()
 }
 

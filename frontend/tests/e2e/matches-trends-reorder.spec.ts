@@ -32,7 +32,7 @@ function order(page: import('@playwright/test').Page): Promise<string[]> {
 }
 
 async function openTrends(page: import('@playwright/test').Page) {
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await page.locator('.trends-toggle').click()
   await page.locator('.trend-chart canvas').first().waitFor()
 }

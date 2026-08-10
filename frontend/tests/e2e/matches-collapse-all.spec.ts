@@ -35,7 +35,7 @@ test.describe('Matches — collapse/expand all sections', () => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) })
     })
     await page.goto('/')
-    await page.locator('#tab-matches').click()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Default: grouped by day (comfortable density) → dividers + rows.
     await expect(page.locator('.leaf-row').first()).toBeVisible()

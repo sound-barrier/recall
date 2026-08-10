@@ -46,7 +46,7 @@ test('detail panel stays open after clicking a match (Hero×Mode band, WebKit)',
   )
 
   await page.goto('/')
-  await page.locator('#tab-matches').click()
+  await page.getByRole('tab', { name: /^Matches/ }).click()
   await page.locator('.leaf-row').first().click()
 
   await expect(page.locator('aside.detail-panel')).toBeVisible()

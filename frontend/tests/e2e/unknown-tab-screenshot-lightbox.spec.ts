@@ -73,7 +73,7 @@ test.describe('Unknown tab — screenshot preview click → lightbox', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     // Expand the unknown card, then toggle the filename → preview
     // appears. Expanding the card MUST NOT open the Matches detail
@@ -107,7 +107,7 @@ test.describe('Unknown tab — screenshot preview click → lightbox', () => {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(300)
     await expect(page.locator('.lightbox-backdrop')).toHaveCount(0)
-    await expect(page.locator('#tab-unknown')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Unknown/ })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('Ambiguous card: expanded shows a Source Screenshot block; clicking the thumbnail opens the lightbox', async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe('Unknown tab — screenshot preview click → lightbox', () => {
       })
     })
     await page.goto('/')
-    await page.locator('#tab-unknown').click()
+    await page.getByRole('tab', { name: /^Unknown/ }).click()
 
     // Expand the ambiguous card → Source Screenshot block + Pick the
     // match section both render. Same detail-panel/inert assertion

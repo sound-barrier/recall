@@ -103,8 +103,8 @@ async function openScenario(page: Page, rows: unknown[]): Promise<void> {
   await page.route('**/api/v1/matches', (r: Route) =>
     r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) }))
   await page.goto('/')
-  await page.locator('#tab-elo').click()
-  await expect(page.locator('#panel-elo')).toBeVisible()
+  await page.getByRole('tab', { name: 'Elo Calculator' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Elo Calculator' })).toBeVisible()
   // A real verdict, not the empty-state fallback — not.toHaveText('') was
   // vacuously satisfied by "Pick a track with ranked games…".
   await expect(page.locator('[data-elo-answer]')).not.toContainText('Pick a track')

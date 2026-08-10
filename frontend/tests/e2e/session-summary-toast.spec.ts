@@ -85,7 +85,7 @@ test.describe('session summary toast', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#tab-matches')).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
     await expect(page.locator('.session-summary-toast')).toHaveCount(0)
 
     batch = [rec(90, 'victory'), rec(50, 'victory'), rec(10, 'defeat')]
@@ -107,7 +107,7 @@ test.describe('session summary toast', () => {
     })
 
     await page.goto('/')
-    await expect(page.locator('#tab-matches')).toBeVisible()
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
 
     // A week-old session — re-parse of a backlog, nothing "so far".
     batch = [
