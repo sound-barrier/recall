@@ -1,11 +1,8 @@
-import { computed, markRaw, ref, shallowRef, type Ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
 import {
-  ParseScreenshots,
-  ReParseAll,
-  CancelParse,
   ClearDatabase,
   BackupDatabase,
   RestoreDatabase,
@@ -17,15 +14,13 @@ import {
   refetchMatchesCluster, useFailedFilesQuery, useMatchesQuery, usePendingCountQuery,
 } from '@/queries/matches'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
-import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
-import { currentSessionSummary, type SessionSummary } from '@/match/match-momentum-helpers'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
 import { profileScopedKey } from '@/composables/shared/profileStorage'
-import type { ParseConnectionState } from '@/composables/ingest/useParseRecovery'
+import { useParseRunLifecycle } from '@/composables/ingest/useParseRunLifecycle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
@@ -84,51 +79,19 @@ export const useMatchesStore = defineStore('matches', () => {
   )
 
   // ── Parse lifecycle state ─────────────────────────────────────────
-  // parseBusy gates the manual Parse button + peers; cancelingParse spans
-  // the Stop click → SSE parse-canceled confirmation; firstLoadPending
-  // drives the Matches skeleton from boot until the first load() resolves.
-  const parseBusy = ref(false)
-  const cancelingParse = ref(false)
   // Drives the Matches skeleton from boot until the first fetch settles —
   // isPending never flips back to true across invalidation refetches.
   const firstLoadPending = computed(() => matchesQuery.isPending.value)
-  // parseProgress: most-recent completed file during an active parse (null
-  // when idle). parseLog: rolling completed-file log. newScreenshotCount:
-  // image files in the dir not yet in the DB (null = not yet fetched).
-  const parseProgress = ref<ParseProgressEvent | null>(null)
-  // Watcher pending-file tally (masthead dot). Event-fed, session-scoped.
-  const watchActivity = ref<WatchActivityEvent | null>(null)
-  // Post-parse session tally toast: set when a parse completes while
-  // the freshest matches form an ACTIVE session (see
-  // currentSessionSummary); token restarts the toast timer per run.
-  const sessionToast = ref<(SessionSummary & { token: number }) | null>(null)
-  function dismissSessionToast(token: number) {
-    if (sessionToast.value?.token === token) sessionToast.value = null
-  }
-  const parseLog = ref<ParseProgressEvent[]>([])
   // Cluster siblings of the records query — silent keep-last on failure.
+  // newScreenshotCount: image files in the dir not yet in the DB (null =
+  // not yet fetched).
   const pendingCountQuery = usePendingCountQuery()
   const newScreenshotCount = computed(() => pendingCountQuery.data.value ?? null)
   const failedFilesQuery = useFailedFilesQuery()
   const failedFiles = computed(() => failedFilesQuery.data.value ?? [])
-  // Wall-clock of the last successful manual parse → Settings "Last run · X".
-  const lastParsedAt = ref<number | null>(null)
 
   async function refreshNewCount() {
     await getQueryClient().refetchQueries({ queryKey: qk.pendingCount })
-  }
-
-  // Restore the persisted last-parse timestamp on boot so Settings shows
-  // "Last run · …" immediately, not just after a fresh parse this session. This
-  // store owns lastParsedAt, so it owns its hydration too.
-  function restoreLastParsedAt() {
-    try {
-      // Profile-scoped, with one-way adoption of the pre-scoping
-      // global key so an upgrading install keeps its timestamp.
-      const v = localStorage.getItem(profileScopedKey('lastParsedAt'))
-        ?? localStorage.getItem('recall.lastParsedAt')
-      if (v) lastParsedAt.value = Number(v) || null
-    } catch (_) { /* private-mode localStorage */ }
   }
 
   // Brief scoreboard pulse when the watcher / a manual parse brings in
@@ -180,85 +143,16 @@ export const useMatchesStore = defineStore('matches', () => {
     if (before > 0 && after > before) flashRecordsPulse()
   }
 
-
-  // ── Parse run controls ────────────────────────────────────────────
-  // Completion (load() + parseBusy=false) arrives via the parse-complete
-  // event handler, NOT the POST resolving, so a mid-parse network drop can't
-  // strand the panel. parseProgressOpen is IngestView's drawer; the
-  // unsupported-Tesseract confirm modal gates a run on an untested engine.
-  const parseProgressOpen = ref(false)
-  const showUnsupportedModal = ref(false)
-
-  async function runParse() {
-    const appStore = useAppStore()
-    appStore.clearError()
-    parseBusy.value = true
-    parseProgress.value = null
-    parseLog.value = []
-    parseProgressOpen.value = false
-    try {
-      await ParseScreenshots()
-    } catch (e) {
-      appStore.setErrorFromRaw(String(e))
-      parseBusy.value = false
-      parseProgress.value = null
-      cancelingParse.value = false
-    }
-  }
-
-  // Stop from IngestView's button OR the status-bar ABORT tile. Flips the
-  // canceling flag immediately; the clear happens on parse-canceled.
-  // Swallows 409 (parse finished before the Stop landed).
-  async function onCancelParse() {
-    if (cancelingParse.value) return
-    cancelingParse.value = true
-    try {
-      await CancelParse()
-    } catch (_) {
-      cancelingParse.value = false
-    }
-  }
-
-  // "Re-parse all" (Settings → Advanced) — forces re-OCR; skips the
-  // unsupported-version modal (the user committed to a multi-minute run).
-  async function onReParseAll() {
-    const appStore = useAppStore()
-    if (!useSettingsStore().tesseractReady) {
-      appStore.setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
-      return
-    }
-    appStore.clearError()
-    parseBusy.value = true
-    parseProgress.value = null
-    parseLog.value = []
-    try {
-      await ReParseAll()
-    } catch (e) {
-      appStore.setErrorFromRaw(String(e))
-      parseBusy.value = false
-      parseProgress.value = null
-      cancelingParse.value = false
-    }
-  }
-
-  async function parse() {
-    const settingsStore = useSettingsStore()
-    if (!settingsStore.tesseractReady) {
-      useAppStore().setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
-      return
-    }
-    // Unsupported version → require explicit confirmation (OCR may be wrong).
-    if (!settingsStore.tesseractSupported) {
-      showUnsupportedModal.value = true
-      return
-    }
-    await runParse()
-  }
-
-  async function confirmUnsupportedParse() {
-    showUnsupportedModal.value = false
-    await runParse()
-  }
+  // ── Parse-run lifecycle (composed module) ─────────────────────────
+  // Run/stop controls, progress + announcement state, the terminal
+  // transitions, and the stream-recovery bridge — the whole cluster
+  // lives in useParseRunLifecycle; the store spreads it into its public
+  // surface under the same names.
+  const parseRun = useParseRunLifecycle({ load })
+  // The two members the rest of this setup wires directly: `parse`
+  // feeds the ignored-screenshots panel, `lastParsedAt` the clear-DB
+  // reset below.
+  const { parse, lastParsedAt } = parseRun
 
   // ── Ignored screenshots ───────────────────────────────────────────
   // The "Delete forever" / un-ignore triage surface; onRunParseFromIgnored
@@ -356,62 +250,6 @@ export const useMatchesStore = defineStore('matches', () => {
     weekStart,
   )
 
-  // ── Ingest event stream ───────────────────────────────────────────
-  // Polite sr-only announcement for parse-lifecycle terminal states (the
-  // status bar goes inert at run end, leaving screen readers no signal).
-  const parseAnnouncement = ref('')
-  function announceParse(msg: string) {
-    parseAnnouncement.value = msg
-    setTimeout(() => { if (parseAnnouncement.value === msg) parseAnnouncement.value = '' }, 2000)
-  }
-
-  // ── Parse-run terminal transitions ────────────────────────────────
-  // The store owns the state, so it owns the transitions; useServerEvents
-  // merely wires the parse-complete / parse-canceled events to these.
-  async function finishParseRun(outcome: 'complete' | 'canceled') {
-    await load()
-    // Read the fresh records straight from the cache — the observer's
-    // reactive ref updates a notification tick later than the refetch
-    // resolves, and the session summary must see the new batch.
-    const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
-    if (outcome === 'complete') {
-      const session = currentSessionSummary(fresh)
-      sessionToast.value = session ? { ...session, token: Date.now() } : null
-      lastParsedAt.value = Date.now()
-      try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
-    }
-    parseBusy.value = false
-    parseProgress.value = null
-    cancelingParse.value = false
-    if (outcome === 'complete') {
-      const n = fresh.length
-      announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
-    } else {
-      announceParse('Parse canceled.')
-    }
-  }
-
-  // ── Parse-stream recovery surface ─────────────────────────────────
-  // The recovery state machine and the event-stream subscriptions live in
-  // useServerEvents (App shell — they register component lifecycle hooks);
-  // the store carries their consumer-facing surface so IngestView keeps
-  // reading one place. The bridge is a reactive holder (not a mutable
-  // callback slot), so the computed chains straight to the recovery
-  // state with no scope-bound sync effect; before App wires it the state
-  // reads 'connected' and refresh is a no-op — same as Wails mode, where
-  // the recovery machinery never fires.
-  const parseRecoveryBridge = shallowRef<{
-    connectionState: Ref<ParseConnectionState>
-    refresh: () => void
-  } | null>(null)
-  const parseConnectionState = computed<ParseConnectionState>(
-    () => parseRecoveryBridge.value?.connectionState.value ?? 'connected',
-  )
-  function wireParseRecovery(bridge: { connectionState: Ref<ParseConnectionState>; refresh: () => void }) {
-    parseRecoveryBridge.value = markRaw(bridge)
-  }
-  function refreshParse() { parseRecoveryBridge.value?.refresh() }
-
   // ── Clear-DB + backup/restore (data ops, surfaced in Settings) ────
   // After a wipe/import, reload records + the ignored list. pendingClearOpts
   // carries SettingsAdvanced's "Keep suppress-list" choice into the api seam.
@@ -482,35 +320,16 @@ export const useMatchesStore = defineStore('matches', () => {
     referenceGapRecords,
     hiddenRecords,
     ambiguousRecords,
-    parseBusy,
-    cancelingParse,
     firstLoadPending,
-    parseProgress,
-    watchActivity,
-    sessionToast,
-    dismissSessionToast,
-    parseLog,
     newScreenshotCount,
-    lastParsedAt,
     refreshNewCount,
-    restoreLastParsedAt,
     recordsPulse,
     tourActive,
     onTourActiveChange,
     load,
-    parseProgressOpen,
-    showUnsupportedModal,
-    runParse,
-    onCancelParse,
-    onReParseAll,
-    parse,
-    confirmUnsupportedParse,
-    parseAnnouncement,
-    announceParse,
-    finishParseRun,
-    parseConnectionState,
-    refreshParse,
-    wireParseRecovery,
+    // The whole parse-run lifecycle cluster (parseBusy, runParse,
+    // finishParseRun, the recovery bridge, …) under its original names.
+    ...parseRun,
     ignoredScreenshots,
     ignoredCount,
     ignoredPanelOpen,

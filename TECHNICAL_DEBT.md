@@ -98,70 +98,37 @@ changed bullets carry an inline re-evaluation note:
   and passes the leftover word `tsgo` as an INPUT FILE — which suppresses
   tsconfig.json and reports `TS5112` having checked nothing.
 
-- **`useMatchesDossierQueries.ts` (~748 lines)** exceeds the 500-line soft cap,
-  but it is one cohesive composable — a single `useDossierQueries` factory (the
-  file's only export) whose bulk is 17 tightly-coupled query helpers
-  (`topByCount`, `winrateBy`, `lossQualityBreakdown`, the time-of-day /
-  day-of-week bucketers, …) returned as one bundle, each opening its own
-  `computed()` over the same narrowed record set — the dense-single-concern case
-  the file-size rule exempts; its shared types already live in
-  `useMatchesDossier.types`. It grew from ~696 across 2026-07-03/04 by adding
-  more dossier/trends widgets to the same tier, not a second concern creeping
-  in, so splitting the query math would fragment one aggregation layer for a
-  number. (Re-evaluated 2026-07-06: `useMatchesNarrow.ts` dropped from this
-  bullet — the clause-registry split into `matchesNarrow.clauses.ts`, the exact
-  fragmentation this bullet once argued against, shipped 2026-07-02 and left
-  that file at 363 lines, under the cap.)
-- **`MatchJournal.vue` (632).** The Note / Replay / Group / Tags cells share
-  `.journal-cell` chrome + the `saved`-pulse `@keyframes`, and its script is
-  already a thin call into `useMatchAnnotationEditor`. A cell can't be pulled into
-  a child without that shared chrome: the journal CSS rides the lazy
-  `MatchDetailPanel` chunk, so promoting it to a global `app.css` file (the
-  worked-example pattern) would move ~80 lines of chrome into the eager,
-  tightly-budgeted initial CSS (the cap lives in `scripts/ci/check-bundle-size.sh`
-  — headroom is on the order of a KB, well short of the chrome block), so a
-  child SFC would have to *duplicate* ~80 lines of chrome — net worse.
-  Cohesive-shell exemption. (Re-evaluated 2026-07-06: count 626→632; the stale
-  hardcoded headroom figure now defers to `check-bundle-size.sh` as the source
-  of truth.)
-- **`AboutModal.vue` (~675) and `MatchLeafRow.vue` (~637)** — adjudicated
-  2026-07 (the last of the never-adjudicated four). (Re-evaluated 2026-07-06:
-  the in-app self-update work had grown AboutModal to 778 with a CTA block
-  rendering only in Section 1 — outside the "chrome shared verbatim across
-  both update sections" rationale — so that block was extracted to
-  `SelfUpdateCta.vue` the same day, restoring the exemption.) AboutModal's
-  logic stays extracted (`useGameDataUpdate`, `useModalFocusTrap`, the
-  `UpdateDiffManifest` + `SelfUpdateCta` children; the self-update state
-  machine lives in the app store); its residual bulk is the
-  `update-check-modal-*` chrome genuinely shared across both update sections,
-  with the shared btn chrome reaching `SelfUpdateCta` via `:deep()` so nothing
-  is duplicated. MatchLeafRow is ~370 lines of
-  irreducible per-row grid CSS + dense 7-cell markup with all logic in
-  `match-helpers`/`match-label-helpers`/`search-query`; its map/hero-block
-  seams share the `.leaf-filter-cell` funnel chrome and would each thread
-  6-7 props — the MatchJournal "net worse" precedent. `MatchHeroModeBand`
-  needed no ruling: the Phase-3 `BandHeaderControls` extraction already put
-  it at ~490. `MatchesTable` was the one with a real seam left — its
-  ~100-line cell drag-select pointer machine moved to `useCellDragSelect`
-  (script now ~155 lines; the ~570-line residual is table chrome under this
-  same exemption).
-- **Three oversized-but-cohesive Matches SFCs — `MatchMapRoleBand.vue` (768),
-  `MatchStatusChoosers.vue` (712), `MatchesView.vue` (693).** `MatchMapRoleBand`
-  (the single largest SFC) already has its logic maximally extracted — the
-  selection state machine in `useMapRoleSelection`, the display filter in
-  `useMapRoleConfig`, the time window in `useWindowMonths`, the data in the
-  dossier composables, and the shared header furniture in `BandHeaderControls`
-  — so its residual is the selection wiring *coupled to the grid DOM*
-  (the `gridRef.querySelector('[data-mr-cell=…]')` roving-focus mirror +
-  `elementFromPoint` drag hit-testing) plus ~280 lines of heatmap-grid CSS that
-  can't move to a global file (the same lazy-chunk / initial-CSS-budget constraint
-  as MatchJournal). `MatchStatusChoosers` is mostly irreducible chooser markup +
-  style; `MatchesView` is the set-workspace composition shell. Cohesive-shell
-  exemptions — the clean seams were already taken. (The other six oversized SFCs
-  *were* split: MatchesDossierHead, MatchesArchiveDrawer, MatchDetailPanel,
-  IgnoredFilesPanel, MatchesMembersList, ManualMatchModal. Re-evaluated
-  2026-07-06: 923→768 — the `BandHeaderControls` extraction took the header
-  seam after the original ruling; style block ~410→~280.)
+- **Post file-size wave (2026-08-10): what stays over the 500-line soft cap.**
+  The sibling-stylesheet split (`<style scoped src="./x.css">` — hash-scoping
+  and lazy-chunk placement verified byte-identical in the built assets) plus
+  targeted script/data extractions took every previously-exempted oversized
+  file under the cap (MatchJournal 326, MatchStatusChoosers 232, MatchLeafRow
+  286, AboutModal 296, MatchMapRoleBand 493, MatchesTable 320, TourCallout
+  411, NarrowPopover 474, FormCompareView 424, stores/matches 366,
+  useDashboardLayout 329, useEloCalculator 437, KeyboardShortcutsModal 351;
+  `useMatchesDossierQueries` sits at 343 since the kernel extraction), so the
+  old per-file exemptions are paid and deleted. What remains, argued fresh:
+  `MatchesView.vue` (698: ~369 script / ~208 template / ~119 style) is the
+  set-workspace composition shell — the script is pure wiring (store reads,
+  the CardStateApi/grouping/keyboard bundles, the four dossier `provide()`
+  calls; the dossier itself now lives in the matches store, so the old
+  "useWeekStart must live here" rationale is obsolete) and the only seam
+  left is splitting the workspace layout itself; growth trigger ≥750 lines
+  or any non-wiring logic landing in its script. `api.ts` (529) is the
+  named-function facade over the generated SDK — 61 one-call wrappers,
+  complexity 1 each; the file IS the one-page wire-surface listing, and
+  splitting it buys indirection for zero win. `match-dossier-aggregate.ts`
+  (594) and `match-trends-helpers.ts` (519) are dense pure-helper kernels
+  (the dossier aggregation pass; the trends chart math) whose siblings
+  (`match-dossier-tally`, `match-time`/`label`/`sample-helpers`) already
+  hold the separable concerns — splitting what's left fragments one
+  aggregation layer for a number, the same argument the retired
+  useMatchesDossierQueries bullet made, still true one level down. Test
+  files over 500 (useMatchesDossier.test 1949, SettingsView.test 996,
+  useMatchesNarrow.test 845, MatchDetailPanel.test 609, MatchesView.test
+  602, useDashboardLayout.test 579) stay whole: a suite mirrors its
+  surface, and splitting one by line count scatters a single surface's
+  coverage story.
 - **App.vue is a clean 177-line thin shell** (zero business logic — it reads a
   few store refs, wires the App-shell composables, and renders chrome + one
   view; the parse-run-state / profile / tour / first-run wiring lives in the

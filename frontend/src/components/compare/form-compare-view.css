@@ -1,0 +1,279 @@
+.form-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 1.1rem 0 0.8rem;
+}
+
+.form-preset {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  letter-spacing: 0.03em;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.form-preset:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.form-preset.active {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  color: var(--text);
+}
+
+.form-preset:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.form-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.7rem 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.form-pairby {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.form-pairby-btn {
+  appearance: none;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.form-pairby-btn + .form-pairby-btn {
+  border-left: 1px solid var(--border);
+}
+
+.form-pairby-btn.active {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+  color: var(--text);
+}
+
+.form-pairby-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-field-label {
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.form-date,
+.form-select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--type-lg);
+}
+
+.form-mirror {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.form-mirror-label {
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  color: var(--text-dim);
+  padding-bottom: 0.45rem;
+}
+
+.form-mirror-toggle {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+}
+
+.form-mirror-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.form-mirror-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.form-conds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1rem;
+}
+
+.form-note-inline {
+  flex-basis: 100%;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  color: var(--text-faint);
+}
+
+/* ─── Verdict card — the one loud element on the page ─── */
+.form-verdict-card {
+  margin: 1rem 0 0.4rem;
+  padding: 1.1rem 1.2rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 45%),
+    var(--surface);
+}
+
+.form-verdict-eyebrow {
+  margin: 0;
+}
+
+.form-verdict-word {
+  margin: 0.15rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.form-verdict-word.is-sharper {
+  color: var(--win);
+}
+
+.form-verdict-word.is-slipping {
+  color: var(--loss);
+}
+
+.form-verdict-word.is-early {
+  color: var(--text-faint);
+}
+
+.form-verdict-movers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  margin: 0.5rem 0 0;
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  color: var(--text-dim);
+}
+
+.form-verdict-hint {
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+.form-sparks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem 2rem;
+  margin-top: 0.9rem;
+}
+
+.form-spark {
+  margin: 0;
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.form-spark-label {
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  margin-bottom: 0.25rem;
+}
+
+.form-spark-svg {
+  display: block;
+  width: 100%;
+  height: 56px;
+}
+
+.form-spark-mid {
+  stroke: color-mix(in srgb, var(--text-faint) 35%, transparent);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 3;
+}
+
+.form-spark-line {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.form-spark-line.is-a {
+  stroke: color-mix(in srgb, var(--text-faint) 80%, var(--text));
+}
+
+.form-spark-line.is-b {
+  stroke: var(--accent);
+}
+
+.form-spark-empty {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  font-style: italic;
+  color: var(--text-faint);
+  padding: 1.2rem 0;
+}
+
+.form-note {
+  margin: 0.7rem 0 0;
+  font-size: var(--type-sm);
+  color: var(--text-dim);
+}
+
+.form-note-faint {
+  color: var(--text-faint);
+}
+
+.form-lown {
+  display: inline-block;
+  padding: 0 0.28rem;
+  border-radius: var(--radius);
+  background: var(--loss-soft);
+  color: var(--text);
+  border: 1px solid var(--loss-line);
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+}

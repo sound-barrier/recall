@@ -1,0 +1,215 @@
+.trends-section {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.trends-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.trends-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex: 1;
+  padding: 0.35rem 0.25rem;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.trends-title {
+  font-size: var(--type-2xl);
+  font-weight: 600;
+}
+
+.trends-hint {
+  color: var(--text-dim);
+  font-size: var(--type-md);
+}
+
+.trends-reset {
+  flex-shrink: 0;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.2rem 0.55rem;
+  font-size: var(--type-md);
+  cursor: pointer;
+}
+
+.trends-reset:enabled:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.trends-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.trends-window {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.trends-window-label {
+  color: var(--text-dim);
+  font-size: var(--type-md);
+}
+
+.trends-body {
+  margin-top: 0.75rem;
+}
+
+.trends-empty,
+.trend-card-empty {
+  color: var(--text-dim);
+  font-size: var(--type-lg);
+  margin: 0;
+}
+
+.trends-empty {
+  padding: 1.5rem 0.5rem;
+}
+
+.trends-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (width <= 720px) {
+  .trends-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.trend-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  min-width: 0;
+  transition: box-shadow var(--duration-fast) ease, opacity var(--duration-fast) ease;
+}
+
+/* The card being dragged dims; the card it will land in front of gets an
+   inset accent ring (active-drag feedback, not a resting hover). */
+.trend-card-dragging {
+  opacity: 0.4;
+}
+
+.trend-card-drop-target {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.trend-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: 0.25rem;
+}
+
+.trend-card-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.trend-card-grip {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: var(--type-sm);
+  line-height: 1;
+  padding: 0 0.15rem;
+  cursor: grab;
+}
+
+.trend-card-grip:active {
+  cursor: grabbing;
+}
+
+.trend-card-grip:hover {
+  color: var(--text);
+}
+
+.trend-card-title {
+  margin: 0;
+  font-size: var(--type-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.trend-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trend-window-select {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.15rem 0.4rem;
+  font-size: var(--type-md);
+}
+
+.trend-card-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: var(--type-3xl);
+  line-height: 1;
+  padding: 0 0.2rem;
+  cursor: pointer;
+}
+
+.trend-card-close:hover {
+  color: var(--loss);
+}
+
+.trend-card-empty {
+  padding: 2rem 0.5rem;
+  text-align: center;
+}
+
+.trends-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+}
+
+.trends-add-label {
+  color: var(--text-dim);
+  font-size: var(--type-md);
+}
+
+.trends-add-chip {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 0.18rem 0.6rem;
+  font-size: var(--type-md);
+  cursor: pointer;
+}
+
+.trends-add-chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}

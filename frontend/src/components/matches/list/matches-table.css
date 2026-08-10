@@ -1,0 +1,248 @@
+.leaves-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.tablemode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Discoverability hint for the otherwise-invisible drag cell-range select +
+   clipboard-TSV copy. Supplementary, so it drops on narrow widths. */
+.cell-copy-hint {
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-copy-hint kbd {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  padding: 0.02rem 0.22rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+@media (width <= 720px) {
+  .cell-copy-hint { display: none; }
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.seg-btn {
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border: none;
+  cursor: pointer;
+  transition: color var(--duration-instant) ease, background var(--duration-instant) ease;
+}
+
+.seg-btn + .seg-btn {
+  border-left: 1px solid var(--border);
+}
+
+.seg-btn:hover {
+  color: var(--accent-text);
+}
+
+.seg-btn-active {
+  color: var(--primary-text-on-accent);
+  background: var(--accent);
+}
+
+.export-csv-btn {
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease;
+}
+
+.export-csv-btn:hover {
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg-btn,
+  .export-csv-btn { transition: none; }
+}
+
+/* No text selection while drag-selecting a cell range. */
+.leaves-table-scroll.is-cell-dragging { user-select: none; }
+
+.leaves-table-scroll {
+  position: relative;
+  overflow: auto;
+  max-height: 70vh;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+
+  /* Horizontal scroll-shadow: a faint fade appears at an edge only when
+     there's more table past it. The `local` cover gradients ride with
+     the content (hiding the shadow at the true edge); the `scroll`
+     radial shadows stay pinned to the pane. Rows are transparent, so it
+     reads through the body. */
+  background:
+    linear-gradient(90deg, var(--surface), transparent) 0 0 / 34px 100% no-repeat local,
+    linear-gradient(270deg, var(--surface), transparent) 100% 0 / 34px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 18%), transparent) 0 0 / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 18%), transparent) 100% 0 / 14px 100% no-repeat scroll;
+}
+
+.leaves-table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.leaves-table-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-lg); }
+.leaves-table-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.leaves-table-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.leaves-table {
+  /* Width is the sum of the (resizable) column widths, set inline from the
+     colgroup; fixed layout makes each <col> width authoritative so the pane
+     scrolls horizontally once the columns outgrow it. nowrap cells + the
+     map/hero/tags ellipsis clip overflow within each column. */
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: var(--mono);
+}
+
+.leaves-thead .th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  padding: 0.5rem 0.55rem;
+  font-size: var(--type-3xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Frozen leading columns: select + Date stay pinned-left while the wider
+   columns scroll under them. select has no resize handle, so its width is the
+   fixed 34px default and Date's offset is a constant 34px. The header cells are
+   already sticky-top; adding `left` makes them sticky in both axes, and the
+   bumped z-index keeps the frozen corner above the rest of the sticky header. */
+.leaves-thead .th:first-child { left: 0; z-index: 3; }
+
+.leaves-thead .th[data-sort-col="date"] {
+  left: 34px;
+  z-index: 3;
+  border-right: 1px solid var(--border-strong);
+}
+
+/* Numeric Elims / Assists / Deaths / KDA headers right-align to sit
+   over their tabular-num cells (MatchTableRow .tc-stat-cell). */
+.leaves-thead .th[data-sort-col="eliminations"],
+.leaves-thead .th[data-sort-col="assists"],
+.leaves-thead .th[data-sort-col="deaths"],
+.leaves-thead .th[data-sort-col="kda"] { text-align: right; }
+
+.leaves-thead .th[data-sort-col="eliminations"] .th-inner,
+.leaves-thead .th[data-sort-col="assists"] .th-inner,
+.leaves-thead .th[data-sort-col="deaths"] .th-inner,
+.leaves-thead .th[data-sort-col="kda"] .th-inner { flex-direction: row-reverse; }
+
+.th-sortable {
+  cursor: pointer;
+  transition: color var(--duration-instant) ease, background var(--duration-instant) ease;
+}
+
+.th-sortable:hover {
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+}
+.th-active { color: var(--accent-text); }
+
+/* Drag handle on each column's right edge (sits in the sticky th's containing
+   block). Drag to resize, double-click to reset to the natural width. */
+.th-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+.th-resize:hover { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.th-caret {
+  font-size: var(--type-4xs);
+  color: var(--accent-text);
+}
+
+/* Numbered badge marking a column's position in a multi-key sort stack;
+   only rendered when more than one level is active. */
+.th-level {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.85rem;
+  height: 0.85rem;
+  padding: 0 0.15rem;
+  font-size: var(--type-4xs);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary-text-on-accent);
+  background: var(--accent);
+  border-radius: var(--radius);
+}
+
+/* Virtualization spacer rows — pure height, no chrome. */
+.table-spacer { pointer-events: none; }
+.table-spacer td { padding: 0; border: none; }
+
+/* Tail foot row echoes the leaf-list foot tone. */
+.leaves-foot-row td {
+  padding: 0.9rem 0 1.1rem;
+  text-align: center;
+  font-size: var(--type-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Shared with the leaf-list foot tone (kept in both scoped contexts). */
+.leaves-foot-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}

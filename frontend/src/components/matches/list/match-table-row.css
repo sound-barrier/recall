@@ -1,0 +1,262 @@
+.table-row {
+  cursor: pointer;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  transition: background var(--duration-instant) ease;
+}
+
+.table-row:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.table-row.is-ticked {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.table-row.kbd-focused {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.table-row.is-anchor {
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+/* The contextual checkbox shares .leaf-checkbox (app.css base); wire its
+   reveal-on-interaction here for the table-row ancestor. */
+.table-row:hover .leaf-checkbox,
+.table-row.has-selection .leaf-checkbox,
+.table-row.is-ticked .leaf-checkbox,
+.leaf-checkbox:focus-visible {
+  opacity: 1;
+}
+
+.tc {
+  padding: 0.32rem 0.55rem;
+  vertical-align: middle;
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Cell range-select highlight. Specificity beats the row hover/ticked + frozen
+   cell backgrounds so a selected cell always reads as selected. */
+.table-row .tc.is-cell-selected {
+  background: color-mix(in srgb, var(--accent) 25%, var(--surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Frozen leading columns (mirror the header freeze in MatchesTable): select +
+   Date stay pinned-left during horizontal scroll. They need an opaque bg so the
+   scrolling cells pass UNDER them — the row's own bg is transparent and would
+   let content show through — so the row's hover/ticked tints are replicated. */
+.tc-check,
+.tc-date {
+  position: sticky;
+  z-index: 1;
+  background: var(--surface-2);
+}
+
+.table-row:hover .tc-check,
+.table-row:hover .tc-date { background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); }
+
+.table-row.is-ticked .tc-check,
+.table-row.is-ticked .tc-date { background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
+
+.tc-check { width: 1.6rem; padding-right: 0; left: 0; }
+
+.tc-date {
+  line-height: 1.15;
+  left: 34px;
+  border-right: 1px solid var(--border-strong);
+}
+.tc-date-d { color: var(--text); font-weight: 700; letter-spacing: 0.03em; }
+.tc-date-t { color: var(--text-faint); margin-left: 0.35rem; font-size: var(--type-2xs); }
+
+.tc-map {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--type-xl);
+  text-transform: uppercase;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--identity-accent);
+}
+
+.tc-hero {
+  font-weight: 700;
+  text-transform: lowercase;
+  max-width: 12rem;
+  color: var(--identity-accent);
+}
+
+/* Each hero is a clickable filter chip — click filters the set by that hero. */
+.tc-hero-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 2px; }
+
+.tc-hero-chip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 0.2rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
+}
+.tc-hero-chip:hover { background: color-mix(in srgb, var(--identity-accent) 18%, transparent); }
+.tc-hero-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Each role is a clickable filter chip — click filters the set by that role
+   (open-queue matches can show several). Keeps the faint uppercase look. */
+.tc-role-chips { display: inline-flex; flex-wrap: wrap; gap: 1px 3px; }
+
+.tc-role-chip {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 0.2rem;
+  font: inherit;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: var(--type-2xs);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
+}
+.tc-role-chip:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.tc-role-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.tc-chip {
+  font-size: var(--type-4xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* E / A / D each own a column now — display-italic numerals, deaths
+   dimmed so a glance reads kills-over-deaths. Right-aligned so the
+   digits line up column-wise like a spreadsheet. */
+.tc-stat-cell {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--type-lg);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tc-death { color: var(--text-dim); }
+
+.tc-tags { white-space: normal; max-width: 12rem; }
+
+.tc-tag {
+  font-size: var(--type-2xs);
+  color: var(--accent-text);
+  margin-right: 0.3rem;
+}
+
+/* Same tint convention as .leaf-stamp; the table is denser so the stamp is
+   bare type with no plate. */
+.tc-stamp {
+  font-weight: 800;
+  margin-right: 0.3rem;
+  font-size: var(--type-2xs);
+  color: var(--text-dim);
+}
+
+.tc-stamp.stamp-own   { color: var(--loss); }
+.tc-stamp.stamp-enemy { color: var(--win); }
+.tc-stamp.stamp-both  { color: var(--accent-text); }
+
+/* Source column: the same compact provenance badge the leaf rows wear
+   (OCR / edited / manual), one glyph per row. */
+.tc-prov { text-align: center; }
+
+.tc-unknown { color: var(--accent-bright, var(--accent)); cursor: help; }
+
+.tc-result-chip {
+  font-size: var(--type-2xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 0.18rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+
+.tc-result-chip.result-victory {
+  background: color-mix(in srgb, var(--win) 22%, var(--surface));
+  border-color: var(--win-line, var(--win));
+  color: var(--win);
+}
+
+.tc-result-chip.result-defeat {
+  background: color-mix(in srgb, var(--loss) 22%, var(--surface));
+  border-color: var(--loss-line, var(--loss));
+  color: var(--loss);
+}
+
+.tc-result-chip.result-draw {
+  background: color-mix(in srgb, var(--text-mute) 18%, var(--surface));
+  border-color: var(--text-mute);
+  color: var(--text);
+}
+
+/* Cells promoted to filter buttons (click → narrow the set to that value). The
+   reset is at specificity 0 (:where) so the result chip's own tint/border still
+   wins; the bare map button gets a transparent bg + hover wash. */
+:where(.tc-filter-cell) {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.tc-filter-cell:disabled { cursor: default; }
+.tc-filter-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Funnel cue (mirrors the leaf rows) — faint on hover, lit when the value is the
+   active filter; small so it doesn't crowd the fixed-width columns. */
+.tc-filter-cell::after {
+  content: '';
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-left: 0.15em;
+  vertical-align: -0.03em;
+  background-color: currentcolor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3h12l-4.5 5.5V13l-3 1.5V8.5z'/%3E%3C/svg%3E") no-repeat center / contain;
+  opacity: 0;
+  transition: opacity var(--duration-instant) ease;
+}
+
+.tc-filter-cell:hover:not(:disabled)::after,
+.tc-filter-cell.is-filtered::after { opacity: 0.6; }
+
+.tc-map .tc-filter-cell {
+  padding: 0 0.25rem;
+  margin-inline: -0.25rem;
+  border-radius: var(--radius-md);
+}
+.tc-map .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.tc-result .tc-filter-cell:hover:not(:disabled) { filter: brightness(1.12); }
+
+/* Mode / Queue cells are filter buttons now — give them padding + a hover wash. */
+.tc-mode .tc-filter-cell,
+.tc-queue .tc-filter-cell { padding: 0.05rem 0.3rem; border-radius: var(--radius-md); }
+
+.tc-mode .tc-filter-cell:hover,
+.tc-queue .tc-filter-cell:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* Active filter — an accent outline (+ a soft fill on the non-result cells,
+   which keep their result tint) so the live filters read at a glance. */
+.tc-filter-cell.is-filtered { box-shadow: inset 0 0 0 1px var(--accent); border-radius: var(--radius-md); }
+.tc-filter-cell.is-filtered:not(.tc-result-chip) { background: var(--accent-soft); }

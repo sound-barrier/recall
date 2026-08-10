@@ -11,6 +11,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useNarrowTabNav } from '@/composables/matches/useNarrowTabNav'
+import {
+  LEAVER_LABELS, THROWER_LABELS,
+  QUEUE_OPTIONS, PLAY_MODE_OPTIONS, REVIEWED_BY_OPTIONS, PROVENANCE_OPTIONS,
+} from '@/composables/matches/matchesNarrow.options'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import type { QueuePick, PlayModePick, ReviewedByPick, SourcePick } from '@/composables/matches/matchesNarrow.types'
 import NarrowPresets from '@/components/matches/narrow/NarrowPresets.vue'
@@ -84,38 +88,6 @@ const {
   narrowedRecords,
 } = props.narrow
 void activeClauseCount; void anyNarrow
-
-// Friendlier labels for the disruption-side chips (the raw enum is terse).
-// The verb only appears on the self chip, matching the existing asymmetry —
-// "Teammate" / "Enemy" read fine bare under a "With a leaver" heading.
-const LEAVER_LABELS: Record<'self' | 'team' | 'enemy', string> = {
-  self: 'You left', team: 'Teammate', enemy: 'Enemy',
-}
-const THROWER_LABELS: Record<'self' | 'team' | 'enemy', string> = {
-  self: 'You threw', team: 'Teammate', enemy: 'Enemy',
-}
-
-// Fixed-enum facet options (value = the *Pick union member, label = display
-// text). The @pick handler casts the chip's string value back to its union.
-const QUEUE_OPTIONS = [
-  { value: 'role', label: 'Role Queue' },
-  { value: 'open', label: 'Open Queue' },
-  { value: 'unknown', label: 'Unknown mode type' },
-]
-const PLAY_MODE_OPTIONS = [
-  { value: 'quickplay', label: 'Quickplay' },
-  { value: 'competitive', label: 'Competitive' },
-  { value: 'unknown', label: 'Unknown mode' },
-]
-const REVIEWED_BY_OPTIONS = [
-  { value: 'self', label: 'Self' },
-  { value: 'coach', label: 'Coach' },
-  { value: 'unreviewed', label: 'Unreviewed' },
-]
-const PROVENANCE_OPTIONS = [
-  { value: 'ocr_edited', label: 'Edited' },
-  { value: 'manual', label: 'User entered' },
-]
 
 const popoverRef     = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
@@ -499,95 +471,4 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scoped>
-.lp-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
-  backdrop-filter: blur(2px);
-}
-
-.left-panel {
-  position: fixed;
-  left: 0; top: 0;
-  z-index: 100;
-  width: min(420px, 100vw);
-  height: 100vh;
-  background: var(--surface);
-  border-right: 1px solid var(--accent);
-  box-shadow: 28px 0 60px -24px rgb(var(--shadow-rgb) / 65%);
-  padding: 0.9rem 1rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  overflow-y: auto;
-}
-
-/* Rail mode — peer column in MatchesView's grid. Drops the modal
-   chrome (fixed position, slide-from-edge shadow) and lives where
-   the grid puts it. The 3 px accent strip on the left edge
-   (`::before`) stays as the brand signal. Sticky inside its column
-   so it pins to the top while the right column scrolls. */
-.left-panel-rail {
-  position: sticky;
-  top: 0;
-  left: auto;
-  z-index: auto;
-  width: 320px;
-  height: calc(100vh - 1rem);
-  border-right: 1px solid var(--border-soft);
-  box-shadow: none;
-  padding: 0.7rem 0.85rem 0;
-}
-
-.left-panel::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--accent);
-}
-
-.lp-slide-enter-active,
-.lp-slide-leave-active { transition: transform var(--duration-relaxed) ease, opacity var(--duration-relaxed) ease; }
-.lp-slide-enter-from   { transform: translateX(-100%); opacity: 0; }
-.lp-slide-leave-to     { transform: translateX(-100%); opacity: 0; }
-
-.lp-fade-enter-active,
-.lp-fade-leave-active { transition: opacity var(--duration-med) ease, backdrop-filter var(--duration-med) ease; }
-
-.lp-fade-enter-from,
-.lp-fade-leave-to { opacity: 0; backdrop-filter: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .lp-slide-enter-active,
-  .lp-slide-leave-active,
-  .lp-fade-enter-active,
-  .lp-fade-leave-active { transition: none; }
-}
-
-.np-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.35rem 0.75rem;
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.np-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.np-btn.ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-text); }
-
-.np-btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--surface);
-}
-</style>
+<style scoped src="./narrow-popover.css"></style>

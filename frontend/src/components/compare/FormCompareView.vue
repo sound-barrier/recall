@@ -9,15 +9,16 @@ import { useOWData } from '@/composables/shared/useOWData'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { matchesLeaverHandling } from '@/composables/matches/narrowPredicates'
 import { useFormDrill } from '@/composables/compare/useFormDrill'
+import { N_OPTIONS, useFormPairing } from '@/composables/compare/useFormPairing'
 import { buildSeasonMetrics, topHeroDisplay } from '@/components/compare/compareSnapshot'
+import { SPARK_H, SPARK_W, midY, sparkAria, sparkPoints } from '@/components/compare/form-sparkline'
 import CompareTable from '@/components/compare/CompareTable.vue'
 import { compareSeasons, type ComparisonRow } from '@/match/match-compare-helpers'
 import { judgeForm } from '@/match/match-form-verdict'
 import { leaverRate, sessionCount } from '@/match/match-momentum-helpers'
 import {
-  buildCondition, conditionDrillable, conditionPredicate, mirrorPreviousWindow, pairByMatches,
-  pairByTime, rollingWinrate, samePointWindows, trailingWindow, windowDays,
-  type FormCondition, type FormPair, type TimeWindow,
+  buildCondition, conditionDrillable, conditionPredicate, pairByTime, rollingWinrate, windowDays,
+  type FormCondition, type TimeWindow,
 } from '@/match/match-form-slices'
 
 // FORM — the Compare tab's second mode. Two adjacent windows of play — this
@@ -30,61 +31,6 @@ const matchesStore = useMatchesStore()
 const ow = useOWData()
 const { weekStart } = storeToRefs(useSettingsStore())
 const { drill } = useFormDrill()
-
-// ─── Pairing state ────────────────────────────────────────────────────────
-const pairBy = ref<'time' | 'matches'>('time')
-const initial = trailingWindow(7)
-const bFrom = ref(initial.from)
-const bTo = ref(initial.to)
-// The baseline mirrors the picked period by default; unlocking allows any A.
-const aLocked = ref(true)
-const aFrom = ref('')
-const aTo = ref('')
-const nPick = ref('20')
-const activePreset = ref('7d')
-
-const N_OPTIONS = ['10', '20', '50'] as const
-
-function applyTrailingPreset(days: number, key: string) {
-  const w = trailingWindow(days)
-  pairBy.value = 'time'
-  aLocked.value = true
-  bFrom.value = w.from
-  bTo.value = w.to
-  activePreset.value = key
-}
-
-function applyMatchesPreset() {
-  pairBy.value = 'matches'
-  nPick.value = '20'
-  activePreset.value = '20m'
-}
-
-const samePoint = computed(() => samePointWindows(ow.seasons.value))
-
-function applySamePointPreset() {
-  const w = samePoint.value
-  if (!w) return
-  pairBy.value = 'time'
-  aLocked.value = false
-  bFrom.value = w.b.from
-  bTo.value = w.b.to
-  aFrom.value = w.a.from
-  aTo.value = w.a.to
-  activePreset.value = 'same-point'
-}
-
-function onManualEdit() {
-  activePreset.value = ''
-}
-
-// Switching pairing modes only clears the preset highlight when the mode
-// actually changes — re-clicking the active mode is a no-op.
-function setPairBy(next: 'time' | 'matches') {
-  if (pairBy.value === next) return
-  pairBy.value = next
-  onManualEdit()
-}
 
 // ─── Conditions (per column) ──────────────────────────────────────────────
 const condKindA = ref('any')
@@ -112,27 +58,14 @@ const visibleRecords = computed<MatchRecord[]>(() =>
   ),
 )
 
-const bWindow = computed<TimeWindow | null>(() => {
-  if (!bFrom.value || !bTo.value || bFrom.value > bTo.value) return null
-  return { from: bFrom.value, to: bTo.value }
-})
-
-const aWindow = computed<TimeWindow | null>(() => {
-  const b = bWindow.value
-  if (aLocked.value) return b ? mirrorPreviousWindow(b) : null
-  if (!aFrom.value || !aTo.value || aFrom.value > aTo.value) return null
-  return { from: aFrom.value, to: aTo.value }
-})
-
-const pair = computed<FormPair>(() => {
-  if (pairBy.value === 'matches') {
-    return pairByMatches(visibleRecords.value, Number(nPick.value))
-  }
-  const b = bWindow.value
-  const a = aWindow.value
-  if (!b || !a) return { a: [], b: [], aWindow: a, bWindow: b, untimed: 0 }
-  return pairByTime(visibleRecords.value, b, a)
-})
+// ─── Pairing state (composed) ─────────────────────────────────────────────
+// Windows, presets, and the record pair live in useFormPairing;
+// destructured into same-named locals so the template stays untouched.
+const {
+  pairBy, bFrom, bTo, aLocked, aFrom, aTo, nPick, activePreset,
+  applyTrailingPreset, applyMatchesPreset, samePoint, applySamePointPreset,
+  onManualEdit, setPairBy, bWindow, aWindow, pair,
+} = useFormPairing({ visibleRecords, seasons: ow.seasons })
 
 const recordsA = computed<MatchRecord[]>(() => pair.value.a.filter(conditionPredicate(condA.value, ow.heroRole)))
 const recordsB = computed<MatchRecord[]>(() => pair.value.b.filter(conditionPredicate(condB.value, ow.heroRole)))
@@ -184,39 +117,13 @@ const labelB = computed(() =>
 
 const liveSummary = computed(() => `${verdict.value.word} — comparing ${labelB.value} against ${labelA.value}.`)
 
-// ─── Sparklines ───────────────────────────────────────────────────────────
-const SPARK_W = 220
-const SPARK_H = 56
-const SPARK_PAD = 6
-
-function sparkPoints(values: number[]): string {
-  if (values.length === 0) return ''
-  if (values.length === 1) {
-    const y = SPARK_PAD + ((100 - values[0]!) / 100) * (SPARK_H - 2 * SPARK_PAD)
-    return `0,${y.toFixed(1)} ${SPARK_W},${y.toFixed(1)}`
-  }
-  const step = SPARK_W / (values.length - 1)
-  return values
-    .map((v, i) => `${(i * step).toFixed(1)},${(SPARK_PAD + ((100 - v) / 100) * (SPARK_H - 2 * SPARK_PAD)).toFixed(1)}`)
-    .join(' ')
-}
-
-// A text equivalent of the line's shape (WCAG 1.1.1) — the label carries the
-// data the chart shows, not just its name.
-function sparkAria(values: number[], which: string): string {
-  if (values.length === 0) return ''
-  const first = values[0]!
-  const last = values[values.length - 1]!
-  return `Rolling win rate ${which}: ${first}% to ${last}% across ${values.length} decisive games`
-}
-
+// ─── Sparklines (geometry in form-sparkline) ──────────────────────────────
 const sparkValuesA = computed(() => rollingWinrate(recordsA.value))
 const sparkValuesB = computed(() => rollingWinrate(recordsB.value))
 const sparkA = computed(() => sparkPoints(sparkValuesA.value))
 const sparkB = computed(() => sparkPoints(sparkValuesB.value))
 const sparkAriaA = computed(() => sparkAria(sparkValuesA.value, 'in the baseline window'))
 const sparkAriaB = computed(() => sparkAria(sparkValuesB.value, 'this period'))
-const midY = SPARK_PAD + (SPARK_H - 2 * SPARK_PAD) / 2
 
 // ─── Drill-through ────────────────────────────────────────────────────────
 const ROLE_ROW_KEYS: Record<string, string> = { roleTank: 'tank', roleDps: 'dps', roleSupport: 'support' }
@@ -514,284 +421,4 @@ function onDrill(rowKey: string, col: 'a' | 'b') {
   </div>
 </template>
 
-<style scoped>
-.form-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 1.1rem 0 0.8rem;
-}
-
-.form-preset {
-  appearance: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.03em;
-  padding: 0.35rem 0.75rem;
-  cursor: pointer;
-}
-
-.form-preset:hover {
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.form-preset.active {
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-  color: var(--text);
-}
-
-.form-preset:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.form-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.7rem 1rem;
-  margin-bottom: 0.4rem;
-}
-
-.form-pairby {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.form-pairby-btn {
-  appearance: none;
-  border: 0;
-  background: var(--surface-2);
-  color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  letter-spacing: 0.04em;
-  padding: 0.45rem 0.7rem;
-  cursor: pointer;
-}
-
-.form-pairby-btn + .form-pairby-btn {
-  border-left: 1px solid var(--border);
-}
-
-.form-pairby-btn.active {
-  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
-  color: var(--text);
-}
-
-.form-pairby-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.form-field-label {
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.form-date,
-.form-select {
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: var(--type-lg);
-}
-
-.form-mirror {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.6rem;
-}
-
-.form-mirror-label {
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  color: var(--text-dim);
-  padding-bottom: 0.45rem;
-}
-
-.form-mirror-toggle {
-  appearance: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  padding: 0.3rem 0.55rem;
-  cursor: pointer;
-}
-
-.form-mirror-toggle:hover {
-  color: var(--text);
-  border-color: var(--accent);
-}
-
-.form-mirror-toggle:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.form-conds {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem 1rem;
-}
-
-.form-note-inline {
-  flex-basis: 100%;
-  margin: 0;
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  color: var(--text-faint);
-}
-
-/* ─── Verdict card — the one loud element on the page ─── */
-.form-verdict-card {
-  margin: 1rem 0 0.4rem;
-  padding: 1.1rem 1.2rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent) 0%, transparent 45%),
-    var(--surface);
-}
-
-.form-verdict-eyebrow {
-  margin: 0;
-}
-
-.form-verdict-word {
-  margin: 0.15rem 0 0;
-  font-family: var(--display);
-  font-size: clamp(2.2rem, 6vw, 3.4rem);
-  line-height: 1;
-  letter-spacing: 0.04em;
-  color: var(--text);
-}
-
-.form-verdict-word.is-sharper {
-  color: var(--win);
-}
-
-.form-verdict-word.is-slipping {
-  color: var(--loss);
-}
-
-.form-verdict-word.is-early {
-  color: var(--text-faint);
-}
-
-.form-verdict-movers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 1rem;
-  margin: 0.5rem 0 0;
-  font-family: var(--mono);
-  font-size: var(--type-sm);
-  color: var(--text-dim);
-}
-
-.form-verdict-hint {
-  font-style: italic;
-  color: var(--text-faint);
-}
-
-.form-sparks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.2rem 2rem;
-  margin-top: 0.9rem;
-}
-
-.form-spark {
-  margin: 0;
-  flex: 1 1 220px;
-  max-width: 320px;
-}
-
-.form-spark-label {
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-  letter-spacing: 0.05em;
-  color: var(--text-faint);
-  margin-bottom: 0.25rem;
-}
-
-.form-spark-svg {
-  display: block;
-  width: 100%;
-  height: 56px;
-}
-
-.form-spark-mid {
-  stroke: color-mix(in srgb, var(--text-faint) 35%, transparent);
-  stroke-width: 0.5;
-  stroke-dasharray: 3 3;
-}
-
-.form-spark-line {
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.form-spark-line.is-a {
-  stroke: color-mix(in srgb, var(--text-faint) 80%, var(--text));
-}
-
-.form-spark-line.is-b {
-  stroke: var(--accent);
-}
-
-.form-spark-empty {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: var(--type-xs);
-  font-style: italic;
-  color: var(--text-faint);
-  padding: 1.2rem 0;
-}
-
-.form-note {
-  margin: 0.7rem 0 0;
-  font-size: var(--type-sm);
-  color: var(--text-dim);
-}
-
-.form-note-faint {
-  color: var(--text-faint);
-}
-
-.form-lown {
-  display: inline-block;
-  padding: 0 0.28rem;
-  border-radius: var(--radius);
-  background: var(--loss-soft);
-  color: var(--text);
-  border: 1px solid var(--loss-line);
-  font-family: var(--mono);
-  font-size: var(--type-2xs);
-}
-</style>
+<style scoped src="./form-compare-view.css"></style>

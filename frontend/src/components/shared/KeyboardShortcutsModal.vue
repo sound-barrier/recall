@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, toRef } from 'vue'
 
+import { SHORTCUT_GROUPS } from '@/components/shared/keyboard-shortcuts.data'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useSmoothScroll } from '@/composables/matches/useSmoothScroll'
 import type { TabId } from '@/composables/shared/useTabKeyboardNav'
 
 // "?" cheat-sheet modal. Lists keyboard bindings filtered to the
@@ -44,40 +46,15 @@ useModalFocusTrap(openRef, {
   onClose: () => emit('close'),
 })
 
-// rAF-driven momentum scroller (same pattern as MatchDetailPanel —
-// each keypress nudges a target value, a single animation loop
-// closes the gap, so OS key-repeat reads as a continuous glide
-// rather than a stutter of restarted scrollBy animations).
+// rAF-driven momentum scroller (shared with MatchDetailPanel — each
+// keypress nudges a target value, a single animation loop closes the
+// gap, so OS key-repeat reads as a continuous glide rather than a
+// stutter of restarted scrollBy animations). The composable owns the
+// loop + its unmount cleanup; on close the v-if removes the box, the
+// element ref goes null, and the loop self-terminates.
 const bodyRef = ref<HTMLElement | null>(null)
 const SCROLL_STEP_PX = 50
-const scrollTarget = ref(0)
-let scrollRAF = 0
-
-function tickScroll() {
-  const el = bodyRef.value
-  if (!el) { scrollRAF = 0; return }
-  const delta = scrollTarget.value - el.scrollTop
-  if (Math.abs(delta) < 0.5) {
-    el.scrollTop = scrollTarget.value
-    scrollRAF = 0
-    return
-  }
-  el.scrollTop += delta * 0.18
-  scrollRAF = requestAnimationFrame(tickScroll)
-}
-
-function nudgeScroll(deltaPx: number) {
-  const el = bodyRef.value
-  if (!el) return
-  if (scrollRAF === 0) scrollTarget.value = el.scrollTop
-  const max = Math.max(0, el.scrollHeight - el.clientHeight)
-  scrollTarget.value = Math.max(0, Math.min(max, scrollTarget.value + deltaPx))
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-    el.scrollTop = scrollTarget.value
-    return
-  }
-  if (scrollRAF === 0) scrollRAF = requestAnimationFrame(tickScroll)
-}
+const { nudgeScroll } = useSmoothScroll(bodyRef)
 
 // Capture-phase keydown handler. Three responsibilities:
 //
@@ -142,146 +119,18 @@ onMounted(() => {
   document.addEventListener('keydown', onCaptureKey, true)
 })
 
-// Still watch `open` to manage the rAF cleanup on close.
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (!isOpen && scrollRAF !== 0) {
-      cancelAnimationFrame(scrollRAF)
-      scrollRAF = 0
-    }
-  },
-)
-
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onCaptureKey, true)
-  if (scrollRAF !== 0) {
-    cancelAnimationFrame(scrollRAF)
-    scrollRAF = 0
-  }
 })
 
 function onOverlayClick() {
   emit('close')
 }
 
-// Binding catalog. `context` discriminates when the group is
-// visible:
-//   - 'always'         → render unconditionally
-//   - 'matches-no-panel' → only on the Matches view AND no panel up
-//   - 'panel'          → only when the detail panel is open
-//   - <TabId>          → only on that view
-// The Matches/Detail-panel pair flips on `panelOpen` because
-// Matches-view bindings (j / k card focus) are suppressed while the
-// panel is up — the panel takes over those keys.
-type Context = 'always' | 'matches-no-panel' | 'panel' | TabId
-
-interface Binding {
-  keys: readonly string[]
-  action: string
-  // How the multiple keys relate: a SEQUENCE you press in order (vim
-  // `g` then `m`) → joined with "then"; otherwise the keys are
-  // interchangeable ALTERNATIVES (`j` or `↓`) → joined with "or".
-  // Defaults to alternatives.
-  seq?: boolean
-}
-
-interface BindingGroup {
-  scope: string
-  context: Context
-  bindings: readonly Binding[]
-}
-
-const groups: readonly BindingGroup[] = [
-  {
-    scope: 'Global',
-    context: 'always',
-    bindings: [
-      { keys: ['/'],            action: 'Focus the match-search input' },
-      { keys: ['Esc'],          action: 'Clear & blur the match-search input (when focused)' },
-      { keys: ['Enter'],        action: 'Open first hit in the detail panel (from match-search)' },
-      { keys: ['g', 'm'],       action: 'Go to Matches view', seq: true },
-      { keys: ['g', 'i'],       action: 'Go to Parse view', seq: true },
-      { keys: ['g', 's'],       action: 'Go to Settings view', seq: true },
-      { keys: ['g', 'u'],       action: 'Go to Unknown view', seq: true },
-      { keys: ['g', 'c'],       action: 'Go to Compare view', seq: true },
-      { keys: ['g', 'e'],       action: 'Go to Elo Calculator view', seq: true },
-      { keys: ['?'],            action: 'Show this cheatsheet' },
-    ],
-  },
-  {
-    scope: 'Matches view',
-    context: 'matches-no-panel',
-    bindings: [
-      { keys: ['j', '↓'],       action: 'Focus the next match card' },
-      { keys: ['k', '↑'],       action: 'Focus the previous match card' },
-      { keys: ['g', 'g'],       action: 'Focus the first card', seq: true },
-      { keys: ['G'],            action: 'Focus the last card' },
-      { keys: ['n'],            action: 'Jump to the next group section' },
-      { keys: ['N'],            action: 'Jump to the previous group section' },
-      { keys: ['l', '→'],       action: 'Open the detail panel for the focused card' },
-      { keys: ['e'],            action: 'Open / close the detail panel for the focused card' },
-      { keys: ['t'],            action: 'Focus the tags editor (auto-opens the detail panel)' },
-    ],
-  },
-  {
-    scope: 'Narrow panel (filters)',
-    context: 'matches-no-panel',
-    bindings: [
-      { keys: ['/'],            action: 'Open the panel & focus search' },
-      { keys: ['Tab'],          action: 'From an empty field, jump to the next toggle' },
-      { keys: ['⇧', 'Tab'],     action: 'From an empty field, jump to the previous toggle', seq: true },
-      { keys: ['Esc'],          action: 'Close the panel' },
-    ],
-  },
-  {
-    scope: 'Detail panel',
-    context: 'panel',
-    bindings: [
-      // `<` and `>` glyphs lead the row so the user reads "go back /
-      // go forward" at a glance. The actual key tokens follow.
-      { keys: ['<', '←', 'h', 'k'], action: 'Previous match (timeline ←)' },
-      { keys: ['>', '→', 'l', 'j'], action: 'Next match (timeline →)' },
-      { keys: ['↓'],            action: 'Scroll panel body down' },
-      { keys: ['↑'],            action: 'Scroll panel body up' },
-      { keys: ['PgDn', 'Space'], action: 'Scroll panel body one page down' },
-      { keys: ['PgUp'],         action: 'Scroll panel body one page up' },
-      { keys: ['Home'],         action: 'Jump to top of panel body' },
-      { keys: ['End'],          action: 'Jump to bottom of panel body' },
-      { keys: ['Esc'],          action: 'Close the detail panel' },
-    ],
-  },
-  {
-    // New group — surfaces when the panel is open (which is also when
-    // the lightbox can be reached). Explicit "only for the same
-    // match" copy so the user doesn't conflate this with the panel's
-    // own prev/next-match shortcut.
-    scope: 'Screenshots (in the fullscreen lightbox)',
-    context: 'panel',
-    bindings: [
-      { keys: ['<', '←', 'h'], action: 'Previous screenshot — only for the same match' },
-      { keys: ['>', '→', 'l'], action: 'Next screenshot — only for the same match' },
-      { keys: ['Esc'],         action: 'Close the lightbox (returns to the panel)' },
-    ],
-  },
-  {
-    scope: 'Tablist + modals',
-    context: 'always',
-    bindings: [
-      // `<` / `>` glyphs lead the row for consistency with the panel
-      // and lightbox rows above.
-      { keys: ['<', '←', 'h'], action: 'Previous tab (focus a tab button first)' },
-      { keys: ['>', '→', 'l'], action: 'Next tab (focus a tab button first)' },
-      { keys: ['Home'],         action: 'First tab' },
-      { keys: ['End'],          action: 'Last tab' },
-      { keys: ['Tab'],          action: 'Cycle focusable elements (Shift+Tab reverses)' },
-      { keys: ['Esc'],          action: 'Close the active modal / cheatsheet' },
-    ],
-  },
-]
-
+// Binding catalog — data lives in the sibling keyboard-shortcuts.data
+// module; this SFC only gates groups by the current context.
 const visibleGroups = computed(() =>
-  groups.filter((g) => {
+  SHORTCUT_GROUPS.filter((g) => {
     switch (g.context) {
       case 'always':
         return true
