@@ -31,9 +31,8 @@ func isAllHeroesScreenshot(img image.Image, work string) (bool, error) {
 // the OCR (the skull-X elimination icon reads as a digit, "11" → "7 1]"), so a
 // parsed value would be an unreliable correlation source. Recognizing it keeps
 // the screen out of the Unknown tab; the AllHeroes marker classifies it, and
-// the write path skips storing it.
-//
-//nolint:unparam // signature fixed by the classify dispatch table; error is part of the shared parse-func shape
+// the write path skips storing it. The always-nil error is part of the shared
+// parse-func shape the screenshotProbes dispatch table requires.
 func parseAllHeroes(_ image.Image, _ string) (*MatchResult, error) {
 	return &MatchResult{AllHeroes: true}, nil
 }

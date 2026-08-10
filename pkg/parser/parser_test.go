@@ -138,71 +138,23 @@ func TestExtractModifiers(t *testing.T) {
 		text string
 		want []string
 	}{
-		{
-			name: "expected + victory",
-			text: "EXPECTED VICTORY",
-			want: []string{"expected", "victory"},
-		},
-		{
-			name: "uphill battle win (underdog who won)",
-			text: "UPHILL BATTLE VICTORY",
-			want: []string{"uphill battle", "victory"},
-		},
-		{
-			name: "reversal loss (favored who lost)",
-			text: "REVERSAL DEFEAT",
-			want: []string{"reversal", "defeat"},
-		},
-		{
-			name: "consolation loss (underdog who lost)",
-			text: "CONSOLATION DEFEAT",
-			want: []string{"consolation", "defeat"},
-		},
-		{
-			// Both end in "streak"; the full label keeps them distinct.
-			name: "win streak stays distinct from loss streak",
-			text: "WIN STREAK",
-			want: []string{"win streak"},
-		},
-		{
-			name: "calibration + volatile",
-			text: "CALIBRATION VOLATILE",
-			want: []string{"calibration", "volatile"},
-		},
-		{
-			// Match-condition pills order before the result in knownModifiers.
-			name: "new map + leaver compensation",
-			text: "DEFEAT NEW MAP LEAVER COMPENSATION",
-			want: []string{"new map", "leaver compensation", "defeat"},
-		},
-		{
-			name: "mixed case is normalized",
-			text: "Expected Defeat",
-			want: []string{"expected", "defeat"},
-		},
-		{
-			// 2026-07 UI chips, verbatim from the bundle's debug OCR dump.
-			// LOSING TREND replaced the old LOSS STREAK wording; DEMOTION is
-			// handled by parseRank's family disambiguation, not this list.
-			name: "losing trend (2026-07 chip)",
-			text: "x DEFEAT || € DEMOTION € LOSING TREND",
-			want: []string{"losing trend", "defeat"},
-		},
-		{
-			name: "winning trend (2026-07 chip)",
-			text: "WINNING TREND ¥ VICTORY",
-			want: []string{"winning trend", "victory"},
-		},
-		{
-			name: "no known modifiers → nil",
-			text: "asdf garbled",
-			want: nil,
-		},
-		{
-			name: "duplicates collapsed",
-			text: "VICTORY victory VICTORY",
-			want: []string{"victory"},
-		},
+		{"expected + victory", "EXPECTED VICTORY", []string{"expected", "victory"}},
+		{"uphill battle win (underdog who won)", "UPHILL BATTLE VICTORY", []string{"uphill battle", "victory"}},
+		{"reversal loss (favored who lost)", "REVERSAL DEFEAT", []string{"reversal", "defeat"}},
+		{"consolation loss (underdog who lost)", "CONSOLATION DEFEAT", []string{"consolation", "defeat"}},
+		// Both end in "streak"; the full label keeps them distinct.
+		{"win streak stays distinct from loss streak", "WIN STREAK", []string{"win streak"}},
+		{"calibration + volatile", "CALIBRATION VOLATILE", []string{"calibration", "volatile"}},
+		// Match-condition pills order before the result in knownModifiers.
+		{"new map + leaver compensation", "DEFEAT NEW MAP LEAVER COMPENSATION", []string{"new map", "leaver compensation", "defeat"}},
+		{"mixed case is normalized", "Expected Defeat", []string{"expected", "defeat"}},
+		// 2026-07 UI chips, verbatim from the bundle's debug OCR dump.
+		// LOSING TREND replaced the old LOSS STREAK wording; DEMOTION is
+		// handled by parseRank's family disambiguation, not this list.
+		{"losing trend (2026-07 chip)", "x DEFEAT || € DEMOTION € LOSING TREND", []string{"losing trend", "defeat"}},
+		{"winning trend (2026-07 chip)", "WINNING TREND ¥ VICTORY", []string{"winning trend", "victory"}},
+		{"no known modifiers → nil", "asdf garbled", nil},
+		{"duplicates collapsed", "VICTORY victory VICTORY", []string{"victory"}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -453,6 +405,33 @@ func TestSRFromRun(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// detectResult — win/loss/draw classification shared by the SUMMARY right
+// card and the rank screen's banner. Prefix-match, not full-word equality,
+// so OCR slips still classify.
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestDetectResult(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"VICTORY!", "victory"},
+		{"COMPETITIVE DEFEAT!", "defeat"},
+		{"DRAW", "draw"},
+		{"mixed-case Victory", "victory"},
+		// The OCR slips the prefix rule exists for.
+		{"DEFERT", "defeat"},
+		{"DRAU", "draw"},
+		// VICTOR outranks the later cases even when both tokens appear.
+		{"VICTORY DRAW", "victory"},
+		{"no result here", ""},
+		{"", ""},
+	}
+	for _, tc := range tests {
+		if got := parser.DetectResult(tc.in); got != tc.want {
+			t.Errorf("DetectResult(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // parseHeroesPlayed — slices the heroes column into per-hero blocks and
 // extracts percent + play time. Heroes with 0% AND no play time are
 // skipped (those are empty card slots).
@@ -529,6 +508,15 @@ KIRIKO
 // picked up.
 // ──────────────────────────────────────────────────────────────────────────
 
+// assertPerfStat fails the test when a performance stat's (total, avg) pair
+// differs from the expectation.
+func assertPerfStat(t *testing.T, label string, got parser.PerformanceStat, wantTotal int, wantAvg float64) {
+	t.Helper()
+	if got.Total != wantTotal || got.AvgPer10Min != wantAvg {
+		t.Errorf("%s: %+v, want total=%d avg=%v", label, got, wantTotal, wantAvg)
+	}
+}
+
 func TestParsePerformance(t *testing.T) {
 	t.Run("clean three-stat performance card", func(t *testing.T) {
 		text := `17
@@ -544,15 +532,9 @@ AVG PER 10 MIN: 9.1`
 		if got == nil {
 			t.Fatal("expected non-nil performance")
 		}
-		if got.Eliminations.Total != 17 || got.Eliminations.AvgPer10Min != 14.5 {
-			t.Errorf("eliminations: %+v", got.Eliminations)
-		}
-		if got.Assists.Total != 16 || got.Assists.AvgPer10Min != 13.0 {
-			t.Errorf("assists: %+v", got.Assists)
-		}
-		if got.Deaths.Total != 11 || got.Deaths.AvgPer10Min != 9.1 {
-			t.Errorf("deaths: %+v", got.Deaths)
-		}
+		assertPerfStat(t, "eliminations", got.Eliminations, 17, 14.5)
+		assertPerfStat(t, "assists", got.Assists, 16, 13.0)
+		assertPerfStat(t, "deaths", got.Deaths, 11, 9.1)
 	})
 
 	t.Run("AVG PER 10 MIN does not steal the '10' as value", func(t *testing.T) {
@@ -596,40 +578,25 @@ ELIMINATIONS`
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParsePersonalStatCell(t *testing.T) {
-	t.Run("clean cell", func(t *testing.T) {
-		key, val, ok := parser.ParsePersonalStatCell("41%\nWEAPON ACCURACY", 0)
-		if !ok || key != "weapon_accuracy" || val != 41 {
-			t.Errorf("got (%q, %d, %v)", key, val, ok)
-		}
-	})
-
-	t.Run("icon noise prefix is stripped", func(t *testing.T) {
-		key, val, ok := parser.ParsePersonalStatCell("PP 41%\nWEAPON ACCURACY", 0)
-		if !ok || key != "weapon_accuracy" || val != 41 {
-			t.Errorf("got (%q, %d, %v)", key, val, ok)
-		}
-	})
-
-	t.Run("multi-word label", func(t *testing.T) {
-		key, val, ok := parser.ParsePersonalStatCell("13\nSOUND BARRIERS PROVIDED", 0)
-		if !ok || key != "sound_barriers_provided" || val != 13 {
-			t.Errorf("got (%q, %d, %v)", key, val, ok)
-		}
-	})
-
-	t.Run("no label → not ok", func(t *testing.T) {
-		_, _, ok := parser.ParsePersonalStatCell("41", 0)
-		if ok {
-			t.Errorf("expected not-ok with no label")
-		}
-	})
-
-	t.Run("no value → not ok", func(t *testing.T) {
-		_, _, ok := parser.ParsePersonalStatCell("WEAPON ACCURACY", 0)
-		if ok {
-			t.Errorf("expected not-ok with no value")
-		}
-	})
+	cases := []struct {
+		name, text, wantKey string
+		wantVal             int
+		wantOK              bool
+	}{
+		{"clean cell", "41%\nWEAPON ACCURACY", "weapon_accuracy", 41, true},
+		{"icon noise prefix is stripped", "PP 41%\nWEAPON ACCURACY", "weapon_accuracy", 41, true},
+		{"multi-word label", "13\nSOUND BARRIERS PROVIDED", "sound_barriers_provided", 13, true},
+		{"no label → not ok", "41", "", 0, false},
+		{"no value → not ok", "WEAPON ACCURACY", "", 0, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			key, val, ok := parser.ParsePersonalStatCell(c.text, 0)
+			if ok != c.wantOK || key != c.wantKey || val != c.wantVal {
+				t.Errorf("got (%q, %d, %v), want (%q, %d, %v)", key, val, ok, c.wantKey, c.wantVal, c.wantOK)
+			}
+		})
+	}
 }
 
 // TestParsePersonalStatCell_AvgAnchorsValue covers icon-noise disambiguation:

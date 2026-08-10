@@ -82,23 +82,31 @@ func extractHeroes(text string) []string {
 	if len(found) > 0 {
 		return found
 	}
-	// Pass 2: fuzzy substring match. Tesseract often mistakes one letter
-	// (e.g. "JUNKRAT" → "JUMKRAT"), so slide each hero name across the text
-	// and accept the closest Levenshtein match if it's well below threshold.
-	//
-	// Length-gate the candidates at 5: short hero names (Mei, Ana, Ashe,
-	// Echo, Emre, Juno, D.va) used to participate in Pass 2 with a
-	// threshold-1 floor, which made a sliding 3-char window over an
-	// unknown hero like "miyazaki" accept "aza" → "ana" (one edit) or
-	// "miy" → "mei" (the original bug). For genuinely new heroes the
-	// upstream parser writes hero='' + hero_raw=<ocr> so the leaf chip
-	// can surface "Unknown hero (miyazaki?)" instead of silently
-	// attributing it to a lookalike.
-	//
-	// The /6 ratio is tighter than the historical /4 — len 7 still
-	// admits 1 edit (so JUMKRAT → junkrat keeps working) but len 14
-	// admits only 2 (was 3). Same baseline as snapToKnownMap's
-	// existing percentage gate.
+	if hero := closestFuzzyHero(normText); hero != "" {
+		found = append(found, hero)
+	}
+	return found
+}
+
+// closestFuzzyHero is extractHeroes' Pass 2: fuzzy substring match. Tesseract
+// often mistakes one letter (e.g. "JUNKRAT" → "JUMKRAT"), so slide each hero
+// name across the text and accept the closest Levenshtein match if it's well
+// below threshold.
+//
+// Length-gate the candidates at 5: short hero names (Mei, Ana, Ashe,
+// Echo, Emre, Juno, D.va) used to participate in Pass 2 with a
+// threshold-1 floor, which made a sliding 3-char window over an
+// unknown hero like "miyazaki" accept "aza" → "ana" (one edit) or
+// "miy" → "mei" (the original bug). For genuinely new heroes the
+// upstream parser writes hero=” + hero_raw=<ocr> so the leaf chip
+// can surface "Unknown hero (miyazaki?)" instead of silently
+// attributing it to a lookalike.
+//
+// The /6 ratio is tighter than the historical /4 — len 7 still
+// admits 1 edit (so JUMKRAT → junkrat keeps working) but len 14
+// admits only 2 (was 3). Same baseline as snapToKnownMap's
+// existing percentage gate.
+func closestFuzzyHero(normText string) string {
 	const minFuzzyLen = 5
 	bestHero := ""
 	bestDist := -1
@@ -118,10 +126,7 @@ func extractHeroes(text string) []string {
 			}
 		}
 	}
-	if bestHero != "" {
-		found = append(found, bestHero)
-	}
-	return found
+	return bestHero
 }
 
 var heroWordRe = regexp.MustCompile(`[a-z]+`)

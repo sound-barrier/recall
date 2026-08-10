@@ -169,13 +169,7 @@ func parsePerformance(text string) *Performance {
 		if start > idx {
 			start = 0
 		}
-		best := -1
-		for _, m := range perfDigitLineRe.FindAllStringSubmatch(text[start:idx], -1) {
-			if n, err := strconv.Atoi(normalizePerfDigits(m[1])); err == nil && n > best {
-				best = n
-			}
-		}
-		if best >= 0 {
+		if best := largestDigitLine(text[start:idx]); best >= 0 {
 			p.stat.Total = best
 		}
 		prevEnd = idx + len(p.keyword)
@@ -195,6 +189,18 @@ func parsePerformance(text string) *Performance {
 	return perf
 }
 
+// largestDigitLine returns the largest normalized digit-line value in seg, or
+// -1 when seg has none.
+func largestDigitLine(seg string) int {
+	best := -1
+	for _, m := range perfDigitLineRe.FindAllStringSubmatch(seg, -1) {
+		if n, err := strconv.Atoi(normalizePerfDigits(m[1])); err == nil && n > best {
+			best = n
+		}
+	}
+	return best
+}
+
 // scoreDigit accepts digits plus the letters Tesseract commonly substitutes
 // for them on the OW banner font: O/Q for 0, l/I for 1. The match groups are
 // passed through digitize() before being used as a final score.
@@ -204,19 +210,50 @@ var (
 	gameLenRe    = regexp.MustCompile(`(?i)GAME\s*LENGTH[^0-9]{0,8}(\d{1,2}:\d{2})`)
 )
 
-// parseRightCard extracts the map card's fields from one OCR pass: map name,
-// result (victory/defeat/draw), final score, date, finish time, game type, and
-// game length. Result detection uses prefix-match (e.g. "DEFE", "VICTOR")
-// rather than full-word equality so OCR slips like "DEFERT" still classify.
-func parseRightCard(text string, res *MatchResult) {
+// detectResult classifies win/loss/draw from OCR text by prefix match (e.g.
+// "DEFE", "VICTOR") rather than full-word equality so OCR slips like "DEFERT"
+// still classify. Shared by the SUMMARY right card and the rank screen's
+// banner. Returns "" when no result token is present.
+func detectResult(text string) string {
 	upper := strings.ToUpper(text)
 	switch {
 	case strings.Contains(upper, "VICTOR"):
-		res.Result = "victory"
+		return "victory"
 	case strings.Contains(upper, "DEFE"):
-		res.Result = "defeat"
+		return "defeat"
 	case strings.Contains(upper, "DRAW") || strings.Contains(upper, "DRAU"):
-		res.Result = "draw"
+		return "draw"
+	}
+	return ""
+}
+
+// rightCardFields is the regex→field ladder parseRightCard walks: each entry
+// runs its regex once and, on a match, assigns the captured groups to the
+// MatchResult field(s) it owns.
+var rightCardFields = []struct {
+	re     *regexp.Regexp
+	assign func(m []string, res *MatchResult)
+}{
+	{finalScoreRe, func(m []string, res *MatchResult) {
+		res.FinalScore = digitize(m[1]) + "-" + digitize(m[2])
+	}},
+	{dateRe, func(m []string, res *MatchResult) {
+		res.Date = normalizeDate(m[1])
+		if len(m) > 2 && m[2] != "" {
+			res.FinishedAt = m[2]
+		}
+	}},
+	{gameLenRe, func(m []string, res *MatchResult) {
+		res.GameLength = m[1]
+	}},
+}
+
+// parseRightCard extracts the map card's fields from one OCR pass: map name,
+// result (victory/defeat/draw), final score, date, finish time, game type, and
+// game length.
+func parseRightCard(text string, res *MatchResult) {
+	if r := detectResult(text); r != "" {
+		res.Result = r
 	}
 	if m := bestKnownMapInText(text); m != "" {
 		res.Map = m
@@ -230,16 +267,9 @@ func parseRightCard(text string, res *MatchResult) {
 	if t := extractGameMode(text); t != "" {
 		res.GameMode = t
 	}
-	if m := finalScoreRe.FindStringSubmatch(text); m != nil {
-		res.FinalScore = digitize(m[1]) + "-" + digitize(m[2])
-	}
-	if m := dateRe.FindStringSubmatch(text); m != nil {
-		res.Date = normalizeDate(m[1])
-		if len(m) > 2 && m[2] != "" {
-			res.FinishedAt = m[2]
+	for _, f := range rightCardFields {
+		if m := f.re.FindStringSubmatch(text); m != nil {
+			f.assign(m, res)
 		}
-	}
-	if m := gameLenRe.FindStringSubmatch(text); m != nil {
-		res.GameLength = m[1]
 	}
 }

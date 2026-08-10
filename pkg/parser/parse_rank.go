@@ -52,125 +52,16 @@ func isRankScreenshot(img image.Image, work string) (bool, error) {
 // (PLATINUM 5), the rank-progress bar with its change percentage, the match
 // modifier pills (EXPECTED / VICTORY / etc.), and the per-hero SR + delta
 // panel on the right. mode is forced to "competitive" because this screen
-// only shows up for ranked play.
+// only shows up for ranked play. Each OCR stage lives in its own rank*
+// helper; parseRank keeps the cross-stage glue (result fallback, SR sign).
 func parseRank(img image.Image, work string) (*MatchResult, error) {
-	bounds := img.Bounds()
-	W, H := bounds.Dx(), bounds.Dy()
 	res := &MatchResult{Playlist: "competitive", RankScreen: true}
-
-	// Top-left banner: "COMPETITIVE VICTORY!" / "COMPETITIVE DEFEAT!" /
-	// "COMPETITIVE DRAW!". Same prefix-match rule as the SUMMARY card so
-	// OCR slips like "DEFERT" still classify.
-	bannerRect := image.Rect(0, H*7/100, W*45/100, H*22/100)
-	bannerText, _ := ocrInverted(img, bannerRect, ocrSpec{workDir: work, name: "rank_banner", psm: "11", whitelist: ""})
-	upper := strings.ToUpper(bannerText)
-	switch {
-	case strings.Contains(upper, "VICTOR"):
-		res.Result = "victory"
-	case strings.Contains(upper, "DEFE"):
-		res.Result = "defeat"
-	case strings.Contains(upper, "DRAW") || strings.Contains(upper, "DRAU"):
-		res.Result = "draw"
-	}
-
-	// Tier label "PLATINUM 5" sits just below the badge. Read it from the same
-	// wide band the detector probes (10-70% W, down to 78% H, which also holds the
-	// "RANK PROGRESS" caption extractRank ignores): a tighter center crop garbles
-	// the tier on some captures ("GOLD" → "GOD" / "6010" / "solo"), so extractRank
-	// returns no rank and the whole screen is misclassified as summary/unknown.
-	tierRect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
-	tierText, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier", psm: "11", whitelist: ""})
-	res.Rank, res.Level = extractRank(tierText)
-	// The 2026-07 UI renders the division caption in a stylized face whose
-	// numerals the sparse pass misreads as letters ("GOLD 3" → "GOLD J",
-	// "PLATINUM 5" → "PI ATINUM J" — and J is ambiguous between 3 and 5, so
-	// no digitize mapping can recover it) or that corrupt the tier word
-	// itself ("FOLD?"). A PSM-6 re-read of the SAME band resolves the
-	// caption line cleanly; the whitelist pins the alphabet to tier words +
-	// levels 1-5 so the numeral cannot resolve to a letter. Fires only when
-	// the sparse pass came back incomplete — no committed old-UI golden has
-	// level 0, so the existing corpus never re-reads.
-	if res.Rank == "" || res.Level == 0 {
-		v2Text, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier_v2", psm: "6", whitelist: rankTierWhitelist})
-		if rank, level := extractRank(v2Text); rank != "" && (res.Rank == "" || level != 0) {
-			res.Rank, res.Level = rank, level
-		}
-	}
-
-	// Rank progress bar — "RANK PROGRESS: 21%" caption plus a "+25%" delta
-	// pill inside the bar. OCR both in one wider crop and pull each via its
-	// own regex. The RANK PROGRESS value can be NEGATIVE on a demotion screen
-	// ("-19%"); it's thin, colored text the inverted pass flattens, so OCR it
-	// RAW at 6x over a tight value crop just right of the "RANK PROGRESS:"
-	// label (whose width is fixed, so the value always starts at the same x).
-	progValRect := image.Rect(W*36/100, H*71/100, W*52/100, H*78/100)
-	progValText, _ := ocrRaw(img, progValRect, ocrSpec{workDir: work, name: "rank_progress", scale: 6, psm: "7", whitelist: "-0123456789%"})
-	if m := regexp.MustCompile(`(-?\d{1,3})\s*%`).FindStringSubmatch(progValText); m != nil {
-		res.RankProgress, _ = strconv.Atoi(m[1])
-	}
-	// The "+N%" gain pill (green, inside the bar). The inverted pass reads it at
-	// 1440p but flattens the thin colored pill at 1080p (it returns 0); fall
-	// back to the same raw-at-6x treatment the (also thin, also colored) RANK
-	// PROGRESS value needs, so the gain survives a downscaled capture.
-	changeRect := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
-	changeRe := regexp.MustCompile(`\+\s*(\d{1,3})\s*%`)
-	changeText, _ := ocrInverted(img, changeRect, ocrSpec{workDir: work, name: "rank_change", psm: "11", whitelist: ""})
-	m := changeRe.FindStringSubmatch(changeText)
-	if m == nil {
-		// 1080p: the pill text is too small for the inverted pass, and over the
-		// wide crop the larger "RANK PROGRESS:" caption dominates OCR. Isolate
-		// just the pill band (below the caption, on the bar) and read it raw at
-		// 6x so the thin colored pill survives the downscale.
-		pillRect := image.Rect(W*30/100, H*76/100, W*52/100, H*83/100)
-		rawText, _ := ocrThreshold(img, pillRect, ocrSpec{workDir: work, name: "rank_change_raw", scale: 6, thresh: 200, psm: "6", whitelist: "+0123456789%"})
-		m = changeRe.FindStringSubmatch(rawText)
-	}
-	if m != nil {
-		res.ChangePercent, _ = strconv.Atoi(m[1])
-	}
-
-	// Modifier pills below the progress bar. The right edge reaches 76% (was
-	// 55%, then 72%): the pills are centered under the bar and drift
-	// right-of-center as rank progress climbs — on the 2026-07 UI a lone
-	// "VICTORY" chip at 100% progress sits at ~68-73% W and clipped to
-	// "VICTC" at the 72% cut, losing the modifier AND the result fallback.
-	// 76% still stops short of the right-hand rank-tier badge (~78%+), so no
-	// icon noise bleeds in; the old-UI corpus goldens pin that.
-	modifierRect := image.Rect(W*10/100, H*78/100, W*76/100, H*90/100)
-	modifierText, _ := ocrInverted(img, modifierRect, ocrSpec{workDir: work, name: "rank_modifiers", psm: "11", whitelist: ""})
-	res.Modifiers = extractModifiers(modifierText)
-
-	// Right-side per-hero SR card: hero portrait + "HERO SR" + 4-digit SR +
-	// signed change. The card sits ~85-99% across, mid-height. The panel holds up
-	// to three stacked cards; the bottom reaches 75% (not 55/66%) so the third card
-	// — pushed down by a demotion screen's extra row — is still inside the crop and
-	// its hero is recognized at all.
-	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*75/100)
-	srText, _ := ocrInverted(img, srRect, ocrSpec{workDir: work, name: "rank_sr", psm: "11", whitelist: ""})
-	res.SR = extractSR(srText)
-	if anyZeroSR(res.SR) {
-		backfillSRDigits(res.SR, img, work, W, H)
-	}
-	if len(res.SR) > 0 {
-		res.Hero = res.SR[0].Hero
-		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
-			res.Role = r
-		}
-	}
-
-	// "DEMOTION PROTECTION" — a shield pill in the modifier row (a loss that
-	// didn't drop the tier). It rides the modifiers list (already persisted via
-	// the rank_modifiers table) rather than a bespoke field. Match on the
-	// "DEMOTION" stem: old-UI OCR can lose everything after the stem (a real
-	// capture reads "< DEMOTION || a || Pe"), and the 2026-07 UI's chip
-	// renders as bare "DEMOTION" — whether that's a relabel of protection or
-	// a distinct demoted-this-game chip is unproven (the one capture sat at
-	// 52% progress, so no demotion visibly occurred). Until a capture shows
-	// an actual demotion's chip, both map here; splitting on text alone
-	// inverts the old UI's meaning when the tail truncates.
-	if strings.Contains(strings.ToUpper(modifierText), "DEMOTION") {
-		res.Modifiers = append(res.Modifiers, "demotion protection")
-	}
+	res.Result = rankBannerResult(img, work)
+	res.Rank, res.Level = rankTierLevel(img, work)
+	res.RankProgress = rankProgressPct(img, work)
+	res.ChangePercent = rankChangePct(img, work)
+	res.Modifiers = rankModifierPills(img, work)
+	rankSRPanel(img, work, res)
 
 	// The top-left banner OCR is unreliable (italic ALL-CAPS over a busy
 	// gradient — "COMPETITIVE DEFEAT" reads as "CAMDETITIVE [FFFAT"); fall back
@@ -190,6 +81,149 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	}
 
 	return res, nil
+}
+
+// rankBannerResult reads the top-left banner: "COMPETITIVE VICTORY!" /
+// "COMPETITIVE DEFEAT!" / "COMPETITIVE DRAW!". Same prefix-match rule as the
+// SUMMARY card (detectResult) so OCR slips like "DEFERT" still classify.
+func rankBannerResult(img image.Image, work string) string {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	bannerRect := image.Rect(0, H*7/100, W*45/100, H*22/100)
+	bannerText, _ := ocrInverted(img, bannerRect, ocrSpec{workDir: work, name: "rank_banner", psm: "11", whitelist: ""})
+	return detectResult(bannerText)
+}
+
+// rankTierLevel reads the tier label ("PLATINUM 5") that sits just below the
+// badge, from the same wide band the detector probes (10-70% W, down to 78% H,
+// which also holds the "RANK PROGRESS" caption extractRank ignores): a tighter
+// center crop garbles the tier on some captures ("GOLD" → "GOD" / "6010" /
+// "solo"), so extractRank returns no rank and the whole screen is
+// misclassified as summary/unknown.
+func rankTierLevel(img image.Image, work string) (string, int) {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	tierRect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
+	tierText, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier", psm: "11", whitelist: ""})
+	rank, level := extractRank(tierText)
+	// The 2026-07 UI renders the division caption in a stylized face whose
+	// numerals the sparse pass misreads as letters ("GOLD 3" → "GOLD J",
+	// "PLATINUM 5" → "PI ATINUM J" — and J is ambiguous between 3 and 5, so
+	// no digitize mapping can recover it) or that corrupt the tier word
+	// itself ("FOLD?"). A PSM-6 re-read of the SAME band resolves the
+	// caption line cleanly; the whitelist pins the alphabet to tier words +
+	// levels 1-5 so the numeral cannot resolve to a letter. Fires only when
+	// the sparse pass came back incomplete — no committed old-UI golden has
+	// level 0, so the existing corpus never re-reads.
+	if rank == "" || level == 0 {
+		v2Text, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier_v2", psm: "6", whitelist: rankTierWhitelist})
+		if r2, l2 := extractRank(v2Text); r2 != "" && (rank == "" || l2 != 0) {
+			rank, level = r2, l2
+		}
+	}
+	return rank, level
+}
+
+var (
+	rankProgressRe = regexp.MustCompile(`(-?\d{1,3})\s*%`)
+	rankChangeRe   = regexp.MustCompile(`\+\s*(\d{1,3})\s*%`)
+)
+
+// rankProgressPct reads the rank-progress bar's "RANK PROGRESS: 21%" caption
+// value. It can be NEGATIVE on a demotion screen ("-19%"); it's thin, colored
+// text the inverted pass flattens, so OCR it RAW at 6x over a tight value crop
+// just right of the "RANK PROGRESS:" label (whose width is fixed, so the value
+// always starts at the same x).
+func rankProgressPct(img image.Image, work string) int {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	progValRect := image.Rect(W*36/100, H*71/100, W*52/100, H*78/100)
+	progValText, _ := ocrRaw(img, progValRect, ocrSpec{workDir: work, name: "rank_progress", scale: 6, psm: "7", whitelist: "-0123456789%"})
+	if m := rankProgressRe.FindStringSubmatch(progValText); m != nil {
+		pct, _ := strconv.Atoi(m[1])
+		return pct
+	}
+	return 0
+}
+
+// rankChangePct reads the "+N%" gain pill (green, inside the bar). The
+// inverted pass reads it at 1440p but flattens the thin colored pill at 1080p
+// (it returns 0); fall back to the same raw-at-6x treatment the (also thin,
+// also colored) RANK PROGRESS value needs, so the gain survives a downscaled
+// capture.
+func rankChangePct(img image.Image, work string) int {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	changeRect := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
+	changeText, _ := ocrInverted(img, changeRect, ocrSpec{workDir: work, name: "rank_change", psm: "11", whitelist: ""})
+	m := rankChangeRe.FindStringSubmatch(changeText)
+	if m == nil {
+		// 1080p: the pill text is too small for the inverted pass, and over the
+		// wide crop the larger "RANK PROGRESS:" caption dominates OCR. Isolate
+		// just the pill band (below the caption, on the bar) and read it raw at
+		// 6x so the thin colored pill survives the downscale.
+		pillRect := image.Rect(W*30/100, H*76/100, W*52/100, H*83/100)
+		rawText, _ := ocrThreshold(img, pillRect, ocrSpec{workDir: work, name: "rank_change_raw", scale: 6, thresh: 200, psm: "6", whitelist: "+0123456789%"})
+		m = rankChangeRe.FindStringSubmatch(rawText)
+	}
+	if m == nil {
+		return 0
+	}
+	pct, _ := strconv.Atoi(m[1])
+	return pct
+}
+
+// rankModifierPills reads the modifier pills below the progress bar. The right
+// edge reaches 76% (was 55%, then 72%): the pills are centered under the bar
+// and drift right-of-center as rank progress climbs — on the 2026-07 UI a lone
+// "VICTORY" chip at 100% progress sits at ~68-73% W and clipped to
+// "VICTC" at the 72% cut, losing the modifier AND the result fallback.
+// 76% still stops short of the right-hand rank-tier badge (~78%+), so no
+// icon noise bleeds in; the old-UI corpus goldens pin that.
+func rankModifierPills(img image.Image, work string) []string {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	modifierRect := image.Rect(W*10/100, H*78/100, W*76/100, H*90/100)
+	modifierText, _ := ocrInverted(img, modifierRect, ocrSpec{workDir: work, name: "rank_modifiers", psm: "11", whitelist: ""})
+	mods := extractModifiers(modifierText)
+
+	// "DEMOTION PROTECTION" — a shield pill in the modifier row (a loss that
+	// didn't drop the tier). It rides the modifiers list (already persisted via
+	// the rank_modifiers table) rather than a bespoke field. Match on the
+	// "DEMOTION" stem: old-UI OCR can lose everything after the stem (a real
+	// capture reads "< DEMOTION || a || Pe"), and the 2026-07 UI's chip
+	// renders as bare "DEMOTION" — whether that's a relabel of protection or
+	// a distinct demoted-this-game chip is unproven (the one capture sat at
+	// 52% progress, so no demotion visibly occurred). Until a capture shows
+	// an actual demotion's chip, both map here; splitting on text alone
+	// inverts the old UI's meaning when the tail truncates.
+	if strings.Contains(strings.ToUpper(modifierText), "DEMOTION") {
+		mods = append(mods, "demotion protection")
+	}
+	return mods
+}
+
+// rankSRPanel reads the right-side per-hero SR card stack: hero portrait +
+// "HERO SR" + 4-digit SR + signed change. The card sits ~85-99% across,
+// mid-height. The panel holds up to three stacked cards; the bottom reaches
+// 75% (not 55/66%) so the third card — pushed down by a demotion screen's
+// extra row — is still inside the crop and its hero is recognized at all.
+// The top card's hero becomes the match's primary hero + role.
+func rankSRPanel(img image.Image, work string, res *MatchResult) {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*75/100)
+	srText, _ := ocrInverted(img, srRect, ocrSpec{workDir: work, name: "rank_sr", psm: "11", whitelist: ""})
+	res.SR = extractSR(srText)
+	if anyZeroSR(res.SR) {
+		backfillSRDigits(res.SR, img, work, W, H)
+	}
+	if len(res.SR) > 0 {
+		res.Hero = res.SR[0].Hero
+		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
+			res.Role = r
+		}
+	}
 }
 
 // rankTierWhitelist constrains the PSM-6 tier re-read to tier words, the
@@ -352,12 +386,9 @@ func anyZeroSR(srs []HeroSR) bool {
 
 // backfillSRDigits recovers cards the sparse pass zeroed by digit-forcing a
 // re-OCR of the card region — starting below the rank-progress caption to skip
-// its "100" noise — under two page-segmentation modes. Stacked cards read
-// differently under each mode (one card's digits surface under PSM 6 while a
-// neighbor's only appear under PSM 3), so the union recovers more than either
-// alone. Recovered SR-range values are assigned, in reading order, to the
-// still-zero cards; a value already read from the card text is kept and excluded
-// from the candidate pool so it can't be double-assigned.
+// its "100" noise. Recovered SR-range values are assigned, in reading order,
+// to the still-zero cards; a value already read from the card text is kept and
+// excluded from the candidate pool so it can't be double-assigned.
 func backfillSRDigits(srs []HeroSR, img image.Image, work string, w, h int) {
 	region := image.Rect(w*82/100, h*28/100, w*99/100, h*75/100)
 	assigned := map[int]bool{}
@@ -366,6 +397,22 @@ func backfillSRDigits(srs []HeroSR, img image.Image, work string, w, h int) {
 			assigned[s.SR] = true
 		}
 	}
+	cands := srDigitCandidates(img, work, region, assigned)
+	ci := 0
+	for i := range srs {
+		if srs[i].SR == 0 && ci < len(cands) {
+			srs[i].SR = cands[ci]
+			ci++
+		}
+	}
+}
+
+// srDigitCandidates digit-force re-OCRs the card region under two
+// page-segmentation modes. Stacked cards read differently under each mode
+// (one card's digits surface under PSM 6 while a neighbor's only appear under
+// PSM 3), so the union recovers more than either alone. Returns the plausible
+// SR values not already assigned to a card, in reading order, deduplicated.
+func srDigitCandidates(img image.Image, work string, region image.Rectangle, assigned map[int]bool) []int {
 	seen := map[int]bool{}
 	var cands []int
 	for _, psm := range []string{"6", "3"} {
@@ -379,13 +426,7 @@ func backfillSRDigits(srs []HeroSR, img image.Image, work string, w, h int) {
 			cands = append(cands, v)
 		}
 	}
-	ci := 0
-	for i := range srs {
-		if srs[i].SR == 0 && ci < len(cands) {
-			srs[i].SR = cands[ci]
-			ci++
-		}
-	}
+	return cands
 }
 
 // srFromRun reduces an OCR digit run to a plausible 4-digit SR (1000-4999). A

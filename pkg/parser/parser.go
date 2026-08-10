@@ -88,27 +88,31 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	// is trustworthy — fail the file (ledger + retry next run) instead of
 	// falling through to parseTeams, whose pixel heuristics can manufacture
 	// an all-zero row from a rank screen's blue background.
-	if ok, err := isRankScreenshot(img, work); err != nil {
-		return nil, fmt.Errorf("rank probe: %w", err)
-	} else if ok {
-		return parseRank(img, work)
-	}
-	if ok, err := isSummaryScreenshot(img, work); err != nil {
-		return nil, fmt.Errorf("summary probe: %w", err)
-	} else if ok {
-		return parseSummary(img, work)
-	}
-	if ok, err := isAllHeroesScreenshot(img, work); err != nil {
-		return nil, fmt.Errorf("all-heroes probe: %w", err)
-	} else if ok {
-		return parseAllHeroes(img, work)
-	}
-	if ok, err := isPersonalScreenshot(img, work); err != nil {
-		return nil, fmt.Errorf("personal probe: %w", err)
-	} else if ok {
-		return parsePersonal(img, work)
+	for _, p := range screenshotProbes {
+		ok, err := p.probe(img, work)
+		if err != nil {
+			return nil, fmt.Errorf("%s probe: %w", p.name, err)
+		}
+		if ok {
+			return p.parse(img, work)
+		}
 	}
 	return parseTeams(img, work)
+}
+
+// screenshotProbes is the ordered detector ladder ParseScreenshot walks:
+// rank → summary → all-heroes → personal, with parseTeams as the fall-through
+// when no probe claims the image. Each probe is one cheap, read-only OCR pass
+// over a small region; the first probe that answers yes owns the parse.
+var screenshotProbes = []struct {
+	name  string
+	probe func(image.Image, string) (bool, error)
+	parse func(image.Image, string) (*MatchResult, error)
+}{
+	{"rank", isRankScreenshot, parseRank},
+	{"summary", isSummaryScreenshot, parseSummary},
+	{"all-heroes", isAllHeroesScreenshot, parseAllHeroes},
+	{"personal", isPersonalScreenshot, parsePersonal},
 }
 
 // parseSingleFunc is the indirection ParseScreenshotsDir routes each file

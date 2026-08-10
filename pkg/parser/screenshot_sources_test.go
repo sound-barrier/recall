@@ -38,23 +38,7 @@ func TestScreenshotSourcesYAML_CoversCanonicalFilenames(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.wantName, func(t *testing.T) {
-			var hit *parser.ScreenshotSource
-			sources := parser.Sources()
-			for i := range sources {
-				s := &sources[i]
-				if len(s.Prefix) == 0 || !startsWith(tc.filename, s.Prefix) {
-					continue
-				}
-				m := s.Regex.FindStringSubmatch(tc.filename)
-				if m == nil {
-					continue
-				}
-				if len(m) != 7 { // index 0 is the full match + 6 groups
-					t.Fatalf("source %q matched %q but produced %d groups, want 6", s.Name, tc.filename, len(m)-1)
-				}
-				hit = s
-				break
-			}
+			hit := firstMatchingSource(t, tc.filename)
 			if hit == nil {
 				t.Fatalf("no source matched %q", tc.filename)
 			}
@@ -63,6 +47,30 @@ func TestScreenshotSourcesYAML_CoversCanonicalFilenames(t *testing.T) {
 			}
 		})
 	}
+}
+
+// firstMatchingSource walks Sources() in order and returns the first entry
+// whose prefix + regex both match filename (the same first-match-wins rule
+// pkg/app/correlation.go applies), failing the test when a match produces
+// the wrong group count. nil when no source matches.
+func firstMatchingSource(t *testing.T, filename string) *parser.ScreenshotSource {
+	t.Helper()
+	sources := parser.Sources()
+	for i := range sources {
+		s := &sources[i]
+		if len(s.Prefix) == 0 || !startsWith(filename, s.Prefix) {
+			continue
+		}
+		m := s.Regex.FindStringSubmatch(filename)
+		if m == nil {
+			continue
+		}
+		if len(m) != 7 { // index 0 is the full match + 6 groups
+			t.Fatalf("source %q matched %q but produced %d groups, want 6", s.Name, filename, len(m)-1)
+		}
+		return s
+	}
+	return nil
 }
 
 // startsWith is a stand-in for strings.HasPrefix kept inline to

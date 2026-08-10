@@ -114,50 +114,37 @@ func TestParseScreenshotsDir_ContinuesAfterPerFileFailure(t *testing.T) {
 // render per-file warnings without aborting.
 // ──────────────────────────────────────────────────────────────────────────
 
-func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
-	stubParseSingle(t, func(path string) (*parser.MatchResult, error) {
-		if filepath.Base(path) == "broken.png" {
-			return nil, errors.New("boom")
-		}
-		return &parser.MatchResult{}, nil
-	})
+// progressCall records one ProgressFunc invocation for assertion.
+type progressCall struct {
+	done, total int
+	filename    string
+	hasResult   bool
+	err         error
+}
 
-	dir := makeFiles(t, "a.png", "broken.png", "c.png")
-
-	type call struct {
-		done, total int
-		filename    string
-		hasResult   bool
-		err         error
-	}
-	var calls []call
-	progress := func(done, total int, filename string, result *parser.MatchResult, err error) {
-		calls = append(calls, call{done, total, filename, result != nil, err})
-	}
-
-	if _, err := parser.ParseScreenshotsDir(t.Context(), dir, nil, progress); err != nil {
-		t.Fatalf("dir-level err must be nil; got %v", err)
-	}
-	if len(calls) != 3 {
-		t.Fatalf("progress must fire for every file (including failures); got %d calls", len(calls))
-	}
-	// done counts up 1..total even when a file fails — the user wants
-	// monotonic progress, not "1, 1, 2" stalls.
+// assertMonotonicProgress checks done counts up 1..total even when a file
+// fails — the user wants monotonic progress, not "1, 1, 2" stalls.
+func assertMonotonicProgress(t *testing.T, calls []progressCall, total int) {
+	t.Helper()
 	for i, c := range calls {
-		if c.done != i+1 || c.total != 3 {
-			t.Errorf("calls[%d]: got done=%d total=%d; want %d/3", i, c.done, c.total, i+1)
+		if c.done != i+1 || c.total != total {
+			t.Errorf("calls[%d]: got done=%d total=%d; want %d/%d", i, c.done, c.total, i+1, total)
 		}
 	}
-	// The failing entry must carry err != nil and result == nil; the
-	// healthy entries the inverse.
+}
+
+// assertPerFileOutcomes checks the failing entry carries err != nil and
+// result == nil; the healthy entries the inverse.
+func assertPerFileOutcomes(t *testing.T, calls []progressCall, brokenName string) {
+	t.Helper()
 	for _, c := range calls {
 		switch c.filename {
-		case "broken.png":
+		case brokenName:
 			if c.err == nil {
-				t.Errorf("broken.png must carry a non-nil err; got nil")
+				t.Errorf("%s must carry a non-nil err; got nil", brokenName)
 			}
 			if c.hasResult {
-				t.Errorf("broken.png must not carry a result")
+				t.Errorf("%s must not carry a result", brokenName)
 			}
 		default:
 			if c.err != nil {
@@ -168,6 +155,31 @@ func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
+	stubParseSingle(t, func(path string) (*parser.MatchResult, error) {
+		if filepath.Base(path) == "broken.png" {
+			return nil, errors.New("boom")
+		}
+		return &parser.MatchResult{}, nil
+	})
+
+	dir := makeFiles(t, "a.png", "broken.png", "c.png")
+
+	var calls []progressCall
+	progress := func(done, total int, filename string, result *parser.MatchResult, err error) {
+		calls = append(calls, progressCall{done, total, filename, result != nil, err})
+	}
+
+	if _, err := parser.ParseScreenshotsDir(t.Context(), dir, nil, progress); err != nil {
+		t.Fatalf("dir-level err must be nil; got %v", err)
+	}
+	if len(calls) != 3 {
+		t.Fatalf("progress must fire for every file (including failures); got %d calls", len(calls))
+	}
+	assertMonotonicProgress(t, calls, 3)
+	assertPerFileOutcomes(t, calls, "broken.png")
 }
 
 // ──────────────────────────────────────────────────────────────────────────
