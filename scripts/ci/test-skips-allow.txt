@@ -23,15 +23,15 @@ pkg/probe/probe_test.go:77:		t.Skip("Windows has its own assertion below")
 pkg/probe/probe_test.go:87:		t.Skip("Windows-only behavior")
 pkg/probe/probe_test.go:126:		t.Skip("Windows has its own assertion below")
 pkg/probe/probe_test.go:136:		t.Skip("Windows-only behavior")
-pkg/probe/probe_test.go:184:		t.Skip("Windows-only behavior")
+pkg/probe/probe_test.go:188:		t.Skip("Windows-only behavior")
 
 # pkg/app/screenshot_handler_fuzz_test.go — the fuzz harness skips
 # inputs httptest.NewRequest can't construct (control bytes that
 # break URL parsing). Not flake suppression; the handler under test
 # wouldn't see those bytes via a real net/http request anyway because
 # the server rejects them at the parse layer.
-pkg/app/screenshot_handler_fuzz_test.go:80:			t.Skip()
-pkg/app/screenshot_handler_fuzz_test.go:99:			t.Skipf("could not construct base request: %v", err)
+pkg/app/screenshot_handler_fuzz_test.go:85:			t.Skip()
+pkg/app/screenshot_handler_fuzz_test.go:104:			t.Skipf("could not construct base request: %v", err)
 
 # pkg/parser/tesseract_timeout_test.go — the hung-Tesseract bound test
 # fakes the binary with a sleeping shell script, which can't run on
@@ -44,10 +44,10 @@ pkg/parser/tesseract_timeout_test.go:21:		t.Skip("fake tesseract is a shell scri
 # without `-short`. CI runs `-short` so these are skipped there;
 # they run locally via `task test` once the submodule is fetched.
 pkg/parser/integration_test.go:61:		t.Skip("skipping golden-file parser tests in -short mode")
-pkg/parser/integration_test.go:84:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
-pkg/parser/integration_test.go:91:		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
-pkg/parser/integration_test.go:107:		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
-pkg/parser/integration_test.go:138:				t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
+pkg/parser/integration_test.go:69:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
+pkg/parser/integration_test.go:109:		t.Skipf("fixture image dir %q missing — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
+pkg/parser/integration_test.go:125:		t.Skipf("no .png/.jpg fixtures in %q — run 'task fetch-fixtures' to init the recall-testdata submodule", imageDir)
+pkg/parser/integration_test.go:157:		t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
 
 # pkg/match + pkg/app UTC time-model tests skip only when the host lacks
 # America/Denver zoneinfo (belt-and-braces; CI images ship it). Not flake
