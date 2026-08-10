@@ -134,3 +134,27 @@ queries/client defaults + banner wiring), total +22,558 B. Server state
 moves out of the Pinia stores into the query cache over the following
 commits, which deletes hand-rolled loader/invalidation code from the
 lazy chunks. Both bumps keep the usual ~5 KB working headroom.
+
+## 2026-08 — initial JS 190500 → 319000 (METRIC CHANGE) + total 1581000 → 1593000
+
+Two unrelated things in one row, so read them separately.
+
+**The initial-JS metric changed.** It now measures the entry GRAPH — the
+entry script plus every chunk `index.html` modulepreloads — where it used
+to measure `index-*.js` alone. The old number was always a slice of what
+the browser actually downloads before first paint, and it went badly wrong
+the moment the bundler hoisted shared eager code into its own chunk: this
+PR's `queries/client.ts` losing its top-level `makeQueryClient()` side
+effect was enough to move ~112KB of eager code into an `app-*.js` chunk,
+which the gate cheerfully reported as an *improvement* (185KB → 73KB) that
+no user experienced. Measured entry graph is 313196 B; the budget is that
+plus the usual ~5KB working headroom. **Initial-JS rows above this line
+are not comparable to rows below it.**
+
+**Total JS +12.4KB** — the five binary endpoints (backup, restore, export
+bundle, export diagnostic, import) now go through the generated SDK
+instead of hand-rolled `fetch` calls, pulling their generated operations
+and the blob/body-serializer paths into the bundle. The hand-written
+fetch/Content-Disposition/error code they replaced comes back out. What it
+buys: compile-time-checked request bodies on endpoints that previously
+hand-built snake_case JSON, and one error mapper instead of two.
