@@ -175,23 +175,22 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 		specs = append(specs, cohortBSpecPair(base, i)...)
 	}
 
-	// Match Y's SUMMARY and Match Y's TEAMS both inherit the
-	// bug. The expected `date` field differs between X and Y, but
-	// correlate.RowsConflict() refuses to bridge when BOTH sides have a date
-	// and they differ — so the production resolver actually REJECTS
-	// the bridge once SUMMARY's date populates. Strip date from
-	// a TEAMS MatchResult (it's not parsed from teams) to
-	// model the in-game scenario where TEAMS comes first.
-	//
-	// For honest pinning we emit TEAMS before SUMMARY for the
-	// Y match — that way the TEAMS has no date, EAD-bridge
-	// fires, and X's key gets adopted.
+	// Ordering matters for WHICH resolver path gets exercised. A date
+	// mismatch makes correlate.RowsConflict() refuse outright (both
+	// sides dated, dates differ), which would short-circuit before the
+	// EAD bridge's time bound is ever consulted. TEAMS carries no date
+	// (it's not parsed from teams), so emitting Y's TEAMS first models
+	// the in-game capture order AND forces the decision onto the
+	// 30-minute bound itself: the bridge sees X's matching signature,
+	// finds it days away, refuses, and mints matchKeyFor(y−10s) — the
+	// fixed behavior the header describes and expectedKey pins.
 	fixtures := make([]fixture, 0, 40)
 	for i, s := range specs {
 		// X specs (even idx): emit SUMMARY first then TEAMS.
-		// Y specs (odd idx): emit TEAMS first (no date) so the
-		// EAD-bridge bug actually triggers, then SUMMARY which will
-		// hit the same bridge via the TEAMS it just inserted.
+		// Y specs (odd idx): emit TEAMS first (dateless) so the
+		// EAD-bridge path is reached and its time bound — not a date
+		// conflict — is what rejects the merge; the SUMMARY that
+		// follows adopts the freshly-minted Y TEAMS key instead.
 		if i%2 == 1 {
 			fixtures = append(fixtures, cohortBTeamsFirstFixtures(s)...)
 			continue
