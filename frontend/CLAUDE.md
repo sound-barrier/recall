@@ -378,17 +378,19 @@ for you.
 - **knip project scope is `src/**/*.{ts,vue}`.** No `ignoreDependencies` needed: knip ≥6.23 resolves typescript-eslint's internal `@eslint/js` use (the old ignore entry now trips a "remove from ignoreDependencies" hint), and `@vitest/coverage-v8` is detected via `coverage.provider: 'v8'`. Run via `make dead-code-ts`.
 
 - **The TypeScript ceiling: typescript-eslint is the binding blocker.**
-  `typescript-eslint` (`>=4.8.4 <6.1.0`, every `@typescript-eslint/*`
-  package) caps us below TS 7, and dropping it isn't on the table given the
-  16 type-checked rules + `projectService` wired up in `eslint.config.js`.
-  Hold `typescript` at `^5.x`. The old second blocker (openapi-typescript's
-  `^5.x` peer) is GONE — the generator is now `@hey-api/openapi-ts`, whose
-  peer admits newer majors — so **revisit when typescript-eslint publishes
-  a `typescript` peer admitting ≥7** (check with
-  `npm view typescript-eslint peerDependencies`, don't assume). Pins live
-  in `frontend/package.json`; `@hey-api/openapi-ts` stays EXACT-pinned (it
-  ships hundreds of 0.x versions — pick a new one deliberately, ≥7 days
-  old per the `.npmrc` cooldown, and regenerate + diff `src/client`).
+  `typescript-eslint`'s peer (`>=4.8.4 <6.1.0`, every `@typescript-eslint/*`
+  package) admits TS 6.0.x but caps us below 6.1/7, and dropping it isn't
+  on the table given the 16 type-checked rules + `projectService` wired up
+  in `eslint.config.js`. `typescript` is pinned `~6.0.x` (TILDE — a caret
+  would let installs drift past the 6.1 ceiling; the old second blocker,
+  openapi-typescript's `^5.x` peer, died with the generator swap to
+  `@hey-api/openapi-ts`). TS 6 note: `baseUrl` is deprecated — `paths`
+  resolve relative to the tsconfig, don't reintroduce it. **Revisit when
+  typescript-eslint publishes a `typescript` peer admitting ≥6.1** (check
+  with `npm view typescript-eslint peerDependencies`, don't assume).
+  `@hey-api/openapi-ts` stays EXACT-pinned (it ships hundreds of 0.x
+  versions — pick a new one deliberately, ≥7 days old per the `.npmrc`
+  cooldown, and regenerate + diff `src/client`).
 
 - **Bundle-size budget.** The KB thresholds live in
   `scripts/ci/check-bundle-size.sh` (run by the `ci.yml` "Enforce bundle-size
