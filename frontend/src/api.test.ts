@@ -7,6 +7,11 @@ import {
   GetNewScreenshotCount,
   GetVersion,
   IgnoreScreenshot,
+  BackupDatabase,
+  ExportBundle,
+  ExportDiagnosticBundle,
+  RestoreDatabase,
+  ImportMatches,
   ParseScreenshots,
   ReParseAll,
   SetMatchAnnotation,
@@ -17,8 +22,8 @@ import {
 // The generated hey-api client dispatches every JSON call as a single
 // Request object through global fetch — ONE transport for both the Wails
 // asset-server origin and server mode. These tests stub global fetch and
-// assert on the Request the client built. The binary/dialog paths keep
-// their own raw fetch(url, init) shape — see the blocks at the bottom.
+// assert on the Request the client built — including the binary paths,
+// which now ride the same SDK (only their DOM plumbing is hand-written).
 
 function stubFetch(makeResponse: (req: Request) => Response) {
   const spy = vi.fn(async (req: Request) => makeResponse(req))
@@ -275,91 +280,84 @@ describe('GetDataLocation', () => {
   })
 })
 
-// ── BackupDatabase (browser/server mode) ──────────────────────────────────
-// The binary download/upload paths deliberately bypass the generated SDK
-// (blob + Content-Disposition + native-dialog twins live in api-platform),
-// so they keep the raw fetch(url, init) call shape.
+// ── Binary paths (browser/server mode) ────────────────────────────────────
+// These now ride the generated SDK like every other call (blob-parsed
+// responses, File bodies streamed through bodySerializer: null); only the
+// DOM plumbing — <a download>, <input type=file> — stays hand-written in
+// api-platform.ts. The Wails half (native save/load dialogs) is pinned in
+// api-platform.wails.test.ts.
 
-function mockFetch(status: number, payload: unknown, contentType?: string) {
-  const body = typeof payload === 'string' ? payload : JSON.stringify(payload)
-  const ct = contentType ?? (typeof payload === 'string' ? 'text/plain' : 'application/json')
-  return vi.fn().mockResolvedValue({
-    ok: status >= 200 && status < 300,
-    status,
-    headers: { get: (k: string) => (k.toLowerCase() === 'content-type' ? ct : null) },
-    text: () => Promise.resolve(body),
-    json: () => Promise.resolve(payload),
-  })
-}
+describe('binary downloads (browser mode)', () => {
+  afterEach(() => { vi.restoreAllMocks() })
 
-describe('BackupDatabase (browser mode)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
-
-  function fetchBinaryOK(disposition: string) {
-    return vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: { get: (k: string) => k === 'Content-Disposition' ? disposition : null },
-      blob: () => Promise.resolve(new Blob([new Uint8Array([0x53, 0x51, 0x4c, 0x69])], { type: 'application/octet-stream' })),
-      text: () => Promise.resolve(''),
-    })
-  }
-
-  it('GETs /api/v1/database and returns the Content-Disposition filename', async () => {
-    const fetchSpy = fetchBinaryOK('attachment; filename="recall-backup-20260626-013000.db"')
-    vi.stubGlobal('fetch', fetchSpy)
-    vi.stubGlobal('URL', {
-      ...URL,
+  // Patch only the object-URL methods — replacing the whole URL global
+  // (the pre-SDK shape of this helper) would break `new URL(...)`, which
+  // these tests now use to assert on the Request the client built.
+  function stubDownloadDom() {
+    Object.assign(URL, {
       createObjectURL: vi.fn(() => 'blob:fake'),
       revokeObjectURL: vi.fn(),
     })
-    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    return vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  }
 
-    const { BackupDatabase } = await import('@/api')
+  function blobReply(disposition: string): (req: Request) => Response {
+    const headers: Record<string, string> = { 'Content-Type': 'application/octet-stream' }
+    if (disposition) headers['Content-Disposition'] = disposition
+    return () => new Response(new Blob([new Uint8Array([0x53, 0x51, 0x4c, 0x69])]), { status: 200, headers })
+  }
+
+  it('BackupDatabase GETs /api/v1/database and returns the Content-Disposition filename', async () => {
+    const spy = stubFetch(blobReply('attachment; filename="recall-backup-20260626-013000.db"'))
+    const clickSpy = stubDownloadDom()
+
     const name = await BackupDatabase()
-    expect(fetchSpy).toHaveBeenCalledWith('/api/v1/database')
+    const req = lastRequest(spy)
+    expect(req.method).toBe('GET')
+    expect(new URL(req.url).pathname).toBe('/api/v1/database')
     expect(name).toBe('recall-backup-20260626-013000.db')
     expect(clickSpy).toHaveBeenCalledOnce()
   })
 
   it('falls back to a generated .db filename when Content-Disposition is missing', async () => {
-    vi.stubGlobal('fetch', fetchBinaryOK(''))
-    vi.stubGlobal('URL', {
-      ...URL,
-      createObjectURL: vi.fn(() => 'blob:fake'),
-      revokeObjectURL: vi.fn(),
-    })
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-
-    const { BackupDatabase } = await import('@/api')
-    const name = await BackupDatabase()
-    expect(name).toMatch(/^recall-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
+    stubFetch(blobReply(''))
+    stubDownloadDom()
+    expect(await BackupDatabase()).toMatch(/^recall-backup-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db$/)
   })
 
   it('throws ApiError on a non-2xx response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      headers: { get: () => null },
-      text: () => Promise.resolve('server boom'),
-    }))
-    const { BackupDatabase } = await import('@/api')
+    stubFetch(textReply(500, 'server boom'))
     const err = await BackupDatabase().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(500)
   })
+
+  it('ExportBundle POSTs the typed selection body', async () => {
+    const spy = stubFetch(blobReply('attachment; filename="recall-bundle-x.zip"'))
+    stubDownloadDom()
+
+    const name = await ExportBundle({ matchKeys: ['k1'], includeUnknown: true, includeHidden: false })
+    const req = lastRequest(spy)
+    expect(req.method).toBe('POST')
+    expect(new URL(req.url).pathname).toBe('/api/v1/exports/bundle')
+    expect(JSON.parse(await req.text())).toEqual({
+      match_keys: ['k1'], include_unknown: true, include_hidden: false,
+    })
+    expect(name).toBe('recall-bundle-x.zip')
+  })
+
+  it('ExportDiagnosticBundle POSTs and saves the returned zip', async () => {
+    const spy = stubFetch(blobReply('attachment; filename="recall-diagnostic-x.zip"'))
+    stubDownloadDom()
+
+    const name = await ExportDiagnosticBundle()
+    expect(new URL(lastRequest(spy).url).pathname).toBe('/api/v1/exports/diagnostic')
+    expect(name).toBe('recall-diagnostic-x.zip')
+  })
 })
 
-// ── RestoreDatabase + ImportMatches (browser/server mode) ─────────────────
-
 describe('RestoreDatabase + ImportMatches (browser mode)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
+  afterEach(() => { vi.restoreAllMocks() })
 
   // installFilePicker patches createElement so the next <input>'s
   // .click() synchronously dispatches the chosen event.
@@ -386,35 +384,28 @@ describe('RestoreDatabase + ImportMatches (browser mode)', () => {
 
   it('RestoreDatabase returns "" when the user cancels the picker', async () => {
     installFilePicker('cancel')
-    const { RestoreDatabase } = await import('@/api')
     expect(await RestoreDatabase()).toBe('')
   })
 
   it('RestoreDatabase PUTs the .db bytes to /api/v1/database', async () => {
     const file = new File([new Uint8Array([0x53, 0x51, 0x4c])], 'snap.db', { type: 'application/octet-stream' })
     installFilePicker('change', file)
-    const fetchSpy = mockFetch(204, '')
-    vi.stubGlobal('fetch', fetchSpy)
+    const spy = stubFetch(emptyReply(204))
 
-    const { RestoreDatabase } = await import('@/api')
-    const result = await RestoreDatabase()
-    expect(result).toBe('snap.db')
-    expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/v1/database',
-      expect.objectContaining({
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: expect.any(ArrayBuffer),
-      }),
-    )
+    expect(await RestoreDatabase()).toBe('snap.db')
+    const req = lastRequest(spy)
+    expect(req.method).toBe('PUT')
+    expect(new URL(req.url).pathname).toBe('/api/v1/database')
+    // bodySerializer: null streams the File through untouched — the
+    // octet-stream content type must survive.
+    expect(req.headers.get('content-type')).toBe('application/octet-stream')
   })
 
   it('RestoreDatabase throws ApiError when the server rejects the snapshot', async () => {
     const file = new File([new Uint8Array([0x00])], 'bad.db', { type: 'application/octet-stream' })
     installFilePicker('change', file)
-    vi.stubGlobal('fetch', mockFetch(422, 'restore: not a valid Recall database'))
+    stubFetch(textReply(422, 'restore: not a valid Recall database'))
 
-    const { RestoreDatabase } = await import('@/api')
     const err = await RestoreDatabase().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(422)
@@ -422,36 +413,26 @@ describe('RestoreDatabase + ImportMatches (browser mode)', () => {
 
   it('ImportMatches returns an empty-path result when the user cancels', async () => {
     installFilePicker('cancel')
-    const { ImportMatches } = await import('@/api')
     expect(await ImportMatches()).toEqual({ path: '', imported: 0, skipped: 0 })
   })
 
   it('ImportMatches POSTs the bundle and returns the merge summary', async () => {
-    const zipBytes = new Uint8Array([0x50, 0x4B, 0x03, 0x04])
-    const file = new File([zipBytes], 'bundle.zip', { type: 'application/zip' })
+    const file = new File([new Uint8Array([0x50, 0x4B, 0x03, 0x04])], 'bundle.zip', { type: 'application/zip' })
     installFilePicker('change', file)
-    const fetchSpy = mockFetch(200, { imported: 2, skipped: 1 })
-    vi.stubGlobal('fetch', fetchSpy)
+    const spy = stubFetch(jsonReply(200, { imported: 2, skipped: 1 }))
 
-    const { ImportMatches } = await import('@/api')
-    const result = await ImportMatches()
-    expect(result).toEqual({ path: 'bundle.zip', imported: 2, skipped: 1 })
-    expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/v1/imports',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/zip' },
-        body: expect.any(ArrayBuffer),
-      }),
-    )
+    expect(await ImportMatches()).toEqual({ path: 'bundle.zip', imported: 2, skipped: 1 })
+    const req = lastRequest(spy)
+    expect(req.method).toBe('POST')
+    expect(new URL(req.url).pathname).toBe('/api/v1/imports')
+    expect(req.headers.get('content-type')).toBe('application/zip')
   })
 
   it('ImportMatches throws ApiError when the server rejects the bundle', async () => {
     const file = new File([new Uint8Array([0x50, 0x4B])], 'bad.zip', { type: 'application/zip' })
     installFilePicker('change', file)
-    vi.stubGlobal('fetch', mockFetch(400, 'import: malformed payload'))
+    stubFetch(textReply(400, 'import: malformed payload'))
 
-    const { ImportMatches } = await import('@/api')
     const err = await ImportMatches().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(400)

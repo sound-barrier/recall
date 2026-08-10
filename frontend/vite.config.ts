@@ -17,6 +17,18 @@ export default defineConfig({
     // It reads like a port conflict and isn't — nothing else holds the
     // port, the two sides just disagree on address family.
     host: '127.0.0.1',
+
+    // Bare `npm run dev` (browser at :9245, no Wails window) has no
+    // /api/v1 of its own — every call is a fetch now that the RPC branch
+    // is gone, so proxy the API + screenshot routes to a `recall -s`
+    // server (RECALL_SERVER_ADDR, default 127.0.0.1:7000). Inert under
+    // `task dev`: there the webview loads the Wails origin and the
+    // asset-server middleware short-circuits /api/v1 before Vite ever
+    // sees it.
+    proxy: {
+      '/api/v1': { target: `http://${process.env.RECALL_SERVER_ADDR ?? '127.0.0.1:7000'}`, changeOrigin: true },
+      '/_screenshot': { target: `http://${process.env.RECALL_SERVER_ADDR ?? '127.0.0.1:7000'}`, changeOrigin: true },
+    },
   },
   resolve: {
     alias: {

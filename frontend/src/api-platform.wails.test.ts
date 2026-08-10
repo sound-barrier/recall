@@ -3,8 +3,10 @@
 // that JSON API calls use fetch even inside the Wails webview (the single
 // transport that replaced the Call.ByName RPC branch).
 //
-// IS_WAILS is a module-level `const` evaluated at import time. To exercise
-// the Wails branch we stub the UA (or origin), vi.resetModules() so the
+// IS_WAILS is a module-level `const` evaluated at import time from the
+// SERVING ORIGIN alone (the UA-marker fallback is gone — with one fetch
+// transport it could only ever select a broken configuration). To exercise
+// the Wails branch we stub window.location, vi.resetModules() so the
 // cached module is dropped, then dynamic-import for a fresh eval. Split
 // from api.test.ts because the module-cache reset pollutes global state.
 
@@ -23,10 +25,17 @@ vi.mock('@wailsio/runtime', () => ({
   Browser: { OpenURL: browserOpenURL },
 }))
 
-const realUA = navigator.userAgent
+const realLocation = window.location
 
-function enableWailsUA() {
-  Object.defineProperty(navigator, 'userAgent', { value: `${realUA} wails.io`, configurable: true })
+// macOS serves the app from the `wails:` custom scheme; Windows WebView2
+// from the `wails.localhost` virtual host. Either origin means "native
+// window" — and neither carries a UA marker on Windows, which is why
+// origin is the whole signal.
+function enableWailsOrigin(shape: 'darwin' | 'windows' = 'darwin') {
+  const loc = shape === 'darwin'
+    ? { protocol: 'wails:', hostname: 'localhost', href: 'wails://localhost/' }
+    : { protocol: 'http:', hostname: 'wails.localhost', href: 'http://wails.localhost/' }
+  Object.defineProperty(window, 'location', { value: loc, configurable: true })
 }
 
 beforeEach(() => {
@@ -38,7 +47,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  Object.defineProperty(navigator, 'userAgent', { value: realUA, configurable: true })
+  Object.defineProperty(window, 'location', { value: realLocation, configurable: true })
   vi.unstubAllGlobals()
 })
 
@@ -47,7 +56,7 @@ afterEach(() => {
 // handler calls. The FQN string is the contract with pkg/app/app_wails.go.
 
 describe('native dialog dispatch (Wails mode)', () => {
-  beforeEach(enableWailsUA)
+  beforeEach(() => { enableWailsOrigin() })
 
   const FQN = 'recall/pkg/app.App.'
 
@@ -83,19 +92,12 @@ describe('native dialog dispatch (Wails mode)', () => {
 // API methods would bypass the asset-server middleware contract.
 
 describe('JSON API calls inside the Wails webview', () => {
-  const realLocation = window.location
-
   beforeEach(() => {
-    // Windows WebView2 shape: wails.localhost origin, NO "wails" UA marker.
-    Object.defineProperty(window, 'location', {
-      value: { protocol: 'http:', hostname: 'wails.localhost', href: 'http://wails.localhost/' },
-      configurable: true,
-    })
+    // Windows WebView2 shape: wails.localhost origin, NO "wails" UA marker
+    // — the case a UA-only detector got wrong (every call 404'd against
+    // the desktop asset server).
+    enableWailsOrigin('windows')
     vi.resetModules()
-  })
-
-  afterEach(() => {
-    Object.defineProperty(window, 'location', { value: realLocation, configurable: true })
   })
 
   it('go through fetch, never Call.ByName', async () => {
@@ -117,7 +119,7 @@ describe('JSON API calls inside the Wails webview', () => {
 
 describe('OpenURL', () => {
   it('routes through Browser.OpenURL in Wails mode', async () => {
-    enableWailsUA()
+    enableWailsOrigin()
     const { OpenURL } = await import('@/api')
     OpenURL('https://sound-barrier.github.io/recall/')
     expect(browserOpenURL).toHaveBeenCalledWith('https://sound-barrier.github.io/recall/')
@@ -135,7 +137,7 @@ describe('OpenURL', () => {
 // ── events bridge ─────────────────────────────────────────────────────────
 
 describe('EventsOn (Wails mode)', () => {
-  beforeEach(enableWailsUA)
+  beforeEach(() => { enableWailsOrigin() })
 
   it('unwraps the v3 WailsEvent envelope and replaces prior listeners', async () => {
     const { EventsOn } = await import('@/api')

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ApiError, apiErrorFromResponse, toApiError } from '@/api-error'
+import { ApiError, toApiError } from '@/api-error'
 
 describe('toApiError', () => {
   it('maps an RFC 9457 problem object to detail + structured problem', () => {
@@ -34,33 +34,3 @@ describe('toApiError', () => {
   })
 })
 
-describe('apiErrorFromResponse', () => {
-  it('parses a problem+json response into the structured problem', async () => {
-    const r = new Response(
-      JSON.stringify({ type: 'x', title: 'Bad Request', status: 400, detail: 'nope' }),
-      { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
-    )
-    const err = await apiErrorFromResponse(r)
-    expect(err.status).toBe(400)
-    expect(err.body).toBe('nope')
-    expect(err.problem?.title).toBe('Bad Request')
-  })
-
-  it('keeps a non-problem response as plain body text', async () => {
-    const r = new Response('server boom', { status: 500, headers: { 'Content-Type': 'text/plain' } })
-    const err = await apiErrorFromResponse(r)
-    expect(err.status).toBe(500)
-    expect(err.body).toBe('server boom')
-    expect(err.problem).toBeUndefined()
-  })
-
-  it('preserves the body text when problem+json fails to parse (no double body read)', async () => {
-    const r = new Response('<html>proxy error</html>', {
-      status: 502,
-      headers: { 'Content-Type': 'application/problem+json' },
-    })
-    const err = await apiErrorFromResponse(r)
-    expect(err.status).toBe(502)
-    expect(err.body).toBe('<html>proxy error</html>')
-  })
-})

@@ -39,19 +39,3 @@ export function toApiError(status: number, error: unknown): ApiError {
   return new ApiError(status, error == null ? '' : String(error as number | boolean))
 }
 
-// apiErrorFromResponse builds an ApiError from a raw non-ok Response — for
-// the binary download/upload paths (api-platform) that bypass the SDK and
-// read the body themselves. The body is read ONCE as text: a second read
-// after a failed .json() would throw on the consumed stream and lose the
-// error detail.
-export async function apiErrorFromResponse(r: Response): Promise<ApiError> {
-  const text = await r.text().catch(() => '')
-  if ((r.headers.get('content-type') ?? '').includes('application/problem+json')) {
-    try {
-      return toApiError(r.status, JSON.parse(text))
-    } catch (_) {
-      // Malformed problem+json — fall through to the raw text.
-    }
-  }
-  return new ApiError(r.status, text)
-}

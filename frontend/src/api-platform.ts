@@ -1,6 +1,6 @@
 /**
  * api-platform.ts — the surviving dual-mode surface after the transport
- * unification. JSON API calls all go through the generated SDK facade in
+ * unification. JSON calls all go through the generated SDK facade in
  * api.ts (one fetch transport, both modes); what remains here is the
  * genuinely platform-bound surface:
  *
@@ -10,13 +10,17 @@
  *   - the events bridge (Wails event bus vs a shared EventSource — SSE
  *     cannot ride the Wails asset server on Windows, see pkg/cmd's
  *     newAPIMux)
- *   - the binary import/export paths (native save/load dialogs vs blob
- *     download / file-picker upload), which bypass the SDK by design
+ *   - the binary import/export paths: the NATIVE half (save/load dialogs)
+ *     plus the browser half's DOM plumbing (blob download, file picker).
+ *     The HTTP half of those goes through the generated SDK like
+ *     everything else — only the DOM work is hand-written here.
  */
 
 import { Browser, Call, Events } from '@wailsio/runtime'
 
-import { apiErrorFromResponse } from '@/api-error'
+import { unwrap, unwrapWithResponse } from '@/api-unwrap'
+import { IS_WAILS } from '@/platform'
+import * as sdk from '@/client/sdk.gen'
 
 // Fully-qualified prefix for the bound App service — the v3 runtime resolves a
 // Call.ByName against `packagePath.typeName.method` (see pkg/app's App service,
@@ -24,29 +28,11 @@ import { apiErrorFromResponse } from '@/api-error'
 // the generated frontend/bindings/.
 const APP_FQN = 'recall/pkg/app.App.'
 
-// Detect the native Wails v3 webview. Wails serves the app from its own origin —
-// the `wails:` custom scheme (macOS) or the `wails.localhost` virtual host
-// (Windows) — which window.location exposes synchronously the moment this module
-// loads. That origin check is the primary, cross-platform signal.
-//
-// The older UA-marker check works only on macOS: there Wails sets
-// applicationNameForUserAgent ("wails.io") into the JS-visible navigator.userAgent,
-// but on Windows the marker is appended ONLY to the outgoing request header (see
-// wails v3 webview_window_windows.go processRequest), never to navigator.userAgent
-// — so a UA-only detector read false on every Windows build. We keep the UA check
-// as a secondary signal (covers `wails dev`, where the webview may load the Vite
-// origin) and OR the two. String comparisons only — no hostname-shaped regex, so
-// CodeQL's incomplete-URL-sanitization rule stays quiet. (window._wails.flags is
-// unusable here: the backend injects it LATER via ExecJS, after this would
-// already have evaluated.)
-function detectWailsWebview(): boolean {
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location
-    if (protocol === 'wails:' || hostname === 'wails.localhost') return true
-  }
-  return typeof navigator !== 'undefined' && navigator.userAgent.includes('wails')
-}
-export const IS_WAILS = detectWailsWebview()
+// IS_WAILS (the serving-origin detector) lives in the dependency-free
+// @/platform leaf so leaf components can read it without pulling the SDK
+// or the Wails runtime into their chunk. Re-exported here because this is
+// where the dual-mode surface consumes it.
+export { IS_WAILS } from '@/platform'
 
 // wailsCall dispatches a native-dialog method by FQN. IS_WAILS-gated callers
 // only; CancellablePromise is a Promise subtype, so the cast is safe.
@@ -104,13 +90,15 @@ function contentDispositionName(r: Response, fallback: string): string {
   return matched?.[1] ?? fallback
 }
 
-// downloadBinary fetches a binary endpoint and triggers a browser download,
+// saveBlobResponse turns an SDK binary result into a browser download,
 // resolving with the saved filename.
-async function downloadBinary(url: string, fallbackName: string): Promise<string> {
-  const r = await fetch(url)
-  if (!r.ok) throw await apiErrorFromResponse(r)
-  const name = contentDispositionName(r, fallbackName)
-  triggerBlobDownload(await r.blob(), name)
+async function saveBlobResponse(
+  result: Promise<{ data?: Blob | File; error?: unknown; response?: Response }>,
+  fallbackName: string,
+): Promise<string> {
+  const { data, response } = await unwrapWithResponse(result)
+  const name = contentDispositionName(response, fallbackName)
+  triggerBlobDownload(data, name)
   return name
 }
 
@@ -144,7 +132,7 @@ function pickFile(accept: string): Promise<File | null> {
 // with the saved filename ("" on a Wails cancel).
 export function BackupDatabase(): Promise<string> {
   if (IS_WAILS) return wailsCall<string>('SaveBackupToFile')
-  return downloadBinary('/api/v1/database', `recall-backup-${tsFilenameStamp()}.db`)
+  return saveBlobResponse(sdk.backupDatabase(), `recall-backup-${tsFilenameStamp()}.db`)
 }
 
 // ExportMatchesCSV saves a flat, one-row-per-match sheet the caller has
@@ -166,7 +154,7 @@ export async function ExportMatchesCSV(csv: string, defaultName: string): Promis
 // streams the ZIP into a browser download. Resolves with the filename the
 // bundle was saved as ("" on user cancel in Wails mode). Throws ApiError on
 // a non-2xx HTTP response.
-export async function ExportBundle(opts: {
+export function ExportBundle(opts: {
   matchKeys:       string[]
   includeUnknown:  boolean
   includeHidden:   boolean
@@ -179,19 +167,16 @@ export async function ExportBundle(opts: {
       opts.includeHidden,
     )
   }
-  const r = await fetch('/api/v1/exports/bundle', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({
-      match_keys:      opts.matchKeys,
-      include_unknown: opts.includeUnknown,
-      include_hidden:  opts.includeHidden,
+  return saveBlobResponse(
+    sdk.exportBundle({
+      body: {
+        match_keys:      opts.matchKeys,
+        include_unknown: opts.includeUnknown,
+        include_hidden:  opts.includeHidden,
+      },
     }),
-  })
-  if (!r.ok) throw await apiErrorFromResponse(r)
-  const name = contentDispositionName(r, `recall-bundle-${tsFilenameStamp()}.zip`)
-  triggerBlobDownload(await r.blob(), name)
-  return name
+    `recall-bundle-${tsFilenameStamp()}.zip`,
+  )
 }
 
 // ExportDiagnosticBundle builds the parser-triage zip (failed screenshots +
@@ -199,13 +184,12 @@ export async function ExportBundle(opts: {
 // (SaveDiagnosticBundleToFile); server mode POSTs and streams the ZIP into a
 // browser download. Resolves with the saved filename ("" on user cancel in
 // Wails mode).
-export async function ExportDiagnosticBundle(): Promise<string> {
+export function ExportDiagnosticBundle(): Promise<string> {
   if (IS_WAILS) return wailsCall<string>('SaveDiagnosticBundleToFile')
-  const r = await fetch('/api/v1/exports/diagnostic', { method: 'POST' })
-  if (!r.ok) throw await apiErrorFromResponse(r)
-  const name = contentDispositionName(r, `recall-diagnostic-${tsFilenameStamp()}.zip`)
-  triggerBlobDownload(await r.blob(), name)
-  return name
+  return saveBlobResponse(
+    sdk.exportDiagnosticBundle(),
+    `recall-diagnostic-${tsFilenameStamp()}.zip`,
+  )
 }
 
 // RestoreDatabase REPLACES the local database with a chosen `.db` snapshot.
@@ -216,13 +200,9 @@ export async function RestoreDatabase(): Promise<string> {
   if (IS_WAILS) return wailsCall('LoadRestoreFromFile')
   const file = await pickFile('.db,application/octet-stream,application/x-sqlite3')
   if (!file) return ''
-  const buf = await file.arrayBuffer()
-  const r = await fetch('/api/v1/database', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/octet-stream' },
-    body: buf,
-  })
-  if (!r.ok) throw await apiErrorFromResponse(r)
+  // The generated op carries bodySerializer: null + the octet-stream
+  // content type, so the File streams through unmodified.
+  await unwrap(sdk.restoreDatabase({ body: file }))
   return file.name
 }
 
@@ -235,16 +215,7 @@ export async function ImportMatches(): Promise<MatchImportResult> {
   if (IS_WAILS) return wailsCall<MatchImportResult>('LoadMatchImportFromFile')
   const file = await pickFile('application/zip,.zip')
   if (!file) return { path: '', imported: 0, skipped: 0 }
-  // Read as ArrayBuffer so the ZIP bytes survive — a .text() call would mangle
-  // binary content via UTF-8 decoding.
-  const buf = await file.arrayBuffer()
-  const r = await fetch('/api/v1/imports', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/zip' },
-    body: buf,
-  })
-  if (!r.ok) throw await apiErrorFromResponse(r)
-  const summary = (await r.json()) as { imported: number; skipped: number }
+  const summary = await unwrap(sdk.importMatches({ body: file }))
   return { path: file.name, imported: summary.imported, skipped: summary.skipped }
 }
 
