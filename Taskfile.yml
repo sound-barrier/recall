@@ -46,7 +46,7 @@ vars:
   # (NOT all of scripts/ — gen-goldens.sh at the scripts/ root is excluded).
   SHELL_SCRIPTS:
     sh: ls scripts/*.sh scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/release/*.sh scripts/release/smoke/*.sh initialize.sh .devcontainer/postCreate.sh 2>/dev/null | tr '\n' ' '
-  GO_COVERAGE_MIN: '{{.GO_COVERAGE_MIN | default "67"}}'
+  GO_COVERAGE_MIN: '{{.GO_COVERAGE_MIN | default "77"}}'
   E2E_HOME: '{{.E2E_HOME | default "/tmp/recall-e2e"}}'
   # seed-dev knobs.
   N: '{{.N | default "500"}}'
@@ -568,7 +568,7 @@ tasks:
       - task: cover-frontend
 
   cover-go:
-    desc: Generate Go coverage report; fail if total < GO_COVERAGE_MIN (67)
+    desc: Generate Go coverage report; fail if total < GO_COVERAGE_MIN (77)
     cmds:
       - echo "[ recall ] Generating Go coverage report…"
       - mkdir -p coverage/go
