@@ -210,8 +210,10 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// pre-computed queueTypes/playModes slices are indexed by planned[],
 	// not by fx.Summaries — using them by summary index would silently
 	// miscount once dice rolls land).
-	summaryQueueTypes := make([]string, 0, n)
-	summaryPlayModes := make([]string, 0, n)
+	emit := &emitState{
+		queueTypes: make([]string, 0, n),
+		playModes:  make([]string, 0, n),
+	}
 
 	var prevDay, prevHero string
 	for i, t := range planned {
@@ -220,7 +222,10 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			prevHero = ""
 			prevDay = day
 		}
-		prevHero = fx.appendGeneratedMatch(rng, profile, md, t, playModes[i], queueTypes[i], prevHero, &summaryQueueTypes, &summaryPlayModes)
+		prevHero = fx.appendGeneratedMatch(rng, matchSpec{
+			profile: profile, md: md, t: t,
+			playMode: playModes[i], queueType: queueTypes[i], prevHero: prevHero,
+		}, emit)
 	}
 
 	// Coverage pass (flex only): ensure every map AND every hero in the
@@ -230,21 +235,21 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// Skipped for one-trick / one-role (they can't cover everything by
 	// definition).
 	if profile.style == styleFlex && len(fx.Summaries) > 0 {
-		ensureCoverage(rng, &fx, summaryQueueTypes)
+		ensureCoverage(rng, &fx, emit.queueTypes)
 	}
 
 	// Clash is quickplay-only — normalize after the loop + coverage pass, both
 	// of which pick the play mode without consulting the map.
-	forceClashQuickplay(&fx, summaryPlayModes)
+	forceClashQuickplay(&fx, emit.playModes)
 
 	// Rank climb — a post-pass over the (now-final) chronological summaries:
 	// each role/queue track chases its rising true-skill line (gap reversion +
 	// form + per-match hero costs), so results and rank cards tell one story.
-	applyRankProgression(&fx, seed, summaryPlayModes, summaryQueueTypes, profile.isPoolHero)
+	applyRankProgression(&fx, seed, emit.playModes, emit.queueTypes, profile.isPoolHero)
 
 	fx.appendReviewSeeds(seed)
 	fx.appendAnnotationSeeds(seed)
-	fx.appendQueueAndPlayModeSeeds(summaryQueueTypes, summaryPlayModes)
+	fx.appendQueueAndPlayModeSeeds(emit.queueTypes, emit.playModes)
 	fx.appendUnknownScreenshots(seed, n, rangeStart, dayWeights, totalDayW)
 	fx.appendAmbiguousScreenshots(seed, n, rangeStart, dayWeights, totalDayW)
 	fx.appendUserMatchVariants(seed)
