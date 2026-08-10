@@ -176,12 +176,6 @@ export const useMatchesStore = defineStore('matches', () => {
   // per endpoint.
   const load = refetchMatchesCluster
 
-  // The OCR-failure ledger backing the Unknown tab's "Failed to read"
-  // section — refreshed with every cluster reload; loadFailed exists for
-  // callers that only need this slice.
-  async function loadFailed() {
-    await queryClient.refetchQueries({ queryKey: qk.failedFiles })
-  }
 
   // ── Parse run controls ────────────────────────────────────────────
   // Completion (load() + parseBusy=false) arrives via the parse-complete
@@ -459,7 +453,6 @@ export const useMatchesStore = defineStore('matches', () => {
     refreshNewCount,
     restoreLastParsedAt,
     recordsPulse,
-    flashRecordsPulse,
     tourActive,
     onTourActiveChange,
     load,
@@ -485,7 +478,6 @@ export const useMatchesStore = defineStore('matches', () => {
     onClearIgnoredScreenshots,
     onRunParseFromIgnored,
     failedFiles,
-    loadFailed,
     clearingDB,
     clearConfirm,
     armClear,
