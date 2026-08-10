@@ -1,119 +1,129 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen, fireEvent } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import DashboardWidget from '@/components/dashboard/DashboardWidget.vue'
+
+// The widget shell's data-* attributes (data-widget-id, data-kpi,
+// data-breakdown, draggable) ARE the contract under test — the drag
+// engine and the e2e specs select on them — so the structural
+// assertions below reach for baseElement.querySelector deliberately.
+/* eslint-disable testing-library/no-node-access -- data-attr shell contract consumed by the drag engine + e2e selectors */
 
 describe('DashboardWidget', () => {
   it('renders a <div class="kpi-tile"> for shape=kpi with data-widget-id', () => {
-    const w = mount(DashboardWidget, {
+    const { baseElement } = render(DashboardWidget, {
       props: { id: 'winrate', shape: 'kpi' },
       slots: { default: '<span class="payload">x</span>' },
     })
-    const root = w.find('[data-widget-id="winrate"]')
-    expect(root.exists()).toBe(true)
-    expect(root.element.tagName).toBe('DIV')
-    expect(root.classes()).toContain('kpi-tile')
-    expect(w.find('.payload').exists()).toBe(true)
+    const root = baseElement.querySelector('[data-widget-id="winrate"]')
+    expect(root).not.toBeNull()
+    expect(root!.tagName).toBe('DIV')
+    expect(root).toHaveClass('kpi-tile')
+    expect(screen.getByText('x')).toBeInTheDocument()
   })
 
   it('renders an <article class="breakdown"> for shape=breakdown', () => {
-    const w = mount(DashboardWidget, {
+    render(DashboardWidget, {
       props: { id: 'top-maps', shape: 'breakdown' },
     })
-    const root = w.find('[data-widget-id="top-maps"]')
-    expect(root.element.tagName).toBe('ARTICLE')
-    expect(root.classes()).toContain('breakdown')
+    const root = screen.getByRole('article')
+    expect(root).toHaveAttribute('data-widget-id', 'top-maps')
+    expect(root).toHaveClass('breakdown')
   })
 
   it('emits the legacy data-kpi attr when legacyDataKpi is set', () => {
-    const w = mount(DashboardWidget, {
+    const { baseElement } = render(DashboardWidget, {
       props: { id: 'reviewed-count', shape: 'kpi', legacyDataKpi: 'reviewed-count' },
     })
-    expect(w.find('[data-kpi="reviewed-count"]').exists()).toBe(true)
-    expect(w.find('[data-widget-id="reviewed-count"]').exists()).toBe(true)
+    expect(baseElement.querySelector('[data-kpi="reviewed-count"]')).not.toBeNull()
+    expect(baseElement.querySelector('[data-widget-id="reviewed-count"]')).not.toBeNull()
   })
 
   it('omits data-kpi when legacyDataKpi is unset', () => {
-    const w = mount(DashboardWidget, {
+    const { baseElement } = render(DashboardWidget, {
       props: { id: 'winrate', shape: 'kpi' },
     })
-    expect(w.find('[data-kpi]').exists()).toBe(false)
+    expect(baseElement.querySelector('[data-kpi]')).toBeNull()
   })
 
   it('emits the legacy data-breakdown attr when legacyDataBreakdown is set', () => {
-    const w = mount(DashboardWidget, {
+    const { baseElement } = render(DashboardWidget, {
       props: { id: 'top-roles', shape: 'breakdown', legacyDataBreakdown: 'roles' },
     })
-    expect(w.find('[data-breakdown="roles"]').exists()).toBe(true)
+    expect(baseElement.querySelector('[data-breakdown="roles"]')).not.toBeNull()
   })
 
   // No edit mode: the drag handle + trash are ALWAYS in the DOM (CSS
   // hover-reveals them), so manage controls are one gesture away with
   // no mode to enter first.
   it('always renders the drag handle and trash button', () => {
-    const w = mount(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
-    expect(w.find('[data-drag-handle="winrate"]').exists()).toBe(true)
-    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(true)
+    render(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
+    expect(screen.getByRole('button', { name: /Reorder widget winrate/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove widget winrate from the dashboard' })).toBeInTheDocument()
   })
 
   it('is draggable so reorder works without a mode', () => {
-    const w = mount(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
-    expect(w.find('[data-widget-id="winrate"]').attributes('draggable')).toBe('true')
+    const { baseElement } = render(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
+    expect(baseElement.querySelector('[data-widget-id="winrate"]')).toHaveAttribute('draggable', 'true')
   })
 
   it('clicking the trash button emits remove(id)', async () => {
-    const w = mount(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
-    await w.find('[data-widget-remove="winrate"]').trigger('click')
-    expect(w.emitted('remove')).toBeTruthy()
-    expect(w.emitted('remove')![0]).toEqual(['winrate'])
+    const user = userEvent.setup()
+    const { emitted } = render(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
+    await user.click(screen.getByRole('button', { name: 'Remove widget winrate from the dashboard' }))
+    expect(emitted('remove')).toBeTruthy()
+    expect(emitted('remove')[0]).toEqual(['winrate'])
   })
 
   it('applies dashboard-widget-dragging when the dragging prop flips', async () => {
-    const w = mount(DashboardWidget, {
+    const { baseElement, rerender } = render(DashboardWidget, {
       props: { id: 'winrate', shape: 'kpi', dragging: false },
     })
-    const root = w.find('[data-widget-id="winrate"]')
-    expect(root.classes()).not.toContain('dashboard-widget-dragging')
-    await w.setProps({ dragging: true })
-    expect(root.classes()).toContain('dashboard-widget-dragging')
+    const root = baseElement.querySelector('[data-widget-id="winrate"]')
+    expect(root).not.toHaveClass('dashboard-widget-dragging')
+    await rerender({ dragging: true })
+    expect(root).toHaveClass('dashboard-widget-dragging')
   })
 
   it('applies dashboard-widget-drop-target when dropTarget flips', async () => {
-    const w = mount(DashboardWidget, {
+    const { baseElement, rerender } = render(DashboardWidget, {
       props: { id: 'winrate', shape: 'kpi', dropTarget: false },
     })
-    const root = w.find('[data-widget-id="winrate"]')
-    expect(root.classes()).not.toContain('dashboard-widget-drop-target')
-    await w.setProps({ dropTarget: true })
-    expect(root.classes()).toContain('dashboard-widget-drop-target')
+    const root = baseElement.querySelector('[data-widget-id="winrate"]')
+    expect(root).not.toHaveClass('dashboard-widget-drop-target')
+    await rerender({ dropTarget: true })
+    expect(root).toHaveClass('dashboard-widget-drop-target')
   })
 
   // The gear is gated only by a non-empty config schema (hasConfig) —
   // settings are a read-time concern, independent of layout edits.
   it('renders the gear button only when hasConfig is true', async () => {
-    const w = mount(DashboardWidget, {
+    const { rerender } = render(DashboardWidget, {
       props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true },
     })
-    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(true)
-    await w.setProps({ hasConfig: false })
-    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(false)
+    expect(screen.getByRole('button', { name: 'Configure widget top-heroes' })).toBeInTheDocument()
+    await rerender({ hasConfig: false })
+    expect(screen.queryByRole('button', { name: 'Configure widget top-heroes' })).not.toBeInTheDocument()
   })
 
   it('clicking the gear emits configure(id, event)', async () => {
-    const w = mount(DashboardWidget, {
+    const user = userEvent.setup()
+    const { emitted } = render(DashboardWidget, {
       props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true },
     })
-    await w.find('[data-widget-config-trigger="top-heroes"]').trigger('click')
-    const configure = w.emitted('configure')
+    await user.click(screen.getByRole('button', { name: 'Configure widget top-heroes' }))
+    const configure = emitted<unknown[]>('configure')
     expect(configure).toBeTruthy()
-    expect(configure![0]![0]).toBe('top-heroes')
+    expect(configure[0]![0]).toBe('top-heroes')
   })
 
   it('forwards handle keydown for keyboard reorder', async () => {
-    const w = mount(DashboardWidget, {
+    const { emitted } = render(DashboardWidget, {
       props: { id: 'winrate', shape: 'kpi', row: 1, idx: 0 },
     })
-    await w.find('[data-drag-handle="winrate"]').trigger('keydown', { key: 'ArrowRight' })
-    expect(w.emitted('handle-keydown')).toBeTruthy()
-    expect(w.emitted('handle-keydown')![0]![0]).toBe('winrate')
+    await fireEvent.keyDown(screen.getByRole('button', { name: /Reorder widget winrate/ }), { key: 'ArrowRight' })
+    const handleKeydown = emitted<unknown[]>('handle-keydown')
+    expect(handleKeydown).toBeTruthy()
+    expect(handleKeydown[0]![0]).toBe('winrate')
   })
 })

@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest'
+import { screen, within } from '@testing-library/vue'
 import CurrentRankWidget from '@/components/dashboard/widgets/CurrentRankWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 
 describe('CurrentRankWidget', () => {
   it('renders the latest rank per role', () => {
-    const w = mountWidget(CurrentRankWidget, {
+    renderWidget(CurrentRankWidget, {
       dossier: {
         currentRank: [
           { key: 'tank', label: 'Tank', tier: 'platinum', level: 1, progress: 60 },
@@ -12,26 +13,28 @@ describe('CurrentRankWidget', () => {
         ],
       },
     })
-    const rows = w.findAll('li')
+    const rows = screen.getAllByRole('listitem')
     expect(rows).toHaveLength(2)
-    expect(rows[0]!.text()).toContain('Tank')
-    expect(rows[0]!.text()).toContain('platinum 1')
-    expect(rows[0]!.text()).toContain('60%')
+    expect(within(rows[0]!).getByText('Tank')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('platinum 1')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('60%')).toBeInTheDocument()
     // The bar fill clamps the within-division progress to width %.
-    expect(rows[0]!.find('.bd-fill').attributes('style')).toContain('60%')
+    // eslint-disable-next-line testing-library/no-node-access -- style-only progress bar has no accessible surface
+    expect(rows[0]!.querySelector('.bd-fill')?.getAttribute('style')).toContain('60%')
   })
 
   it('clamps a negative (demotion) progress to a non-negative bar width', () => {
-    const w = mountWidget(CurrentRankWidget, {
+    const { baseElement } = renderWidget(CurrentRankWidget, {
       dossier: { currentRank: [{ key: 'tank', label: 'Tank', tier: 'gold', level: 1, progress: -19 }] },
     })
-    expect(w.find('.bd-fill').attributes('style')).toContain('0%')
-    expect(w.find('.bd-stats').text()).toContain('-19%')
+    // eslint-disable-next-line testing-library/no-node-access -- style-only progress bar has no accessible surface
+    expect(baseElement.querySelector('.bd-fill')?.getAttribute('style')).toContain('0%')
+    expect(screen.getByText('-19%')).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no rank readings', () => {
-    const w = mountWidget(CurrentRankWidget, { dossier: { currentRank: [] } })
-    expect(w.find('.cr-empty').exists()).toBe(true)
-    expect(w.findAll('li')).toHaveLength(0)
+    renderWidget(CurrentRankWidget, { dossier: { currentRank: [] } })
+    expect(screen.getByText(/No rank readings yet/)).toBeInTheDocument()
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
   })
 })

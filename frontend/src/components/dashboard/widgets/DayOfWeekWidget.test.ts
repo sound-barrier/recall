@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { screen, within } from '@testing-library/vue'
 import DayOfWeekWidget from '@/components/dashboard/widgets/DayOfWeekWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 import type { BucketEntry } from '@/composables/matches/useMatchesDossier'
 
 function bucket(label: string, over: Partial<BucketEntry> = {}): BucketEntry {
@@ -11,14 +12,14 @@ describe('DayOfWeekWidget', () => {
   it('renders seven rows for an empty corpus', () => {
     const buckets = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
       .map((label) => bucket(label))
-    const w = mountWidget(DayOfWeekWidget, { dossier: { dayOfWeekBuckets: buckets } })
-    expect(w.findAll('li')).toHaveLength(7)
+    renderWidget(DayOfWeekWidget, { dossier: { dayOfWeekBuckets: buckets } })
+    expect(screen.getAllByRole('listitem')).toHaveLength(7)
   })
 
   it('judges each day by win rate in the input rotation order', () => {
     // Caller (useMatchesDossier) is responsible for the rotation;
     // the widget renders the rows in the order it receives them.
-    const w = mountWidget(DayOfWeekWidget, {
+    renderWidget(DayOfWeekWidget, {
       dossier: {
         dayOfWeekBuckets: [
           bucket('Mon', { count: 3, share: 30, winrate: 67, wins: 2, decisive: 3 }),
@@ -28,16 +29,18 @@ describe('DayOfWeekWidget', () => {
         ],
       },
     })
-    const rows = w.findAll('li')
-    expect(rows[0]!.find('.bd-name').text()).toBe('Mon')
-    expect(rows[0]!.find('.bd-stats').text()).toBe('67%')
-    expect(rows[0]!.find('.bd-time').text()).toBe('3x')
-    expect(rows[2]!.find('.bd-name').text()).toBe('Wed')
+    const rows = screen.getAllByRole('listitem')
+    expect(within(rows[0]!).getByText('Mon')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('67%')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('3x')).toBeInTheDocument()
+    expect(within(rows[2]!).getByText('Wed')).toBeInTheDocument()
     // The stat column carries the judgment, not the share.
-    expect(rows[2]!.find('.bd-stats').text()).toBe('43%')
-    // The bar keeps the volume footprint.
-    expect(rows[2]!.find('.bd-fill').attributes('style')).toContain('width: 70%')
+    expect(within(rows[2]!).getByText('43%')).toBeInTheDocument()
+    // The bar keeps the volume footprint. It communicates only through
+    // its width style — no text or role to query.
+    // eslint-disable-next-line testing-library/no-node-access -- style-only volume bar has no accessible surface
+    expect(rows[2]!.querySelector('.bd-fill')?.getAttribute('style')).toContain('width: 70%')
     // A no-play day reads as no-sample.
-    expect(rows[1]!.find('.bd-stats').text()).toBe('—')
+    expect(within(rows[1]!).getByText('—')).toBeInTheDocument()
   })
 })
