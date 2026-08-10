@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { mountApp, mockedApi } from '@/test-utils/mountApp'
+import { renderApp, mockedApi } from '@/test-utils'
 
 // The profiles list used to be fetched from four-plus undeduped places at
 // boot (first-run gate, active-profile flag, masthead switcher, move
@@ -8,7 +8,7 @@ import { mountApp, mockedApi } from '@/test-utils/mountApp'
 // pins the dedup so a stray direct GetProfiles call can't sneak back in.
 describe('profiles query dedup', () => {
   it('boot issues exactly one GetProfiles across all consumers', async () => {
-    await mountApp()
+    await renderApp()
     expect(mockedApi().GetProfiles).toHaveBeenCalledTimes(1)
   })
 })

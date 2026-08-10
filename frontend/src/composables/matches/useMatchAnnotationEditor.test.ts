@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { useMatchAnnotationEditor } from '@/composables/matches/useMatchAnnotationEditor'
 import type { MatchRecord } from '@/api-client'
 
-// Partial-dossier fixture cast — same type-boundary pattern as mountWidget.
+// Partial-dossier fixture cast — same type-boundary pattern as renderWidget.
 function rec(): MatchRecord {
   return { match_key: 'match-x', data: {} } as unknown as MatchRecord
 }

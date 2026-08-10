@@ -210,15 +210,10 @@ export default tseslint.config(
   },
   {
     // @vue/test-utils is banned from unit tests — Testing Library is the
-    // suite's convention. `ignores` is the shrinking allowlist of not-yet-
-    // migrated files: each migration batch deletes its files here until the
-    // teardown batch removes the allowlist (and the dependency) entirely.
-    // The test-utils harness modules themselves (non-.test.ts) are outside
-    // this block's files glob and stay free to wrap @vue/test-utils.
+    // suite's convention (render via @/test-utils renderApp/renderWidget,
+    // query via @testing-library/vue). The test-utils harness modules
+    // themselves (non-.test.ts) are outside this block's files glob.
     files: ['src/**/*.test.ts'],
-    ignores: [
-      'src/App.test.ts',
-    ],
     rules: {
       'no-restricted-imports': ['error', {
         paths: [{
