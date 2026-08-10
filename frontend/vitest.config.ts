@@ -58,11 +58,13 @@ export default defineConfig({
       // + body-overflow lock — same rationale, the e2e pins both
       // (`callout exposes a draggable header…` + `locks page scroll
       // while the tour is open`).
+      // Ratcheted by the quality campaign per CONTRIBUTING's
+      // floor(current) − 2 policy (measured 71.6/63.2/63.7/74.0).
       thresholds: {
-        statements: 65,
-        branches:   60,
-        functions:  55,
-        lines:      67,
+        statements: 69,
+        branches:   61,
+        functions:  61,
+        lines:      72,
       },
     },
   },
