@@ -42,7 +42,7 @@ const { visibleIds, hiddenIds, hide, show, move } = useTrendsLayout()
 // grip is draggable; the card body stays free for the canvas brush.
 const { dragging, dropHint, onDragStart, onDragEnd, onDragOver, onDrop, onRowDragOver, onRowDrop, onHandleKeydown } =
   useDragReorder({
-    onMove: (_id, _fromRow, fromIdx, _toRow, toIdx) => move(fromIdx, toIdx),
+    onMove: (_id, from, to) => move(from.idx, to.idx),
     rowSize: () => visibleIds.value.length,
     adjacentRow: () => null,
   })

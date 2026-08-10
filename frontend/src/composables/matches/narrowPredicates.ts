@@ -95,13 +95,15 @@ export function matchesSearch(r: MatchRecord, clauses: SearchClause[]): boolean 
 // minute (never padding the bound), so `to 10:59` keeps a 10:59:45 match
 // — "to 10:59" means the whole closing minute — while `from 11:00`
 // excludes 10:59:59.
-export function matchesDateRange(
-  r: MatchRecord,
-  fromBound: string,
-  toBound: string,
-  fromTime = '',
-  toTime = '',
-): boolean {
+export interface DateRangeBounds {
+  from: string
+  to: string
+  fromTime?: string
+  toTime?: string
+}
+
+export function matchesDateRange(r: MatchRecord, bounds: DateRangeBounds): boolean {
+  const { from: fromBound, to: toBound, fromTime = '', toTime = '' } = bounds
   const stamp = matchTime(r) || (r.data?.date ?? '')
   if (!stamp) return true
   const minute = stamp.slice(0, 16)
@@ -217,13 +219,11 @@ export function matchesReviewedBy(r: MatchRecord, picked: Set<ReviewedByPick>): 
 // OCR — queue_type has no OCR source today, so equivalent to "no
 // override") so users can narrow to the unset slice and bulk-set
 // it from the toolbar.
+const QUEUE_BUCKETS: Record<string, QueuePick> = { 'Role Queue': 'role', 'Open Queue': 'open' }
+
 export function matchesQueueType(r: MatchRecord, picked: Set<QueuePick>): boolean {
   if (!picked.size) return true
-  const label = formatQueueTypeLabel(r)
-  const bucket: QueuePick =
-    label === 'Role Queue' ? 'role' :
-    label === 'Open Queue' ? 'open' :
-    'unknown'
+  const bucket = QUEUE_BUCKETS[formatQueueTypeLabel(r)] ?? 'unknown'
   return picked.has(bucket)
 }
 
@@ -233,13 +233,11 @@ export function matchesQueueType(r: MatchRecord, picked: Set<QueuePick>): boolea
 // Pre-fix, this read r.play_mode directly and silently dropped
 // OCR-fallback rows the leaf showed as "Competitive", which broke
 // the principle that what-you-see is what-you-filter.
+const PLAY_MODE_BUCKETS: Record<string, PlayModePick> = { Quickplay: 'quickplay', Competitive: 'competitive' }
+
 export function matchesPlayMode(r: MatchRecord, picked: Set<PlayModePick>): boolean {
   if (!picked.size) return true
-  const label = formatPlayModeLabel(r)
-  const bucket: PlayModePick =
-    label === 'Quickplay'   ? 'quickplay' :
-    label === 'Competitive' ? 'competitive' :
-    'unknown'
+  const bucket = PLAY_MODE_BUCKETS[formatPlayModeLabel(r)] ?? 'unknown'
   return picked.has(bucket)
 }
 

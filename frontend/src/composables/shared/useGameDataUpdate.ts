@@ -108,11 +108,7 @@ export function useGameDataUpdate(
       applyState.value = { kind: 'success', result }
       onApplied(result)
     } catch (err) {
-      const apiErr = err instanceof ApiError ? err : null
-      const message = apiErr
-        ? apiErr.body || `Apply failed (HTTP ${apiErr.status})`
-        : (err instanceof Error ? err.message : String(err))
-      applyState.value = { kind: 'error', message }
+      applyState.value = { kind: 'error', message: applyErrorMessage(err) }
     }
   }
 
@@ -128,4 +124,9 @@ export function useGameDataUpdate(
     canApply,
     onApply,
   }
+}
+
+function applyErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.body || `Apply failed (HTTP ${err.status})`
+  return err instanceof Error ? err.message : String(err)
 }

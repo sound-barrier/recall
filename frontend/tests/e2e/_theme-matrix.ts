@@ -73,16 +73,19 @@ export function daysAgo(n: number): string {
 
 type Result = 'victory' | 'defeat' | 'draw'
 
-function match(
-  key: string,
-  hero: string,
-  role: 'tank' | 'damage' | 'support',
-  map: string,
-  mode: string,
-  result: Result,
-  dayOffset: number,
-  time: string,
-) {
+interface MatchSpec {
+  key: string
+  hero: string
+  role: 'tank' | 'damage' | 'support'
+  map: string
+  mode: string
+  result: Result
+  dayOffset: number
+  time: string
+}
+
+function match(spec: MatchSpec) {
+  const { key, hero, role, map, mode, result, dayOffset, time } = spec
   const date = daysAgo(dayOffset)
   return {
     match_key:    key,
@@ -117,30 +120,30 @@ function match(
  * default dossier date range both include them.
  */
 export const AUDIT_CORPUS = [
-  match('a01', 'dva',      'tank',    'rialto',   'escort',     'victory', 2,  '19:05'),
-  match('a02', 'dva',      'tank',    'rialto',   'escort',     'defeat',  3,  '20:15'),
-  match('a03', 'winston',  'tank',    'busan',    'control',    'victory', 4,  '21:40'),
-  match('a04', 'winston',  'tank',    'busan',    'control',    'draw',    5,  '18:20'),
-  match('a05', 'tracer',   'damage',  'kings-row', 'hybrid',    'victory', 6,  '19:55'),
-  match('a06', 'tracer',   'damage',  'kings-row', 'hybrid',    'defeat',  7,  '22:10'),
-  match('a07', 'sojourn',  'damage',  'colosseo', 'push',       'victory', 8,  '20:30'),
-  match('a08', 'sojourn',  'damage',  'colosseo', 'push',       'defeat',  9,  '21:05'),
-  match('a09', 'ana',      'support', 'ilios',    'control',    'victory', 12, '19:15'),
-  match('a10', 'ana',      'support', 'ilios',    'control',    'victory', 13, '20:45'),
-  match('a11', 'kiriko',   'support', 'suravasa', 'flashpoint', 'defeat',  14, '21:25'),
-  match('a12', 'kiriko',   'support', 'suravasa', 'flashpoint', 'victory', 15, '18:50'),
-  match('a13', 'lucio',    'support', 'oasis',    'control',    'victory', 18, '19:35'),
-  match('a14', 'lucio',    'support', 'oasis',    'control',    'defeat',  19, '20:05'),
-  match('a15', 'reinhardt', 'tank',   'eichenwalde', 'hybrid',  'victory', 22, '21:50'),
-  match('a16', 'reinhardt', 'tank',   'eichenwalde', 'hybrid',  'defeat',  23, '22:30'),
-  match('a17', 'cassidy',  'damage',  'dorado',   'escort',     'victory', 26, '19:20'),
-  match('a18', 'cassidy',  'damage',  'dorado',   'escort',     'draw',    27, '20:55'),
-  match('a19', 'juno',     'support', 'runasapi', 'push',       'victory', 30, '21:10'),
-  match('a20', 'juno',     'support', 'runasapi', 'push',       'defeat',  31, '18:40'),
-  match('a21', 'orisa',    'tank',    'nepal',    'control',    'victory', 34, '19:45'),
-  match('a22', 'orisa',    'tank',    'nepal',    'control',    'victory', 35, '20:25'),
-  match('a23', 'genji',    'damage',  'hanaoka',  'clash',      'defeat',  38, '21:35'),
-  match('a24', 'genji',    'damage',  'hanaoka',  'clash',      'victory', 39, '22:05'),
+  match({ key: 'a01', hero: 'dva', role: 'tank', map: 'rialto', mode: 'escort', result: 'victory', dayOffset: 2, time: '19:05' }),
+  match({ key: 'a02', hero: 'dva', role: 'tank', map: 'rialto', mode: 'escort', result: 'defeat', dayOffset: 3, time: '20:15' }),
+  match({ key: 'a03', hero: 'winston', role: 'tank', map: 'busan', mode: 'control', result: 'victory', dayOffset: 4, time: '21:40' }),
+  match({ key: 'a04', hero: 'winston', role: 'tank', map: 'busan', mode: 'control', result: 'draw', dayOffset: 5, time: '18:20' }),
+  match({ key: 'a05', hero: 'tracer', role: 'damage', map: 'kings-row', mode: 'hybrid', result: 'victory', dayOffset: 6, time: '19:55' }),
+  match({ key: 'a06', hero: 'tracer', role: 'damage', map: 'kings-row', mode: 'hybrid', result: 'defeat', dayOffset: 7, time: '22:10' }),
+  match({ key: 'a07', hero: 'sojourn', role: 'damage', map: 'colosseo', mode: 'push', result: 'victory', dayOffset: 8, time: '20:30' }),
+  match({ key: 'a08', hero: 'sojourn', role: 'damage', map: 'colosseo', mode: 'push', result: 'defeat', dayOffset: 9, time: '21:05' }),
+  match({ key: 'a09', hero: 'ana', role: 'support', map: 'ilios', mode: 'control', result: 'victory', dayOffset: 12, time: '19:15' }),
+  match({ key: 'a10', hero: 'ana', role: 'support', map: 'ilios', mode: 'control', result: 'victory', dayOffset: 13, time: '20:45' }),
+  match({ key: 'a11', hero: 'kiriko', role: 'support', map: 'suravasa', mode: 'flashpoint', result: 'defeat', dayOffset: 14, time: '21:25' }),
+  match({ key: 'a12', hero: 'kiriko', role: 'support', map: 'suravasa', mode: 'flashpoint', result: 'victory', dayOffset: 15, time: '18:50' }),
+  match({ key: 'a13', hero: 'lucio', role: 'support', map: 'oasis', mode: 'control', result: 'victory', dayOffset: 18, time: '19:35' }),
+  match({ key: 'a14', hero: 'lucio', role: 'support', map: 'oasis', mode: 'control', result: 'defeat', dayOffset: 19, time: '20:05' }),
+  match({ key: 'a15', hero: 'reinhardt', role: 'tank', map: 'eichenwalde', mode: 'hybrid', result: 'victory', dayOffset: 22, time: '21:50' }),
+  match({ key: 'a16', hero: 'reinhardt', role: 'tank', map: 'eichenwalde', mode: 'hybrid', result: 'defeat', dayOffset: 23, time: '22:30' }),
+  match({ key: 'a17', hero: 'cassidy', role: 'damage', map: 'dorado', mode: 'escort', result: 'victory', dayOffset: 26, time: '19:20' }),
+  match({ key: 'a18', hero: 'cassidy', role: 'damage', map: 'dorado', mode: 'escort', result: 'draw', dayOffset: 27, time: '20:55' }),
+  match({ key: 'a19', hero: 'juno', role: 'support', map: 'runasapi', mode: 'push', result: 'victory', dayOffset: 30, time: '21:10' }),
+  match({ key: 'a20', hero: 'juno', role: 'support', map: 'runasapi', mode: 'push', result: 'defeat', dayOffset: 31, time: '18:40' }),
+  match({ key: 'a21', hero: 'orisa', role: 'tank', map: 'nepal', mode: 'control', result: 'victory', dayOffset: 34, time: '19:45' }),
+  match({ key: 'a22', hero: 'orisa', role: 'tank', map: 'nepal', mode: 'control', result: 'victory', dayOffset: 35, time: '20:25' }),
+  match({ key: 'a23', hero: 'genji', role: 'damage', map: 'hanaoka', mode: 'clash', result: 'defeat', dayOffset: 38, time: '21:35' }),
+  match({ key: 'a24', hero: 'genji', role: 'damage', map: 'hanaoka', mode: 'clash', result: 'victory', dayOffset: 39, time: '22:05' }),
 
   // Rank update — renders the rank block + its modifier badges.
   {

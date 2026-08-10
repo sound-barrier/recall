@@ -112,6 +112,13 @@ function isDecisive(r: Pick<MatchRecord, 'data'>): boolean {
   return r.data?.result === 'victory' || r.data?.result === 'defeat'
 }
 
+// Bucket display key: the 4-bucket is open-ended ("4+ heroes").
+function poolSizeLabel(n: number): string {
+  if (n === 1) return '1 hero'
+  if (n === 4) return '4+ heroes'
+  return `${n} heroes`
+}
+
 function decisiveWinrate(wins: number, decisive: number): number {
   return decisive === 0 ? 0 : Math.round((wins / decisive) * 100)
 }
@@ -140,7 +147,7 @@ export function heroCountBuckets(
     .map((n) => {
       const t = tallies.get(n)!
       return {
-        key: n === 1 ? '1 hero' : n === 4 ? '4+ heroes' : `${n} heroes`,
+        key: poolSizeLabel(n),
         heroes: n,
         total: t.total,
         wins: t.wins,

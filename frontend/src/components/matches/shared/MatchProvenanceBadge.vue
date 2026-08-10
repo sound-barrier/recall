@@ -26,9 +26,8 @@ const badgeClass = computed(() =>
   variant.value === 'ocr_edited' ? 'prov-edited' : `prov-${variant.value}`,
 )
 
-const label = computed(() =>
-  variant.value === 'manual' ? 'User entered' : variant.value === 'ocr_edited' ? 'Edited' : 'OCR',
-)
+const VARIANT_LABELS: Record<Variant, string> = { ocr: 'OCR', ocr_edited: 'Edited', manual: 'User entered' }
+const label = computed(() => VARIANT_LABELS[variant.value])
 
 const tip = computed(() => {
   if (variant.value === 'manual') return 'Hand-entered match (no screenshots).'

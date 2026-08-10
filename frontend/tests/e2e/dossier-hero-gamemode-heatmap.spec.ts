@@ -26,13 +26,15 @@ function daysAgo(n: number): string {
 const RECENT = daysAgo(45)
 
 const match = (
-  key:     string,
-  hero:    string,
-  type:    'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash',
-  result:  'victory' | 'defeat',
-  finished: string,
-  date = RECENT,
-  map = 'rialto',
+  key: string,
+  { hero, type, result, finished, date = RECENT, map = 'rialto' }: {
+    hero:    string
+    type:    'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash'
+    result:  'victory' | 'defeat'
+    finished: string
+    date?: string
+    map?: string
+  },
 ) => ({
   match_key:    key,
   source_files: [`${key}.png`],
@@ -53,28 +55,28 @@ const match = (
 // Lucio: 6 wins + 4 losses on `control` = 60% over 10 decisive matches.
 // Plus 12 more across ana/kiriko to clear the default 20-decisive floor.
 const CORPUS = [
-  match('m01', 'lucio', 'control', 'victory', '10:01'),
-  match('m02', 'lucio', 'control', 'victory', '10:02'),
-  match('m03', 'lucio', 'control', 'victory', '10:03'),
-  match('m04', 'lucio', 'control', 'victory', '10:04'),
-  match('m05', 'lucio', 'control', 'victory', '10:05'),
-  match('m06', 'lucio', 'control', 'victory', '10:06'),
-  match('m07', 'lucio', 'control', 'defeat',  '10:07'),
-  match('m08', 'lucio', 'control', 'defeat',  '10:08'),
-  match('m09', 'lucio', 'control', 'defeat',  '10:09'),
-  match('m10', 'lucio', 'control', 'defeat',  '10:10'),
-  match('m11', 'ana',    'escort',     'victory', '10:11'),
-  match('m12', 'ana',    'escort',     'victory', '10:12'),
-  match('m13', 'ana',    'escort',     'defeat',  '10:13'),
-  match('m14', 'ana',    'flashpoint', 'victory', '10:14'),
-  match('m15', 'ana',    'flashpoint', 'defeat',  '10:15'),
-  match('m16', 'ana',    'hybrid',     'victory', '10:16'),
-  match('m17', 'kiriko', 'push',       'victory', '10:17'),
-  match('m18', 'kiriko', 'push',       'defeat',  '10:18'),
-  match('m19', 'kiriko', 'push',       'defeat',  '10:19'),
-  match('m20', 'kiriko', 'clash',      'victory', '10:20'),
-  match('m21', 'kiriko', 'clash',      'victory', '10:21'),
-  match('m22', 'kiriko', 'clash',      'defeat',  '10:22'),
+  match('m01', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:01' }),
+  match('m02', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:02' }),
+  match('m03', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:03' }),
+  match('m04', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:04' }),
+  match('m05', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:05' }),
+  match('m06', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:06' }),
+  match('m07', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:07' }),
+  match('m08', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:08' }),
+  match('m09', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:09' }),
+  match('m10', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:10' }),
+  match('m11', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:11' }),
+  match('m12', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:12' }),
+  match('m13', { hero: 'ana', type: 'escort', result: 'defeat', finished: '10:13' }),
+  match('m14', { hero: 'ana', type: 'flashpoint', result: 'victory', finished: '10:14' }),
+  match('m15', { hero: 'ana', type: 'flashpoint', result: 'defeat', finished: '10:15' }),
+  match('m16', { hero: 'ana', type: 'hybrid', result: 'victory', finished: '10:16' }),
+  match('m17', { hero: 'kiriko', type: 'push', result: 'victory', finished: '10:17' }),
+  match('m18', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:18' }),
+  match('m19', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:19' }),
+  match('m20', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:20' }),
+  match('m21', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:21' }),
+  match('m22', { hero: 'kiriko', type: 'clash', result: 'defeat', finished: '10:22' }),
 ]
 
 async function sectionOrder(page: import('@playwright/test').Page) {
@@ -117,8 +119,10 @@ test.describe('dossier — Hero × Game-Mode row', () => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       // Lucio on control: 16W / 14L = 53.3% over 30 decisive.
       const corpus = Array.from({ length: 30 }, (_, i) =>
-        match(`g${i}`, 'lucio', 'control', i < 16 ? 'victory' : 'defeat',
-          `${String(10 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`))
+        match(`g${i}`, {
+          hero: 'lucio', type: 'control', result: i < 16 ? 'victory' : 'defeat',
+          finished: `${String(10 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+        }))
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
     })
     await page.reload()
@@ -137,19 +141,19 @@ test.describe('dossier — Hero × Game-Mode row', () => {
       // 22 decisive matches across five modes, NO clash → the Clash column drops.
       const corpus = [
         ...Array.from({ length: 10 }, (_, i) =>
-          match(`c${i}`, 'lucio', 'control', i < 6 ? 'victory' : 'defeat', `10:${String(i + 1).padStart(2, '0')}`)),
-        match('e1', 'ana', 'escort', 'victory', '11:01'),
-        match('e2', 'ana', 'escort', 'defeat', '11:02'),
-        match('f1', 'ana', 'flashpoint', 'victory', '11:03'),
-        match('f2', 'ana', 'flashpoint', 'defeat', '11:04'),
-        match('h1', 'ana', 'hybrid', 'victory', '11:05'),
-        match('h2', 'ana', 'hybrid', 'defeat', '11:06'),
-        match('p1', 'kiriko', 'push', 'victory', '11:07'),
-        match('p2', 'kiriko', 'push', 'defeat', '11:08'),
-        match('p3', 'kiriko', 'push', 'victory', '11:09'),
-        match('p4', 'kiriko', 'push', 'defeat', '11:10'),
-        match('p5', 'kiriko', 'push', 'victory', '11:11'),
-        match('p6', 'kiriko', 'push', 'defeat', '11:12'),
+          match(`c${i}`, { hero: 'lucio', type: 'control', result: i < 6 ? 'victory' : 'defeat', finished: `10:${String(i + 1).padStart(2, '0')}` })),
+        match('e1', { hero: 'ana', type: 'escort', result: 'victory', finished: '11:01' }),
+        match('e2', { hero: 'ana', type: 'escort', result: 'defeat', finished: '11:02' }),
+        match('f1', { hero: 'ana', type: 'flashpoint', result: 'victory', finished: '11:03' }),
+        match('f2', { hero: 'ana', type: 'flashpoint', result: 'defeat', finished: '11:04' }),
+        match('h1', { hero: 'ana', type: 'hybrid', result: 'victory', finished: '11:05' }),
+        match('h2', { hero: 'ana', type: 'hybrid', result: 'defeat', finished: '11:06' }),
+        match('p1', { hero: 'kiriko', type: 'push', result: 'victory', finished: '11:07' }),
+        match('p2', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '11:08' }),
+        match('p3', { hero: 'kiriko', type: 'push', result: 'victory', finished: '11:09' }),
+        match('p4', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '11:10' }),
+        match('p5', { hero: 'kiriko', type: 'push', result: 'victory', finished: '11:11' }),
+        match('p6', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '11:12' }),
       ]
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
     })
@@ -268,8 +272,8 @@ test.describe('dossier — Hero × Game-Mode row', () => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify([
-          match('m01', 'lucio', 'control', 'victory', '10:01', daysAgo(10)),
-          match('m02', 'lucio', 'control', 'defeat',  '10:02', daysAgo(10)),
+          match('m01', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:01', date: daysAgo(10) }),
+          match('m02', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:02', date: daysAgo(10) }),
         ]),
       })
     })
@@ -286,28 +290,28 @@ test.describe('dossier — Hero × Game-Mode drill-down', () => {
   // lucio×control spans two maps (route66 4-2, havana 2-2 → 60% over 10);
   // ana×hybrid is a single sparse match; the rest clears the 20-floor.
   const DRILL = [
-    match('m01', 'lucio', 'control', 'victory', '10:01', RECENT, 'route66'),
-    match('m02', 'lucio', 'control', 'victory', '10:02', RECENT, 'route66'),
-    match('m03', 'lucio', 'control', 'victory', '10:03', RECENT, 'route66'),
-    match('m04', 'lucio', 'control', 'victory', '10:04', RECENT, 'route66'),
-    match('m05', 'lucio', 'control', 'defeat',  '10:05', RECENT, 'route66'),
-    match('m06', 'lucio', 'control', 'defeat',  '10:06', RECENT, 'route66'),
-    match('m07', 'lucio', 'control', 'victory', '10:07', RECENT, 'havana'),
-    match('m08', 'lucio', 'control', 'victory', '10:08', RECENT, 'havana'),
-    match('m09', 'lucio', 'control', 'defeat',  '10:09', RECENT, 'havana'),
-    match('m10', 'lucio', 'control', 'defeat',  '10:10', RECENT, 'havana'),
-    match('m11', 'ana',    'escort',     'victory', '10:11'),
-    match('m12', 'ana',    'escort',     'victory', '10:12'),
-    match('m13', 'ana',    'escort',     'defeat',  '10:13'),
-    match('m14', 'ana',    'flashpoint', 'victory', '10:14'),
-    match('m15', 'ana',    'flashpoint', 'defeat',  '10:15'),
-    match('m16', 'ana',    'hybrid',     'victory', '10:16', RECENT, 'kings-row'),
-    match('m17', 'kiriko', 'push',       'victory', '10:17'),
-    match('m18', 'kiriko', 'push',       'defeat',  '10:18'),
-    match('m19', 'kiriko', 'push',       'defeat',  '10:19'),
-    match('m20', 'kiriko', 'clash',      'victory', '10:20'),
-    match('m21', 'kiriko', 'clash',      'victory', '10:21'),
-    match('m22', 'kiriko', 'clash',      'defeat',  '10:22'),
+    match('m01', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:01', map: 'route66' }),
+    match('m02', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:02', map: 'route66' }),
+    match('m03', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:03', map: 'route66' }),
+    match('m04', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:04', map: 'route66' }),
+    match('m05', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:05', map: 'route66' }),
+    match('m06', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:06', map: 'route66' }),
+    match('m07', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:07', map: 'havana' }),
+    match('m08', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:08', map: 'havana' }),
+    match('m09', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:09', map: 'havana' }),
+    match('m10', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:10', map: 'havana' }),
+    match('m11', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:11' }),
+    match('m12', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:12' }),
+    match('m13', { hero: 'ana', type: 'escort', result: 'defeat', finished: '10:13' }),
+    match('m14', { hero: 'ana', type: 'flashpoint', result: 'victory', finished: '10:14' }),
+    match('m15', { hero: 'ana', type: 'flashpoint', result: 'defeat', finished: '10:15' }),
+    match('m16', { hero: 'ana', type: 'hybrid', result: 'victory', finished: '10:16', map: 'kings-row' }),
+    match('m17', { hero: 'kiriko', type: 'push', result: 'victory', finished: '10:17' }),
+    match('m18', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:18' }),
+    match('m19', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:19' }),
+    match('m20', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:20' }),
+    match('m21', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:21' }),
+    match('m22', { hero: 'kiriko', type: 'clash', result: 'defeat', finished: '10:22' }),
   ]
 
   test.beforeEach(async ({ page }) => {

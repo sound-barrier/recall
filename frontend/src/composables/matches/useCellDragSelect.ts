@@ -8,6 +8,15 @@ import type { TableSortCol } from '@/composables/matches/useTableSort'
 // name to role, supplied by useOWData's heroRole.
 type HeroRole = (hero: string | null | undefined) => string
 
+// -1 (scroll up) / 1 (scroll down) when the pointer sits within EDGE px
+// of the pane's top/bottom edge; 0 keeps the pane still.
+const EDGE = 32
+function edgeScrollDirection(y: number, rect: DOMRect): number {
+  if (y < rect.top + EDGE) return -1
+  if (y > rect.bottom - EDGE) return 1
+  return 0
+}
+
 // Pointer orchestration for the table's cell range-select + TSV copy:
 // drag a rectangle of cells, Ctrl/Cmd+C copies it for Excel/Sheets,
 // a plain click (no drag) still opens the row. Owns the inner
@@ -62,8 +71,7 @@ export function useCellDragSelect(opts: {
     const pane = opts.containerRef.value
     if (!pane || !cellSel.dragging.value) { scrollRAF = 0; return }
     const rect = pane.getBoundingClientRect()
-    const EDGE = 32
-    const dir = dragPoint.y < rect.top + EDGE ? -1 : dragPoint.y > rect.bottom - EDGE ? 1 : 0
+    const dir = edgeScrollDirection(dragPoint.y, rect)
     if (dir === 0) { scrollRAF = 0; return }
     pane.scrollTop += dir * 14
     const cell = cellFromPoint(dragPoint.x, dragPoint.y)

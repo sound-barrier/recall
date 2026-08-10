@@ -101,9 +101,7 @@ function calloutHeight(): number {
 function computePos(): { left: number; top: number; placement: CalloutPlacement } {
   return computeCalloutPosition(
     getTargetRect(),
-    calloutHeight(),
-    window.innerWidth,
-    window.innerHeight,
+    { calloutH: calloutHeight(), vw: window.innerWidth, vh: window.innerHeight },
     props.placement ?? 'auto',
     { calloutW: CALLOUT_W, safety: SAFETY, gap: GAP },
   )
@@ -257,17 +255,14 @@ const connector = computed(() => {
   // Pick edge: dominant axis. Horizontal-dominant → anchor on the
   // left/right edge at the callout's vertical center; vertical-
   // dominant → anchor on the top/bottom edge at the horizontal
-  // center. Single ternary per coord so CodeQL doesn't flag a dead
-  // initial assignment (the previous let-then-overwrite shape had
-  // both branches always rewriting the seed).
-  const horizontalDominant = Math.abs(dx) > Math.abs(dy)
-  const anchorX = horizontalDominant
-    ? (dx > 0 ? pos.value.left + CALLOUT_W : pos.value.left)
-    : pos.value.left + CALLOUT_W / 2
-  const anchorY = horizontalDominant
-    ? pos.value.top + h / 2
-    : (dy > 0 ? pos.value.top + h : pos.value.top)
-  return { x1: anchorX, y1: anchorY, x2: targetCx, y2: targetCy }
+  // center. Early return per axis keeps each coordinate a single
+  // expression (no dead let-then-overwrite seed for CodeQL to flag).
+  if (Math.abs(dx) > Math.abs(dy)) {
+    const anchorX = dx > 0 ? pos.value.left + CALLOUT_W : pos.value.left
+    return { x1: anchorX, y1: pos.value.top + h / 2, x2: targetCx, y2: targetCy }
+  }
+  const anchorY = dy > 0 ? pos.value.top + h : pos.value.top
+  return { x1: pos.value.left + CALLOUT_W / 2, y1: anchorY, x2: targetCx, y2: targetCy }
 })
 </script>
 

@@ -7,7 +7,7 @@ import { ref, type Ref } from 'vue'
 // layer (typically useDashboardLayout.move).
 //
 // Same-row reorder and cross-row move flow through the same path:
-// the consumer's `onMove(id, fromRow, fromIdx, toRow, toIdx)` is
+// the consumer's `onMove(id, from, to)` is
 // the only emitted signal. Same-row reorder is the common case;
 // cross-row drag (KPI → breakdown row) and keyboard ArrowDown/Up
 // share the same callback.
@@ -19,6 +19,13 @@ import { ref, type Ref } from 'vue'
 
 interface DragReorderCoord {
   id: string
+  row: number
+  idx: number
+}
+
+// A (row, idx) cell coordinate — the shared vocabulary of onMove's
+// source/destination legs and the dropHint.
+export interface CellPos {
   row: number
   idx: number
 }
@@ -41,7 +48,7 @@ interface AdjacentRowResolver {
 }
 
 export interface UseDragReorderOptions {
-  onMove: (id: string, fromRow: number, fromIdx: number, toRow: number, toIdx: number) => void
+  onMove: (id: string, from: CellPos, to: CellPos) => void
   rowSize: RowSize
   adjacentRow?: AdjacentRowResolver
   // The class the consumer's <TransitionGroup> applies to cells during
@@ -146,7 +153,7 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     // Fire onMove BEFORE clearing dragging state so the consumer
     // can derive a live-preview commit (e.g. MatchesView's
     // preview-layout drag) from dragging + dropHint.
-    opts.onMove(id, fromRow, fromIdx, row, toIdx)
+    opts.onMove(id, { row: fromRow, idx: fromIdx }, { row, idx: toIdx })
     onDragEnd()
   }
 
@@ -192,7 +199,7 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     let toIdx = hint ? hint.idx : opts.rowSize(row)
     if (hint && fromRow === toRow && fromIdx < toIdx) toIdx -= 1
     // Fire onMove BEFORE onDragEnd — see onDrop's note for why.
-    opts.onMove(id, fromRow, fromIdx, toRow, toIdx)
+    opts.onMove(id, { row: fromRow, idx: fromIdx }, { row: toRow, idx: toIdx })
     onDragEnd()
   }
 
@@ -201,38 +208,38 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     switch (e.key) {
       case 'ArrowLeft': {
         if (idx === 0) { handled = false; break }
-        opts.onMove(id, row, idx, row, idx - 1)
+        opts.onMove(id, { row, idx }, { row, idx: idx - 1 })
         break
       }
       case 'ArrowRight': {
         const lastIdx = Math.max(0, opts.rowSize(row) - 1)
         if (idx >= lastIdx) { handled = false; break }
-        opts.onMove(id, row, idx, row, idx + 1)
+        opts.onMove(id, { row, idx }, { row, idx: idx + 1 })
         break
       }
       case 'ArrowUp': {
         const upRow = adjacentRow(row, -1)
         if (upRow === null) { handled = false; break }
         const clampedIdx = Math.min(idx, opts.rowSize(upRow))
-        opts.onMove(id, row, idx, upRow, clampedIdx)
+        opts.onMove(id, { row, idx }, { row: upRow, idx: clampedIdx })
         break
       }
       case 'ArrowDown': {
         const downRow = adjacentRow(row, 1)
         if (downRow === null) { handled = false; break }
         const clampedIdx = Math.min(idx, opts.rowSize(downRow))
-        opts.onMove(id, row, idx, downRow, clampedIdx)
+        opts.onMove(id, { row, idx }, { row: downRow, idx: clampedIdx })
         break
       }
       case 'Home': {
         if (idx === 0) { handled = false; break }
-        opts.onMove(id, row, idx, row, 0)
+        opts.onMove(id, { row, idx }, { row, idx: 0 })
         break
       }
       case 'End': {
         const lastIdx = Math.max(0, opts.rowSize(row) - 1)
         if (idx >= lastIdx) { handled = false; break }
-        opts.onMove(id, row, idx, row, lastIdx)
+        opts.onMove(id, { row, idx }, { row, idx: lastIdx })
         break
       }
       default:

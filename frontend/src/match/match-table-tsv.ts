@@ -13,6 +13,12 @@ import { formatKda, kdaRatio } from '@/match/match-stats-helpers'
 
 type HeroRole = (hero: string | null | undefined) => string
 
+function sourceCellText(rec: MatchRecord): string {
+  if (isManualMatch(rec)) return 'manual'
+  if (isEditedMatch(rec)) return 'edited'
+  return 'ocr'
+}
+
 // cellText is the displayed value of a data-table cell, used to build the TSV
 // clipboard payload from a cell-range selection. Mirrors what the cell renders
 // (multi-value hero/role/tags join with their in-cell separators).
@@ -30,7 +36,7 @@ export function cellText(rec: MatchRecord, col: TableSortCol, heroRole: HeroRole
     case 'deaths':       return d?.deaths != null ? String(d.deaths) : ''
     case 'kda':          return formatKda(kdaRatio(d))
     case 'tags':         return (rec.annotation?.tags ?? []).join('; ')
-    case 'source':       return isManualMatch(rec) ? 'manual' : isEditedMatch(rec) ? 'edited' : 'ocr'
+    case 'source':       return sourceCellText(rec)
     case 'result':       return d?.result ?? ''
   }
 }

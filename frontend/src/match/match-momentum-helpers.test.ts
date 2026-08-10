@@ -109,26 +109,26 @@ describe('leaverRate', () => {
 })
 
 describe('tiltNudgeSignal', () => {
-  const m = (key: string, day: number, hour: number, result: string, e: number, d: number) => ({
+  const m = (key: string, opts: { day: number; hour: number; result: string; e: number; d: number }) => ({
     match_key: key,
     data: {
-      date: `2026-05-${String(day).padStart(2, '0')}`,
-      finished_at: `${String(hour).padStart(2, '0')}:00`,
-      result,
-      eliminations: e,
-      deaths: d,
+      date: `2026-05-${String(opts.day).padStart(2, '0')}`,
+      finished_at: `${String(opts.hour).padStart(2, '0')}:00`,
+      result: opts.result,
+      eliminations: opts.e,
+      deaths: opts.d,
     },
   }) as unknown as MomentumInput
 
   const healthyBaseline = () =>
-    Array.from({ length: 8 }, (_, i) => m(`w${i}`, i + 1, 10, 'victory', 20, 5))
+    Array.from({ length: 8 }, (_, i) => m(`w${i}`, { day: i + 1, hour: 10, result: 'victory', e: 20, d: 5 }))
 
   it('fires on ≥3 trailing losses with a >25% K/D collapse', () => {
     const records = [
       ...healthyBaseline(),
-      m('l1', 11, 20, 'defeat', 4, 9),
-      m('l2', 11, 21, 'defeat', 3, 10),
-      m('l3', 11, 22, 'defeat', 5, 8),
+      m('l1', { day: 11, hour: 20, result: 'defeat', e: 4, d: 9 }),
+      m('l2', { day: 11, hour: 21, result: 'defeat', e: 3, d: 10 }),
+      m('l3', { day: 11, hour: 22, result: 'defeat', e: 5, d: 8 }),
     ]
     const sig = tiltNudgeSignal(records)
     expect(sig).not.toBeNull()
@@ -138,22 +138,22 @@ describe('tiltNudgeSignal', () => {
   })
 
   it('stays silent below three losses, without the collapse, or on a thin baseline', () => {
-    const twoLosses = [...healthyBaseline(), m('l1', 11, 20, 'defeat', 4, 9), m('l2', 11, 21, 'defeat', 3, 10)]
+    const twoLosses = [...healthyBaseline(), m('l1', { day: 11, hour: 20, result: 'defeat', e: 4, d: 9 }), m('l2', { day: 11, hour: 21, result: 'defeat', e: 3, d: 10 })]
     expect(tiltNudgeSignal(twoLosses)).toBeNull()
 
     const goodKD = [
       ...healthyBaseline(),
-      m('l1', 11, 20, 'defeat', 19, 5),
-      m('l2', 11, 21, 'defeat', 20, 5),
-      m('l3', 11, 22, 'defeat', 18, 5),
+      m('l1', { day: 11, hour: 20, result: 'defeat', e: 19, d: 5 }),
+      m('l2', { day: 11, hour: 21, result: 'defeat', e: 20, d: 5 }),
+      m('l3', { day: 11, hour: 22, result: 'defeat', e: 18, d: 5 }),
     ]
     expect(tiltNudgeSignal(goodKD)).toBeNull()
 
     const thin = [
-      m('w1', 1, 10, 'victory', 20, 5),
-      m('l1', 11, 20, 'defeat', 4, 9),
-      m('l2', 11, 21, 'defeat', 3, 10),
-      m('l3', 11, 22, 'defeat', 5, 8),
+      m('w1', { day: 1, hour: 10, result: 'victory', e: 20, d: 5 }),
+      m('l1', { day: 11, hour: 20, result: 'defeat', e: 4, d: 9 }),
+      m('l2', { day: 11, hour: 21, result: 'defeat', e: 3, d: 10 }),
+      m('l3', { day: 11, hour: 22, result: 'defeat', e: 5, d: 8 }),
     ]
     expect(tiltNudgeSignal(thin)).toBeNull()
   })
@@ -161,25 +161,25 @@ describe('tiltNudgeSignal', () => {
   it('a win between streaks resets the dismissal key', () => {
     const records = [
       ...healthyBaseline(),
-      m('l1', 11, 20, 'defeat', 4, 9),
-      m('l2', 11, 21, 'defeat', 3, 10),
-      m('l3', 11, 22, 'defeat', 5, 8),
-      m('w9', 12, 10, 'victory', 20, 5),
-      m('n1', 12, 20, 'defeat', 4, 9),
-      m('n2', 12, 21, 'defeat', 3, 10),
-      m('n3', 12, 22, 'defeat', 5, 8),
+      m('l1', { day: 11, hour: 20, result: 'defeat', e: 4, d: 9 }),
+      m('l2', { day: 11, hour: 21, result: 'defeat', e: 3, d: 10 }),
+      m('l3', { day: 11, hour: 22, result: 'defeat', e: 5, d: 8 }),
+      m('w9', { day: 12, hour: 10, result: 'victory', e: 20, d: 5 }),
+      m('n1', { day: 12, hour: 20, result: 'defeat', e: 4, d: 9 }),
+      m('n2', { day: 12, hour: 21, result: 'defeat', e: 3, d: 10 }),
+      m('n3', { day: 12, hour: 22, result: 'defeat', e: 5, d: 8 }),
     ]
     expect(tiltNudgeSignal(records)!.streakKey).toBe('n1')
   })
 })
 
 describe('currentSessionSummary', () => {
-  const m = (key: string, day: number, hh: number, mm: number, result: string) => ({
+  const m = (key: string, opts: { day: number; hh: number; mm: number; result: string }) => ({
     match_key: key,
     data: {
-      date: `2026-05-${String(day).padStart(2, '0')}`,
-      finished_at: `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`,
-      result,
+      date: `2026-05-${String(opts.day).padStart(2, '0')}`,
+      finished_at: `${String(opts.hh).padStart(2, '0')}:${String(opts.mm).padStart(2, '0')}`,
+      result: opts.result,
     },
   }) as unknown as MomentumInput
   const epoch = (day: number, hh: number, mm: number) =>
@@ -187,17 +187,17 @@ describe('currentSessionSummary', () => {
 
   it('tallies the trailing session while it is active', () => {
     const records = [
-      m('old', 10, 10, 0, 'victory'), // separate morning session
-      m('a', 10, 19, 0, 'victory'),
-      m('b', 10, 20, 0, 'victory'),
-      m('c', 10, 21, 0, 'defeat'),
+      m('old', { day: 10, hh: 10, mm: 0, result: 'victory' }), // separate morning session
+      m('a', { day: 10, hh: 19, mm: 0, result: 'victory' }),
+      m('b', { day: 10, hh: 20, mm: 0, result: 'victory' }),
+      m('c', { day: 10, hh: 21, mm: 0, result: 'defeat' }),
     ]
     const sum = currentSessionSummary(records, epoch(10, 21, 30))
     expect(sum).toEqual({ matches: 3, w: 2, l: 1, d: 0 })
   })
 
   it('null once the latest match falls outside the gap (stale history)', () => {
-    const records = [m('a', 3, 19, 0, 'victory'), m('b', 3, 20, 0, 'defeat')]
+    const records = [m('a', { day: 3, hh: 19, mm: 0, result: 'victory' }), m('b', { day: 3, hh: 20, mm: 0, result: 'defeat' })]
     expect(currentSessionSummary(records, epoch(10, 21, 0))).toBeNull()
   })
 

@@ -64,6 +64,11 @@ export interface GlobalKeyboardDeps {
   toggleExpand: (matchKey: string) => void | Promise<void>
 }
 
+// The `g <x>` sequence's follow-key → tab mapping.
+const VIEW_NAV_TARGETS: Record<'m' | 'i' | 's' | 'u' | 'c' | 'e', TabId> = {
+  m: 'matches', i: 'ingest', s: 'settings', u: 'unknown', c: 'compare', e: 'elo',
+}
+
 export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
   const {
     view,
@@ -111,13 +116,7 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
     },
     // Global: vim-style view navigation (`g` then m/i/s/u/c/e).
     ...(['m', 'i', 's', 'u', 'c', 'e'] as const).map((follow): Shortcut => {
-      const target: TabId = (
-        follow === 'm' ? 'matches'  :
-        follow === 'i' ? 'ingest'   :
-        follow === 's' ? 'settings' :
-        follow === 'u' ? 'unknown'  :
-        follow === 'c' ? 'compare'  : 'elo'
-      )
+      const target: TabId = VIEW_NAV_TARGETS[follow]
       return {
         key: follow,
         prefix: 'g',

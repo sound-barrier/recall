@@ -58,6 +58,14 @@ const BLOCK_60: B[] = [ // 6W/4L — the NEW (higher-rank) band
 
 // seq 1 = newest. Chronological order is seq 60 → 1: BLOCK_70 ×3, then
 // BLOCK_60 ×3. Bands pin the rank fields; progress walks deterministically.
+// Division walk: old half (idx < 30) gold 5→4, new half gold 2→1.
+function levelAt(idx: number): number {
+  if (idx < 15) return 5
+  if (idx < 30) return 4
+  if (idx < 45) return 2
+  return 1
+}
+
 function climb60() {
   const chronological: B[] = [
     ...BLOCK_70, ...BLOCK_70, ...BLOCK_70,
@@ -65,10 +73,9 @@ function climb60() {
   ]
   const rows = chronological.map((g, idx) => {
     const seq = 60 - idx // idx 0 is the oldest game
-    const isOld = idx < 30
     const win = g.r === 'victory'
     const move = g.streak ? 30 : 20
-    const level = isOld ? (idx < 15 ? 5 : 4) : (idx < 45 ? 2 : 1)
+    const level = levelAt(idx)
     const progress = seq === 60 - 59 ? 50 : (idx * 7) % 100 // newest = gold 1 @ 50
     const utc = `${localYMD(-seq)}T12:00:00Z`
     const modifiers = [g.r, ...(g.streak ? [g.streak] : []), 'expected']
@@ -238,7 +245,12 @@ test.describe('Elo Calculator — phase 3 (sessions, change-point, lift)', () =>
     await expect(page.locator('#panel-elo')).toBeVisible()
   }
 
-  function baseRec(seqNo: number, day: string, hourMin: string, result: string, hero: string, extra: Record<string, unknown> = {}) {
+  function baseRec(
+    seqNo: number,
+    game: { day: string; hourMin: string; result: string; hero: string },
+    extra: Record<string, unknown> = {},
+  ) {
+    const { day, hourMin, result, hero } = game
     return {
       match_key: `p3-${seqNo}`,
       source_files: [`p3-${seqNo}.png`],
@@ -266,7 +278,7 @@ test.describe('Elo Calculator — phase 3 (sessions, change-point, lift)', () =>
       const hours = ['20:00', '21:10', '22:05', '22:55', '23:30']
       results.forEach((win, i) => {
         n++
-        rows.push(baseRec(n, day, hours[i]!, win ? 'victory' : 'defeat', 'lucio', {
+        rows.push(baseRec(n, { day, hourMin: hours[i]!, result: win ? 'victory' : 'defeat', hero: 'lucio' }, {
           data: { rank: 'gold', level: 3, rank_progress: (n * 7) % 100, change_percent: win ? 20 : -20, modifiers: [win ? 'victory' : 'defeat'] },
         }))
       })
@@ -288,7 +300,7 @@ test.describe('Elo Calculator — phase 3 (sessions, change-point, lift)', () =>
       const old = i < 50
       const win = old ? i % 5 !== 4 : i % 5 < 2
       const day = `2026-0${old ? 3 : 4}-${String((i % 25) + 1).padStart(2, '0')}`
-      rows.push(baseRec(i + 1, day, `${String(10 + (i % 12)).padStart(2, '0')}:00`, win ? 'victory' : 'defeat', 'lucio', {
+      rows.push(baseRec(i + 1, { day, hourMin: `${String(10 + (i % 12)).padStart(2, '0')}:00`, result: win ? 'victory' : 'defeat', hero: 'lucio' }, {
         data: { rank: 'gold', level: old ? 4 : 3, rank_progress: (i * 9) % 100, change_percent: win ? 20 : -20, modifiers: [win ? 'victory' : 'defeat'] },
       }))
     }
@@ -311,14 +323,14 @@ test.describe('Elo Calculator — phase 3 (sessions, change-point, lift)', () =>
     for (let i = 0; i < 30; i++) {
       n++
       const win = i < 21
-      rows.push(baseRec(n, `2026-05-${String((i % 28) + 1).padStart(2, '0')}`, '20:00', win ? 'victory' : 'defeat', 'lucio', {
+      rows.push(baseRec(n, { day: `2026-05-${String((i % 28) + 1).padStart(2, '0')}`, hourMin: '20:00', result: win ? 'victory' : 'defeat', hero: 'lucio' }, {
         map: 'ilios',
         ...(i < 12 ? { annotation: { members: ['Buddy#123'] } } : {}),
       }))
     }
     for (let i = 0; i < 20; i++) {
       n++
-      rows.push(baseRec(n, `2026-06-${String((i % 28) + 1).padStart(2, '0')}`, '21:00', i < 6 ? 'victory' : 'defeat', 'ana', { map: 'junkertown' }))
+      rows.push(baseRec(n, { day: `2026-06-${String((i % 28) + 1).padStart(2, '0')}`, hourMin: '21:00', result: i < 6 ? 'victory' : 'defeat', hero: 'ana' }, { map: 'junkertown' }))
     }
     await openWith(page, rows)
     const band = page.locator('[data-elo-lift]')

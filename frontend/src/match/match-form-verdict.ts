@@ -38,12 +38,25 @@ const RANK_PER_DIVISION = 0.75
 // |score| below this reads as noise → HOLDING.
 const HOLDING_BAND = 0.35
 
+function verdictWord(score: number): VerdictWord {
+  if (score > HOLDING_BAND) return 'SHARPER'
+  if (score < -HOLDING_BAND) return 'SLIPPING'
+  return 'HOLDING'
+}
+
 function decisive(m: SeasonMetrics): number {
   return m.wins + m.losses
 }
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10
+}
+
+// How one metric turns a delta into a scored, labeled mover.
+interface MoverSpec {
+  weight: number
+  quantize: (n: number) => number
+  format: (delta: number) => string
 }
 
 // moverIf quantizes both values to the metric's display precision FIRST, so the
@@ -53,14 +66,12 @@ function moverIf(
   movers: VerdictMover[],
   a: number | null | undefined,
   b: number | null | undefined,
-  weight: number,
-  quantize: (n: number) => number,
-  format: (delta: number) => string,
+  spec: MoverSpec,
 ): void {
   if (a == null || b == null) return
-  const delta = quantize(b) - quantize(a)
+  const delta = spec.quantize(b) - spec.quantize(a)
   if (delta === 0) return
-  movers.push({ label: format(delta), score: delta * weight })
+  movers.push({ label: spec.format(delta), score: delta * spec.weight })
 }
 
 function signed(n: number, digits = 0): string {
@@ -85,29 +96,27 @@ export function judgeForm(a: SeasonMetrics, b: SeasonMetrics): FormVerdict {
   }
 
   const movers: VerdictMover[] = []
-  moverIf(movers, a.winratePct, b.winratePct, WINRATE_PER_POINT, Math.round,
-    (d) => `Win rate ${signed(d)} pts`)
+  moverIf(movers, a.winratePct, b.winratePct,
+    { weight: WINRATE_PER_POINT, quantize: Math.round, format: (d) => `Win rate ${signed(d)} pts` })
 
   // Combat rates need their own floor: averageKDA only covers games that carry
   // a performance block, which can be far fewer than the decisive count.
   const combatSolid = (a.combatSamples ?? 0) >= LOW_SAMPLE_N && (b.combatSamples ?? 0) >= LOW_SAMPLE_N
   if (combatSolid) {
     // Deaths are lower-better: falling deaths contribute positively.
-    moverIf(movers, a.deathsPer10, b.deathsPer10, -DEATHS_PER_UNIT, round1,
-      (d) => `Deaths ${signed(d, 1)}/10`)
-    moverIf(movers, a.elimsPer10, b.elimsPer10, ELIMS_PER_UNIT, round1,
-      (d) => `Elims ${signed(d, 1)}/10`)
-    moverIf(movers, a.assistsPer10, b.assistsPer10, ASSISTS_PER_UNIT, round1,
-      (d) => `Assists ${signed(d, 1)}/10`)
+    moverIf(movers, a.deathsPer10, b.deathsPer10,
+      { weight: -DEATHS_PER_UNIT, quantize: round1, format: (d) => `Deaths ${signed(d, 1)}/10` })
+    moverIf(movers, a.elimsPer10, b.elimsPer10,
+      { weight: ELIMS_PER_UNIT, quantize: round1, format: (d) => `Elims ${signed(d, 1)}/10` })
+    moverIf(movers, a.assistsPer10, b.assistsPer10,
+      { weight: ASSISTS_PER_UNIT, quantize: round1, format: (d) => `Assists ${signed(d, 1)}/10` })
   }
 
-  moverIf(movers, a.rankProgress, b.rankProgress, RANK_PER_DIVISION, round1, rankLabel)
+  moverIf(movers, a.rankProgress, b.rankProgress,
+    { weight: RANK_PER_DIVISION, quantize: round1, format: rankLabel })
 
   const score = movers.reduce((sum, m) => sum + m.score, 0)
-  const word: VerdictWord =
-    score > HOLDING_BAND ? 'SHARPER' :
-    score < -HOLDING_BAND ? 'SLIPPING' :
-    'HOLDING'
+  const word = verdictWord(score)
 
   const top = movers
     .slice()

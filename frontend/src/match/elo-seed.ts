@@ -238,7 +238,7 @@ export function heroPickerStats(
   const poolLosses = rows.reduce((s, h) => s + h.losses, 0)
   return rows
     .map((h) => {
-      const adjusted = shrunkWinRate(h.wins, h.losses, poolWins, poolLosses)
+      const adjusted = shrunkWinRate(h.wins, h.losses, { wins: poolWins, losses: poolLosses })
       return {
         key: h.key,
         role: h.role,

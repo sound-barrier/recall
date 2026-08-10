@@ -76,9 +76,16 @@ describe('nextMoves', () => {
     const recs: MatchRecord[] = []
     // 12 evening sessions of 4: hot openers, cold enders — with rank cards
     // (±20) so the advice can be priced.
+    // Win rate by game-in-session: ~92% openers sagging toward ~17% enders.
+    function winAtGame(g: number, d: number): boolean {
+      if (g === 0) return d % 12 > 0
+      if (g === 1) return d % 2 === 0
+      if (g === 2) return d % 3 === 0
+      return d % 6 === 0
+    }
     for (let d = 0; d < 12; d++) {
       for (let g = 0; g < 4; g++) {
-        const win = g === 0 ? d % 12 > 0 : g === 1 ? d % 2 === 0 : g === 2 ? d % 3 === 0 : d % 6 === 0
+        const win = winAtGame(g, d)
         recs.push(rec({ result: win ? 'victory' : 'defeat', day: d, hour: 18 + g, change: win ? 20 : -20 }))
       }
     }

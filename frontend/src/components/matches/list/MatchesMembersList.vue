@@ -101,13 +101,13 @@ const {
   expandWindowToAll,
   collapseAllSections,
   expandAllSections,
-} = useMembersListWindow(
+} = useMembersListWindow({
   records,
   groupBy,
   sortOrder,
-  toRef(props, 'density'),
-  toRef(props, 'focusedCardIndex'),
-)
+  density: toRef(props, 'density'),
+  focusedCardIndex: toRef(props, 'focusedCardIndex'),
+})
 
 defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 </script>

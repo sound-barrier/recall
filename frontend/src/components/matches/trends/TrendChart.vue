@@ -139,9 +139,12 @@ function onDataZoom(params: unknown): void {
 // The match_key nearest a given epoch across every plotted series — used
 // to turn a click (a near-zero brush span) into "open that match".
 interface ChartPoint { value?: [number, number]; matchKey?: string }
+function asList<T>(v: T | T[] | undefined): T[] {
+  if (Array.isArray(v)) return v
+  return v ? [v] : []
+}
 function nearestMatchKey(t: number): string | undefined {
-  const series = props.option.series
-  const list = (Array.isArray(series) ? series : series ? [series] : []) as unknown as { data?: ChartPoint[] }[]
+  const list = asList(props.option.series) as unknown as { data?: ChartPoint[] }[]
   let best: { d: number; key: string } | undefined
   for (const s of list) {
     for (const item of s.data ?? []) {

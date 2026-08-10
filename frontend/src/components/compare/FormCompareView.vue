@@ -154,10 +154,14 @@ function rankDivisions(records: MatchRecord[]): number | null {
 }
 
 function snapshot(d: typeof dossierA, records: MatchRecord[], topHero: string | null) {
-  return buildSeasonMetrics(d, records, topHero, ow, {
-    rankProgress: rankDivisions(records),
-    sessions: sessionCount(records),
-    leaverRatePct: leaverRate(records).rate,
+  return buildSeasonMetrics(d, records, {
+    topHero,
+    ow,
+    extras: {
+      rankProgress: rankDivisions(records),
+      sessions: sessionCount(records),
+      leaverRatePct: leaverRate(records).rate,
+    },
   })
 }
 

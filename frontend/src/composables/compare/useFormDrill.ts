@@ -22,8 +22,10 @@ const ROW_PICKS: Record<string, (narrow: NarrowBundle) => void> = {
 
 type NarrowBundle = ReturnType<typeof useMatchesStore>['matchesNarrow']
 
+const ROLE_PICK_KEYS: Record<string, string> = { tank: 'roleTank', dps: 'roleDps', support: 'roleSupport' }
+
 function rolePickKey(role: string): string {
-  return role === 'tank' ? 'roleTank' : role === 'dps' ? 'roleDps' : role === 'support' ? 'roleSupport' : ''
+  return ROLE_PICK_KEYS[role] ?? ''
 }
 
 export function useFormDrill() {

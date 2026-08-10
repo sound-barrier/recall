@@ -105,10 +105,12 @@ function sessionHeader(records: MatchRecord[]): string {
   const day = isNaN(d.getTime())
     ? first!.date
     : shortDateWithYear(d, { weekday: 'short', month: 'short', day: 'numeric' })
-  const span = first!.at && last!.at && first!.at !== last!.at
-    ? ` · ${first!.at} – ${last!.at}`
-    : first!.at ? ` · ${first!.at}` : ''
-  return `${day}${span}`
+  return `${day}${sessionTimeSpan(first!.at, last!.at)}`
+}
+
+function sessionTimeSpan(firstAt: string, lastAt: string): string {
+  if (firstAt && lastAt && firstAt !== lastAt) return ` · ${firstAt} – ${lastAt}`
+  return firstAt ? ` · ${firstAt}` : ''
 }
 
 // sessionRollup pre-formats the divider's stat line: W/L/D tallies,

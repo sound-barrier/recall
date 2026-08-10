@@ -222,17 +222,23 @@ export function formatRoles(
 // so a multi-year corpus reads in correct chronological order instead of
 // looking scrambled when same-month/day labels collide across years.
 export function formatRowDate(rec: Pick<MatchRecord, 'data'>): string {
-  // Prefer the canonical UTC instant, rendered in the viewer's current zone
-  // (equals the naive date for a stationary viewer); fall back to the naive
-  // date for rows without a played_at_utc.
-  const utc = rec.data?.played_at_utc
-  const dt = utc ? new Date(utc) : rec.data?.date ? new Date(rec.data.date + 'T00:00:00') : null
+  const dt = rowDateInstant(rec)
   if (!dt) return '—'
   if (isNaN(dt.getTime())) return rec.data?.date ?? '—'
   const sameYear = dt.getFullYear() === new Date().getFullYear()
   return dt.toLocaleDateString(undefined, sameYear
     ? { month: 'short', day: 'numeric' }
     : { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// Prefer the canonical UTC instant, rendered in the viewer's current zone
+// (equals the naive date for a stationary viewer); fall back to the naive
+// date for rows without a played_at_utc.
+function rowDateInstant(rec: Pick<MatchRecord, 'data'>): Date | null {
+  const utc = rec.data?.played_at_utc
+  if (utc) return new Date(utc)
+  const date = rec.data?.date
+  return date ? new Date(date + 'T00:00:00') : null
 }
 
 // Finish time-of-day for a row, '' when absent. Prefers the canonical UTC

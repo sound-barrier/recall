@@ -1,5 +1,6 @@
 import { computed, type ComputedRef } from 'vue'
 
+import type { CellPos } from '@/composables/dashboard/useDragReorder'
 import {
   usePersistedRef,
   parseJsonRecord,
@@ -79,11 +80,11 @@ export type RowLayout = Record<number, string[]>
 
 export interface DashboardLayoutApi {
   rows: ComputedRef<RowLayout>
-  // Move a widget. Same-row reorder when fromRow === toRow; cross-
+  // Move a widget. Same-row reorder when from.row === to.row; cross-
   // row move otherwise. Callers don't have to special-case either
   // — the math collapses to one branch when the source + target are
   // the same row.
-  move: (id: string, fromRow: number, fromIdx: number, toRow: number, toIdx: number) => void
+  move: (id: string, from: CellPos, to: CellPos) => void
   setRow: (row: number, ids: string[]) => void
   // Atomic whole-layout write. Used by the live-reflow drag's
   // commit path: the rendered preview IS the destination layout,
@@ -129,37 +130,37 @@ export function useDashboardLayout(): DashboardLayoutApi {
   // shape callers actually consume.
   const rows = computed<RowLayout>(() => reconcile(rawLayout.value))
 
-  // toIdx is the FINAL destination index in the post-removal
+  // to.idx is the FINAL destination index in the post-removal
   // target row. Callers (keyboard handler, drag onDrop) are
   // responsible for translating their semantic into this form —
   // useDragReorder.onDragOver/onDrop compensates for same-row
-  // source-before-target by emitting toIdx - 1 at the consumer
+  // source-before-target by emitting to.idx - 1 at the consumer
   // edge, and the keyboard handler emits the natural "swap with
   // adjacent" index directly. Keeping the math here dumb means
   // there's exactly one place each caller has to reason about
   // index translation.
-  function move(id: string, fromRow: number, fromIdx: number, toRow: number, toIdx: number) {
+  function move(id: string, from: CellPos, to: CellPos) {
     if (!widgetById(id)) return
     const next = cloneLayout(rows.value)
-    // Source-row removal. fromIdx is treated as a hint — if the
+    // Source-row removal. from.idx is treated as a hint — if the
     // widget moved between the consumer reading the model and the
     // move() call, walk the row to find the real position. Keeps
     // drag interruptions from corrupting state.
-    const sourceRow = next[fromRow] ?? []
-    let sourceIdx = fromIdx
+    const sourceRow = next[from.row] ?? []
+    let sourceIdx = from.idx
     if (sourceRow[sourceIdx] !== id) {
       sourceIdx = sourceRow.indexOf(id)
     }
     if (sourceIdx === -1) return
     sourceRow.splice(sourceIdx, 1)
-    next[fromRow] = sourceRow
+    next[from.row] = sourceRow
 
-    // Target-row insert at toIdx, clamped to the post-removal row
-    // length so a stale toIdx past the end falls back to "append".
-    const targetRow = next[toRow] ?? []
-    const insertAt = Math.max(0, Math.min(toIdx, targetRow.length))
+    // Target-row insert at to.idx, clamped to the post-removal row
+    // length so a stale to.idx past the end falls back to "append".
+    const targetRow = next[to.row] ?? []
+    const insertAt = Math.max(0, Math.min(to.idx, targetRow.length))
     targetRow.splice(insertAt, 0, id)
-    next[toRow] = targetRow
+    next[to.row] = targetRow
 
     set(next)
   }

@@ -9,7 +9,8 @@ import { test } from './_fixtures'
 // time span, and its average line. The data was always there; this
 // makes "how did tonight go?" a glance.
 
-function rec(key: string, date: string, finishedAt: string, result: 'victory' | 'defeat', ead: [number, number, number]) {
+function rec(key: string, date: string, finishedAt: string, outcome: { result: 'victory' | 'defeat'; ead: [number, number, number] }) {
+  const { result, ead } = outcome
   return {
     match_key: key,
     source_files: [`${key}.png`],
@@ -24,10 +25,10 @@ function rec(key: string, date: string, finishedAt: string, result: 'victory' | 
 // One day, two sessions: a morning pair (10:00 / 10:30) and an
 // evening pair (19:00 / 19:30) — the 8.5h gap splits them.
 const CORPUS = [
-  rec('s1a', '2026-05-10', '10:00', 'victory', [20, 10, 6]),
-  rec('s1b', '2026-05-10', '10:30', 'victory', [24, 12, 8]),
-  rec('s2a', '2026-05-10', '19:00', 'defeat', [12, 8, 12]),
-  rec('s2b', '2026-05-10', '19:30', 'victory', [18, 9, 9]),
+  rec('s1a', '2026-05-10', '10:00', { result: 'victory', ead: [20, 10, 6] }),
+  rec('s1b', '2026-05-10', '10:30', { result: 'victory', ead: [24, 12, 8] }),
+  rec('s2a', '2026-05-10', '19:00', { result: 'defeat', ead: [12, 8, 12] }),
+  rec('s2b', '2026-05-10', '19:30', { result: 'victory', ead: [18, 9, 9] }),
 ]
 
 test.describe('session grouping', () => {

@@ -28,18 +28,18 @@ const option = computed(() => {
 // Detection is deliberately conservative: only big, sustained shifts clear
 // the honest best-over-all-splits penalty, so this sentence is rare and
 // therefore trustworthy.
+function shiftCorrelate(context: { reviewStarted: boolean; poolEntered: string[]; poolLeft: string[] }): string {
+  if (context.reviewStarted) return ' — around when you started reviewing games'
+  if (context.poolEntered.length > 0) return ` — around when ${context.poolEntered.join(' and ')} entered your pool`
+  if (context.poolLeft.length > 0) return ` — around when ${context.poolLeft.join(' and ')} left your pool`
+  return ''
+}
+
 const shiftLine = computed(() => {
   const cp = changePoint.value
   if (!cp) return null
   const when = new Date(cp.point.t).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
-  const { context } = cp
-  const correlate = context.reviewStarted
-    ? ' — around when you started reviewing games'
-    : context.poolEntered.length > 0
-      ? ` — around when ${context.poolEntered.join(' and ')} entered your pool`
-      : context.poolLeft.length > 0
-        ? ` — around when ${context.poolLeft.join(' and ')} left your pool`
-        : ''
+  const correlate = shiftCorrelate(cp.context)
   const sagCaveat = cp.point.after.winrate < cp.point.before.winrate
     ? ' — and a long climb sagging toward 50% can read as a downward shift'
     : ''
@@ -58,13 +58,14 @@ const shareLine = computed(() => {
     return `The skill-vs-noise split isn't measurable yet: these ${skillCurve.value.n} readings don't move in a way the filter can separate, so no percentage would be honest. It needs more varied rank movement.`
   }
   const noise = 100 - sharePct.value
-  const read = sharePct.value < 40
-    ? `most of the jitter you feel is the matchmaker, not you`
-    : sharePct.value > 70
-      ? `your rank is tracking real improvement more than luck`
-      : `roughly an even split between real change and queue variance`
-  return `Skill drift explains ${sharePct.value}% of your rank movement — the other ${noise}% is matchmaking noise (${skillCurve.value.n} rank readings). In plain terms: ${read}.`
+  return `Skill drift explains ${sharePct.value}% of your rank movement — the other ${noise}% is matchmaking noise (${skillCurve.value.n} rank readings). In plain terms: ${shareRead(sharePct.value)}.`
 })
+
+function shareRead(pct: number): string {
+  if (pct < 40) return 'most of the jitter you feel is the matchmaker, not you'
+  if (pct > 70) return 'your rank is tracking real improvement more than luck'
+  return 'roughly an even split between real change and queue variance'
+}
 
 const caption = computed(() =>
   `The smoothed line is your estimated true skill over time; the shaded band is its uncertainty. Raw rank readings jump around it — that jumping is the noise share.`)

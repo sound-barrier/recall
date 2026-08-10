@@ -164,7 +164,7 @@ describe('useDashboardLayout', () => {
   it('move() within a row reorders correctly', async () => {
     const { api } = await mountHost()
     // Move Winrate (idx 0) to post-removal idx 2 in row 1.
-    api.move('winrate', 1, 0, 1, 2)
+    api.move('winrate', { row: 1, idx: 0 }, { row: 1, idx: 2 })
     const row = api.rows.value[1]!
     // toIdx is the destination idx in the POST-REMOVAL row.
     // After removing winrate at idx 0, row = [form-delta,
@@ -178,14 +178,14 @@ describe('useDashboardLayout', () => {
   it('move() across rows works in one operation', async () => {
     const { api } = await mountHost()
     // Pull Current rank (row 2 idx 0) up to row 1 idx 0.
-    api.move('current-rank', 2, 0, 1, 0)
+    api.move('current-rank', { row: 2, idx: 0 }, { row: 1, idx: 0 })
     expect(api.rows.value[1]![0]).toBe('current-rank')
     expect(api.rows.value[2]).not.toContain('current-rank')
   })
 
   it('move() persists to localStorage', async () => {
     const { api } = await mountHost()
-    api.move('current-rank', 2, 0, 1, 0)
+    api.move('current-rank', { row: 2, idx: 0 }, { row: 1, idx: 0 })
     const stored = JSON.parse(storage[LAYOUT_STORAGE_KEY] ?? '{}')
     expect(stored[1]).toContain('current-rank')
   })
@@ -193,7 +193,7 @@ describe('useDashboardLayout', () => {
   it('move() with stale fromIdx still finds the widget', async () => {
     const { api } = await mountHost()
     // Caller thinks Winrate is at idx 3 but it's actually at idx 0.
-    api.move('winrate', 1, 3, 1, 5)
+    api.move('winrate', { row: 1, idx: 3 }, { row: 1, idx: 5 })
     const row = api.rows.value[1]!
     // Winrate should have moved within row 1 despite the stale hint.
     const finalIdx = row.indexOf('winrate')
@@ -202,7 +202,7 @@ describe('useDashboardLayout', () => {
 
   it('reset() restores the registry default', async () => {
     const { api } = await mountHost()
-    api.move('current-rank', 2, 0, 1, 0)
+    api.move('current-rank', { row: 2, idx: 0 }, { row: 1, idx: 0 })
     expect(api.rows.value[1]).toContain('current-rank')
     api.reset()
     expect(api.rows.value[1]).not.toContain('current-rank')
@@ -250,8 +250,8 @@ describe('useDashboardLayout', () => {
     // across all rows."
     const defaultIds = new Set(Object.values(DEFAULT_ROW_LAYOUT).flat())
     const { api } = await mountHost()
-    api.move('winrate', 1, 0, 2, 0)
-    api.move('current-rank', 2, 0, 1, 0)
+    api.move('winrate', { row: 1, idx: 0 }, { row: 2, idx: 0 })
+    api.move('current-rank', { row: 2, idx: 0 }, { row: 1, idx: 0 })
     const all = Object.values(api.rows.value).flat()
     for (const def of WIDGET_REGISTRY) {
       if (!defaultIds.has(def.id)) continue
@@ -272,7 +272,7 @@ describe('useDashboardLayout', () => {
     // based on shape.
     const { api } = await mountHost()
     const someKpi = KPI_IDS[0]!
-    api.move(someKpi, 1, 0, 2, 0)
+    api.move(someKpi, { row: 1, idx: 0 }, { row: 2, idx: 0 })
     expect(api.rows.value[2]![0]).toBe(someKpi)
     expect(api.rows.value[1]).not.toContain(someKpi)
   })
@@ -280,7 +280,7 @@ describe('useDashboardLayout', () => {
   it('Breakdown-shape widgets can land in the KPI row', async () => {
     const { api } = await mountHost()
     // current-rank: the first default-install breakdown (row 2 idx 0).
-    api.move('current-rank', 2, 0, 1, 0)
+    api.move('current-rank', { row: 2, idx: 0 }, { row: 1, idx: 0 })
     expect(api.rows.value[1]![0]).toBe('current-rank')
   })
 

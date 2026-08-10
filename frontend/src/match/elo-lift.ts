@@ -103,7 +103,7 @@ export function liftTable(records: readonly LiftInput[], deps: LiftDeps, opts: L
     if (n < minN) continue
     // A condition covering ~the whole corpus IS the baseline — no signal.
     if (n >= baseN * 0.95) continue
-    const shrunk = shrunkWinRate(t.wins, t.losses, baseWins, baseLosses, strength)
+    const shrunk = shrunkWinRate(t.wins, t.losses, { wins: baseWins, losses: baseLosses }, strength)
     if (shrunk === null) continue
     const iv = credibleInterval(t.wins, t.losses, prior)
     rows.push({

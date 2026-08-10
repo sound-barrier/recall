@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { computeCalloutPosition, rectsEqual, rectsOverlap } from '@/components/shared/tour-callout-helpers'
 
 const LAYOUT = { calloutW: 360, safety: 16, gap: 22 }
+const FRAME = { calloutH: 200, vw: 1280, vh: 800 }
 
 describe('rectsOverlap', () => {
   it('returns true when one rect is fully inside the other', () => {
@@ -99,7 +100,7 @@ describe('rectsEqual', () => {
 
 describe('computeCalloutPosition', () => {
   it('centers in the viewport when there is no target', () => {
-    const out = computeCalloutPosition(null, 200, 1280, 800, 'auto', LAYOUT)
+    const out = computeCalloutPosition(null, FRAME, 'auto', LAYOUT)
     expect(out.placement).toBe('auto')
     expect(out.left).toBe((1280 - 360) / 2)
     expect(out.top).toBe((800 - 200) / 2)
@@ -109,7 +110,7 @@ describe('computeCalloutPosition', () => {
     // Target mid-screen with room above → explicit "top" wins without
     // the overlap check.
     const out = computeCalloutPosition(
-      { x: 600, y: 400, w: 80, h: 40 }, 200, 1280, 800, 'top', LAYOUT,
+      { x: 600, y: 400, w: 80, h: 40 }, FRAME, 'top', LAYOUT,
     )
     expect(out.placement).toBe('top')
     expect(out.top).toBe(400 - 22 - 200)
@@ -117,7 +118,7 @@ describe('computeCalloutPosition', () => {
 
   it('auto-search picks bottom first when there is room below', () => {
     const out = computeCalloutPosition(
-      { x: 600, y: 100, w: 80, h: 40 }, 200, 1280, 800, 'auto', LAYOUT,
+      { x: 600, y: 100, w: 80, h: 40 }, FRAME, 'auto', LAYOUT,
     )
     expect(out.placement).toBe('bottom')
     expect(out.top).toBe(100 + 40 + 22)
@@ -127,7 +128,7 @@ describe('computeCalloutPosition', () => {
     // A target filling the viewport leaves no side clear → corner
     // fallback, placement reported as auto.
     const out = computeCalloutPosition(
-      { x: 0, y: 0, w: 1280, h: 800 }, 200, 1280, 800, 'auto', LAYOUT,
+      { x: 0, y: 0, w: 1280, h: 800 }, FRAME, 'auto', LAYOUT,
     )
     expect(out.placement).toBe('auto')
     expect(out.left).toBeGreaterThanOrEqual(16)

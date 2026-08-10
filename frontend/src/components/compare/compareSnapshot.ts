@@ -54,13 +54,21 @@ function foldBuckets(buckets: HeroCountBucket[], pick: (b: HeroCountBucket) => b
   return { games, decisive, winrate: decisive === 0 ? 0 : Math.round((wins / decisive) * 100) }
 }
 
+// Per-window inputs the snapshot can't derive from the dossier/records
+// alone: the resolved top-hero label, the name resolvers, and the Form
+// mode's optional extras.
+export interface SnapshotInputs {
+  topHero: string | null
+  ow: SnapshotResolvers
+  extras?: SnapshotExtras
+}
+
 export function buildSeasonMetrics(
   d: MatchesDossier,
   records: MatchRecord[],
-  topHero: string | null,
-  ow: SnapshotResolvers,
-  extras?: SnapshotExtras,
+  inputs: SnapshotInputs,
 ): SeasonMetrics {
+  const { topHero, ow, extras } = inputs
   const wld = d.wld.value
   const kda = d.averageKDA.value
   const time = d.totalTimePlayed.value

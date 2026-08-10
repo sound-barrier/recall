@@ -27,7 +27,7 @@ function makeMatch(i: number): Record<string, unknown> {
   const day = String(10 + (i % 5)).padStart(2, '0')
   const hh = String(i % 24).padStart(2, '0')
   const mm = String(i % 60).padStart(2, '0')
-  const result = i % 3 === 0 ? 'victory' : i % 3 === 1 ? 'defeat' : 'draw'
+  const result = (['victory', 'defeat', 'draw'] as const)[i % 3]
   return {
     match_key: `match-2026-05-${day}T${hh}-${mm}-00-${String(i).padStart(3, '0')}`,
     source_files: [`m${i}.png`],
@@ -35,7 +35,7 @@ function makeMatch(i: number): Record<string, unknown> {
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      game_mode: 'control' as Mode['type'],
+      game_mode: 'control' as Mode['game_mode'],
       role: 'support',
       hero: 'lucio',
       result,

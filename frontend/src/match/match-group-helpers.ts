@@ -99,6 +99,13 @@ function dayLabel(d: Date): string {
   return `${WEEKDAYS_FULL[d.getUTCDay()]} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
 
+// Lexicographic three-way compare (Array.sort contract: <0, 0, >0).
+function compareStrings(a: string, b: string): number {
+  if (a < b) return -1
+  if (a > b) return 1
+  return 0
+}
+
 function sumTally(groups: { tally: WLDTally }[]): WLDTally {
   return groups.reduce(
     (acc, g) => ({ w: acc.w + g.tally.w, l: acc.l + g.tally.l, d: acc.d + g.tally.d }),
@@ -173,10 +180,8 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   if (months.size === 0 && undated.length === 0) return []
 
   const dir = sortDir === 'asc' ? 1 : -1
-  const byKey = (a: { key: string }, b: { key: string }) =>
-    a.key < b.key ? -1 * dir : a.key > b.key ? 1 * dir : 0
-  const cmpStr = (a: string, b: string) =>
-    a < b ? -1 * dir : a > b ? 1 * dir : 0
+  const byKey = (a: { key: string }, b: { key: string }) => compareStrings(a.key, b.key) * dir
+  const cmpStr = (a: string, b: string) => compareStrings(a, b) * dir
 
   let tree: MatchGroup<R>[] = []
   // Year tag for each month group — populated alongside the push so
@@ -255,10 +260,7 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   // — there's no meaningful chronology to flip).
   if (undated.length > 0) {
     const sortedUndated = [...undated].sort((a, b) =>
-      (a.match_key ?? '') < (b.match_key ?? '') ? -1
-        : (a.match_key ?? '') > (b.match_key ?? '') ? 1
-        : 0,
-    )
+      compareStrings(a.match_key ?? '', b.match_key ?? ''))
     tree.push({
       key: 'unknown',
       level: 'unknown',
