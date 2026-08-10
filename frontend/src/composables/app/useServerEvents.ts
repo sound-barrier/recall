@@ -1,11 +1,9 @@
-import { watchEffect } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { GetActiveParse, type MatchRecord } from '@/api-client'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
-import { profileScopedKey } from '@/composables/shared/profileStorage'
-import { currentSessionSummary } from '@/match/match-momentum-helpers'
 import { queryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { useMatchesStore } from '@/stores/matches'
@@ -16,45 +14,33 @@ import { useSettingsStore } from '@/stores/settings'
 // onBeforeUnmount), so they belong HERE — called from App.vue next to
 // useAppBoot() — not inside a store, where they only worked by binding to
 // App's lifecycle by accident (the smell frontend/CLAUDE.md documents).
-// Event payloads land in the query cache (match-updated upserts through
-// the store's writable records computed; tesseract-status through the
-// settings cache write) or in the matches store's client refs.
+// This file only WIRES: the parse-lifecycle transitions are store actions
+// (finishParseRun), and event payloads land in the query cache or the
+// matches store's client refs.
 export function useServerEvents() {
   const matchesStore = useMatchesStore()
   const settingsStore = useSettingsStore()
-  const { records, parseProgress, parseLog, watchActivity, parseBusy } = storeToRefs(matchesStore)
+  const { parseProgress, parseLog, watchActivity, parseBusy } = storeToRefs(matchesStore)
 
-  // parse-complete is the authoritative completion signal for EVERY parse
-  // path (click, watcher, re-parse): the server emits it from the OCR
-  // loop, so this owns clearing parseBusy + the reload.
+  // The match-updated upsert target reads/writes the qk.matches CACHE
+  // directly — never the store's tour-aware `records` computed, whose
+  // getter would hand the upsert the demo overlay (or a not-yet-loaded
+  // empty list) to write back as real data, and whose setter cancels
+  // in-flight fetches (right for test seeding, wrong here: a mid-boot
+  // upsert must not kill the authoritative GET). parse-complete's refetch
+  // remains the reconciliation for any racing writes.
+  const upsertTarget = computed<MatchRecord[]>({
+    get: () => queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? [],
+    set: (next) => { queryClient.setQueryData(qk.matches, next) },
+  })
+
   useEventStream({
-    records,
+    records: upsertTarget,
     parseProgress,
     parseLog,
     watchActivity,
-    onParseComplete: async () => {
-      await matchesStore.load()
-      // Read the fresh records straight from the cache — the observer's
-      // reactive ref updates a notification tick later than the refetch
-      // resolves, and the session summary must see the new batch.
-      const fresh = queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []
-      const session = currentSessionSummary(fresh)
-      matchesStore.sessionToast = session ? { ...session, token: Date.now() } : null
-      matchesStore.lastParsedAt = Date.now()
-      try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(matchesStore.lastParsedAt)) } catch (_) { /* non-fatal */ }
-      matchesStore.parseBusy = false
-      matchesStore.parseProgress = null
-      matchesStore.cancellingParse = false
-      const n = fresh.length
-      matchesStore.announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
-    },
-    onParseCancelled: async () => {
-      await matchesStore.load()
-      matchesStore.parseBusy = false
-      matchesStore.cancellingParse = false
-      matchesStore.parseProgress = null
-      matchesStore.announceParse('Parse cancelled.')
-    },
+    onParseComplete: () => matchesStore.finishParseRun('complete'),
+    onParseCancelled: () => matchesStore.finishParseRun('cancelled'),
     // The backend probes Tesseract in the background after boot (so a
     // cold-boot Defender scan can't stall startup); push each result into
     // the settings store so the System Alert banner self-heals without an
@@ -77,6 +63,5 @@ export function useServerEvents() {
       staleTime: 0,
     }),
   })
-  watchEffect(() => { matchesStore.parseConnectionState = recovery.connectionState.value })
-  matchesStore.wireParseRecovery({ refresh: recovery.refresh })
+  matchesStore.wireParseRecovery(recovery)
 }

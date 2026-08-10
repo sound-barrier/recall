@@ -6,14 +6,22 @@ import { useAppStore } from '@/stores/app'
 // Retry handlers keyed by query-key hash, created once per key so the
 // banner's function-identity contract keeps working: the store clears the
 // banner only when `errorRetry` IS the handler this query armed it with
-// (the same way `load()` compared `errorRetry === load`).
-const retryFns = new Map<string, () => void>()
+// (the same way `load()` compared `errorRetry === load`). A query whose
+// old-world Retry re-ran a wider loader declares that scope via
+// `meta.retryKeys` (the matches query lists its whole cluster — Retry must
+// heal pending-count/failed-files too, exactly like the old load()).
+const retryFns = new Map<string, () => Promise<void>>()
 
-function stableRetryFor(queryKey: readonly unknown[]): () => void {
+function stableRetryFor(queryKey: readonly unknown[], retryKeys?: unknown): () => Promise<void> {
   const hash = JSON.stringify(queryKey)
   let fn = retryFns.get(hash)
   if (!fn) {
-    fn = () => { void queryClient.refetchQueries({ queryKey: queryKey as unknown[] }) }
+    const keys = Array.isArray(retryKeys) && retryKeys.length > 0
+      ? (retryKeys as readonly unknown[][])
+      : [queryKey]
+    fn = async () => {
+      await Promise.all(keys.map(k => queryClient.refetchQueries({ queryKey: k as unknown[] })))
+    }
     retryFns.set(hash, fn)
   }
   return fn
@@ -50,7 +58,7 @@ function makeQueryClient(): QueryClient {
         if (typeof banner !== 'string') return
         useAppStore().setError(
           `${banner}: ${plainLanguageError(String(error))}`,
-          stableRetryFor(query.queryKey),
+          stableRetryFor(query.queryKey, query.meta?.retryKeys),
         )
       },
       onSuccess: (_data, query) => {

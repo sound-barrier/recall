@@ -53,4 +53,14 @@ describe('apiErrorFromResponse', () => {
     expect(err.body).toBe('server boom')
     expect(err.problem).toBeUndefined()
   })
+
+  it('preserves the body text when problem+json fails to parse (no double body read)', async () => {
+    const r = new Response('<html>proxy error</html>', {
+      status: 502,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })
+    const err = await apiErrorFromResponse(r)
+    expect(err.status).toBe(502)
+    expect(err.body).toBe('<html>proxy error</html>')
+  })
 })

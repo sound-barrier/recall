@@ -297,8 +297,12 @@ jobs:
       - name: Verify generated client is in sync with OpenAPI spec
         run: |
           cd frontend && npm run gen:types && cd ..
-          if ! git diff --quiet frontend/src/client; then
+          # git status --porcelain, not git diff: a regeneration can emit a
+          # NEW file into the multi-file client tree, which diff
+          # (tracked-only) would silently miss.
+          if [ -n "$(git status --porcelain frontend/src/client)" ]; then
             echo "::error::the generated API client is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
+            git status --porcelain frontend/src/client
             git diff frontend/src/client | head -50
             exit 1
           fi

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { qk, matchesCluster } from '@/queries/keys'
@@ -92,6 +92,30 @@ describe('QueryCache banner integration', () => {
       queryFn: () => Promise.reject(new Error('quietly kept-last')),
     }).catch(() => undefined)
     expect(app.error).toBe('')
+  })
+
+  it('a meta.retryKeys banner Retry refetches every listed key, not just the one that failed', async () => {
+    const app = useAppStore()
+    const siblingFn = vi.fn(() => Promise.resolve('sibling'))
+    // Prime the sibling so a refetch has an existing query to hit.
+    await queryClient.fetchQuery({ queryKey: ['retry-sibling'], queryFn: siblingFn })
+
+    await queryClient.fetchQuery({
+      queryKey: ['retry-primary'],
+      queryFn: () => Promise.reject(new Error('down')),
+      meta: {
+        banner: 'Could not load matches',
+        retryKeys: [['retry-primary'], ['retry-sibling']],
+      },
+    }).catch(() => undefined)
+
+    expect(app.errorRetry).toBeTypeOf('function')
+    await app.errorRetry?.()
+    await new Promise(r => setTimeout(r, 0))
+    // The old banner Retry re-ran the whole load() cluster; the query-era
+    // Retry must keep that scope, or pending-count/failed-files stay stale
+    // after an outage heals.
+    expect(siblingFn).toHaveBeenCalledTimes(2)
   })
 
   it('does not clear a banner armed by a DIFFERENT query', async () => {

@@ -12,7 +12,10 @@ export function useMatchesQuery() {
   return useQuery({
     queryKey: qk.matches,
     queryFn: GetMatchResults,
-    meta: { banner: 'Could not load matches' },
+    // retryKeys: the banner's Retry heals the WHOLE cluster, matching the
+    // old load()-as-retry behavior — without it, pending-count and
+    // failed-files would stay at their failed defaults after an outage.
+    meta: { banner: 'Could not load matches', retryKeys: matchesCluster },
   }, queryClient)
 }
 

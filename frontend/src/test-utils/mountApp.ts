@@ -132,6 +132,7 @@ function buildMock(overrides: MountOverrides = {}) {
     UnignoreScreenshot:      vi.fn(async () => undefined),
     ClearIgnoredScreenshots: vi.fn(async () => undefined),
     GetNewScreenshotCount: vi.fn(async () => overrides.newScreenshotCount ?? 0),
+    GetFailedFiles:        vi.fn(async () => []),
     GetDataLocation:     vi.fn(async () => ({
       base_dir: '/test/base',
       settings_path: '/test/base/settings.json',

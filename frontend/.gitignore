@@ -1,0 +1,3 @@
+# @hey-api/openapi-ts drops a timestamped crash log at the invocation cwd
+# when a generation run fails — diagnostic noise, never source.
+openapi-ts-error-*.log
