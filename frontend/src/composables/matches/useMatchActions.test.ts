@@ -14,6 +14,8 @@ const api = vi.hoisted(() => ({
   GetFailedFiles:        vi.fn(async () => []),
   SetMatchPin:           vi.fn(async () => undefined),
   SetMatchVisibility:    vi.fn(async () => undefined),
+  HardDeleteMatch:       vi.fn(async () => undefined),
+  MoveMatches:           vi.fn(async () => undefined),
 }))
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
@@ -50,5 +52,25 @@ describe('useMatchActions — post-mutation reload scope', () => {
     expect(api.SetMatchVisibility).toHaveBeenCalledTimes(3)
     expect(api.GetMatchResults).toHaveBeenCalledTimes(1)
     expect(api.GetNewScreenshotCount).not.toHaveBeenCalled()
+  })
+
+  // The server derives the pending count from files-on-disk minus DB rows,
+  // so deleting (or moving away) a match RAISES it — these two need the
+  // full cluster, unlike ordinary edits.
+  it('hard-delete refetches the whole cluster (the pending count changes)', async () => {
+    const { onHardDeleteMatch } = useMatchActions()
+    await onHardDeleteMatch('match:x')
+
+    expect(api.HardDeleteMatch).toHaveBeenCalledWith('match:x')
+    expect(api.GetMatchResults).toHaveBeenCalledTimes(1)
+    expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
+  })
+
+  it('move-to-profile refetches the whole cluster', async () => {
+    const { onMoveMatches } = useMatchActions()
+    await onMoveMatches(['k1'], 'alt')
+
+    expect(api.MoveMatches).toHaveBeenCalledWith(['k1'], 'alt')
+    expect(api.GetNewScreenshotCount).toHaveBeenCalledTimes(1)
   })
 })

@@ -189,7 +189,10 @@ pre-push:
       run: |
         set -e
         cd frontend && npm run gen:types && cd ..
-        if ! git diff --quiet frontend/src/client; then
+        # git status --porcelain, not git diff: a regeneration can emit a NEW
+        # file into the multi-file client tree, which diff (tracked-only)
+        # would silently miss.
+        if [ -n "$(git status --porcelain frontend/src/client)" ]; then
           echo "generated API client is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
           exit 1
         fi

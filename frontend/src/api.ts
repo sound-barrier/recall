@@ -538,10 +538,12 @@ export function RenameProfile(oldName: string, newName: string): Promise<Profile
 }
 
 // Delete a profile and wipe its directory tree. Cannot target the active
-// profile (409). The DELETE echoes nothing, so chase it with the
-// refreshed list for callers that render it.
-export function DeleteProfile(name: string): Promise<ProfilesResponse> {
-  return unwrap(sdk.deleteProfile({ path: { name } })).then(() => GetProfiles())
+// profile (409). The DELETE echoes nothing (204); the caller refreshes
+// the list via the profiles-query invalidation — chasing a GET here would
+// turn a transient read failure into a user-facing error for a delete
+// that succeeded.
+export function DeleteProfile(name: string): Promise<void> {
+  return unwrapVoid(sdk.deleteProfile({ path: { name } }))
 }
 
 // ─── Database health / maintenance ─────────────────────────────────────────

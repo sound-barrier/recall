@@ -32,7 +32,9 @@ export function useAppBoot() {
 
   onMounted(() => {
     matchesStore.restoreLastParsedAt()
-    void matchesStore.load()
+    // No matchesStore.load() here: the store-setup query observers ARE the
+    // boot fetch — a refetch on top would cancel their in-flight requests
+    // and re-issue all three GETs (6 requests where 3 do).
     void matchesStore.loadIgnored()
     fetchStartupError()
       .then(msg => { if (msg) appStore.setStartupError(msg) })

@@ -1,4 +1,4 @@
-import { computed, markRaw, ref, watch } from 'vue'
+import { computed, markRaw, ref, shallowRef, type Ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
@@ -18,7 +18,7 @@ import {
 } from '@/queries/matches'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
-import type { SessionSummary } from '@/match/match-momentum-helpers'
+import { currentSessionSummary, type SessionSummary } from '@/match/match-momentum-helpers'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
@@ -140,9 +140,6 @@ export const useMatchesStore = defineStore('matches', () => {
     if (recordsPulseTimer) clearTimeout(recordsPulseTimer)
     recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
   }
-  watch(() => realRecords.value.length, (after, before) => {
-    if (before > 0 && after > before) flashRecordsPulse()
-  })
 
   // ── Onboarding tour — demo-records overlay ────────────────────────
   // Seeded from the same localStorage flag the tour reads so the welcome
@@ -169,12 +166,19 @@ export const useMatchesStore = defineStore('matches', () => {
 
   // ── Reload seam ───────────────────────────────────────────────────
   // load() keeps its name as the awaitable cluster refetch — the callers
-  // (parse-complete, undo-hide, clear-DB, manual-match create) rely on
-  // "reload finished" ordering. Error/banner handling moved to the query
-  // layer: the matches query carries the banner meta, the siblings are
-  // silent keep-last, and per-subsystem isolation falls out of one query
-  // per endpoint.
-  const load = refetchMatchesCluster
+  // (parse-complete, clear-DB, manual-match create) rely on "reload
+  // finished" ordering. Error/banner handling moved to the query layer:
+  // the matches query carries the banner meta, the siblings are silent
+  // keep-last, and per-subsystem isolation falls out of one query per
+  // endpoint. The pulse fires here (once per completed reload that grew
+  // the set — the watcher-parse "new matches arrived" signal), never on
+  // the per-file match-updated upserts.
+  async function load() {
+    const before = (queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []).length
+    await refetchMatchesCluster()
+    const after = (queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []).length
+    if (before > 0 && after > before) flashRecordsPulse()
+  }
 
 
   // ── Parse run controls ────────────────────────────────────────────
@@ -309,17 +313,20 @@ export const useMatchesStore = defineStore('matches', () => {
   // ── Dossier (KPIs + breakdowns over the narrowed set) ─────────────
   // One aggregation over narrowedRecords, exposed to dashboard widgets via
   // provideDossier(matchesStore.dossier) in MatchesView. weekStart comes from
-  // the settings store (lifecycle-safe there); useOWData is a session
-  // singleton with no lifecycle hooks. The settings-store import is a cycle
-  // (settings → matches for refreshNewCount) but resolves fine: both
-  // cross-calls run inside store setups/callbacks, after the modules load.
-  // storeToRefs keeps weekStart a Ref (the dossier wants Readonly<Ref>);
-  // reading settingsStore.weekStart directly would unwrap it to a value.
+  // the settings store (lifecycle-safe there). ONE useOWData() call feeds
+  // all four dossiers — each call registers its own reference-data query
+  // observer, so repeating it would create four for no benefit. The
+  // settings-store import is a cycle (settings → matches for
+  // refreshNewCount) but resolves fine: both cross-calls run inside store
+  // setups/callbacks, after the modules load. storeToRefs keeps weekStart
+  // a Ref (the dossier wants Readonly<Ref>); reading
+  // settingsStore.weekStart directly would unwrap it to a value.
   const { weekStart } = storeToRefs(useSettingsStore())
+  const { heroRole } = useOWData()
   const dossier = useMatchesDossier(
     matchesNarrow.narrowedRecords,
     matchesNarrow.leaverHandling,
-    useOWData().heroRole,
+    heroRole,
     weekStart,
   )
   // A second aggregation over the UNFILTERED records (ignores the narrow), so
@@ -329,7 +336,7 @@ export const useMatchesStore = defineStore('matches', () => {
   const fullDossier = useMatchesDossier(
     records,
     matchesNarrow.leaverHandling,
-    useOWData().heroRole,
+    heroRole,
     weekStart,
   )
   // Per-band "narrow minus self" aggregations: each reads everything EXCEPT its
@@ -339,13 +346,13 @@ export const useMatchesStore = defineStore('matches', () => {
   const geographyDossier = useMatchesDossier(
     matchesNarrow.narrowedExceptMapsRoles,
     matchesNarrow.leaverHandling,
-    useOWData().heroRole,
+    heroRole,
     weekStart,
   )
   const heroModeDossier = useMatchesDossier(
     matchesNarrow.narrowedExceptHeroesGameModes,
     matchesNarrow.leaverHandling,
-    useOWData().heroRole,
+    heroRole,
     weekStart,
   )
 
@@ -358,17 +365,52 @@ export const useMatchesStore = defineStore('matches', () => {
     setTimeout(() => { if (parseAnnouncement.value === msg) parseAnnouncement.value = '' }, 2000)
   }
 
+  // ── Parse-run terminal transitions ────────────────────────────────
+  // The store owns the state, so it owns the transitions; useServerEvents
+  // merely wires the parse-complete / parse-cancelled events to these.
+  async function finishParseRun(outcome: 'complete' | 'cancelled') {
+    await load()
+    // Read the fresh records straight from the cache — the observer's
+    // reactive ref updates a notification tick later than the refetch
+    // resolves, and the session summary must see the new batch.
+    const fresh = queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []
+    if (outcome === 'complete') {
+      const session = currentSessionSummary(fresh)
+      sessionToast.value = session ? { ...session, token: Date.now() } : null
+      lastParsedAt.value = Date.now()
+      try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
+    }
+    parseBusy.value = false
+    parseProgress.value = null
+    cancellingParse.value = false
+    if (outcome === 'complete') {
+      const n = fresh.length
+      announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
+    } else {
+      announceParse('Parse cancelled.')
+    }
+  }
+
   // ── Parse-stream recovery surface ─────────────────────────────────
   // The recovery state machine and the event-stream subscriptions live in
   // useServerEvents (App shell — they register component lifecycle hooks);
   // the store carries their consumer-facing surface so IngestView keeps
-  // reading one place.
-  const parseConnectionState = ref<ParseConnectionState>('connected')
-  let parseRefreshHandler: () => void = () => {}
-  function wireParseRecovery(bridge: { refresh: () => void }) {
-    parseRefreshHandler = bridge.refresh
+  // reading one place. The bridge is a reactive holder (not a mutable
+  // callback slot), so the computed chains straight to the recovery
+  // state with no scope-bound sync effect; before App wires it the state
+  // reads 'connected' and refresh is a no-op — same as Wails mode, where
+  // the recovery machinery never fires.
+  const parseRecoveryBridge = shallowRef<{
+    connectionState: Ref<ParseConnectionState>
+    refresh: () => void
+  } | null>(null)
+  const parseConnectionState = computed<ParseConnectionState>(
+    () => parseRecoveryBridge.value?.connectionState.value ?? 'connected',
+  )
+  function wireParseRecovery(bridge: { connectionState: Ref<ParseConnectionState>; refresh: () => void }) {
+    parseRecoveryBridge.value = markRaw(bridge)
   }
-  function refreshParse() { parseRefreshHandler() }
+  function refreshParse() { parseRecoveryBridge.value?.refresh() }
 
   // ── Clear-DB + backup/restore (data ops, surfaced in Settings) ────
   // After a wipe/import, reload records + the ignored list. pendingClearOpts
@@ -465,6 +507,7 @@ export const useMatchesStore = defineStore('matches', () => {
     confirmUnsupportedParse,
     parseAnnouncement,
     announceParse,
+    finishParseRun,
     parseConnectionState,
     refreshParse,
     wireParseRecovery,

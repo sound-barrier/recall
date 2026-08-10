@@ -75,12 +75,16 @@ export function useMatchActions() {
   const appStore = useAppStore()
   const uiStore = useUiStore()
   const records = computed(() => matchesStore.records)
-  // A match edit can't change the pending-screenshot count or the
-  // OCR-failure ledger, so the post-mutation reload refetches ONLY the
-  // records — one GET instead of the old full-cluster three. The two
-  // handlers whose writes DO reach wider state (ignore-screenshot,
-  // ambiguous-resolve) use their own scopes below.
+  // An ordinary match edit (annotation, status, pin, hide) can't change
+  // the pending-screenshot count or the OCR-failure ledger, so the
+  // post-mutation reload refetches ONLY the records — one GET instead of
+  // the old full-cluster three. Handlers whose writes DO reach wider
+  // state use the cluster: hard-delete and move free a match's rows, so
+  // its screenshots count as pending again (the server derives the count
+  // from files-on-disk minus DB rows); ignore-screenshot touches the
+  // suppress-list, the count, and the failure ledger.
   const reload = () => queryClient.refetchQueries({ queryKey: qk.matches })
+  const reloadCluster = () => matchesStore.load()
   const reloadIgnored = () => matchesStore.loadIgnored()
   const setError = (message: string) => appStore.setError(message)
   const onError = (raw: string) => appStore.setErrorFromRaw(raw)
@@ -156,7 +160,7 @@ export function useMatchActions() {
   async function onHardDeleteMatch(matchKey: string) {
     try {
       await HardDeleteMatch(matchKey)
-      await reload()
+      await reloadCluster()
     } catch (e) {
       onError(String(e))
     }
@@ -178,7 +182,7 @@ export function useMatchActions() {
     if (matchKeys.length === 0) return
     try {
       await Promise.all(matchKeys.map((k) => HardDeleteMatch(k)))
-      await reload()
+      await reloadCluster()
     } catch (e) {
       onError(String(e))
     }
@@ -190,7 +194,7 @@ export function useMatchActions() {
     if (matchKeys.length === 0) return
     try {
       await MoveMatches(matchKeys, targetProfile)
-      await reload()
+      await reloadCluster()
     } catch (e) {
       onError(String(e))
     }
@@ -286,7 +290,7 @@ export function useMatchActions() {
   // Suppressing a file DOES reach the wider cluster (it leaves the
   // pending count and the failure ledger), so this one reloads all three.
   async function onIgnoreScreenshot(filename: string) {
-    try { await IgnoreScreenshot(filename); await reloadIgnored(); await matchesStore.load() } catch (e) { onError(String(e)) }
+    try { await IgnoreScreenshot(filename); await reloadIgnored(); await reloadCluster() } catch (e) { onError(String(e)) }
   }
 
   return {
