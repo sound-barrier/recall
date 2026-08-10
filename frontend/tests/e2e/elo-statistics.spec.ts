@@ -228,9 +228,12 @@ test.describe('Elo Calculator — phase 2 (simulator + skill curve)', () => {
     const fig = await band.locator('figure.elo-chart').boundingBox()
     const share = await page.locator('[data-elo-skill-share]').first().boundingBox()
     if (!fig || !share) throw new Error('skill band geometry unavailable')
-    // 1px slack for subpixel layout rounding; the bug this guards against
-    // was a 6px+ intrusion into the chart frame.
-    expect(share.y).toBeGreaterThanOrEqual(fig.y + fig.height - 1)
+    // 3px slack for subpixel layout rounding: the old 1px slack flaked
+    // twice under load (chromium reported the caption ~1.1px and ~0.96px
+    // above the line — stacked-margin rounding, not a real intrusion),
+    // and the bug this guards against was a 6px+ intrusion into the
+    // chart frame, so 3px still catches it with room to spare.
+    expect(share.y).toBeGreaterThanOrEqual(fig.y + fig.height - 3)
   })
 })
 

@@ -187,6 +187,12 @@ changed bullets carry an inline re-evaluation note:
   2026-07-06: `pkg/applog` left this bullet — the panic-recovery / on-disk-log
   work added public-surface tests of `RecoverPanic` / `AttachFile` / `Init`,
   taking it to ~85%.)
+- **Total-JS bundle headroom is ~550B (2026-08-10)** — the file-size wave's
+  module extractions spent ~645B of indirection against the cap in
+  `scripts/ci/check-bundle-size.sh` (313442/319000 initial, 1592448/1593000
+  total after the wave). The next non-trivial JS addition will trip the
+  gate; bump the budget deliberately with a history row when it does —
+  don't shave a feature to dodge a number the wave spent on structure.
 - **External CI flake** — the WebKit `match-detail-panel` e2e timeout is
   environmental (WebKit on the ubuntu runner; the spec itself is a
   deterministic regression guard, and `@playwright/test` stays pinned at an
@@ -233,6 +239,19 @@ schema shape is final:
 
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
+
+## 11. tests/e2e sits outside every type-check program
+
+`tsconfig.json` includes `src/**` only, so `frontend/tests/e2e/*.spec.ts`
+is type-checked by nothing — not `vue-tsc`, not the type-aware ESLint
+program. The quality campaign found ~30 latent type errors there (one was
+a cast to a nonexistent `Mode['type']` field that had silently asserted
+nothing) and fixed only the files it touched. Options when paying:
+a dedicated `tsconfig.e2e.json` + a `task typecheck-e2e` step folded into
+`task typecheck` and CI's test-unit job, or widening the main program if
+Playwright's types don't collide with the app's DOM lib settings.
+**Effort:** S–M. **Risk:** low — additive gate; the errors are in specs,
+not shipped code.
 
 ## Out of scope — deliberately not building
 
