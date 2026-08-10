@@ -109,37 +109,11 @@ func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandid
 func (f *Fake) DemoteMatchToAmbiguous(matchKey, ambiguousMatchKey, filename string, cands []db.AmbiguousCandidate) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	rewritten := 0
-	for i, r := range f.Summaries {
-		if r.MatchKey == matchKey {
-			f.Summaries[i].MatchKey = ambiguousMatchKey
-			rewritten++
-		}
-	}
-	for i, r := range f.Teams {
-		if r.MatchKey == matchKey {
-			f.Teams[i].MatchKey = ambiguousMatchKey
-			rewritten++
-		}
-	}
-	for i, r := range f.Personals {
-		if r.MatchKey == matchKey {
-			f.Personals[i].MatchKey = ambiguousMatchKey
-			rewritten++
-		}
-	}
-	for i, r := range f.Ranks {
-		if r.MatchKey == matchKey {
-			f.Ranks[i].MatchKey = ambiguousMatchKey
-			rewritten++
-		}
-	}
-	for i, r := range f.Unknowns {
-		if r.MatchKey == matchKey {
-			f.Unknowns[i].MatchKey = ambiguousMatchKey
-			rewritten++
-		}
-	}
+	rewritten := rekeyRows(f.Summaries, matchKey, ambiguousMatchKey) +
+		rekeyRows(f.Teams, matchKey, ambiguousMatchKey) +
+		rekeyRows(f.Personals, matchKey, ambiguousMatchKey) +
+		rekeyRows(f.Ranks, matchKey, ambiguousMatchKey) +
+		rekeyRows(f.Unknowns, matchKey, ambiguousMatchKey)
 	if rewritten == 0 {
 		return false, nil
 	}
@@ -160,30 +134,10 @@ func (f *Fake) ResolveAmbiguous(filename, ambiguousMatchKey, newMatchKey string)
 		return false, nil
 	}
 	delete(f.Ambiguous, filename)
-	for i, r := range f.Summaries {
-		if r.MatchKey == ambiguousMatchKey {
-			f.Summaries[i].MatchKey = newMatchKey
-		}
-	}
-	for i, r := range f.Teams {
-		if r.MatchKey == ambiguousMatchKey {
-			f.Teams[i].MatchKey = newMatchKey
-		}
-	}
-	for i, r := range f.Personals {
-		if r.MatchKey == ambiguousMatchKey {
-			f.Personals[i].MatchKey = newMatchKey
-		}
-	}
-	for i, r := range f.Ranks {
-		if r.MatchKey == ambiguousMatchKey {
-			f.Ranks[i].MatchKey = newMatchKey
-		}
-	}
-	for i, r := range f.Unknowns {
-		if r.MatchKey == ambiguousMatchKey {
-			f.Unknowns[i].MatchKey = newMatchKey
-		}
-	}
+	rekeyRows(f.Summaries, ambiguousMatchKey, newMatchKey)
+	rekeyRows(f.Teams, ambiguousMatchKey, newMatchKey)
+	rekeyRows(f.Personals, ambiguousMatchKey, newMatchKey)
+	rekeyRows(f.Ranks, ambiguousMatchKey, newMatchKey)
+	rekeyRows(f.Unknowns, ambiguousMatchKey, newMatchKey)
 	return true, nil
 }

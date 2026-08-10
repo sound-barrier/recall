@@ -127,31 +127,11 @@ func (f *Fake) LookupMatchKeysForFilename(filename string) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	seen := map[string]bool{}
-	for _, r := range f.Summaries {
-		if r.Filename == filename {
-			seen[r.MatchKey] = true
-		}
-	}
-	for _, r := range f.Teams {
-		if r.Filename == filename {
-			seen[r.MatchKey] = true
-		}
-	}
-	for _, r := range f.Personals {
-		if r.Filename == filename {
-			seen[r.MatchKey] = true
-		}
-	}
-	for _, r := range f.Ranks {
-		if r.Filename == filename {
-			seen[r.MatchKey] = true
-		}
-	}
-	for _, r := range f.Unknowns {
-		if r.Filename == filename {
-			seen[r.MatchKey] = true
-		}
-	}
+	keysForFilename(f.Summaries, filename, seen)
+	keysForFilename(f.Teams, filename, seen)
+	keysForFilename(f.Personals, filename, seen)
+	keysForFilename(f.Ranks, filename, seen)
+	keysForFilename(f.Unknowns, filename, seen)
 	out := make([]string, 0, len(seen))
 	for k := range seen {
 		out = append(out, k)
@@ -379,31 +359,11 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	// filename, collected before the slices are filtered) and every
 	// candidate row referencing the key.
 	doomed := map[string]bool{}
-	for _, r := range f.Summaries {
-		if r.MatchKey == matchKey {
-			doomed[r.Filename] = true
-		}
-	}
-	for _, r := range f.Teams {
-		if r.MatchKey == matchKey {
-			doomed[r.Filename] = true
-		}
-	}
-	for _, r := range f.Personals {
-		if r.MatchKey == matchKey {
-			doomed[r.Filename] = true
-		}
-	}
-	for _, r := range f.Ranks {
-		if r.MatchKey == matchKey {
-			doomed[r.Filename] = true
-		}
-	}
-	for _, r := range f.Unknowns {
-		if r.MatchKey == matchKey {
-			doomed[r.Filename] = true
-		}
-	}
+	collectFilenamesByKey(f.Summaries, matchKey, doomed)
+	collectFilenamesByKey(f.Teams, matchKey, doomed)
+	collectFilenamesByKey(f.Personals, matchKey, doomed)
+	collectFilenamesByKey(f.Ranks, matchKey, doomed)
+	collectFilenamesByKey(f.Unknowns, matchKey, doomed)
 	for fn := range doomed {
 		delete(f.Ambiguous, fn)
 	}
@@ -416,41 +376,11 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 		}
 		f.Ambiguous[fn] = kept
 	}
-	sums := f.Summaries[:0]
-	for _, r := range f.Summaries {
-		if r.MatchKey != matchKey {
-			sums = append(sums, r)
-		}
-	}
-	f.Summaries = sums
-	sbs := f.Teams[:0]
-	for _, r := range f.Teams {
-		if r.MatchKey != matchKey {
-			sbs = append(sbs, r)
-		}
-	}
-	f.Teams = sbs
-	pers := f.Personals[:0]
-	for _, r := range f.Personals {
-		if r.MatchKey != matchKey {
-			pers = append(pers, r)
-		}
-	}
-	f.Personals = pers
-	rnks := f.Ranks[:0]
-	for _, r := range f.Ranks {
-		if r.MatchKey != matchKey {
-			rnks = append(rnks, r)
-		}
-	}
-	f.Ranks = rnks
-	unks := f.Unknowns[:0]
-	for _, r := range f.Unknowns {
-		if r.MatchKey != matchKey {
-			unks = append(unks, r)
-		}
-	}
-	f.Unknowns = unks
+	f.Summaries = dropByMatchKey(f.Summaries, matchKey)
+	f.Teams = dropByMatchKey(f.Teams, matchKey)
+	f.Personals = dropByMatchKey(f.Personals, matchKey)
+	f.Ranks = dropByMatchKey(f.Ranks, matchKey)
+	f.Unknowns = dropByMatchKey(f.Unknowns, matchKey)
 	delete(f.Hidden, matchKey)
 	delete(f.Annotations, matchKey)
 	delete(f.Reviews, matchKey)
@@ -464,33 +394,33 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 // Personals slices and applies the same hero/map-promotion logic
 // the SQL store does. Used by App-level tests that exercise the
 // boot re-aggregator without needing a real SQLite.
+// promoteRaw canonicalizes an empty field from its raw OCR capture,
+// returning 1 when the promotion happened (the SQL store's
+// hero/map-promotion contract).
+func promoteRaw(field *string, raw string, canon func(string) string) int {
+	if *field != "" || raw == "" {
+		return 0
+	}
+	c := canon(raw)
+	if c == "" {
+		return 0
+	}
+	*field = c
+	return 1
+}
+
 func (f *Fake) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn func(rawMap string) string) (int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	promoted := 0
 	for i := range f.Summaries {
-		if f.Summaries[i].Hero == "" && f.Summaries[i].HeroRaw != "" {
-			if c := heroFn(f.Summaries[i].HeroRaw); c != "" {
-				f.Summaries[i].Hero = c
-				promoted++
-			}
-		}
-		if f.Summaries[i].Map == "" && f.Summaries[i].MapRaw != "" {
-			if c := mapFn(f.Summaries[i].MapRaw); c != "" {
-				f.Summaries[i].Map = c
-				promoted++
-			}
-		}
+		promoted += promoteRaw(&f.Summaries[i].Hero, f.Summaries[i].HeroRaw, heroFn)
+		promoted += promoteRaw(&f.Summaries[i].Map, f.Summaries[i].MapRaw, mapFn)
 	}
 	// Teams rows carry no hero/map — the in-game scoreboard is
 	// combat-stats-only, so there's nothing to promote.
 	for i := range f.Personals {
-		if f.Personals[i].Hero == "" && f.Personals[i].HeroRaw != "" {
-			if c := heroFn(f.Personals[i].HeroRaw); c != "" {
-				f.Personals[i].Hero = c
-				promoted++
-			}
-		}
+		promoted += promoteRaw(&f.Personals[i].Hero, f.Personals[i].HeroRaw, heroFn)
 	}
 	return promoted, nil
 }
