@@ -78,7 +78,7 @@ changed bullets carry an inline re-evaluation note:
   currently both the newest release AND the newest one clearing the 7-day
   `.npmrc` cooldown, so there is nothing to bump to yet.
 
-  **Measured, not assumed:** a one-off `npx @typescript/native-preview
+  **Measured, not assumed:** a one-off `npx -p @typescript/native-preview
   tsgo --noEmit` (the actual TS 7 checker) reports **17 errors, all in
   `.ts` test files, all one root cause** — tsgo resolves `.vue` imports
   but not their prop types, so every `mount(Component, { props })` fails
@@ -92,6 +92,11 @@ changed bullets carry an inline re-evaluation note:
   import" was wrong: imports resolve fine, prop TYPES do not. Adding
   `@typescript/native-preview` as a devDependency needs approval and
   buys nothing until that lands.
+
+  The `-p` in that command is load-bearing: the package's only bin is
+  named `tsgo`, so `npx @typescript/native-preview tsgo …` runs that bin
+  and passes the leftover word `tsgo` as an INPUT FILE — which suppresses
+  tsconfig.json and reports `TS5112` having checked nothing.
 
 - **`useMatchesDossierQueries.ts` (~748 lines)** exceeds the 500-line soft cap,
   but it is one cohesive composable — a single `useDossierQueries` factory (the
