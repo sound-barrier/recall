@@ -184,14 +184,7 @@ func (a *App) RenameProfile(old, newName string) error {
 		// Tear down everything that holds the active profile dir open
 		// — the directory rename can't proceed while SQLite has the
 		// .db file mapped.
-		a.saveSettingsBestEffort()
-		a.stopWatching()
-		if a.store != nil {
-			if closer, ok := a.store.(interface{ Close() error }); ok {
-				_ = closer.Close()
-			}
-			a.store = nil
-		}
+		a.closeActiveStore()
 	}
 
 	if err := a.profiles.Rename(old, newName); err != nil {
@@ -265,12 +258,38 @@ func (a *App) activateAndReload(name string) error {
 	}
 	defer a.endParse()
 
-	// Persist any in-memory settings deltas the user staged but hasn't
-	// triggered a save for. The toggle setters all save inline, so
-	// this is paranoia — but cheap paranoia.
-	a.saveSettingsBestEffort()
+	a.closeActiveStore()
 
-	// Tear down the background services tied to the OLD profile.
+	if err := a.profiles.Activate(name); err != nil {
+		return err
+	}
+
+	resolved := a.reloadProfileSettings()
+
+	dbDir := filepath.Join(a.dataDir(), "db")
+	if err := os.MkdirAll(dbDir, 0o700); err != nil {
+		return fmt.Errorf("profiles: ensure db dir for %q: %w", name, err)
+	}
+	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	if err != nil {
+		applog.Subsystem("profiles").Error("open db", "name", applog.Scrub(name), "err", err)
+		return fmt.Errorf("profiles: open db for %q: %w", name, err)
+	}
+	a.store = s
+
+	if resolved.WatchEnabled {
+		a.startWatching()
+	}
+	return nil
+}
+
+// closeActiveStore tears down everything tied to the OLD profile before its
+// on-disk directory changes underneath the App: persist any in-memory
+// settings deltas the user staged but hasn't triggered a save for (the
+// toggle setters all save inline, so this is paranoia — but cheap paranoia),
+// stop the watcher, and close + clear the store.
+func (a *App) closeActiveStore() {
+	a.saveSettingsBestEffort()
 	a.stopWatching()
 	if a.store != nil {
 		if closer, ok := a.store.(interface{ Close() error }); ok {
@@ -278,14 +297,13 @@ func (a *App) activateAndReload(name string) error {
 		}
 		a.store = nil
 	}
+}
 
-	if err := a.profiles.Activate(name); err != nil {
-		return err
-	}
-
-	// Re-init at the new dir — same resolve-under-lock shape as
-	// resolveSettings so a concurrent settings read never observes the
-	// half-swapped state.
+// reloadProfileSettings re-reads settings at the newly active profile's dir —
+// same resolve-under-lock shape as resolveSettings so a concurrent settings
+// read never observes the half-swapped state — heals a stale screenshots dir,
+// defaults the tesseract path, and re-arms tesseract + the first-run probe.
+func (a *App) reloadProfileSettings() Settings {
 	changed := false
 	resolved := a.mutateSettings(func(s *Settings) {
 		*s = a.loadSettings()
@@ -304,20 +322,5 @@ func (a *App) activateAndReload(name string) error {
 	a.setTessStatus(checkTesseract(resolved.TesseractPath))
 	parser.SetTesseractPath(resolved.TesseractPath)
 	a.autoProbeOnFirstRun()
-
-	dbDir := filepath.Join(a.dataDir(), "db")
-	if err := os.MkdirAll(dbDir, 0o700); err != nil {
-		return fmt.Errorf("profiles: ensure db dir for %q: %w", name, err)
-	}
-	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
-	if err != nil {
-		applog.Subsystem("profiles").Error("open db", "name", applog.Scrub(name), "err", err)
-		return fmt.Errorf("profiles: open db for %q: %w", name, err)
-	}
-	a.store = s
-
-	if resolved.WatchEnabled {
-		a.startWatching()
-	}
-	return nil
+	return resolved
 }

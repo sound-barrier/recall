@@ -223,24 +223,35 @@ func TestTourStory_SlowClimbWithDrawdown(t *testing.T) {
 		t.Errorf("dps season end = %.2f (ladderScore); want [15, 18] ≈ Plat 5..Plat 2", last)
 	}
 	// A real slump: some card sits ≥ 0.6 divisions below the running peak.
+	if maxDrawdown := maxDrawdownOf(st.dpsCards, first); maxDrawdown < 0.6 {
+		t.Errorf("max drawdown = %.2f divisions; want ≥ 0.6 (a visible slump)", maxDrawdown)
+	}
+	// Overall comp WR: a grinder's record, not a smurf's.
+	wr, _ := winrate(compResults(st))
+	if wr < 50.5 || wr > 55 {
+		t.Errorf("overall comp win rate = %.1f%%; want [50.5, 55]", wr)
+	}
+}
+
+// maxDrawdownOf returns the deepest fall from the running peak across the
+// chronological cards.
+func maxDrawdownOf(cards []fixtures.LadderPos, first float64) float64 {
 	runningMax, maxDrawdown := first, 0.0
-	for _, c := range st.dpsCards {
+	for _, c := range cards {
 		score := fixtures.LadderScore(c)
 		runningMax = max(runningMax, score)
 		maxDrawdown = max(maxDrawdown, runningMax-score)
 	}
-	if maxDrawdown < 0.6 {
-		t.Errorf("max drawdown = %.2f divisions; want ≥ 0.6 (a visible slump)", maxDrawdown)
-	}
-	// Overall comp WR: a grinder's record, not a smurf's.
+	return maxDrawdown
+}
+
+// compResults collects the competitive summaries' results in order.
+func compResults(st tourStory) []string {
 	var results []string
 	for _, i := range st.comp {
 		results = append(results, st.fx.Summaries[i].Result)
 	}
-	wr, _ := winrate(results)
-	if wr < 50.5 || wr > 55 {
-		t.Errorf("overall comp win rate = %.1f%%; want [50.5, 55]", wr)
-	}
+	return results
 }
 
 func TestTourStory_StreaksExist(t *testing.T) {
@@ -275,26 +286,7 @@ func TestTourStory_StreaksExist(t *testing.T) {
 
 func TestTourStory_BreaksAndRustyReturns(t *testing.T) {
 	st := buildTourStory(t)
-	// Replay the model's own player state over the competitive sequence so
-	// the measurement flags EXACTLY the games the model played rusty.
-	ps := &fixtures.PlayerState{}
-	gaps := 0
-	var rusty, rest []string
-	for _, i := range st.comp {
-		s := st.fx.Summaries[i]
-		if ps.LastDay() != "" && s.Date != ps.LastDay() && fixtures.DaysBetween(ps.LastDay(), s.Date) >= fixtures.RustGapDays {
-			gaps++
-		}
-		pen := ps.Observe(s.Date)
-		// Strong-rust games only (first half of the fade), tilt excluded so
-		// the read isn't contaminated.
-		if ps.DayLossRun() < fixtures.TiltRunStart && pen > fixtures.RustMaxPts/2 {
-			rusty = append(rusty, s.Result)
-		} else if pen == 0 {
-			rest = append(rest, s.Result)
-		}
-		ps.Record(s.Result)
-	}
+	gaps, rusty, rest := replayRustModel(st)
 	if gaps < 1 {
 		t.Fatalf("season has no %d+ day break — vacations should be carved into the calendar", fixtures.RustGapDays)
 	}
@@ -306,6 +298,29 @@ func TestTourStory_BreaksAndRustyReturns(t *testing.T) {
 	if restWR-rustyWR < 3 {
 		t.Errorf("WR in the first games back = %.1f%% vs %.1f%% otherwise; rust should cost ≥ 3 pts", rustyWR, restWR)
 	}
+}
+
+// replayRustModel replays the model's own player state over the competitive
+// sequence so the measurement flags EXACTLY the games the model played
+// rusty. Returns the RustGapDays+ break count plus the results of
+// strong-rust games (first half of the fade, tilt excluded so the read
+// isn't contaminated) and fully-rested games.
+func replayRustModel(st tourStory) (gaps int, rusty, rest []string) {
+	ps := &fixtures.PlayerState{}
+	for _, i := range st.comp {
+		s := st.fx.Summaries[i]
+		if ps.LastDay() != "" && s.Date != ps.LastDay() && fixtures.DaysBetween(ps.LastDay(), s.Date) >= fixtures.RustGapDays {
+			gaps++
+		}
+		pen := ps.Observe(s.Date)
+		if ps.DayLossRun() < fixtures.TiltRunStart && pen > fixtures.RustMaxPts/2 {
+			rusty = append(rusty, s.Result)
+		} else if pen == 0 {
+			rest = append(rest, s.Result)
+		}
+		ps.Record(s.Result)
+	}
+	return gaps, rusty, rest
 }
 
 func TestTourStory_TiltRunsExist(t *testing.T) {
@@ -343,8 +358,22 @@ func TestTourStory_MeanRevertsAroundSkillLine(t *testing.T) {
 	st := buildTourStory(t)
 	// Local maxima fall back, local minima recover: the position must cross
 	// its true-skill line repeatedly and overshoot in BOTH directions.
-	crossings, lastSign := 0, 0
-	maxAbove, maxBelow := 0.0, 0.0
+	crossings, maxAbove, maxBelow := skillLineCrossings(st)
+	if crossings < 3 {
+		t.Errorf("position crossed the skill line %d times; want ≥ 3 (local minima AND maxima)", crossings)
+	}
+	if maxAbove < 0.5 {
+		t.Errorf("max overshoot above the line = %.2f divisions; want ≥ 0.5 (peaks that fall back)", maxAbove)
+	}
+	if maxBelow < 0.5 {
+		t.Errorf("max dip below the line = %.2f divisions; want ≥ 0.5 (dips that recover)", maxBelow)
+	}
+}
+
+// skillLineCrossings walks each dps card's gap to the true-skill line,
+// returning the sign-crossing count and the deepest overshoot on each side.
+func skillLineCrossings(st tourStory) (crossings int, maxAbove, maxBelow float64) {
+	lastSign := 0
 	for i, c := range st.dpsCards {
 		gap := fixtures.LadderScore(c) - fixtures.TrueSkillAt("dps", st.dpsFracs[i])
 		maxAbove = max(maxAbove, gap)
@@ -362,13 +391,5 @@ func TestTourStory_MeanRevertsAroundSkillLine(t *testing.T) {
 			lastSign = sign
 		}
 	}
-	if crossings < 3 {
-		t.Errorf("position crossed the skill line %d times; want ≥ 3 (local minima AND maxima)", crossings)
-	}
-	if maxAbove < 0.5 {
-		t.Errorf("max overshoot above the line = %.2f divisions; want ≥ 0.5 (peaks that fall back)", maxAbove)
-	}
-	if maxBelow < 0.5 {
-		t.Errorf("max dip below the line = %.2f divisions; want ≥ 0.5 (dips that recover)", maxBelow)
-	}
+	return crossings, maxAbove, maxBelow
 }

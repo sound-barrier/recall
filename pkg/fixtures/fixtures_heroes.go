@@ -89,30 +89,34 @@ func newPlayerProfile(rng *rand.Rand, style playStyle) playerProfile {
 	case styleOneTrick:
 		p.favoriteHero = mainPool[rng.Intn(len(mainPool))]
 	case styleFlex:
-		// 2-3 main heroes per role (6-9 total) — flex players carry
-		// preferences within each role, not "anybody, anywhere."
-		for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
-			perRole := 2 + rng.Intn(2) // 2 or 3
-			perm := rng.Perm(len(pool))
-			for i := 0; i < perRole && i < len(pool); i++ {
-				p.flexHeroes = append(p.flexHeroes, pool[perm[i]])
-			}
-		}
-		// off-mains = pool heroes the player didn't pick. Drives the
-		// 10% experiment path so off-mains get the occasional touch
-		// (and the per-seed-coverage pass has something realistic
-		// to lean on when an off-main never came up naturally).
-		for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
-			for _, h := range pool {
-				if !containsHero(p.flexHeroes, h) {
-					p.offMains = append(p.offMains, h)
-				}
-			}
-		}
+		p.fillFlexPools(rng)
 	case styleOneRole:
 		// No extra state — the main-pool seam already drives picks.
 	}
 	return p
+}
+
+// fillFlexPools stocks a flex player's hero pools: 2-3 main heroes per role
+// (6-9 total) — flex players carry preferences within each role, not
+// "anybody, anywhere" — plus the off-main remainder. off-mains = pool heroes
+// the player didn't pick. Drives the 10% experiment path so off-mains get the
+// occasional touch (and the per-seed-coverage pass has something realistic
+// to lean on when an off-main never came up naturally).
+func (p *playerProfile) fillFlexPools(rng *rand.Rand) {
+	for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
+		perRole := 2 + rng.Intn(2) // 2 or 3
+		perm := rng.Perm(len(pool))
+		for i := 0; i < perRole && i < len(pool); i++ {
+			p.flexHeroes = append(p.flexHeroes, pool[perm[i]])
+		}
+	}
+	for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
+		for _, h := range pool {
+			if !containsHero(p.flexHeroes, h) {
+				p.offMains = append(p.offMains, h)
+			}
+		}
+	}
 }
 
 // pickHero returns the role + hero for the next match. prevHero (the
@@ -198,17 +202,7 @@ func (p playerProfile) pickHeroOneRole(rng *rand.Rand, prevHero, playMode string
 // quickplay flips toward off-mains across all roles.
 func (p playerProfile) pickHeroFlex(rng *rand.Rand, prevHero, playMode string) (role, hero string) {
 	if playMode == "quickplay" {
-		// 10% streak, 60% off-mains, 30% flex mains. Flips the
-		// flex player's normal "stick to your pool" instinct.
-		if prevHero != "" && rng.Float64() < 0.10 {
-			return roleOfHero(prevHero), prevHero
-		}
-		if len(p.offMains) > 0 && rng.Float64() < 0.667 { // 0.60 / 0.90
-			h := p.offMains[rng.Intn(len(p.offMains))]
-			return roleOfHero(h), h
-		}
-		h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
-		return roleOfHero(h), h
+		return p.pickHeroFlexQuickplay(rng, prevHero)
 	}
 	// 25% streak on previous hero
 	if prevHero != "" && containsHero(p.flexHeroes, prevHero) && rng.Float64() < 0.25 {
@@ -227,6 +221,20 @@ func (p playerProfile) pickHeroFlex(rng *rand.Rand, prevHero, playMode string) (
 	return pickedRole, pool[rng.Intn(len(pool))]
 }
 
+// pickHeroFlexQuickplay: 10% streak, 60% off-mains, 30% flex mains. Flips
+// the flex player's normal "stick to your pool" instinct.
+func (p playerProfile) pickHeroFlexQuickplay(rng *rand.Rand, prevHero string) (role, hero string) {
+	if prevHero != "" && rng.Float64() < 0.10 {
+		return roleOfHero(prevHero), prevHero
+	}
+	if len(p.offMains) > 0 && rng.Float64() < 0.667 { // 0.60 / 0.90
+		h := p.offMains[rng.Intn(len(p.offMains))]
+		return roleOfHero(h), h
+	}
+	h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
+	return roleOfHero(h), h
+}
+
 // favoritesInRole is the flex player's mains within one role.
 func (p playerProfile) favoritesInRole(role string) []string {
 	var out []string
@@ -240,18 +248,7 @@ func (p playerProfile) favoritesInRole(role string) []string {
 
 // offMainsInRole is the role's pool minus the flex player's mains.
 func (p playerProfile) offMainsInRole(role string) []string {
-	favs := p.favoritesInRole(role)
-	favSet := make(map[string]bool, len(favs))
-	for _, h := range favs {
-		favSet[h] = true
-	}
-	var out []string
-	for _, h := range poolForRole(role) {
-		if !favSet[h] {
-			out = append(out, h)
-		}
-	}
-	return out
+	return heroesExcluding(poolForRole(role), p.favoritesInRole(role))
 }
 
 // isPoolHero reports whether a hero belongs to the player's own picks —

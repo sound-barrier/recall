@@ -1,6 +1,9 @@
 package db
 
-import "fmt"
+import (
+	"database/sql"
+	"fmt"
+)
 
 // Hidden matches — user-curated soft delete. Presence in the
 // hidden_matches table IS the hidden state; no boolean column
@@ -37,12 +40,38 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	// The ambiguity surface must forget the match too: rows where it was a
-	// resolution candidate (resolving a pending screenshot onto a deleted key
-	// would resurrect its identity), and — when matchKey IS the ambiguous
-	// sentinel — the candidate set of its source screenshots, keyed by
-	// filename. The filename lookup reads the parent rows, so both deletes
-	// run before the parent wipe below.
+	if err := forgetAmbiguitySurface(tx, matchKey); err != nil {
+		return err
+	}
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE match_key = ?`, matchKey); err != nil {
+			return err
+		}
+	}
+	for _, q := range []string{
+		`DELETE FROM hidden_matches WHERE match_key = ?`,
+		`DELETE FROM match_annotations WHERE match_key = ?`,
+		`DELETE FROM match_reviews WHERE match_key = ?`,
+		`DELETE FROM user_match_data WHERE match_key = ?`, // children CASCADE
+		`DELETE FROM match_queue WHERE match_key = ?`,
+		`DELETE FROM match_play_mode WHERE match_key = ?`,
+		`DELETE FROM pinned_matches WHERE match_key = ?`,
+	} {
+		if _, err := tx.Exec(q, matchKey); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// forgetAmbiguitySurface makes the ambiguity surface forget the match: rows
+// where it was a resolution candidate (resolving a pending screenshot onto a
+// deleted key would resurrect its identity), and — when matchKey IS the
+// ambiguous sentinel — the candidate set of its source screenshots, keyed by
+// filename. The filename lookup reads the parent rows, so both deletes must
+// run before HardDeleteMatch's parent wipe.
+func forgetAmbiguitySurface(tx *sql.Tx, matchKey string) error {
 	if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE match_key = ?`, matchKey); err != nil {
 		return err
 	}
@@ -55,30 +84,7 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 			return err
 		}
 	}
-	for _, t := range parentTables {
-		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
-		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE match_key = ?`, matchKey); err != nil {
-			return err
-		}
-	}
-	if _, err := tx.Exec(`DELETE FROM hidden_matches WHERE match_key = ?`, matchKey); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`DELETE FROM match_annotations WHERE match_key = ?`, matchKey); err != nil {
-		return err
-	}
-	for _, q := range []string{
-		`DELETE FROM match_reviews WHERE match_key = ?`,
-		`DELETE FROM user_match_data WHERE match_key = ?`, // children CASCADE
-		`DELETE FROM match_queue WHERE match_key = ?`,
-		`DELETE FROM match_play_mode WHERE match_key = ?`,
-		`DELETE FROM pinned_matches WHERE match_key = ?`,
-	} {
-		if _, err := tx.Exec(q, matchKey); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *SQLStore) LoadHiddenKeys() (map[string]bool, error) {

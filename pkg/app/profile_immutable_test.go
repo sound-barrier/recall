@@ -15,18 +15,12 @@ import (
 func TestProfiles_Immutable_ManagerRoundTrip(t *testing.T) {
 	base := t.TempDir()
 	p, err := app.LoadProfiles(base)
-	if err != nil {
-		t.Fatalf("LoadProfiles: %v", err)
-	}
-	if err := p.Create("test"); err != nil {
-		t.Fatalf("Create: %v", err)
-	}
+	mustNoErr(t, err)
+	mustNoErr(t, p.Create("test"))
 	if p.IsImmutable("test") {
 		t.Fatal("a fresh profile should be mutable")
 	}
-	if err := p.SetImmutable("test"); err != nil {
-		t.Fatalf("SetImmutable: %v", err)
-	}
+	mustNoErr(t, p.SetImmutable("test"))
 	if !p.IsImmutable("test") {
 		t.Error("SetImmutable did not take effect")
 	}
@@ -36,22 +30,16 @@ func TestProfiles_Immutable_ManagerRoundTrip(t *testing.T) {
 
 	// Persists across a reload of the same base dir.
 	p2, err := app.LoadProfiles(base)
-	if err != nil {
-		t.Fatalf("reload: %v", err)
-	}
+	mustNoErr(t, err)
 	if !p2.IsImmutable("test") {
 		t.Error("immutability did not persist across reload")
 	}
 	// Rename carries the flag; delete clears it.
-	if err := p2.Rename("test", "sample"); err != nil {
-		t.Fatalf("Rename: %v", err)
-	}
+	mustNoErr(t, p2.Rename("test", "sample"))
 	if p2.IsImmutable("test") || !p2.IsImmutable("sample") {
 		t.Error("Rename should carry immutability to the new name")
 	}
-	if err := p2.Delete("sample"); err != nil {
-		t.Fatalf("Delete: %v", err)
-	}
+	mustNoErr(t, p2.Delete("sample"))
 	if p2.IsImmutable("sample") {
 		t.Error("Delete should clear immutability")
 	}

@@ -41,6 +41,18 @@ func (s *SQLStore) DeleteScreenshotSiblings(filename, keepType string) error {
 			return err
 		}
 	}
+	if err := deleteSiblingRows(tx, keep, filename); err != nil {
+		return err
+	}
+	if err := dropOrphanedCandidates(tx, oldKeys); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// deleteSiblingRows removes filename's rows from every screenshot table
+// (parents + the all_heroes registry) except keep's; children CASCADE.
+func deleteSiblingRows(tx *sql.Tx, keep, filename string) error {
 	for _, t := range append(append([]string{}, parentTables...), "all_heroes_screenshots") {
 		if t == keep {
 			continue
@@ -50,18 +62,25 @@ func (s *SQLStore) DeleteScreenshotSiblings(filename, keepType string) error {
 			return err
 		}
 	}
-	for key := range oldKeys {
+	return nil
+}
+
+// dropOrphanedCandidates deletes the ambiguous candidates of any key the
+// sibling wipe left without a single parent row.
+func dropOrphanedCandidates(tx *sql.Tx, keys map[string]bool) error {
+	for key := range keys {
 		orphaned, err := matchKeyHasNoRows(tx, key)
 		if err != nil {
 			return err
 		}
-		if orphaned {
-			if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE match_key = ?`, key); err != nil {
-				return err
-			}
+		if !orphaned {
+			continue
+		}
+		if _, err := tx.Exec(`DELETE FROM ambiguous_candidates WHERE match_key = ?`, key); err != nil {
+			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // collectMatchKeys adds the match keys of filename's rows in table to out.

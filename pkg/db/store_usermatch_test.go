@@ -10,11 +10,7 @@ import (
 // stay nil, an explicit 0 is a real edit (not "unset"), children attach to the
 // right hero, re-upsert replaces children wholesale, and delete clears it all.
 func TestSQLStore_UserMatchData_RoundTrip(t *testing.T) {
-	s, err := db.NewSQLStore(":memory:")
-	if err != nil {
-		t.Fatalf("NewSQLStore: %v", err)
-	}
-	defer func() { _ = s.Close() }()
+	s := openMemory(t)
 
 	const key = "match-2026-06-11T00-28-29"
 	mapName, dmg, result, rank, lvl, pct := "hollywood", 0, "victory", "platinum", 5, 51
@@ -33,18 +29,38 @@ func TestSQLStore_UserMatchData_RoundTrip(t *testing.T) {
 		SR:        []db.HeroSR{{Hero: "baptiste", SR: 2697, Change: 23}},
 		Modifiers: []string{"demotion protection"},
 	}
-	if err := s.UpsertUserMatchData(want); err != nil {
-		t.Fatalf("Upsert: %v", err)
-	}
+	mustNoErr(t, s.UpsertUserMatchData(want))
 
 	all, err := s.LoadAllUserMatchData()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	got, ok := all[key]
 	if !ok {
 		t.Fatalf("match_key not loaded back")
 	}
+	assertUserDataScalars(t, got)
+	assertUserDataChildren(t, got)
+
+	// Re-upsert with fewer children replaces them wholesale (no accumulation).
+	want.Modifiers = nil
+	want.Heroes = want.Heroes[:1]
+	mustNoErr(t, s.UpsertUserMatchData(want))
+	all, _ = s.LoadAllUserMatchData()
+	if got = all[key]; len(got.Heroes) != 1 || len(got.Modifiers) != 0 {
+		t.Errorf("re-upsert didn't replace children: heroes=%d mods=%d", len(got.Heroes), len(got.Modifiers))
+	}
+
+	// Delete clears the parent + cascades children.
+	mustNoErr(t, s.DeleteUserMatchData(key))
+	all, _ = s.LoadAllUserMatchData()
+	if _, ok := all[key]; ok {
+		t.Errorf("match still present after delete")
+	}
+}
+
+// assertUserDataScalars pins the loaded scalar overrides: set values persist,
+// unset (nil) values stay nil, and an explicit 0 is a real edit.
+func assertUserDataScalars(t *testing.T, got db.UserMatchData) {
+	t.Helper()
 	if got.Map == nil || *got.Map != "hollywood" {
 		t.Errorf("Map = %v, want hollywood", got.Map)
 	}
@@ -57,6 +73,11 @@ func TestSQLStore_UserMatchData_RoundTrip(t *testing.T) {
 	if got.Level == nil || *got.Level != 5 {
 		t.Errorf("Level = %v, want 5", got.Level)
 	}
+}
+
+// assertUserDataChildren pins the loaded child rows attaching to the right hero.
+func assertUserDataChildren(t *testing.T, got db.UserMatchData) {
+	t.Helper()
 	if len(got.Heroes) != 2 {
 		t.Fatalf("Heroes = %d, want 2", len(got.Heroes))
 	}
@@ -71,26 +92,6 @@ func TestSQLStore_UserMatchData_RoundTrip(t *testing.T) {
 	}
 	if len(got.Modifiers) != 1 || got.Modifiers[0] != "demotion protection" {
 		t.Errorf("Modifiers wrong: %v", got.Modifiers)
-	}
-
-	// Re-upsert with fewer children replaces them wholesale (no accumulation).
-	want.Modifiers = nil
-	want.Heroes = want.Heroes[:1]
-	if err := s.UpsertUserMatchData(want); err != nil {
-		t.Fatalf("re-Upsert: %v", err)
-	}
-	all, _ = s.LoadAllUserMatchData()
-	if got = all[key]; len(got.Heroes) != 1 || len(got.Modifiers) != 0 {
-		t.Errorf("re-upsert didn't replace children: heroes=%d mods=%d", len(got.Heroes), len(got.Modifiers))
-	}
-
-	// Delete clears the parent + cascades children.
-	if err := s.DeleteUserMatchData(key); err != nil {
-		t.Fatalf("Delete: %v", err)
-	}
-	all, _ = s.LoadAllUserMatchData()
-	if _, ok := all[key]; ok {
-		t.Errorf("match still present after delete")
 	}
 }
 

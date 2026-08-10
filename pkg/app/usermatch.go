@@ -112,35 +112,8 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.Record, err
 	if err := a.store.UpsertUserMatchData(data); err != nil {
 		return match.Record{}, err
 	}
-	// Both aux rows are skipped when omitted — a quick-add knows the map and
-	// the outcome, not how the game was queued, and writing "" would claim it
-	// did. The detail-panel choosers can set them later.
-	if input.PlayMode != "" {
-		if err := a.store.SetMatchPlayMode(key, input.PlayMode); err != nil {
-			return match.Record{}, err
-		}
-	}
-	if input.QueueType != "" {
-		if err := a.store.SetMatchQueue(key, input.QueueType); err != nil {
-			return match.Record{}, err
-		}
-	}
-	// Disruption sides + the optional annotation fields (replay code / note /
-	// tags / the squad they grouped with) all ride the existing annotation
-	// surface in one upsert — the same row the detail-panel choosers edit later.
-	if len(input.Leavers) > 0 || len(input.Throwers) > 0 || input.ReplayCode != "" ||
-		input.Note != "" || len(input.Tags) > 0 || len(input.Members) > 0 {
-		if err := a.SetMatchAnnotation(AnnotationInput{
-			MatchKey:   key,
-			Leavers:    input.Leavers,
-			Throwers:   input.Throwers,
-			ReplayCode: input.ReplayCode,
-			Note:       input.Note,
-			Tags:       input.Tags,
-			Members:    input.Members,
-		}); err != nil {
-			return match.Record{}, err
-		}
+	if err := a.writeManualAuxRows(key, input); err != nil {
+		return match.Record{}, err
 	}
 	rec, err := a.GetMatchByKey(key)
 	if err != nil {
@@ -148,6 +121,45 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.Record, err
 	}
 	a.emitMatchUpdated(rec)
 	return rec, nil
+}
+
+// writeManualAuxRows persists a manual match's optional side rows. Both aux
+// rows are skipped when omitted — a quick-add knows the map and the outcome,
+// not how the game was queued, and writing "" would claim it did. The
+// detail-panel choosers can set them later.
+func (a *App) writeManualAuxRows(key string, input match.ManualMatchInput) error {
+	if input.PlayMode != "" {
+		if err := a.store.SetMatchPlayMode(key, input.PlayMode); err != nil {
+			return err
+		}
+	}
+	if input.QueueType != "" {
+		if err := a.store.SetMatchQueue(key, input.QueueType); err != nil {
+			return err
+		}
+	}
+	// Disruption sides + the optional annotation fields (replay code / note /
+	// tags / the squad they grouped with) all ride the existing annotation
+	// surface in one upsert — the same row the detail-panel choosers edit later.
+	if !hasManualAnnotation(input) {
+		return nil
+	}
+	return a.SetMatchAnnotation(AnnotationInput{
+		MatchKey:   key,
+		Leavers:    input.Leavers,
+		Throwers:   input.Throwers,
+		ReplayCode: input.ReplayCode,
+		Note:       input.Note,
+		Tags:       input.Tags,
+		Members:    input.Members,
+	})
+}
+
+// hasManualAnnotation reports whether the manual form carries any field that
+// rides the annotation surface.
+func hasManualAnnotation(input match.ManualMatchInput) bool {
+	return len(input.Leavers) > 0 || len(input.Throwers) > 0 || input.ReplayCode != "" ||
+		input.Note != "" || len(input.Tags) > 0 || len(input.Members) > 0
 }
 
 // validateManualMatchInput checks the manual form's required identity fields,
@@ -159,6 +171,23 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.Record, err
 // inventing a hero or a queue there would be fabricating data. A value that IS
 // supplied still has to be valid; only omission is free.
 func validateManualMatchInput(input match.ManualMatchInput) error {
+	if err := validateManualIdentity(input); err != nil {
+		return err
+	}
+	if err := validateManualSides(input); err != nil {
+		return err
+	}
+	if input.Rank != nil {
+		if err := validateManualRank(*input.Rank); err != nil {
+			return err
+		}
+	}
+	return validateManualRoster(input)
+}
+
+// validateManualIdentity checks the manual form's required identity fields
+// and enum membership.
+func validateManualIdentity(input match.ManualMatchInput) error {
 	switch {
 	case input.Map == "":
 		return ErrManualNeedsMap
@@ -169,26 +198,24 @@ func validateManualMatchInput(input match.ManualMatchInput) error {
 	case input.QueueType != "" && !validQueueTypes[input.QueueType]:
 		return ErrInvalidQueueType
 	}
+	return nil
+}
+
+// validateManualSides checks the leaver / thrower side lists.
+func validateManualSides(input match.ManualMatchInput) error {
 	if _, err := normalizeSides(input.Leavers, ErrInvalidLeaver); err != nil {
 		return err
 	}
-	if _, err := normalizeSides(input.Throwers, ErrInvalidThrower); err != nil {
-		return err
-	}
-	if input.Rank != nil {
-		if err := validateManualRank(*input.Rank); err != nil {
-			return err
-		}
-	}
+	_, err := normalizeSides(input.Throwers, ErrInvalidThrower)
+	return err
+}
+
+// validateManualRoster checks map / hero roster membership.
+func validateManualRoster(input match.ManualMatchInput) error {
 	if !parser.IsKnownMap(input.Map) {
 		return ErrUnknownMap
 	}
-	for _, h := range input.Heroes {
-		if h != "" && !parser.IsKnownHero(h) {
-			return ErrUnknownHero
-		}
-	}
-	return nil
+	return validateKnownHeroes(input.Heroes)
 }
 
 // buildManualMatch validates the manual form and converts it into a match_key +
@@ -313,6 +340,12 @@ func validateRosterFields(in match.UserMatchDataInput) error {
 	if in.Map != nil && *in.Map != "" && !parser.IsKnownMap(*in.Map) {
 		return ErrUnknownMap
 	}
+	return validateKnownHeroes(overriddenHeroes(in))
+}
+
+// overriddenHeroes collects every hero name the override set references —
+// the primary hero, the heroes-played list, stat cells, and SR rows.
+func overriddenHeroes(in match.UserMatchDataInput) []string {
 	heroes := make([]string, 0, len(in.Heroes)+len(in.HeroStats)+len(in.SR)+1)
 	if in.Hero != nil {
 		heroes = append(heroes, *in.Hero)
@@ -326,6 +359,11 @@ func validateRosterFields(in match.UserMatchDataInput) error {
 	for _, sr := range in.SR {
 		heroes = append(heroes, sr.Hero)
 	}
+	return heroes
+}
+
+// validateKnownHeroes rejects any non-empty hero name outside the roster.
+func validateKnownHeroes(heroes []string) error {
 	for _, h := range heroes {
 		if h != "" && !parser.IsKnownHero(h) {
 			return ErrUnknownHero

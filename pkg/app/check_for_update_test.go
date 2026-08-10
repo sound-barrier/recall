@@ -446,9 +446,18 @@ func TestCheckForUpdate_MismatchedSidecarRejectsRosters(t *testing.T) {
 // struct out of comparable territory.
 func isEmptyUpdate(u app.UpdateInfo) bool {
 	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
-		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0 &&
 		u.LastCheckedAt == "" && u.ReleaseNotes == "" &&
-		u.GameData.AppliedCommit == "" && !u.GameData.HasUpdate
+		hasNoRosters(u) && isEmptyGameData(u.GameData)
+}
+
+// hasNoRosters reports that no latest-roster list landed.
+func hasNoRosters(u app.UpdateInfo) bool {
+	return len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0
+}
+
+// isEmptyGameData reports that the main-channel game-data probe landed nothing.
+func isEmptyGameData(gd gamedata.Status) bool {
+	return gd.AppliedCommit == "" && !gd.HasUpdate
 }
 
 // withReleasesURL swaps *app.ReleasesURL for the duration of the test and

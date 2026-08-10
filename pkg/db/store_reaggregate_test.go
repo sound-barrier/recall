@@ -9,29 +9,7 @@ import (
 
 func TestSQLStore_ReAggregateUnknowns_PromotesResolvableRawValues(t *testing.T) {
 	s := openMemory(t)
-	// Seed through the real write path: an empty canonical hero/map is stored
-	// as '' (NOT NULL DEFAULT ''), with the raw OCR string preserved for a
-	// later matcher pass. This pins the regression where the scan predicate
-	// missed normally-parsed rows (they used to be stored as SQL NULL).
-	if err := s.UpsertSummary(db.SummaryRow{
-		Filename: "s.png", MatchKey: "match-a",
-		Hero: "", HeroRaw: "lúcio", Map: "", MapRaw: "rial+o",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.UpsertPersonal(db.PersonalRow{
-		Filename: "p.png", MatchKey: "match-a",
-		Hero: "", HeroRaw: "junkr@t",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	// A row that still won't resolve (matcher returns "") stays untouched.
-	if err := s.UpsertSummary(db.SummaryRow{
-		Filename: "s2.png", MatchKey: "match-b",
-		Hero: "", HeroRaw: "???", Map: "", MapRaw: "???",
-	}); err != nil {
-		t.Fatal(err)
-	}
+	seedRawOnlyRows(t, s)
 
 	heroFn := func(raw string) string {
 		switch {
@@ -51,18 +29,43 @@ func TestSQLStore_ReAggregateUnknowns_PromotesResolvableRawValues(t *testing.T) 
 	}
 
 	n, err := s.ReAggregateUnknowns(heroFn, mapFn)
-	if err != nil {
-		t.Fatalf("ReAggregateUnknowns: %v", err)
-	}
+	mustNoErr(t, err)
 	// 2 hero promotions (summary lúcio, personal junkrat) + 1 map (rialto).
 	if n != 3 {
 		t.Errorf("promoted = %d, want 3", n)
 	}
 
 	got, err := s.LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
+	assertPromotedRows(t, got)
+}
+
+// seedRawOnlyRows seeds through the real write path: an empty canonical
+// hero/map is stored as ” (NOT NULL DEFAULT ”), with the raw OCR string
+// preserved for a later matcher pass. This pins the regression where the
+// scan predicate missed normally-parsed rows (they used to be stored as
+// SQL NULL).
+func seedRawOnlyRows(t *testing.T, s *db.SQLStore) {
+	t.Helper()
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{
+		Filename: "s.png", MatchKey: "match-a",
+		Hero: "", HeroRaw: "lúcio", Map: "", MapRaw: "rial+o",
+	}))
+	mustNoErr(t, s.UpsertPersonal(db.PersonalRow{
+		Filename: "p.png", MatchKey: "match-a",
+		Hero: "", HeroRaw: "junkr@t",
+	}))
+	// A row that still won't resolve (matcher returns "") stays untouched.
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{
+		Filename: "s2.png", MatchKey: "match-b",
+		Hero: "", HeroRaw: "???", Map: "", MapRaw: "???",
+	}))
+}
+
+// assertPromotedRows pins the post-promotion state: resolvable raw values
+// promoted in place, the unresolvable row untouched.
+func assertPromotedRows(t *testing.T, got db.Screenshots) {
+	t.Helper()
 	sums := map[string]db.SummaryRow{}
 	for _, r := range got.Summaries {
 		sums[r.Filename] = r

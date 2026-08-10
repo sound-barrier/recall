@@ -111,3 +111,22 @@ var (
 	AllChaosCategories = allChaosCategories
 	ChaosShapes        = chaosShapes
 )
+
+// ── Hero-pick bridges ─────────────────────────────────────────────────────
+// The style-aware pick helpers are pure internals of the generator; the
+// role tests pin the constrained-favorites derivation through these.
+
+var (
+	NewProfileForStyle = newPlayerProfile
+	ParsePlayStyle     = parsePlayStyle
+)
+
+// ConstrainedFavorites / FavoriteHero / MainRole / MainPool / FlexHeroes
+// read the pick-profile state the constrained-role tests assert on.
+func (p playerProfile) ConstrainedFavorites(role string) []string {
+	return p.constrainedFavorites(role)
+}
+func (p playerProfile) FavoriteHero() string { return p.favoriteHero }
+func (p playerProfile) MainRole() string     { return p.mainRole }
+func (p playerProfile) MainPool() []string   { return p.mainPool }
+func (p playerProfile) FlexHeroes() []string { return p.flexHeroes }

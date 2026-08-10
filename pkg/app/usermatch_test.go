@@ -66,6 +66,14 @@ func TestCreateManualMatch_CreatesManualRecord(t *testing.T) {
 	}
 
 	const wantKey = "match-2026-06-15T14-30-00"
+	assertManualIdentity(t, rec, wantKey)
+	assertManualSideRows(t, rec, fake, wantKey)
+}
+
+// assertManualIdentity pins the created record's key, provenance, and the
+// core match fields.
+func assertManualIdentity(t *testing.T, rec match.Record, wantKey string) {
+	t.Helper()
 	if rec.MatchKey != wantKey {
 		t.Errorf("MatchKey = %q, want %q", rec.MatchKey, wantKey)
 	}
@@ -78,14 +86,19 @@ func TestCreateManualMatch_CreatesManualRecord(t *testing.T) {
 	if rec.Data.Result != "victory" {
 		t.Errorf("Result = %q, want victory", rec.Data.Result)
 	}
-	// queue + play-mode aux rows were written and surface on the record.
+}
+
+// assertManualSideRows pins the aux rows the create wrote: queue + play-mode
+// surface on the record, the override row persisted, and the leaver sides
+// ride the annotation surface.
+func assertManualSideRows(t *testing.T, rec match.Record, fake *dbtest.Fake, wantKey string) {
+	t.Helper()
 	if rec.QueueType != "role" || rec.PlayMode != "competitive" {
 		t.Errorf("queue/mode = %q/%q, want role/competitive", rec.QueueType, rec.PlayMode)
 	}
 	if _, ok := fake.UserMatchData[wantKey]; !ok {
 		t.Errorf("UserMatchData row not written for %q", wantKey)
 	}
-	// Leaver sides ride the annotation surface, surfaced back on the record.
 	if rec.Annotation == nil || !slices.Equal(rec.Annotation.Leavers, []string{"team"}) {
 		t.Errorf("Annotation leaver = %+v, want team", rec.Annotation)
 	}

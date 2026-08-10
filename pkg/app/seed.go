@@ -58,35 +58,23 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 	if opts.N <= 0 {
 		return SeedResult{}, fmt.Errorf("seed: N must be positive (got %d)", opts.N)
 	}
-	if !slices.Contains(p.List(), name) {
-		if err := p.Create(name); err != nil {
-			return SeedResult{}, fmt.Errorf("create profile %q: %w", name, err)
-		}
+	if err := ensureProfileExists(p, name); err != nil {
+		return SeedResult{}, err
 	}
 
 	profileDir := p.ProfileDir(name)
-	dbDir := filepath.Join(profileDir, "db")
-	if err := os.MkdirAll(dbDir, 0o700); err != nil {
-		return SeedResult{}, fmt.Errorf("mkdir %s: %w", dbDir, err)
-	}
-	store, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	store, err := openSeedStore(profileDir)
 	if err != nil {
-		return SeedResult{}, fmt.Errorf("open store: %w", err)
+		return SeedResult{}, err
 	}
 	defer func() { _ = store.Close() }()
 
-	snap, err := store.LoadAll()
+	kept, existingMatches, err := keepOrClearExisting(store, opts.Force)
 	if err != nil {
-		return SeedResult{}, fmt.Errorf("inspect existing rows: %w", err)
+		return SeedResult{}, err
 	}
-	existing := len(snap.Summaries) + len(snap.Teams) + len(snap.Personals) + len(snap.Ranks) + len(snap.Unknowns)
-	if existing > 0 {
-		if !opts.Force {
-			return SeedResult{Profile: name, Matches: len(snap.Summaries), AlreadySeeded: true}, nil
-		}
-		if err := store.Clear(); err != nil {
-			return SeedResult{}, fmt.Errorf("clear existing rows: %w", err)
-		}
+	if kept {
+		return SeedResult{Profile: name, Matches: existingMatches, AlreadySeeded: true}, nil
 	}
 
 	fx := fixtures.GenerateMatchFixtureWithChaos(opts.N, opts.Seed, opts.Style, opts.Chaos)
@@ -102,19 +90,7 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 		}
 	}
 
-	ocrKeys := make(map[string]bool, len(fx.Summaries))
-	for _, r := range fx.Summaries {
-		ocrKeys[r.MatchKey] = true
-	}
-	edited, manual := 0, 0
-	for _, ud := range fx.UserData {
-		if ocrKeys[ud.MatchKey] {
-			edited++
-		} else {
-			manual++
-		}
-	}
-
+	edited, manual := countUserDataOrigins(fx)
 	return SeedResult{
 		Profile:   name,
 		Matches:   len(fx.Summaries),
@@ -130,61 +106,137 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 	}, nil
 }
 
-// writeFixture persists every record kind in a fixtures.Fixture to the store.
-func writeFixture(store db.Store, fx fixtures.Fixture) error {
+// ensureProfileExists creates the named profile when it isn't known yet.
+func ensureProfileExists(p *Profiles, name string) error {
+	if slices.Contains(p.List(), name) {
+		return nil
+	}
+	if err := p.Create(name); err != nil {
+		return fmt.Errorf("create profile %q: %w", name, err)
+	}
+	return nil
+}
+
+// openSeedStore opens the profile's SQLite store (creating the db dir first).
+// The caller owns the returned store and must Close it.
+func openSeedStore(profileDir string) (*db.SQLStore, error) {
+	dbDir := filepath.Join(profileDir, "db")
+	if err := os.MkdirAll(dbDir, 0o700); err != nil {
+		return nil, fmt.Errorf("mkdir %s: %w", dbDir, err)
+	}
+	store, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	if err != nil {
+		return nil, fmt.Errorf("open store: %w", err)
+	}
+	return store, nil
+}
+
+// keepOrClearExisting decides what happens to rows already in the store:
+// without Force they're kept (kept=true plus the summary count for the
+// AlreadySeeded result); with Force the store is wiped for reseeding.
+func keepOrClearExisting(store db.Store, force bool) (kept bool, existingMatches int, err error) {
+	snap, err := store.LoadAll()
+	if err != nil {
+		return false, 0, fmt.Errorf("inspect existing rows: %w", err)
+	}
+	existing := len(snap.Summaries) + len(snap.Teams) + len(snap.Personals) + len(snap.Ranks) + len(snap.Unknowns)
+	if existing == 0 {
+		return false, 0, nil
+	}
+	if !force {
+		return true, len(snap.Summaries), nil
+	}
+	if err := store.Clear(); err != nil {
+		return false, 0, fmt.Errorf("clear existing rows: %w", err)
+	}
+	return false, 0, nil
+}
+
+// countUserDataOrigins splits the fixture's user-data rows into OCR edits
+// (the match also has screenshot rows) and manual entries (it doesn't).
+func countUserDataOrigins(fx fixtures.Fixture) (edited, manual int) {
+	ocrKeys := make(map[string]bool, len(fx.Summaries))
 	for _, r := range fx.Summaries {
-		if err := store.UpsertSummary(r); err != nil {
-			return fmt.Errorf("UpsertSummary(%s): %w", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Teams {
-		if err := store.UpsertTeams(r); err != nil {
-			return fmt.Errorf("UpsertTeams(%s): %w", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Personals {
-		if err := store.UpsertPersonal(r); err != nil {
-			return fmt.Errorf("UpsertPersonal(%s): %w", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Ranks {
-		if err := store.UpsertRank(r); err != nil {
-			return fmt.Errorf("UpsertRank(%s): %w", r.MatchKey, err)
-		}
-	}
-	for _, r := range fx.Reviews {
-		if err := store.SetReview(r.MatchKey, r.ReviewedBy); err != nil {
-			return fmt.Errorf("SetReview(%s): %w", r.MatchKey, err)
-		}
-	}
-	for _, ann := range fx.Annotations {
-		if err := store.SetAnnotation(ann); err != nil {
-			return fmt.Errorf("SetAnnotation(%s): %w", ann.MatchKey, err)
-		}
-	}
-	for _, q := range fx.Queues {
-		if err := store.SetMatchQueue(q.MatchKey, q.QueueType); err != nil {
-			return fmt.Errorf("SetMatchQueue(%s): %w", q.MatchKey, err)
-		}
-	}
-	for _, pm := range fx.PlayModes {
-		if err := store.SetMatchPlayMode(pm.MatchKey, pm.PlayMode); err != nil {
-			return fmt.Errorf("SetMatchPlayMode(%s): %w", pm.MatchKey, err)
-		}
-	}
-	for _, u := range fx.Unknowns {
-		if err := store.UpsertUnknown(u); err != nil {
-			return fmt.Errorf("UpsertUnknown(%s): %w", u.Filename, err)
-		}
-	}
-	for _, a := range fx.Ambiguous {
-		if err := store.ApplyAmbiguity(a.Filename, a.Candidates); err != nil {
-			return fmt.Errorf("ApplyAmbiguity(%s): %w", a.Filename, err)
-		}
+		ocrKeys[r.MatchKey] = true
 	}
 	for _, ud := range fx.UserData {
-		if err := store.UpsertUserMatchData(ud); err != nil {
-			return fmt.Errorf("UpsertUserMatchData(%s): %w", ud.MatchKey, err)
+		if ocrKeys[ud.MatchKey] {
+			edited++
+		} else {
+			manual++
+		}
+	}
+	return edited, manual
+}
+
+// writeFixture persists every record kind in a fixtures.Fixture to the store.
+// Each kind is one branch-free step over the shared writeAll loop, so adding a
+// record kind is one more table entry.
+func writeFixture(store db.Store, fx fixtures.Fixture) error {
+	steps := []func() error{
+		func() error {
+			return writeAll("UpsertSummary", fx.Summaries,
+				func(r db.SummaryRow) string { return r.MatchKey }, store.UpsertSummary)
+		},
+		func() error {
+			return writeAll("UpsertTeams", fx.Teams,
+				func(r db.TeamsRow) string { return r.MatchKey }, store.UpsertTeams)
+		},
+		func() error {
+			return writeAll("UpsertPersonal", fx.Personals,
+				func(r db.PersonalRow) string { return r.MatchKey }, store.UpsertPersonal)
+		},
+		func() error {
+			return writeAll("UpsertRank", fx.Ranks,
+				func(r db.RankRow) string { return r.MatchKey }, store.UpsertRank)
+		},
+		func() error {
+			return writeAll("SetReview", fx.Reviews,
+				func(r fixtures.ReviewSeed) string { return r.MatchKey },
+				func(r fixtures.ReviewSeed) error { return store.SetReview(r.MatchKey, r.ReviewedBy) })
+		},
+		func() error {
+			return writeAll("SetAnnotation", fx.Annotations,
+				func(ann db.Annotation) string { return ann.MatchKey }, store.SetAnnotation)
+		},
+		func() error {
+			return writeAll("SetMatchQueue", fx.Queues,
+				func(q fixtures.QueueSeed) string { return q.MatchKey },
+				func(q fixtures.QueueSeed) error { return store.SetMatchQueue(q.MatchKey, q.QueueType) })
+		},
+		func() error {
+			return writeAll("SetMatchPlayMode", fx.PlayModes,
+				func(pm fixtures.PlayModeSeed) string { return pm.MatchKey },
+				func(pm fixtures.PlayModeSeed) error { return store.SetMatchPlayMode(pm.MatchKey, pm.PlayMode) })
+		},
+		func() error {
+			return writeAll("UpsertUnknown", fx.Unknowns,
+				func(u db.UnknownRow) string { return u.Filename }, store.UpsertUnknown)
+		},
+		func() error {
+			return writeAll("ApplyAmbiguity", fx.Ambiguous,
+				func(a fixtures.AmbiguousSeed) string { return a.Filename },
+				func(a fixtures.AmbiguousSeed) error { return store.ApplyAmbiguity(a.Filename, a.Candidates) })
+		},
+		func() error {
+			return writeAll("UpsertUserMatchData", fx.UserData,
+				func(ud db.UserMatchData) string { return ud.MatchKey }, store.UpsertUserMatchData)
+		},
+	}
+	for _, step := range steps {
+		if err := step(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// writeAll persists each record via write, wrapping the first failure with the
+// store operation's name and the record's identity (match key or filename).
+func writeAll[T any](op string, records []T, identity func(T) string, write func(T) error) error {
+	for _, r := range records {
+		if err := write(r); err != nil {
+			return fmt.Errorf("%s(%s): %w", op, identity(r), err)
 		}
 	}
 	return nil
@@ -228,32 +280,31 @@ func ambiguousPreviewFilenames(fx fixtures.Fixture) []string {
 			candidateKeys[c.MatchKey] = true
 		}
 	}
-	for _, r := range fx.Summaries {
-		if candidateKeys[r.MatchKey] {
-			seen[r.Filename] = true
-		}
-	}
-	for _, r := range fx.Teams {
-		if candidateKeys[r.MatchKey] {
-			seen[r.Filename] = true
-		}
-	}
-	for _, r := range fx.Personals {
-		if candidateKeys[r.MatchKey] {
-			seen[r.Filename] = true
-		}
-	}
-	for _, r := range fx.Ranks {
-		if candidateKeys[r.MatchKey] {
-			seen[r.Filename] = true
-		}
-	}
+	markCandidateFiles(seen, candidateKeys, fx.Summaries,
+		func(r db.SummaryRow) (string, string) { return r.MatchKey, r.Filename })
+	markCandidateFiles(seen, candidateKeys, fx.Teams,
+		func(r db.TeamsRow) (string, string) { return r.MatchKey, r.Filename })
+	markCandidateFiles(seen, candidateKeys, fx.Personals,
+		func(r db.PersonalRow) (string, string) { return r.MatchKey, r.Filename })
+	markCandidateFiles(seen, candidateKeys, fx.Ranks,
+		func(r db.RankRow) (string, string) { return r.MatchKey, r.Filename })
 	out := make([]string, 0, len(seen))
 	for f := range seen {
 		out = append(out, f)
 	}
 	slices.Sort(out)
 	return out
+}
+
+// markCandidateFiles adds each row's filename to seen when its match key is
+// one of the ambiguity candidates. The identity closure lets one body serve
+// all four screenshot-backed row kinds.
+func markCandidateFiles[T any](seen, candidateKeys map[string]bool, rows []T, identity func(T) (matchKey, filename string)) {
+	for _, r := range rows {
+		if matchKey, filename := identity(r); candidateKeys[matchKey] {
+			seen[filename] = true
+		}
+	}
 }
 
 // writeSolidColorPNG writes a small (320x180) single-color PNG. The color

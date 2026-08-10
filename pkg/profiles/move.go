@@ -230,20 +230,30 @@ func movePhase1Overrides(src, targetStore db.Store, matchKeys []string) error {
 		return fmt.Errorf("move: load play modes: %w", err)
 	}
 	for _, k := range matchKeys {
-		if d, ok := userData[k]; ok {
-			if err := targetStore.UpsertUserMatchData(d); err != nil {
-				return fmt.Errorf("move: copy user data for %q: %w", k, err)
-			}
+		if err := copyOverrideRows(targetStore, k, userData[k], queues[k], playModes[k]); err != nil {
+			return err
 		}
-		if q, ok := queues[k]; ok && q.QueueType != "" {
-			if err := targetStore.SetMatchQueue(k, q.QueueType); err != nil {
-				return fmt.Errorf("move: copy queue for %q: %w", k, err)
-			}
+	}
+	return nil
+}
+
+// copyOverrideRows writes one match's override layer to the target: the
+// user_match_data row plus the queue / play-mode aux rows, each skipped when
+// the source has nothing for the key (the zero value carries an empty field).
+func copyOverrideRows(targetStore db.Store, k string, d db.UserMatchData, q db.QueueState, pm db.PlayModeState) error {
+	if d.MatchKey != "" {
+		if err := targetStore.UpsertUserMatchData(d); err != nil {
+			return fmt.Errorf("move: copy user data for %q: %w", k, err)
 		}
-		if pm, ok := playModes[k]; ok && pm.PlayMode != "" {
-			if err := targetStore.SetMatchPlayMode(k, pm.PlayMode); err != nil {
-				return fmt.Errorf("move: copy play mode for %q: %w", k, err)
-			}
+	}
+	if q.QueueType != "" {
+		if err := targetStore.SetMatchQueue(k, q.QueueType); err != nil {
+			return fmt.Errorf("move: copy queue for %q: %w", k, err)
+		}
+	}
+	if pm.PlayMode != "" {
+		if err := targetStore.SetMatchPlayMode(k, pm.PlayMode); err != nil {
+			return fmt.Errorf("move: copy play mode for %q: %w", k, err)
 		}
 	}
 	return nil

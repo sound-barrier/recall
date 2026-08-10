@@ -44,43 +44,36 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	const movedKey = "match-2026-05-10T22-00-00"
 	const stayedKey = "match-2026-05-10T23-00-00"
 
-	if err := app.Store(a).UpsertSummary(db.SummaryRow{
+	mustNoErr(t, app.Store(a).UpsertSummary(db.SummaryRow{
 		Filename: "moved-summary.png", MatchKey: movedKey,
 		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
-	}); err != nil {
-		t.Fatalf("seed summary: %v", err)
-	}
-	if err := app.Store(a).UpsertTeams(db.TeamsRow{
+	}))
+	mustNoErr(t, app.Store(a).UpsertTeams(db.TeamsRow{
 		Filename: "moved-teams.png", MatchKey: movedKey,
 		Eliminations: 17,
 		HeroStats:    []db.HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
-	}); err != nil {
-		t.Fatalf("seed teams: %v", err)
-	}
-	if err := app.Store(a).UpsertSummary(db.SummaryRow{
+	}))
+	mustNoErr(t, app.Store(a).UpsertSummary(db.SummaryRow{
 		Filename: "stayed-summary.png", MatchKey: stayedKey,
 		Map: "ilios", Playlist: "competitive", Hero: "ana",
-	}); err != nil {
-		t.Fatalf("seed stayed summary: %v", err)
-	}
-	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: movedKey, Note: "smurfs"}); err != nil {
-		t.Fatalf("seed annotation: %v", err)
-	}
-	if err := a.HideMatch(movedKey); err != nil {
-		t.Fatalf("seed hidden: %v", err)
-	}
+	}))
+	mustNoErr(t, a.SetMatchAnnotation(app.AnnotationInput{MatchKey: movedKey, Note: "smurfs"}))
+	mustNoErr(t, a.HideMatch(movedKey))
 
 	// Move.
-	if err := a.MoveMatches([]string{movedKey}, "alt"); err != nil {
-		t.Fatalf("MoveMatches: %v", err)
-	}
+	mustNoErr(t, a.MoveMatches([]string{movedKey}, "alt"))
 
-	// Source: movedKey rows are gone, stayedKey rows survive.
+	assertMoveSourceState(t, a, movedKey, stayedKey)
+	assertMoveTargetState(t, a, movedKey, stayedKey)
+}
+
+// assertMoveSourceState pins the source after the move: the moved key's rows
+// + sidecars are gone, the stayed key survives.
+func assertMoveSourceState(t *testing.T, a *app.App, movedKey, stayedKey string) {
+	t.Helper()
 	srcData, err := app.Store(a).LoadAll()
-	if err != nil {
-		t.Fatalf("source LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	for _, r := range srcData.Summaries {
 		if r.MatchKey == movedKey {
 			t.Errorf("source still has summary for moved key: %q", r.Filename)
@@ -97,8 +90,13 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	if srcHidden[movedKey] {
 		t.Errorf("source hidden flag survived the move")
 	}
+}
 
-	// Target: the moved rows arrived (open the alt's DB directly).
+// assertMoveTargetState pins the target after the move: the moved rows +
+// sidecars arrived (opening the alt profile's DB directly), and nothing
+// unrequested came along.
+func assertMoveTargetState(t *testing.T, a *app.App, movedKey, stayedKey string) {
+	t.Helper()
 	altDBPath := filepath.Join(app.ProfilesOf(a).ProfileDir("alt"), "db", "recall.db")
 	altStore, err := db.NewSQLStore(altDBPath)
 	if err != nil {
@@ -107,9 +105,7 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	defer func() { _ = altStore.Close() }()
 
 	tgtData, err := altStore.LoadAll()
-	if err != nil {
-		t.Fatalf("target LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	if !hasSummaryKey(tgtData.Summaries, movedKey) {
 		t.Errorf("target missing the moved summary")
 	}

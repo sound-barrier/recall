@@ -35,26 +35,18 @@ func TestSQLStore_PruneScreenshotsDirs(t *testing.T) {
 	s := openMemory(t)
 
 	idA, err := s.EnsureScreenshotsDir("/watch/folder-a")
-	if err != nil {
-		t.Fatalf("EnsureScreenshotsDir A: %v", err)
-	}
+	mustNoErr(t, err)
 	idB, err := s.EnsureScreenshotsDir("/watch/folder-b")
-	if err != nil {
-		t.Fatalf("EnsureScreenshotsDir B: %v", err)
-	}
+	mustNoErr(t, err)
 	if idA == idB {
 		t.Fatal("expected distinct dir ids")
 	}
 
 	// A screenshot references dir A; dir B is orphaned (nothing references it).
-	if err := s.UpsertRank(db.RankRow{Filename: "r.png", MatchKey: "k1", ScreenshotsDirID: idA}); err != nil {
-		t.Fatalf("UpsertRank: %v", err)
-	}
+	mustNoErr(t, s.UpsertRank(db.RankRow{Filename: "r.png", MatchKey: "k1", ScreenshotsDirID: idA}))
 
 	n, err := s.PruneScreenshotsDirs()
-	if err != nil {
-		t.Fatalf("PruneScreenshotsDirs: %v", err)
-	}
+	mustNoErr(t, err)
 	if n != 1 {
 		t.Errorf("pruned %d, want 1 (only orphaned dir B)", n)
 	}

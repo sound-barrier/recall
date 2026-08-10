@@ -62,36 +62,9 @@ type createdKey struct {
 // source-file timestamp so the sweep judges older captures first.
 func (st *parseRunState) runCreatedTrackedKeys() []createdKey {
 	byKey := map[string]*createdKey{}
-	consider := func(filename, key string) {
-		if _, existed := st.preRunKeys[key]; existed {
-			return
-		}
-		if mk, err := match.ParseKey(key); err != nil || !mk.IsTracked() {
-			return
-		}
-		ts, ok := correlate.ParseFilenameTimestamp(filename)
-		if !ok {
-			return
-		}
-		if prev := byKey[key]; prev == nil || ts.Before(prev.earliestTS) {
-			byKey[key] = &createdKey{key: key, earliestFile: filename, earliestTS: ts}
-		}
-	}
-	for _, r := range st.snap.Summaries {
-		consider(r.Filename, r.MatchKey)
-	}
-	for _, r := range st.snap.Teams {
-		consider(r.Filename, r.MatchKey)
-	}
-	for _, r := range st.snap.Personals {
-		consider(r.Filename, r.MatchKey)
-	}
-	for _, r := range st.snap.Ranks {
-		consider(r.Filename, r.MatchKey)
-	}
-	for _, r := range st.snap.Unknowns {
-		consider(r.Filename, r.MatchKey)
-	}
+	forEachParentRowKey(&st.snap, func(filename string, matchKey *string) {
+		st.considerCreated(byKey, filename, *matchKey)
+	})
 	out := make([]createdKey, 0, len(byKey))
 	for _, c := range byKey {
 		out = append(out, *c)
@@ -103,6 +76,25 @@ func (st *parseRunState) runCreatedTrackedKeys() []createdKey {
 		return out[i].key < out[j].key
 	})
 	return out
+}
+
+// considerCreated records one row's key as run-created when it is tracked,
+// absent from preRunKeys, and carries a parseable filename timestamp —
+// keeping the earliest source file seen for that key.
+func (st *parseRunState) considerCreated(byKey map[string]*createdKey, filename, key string) {
+	if _, existed := st.preRunKeys[key]; existed {
+		return
+	}
+	if mk, err := match.ParseKey(key); err != nil || !mk.IsTracked() {
+		return
+	}
+	ts, ok := correlate.ParseFilenameTimestamp(filename)
+	if !ok {
+		return
+	}
+	if prev := byKey[key]; prev == nil || ts.Before(prev.earliestTS) {
+		byKey[key] = &createdKey{key: key, earliestFile: filename, earliestTS: ts}
+	}
 }
 
 func filterCandidateKeys(cands []db.AmbiguousCandidate, allowed map[string]struct{}) []db.AmbiguousCandidate {
@@ -147,51 +139,40 @@ func (st *parseRunState) demoteDuplicate(c createdKey, cands []db.AmbiguousCandi
 // carried snapshot so later sweep iterations see the demoted rows under
 // their sentinel.
 func (st *parseRunState) rewriteSnapshotKey(from, to string) {
-	for i := range st.snap.Summaries {
-		if st.snap.Summaries[i].MatchKey == from {
-			st.snap.Summaries[i].MatchKey = to
+	forEachParentRowKey(&st.snap, func(_ string, matchKey *string) {
+		if *matchKey == from {
+			*matchKey = to
 		}
-	}
-	for i := range st.snap.Teams {
-		if st.snap.Teams[i].MatchKey == from {
-			st.snap.Teams[i].MatchKey = to
-		}
-	}
-	for i := range st.snap.Personals {
-		if st.snap.Personals[i].MatchKey == from {
-			st.snap.Personals[i].MatchKey = to
-		}
-	}
-	for i := range st.snap.Ranks {
-		if st.snap.Ranks[i].MatchKey == from {
-			st.snap.Ranks[i].MatchKey = to
-		}
-	}
-	for i := range st.snap.Unknowns {
-		if st.snap.Unknowns[i].MatchKey == from {
-			st.snap.Unknowns[i].MatchKey = to
-		}
-	}
+	})
 }
 
 // snapshotMatchKeys returns every match_key present in the snapshot,
 // across all five parent slices.
 func snapshotMatchKeys(snap db.Screenshots) map[string]struct{} {
 	keys := map[string]struct{}{}
-	for _, r := range snap.Summaries {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Teams {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Personals {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Ranks {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Unknowns {
-		keys[r.MatchKey] = struct{}{}
-	}
+	forEachParentRowKey(&snap, func(_ string, matchKey *string) {
+		keys[*matchKey] = struct{}{}
+	})
 	return keys
+}
+
+// forEachParentRowKey visits every row across the snapshot's five parent
+// slices, handing fn the row's filename and a mutable pointer to its match
+// key — one traversal shared by the key collectors and the sentinel rewrite.
+func forEachParentRowKey(snap *db.Screenshots, fn func(filename string, matchKey *string)) {
+	for i := range snap.Summaries {
+		fn(snap.Summaries[i].Filename, &snap.Summaries[i].MatchKey)
+	}
+	for i := range snap.Teams {
+		fn(snap.Teams[i].Filename, &snap.Teams[i].MatchKey)
+	}
+	for i := range snap.Personals {
+		fn(snap.Personals[i].Filename, &snap.Personals[i].MatchKey)
+	}
+	for i := range snap.Ranks {
+		fn(snap.Ranks[i].Filename, &snap.Ranks[i].MatchKey)
+	}
+	for i := range snap.Unknowns {
+		fn(snap.Unknowns[i].Filename, &snap.Unknowns[i].MatchKey)
+	}
 }

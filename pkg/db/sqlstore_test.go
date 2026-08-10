@@ -20,6 +20,15 @@ func openMemory(t *testing.T) *db.SQLStore {
 	return s
 }
 
+// mustNoErr fails the test immediately on an unexpected error — the store
+// plumbing around the behavior under test, not the assertion itself.
+func mustNoErr(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────
 // SUMMARY round-trip.
 // ──────────────────────────────────────────────────────────────────
@@ -293,57 +302,33 @@ func TestSQLStore_LoadAllFilenames_UnionAcrossTables(t *testing.T) {
 
 func TestSQLStore_Clear_WipesEveryTable(t *testing.T) {
 	s := openMemory(t)
-	if err := s.UpsertSummary(db.SummaryRow{
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{
 		Filename: "a.png", MatchKey: "k1",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
-	}); err != nil {
-		t.Fatal(err)
-	}
+	}))
 	// Seed the five auxiliary tables that previously survived Clear.
-	if err := s.SetReview("k1", "self"); err != nil {
-		t.Fatalf("SetReview: %v", err)
-	}
-	if err := s.SetMatchQueue("k1", "role"); err != nil {
-		t.Fatalf("SetMatchQueue: %v", err)
-	}
-	if err := s.SetMatchPlayMode("k1", "competitive"); err != nil {
-		t.Fatalf("SetMatchPlayMode: %v", err)
-	}
-	if err := s.SetAnnotation(db.Annotation{MatchKey: "k1", Note: "n"}); err != nil {
-		t.Fatalf("SetAnnotation: %v", err)
-	}
-	if err := s.HideMatch("k1"); err != nil {
-		t.Fatalf("HideMatch: %v", err)
-	}
-	if err := s.ApplyAmbiguity("amb.png", []db.AmbiguousCandidate{{MatchKey: "k1", DistanceSeconds: 5}}); err != nil {
-		t.Fatalf("ApplyAmbiguity: %v", err)
-	}
-	if err := s.AddIgnoredScreenshot("ignored.png"); err != nil {
-		t.Fatalf("AddIgnoredScreenshot: %v", err)
-	}
+	mustNoErr(t, s.SetReview("k1", "self"))
+	mustNoErr(t, s.SetMatchQueue("k1", "role"))
+	mustNoErr(t, s.SetMatchPlayMode("k1", "competitive"))
+	mustNoErr(t, s.SetAnnotation(db.Annotation{MatchKey: "k1", Note: "n"}))
+	mustNoErr(t, s.HideMatch("k1"))
+	mustNoErr(t, s.ApplyAmbiguity("amb.png", []db.AmbiguousCandidate{{MatchKey: "k1", DistanceSeconds: 5}}))
+	mustNoErr(t, s.AddIgnoredScreenshot("ignored.png"))
 
-	if err := s.Clear(); err != nil {
-		t.Fatalf("Clear: %v", err)
-	}
+	mustNoErr(t, s.Clear())
 	got, err := s.LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(got.Summaries) != 0 {
 		t.Errorf("expected 0 summaries after Clear, got %d", len(got.Summaries))
 	}
 	var n int
-	if err := db.RawDB(s).QueryRow(`SELECT count(*) FROM summary_heroes_played`).Scan(&n); err != nil {
-		t.Fatal(err)
-	}
+	mustNoErr(t, db.RawDB(s).QueryRow(`SELECT count(*) FROM summary_heroes_played`).Scan(&n))
 	if n != 0 {
 		t.Errorf("expected 0 child rows after Clear, got %d", n)
 	}
 	for _, table := range []string{"match_reviews", "match_queue", "match_play_mode", "match_annotations", "hidden_matches", "ambiguous_candidates", "ignored_screenshots"} {
 		// #nosec G202 -- table name from a hard-coded slice, not user input.
-		if err := db.RawDB(s).QueryRow(`SELECT count(*) FROM ` + table).Scan(&n); err != nil {
-			t.Fatal(err)
-		}
+		mustNoErr(t, db.RawDB(s).QueryRow(`SELECT count(*) FROM `+table).Scan(&n))
 		if n != 0 {
 			t.Errorf("expected 0 rows in %s after Clear, got %d", table, n)
 		}
@@ -533,29 +518,15 @@ func TestSQLStore_EnsureScreenshotsDir(t *testing.T) {
 func TestSQLStore_ScreenshotsDirID_RoundTrip(t *testing.T) {
 	s := openMemory(t)
 	dirID, err := s.EnsureScreenshotsDir("/test/dir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := s.UpsertSummary(db.SummaryRow{Filename: "s.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.UpsertTeams(db.TeamsRow{Filename: "sb.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.UpsertPersonal(db.PersonalRow{Filename: "p.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.UpsertRank(db.RankRow{Filename: "r.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.UpsertUnknown(db.UnknownRow{Filename: "u.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
-		t.Fatal(err)
-	}
+	mustNoErr(t, err)
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{Filename: "s.png", MatchKey: "k1", ScreenshotsDirID: dirID}))
+	mustNoErr(t, s.UpsertTeams(db.TeamsRow{Filename: "sb.png", MatchKey: "k1", ScreenshotsDirID: dirID}))
+	mustNoErr(t, s.UpsertPersonal(db.PersonalRow{Filename: "p.png", MatchKey: "k1", ScreenshotsDirID: dirID}))
+	mustNoErr(t, s.UpsertRank(db.RankRow{Filename: "r.png", MatchKey: "k1", ScreenshotsDirID: dirID}))
+	mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "u.png", MatchKey: "k1", ScreenshotsDirID: dirID}))
 
 	got, err := s.LoadAll()
-	if err != nil {
-		t.Fatal(err)
-	}
+	mustNoErr(t, err)
 	if got.ScreenshotsDirs[dirID] != "/test/dir" {
 		t.Errorf("ScreenshotsDirs[%d] = %q, want %q", dirID, got.ScreenshotsDirs[dirID], "/test/dir")
 	}
@@ -581,22 +552,24 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 
 	// Initial state — no annotations.
 	got, err := s.LoadAnnotations()
-	if err != nil {
-		t.Fatalf("LoadAnnotations empty: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(got) != 0 {
 		t.Errorf("expected empty annotations map, got %d entries", len(got))
 	}
 
-	// Set one — round-trip.
+	assertAnnotationSetRoundTrips(t, s)
+	assertAnnotationUpsertReplaces(t, s)
+	assertAnnotationDeleteClears(t, s)
+}
+
+// assertAnnotationSetRoundTrips sets one annotation and pins its round-trip
+// plus the DEFAULT-stamped AnnotatedAt.
+func assertAnnotationSetRoundTrips(t *testing.T, s *db.SQLStore) {
+	t.Helper()
 	want := db.Annotation{MatchKey: "match-k1", Leavers: []string{"team"}, Note: "ally dc'd at 3min"}
-	if err := s.SetAnnotation(want); err != nil {
-		t.Fatalf("SetAnnotation: %v", err)
-	}
-	got, err = s.LoadAnnotations()
-	if err != nil {
-		t.Fatalf("LoadAnnotations: %v", err)
-	}
+	mustNoErr(t, s.SetAnnotation(want))
+	got, err := s.LoadAnnotations()
+	mustNoErr(t, err)
 	rt, ok := got["match-k1"]
 	if !ok {
 		t.Fatal("annotation not present after Set")
@@ -607,28 +580,31 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 	if rt.AnnotatedAt == "" {
 		t.Error("AnnotatedAt should be auto-populated by the DEFAULT")
 	}
+}
 
-	// Upsert changes the leaver side in place without inserting a duplicate.
-	if err := s.SetAnnotation(db.Annotation{MatchKey: "match-k1", Leavers: []string{"enemy"}}); err != nil {
-		t.Fatalf("Set upsert: %v", err)
-	}
-	got, _ = s.LoadAnnotations()
+// assertAnnotationUpsertReplaces changes the leaver side in place and pins
+// that no duplicate row is inserted.
+func assertAnnotationUpsertReplaces(t *testing.T, s *db.SQLStore) {
+	t.Helper()
+	mustNoErr(t, s.SetAnnotation(db.Annotation{MatchKey: "match-k1", Leavers: []string{"enemy"}}))
+	got, _ := s.LoadAnnotations()
 	if len(got["match-k1"].Leavers) != 1 || got["match-k1"].Leavers[0] != "enemy" {
 		t.Errorf("upsert didn't replace: %+v", got["match-k1"])
 	}
 	if len(got) != 1 {
 		t.Errorf("upsert inserted a duplicate row; have %d", len(got))
 	}
+}
 
-	// Delete clears.
-	if err := s.DeleteAnnotation("match-k1"); err != nil {
-		t.Fatalf("Delete: %v", err)
-	}
-	got, _ = s.LoadAnnotations()
+// assertAnnotationDeleteClears deletes the annotation and pins that a delete
+// of a missing key stays a no-op.
+func assertAnnotationDeleteClears(t *testing.T, s *db.SQLStore) {
+	t.Helper()
+	mustNoErr(t, s.DeleteAnnotation("match-k1"))
+	got, _ := s.LoadAnnotations()
 	if len(got) != 0 {
 		t.Errorf("expected empty after delete, got %d", len(got))
 	}
-
 	// Idempotent delete on a missing key.
 	if err := s.DeleteAnnotation("missing"); err != nil {
 		t.Errorf("Delete of missing key should be a no-op, got: %v", err)
@@ -644,13 +620,9 @@ func TestSQLStore_Annotation_RoundTrip_AllFields(t *testing.T) {
 		ReplayCode: "7H1K9P",
 		Members:    []string{"Apollo#11234", "Cheese#5678"},
 	}
-	if err := s.SetAnnotation(want); err != nil {
-		t.Fatalf("SetAnnotation: %v", err)
-	}
+	mustNoErr(t, s.SetAnnotation(want))
 	got, err := s.LoadAnnotations()
-	if err != nil {
-		t.Fatalf("LoadAnnotations: %v", err)
-	}
+	mustNoErr(t, err)
 	a, ok := got["match-nx"]
 	if !ok {
 		t.Fatal("annotation missing after Set")
@@ -733,29 +705,21 @@ func TestSQLStore_HiddenMatches_RoundTrip(t *testing.T) {
 
 	// Initial state — nothing hidden.
 	got, err := s.LoadHiddenKeys()
-	if err != nil {
-		t.Fatalf("LoadHiddenKeys empty: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(got) != 0 {
 		t.Errorf("expected empty hidden set, got %d entries", len(got))
 	}
 
 	// Hide two keys; both show up in the next load.
-	if err := s.HideMatch("m1"); err != nil {
-		t.Fatalf("HideMatch m1: %v", err)
-	}
-	if err := s.HideMatch("m2"); err != nil {
-		t.Fatalf("HideMatch m2: %v", err)
-	}
+	mustNoErr(t, s.HideMatch("m1"))
+	mustNoErr(t, s.HideMatch("m2"))
 	got, _ = s.LoadHiddenKeys()
 	if !got["m1"] || !got["m2"] || len(got) != 2 {
 		t.Errorf("expected {m1, m2}, got %+v", got)
 	}
 
 	// Unhide one — the other survives.
-	if err := s.UnhideMatch("m1"); err != nil {
-		t.Fatalf("UnhideMatch m1: %v", err)
-	}
+	mustNoErr(t, s.UnhideMatch("m1"))
 	got, _ = s.LoadHiddenKeys()
 	if got["m1"] {
 		t.Error("m1 should be gone")
@@ -817,33 +781,21 @@ func TestSQLStore_HardDeleteMatch_WipesParentChildrenAnnotationHidden(t *testing
 	s := openMemory(t)
 	const key = "match-2026-05-10T21-29-28"
 
-	if err := s.UpsertSummary(db.SummaryRow{
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{
 		Filename: "sum.png", MatchKey: key, Map: "rialto",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
-	}); err != nil {
-		t.Fatalf("UpsertSummary: %v", err)
-	}
-	if err := s.UpsertTeams(db.TeamsRow{
+	}))
+	mustNoErr(t, s.UpsertTeams(db.TeamsRow{
 		Filename: "sb.png", MatchKey: key, Eliminations: 17,
 		HeroStats: []db.HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
-	}); err != nil {
-		t.Fatalf("UpsertTeams: %v", err)
-	}
-	if err := s.HideMatch(key); err != nil {
-		t.Fatalf("HideMatch: %v", err)
-	}
-	if err := s.SetAnnotation(db.Annotation{MatchKey: key, Note: "smurf lobby"}); err != nil {
-		t.Fatalf("SetAnnotation: %v", err)
-	}
+	}))
+	mustNoErr(t, s.HideMatch(key))
+	mustNoErr(t, s.SetAnnotation(db.Annotation{MatchKey: key, Note: "smurf lobby"}))
 
-	if err := s.HardDeleteMatch(key); err != nil {
-		t.Fatalf("HardDeleteMatch: %v", err)
-	}
+	mustNoErr(t, s.HardDeleteMatch(key))
 
 	got, err := s.LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(got.Summaries) != 0 {
 		t.Errorf("summary rows survived: %+v", got.Summaries)
 	}
@@ -852,29 +804,21 @@ func TestSQLStore_HardDeleteMatch_WipesParentChildrenAnnotationHidden(t *testing
 	}
 	// Children cascade — verify the join children are gone too.
 	var n int
-	if err := db.RawDB(s).QueryRow(`SELECT COUNT(*) FROM summary_heroes_played`).Scan(&n); err != nil {
-		t.Fatalf("count summary_heroes_played: %v", err)
-	}
+	mustNoErr(t, db.RawDB(s).QueryRow(`SELECT COUNT(*) FROM summary_heroes_played`).Scan(&n))
 	if n != 0 {
 		t.Errorf("summary_heroes_played rows survived: %d", n)
 	}
-	if err := db.RawDB(s).QueryRow(`SELECT COUNT(*) FROM teams_hero_stats`).Scan(&n); err != nil {
-		t.Fatalf("count teams_hero_stats: %v", err)
-	}
+	mustNoErr(t, db.RawDB(s).QueryRow(`SELECT COUNT(*) FROM teams_hero_stats`).Scan(&n))
 	if n != 0 {
 		t.Errorf("teams_hero_stats rows survived: %d", n)
 	}
 	hidden, err := s.LoadHiddenKeys()
-	if err != nil {
-		t.Fatalf("LoadHiddenKeys: %v", err)
-	}
+	mustNoErr(t, err)
 	if hidden[key] {
 		t.Errorf("hidden_matches row survived")
 	}
 	anns, err := s.LoadAnnotations()
-	if err != nil {
-		t.Fatalf("LoadAnnotations: %v", err)
-	}
+	mustNoErr(t, err)
 	if _, ok := anns[key]; ok {
 		t.Errorf("annotation survived")
 	}
@@ -989,34 +933,24 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	// ResolveAmbiguous must rewrite BOTH match_keys in lockstep so the
 	// match stays whole after the user picks the real attribution.
 	s := openMemory(t)
-	if err := s.UpsertTeams(db.TeamsRow{
+	mustNoErr(t, s.UpsertTeams(db.TeamsRow{
 		Filename: "sb.png", MatchKey: "ambiguous-sb.png",
 		Eliminations: 12, Assists: 8, Deaths: 3,
-	}); err != nil {
-		t.Fatalf("seed teams: %v", err)
-	}
-	if err := s.UpsertSummary(db.SummaryRow{
+	}))
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{
 		Filename: "sum.png", MatchKey: "ambiguous-sb.png",
 		Map: "rialto", Hero: "lucio",
-	}); err != nil {
-		t.Fatalf("seed summary: %v", err)
-	}
-	if err := s.ApplyAmbiguity("sb.png", []db.AmbiguousCandidate{
+	}))
+	mustNoErr(t, s.ApplyAmbiguity("sb.png", []db.AmbiguousCandidate{
 		{MatchKey: "match-foo", DistanceSeconds: 720},
-	}); err != nil {
-		t.Fatalf("seed ambig: %v", err)
-	}
+	}))
 	ok, err := s.ResolveAmbiguous("sb.png", "ambiguous-sb.png", "match-foo")
-	if err != nil {
-		t.Fatalf("ResolveAmbiguous: %v", err)
-	}
+	mustNoErr(t, err)
 	if !ok {
 		t.Fatal("ResolveAmbiguous returned ok=false on a present row")
 	}
 	got, err := s.LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	if got.Teams[0].MatchKey != "match-foo" {
 		t.Errorf("teams match_key not updated: %q", got.Teams[0].MatchKey)
 	}
@@ -1094,38 +1028,28 @@ func TestSQLStore_DemoteMatchToAmbiguous_RewritesRowsAndRecordsCandidates(t *tes
 	s := openMemory(t)
 	const key = "match-2026-05-10T21-14-03"
 	const sentinel = "ambiguous-c2NvcmVib2FyZC0yLnBuZw"
-	if err := s.UpsertTeams(db.TeamsRow{
+	mustNoErr(t, s.UpsertTeams(db.TeamsRow{
 		Filename: "dup-teams.png", MatchKey: key,
 		Eliminations: 17, Assists: 16, Deaths: 11,
 		Damage: 12843, Healing: 9021, Mitigation: 3310,
-	}); err != nil {
-		t.Fatalf("UpsertTeams: %v", err)
-	}
-	if err := s.UpsertSummary(db.SummaryRow{
+	}))
+	mustNoErr(t, s.UpsertSummary(db.SummaryRow{
 		Filename: "dup-summary.png", MatchKey: key, Map: "rialto",
-	}); err != nil {
-		t.Fatalf("UpsertSummary: %v", err)
-	}
-	if err := s.UpsertTeams(db.TeamsRow{
+	}))
+	mustNoErr(t, s.UpsertTeams(db.TeamsRow{
 		Filename: "other.png", MatchKey: "match-2026-05-10T18-05-22",
 		Eliminations: 1, Assists: 2, Deaths: 3,
-	}); err != nil {
-		t.Fatalf("UpsertTeams other: %v", err)
-	}
+	}))
 
 	cands := []db.AmbiguousCandidate{{MatchKey: "match-2026-05-10T18-05-22", DistanceSeconds: 11321}}
 	ok, err := s.DemoteMatchToAmbiguous(key, sentinel, "dup-teams.png", cands)
-	if err != nil {
-		t.Fatalf("DemoteMatchToAmbiguous: %v", err)
-	}
+	mustNoErr(t, err)
 	if !ok {
 		t.Fatalf("expected ok=true when rows carried the key")
 	}
 
 	snap, err := s.LoadAll()
-	if err != nil {
-		t.Fatalf("LoadAll: %v", err)
-	}
+	mustNoErr(t, err)
 	for _, r := range snap.Teams {
 		switch r.Filename {
 		case "dup-teams.png":
@@ -1143,9 +1067,7 @@ func TestSQLStore_DemoteMatchToAmbiguous_RewritesRowsAndRecordsCandidates(t *tes
 	}
 
 	got, err := s.LoadAmbiguousCandidatesFor("dup-teams.png")
-	if err != nil {
-		t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
-	}
+	mustNoErr(t, err)
 	if !reflect.DeepEqual(got, cands) {
 		t.Errorf("candidates: got %+v want %+v", got, cands)
 	}

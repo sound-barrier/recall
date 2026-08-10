@@ -3,6 +3,7 @@ package app_test
 import (
 	"testing"
 
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -54,36 +55,47 @@ func TestApp_ParseScreenshots_CompleteOpenQueueMatchFolds(t *testing.T) {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
 	recs, err := a.GetMatchResults()
-	if err != nil {
-		t.Fatalf("GetMatchResults: %v", err)
-	}
+	mustNoErr(t, err)
 	if len(recs) != 1 {
 		t.Fatalf("the six screenshots must fold into ONE match, got %d", len(recs))
 	}
 	rec := recs[0]
+	assertFoldedIdentity(t, rec)
+	assertFoldedCombatTotals(t, rec.Data)
+	if rec.SourceTypes[allHeroesFile] != "" {
+		t.Errorf("All Heroes screenshot must not be a match source, got type %q", rec.SourceTypes[allHeroesFile])
+	}
+	if recognized, _ := fake.LoadAllHeroesFilenames(); !recognized[allHeroesFile] {
+		t.Error("All Heroes screenshot not recorded in the recognized-skip list")
+	}
+}
+
+// assertFoldedIdentity pins the folded match's SUMMARY-side identity, the
+// tri-role heroes list, and the lifted queue type. The aggregator lifts the
+// TEAMS-inferred queue_type to the record's top-level QueueType (the
+// effective field a user annotation can override); data.QueueType is cleared
+// to avoid duplicating it.
+func assertFoldedIdentity(t *testing.T, rec match.Record) {
+	t.Helper()
 	got := rec.Data
 	if got.Map != "hollywood" || got.GameMode != "hybrid" || got.Result != "victory" || got.FinalScore != "3-0" {
 		t.Errorf("summary fields: map=%q mode=%q result=%q score=%q", got.Map, got.GameMode, got.Result, got.FinalScore)
 	}
-	if got.Eliminations != 11 || got.Assists != 12 || got.Deaths != 3 {
-		t.Errorf("E/A/D = %d/%d/%d, want 11/12/3 (SUMMARY+TEAMS agree)", got.Eliminations, got.Assists, got.Deaths)
-	}
-	if got.Damage != 6091 || got.Healing != 3042 || got.Mitigation != 1975 {
-		t.Errorf("TEAMS combat totals: dmg=%d heal=%d mit=%d", got.Damage, got.Healing, got.Mitigation)
-	}
-	// The aggregator lifts the TEAMS-inferred queue_type to the record's
-	// top-level QueueType (the effective field a user annotation can override);
-	// data.QueueType is cleared to avoid duplicating it.
 	if rec.QueueType != "open" {
 		t.Errorf("queue_type = %q, want open (6v6 — inferred from TEAMS)", rec.QueueType)
 	}
 	if len(got.HeroesPlayed) != 3 {
 		t.Errorf("heroes_played = %d heroes, want 3 (tri-role swap)", len(got.HeroesPlayed))
 	}
-	if rec.SourceTypes[allHeroesFile] != "" {
-		t.Errorf("All Heroes screenshot must not be a match source, got type %q", rec.SourceTypes[allHeroesFile])
+}
+
+// assertFoldedCombatTotals pins the agreed E/A/D plus the TEAMS combat totals.
+func assertFoldedCombatTotals(t *testing.T, got parser.MatchResult) {
+	t.Helper()
+	if got.Eliminations != 11 || got.Assists != 12 || got.Deaths != 3 {
+		t.Errorf("E/A/D = %d/%d/%d, want 11/12/3 (SUMMARY+TEAMS agree)", got.Eliminations, got.Assists, got.Deaths)
 	}
-	if recognized, _ := fake.LoadAllHeroesFilenames(); !recognized[allHeroesFile] {
-		t.Error("All Heroes screenshot not recorded in the recognized-skip list")
+	if got.Damage != 6091 || got.Healing != 3042 || got.Mitigation != 1975 {
+		t.Errorf("TEAMS combat totals: dmg=%d heal=%d mit=%d", got.Damage, got.Healing, got.Mitigation)
 	}
 }

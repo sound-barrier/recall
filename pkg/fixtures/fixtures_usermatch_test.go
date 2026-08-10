@@ -19,14 +19,7 @@ func TestGenerateMatchFixture_SeedsUserMatchVariants(t *testing.T) {
 		ocrKeys[s.MatchKey] = true
 	}
 
-	var edited, manual int
-	for _, ud := range fx.UserData {
-		if ocrKeys[ud.MatchKey] {
-			edited++ // override on an existing screenshot-backed match → ocr_edited
-		} else {
-			manual++ // no screenshot row behind the key → manual
-		}
-	}
+	edited, manual := countProvenance(fx, ocrKeys)
 	if edited == 0 {
 		t.Error("expected at least one edited (ocr_edited) override")
 	}
@@ -45,4 +38,18 @@ func TestGenerateMatchFixture_SeedsUserMatchVariants(t *testing.T) {
 			t.Errorf("manual match %s is missing a queue seed", ud.MatchKey)
 		}
 	}
+}
+
+// countProvenance splits the user-data rows into edited (an override on an
+// existing screenshot-backed match → ocr_edited) and manual (no screenshot
+// row behind the key).
+func countProvenance(fx fixtures.Fixture, ocrKeys map[string]bool) (edited, manual int) {
+	for _, ud := range fx.UserData {
+		if ocrKeys[ud.MatchKey] {
+			edited++
+		} else {
+			manual++
+		}
+	}
+	return edited, manual
 }

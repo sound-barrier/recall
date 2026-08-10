@@ -8,17 +8,11 @@ import (
 func TestSQLStore_MatchPlayMode_SetLoadClearRoundTrip(t *testing.T) {
 	s := openMemory(t)
 
-	if err := s.SetMatchPlayMode("match-A", "competitive"); err != nil {
-		t.Fatalf("SetMatchPlayMode competitive: %v", err)
-	}
-	if err := s.SetMatchPlayMode("match-B", "quickplay"); err != nil {
-		t.Fatalf("SetMatchPlayMode quickplay: %v", err)
-	}
+	mustNoErr(t, s.SetMatchPlayMode("match-A", "competitive"))
+	mustNoErr(t, s.SetMatchPlayMode("match-B", "quickplay"))
 
 	got, err := s.LoadMatchPlayModes()
-	if err != nil {
-		t.Fatalf("LoadMatchPlayModes: %v", err)
-	}
+	mustNoErr(t, err)
 	if got["match-A"].PlayMode != "competitive" || got["match-B"].PlayMode != "quickplay" {
 		t.Errorf("after seed, got %+v", got)
 	}
@@ -27,23 +21,17 @@ func TestSQLStore_MatchPlayMode_SetLoadClearRoundTrip(t *testing.T) {
 	}
 
 	// Idempotent upsert.
-	if err := s.SetMatchPlayMode("match-A", "competitive"); err != nil {
-		t.Fatalf("re-set same value: %v", err)
-	}
+	mustNoErr(t, s.SetMatchPlayMode("match-A", "competitive"))
 
 	// Overwrite to the other mode.
-	if err := s.SetMatchPlayMode("match-A", "quickplay"); err != nil {
-		t.Fatalf("overwrite: %v", err)
-	}
+	mustNoErr(t, s.SetMatchPlayMode("match-A", "quickplay"))
 	got, _ = s.LoadMatchPlayModes()
 	if got["match-A"].PlayMode != "quickplay" {
 		t.Errorf("after overwrite, match-A = %q, want quickplay", got["match-A"])
 	}
 
 	// Clear one; the other survives.
-	if err := s.ClearMatchPlayMode("match-A"); err != nil {
-		t.Fatalf("Clear: %v", err)
-	}
+	mustNoErr(t, s.ClearMatchPlayMode("match-A"))
 	got, _ = s.LoadMatchPlayModes()
 	if _, ok := got["match-A"]; ok {
 		t.Errorf("match-A should be cleared, got %+v", got)
@@ -53,9 +41,7 @@ func TestSQLStore_MatchPlayMode_SetLoadClearRoundTrip(t *testing.T) {
 	}
 
 	// Clear on absent key — no error.
-	if err := s.ClearMatchPlayMode("never-set"); err != nil {
-		t.Fatalf("Clear absent: %v", err)
-	}
+	mustNoErr(t, s.ClearMatchPlayMode("never-set"))
 }
 
 func TestSQLStore_MatchPlayMode_CheckConstraintRejectsBadValue(t *testing.T) {
