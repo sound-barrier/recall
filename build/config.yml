@@ -16,7 +16,7 @@ info:
   #                               # Should match the name of your .icon file without the extension
   #                               # If not set and Assets.car exists, defaults to "appicon"
 
-# iOS build configuration (uncomment to customise iOS project generation)
+# iOS build configuration (uncomment to customize iOS project generation)
 # Note: Keys under `ios` OVERRIDE values under `info` when set.
 # ios:
 #   # The iOS bundle identifier used in the generated Xcode project (CFBundleIdentifier)

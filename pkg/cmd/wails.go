@@ -127,7 +127,7 @@ func RunWails(a *app.App, assets embed.FS) {
 	}
 }
 
-// parseCompleteBody renders the parse-complete notification body, pluralising
+// parseCompleteBody renders the parse-complete notification body, pluralizing
 // "match" on the distinct-match count.
 func parseCompleteBody(matchCount int) string {
 	if matchCount == 1 {

@@ -8,7 +8,7 @@ import { widgetById, type WidgetDef } from '@/dashboard/widgets'
 // live-reflow drag-reorder preview, the trash→undo registry, and the per-widget
 // settings popover anchor. Extracted from MatchesDossierHead.vue so the SFC keeps
 // only the set-summary headline/subline + the narrow trigger; the grid concern
-// (its own cohesive state machine) lives here. Behaviour is unchanged — the SFC
+// (its own cohesive state machine) lives here. Behavior is unchanged — the SFC
 // destructures these and renders them exactly as before.
 export function useDashboardGrid() {
   // The persisted row layout is the SINGLE source of truth for "is this widget

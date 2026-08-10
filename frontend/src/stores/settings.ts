@@ -63,7 +63,7 @@ export const useSettingsStore = defineStore('settings', () => {
     navigateToEngine: async () => {
       // Set the tab directly (not goToView, which would also move focus into
       // the panel) then scroll the Engine section into view — matches the
-      // prior App.vue behaviour exactly.
+      // prior App.vue behavior exactly.
       appStore.view = 'settings'
       await nextTick()
       const el = document.getElementById('sec-engine')

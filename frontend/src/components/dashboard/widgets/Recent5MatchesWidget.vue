@@ -30,7 +30,7 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
 
 <style scoped>
 /* Pills sit in a flex row matching the other breakdown rows' inner
-   density. Newest-first reads left-to-right; per-result colour comes
+   density. Newest-first reads left-to-right; per-result color comes
    from the existing --win / --loss / --draw palette tokens so the
    widget stays palette-consistent across themes. */
 .recent-pills {

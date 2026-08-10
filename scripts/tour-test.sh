@@ -31,7 +31,7 @@
 #   first paint of the WebView always lands on a fresh
 #   localStorage and the tour gate fires. `--keep-webview-state`
 #   skips the wipe if you want to test "user with the tour
-#   already dismissed" behaviour.
+#   already dismissed" behavior.
 #
 # Two modes:
 #

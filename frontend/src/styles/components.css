@@ -99,7 +99,7 @@
   top: calc(100% + 0.45rem);
 
   /* Anchor the tooltip's LEFT edge to the icon's left edge so it
-     opens rightward, not centred. Centring with translateX(-50%)
+     opens rightward, not centered. Centering with translateX(-50%)
      used to clip the tooltip off the left edge of the viewport
      whenever the `?` icon sat near the page's left margin — which is
      every Settings row, because labels are in the left column. The
@@ -159,7 +159,7 @@
 }
 
 /* ─── Probe chip + "Looked in" disclosure ─────────────────
-   Two-state pill with a fat coloured bar on the left, a mark
+   Two-state pill with a fat colored bar on the left, a mark
    glyph, the body text, and a × dismiss. Reused both inside
    SettingsView's empty-state hero (parent SFC) and inside the
    steady-state Screenshots Folder row in SettingsFolders.vue
@@ -625,7 +625,7 @@
 }
 
 /* Win-rate judgment recolour for the bars that judge rather than count
-   (Time of day / Day of week / Session depth). Colours come from the
+   (Time of day / Day of week / Session depth). Colors come from the
    same heatmapCellClass engine the bands use, so a 53% can never read
    green here and grey there; bars without a judgment class keep the
    accent gradient (the volume breakdowns). */
@@ -638,7 +638,7 @@
 /* In-bar volume label for the Most-played-heroes + Most-played-maps
    breakdowns. The heroes row carries summed play-time ("7h32min" /
    "32min"); the maps row carries the play-count ("3x" / "1x"). Both
-   sit centred over the bar so the label reads against either the
+   sit centered over the bar so the label reads against either the
    filled or empty portion depending on share; tabular-nums keeps it
    from jittering as values change. The bar gets extra height (and
    slightly tighter monospaced letter-spacing) so a four- or five-
@@ -663,7 +663,7 @@
 
   /* Multi-offset outline so the label stays legible against either
      the rust-gradient fill or the surface-2 empty portion. text-
-     shadow's stacked offsets paint a 1px halo in the surface colour
+     shadow's stacked offsets paint a 1px halo in the surface color
      without forcing a paint-cost backdrop-filter. */
   text-shadow:
     0 0 2px var(--surface-2),
@@ -775,7 +775,7 @@
 
 /* Search-match highlight — HighlightedText.vue wraps matched substrings
    in <mark class="search-hl"> inside the leaf rows. A faint accent wash
-   + a hairline accent underline; the surface keeps its own text colour
+   + a hairline accent underline; the surface keeps its own text color
    (override the <mark> UA black) so map / hero / tag legibility holds. */
 .search-hl {
   color: inherit;

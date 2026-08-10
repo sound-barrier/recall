@@ -12,7 +12,7 @@ import (
 
 // App-level profile methods — surface for the Wails IPC + HTTP routes.
 // The manager (Profiles) was already tested in profile_test.go; here
-// we lock the App's higher-level behaviour: GetProfiles returns both
+// we lock the App's higher-level behavior: GetProfiles returns both
 // active + list as a single ergonomic shape, CreateProfile + activate,
 // SwitchProfile tears down + re-initializes the store + settings,
 // DeleteProfile refuses the active.

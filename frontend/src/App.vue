@@ -4,7 +4,7 @@
 // (~890 lines of template + script vs. ~4 600 lines when the 3 698-line
 // <style> block was inline). Imported here rather than via main.ts so
 // the dependency lives next to the component that anchors the cascade.
-// Still globally scoped (matches the historical behaviour); component-
+// Still globally scoped (matches the historical behavior); component-
 // specific selectors are tracked for a follow-up extraction into
 // per-SFC scoped <style> blocks.
 import '@/styles/app.css'

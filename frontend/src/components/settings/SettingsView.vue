@@ -311,7 +311,7 @@ const showProbeChip = computed(() => !!probeMessage.value && !probeDismissed.val
 }
 
 /* Status meta strip shared between blocked + success states.
-   The block-mark glyph carries the semantic colour so a colour-
+   The block-mark glyph carries the semantic color so a color-
    blind reader still gets the win/loss cue from the leading char. */
 .setting-meta {
   display: inline-flex;

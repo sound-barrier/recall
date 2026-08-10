@@ -5,7 +5,7 @@
 // series hues, which froze every chart to the dark palette: the Trends role
 // lines stayed `#5ca8ff` on Day's cream ground while the same role rendered
 // as `--tank` (`#1f5491`) everywhere else in the app. Reading the tokens at
-// option-build time keeps one source of truth for "what colour is Tank".
+// option-build time keeps one source of truth for "what color is Tank".
 //
 // Consumers must rebuild their options when the theme changes; TrendChart
 // already re-registers its ECharts theme on `watch(themeMode, …)`.
@@ -19,9 +19,9 @@ export function cssVar(name: string, fallback = ''): string {
 
 // Expand #rgb / #rgba shorthand to the 6/8-digit form. This is the case that
 // actually bit: `areaFill()` built its gradient stops by concatenating an
-// alpha suffix onto the series colour (`${c}40`), which silently produces the
+// alpha suffix onto the series color (`${c}40`), which silently produces the
 // invalid `#6df40` for high-contrast's `--tank: #6df`. ECharts renders an
-// unparseable colour as transparent, so the area fill just vanished on that
+// unparseable color as transparent, so the area fill just vanished on that
 // theme with no error anywhere.
 function expandHex(hex: string): string {
   const body = hex.slice(1)
@@ -32,11 +32,11 @@ function expandHex(hex: string): string {
 }
 
 /**
- * Normalise any CSS colour notation to a concrete `rgb()` / `rgba()` string.
+ * Normalize any CSS color notation to a concrete `rgb()` / `rgba()` string.
  *
- * Hex is expanded inline; everything else (named colours, `color-mix()`,
+ * Hex is expanded inline; everything else (named colors, `color-mix()`,
  * `oklch()`, …) goes through the browser's own parser via a probe element, so
- * this keeps working as the palette adopts newer colour syntax. Returns the
+ * this keeps working as the palette adopts newer color syntax. Returns the
  * input unchanged when there is no DOM to probe with.
  */
 export function resolveColor(value: string): string {
@@ -54,16 +54,16 @@ export function resolveColor(value: string): string {
   return computed || v
 }
 
-/** Read a palette token and normalise it to a concrete colour string. */
+/** Read a palette token and normalize it to a concrete color string. */
 export function themeColor(name: string, fallback = ''): string {
   return resolveColor(cssVar(name, fallback))
 }
 
 /**
- * Re-express a colour at the given alpha (0–1).
+ * Re-express a color at the given alpha (0–1).
  *
  * Always emits `rgba(…)` rather than appending hex digits, so it's safe for
- * any input notation and any shorthand length. An alpha applied to a colour
+ * any input notation and any shorthand length. An alpha applied to a color
  * that already carries one replaces it.
  */
 export function withAlpha(color: string, alpha: number): string {

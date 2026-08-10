@@ -8,7 +8,7 @@ import MatchSparklineBrush from '@/components/matches/timeline/MatchSparklineBru
 
 // CAMPAIGN LOG — the temporal header for the Matches view.
 //
-// Two visualisations side-by-side, sharing one trailing-N-months
+// Two visualizations side-by-side, sharing one trailing-N-months
 // window:
 //   - Calendar heatmap (left) — 7×N grid; win-rate hue × volume
 //     saturation. Click a cell to set a single-day filter.

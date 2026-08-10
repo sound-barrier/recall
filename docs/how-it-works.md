@@ -45,7 +45,7 @@ play-time threshold.
 
 ## The four screenshot types
 
-Recall recognises four post-match screen layouts in Overwatch 2.
+Recall recognizes four post-match screen layouts in Overwatch 2.
 You don't need to capture all four for a match to land — but more
 captures = more fields populated:
 
@@ -64,7 +64,7 @@ list becomes the match's primary hero in filters and card headers.
 The PERSONAL tab also has an **"All Heroes"** sub-tab showing your
 combined totals across every hero. You don't need to capture it —
 those totals duplicate the TEAMS screen, and the sub-tab's stat-card
-icons confuse the OCR. If you do screenshot it, Recall recognises and
+icons confuse the OCR. If you do screenshot it, Recall recognizes and
 quietly skips it (no re-OCR on later runs) rather than dropping it on
 the Unknown tab.
 
@@ -211,7 +211,7 @@ one.
 
 ### Supported capture sources
 
-Four capture-tool filename shapes are recognised end-to-end (timestamp
+Four capture-tool filename shapes are recognized end-to-end (timestamp
 extraction + correlation by per-second matching), each with auto-
 detected default folders on Windows:
 
@@ -227,15 +227,15 @@ at wherever it writes to — the filename shape, not the folder, is what
 the parser uses to correlate the timestamp.
 
 **For the cleanest parse, capture high-quality PNG screenshots with
-Overwatch's default colours.** Of the sources above, the **Nvidia overlay** and the
+Overwatch's default colors.** Of the sources above, the **Nvidia overlay** and the
 **Windows Snipping Tool** save PNG (lossless); the **Overwatch PrntScn
 default** and **Steam's F12** save JPG, and heavy JPG compression blurs the
 small stat numbers — the performance card can over-read eliminations, and a
 badly-compressed capture can miss classification and land in the **Unknown**
-tab. The OCR is also tuned to Overwatch's **stock UI colours** (it locates
+tab. The OCR is also tuned to Overwatch's **stock UI colors** (it locates
 your scoreboard row by its blue highlight and detects the magenta COMPETITIVE
 badge), so non-default **colourblind palettes** can break detection — only the
-default colours are known to work.
+default colors are known to work.
 
 A fifth source can be added by editing
 `pkg/parser/screenshot_sources.yaml` (see the file's header
@@ -249,7 +249,7 @@ between Recall releases — see
 The **Matches** tab has a collapsible **Trends** section that charts
 your history over time — SR by hero, a selectable per-match stat
 (KDA, eliminations, damage, …), a rolling win-rate, and per-10
-performance. The charts honour whatever filters you've narrowed the
+performance. The charts honor whatever filters you've narrowed the
 set to, so you can scope a trend to one hero, map, or date range.
 
 ## What Recall doesn't do
@@ -271,7 +271,7 @@ set to, so you can scope a trend to one hero, map, or date range.
 Recall keeps state in your Windows user-config directory — the
 install-wide base directory is `%AppData%\Recall\`.
 
-Inside the base directory, Recall organises everything by
+Inside the base directory, Recall organizes everything by
 **profile**. Each profile is a separate OW account (or alt, or
 any logical grouping you want) with its own settings and match
 database — switching profiles via the masthead chip swaps every

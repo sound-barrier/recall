@@ -237,7 +237,7 @@ const levelTitle = computed(() => {
         :gear="depth === 0
           ? {
             active: !configIsDefault,
-            ariaLabel: configIsDefault ? 'Configure the Hero × Game-Mode band' : 'Hero × Game-Mode settings are customised',
+            ariaLabel: configIsDefault ? 'Configure the Hero × Game-Mode band' : 'Hero × Game-Mode settings are customized',
             title: 'Heroes to show + min matches',
             expanded: configOpen,
             attrs: { 'data-widget-config-trigger': '', 'data-hero-mode-config-trigger': '' },

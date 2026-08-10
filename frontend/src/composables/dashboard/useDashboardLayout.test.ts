@@ -36,7 +36,7 @@ function stubLocalStorage() {
   })
 }
 
-// Seeded layouts stamp the CURRENT version by default so behavioural
+// Seeded layouts stamp the CURRENT version by default so behavioral
 // tests exercise the post-migration state; migration tests pass the
 // version they're migrating FROM ('none' = pre-versioning storage).
 async function mountHost(seed?: RowLayout | string, version: number | 'none' = CURRENT_LAYOUT_VERSION) {
@@ -102,7 +102,7 @@ describe('reconcile', () => {
 
   it('preserves a user layout that omits an install-default widget (no ghost re-add)', () => {
     // The user has explicitly removed winrate. The reconciler must
-    // honour that — re-adding install defaults would lose to every
+    // honor that — re-adding install defaults would lose to every
     // trash click.
     const stored: RowLayout = {
       1: ['avg-kda', 'total-time'],

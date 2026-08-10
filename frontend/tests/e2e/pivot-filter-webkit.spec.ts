@@ -2,7 +2,7 @@
  * Pivot filter checklist — WebKit (WKWebView) regression.
  *
  * The desktop app renders in macOS WKWebView, where a <button> is NOT
- * focused on click (a long-standing Safari behaviour). The filter menu's
+ * focused on click (a long-standing Safari behavior). The filter menu's
  * focusout-based dismissal collided with that: clicking a value's checkbox
  * blurred the menu, closed it mid-click, and the toggle was lost — the box
  * "wouldn't uncheck." This guards the toggle in the same engine the desktop

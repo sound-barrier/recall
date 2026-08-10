@@ -5,11 +5,11 @@
  * therefore hardcoded in trend-options.ts, which froze every chart to the
  * Night palette: a Tank line drew #5ca8ff over Day's cream ground while a
  * Tank badge three inches away drew var(--tank) = #1f5491. Nothing caught
- * it — a canvas is opaque to axe, to the DOM snapshots, and to every
+ * it — a canvas is opaque to ax, to the DOM snapshots, and to every
  * locator-based assertion in this suite.
  *
  * So this spec reads the rendered pixels back. It samples the dominant
- * colours out of the canvas under two palettes and asserts they differ,
+ * colors out of the canvas under two palettes and asserts they differ,
  * which is the one check that actually exercises
  * token -> themeColor() -> option -> ECharts -> paint.
  */
@@ -52,13 +52,13 @@ async function chartPixels(page: import('@playwright/test').Page): Promise<strin
     })
 
   await expect.poll(dominant, {
-    message: 'chart never painted a saturated series colour',
+    message: 'chart never painted a saturated series color',
     timeout: 15_000,
   }).not.toBe('')
   return dominant()
 }
 
-test('series colours are repainted from the palette on a theme change', async ({ page }) => {
+test('series colors are repainted from the palette on a theme change', async ({ page }) => {
   await openView(page, 'tab-matches', 'night')
   const night = await chartPixels(page)
   await openView(page, 'tab-matches', 'day')
@@ -66,7 +66,7 @@ test('series colours are repainted from the palette on a theme change', async ({
   // Night's --tank/--accent/--support vs Day's. Asserting on the specific
   // tokens rather than "something changed" so a future palette edit that
   // accidentally decouples the chart from the theme still fails here.
-  expect(night, 'night chart should paint the night role colours').toContain('106,184,255')
-  expect(day, 'day chart should paint the day role colours').toContain('31,84,145')
+  expect(night, 'night chart should paint the night role colors').toContain('106,184,255')
+  expect(day, 'day chart should paint the day role colors').toContain('31,84,145')
   expect(day).not.toBe(night)
 })

@@ -79,7 +79,7 @@ type Annotation struct {
 	// Free-form user tags applied to the match. `stack`, `stream`,
 	// `placement` are the conventional three (surfaced as quick-add
 	// toggles in the inline editor); the user can add anything.
-	// Normalised to lowercase + trimmed at the app layer before
+	// Normalized to lowercase + trimmed at the app layer before
 	// reaching SQL, so `Stack` and `stack` collapse to one row.
 	Tags        []string
 	AnnotatedAt string

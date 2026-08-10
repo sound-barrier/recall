@@ -28,9 +28,9 @@ var Version = "dev"
 // LatestHeroes / LatestMaps carry the canonical display-name lists
 // extracted from the release's `recall-<version>-heroes.yaml` and
 // `recall-<version>-maps.yaml` assets. The frontend pivots these into
-// a "Update to v<X> to recognise <name>" CTA on the Reference data
+// a "Update to v<X> to recognize <name>" CTA on the Reference data
 // gaps section so the user knows which OCR-captured names are about
-// to be recognised once they update. Empty when the YAML fetch fails
+// to be recognized once they update. Empty when the YAML fetch fails
 // or the sidecar SHA-256 check rejects the asset — Recall keeps
 // showing the generic "wait for the next release" copy in that case.
 type UpdateInfo struct {

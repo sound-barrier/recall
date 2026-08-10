@@ -59,7 +59,7 @@ func unmarshalScreenshotSources(ds *owDataset, bytes []byte) error {
 		}
 		if !strings.HasPrefix(s.Regex, "^") {
 			// A bad pattern that matches anywhere in the filename could
-			// absorb random files; require ^ as a defence-in-depth gate
+			// absorb random files; require ^ as a defense-in-depth gate
 			// alongside the prefix check.
 			return fmt.Errorf("source[%d] %q: regex must start with ^ (got %q)", i, s.Name, s.Regex)
 		}

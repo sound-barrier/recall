@@ -37,7 +37,7 @@ type Season struct {
 // rules"). Source-of-truth is pkg/parser/screenshot_sources.yaml;
 // the loader fills parser.ScreenshotSources at init time. We
 // translate to a JSON-safe view here so the frontend doesn't
-// receive a compiled *regexp.Regexp (which can't be marshalled).
+// receive a compiled *regexp.Regexp (which can't be marshaled).
 type ScreenshotSource struct {
 	Name       string `json:"name"`
 	Prefix     string `json:"prefix"`

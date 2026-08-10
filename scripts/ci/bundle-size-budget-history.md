@@ -9,7 +9,7 @@ Append a row to the table when you bump a budget. Date in ISO 8601;
 the **PR** column is whichever PR landed the bump; the **JS** /
 **CSS** columns are the **total** budgets after the change (in
 bytes — same units the script asserts against). One-line rationale,
-no soft-pedalling. Numbers that go down get a row too.
+no soft-pedaling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|

@@ -14,7 +14,7 @@ export default {
       rules: { 'scale-unlimited/declaration-strict-value': null },
     },
     {
-      // The theme picker renders swatches of the OTHER themes' colours
+      // The theme picker renders swatches of the OTHER themes' colors
       // while you are inside the current one. Those literals cannot be
       // var() references — reading a token would show the active theme
       // four times over.
@@ -30,12 +30,12 @@ export default {
     // Require a design token for the properties that had actually
     // drifted. This app declared --space-*, --type-* and motion tokens
     // and then never used them: 53 distinct rem font sizes, 5 radii,
-    // 20+ durations and ~300 hardcoded palette colours accumulated
+    // 20+ durations and ~300 hardcoded palette colors accumulated
     // instead, along with the Day-theme contrast failures that came
     // from hand-picking hues per component. Nothing mechanical was
     // stopping that.
     //
-    // Scoped to colour, type, radius and motion — the axes with a real
+    // Scoped to color, type, radius and motion — the axes with a real
     // scale behind them. Deliberately NOT padding/margin/gap: the
     // spacing scale covers the common cases but plenty of values here
     // are genuine optical adjustments (0.28rem, 0.45rem), and forcing

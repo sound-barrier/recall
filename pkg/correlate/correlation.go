@@ -48,7 +48,7 @@ func ParseFilenameTimestamp(f string) (time.Time, bool) {
 		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
 			return time.Time{}, false
 		}
-		// time.Date normalises out-of-range values silently (month
+		// time.Date normalizes out-of-range values silently (month
 		// 13 becomes January next year, day 32 rolls over). We want
 		// strict rejection: build a canonical RFC3339 string and let
 		// time.Parse refuse the invalid date.

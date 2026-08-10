@@ -11,7 +11,7 @@
  *
  * Pre-this-PR the Unknown tab's thumbnail was a dead-click —
  * the `<img>` rendered but carried no @click handler. The
- * ambiguous-card flavour didn't even render a thumbnail at all,
+ * ambiguous-card flavor didn't even render a thumbnail at all,
  * forcing the user to pick a candidate without seeing the
  * screenshot they were triaging.
  */

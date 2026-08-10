@@ -140,7 +140,7 @@ type fixture struct {
 // TEAMS, PERSONAL, PERSONAL2, RANK — is the canonical emission
 // order; cohorts that want a different order build separate specs.
 //
-// Offsets are honoured exactly. `defaultOffsets()` returns a
+// Offsets are honored exactly. `defaultOffsets()` returns a
 // matchSpec preset with the conventional offsets (SUMMARY=+0,
 // TEAMS=+30s, PERSONAL=+45s, PERSONAL2=+75s, RANK=+90s);
 // cohorts compose it with `spec.startTime = …` etc. Cohorts that

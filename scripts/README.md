@@ -1,6 +1,6 @@
 # scripts/
 
-Helper scripts for running, inspecting, and maintaining Recall, organised
+Helper scripts for running, inspecting, and maintaining Recall, organized
 by concern:
 
 - **`lib/`** — shared bash libraries (sourced, not run directly).

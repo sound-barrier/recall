@@ -84,12 +84,12 @@ func TestProbeScreenshotsCandidates_NonWindowsReturnsEmpty(t *testing.T) {
 
 func TestProbeScreenshotsCandidates_WindowsReportsAllFour(t *testing.T) {
 	if runtime.GOOS != "windows" {
-		t.Skip("Windows-only behaviour")
+		t.Skip("Windows-only behavior")
 	}
 	home := t.TempDir()
 	setHome(t, home)
 
-	// Materialise three of the four candidate paths so the test
+	// Materialize three of the four candidate paths so the test
 	// exercises both "exists" and "not found" cards in one pass.
 	// Steam stays absent (no registry shim in unit tests).
 	must := func(p string) {
@@ -133,12 +133,12 @@ func TestProbeScreenshotsCandidateStats_NonWindowsReturnsEmpty(t *testing.T) {
 
 func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognized(t *testing.T) {
 	if runtime.GOOS != "windows" {
-		t.Skip("Windows-only behaviour")
+		t.Skip("Windows-only behavior")
 	}
 	home := t.TempDir()
 	setHome(t, home)
 
-	// Materialise the Nvidia candidate dir + drop three files: two
+	// Materialize the Nvidia candidate dir + drop three files: two
 	// canonical Nvidia-format names, one stray PDF that should NOT
 	// count as recognized.
 	nvidiaDir := filepath.Join(home, "Videos", "NVIDIA", "Overwatch 2")
@@ -181,7 +181,7 @@ func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognized(t *testi
 
 func TestProbeScreenshotsCandidateStats_NonExistentSourcesReturnEmpty(t *testing.T) {
 	if runtime.GOOS != "windows" {
-		t.Skip("Windows-only behaviour")
+		t.Skip("Windows-only behavior")
 	}
 	home := t.TempDir()
 	setHome(t, home)
@@ -199,7 +199,7 @@ func TestProbeScreenshotsCandidateStats_NonExistentSourcesReturnEmpty(t *testing
 
 func TestWalkSourceDir_BoundedAndSkipsDirs(t *testing.T) {
 	tmp := t.TempDir()
-	// Materialise: 3 files, 1 subdirectory.
+	// Materialize: 3 files, 1 subdirectory.
 	for _, name := range []string{"a.png", "b.png", "c.png"} {
 		if err := os.WriteFile(filepath.Join(tmp, name), []byte("x"), 0o600); err != nil {
 			t.Fatalf("write %s: %v", name, err)

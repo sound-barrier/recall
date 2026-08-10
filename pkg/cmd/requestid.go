@@ -34,7 +34,7 @@ func FromContext(ctx context.Context) string {
 
 func withRequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := sanitiseClientRequestID(r.Header.Get("X-Request-ID"))
+		id := sanitizeClientRequestID(r.Header.Get("X-Request-ID"))
 		if id == "" {
 			id = newRequestID()
 		}
@@ -58,11 +58,11 @@ func newRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-// sanitiseClientRequestID accepts a client-supplied header value
+// sanitizeClientRequestID accepts a client-supplied header value
 // when it's safe: ASCII printable, ≤ 64 chars, no whitespace. We
 // drop anything weirder rather than echo it back into our own log
 // lines (header-injection prevention).
-func sanitiseClientRequestID(s string) string {
+func sanitizeClientRequestID(s string) string {
 	if s == "" || len(s) > 64 {
 		return ""
 	}

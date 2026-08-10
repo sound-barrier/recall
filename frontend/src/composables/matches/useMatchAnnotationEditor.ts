@@ -233,7 +233,7 @@ function removeMember(name: string) {
 // Keydown handler for the member input. Enter/comma both commit the
 // chip (Vue's v-on doesn't support the `comma` key modifier so we
 // have to read e.key by hand). Backspace on an empty input removes
-// the last chip — standard tagify-style behaviour.
+// the last chip — standard tagify-style behavior.
 function onMemberKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault()

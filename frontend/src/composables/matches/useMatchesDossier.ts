@@ -383,11 +383,11 @@ export function useMatchesDossier(
   const queries = useDossierQueries(records, tallyRecords, heroRole, weekStart)
 
   // Time-series over the same narrowed records, surfaced through the
-  // dossier so the Trends charts honour the active filters like every
+  // dossier so the Trends charts honor the active filters like every
   // other consumer.
   const trends = useMatchesTrends(records)
 
-  // Behavioural aggregates (tilt/momentum + climb/session) for the
+  // Behavioral aggregates (tilt/momentum + climb/session) for the
   // opt-in KPI widgets, over the same narrowed records.
   const momentum = useMatchesMomentum(records)
 
@@ -413,7 +413,7 @@ export function useMatchesDossier(
     ...queries,
     // ─── Time-series — reactive trend lines over the narrowed set ─
     ...trends,
-    // ─── Behavioural KPIs — tilt/momentum + climb/session ─────────
+    // ─── Behavioral KPIs — tilt/momentum + climb/session ─────────
     ...momentum,
   }
 }

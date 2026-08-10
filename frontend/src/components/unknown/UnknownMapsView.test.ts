@@ -384,7 +384,7 @@ describe('UnknownMapsView', () => {
       expect(wrapper.find('[data-fix-cta-key="r4"]').exists()).toBe(false)
     })
 
-    it('does NOT surface the CTA when the upcoming release doesn\'t recognise the name', () => {
+    it('does NOT surface the CTA when the upcoming release doesn\'t recognize the name', () => {
       const { wrapper } = mountWith([], {
         referenceGapRecords: [gapRecord({ matchKey: 'r5', heroRaw: 'unknownhero' })], updateInfo: baseInfo,
       })

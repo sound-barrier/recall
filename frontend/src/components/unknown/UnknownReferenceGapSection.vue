@@ -9,7 +9,7 @@ import { useMatchesStore } from '@/stores/matches'
 // Reference-data gaps: records the parser OCR'd a hero/map name for but couldn't
 // pin to the canonical YAML roster shipped with this release. Read-only — the fix
 // is a new Recall release with an updated YAML; each card surfaces a "Fixed in
-// v<X>" CTA when the latest release would recognise the captured name. Card chrome
+// v<X>" CTA when the latest release would recognize the captured name. Card chrome
 // + the .reference-gap-* / .fix-* families live in the global unknown.css.
 const matchesStore = useMatchesStore()
 const appStore = useAppStore()
@@ -24,10 +24,10 @@ const refdataGapCallout = useContextualCallout({
   gate: () => matchesStore.referenceGapRecords.length > 0,
 })
 
-// The upgrade tip for a gap-card record IF the upcoming release would recognise
+// The upgrade tip for a gap-card record IF the upcoming release would recognize
 // its OCR'd name; null otherwise. Case-insensitive against the normalized raw
 // token (mirrors the parser's normalize: lowercase + strip diacritics).
-function recognisingRelease(rec: MatchRecord): { version: string; url: string; name: string; kind: 'hero' | 'map' } | null {
+function recognizingRelease(rec: MatchRecord): { version: string; url: string; name: string; kind: 'hero' | 'map' } | null {
   const info = updateInfo.value
   if (!info?.checked || !info.available) return null
   const normalize = (s: string) => s
@@ -82,21 +82,21 @@ function recognisingRelease(rec: MatchRecord): { version: string; url: string; n
         </div>
       </div>
       <p
-        v-if="recognisingRelease(rec)"
+        v-if="recognizingRelease(rec)"
         class="reference-gap-fix"
         :data-fix-cta-key="rec.match_key"
       >
         <span class="eyebrow accent fix-eyebrow">Fixed in</span>
         <a
           class="fix-link"
-          :href="recognisingRelease(rec)!.url"
+          :href="recognizingRelease(rec)!.url"
           target="_blank"
           rel="noopener noreferrer"
-          :title="`Open release page for v${recognisingRelease(rec)!.version}`"
-        >v{{ recognisingRelease(rec)!.version }} ↗</a>
+          :title="`Open release page for v${recognizingRelease(rec)!.version}`"
+        >v{{ recognizingRelease(rec)!.version }} ↗</a>
         <span class="fix-copy">
-          — will recognise
-          <code>{{ recognisingRelease(rec)!.name }}</code>
+          — will recognize
+          <code>{{ recognizingRelease(rec)!.name }}</code>
         </span>
       </p>
     </article>
@@ -104,7 +104,7 @@ function recognisingRelease(rec: MatchRecord): { version: string; url: string; n
 
   <!-- Just-in-time hint on the first appearance of a gap card. Most users never
        hit one — a static tour step would mis-time. Fires when the section
-       materialises; dismisses on Esc / close / Got it. -->
+       materializes; dismisses on Esc / close / Got it. -->
   <ContextualCallout
     v-if="refdataGapCallout.active()"
     target="[data-refgap-heading]"

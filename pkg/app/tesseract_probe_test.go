@@ -88,7 +88,7 @@ func TestTesseractProbeCandidates_IncludesPerUserWindowsInstalls(t *testing.T) {
 }
 
 func TestTesseractProbeCandidates_UnknownGOOSReturnsNothing(t *testing.T) {
-	// An unrecognised GOOS (BSD variants, plan9) should return no
+	// An unrecognized GOOS (BSD variants, plan9) should return no
 	// candidates so the probe falls straight through to PATH lookup
 	// without claiming "tried X locations" for fictional paths.
 	got := app.TesseractProbeCandidates("plan9", "/home/test")
@@ -107,11 +107,11 @@ func TestProbeTesseractBinary_TriedListMatchesHostOSCandidates(t *testing.T) {
 	res := a.ProbeTesseractBinary()
 
 	// On any GOOS, Tried must be a non-empty list when the GOOS is
-	// recognised; on an unknown GOOS at minimum the PATH-lookup
+	// recognized; on an unknown GOOS at minimum the PATH-lookup
 	// sentinel should show up.
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" || runtime.GOOS == "windows" {
 		if len(res.Tried) == 0 {
-			t.Errorf("Tried must be non-empty on recognised GOOS %q", runtime.GOOS)
+			t.Errorf("Tried must be non-empty on recognized GOOS %q", runtime.GOOS)
 		}
 	}
 

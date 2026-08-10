@@ -2,7 +2,7 @@
 import type { ComparisonRow, ComparisonSection } from '@/match/match-compare-helpers'
 
 // The A / B / Δ evidence table shared by both Compare modes. Sections render
-// as labelled tbody groups; the winning column of a judged row is tinted.
+// as labeled tbody groups; the winning column of a judged row is tinted.
 // When `drillable` marks a cell, it becomes a button that emits `drill` — the
 // Form mode routes that into a Matches narrow (window + dimension); the
 // Seasons mode leaves the table inert.
@@ -225,7 +225,7 @@ function deltaClass(r: ComparisonRow) {
   border-radius: var(--radius);
 
   /* Soft-loss fill + line carries the "warning" semantic, but the TEXT is the
-     high-contrast --text so it clears WCAG-AA on every theme — a --loss-coloured
+     high-contrast --text so it clears WCAG-AA on every theme — a --loss-colored
      glyph on the loss tint falls to ~3.9:1 at this size in the Day theme. */
   background: var(--loss-soft);
   color: var(--text);

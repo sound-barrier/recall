@@ -10,10 +10,24 @@
 # files that are auto-generated (CHANGELOG.md, wailsjs/) or that hold
 # base64-y noise lockfiles trip the dictionary on.
 
+[default]
+# American English repo-wide (CLAUDE.md "Language: American English") —
+# flags British variants (colour, cancelled, organise) wholesale instead
+# of enumerating them word by word.
+locale = "en-us"
+
+[default.extend-identifiers]
+# Wails v3's API spells this field the British way — it is upstream's
+# name, not ours to Americanize.
+BackgroundColour = "BackgroundColour"
+
 [default.extend-words]
 # "mis-classify", "mis-classified", "mis-tagged" — common technical-
 # writing prefix that the word splitter sees as a standalone "mis".
 mis = "mis"
+# The a11y engine is NAMED axe (@axe-core/playwright) — en-us would
+# "fix" it to "ax" and break every reference to the tool.
+axe = "axe"
 # Acceptable alternate spelling of "unparsable". Both are correct;
 # match-helpers.ts uses this form, no need to bikeshed it.
 unparseable = "unparseable"

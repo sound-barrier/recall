@@ -163,7 +163,7 @@ func PendingFiles(dir string, skip map[string]bool) ([]string, error) {
 // file is reported through the progress callback. Only a directory-level
 // failure (ReadDir error) propagates as the function's error return.
 //
-// Cancellation: ctx is checked between files. When ctx is cancelled the loop
+// Cancellation: ctx is checked between files. When ctx is canceled the loop
 // returns the partial map gathered so far + ctx.Err() so the caller can
 // distinguish "ran clean" from "user aborted". Tesseract itself is shelled
 // out per file and not context-aware — cancellation lands at the next
@@ -176,7 +176,7 @@ func ParseScreenshotsDir(ctx context.Context, dir string, skip map[string]bool, 
 	}
 	out := map[string]*MatchResult{}
 	for i, name := range toProcess {
-		// Honour cancellation BEFORE starting the next (potentially
+		// Honor cancellation BEFORE starting the next (potentially
 		// multi-second) OCR shell-out. Files already completed stay
 		// in `out`; the partial map gets a chance to flush downstream.
 		if err := ctx.Err(); err != nil {
@@ -197,7 +197,7 @@ func ParseScreenshotsDir(ctx context.Context, dir string, skip map[string]bool, 
 			// new log line ("log-injection"). %q runs each through
 			// Go's quoting rules, escaping every control char into
 			// its literal `\n` / `\t` / `\x07` form. CodeQL's
-			// go/log-injection query recognises %q as a sanitizer.
+			// go/log-injection query recognizes %q as a sanitizer.
 			log.Printf("parse: %q: %q (skipping; continuing with remaining files)", name, parseErr)
 		} else {
 			out[name] = r

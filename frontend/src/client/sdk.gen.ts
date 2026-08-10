@@ -948,7 +948,7 @@ export const checkForUpdate = <ThrowOnError extends boolean = false>(options?: O
  * verifies each against its published SHA-256 sidecar,
  * atomically writes them to `<RECALL_DATA_DIR>/data/`, and
  * swaps the parser dataset in-process. No binary update
- * required — the user can recognise newly-shipped heroes /
+ * required — the user can recognize newly-shipped heroes /
  * maps / capture-tool grammars by clicking Apply, without
  * re-installing Recall.
  *

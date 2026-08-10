@@ -71,7 +71,7 @@ const isFocused = computed(
 )
 
 // Bare clauses match (and so highlight) the plain surfaces — map, hero.
-// The tag surface additionally honours `tag:`-scoped clauses.
+// The tag surface additionally honors `tag:`-scoped clauses.
 const bareTerms = computed(() => props.searchClauses.filter((c) => c.field === null).map((c) => c.value))
 const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 
@@ -171,7 +171,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
         v-if="isMapUnknown(rec)"
         class="leaf-map leaf-map-unknown"
         :data-unknown-map="rec.data?.map_raw || true"
-        :title="`The parser couldn't match the OCR'd map text to maps.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.map_raw ?? '—'})`"
+        :title="`The parser couldn't match the OCR'd map text to maps.yaml. Wait for the next release to recognize it. (OCR read: ${rec.data?.map_raw ?? '—'})`"
       >{{ formatUnknownMapLabel(rec) }}</span>
       <button
         v-else
@@ -212,7 +212,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
         v-if="isHeroUnknown(rec)"
         class="leaf-hero leaf-hero-unknown"
         :data-unknown-hero="rec.data?.hero_raw || true"
-        :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
+        :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognize it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
       >{{ formatUnknownHeroLabel(rec) }}</span>
       <span v-else class="leaf-hero">
         <button
@@ -452,7 +452,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 }
 
 /* Unknown-hero / Unknown-map warning variant. Same shape as the
-   canonical leaf-hero / leaf-map but coloured with the accent —
+   canonical leaf-hero / leaf-map but colored with the accent —
    draws the eye to "this matched nothing in the YAML; an update
    is needed". The :title attribute carries the OCR'd text + the
    "wait for the next release" copy so a hover gives the full

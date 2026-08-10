@@ -8,7 +8,7 @@ import (
 	"recall/pkg/app"
 )
 
-// Phase 4 #14 (server-mode parity audit) landed a behaviour change:
+// Phase 4 #14 (server-mode parity audit) landed a behavior change:
 // SetScreenshotsDir now restarts the watcher when WatchEnabled is true.
 // Previously this side-effect lived inline in the Wails dialog flow
 // (PickScreenshotsDir), so the server-mode HTTP path that called

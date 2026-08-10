@@ -37,7 +37,7 @@ func scaleDim(screen, minimum int) int {
 }
 
 // sizeWindowToScreen resizes the window to windowSizeForScreen of the display it
-// opened on and centres it. Best-effort: any runtime error leaves the window at
+// opened on and centers it. Best-effort: any runtime error leaves the window at
 // its creation size.
 func sizeWindowToScreen(win *application.WebviewWindow) {
 	screen, err := win.GetScreen()

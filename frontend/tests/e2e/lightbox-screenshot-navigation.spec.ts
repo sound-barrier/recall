@@ -151,7 +151,7 @@ test.describe('lightbox — navigate between screenshots of the same match', () 
     await expect(img).toHaveAttribute('alt', 'scoreboard-2129.png')
   })
 
-  test('h / l vim aliases mirror the arrow-key behaviour', async ({ page }) => {
+  test('h / l vim aliases mirror the arrow-key behavior', async ({ page }) => {
     await openLightboxOnFirstFile(page)
     const img = page.locator('img.lightbox-img')
 

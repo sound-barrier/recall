@@ -287,7 +287,7 @@ func NewSQLStore(path string) (*SQLStore, error) {
 	// timeout makes the loser wait for the lock instead. foreign_keys(1)
 	// likewise reaches every connection (CASCADE was only enforced on one).
 	// journal_mode(wal) lets the UI's reads proceed against the last
-	// committed snapshot while the parse loop writes, instead of queueing
+	// committed snapshot while the parse loop writes, instead of queuing
 	// behind the writer's lock (it persists in the file; re-asserting per
 	// connection is harmless). synchronous(normal) is the WAL-recommended
 	// durability point — fsync at checkpoint, not per-commit; the WAL

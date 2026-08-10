@@ -132,10 +132,10 @@ parser reads your screenshots:
   Overwatch PrntScn default and Steam's F12 save JPG, and heavy JPG
   compression blurs the small stat numbers — that's a common cause of a
   misread or an Unknown record.
-- **Keep Overwatch's default UI colours.** The parser is tuned to the
-  stock colour scheme — it finds your scoreboard row by its blue
+- **Keep Overwatch's default UI colors.** The parser is tuned to the
+  stock color scheme — it finds your scoreboard row by its blue
   highlight and detects the magenta COMPETITIVE badge — so non-default
-  colourblind palettes can break detection. Only default colours are
+  colourblind palettes can break detection. Only default colors are
   known to work.
 
 ### Verify the SUMMARY actually parsed
@@ -282,7 +282,7 @@ The most common cause is a new hero or map released after this
 Recall version cut. Example: a record from a Miyazaki play parsed
 before `heroes.yaml` was updated with that entry surfaces here.
 The card shows the file the record was parsed from + the OCR'd
-text Recall couldn't recognise (e.g. `Unknown hero: miyazaki` /
+text Recall couldn't recognize (e.g. `Unknown hero: miyazaki` /
 `Unknown map: new-junk-city`). Same record shows the warning on
 its leaf row (`Unknown hero (miyazaki?)`) and on the detail
 panel's inline banner — three surfaces, one signal.
@@ -293,7 +293,7 @@ panel's inline banner — three surfaces, one signal.
    updated `heroes.yaml` + `maps.yaml` as attested release
    assets — see [Verifying downloads](../README.md#verifying-downloads).
    Once the new release lands, the next app boot's re-aggregate
-   pass picks up the newly-recognised entries automatically (~2–5 s
+   pass picks up the newly-recognized entries automatically (~2–5 s
    on 500 matches) and the record's hero/map flips to canonical
    without re-OCRing.
 2. **Hit Re-parse all** under Settings → Advanced to recover

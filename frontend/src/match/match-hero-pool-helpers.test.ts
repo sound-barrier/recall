@@ -203,7 +203,7 @@ describe('matchesPoolMode', () => {
     expect(matchesPoolMode({ queue_type: 'role', data: {} } as unknown as ModeRec, 'role')).toBe(false)
   })
 
-  it('treats an unlabelled competitive match as Role Queue (the ranked default)', () => {
+  it('treats an unlabeled competitive match as Role Queue (the ranked default)', () => {
     const noQueue = { play_mode: 'competitive', data: {} } as unknown as ModeRec
     expect(matchesPoolMode(noQueue, 'role')).toBe(true)
     expect(matchesPoolMode(noQueue, 'open')).toBe(false)

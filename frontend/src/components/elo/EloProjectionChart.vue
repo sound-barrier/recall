@@ -16,7 +16,7 @@ const targetLabel = computed(() => fmtRank(targetTier.value, targetDivision.valu
 const { themeMode } = useTheme()
 
 const option = computed(() => {
-  // Series colours resolve from palette tokens at build time, so the
+  // Series colors resolve from palette tokens at build time, so the
   // option must be rebuilt on a theme switch — see elo-chart-options.
   void themeMode.value
   if (!curves.value || targetScore.value === null) return null

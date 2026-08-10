@@ -1,7 +1,7 @@
 /**
  * Competitive rank tiers stay legible in every theme.
  *
- * The six tier colours (bronze → master) are fixed Overwatch identity
+ * The six tier colors (bronze → master) are fixed Overwatch identity
  * hues, and as hardcoded literals they were pale tints tuned for a
  * near-black ground: on Day's cream surface every one of them landed
  * between 1.04:1 and 2.24:1, so a Day user could not read their own
@@ -9,7 +9,7 @@
  *
  * a11y.spec.ts cannot catch this. The rank block only renders inside the
  * match detail panel, and that audit never opens it — which is exactly
- * how six invisible colours survived. This spec opens the panel and
+ * how six invisible colors survived. This spec opens the panel and
  * computes the contrast itself.
  */
 import { test, expect } from './_fixtures'

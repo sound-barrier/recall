@@ -22,7 +22,7 @@ describe('FormDeltaWidget', () => {
     expect(w.find('.form-gap').classes()).toContain('gap-up')
   })
 
-  it('colours a negative gap as a down-trend', () => {
+  it('colors a negative gap as a down-trend', () => {
     const w = mountWidget(FormDeltaWidget, {
       dossier: {
         formDelta: {

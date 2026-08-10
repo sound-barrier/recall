@@ -192,7 +192,7 @@ func TestApp_MoveMatches_RejectsUnknownTarget(t *testing.T) {
 }
 
 func TestApp_MoveMatches_RejectsInvalidTargetName(t *testing.T) {
-	// Defence-in-depth: a malformed target name (e.g. path-traversal
+	// Defense-in-depth: a malformed target name (e.g. path-traversal
 	// or special characters) must be rejected BEFORE the in-memory
 	// list check so the value never reaches the os.MkdirAll path
 	// expression. ErrInvalidProfileName maps to 400 at the HTTP

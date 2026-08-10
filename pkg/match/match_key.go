@@ -109,7 +109,7 @@ func (k MatchKey) Filename() string {
 
 // NewAmbiguousMatchKey builds an `ambiguous-<filename>` key. The
 // minting sites (correlation.go's tie-breaker fallback) used to
-// concatenate the prefix inline; centralising here keeps the
+// concatenate the prefix inline; centralizing here keeps the
 // wire format in one place — flip the prefix once instead of
 // hunting every call site.
 func NewAmbiguousMatchKey(filename string) MatchKey {

@@ -64,7 +64,7 @@ func preprocessHighContrast(src image.Image, scale int, thresh uint8) image.Imag
 }
 
 // grayUpscale renders src as BT.601-luminance grayscale at scale×, optionally
-// inverted (255-lum). Nearest-neighbour upscale; antialiasing rides through as
+// inverted (255-lum). Nearest-neighbor upscale; antialiasing rides through as
 // a gradient for Tesseract's binariser.
 func grayUpscale(src image.Image, scale int, invert bool) image.Image {
 	bounds := src.Bounds()

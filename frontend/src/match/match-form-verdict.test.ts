@@ -84,7 +84,7 @@ describe('judgeForm', () => {
     expect(flat.movers).toEqual([])
   })
 
-  it('formats fractional rank moves at one decimal with display-based pluralisation', () => {
+  it('formats fractional rank moves at one decimal with display-based pluralization', () => {
     const half = judgeForm(metrics({ rankProgress: 0 }), metrics({ rankProgress: 0.5 }))
     expect(half.movers[0]).toBe('Rank +0.5 divs')
     const one = judgeForm(metrics({ rankProgress: 0 }), metrics({ rankProgress: 0.96 }))

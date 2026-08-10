@@ -84,7 +84,7 @@ export interface OnboardingStep {
   // whichever view they were on).
   view?: OnboardingViewId
   // CSS selector for the element to spotlight. `null` (or omitted)
-  // means "no spotlight — render the callout as a centred briefing
+  // means "no spotlight — render the callout as a centered briefing
   // panel". Used for the Welcome step and the Done step.
   target?: string | null
   // Where the callout panel anchors relative to the target. `auto`
@@ -109,7 +109,7 @@ export interface OnboardingStep {
 // covering the headline UX of every tab. Lifted into module scope so
 // the e2e + Vitest pin against the same source of truth.
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
-  // ── 1. Welcome briefing (no target — centred panel) ─────────
+  // ── 1. Welcome briefing (no target — centered panel) ─────────
   {
     id: 'welcome',
     tag: 'BRIEFING',
@@ -265,7 +265,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   },
   // ── 14. Ambiguous attribution — "Needs your review" ────────
   // Sits on the Unknown tab right above the unmatched cards. Walks
-  // the user through the candidate-picker so they recognise it the
+  // the user through the candidate-picker so they recognize it the
   // first time the resolver trips on their real data: when two of
   // their matches share the same (eliminations, assists, deaths)
   // signature inside 30 minutes, Recall asks rather than guesses.
@@ -277,7 +277,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     placement: 'right',
     view: 'unknown',
   },
-  // ── 15. Cheatsheet pointer (no target — centred briefing) ──
+  // ── 15. Cheatsheet pointer (no target — centered briefing) ──
   {
     id: 'cheatsheet',
     heading: 'Keyboard shortcuts',

@@ -39,7 +39,7 @@ modes share `CompareTable.vue` and the `compareSnapshot` builder.
 ## What it shows
 
 Pick a **Baseline (A)** and a **Compared (B)** season from the two chapter-grouped
-selectors. Metrics are grouped into labelled sections, each row an **A / B / Δ**
+selectors. Metrics are grouped into labeled sections, each row an **A / B / Δ**
 triple:
 
 - **Overview** — record (W–L–D), total games, competitive vs quick-play games,
@@ -92,7 +92,7 @@ refs (`wld`, `winrate`, `averageKDA`, `totalTimePlayed`, `longestWinStreak`,
 breakdowns the dossier doesn't expose — per-role hero pools, best/worst hero,
 per-game-mode win rate, most-played map, and the playlist / queue-type counts —
 are pure functions in `match-compare-aggregate.ts` over the season's record
-slice. `match-compare-helpers.ts` then turns the two snapshots into the labelled
+slice. `match-compare-helpers.ts` then turns the two snapshots into the labeled
 sections (delta, direction, Wilson caveat). No backend or schema changes.
 
 ## Untimed matches
@@ -104,7 +104,7 @@ comparison isn't lossy.
 
 ## Possible future extensions
 
-- **N-way comparison** — the same aggregation generalises to more than two
+- **N-way comparison** — the same aggregation generalizes to more than two
   columns; the current UI is fixed at two.
 - **Sparkline-per-metric** — a small trend beside each row for the seasons in
   between.

@@ -178,11 +178,11 @@ test.describe('hero-count buckets + hero pool', () => {
     await expect(widget.locator('[data-pool-out-hero]')).toContainText(/ana/i)
   })
 
-  // Full-page axe over the POPULATED matches view with both widgets rendered.
+  // Full-page ax over the POPULATED matches view with both widgets rendered.
   // The empty-corpus a11y.spec never renders the heatmap grid, leaf rows, or
   // result chips — this pass is what keeps those honest with real data.
   for (const theme of ['day', 'dark', 'night', 'high-contrast'] as const) {
-    test(`populated matches view + both widgets has no axe violations — ${theme}`, async ({ page }) => {
+    test(`populated matches view + both widgets has no ax violations — ${theme}`, async ({ page }) => {
       await page.addInitScript((t) => {
         try { localStorage.setItem('recall.theme', t) } catch (_) { /* ignore */ }
       }, theme)

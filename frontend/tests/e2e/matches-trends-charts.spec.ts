@@ -93,7 +93,7 @@ test.describe('Matches — Trends section', () => {
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
-    // Eight labelled chart containers by default (Rank ladder, Win-rate,
+    // Eight labeled chart containers by default (Rank ladder, Win-rate,
     // Win-rate by hero, Win-rate by map, Combat per 10 min, Rank delta,
     // Cumulative net, Best times to play), each with a painted canvas once the
     // lazy ECharts chunk resolves. "Modifiers over time" starts collapsed

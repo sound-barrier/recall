@@ -1,4 +1,4 @@
-// Behavioural analytics over the time-ordered match set: tilt/momentum
+// Behavioral analytics over the time-ordered match set: tilt/momentum
 // (win-rate conditioned on the previous result, session-opener win-rate)
 // and climb/session stats (net rank movement, leaver rate, play-session
 // count). Pure + unit-tested; the dossier wraps these as computeds.
@@ -271,7 +271,7 @@ export function sessionCount(records: readonly MomentumInput[], gapHours = SESSI
 
 // ── Tilt nudge ──────────────────────────────────────────────────────
 //
-// Two-pronged trigger (deliberately strict so it never moralises on a
+// Two-pronged trigger (deliberately strict so it never moralizes on a
 // single bad day): the LATEST >=3 timed matches are all defeats, AND
 // the loss-streak K/D collapsed more than 25% below the 30-day
 // baseline (which needs >=5 matches to mean anything). Assists count

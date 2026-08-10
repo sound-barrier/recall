@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
 })
 
-async function runAxe(page: import('@playwright/test').Page) {
+async function runAx(page: import('@playwright/test').Page) {
   // wcag2a + wcag2aa is the standard combination most regulators
   // and contracts care about. wcag21a/wcag21aa adds the WCAG 2.1
   // additions (mobile, low-vision); fine to include on a desktop
@@ -58,7 +58,7 @@ for (const theme of THEMES) {
     test(`a11y: ${view.name} view (${theme} theme) has no axe violations`, async ({ page }) => {
       await openView(page, view.tabId, theme)
 
-      const results = await runAxe(page)
+      const results = await runAx(page)
       expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([])
     })
   }

@@ -11,7 +11,7 @@ The structure is:
 ## Mac
 
 The `darwin` directory holds files specific to Mac builds.
-These may be customised and used as part of the build. To return these files to the default state, simply delete them
+These may be customized and used as part of the build. To return these files to the default state, simply delete them
 and
 build with `wails build`.
 
@@ -23,7 +23,7 @@ The directory contains the following files:
 ## Windows
 
 The `windows` directory contains the manifest and rc files used when building with `wails build`.
-These may be customised for your application. To return these files to the default state, simply delete them and
+These may be customized for your application. To return these files to the default state, simply delete them and
 build with `wails build`.
 
 * `icon.ico` - The icon used for the application. This is used when building using `wails build`. If you wish to

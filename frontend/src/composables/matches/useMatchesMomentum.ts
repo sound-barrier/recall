@@ -21,7 +21,7 @@ import { tiltEpisodes, type TiltEpisodes } from '@/match/elo-streaks'
 // "Net rank this week" anchors on the last seven days of play.
 const NET_RANK_DAYS = 7
 
-// Reactive behavioural aggregates over the narrowed match set — tilt /
+// Reactive behavioral aggregates over the narrowed match set — tilt /
 // momentum + climb / session stats. Folded into useMatchesDossier's
 // return so the KPI widgets reach them via useDossier (same shape as
 // useMatchesTrends).

@@ -407,7 +407,7 @@ test.describe('Geography — never-played roles + empty state', () => {
   })
 
   test('cells judge win rate with the same discrete bands as the Hero × Game-Mode band', async ({ page }) => {
-    // Consistency contract: this band used to colour by a continuous
+    // Consistency contract: this band used to color by a continuous
     // green-red hue blend (winrateVolumeFill) while its sibling Hero ×
     // Game-Mode band used discrete judgment classes — the same 53% hero
     // could look green in one band and muddy-neutral in the other. Both

@@ -7,7 +7,7 @@ import (
 	"recall/pkg/correlate"
 )
 
-// parseFilenameTimestamp recognises the screenshot filename formats
+// parseFilenameTimestamp recognizes the screenshot filename formats
 // each canonical Windows capture tool emits. Per-tool prefix gates
 // the regex match so random non-OW files in the watched folder
 // don't get absorbed.
@@ -79,7 +79,7 @@ func TestParseFilenameTimestamp_Reject(t *testing.T) {
 		{"empty", ""},
 		{"random rename", "renamed.png"},
 		{"random non-OW screenshot", "IMG_2026-06-07_22-59-52.png"},
-		{"nvidia format but no prefix (pre-fix behaviour)", "2026.05.10 - 21.29.28 _summary.png"},
+		{"nvidia format but no prefix (pre-fix behavior)", "2026.05.10 - 21.29.28 _summary.png"},
 		{"nvidia format embedded mid-filename", "screen_2026.01.02 - 03.04.05 _teams.png"},
 		{"timestamp without extension also requires the prefix", "2026.12.31 - 23.59.59"},
 		{"snip stem but PrntScn separators (no match)", "Screenshot 26-06-07 224855.png"},

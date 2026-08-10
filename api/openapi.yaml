@@ -888,7 +888,7 @@ paths:
         `202` on success, `409` when no parse is in flight.
       responses:
         "202":
-          description: Cancellation signalled; SSE `parse-canceled` follows once the loop unwinds.
+          description: Cancellation signaled; SSE `parse-canceled` follows once the loop unwinds.
         "409":
           $ref: "#/components/responses/Conflict"
         "500":
@@ -1670,7 +1670,7 @@ paths:
         verifies each against its published SHA-256 sidecar,
         atomically writes them to `<RECALL_DATA_DIR>/data/`, and
         swaps the parser dataset in-process. No binary update
-        required — the user can recognise newly-shipped heroes /
+        required — the user can recognize newly-shipped heroes /
         maps / capture-tool grammars by clicking Apply, without
         re-installing Recall.
 
@@ -1785,7 +1785,7 @@ paths:
                 properties:
                   heroes_by_role:
                     type: object
-                    description: Hero names grouped by role, alphabetised within each role.
+                    description: Hero names grouped by role, alphabetized within each role.
                     additionalProperties:
                       type: array
                       items: { type: string }
@@ -1795,7 +1795,7 @@ paths:
                       support: [Ana, Juno, Mercy]
                   maps_by_game_mode:
                     type: object
-                    description: Map names grouped by game mode, alphabetised within each.
+                    description: Map names grouped by game mode, alphabetized within each.
                     additionalProperties:
                       type: array
                       items: { type: string }
@@ -1807,7 +1807,7 @@ paths:
                     type: array
                     description: |
                       Per-capture-tool filename grammars the parser
-                      recognises. Source-of-truth is
+                      recognizes. Source-of-truth is
                       `pkg/parser/screenshot_sources.yaml`. Surfaced
                       in Settings → Advanced → "Supported capture-
                       source rules" so the user can verify which
@@ -3049,7 +3049,7 @@ components:
             (current build is already the latest). The
             frontend's Unknown-tab "Reference data gaps"
             section pivots this into a per-card "Update to
-            v<X> to recognise <name>" CTA.
+            v<X> to recognize <name>" CTA.
           items: { type: string }
         latest_maps:
           type: array
@@ -3218,7 +3218,7 @@ components:
           description: |
             Stable identity. Either `match-<ISO-timestamp>` (from the
             earliest screenshot's filename, with all date/time
-            separators normalised to `-` so the whole key is URL-safe
+            separators normalized to `-` so the whole key is URL-safe
             without encoding) or `unmatched-<filename>` for files
             whose names didn't parse as timestamps.
           example: "match-2026-05-10T22-21-11"
@@ -3467,7 +3467,7 @@ components:
         `note` / `replay_code` / `members` / `tags` are omitted when
         empty (the server marshals them `omitempty`). The row only
         exists in the database if at least one field carries content;
-        absence of the row is signalled by a 404 on
+        absence of the row is signaled by a 404 on
         `GET /api/v1/matches/{match_key}/annotation`, and the whole
         annotation object is omitted from `MatchRecord` when the match is
         unannotated.

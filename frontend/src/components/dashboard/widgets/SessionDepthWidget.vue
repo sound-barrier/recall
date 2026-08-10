@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Session depth — win rate by how deep into a play session the game
 // was. Where the late buckets sag is where stopping earlier starts
-// paying. Bar width is the share of games at that depth; colour is
+// paying. Bar width is the share of games at that depth; color is
 // the bands' shared win-rate judgment. Gallery opt-in.
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'

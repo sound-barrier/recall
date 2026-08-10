@@ -178,7 +178,7 @@ func LoadError() error { return loadDataset().loadErr }
 // init triggers the first Reload so subsequent package-level reads
 // see a populated dataset even before SetDataDir is called from
 // pkg/app's init. With parserDataDirFunc defaulting to "", this loads
-// the embedded YAML — same behaviour as the pre-refactor init().
+// the embedded YAML — same behavior as the pre-refactor init().
 //
 // Embedded YAML failures used to `panic` here, which crashed the
 // process during the init phase — on a desktop build that shows as

@@ -18,7 +18,7 @@ describe('BestWinrateHeroWidget', () => {
     expect(w.find('.kpi-sub').text()).toContain('6 matches')
   })
 
-  it('singularises the sub when qualifyingMatches === 1', () => {
+  it('singularizes the sub when qualifyingMatches === 1', () => {
     const w = mountWidget(BestWinrateHeroWidget, {
       dossier: { bestWinrateHero: { key: 'ana', winrate: 100, qualifyingMatches: 1 } },
     })

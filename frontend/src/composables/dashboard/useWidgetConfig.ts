@@ -16,7 +16,7 @@ import type { WidgetConfigSchema } from '@/dashboard/widget-config-schema'
 // The composable owns the JSON round-trip; widgets consume only the
 // `config` ComputedRef. `set(patch)` merges shallow-style: only the
 // listed keys overwrite the stored value, so a popover saving a
-// single field never clobbers neighbouring fields. `reset()` writes
+// single field never clobbers neighboring fields. `reset()` writes
 // the schema defaults so a future schema migration that changes a
 // default propagates to reset users on next hydrate (we don't
 // removeItem because reset should be EXPLICIT user intent — "I want

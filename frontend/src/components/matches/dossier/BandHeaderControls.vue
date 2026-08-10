@@ -91,7 +91,7 @@ const emit = defineEmits<{
     <span aria-hidden="true">⚙</span>
   </button>
 
-  <ul v-if="legend" class="bh-legend" aria-label="Cell-colour legend">
+  <ul v-if="legend" class="bh-legend" aria-label="Cell-color legend">
     <li><span class="bh-swatch bh-loss" /> Losing</li>
     <li><span class="bh-swatch bh-mixed" /> Mixed</li>
     <li><span class="bh-swatch bh-win" /> Winning</li>

@@ -20,7 +20,7 @@ import (
 // status instead of hanging.
 //
 // Constrained to non-Windows because it uses a POSIX shell sleep script as a
-// stand-in slow binary; the timeout behaviour (exec.CommandContext kills the
+// stand-in slow binary; the timeout behavior (exec.CommandContext kills the
 // held probe) is identical cross-platform.
 func TestCheckTesseract_TimeoutDoesNotHang(t *testing.T) {
 	fakeBin := filepath.Join(t.TempDir(), "tesseract")

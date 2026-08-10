@@ -318,7 +318,7 @@ Project environment variables (`RECALL_DATA_DIR` + the tool-version pins) live i
 
 ### npm supply-chain cooldown
 
-`frontend/.npmrc` sets `min-release-age=7` so every `npm install` from inside `frontend/` rejects npm package versions younger than seven days. This catches the typical hijacked-publish → npm-unpublish window — Shai-Hulud, the 2025 worm wave, and the recent compromises of `@ctrl/tinycolor` et al. were all detected and pulled inside 72 h. Dependabot honours `.npmrc` when it builds the updated tree, so a malicious publish that lands during its weekly window won't generate a PR until the cooldown elapses (by which point npm has usually pulled it).
+`frontend/.npmrc` sets `min-release-age=7` so every `npm install` from inside `frontend/` rejects npm package versions younger than seven days. This catches the typical hijacked-publish → npm-unpublish window — Shai-Hulud, the 2025 worm wave, and the recent compromises of `@ctrl/tinycolor` et al. were all detected and pulled inside 72 h. Dependabot honors `.npmrc` when it builds the updated tree, so a malicious publish that lands during its weekly window won't generate a PR until the cooldown elapses (by which point npm has usually pulled it).
 
 Requires npm ≥ 11.0; CI (`actions/setup-node` with Node 26) ships npm 11 already. `npm ci` is unaffected — it installs exact versions from the lockfile without re-resolving — so checkouts and CI builds remain reproducible.
 

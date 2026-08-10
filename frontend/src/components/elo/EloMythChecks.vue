@@ -109,7 +109,7 @@ const checks = computed<Check[]>(() => {
         ? `with more of it below even than above (${100 - prob} to ${prob}) — the playbook above is the way out`
         : 'balanced almost evenly around 50 — dead even is a real place to be, and the playbook is how you leave it'
     // Below the verdict floor this number is mostly the prior — say so,
-    // and never colour it as a finding.
+    // and never color it as a finding.
     const priorNote = provisional.value
       ? ` At ${sampleN.value} games this is still mostly the skeptic prior talking — it starts you at 50-50 with ~20 pseudo-games of stubbornness. Play on before reading much into it.`
       : ''

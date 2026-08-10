@@ -7,7 +7,7 @@
  * updates the other's selection band.
  *
  * Pre-redesign this spec also covered `.filter-rail` / `.agg-stats`
- * integration and a "Clear Filters" button — all retired in favour
+ * integration and a "Clear Filters" button — all retired in favor
  * of the Narrow panel + the `.active-chip.clear` rail chip.
  */
 import { test, expect } from './_fixtures'

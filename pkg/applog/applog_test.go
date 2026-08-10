@@ -54,7 +54,7 @@ func TestSubsystem_TagsLogger(t *testing.T) {
 	}
 }
 
-func TestFormatFromEnv_HonoursOverride(t *testing.T) {
+func TestFormatFromEnv_HonorsOverride(t *testing.T) {
 	t.Setenv("RECALL_LOG_FORMAT", "json")
 	if got := applog.FormatFromEnv(); got != "json" {
 		t.Errorf("formatFromEnv=%q, want %q", got, "json")

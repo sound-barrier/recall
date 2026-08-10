@@ -86,7 +86,7 @@ describe('useMatchHeatmap', () => {
     expect(noMatchDay).toMatchObject({ total: 0, empty: true, winRate: 0 })
   })
 
-  it('honours the windowWeeks option (e.g. 52 for 12-month view)', () => {
+  it('honors the windowWeeks option (e.g. 52 for 12-month view)', () => {
     const records = ref<MatchRecord[]>([])
     const model = useMatchHeatmap(records, { windowWeeks: 52 })
     // 52 weeks × 7 = 364 cells, ±7 for the week-snap edge.
@@ -102,7 +102,7 @@ describe('useMatchHeatmap', () => {
     expect(model.value.monthLabels.length).toBeLessThanOrEqual(7)
   })
 
-  it('exposes maxTotal so the caller can normalise saturation', () => {
+  it('exposes maxTotal so the caller can normalize saturation', () => {
     const records = ref<MatchRecord[]>([
       rec('2026-05-10', 'victory', 'a'),
       rec('2026-05-10', 'victory', 'b'),
@@ -123,7 +123,7 @@ describe('useMatchHeatmap', () => {
     expect(indices).toEqual(sorted)
   })
 
-  it('honours weekStartsOn=1 (Monday) by snapping the start to a Monday', () => {
+  it('honors weekStartsOn=1 (Monday) by snapping the start to a Monday', () => {
     const records = ref<MatchRecord[]>([])
     const model = useMatchHeatmap(records, { weekStartsOn: 1 })
     // `start` should resolve to a Monday: dayOfWeek of the first

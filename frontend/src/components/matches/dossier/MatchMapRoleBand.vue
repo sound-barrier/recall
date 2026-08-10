@@ -104,8 +104,8 @@ const NON_COMPETITIVE_MODES = new Set(['clash'])
 interface Col { slug: string; display: string; gameMode: string; firstInGroup: boolean }
 
 // Columns = the full canonical roster, grouped by game mode (canonical
-// order) and alphabetised within each group. mapIndex is keyed by the
-// normalised slug — the same form the parser stores in data.map — so
+// order) and alphabetized within each group. mapIndex is keyed by the
+// normalized slug — the same form the parser stores in data.map — so
 // the join below is exact.
 const columns = computed<Col[]>(() => {
   // Filter the roster by the gear config BEFORE grouping so the
@@ -182,7 +182,7 @@ function structureCellFor(slug: string, role: Role): MapRoleCell | undefined {
 
 // Discrete judgment class + volume opacity — the same shared engine as
 // the sibling Hero × Game-Mode band (heatmapCellClass), so a 53% map
-// cell and a 53% hero cell read identically. This band used to colour
+// cell and a 53% hero cell read identically. This band used to color
 // by a continuous green↔red hue blend instead, which made the two
 // dossier bands disagree about the same win rate.
 function cellClass(slug: string, role: Role): string {

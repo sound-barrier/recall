@@ -354,7 +354,7 @@ test.describe('Elo Calculator', () => {
     // The hero bar "wears the heat class of the rate ON DISPLAY" — the
     // documented contract of heatShape. It was silently broken: the class
     // came from the raw win/loss tallies, so a what-if nudge moved the
-    // bar's width and label but never its colour. A 50% hero nudged to
+    // bar's width and label but never its color. A 50% hero nudged to
     // 52% must flip grey → green; slumped to 45%, green → red territory.
     seq = 0
     await mockCorpus(page, [

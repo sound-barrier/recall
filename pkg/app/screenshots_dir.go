@@ -52,11 +52,11 @@ func (a *App) GetScreenshotsDir() string {
 // path) when path is empty, fails format validation, doesn't exist,
 // or isn't a directory.
 //
-// Watcher behaviour: if the watcher is currently armed (WatchEnabled
+// Watcher behavior: if the watcher is currently armed (WatchEnabled
 // is true and startWatching has booted an fsnotify watcher), it gets
 // restarted against the new dir. Without this, changing the dir
 // while watching would leave fsnotify pointed at the old path —
-// silent drift between user intent and actual behaviour. Both the
+// silent drift between user intent and actual behavior. Both the
 // Wails dialog flow and the server-mode HTTP path funnel through
 // here so transports stay in parity.
 func (a *App) SetScreenshotsDir(path string) error {

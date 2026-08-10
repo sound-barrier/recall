@@ -81,8 +81,8 @@ function naiveGamesAt(distance: number, stepUnits: number, p: number, pStar: num
 }
 
 // wilsonGamesRange propagates the win-rate sample's Wilson 95% interval
-// through a games-at-p function: the CI's fast side uses the favourable
-// bound, the slow side the unfavourable one (null = unreachable there).
+// through a games-at-p function: the CI's fast side uses the favorable
+// bound, the slow side the unfavorable one (null = unreachable there).
 // When input.winRate departs from the sample rate (a manual edit or hero
 // nudge), the interval recenters on the dialed rate at the REAL sample's
 // width — the dial moves the projection, it never fakes a sample.

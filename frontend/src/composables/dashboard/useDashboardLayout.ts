@@ -89,7 +89,7 @@ export interface DashboardLayoutApi {
   // commit path: the rendered preview IS the destination layout,
   // so we persist it as-is rather than translating back into a
   // single move() call with index gymnastics. Filters out IDs the
-  // registry no longer recognises (same orphan-drop policy as
+  // registry no longer recognizes (same orphan-drop policy as
   // setRow).
   setLayout: (layout: RowLayout) => void
   // Append a widget to its default row (or a fresh overflow row if

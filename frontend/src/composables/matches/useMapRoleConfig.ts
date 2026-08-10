@@ -47,7 +47,7 @@ export function isMapRoleConfig(d: unknown): d is MapRoleConfig {
   )
 }
 
-// Drop values the app no longer recognises (role / type enums) and
+// Drop values the app no longer recognizes (role / type enums) and
 // de-dupe; map names are left as-is (validated against the live roster
 // at render time, not here).
 export function reconcileMapRoleConfig(c: MapRoleConfig): MapRoleConfig {

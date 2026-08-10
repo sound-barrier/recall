@@ -35,7 +35,7 @@ var ErrParseInFlight = errors.New("a parse is already in flight")
 var ParseScreenshotsDirFunc = parser.ParseScreenshotsDir
 
 // CancelParse short-circuits an in-flight ParseScreenshots at the
-// next between-files boundary by cancelling the context the parser
+// next between-files boundary by canceling the context the parser
 // loop is checking. Returns ErrNoParseInFlight when no parse is
 // running. Wails-bound so the desktop Stop button drives it via the
 // generated bindings; also reachable via DELETE /api/v1/parses/active
@@ -151,7 +151,7 @@ func (a *App) StartParse(force bool) error {
 // parseSync runs a parse to completion on the caller's goroutine — the
 // Wails IPC path, the watcher debounce, and Go tests all rely on the
 // call blocking until the OCR loop finishes. Fail-fast single-flight
-// (ErrParseInFlight) instead of queueing behind a held mutex.
+// (ErrParseInFlight) instead of queuing behind a held mutex.
 func (a *App) parseSync(force bool) error {
 	dir, err := a.validateParsePreconditions()
 	if err != nil {
@@ -344,7 +344,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 // registry's standing byte-identical duplicates. Errors loading the ignored /
 // recognized / duplicate sets don't abort the parse — it's a UX nicety, not a
 // correctness invariant; an empty set just means nothing's suppressed. The
-// suppress list and the duplicate registry ARE honoured even on ReParseAll
+// suppress list and the duplicate registry ARE honored even on ReParseAll
 // (force) — the user explicitly told us never to look at those files again,
 // and a duplicate's canonical re-parses in its place.
 //

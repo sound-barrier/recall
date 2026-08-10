@@ -264,7 +264,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 // the desktop asset-server middleware (wails.go). It deliberately EXCLUDES
 // the /api/v1/events SSE route: the Wails asset server on Windows buffers
 // the whole response body and only delivers it when the handler returns —
-// Flush() is a no-op and the request context is never cancelled — so a
+// Flush() is a no-op and the request context is never canceled — so a
 // streaming handler hangs the webview request and leaks its goroutine.
 // a.SSEHub is also only assigned in RunServer, so Subscribe() would panic
 // on the desktop path. Desktop events ride the Wails event bus instead;

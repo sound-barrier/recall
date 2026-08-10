@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The masthead ⋮ application menu (Windows / Linux / browser — macOS uses the
-// native menu bar). Behaviour + the macOS-Wails gate live in useAppMenu; this
+// native menu bar). Behavior + the macOS-Wails gate live in useAppMenu; this
 // SFC is the trigger + dropdown markup, mirroring ProfileSwitcher's pattern.
 import { useAppMenu } from '@/composables/app/useAppMenu'
 

@@ -54,7 +54,7 @@ function rec(opts: RecOpts = {}): Rec {
 }
 
 describe('isCompetitive', () => {
-  it('honours the play-mode override over the OCR playlist', () => {
+  it('honors the play-mode override over the OCR playlist', () => {
     expect(isCompetitive(rec({ playMode: 'competitive', playlist: 'quickplay' }))).toBe(true)
     expect(isCompetitive(rec({ playMode: 'quickplay', playlist: 'competitive' }))).toBe(false)
     expect(isCompetitive(rec({ playlist: 'quickplay' }))).toBe(false)

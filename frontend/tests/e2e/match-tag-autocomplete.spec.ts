@@ -5,7 +5,7 @@
  * tag input surfaces a small popover listing tags from the narrowed
  * set's vocabulary (`useMatchesNarrow.availableTags`). Arrow-down +
  * Enter adopts the highlighted suggestion; Enter on free text still
- * adopts as a new tag (the pre-existing behaviour).
+ * adopts as a new tag (the pre-existing behavior).
  *
  * Mocks the matches feed with two records carrying user-authored
  * tags ("clutch", "stomp") so the vocabulary has something to
@@ -97,7 +97,7 @@ test.describe('match tag autocomplete', () => {
     await expect(page.locator('aside.detail-panel .match-tag.removable')).toContainText('clutch')
   })
 
-  test('Enter on free-text with no cursor still adopts it as a new tag (pre-existing behaviour)', async ({ page }) => {
+  test('Enter on free-text with no cursor still adopts it as a new tag (pre-existing behavior)', async ({ page }) => {
     let blankTags: string[] = []
     let captured: Record<string, unknown> | null = null
     const records = [

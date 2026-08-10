@@ -60,7 +60,7 @@ describe('App.vue lazy-loaded components', () => {
       // `lazyOverlay` (AppOverlays.vue) adds the chunk-failure error
       // component. All compile to the same dynamic import that Vite
       // statically extracts for chunk splitting — a runtime variable
-      // would defeat the optimisation either way.
+      // would defeat the optimization either way.
       const pattern = new RegExp(
         `const\\s+${name}\\s*=\\s*(?:defineAsyncComponent|lazyView|lazyOverlay)\\(\\s*(?:\\{[^}]*loader:\\s*)?\\(\\)\\s*=>\\s*import\\(['"]${escapeRegex(path)}['"]\\)`,
       )

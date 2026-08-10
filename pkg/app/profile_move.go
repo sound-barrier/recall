@@ -48,14 +48,14 @@ func (a *App) validateMoveRequest(matchKeys []string, targetProfile string) (pro
 	// surfaces as 400 instead of being swallowed by the no-op branch.
 	// Validate targetProfile against the same regex Create / Rename use
 	// BEFORE membership in the active list. Two reasons:
-	//  1. Defence in depth — the list contents come from a runtime
+	//  1. Defense in depth — the list contents come from a runtime
 	//     read that, while validated at write time, is not a static
 	//     allow-list as far as taint analysis is concerned. Routing
-	//     the name through the regex sanitises the value before it
+	//     the name through the regex sanitizes the value before it
 	//     flows into the path-construction below
 	//     (a.profiles.ProfileDir → filepath.Join → os.MkdirAll).
 	//     CodeQL's "Uncontrolled data used in path expression" rule
-	//     recognises the regex check; the slice-membership probe alone
+	//     recognizes the regex check; the slice-membership probe alone
 	//     does not.
 	//  2. Clearer 400 vs 404 mapping at the HTTP boundary —
 	//     malformed names (path-traversal, special chars) return

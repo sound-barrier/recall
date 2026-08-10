@@ -4,7 +4,7 @@
 // A Beta prior + the observed record give a closed-form Beta posterior;
 // everything here is a readout of that posterior.
 //
-// The default prior is the SKEPTIC's: Beta(10, 10), centred hard on the
+// The default prior is the SKEPTIC's: Beta(10, 10), centered hard on the
 // "forced 50-50" belief with ~20 pseudo-games of stubbornness. Every
 // probability shown is therefore conservative — the player's own games
 // have to argue their way past the myth.
@@ -84,7 +84,7 @@ export function gamesToKnow(
 }
 
 // shrunkWinRate is the empirical-Bayes adjusted rate for one hero: the
-// hero's record updated against a prior centred on the POOLED rate with
+// hero's record updated against a prior centered on the POOLED rate with
 // `strength` pseudo-games. A hot 3–0 lands near the pool; a long record
 // barely moves — "the player is the constant" applied per hero. Null
 // without a pool to shrink toward.

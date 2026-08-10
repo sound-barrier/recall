@@ -11,7 +11,7 @@ import (
 // ClearCalls / etc. are inspected for "did the App layer call into
 // us?" assertions. All access is guarded by `mu`.
 //
-// Default zero-value behaviour: every method succeeds with empty
+// Default zero-value behavior: every method succeeds with empty
 // state. For fixture-driven tests, set the slices/maps before passing
 // the *Fake to `app.NewWithStore(...)`.
 type Fake struct {

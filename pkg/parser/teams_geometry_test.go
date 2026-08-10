@@ -71,7 +71,7 @@ func TestFindHighlightedRowY_NoBlueReturnsMinusOne(t *testing.T) {
 		// stays zero everywhere. The sliding window picks the first
 		// window (y=0) but its sum is 0 — same as every other
 		// position. The function returns the lowest-y best.
-		// "No highlighted row" is signalled differently — by the
+		// "No highlighted row" is signaled differently — by the
 		// caller noticing the row band is bordered by black on
 		// both sides. The function itself can still pick a
 		// (somewhat arbitrary) window when there's no blue at all.

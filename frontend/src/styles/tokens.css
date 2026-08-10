@@ -19,7 +19,7 @@
   --text-faint: #878a96;
 
   /* --text-mute was #44474f → 1.85:1 on --surface-2 (fails WCAG AA
-     "color-contrast" — axe flagged .match-index, .mf-placeholder-meta).
+     "color-contrast" — ax flagged .match-index, .mf-placeholder-meta).
      Bumped to a value that meets 4.5:1 on every dark surface
      (bg=5.33:1, surface=4.96:1, surface-2=4.72:1, surface-3=4.55:1)
      while staying slightly dimmer than --text-faint so the
@@ -72,10 +72,10 @@
      tokens (--accent / --win / --loss / --draw); these extend the ramp
      for series with no meaning of their own — heroes, maps, modifiers.
      They lived as hex literals inside TrendChart, so any chart with
-     five or more series drew four theme-aware colours followed by four
+     five or more series drew four theme-aware colors followed by four
      frozen dark-theme ones. Each theme overrides these for its ground. */
 
-  /* Competitive rank tiers. Fixed Overwatch identity colours — a Gold
+  /* Competitive rank tiers. Fixed Overwatch identity colors — a Gold
      chip should read as gold — but they still have to be legible, and
      as literals they were invisible on Day: every one of the six sat
      between 1.04:1 and 2.24:1 on the cream surface, so a Day user could
@@ -119,7 +119,7 @@
      noticeably softer at the same alpha, so the geometry and opacity
      of every existing shadow carry over unchanged.
      A triplet rather than finished shadow tokens because the alphas
-     in use span 12%–92% and are tuned per elevation; centralising the
+     in use span 12%–92% and are tuned per elevation; centralizing the
      HUE is the part that was actually broken.
 
      Scope: OUTER shadows only — the ones cast onto the page. INSET

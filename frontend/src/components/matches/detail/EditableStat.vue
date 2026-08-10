@@ -174,7 +174,7 @@ function cancel() {
   border-color: var(--loss);
 }
 
-/* Out-of-range message under the input; small + loss-coloured so it reads as a
+/* Out-of-range message under the input; small + loss-colored so it reads as a
    correction prompt without shoving the stats grid around. */
 .stat-error {
   display: block;
@@ -185,7 +185,7 @@ function cancel() {
   max-width: 14ch;
 }
 
-/* The ✎ revert affordance sits inline after the label. Accent-coloured so an
+/* The ✎ revert affordance sits inline after the label. Accent-colored so an
    edited field reads at a glance; the whole marker is the revert button. */
 .stat-revert {
   appearance: none;

@@ -54,7 +54,7 @@ export function OpenURL(url: string): void {
 // ─── Binary import/export ──────────────────────────────────────────────────
 
 // MatchImportResult is the outcome of a merge import: where it came from
-// (empty path = user cancelled) plus how many matches were added vs skipped
+// (empty path = user canceled) plus how many matches were added vs skipped
 // because their key already existed locally.
 export interface MatchImportResult {
   path:     string

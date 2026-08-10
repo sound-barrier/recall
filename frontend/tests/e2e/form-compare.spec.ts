@@ -165,7 +165,7 @@ test.describe('form comparison', () => {
   })
 
   for (const theme of ['day', 'dark'] as const) {
-    test(`populated Form view has no axe violations — ${theme}`, async ({ page }) => {
+    test(`populated Form view has no ax violations — ${theme}`, async ({ page }) => {
       await page.addInitScript((t) => {
         try { localStorage.setItem('recall.theme', t) } catch (_) { /* ignore */ }
       }, theme)

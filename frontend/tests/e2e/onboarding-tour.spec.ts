@@ -24,7 +24,7 @@ async function walkToHeading(page: Page, re: RegExp, max = 30) {
   throw new Error(`tour never reached a heading matching ${re}`)
 }
 
-test.describe('onboarding tour — first-launch behaviour', () => {
+test.describe('onboarding tour — first-launch behavior', () => {
   // Pre-ack the first-run "Main account name" modal so the tour
   // overlay is the only thing the tests need to exercise. The tour
   // requires empty `recall.onboardingCompleted`; leaving the modal

@@ -5,13 +5,13 @@ import type { HeroStat, ModeStat } from '@/match/match-compare-aggregate'
 // the delta/direction/low-sample logic is unit-testable independently of the
 // dossier composables that source the numbers. The view extracts a SeasonMetrics
 // snapshot off each season's dossier + record slice, then compareSeasons() turns
-// the pair into labelled sections of display rows. Direction is framed "B
+// the pair into labeled sections of display rows. Direction is framed "B
 // relative to A" — season B (typically the newer pick) improving on season A
 // reads as ▲, so the table answers "am I doing better this season than last?".
 
 // A win-rate + games pair (a role, a game mode, a hero-count bucket…).
 // games 0 → not played. `decisive` (when the producer can supply it) lets the
-// row carry the n<5 caveat instead of a confidently-coloured thin delta.
+// row carry the n<5 caveat instead of a confidently-colored thin delta.
 export interface RateStat {
   winrate: number
   games: number
@@ -79,7 +79,7 @@ export interface ComparisonRow {
   aDisplay: string
   bDisplay: string
   // "▲ 7 pts" | "▼ 1.2" | "+2" | "even" | null. ▲ always means "B is better",
-  // regardless of whether the metric is higher- or lower-better; colour follows
+  // regardless of whether the metric is higher- or lower-better; color follows
   // `outcome`, so a lower death rate reads as a green ▲.
   delta: string | null
   outcome: RowOutcome
@@ -178,7 +178,7 @@ function rateRow(key: string, label: string, a: RateStat, b: RateStat): Comparis
   const aDisplay = aPlayed ? `${a.winrate}% · ${a.games}g` : '—'
   const bDisplay = bPlayed ? `${b.winrate}% · ${b.games}g` : '—'
   // Caveat a thin rate when the producer supplied a decisive count — a
-  // one-decisive-game column must not wear a confidently-coloured delta.
+  // one-decisive-game column must not wear a confidently-colored delta.
   const lowSample =
     (a.decisive !== undefined && aPlayed && a.decisive < LOW_SAMPLE_N) ||
     (b.decisive !== undefined && bPlayed && b.decisive < LOW_SAMPLE_N)
@@ -289,7 +289,7 @@ function modeRows(a: SeasonMetrics, b: SeasonMetrics): ComparisonRow[] {
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
-// compareSeasons turns two season snapshots into the labelled sections of the
+// compareSeasons turns two season snapshots into the labeled sections of the
 // comparison table. Season B is compared against season A.
 export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSection[] {
   return [

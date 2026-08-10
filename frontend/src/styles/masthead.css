@@ -170,7 +170,7 @@
    AA). The fix inverts the plate to pure black with a white
    border so the wordmark reads at AAA against a HC surface,
    and lifts the accent rail / corner stencil / external-link
-   hint to colours that pop against the inverted plate. Every
+   hint to colors that pop against the inverted plate. Every
    value stays inside the HC mode's strict palette
    (#000 / #fff / #ffbf4d gold) — no new tokens needed.
    -------------------------------------------------------------- */

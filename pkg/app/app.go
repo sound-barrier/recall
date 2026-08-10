@@ -90,7 +90,7 @@ type App struct {
 	// parseRunning is true between claimParse and endParse — the
 	// single-flight gate. A second parse (user click, watcher debounce,
 	// or a concurrent POST) fails fast with ErrParseInFlight rather
-	// than queueing.
+	// than queuing.
 	parseRunning bool
 	// parseDone / parseTotal / parseScope are the per-file progress
 	// snapshot surfaced by GET /api/v1/parses/active so a reconnecting
@@ -386,7 +386,7 @@ func (a *App) openStore() bool {
 
 // bootReAggregate walks every screenshot row whose canonical hero/map is
 // empty but whose raw OCR is preserved, re-runs the matchers against the
-// current heroes.yaml / maps.yaml, and promotes any newly-recognised rows
+// current heroes.yaml / maps.yaml, and promotes any newly-recognized rows
 // to canonical. Cheap (~2–5 s on 500 matches) so it runs unconditionally;
 // forward-only by design (pre-feature rows have hero_raw=” and no-op).
 func (a *App) bootReAggregate() {

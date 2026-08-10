@@ -4,7 +4,7 @@ import { test } from './_fixtures'
 
 // Loss-quality classification (audit product gap #4): a competitive
 // player wants "was that loss close or a stomp?" at a glance —
-// uniquely actionable (a stomp streak means stop queueing; close
+// uniquely actionable (a stomp streak means stop queuing; close
 // losses mean keep going). Derived read-side from the already-
 // captured final_score; surfaced as the opt-in Loss quality
 // breakdown widget.

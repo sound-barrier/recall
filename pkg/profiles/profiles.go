@@ -107,7 +107,7 @@ func (p *Profiles) load() error {
 				p.immutable[name] = true
 			}
 		}
-		// Defence against a hand-edited profiles.json whose active is
+		// Defense against a hand-edited profiles.json whose active is
 		// not in the list — fall back to the first listed profile, or
 		// the default name if list is empty.
 		if !containsProfile(p.list, p.active) {
@@ -335,7 +335,7 @@ func (p *Profiles) Contains(name string) bool {
 
 // ValidateName applies the profile-name rule (the same regex Create
 // and Rename enforce) without touching any state. Exported for the
-// shell's move-target validation, where the name must be sanitised
+// shell's move-target validation, where the name must be sanitized
 // before it flows into path construction.
 func ValidateName(name string) error {
 	return validateProfileName(name)

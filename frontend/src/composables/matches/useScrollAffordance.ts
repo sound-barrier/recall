@@ -9,16 +9,16 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 //      so a fast trackpad fling can't fire 60+ ref writes per second.
 //   3. A `scrollToTop()` callback that uses smooth scrolling by default
 //      and falls back to instant when the user has
-//      `prefers-reduced-motion: reduce` set. The smooth-scroll behaviour
+//      `prefers-reduced-motion: reduce` set. The smooth-scroll behavior
 //      sits on the user agent (not CSS), so the global reduced-motion
 //      media-query block in app.css doesn't reach it; this composable
 //      checks the media query explicitly each call so a system-level
-//      preference flip mid-session is honoured immediately.
+//      preference flip mid-session is honored immediately.
 //
 // Extracted from MatchesView so the same shape can be reused by a
 // future long-list view (e.g. a Hidden archive) and so the unit tests
 // don't have to mount the entire view to verify the listener +
-// threshold behaviour. Mirrors the per-helper composable pattern
+// threshold behavior. Mirrors the per-helper composable pattern
 // documented in frontend/CLAUDE.md.
 
 export function useScrollAffordance(threshold = 400) {

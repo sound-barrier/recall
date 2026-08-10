@@ -307,7 +307,7 @@ describe('App.vue — unsupported-tesseract modal a11y', () => {
   it('background container is marked inert and aria-hidden while open', async () => {
     const wrapper = await openUnsupportedModal()
     const container = wrapper.find('.container')
-    // Vue serialises boolean inert as the attribute being present.
+    // Vue serializes boolean inert as the attribute being present.
     expect(container.attributes('inert')).toBeDefined()
     expect(container.attributes('aria-hidden')).toBe('true')
   })
@@ -366,7 +366,7 @@ describe('App.vue — first-run modal gating (item 6 coverage lift)', () => {
   })
 
   it('keeps the first-run modal hidden across a parse-complete fire', async () => {
-    // Defence-in-depth: a runtime event must not flip an
+    // Defense-in-depth: a runtime event must not flip an
     // already-acknowledged first-run state back on.
     const wrapper = await mountApp({ records: [] })
     expect(fireEvent('parse-complete')).toBe(true)

@@ -56,7 +56,7 @@ describe('buildEloProjectionOption', () => {
   })
 })
 
-// ─── Series colours follow the palette ──────────────────────────────
+// ─── Series colors follow the palette ──────────────────────────────
 //
 // The dream/reality/skill hues were module constants (`#5ca8ff`,
 // `#f5a623`, `#8bc7a0`), duplicating the values styles/elo.css held as
@@ -64,7 +64,7 @@ describe('buildEloProjectionOption', () => {
 // languages drift, and neither followed the theme — on Day the card
 // border resolved dark while the chart line beside it stayed light.
 // Both sides now resolve the same palette tokens.
-describe('elo-chart-options — series colours resolve from palette tokens', () => {
+describe('elo-chart-options — series colors resolve from palette tokens', () => {
   afterEach(() => {
     document.documentElement.removeAttribute('style')
   })

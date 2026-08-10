@@ -278,7 +278,7 @@ reorder. The whole layout persists per profile across launches.
 The **Geography** band (its eyebrow reads *Map × role performance*) is
 a contribution-graph-style heatmap: one row per role (Tank / DPS /
 Support), one column per map grouped by game mode, each cell shaded by
-win rate and labelled with its W-L-D on hover.
+win rate and labeled with its W-L-D on hover.
 
 It drives the global filter directly:
 

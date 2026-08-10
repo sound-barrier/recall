@@ -385,7 +385,7 @@ test.describe('Elo Calculator — consistency & tilt (breaks, rust, tilt queues)
     await expect(item).toContainText(/sleep|exercise/i)
   })
 
-  test('queueing through 5+ straight losses surfaces the tilt-queue flag', async ({ page }) => {
+  test('queuing through 5+ straight losses surfaces the tilt-queue flag', async ({ page }) => {
     const rows: unknown[] = []
     let n = 0
     // Baseline evenings around 55% (meter pools need both win and loss mass)...

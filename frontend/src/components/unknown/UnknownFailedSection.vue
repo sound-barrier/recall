@@ -26,7 +26,7 @@ const failedFiles = computed(() => matchesStore.failedFiles)
 // "Save diagnostic bundle" — one click, one zip (failed screenshots +
 // logs + environment manifest) for bug reports. Wails saves via the
 // native dialog; server mode blob-downloads. An empty saved-name means
-// the user cancelled the dialog — stay silent.
+// the user canceled the dialog — stay silent.
 const bundleBusy = ref(false)
 const bundleSavedAs = ref('')
 async function onSaveDiagnosticBundle() {

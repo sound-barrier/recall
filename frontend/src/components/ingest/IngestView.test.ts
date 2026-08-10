@@ -39,7 +39,7 @@ interface IngestOver {
   screenshotsDir?:     string
   watchEnabled?:       boolean
   parseBusy?:          boolean
-  cancellingParse?:    boolean
+  cancelingParse?:    boolean
   newScreenshotCount?: number | null
   lastParsedAt?:       number | null
   matchedCount?:       number
@@ -56,7 +56,7 @@ function mountIngest(over: IngestOver = {}) {
   settings.setWatchEnabled(over.watchEnabled ?? false)
 
   matches.parseBusy = over.parseBusy ?? false
-  matches.cancellingParse = over.cancellingParse ?? false
+  matches.cancelingParse = over.cancelingParse ?? false
   seedQuery(qk.pendingCount, over.newScreenshotCount ?? 3)
   matches.lastParsedAt = over.lastParsedAt ?? null
   matches.records = Array.from({ length: over.matchedCount ?? 0 }, (_, i) => rec(i))
@@ -168,7 +168,7 @@ describe('IngestView — Stop Parse button', () => {
     expect(wrapper.text()).toContain('Run Parse')
   })
 
-  it('renders Stop Parse when parseBusy and not yet cancelling', () => {
+  it('renders Stop Parse when parseBusy and not yet canceling', () => {
     const { wrapper } = mountIngest({ parseBusy: true })
     const stop = wrapper.find('[data-testid="cancel-parse-btn"]')
     expect(stop.exists()).toBe(true)
@@ -176,11 +176,11 @@ describe('IngestView — Stop Parse button', () => {
     expect((stop.element as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('renders Cancelling… + disables itself when cancellingParse is true', () => {
-    const { wrapper } = mountIngest({ parseBusy: true, cancellingParse: true })
+  it('renders Canceling… + disables itself when cancelingParse is true', () => {
+    const { wrapper } = mountIngest({ parseBusy: true, cancelingParse: true })
     const stop = wrapper.find('[data-testid="cancel-parse-btn"]')
     expect(stop.exists()).toBe(true)
-    expect(stop.text()).toContain('Cancelling…')
+    expect(stop.text()).toContain('Canceling…')
     expect((stop.element as HTMLButtonElement).disabled).toBe(true)
   })
 

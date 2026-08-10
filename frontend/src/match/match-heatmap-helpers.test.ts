@@ -14,12 +14,12 @@ describe('heatmapCellClass — judgment bands', () => {
     expect(heatmapCellClass(cell(0, 0, 3))).toBe('cell-draw')
   })
 
-  it('a 52% record is a climb — win-coloured, not grey, at ANY volume past the floor', () => {
+  it('a 52% record is a climb — win-colored, not grey, at ANY volume past the floor', () => {
     expect(heatmapCellClass(cell(52, 48))).toBe('cell-win')
     expect(heatmapCellClass(cell(208, 192))).toBe('cell-win') // 52% at n=400
 
     // The regression this rewrite fixes: under the old 90-game shrinkage
-    // prior, 52% needed >90 games ON THAT ONE CELL to colour — so a
+    // prior, 52% needed >90 games ON THAT ONE CELL to color — so a
     // support player's 52% heroes sat grey at realistic per-hero volumes
     // while they were visibly climbing with them.
     expect(heatmapCellClass(cell(13, 12))).toBe('cell-win') // 52% at n=25 — same climb, sooner

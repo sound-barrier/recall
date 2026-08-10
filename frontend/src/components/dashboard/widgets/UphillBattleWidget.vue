@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Uphill battles — competitive games you won while NOT favoured (the
+// Uphill battles — competitive games you won while NOT favored (the
 // "uphill battle" rank-update modifier). A clutch / over-performance
 // signal. Opt-in.
 import { useDossier } from '@/composables/dashboard/useDossier'

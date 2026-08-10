@@ -61,14 +61,14 @@ describe('trend-options — area fill (climb feel)', () => {
   })
 })
 
-// ─── Series colours follow the palette ──────────────────────────────
+// ─── Series colors follow the palette ──────────────────────────────
 //
 // These builders used to hold a hardcoded SERIES_COLOR map, which froze
 // every chart to the dark palette: a Tank line drew `#5ca8ff` on Day's
 // cream while a Tank badge beside it drew `var(--tank)` = `#1f5491`. The
-// colours now resolve from tokens at build time, so a rebuild under a
+// colors now resolve from tokens at build time, so a rebuild under a
 // different theme must produce different output.
-describe('trend-options — series colours resolve from palette tokens', () => {
+describe('trend-options — series colors resolve from palette tokens', () => {
   function setPalette(tokens: Record<string, string>): void {
     for (const [name, value] of Object.entries(tokens)) {
       document.documentElement.style.setProperty(name, value)

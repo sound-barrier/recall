@@ -15,7 +15,7 @@ describe('LongestWinStreakWidget', () => {
     expect(w.find('.kpi-sub').text().trim()).toBe('wins')
   })
 
-  it('singularises the subtitle when count === 1', () => {
+  it('singularizes the subtitle when count === 1', () => {
     const w = mountWidget(LongestWinStreakWidget, { dossier: { longestWinStreak: 1 } })
     expect(w.find('.kpi-value').text()).toBe('1')
     expect(w.find('.kpi-sub').text().trim()).toBe('win')

@@ -127,7 +127,7 @@ flowchart TD
 
 ## `release.yml` jobs
 
-Triggered on `v*` tag push (the auto-fire path from `push-release-tag.sh`'s `gh workflow run`) and on `workflow_dispatch` (manual fallback, same path the script uses). Every job keys off `github.ref_name` (the tag name) so both triggers produce identical artifacts. Workflow-level `concurrency: { group: release-${{ github.ref_name }}, cancel-in-progress: false }` serialises duplicate runs against the same tag — important because `softprops/action-gh-release` is non-idempotent.
+Triggered on `v*` tag push (the auto-fire path from `push-release-tag.sh`'s `gh workflow run`) and on `workflow_dispatch` (manual fallback, same path the script uses). Every job keys off `github.ref_name` (the tag name) so both triggers produce identical artifacts. Workflow-level `concurrency: { group: release-${{ github.ref_name }}, cancel-in-progress: false }` serializes duplicate runs against the same tag — important because `softprops/action-gh-release` is non-idempotent.
 
 | Job | `needs:` | Output | Notes |
 |---|---|---|---|

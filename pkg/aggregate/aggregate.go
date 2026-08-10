@@ -21,7 +21,7 @@ import (
 // reAggregateUnknowns walks every per-screenshot row whose canonical
 // hero/map is empty but whose raw OCR is preserved, re-runs the
 // parser's matchers against the CURRENT heroes.yaml / maps.yaml
-// rosters, and promotes any newly-recognised rows to canonical.
+// rosters, and promotes any newly-recognized rows to canonical.
 //
 // Cheap pure-CPU pass — one in-memory matcher invocation per
 // unknown row, then one UPDATE per hit. ~2–5 s on a 500-match

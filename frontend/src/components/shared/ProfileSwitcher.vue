@@ -2,7 +2,7 @@
 import { useProfileSwitcher } from '@/composables/shared/useProfileSwitcher'
 import { useActiveProfile } from '@/composables/shared/useActiveProfile'
 
-// Masthead chip + dropdown for the multi-profile feature. Behaviour (the
+// Masthead chip + dropdown for the multi-profile feature. Behavior (the
 // profile list + open/create/rename state + switch/create/rename actions)
 // lives in useProfileSwitcher; this SFC is the chip + dropdown markup.
 const {

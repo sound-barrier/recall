@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Reversals — competitive games you LOST while favoured (the "reversal"
+// Reversals — competitive games you LOST while favored (the "reversal"
 // rank-update modifier). A choke / under-performance signal — the mirror
 // of Uphill Battles. Opt-in.
 import { useDossier } from '@/composables/dashboard/useDossier'
@@ -11,5 +11,5 @@ const record = dossier.modifierRecord(() => ({ modifier: 'reversal' }))
 <template>
   <span class="eyebrow kpi-eyebrow">Reversals</span>
   <span class="kpi-value">{{ record?.total ?? 0 }}</span>
-  <span class="kpi-sub">losses when favoured</span>
+  <span class="kpi-sub">losses when favored</span>
 </template>

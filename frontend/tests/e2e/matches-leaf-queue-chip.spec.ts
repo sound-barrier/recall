@@ -12,7 +12,7 @@
  * / Unknown mode), the second reflects queue type (Role Queue /
  * Open Queue / Unknown mode type). Both fall back to the Unknown
  * label when the underlying field is missing, so the row never
- * has fewer chips than its neighbour — a glance down the column
+ * has fewer chips than its neighbor — a glance down the column
  * stays aligned.
  *
  * The play-mode chip prefers the user-override `play_mode` (set

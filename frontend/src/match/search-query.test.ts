@@ -90,7 +90,7 @@ describe('parseSearchQuery', () => {
 describe('disruption tokens', () => {
   // Scoped-only by design: the three side values are generic words, so they
   // stay out of the bare-token blob (see narrowPredicates.matchesSearch).
-  it('recognises leaver: and thrower: in both singular and plural', () => {
+  it('recognizes leaver: and thrower: in both singular and plural', () => {
     expect(parseSearchQuery('leaver:team')).toEqual([{ field: 'leaver', value: 'team' }])
     expect(parseSearchQuery('leavers:self')).toEqual([{ field: 'leaver', value: 'self' }])
     expect(parseSearchQuery('thrower:enemy')).toEqual([{ field: 'thrower', value: 'enemy' }])
