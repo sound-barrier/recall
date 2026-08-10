@@ -248,6 +248,12 @@ func TestStoreContract_ResolveAmbiguousRewritesParentsAndClearsCandidates(t *tes
 			s := impl.open(t)
 			const sentinel = "ambiguous-cGVuZGluZy5wbmc"
 			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "pending.png", MatchKey: sentinel}))
+			// A sibling screenshot in a different table adopted the same
+			// sentinel through the timestamp-window pass. The resolve is
+			// keyed on the match_key, not the filename, so it has to move
+			// too — leaving it behind strands a row on a key no record
+			// surfaces and no second resolve can reach.
+			mustNoErr(t, s.UpsertTeams(db.TeamsRow{Filename: "sibling.png", MatchKey: sentinel}))
 			mustNoErr(t, s.ApplyAmbiguity("pending.png", []db.AmbiguousCandidate{{MatchKey: "match-2026-01-01T12-00-00", DistanceSeconds: 60}}))
 			ok, err := s.ResolveAmbiguous("pending.png", sentinel, "match-2026-01-01T12-00-00")
 			if err != nil || !ok {
@@ -270,6 +276,9 @@ func assertResolvedOntoKey(t *testing.T, s db.Store) {
 	mustNoErr(t, err)
 	if len(snap.Unknowns) != 1 || snap.Unknowns[0].MatchKey != "match-2026-01-01T12-00-00" {
 		t.Errorf("parent row after resolve = %+v, want rewritten key", snap.Unknowns)
+	}
+	if len(snap.Teams) != 1 || snap.Teams[0].MatchKey != "match-2026-01-01T12-00-00" {
+		t.Errorf("sibling row after resolve = %+v, want rewritten key", snap.Teams)
 	}
 	if cands, _ := s.LoadAmbiguousCandidatesFor("pending.png"); len(cands) != 0 {
 		t.Errorf("candidates survived resolve: %v", cands)
@@ -315,5 +324,217 @@ func assertRerecordedFailedRow(t *testing.T, s db.Store) {
 	}
 	if _, err := time.Parse(time.RFC3339, r.LastFailedAt); err != nil {
 		t.Errorf("LastFailedAt %q is not RFC3339: %v", r.LastFailedAt, err)
+	}
+}
+
+// HardDeleteMatch must leave the key DEAD, not merely unreadable:
+// MatchKeyExists is the collision check that guards manual-match creation, so
+// a key that still answers "taken" after a delete permanently blocks the user
+// from re-entering that minute by hand — with nothing on screen to explain it.
+func TestStoreContract_HardDeleteFreesTheKeyForReuse(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const key = "match-2026-01-01T12-00-00"
+			seedFullMatch(t, s, key, "a.png")
+
+			mustNoErr(t, s.HardDeleteMatch(key))
+
+			exists, err := s.MatchKeyExists(key)
+			mustNoErr(t, err)
+			if exists {
+				t.Fatal("MatchKeyExists still claims the hard-deleted key is taken")
+			}
+			// Re-usable for real: a fresh manual match may claim the key.
+			mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{MatchKey: key, Map: new("busan")}))
+			if exists, _ := s.MatchKeyExists(key); !exists {
+				t.Error("the re-created key is not visible to MatchKeyExists")
+			}
+		})
+	}
+}
+
+// Candidates come back nearest-first on BOTH read surfaces — the per-file
+// lookup the resolver validates against and the bulk map the aggregator turns
+// into the "Needs your review" list. The order is the ranking the user sees;
+// insertion order is whatever the correlator happened to emit.
+func TestStoreContract_AmbiguousCandidatesReadNearestFirst(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			mustNoErr(t, s.ApplyAmbiguity("pending.png", []db.AmbiguousCandidate{
+				{MatchKey: "match-far", DistanceSeconds: 900},
+				{MatchKey: "match-near", DistanceSeconds: 45},
+				{MatchKey: "match-mid", DistanceSeconds: 300},
+			}))
+			want := []string{"match-near", "match-mid", "match-far"}
+
+			cands, err := s.LoadAmbiguousCandidatesFor("pending.png")
+			mustNoErr(t, err)
+			assertCandidateOrder(t, "LoadAmbiguousCandidatesFor", cands, want)
+
+			snap, err := s.LoadAll()
+			mustNoErr(t, err)
+			assertCandidateOrder(t, "LoadAll", snap.AmbiguousCandidates["pending.png"], want)
+		})
+	}
+}
+
+// assertCandidateOrder pins the match_key sequence one read surface returned.
+func assertCandidateOrder(t *testing.T, surface string, got []db.AmbiguousCandidate, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("%s returned %+v, want %d candidates", surface, got, len(want))
+	}
+	for i, key := range want {
+		if got[i].MatchKey != key {
+			t.Errorf("%s candidate[%d] = %q, want %q (ascending distance)", surface, i, got[i].MatchKey, key)
+		}
+	}
+}
+
+// Presence of a candidate row IS the ambiguity flag, so ApplyAmbiguity has to
+// REPLACE the set rather than add to it: a re-parse that narrows the field
+// must not leave the ruled-out matches on the review card, and one that
+// resolves the ambiguity entirely (no candidates) must clear the flag.
+func TestStoreContract_ApplyAmbiguityReplacesTheCandidateSet(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			mustNoErr(t, s.ApplyAmbiguity("pending.png", []db.AmbiguousCandidate{
+				{MatchKey: "match-a", DistanceSeconds: 60},
+				{MatchKey: "match-b", DistanceSeconds: 120},
+			}))
+			mustNoErr(t, s.ApplyAmbiguity("pending.png", []db.AmbiguousCandidate{
+				{MatchKey: "match-b", DistanceSeconds: 120},
+			}))
+			cands, err := s.LoadAmbiguousCandidatesFor("pending.png")
+			mustNoErr(t, err)
+			assertCandidateOrder(t, "after narrowing re-apply", cands, []string{"match-b"})
+
+			mustNoErr(t, s.ApplyAmbiguity("pending.png", nil))
+			cands, err = s.LoadAmbiguousCandidatesFor("pending.png")
+			mustNoErr(t, err)
+			if len(cands) != 0 {
+				t.Errorf("an empty candidate set left %+v behind; the ambiguity flag never clears", cands)
+			}
+		})
+	}
+}
+
+// The "ambiguous-" prefix is the whole authorization check on a rewrite that
+// re-keys every parent row it touches. A caller passing an ordinary match key
+// must be refused outright — not silently allowed to re-key a real match onto
+// another one — and must leave the candidate set untouched for the real
+// resolve to use.
+func TestStoreContract_ResolveAmbiguousRefusesANonSentinelKey(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const victim = "match-2026-01-01T12-00-00"
+			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "pending.png", MatchKey: victim}))
+			mustNoErr(t, s.ApplyAmbiguity("pending.png", []db.AmbiguousCandidate{
+				{MatchKey: "match-2026-01-01T12-30-00", DistanceSeconds: 60},
+			}))
+
+			ok, err := s.ResolveAmbiguous("pending.png", victim, "match-2026-01-01T12-30-00")
+			if ok || err != nil {
+				t.Fatalf("ResolveAmbiguous on a non-sentinel key = (%v, %v), want (false, nil)", ok, err)
+			}
+			snap, err := s.LoadAll()
+			mustNoErr(t, err)
+			if len(snap.Unknowns) != 1 || snap.Unknowns[0].MatchKey != victim {
+				t.Errorf("parent rows = %+v, want %q untouched", snap.Unknowns, victim)
+			}
+			if cands, _ := s.LoadAmbiguousCandidatesFor("pending.png"); len(cands) != 1 {
+				t.Errorf("candidates = %+v, want the set left intact for a real resolve", cands)
+			}
+		})
+	}
+}
+
+// DemoteMatchToAmbiguous is ResolveAmbiguous's inverse — the duplicate sweep
+// pulls a freshly-created match back into the review queue and the user pushes
+// it back out. A demote of a key no parent row carries must record NOTHING:
+// candidate rows keyed to a screenshot that never went ambiguous are orphans
+// no record surfaces and no resolve can clear.
+func TestStoreContract_DemoteMatchToAmbiguousRoundTripsAndSkipsUnknownKeys(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const key = "match-2026-01-01T12-00-00"
+			const sentinel = "ambiguous-ZHVwLnBuZw"
+			cands := []db.AmbiguousCandidate{{MatchKey: "match-2026-01-01T11-30-00", DistanceSeconds: 1800}}
+
+			ok, err := s.DemoteMatchToAmbiguous(key, sentinel, "dup.png", cands)
+			if ok || err != nil {
+				t.Fatalf("demote of an absent key = (%v, %v), want (false, nil)", ok, err)
+			}
+			if got, _ := s.LoadAmbiguousCandidatesFor("dup.png"); len(got) != 0 {
+				t.Fatalf("demote of an absent key orphaned candidates: %+v", got)
+			}
+
+			mustNoErr(t, s.UpsertUnknown(db.UnknownRow{Filename: "dup.png", MatchKey: key}))
+			if ok, err := s.DemoteMatchToAmbiguous(key, sentinel, "dup.png", cands); !ok || err != nil {
+				t.Fatalf("demote = (%v, %v), want (true, nil)", ok, err)
+			}
+			assertDemotedThenResolvedBack(t, s, sentinel, key)
+		})
+	}
+}
+
+// assertDemotedThenResolvedBack pins the demote's effect and then walks it
+// back with ResolveAmbiguous, the operation it inverts.
+func assertDemotedThenResolvedBack(t *testing.T, s db.Store, sentinel, key string) {
+	t.Helper()
+	snap, err := s.LoadAll()
+	mustNoErr(t, err)
+	if len(snap.Unknowns) != 1 || snap.Unknowns[0].MatchKey != sentinel {
+		t.Fatalf("parent rows after demote = %+v, want the sentinel key", snap.Unknowns)
+	}
+	if got, _ := s.LoadAmbiguousCandidatesFor("dup.png"); len(got) != 1 {
+		t.Fatalf("candidates after demote = %+v, want the recorded set", got)
+	}
+	if ok, err := s.ResolveAmbiguous("dup.png", sentinel, key); !ok || err != nil {
+		t.Fatalf("resolve back = (%v, %v), want (true, nil)", ok, err)
+	}
+	snap, err = s.LoadAll()
+	mustNoErr(t, err)
+	if len(snap.Unknowns) != 1 || snap.Unknowns[0].MatchKey != key {
+		t.Errorf("parent rows after resolving back = %+v, want %q", snap.Unknowns, key)
+	}
+}
+
+// NULL means "not overridden, use OCR", so writing nil over a set field is how
+// the UI reverts ONE cell to its OCR value. An upsert that merged instead of
+// replacing (COALESCE over the excluded value, say) would make single-field
+// reverts silently impossible while every other edit still worked.
+func TestStoreContract_UserMatchNilScalarRevertsTheOverride(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const key = "match-2026-01-01T12-00-00"
+			mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{
+				MatchKey: key, Map: new("busan"), Damage: new(4200),
+			}))
+			mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{
+				MatchKey: key, Map: new("busan"), Damage: new(0),
+			}))
+			all, err := s.LoadAllUserMatchData()
+			mustNoErr(t, err)
+			if got := all[key].Damage; got == nil || *got != 0 {
+				t.Fatalf("Damage = %v, want an explicit 0 (a real edit, not unset)", got)
+			}
+
+			mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{MatchKey: key, Map: new("busan")}))
+			all, err = s.LoadAllUserMatchData()
+			mustNoErr(t, err)
+			if got := all[key].Damage; got != nil {
+				t.Errorf("Damage = %v after a nil write, want nil (reverted to OCR)", got)
+			}
+			if got := all[key].Map; got == nil || *got != "busan" {
+				t.Errorf("Map = %v, want the untouched override to survive", got)
+			}
+		})
 	}
 }

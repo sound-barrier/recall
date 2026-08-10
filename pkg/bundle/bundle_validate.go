@@ -98,7 +98,7 @@ func Validate(zipBytes []byte) ([]Issue, error) {
 	// If either core file is gone, the rest of the validation can't
 	// run meaningfully. Bail with what we have.
 	if manifestBytes == nil || dataBytes == nil {
-		return issues, nil
+		return sortIssues(issues), nil
 	}
 
 	mf, err := decodeBundleManifest(manifestBytes, add)
@@ -118,14 +118,21 @@ func Validate(zipBytes []byte) ([]Issue, error) {
 	validateBundleScreenshotRefs(mf, screenshots, dataKeys, add)
 	validateBundleDataFilenames(dataDoc, mf, add)
 
-	// Stable issue order so the CLI output is deterministic.
+	return sortIssues(issues), nil
+}
+
+// sortIssues orders findings by Kind, then Message, so the CLI output over a
+// given bundle is byte-identical run to run. Applied on EVERY return path —
+// the missing-core-file bail returns findings too, and a report whose order
+// depends on which branch produced it can't be diffed.
+func sortIssues(issues []Issue) []Issue {
 	sort.SliceStable(issues, func(i, j int) bool {
 		if issues[i].Kind == issues[j].Kind {
 			return issues[i].Message < issues[j].Message
 		}
 		return issues[i].Kind < issues[j].Kind
 	})
-	return issues, nil
+	return issues
 }
 
 // readBundleEntries pulls manifest.json + data.json bytes and the

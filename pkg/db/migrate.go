@@ -38,6 +38,10 @@ import (
 //go:embed migrations
 var migrationsFS embed.FS
 
+// migrationsDir is the directory read out of the migration FS. Named so
+// the FS-taking seams below and the embed directive can't drift apart.
+const migrationsDir = "migrations"
+
 // schemaVersion returns the highest applied migration version, or
 // 0 if the schema_version table doesn't exist yet.
 func schemaVersion(d *sql.DB) (int, error) {
@@ -67,16 +71,10 @@ type migration struct {
 	down    string
 }
 
-// loadMigrations reads + parses every migration pair from the
-// embedded FS, sorted by version ascending. Returns an empty slice
-// when no migration files have shipped yet (the pre-1.0 state).
-// Errors when any `.up.sql` lacks a paired `.down.sql` (or
-// vice-versa) or the filename doesn't parse as
-// `NNNN_<name>.{up,down}.sql`.
 // foldMigrationFile classifies one migrations/ entry by its
 // .up.sql/.down.sql suffix and folds its body into the pair keyed by
 // the shared `NNNN_<name>` stem. Non-SQL entries are skipped.
-func foldMigrationFile(byKey map[string]*migration, name string) error {
+func foldMigrationFile(fsys fs.FS, byKey map[string]*migration, name string) error {
 	var dir string
 	switch {
 	case strings.HasSuffix(name, ".up.sql"):
@@ -91,7 +89,7 @@ func foldMigrationFile(byKey map[string]*migration, name string) error {
 	if err != nil {
 		return fmt.Errorf("parse %q: %w", name, err)
 	}
-	body, err := fs.ReadFile(migrationsFS, "migrations/"+name)
+	body, err := fs.ReadFile(fsys, migrationsDir+"/"+name)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", name, err)
 	}
@@ -108,8 +106,18 @@ func foldMigrationFile(byKey map[string]*migration, name string) error {
 	return nil
 }
 
-func loadMigrations() ([]migration, error) {
-	entries, err := fs.ReadDir(migrationsFS, "migrations")
+// loadMigrationsFrom reads + parses every migration pair from an FS, sorted
+// by version ascending. Returns an empty slice when no migration files have
+// shipped yet (the pre-1.0 state). Errors when any `.up.sql` lacks a paired
+// `.down.sql` (or vice-versa) or the filename doesn't parse as
+// `NNNN_<name>.{up,down}.sql`.
+//
+// Production always passes the embedded FS; taking one as a parameter is the
+// seam the framework's tests drive with synthetic pairs, so the pairing,
+// version-parsing, and ordering rules are exercised before the first real
+// migration depends on them.
+func loadMigrationsFrom(fsys fs.FS) ([]migration, error) {
+	entries, err := fs.ReadDir(fsys, migrationsDir)
 	if err != nil {
 		return nil, fmt.Errorf("read migrations dir: %w", err)
 	}
@@ -118,7 +126,7 @@ func loadMigrations() ([]migration, error) {
 		if e.IsDir() {
 			continue
 		}
-		if err := foldMigrationFile(byKey, e.Name()); err != nil {
+		if err := foldMigrationFile(fsys, byKey, e.Name()); err != nil {
 			return nil, err
 		}
 	}
@@ -154,8 +162,14 @@ func splitVersion(key string) (int, string, error) {
 // immediately without creating the `schema_version` table — the
 // store stays free of framework state until the first real
 // migration lands.
-func applyMigrations(d *sql.DB) error {
-	migs, err := loadMigrations()
+func applyMigrations(d *sql.DB) error { return applyMigrationsFrom(d, migrationsFS) }
+
+// applyMigrationsFrom is applyMigrations over an arbitrary FS — the seam
+// that lets the ordering, already-applied-skip, and per-migration rollback
+// rules be tested against synthetic pairs while the shipped directory is
+// still empty.
+func applyMigrationsFrom(d *sql.DB, fsys fs.FS) error {
+	migs, err := loadMigrationsFrom(fsys)
 	if err != nil {
 		return err
 	}

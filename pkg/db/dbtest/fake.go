@@ -151,7 +151,7 @@ func (f *Fake) LoadAll() (db.Screenshots, error) {
 	}
 	ambig := make(map[string][]db.AmbiguousCandidate, len(f.Ambiguous))
 	for k, v := range f.Ambiguous {
-		ambig[k] = append([]db.AmbiguousCandidate(nil), v...)
+		ambig[k] = sortedCandidates(v)
 	}
 	return db.Screenshots{
 		Summaries:           append([]db.SummaryRow(nil), f.Summaries...),
