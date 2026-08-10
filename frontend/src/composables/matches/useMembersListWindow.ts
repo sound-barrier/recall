@@ -10,18 +10,23 @@ import type { Density } from '@/composables/matches/useDensity'
 const LEAF_ROW_HEIGHT_DEFAULT = 58
 const LEAF_ROW_HEIGHT_COMPACT = 38
 
+// The refs the windowing state machine watches, bundled so the SFC hands
+// over one cohesive view of its props.
+export interface MembersListWindowOptions {
+  records: Ref<MatchRecord[]>
+  groupBy: Ref<GroupBy>
+  sortOrder: Ref<SortOrder>
+  density: Ref<Density>
+  focusedCardIndex: Ref<number | undefined>
+}
+
 // The members-list rendering window: sort/group → collapse → paginate (grouped)
 // or virtualize (flat 'none') → render shape, plus the IntersectionObserver that
 // drives infinite scroll and the auto-scroll that follows j/k focus. Extracted
 // from MatchesMembersList so the SFC keeps only props, click-to-filter, and the
 // markup; this owns the interdependent windowing state machine + its lifecycle.
-export function useMembersListWindow(
-  records: Ref<MatchRecord[]>,
-  groupBy: Ref<GroupBy>,
-  sortOrder: Ref<SortOrder>,
-  density: Ref<Density>,
-  focusedCardIndex: Ref<number | undefined>,
-) {
+export function useMembersListWindow(opts: MembersListWindowOptions) {
+  const { records, groupBy, sortOrder, density, focusedCardIndex } = opts
   const { sortedRecords, groupedSections } = useMatchesGroup(records, groupBy, sortOrder)
 
   // ─── Collapsible group sections ────────────────────────────

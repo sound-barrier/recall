@@ -22,7 +22,7 @@ const REFERENCE_DATA = {
   },
 }
 
-const match = (key: string, map: string, type: string, role: string, hero: string) => ({
+const match = (key: string, { map, type, role, hero }: { map: string; type: string; role: string; hero: string }) => ({
   match_key: key,
   source_files: [`${key}.png`],
   source_types: { [`${key}.png`]: 'summary' },
@@ -35,9 +35,9 @@ const match = (key: string, map: string, type: string, role: string, hero: strin
 })
 
 const CORPUS = [
-  match('m1', 'rialto', 'escort', 'support', 'lucio'),
-  match('m2', 'ilios', 'control', 'tank', 'reinhardt'),
-  match('m3', 'esperanca', 'push', 'dps', 'tracer'),
+  match('m1', { map: 'rialto', type: 'escort', role: 'support', hero: 'lucio' }),
+  match('m2', { map: 'ilios', type: 'control', role: 'tank', hero: 'reinhardt' }),
+  match('m3', { map: 'esperanca', type: 'push', role: 'dps', hero: 'tracer' }),
 ]
 
 const band = '.match-map-role'

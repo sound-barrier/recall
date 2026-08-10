@@ -12,7 +12,7 @@ import type {
   ThrowerPick,
   PoolFilter,
 } from '@/composables/matches/matchesNarrow.types'
-import { NARROW_CLAUSES, type ClauseCtx, type ClauseId } from '@/composables/matches/matchesNarrow.clauses'
+import { NARROW_CLAUSES, type ClauseCtx, type ClauseId, type ClauseSpec } from '@/composables/matches/matchesNarrow.clauses'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { TIER_ORDER, FILTERABLE_MODIFIERS, RESULT_MODIFIERS } from '@/match/match-trends-helpers'
@@ -86,6 +86,15 @@ function daysAgoISO(days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+const PRESET_RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 }
+
+// A clause's chip contribution: its own `chips` when defined, else the
+// ClauseSpec default of restricts ? 1 : 0.
+function clauseChipCount(c: ClauseSpec, s: MatchesNarrowState): number {
+  if (c.chips) return c.chips(s)
+  return c.restricts(s) ? 1 : 0
+}
+
 export function useMatchesNarrow(
   records: Readonly<Ref<MatchRecord[]>>,
   state: MatchesNarrowState,
@@ -142,7 +151,7 @@ export function useMatchesNarrow(
       customFromTime.value = ''
       customToTime.value = ''
     } else if (v !== 'custom') {
-      const days = v === '7d' ? 7 : v === '30d' ? 30 : 90
+      const days = PRESET_RANGE_DAYS[v] ?? 90
       customFrom.value = daysAgoISO(days)
       customTo.value = ''
       customFromTime.value = ''
@@ -201,7 +210,7 @@ export function useMatchesNarrow(
   // threshold, includeUnknown its non-default ON state, sinceAnchor only
   // with both legs set (each entry documents its own semantics).
   const activeClauseCount = computed(() =>
-    NARROW_CLAUSES.reduce((n, c) => n + (c.chips ? c.chips(state) : (c.restricts(state) ? 1 : 0)), 0))
+    NARROW_CLAUSES.reduce((n, c) => n + clauseChipCount(c, state), 0))
   const anyNarrow = computed(() => activeClauseCount.value > 0)
 
   // ── Available-option universes (full corpus, NOT narrowed) ──

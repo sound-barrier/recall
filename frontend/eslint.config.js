@@ -137,6 +137,15 @@ export default tseslint.config(
         argsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
       }],
+      // Code-smell ceilings (root CLAUDE.md "Code smells"): nested ternaries
+      // read as puzzles — extract a helper or lookup instead; >4 params wants
+      // an options object; >4 depth / >3 callback nesting wants extraction;
+      // param reassignment hides dataflow.
+      'no-nested-ternary': 'error',
+      'max-params': ['error', 4],
+      'max-depth': ['error', 4],
+      'no-param-reassign': 'error',
+      'max-nested-callbacks': ['error', 3],
     },
   },
   {
@@ -167,6 +176,9 @@ export default tseslint.config(
       // a vi.fn() mock, not a real this-bearing method. Off in tests (stays on
       // for src, which has zero findings).
       '@typescript-eslint/unbound-method': 'off',
+      // Vitest describe > describe > it nesting is structural test grouping,
+      // not a callback pyramid — the rule can't tell the difference.
+      'max-nested-callbacks': 'off',
     },
   },
   {
@@ -190,6 +202,9 @@ export default tseslint.config(
       'playwright/no-conditional-in-test': 'off',
       'playwright/no-conditional-expect': 'off',
       'playwright/no-force-option': 'off',
+      // describe > test > route-handler nesting is structural here, same as
+      // the Vitest describe-nesting exemption above — not a callback pyramid.
+      'max-nested-callbacks': 'off',
     },
   },
   {

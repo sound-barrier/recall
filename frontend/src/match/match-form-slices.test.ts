@@ -91,7 +91,8 @@ describe('samePointWindows', () => {
 })
 
 describe('conditionPredicate', () => {
-  const heroRole = (h?: string | null) => (h === 'reinhardt' ? 'tank' : h === 'genji' ? 'dps' : '')
+  const ROLES: Record<string, string> = { reinhardt: 'tank', genji: 'dps' }
+  const heroRole = (h?: string | null) => ROLES[h ?? ''] ?? ''
 
   it('filters duo (member), solo, role, and hero', () => {
     const duo = rec('2026-03-05', { heroes_played: [{ hero: 'reinhardt' }] }, { members: ['Apollo'] })

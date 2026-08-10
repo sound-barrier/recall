@@ -50,12 +50,12 @@ describe('useDragReorder — drag handlers', () => {
     expect(api.dropHint.value).toEqual({ row: 1, idx: 2 })
   })
 
-  it('onDrop fires onMove with (id, fromRow, fromIdx, toRow, toIdx)', () => {
+  it('onDrop fires onMove with (id, from, to)', () => {
     const onMove = vi.fn()
     const api = useDragReorder({ onMove, rowSize: () => 4 })
     api.onDragStart('winrate', 1, 0, fakeDragEvent())
     api.onDrop(2, 1, fakeDragEvent())
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 0, 2, 1)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 0 }, { row: 2, idx: 1 })
   })
 
   it('onDrop fires onMove BEFORE clearing dragging state (live-preview consumers depend on this)', () => {
@@ -103,7 +103,7 @@ describe('useDragReorder — drag handlers', () => {
     const api = useDragReorder({ onMove, rowSize: () => 5 })
     api.onDragStart('winrate', 1, 0, fakeDragEvent())
     api.onDrop(1, 3, fakeDragEvent())
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 0, 1, 2)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 0 }, { row: 1, idx: 2 })
   })
 
   it('onDrop same-row source-after-target passes idx through unchanged', () => {
@@ -114,7 +114,7 @@ describe('useDragReorder — drag handlers', () => {
     const api = useDragReorder({ onMove, rowSize: () => 5 })
     api.onDragStart('winrate', 1, 4, fakeDragEvent())
     api.onDrop(1, 1, fakeDragEvent())
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 4, 1, 1)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 4 }, { row: 1, idx: 1 })
   })
 
   it('onDrop without a prior drag is ignored', () => {
@@ -129,7 +129,7 @@ describe('useDragReorder — drag handlers', () => {
     const api = useDragReorder({ onMove, rowSize: (row) => (row === 2 ? 3 : 5) })
     api.onDragStart('winrate', 1, 0, fakeDragEvent())
     api.onRowDrop(2, fakeDragEvent())
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 0, 2, 3)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 0 }, { row: 2, idx: 3 })
   })
 
   it('onRowDrop lands at the current drop hint, not the row tail', () => {
@@ -141,7 +141,7 @@ describe('useDragReorder — drag handlers', () => {
     api.onDragStart('winrate', 1, 5, fakeDragEvent())
     api.onDragOver(1, 2, fakeDragEvent())
     api.onRowDrop(1, fakeDragEvent())
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 5, 1, 2)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 5 }, { row: 1, idx: 2 })
   })
 })
 
@@ -257,7 +257,7 @@ describe('useDragReorder — keyboard alternatives', () => {
   it('ArrowLeft moves to idx-1 within the same row', () => {
     const { api, onMove } = setup({ 1: 5 })
     api.onHandleKeydown('winrate', 1, 2, fakeKeyEvent('ArrowLeft'))
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 2, 1, 1)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 2 }, { row: 1, idx: 1 })
   })
 
   it('ArrowLeft at idx 0 is a no-op', () => {
@@ -269,7 +269,7 @@ describe('useDragReorder — keyboard alternatives', () => {
   it('ArrowRight moves to idx+1 within the same row', () => {
     const { api, onMove } = setup({ 1: 5 })
     api.onHandleKeydown('winrate', 1, 2, fakeKeyEvent('ArrowRight'))
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 2, 1, 3)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 2 }, { row: 1, idx: 3 })
   })
 
   it('ArrowRight at the last idx is a no-op', () => {
@@ -282,25 +282,25 @@ describe('useDragReorder — keyboard alternatives', () => {
     const { api, onMove } = setup({ 1: 5, 2: 3 })
     api.onHandleKeydown('winrate', 1, 4, fakeKeyEvent('ArrowDown'))
     // Target row only has 3 cells (idx 0..2); clamp to length 3 → idx 3 (append at end).
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 4, 2, 3)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 4 }, { row: 2, idx: 3 })
   })
 
   it('ArrowUp moves to the same idx in the previous row, clamped', () => {
     const { api, onMove } = setup({ 1: 5, 2: 3 })
     api.onHandleKeydown('top-maps', 2, 1, fakeKeyEvent('ArrowUp'))
-    expect(onMove).toHaveBeenCalledWith('top-maps', 2, 1, 1, 1)
+    expect(onMove).toHaveBeenCalledWith('top-maps', { row: 2, idx: 1 }, { row: 1, idx: 1 })
   })
 
   it('Home jumps to idx 0', () => {
     const { api, onMove } = setup({ 1: 5 })
     api.onHandleKeydown('winrate', 1, 3, fakeKeyEvent('Home'))
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 3, 1, 0)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 3 }, { row: 1, idx: 0 })
   })
 
   it('End jumps to the row\'s last idx', () => {
     const { api, onMove } = setup({ 1: 5 })
     api.onHandleKeydown('winrate', 1, 1, fakeKeyEvent('End'))
-    expect(onMove).toHaveBeenCalledWith('winrate', 1, 1, 1, 4)
+    expect(onMove).toHaveBeenCalledWith('winrate', { row: 1, idx: 1 }, { row: 1, idx: 4 })
   })
 
   it('ArrowUp at row 1 with a null adjacentRow resolver is a no-op', () => {

@@ -117,8 +117,8 @@ describe('deriveHeroPool', () => {
   })
 
   it('sorts Tank → DPS → Support when a role resolver is given', () => {
-    const heroRole = (h?: string | null) =>
-      h === 'zarya' ? 'tank' : h === 'ashe' ? 'dps' : h === 'brig' ? 'support' : ''
+    const roles: Record<string, string> = { zarya: 'tank', ashe: 'dps', brig: 'support' }
+    const heroRole = (h?: string | null) => roles[h ?? ''] ?? ''
     const records = [
       ...Array.from({ length: 5 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['brig', 100]])),
       ...Array.from({ length: 5 }, (_, i) => rec(i % 2 ? 'victory' : 'defeat', [['ashe', 100]])),

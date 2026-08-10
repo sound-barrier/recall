@@ -156,8 +156,10 @@ function signedDelta(a: number, b: number, fmtDelta: (n: number) => string): str
   return `${sign}${fmtDelta(Math.abs(raw))}`
 }
 
-function intRow(key: string, label: string, dir: Direction, a: number, b: number): ComparisonRow {
-  return numericRow({ key, label, dir, a, b, fmt: (n) => String(n), fmtDelta: (n) => String(n) })
+// intRow is numericRow with plain integer formatting; it takes the same
+// key/label/dir/a/b vocabulary as an options object.
+function intRow(row: { key: string; label: string; dir: Direction; a: number; b: number }): ComparisonRow {
+  return numericRow({ ...row, fmt: (n) => String(n), fmtDelta: (n) => String(n) })
 }
 
 function displayRow(key: string, label: string, a: string | null, b: string | null): ComparisonRow {
@@ -248,8 +250,13 @@ function round1(n: number): number {
 
 // Rank-progress column: an explicitly-signed division count ("+1.4 div").
 function signedDivisions(n: number): string {
-  const sign = n > 0 ? '+' : n < 0 ? '−' : ''
-  return `${sign}${round1(Math.abs(n))} div`
+  return `${signChar(n)}${round1(Math.abs(n))} div`
+}
+
+function signChar(n: number): string {
+  if (n > 0) return '+'
+  if (n < 0) return '−'
+  return ''
 }
 
 // timeRow shows each column's pre-formatted play-time; the delta is neutral (more
@@ -304,11 +311,11 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
               fmt: signedDivisions, fmtDelta: (n) => `${round1(n)} div`, quantize: round1,
             })]
           : []),
-        intRow('games', 'Games', 'neutral', a.games, b.games),
-        intRow('compGames', 'Competitive games', 'neutral', a.competitiveGames, b.competitiveGames),
-        intRow('qpGames', 'Quick play games', 'neutral', a.quickPlayGames, b.quickPlayGames),
-        intRow('roleQueue', 'Role queue games', 'neutral', a.roleQueueGames, b.roleQueueGames),
-        intRow('openQueue', 'Open queue games', 'neutral', a.openQueueGames, b.openQueueGames),
+        intRow({ key: 'games', label: 'Games', dir: 'neutral', a: a.games, b: b.games }),
+        intRow({ key: 'compGames', label: 'Competitive games', dir: 'neutral', a: a.competitiveGames, b: b.competitiveGames }),
+        intRow({ key: 'qpGames', label: 'Quick play games', dir: 'neutral', a: a.quickPlayGames, b: b.quickPlayGames }),
+        intRow({ key: 'roleQueue', label: 'Role queue games', dir: 'neutral', a: a.roleQueueGames, b: b.roleQueueGames }),
+        intRow({ key: 'openQueue', label: 'Open queue games', dir: 'neutral', a: a.openQueueGames, b: b.openQueueGames }),
         winrateRow(a, b),
       ],
     },
@@ -325,10 +332,10 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
       rows: [
         timeRow(a, b),
         ...(a.sessions !== undefined && b.sessions !== undefined
-          ? [intRow('sessions', 'Sessions', 'neutral', a.sessions, b.sessions)]
+          ? [intRow({ key: 'sessions', label: 'Sessions', dir: 'neutral', a: a.sessions, b: b.sessions })]
           : []),
-        intRow('longestWin', 'Longest win streak', 'higher-better', a.longestWinStreak, b.longestWinStreak),
-        intRow('longestLose', 'Longest losing streak', 'lower-better', a.longestLosingStreak, b.longestLosingStreak),
+        intRow({ key: 'longestWin', label: 'Longest win streak', dir: 'higher-better', a: a.longestWinStreak, b: b.longestWinStreak }),
+        intRow({ key: 'longestLose', label: 'Longest losing streak', dir: 'lower-better', a: a.longestLosingStreak, b: b.longestLosingStreak }),
         ...(a.leaverRatePct !== undefined && b.leaverRatePct !== undefined
           ? [numericRow({
               key: 'leaverRate', label: 'Games with a leaver', dir: 'lower-better',
@@ -344,9 +351,9 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
         rateRow('roleTank', 'Tank win rate', a.roleTank, b.roleTank),
         rateRow('roleDps', 'DPS win rate', a.roleDps, b.roleDps),
         rateRow('roleSupport', 'Support win rate', a.roleSupport, b.roleSupport),
-        intRow('poolTank', 'Hero pool (Tank)', 'neutral', a.heroPoolTank, b.heroPoolTank),
-        intRow('poolDps', 'Hero pool (DPS)', 'neutral', a.heroPoolDps, b.heroPoolDps),
-        intRow('poolSupport', 'Hero pool (Support)', 'neutral', a.heroPoolSupport, b.heroPoolSupport),
+        intRow({ key: 'poolTank', label: 'Hero pool (Tank)', dir: 'neutral', a: a.heroPoolTank, b: b.heroPoolTank }),
+        intRow({ key: 'poolDps', label: 'Hero pool (DPS)', dir: 'neutral', a: a.heroPoolDps, b: b.heroPoolDps }),
+        intRow({ key: 'poolSupport', label: 'Hero pool (Support)', dir: 'neutral', a: a.heroPoolSupport, b: b.heroPoolSupport }),
         heroStatRow('bestTank', 'Best Tank hero', a.bestHeroTank, b.bestHeroTank),
         heroStatRow('bestDps', 'Best DPS hero', a.bestHeroDps, b.bestHeroDps),
         heroStatRow('bestSupport', 'Best Support hero', a.bestHeroSupport, b.bestHeroSupport),

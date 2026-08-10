@@ -11,7 +11,8 @@ import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
-function rec(key: string, date: string, time: string, result: string, elims: number, deaths: number) {
+function rec(key: string, date: string, time: string, outcome: { result: string; elims: number; deaths: number }) {
+  const { result, elims, deaths } = outcome
   return {
     match_key: key,
     source_files: [`${key}.png`],
@@ -36,11 +37,11 @@ function tiltedCorpus() {
   const out = []
   for (let d = 1; d <= 10; d++) {
     const day = String(d).padStart(2, '0')
-    out.push(rec(`match-2026-05-${day}T10-00-00`, `2026-05-${day}`, '10:00', 'victory', 20, 5))
+    out.push(rec(`match-2026-05-${day}T10-00-00`, `2026-05-${day}`, '10:00', { result: 'victory', elims: 20, deaths: 5 }))
   }
-  out.push(rec('match-2026-05-11T20-00-00', '2026-05-11', '20:00', 'defeat', 4, 9))
-  out.push(rec('match-2026-05-11T20-30-00', '2026-05-11', '20:30', 'defeat', 3, 10))
-  out.push(rec('match-2026-05-11T21-00-00', '2026-05-11', '21:00', 'defeat', 5, 8))
+  out.push(rec('match-2026-05-11T20-00-00', '2026-05-11', '20:00', { result: 'defeat', elims: 4, deaths: 9 }))
+  out.push(rec('match-2026-05-11T20-30-00', '2026-05-11', '20:30', { result: 'defeat', elims: 3, deaths: 10 }))
+  out.push(rec('match-2026-05-11T21-00-00', '2026-05-11', '21:00', { result: 'defeat', elims: 5, deaths: 8 }))
   return out
 }
 

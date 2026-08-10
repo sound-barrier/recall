@@ -99,7 +99,12 @@ export const NARROW_CLAUSES: readonly ClauseSpec[] = [
     id: 'dateRange',
     restricts: (s) => !!s.customFrom.value || !!s.customTo.value || s.pickedRange.value !== 'all',
     passes: (r, s) =>
-      matchesDateRange(r, s.customFrom.value, s.customTo.value, s.customFromTime.value, s.customToTime.value),
+      matchesDateRange(r, {
+        from: s.customFrom.value,
+        to: s.customTo.value,
+        fromTime: s.customFromTime.value,
+        toTime: s.customToTime.value,
+      }),
     label: () => 'date range',
     clear: (s) => {
       s.pickedRange.value = 'all'

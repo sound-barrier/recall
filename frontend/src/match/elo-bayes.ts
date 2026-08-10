@@ -83,6 +83,12 @@ export function gamesToKnow(
   return Math.max(0, Math.ceil(nTotal - nEff))
 }
 
+// A pooled win/loss record — the prior shrunkWinRate shrinks toward.
+export interface PooledRecord {
+  wins: number
+  losses: number
+}
+
 // shrunkWinRate is the empirical-Bayes adjusted rate for one hero: the
 // hero's record updated against a prior centered on the POOLED rate with
 // `strength` pseudo-games. A hot 3–0 lands near the pool; a long record
@@ -91,13 +97,12 @@ export function gamesToKnow(
 export function shrunkWinRate(
   wins: number,
   losses: number,
-  poolWins: number,
-  poolLosses: number,
+  pool: PooledRecord,
   strength = 10,
 ): number | null {
-  const poolN = poolWins + poolLosses
+  const poolN = pool.wins + pool.losses
   if (poolN <= 0 || strength <= 0) return null
-  const poolRate = poolWins / poolN
+  const poolRate = pool.wins / poolN
   return (wins + strength * poolRate) / (wins + losses + strength)
 }
 

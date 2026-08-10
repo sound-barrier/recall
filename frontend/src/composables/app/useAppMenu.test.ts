@@ -11,10 +11,14 @@ import { effectScope } from 'vue'
 const realLocation = window.location
 const realUA = navigator.userAgent
 
+function envLocation(opts: { wails: boolean; mac: boolean }): { protocol: string; hostname: string } {
+  if (!opts.wails) return { protocol: 'http:', hostname: 'localhost' }
+  if (opts.mac) return { protocol: 'wails:', hostname: 'localhost' }
+  return { protocol: 'http:', hostname: 'wails.localhost' }
+}
+
 function setEnv(opts: { wails: boolean; mac: boolean }) {
-  const loc = opts.wails
-    ? (opts.mac ? { protocol: 'wails:', hostname: 'localhost' } : { protocol: 'http:', hostname: 'wails.localhost' })
-    : { protocol: 'http:', hostname: 'localhost' }
+  const loc = envLocation(opts)
   Object.defineProperty(window, 'location', {
     value: { ...loc, href: `${loc.protocol}//${loc.hostname}/` },
     configurable: true,

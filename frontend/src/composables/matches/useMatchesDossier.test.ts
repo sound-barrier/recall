@@ -1826,7 +1826,8 @@ describe('useMatchesDossier — query-helper parameterization', () => {
   })
 
   describe('recentMatches', () => {
-    function mr(key: string, date: string, finishedAt: string, result: 'victory' | 'defeat' | 'draw', map = 'route66'): MatchRecord {
+    function mr(key: string, when: { date: string; finishedAt: string }, result: 'victory' | 'defeat' | 'draw', map = 'route66'): MatchRecord {
+      const { date, finishedAt } = when
       return {
         match_key:    key,
         source_files: [`${key}.png`],
@@ -1843,9 +1844,9 @@ describe('useMatchesDossier — query-helper parameterization', () => {
 
     it('returns rows newest-first by match time, capped to count, with date/result/map', () => {
       const records = ref([
-        mr('a', '2026-05-01', '20:00', 'victory'),
-        mr('b', '2026-05-03', '21:00', 'defeat'),
-        mr('c', '2026-05-02', '22:00', 'draw'),
+        mr('a', { date: '2026-05-01', finishedAt: '20:00' }, 'victory'),
+        mr('b', { date: '2026-05-03', finishedAt: '21:00' }, 'defeat'),
+        mr('c', { date: '2026-05-02', finishedAt: '22:00' }, 'draw'),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
       const rows = dossier.recentMatches(() => ({ count: 2 })).value
@@ -1855,8 +1856,8 @@ describe('useMatchesDossier — query-helper parameterization', () => {
 
     it('honors windowMonths — drops rows older than the cutoff', () => {
       const records = ref([
-        mr('recent', isoDaysAgo(10), '20:00', 'victory'),
-        mr('old', isoDaysAgo(400), '20:00', 'defeat'),
+        mr('recent', { date: isoDaysAgo(10), finishedAt: '20:00' }, 'victory'),
+        mr('old', { date: isoDaysAgo(400), finishedAt: '20:00' }, 'defeat'),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
       expect(dossier.recentMatches(() => ({ count: 10 })).value.map((r) => r.matchKey)).toEqual(['recent', 'old'])

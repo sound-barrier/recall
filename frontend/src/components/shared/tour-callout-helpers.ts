@@ -43,23 +43,29 @@ export interface CalloutLayout {
   gap: number
 }
 
+// The measured geometry the solver positions within: the callout's
+// current height plus the viewport bounds.
+export interface CalloutFrame {
+  calloutH: number
+  vw: number
+  vh: number
+}
+
 // Pure placement solver for the tour callout. Given the (already-measured)
-// target rect, the callout's height, the viewport, and the step's preferred
-// side, returns clamped left/top + the resolved placement. No DOM access —
-// the SFC supplies target / height / viewport. Honor an explicit side when
-// it physically fits; otherwise auto-search bottom→right→left→top rejecting
-// any side that would overlap the target; otherwise drop into the viewport
-// corner farthest from the target's center.
+// target rect, the geometry frame (callout height + viewport), and the
+// step's preferred side, returns clamped left/top + the resolved placement.
+// No DOM access — the SFC supplies target / frame. Honor an explicit side
+// when it physically fits; otherwise auto-search bottom→right→left→top
+// rejecting any side that would overlap the target; otherwise drop into the
+// viewport corner farthest from the target's center.
 export function computeCalloutPosition(
   target: Rect | null,
-  calloutH: number,
-  vw: number,
-  vh: number,
+  frame: CalloutFrame,
   preferred: CalloutPlacement,
   layout: CalloutLayout,
 ): { left: number; top: number; placement: CalloutPlacement } {
   const { calloutW, safety, gap } = layout
-  const h = calloutH
+  const { vw, vh, calloutH: h } = frame
 
   // No target → center.
   if (!target) {

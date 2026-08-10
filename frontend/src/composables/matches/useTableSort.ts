@@ -100,7 +100,9 @@ function compareCol(col: TableSortCol, a: MatchRecord, b: MatchRecord): number {
 }
 
 function sourceRank(rec: MatchRecord): number {
-  return isManualMatch(rec) ? 2 : isEditedMatch(rec) ? 1 : 0
+  if (isManualMatch(rec)) return 2
+  if (isEditedMatch(rec)) return 1
+  return 0
 }
 
 // Fold the sort stack: the first level that separates a and b wins;

@@ -27,12 +27,12 @@ export function useDashboardGrid() {
   // cursor) and emits onMove on a successful drop. onMove uses previewLayout to
   // pick "commit the live preview" (drag) vs "traditional move" (keyboard).
   const dragReorder = useDragReorder({
-    onMove: (id, fromRow, fromIdx, toRow, toIdx) => {
+    onMove: (id, from, to) => {
       const preview = previewLayout.value
       if (preview) {
         dashboardLayout.setLayout(preview)
       } else {
-        dashboardLayout.move(id, fromRow, fromIdx, toRow, toIdx)
+        dashboardLayout.move(id, from, to)
       }
     },
     rowSize: (row) => {

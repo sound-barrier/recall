@@ -48,7 +48,7 @@ function riggedCheck(): Check {
     const lo = Math.round(iv.lower * 100)
     const hi = Math.round(iv.upper * 100)
     if (Math.abs(rate - 50) <= 2.5) {
-      const lean = rate > 50 ? 'a shade above even' : rate < 50 ? 'a shade below even' : 'dead even'
+      const lean = shadeOfEven(rate)
       const closing = rate >= 50
         ? 'A slow climb looks exactly like this.'
         : 'A slow grind looks exactly like this — the playbook above is where the shade flips.'
@@ -77,6 +77,12 @@ function riggedCheck(): Check {
   }
 }
 
+function shadeOfEven(rate: number): string {
+  if (rate > 50) return 'a shade above even'
+  if (rate < 50) return 'a shade below even'
+  return 'dead even'
+}
+
 // coinAnswer keeps the headline in plain odds language across the range.
 function coinAnswer(prob: number): string {
   if (prob >= 99) return 'Almost certainly'
@@ -85,6 +91,49 @@ function coinAnswer(prob: number): string {
   if (prob > 40) return 'Genuinely even odds'
   if (prob > 10) return 'Probably not'
   return 'Almost certainly not'
+}
+
+function skepticLean(prob: number): string {
+  if (prob >= 60) return `with more of it above even than below (${prob} to ${100 - prob}). A slow climb lives exactly in this zone`
+  if (prob <= 40) return `with more of it below even than above (${100 - prob} to ${prob}) — the playbook above is the way out`
+  return 'balanced almost evenly around 50 — dead even is a real place to be, and the playbook is how you leave it'
+}
+
+function skepticTone(prob: number): string {
+  if (prob >= 90) return 'good'
+  if (prob <= 50) return 'warn'
+  return 'neutral'
+}
+
+function runsAnswer(coinLike: boolean, z: number): string {
+  if (coinLike) return 'Coin-like — nothing scripted'
+  return z < 0 ? 'Streakier than chance' : 'More alternating than chance'
+}
+
+function runsReading(coinLike: boolean, z: number): string {
+  if (coinLike) return 'Your streaks are exactly what honest randomness produces.'
+  if (z < 0) return 'Real clustering usually means tilt carrying over, not a script — see the streak rows below.'
+  return 'Slightly more regular than random — nothing sinister about that either.'
+}
+
+// Below half a percent, "rare, but real" oversells a rounding artifact.
+function lossStreakCopy(chance: number): { a: string; note: string } {
+  if (chance >= 0.2) {
+    return {
+      a: `${fmtPct(chance * 100)} — normal`,
+      note: `A ${streakLen}-loss streak in your next ${streakHorizon} games is ${fmtPct(chance * 100)} likely at ${effectiveWinRatePct.value}%. Expected, not rigged.`,
+    }
+  }
+  if (chance >= 0.005) {
+    return {
+      a: `${fmtPct(chance * 100)} — rare, but real`,
+      note: `Even at ${effectiveWinRatePct.value}%, a ${streakLen}-loss run lands about ${fmtPct(chance * 100)} of the time over ${streakHorizon} games — rare enough to sting, still just variance.`,
+    }
+  }
+  return {
+    a: 'Effectively never at this rate',
+    note: `At ${effectiveWinRatePct.value}%, a ${streakLen}-loss run over ${streakHorizon} games rounds to zero — if one happens anyway, look at tilt before the matchmaker.`,
+  }
 }
 
 const checks = computed<Check[]>(() => {
@@ -103,11 +152,7 @@ const checks = computed<Check[]>(() => {
     const prob = Math.round(skepticVerdict.value * 100)
     const lo = Math.round(trueRateRange.value.lower * 100)
     const hi = Math.round(trueRateRange.value.upper * 100)
-    const lean = prob >= 60
-      ? `with more of it above even than below (${prob} to ${100 - prob}). A slow climb lives exactly in this zone`
-      : prob <= 40
-        ? `with more of it below even than above (${100 - prob} to ${prob}) — the playbook above is the way out`
-        : 'balanced almost evenly around 50 — dead even is a real place to be, and the playbook is how you leave it'
+    const lean = skepticLean(prob)
     // Below the verdict floor this number is mostly the prior — say so,
     // and never color it as a finding.
     const priorNote = provisional.value
@@ -117,23 +162,12 @@ const checks = computed<Check[]>(() => {
       id: 'skeptic', stat: 'bayes', q: 'Better than a coin?',
       a: coinAnswer(prob),
       note: `Start from the harshest assumption — that you're a pure coin flip. Your ${sampleN.value} game${sampleN.value === 1 ? '' : 's'} move the odds to ${prob} in 100 that your true win rate beats even. The rate itself most likely sits in ${lo}–${hi}%, ${lean}.${priorNote}`,
-      tone: provisional.value ? 'neutral' : prob >= 90 ? 'good' : prob <= 50 ? 'warn' : 'neutral',
+      tone: provisional.value ? 'neutral' : skepticTone(prob),
     })
   }
 
   if (lossStreak.value !== null) {
-    const chance = lossStreak.value
-    // Below half a percent, "rare, but real" oversells a rounding artifact.
-    const a = chance >= 0.2
-      ? `${fmtPct(chance * 100)} — normal`
-      : chance >= 0.005
-        ? `${fmtPct(chance * 100)} — rare, but real`
-        : 'Effectively never at this rate'
-    const note = chance >= 0.2
-      ? `A ${streakLen}-loss streak in your next ${streakHorizon} games is ${fmtPct(chance * 100)} likely at ${effectiveWinRatePct.value}%. Expected, not rigged.`
-      : chance >= 0.005
-        ? `Even at ${effectiveWinRatePct.value}%, a ${streakLen}-loss run lands about ${fmtPct(chance * 100)} of the time over ${streakHorizon} games — rare enough to sting, still just variance.`
-        : `At ${effectiveWinRatePct.value}%, a ${streakLen}-loss run over ${streakHorizon} games rounds to zero — if one happens anyway, look at tilt before the matchmaker.`
+    const { a, note } = lossStreakCopy(lossStreak.value)
     out.push({
       id: 'streaks', stat: 'streak', q: 'Endless loss streaks?',
       a,
@@ -150,8 +184,8 @@ const checks = computed<Check[]>(() => {
     const coinLike = r.pValue >= 0.05
     out.push({
       id: 'scripted', stat: 'runs', q: 'Scripted streaks?',
-      a: coinLike ? 'Coin-like — nothing scripted' : r.z < 0 ? 'Streakier than chance' : 'More alternating than chance',
-      note: `Your ${r.nWins + r.nLosses} games form ${r.runs} win/loss runs; a fair sequence at your rate averages ${Math.round(r.expectedRuns)} (${fmtPValue(r.pValue)}). ${coinLike ? 'Your streaks are exactly what honest randomness produces.' : r.z < 0 ? 'Real clustering usually means tilt carrying over, not a script — see the streak rows below.' : 'Slightly more regular than random — nothing sinister about that either.'}`,
+      a: runsAnswer(coinLike, r.z),
+      note: `Your ${r.nWins + r.nLosses} games form ${r.runs} win/loss runs; a fair sequence at your rate averages ${Math.round(r.expectedRuns)} (${fmtPValue(r.pValue)}). ${runsReading(coinLike, r.z)}`,
       tone: coinLike ? 'good' : 'neutral',
     })
   }

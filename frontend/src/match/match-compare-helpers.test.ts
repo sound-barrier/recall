@@ -121,6 +121,21 @@ describe('compareSeasons', () => {
     expect(row(noRate, 'winrate').lowSample).toBe(false)
   })
 
+  it('renders rank progress as explicitly-signed divisions — +, −, and unsigned zero', () => {
+    // Emitted only when BOTH snapshots carry the Form-mode extra.
+    const sections = compareSeasons(
+      metrics({ rankProgress: -0.5 }),
+      metrics({ rankProgress: 1.4 }),
+    )
+    const r = row(sections, 'rankProgress')
+    expect(r.aDisplay).toBe('−0.5 div')
+    expect(r.bDisplay).toBe('+1.4 div')
+    expect(r.outcome).toBe('improved')
+    const zero = row(compareSeasons(metrics({ rankProgress: 0 }), metrics({ rankProgress: 0 })), 'rankProgress')
+    expect(zero.aDisplay).toBe('0 div')
+    expect(zero.outcome).toBe('even')
+  })
+
   it('keeps the unit on the time-played delta, including a zero change', () => {
     expect(row(compareSeasons(metrics({ minutesPlayed: 300 }), metrics({ minutesPlayed: 360 })), 'time').delta).toBe('+60 min')
     expect(row(compareSeasons(metrics({ minutesPlayed: 300 }), metrics({ minutesPlayed: 300 })), 'time').delta).toBe('0 min')

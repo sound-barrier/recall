@@ -123,11 +123,7 @@ function streakTilt(recs: readonly MatchRecord[]): EvidenceItem | null {
 
   const counts = afterResultCounts(recs)
   const p = twoByTwoChiSquareP(counts.winAfterWin, counts.lossAfterWin, counts.winAfterLoss, counts.lossAfterLoss)
-  const pClause = p === null
-    ? ''
-    : p < 0.05
-      ? ` The after-a-loss dip is a real pattern (${fmtP(p)}), not queue punishment.`
-      : ` The after-a-loss dip is within noise so far (${fmtP(p)}).`
+  const pClause = afterLossPClause(p)
 
   const deepest = shown[shown.length - 1]
   const sagging = deepest !== undefined && deepest.winrate !== null
@@ -272,6 +268,12 @@ function consistency(recs: readonly MatchRecord[]): EvidenceItem | null {
     tone: dip >= 5 ? 'warn' : 'good',
     lowSample: r.back.sample < 10,
   }
+}
+
+function afterLossPClause(p: number | null): string {
+  if (p === null) return ''
+  if (p < 0.05) return ` The after-a-loss dip is a real pattern (${fmtP(p)}), not queue punishment.`
+  return ` The after-a-loss dip is within noise so far (${fmtP(p)}).`
 }
 
 function fmtP(p: number): string {

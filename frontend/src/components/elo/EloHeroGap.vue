@@ -11,6 +11,12 @@ import { useOWData } from '@/composables/shared/useOWData'
 const { heroGap } = useEloCalc()
 const ow = useOWData()
 
+function worstHeroReads(perGamePts: number): string {
+  if (perGamePts < -0.5) return `gives rank back (≈${Math.abs(perGamePts).toFixed(1)}%/game)`
+  if (perGamePts > 0.5) return `still climbs, slower (≈+${perGamePts.toFixed(1)}%/game)`
+  return 'treads water'
+}
+
 const line = computed(() => {
   const g = heroGap.value
   if (!g) return null
@@ -21,11 +27,7 @@ const line = computed(() => {
   const per20 = g.gapPerGamePts * 20
   const divisions = per20 / 100
   const size = divisions >= 0.95 ? `about ${Math.round(divisions * 10) / 10} division${divisions >= 1.95 ? 's' : ''}` : `≈${Math.round(per20)}% of a division`
-  const worstReads = g.worstPerGamePts < -0.5
-    ? `gives rank back (≈${Math.abs(g.worstPerGamePts).toFixed(1)}%/game)`
-    : g.worstPerGamePts > 0.5
-      ? `still climbs, slower (≈+${g.worstPerGamePts.toFixed(1)}%/game)`
-      : 'treads water'
+  const worstReads = worstHeroReads(g.worstPerGamePts)
   return {
     head: `${best} climbs ≈${g.gapPerGamePts.toFixed(1)}% meter per game faster than ${worst}`,
     detail: `${best} (${bestRate}% over ${g.best.wins + g.best.losses} games) earns ≈${g.bestPerGamePts.toFixed(1)}% meter a game; ${worst} (${worstRate}% over ${g.worst.wins + g.worst.losses} games) ${worstReads}. Twenty games on the right pick is worth ${size} of climb — hero choice is a rank lever, not a mood.`,

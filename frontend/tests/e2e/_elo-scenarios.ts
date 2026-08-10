@@ -112,6 +112,12 @@ function interleaveDraws(results: Res[], draws: number): Res[] {
 }
 
 // seq compiles knobs into a chronological game list (oldest first).
+// A run of ≥2 like decisive results wears the matching streak modifier.
+function streakLabel(r: Res, runLen: number): Game['streak'] {
+  if (runLen < 2 || r === 'draw') return undefined
+  return r === 'victory' ? 'win streak' : 'loss streak'
+}
+
 export function seq(o: SeqOpts): Game[] {
   const results = interleaveDraws(resultOrder(o.wins, o.losses, o.order ?? 'spread'), o.draws ?? 0)
   const n = results.length
@@ -123,13 +129,12 @@ export function seq(o: SeqOpts): Game[] {
     const r = results[i]!
     runLen = r !== 'draw' && r === prev ? runLen + 1 : 1
     prev = r
-    const streak: Game['streak'] =
-      r === 'victory' && runLen >= 2 ? 'win streak' : r === 'defeat' && runLen >= 2 ? 'loss streak' : undefined
+    const streak = streakLabel(r, runLen)
 
     let cp: number | undefined
     if (r !== 'draw') {
       if (meter === 'rich') cp = (r === 'victory' ? 1 : -1) * (streak ? 30 : 20)
-      else if (meter === 'thin5') cp = i < 5 ? (r === 'victory' ? 20 : -20) : undefined
+      else if (meter === 'thin5') { if (i < 5) cp = r === 'victory' ? 20 : -20 }
       else if (meter === 'none') cp = undefined
       else cp = r === 'victory' ? meter.win : meter.loss
     }

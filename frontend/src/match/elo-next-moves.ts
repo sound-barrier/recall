@@ -75,14 +75,18 @@ const HURT_VERBS: Record<LiftRow['dimension'], (name: string) => string> = {
   teammate: (n) => `Rethink duos with ${n}`,
 }
 
+function liftRowDisplayName(row: Pick<LiftRow, 'dimension' | 'key'>, deps: NextMoveDeps): string {
+  if (row.dimension === 'hero') return deps.heroDisplayName(row.key)
+  if (row.dimension === 'map') return deps.mapDisplayName(row.key)
+  return row.key
+}
+
 function liftMove(lift: readonly LiftRow[], deps: NextMoveDeps): NextMove | null {
   // liftTable arrives sorted by |lift − 1| desc, so the first qualifying
   // row IS the strongest condition worth acting on.
   const row = lift.find((r) => r.n >= MIN_MOVE_SAMPLE && Math.abs(r.lift - 1) >= MIN_LIFT_EDGE)
   if (!row) return null
-  const name = row.dimension === 'hero'
-    ? deps.heroDisplayName(row.key)
-    : row.dimension === 'map' ? deps.mapDisplayName(row.key) : row.key
+  const name = liftRowDisplayName(row, deps)
   const verb = row.lift > 1 ? HELP_VERBS[row.dimension] : HURT_VERBS[row.dimension]
   return {
     id: 'lift',

@@ -219,7 +219,8 @@ export function rankDeltaOption(series: TrendSeries[]): TrendOption {
       trigger: 'axis',
       valueFormatter: (v: unknown) => {
         const n = Number(v)
-        return Number.isFinite(n) ? (n > 0 ? `+${n}%` : `${n}%`) : ''
+        if (!Number.isFinite(n)) return ''
+        return n > 0 ? `+${n}%` : `${n}%`
       },
     },
     xAxis: { type: 'time' },

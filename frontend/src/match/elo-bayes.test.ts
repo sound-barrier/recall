@@ -77,17 +77,17 @@ describe('gamesToKnow', () => {
 describe('shrunkWinRate', () => {
   it('pulls a hot 3–0 toward the pool rate with strength-10 pseudo-games', () => {
     // Pool 39W/21L → 65%; adjusted = (3 + 10·0.65)/(3 + 10) = 9.5/13.
-    expect(shrunkWinRate(3, 0, 39, 21)).toBeCloseTo(9.5 / 13, 10)
+    expect(shrunkWinRate(3, 0, { wins: 39, losses: 21 })).toBeCloseTo(9.5 / 13, 10)
   })
 
   it('barely moves a large record', () => {
-    const adj = shrunkWinRate(180, 60, 200, 100)! // raw 75%, pool 66.7%
+    const adj = shrunkWinRate(180, 60, { wins: 200, losses: 100 })! // raw 75%, pool 66.7%
     expect(adj).toBeGreaterThan(0.74)
     expect(adj).toBeLessThan(0.75)
   })
 
   it('is null without a pool', () => {
-    expect(shrunkWinRate(3, 0, 0, 0)).toBeNull()
+    expect(shrunkWinRate(3, 0, { wins: 0, losses: 0 })).toBeNull()
   })
 })
 

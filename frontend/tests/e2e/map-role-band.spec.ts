@@ -44,12 +44,14 @@ const REFERENCE_DATA = {
 
 const match = (
   key: string,
-  map: 'ilios' | 'dorado' | 'rialto',
-  game_mode: 'control' | 'escort',
-  role: 'tank' | 'dps' | 'support',
-  hero: string,
-  result: 'victory' | 'defeat',
-  finished: string,
+  { map, game_mode, role, hero, result, finished }: {
+    map: 'ilios' | 'dorado' | 'rialto'
+    game_mode: 'control' | 'escort'
+    role: 'tank' | 'dps' | 'support'
+    hero: string
+    result: 'victory' | 'defeat'
+    finished: string
+  },
 ) => ({
   match_key: key,
   source_files: [`${key}.png`],
@@ -74,13 +76,13 @@ const match = (
 // Tank wins on Ilios; DPS loses on Rialto. Five played cells in the 3×3 grid —
 // enough that ilios|tank + rialto|support is a genuinely non-rectangular pick.
 const CORPUS = [
-  match('m1', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:01'),
-  match('m2', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:02'),
-  match('m3', 'rialto', 'escort', 'support', 'lucio', 'defeat', '10:03'),
-  match('m4', 'ilios', 'control', 'tank', 'reinhardt', 'victory', '10:04'),
-  match('m5', 'rialto', 'escort', 'dps', 'tracer', 'defeat', '10:05'),
-  match('m6', 'dorado', 'escort', 'support', 'lucio', 'victory', '10:06'),
-  match('m7', 'ilios', 'control', 'support', 'lucio', 'victory', '10:07'),
+  match('m1', { map: 'rialto', game_mode: 'escort', role: 'support', hero: 'lucio', result: 'victory', finished: '10:01' }),
+  match('m2', { map: 'rialto', game_mode: 'escort', role: 'support', hero: 'lucio', result: 'victory', finished: '10:02' }),
+  match('m3', { map: 'rialto', game_mode: 'escort', role: 'support', hero: 'lucio', result: 'defeat', finished: '10:03' }),
+  match('m4', { map: 'ilios', game_mode: 'control', role: 'tank', hero: 'reinhardt', result: 'victory', finished: '10:04' }),
+  match('m5', { map: 'rialto', game_mode: 'escort', role: 'dps', hero: 'tracer', result: 'defeat', finished: '10:05' }),
+  match('m6', { map: 'dorado', game_mode: 'escort', role: 'support', hero: 'lucio', result: 'victory', finished: '10:06' }),
+  match('m7', { map: 'ilios', game_mode: 'control', role: 'support', hero: 'lucio', result: 'victory', finished: '10:07' }),
 ]
 
 test.describe('Geography — Map × Role band', () => {
@@ -352,24 +354,24 @@ test.describe('Geography — never-played roles + empty state', () => {
     {
       hidden: 'Tank',
       matches: [
-        match('m1', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:01'),
-        match('m2', 'rialto', 'escort', 'dps', 'tracer', 'victory', '10:02'),
+        match('m1', { map: 'rialto', game_mode: 'escort', role: 'support', hero: 'lucio', result: 'victory', finished: '10:01' }),
+        match('m2', { map: 'rialto', game_mode: 'escort', role: 'dps', hero: 'tracer', result: 'victory', finished: '10:02' }),
       ],
       rows: ['DPS', 'Support'],
     },
     {
       hidden: 'DPS',
       matches: [
-        match('m1', 'ilios', 'control', 'tank', 'reinhardt', 'victory', '10:01'),
-        match('m2', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:02'),
+        match('m1', { map: 'ilios', game_mode: 'control', role: 'tank', hero: 'reinhardt', result: 'victory', finished: '10:01' }),
+        match('m2', { map: 'rialto', game_mode: 'escort', role: 'support', hero: 'lucio', result: 'victory', finished: '10:02' }),
       ],
       rows: ['Tank', 'Support'],
     },
     {
       hidden: 'Support',
       matches: [
-        match('m1', 'ilios', 'control', 'tank', 'reinhardt', 'victory', '10:01'),
-        match('m2', 'rialto', 'escort', 'dps', 'tracer', 'victory', '10:02'),
+        match('m1', { map: 'ilios', game_mode: 'control', role: 'tank', hero: 'reinhardt', result: 'victory', finished: '10:01' }),
+        match('m2', { map: 'rialto', game_mode: 'escort', role: 'dps', hero: 'tracer', result: 'victory', finished: '10:02' }),
       ],
       rows: ['Tank', 'DPS'],
     },
@@ -416,11 +418,17 @@ test.describe('Geography — never-played roles + empty state', () => {
     await open(page, [
       // Support on Rialto: 16W / 14L = 53.3% over 30 decisive (earns green).
       ...Array.from({ length: 30 }, (_, i) =>
-        match(`w${i}`, 'rialto', 'escort', 'support', 'lucio', i < 16 ? 'victory' : 'defeat',
-          `${String(10 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`)),
+        match(`w${i}`, {
+          map: 'rialto', game_mode: 'escort', role: 'support', hero: 'lucio',
+          result: i < 16 ? 'victory' : 'defeat',
+          finished: `${String(10 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+        })),
       // Tank on Ilios: 2W / 3L over 5 — under the 15-decisive floor (grey).
       ...Array.from({ length: 5 }, (_, i) =>
-        match(`t${i}`, 'ilios', 'control', 'tank', 'reinhardt', i < 2 ? 'victory' : 'defeat', `12:0${i}`)),
+        match(`t${i}`, {
+          map: 'ilios', game_mode: 'control', role: 'tank', hero: 'reinhardt',
+          result: i < 2 ? 'victory' : 'defeat', finished: `12:0${i}`,
+        })),
     ])
     const band = page.locator('.match-map-role')
     await expect(band).toBeVisible()

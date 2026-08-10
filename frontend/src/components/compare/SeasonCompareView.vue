@@ -81,8 +81,8 @@ const topHeroB = dossierB.topByCount({ getter: (r) => r.data?.hero || undefined,
 
 const sections = computed<ComparisonSection[]>(() =>
   compareSeasons(
-    buildSeasonMetrics(dossierA, recordsA.value, topHeroDisplay(topHeroA.value, ow), ow),
-    buildSeasonMetrics(dossierB, recordsB.value, topHeroDisplay(topHeroB.value, ow), ow),
+    buildSeasonMetrics(dossierA, recordsA.value, { topHero: topHeroDisplay(topHeroA.value, ow), ow }),
+    buildSeasonMetrics(dossierB, recordsB.value, { topHero: topHeroDisplay(topHeroB.value, ow), ow }),
   ),
 )
 

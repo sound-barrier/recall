@@ -34,13 +34,19 @@ export function useNarrowMode(): { mode: Ref<NarrowMode>; override: Ref<NarrowMo
   })
 
   const viewportWide = ref(typeof window !== 'undefined' && window.innerWidth >= NARROW_RAIL_BREAKPOINT)
-  const mode = ref<NarrowMode>(override.value === 'auto' ? (viewportWide.value ? 'rail' : 'popover') : override.value)
+
+  function resolveMode(): NarrowMode {
+    if (override.value !== 'auto') return override.value
+    return viewportWide.value ? 'rail' : 'popover'
+  }
+
+  const mode = ref<NarrowMode>(resolveMode())
 
   function recompute() {
     if (typeof window !== 'undefined') {
       viewportWide.value = window.innerWidth >= NARROW_RAIL_BREAKPOINT
     }
-    mode.value = override.value === 'auto' ? (viewportWide.value ? 'rail' : 'popover') : override.value
+    mode.value = resolveMode()
   }
 
   onMounted(() => {

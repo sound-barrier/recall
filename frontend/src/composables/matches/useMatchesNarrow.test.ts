@@ -3,6 +3,13 @@ import { computed, ref } from 'vue'
 import type { MatchRecord } from '@/api'
 import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/matches/useMatchesNarrow'
 
+// undefined → the default map; null → no map field at all (an unknown-map row).
+function mapField(map: string | null | undefined): { map?: string } {
+  if (map === undefined) return { map: 'rialto' }
+  if (map === null) return {}
+  return { map }
+}
+
 function rec(opts: {
   key?: string
   map?: string | null
@@ -29,7 +36,7 @@ function rec(opts: {
     source_files: ['a.png'],
     source_types: { 'a.png': 'summary' },
     data: {
-      ...(opts.map === undefined ? { map: 'rialto' } : (opts.map === null ? {} : { map: opts.map })),
+      ...mapField(opts.map),
       mode: opts.mode ?? 'competitive',
       type: opts.type ?? 'control',
       role: opts.role ?? 'support',

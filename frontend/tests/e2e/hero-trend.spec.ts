@@ -8,7 +8,8 @@ import { test, expect } from './_fixtures'
 // rolling win-rate per hero for the set's most-played heroes, so a hero's
 // own trajectory is visible instead of being averaged away.
 
-function match(key: string, date: string, time: string, hero: string, result: 'victory' | 'defeat') {
+function match(key: string, date: string, time: string, play: { hero: string; result: 'victory' | 'defeat' }) {
+  const { hero, result } = play
   return {
     match_key: key,
     source_files: [`${key}.png`],
@@ -22,12 +23,12 @@ function match(key: string, date: string, time: string, hero: string, result: 'v
 // Two heroes with enough decisive matches to chart: juno trending up,
 // ana trending down.
 const CORPUS = [
-  match('j1', '2026-05-01', '20:00', 'juno', 'defeat'),
-  match('j2', '2026-05-02', '20:00', 'juno', 'victory'),
-  match('j3', '2026-05-03', '20:00', 'juno', 'victory'),
-  match('a1', '2026-05-01', '21:00', 'ana', 'victory'),
-  match('a2', '2026-05-02', '21:00', 'ana', 'defeat'),
-  match('a3', '2026-05-03', '21:00', 'ana', 'defeat'),
+  match('j1', '2026-05-01', '20:00', { hero: 'juno', result: 'defeat' }),
+  match('j2', '2026-05-02', '20:00', { hero: 'juno', result: 'victory' }),
+  match('j3', '2026-05-03', '20:00', { hero: 'juno', result: 'victory' }),
+  match('a1', '2026-05-01', '21:00', { hero: 'ana', result: 'victory' }),
+  match('a2', '2026-05-02', '21:00', { hero: 'ana', result: 'defeat' }),
+  match('a3', '2026-05-03', '21:00', { hero: 'ana', result: 'defeat' }),
 ]
 
 async function mockMatches(page: import('@playwright/test').Page, records: unknown[]) {

@@ -51,35 +51,35 @@ describe('matchesSearch', () => {
 
 describe('matchesDateRange', () => {
   it('keeps undated records', () => {
-    expect(matchesDateRange(rec(), '2026-01-01', '2026-12-31')).toBe(true)
+    expect(matchesDateRange(rec(), { from: '2026-01-01', to: '2026-12-31' })).toBe(true)
   })
   it('gates on YYYY-MM-DD bounds', () => {
     const r = rec({ data: { date: '2026-05-10' } as MatchRecord['data'] })
-    expect(matchesDateRange(r, '2026-05-01', '2026-05-31')).toBe(true)
-    expect(matchesDateRange(r, '2026-06-01', '2026-06-30')).toBe(false)
+    expect(matchesDateRange(r, { from: '2026-05-01', to: '2026-05-31' })).toBe(true)
+    expect(matchesDateRange(r, { from: '2026-06-01', to: '2026-06-30' })).toBe(false)
   })
   it('slices T-suffixed bounds so the active day is kept', () => {
     const r = rec({ data: { date: '2026-05-10' } as MatchRecord['data'] })
-    expect(matchesDateRange(r, '2026-05-10T00:00', '2026-05-10T23:59')).toBe(true)
+    expect(matchesDateRange(r, { from: '2026-05-10T00:00', to: '2026-05-10T23:59' })).toBe(true)
   })
 
   it('places a summary-less tracked match by its key capture time', () => {
     // No data.date, but the key carries the screenshot capture time —
     // the same recipe (matchTime) the list sorts and displays with.
     const r = rec({ match_key: 'match-2026-05-10T19-57-14' })
-    expect(matchesDateRange(r, '2026-06-01', '')).toBe(false)
-    expect(matchesDateRange(r, '2026-05-01', '2026-05-31')).toBe(true)
+    expect(matchesDateRange(r, { from: '2026-06-01', to: '' })).toBe(false)
+    expect(matchesDateRange(r, { from: '2026-05-01', to: '2026-05-31' })).toBe(true)
   })
 
   it('sentinel rows without a capture time always pass', () => {
-    expect(matchesDateRange(rec({ match_key: 'unmatched-YnJva2VuLnBuZw' }), '2026-06-01', '2026-06-30')).toBe(true)
+    expect(matchesDateRange(rec({ match_key: 'unmatched-YnJva2VuLnBuZw' }), { from: '2026-06-01', to: '2026-06-30' })).toBe(true)
   })
 
   it('a from time narrows within the from day (patch boundary)', () => {
     const at = (t: string) => rec({ data: { date: '2026-01-07', finished_at: t } as MatchRecord['data'] })
-    expect(matchesDateRange(at('11:00'), '2026-01-07', '', '11:00')).toBe(true)
-    expect(matchesDateRange(at('13:45'), '2026-01-07', '', '11:00')).toBe(true)
-    expect(matchesDateRange(at('10:59'), '2026-01-07', '', '11:00')).toBe(false)
+    expect(matchesDateRange(at('11:00'), { from: '2026-01-07', to: '', fromTime: '11:00' })).toBe(true)
+    expect(matchesDateRange(at('13:45'), { from: '2026-01-07', to: '', fromTime: '11:00' })).toBe(true)
+    expect(matchesDateRange(at('10:59'), { from: '2026-01-07', to: '', fromTime: '11:00' })).toBe(false)
   })
 
   it('a to time keeps second-precision records inside the closing minute', () => {
@@ -87,22 +87,22 @@ describe('matchesDateRange', () => {
     // minute so 'to 10:59' includes 10:59:45 - the seasons phrasing
     // "to Mar 13, 10:59am" means the whole closing minute.
     const r = rec({ match_key: 'match-2026-03-13T10-59-45' })
-    expect(matchesDateRange(r, '', '2026-03-13', '', '10:59')).toBe(true)
-    expect(matchesDateRange(r, '2026-03-13', '', '11:00')).toBe(false)
+    expect(matchesDateRange(r, { from: '', to: '2026-03-13', toTime: '10:59' })).toBe(true)
+    expect(matchesDateRange(r, { from: '2026-03-13', to: '', fromTime: '11:00' })).toBe(false)
   })
 
   it('a time with an empty date bound is inert', () => {
     const r = rec({ data: { date: '2026-05-10', finished_at: '09:00' } as MatchRecord['data'] })
-    expect(matchesDateRange(r, '', '', '11:00', '')).toBe(true)
-    expect(matchesDateRange(r, '', '', '', '08:00')).toBe(true)
+    expect(matchesDateRange(r, { from: '', to: '', fromTime: '11:00' })).toBe(true)
+    expect(matchesDateRange(r, { from: '', to: '', toTime: '08:00' })).toBe(true)
   })
 
   it('a dated record without a time or key stamp stays date-filterable', () => {
     const r = rec({ match_key: 'm', data: { date: '2026-05-10' } as MatchRecord['data'] })
-    expect(matchesDateRange(r, '2026-05-01', '2026-05-31')).toBe(true)
-    expect(matchesDateRange(r, '2026-06-01', '')).toBe(false)
+    expect(matchesDateRange(r, { from: '2026-05-01', to: '2026-05-31' })).toBe(true)
+    expect(matchesDateRange(r, { from: '2026-06-01', to: '' })).toBe(false)
     // Against a time bound it reads as start-of-day.
-    expect(matchesDateRange(r, '2026-05-10', '', '00:01')).toBe(false)
+    expect(matchesDateRange(r, { from: '2026-05-10', to: '', fromTime: '00:01' })).toBe(false)
   })
 })
 
@@ -252,6 +252,31 @@ describe('matchesQueueType / matchesPlayMode', () => {
   it('are inert with an empty picked set', () => {
     expect(matchesQueueType(rec(), new Set())).toBe(true)
     expect(matchesPlayMode(rec(), new Set())).toBe(true)
+  })
+
+  it('buckets queue_type through the leaf label (role / open / unknown)', () => {
+    const role = rec({ queue_type: 'role' } as Partial<MatchRecord>)
+    const open = rec({ queue_type: 'open' } as Partial<MatchRecord>)
+    const unset = rec()
+    expect(matchesQueueType(role, new Set(['role'] as const))).toBe(true)
+    expect(matchesQueueType(open, new Set(['role'] as const))).toBe(false)
+    expect(matchesQueueType(open, new Set(['open'] as const))).toBe(true)
+    // No queue_type → the explicit "unknown" bucket, and ONLY that bucket.
+    expect(matchesQueueType(unset, new Set(['unknown'] as const))).toBe(true)
+    expect(matchesQueueType(unset, new Set(['role', 'open'] as const))).toBe(false)
+  })
+
+  it('buckets play mode through the leaf label, including the OCR playlist fallback', () => {
+    const qp = rec({ play_mode: 'quickplay' } as Partial<MatchRecord>)
+    const compFallback = rec({ data: { playlist: 'competitive' } as MatchRecord['data'] })
+    const unset = rec()
+    expect(matchesPlayMode(qp, new Set(['quickplay'] as const))).toBe(true)
+    expect(matchesPlayMode(qp, new Set(['competitive'] as const))).toBe(false)
+    // What-you-see-is-what-you-filter: an OCR playlist row the leaf shows
+    // as "Competitive" must pass the competitive pick.
+    expect(matchesPlayMode(compFallback, new Set(['competitive'] as const))).toBe(true)
+    expect(matchesPlayMode(unset, new Set(['unknown'] as const))).toBe(true)
+    expect(matchesPlayMode(unset, new Set(['quickplay', 'competitive'] as const))).toBe(false)
   })
 })
 
