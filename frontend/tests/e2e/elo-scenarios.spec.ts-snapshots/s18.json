@@ -8,7 +8,7 @@
   "data-elo-current=tier": "gold",
   "data-elo-evidence=reviews": "Reviewing your games0 of 60 You've reviewed 0% of these games (never reviewed). None with a coach. Reviewing is the single biggest lever you control.",
   "data-elo-evidence=streak-tilt": "Deeper into a loss streak100% as losses stack Your next-game win rate: 100% after one loss (baseline 55% over 60 games). The after-a-loss dip is a real pattern (p < 0.0001), not queue punishment. Your play holds up inside streaks — if you cut a bad night short, do it for the meter math, not your form.",
-  "data-elo-evidence=tilt-queue": "Tilt queueingnone — discipline holds Across 60 decisive games you never queued past 4 straight losses in one sitting. That restraint is worth divisions over a season — keep it.",
+  "data-elo-evidence=tilt-queue": "Tilt queuingnone — discipline holds Across 60 decisive games you never queued past 4 straight losses in one sitting. That restraint is worth divisions over a season — keep it.",
   "data-elo-input=decay-slope": "1.5",
   "data-elo-input=games-week": "7",
   "data-elo-input=meter-move": "20",
