@@ -15,7 +15,7 @@ import {
   RevealScreenshotsDir,
   ResetScreenshotsDir,
 } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import {
   useAutoBackupQuery, useCandidatesQuery, useExitOnCloseQuery,
@@ -96,7 +96,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const autoBackup = computed(() => autoBackupQuery.data.value ?? null)
   async function setAutoBackupInterval(days: number) {
     try {
-      queryClient.setQueryData(qk.settings.autoBackup, await SetAutoBackupInterval(days))
+      getQueryClient().setQueryData(qk.settings.autoBackup, await SetAutoBackupInterval(days))
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
     }

@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { GetActiveParse, type MatchRecord } from '@/api-client'
 import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
@@ -30,8 +30,8 @@ export function useServerEvents() {
   // upsert must not kill the authoritative GET). parse-complete's refetch
   // remains the reconciliation for any racing writes.
   const upsertTarget = computed<MatchRecord[]>({
-    get: () => queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? [],
-    set: (next) => { queryClient.setQueryData(qk.matches, next) },
+    get: () => getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? [],
+    set: (next) => { getQueryClient().setQueryData(qk.matches, next) },
   })
 
   useEventStream({
@@ -57,7 +57,7 @@ export function useServerEvents() {
     parseBusy,
     parseProgress,
     reload: matchesStore.load,
-    getActiveParse: () => queryClient.fetchQuery({
+    getActiveParse: () => getQueryClient().fetchQuery({
       queryKey: qk.activeParse,
       queryFn: GetActiveParse,
       staleTime: 0,

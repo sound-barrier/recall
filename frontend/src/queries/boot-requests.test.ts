@@ -28,7 +28,7 @@ describe('match-updated upsert vs the tour overlay', () => {
     // mountApp so it resolves the same instances the mounted App uses.
     const wrapper = await mountApp()
     const { useMatchesStore } = await import('@/stores/matches')
-    const { queryClient } = await import('@/queries/client')
+    const { getQueryClient } = await import('@/queries/client')
     const { qk } = await import('@/queries/keys')
 
     const matches = useMatchesStore()
@@ -39,7 +39,7 @@ describe('match-updated upsert vs the tour overlay', () => {
     expect(fireEvent('match-updated', rec)).toBe(true)
     await new Promise(r => setTimeout(r, 0))
 
-    const cached = queryClient.getQueryData<{ match_key: string }[]>(qk.matches) ?? []
+    const cached = getQueryClient().getQueryData<{ match_key: string }[]>(qk.matches) ?? []
     expect(cached.map(r => r.match_key)).toContain(rec.match_key)
     // No demo record may leak into the canonical cache.
     expect(cached.every(r => !matches.records.some(

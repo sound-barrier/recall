@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { qk, matchesCluster } from '@/queries/keys'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { useAppStore } from '@/stores/app'
 
 // The defaults ARE the e2e request-count parity mechanism: retries off
@@ -11,7 +11,7 @@ import { useAppStore } from '@/stores/app'
 // reconnect refetches off (the no-network-unless-asked rule), networkMode
 // 'always' (navigator.onLine false must not pause same-process calls).
 describe('queryClient defaults', () => {
-  const d = queryClient.getDefaultOptions()
+  const d = getQueryClient().getDefaultOptions()
 
   it('never auto-retries', () => {
     expect(d.queries?.retry).toBe(false)
@@ -43,12 +43,12 @@ describe('matchesCluster', () => {
 describe('QueryCache banner integration', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    queryClient.clear()
+    getQueryClient().clear()
   })
 
   it('arms the banner with a stable retry on a meta.banner query failure', async () => {
     const app = useAppStore()
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['banner-test'],
       queryFn: () => Promise.reject(new Error('connection refused')),
       meta: { banner: 'Could not load matches' },
@@ -59,7 +59,7 @@ describe('QueryCache banner integration', () => {
 
     // A second failure must produce the SAME retry identity.
     const firstRetry = app.errorRetry
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['banner-test'],
       queryFn: () => Promise.reject(new Error('still down')),
       meta: { banner: 'Could not load matches' },
@@ -69,14 +69,14 @@ describe('QueryCache banner integration', () => {
 
   it('clears the banner when the same query later succeeds', async () => {
     const app = useAppStore()
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['banner-test'],
       queryFn: () => Promise.reject(new Error('boom')),
       meta: { banner: 'Could not load matches' },
     }).catch(() => undefined)
     expect(app.error).not.toBe('')
 
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['banner-test'],
       queryFn: () => Promise.resolve([]),
       meta: { banner: 'Could not load matches' },
@@ -87,7 +87,7 @@ describe('QueryCache banner integration', () => {
 
   it('leaves the banner alone for queries without meta.banner', async () => {
     const app = useAppStore()
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['silent-test'],
       queryFn: () => Promise.reject(new Error('quietly kept-last')),
     }).catch(() => undefined)
@@ -98,9 +98,9 @@ describe('QueryCache banner integration', () => {
     const app = useAppStore()
     const siblingFn = vi.fn(() => Promise.resolve('sibling'))
     // Prime the sibling so a refetch has an existing query to hit.
-    await queryClient.fetchQuery({ queryKey: ['retry-sibling'], queryFn: siblingFn })
+    await getQueryClient().fetchQuery({ queryKey: ['retry-sibling'], queryFn: siblingFn })
 
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['retry-primary'],
       queryFn: () => Promise.reject(new Error('down')),
       meta: {
@@ -120,13 +120,13 @@ describe('QueryCache banner integration', () => {
 
   it('does not clear a banner armed by a DIFFERENT query', async () => {
     const app = useAppStore()
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['banner-test'],
       queryFn: () => Promise.reject(new Error('boom')),
       meta: { banner: 'Could not load matches' },
     }).catch(() => undefined)
 
-    await queryClient.fetchQuery({
+    await getQueryClient().fetchQuery({
       queryKey: ['other-query'],
       queryFn: () => Promise.resolve('ok'),
       meta: { banner: 'Could not load settings' },

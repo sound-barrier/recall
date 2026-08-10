@@ -10,19 +10,19 @@ import {
   type NamedCandidate,
   type TesseractStatus,
 } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
 export function useScreenshotsDirQuery() {
-  return useQuery({ queryKey: qk.settings.screenshotsDir, queryFn: GetScreenshotsDir }, queryClient)
+  return useQuery({ queryKey: qk.settings.screenshotsDir, queryFn: GetScreenshotsDir }, getQueryClient())
 }
 
 export function useWatchEnabledQuery() {
-  return useQuery({ queryKey: qk.settings.watch, queryFn: GetWatchEnabled }, queryClient)
+  return useQuery({ queryKey: qk.settings.watch, queryFn: GetWatchEnabled }, getQueryClient())
 }
 
 export function useExitOnCloseQuery() {
-  return useQuery({ queryKey: qk.settings.exitOnClose, queryFn: GetExitOnClose }, queryClient)
+  return useQuery({ queryKey: qk.settings.exitOnClose, queryFn: GetExitOnClose }, getQueryClient())
 }
 
 // A failed probe is a real "not detected" state, not a query error — the
@@ -37,11 +37,11 @@ export function useTesseractQuery() {
         return { path: '', found: false, version: '', supported: false, error: String(e), default: '', platform: '' }
       }
     },
-  }, queryClient)
+  }, getQueryClient())
 }
 
 export function useAutoBackupQuery() {
-  return useQuery({ queryKey: qk.settings.autoBackup, queryFn: GetAutoBackupStatus }, queryClient)
+  return useQuery({ queryKey: qk.settings.autoBackup, queryFn: GetAutoBackupStatus }, getQueryClient())
 }
 
 // Best-effort hint for the empty-state + first-run pickers — a failure
@@ -57,5 +57,5 @@ export function useCandidatesQuery() {
         return []
       }
     },
-  }, queryClient)
+  }, getQueryClient())
 }

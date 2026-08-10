@@ -247,10 +247,13 @@ export async function mountApp(overrides: MountOverrides = {}) {
     import('@/components/settings/SettingsView.vue'),
     import('@/components/unknown/UnknownMapsView.vue'),
   ])
-  // The query client is imported post-resetModules, so every mount gets a
-  // fresh cache (same isolation story as the api-client seam above).
+  // Each mount starts from an empty cache. getQueryClient() reads a
+  // globalThis slot, so this resolves the SAME client the freshly-imported
+  // components use even though vi.resetModules() ran above.
   const { VueQueryPlugin } = await import('@tanstack/vue-query')
-  const { queryClient } = await import('@/queries/client')
+  const { getQueryClient, resetQueryClient } = await import('@/queries/client')
+  resetQueryClient()
+  const queryClient = getQueryClient()
 
   const App = (await import('@/App.vue')).default
   const wrapper = mount(App, {

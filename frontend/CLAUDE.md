@@ -83,7 +83,18 @@ Underneath the seam, `api.ts` is a thin named-function facade over the
 the Wails asset server serves the same REST mux). The surviving dual-mode
 surface (native dialogs, the events bridge, binary import/export, OpenURL)
 lives in `api-platform.ts`; `ApiError` + the problem+json mapping in
-`api-error.ts`.
+`api-error.ts`; the SDK-envelope helpers in `api-unwrap.ts`. Even the
+binary paths go through the SDK — only their DOM plumbing (`<a download>`,
+`<input type=file>`) is hand-written.
+
+**`IS_WAILS` (from `@/api-platform`) is the ONE runtime detector — never
+re-derive it.** It keys off the serving origin (`wails:` scheme on macOS,
+`wails.localhost` host on Windows). A `navigator.userAgent.includes('wails')`
+copy reads **false in the Windows desktop build** — Wails appends that
+marker to outgoing request headers only, never to the JS-visible UA — which
+is how every API call once 404'd on the shipped platform, and how a
+context-menu item later went missing there. Import the constant; do not
+write a local one-liner.
 
 **The query layer (`src/queries/`)**: server state lives in the
 **@tanstack/vue-query** cache, not in store refs. `queries/client.ts` owns
@@ -294,20 +305,23 @@ not the wiring:
 
 SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in `frontend/src/test-utils/mountApp.ts` (which installs an api mock via `setApiBacking()` on the `@/api-client` seam, so the Wails/fetch shim never fires). Pattern: `await mountApp({ records: [...] })` then assert on the wrapper's DOM. `mountApp` also exports `fireEvent(name, data?)` for driving captured `EventsOn` handlers (simulating `parse-complete` / `parse-progress`) — pair with `await flushPromises()` for async handlers.
 
-**Query-cache test hygiene.** The QueryClient is a module singleton with
-staleTime/gcTime Infinity, so `vitest.setup.ts` clears the cache after
-every test and auto-unmounts every wrapper (a still-mounted observer can
-resurrect a cleared entry). Three rules when a test touches server state:
-(1) **seed the cache BEFORE the store exists** — `seedQuery(qk.x, data)`
-(from `@/test-utils/queryTestUtils`) ahead of the first `useXStore()` call
-means the observer sees fresh data and never fires the initial fetch that
-would clobber the seed when its mock resolves; (2) a file that runs
-`vi.resetModules()` per test must clear the **statically imported**
-`queryClient` in its own afterEach — a dynamic import after the first
-reset resolves a fresh module instance and silently misses the one its
-components use; (3) query results land after the notifyManager's
-scheduling — await a macrotask (`await new Promise(r => setTimeout(r, 0))`),
-not just `flushPromises()`, before asserting on freshly-fetched state.
+**Query-cache test hygiene.** The QueryClient is reached ONLY through
+`getQueryClient()` — never a module-level `const` — because it lives in a
+`globalThis` slot: a test file running `vi.resetModules()` would otherwise
+end up with two clients, one held by the freshly-imported components and
+another by whatever imported the module earlier (that split silently broke
+a test's cache clear once). `vitest.setup.ts` installs a FRESH client
+before each test via `resetQueryClient()` (dynamically imported at
+teardown — a static import there would drag the app module graph, and with
+it a real `@/api`, into every file before its own `vi.mock` could apply)
+and auto-unmounts wrappers as plain hygiene. Two rules when a test touches
+server state: (1) **seed the cache BEFORE the store exists** —
+`seedQuery(qk.x, data)` (from `@/test-utils/queryTestUtils`) ahead of the
+first `useXStore()` call means the observer sees fresh data and never
+fires the initial fetch that would clobber the seed when its mock
+resolves; (2) query results land after the notifyManager's scheduling —
+await a macrotask (`await new Promise(r => setTimeout(r, 0))`), not just
+`flushPromises()`, before asserting on freshly-fetched state.
 
 **Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via `mount()`). Playwright → `frontend/tests/e2e/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 

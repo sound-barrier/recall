@@ -11,7 +11,7 @@ import {
   RestoreDatabase,
   ImportMatches,
 } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import {
   refetchMatchesCluster, useFailedFilesQuery, useMatchesQuery, usePendingCountQuery,
@@ -53,8 +53,8 @@ export const useMatchesStore = defineStore('matches', () => {
       // whatever that response would carry (the match-updated upsert in
       // production, cache seeding in tests), and the authoritative
       // parse-complete refetch follows anyway.
-      void queryClient.cancelQueries({ queryKey: qk.matches })
-      queryClient.setQueryData(qk.matches, next)
+      void getQueryClient().cancelQueries({ queryKey: qk.matches })
+      getQueryClient().setQueryData(qk.matches, next)
     },
   })
 
@@ -115,7 +115,7 @@ export const useMatchesStore = defineStore('matches', () => {
   const lastParsedAt = ref<number | null>(null)
 
   async function refreshNewCount() {
-    await queryClient.refetchQueries({ queryKey: qk.pendingCount })
+    await getQueryClient().refetchQueries({ queryKey: qk.pendingCount })
   }
 
   // Restore the persisted last-parse timestamp on boot so Settings shows
@@ -174,9 +174,9 @@ export const useMatchesStore = defineStore('matches', () => {
   // the set — the watcher-parse "new matches arrived" signal), never on
   // the per-file match-updated upserts.
   async function load() {
-    const before = (queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []).length
+    const before = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
     await refetchMatchesCluster()
-    const after = (queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []).length
+    const after = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
     if (before > 0 && after > before) flashRecordsPulse()
   }
 
@@ -373,7 +373,7 @@ export const useMatchesStore = defineStore('matches', () => {
     // Read the fresh records straight from the cache — the observer's
     // reactive ref updates a notification tick later than the refetch
     // resolves, and the session summary must see the new batch.
-    const fresh = queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []
+    const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
     if (outcome === 'complete') {
       const session = currentSessionSummary(fresh)
       sessionToast.value = session ? { ...session, token: Date.now() } : null

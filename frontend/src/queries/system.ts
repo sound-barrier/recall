@@ -4,7 +4,7 @@ import {
   CheckForUpdate, GetDataLocation, GetOWData, GetStartupError, GetVersion,
   type UpdateInfo,
 } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
 // Reference data is compiled into the parser binary — static for the
@@ -12,15 +12,15 @@ import { qk } from '@/queries/keys'
 // consumer shares one cache entry (one GET per session);
 // ApplyGameDataUpdate invalidates the key to refresh the roster in place.
 export function useOWDataQuery() {
-  return useQuery({ queryKey: qk.system.referenceData, queryFn: GetOWData }, queryClient)
+  return useQuery({ queryKey: qk.system.referenceData, queryFn: GetOWData }, getQueryClient())
 }
 
 export function useVersionQuery() {
-  return useQuery({ queryKey: qk.system.version, queryFn: GetVersion }, queryClient)
+  return useQuery({ queryKey: qk.system.version, queryFn: GetVersion }, getQueryClient())
 }
 
 export function useDataLocationQuery() {
-  return useQuery({ queryKey: qk.system.dataLocation, queryFn: GetDataLocation }, queryClient)
+  return useQuery({ queryKey: qk.system.dataLocation, queryFn: GetDataLocation }, getQueryClient())
 }
 
 // The GitHub release check is USER-PULLED only ("no network calls on mount
@@ -31,7 +31,7 @@ export function useDataLocationQuery() {
 async function fetchUpdateInfoKeepingLast(): Promise<UpdateInfo | null> {
   const u = await CheckForUpdate()
   if (u.checked) return u
-  return queryClient.getQueryData<UpdateInfo | null>(qk.system.update) ?? null
+  return getQueryClient().getQueryData<UpdateInfo | null>(qk.system.update) ?? null
 }
 
 export function useUpdateCheckQuery() {
@@ -39,7 +39,7 @@ export function useUpdateCheckQuery() {
     queryKey: qk.system.update,
     queryFn: fetchUpdateInfoKeepingLast,
     enabled: false,
-  }, queryClient)
+  }, getQueryClient())
 }
 
 // Imperative trigger — the About dialog's auto-check-on-open and its
@@ -48,7 +48,7 @@ export function useUpdateCheckQuery() {
 // Failures are silent: the dialog shows the cached result or its
 // network-failure copy.
 export function runUpdateCheck(): Promise<void> {
-  return queryClient.fetchQuery({
+  return getQueryClient().fetchQuery({
     queryKey: qk.system.update,
     queryFn: fetchUpdateInfoKeepingLast,
     staleTime: 0,
@@ -58,5 +58,5 @@ export function runUpdateCheck(): Promise<void> {
 // One-shot boot read for the startup-failure gate — no observer needed,
 // the app store keeps the message.
 export function fetchStartupError(): Promise<string> {
-  return queryClient.fetchQuery({ queryKey: qk.system.startupError, queryFn: GetStartupError })
+  return getQueryClient().fetchQuery({ queryKey: qk.system.startupError, queryFn: GetStartupError })
 }

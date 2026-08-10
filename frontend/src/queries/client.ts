@@ -20,7 +20,7 @@ function stableRetryFor(queryKey: readonly unknown[], retryKeys?: unknown): () =
       ? (retryKeys as readonly unknown[][])
       : [queryKey]
     fn = async () => {
-      await Promise.all(keys.map(k => queryClient.refetchQueries({ queryKey: k as unknown[] })))
+      await Promise.all(keys.map(k => getQueryClient().refetchQueries({ queryKey: k as unknown[] })))
     }
     retryFns.set(hash, fn)
   }
@@ -84,10 +84,36 @@ function makeQueryClient(): QueryClient {
   })
 }
 
-// The app-wide client. Query composables pass it explicitly (the second
+// The app-wide client, resolved at CALL time — never captured in a
+// module-level `const`. Query composables pass it explicitly (the second
 // argument to useQuery/useMutation) instead of relying on inject():
 // observers are created during Pinia store setup where the component
 // injection context doesn't exist, and store tests keep their plain
 // `setActivePinia(createPinia())` shape. main.ts still registers it with
 // VueQueryPlugin so devtools and component-level useQueryClient() work.
-export const queryClient = makeQueryClient()
+//
+// It lives in a globalThis slot rather than a module variable so that a
+// test file running `vi.resetModules()` cannot end up with TWO clients —
+// one held by the freshly-imported components, another by whatever
+// imported this module earlier. That split is not hypothetical: it cost
+// an afternoon when a test's cache clear silently addressed a different
+// instance than its components used. The slot is the same
+// resolve-at-call-time trick the `@/api-client` seam uses for api
+// functions, for the same reason.
+const CLIENT_SLOT = Symbol.for('recall.queryClient')
+
+type ClientSlot = { [CLIENT_SLOT]?: QueryClient }
+
+export function getQueryClient(): QueryClient {
+  const slot = globalThis as ClientSlot
+  slot[CLIENT_SLOT] ??= makeQueryClient()
+  return slot[CLIENT_SLOT]
+}
+
+// Test-only: drop the current client (and everything cached in it) and
+// install a fresh one, so each test starts from an empty cache. Observers
+// created by an earlier test keep pointing at the discarded client, which
+// is exactly the isolation a plain `.clear()` failed to give.
+export function resetQueryClient(): void {
+  ;(globalThis as ClientSlot)[CLIENT_SLOT] = makeQueryClient()
+}

@@ -24,7 +24,7 @@ import {
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
 } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
@@ -83,7 +83,7 @@ export function useMatchActions() {
   // its screenshots count as pending again (the server derives the count
   // from files-on-disk minus DB rows); ignore-screenshot touches the
   // suppress-list, the count, and the failure ledger.
-  const reload = () => queryClient.refetchQueries({ queryKey: qk.matches })
+  const reload = () => getQueryClient().refetchQueries({ queryKey: qk.matches })
   const reloadCluster = () => matchesStore.load()
   const reloadIgnored = () => matchesStore.loadIgnored()
   const setError = (message: string) => appStore.setError(message)

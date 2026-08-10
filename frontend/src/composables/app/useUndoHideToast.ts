@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 
 import { SetMatchVisibility } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { useAppStore } from '@/stores/app'
 
@@ -33,7 +33,7 @@ export function useUndoHideToast() {
     try {
       await Promise.all(keys.map((k) => SetMatchVisibility(k, false)))
       // Un-hiding only changes the records — matches-only refetch.
-      await queryClient.refetchQueries({ queryKey: qk.matches })
+      await getQueryClient().refetchQueries({ queryKey: qk.matches })
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
     }

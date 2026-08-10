@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
 
 import { GetFailedFiles, GetMatchResults, GetNewScreenshotCount } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { matchesCluster, qk } from '@/queries/keys'
 
 // The match records — source of truth for the dossier + all four views.
@@ -16,18 +16,18 @@ export function useMatchesQuery() {
     // old load()-as-retry behavior — without it, pending-count and
     // failed-files would stay at their failed defaults after an outage.
     meta: { banner: 'Could not load matches', retryKeys: matchesCluster },
-  }, queryClient)
+  }, getQueryClient())
 }
 
 export function usePendingCountQuery() {
-  return useQuery({ queryKey: qk.pendingCount, queryFn: GetNewScreenshotCount }, queryClient)
+  return useQuery({ queryKey: qk.pendingCount, queryFn: GetNewScreenshotCount }, getQueryClient())
 }
 
 export function useFailedFilesQuery() {
   return useQuery({
     queryKey: qk.failedFiles,
     queryFn: async () => (await GetFailedFiles()) ?? [],
-  }, queryClient)
+  }, getQueryClient())
 }
 
 // Refetch the whole cluster — the replacement for the old load(): awaited
@@ -37,6 +37,6 @@ export function useFailedFilesQuery() {
 // (the banner meta for matches, keep-last for the rest).
 export async function refetchMatchesCluster(): Promise<void> {
   await Promise.all(
-    matchesCluster.map(key => queryClient.refetchQueries({ queryKey: key })),
+    matchesCluster.map(key => getQueryClient().refetchQueries({ queryKey: key })),
   )
 }
