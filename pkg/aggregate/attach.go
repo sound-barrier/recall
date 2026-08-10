@@ -70,20 +70,9 @@ func AttachPlayModes(recs []match.Record, overrides map[string]db.PlayModeState)
 // the Unknown-tab picker can render a thumbnail beside each
 // candidate. Built from a one-pass O(N) index over recs.
 func AttachAmbiguity(recs []match.Record, candidates map[string][]db.AmbiguousCandidate) {
-	// Index recs by match_key for O(1) candidate lookups. Built only
-	// when at least one ambiguous record exists — most aggregate
-	// runs skip this entirely.
+	// The by-key index is built only when at least one ambiguous record
+	// has candidates — most aggregate runs skip it entirely.
 	var byKey map[string]*match.Record
-	ensureIndex := func() {
-		if byKey != nil {
-			return
-		}
-		byKey = make(map[string]*match.Record, len(recs))
-		for i := range recs {
-			byKey[recs[i].MatchKey] = &recs[i]
-		}
-	}
-
 	for i := range recs {
 		mk, err := match.ParseKey(recs[i].MatchKey)
 		if err != nil || !mk.IsAmbiguous() {
@@ -94,23 +83,44 @@ func AttachAmbiguity(recs []match.Record, candidates map[string][]db.AmbiguousCa
 		if !ok {
 			continue
 		}
-		ensureIndex()
-		recs[i].Candidates = make([]match.AmbiguousAttribution, 0, len(cs))
-		for _, c := range cs {
-			attr := match.AmbiguousAttribution{
-				MatchKey:        c.MatchKey,
-				DistanceSeconds: c.DistanceSeconds,
-				Reason:          correlate.CandidateReason(c.DistanceSeconds),
-			}
-			if cand, ok := byKey[c.MatchKey]; ok && len(cand.SourceFiles) > 0 {
-				attr.RepresentativeSourceFile = cand.SourceFiles[0]
-				if cand.SourceDirIDs != nil {
-					attr.RepresentativeDirID = cand.SourceDirIDs[cand.SourceFiles[0]]
-				}
-			}
-			recs[i].Candidates = append(recs[i].Candidates, attr)
+		if byKey == nil {
+			byKey = indexRecordsByKey(recs)
 		}
+		recs[i].Candidates = ambiguousAttributions(cs, byKey)
 	}
+}
+
+// indexRecordsByKey maps match_key → record pointer for O(1) candidate
+// lookups.
+func indexRecordsByKey(recs []match.Record) map[string]*match.Record {
+	byKey := make(map[string]*match.Record, len(recs))
+	for i := range recs {
+		byKey[recs[i].MatchKey] = &recs[i]
+	}
+	return byKey
+}
+
+// ambiguousAttributions converts stored candidates into their domain
+// shape, enriching each with a representative source file (+ dir id)
+// from the indexed records so the Unknown-tab picker can render a
+// thumbnail beside it.
+func ambiguousAttributions(cs []db.AmbiguousCandidate, byKey map[string]*match.Record) []match.AmbiguousAttribution {
+	out := make([]match.AmbiguousAttribution, 0, len(cs))
+	for _, c := range cs {
+		attr := match.AmbiguousAttribution{
+			MatchKey:        c.MatchKey,
+			DistanceSeconds: c.DistanceSeconds,
+			Reason:          correlate.CandidateReason(c.DistanceSeconds),
+		}
+		if cand, ok := byKey[c.MatchKey]; ok && len(cand.SourceFiles) > 0 {
+			attr.RepresentativeSourceFile = cand.SourceFiles[0]
+			if cand.SourceDirIDs != nil {
+				attr.RepresentativeDirID = cand.SourceDirIDs[cand.SourceFiles[0]]
+			}
+		}
+		out = append(out, attr)
+	}
+	return out
 }
 
 // AttachPinned flips `Pinned` on every record in the starred set.
@@ -210,6 +220,23 @@ func applyUserData(rec *match.Record, ud db.UserMatchData) {
 
 	d := &rec.Data
 	applyScalarOverrides(d, ud, mark)
+	applyCollectionOverrides(d, ud, mark)
+	rederiveEditedFields(d, ud)
+
+	if manual {
+		rec.Source = match.SourceManual
+		if rec.ParsedAt == "" {
+			rec.ParsedAt = ud.UpdatedAt
+		}
+		return
+	}
+	rec.Source = match.SourceOCREdited
+	rec.EditedFields = edited
+}
+
+// applyCollectionOverrides overlays the heroes-played list, per-hero stat
+// cells, SR entries, and modifiers when the user supplied them.
+func applyCollectionOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(string)) {
 	if len(ud.Heroes) > 0 {
 		d.HeroesPlayed = userHeroesToPlays(ud.Heroes)
 		mark("data.heroes_played")
@@ -226,25 +253,18 @@ func applyUserData(rec *match.Record, ud db.UserMatchData) {
 		d.Modifiers = ud.Modifiers
 		mark("data.modifiers")
 	}
+}
 
-	// Re-derive AFTER overriding so an edited hero / map drives Role / GameMode
-	// (these are never stored; see .claude/rules/database.md).
+// rederiveEditedFields recomputes Role / GameMode AFTER overriding so an
+// edited hero / map drives them (derived, never stored; see
+// .claude/rules/database.md).
+func rederiveEditedFields(d *parser.MatchResult, ud db.UserMatchData) {
 	if ud.Hero != nil && d.Hero != "" {
 		d.Role = parser.HeroRole(d.Hero)
 	}
 	if ud.Map != nil && d.Map != "" {
 		d.GameMode = parser.MapGameMode(d.Map)
 	}
-
-	if manual {
-		rec.Source = match.SourceManual
-		if rec.ParsedAt == "" {
-			rec.ParsedAt = ud.UpdatedAt
-		}
-		return
-	}
-	rec.Source = match.SourceOCREdited
-	rec.EditedFields = edited
 }
 
 // applyScalarOverrides copies every non-nil override scalar onto d (table-driven

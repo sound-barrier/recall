@@ -206,6 +206,36 @@ func TestFindDuplicateMatches_DedupesPerKeyKeepingMinDistance(t *testing.T) {
 	}
 }
 
+func TestFindDuplicateMatches_MultipleCandidates_SortedByDistanceThenKey(t *testing.T) {
+	// Three tracked matches share the new match's stat line: two exactly
+	// equidistant (3 h 8 m 41 s before and after) and one farther out.
+	// The tied pair must sort by match_key; the farther one comes last.
+	snap := newSnap("match-2026-05-10T18-05-22")
+	line := db.TeamsRow{
+		Eliminations: 17, Assists: 16, Deaths: 11,
+		Damage: 12843, Healing: 9021, Mitigation: 3310,
+	}
+	tiedAfter := line
+	tiedAfter.Filename = "Overwatch 2 Screenshot 2026.05.11 - 00.22.44.13.png"
+	tiedAfter.MatchKey = "match-2026-05-11T00-22-44"
+	farther := line
+	farther.Filename = "Overwatch 2 Screenshot 2026.05.10 - 17.05.22.14.png"
+	farther.MatchKey = "match-2026-05-10T17-05-22"
+	snap.Teams = append(snap.Teams, tiedAfter, farther)
+
+	cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+	if len(cands) != 3 {
+		t.Fatalf("expected 3 candidates, got %d (%+v)", len(cands), cands)
+	}
+	wantKeys := []string{"match-2026-05-10T18-05-22", "match-2026-05-11T00-22-44", "match-2026-05-10T17-05-22"}
+	wantDists := []int{11321, 11321, 14921}
+	for i := range cands {
+		if cands[i].MatchKey != wantKeys[i] || cands[i].DistanceSeconds != wantDists[i] {
+			t.Errorf("cands[%d] = %+v, want key %q distance %d", i, cands[i], wantKeys[i], wantDists[i])
+		}
+	}
+}
+
 func TestCandidateReason_DerivedFromDistance(t *testing.T) {
 	// Distances beyond the 30-min EAD cap can only come from the
 	// duplicate sweep; at or below it they're window/EAD candidates.

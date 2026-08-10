@@ -62,29 +62,20 @@ func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool)
 // tables whose match_key equals key.
 func collectViewsForKey(snap db.Screenshots, key string) []ScreenshotView {
 	vs := make([]ScreenshotView, 0, 8)
-	for _, r := range snap.Summaries {
-		if r.MatchKey == key {
-			vs = append(vs, summaryToView(r))
-		}
-	}
-	for _, r := range snap.Teams {
-		if r.MatchKey == key {
-			vs = append(vs, teamsToView(r))
-		}
-	}
-	for _, r := range snap.Personals {
-		if r.MatchKey == key {
-			vs = append(vs, personalToView(r))
-		}
-	}
-	for _, r := range snap.Ranks {
-		if r.MatchKey == key {
-			vs = append(vs, rankToView(r))
-		}
-	}
-	for _, r := range snap.Unknowns {
-		if r.MatchKey == key {
-			vs = append(vs, unknownToView(r))
+	vs = appendViewsForKey(vs, snap.Summaries, key, func(r db.SummaryRow) string { return r.MatchKey }, summaryToView)
+	vs = appendViewsForKey(vs, snap.Teams, key, func(r db.TeamsRow) string { return r.MatchKey }, teamsToView)
+	vs = appendViewsForKey(vs, snap.Personals, key, func(r db.PersonalRow) string { return r.MatchKey }, personalToView)
+	vs = appendViewsForKey(vs, snap.Ranks, key, func(r db.RankRow) string { return r.MatchKey }, rankToView)
+	vs = appendViewsForKey(vs, snap.Unknowns, key, func(r db.UnknownRow) string { return r.MatchKey }, unknownToView)
+	return vs
+}
+
+// appendViewsForKey appends the view of every row in one parent table
+// whose match_key (read via keyOf) equals key.
+func appendViewsForKey[T any](vs []ScreenshotView, rows []T, key string, keyOf func(T) string, toView func(T) ScreenshotView) []ScreenshotView {
+	for _, r := range rows {
+		if keyOf(r) == key {
+			vs = append(vs, toView(r))
 		}
 	}
 	return vs

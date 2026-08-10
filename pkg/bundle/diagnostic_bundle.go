@@ -138,12 +138,7 @@ func addDiagnosticScreenshot(zw *zip.Writer, in DiagnosticInputs, row db.FailedF
 	if strings.ContainsAny(row.Filename, `/\`) || strings.ContainsRune(row.Filename, 0) {
 		return f, nil
 	}
-	dir := in.FallbackDir
-	if row.ScreenshotsDirID > 0 {
-		if p, ok := in.DirByID[row.ScreenshotsDirID]; ok && p != "" {
-			dir = p
-		}
-	}
+	dir := resolveFailedFileDir(in, row.ScreenshotsDirID)
 	f.SourceDir = dir
 	if dir == "" {
 		return f, nil
@@ -166,6 +161,17 @@ func addDiagnosticScreenshot(zw *zip.Writer, in DiagnosticInputs, row db.FailedF
 	}
 	f.Included = true
 	return f, nil
+}
+
+// resolveFailedFileDir resolves the on-disk dir for a failed file's row —
+// its screenshots_dirs entry when known, else the configured fallback.
+func resolveFailedFileDir(in DiagnosticInputs, dirID int64) string {
+	if dirID > 0 {
+		if p, ok := in.DirByID[dirID]; ok && p != "" {
+			return p
+		}
+	}
+	return in.FallbackDir
 }
 
 // addDiagnosticLogs copies every LogPaths entry that exists into logs/

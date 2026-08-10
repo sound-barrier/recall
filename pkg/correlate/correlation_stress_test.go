@@ -172,52 +172,7 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.05.10 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
 	for i := range 10 {
-		x := base.Add(time.Duration(i*15) * time.Minute)
-		y := x.Add(time.Duration(7+i) * 24 * time.Hour) // 7-16 days later
-		mapName := pickAt(owMaps, i)
-		hero := pickAt(owHeroes, i)
-		e, a, d := 17+i, 9+i, 4+i
-
-		// Match X — fresh, clean attribution.
-		specs = append(specs, matchSpec{
-			startTime:    x,
-			mapName:      mapName,
-			mode:         "competitive",
-			matchType:    pickAt(owMatchTypes, i),
-			role:         pickAt(owRoles, i),
-			primaryHero:  hero,
-			eliminations: e, assists: a, deaths: d,
-			damage: 6000, healing: 2500, mitigation: 1200,
-			result:            "victory",
-			date:              x.Format("01/02/2006"),
-			finishedAt:        x.Add(45 * time.Second).Format("15:04"),
-			emitSummary:       true,
-			emitTeams:         true,
-			useDefaultOffsets: true,
-			suffix:            fmt.Sprintf("B%02dx", i),
-			expectedKey:       matchKeyFor(x),
-		})
-
-		// Match Y — no longer adopts X (>30m gap blocks the bridge).
-		// TEAMS is emitted at y−10s; SUMMARY at y. Both adopt the
-		// fresh TEAMS-anchor key.
-		specs = append(specs, matchSpec{
-			startTime:    y,
-			mapName:      mapName,
-			mode:         "competitive",
-			matchType:    pickAt(owMatchTypes, i),
-			role:         pickAt(owRoles, i),
-			primaryHero:  hero,
-			eliminations: e, assists: a, deaths: d,
-			damage: 7000, healing: 2700, mitigation: 1300,
-			result:      "victory",
-			date:        y.Format("01/02/2006"),
-			finishedAt:  y.Add(45 * time.Second).Format("15:04"),
-			emitSummary: true,
-			emitTeams:   true,
-			suffix:      fmt.Sprintf("B%02dy", i),
-			expectedKey: matchKeyFor(y.Add(-10 * time.Second)),
-		})
+		specs = append(specs, cohortBSpecPair(base, i)...)
 	}
 
 	// Match Y's SUMMARY and Match Y's TEAMS both inherit the
@@ -238,46 +193,7 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 		// EAD-bridge bug actually triggers, then SUMMARY which will
 		// hit the same bridge via the TEAMS it just inserted.
 		if i%2 == 1 {
-			// TEAMS comes first for Y.
-			fxs := buildFixtures(matchSpec{
-				startTime:    s.startTime,
-				mapName:      s.mapName,
-				mode:         s.mode,
-				matchType:    s.matchType,
-				role:         s.role,
-				primaryHero:  s.primaryHero,
-				eliminations: s.eliminations,
-				assists:      s.assists,
-				deaths:       s.deaths,
-				damage:       s.damage,
-				healing:      s.healing,
-				mitigation:   s.mitigation,
-				emitTeams:    true,
-				teamsOffset:  -10 * time.Second, // before SUMMARY's anchor
-				suffix:       s.suffix,
-				expectedKey:  s.expectedKey,
-				bugNote:      s.bugNote,
-			})
-			fixtures = append(fixtures, fxs...)
-			// Then SUMMARY (which will adopt the TEAMS we just inserted).
-			fxs = buildFixtures(matchSpec{
-				startTime:    s.startTime,
-				mapName:      s.mapName,
-				mode:         s.mode,
-				primaryHero:  s.primaryHero,
-				eliminations: s.eliminations, assists: s.assists, deaths: s.deaths,
-				result:      "victory",
-				date:        s.date,
-				finishedAt:  s.finishedAt,
-				emitSummary: true,
-				suffix:      s.suffix,
-				expectedKey: s.expectedKey,
-				bugNote:     s.bugNote,
-				heroesPlayed: []parser.HeroPlay{
-					{Hero: s.primaryHero, PercentPlayed: 100, PlayTime: "12:34"},
-				},
-			})
-			fixtures = append(fixtures, fxs...)
+			fixtures = append(fixtures, cohortBTeamsFirstFixtures(s)...)
 			continue
 		}
 		fixtures = append(fixtures, buildFixtures(s)...)
@@ -286,6 +202,100 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 		t.Fatalf("cohort B fixture count: got %d, want %d", got, want)
 	}
 	runStressCohort(t, "B-EAD-bridge-distant-time", fixtures)
+}
+
+// cohortBSpecPair builds cohort B's i-th X/Y match pair: X anchors
+// cleanly; Y lands 7–16 days later with X's exact EAD signature.
+func cohortBSpecPair(base time.Time, i int) []matchSpec {
+	x := base.Add(time.Duration(i*15) * time.Minute)
+	y := x.Add(time.Duration(7+i) * 24 * time.Hour) // 7-16 days later
+	mapName := pickAt(owMaps, i)
+	hero := pickAt(owHeroes, i)
+	e, a, d := 17+i, 9+i, 4+i
+
+	return []matchSpec{
+		// Match X — fresh, clean attribution.
+		{
+			startTime:    x,
+			mapName:      mapName,
+			mode:         "competitive",
+			matchType:    pickAt(owMatchTypes, i),
+			role:         pickAt(owRoles, i),
+			primaryHero:  hero,
+			eliminations: e, assists: a, deaths: d,
+			damage: 6000, healing: 2500, mitigation: 1200,
+			result:            "victory",
+			date:              x.Format("01/02/2006"),
+			finishedAt:        x.Add(45 * time.Second).Format("15:04"),
+			emitSummary:       true,
+			emitTeams:         true,
+			useDefaultOffsets: true,
+			suffix:            fmt.Sprintf("B%02dx", i),
+			expectedKey:       matchKeyFor(x),
+		},
+		// Match Y — no longer adopts X (>30m gap blocks the bridge).
+		// TEAMS is emitted at y−10s; SUMMARY at y. Both adopt the
+		// fresh TEAMS-anchor key.
+		{
+			startTime:    y,
+			mapName:      mapName,
+			mode:         "competitive",
+			matchType:    pickAt(owMatchTypes, i),
+			role:         pickAt(owRoles, i),
+			primaryHero:  hero,
+			eliminations: e, assists: a, deaths: d,
+			damage: 7000, healing: 2700, mitigation: 1300,
+			result:      "victory",
+			date:        y.Format("01/02/2006"),
+			finishedAt:  y.Add(45 * time.Second).Format("15:04"),
+			emitSummary: true,
+			emitTeams:   true,
+			suffix:      fmt.Sprintf("B%02dy", i),
+			expectedKey: matchKeyFor(y.Add(-10 * time.Second)),
+		},
+	}
+}
+
+// cohortBTeamsFirstFixtures emits a Y spec's TEAMS (no date, so the
+// EAD bridge actually fires) followed by its SUMMARY, which adopts the
+// TEAMS row just inserted.
+func cohortBTeamsFirstFixtures(s matchSpec) []fixture {
+	fixtures := buildFixtures(matchSpec{
+		startTime:    s.startTime,
+		mapName:      s.mapName,
+		mode:         s.mode,
+		matchType:    s.matchType,
+		role:         s.role,
+		primaryHero:  s.primaryHero,
+		eliminations: s.eliminations,
+		assists:      s.assists,
+		deaths:       s.deaths,
+		damage:       s.damage,
+		healing:      s.healing,
+		mitigation:   s.mitigation,
+		emitTeams:    true,
+		teamsOffset:  -10 * time.Second, // before SUMMARY's anchor
+		suffix:       s.suffix,
+		expectedKey:  s.expectedKey,
+		bugNote:      s.bugNote,
+	})
+	return append(fixtures, buildFixtures(matchSpec{
+		startTime:    s.startTime,
+		mapName:      s.mapName,
+		mode:         s.mode,
+		primaryHero:  s.primaryHero,
+		eliminations: s.eliminations, assists: s.assists, deaths: s.deaths,
+		result:      "victory",
+		date:        s.date,
+		finishedAt:  s.finishedAt,
+		emitSummary: true,
+		suffix:      s.suffix,
+		expectedKey: s.expectedKey,
+		bugNote:     s.bugNote,
+		heroesPlayed: []parser.HeroPlay{
+			{Hero: s.primaryHero, PercentPlayed: 100, PlayTime: "12:34"},
+		},
+	})...)
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -374,19 +384,36 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.06.15 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
 	for i := range 10 {
-		x := base.Add(time.Duration(i*30) * time.Minute)
-		y := x.Add(10 * time.Minute)
-		mapName := pickAt(owMaps, i)
-		hero := pickAt(owHeroes, i)
-		e, a, d := 15+i, 9, 4
+		specs = append(specs, cohortDSpecTriple(base, i)...)
+	}
 
-		// Y's TEAMS filename is what the ambiguous sentinel is
-		// built from; both Y rows share that sentinel because the
-		// SUMMARY adopts via timestamp window.
-		yTeamsFilename := filenameForTS(y, fmt.Sprintf("D%02dyb", i), "teams")
-		yAmbiguousKey := match.NewAmbiguousMatchKey(yTeamsFilename).String()
+	fixtures := make([]fixture, 0, 40)
+	for _, s := range specs {
+		fixtures = append(fixtures, buildFixtures(s)...)
+	}
+	if got, want := len(fixtures), 40; got != want {
+		t.Fatalf("cohort D fixture count: got %d, want %d", got, want)
+	}
+	runStressCohort(t, "D-same-hero-identical-EAD", fixtures)
+}
 
-		specs = append(specs, matchSpec{
+// cohortDSpecTriple builds cohort D's i-th trio: a clean X anchor, then
+// Y's TEAMS and SUMMARY 10 minutes later with X's identical EAD.
+func cohortDSpecTriple(base time.Time, i int) []matchSpec {
+	x := base.Add(time.Duration(i*30) * time.Minute)
+	y := x.Add(10 * time.Minute)
+	mapName := pickAt(owMaps, i)
+	hero := pickAt(owHeroes, i)
+	e, a, d := 15+i, 9, 4
+
+	// Y's TEAMS filename is what the ambiguous sentinel is
+	// built from; both Y rows share that sentinel because the
+	// SUMMARY adopts via timestamp window.
+	yTeamsFilename := filenameForTS(y, fmt.Sprintf("D%02dyb", i), "teams")
+	yAmbiguousKey := match.NewAmbiguousMatchKey(yTeamsFilename).String()
+
+	return []matchSpec{
+		{
 			startTime:    x,
 			mapName:      mapName,
 			mode:         "competitive",
@@ -402,12 +429,11 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			useDefaultOffsets: true,
 			suffix:            fmt.Sprintf("D%02dx", i),
 			expectedKey:       matchKeyFor(x),
-		})
-
+		},
 		// Y emits TEAMS first (no date in MatchResult so the
 		// rowsConflict predicate can't short-circuit the bridge).
 		// Lands in the 5–30 min ambiguous zone → ambiguous sentinel.
-		specs = append(specs, matchSpec{
+		{
 			startTime:    y,
 			mapName:      mapName,
 			mode:         "competitive",
@@ -418,10 +444,10 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			teamsOffset: 0,
 			suffix:      fmt.Sprintf("D%02dyb", i),
 			expectedKey: yAmbiguousKey,
-		})
+		},
 		// Y SUMMARY 30s later — no EAD on summary side; adopts Y's
 		// TEAMS sentinel via the timestamp-window pass.
-		specs = append(specs, matchSpec{
+		{
 			startTime:    y,
 			mapName:      mapName,
 			mode:         "competitive",
@@ -437,17 +463,8 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			heroesPlayed: []parser.HeroPlay{
 				{Hero: hero, PercentPlayed: 100, PlayTime: "12:34"},
 			},
-		})
+		},
 	}
-
-	fixtures := make([]fixture, 0, 40)
-	for _, s := range specs {
-		fixtures = append(fixtures, buildFixtures(s)...)
-	}
-	if got, want := len(fixtures), 40; got != want {
-		t.Fatalf("cohort D fixture count: got %d, want %d", got, want)
-	}
-	runStressCohort(t, "D-same-hero-identical-EAD", fixtures)
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -555,15 +572,33 @@ func TestCorrelation_Stress_MultiHeroTeamsSwap(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.07.15 - 14.00.00")
 	specs := make([]matchSpec, 0, 10)
 	for i := range 10 {
-		start := base.Add(time.Duration(i*15) * time.Minute)
-		primary := "lucio"
-		swap := "kiriko"
-		if i%2 == 1 {
-			primary, swap = "mercy", "ana"
-		}
+		specs = append(specs, cohortFSpecQuad(base, i)...)
+	}
 
+	fixtures := make([]fixture, 0, 40)
+	for _, s := range specs {
+		fixtures = append(fixtures, buildFixtures(s)...)
+	}
+	if got, want := len(fixtures), 40; got != want {
+		t.Fatalf("cohort F fixture count: got %d, want %d", got, want)
+	}
+	runStressCohort(t, "F-multi-hero-teams-swap", fixtures)
+}
+
+// cohortFSpecQuad builds cohort F's i-th match as four specs: SUMMARY
+// anchored on the primary hero, then TEAMS / PERSONAL captured on the
+// swap hero, then RANK.
+func cohortFSpecQuad(base time.Time, i int) []matchSpec {
+	start := base.Add(time.Duration(i*15) * time.Minute)
+	primary := "lucio"
+	swap := "kiriko"
+	if i%2 == 1 {
+		primary, swap = "mercy", "ana"
+	}
+
+	return []matchSpec{
 		// SUMMARY adopts a fresh key.
-		specs = append(specs, matchSpec{
+		{
 			startTime:   start,
 			mapName:     pickAt(owMaps, i),
 			mode:        "competitive",
@@ -581,15 +616,13 @@ func TestCorrelation_Stress_MultiHeroTeamsSwap(t *testing.T) {
 			emitSummary: true,
 			suffix:      fmt.Sprintf("F%02ds", i),
 			expectedKey: matchKeyFor(start),
-		})
-
+		},
 		// TEAMS is combat-stats only (no hero) — it adopts the SUMMARY's
 		// key via its unique E/A/D bridging to the same match + the
 		// timestamp window. Per-match EADs differ (real matches do), so
 		// the teams resolves without needing a disambiguating hero.
-		sbStart := start.Add(30 * time.Second)
-		specs = append(specs, matchSpec{
-			startTime:    sbStart,
+		{
+			startTime:    start.Add(30 * time.Second),
 			mapName:      pickAt(owMaps, i),
 			mode:         "competitive",
 			primaryHero:  swap,
@@ -599,43 +632,30 @@ func TestCorrelation_Stress_MultiHeroTeamsSwap(t *testing.T) {
 			teamsOffset: 0,
 			suffix:      fmt.Sprintf("F%02db", i),
 			expectedKey: matchKeyFor(start),
-		})
-
+		},
 		// PERSONAL of swap hero — adopts the same SUMMARY anchor
 		// for the same reason; TEAMS hero is in the match's
 		// hero set so the rowsConflict short-circuit allows the
 		// timestamp-window bridge to the existing key.
-		pStart := start.Add(45 * time.Second)
-		specs = append(specs, matchSpec{
-			startTime:      pStart,
+		{
+			startTime:      start.Add(45 * time.Second),
 			primaryHero:    swap,
 			emitPersonal:   true,
 			personalOffset: 0,
 			suffix:         fmt.Sprintf("F%02dp", i),
 			expectedKey:    matchKeyFor(start),
-		})
-
+		},
 		// RANK has no hero field; adopts via timestamp window without
 		// needing the hero set. Now points back at SUMMARY since the
 		// TEAMS/PERSONAL chain it used to follow is collapsed
 		// into the same match_key.
-		rStart := start.Add(90 * time.Second)
-		specs = append(specs, matchSpec{
-			startTime: rStart, emitRank: true, rankOffset: 0,
+		{
+			startTime: start.Add(90 * time.Second), emitRank: true, rankOffset: 0,
 			rankBand: "diamond", rankLevel: 3, rankProgress: 60, rankChange: 24, rankResult: "victory",
 			suffix:      fmt.Sprintf("F%02dr", i),
 			expectedKey: matchKeyFor(start),
-		})
+		},
 	}
-
-	fixtures := make([]fixture, 0, 40)
-	for _, s := range specs {
-		fixtures = append(fixtures, buildFixtures(s)...)
-	}
-	if got, want := len(fixtures), 40; got != want {
-		t.Fatalf("cohort F fixture count: got %d, want %d", got, want)
-	}
-	runStressCohort(t, "F-multi-hero-teams-swap", fixtures)
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -652,12 +672,29 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.07.20 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
 	for i := range 5 {
-		start := base.Add(time.Duration(i*20) * time.Minute)
-		heroA := pickAt(owHeroes, i*2)
-		heroB := pickAt(owHeroes, i*2+1)
+		specs = append(specs, cohortGSpecQuad(base, i)...)
+	}
 
+	fixtures := make([]fixture, 0, 20)
+	for _, s := range specs {
+		fixtures = append(fixtures, buildFixtures(s)...)
+	}
+	if got, want := len(fixtures), 20; got != want {
+		t.Fatalf("cohort G fixture count: got %d, want %d", got, want)
+	}
+	runStressCohort(t, "G-multi-hero-two-personals", fixtures)
+}
+
+// cohortGSpecQuad builds cohort G's i-th match as four specs: SUMMARY
+// anchored on heroA, TEAMS, then one PERSONAL per hero.
+func cohortGSpecQuad(base time.Time, i int) []matchSpec {
+	start := base.Add(time.Duration(i*20) * time.Minute)
+	heroA := pickAt(owHeroes, i*2)
+	heroB := pickAt(owHeroes, i*2+1)
+
+	return []matchSpec{
 		// SUMMARY anchors the match on heroA.
-		specs = append(specs, matchSpec{
+		{
 			startTime:   start,
 			mapName:     pickAt(owMaps, i),
 			mode:        "competitive",
@@ -674,13 +711,11 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 			emitSummary: true,
 			suffix:      fmt.Sprintf("G%02ds", i),
 			expectedKey: matchKeyFor(start),
-		})
-
+		},
 		// TEAMS (combat-stats only) adopts via its unique E/A/D + the
 		// timestamp window — per-match EADs differ so no hero is needed.
-		sbStart := start.Add(30 * time.Second)
-		specs = append(specs, matchSpec{
-			startTime:    sbStart,
+		{
+			startTime:    start.Add(30 * time.Second),
 			mapName:      pickAt(owMaps, i),
 			mode:         "competitive",
 			primaryHero:  heroA,
@@ -690,42 +725,29 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 			teamsOffset: 0,
 			suffix:      fmt.Sprintf("G%02db", i),
 			expectedKey: matchKeyFor(start),
-		})
-
+		},
 		// PERSONAL 1 (heroA) adopts cleanly via timestamp window.
-		p1Start := start.Add(45 * time.Second)
-		specs = append(specs, matchSpec{
-			startTime:      p1Start,
+		{
+			startTime:      start.Add(45 * time.Second),
 			primaryHero:    heroA,
 			emitPersonal:   true,
 			personalOffset: 0,
 			suffix:         fmt.Sprintf("G%02dp1", i),
 			expectedKey:    matchKeyFor(start),
-		})
-
+		},
 		// PERSONAL 2 (heroB) adopts via timestamp window — heroB is
 		// in SUMMARY.HeroesPlayed, so the per-match hero set lets
 		// rowsConflict allow the bridge despite the local
 		// heroB↔heroA mismatch on PERSONAL 1.
-		p2Start := start.Add(75 * time.Second)
-		specs = append(specs, matchSpec{
-			startTime:      p2Start,
+		{
+			startTime:      start.Add(75 * time.Second),
 			primaryHero:    heroB,
 			emitPersonal:   true,
 			personalOffset: 0,
 			suffix:         fmt.Sprintf("G%02dp2", i),
 			expectedKey:    matchKeyFor(start),
-		})
+		},
 	}
-
-	fixtures := make([]fixture, 0, 20)
-	for _, s := range specs {
-		fixtures = append(fixtures, buildFixtures(s)...)
-	}
-	if got, want := len(fixtures), 20; got != want {
-		t.Fatalf("cohort G fixture count: got %d, want %d", got, want)
-	}
-	runStressCohort(t, "G-multi-hero-two-personals", fixtures)
 }
 
 // ─────────────────────────────────────────────────────────────────

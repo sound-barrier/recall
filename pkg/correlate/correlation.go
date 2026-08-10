@@ -35,31 +35,37 @@ func ParseFilenameTimestamp(f string) (time.Time, bool) {
 		if m == nil {
 			continue
 		}
-		year, ok := atoiCapture(m[1])
-		if !ok {
-			return time.Time{}, false
-		}
-		year += src.YearOffset
-		month, ok1 := atoiCapture(m[2])
-		day, ok2 := atoiCapture(m[3])
-		hour, ok3 := atoiCapture(m[4])
-		minute, ok4 := atoiCapture(m[5])
-		sec, ok5 := atoiCapture(m[6])
-		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
-			return time.Time{}, false
-		}
-		// time.Date normalizes out-of-range values silently (month
-		// 13 becomes January next year, day 32 rolls over). We want
-		// strict rejection: build a canonical RFC3339 string and let
-		// time.Parse refuse the invalid date.
-		s := fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", year, month, day, hour, minute, sec)
-		t, err := time.Parse(time.RFC3339, s)
-		if err != nil {
-			return time.Time{}, false
-		}
-		return t, true
+		return timestampFromCaptures(m, src.YearOffset)
 	}
 	return time.Time{}, false
+}
+
+// timestampFromCaptures builds the UTC timestamp from the six numeric
+// regex captures, strictly rejecting out-of-range components.
+func timestampFromCaptures(m []string, yearOffset int) (time.Time, bool) {
+	year, ok := atoiCapture(m[1])
+	if !ok {
+		return time.Time{}, false
+	}
+	year += yearOffset
+	month, ok1 := atoiCapture(m[2])
+	day, ok2 := atoiCapture(m[3])
+	hour, ok3 := atoiCapture(m[4])
+	minute, ok4 := atoiCapture(m[5])
+	sec, ok5 := atoiCapture(m[6])
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
+		return time.Time{}, false
+	}
+	// time.Date normalizes out-of-range values silently (month
+	// 13 becomes January next year, day 32 rolls over). We want
+	// strict rejection: build a canonical RFC3339 string and let
+	// time.Parse refuse the invalid date.
+	s := fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", year, month, day, hour, minute, sec)
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
 }
 
 // atoiCapture is a minimal regex-capture-to-int helper kept inline so
@@ -183,73 +189,65 @@ func matchHeroSets(snap db.Screenshots) map[string]map[string]bool {
 	return out
 }
 
+// summaryExistingCandidate exposes a SUMMARY row's identity fields plus
+// its perf totals — the SUMMARY's authoritative E/A/D — so MatchByEAD
+// can bridge a just-arrived TEAMS to an existing SUMMARY (closing the
+// cascade after a SUMMARY adopts an in-game TEAMS key via finished_at
+// corroboration).
+func summaryExistingCandidate(r db.SummaryRow) Candidate {
+	return Candidate{
+		filename: r.Filename,
+		r: &parser.MatchResult{
+			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
+			Date: r.Date, FinishedAt: r.FinishedAt,
+			Eliminations: r.PerfElimTotal,
+			Assists:      r.PerfAssistsTotal,
+			Deaths:       r.PerfDeathsTotal,
+		},
+	}
+}
+
+func teamsExistingCandidate(r db.TeamsRow) Candidate {
+	return Candidate{
+		filename: r.Filename,
+		r: &parser.MatchResult{
+			Eliminations: r.Eliminations,
+			Assists:      r.Assists,
+			Deaths:       r.Deaths,
+			Damage:       r.Damage,
+			Healing:      r.Healing,
+			Mitigation:   r.Mitigation,
+		},
+	}
+}
+
+func rankExistingCandidate(r db.RankRow) Candidate {
+	return Candidate{
+		filename: r.Filename,
+		r:        &parser.MatchResult{Rank: r.Rank, Result: r.Result},
+	}
+}
+
 func snapshotExisting(snap db.Screenshots) []existing {
 	heroSets := matchHeroSets(snap)
 	var out []existing
+	add := func(key string, c Candidate) {
+		out = append(out, existing{key: key, c: c, matchHeroes: heroSets[key]})
+	}
 	for _, r := range snap.Summaries {
-		out = append(out, existing{
-			key: r.MatchKey,
-			c: Candidate{
-				filename: r.Filename,
-				r: &parser.MatchResult{
-					Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
-					Date: r.Date, FinishedAt: r.FinishedAt,
-					// Perf totals are the SUMMARY's authoritative
-					// E/A/D — expose them so MatchByEAD can bridge a
-					// just-arrived TEAMS to an existing SUMMARY
-					// (closing the cascade after a SUMMARY adopts an
-					// in-game TEAMS key via finished_at
-					// corroboration).
-					Eliminations: r.PerfElimTotal,
-					Assists:      r.PerfAssistsTotal,
-					Deaths:       r.PerfDeathsTotal,
-				},
-			},
-			matchHeroes: heroSets[r.MatchKey],
-		})
+		add(r.MatchKey, summaryExistingCandidate(r))
 	}
 	for _, r := range snap.Teams {
-		out = append(out, existing{
-			key: r.MatchKey,
-			c: Candidate{
-				filename: r.Filename,
-				r: &parser.MatchResult{
-					Eliminations: r.Eliminations,
-					Assists:      r.Assists,
-					Deaths:       r.Deaths,
-					Damage:       r.Damage,
-					Healing:      r.Healing,
-					Mitigation:   r.Mitigation,
-				},
-			},
-			matchHeroes: heroSets[r.MatchKey],
-		})
+		add(r.MatchKey, teamsExistingCandidate(r))
 	}
 	for _, r := range snap.Personals {
-		out = append(out, existing{
-			key:         r.MatchKey,
-			c:           Candidate{filename: r.Filename, r: &parser.MatchResult{Hero: r.Hero}},
-			matchHeroes: heroSets[r.MatchKey],
-		})
+		add(r.MatchKey, Candidate{filename: r.Filename, r: &parser.MatchResult{Hero: r.Hero}})
 	}
 	for _, r := range snap.Ranks {
-		out = append(out, existing{
-			key: r.MatchKey,
-			c: Candidate{
-				filename: r.Filename,
-				r: &parser.MatchResult{
-					Rank: r.Rank, Result: r.Result,
-				},
-			},
-			matchHeroes: heroSets[r.MatchKey],
-		})
+		add(r.MatchKey, rankExistingCandidate(r))
 	}
 	for _, r := range snap.Unknowns {
-		out = append(out, existing{
-			key:         r.MatchKey,
-			c:           Candidate{filename: r.Filename, r: &parser.MatchResult{}},
-			matchHeroes: heroSets[r.MatchKey],
-		})
+		add(r.MatchKey, Candidate{filename: r.Filename, r: &parser.MatchResult{}})
 	}
 	for i := range out {
 		if ts, ok := ParseFilenameTimestamp(out[i].c.filename); ok {
