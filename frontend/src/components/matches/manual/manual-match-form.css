@@ -1,0 +1,188 @@
+.mm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.6rem 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The quick-add's one line of explanation. Body face, not mono — it's a
+   sentence to read, unlike the mono legend it replaces. */
+.mm-lede {
+  margin: 0 0 0.2rem;
+  font-size: var(--type-xs);
+  line-height: 1.45;
+  color: var(--text-dim);
+  max-width: 46ch;
+}
+
+.mm-legend {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.mm-req {
+  color: var(--loss);
+  font-weight: 700;
+}
+
+.mm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mm-optional { color: var(--text-faint); font-weight: 400; letter-spacing: 0.04em; }
+
+.mm-input {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: var(--type-lg);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.5rem;
+  color-scheme: dark light;
+}
+
+.mm-input:focus-visible { outline: 0; border-color: var(--accent); }
+.mm-input-short { width: max-content; }
+
+.mm-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 2.4rem;
+  line-height: 1.4;
+}
+
+/* Tag / teammate chip-input: type + Enter adds a token; click a token to
+   drop it (it reddens on hover to signal removal). */
+.mm-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.mm-tokens:focus-within { border-color: var(--accent); }
+
+.mm-token {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.12rem 0.4rem;
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  color: var(--accent-text);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease, border-color var(--duration-instant) ease;
+}
+
+.mm-token:hover {
+  background: color-mix(in srgb, var(--loss) 16%, transparent);
+  border-color: var(--loss);
+  color: var(--loss);
+}
+
+.mm-token:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mm-token-x { font-weight: 700; }
+
+.mm-token-input {
+  appearance: none;
+  flex: 1;
+  min-width: 7rem;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--type-md);
+  padding: 0.1rem 0.2rem;
+}
+
+.mm-token-input::placeholder { color: var(--text-faint); }
+
+.mm-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+.mm-chip {
+  appearance: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.28rem 0.6rem;
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: capitalize;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease, border-color var(--duration-instant) ease;
+}
+
+.mm-chip:hover { border-color: var(--accent-soft, var(--accent)); color: var(--text); }
+
+.mm-chip.picked {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.mm-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.mm-rank-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+
+.mm-rank-error {
+  margin: 0.4rem 0 0;
+  font-size: var(--type-sm);
+  color: var(--loss);
+}
+
+.mm-sublabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.mm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mm-check input { accent-color: var(--accent); }
+
+.mm-error {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  color: var(--loss);
+  border: 1px solid var(--loss);
+  background: color-mix(in srgb, var(--loss) 10%, transparent);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+}

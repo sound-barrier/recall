@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { computed } from 'vue'
 
 import type { CalloutPlacement } from '@/composables/shared/useOnboardingTour'
-import { computeCalloutPosition, rectsEqual } from '@/components/shared/tour-callout-helpers'
+import { useFloatingCallout } from '@/composables/shared/useFloatingCallout'
 
 // Anchored callout panel. Renders the step's tag / number / heading
 // / body plus the Skip / Back / Next controls. Anchors to the
@@ -56,191 +56,25 @@ const CALLOUT_H_INITIAL = 200
 const SAFETY = 16
 const GAP    = 22  // gap between target and callout
 
-// Geometry — viewport-relative pixel positions. The callout is
-// position: fixed; left/top are derived from `pos`.
-const pos = ref({ left: 0, top: 0, placement: 'bottom' as CalloutPlacement })
-const calloutEl = ref<HTMLDivElement | null>(null)
-
-// Drag state. Once the user grabs the header and moves the callout,
-// `userMoved` flips true and auto-placement stops updating `pos` —
-// the callout stays exactly where the user dropped it for the rest
-// of the step. The parent re-keys this component on every step
-// change, so dragging resets naturally between steps.
-const userMoved = ref(false)
-const dragging = ref(false)
-let dragOffsetX = 0
-let dragOffsetY = 0
-
-// Position-ready flag. `false` while the callout is positioning
-// itself for the first time on a step (and during the second-pass
-// resync that absorbs the target's CSS slide-in transition). The
-// callout's CSS keeps it invisible until this flips true — without
-// the gate, a step whose target enters with `transform: translateX`
-// (Narrow popover, detail panel) measures its pre-transition rect
-// on the first pass and lands at the wrong x for ~var(--duration-slow) before the
-// second pass corrects it. Users see that flash; gating it on
-// `posReady` keeps the callout hidden until the final position is
-// known.
-const posReady = ref(false)
-
-function getTargetRect(): { x: number; y: number; w: number; h: number } | null {
-  if (!props.target) return null
-  let el: HTMLElement | null = null
-  try { el = document.querySelector(props.target) as HTMLElement | null } catch { /* invalid selector */ }
-  if (!el) return null
-  const r = el.getBoundingClientRect()
-  return { x: r.left, y: r.top, w: r.width, h: r.height }
-}
-
-function calloutHeight(): number {
-  return calloutEl.value?.offsetHeight ?? CALLOUT_H_INITIAL
-}
-
-// Compute placement geometry via the pure solver — the SFC just supplies
-// the live DOM measurements + viewport.
-function computePos(): { left: number; top: number; placement: CalloutPlacement } {
-  return computeCalloutPosition(
-    getTargetRect(),
-    { calloutH: calloutHeight(), vw: window.innerWidth, vh: window.innerHeight },
-    props.placement ?? 'auto',
-    { calloutW: CALLOUT_W, safety: SAFETY, gap: GAP },
-  )
-}
-
-// Poll the target's rect across animation frames until it stops moving
-// (its enter transition has settled) or a frame cap is hit. This
-// replaces a fixed settle delay that raced the target's slide-in on
-// slower machines: the Narrow popover and the detail panel both
-// translate in over ~240ms, and a measure taken a few px before the
-// slide finished anchored `left`/`right` placement to a mid-transition
-// rect dozens of px off — and nothing re-synced afterwards, so it
-// stayed wrong.
-//
-// Two guards make this timing-independent. A STABILITY check (the rect
-// unchanged for several frames) waits out a transition however long it
-// runs. A minimum-frame FLOOR stops us settling during the brief
-// stillness BEFORE the transition starts — a freshly-mounted target
-// sits at its pre-slide rect for a frame or two while the browser
-// applies the entering class, and without the floor that early window
-// reads as "stable" and we measure the wrong rect (a popover slide
-// caught at x≈226 instead of its final x≈420). Settle only once both
-// hold: past the floor AND stable.
-// One frame's stability verdict: bump the streak when the rect is
-// measurable and unchanged, otherwise restart it.
-function stepStability(s: { prev: ReturnType<typeof getTargetRect>; stable: number }): void {
-  const cur = getTargetRect()
-  const measurable = cur !== null && cur.w > 0 && cur.h > 0
-  if (measurable && s.prev && rectsEqual(cur, s.prev)) {
-    s.stable++
-  } else {
-    s.stable = 0
-  }
-  s.prev = measurable ? cur : null
-}
-
-async function waitForStableTarget(): Promise<void> {
-  if (!props.target) return
-  const MAX_FRAMES = 90 // ~1.5s cap at 60fps — covers a slow mount + slide
-  const MIN_FRAMES = 21 // ~350ms floor past the pre-transition stillness
-  const STABLE_NEEDED = 3
-  const s = { prev: getTargetRect(), stable: 0 }
-  for (let i = 0; i < MAX_FRAMES; i++) {
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-    if (userMoved.value) return
-    stepStability(s)
-    if (i + 1 >= MIN_FRAMES && s.stable >= STABLE_NEEDED) return
-  }
-}
-
-async function syncPos() {
-  await nextTick()
-  // Once the user has dragged the callout, freeze the position so
-  // resize / scroll resyncs don't snap it back. The :key on the
-  // parent destroys + remounts the callout per step, so the freeze
-  // is automatically reset between steps.
-  if (userMoved.value) return
-  // Wait for the target's enter transition to settle BEFORE the first
-  // compute. Skipping the pre-settle pass entirely means the callout
-  // has no wrong-position to flash AT — it stays invisible via
-  // opacity:0 until `posReady` flips, then snaps to the final position
-  // (transition: left/top is only declared on `.tour-callout-ready` so
-  // the snap is instant) and fades in over 200ms.
-  await waitForStableTarget()
-  if (userMoved.value) return
-  pos.value = computePos()
-  // Two rAFs between writing the final position and flipping the
-  // ready class. Vue's nextTick alone commits the DOM mutation, but
-  // the browser hasn't necessarily PAINTED the new inline left/top
-  // yet. If we add `tour-callout-ready` (which carries the
-  // `transition: left/top` declaration) before paint, the browser
-  // captures pre-paint coords as the transition's start and
-  // animates from there — visible as the callout sliding from
-  // (0, 0) into the computed position. Two requestAnimationFrame
-  // cycles guarantee a paint between mutation and class flip.
-  await nextTick()
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-  posReady.value = true
-}
-
-function onWindowScroll() {
-  if (userMoved.value) return
-  pos.value = computePos()
-}
-function onWindowResize() {
-  if (userMoved.value) return
-  pos.value = computePos()
-}
-
-// ── Drag handlers ─────────────────────────────────────────────
-// The header is the drag handle (mirrors the OS convention for
-// movable panels). Pointer events let one handler cover mouse +
-// pen + touch in one go. We capture the pointer so move/up land on
-// us even if the cursor leaves the header element.
-
-function onDragPointerDown(e: PointerEvent) {
-  // Don't initiate a drag from clicks on controls inside the header
-  // (none today, but defensive — the eyebrow / counter spans aren't
-  // interactive).
-  if (e.button !== 0) return
-  dragging.value = true
-  dragOffsetX = e.clientX - pos.value.left
-  dragOffsetY = e.clientY - pos.value.top
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  e.preventDefault()
-}
-
-function onDragPointerMove(e: PointerEvent) {
-  if (!dragging.value) return
-  // Clamp into the viewport so the callout can't be dragged
-  // off-screen. CALLOUT_W is fixed; height comes from the live
-  // element.
-  const h = calloutHeight()
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const nextLeft = Math.max(0, Math.min(vw - CALLOUT_W, e.clientX - dragOffsetX))
-  const nextTop  = Math.max(0, Math.min(vh - h, e.clientY - dragOffsetY))
-  pos.value = { left: nextLeft, top: nextTop, placement: pos.value.placement }
-  userMoved.value = true
-}
-
-function onDragPointerUp(e: PointerEvent) {
-  if (!dragging.value) return
-  dragging.value = false
-  ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
-}
-
-watch(() => [props.target, props.placement, props.heading], () => { void syncPos() })
-
-onMounted(async () => {
-  await syncPos()
-  window.addEventListener('scroll', onWindowScroll, { capture: true, passive: true })
-  window.addEventListener('resize', onWindowResize)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', onWindowScroll, true)
-  window.removeEventListener('resize', onWindowResize)
+// Positioning + drag engine — auto-placement, the settle-wait that
+// absorbs the target's enter transition, scroll/resize resyncs, and
+// the header-drag state machine all live in the composable. The SFC
+// re-syncs on heading changes too (in-place step swaps).
+const {
+  calloutEl,
+  pos,
+  posReady,
+  dragging,
+  getTargetRect,
+  calloutHeight,
+  onDragPointerDown,
+  onDragPointerMove,
+  onDragPointerUp,
+} = useFloatingCallout({
+  target: () => props.target,
+  placement: () => props.placement,
+  resyncSignals: () => [props.heading],
+  dims: { calloutW: CALLOUT_W, calloutHInitial: CALLOUT_H_INITIAL, safety: SAFETY, gap: GAP },
 })
 
 // Connector geometry — draws a dashed line from the callout's anchor

@@ -16,11 +16,15 @@ import {
 } from '@/match/elo-model'
 import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo-stats'
 import {
+  NO_EDITED_FIELDS, diffSeededForm, plateauRateFromMeter, projectionInputFromForm,
+  round1, seasonSimFromProjection, type EloFormSnapshot,
+} from '@/match/elo-form'
+import {
   ceilingRange, credibleInterval, gamesToKnow, probTrueWinRateAbove,
   type CeilingRange, type SlopeCI,
 } from '@/match/elo-bayes'
 import { decisiveResults, decisiveTimeline } from '@/match/elo-streaks'
-import { meterMoveSamples, simulateSeasons, type SeasonSim } from '@/match/elo-simulate'
+import { meterMoveSamples, type SeasonSim } from '@/match/elo-simulate'
 import { skillCurve as computeSkillCurve, type SkillCurve } from '@/match/elo-kalman'
 import {
   changePointContext, detectChangePoint, type ChangePoint, type ChangePointContext,
@@ -40,36 +44,6 @@ export interface EloCalcOpts {
   records: MaybeRefOrGetter<MatchRecord[]>
   heroRole: (hero: string | null | undefined) => string
   mapGameMode: (map: string | null | undefined) => string
-}
-
-// SeededForm is the snapshot of what the seed wrote into the form — the
-// "measured" baseline every edited-state affordance compares against.
-interface SeededForm {
-  currentTier: Tier
-  currentDivision: number
-  currentProgress: number
-  targetTier: Tier
-  targetDivision: number
-  winRatePct: number | null
-  sampleN: number
-  meterMovePct: number
-  gamesPerWeekInput: number | null
-  decaySlopePts: number
-}
-
-// The all-clean marker set — what editedFields reports before a seed
-// has ever been applied (nothing to compare against yet).
-const NO_EDITED_FIELDS: Record<keyof SeededForm, boolean> = {
-  currentTier: false,
-  currentDivision: false,
-  currentProgress: false,
-  targetTier: false,
-  targetDivision: false,
-  winRatePct: false,
-  sampleN: false,
-  meterMovePct: false,
-  gamesPerWeekInput: false,
-  decaySlopePts: false,
 }
 
 // SEASON_WEEKS sizes the "this season" probability window.
@@ -113,9 +87,27 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const lastSeed = ref<TrackSeed | null>(null)
   // The exact post-rounding form values the seed wrote — the "measured"
   // baseline that edited-field markers and the delta strip compare against.
-  const seededForm = ref<SeededForm | null>(null)
+  const seededForm = ref<EloFormSnapshot | null>(null)
 
   const seed = computed(() => seedTrack(records.value, track.value))
+
+  // The live form values as one plain snapshot — the shape the pure
+  // elo-form assembly + diff helpers consume. Reading the refs inside
+  // a computed keeps the dependency tracking intact.
+  function formSnapshot(): EloFormSnapshot {
+    return {
+      currentTier: currentTier.value,
+      currentDivision: currentDivision.value,
+      currentProgress: currentProgress.value,
+      targetTier: targetTier.value,
+      targetDivision: targetDivision.value,
+      winRatePct: winRatePct.value,
+      sampleN: sampleN.value,
+      meterMovePct: meterMovePct.value,
+      gamesPerWeekInput: gamesPerWeekInput.value,
+      decaySlopePts: decaySlopePts.value,
+    }
+  }
 
   function applySeed(): void {
     const s = seed.value
@@ -136,18 +128,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     selectedHeroes.value = new Set()
     heroAdjustPts.value = new Map()
     dirty.value = false
-    seededForm.value = {
-      currentTier: currentTier.value,
-      currentDivision: currentDivision.value,
-      currentProgress: currentProgress.value,
-      targetTier: targetTier.value,
-      targetDivision: targetDivision.value,
-      winRatePct: winRatePct.value,
-      sampleN: sampleN.value,
-      meterMovePct: meterMovePct.value,
-      gamesPerWeekInput: gamesPerWeekInput.value,
-      decaySlopePts: decaySlopePts.value,
-    }
+    seededForm.value = formSnapshot()
   }
 
   // Default target: one tier up, division 5 (Champion tops out at 1).
@@ -241,21 +222,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // ── Edited state: what differs from the measured seed ──────────────
   // Per-field markers + the one flag the verdict eyebrow and the delta
   // strip key on. Hero selection and nudges count as edits too.
-  const editedFields = computed<Record<keyof SeededForm, boolean>>(() => {
+  const editedFields = computed<Record<keyof EloFormSnapshot, boolean>>(() => {
     const f = seededForm.value
-    if (f === null) return NO_EDITED_FIELDS
-    return {
-      currentTier: currentTier.value !== f.currentTier,
-      currentDivision: currentDivision.value !== f.currentDivision,
-      currentProgress: currentProgress.value !== f.currentProgress,
-      targetTier: targetTier.value !== f.targetTier,
-      targetDivision: targetDivision.value !== f.targetDivision,
-      winRatePct: winRatePct.value !== f.winRatePct,
-      sampleN: sampleN.value !== f.sampleN,
-      meterMovePct: meterMovePct.value !== f.meterMovePct,
-      gamesPerWeekInput: gamesPerWeekInput.value !== f.gamesPerWeekInput,
-      decaySlopePts: decaySlopePts.value !== f.decaySlopePts,
-    }
+    return f === null ? NO_EDITED_FIELDS : diffSeededForm(f, formSnapshot())
   })
   const isEdited = computed(() =>
     Object.values(editedFields.value).some(Boolean)
@@ -291,42 +260,14 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const currentScore = computed(() => ladderScore(currentTier.value, currentDivision.value, currentProgress.value))
   const targetScore = computed(() => ladderScore(targetTier.value, targetDivision.value, 0))
 
-  // The meter's break-even rate: where the player's REAL pools zero the
-  // drift (|L̄|/(W̄+|L̄|)). The simulator equilibrates there automatically;
-  // the closed forms must share it or the verdict plateaus in a different
-  // place than the seasons it quotes. Symmetric 0.5 until both pools are
-  // deep enough to trust (the sim's own MIN_POOL rule).
-  const plateauRate = computed<number>(() => {
-    const { winMoves, lossMoves } = meterSamples.value
-    if (winMoves.length < 8 || lossMoves.length < 8) return 0.5
-    const mean = (xs: readonly number[]): number => xs.reduce((s, v) => s + v, 0) / xs.length
-    const w = mean(winMoves)
-    const l = Math.abs(mean(lossMoves))
-    return w + l > 0 ? l / (w + l) : 0.5
-  })
+  // The meter's break-even rate — see plateauRateFromMeter for why the
+  // closed forms must share the simulator's equilibrium.
+  const plateauRate = computed<number>(() => plateauRateFromMeter(meterSamples.value))
 
-  const projInput = computed<ProjectionInput | null>(() => {
-    if (currentScore.value === null || targetScore.value === null) return null
-    const rate = effectiveWinRatePct.value
-    const measured = winRatePct.value
-    if (rate === null || measured === null || sampleN.value <= 0 || meterMovePct.value <= 0) return null
-    // The sample counts come from the MEASURED (or manually edited) rate —
-    // never the hero-nudged one. A nudge is a hypothesis about future games;
-    // baking it into sampleWins forged evidence and moved the p-value, the
-    // posterior, and every interval toward games never played. winRate stays
-    // the dialed rate so projections follow the what-if.
-    const wins = Math.round((sampleN.value * measured) / 100)
-    return {
-      currentScore: currentScore.value,
-      targetScore: targetScore.value,
-      winRate: rate / 100,
-      sampleWins: wins,
-      sampleLosses: sampleN.value - wins,
-      meterMovePct: meterMovePct.value,
-      decaySlope: decaySlopePts.value / 100,
-      plateauRate: plateauRate.value,
-    }
-  })
+  // Sample counts follow the MEASURED rate; winRate follows the dialed
+  // (hero-nudged) one — the split lives in projectionInputFromForm.
+  const projInput = computed<ProjectionInput | null>(() =>
+    projectionInputFromForm(formSnapshot(), plateauRate.value, effectiveWinRatePct.value))
 
   // The ceiling as a credible RANGE: win-rate posterior × measured slope CI
   // through the plateau identity. The slope CI drops out when the user
@@ -371,21 +312,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // ── The measured baseline, projected (feeds the delta strip) ───────
   const measuredProjInput = computed<ProjectionInput | null>(() => {
     const f = seededForm.value
-    if (f === null || f.winRatePct === null || f.sampleN <= 0 || f.meterMovePct <= 0) return null
-    const cur = ladderScore(f.currentTier, f.currentDivision, f.currentProgress)
-    const tgt = ladderScore(f.targetTier, f.targetDivision, 0)
-    if (cur === null || tgt === null) return null
-    const wins = Math.round((f.sampleN * f.winRatePct) / 100)
-    return {
-      currentScore: cur,
-      targetScore: tgt,
-      winRate: f.winRatePct / 100,
-      sampleWins: wins,
-      sampleLosses: f.sampleN - wins,
-      meterMovePct: f.meterMovePct,
-      decaySlope: f.decaySlopePts / 100,
-      plateauRate: plateauRate.value,
-    }
+    return f === null ? null : projectionInputFromForm(f, plateauRate.value)
   })
   const measuredNaive = computed<NaiveProjection | null>(() =>
     (measuredProjInput.value ? naiveProjection(measuredProjInput.value) : null))
@@ -395,20 +322,10 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // re-seed), so the delta strip prices edits against comparable odds.
   const measuredSeasonSim = computed<SeasonSim | null>(() => {
     const inp = measuredProjInput.value
-    const f = seededForm.value
-    if (!inp || inp.targetScore <= inp.currentScore) return null
-    const pace = f?.gamesPerWeekInput ?? null
+    if (!inp) return null
+    const pace = seededForm.value?.gamesPerWeekInput ?? null
     const horizon = pace !== null && pace > 0 ? Math.round(pace * SEASON_WEEKS) : FALLBACK_GAMES_PER_WEEK * SEASON_WEEKS
-    return simulateSeasons({
-      currentScore: inp.currentScore,
-      targetScore: inp.targetScore,
-      sampleWins: inp.sampleWins,
-      sampleLosses: inp.sampleLosses,
-      horizonGames: horizon,
-      meter: meterSamples.value,
-      symmetricFallbackPct: inp.meterMovePct,
-      decaySlope: inp.decaySlope,
-    })
+    return seasonSimFromProjection(inp, horizon, meterSamples.value)
   })
   const measuredProbSeason = computed(() => measuredSeasonSim.value?.probReachTarget ?? null)
 
@@ -452,21 +369,12 @@ export function useEloCalculator(opts: EloCalcOpts) {
   const simHorizonGames = computed(() => seasonGames.value ?? FALLBACK_GAMES_PER_WEEK * SEASON_WEEKS)
   const seasonSim = computed<SeasonSim | null>(() => {
     const inp = projInput.value
-    if (!inp || inp.targetScore <= inp.currentScore) return null
+    if (!inp) return null
     const measured = winRatePct.value
-    return simulateSeasons({
-      currentScore: inp.currentScore,
-      targetScore: inp.targetScore,
-      sampleWins: inp.sampleWins,
-      sampleLosses: inp.sampleLosses,
-      horizonGames: simHorizonGames.value,
-      meter: meterSamples.value,
-      symmetricFallbackPct: inp.meterMovePct,
-      decaySlope: inp.decaySlope,
-      // The hero what-if enters as a location shift on the drawn form —
-      // the posterior keeps the real sample's width.
-      rateShiftPts: measured === null ? 0 : (effectiveWinRatePct.value ?? measured) - measured,
-    })
+    // The hero what-if enters as a location shift on the drawn form —
+    // the posterior keeps the real sample's width.
+    const shift = measured === null ? 0 : (effectiveWinRatePct.value ?? measured) - measured
+    return seasonSimFromProjection(inp, simHorizonGames.value, meterSamples.value, shift)
   })
   // The skill curve is pure history: the track's rank readings, de-noised.
   const skillCurve = computed<SkillCurve | null>(() => {
@@ -508,10 +416,6 @@ export function useEloCalculator(opts: EloCalcOpts) {
     skepticVerdict, trueRateRange, gamesToCertainty,
     runs, seasonSim, measuredSeasonSim, skillCurve, changePoint, lift, heroGap,
   }
-}
-
-function round1(v: number): number {
-  return Math.round(v * 10) / 10
 }
 
 export type EloCalculator = ReturnType<typeof useEloCalculator>

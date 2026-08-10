@@ -1,0 +1,376 @@
+/* ─── Match Journal ──────────────────────────────────────── */
+
+/* The user's annotations on a match — Note, Replay code, Group
+   members, Tags. Promoted to its own panel because (a) the user
+   explicitly flagged the section as important, and (b) the previous
+   one-input-per-row layout took 4× the vertical space the data
+   actually needs. New layout:
+     1. Striped header strip → reads as a dossier / after-action
+        report rather than a generic form.
+     2. Cells with their own eyebrow + inline focus-within glow →
+        each field feels distinct without forcing 4 horizontal labels.
+     3. Replay + Group share a row → reclaims one row of vertical
+        space because the replay code is intrinsically narrow.
+     4. saved✓ pulse on the cell border (not a 3rd grid column) → no
+        layout shift when commit confirms; the affordance lives on
+        the cell it confirms. */
+
+.match-journal {
+  position: relative;
+  margin: 0 0 0.85rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color var(--duration-med) ease, box-shadow var(--duration-med) ease;
+}
+
+.match-journal.populated {
+  border-color: var(--accent-soft);
+  box-shadow: inset 2px 0 0 0 var(--accent);
+}
+
+/* Corner ticks — fade in when the panel has content so the user gets
+   a soft "active dossier" affordance. Off when empty so the empty
+   state stays calm. */
+.match-journal::before,
+.match-journal::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-med) ease;
+}
+
+.match-journal::before {
+  top: -1px; right: -1px;
+  border-left: none; border-bottom: none;
+}
+
+.match-journal::after {
+  bottom: -1px; left: -1px;
+  border-right: none; border-top: none;
+}
+
+.match-journal.populated::before,
+.match-journal.populated::after { opacity: 0.7; }
+
+.journal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.75rem;
+  background: repeating-linear-gradient(135deg, var(--surface-3) 0 14px, var(--surface-2) 14px 28px);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.journal-head-title {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.journal-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* Apply previous / Confirm / Undo — head-strip-scale controls that read
+   as chrome, not content, matching the strip's mono uppercase voice. */
+.journal-apply-btn {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: var(--type-3xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.journal-apply-btn:hover,
+.journal-apply-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.journal-apply-btn.undo {
+  border-color: var(--border-soft);
+  color: var(--text-dim);
+}
+
+.journal-head-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: var(--type-2xs);
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+}
+
+.journal-head-pip {
+  width: 6px;
+  height: 6px;
+  background: currentcolor;
+  transform: rotate(45deg);
+  opacity: 0.7;
+}
+
+.match-journal.populated .journal-head-meta { color: var(--accent-text); }
+.match-journal.populated .journal-head-meta .journal-head-pip { opacity: 1; }
+
+.journal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.7rem 0.75rem 0.8rem;
+}
+
+/* Replay + Group share a row; the replay code is short, group is
+   wide. On narrow widths the grid collapses to a single column so
+   the chip list doesn't squeeze. */
+.journal-row-2col {
+  display: grid;
+  grid-template-columns: minmax(11rem, 0.45fr) 1fr;
+  gap: 0.55rem;
+}
+
+@media (width <= 720px) {
+  .journal-row-2col { grid-template-columns: 1fr; }
+}
+
+/* Each cell is a self-contained mini-card: eyebrow up top, control
+   below. Focus-within glows the cell with the accent ring so the
+   user always knows which field they're editing. */
+.journal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem 0.55rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-prompt) ease, box-shadow var(--duration-prompt) ease, background var(--duration-prompt) ease;
+}
+
+.journal-cell:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.journal-cell.filled { border-color: var(--border); }
+
+/* Confirmation pulse — the parent flips the `saved` class for 900 ms
+   after a commit. Border + tiny corner tick fade through accent
+   then back. No layout shift; replaces the prior "saved ✓" text
+   column. */
+.journal-cell.saved {
+  animation: journal-cell-saved 900ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.journal-cell.saved::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 14px;
+  height: 14px;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+  animation: journal-cell-tick 900ms ease both;
+  pointer-events: none;
+}
+
+@keyframes journal-cell-saved {
+  0%   { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft), 0 0 22px -2px var(--accent-glow); }
+  100% { border-color: var(--border); box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes journal-cell-tick {
+  0%   { opacity: 0; transform: translate(-2px, 2px); }
+  20%  { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-cell.saved { animation: none; }
+  .journal-cell.saved::after { animation: none; opacity: 0; }
+}
+
+.journal-eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  user-select: none;
+}
+
+.journal-cell.filled .journal-eyebrow { color: var(--text-dim); }
+.journal-cell:focus-within .journal-eyebrow { color: var(--accent-text); }
+
+.journal-eyebrow-count {
+  font-size: var(--type-2xs);
+  letter-spacing: 0.12em;
+  color: var(--accent-text);
+  font-feature-settings: "tnum";
+}
+
+.journal-cell-note { grid-column: 1 / -1; }
+
+/* The note + replay + members fields all share the same control
+   chrome — borderless inputs that sit flush inside their journal
+   cell. The cell IS the visual frame; the input is just text. */
+.match-notes-textarea,
+.match-notes-input,
+.match-notes-preview {
+  width: 100%;
+  padding: 0.25rem 0;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--type-lg);
+  line-height: 1.45;
+}
+
+.match-notes-textarea,
+.match-notes-preview {
+  min-height: 2.2rem;
+  font-family: var(--body);
+}
+
+.match-notes-textarea {
+  resize: vertical;
+  outline: none;
+}
+
+.match-notes-input { outline: none; }
+
+/* HUD-style preview — cursor: text + the focus-within glow on the
+   parent cell signal "editable" without a pencil icon. The ⌕ pinned
+   right confirms the active match-search query landed at least one
+   hit inside this note. */
+.match-notes-preview {
+  position: relative;
+  padding-right: 1.6rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.match-notes-preview:focus-visible { outline: none; }
+
+.match-notes-preview.has-hits::after {
+  content: "⌕";
+  position: absolute;
+  top: 0.05rem;
+  right: 0.1rem;
+  font-family: var(--mono);
+  font-size: var(--type-md);
+  color: var(--accent-text);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* "Target acquired" mark: accent-soft fill + 2px accent under-rule,
+   sharp corners (OW HUD, not notion soft-pill). decoration-break
+   makes wrap-to-next-line marks get the under-rule too. */
+.match-notes-preview :deep(mark.note-hit) {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 0;
+  padding: 0 2px;
+  margin: 0 1px;
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+  box-decoration-break: clone;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .match-notes-preview :deep(mark.note-hit) {
+    animation: note-hit-acquire 220ms var(--easing-out) both;
+  }
+}
+
+@keyframes note-hit-acquire {
+  from { background: transparent; box-shadow: inset 0 -2px 0 0 transparent; }
+}
+
+.match-notes-input.mono {
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+/* Members chip list — flex-wraps so chips reflow on narrow widths.
+   The host journal cell owns the border + focus glow, so the chip
+   tray itself is borderless. */
+.match-notes-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.05rem 0;
+}
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.18rem 0.2rem 0.18rem 0.5rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: var(--type-sm);
+  letter-spacing: 0.02em;
+  color: var(--accent-text);
+}
+
+.member-chip-tag {
+  white-space: nowrap;
+}
+
+.member-chip-remove {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0 0.2rem;
+  color: currentcolor;
+  cursor: pointer;
+  font-size: var(--type-lg);
+  line-height: 1;
+  border-radius: var(--radius-hair);
+  transition: background var(--duration-fast) ease;
+}
+
+.member-chip-remove:hover {
+  background: color-mix(in srgb, currentcolor 18%, transparent);
+}
+
+.member-input {
+  flex: 1 1 11rem;
+  min-width: 8rem;
+  padding: 0.15rem 0;
+  background: transparent;
+  border: 0;
+  font-size: var(--type-md);
+  outline: none;
+}
+
+/* Tags editor sits flush inside .journal-cell-tags — kill the
+   margin-top app.css adds since the parent journal cell already
+   provides the gap. */
+.journal-cell-tags .match-tags-editor { margin-top: 0; }
