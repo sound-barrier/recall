@@ -78,9 +78,19 @@ async function captureCards(page: Page): Promise<string> {
   // so its labels rotate with the run date: a weekday-bomb that would
   // fail CI on any other day). Month/day names only: a looser
   // [A-Z][a-z]+ pattern would swallow rank names like "Silver 5".
+  //
+  // The guard is a negative lookbehind for a LETTER, not \b. textContent
+  // here is concatenated cell-by-cell with no separators, so a label
+  // routinely arrives glued to the previous cell's digits
+  // ("×1.385Wednesdays"). Between "5" and "W" both sides are word
+  // characters, so \b does not match there and every label after the
+  // first survived normalization — which is exactly how this suite came
+  // to fail in CI one day after the snapshots were taken, with each
+  // weekday shifted by one. The lookbehind still refuses a mid-word
+  // match ("Janitor 5"), which is what the \b was there for.
   const normalized: Record<string, string> = {}
-  const datePattern = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\b/g
-  const dayPattern = /\b(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day(s)?\b/g
+  const datePattern = /(?<![A-Za-z])(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\b/g
+  const dayPattern = /(?<![A-Za-z])(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day(s)?\b/g
   for (const key of Object.keys(raw).sort()) {
     normalized[key] = raw[key]!.replace(datePattern, '<DATE>').replace(dayPattern, '<DAY>$2')
   }
