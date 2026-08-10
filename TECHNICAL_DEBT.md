@@ -49,6 +49,24 @@ Reviewed and deliberately left, so a future pass doesn't burn effort churning
 them. Last re-evaluated **2026-07-06** — every bullet verified against source;
 changed bullets carry an inline re-evaluation note:
 
+- **Table library — @tanstack/vue-table evaluated, declined (2026-08-09).**
+  Evaluated during the hey-api + TanStack Query migration. It would replace
+  ~330–400 lines of stable, tested composables (`useTableSort`'s multi-key
+  stack, `useColumnResize`'s sizing state, `useMatchesSelection`) — and
+  nothing else: the data table is always FLAT (grouping belongs to the leaf
+  list), virtualization is a separate dep and `useVirtualWindow` also serves
+  the leaf list, and the cell range-select/TSV clipboard, sticky columns,
+  DOM-Range auto-fit, pivot engine, narrow-rail filter language,
+  `usePersistedRef` persistence, and all OW-domain cell rendering stay
+  hand-rolled either way. Cost: ~45–55 KB raw minified against a total-JS
+  budget with ~5 KB working headroom, plus a third breaking rewrite of the
+  persisted sort-stack shape (`recall.matchesTableSort` + `isSortStack` +
+  the Custom-Sort popover contract). No other surface fits
+  (CompareTable/EloLiftTable are static; the crosstab + heatmap bands are
+  grid-selection surfaces, not sortable tables). **Revisit if** the table
+  grows column visibility/ordering/pinning UI, per-column filtering, or a
+  second sortable data-grid surface appears.
+
 - **`useMatchesDossierQueries.ts` (~748 lines)** exceeds the 500-line soft cap,
   but it is one cohesive composable — a single `useDossierQueries` factory (the
   file's only export) whose bulk is 17 tightly-coupled query helpers
