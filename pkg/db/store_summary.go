@@ -7,16 +7,10 @@ import "database/sql"
 // every scalar except parsed_at (preserves the first-insert timestamp
 // across re-parses). Children use DELETE-then-INSERT — see the package
 // comment on store.go for why.
-func (s *SQLStore) UpsertSummary(r SummaryRow) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var id int64
-	err = tx.QueryRow(
-		`INSERT INTO summary_screenshots (
+// upsertSummarySQL is the parent upsert: ON CONFLICT(filename) keeps
+// re-parses idempotent, and parsed_at is deliberately absent from the
+// SET clause so the first-insert timestamp survives them.
+const upsertSummarySQL = `INSERT INTO summary_screenshots (
 			filename, match_key, screenshots_dir_id,
 			map, map_raw, playlist, hero, hero_raw, result, final_score, date, finished_at, game_length, played_at_utc,
 			perf_elim_total, perf_elim_avg_per_10min,
@@ -43,7 +37,18 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 			perf_assists_avg_per_10min = excluded.perf_assists_avg_per_10min,
 			perf_deaths_total          = excluded.perf_deaths_total,
 			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min
-		RETURNING id`,
+		RETURNING id`
+
+func (s *SQLStore) UpsertSummary(r SummaryRow) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id int64
+	err = tx.QueryRow(
+		upsertSummarySQL,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
 		r.Map, r.MapRaw, r.Playlist, r.Hero, r.HeroRaw,
 		r.Result, r.FinalScore,

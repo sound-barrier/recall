@@ -158,8 +158,6 @@ linters:
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/cmd/wails\.go
       - linters: [gocyclo, gocognit, funlen]
-        path: pkg/db/migrate\.go
-      - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/schema_additive_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/sqlstore_test\.go
@@ -176,8 +174,6 @@ linters:
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/store_queue_test\.go
       - linters: [gocyclo, gocognit, funlen]
-        path: pkg/db/store_rank\.go
-      - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/store_reaggregate_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/store_reclassify\.go
@@ -187,8 +183,6 @@ linters:
         path: pkg/db/store_review_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/store_screenshots_dir_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/db/store_summary\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/store_usermatch_test\.go
       - linters: [gocyclo, gocognit, funlen]
