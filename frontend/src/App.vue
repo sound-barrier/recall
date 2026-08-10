@@ -17,6 +17,7 @@ import { useUiStore } from '@/stores/ui'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
 import { useAppBoot } from '@/composables/app/useAppBoot'
+import { useServerEvents } from '@/composables/app/useServerEvents'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import AppMasthead from '@/components/app/AppMasthead.vue'
 import AppOverlays from '@/components/app/AppOverlays.vue'
@@ -99,6 +100,10 @@ useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
 // the non-dismissible Startup-failure modal's focus trap (the gate state lives
 // in the app store, read by AppOverlays).
 useAppBoot()
+// Ingest event stream + parse-stream recovery — App-shell wiring because
+// both register component lifecycle hooks; payloads land in the query
+// cache / matches-store client refs.
+useServerEvents()
 </script>
 
 <template>

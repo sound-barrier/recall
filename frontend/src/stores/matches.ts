@@ -6,7 +6,6 @@ import {
   ParseScreenshots,
   ReParseAll,
   CancelParse,
-  GetActiveParse,
   ClearDatabase,
   BackupDatabase,
   RestoreDatabase,
@@ -19,15 +18,14 @@ import {
 } from '@/queries/matches'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
-import { currentSessionSummary, type SessionSummary } from '@/match/match-momentum-helpers'
+import type { SessionSummary } from '@/match/match-momentum-helpers'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
-import { useEventStream } from '@/composables/shared/useEventStream'
 import { profileScopedKey } from '@/composables/shared/profileStorage'
-import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
+import type { ParseConnectionState } from '@/composables/ingest/useParseRecovery'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
@@ -366,51 +364,17 @@ export const useMatchesStore = defineStore('matches', () => {
     setTimeout(() => { if (parseAnnouncement.value === msg) parseAnnouncement.value = '' }, 2000)
   }
 
-  // Server-mode parse-stream recovery: detect a mid-parse SSE drop, resync
-  // against GET /parses/active, surface a manual Refresh. No-op in Wails.
-  const { connectionState: parseConnectionState, refresh: refreshParse } = useParseRecovery({
-    parseBusy,
-    parseProgress,
-    reload: load,
-    getActiveParse: GetActiveParse,
-  })
-
-  // parse-complete is the authoritative completion signal for EVERY parse
-  // path (click, watcher, re-parse): the server emits it from the OCR loop,
-  // so this owns clearing parseBusy + the reload.
-  useEventStream({
-    records,
-    parseProgress,
-    parseLog,
-    watchActivity,
-    onParseComplete: async () => {
-      await load()
-      // Read the fresh records straight from the cache — the observer's
-      // reactive ref updates a notification tick later than the refetch
-      // resolves, and the session summary must see the new batch.
-      const fresh = queryClient.getQueryData<MatchRecord[]>(qk.matches) ?? []
-      const session = currentSessionSummary(fresh)
-      sessionToast.value = session ? { ...session, token: Date.now() } : null
-      lastParsedAt.value = Date.now()
-      try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
-      parseBusy.value = false
-      parseProgress.value = null
-      cancellingParse.value = false
-      const n = fresh.length
-      announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
-    },
-    onParseCancelled: async () => {
-      await load()
-      parseBusy.value = false
-      cancellingParse.value = false
-      parseProgress.value = null
-      announceParse('Parse cancelled.')
-    },
-    // The backend probes Tesseract in the background after boot (so a cold-boot
-    // Defender scan can't stall startup); push each result into the settings
-    // store so the System Alert banner self-heals without an app restart.
-    onTesseractStatus: (s) => { useSettingsStore().setTesseractStatus(s) },
-  })
+  // ── Parse-stream recovery surface ─────────────────────────────────
+  // The recovery state machine and the event-stream subscriptions live in
+  // useServerEvents (App shell — they register component lifecycle hooks);
+  // the store carries their consumer-facing surface so IngestView keeps
+  // reading one place.
+  const parseConnectionState = ref<ParseConnectionState>('connected')
+  let parseRefreshHandler: () => void = () => {}
+  function wireParseRecovery(bridge: { refresh: () => void }) {
+    parseRefreshHandler = bridge.refresh
+  }
+  function refreshParse() { parseRefreshHandler() }
 
   // ── Clear-DB + backup/restore (data ops, surfaced in Settings) ────
   // After a wipe/import, reload records + the ignored list. pendingClearOpts
@@ -507,8 +471,10 @@ export const useMatchesStore = defineStore('matches', () => {
     parse,
     confirmUnsupportedParse,
     parseAnnouncement,
+    announceParse,
     parseConnectionState,
     refreshParse,
+    wireParseRecovery,
     ignoredScreenshots,
     ignoredCount,
     ignoredPanelOpen,
