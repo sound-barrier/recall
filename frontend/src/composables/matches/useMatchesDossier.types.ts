@@ -186,9 +186,14 @@ export function isCanonRole(s: string | undefined | null): s is Role {
 // date `months` before today. Compared lexicographically against a
 // record's data.date (also YYYY-MM-DD) to scope a view to recent play
 // — the Map × Role band's 1M/3M/6M/12M toggle.
-export function monthsAgoISO(months: number): string {
-  const d = new Date()
-  d.setMonth(d.getMonth() - months)
+export function monthsAgoISO(months: number, from: Date = new Date()): string {
+  // Clamp to the target month's length instead of letting setMonth
+  // overflow — "3 months before May 31" must be Feb 28, not the early
+  // March that Feb 31 normalizes into (which silently excluded a few
+  // days from every window computed on the 29th–31st).
+  const targetMonth = from.getMonth() - months
+  const daysInTarget = new Date(from.getFullYear(), targetMonth + 1, 0).getDate()
+  const d = new Date(from.getFullYear(), targetMonth, Math.min(from.getDate(), daysInTarget))
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
