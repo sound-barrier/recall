@@ -67,6 +67,19 @@ changed bullets carry an inline re-evaluation note:
   grows column visibility/ordering/pinning UI, per-column filtering, or a
   second sortable data-grid surface appears.
 
+- **TS 7.0-readiness: one `stableTypeOrdering` hit, in generated code
+  (2026-08-09).** Under TS 6's `stableTypeOrdering` (which previews 7.0's
+  deterministic type ordering), the whole authored codebase type-checks
+  clean; the single error is in hey-api's bundled runtime
+  (`src/client/core/params.gen.ts` — `unknown` not assignable to
+  `Record<string, unknown>`). Generated code isn't hand-patched (the
+  gen-types drift gate would fight it), so this waits for the next
+  deliberate `@hey-api/openapi-ts` bump — re-run vue-tsc with the flag
+  after regenerating. A `tsgo` (`@typescript/native-preview`) shadow job
+  is deferred until Volar supports the native compiler: tsgo cannot check
+  `.vue` SFCs, so today it would fail on every SFC import rather than
+  shadow anything meaningful.
+
 - **`useMatchesDossierQueries.ts` (~748 lines)** exceeds the 500-line soft cap,
   but it is one cohesive composable — a single `useDossierQueries` factory (the
   file's only export) whose bulk is 17 tightly-coupled query helpers
