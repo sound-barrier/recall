@@ -16,7 +16,7 @@ func isAllHeroesScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rect := image.Rect(W*55/100, H*16/100, W*99/100, H*95/100)
-	text, err := ocrInverted(img, rect, work, "detect_allheroes", "11", "")
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "detect_allheroes", psm: "11", whitelist: ""})
 	if err != nil {
 		return false, err
 	}

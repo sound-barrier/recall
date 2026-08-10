@@ -35,7 +35,18 @@ import (
 // Settings → Advanced → Re-parse all screenshots is the only
 // path (it re-runs Tesseract, which now correctly rejects the
 // short-name fuzzy match).
-func MatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) (match.Record, bool) {
+// Sidecars bundles the user-layer maps that decorate an aggregated
+// record — annotation, hidden flag, review state, pinned flag. They
+// always travel together (the data-clump rule), so they thread as one
+// value instead of four parallel parameters.
+type Sidecars struct {
+	Annotations map[string]db.Annotation
+	Hidden      map[string]bool
+	Reviews     map[string]db.ReviewState
+	Pinned      map[string]bool
+}
+
+func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
 	vs := collectViewsForKey(snap, key)
 	if len(vs) == 0 {
 		return match.Record{}, false
@@ -43,7 +54,7 @@ func MatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, h
 	rec := FoldGroup(key, vs, snap.ScreenshotsDirs)
 	InferSoleHeroPercent(&rec.Data)
 	InferResultFromRank(&rec.Data)
-	attachMatchSidecars(&rec, key, snap, annos, hidden, reviews, pinned)
+	attachMatchSidecars(&rec, key, snap, sc)
 	return rec, true
 }
 
@@ -81,17 +92,17 @@ func collectViewsForKey(snap db.Screenshots, key string) []ScreenshotView {
 
 // attachMatchSidecars decorates rec with the per-key annotation, hidden
 // flag, review state, and ambiguous-attribution candidates.
-func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) {
-	if a, ok := annos[key]; ok {
+func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc Sidecars) {
+	if a, ok := sc.Annotations[key]; ok {
 		rec.Annotation = annotationFromRow(a)
 	}
-	if hidden[key] {
+	if sc.Hidden[key] {
 		rec.Hidden = true
 	}
-	if pinned[key] {
+	if sc.Pinned[key] {
 		rec.Pinned = true
 	}
-	if st, ok := reviews[key]; ok {
+	if st, ok := sc.Reviews[key]; ok {
 		rec.ReviewedBy = st.ReviewedBy
 		rec.ReviewedAt = st.ReviewedAt
 	}

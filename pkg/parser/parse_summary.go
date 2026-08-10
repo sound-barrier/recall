@@ -17,7 +17,7 @@ func isSummaryScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rect := image.Rect(W/40, H/12, W*3/4, H*3/10)
-	text, err := ocrInverted(img, rect, work, "detect_summary", "6", "")
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "detect_summary", psm: "6", whitelist: ""})
 	if err != nil {
 		return false, err
 	}
@@ -42,7 +42,7 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 	// by icons. PSM 6 (uniform block) tends to merge an icon into the digit
 	// next to it ("17" → "Oe au") or drop italic hero names entirely.
 	heroesRect := image.Rect(W/40, H/8, W*30/100, H*92/100)
-	heroesText, err := ocrInverted(img, heroesRect, work, "summary_heroes", "11", "")
+	heroesText, err := ocrInverted(img, heroesRect, ocrSpec{workDir: work, name: "summary_heroes", psm: "11", whitelist: ""})
 	if err != nil {
 		return nil, fmt.Errorf("summary heroes OCR: %w", err)
 	}
@@ -61,7 +61,7 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 	}
 
 	perfRect := image.Rect(W*30/100, H/8, W*62/100, H*92/100)
-	perfText, err := ocrInverted(img, perfRect, work, "summary_perf", "11", "")
+	perfText, err := ocrInverted(img, perfRect, ocrSpec{workDir: work, name: "summary_perf", psm: "11", whitelist: ""})
 	if err != nil {
 		return nil, fmt.Errorf("summary performance OCR: %w", err)
 	}
@@ -73,7 +73,7 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 	}
 
 	cardRect := image.Rect(W*62/100, H/12, W*99/100, H*95/100)
-	cardText, err := ocrInverted(img, cardRect, work, "summary_card", "11", "")
+	cardText, err := ocrInverted(img, cardRect, ocrSpec{workDir: work, name: "summary_card", psm: "11", whitelist: ""})
 	if err != nil {
 		return nil, fmt.Errorf("summary card OCR: %w", err)
 	}

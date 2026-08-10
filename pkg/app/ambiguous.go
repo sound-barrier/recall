@@ -66,11 +66,7 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 	// state without needing to re-fetch the full match list.
 	snap, err := a.store.LoadAll()
 	if err == nil {
-		annos, _ := a.store.LoadAnnotations()
-		hidden, _ := a.store.LoadHiddenKeys()
-		reviews, _ := a.store.LoadReviews()
-		pinned, _ := a.store.LoadPinnedKeys()
-		if rec, ok := aggregate.MatchKey(resolvedTo, snap, annos, hidden, reviews, pinned); ok {
+		if rec, ok := aggregate.MatchKey(resolvedTo, snap, a.loadSidecars()); ok {
 			a.emitMatchUpdated(rec)
 		}
 	}

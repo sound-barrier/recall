@@ -74,10 +74,29 @@ func getTesseractTimeout() time.Duration {
 	return tessTimeout
 }
 
+// ocrSpec names one OCR invocation: where the debug artifacts land
+// (workDir), the region's identifier in the dispatch vocabulary (name,
+// also the debug filename), Tesseract's page-segmentation mode (psm)
+// and character whitelist, and — for the raw/threshold preprocessors —
+// the upscale factor and brightness cutoff. Bundled because the four
+// strings traveled through every OCR helper positionally, and at a
+// call site nothing said which string was which (the data-clump rule).
+type ocrSpec struct {
+	workDir   string
+	name      string
+	psm       string
+	whitelist string
+	// scale is the preprocess upscale factor; used by the raw and
+	// threshold variants (the inverted pass is fixed at 3x).
+	scale int
+	// thresh is the brightness cutoff for the threshold variant only.
+	thresh uint8
+}
+
 // runTesseractFunc is the indirection ocrInverted routes through.
 // Production points at runTesseract; tests swap it (with t.Cleanup) to
-// return canned strings keyed on the `name` argument — no Tesseract
-// binary, no temp files, no exec.
+// return canned strings keyed on spec.name — no Tesseract binary, no
+// temp files, no exec.
 var runTesseractFunc = runTesseract
 
 // errTesseractTimeout marks an invocation killed by the per-call
@@ -95,14 +114,14 @@ var tesseractRetryDelays = []time.Duration{100 * time.Millisecond, 500 * time.Mi
 
 // runTesseractWithRetry is the retrying front for every OCR call:
 // non-timeout failures get tesseractRetryDelays' worth of re-attempts.
-func runTesseractWithRetry(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
-	out, err := runTesseractFunc(pre, workDir, name, psm, whitelist)
+func runTesseractWithRetry(pre image.Image, spec ocrSpec) (string, error) {
+	out, err := runTesseractFunc(pre, spec)
 	for _, delay := range tesseractRetryDelays {
 		if err == nil || errors.Is(err, errTesseractTimeout) {
 			return out, err
 		}
 		time.Sleep(delay)
-		out, err = runTesseractFunc(pre, workDir, name, psm, whitelist)
+		out, err = runTesseractFunc(pre, spec)
 	}
 	return out, err
 }
@@ -110,33 +129,33 @@ func runTesseractWithRetry(pre image.Image, workDir, name, psm, whitelist string
 // ocrInverted writes the cropped region as inverted-luminance grayscale (white
 // in-game text becomes black, dark backgrounds become white) and 3x upscaled.
 // Best for the row stats and header where text is solid white.
-func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
+func ocrInverted(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
 	sub := crop(img, rect)
 	pre := preprocessInverted(sub)
-	return runTesseractWithRetry(pre, workDir, name, psm, whitelist)
+	return runTesseractWithRetry(pre, spec)
 }
 
 // ocrRaw is ocrInverted's non-inverted sibling for colored / mid-tone text that
 // inversion flattens. `scale` is the upscale factor — thin glyphs like the rank
 // "-19%" want 6x where the default inverted pass uses 3x.
-func ocrRaw(img image.Image, rect image.Rectangle, workDir, name string, scale int, psm, whitelist string) (string, error) {
+func ocrRaw(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
 	sub := crop(img, rect)
-	pre := preprocessRaw(sub, scale)
-	return runTesseractWithRetry(pre, workDir, name, psm, whitelist)
+	pre := preprocessRaw(sub, spec.scale)
+	return runTesseractWithRetry(pre, spec)
 }
 
 // ocrThreshold binarises a bright-on-color region (pixels brighter than
 // `thresh` → black, the rest → white) before OCR — for low-contrast pills like
 // the rank "+N%" gain that the inverted and raw passes leave too faint to read
 // at 1080p.
-func ocrThreshold(img image.Image, rect image.Rectangle, workDir, name string, scale int, thresh uint8, psm, whitelist string) (string, error) {
+func ocrThreshold(img image.Image, rect image.Rectangle, spec ocrSpec) (string, error) {
 	sub := crop(img, rect)
-	pre := preprocessHighContrast(sub, scale, thresh)
-	return runTesseractWithRetry(pre, workDir, name, psm, whitelist)
+	pre := preprocessHighContrast(sub, spec.scale, spec.thresh)
+	return runTesseractWithRetry(pre, spec)
 }
 
-func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
-	inPath := filepath.Join(workDir, name+".png")
+func runTesseract(pre image.Image, spec ocrSpec) (string, error) {
+	inPath := filepath.Join(spec.workDir, spec.name+".png")
 	// #nosec G304,G703 -- workDir is always os.MkdirTemp output or
 	// RECALL_DEBUG_DIR (developer opt-in); `name` is a fixed
 	// identifier from the dispatch table, never user input.
@@ -150,9 +169,9 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	}
 	_ = f.Close()
 
-	args := []string{inPath, "-", "--psm", psm}
-	if whitelist != "" {
-		args = append(args, "-c", "tessedit_char_whitelist="+whitelist)
+	args := []string{inPath, "-", "--psm", spec.psm}
+	if spec.whitelist != "" {
+		args = append(args, "-c", "tessedit_char_whitelist="+spec.whitelist)
 	}
 	var stdout, stderr bytes.Buffer
 	timeout := getTesseractTimeout()
@@ -180,7 +199,7 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	if os.Getenv("RECALL_DEBUG_DIR") != "" {
 		// #nosec G703 -- workDir is from RECALL_DEBUG_DIR when this branch
 		// is reachable (the env var also gates this whole block).
-		_ = os.WriteFile(filepath.Join(workDir, name+".txt"), []byte(out), 0o600)
+		_ = os.WriteFile(filepath.Join(spec.workDir, spec.name+".txt"), []byte(out), 0o600)
 	}
 	return out, nil
 }

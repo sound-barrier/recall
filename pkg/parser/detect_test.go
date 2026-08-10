@@ -17,8 +17,8 @@ import (
 func stubOCR(t *testing.T, table map[string]string) {
 	t.Helper()
 	original := *parser.RunTesseractFunc
-	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) { //nolint:unparam // signature fixed by RunTesseractFunc
-		if s, ok := table[name]; ok {
+	*parser.RunTesseractFunc = func(_ image.Image, spec parser.OCRSpec) (string, error) { //nolint:unparam // signature fixed by RunTesseractFunc
+		if s, ok := table[parser.SpecName(spec)]; ok {
 			return s, nil
 		}
 		return "", nil
@@ -29,7 +29,7 @@ func stubOCR(t *testing.T, table map[string]string) {
 func stubOCRError(t *testing.T, err error) {
 	t.Helper()
 	original := *parser.RunTesseractFunc
-	*parser.RunTesseractFunc = func(_ image.Image, _, _, _, _ string) (string, error) {
+	*parser.RunTesseractFunc = func(_ image.Image, _ parser.OCRSpec) (string, error) {
 		return "", err
 	}
 	t.Cleanup(func() { *parser.RunTesseractFunc = original })
@@ -121,7 +121,7 @@ func TestIsPersonalScreenshot(t *testing.T) {
 // Sanity check: the seam is genuinely swappable.
 func TestRunTesseractFunc_Swappable(t *testing.T) {
 	stubOCR(t, map[string]string{"foo": "bar"})
-	got, err := (*parser.RunTesseractFunc)(tinyImage(), t.TempDir(), "foo", "6", "")
+	got, err := (*parser.RunTesseractFunc)(tinyImage(), parser.NewOCRSpec(t.TempDir(), "foo", "6", ""))
 	if err != nil {
 		t.Fatalf("err=%v", err)
 	}

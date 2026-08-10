@@ -20,7 +20,7 @@ func isPersonalScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rect := image.Rect(0, H*15/100, W*12/100, H*85/100)
-	text, err := ocrInverted(img, rect, work, "detect_personal", "11", "")
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "detect_personal", psm: "11", whitelist: ""})
 	if err != nil {
 		return false, err
 	}
@@ -63,8 +63,8 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 				gridLeft+col*cellW, gridTop+row*cellH,
 				gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
 			)
-			text11, _ := ocrInverted(img, fullRect, work, name, "11", "")
-			text6, _ := ocrInverted(img, fullRect, work, name+"_b", "6", "")
+			text11, _ := ocrInverted(img, fullRect, ocrSpec{workDir: work, name: name, psm: "11", whitelist: ""})
+			text6, _ := ocrInverted(img, fullRect, ocrSpec{workDir: work, name: name + "_b", psm: "6", whitelist: ""})
 			cellText := text11 + "\n" + text6
 
 			// Stat cells: also OCR with the left 30% (tick + icon) cropped
@@ -80,7 +80,7 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 					gridLeft+col*cellW+cellW*30/100, gridTop+row*cellH,
 					gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
 				)
-				strip11, _ := ocrInverted(img, stripRect, work, name+"_s", "11", "")
+				strip11, _ := ocrInverted(img, stripRect, ocrSpec{workDir: work, name: name + "_s", psm: "11", whitelist: ""})
 				cellText += "\n" + strip11
 			}
 
@@ -110,7 +110,7 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 	// capturing the full roster lets one PERSONAL capture correlate by
 	// hero-set with the SUMMARY. Append the heroes the selected-hero card
 	// didn't already carry; they have a name but no per-hero stats.
-	sidebarText, _ := ocrInverted(img, image.Rect(0, H*15/100, W*12/100, H*85/100), work, "personal_sidebar", "11", "")
+	sidebarText, _ := ocrInverted(img, image.Rect(0, H*15/100, W*12/100, H*85/100), ocrSpec{workDir: work, name: "personal_sidebar", psm: "11"})
 	seen := map[string]bool{}
 	for _, hp := range res.HeroesPlayed {
 		seen[hp.Hero] = true

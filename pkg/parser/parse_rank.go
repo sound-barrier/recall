@@ -41,7 +41,7 @@ func isRankScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	rect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
-	text, err := ocrInverted(img, rect, work, "detect_rank", "11", "")
+	text, err := ocrInverted(img, rect, ocrSpec{workDir: work, name: "detect_rank", psm: "11", whitelist: ""})
 	if err != nil {
 		return false, err
 	}
@@ -62,7 +62,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// "COMPETITIVE DRAW!". Same prefix-match rule as the SUMMARY card so
 	// OCR slips like "DEFERT" still classify.
 	bannerRect := image.Rect(0, H*7/100, W*45/100, H*22/100)
-	bannerText, _ := ocrInverted(img, bannerRect, work, "rank_banner", "11", "")
+	bannerText, _ := ocrInverted(img, bannerRect, ocrSpec{workDir: work, name: "rank_banner", psm: "11", whitelist: ""})
 	upper := strings.ToUpper(bannerText)
 	switch {
 	case strings.Contains(upper, "VICTOR"):
@@ -79,7 +79,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// the tier on some captures ("GOLD" → "GOD" / "6010" / "solo"), so extractRank
 	// returns no rank and the whole screen is misclassified as summary/unknown.
 	tierRect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
-	tierText, _ := ocrInverted(img, tierRect, work, "rank_tier", "11", "")
+	tierText, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier", psm: "11", whitelist: ""})
 	res.Rank, res.Level = extractRank(tierText)
 	// The 2026-07 UI renders the division caption in a stylized face whose
 	// numerals the sparse pass misreads as letters ("GOLD 3" → "GOLD J",
@@ -91,7 +91,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// the sparse pass came back incomplete — no committed old-UI golden has
 	// level 0, so the existing corpus never re-reads.
 	if res.Rank == "" || res.Level == 0 {
-		v2Text, _ := ocrInverted(img, tierRect, work, "rank_tier_v2", "6", rankTierWhitelist)
+		v2Text, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier_v2", psm: "6", whitelist: rankTierWhitelist})
 		if rank, level := extractRank(v2Text); rank != "" && (res.Rank == "" || level != 0) {
 			res.Rank, res.Level = rank, level
 		}
@@ -104,7 +104,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// RAW at 6x over a tight value crop just right of the "RANK PROGRESS:"
 	// label (whose width is fixed, so the value always starts at the same x).
 	progValRect := image.Rect(W*36/100, H*71/100, W*52/100, H*78/100)
-	progValText, _ := ocrRaw(img, progValRect, work, "rank_progress", 6, "7", "-0123456789%")
+	progValText, _ := ocrRaw(img, progValRect, ocrSpec{workDir: work, name: "rank_progress", scale: 6, psm: "7", whitelist: "-0123456789%"})
 	if m := regexp.MustCompile(`(-?\d{1,3})\s*%`).FindStringSubmatch(progValText); m != nil {
 		res.RankProgress, _ = strconv.Atoi(m[1])
 	}
@@ -114,7 +114,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// PROGRESS value needs, so the gain survives a downscaled capture.
 	changeRect := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
 	changeRe := regexp.MustCompile(`\+\s*(\d{1,3})\s*%`)
-	changeText, _ := ocrInverted(img, changeRect, work, "rank_change", "11", "")
+	changeText, _ := ocrInverted(img, changeRect, ocrSpec{workDir: work, name: "rank_change", psm: "11", whitelist: ""})
 	m := changeRe.FindStringSubmatch(changeText)
 	if m == nil {
 		// 1080p: the pill text is too small for the inverted pass, and over the
@@ -122,7 +122,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 		// just the pill band (below the caption, on the bar) and read it raw at
 		// 6x so the thin colored pill survives the downscale.
 		pillRect := image.Rect(W*30/100, H*76/100, W*52/100, H*83/100)
-		rawText, _ := ocrThreshold(img, pillRect, work, "rank_change_raw", 6, 200, "6", "+0123456789%")
+		rawText, _ := ocrThreshold(img, pillRect, ocrSpec{workDir: work, name: "rank_change_raw", scale: 6, thresh: 200, psm: "6", whitelist: "+0123456789%"})
 		m = changeRe.FindStringSubmatch(rawText)
 	}
 	if m != nil {
@@ -137,7 +137,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// 76% still stops short of the right-hand rank-tier badge (~78%+), so no
 	// icon noise bleeds in; the old-UI corpus goldens pin that.
 	modifierRect := image.Rect(W*10/100, H*78/100, W*76/100, H*90/100)
-	modifierText, _ := ocrInverted(img, modifierRect, work, "rank_modifiers", "11", "")
+	modifierText, _ := ocrInverted(img, modifierRect, ocrSpec{workDir: work, name: "rank_modifiers", psm: "11", whitelist: ""})
 	res.Modifiers = extractModifiers(modifierText)
 
 	// Right-side per-hero SR card: hero portrait + "HERO SR" + 4-digit SR +
@@ -146,7 +146,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// — pushed down by a demotion screen's extra row — is still inside the crop and
 	// its hero is recognized at all.
 	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*75/100)
-	srText, _ := ocrInverted(img, srRect, work, "rank_sr", "11", "")
+	srText, _ := ocrInverted(img, srRect, ocrSpec{workDir: work, name: "rank_sr", psm: "11", whitelist: ""})
 	res.SR = extractSR(srText)
 	if anyZeroSR(res.SR) {
 		backfillSRDigits(res.SR, img, work, W, H)
@@ -369,7 +369,7 @@ func backfillSRDigits(srs []HeroSR, img image.Image, work string, w, h int) {
 	seen := map[int]bool{}
 	var cands []int
 	for _, psm := range []string{"6", "3"} {
-		text, _ := ocrInverted(img, region, work, "rank_sr_digits_"+psm, psm, "0123456789")
+		text, _ := ocrInverted(img, region, ocrSpec{workDir: work, name: "rank_sr_digits_" + psm, psm: psm, whitelist: "0123456789"})
 		for _, run := range srRunRe.FindAllString(text, -1) {
 			v := srFromRun(run)
 			if v == 0 || assigned[v] || seen[v] {
