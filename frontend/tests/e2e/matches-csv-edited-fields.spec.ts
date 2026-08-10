@@ -29,6 +29,7 @@
  */
 import fs from 'node:fs'
 
+import { must } from './_capture'
 import { expect, test } from './_fixtures'
 import { createMatch, manual, parseGolden, reset, stageGolden, unstageGolden } from './_real-server'
 
@@ -127,13 +128,13 @@ function parseCSV(input: string): string[][] {
 
 // sheetByKey turns the parsed grid into a header->cell map per match_key.
 function sheetByKey(rows: string[][]) {
-  const headers = rows[0]
+  const headers = must(rows[0], 'CSV header row')
   const keyIdx = headers.indexOf('match_key')
   const byKey = new Map<string, Record<string, string>>()
   for (const r of rows.slice(1)) {
     const rec: Record<string, string> = {}
     headers.forEach((h, i) => (rec[h] = r[i] ?? ''))
-    byKey.set(r[keyIdx], rec)
+    byKey.set(must(r[keyIdx], 'match_key cell'), rec)
   }
   return { headers, byKey, dataRowCount: rows.length - 1 }
 }

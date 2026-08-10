@@ -14,6 +14,7 @@
  */
 import type { Route } from '@playwright/test'
 
+import { routeCapture } from './_capture'
 import { test, expect } from './_fixtures'
 import { seedDossierLayout } from './_layout'
 import { openAbout } from './_menu'
@@ -45,7 +46,7 @@ function manualRecord(body: { map?: string; heroes?: string[]; result?: string }
 
 test('a game-data update adds a hero+map that flow through manual entry → search → dossier', async ({ page }) => {
   let applied = false
-  let postBody: string | null = null
+  const postBody = routeCapture<string>('manual-match POST body')
   const created: unknown[] = []
 
   // Safety net: the apply is fully mocked, so nothing should ever reach
@@ -85,8 +86,8 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
   await page.route('**/api/v1/matches', async (r: Route) => {
     const req = r.request()
     if (req.method() === 'POST') {
-      postBody = req.postData()
-      created.push(manualRecord(JSON.parse(postBody ?? '{}')))
+      postBody.set(req.postData() ?? '{}')
+      created.push(manualRecord(JSON.parse(postBody.get())))
       await r.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(created[created.length - 1]) })
     } else {
       await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(created) })
@@ -132,8 +133,8 @@ test('a game-data update adds a hero+map that flow through manual entry → sear
   await page.locator('#mm-title').click()
 
   await page.locator('[data-mm-submit]').click()
-  await expect.poll(() => postBody).not.toBeNull()
-  const parsed = JSON.parse(postBody as string) as { map: string; heroes: string[] }
+  await expect.poll(() => postBody.seen()).toBe(true)
+  const parsed = JSON.parse(postBody.get()) as { map: string; heroes: string[] }
   expect(parsed.map).toBe('proving grounds')
   expect(parsed.heroes).toEqual(['testra'])
 

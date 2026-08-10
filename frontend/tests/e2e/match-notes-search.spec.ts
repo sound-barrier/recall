@@ -15,6 +15,7 @@
  */
 import type { Route } from '@playwright/test'
 
+import { routeCapture } from './_capture'
 import { test, expect } from './_fixtures'
 
 function record(matchKey: string, note?: string) {
@@ -70,7 +71,7 @@ test.describe('match notes — preview / textarea swap', () => {
   })
 
   test('blur after edit fires the PUT and reverts to the preview with the new text', async ({ page }) => {
-    let lastBody: Record<string, unknown> | null = null
+    const lastBody = routeCapture<{ note?: string }>('annotation PUT body')
     // App.vue triggers a re-fetch of /api/v1/matches after the
     // annotation PUT lands; the mock has to return the UPDATED note
     // on that second GET, otherwise the preview re-renders from the
@@ -84,8 +85,8 @@ test.describe('match notes — preview / textarea swap', () => {
       })
     })
     await page.route('**/api/v1/matches/*/annotation', async (route: Route) => {
-      lastBody = JSON.parse(route.request().postData() ?? '{}')
-      currentNote = (lastBody?.note as string) ?? currentNote
+      lastBody.set(JSON.parse(route.request().postData() ?? '{}'))
+      currentNote = lastBody.get().note ?? currentNote
       await route.fulfill({ status: 204, body: '' })
     })
 
@@ -99,8 +100,8 @@ test.describe('match notes — preview / textarea swap', () => {
     await textarea.blur()
 
     // PUT carried the new note via the unified annotation setter.
-    await expect.poll(() => lastBody).not.toBeNull()
-    expect((lastBody as { note?: string }).note).toBe('absolute clutch finish, MVP nano')
+    await expect.poll(() => lastBody.seen()).toBe(true)
+    expect(lastBody.get().note).toBe('absolute clutch finish, MVP nano')
 
     // Preview is back with the new text.
     const preview = page.locator('.match-notes-preview')

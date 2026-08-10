@@ -9,6 +9,7 @@
  *
  * Drives api.ts ↔ POST /api/v1/matches ↔ Go ↔ store ↔ aggregate.
  */
+import { routeCapture } from './_capture'
 import { test, expect } from './_fixtures'
 import type { Route } from '@playwright/test'
 
@@ -37,7 +38,7 @@ function manualRecord(body: { map?: string; heroes?: string[]; result?: string; 
 }
 
 test('Add match → fill → save → the match appears with the Manual badge', async ({ page }) => {
-  let postBody: string | null = null
+  const postBody = routeCapture<string>('manual-match POST body')
   const created: unknown[] = []
   await page.route('**/api/v1/system/reference-data', (route: Route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }),
@@ -45,8 +46,8 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   await page.route('**/api/v1/matches', async (route: Route) => {
     const req = route.request()
     if (req.method() === 'POST') {
-      postBody = req.postData()
-      const rec = manualRecord(JSON.parse(postBody ?? '{}'))
+      postBody.set(req.postData() ?? '{}')
+      const rec = manualRecord(JSON.parse(postBody.get()))
       created.push(rec)
       await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(rec) })
     } else {
@@ -104,8 +105,8 @@ test('Add match → fill → save → the match appears with the Manual badge', 
 
   await page.locator('[data-mm-submit]').click()
 
-  await expect.poll(() => postBody).not.toBeNull()
-  const parsed = JSON.parse(postBody as string) as {
+  await expect.poll(() => postBody.seen()).toBe(true)
+  const parsed = JSON.parse(postBody.get()) as {
     map: string; play_mode: string; queue_type: string; heroes: string[]; result: string; leavers: string[]
     replay_code: string; note: string; tags: string[]; members: string[]
   }

@@ -15,6 +15,7 @@
  */
 import type { Route } from '@playwright/test'
 
+import { routeCapture } from './_capture'
 import { test, expect } from './_fixtures'
 
 const KEYS = [
@@ -50,7 +51,11 @@ function record(i: number) {
 
 test.describe('matches — export bundle', () => {
   test('selection + modal + export call shape', async ({ page }) => {
-    let bundleBody: { match_keys?: string[]; include_unknown?: boolean; include_hidden?: boolean } | null = null
+    const bundleBody = routeCapture<{
+      match_keys?: string[]
+      include_unknown?: boolean
+      include_hidden?: boolean
+    }>('export-bundle POST body')
 
     await page.route('**/api/v1/matches', async (route: Route) => {
       const records = KEYS.map((_, i) => record(i))
@@ -61,7 +66,7 @@ test.describe('matches — export bundle', () => {
       })
     })
     await page.route('**/api/v1/exports/bundle', async (route: Route) => {
-      bundleBody = JSON.parse(route.request().postData() ?? '{}')
+      bundleBody.set(JSON.parse(route.request().postData() ?? '{}'))
       // Respond with a minimal valid ZIP (just the local-header magic
       // bytes + central-directory end record). The browser only sees
       // bytes + Content-Disposition; the bundle's correctness is
@@ -107,14 +112,15 @@ test.describe('matches — export bundle', () => {
     // the body so we can assert match_keys + the toggle values.
     await modal.locator('[data-testid="export-submit"]').click()
 
-    await expect.poll(() => bundleBody).not.toBeNull()
+    await expect.poll(() => bundleBody.seen()).toBe(true)
     // Rendered order is newest-first (Sort=Newest default), so the
     // ticked first-two rows are the LATER two keys. Assert without
     // ordering — selection semantics, not list order.
-    expect(bundleBody?.match_keys?.length).toBe(2)
-    expect(new Set(bundleBody?.match_keys ?? [])).toEqual(new Set([KEYS[1], KEYS[2]]))
-    expect(bundleBody?.include_unknown).toBe(false)
-    expect(bundleBody?.include_hidden).toBe(false)
+    const exported = bundleBody.get()
+    expect(exported.match_keys?.length).toBe(2)
+    expect(new Set(exported.match_keys ?? [])).toEqual(new Set([KEYS[1], KEYS[2]]))
+    expect(exported.include_unknown).toBe(false)
+    expect(exported.include_hidden).toBe(false)
 
     // Modal closes on success.
     await expect(modal).toBeHidden()

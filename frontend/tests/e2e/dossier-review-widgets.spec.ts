@@ -98,7 +98,9 @@ test.describe('dossier — review-coverage widgets', () => {
       Stub.now = () => FIXED
       Stub.parse = _Date.parse
       Stub.UTC = _Date.UTC
-      Stub.prototype = _Date.prototype
+      // `prototype` is readonly on DateConstructor — define it rather than
+      // assign so the stub's instances stay real Dates without an `as` cast.
+      Object.defineProperty(Stub, 'prototype', { value: _Date.prototype })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(globalThis as any).Date = Stub
     })

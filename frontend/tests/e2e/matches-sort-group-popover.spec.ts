@@ -10,6 +10,7 @@
  */
 import type { Route } from '@playwright/test'
 
+import { must } from './_capture'
 import { test, expect } from './_fixtures'
 
 function makeMatches(): Record<string, unknown>[] {
@@ -80,7 +81,7 @@ test.describe('Matches — Sort + Group dropdown', () => {
 
     await expect(trigger).toContainText(/Oldest/i)
     const newFirstDate = page.locator('.leaf-row').first()
-    await expect(newFirstDate).not.toHaveText(firstDate)
+    await expect(newFirstDate).not.toHaveText(must(firstDate, 'the newest row text'))
   })
 
   test('clicking outside closes the popover', async ({ page }) => {

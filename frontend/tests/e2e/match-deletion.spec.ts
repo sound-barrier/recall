@@ -21,6 +21,7 @@
  */
 import type { Route } from '@playwright/test'
 
+import { routeCapture } from './_capture'
 import { test, expect } from './_fixtures'
 
 const NORMAL_KEY = 'match-2026-05-10T22-00-00'
@@ -52,7 +53,7 @@ const singleRecord = (hidden: boolean) => ({
 test.describe('match deletion — soft delete + unhide', () => {
   test('Hide → Confirm soft-deletes (PUT hidden=true, row vanishes, Archive shows it)', async ({ page }) => {
     let hidden = false
-    let putBody: Record<string, unknown> | null = null
+    const putBody = routeCapture<Record<string, unknown>>('visibility PUT body')
     let getCount = 0
 
     await page.route('**/api/v1/matches', async (route: Route) => {
@@ -64,8 +65,8 @@ test.describe('match deletion — soft delete + unhide', () => {
       })
     })
     await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
-      putBody = JSON.parse(route.request().postData() ?? '{}')
-      hidden = !!putBody.hidden
+      putBody.set(JSON.parse(route.request().postData() ?? '{}'))
+      hidden = !!putBody.get().hidden
       // 204 No Content — the canonical writer shape. This is exactly
       // the response that exposed the r.json()-on-204 bug.
       await route.fulfill({ status: 204, body: '' })
@@ -95,7 +96,7 @@ test.describe('match deletion — soft delete + unhide', () => {
     await expect(page.locator('.leaf-row')).toHaveCount(0)
     // PUT body carries just the visibility flag — match_key lives in
     // the URL now, not the payload.
-    expect(putBody).toEqual({ hidden: true })
+    expect(putBody.get()).toEqual({ hidden: true })
 
     // Archive drawer shows the hidden record. The toggle surfaces
     // because hiddenRecords.length > 0.
@@ -137,7 +138,7 @@ test.describe('match deletion — soft delete + unhide', () => {
 
   test('Archive Unhide PUTs hidden=false and restores the row to the leaves list', async ({ page }) => {
     let hidden = true
-    let putBody: Record<string, unknown> | null = null
+    const putBody = routeCapture<Record<string, unknown>>('visibility PUT body')
 
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
@@ -147,8 +148,8 @@ test.describe('match deletion — soft delete + unhide', () => {
       })
     })
     await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
-      putBody = JSON.parse(route.request().postData() ?? '{}')
-      hidden = !!putBody.hidden
+      putBody.set(JSON.parse(route.request().postData() ?? '{}'))
+      hidden = !!putBody.get().hidden
       await route.fulfill({ status: 204, body: '' })
     })
 
@@ -163,8 +164,8 @@ test.describe('match deletion — soft delete + unhide', () => {
 
     // Click Unhide — single-click, no confirm step (restorative).
     await page.locator('.archive-row .archive-unhide').click()
-    await expect.poll(() => putBody).not.toBeNull()
-    expect(putBody).toEqual({ hidden: false })
+    await expect.poll(() => putBody.seen()).toBe(true)
+    expect(putBody.get()).toEqual({ hidden: false })
 
     // After the post-PUT reload, the row is back in the leaves list
     // and the archive drawer empties.

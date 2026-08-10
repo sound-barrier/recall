@@ -23,7 +23,7 @@ interface Stub {
   map: string | null
   hero: string
   role: 'tank' | 'support' | 'dps'
-  type: string
+  game_mode: string
   result: 'victory' | 'defeat' | 'draw'
 }
 
@@ -36,7 +36,7 @@ function record(s: Stub, idx: number) {
     data: {
       map: s.map ?? undefined,
       playlist: 'competitive',
-      game_mode: s.type,
+      game_mode: s.game_mode,
       role: s.role,
       hero: s.hero,
       result: s.result,
@@ -161,5 +161,18 @@ test.describe('matches set-workspace', () => {
     await page.keyboard.press('Escape')
     // 3 records have hero=lucio (m1, m3, unk — but unk is hidden by default).
     await expect(page.locator('.leaf-row')).toHaveCount(2)
+  })
+
+  // Regression guard for the fixture bug this spec shipped with: the Stub
+  // interface declared `type` while every literal wrote `game_mode`, so
+  // record() emitted `game_mode: undefined` and NO test could ever exercise
+  // the game-mode clause. With honest fixtures, the facet is reachable.
+  test('game-mode chips narrow the set', async ({ page }) => {
+    await page.getByRole('button', { name: 'Filter matches' }).click()
+    const gameMode = page.locator('.np-section', { has: page.getByText('Game Mode', { exact: true }) })
+    await gameMode.getByRole('button', { name: 'control', exact: true }).click()
+    await page.keyboard.press('Escape')
+    // m1/m2/m3 are control; the two escort rows drop out.
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
   })
 })

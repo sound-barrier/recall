@@ -9,6 +9,7 @@
  * shared single-process SQLite never bleeds between tests or into the
  * empty-assuming specs (smoke/a11y).
  */
+import { must } from './_capture'
 import { expect, test } from './_fixtures'
 import { createMatch, listMatches, manual, reset } from './_real-server'
 
@@ -23,10 +24,11 @@ test.describe('matches round-trip (real server)', () => {
 
     const all = await listMatches(request)
     expect(all).toHaveLength(1)
-    expect(all[0].data?.map).toBe('ilios')
-    expect(all[0].data?.result).toBe('victory')
+    const only = must(all[0], 'the aggregated match')
+    expect(only.data?.map).toBe('ilios')
+    expect(only.data?.result).toBe('victory')
     // Read-time inference: a single hero with no recorded percent → 100 on read.
-    expect(all[0].data?.heroes_played?.[0]?.percent_played).toBe(100)
+    expect(only.data?.heroes_played?.[0]?.percent_played).toBe(100)
   })
 
   test('inline edit overrides a stat', async ({ request }) => {
@@ -35,7 +37,7 @@ test.describe('matches round-trip (real server)', () => {
     expect(put.status()).toBe(204)
 
     const all = await listMatches(request)
-    expect(all[0].data?.damage).toBe(5000)
+    expect(must(all[0], 'the edited match').data?.damage).toBe(5000)
   })
 
   test('bulk queue updates every selected match in one call', async ({ request }) => {
