@@ -310,10 +310,12 @@ tasks:
 
   # PROBE, not a gate — deliberately absent from `task lint` / `task verify`.
   # `--stableTypeOrdering` makes TS 6 sort types the way TS 7's parallel
-  # checker will, so anything it flags is a real 7.0 blocker surfaced early.
-  # Expect ONE known failure today, in hey-api's generated runtime
-  # (src/client/core/params.gen.ts) — the trigger to re-run this is the next
-  # @hey-api/openapi-ts bump. See TECHNICAL_DEBT.md §3.
+  # checker will, so a hit means ORDERING-SENSITIVE code: a candidate 7.0
+  # blocker, NOT a confirmed one. Confirm against the real 7.0 checker
+  # before escalating — the one known hit today, in hey-api's generated
+  # runtime (src/client/core/params.gen.ts), does NOT reproduce under tsgo
+  # and looks like a 6.0-flag artifact. The trigger to re-run this is the
+  # next @hey-api/openapi-ts bump. See TECHNICAL_DEBT.md §3.
   typecheck-next:
     desc: "TS 7.0-readiness probe (vue-tsc --stableTypeOrdering; expect 1 known generated-code hit)"
     cmds:
