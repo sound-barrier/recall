@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/vue'
+import { fireEvent, render, screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { nextTick } from 'vue'
 
 import ExportBundleModal from '@/components/settings/ExportBundleModal.vue'
 
@@ -52,6 +53,13 @@ describe('ExportBundleModal — count display', () => {
     renderModal({ unknownCount: 12, hiddenCount: 4 })
     expect(screen.getByRole('checkbox', { name: 'Include 12 unknown matches' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Include 4 hidden matches' })).toBeInTheDocument()
+  })
+
+  it('drops the plural on every count that lands on exactly one', () => {
+    renderModal({ selectedCount: 1, hiddenCount: 1, unknownCount: 1 })
+    expect(screen.getByRole('checkbox', { name: 'Include 1 unknown match' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Include 1 hidden match' })).toBeInTheDocument()
+    expect(preview()).toHaveTextContent(/1 match total/)
   })
 
   it('disables the unknown toggle when unknownCount is zero', () => {
@@ -129,5 +137,114 @@ describe('ExportBundleModal — filename defaults', () => {
   it('seeds a recall-bundle-<timestamp>.zip default', () => {
     renderModal()
     expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-bundle-\d{8}-\d{6}\.zip$/)
+  })
+})
+
+// The modal wires its own focus trap instead of useModalFocusTrap, so
+// none of the shared composable's coverage applies: the Esc handler, the
+// Tab cycle, the focus hand-off, and — the part that bites — the listener
+// teardown all live here.
+describe('ExportBundleModal — keyboard contract', () => {
+  // The open-watch hands focus to the filename field one tick after the
+  // dialog appears; settle that before a test parks focus of its own.
+  async function renderSettled(over: Parameters<typeof renderModal>[0] = {}) {
+    const view = renderModal(over)
+    await nextTick()
+    await nextTick()
+    return view
+  }
+
+  it('dismisses on Escape', async () => {
+    const { emitted } = await renderSettled()
+    await fireEvent.keyDown(document, { key: 'Escape' })
+    expect(emitted('close')).toBeTruthy()
+  })
+
+  it('wraps Tab from the last control back to the first', async () => {
+    await renderSettled()
+    submitBtn().focus()
+
+    await fireEvent.keyDown(document, { key: 'Tab' })
+
+    expect(unknownToggle()).toHaveFocus()
+  })
+
+  it('wraps Shift+Tab from the first control to the last', async () => {
+    await renderSettled()
+    unknownToggle().focus()
+
+    await fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+
+    expect(submitBtn()).toHaveFocus()
+  })
+
+  it('leaves an interior Tab to the browser', async () => {
+    await renderSettled()
+    const filename = screen.getByLabelText('Filename')
+    filename.focus()
+
+    await fireEvent.keyDown(document, { key: 'Tab' })
+
+    // Nothing was force-moved — the native tab order takes it from here.
+    expect(filename).toHaveFocus()
+  })
+
+  it('skips a disabled control when computing the cycle', async () => {
+    // With no unknown records the first toggle is disabled, so the wrap
+    // target is the hidden toggle — a trap that ignored :disabled would
+    // park focus on an unreachable control.
+    await renderSettled({ unknownCount: 0 })
+    submitBtn().focus()
+
+    await fireEvent.keyDown(document, { key: 'Tab' })
+
+    expect(hiddenToggle()).toHaveFocus()
+  })
+})
+
+describe('ExportBundleModal — open/close lifecycle', () => {
+  it('moves focus to the filename field on open and back to the opener on close', async () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+
+    const { rerender } = renderModal({ open: false })
+    await rerender({ open: true, selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    await nextTick()
+    expect(screen.getByLabelText('Filename')).toHaveFocus()
+
+    await rerender({ open: false, selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    await nextTick()
+    expect(opener).toHaveFocus()
+
+    opener.remove()
+  })
+
+  it('resets the filename and both toggles when reopened', async () => {
+    const { rerender } = renderModal({ selectedCount: 2 })
+    const filename = screen.getByLabelText('Filename')
+    await user().clear(filename)
+    await user().type(filename, 'last-run.zip')
+    await user().click(hiddenToggle())
+
+    await rerender({ open: false, selectedCount: 2, hiddenCount: 2, unknownCount: 5 })
+    await rerender({ open: true, selectedCount: 2, hiddenCount: 2, unknownCount: 5 })
+    await nextTick()
+
+    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-bundle-\d{8}-\d{6}\.zip$/)
+    expect(hiddenToggle()).not.toBeChecked()
+    expect(unknownToggle()).not.toBeChecked()
+  })
+
+  it('stops listening for Escape once closed', async () => {
+    const { emitted, rerender } = renderModal()
+    await rerender({ open: false, selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    await nextTick()
+
+    await fireEvent.keyDown(document, { key: 'Escape' })
+
+    // A leaked document listener would keep emitting close from a closed
+    // modal — and, stacked under another dialog, would swallow its Esc.
+    expect(emitted('close')).toBeUndefined()
   })
 })

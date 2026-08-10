@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { sortGroupPopoverPosition } from '@/components/matches/list/sort-group-popover-position'
 
 // Combined Sort + Group dropdown for the Matches leaves head. Two
 // radio groups inside one anchored popover — saves horizontal real
@@ -12,10 +13,10 @@ import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 // would muddle the UX.
 //
 // Open / close + position is owned by MatchesView; the popover
-// emits `close` for Esc / click-outside / radio-pick. Selection
-// changes fire `update:sort` / `update:group` immediately so the
-// leaves list re-renders before the popover dismisses — same feel
-// as inline radio segmented buttons.
+// emits `close` for Esc and click-outside only. A radio pick fires
+// `update:sort` / `update:group` and leaves the popover OPEN, so the
+// leaves list re-renders under it and a second axis can be picked
+// without reopening — same feel as inline radio segmented buttons.
 
 type SortOrder = 'newest' | 'oldest'
 type GroupBy   = 'none' | 'day' | 'week' | 'month' | 'year' | 'session' | 'provenance'
@@ -52,7 +53,7 @@ function onDocumentPointerDown(e: PointerEvent) {
   if (!openRef.value) return
   const t = e.target as HTMLElement | null
   if (!t) return
-  if (popoverRef.value && popoverRef.value.contains(t)) return
+  if (popoverRef.value?.contains(t)) return
   if (t.closest('[data-sort-group-trigger]')) return
   emit('close')
 }
@@ -63,30 +64,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onDocumentPointerDown, true)
 })
 
-// Position helper — anchored under the trigger, left-aligned to its
-// left edge. Flips above when there isn't enough room below (e.g.
-// short window or Playwright auto-scroll pinning the trigger near
-// the viewport bottom).
-const POPOVER_HEIGHT_ESTIMATE = 240
-const VIEWPORT_PADDING        = 8
-
-const popoverStyle = computed(() => {
-  const a = props.anchor
-  if (!a) return { display: 'none' }
-  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 720
-  const roomBelow = viewportH - (a.bottom + 6)
-  const flipAbove = roomBelow < POPOVER_HEIGHT_ESTIMATE
-  const top = flipAbove
-    ? Math.max(VIEWPORT_PADDING, a.top - 6 - POPOVER_HEIGHT_ESTIMATE)
-    : Math.max(VIEWPORT_PADDING, a.bottom + 6)
-  const left = Math.max(VIEWPORT_PADDING, a.left)
-  return {
-    top:  `${top}px`,
-    left: `${left}px`,
-    maxHeight: `${viewportH - top - VIEWPORT_PADDING}px`,
-    overflowY: 'auto' as const,
-  }
-})
+// Anchored under the trigger, left-aligned to its left edge, flipping above
+// when there isn't enough room below. The geometry itself lives in the sibling
+// module so it can be unit-tested against a rect (see its header).
+const popoverStyle = computed(() => sortGroupPopoverPosition(props.anchor, window.innerHeight))
 
 const SORT_OPTIONS: { value: SortOrder; label: string; glyph: string }[] = [
   { value: 'newest', label: 'Newest first', glyph: '↓' },

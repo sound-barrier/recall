@@ -117,16 +117,19 @@ export function useMatchPivot(records: Ref<MatchRecord[]>, heroRole: HeroRole) {
 
   // Drop a field on a shelf. A measure appends a new value spec (duplicates
   // welcome — sum AND avg of damage is valid). A dimension moves to the
-  // target shelf, leaving any other dimension shelf it was on.
-  function assignField(fieldId: string, zone: PivotZone): void {
+  // target shelf, leaving any other dimension shelf it was on. Returns
+  // whether the move applied: a drag can aim a measure at a dimension shelf
+  // (or the reverse), and the caller's live-region announcement must not
+  // claim a move the shelf rules rejected.
+  function assignField(fieldId: string, zone: PivotZone): boolean {
     const kind = fieldKind(fieldId)
-    if (kind === undefined) return
+    if (kind === undefined) return false
     if (zone === 'values') {
-      if (kind !== 'measure') return
+      if (kind !== 'measure') return false
       set({ ...config.value, values: [...config.value.values, { field: fieldId, agg: defaultAggFor(fieldId) }] })
-      return
+      return true
     }
-    if (kind !== 'dimension') return
+    if (kind !== 'dimension') return false
     const next: PivotConfig = {
       ...config.value,
       rows: config.value.rows.filter((id) => id !== fieldId),
@@ -137,6 +140,7 @@ export function useMatchPivot(records: Ref<MatchRecord[]>, heroRole: HeroRole) {
     else if (zone === 'columns') next.columns = [...next.columns, fieldId]
     else next.filters = [...next.filters, { field: fieldId, allowed: [] }]
     set(next)
+    return true
   }
 
   // Remove a dimension from every shelf it sits on (rows/columns/filters).

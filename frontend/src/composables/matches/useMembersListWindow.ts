@@ -109,7 +109,9 @@ export function useMembersListWindow(opts: MembersListWindowOptions) {
     items: sortedRecords,
     containerRef: leavesListRef,
     mode: 'window',
-    itemHeight: LEAF_ROW_HEIGHT_DEFAULT,
+    // The MEASURED height, not the constant: compact density is 38px, so a
+    // constant pitch would size every spacer (and the scrollbar) wrong.
+    itemHeight: leafRowHeight,
     overscan: 8,
   })
 

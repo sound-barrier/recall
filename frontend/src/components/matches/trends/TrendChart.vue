@@ -15,7 +15,7 @@ import { cssVar } from '@/match/theme-colors'
 // AT), motion that respects prefers-reduced-motion, and the shared
 // interactions — click a point to open its match, drag to brush a time
 // range (emitted up to narrow the set), wheel/slider to zoom.
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   option: TrendOption
   caption: string
   // Bumped by the parent's "Reset view" button to reset this chart's zoom.
@@ -23,8 +23,15 @@ const props = defineProps<{
   // Timeline charts (the default) arm a lineX brush + zoom slider and turn a
   // click into "open that match". Static charts (the day×time heatmap) set
   // this false: no brush/zoom, and a click is inert.
+  //
+  // The default is explicit because Vue casts an ABSENT Boolean prop to
+  // `false` — omitting it would silently hand back a static chart, i.e. the
+  // opposite of what the type says is optional.
   interactive?: boolean
-}>()
+}>(), {
+  resetSignal: 0,
+  interactive: true,
+})
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]

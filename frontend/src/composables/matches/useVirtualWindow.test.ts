@@ -266,3 +266,38 @@ describe('useVirtualWindow', () => {
     })
   })
 })
+
+// The members list measures its real row height at runtime (density modes
+// and theme font-size overrides change it) and keeps it in a ref. If
+// itemHeight can only be a literal, that measurement can never reach the
+// window math: the spacers — and so the scrollbar length — stay computed
+// against the wrong pitch.
+describe('useVirtualWindow — reactive itemHeight', () => {
+  it('re-computes the window and spacers when the measured row height changes', async () => {
+    const height = ref(50)
+    const itemsRef = ref<readonly number[]>(Array.from({ length: 100 }, (_, i) => i))
+    const containerRef = ref<HTMLElement | null>(null)
+    let api: ReturnType<typeof useVirtualWindow<number>> | null = null
+    const Comp = defineComponent({
+      setup() {
+        api = useVirtualWindow<number>({ items: itemsRef, itemHeight: height, containerRef, overscan: 0 })
+        return () => h('div', { ref: containerRef })
+      },
+    })
+    render(Comp)
+    withGeometry(containerRef.value!, 0, 600)
+    containerRef.value!.dispatchEvent(new Event('scroll'))
+    await nextTick()
+    // 600px viewport at 50px rows = 12 visible; the bottom spacer holds
+    // the remaining 88.
+    expect(api!.endIndex.value).toBe(12)
+    expect(api!.bottomSpacer.value).toBe(88 * 50)
+
+    // Compact density: 38px rows means MORE rows fit, and every spacer
+    // shrinks with the pitch.
+    height.value = 38
+    await nextTick()
+    expect(api!.endIndex.value).toBe(16)
+    expect(api!.bottomSpacer.value).toBe(84 * 38)
+  })
+})

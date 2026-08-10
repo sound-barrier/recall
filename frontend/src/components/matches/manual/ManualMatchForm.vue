@@ -34,6 +34,15 @@ const SIDES = [
 // Only one combobox dropdown open at a time (mirrors the narrow panel).
 const comboOpen = ref<'map' | 'hero' | null>(null)
 
+// The roster files group DPS heroes under the key `dps` (pkg/parser/heroes.yaml,
+// and the `dps` the rest of the frontend speaks); the Role chips say "damage",
+// which is the OW in-game wording the user picks. Without this translation the
+// Damage chip matched no roster role, the hero picker stayed empty, and a
+// role-queue damage match could never be hand-entered — a hero is required.
+const ROSTER_ROLE_KEY: Record<'tank' | 'damage' | 'support', string> = {
+  tank: 'tank', damage: 'dps', support: 'support',
+}
+
 // Normalized (lowercase) roster values — the same stored form OCR matches use,
 // so a hand-entered match groups + displays identically. Heroes narrow to the
 // picked role on role queue.
@@ -45,9 +54,11 @@ const heroOptions = computed(() => {
   // then offer only that role's heroes. Open queue lets you swap freely, so
   // every hero is offered.
   if (f.queueType.value === 'role') {
-    if (!f.roleCategory.value) return []
+    const category = f.roleCategory.value
+    if (!category) return []
+    const rosterRole = ROSTER_ROLE_KEY[category]
     return entries
-      .filter(([, v]) => v.role.toLowerCase() === f.roleCategory.value)
+      .filter(([, v]) => v.role.toLowerCase() === rosterRole)
       .map(([k]) => k)
       .sort((a, b) => a.localeCompare(b))
   }
@@ -127,10 +138,10 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     <section v-if="!quick" class="mm-section">
       <span class="eyebrow mm-eyebrow-label">Mode <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
-        <button class="mm-chip" :class="{ picked: f.playMode.value === 'competitive' }" data-mode="competitive" @click="f.playMode.value = 'competitive'">
+        <button class="mm-chip" :class="{ picked: f.playMode.value === 'competitive' }" :aria-pressed="f.playMode.value === 'competitive'" data-mode="competitive" @click="f.playMode.value = 'competitive'">
           Competitive
         </button>
-        <button class="mm-chip" :class="{ picked: f.playMode.value === 'quickplay' }" data-mode="quickplay" @click="f.playMode.value = 'quickplay'">
+        <button class="mm-chip" :class="{ picked: f.playMode.value === 'quickplay' }" :aria-pressed="f.playMode.value === 'quickplay'" data-mode="quickplay" @click="f.playMode.value = 'quickplay'">
           Quick Play
         </button>
       </div>
@@ -140,10 +151,10 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
     <section v-if="!quick" class="mm-section">
       <span class="eyebrow mm-eyebrow-label">Queue <span class="mm-req" aria-hidden="true">*</span></span>
       <div class="mm-chips">
-        <button class="mm-chip" :class="{ picked: f.queueType.value === 'role' }" data-queue="role" @click="f.queueType.value = 'role'">
+        <button class="mm-chip" :class="{ picked: f.queueType.value === 'role' }" :aria-pressed="f.queueType.value === 'role'" data-queue="role" @click="f.queueType.value = 'role'">
           Role Queue
         </button>
-        <button class="mm-chip" :class="{ picked: f.queueType.value === 'open' }" data-queue="open" @click="f.queueType.value = 'open'">
+        <button class="mm-chip" :class="{ picked: f.queueType.value === 'open' }" :aria-pressed="f.queueType.value === 'open'" data-queue="open" @click="f.queueType.value = 'open'">
           Open Queue
         </button>
       </div>
@@ -159,6 +170,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
           :key="r"
           class="mm-chip"
           :class="{ picked: f.roleCategory.value === r }"
+          :aria-pressed="f.roleCategory.value === r"
           :data-role="r"
           @click="f.roleCategory.value = (f.roleCategory.value === r ? '' : r)"
         >
@@ -197,6 +209,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
           :key="r"
           class="mm-chip"
           :class="{ picked: f.result.value === r }"
+          :aria-pressed="f.result.value === r"
           :data-result="r"
           @click="f.result.value = r"
         >

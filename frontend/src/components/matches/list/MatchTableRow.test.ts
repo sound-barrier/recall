@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/vue'
+import { render, screen, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
 import type { MatchRecord } from '@/api'
@@ -103,9 +103,16 @@ describe('MatchTableRow', () => {
   it('emits toggle-select (and not open-match) when the checkbox is clicked', async () => {
     const user = userEvent.setup()
     const { emitted } = renderRow()
-    await user.click(screen.getByRole('checkbox', { name: 'Select match m-1' }))
+    const box = screen.getByRole('checkbox', { name: 'Select match m-1' })
+    expect(box).toHaveAttribute('aria-checked', 'false')
+    await user.click(box)
     expect(emitted('toggle-select')?.[0]).toEqual(['m-1'])
     expect(emitted('open-match')).toBeUndefined()
+  })
+
+  it('reports the ticked state on the row checkbox', () => {
+    renderRow({ selected: true, hasSelection: true })
+    expect(screen.getByRole('checkbox', { name: 'Select match m-1' })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('marks aria-current when the row is the keyboard-focused card', () => {
@@ -178,6 +185,137 @@ describe('MatchTableRow', () => {
       // Several cells legitimately render a bare em-dash for missing data, so
       // the derived KDA cell names itself rather than relying on position.
       expect(screen.getByLabelText('KDA unavailable')).toHaveTextContent('—')
+    })
+
+    it('renders 0 deaths as a finite ratio rather than dividing by zero', () => {
+      renderRow({ rec: rec({ eliminations: 12, assists: 6, deaths: 0 }) })
+      expect(screen.getByLabelText('KDA 18')).toHaveTextContent('18')
+    })
+  })
+
+  describe('unresolved OCR values', () => {
+    it('labels an unknown map and hero with the raw OCR read and drops their filter chips', () => {
+      renderRow({
+        rec: rec({ map: '', map_raw: 'Neon Junktion', hero: '', hero_raw: 'miyazaki', role: undefined }),
+      })
+      expect(screen.getByText('Unknown map (Neon Junktion?)')).toBeInTheDocument()
+      expect(screen.getByText('Unknown hero (miyazaki?)')).toBeInTheDocument()
+      expect(screen.getByTitle('OCR read: Neon Junktion')).toBeInTheDocument()
+      expect(screen.getByTitle('OCR read: miyazaki')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'unknown' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'support' })).not.toBeInTheDocument()
+    })
+
+    it('renders an em-dash OCR read when the raw text was discarded', () => {
+      renderRow({ rec: rec({ map: '', map_raw: 'x', hero: '', hero_raw: 'y' }) })
+      expect(screen.getByTitle('OCR read: x')).toBeInTheDocument()
+    })
+  })
+
+  describe('result chip', () => {
+    it('disables the chip and shows an em-dash when the record has no result', async () => {
+      const { emitted } = renderRow({ rec: rec({ result: undefined }) })
+      const chip = screen.getByRole('button', { name: '—' })
+      expect(chip).toBeDisabled()
+      await fireEvent.click(chip)
+      expect(emitted('filter-cell')).toBeUndefined()
+    })
+  })
+
+  describe('active narrow filters', () => {
+    const ALL_PICKED = {
+      maps:    new Set(['rialto']),
+      modes:   new Set(['competitive']),
+      queues:  new Set(['role']),
+      heroes:  new Set(['lucio']),
+      roles:   new Set(['support']),
+      results: new Set(['victory']),
+    }
+    const NONE_PICKED = {
+      maps: new Set<string>(), modes: new Set<string>(), queues: new Set<string>(),
+      heroes: new Set<string>(), roles: new Set<string>(), results: new Set<string>(),
+    }
+    const CELL_NAMES = ['victory', 'rialto', 'lucio', 'support', 'Competitive', 'Role Queue']
+
+    it('reports every cell whose value is an active pick as pressed', () => {
+      renderRow({
+        rec: { ...rec(), play_mode: 'competitive', queue_type: 'role' } as MatchRecord,
+        activeFilters: ALL_PICKED,
+      })
+      for (const name of CELL_NAMES) {
+        expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'true')
+      }
+    })
+
+    it('reports them unpressed when nothing is picked', () => {
+      renderRow({
+        rec: { ...rec(), play_mode: 'competitive', queue_type: 'role' } as MatchRecord,
+        activeFilters: NONE_PICKED,
+      })
+      for (const name of CELL_NAMES) {
+        expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false')
+      }
+    })
+  })
+
+  describe('click-to-filter', () => {
+    it('emits the narrow dimension each value cell owns, without opening the row', async () => {
+      const { emitted } = renderRow({
+        rec: { ...rec(), play_mode: 'competitive', queue_type: 'role' } as MatchRecord,
+      })
+      for (const name of ['victory', 'rialto', 'lucio', 'support', 'Competitive', 'Role Queue']) {
+        await fireEvent.click(screen.getByRole('button', { name }))
+      }
+      expect(emitted('filter-cell')).toEqual([
+        ['result', 'victory'],
+        ['map', 'rialto'],
+        ['hero', 'lucio'],
+        ['role', 'support'],
+        ['mode', 'competitive'],
+        ['queue', 'role'],
+      ])
+      expect(emitted('open-match')).toBeUndefined()
+    })
+
+    it('maps an unrecognized play mode and queue onto the unknown picks', async () => {
+      const { emitted } = renderRow({ rec: rec({ playlist: undefined }) })
+      await fireEvent.click(screen.getByRole('button', { name: 'Unknown mode' }))
+      await fireEvent.click(screen.getByRole('button', { name: 'Unknown mode type' }))
+      expect(emitted('filter-cell')).toEqual([['mode', 'unknown'], ['queue', 'unknown']])
+    })
+  })
+
+  describe('disruption stamps', () => {
+    it('collapses each annotation side-set into one named stamp', () => {
+      renderRow({
+        rec: {
+          ...rec(),
+          annotation: { leavers: ['enemy', 'self'], throwers: ['team'] },
+        } as unknown as MatchRecord,
+      })
+      expect(screen.getByRole('img', { name: 'Leaver: you, enemy' })).toBeInTheDocument()
+      expect(screen.getByRole('img', { name: 'Thrower: teammate' })).toBeInTheDocument()
+    })
+
+    it('renders no stamp for an unannotated match', () => {
+      renderRow()
+      expect(screen.queryByRole('img', { name: /^Leaver/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: /^Thrower/ })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('row-level interactions', () => {
+    it('reports context-menu and hover intent for the hover preview', async () => {
+      const { emitted } = renderRow()
+      const row = screen.getByRole('row')
+      await fireEvent.contextMenu(row)
+      expect(emitted<[MouseEvent, string]>('row-context')?.[0]?.[1]).toBe('m-1')
+      await fireEvent.mouseEnter(row)
+      await fireEvent.mouseMove(row)
+      await fireEvent.mouseLeave(row)
+      expect(emitted<[MatchRecord, MouseEvent]>('hover-enter')?.[0]?.[0]).toMatchObject({ match_key: 'm-1' })
+      expect(emitted('hover-move')).toHaveLength(1)
+      expect(emitted('hover-leave')).toHaveLength(1)
     })
   })
 })

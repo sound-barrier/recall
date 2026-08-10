@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { computeCalloutPosition, rectsEqual, rectsOverlap } from '@/components/shared/tour-callout-helpers'
+import { computeCalloutPosition, computeConnector, rectsEqual, rectsOverlap } from '@/components/shared/tour-callout-helpers'
 
 const LAYOUT = { calloutW: 360, safety: 16, gap: 22 }
 const FRAME = { calloutH: 200, vw: 1280, vh: 800 }
@@ -133,5 +133,46 @@ describe('computeCalloutPosition', () => {
     expect(out.placement).toBe('auto')
     expect(out.left).toBeGreaterThanOrEqual(16)
     expect(out.top).toBeGreaterThanOrEqual(16)
+  })
+})
+
+describe('computeConnector', () => {
+  // Callout box: 360x200 parked at (400, 300) → center (580, 400),
+  // edges left=400 right=760 top=300 bottom=500.
+  const CALLOUT = { left: 400, top: 300, w: 360, h: 200 }
+
+  it('draws nothing when the step has no target (centered briefing)', () => {
+    expect(computeConnector(null, CALLOUT)).toBeNull()
+  })
+
+  it('leaves the RIGHT edge for a target off to the right', () => {
+    // dx = +420, dy = +50 → horizontal dominates, so the line starts on
+    // the right edge at the callout's vertical center.
+    const line = computeConnector({ x: 960, y: 430, w: 80, h: 40 }, CALLOUT)
+    expect(line).toEqual({ x1: 760, y1: 400, x2: 1000, y2: 450 })
+  })
+
+  it('leaves the LEFT edge for a target off to the left', () => {
+    const line = computeConnector({ x: 60, y: 380, w: 80, h: 40 }, CALLOUT)
+    expect(line).toEqual({ x1: 400, y1: 400, x2: 100, y2: 400 })
+  })
+
+  it('leaves the BOTTOM edge when the target is mostly below', () => {
+    // dx = -80, dy = +300 → vertical dominates.
+    const line = computeConnector({ x: 460, y: 680, w: 80, h: 40 }, CALLOUT)
+    expect(line).toEqual({ x1: 580, y1: 500, x2: 500, y2: 700 })
+  })
+
+  it('leaves the TOP edge when the target is mostly above', () => {
+    const line = computeConnector({ x: 540, y: 40, w: 80, h: 40 }, CALLOUT)
+    expect(line).toEqual({ x1: 580, y1: 300, x2: 580, y2: 60 })
+  })
+
+  it('breaks an exact diagonal tie toward the vertical edge', () => {
+    // |dx| === |dy| → the strict `>` comparison falls through to the
+    // vertical arm. Pinned so a future `>=` flip is a visible change.
+    // Target center (680, 500) is +100 on both axes from (580, 400).
+    const line = computeConnector({ x: 680, y: 500, w: 0, h: 0 }, CALLOUT)
+    expect(line).toEqual({ x1: 580, y1: 500, x2: 680, y2: 500 })
   })
 })

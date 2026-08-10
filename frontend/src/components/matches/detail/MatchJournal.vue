@@ -79,16 +79,19 @@ onMounted(() => {
   // Apply one-shot focus from the right-click menu (Tag / Edit
   // annotation), looked up by the canonical id the inputs render with —
   // match_key-scoped so stacked cards don't collide.
-  if (props.pendingFocus === 'note' || props.pendingFocus === 'tag') {
-    void nextTick().then(() => {
-      const id = props.pendingFocus === 'note'
-        ? `note-${props.record.match_key}`
-        : `tags-${props.record.match_key}`
-      const el = document.getElementById(id) as HTMLElement | null
-      el?.focus()
-      emit('focus-consumed')
-    })
-  }
+  const target = props.pendingFocus
+  if (target !== 'note' && target !== 'tag') return
+  // A match that already HAS a note renders the read-only preview, and the
+  // preview carries no id — so "Edit annotation" on exactly the matches
+  // worth editing used to focus nothing. Promote to the editor first.
+  if (target === 'note') isEditingNote.value = true
+  void nextTick().then(() => {
+    const id = target === 'note'
+      ? `note-${props.record.match_key}`
+      : `tags-${props.record.match_key}`
+    document.getElementById(id)?.focus()
+    emit('focus-consumed')
+  })
 })
 </script>
 

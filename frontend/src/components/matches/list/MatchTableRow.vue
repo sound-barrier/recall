@@ -138,6 +138,7 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
         type="button"
         class="tc-result-chip tc-filter-cell"
         :class="[`result-${rec.data?.result || 'unknown'}`, { 'is-filtered': resultFiltered }]"
+        :aria-pressed="resultFiltered ? 'true' : 'false'"
         :disabled="!rec.data?.result"
         :title="!rec.data?.result ? undefined : resultFiltered ? `Filtering by ${rec.data.result} — click to clear` : `Filter the set to ${rec.data.result}`"
         @click.stop="rec.data?.result && emit('filter-cell', 'result', rec.data.result)"
@@ -156,6 +157,7 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
         type="button"
         class="tc-filter-cell"
         :class="{ 'is-filtered': mapFiltered }"
+        :aria-pressed="mapFiltered ? 'true' : 'false'"
         :title="mapFiltered ? `Filtering by ${rec.data?.map} — click to clear` : `Filter the set to ${rec.data?.map}`"
         @click.stop="emit('filter-cell', 'map', rec.data?.map ?? '')"
       >
@@ -167,6 +169,7 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
         type="button"
         class="tc-chip tc-filter-cell"
         :class="{ 'is-filtered': modeFiltered }"
+        :aria-pressed="modeFiltered ? 'true' : 'false'"
         :title="modeFiltered ? `Filtering by ${formatPlayModeLabel(rec)} — click to clear` : `Filter the set to ${formatPlayModeLabel(rec)}`"
         @click.stop="emit('filter-cell', 'mode', playModePick)"
       >
@@ -178,6 +181,7 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
         type="button"
         class="tc-chip tc-filter-cell"
         :class="{ 'is-filtered': queueFiltered }"
+        :aria-pressed="queueFiltered ? 'true' : 'false'"
         :title="queueFiltered ? `Filtering by ${formatQueueTypeLabel(rec)} — click to clear` : `Filter the set to ${formatQueueTypeLabel(rec)}`"
         @click.stop="emit('filter-cell', 'queue', queuePick)"
       >

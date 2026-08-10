@@ -149,6 +149,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
       type="button"
       class="leaf-strip"
       :class="{ 'is-filtered': resultFiltered }"
+      :aria-pressed="resultFiltered ? 'true' : 'false'"
       :disabled="!rec.data?.result"
       :title="!rec.data?.result ? undefined : resultFiltered ? `Filtering by ${rec.data.result} — click to clear` : `Filter the set to ${rec.data.result}`"
       :aria-label="rec.data?.result ? `Filter by ${rec.data.result}` : 'Result'"
@@ -178,6 +179,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
         type="button"
         class="leaf-map leaf-filter-cell"
         :class="{ 'is-filtered': mapFiltered }"
+        :aria-pressed="mapFiltered ? 'true' : 'false'"
         :title="mapFiltered ? `Filtering by ${rec.data?.map} — click to clear` : `Filter the set to ${rec.data?.map}`"
         @click.stop="emit('filter-cell', 'map', rec.data?.map ?? '')"
       >
@@ -188,6 +190,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
           type="button"
           class="leaf-mode-chip leaf-filter-cell"
           :class="{ 'is-filtered': modeFiltered }"
+          :aria-pressed="modeFiltered ? 'true' : 'false'"
           :title="modeFiltered ? `Filtering by ${formatPlayModeLabel(rec)} — click to clear` : `Filter the set to ${formatPlayModeLabel(rec)}`"
           @click.stop="emit('filter-cell', 'mode', playModePick)"
         >{{ formatPlayModeLabel(rec) }}</button>
@@ -195,6 +198,7 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
           type="button"
           class="leaf-queue-chip leaf-filter-cell"
           :class="{ 'is-filtered': queueFiltered }"
+          :aria-pressed="queueFiltered ? 'true' : 'false'"
           :title="queueFiltered ? `Filtering by ${formatQueueTypeLabel(rec)} — click to clear` : `Filter the set to ${formatQueueTypeLabel(rec)}`"
           @click.stop="emit('filter-cell', 'queue', queuePick)"
         >{{ formatQueueTypeLabel(rec) }}</button>
