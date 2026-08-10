@@ -49,11 +49,6 @@ NewWithStore
 # Test code isn't in deadcode's call graph, so this looks unreachable.
 ToGolden
 
-# pkg/db.listMigrationFiles is used only by the
-# TestAllMigrationsHavePairedDown guard. Test code isn't in
-# deadcode's call graph, so the helper looks unreachable.
-listMigrationFiles
-
 # pkg/db/dbtest is a test-only package — its exported `New()` and
 # the *Fake methods that satisfy db.Store are reachable from the
 # pkg/app + pkg/cmd test packages, but not from the production
@@ -72,12 +67,10 @@ FromContext
 # future production rollback path has a tested base.
 revertOne
 
-# match.Key type + helpers (renamed from MatchKey in the de-stutter
-# pass). The constructors + IsUnmatched helper exist for future call
-# sites + the round-trip test even though no production consumer
-# reaches them yet.
-NewTrackedMatchKey
-NewUnmatchedMatchKey
+# match.Key.IsUnmatched (type renamed from MatchKey in the de-stutter
+# pass): the helper mirrors IsAmbiguous for symmetry and is exercised
+# only by the round-trip test — production reaches the constructors and
+# IsAmbiguous, not this one.
 Key\.IsUnmatched
 
 # cmd.parseMatchesPagination — lenient pagination parser exercised by

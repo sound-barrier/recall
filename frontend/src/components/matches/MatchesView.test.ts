@@ -94,7 +94,7 @@ const tickedLeaves  = () => [...document.querySelectorAll('.leaf-row.is-ticked')
 const archiveRows   = () => [...document.querySelectorAll('.archive-row')]
 const tickedArchive = () => [...document.querySelectorAll('.archive-row.is-ticked')]
 const archiveChev   = () => document.querySelector('.archive-chev')
-const campaignLog   = () => document.querySelector('.campaign-log')
+const campaignLog   = () => document.querySelector('.match-timeline')
 /* eslint-enable testing-library/no-node-access */
 
 const leafChecks    = () => screen.getAllByRole('checkbox', { name: /^Select match / })
@@ -487,9 +487,22 @@ describe('MatchesView — Move to profile picker', () => {
 })
 
 describe('MatchesView — campaign log hidden filter', () => {
+  // The timeline section always renders its shell; what visibleRecords
+  // controls is whether it has data. (The old assertion expected the
+  // SECTION to vanish and "passed" for months only because its
+  // '.campaign-log' selector matched nothing — the class never existed.)
+  it('the timeline has data for visible matches (positive control)', () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    expect(campaignLog()).not.toBeNull()
+    // eslint-disable-next-line testing-library/no-node-access -- e2e-shared data-attr contract, no accessible surface
+    expect(document.querySelector('[data-timeline-no-data]')).toBeNull()
+  })
+
   it('hidden matches drop out of the timeline (visibleRecords feeds it)', () => {
     renderView([makeRecord({ match_key: 'k1', hidden: true })])
-    expect(campaignLog()).toBeNull()
+    expect(campaignLog()).not.toBeNull()
+    // eslint-disable-next-line testing-library/no-node-access -- e2e-shared data-attr contract, no accessible surface
+    expect(document.querySelector('[data-timeline-no-data]')).not.toBeNull()
   })
 })
 

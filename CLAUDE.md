@@ -309,14 +309,19 @@ marks which linter catches it (**lint**) or which rule above it restates
   the producer side → declare it at the *consumer*, only once a second impl
   or a fake earns it; a one-method seam is a func var, not an interface
   (*see Design principles*).
-- *Ignored error* — `_ = f()` dropping a real error → handle or return it
-  (**lint** errcheck, nilerr; *see Error handling*).
+- *Ignored error* — dropping a real error → handle or return it (*see
+  Error handling*). errcheck catches the bare unassigned call (**lint**);
+  the blank-assign `_ = f()` form passes lint (check-blank is off because
+  this codebase uses it as the deliberate-drop idiom) — so a blank assign
+  IS the claim "dropping this is safe", and review holds it to that.
 - *Sentinel zero-value as "no result"* — `""`/`0`/`nil` meaning absence → a
   typed result or an explicit error (*see Error handling*).
 - *Naked return* in more than a couple of lines → explicit values (**lint**
   nakedret).
 - *Stutter* — `match.MatchRecord`, `db.DBHealth` → drop the package prefix:
-  `match.Record`, `db.Health` (**lint** revive).
+  `match.Record`, `db.Health`. Review-caught, NOT lint-caught here:
+  revive's `exported` rule carries the stutter check, and it is
+  deliberately disabled for the no-mandatory-doc-comments policy.
 - *Premature goroutines/channels* — concurrency with no measured need →
   simple synchronous code first (*see YAGNI*).
 
@@ -345,8 +350,9 @@ marks which linter catches it (**lint**) or which rule above it restates
 - *Un-`markRaw`'d composable bundle on a store* — Pinia's `reactive()`
   deep-unwraps the bundle's inner refs and silently breaks them
   (load-bearing gotcha in `frontend/CLAUDE.md`).
-- *`v-if` with `v-for` on one node; array index as `:key`* on reorderable
-  lists (**lint** vue flat/recommended).
+- *`v-if` with `v-for` on one node* (**lint** vue flat/recommended);
+  *array index as `:key`* on reorderable lists — review-caught: the
+  preset only checks that a `:key` exists, and an index satisfies it.
 - *Manual DOM access* — `document.querySelector` in a component → template
   refs (destructured to top-level consts — dotted `ref="obj.prop"` silently
   registers nothing).

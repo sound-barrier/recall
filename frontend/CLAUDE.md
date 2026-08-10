@@ -40,12 +40,13 @@ composable *bundle* you expose** (the narrow API, `selection`, etc.) — Pinia's
 `reactive()` store deep-unwraps nested refs and would turn `narrow.narrowedRecords`
 (a Ref) into a bare value; `markRaw` keeps the inner refs intact + reactive. (2)
 **Composables that use component lifecycle** (`usePersistedRef` → `onMounted`)
-only work in a store because it binds to App's lifecycle on first use — fragile
-for isolated tests, and the reason the **dossier stays in MatchesView** (it
-needs `useWeekStart`) rather than the matches store. Per-instance/utility
+only work in a store because it binds to App's lifecycle on first use —
+fragile for isolated tests (the matches store now builds the dossier with
+`useWeekStart` under exactly this caveat: tests must seed the pref before
+the store first runs). Per-instance/utility
 composables (`useModalFocusTrap`, `useDragReorder`, `useWidgetConfig`, the
 per-row/table view state) STAY composables — a singleton store would break them.
-Tests seed stores via `setActivePinia(createPinia())` (+ `mountApp`/`mountWidget`
+Tests seed stores via `setActivePinia(createPinia())` (+ `renderApp`/`renderWidget`
 install a Pinia). Per-card UI state still flows to MatchesView + UnknownMapsView
 via the `CardStateApi` bundle exported from MatchesView.vue.
 
@@ -349,7 +350,7 @@ resolves; (2) query results land after the notifyManager's scheduling —
 await a macrotask (`await new Promise(r => setTimeout(r, 0))`), not just
 `flushPromises()`, before asserting on freshly-fetched state.
 
-**Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via `mount()`). Playwright → `frontend/tests/e2e/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
+**Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via Testing Library `render()`). Playwright → `frontend/tests/e2e/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 
 **Playwright e2e.** Specs in `frontend/tests/e2e/`. `make test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Existing files: `smoke.spec.ts` (loads, tab nav, skip-link), `a11y.spec.ts` (axe per view). Per the root `CLAUDE.md` TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation.
 

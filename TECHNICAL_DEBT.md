@@ -124,9 +124,10 @@ changed bullets carry an inline re-evaluation note:
   hold the separable concerns — splitting what's left fragments one
   aggregation layer for a number, the same argument the retired
   useMatchesDossierQueries bullet made, still true one level down. Test
-  files over 500 (useMatchesDossier.test 1949, SettingsView.test 996,
-  useMatchesNarrow.test 845, MatchDetailPanel.test 609, MatchesView.test
-  602, useDashboardLayout.test 579) stay whole: a suite mirrors its
+  files over 500 (useMatchesDossier.test 1949, SettingsView.test 972,
+  useMatchesNarrow.test 845, MatchDetailPanel.test 622, MatchesView.test
+  605, useDashboardLayout.test 579 — re-counted after the Testing
+  Library migration) stay whole: a suite mirrors its
   surface, and splitting one by line count scatters a single surface's
   coverage story.
 - **App.vue is a clean 177-line thin shell** (zero business logic — it reads a
@@ -161,9 +162,10 @@ changed bullets carry an inline re-evaluation note:
   note, not a mandate. (Re-evaluated 2026-07-06: count corrected 4→9; bundle
   inventory refreshed.)
 - **The remaining `as unknown as` casts** (the Wails `Call.ByName` transport
-  cast and the SSE error-path `callback(null as unknown as T)` in `api.ts`, the
-  `mountWidget` partial-dossier fixture + the `mount()` overload cast, the
-  `vitest.setup.ts` fetch shim, the ECharts series union in `TrendChart.vue`)
+  cast and the SSE error-path `callback(null as unknown as T)` in
+  `api-platform.ts`, the `renderWidget.ts` partial-dossier fixture + its
+  Testing Library `render()` overload cast, the `vitest.setup.ts` fetch
+  shim, the ECharts series union in `TrendChart.vue`)
   are legitimate type-boundary casts. The one genuine type-lie (`enterEditMode`
   cast from KeyboardEvent to MouseEvent) was fixed. (Re-evaluated 2026-07-06:
   enumeration completed with the two `api.ts` casts + the fetch shim.)

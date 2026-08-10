@@ -26,9 +26,9 @@ linters:
     - gocritic       # Go micro-smells (CLAUDE.md smells catalog)
     - unparam        # unused parameters / always-same results are dead weight
     # The complexity gate (CLAUDE.md "McCabe cyclomatic complexity ≤ 10 —
-    # enforced"). Files still above threshold carry an entry in the
-    # campaign carve-out block under exclusions.rules below; every cleanup
-    # commit deletes its own entries, and warn-unused flags stale ones.
+    # enforced"). Runs BARE — the quality campaign refactored every
+    # violation, so there are no per-file carve-outs and none should be
+    # added; a new violation means extract, not exclude.
     - gocyclo
     - gocognit       # cognitive backstop — catches nested-but-≤10-McCabe code
     - funlen         # length backstop for straight-line sprawl the others miss

@@ -380,7 +380,7 @@ describe('App.vue — first-run modal gating (item 6 coverage lift)', () => {
     // renderApp defaults to seeding the ack to "true"; the modal must
     // stay hidden on the first paint.
     await renderApp({ records: [] })
-    expect(screen.queryByTestId('first-run-modal')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /main account name/i })).not.toBeInTheDocument()
   })
 
   it('keeps the first-run modal hidden across a parse-complete fire', async () => {
@@ -389,7 +389,7 @@ describe('App.vue — first-run modal gating (item 6 coverage lift)', () => {
     await renderApp({ records: [] })
     expect(fireBackendEvent('parse-complete')).toBe(true)
     await flushPromises()
-    expect(screen.queryByTestId('first-run-modal')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /main account name/i })).not.toBeInTheDocument()
   })
 })
 

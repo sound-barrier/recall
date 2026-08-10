@@ -28,7 +28,7 @@ export interface SnapshotResolvers {
   mapGameMode: (input: string | null | undefined) => string
 }
 
-export interface SnapshotExtras {
+interface SnapshotExtras {
   rankProgress: number | null
   sessions: number
   leaverRatePct: number | null
