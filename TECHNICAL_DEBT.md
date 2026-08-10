@@ -242,19 +242,6 @@ schema shape is final:
 **Effort:** M. **Risk:** High — on-disk schema management. Deliberately sequenced
 last so the schema is frozen before the baseline is captured.
 
-## 11. tests/e2e sits outside every type-check program
-
-`tsconfig.json` includes `src/**` only, so `frontend/tests/e2e/*.spec.ts`
-is type-checked by nothing — not `vue-tsc`, not the type-aware ESLint
-program. The quality campaign found ~30 latent type errors there (one was
-a cast to a nonexistent `Mode['type']` field that had silently asserted
-nothing) and fixed only the files it touched. Options when paying:
-a dedicated `tsconfig.e2e.json` + a `task typecheck-e2e` step folded into
-`task typecheck` and CI's test-unit job, or widening the main program if
-Playwright's types don't collide with the app's DOM lib settings.
-**Effort:** S–M. **Risk:** low — additive gate; the errors are in specs,
-not shipped code.
-
 ## Out of scope — deliberately not building
 
 So a future pass doesn't re-propose them:

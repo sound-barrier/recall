@@ -1,0 +1,30 @@
+{
+  "// Second type-check program": "tsconfig.json covers src/ only. This one covers the Playwright specs + their helpers + the root build/test config files, which were outside every type-check program until this file existed (TECHNICAL_DEBT §11) and had accumulated ~32 real errors.",
+  "// No \"lib\" key, deliberately": "ES2022's default lib already includes DOM, which every page.evaluate() body needs. Pinning lib to ES2022 alone adds 250+ phantom errors.",
+  "// Plain tsc, not vue-tsc": "The e2e tree imports no .vue components and no @/ aliases — it drives the built page through the browser — so there is nothing for the Vue compiler to resolve and no `paths` to declare.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [
+    "tests/e2e/**/*.ts",
+    "playwright.config.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "knip.config.ts",
+    "openapi-ts.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
