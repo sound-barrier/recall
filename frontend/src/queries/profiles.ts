@@ -2,7 +2,7 @@ import { computed } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 
 import { GetProfiles } from '@/api-client'
-import { queryClient } from '@/queries/client'
+import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 
 // One cache entry serves every profiles consumer (first-run gate,
@@ -11,7 +11,7 @@ import { qk } from '@/queries/keys'
 // which discards the whole cache. The one non-reload write (DeleteProfile)
 // invalidates below.
 function useProfilesQuery() {
-  return useQuery({ queryKey: qk.profiles, queryFn: GetProfiles }, queryClient)
+  return useQuery({ queryKey: qk.profiles, queryFn: GetProfiles }, getQueryClient())
 }
 
 // The shared derived layer over the profiles response — the ONE place the
@@ -28,5 +28,5 @@ export function useProfilesData() {
 }
 
 export function invalidateProfiles(): Promise<void> {
-  return queryClient.invalidateQueries({ queryKey: qk.profiles })
+  return getQueryClient().invalidateQueries({ queryKey: qk.profiles })
 }

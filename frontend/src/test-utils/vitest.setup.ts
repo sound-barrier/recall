@@ -1,11 +1,10 @@
 import { afterAll, afterEach, vi } from 'vitest'
 import { enableAutoUnmount } from '@vue/test-utils'
 
-// Unmount every test-utils wrapper after its test. Without this, mounted
-// components from earlier tests stay subscribed to the singleton query
-// cache — and a still-mounted observer resurrects a cleared query with its
-// last-known data (staleTime Infinity then suppresses the refetch), so a
-// later test's api mock never gets called.
+// Unmount every test-utils wrapper after its test — plain hygiene now that
+// the per-test client reset (below) already stops a stale observer from
+// reaching the next test's cache: it keeps DOM, listeners and timers from
+// piling up across a file.
 enableAutoUnmount(afterEach)
 
 // Fallback fetch for anything a test didn't stub. Two rules:
@@ -51,15 +50,24 @@ globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
   }
 }) as unknown as typeof fetch
 
-// Query-cache isolation. The app-wide QueryClient is a module singleton
-// with staleTime/gcTime Infinity — without a clear, the first test in a
-// file fills the cache and every later test reads that stale entry no
-// matter what it mocked (the pre-query code fetched per mount). Clearing
-// per TEST restores those semantics; mountApp additionally gets a whole
-// fresh client via its vi.resetModules().
+// Query-cache isolation. The app-wide QueryClient caches with
+// staleTime/gcTime Infinity, so without a reset the first test in a file
+// fills the cache and every later test reads that stale entry no matter
+// what it mocked (the pre-query code fetched per mount). A fresh CLIENT
+// per test — not a .clear() — is what makes this airtight: observers left
+// behind by an earlier test keep pointing at the discarded client and
+// can't resurrect an entry in the new one. getQueryClient/resetQueryClient
+// address a globalThis slot, so this reaches the same client even in files
+// that run vi.resetModules().
+// Imported dynamically, at teardown: a STATIC import here would pull the
+// whole app module graph (client → app store → @/api) into every test file
+// before its own hoisted vi.mock('@/api') could apply — the module-mock
+// leak reference_store_api_mock_isolation documents. Resolving a different
+// module instance is harmless now: every instance addresses the same
+// globalThis slot.
 afterEach(async () => {
-  const { queryClient } = await import('@/queries/client')
-  queryClient.clear()
+  const { resetQueryClient } = await import('@/queries/client')
+  resetQueryClient()
 })
 
 // Cross-file '@/api' isolation. After each test FILE, drop both the module
