@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises } from '@/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { useAppStore } from '@/stores/app'

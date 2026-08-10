@@ -1,5 +1,5 @@
 import { defineComponent, h } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useScrollAffordance } from '@/composables/matches/useScrollAffordance'
@@ -15,8 +15,8 @@ function mountComposable(threshold = 400) {
       return () => h('div')
     },
   })
-  const wrapper = mount(Comp)
-  return { wrapper, result }
+  const view = render(Comp)
+  return { view, result }
 }
 
 // Fake-rAF: invoke the callback synchronously so the threshold flip
@@ -48,22 +48,22 @@ function flushRaf() {
 
 describe('useScrollAffordance', () => {
   it('starts false when window is at the top', () => {
-    const { result, wrapper } = mountComposable()
+    const { result, view } = mountComposable()
     expect(result.isPastThreshold.value).toBe(false)
-    wrapper.unmount()
+    view.unmount()
   })
 
   it('flips to true after the user scrolls past the threshold', async () => {
-    const { result, wrapper } = mountComposable(400)
+    const { result, view } = mountComposable(400)
     ;(window as unknown as { scrollY: number }).scrollY = 500
     window.dispatchEvent(new Event('scroll'))
     flushRaf()
     expect(result.isPastThreshold.value).toBe(true)
-    wrapper.unmount()
+    view.unmount()
   })
 
   it('flips back to false when scrolling back above the threshold', async () => {
-    const { result, wrapper } = mountComposable(400)
+    const { result, view } = mountComposable(400)
     ;(window as unknown as { scrollY: number }).scrollY = 500
     window.dispatchEvent(new Event('scroll'))
     flushRaf()
@@ -72,29 +72,29 @@ describe('useScrollAffordance', () => {
     window.dispatchEvent(new Event('scroll'))
     flushRaf()
     expect(result.isPastThreshold.value).toBe(false)
-    wrapper.unmount()
+    view.unmount()
   })
 
   it('mounts in the past-threshold state when the user deep-linked into a scrolled position', () => {
     ;(window as unknown as { scrollY: number }).scrollY = 800
-    const { result, wrapper } = mountComposable(400)
+    const { result, view } = mountComposable(400)
     expect(result.isPastThreshold.value).toBe(true)
-    wrapper.unmount()
+    view.unmount()
   })
 
   it('respects a custom threshold', async () => {
-    const { result, wrapper } = mountComposable(100)
+    const { result, view } = mountComposable(100)
     ;(window as unknown as { scrollY: number }).scrollY = 150
     window.dispatchEvent(new Event('scroll'))
     flushRaf()
     expect(result.isPastThreshold.value).toBe(true)
-    wrapper.unmount()
+    view.unmount()
   })
 
   it('removes the scroll listener on unmount', () => {
     const removeSpy = vi.spyOn(window, 'removeEventListener')
-    const { wrapper } = mountComposable()
-    wrapper.unmount()
+    const { view } = mountComposable()
+    view.unmount()
     const removed = removeSpy.mock.calls.find(([name]) => name === 'scroll')
     expect(removed).toBeDefined()
   })
@@ -106,10 +106,10 @@ describe('useScrollAffordance', () => {
       media: q, addEventListener: () => {}, removeEventListener: () => {},
       onchange: null, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
     }) as MediaQueryList)
-    const { result, wrapper } = mountComposable()
+    const { result, view } = mountComposable()
     result.scrollToTop()
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
-    wrapper.unmount()
+    view.unmount()
   })
 
   it('scrollToTop falls back to instant when prefers-reduced-motion is reduce', () => {
@@ -119,9 +119,9 @@ describe('useScrollAffordance', () => {
       media: q, addEventListener: () => {}, removeEventListener: () => {},
       onchange: null, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
     }) as MediaQueryList)
-    const { result, wrapper } = mountComposable()
+    const { result, view } = mountComposable()
     result.scrollToTop()
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 0, behavior: 'auto' })
-    wrapper.unmount()
+    view.unmount()
   })
 })

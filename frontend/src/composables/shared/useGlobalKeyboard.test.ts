@@ -1,5 +1,5 @@
 import { defineComponent, h, ref } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 import { describe, it, expect, vi } from 'vitest'
 import { useGlobalKeyboard, type GlobalKeyboardDeps } from '@/composables/shared/useGlobalKeyboard'
 import type { MatchRecord } from '@/api-client'
@@ -29,7 +29,7 @@ function makeDeps(overrides: Partial<GlobalKeyboardDeps> = {}): GlobalKeyboardDe
 }
 
 function mountKeyboard(deps: GlobalKeyboardDeps) {
-  return mount(defineComponent({
+  return render(defineComponent({
     setup() {
       useGlobalKeyboard(deps)
       return () => h('div')
@@ -43,33 +43,33 @@ function mountKeyboard(deps: GlobalKeyboardDeps) {
 describe('useGlobalKeyboard — modal suppression', () => {
   it("fires 'e' on the focused card when nothing modal is up", () => {
     const deps = makeDeps()
-    const w = mountKeyboard(deps)
+    const view = mountKeyboard(deps)
     press('e')
     expect(deps.toggleExpand).toHaveBeenCalledWith('m1')
-    w.unmount()
+    view.unmount()
   })
 
   it("suppresses 'e' while a non-panel modal is open", () => {
     const deps = makeDeps({ modalOpen: ref(true) })
-    const w = mountKeyboard(deps)
+    const view = mountKeyboard(deps)
     press('e')
     expect(deps.toggleExpand).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it("keeps '?' reachable while a modal is up — the cheatsheet stacks over modals", () => {
     const deps = makeDeps({ modalOpen: ref(true) })
-    const w = mountKeyboard(deps)
+    const view = mountKeyboard(deps)
     press('?')
     expect(deps.openCheatsheet.value).toBe(true)
-    w.unmount()
+    view.unmount()
   })
 
   it('the detail panel deliberately does NOT suppress — e closes it on the focused card', () => {
     const deps = makeDeps({ selectionIsOpen: ref(true), selectedKey: ref<string | null>('m1') })
-    const w = mountKeyboard(deps)
+    const view = mountKeyboard(deps)
     press('e')
     expect(deps.closeSelection).toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 })

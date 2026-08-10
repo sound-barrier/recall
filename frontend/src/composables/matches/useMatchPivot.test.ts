@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { defineComponent, h, ref, type Ref } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api'
 import { useMatchPivot } from '@/composables/matches/useMatchPivot'
@@ -11,7 +11,7 @@ function rec(data: Partial<MatchRecord['data']> = {}): MatchRecord {
 
 function mountPivot(records: Ref<MatchRecord[]>) {
   let api!: ReturnType<typeof useMatchPivot>
-  mount(defineComponent({
+  render(defineComponent({
     setup() {
       api = useMatchPivot(records, () => 'support')
       return () => h('div')

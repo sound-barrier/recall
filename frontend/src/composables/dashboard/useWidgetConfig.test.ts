@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 import { defineComponent, h } from 'vue'
 import { makeSchema } from '@/dashboard/widget-config-schema'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
@@ -34,8 +34,8 @@ function mountConfig<T extends Record<string, unknown>>(
       return () => h('div')
     },
   })
-  const wrapper = mount(Harness)
-  return { api: api!, wrapper }
+  const view = render(Harness)
+  return { api: api!, view }
 }
 
 const limitSchema = makeSchema<{ limit: number }>([

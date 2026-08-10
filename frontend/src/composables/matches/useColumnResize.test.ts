@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import { useColumnResize, DEFAULT_COLUMN_WIDTHS } from '@/composables/matches/useColumnResize'
 
@@ -8,7 +8,7 @@ import { useColumnResize, DEFAULT_COLUMN_WIDTHS } from '@/composables/matches/us
 // lifecycle hooks bind to a real instance (mirrors useTableSort.test).
 function mountResize() {
   let api!: ReturnType<typeof useColumnResize>
-  mount(defineComponent({
+  render(defineComponent({
     setup() {
       api = useColumnResize()
       return () => h('div')
