@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import DashboardUndoToast from '@/components/dashboard/DashboardUndoToast.vue'
 
 function trashed(opts: Partial<{ id: string; eyebrow: string; row: number; idx: number; token: number }> = {}) {
@@ -13,64 +14,57 @@ function trashed(opts: Partial<{ id: string; eyebrow: string; row: number; idx: 
   }
 }
 
+// The toast teleports to <body> with role="status", so every query
+// runs through screen (document-scoped) rather than the container.
 describe('DashboardUndoToast', () => {
   beforeEach(() => { vi.useFakeTimers() })
-  afterEach(() => {
-    vi.useRealTimers()
-    document.body.replaceChildren()
-  })
+  afterEach(() => { vi.useRealTimers() })
+
+  // Fake timers are active, so user-event must drive the clock itself.
+  const user = () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) })
 
   it('renders nothing when trashed=null', async () => {
-    mount(DashboardUndoToast, { props: { trashed: null }, attachTo: document.body })
+    render(DashboardUndoToast, { props: { trashed: null } })
     await nextTick()
-    expect(document.querySelector('[data-undo-toast]')).toBeNull()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('renders the toast with the widget eyebrow when trashed is provided', async () => {
-    mount(DashboardUndoToast, {
+    render(DashboardUndoToast, {
       props: { trashed: trashed({ eyebrow: 'Total time played' }) },
-      attachTo: document.body,
     })
     await nextTick()
-    const toast = document.querySelector('[data-undo-toast]')
-    expect(toast).not.toBeNull()
-    expect(toast!.querySelector('.dashboard-undo-toast-name')!.textContent).toContain('Total time played')
+    const toast = screen.getByRole('status')
+    expect(toast).toHaveTextContent('Total time played')
   })
 
   it('emits undo when Undo button is clicked', async () => {
-    const w = mount(DashboardUndoToast, {
+    const { emitted } = render(DashboardUndoToast, {
       props: { trashed: trashed({ token: 42 }) },
-      attachTo: document.body,
     })
     await nextTick()
-    const action = document.querySelector('[data-undo-action]') as HTMLButtonElement
-    action.click()
-    await nextTick()
-    expect(w.emitted('undo')).toBeTruthy()
-    expect(w.emitted('undo')![0]).toEqual([42])
+    await user().click(screen.getByRole('button', { name: 'Undo' }))
+    expect(emitted('undo')).toBeTruthy()
+    expect(emitted('undo')[0]).toEqual([42])
   })
 
   it('emits dismiss when the × button is clicked', async () => {
-    const w = mount(DashboardUndoToast, {
+    const { emitted } = render(DashboardUndoToast, {
       props: { trashed: trashed({ token: 7 }) },
-      attachTo: document.body,
     })
     await nextTick()
-    const dismiss = document.querySelector('[data-undo-dismiss]') as HTMLButtonElement
-    dismiss.click()
-    await nextTick()
-    expect(w.emitted('dismiss')).toBeTruthy()
-    expect(w.emitted('dismiss')![0]).toEqual([7])
+    await user().click(screen.getByRole('button', { name: 'Dismiss undo prompt' }))
+    expect(emitted('dismiss')).toBeTruthy()
+    expect(emitted('dismiss')[0]).toEqual([7])
   })
 
   it('auto-emits dismiss after the 6-second window expires', async () => {
-    const w = mount(DashboardUndoToast, {
+    const { emitted } = render(DashboardUndoToast, {
       props: { trashed: trashed({ token: 1 }) },
-      attachTo: document.body,
     })
     await nextTick()
     vi.advanceTimersByTime(6500)
     await nextTick()
-    expect(w.emitted('dismiss')).toBeTruthy()
+    expect(emitted('dismiss')).toBeTruthy()
   })
 })

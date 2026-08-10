@@ -218,9 +218,6 @@ export default tseslint.config(
     files: ['src/**/*.test.ts'],
     ignores: [
       'src/App.test.ts',
-      'src/components/dashboard/DashboardUndoToast.test.ts',
-      'src/components/dashboard/DashboardWidget.test.ts',
-      'src/components/dashboard/WidgetConfigPopover.test.ts',
       'src/components/ingest/IngestView.test.ts',
       'src/components/ingest/ParseProgressPanel.test.ts',
       'src/components/ingest/ParseStatusBar.test.ts',

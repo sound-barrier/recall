@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import { flushPromises } from '@/test-utils'
 import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 import { makeSchema, EMPTY_SCHEMA } from '@/dashboard/widget-config-schema'
 import type { WidgetDef } from '@/dashboard/widgets'
@@ -52,105 +54,93 @@ function fakeRect(): DOMRect {
   return new DOMRect(100, 100, 24, 24)
 }
 
+// The popover teleports to <body> as a role="dialog", so every query
+// runs through screen (document-scoped) rather than the container.
 describe('WidgetConfigPopover', () => {
   beforeEach(() => { installLocalStorageShim() })
 
   it('renders nothing when open=false', () => {
-    const w = mount(WidgetConfigPopover, {
+    render(WidgetConfigPopover, {
       props: { open: false, def: fakeDef('w', integerSchema), anchor: fakeRect() },
-      attachTo: document.body,
     })
-    expect(document.querySelector('[data-testid="widget-config-popover"]')).toBeNull()
-    w.unmount()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders nothing when schema is empty', () => {
-    const w = mount(WidgetConfigPopover, {
+    render(WidgetConfigPopover, {
       props: { open: true, def: fakeDef('w', EMPTY_SCHEMA), anchor: fakeRect() },
-      attachTo: document.body,
     })
-    expect(document.querySelector('[data-testid="widget-config-popover"]')).toBeNull()
-    w.unmount()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders a segmented row for an integer-choice schema', async () => {
-    const w = mount(WidgetConfigPopover, {
+    render(WidgetConfigPopover, {
       props: { open: true, def: fakeDef('top-heroes', integerSchema), anchor: fakeRect() },
-      attachTo: document.body,
     })
     await flushPromises()
-    const buttons = document.querySelectorAll('[data-widget-config-choice^="limit="]')
-    expect(buttons.length).toBe(3)
-    expect(buttons[0]!.textContent?.trim()).toBe('3')
-    expect(buttons[1]!.textContent?.trim()).toBe('5')
-    expect(buttons[2]!.textContent?.trim()).toBe('10')
-    // Default value (5) is marked active.
-    expect(buttons[1]!.classList.contains('wcp-segment-active')).toBe(true)
-    w.unmount()
+    const segments = screen.getAllByRole('radio')
+    expect(segments).toHaveLength(3)
+    expect(segments[0]).toHaveTextContent(/^3$/)
+    expect(segments[1]).toHaveTextContent(/^5$/)
+    expect(segments[2]).toHaveTextContent(/^10$/)
+    // Default value (5) is marked active (aria-checked + active class).
+    expect(segments[1]).toBeChecked()
+    expect(segments[1]).toHaveClass('wcp-segment-active')
   })
 
   it('renders a radio list for an enum schema', async () => {
-    const w = mount(WidgetConfigPopover, {
+    render(WidgetConfigPopover, {
       props: { open: true, def: fakeDef('total-time', enumSchema), anchor: fakeRect() },
-      attachTo: document.body,
     })
     await flushPromises()
-    const radios = document.querySelectorAll('input[type="radio"]')
-    expect(radios.length).toBe(3)
+    const radios = screen.getAllByRole('radio')
+    expect(radios).toHaveLength(3)
     // Default 'a' is checked.
-    expect((radios[0] as HTMLInputElement).checked).toBe(true)
-    w.unmount()
+    expect(radios[0]).toBeChecked()
   })
 
   it('Save persists the selected value to localStorage', async () => {
-    const w = mount(WidgetConfigPopover, {
+    const user = userEvent.setup()
+    const { emitted } = render(WidgetConfigPopover, {
       props: { open: true, def: fakeDef('top-heroes', integerSchema), anchor: fakeRect() },
-      attachTo: document.body,
     })
     await flushPromises()
     // Pick limit=10.
-    const limit10 = document.querySelector('[data-widget-config-choice="limit=10"]') as HTMLButtonElement
-    limit10.click()
-    await flushPromises()
+    await user.click(screen.getByRole('radio', { name: '10' }))
     // Save.
-    const save = document.querySelector('[data-testid="widget-config-save"]') as HTMLButtonElement
-    save.click()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
     await flushPromises()
     expect(localStorage.getItem('recall.dashboard.widget-config.top-heroes'))
       .toBe(JSON.stringify({ limit: 10 }))
-    expect(w.emitted('close')).toBeTruthy()
-    w.unmount()
+    expect(emitted('close')).toBeTruthy()
   })
 
   it('Cancel discards the draft + emits close', async () => {
-    const w = mount(WidgetConfigPopover, {
+    const user = userEvent.setup()
+    const { emitted } = render(WidgetConfigPopover, {
       props: { open: true, def: fakeDef('top-heroes', integerSchema), anchor: fakeRect() },
-      attachTo: document.body,
     })
     await flushPromises()
     // Pick limit=10 then cancel.
-    ;(document.querySelector('[data-widget-config-choice="limit=10"]') as HTMLButtonElement).click()
-    await flushPromises()
-    ;(document.querySelector('[data-testid="widget-config-cancel"]') as HTMLButtonElement).click()
+    await user.click(screen.getByRole('radio', { name: '10' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
     await flushPromises()
     // Nothing persisted.
     expect(localStorage.getItem('recall.dashboard.widget-config.top-heroes')).toBeNull()
-    expect(w.emitted('close')).toBeTruthy()
-    w.unmount()
+    expect(emitted('close')).toBeTruthy()
   })
 
   it('Reset persists the schema defaults', async () => {
+    const user = userEvent.setup()
     // Pre-seed a non-default value so we can observe the reset.
     localStorage.setItem('recall.dashboard.widget-config.top-heroes', JSON.stringify({ limit: 10 }))
-    const w = mount(WidgetConfigPopover, {
+    render(WidgetConfigPopover, {
       props: { open: true, def: fakeDef('top-heroes', integerSchema), anchor: fakeRect() },
-      attachTo: document.body,
     })
     await flushPromises()
-    ;(document.querySelector('[data-testid="widget-config-reset"]') as HTMLButtonElement).click()
+    await user.click(screen.getByRole('button', { name: 'Reset' }))
     await flushPromises()
     expect(localStorage.getItem('recall.dashboard.widget-config.top-heroes'))
       .toBe(JSON.stringify({ limit: 5 }))
-    w.unmount()
   })
 })

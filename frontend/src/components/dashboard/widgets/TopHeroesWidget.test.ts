@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { screen, within } from '@testing-library/vue'
 import TopHeroesWidget from '@/components/dashboard/widgets/TopHeroesWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 
 const hero = (key: string, stats: { totalMinutes: number; share: number; timeLabel: string }) => ({
   key, ...stats, winrate: 50,
@@ -8,7 +9,7 @@ const hero = (key: string, stats: { totalMinutes: number; share: number; timeLab
 
 describe('TopHeroesWidget', () => {
   it('renders one row per hero with the time-label inside the bar', () => {
-    const w = mountWidget(TopHeroesWidget, {
+    renderWidget(TopHeroesWidget, {
       dossier: {
         topHeroesByMinutes: [
           hero('lucio', { totalMinutes: 452, share: 60, timeLabel: '7h32min' }),
@@ -16,15 +17,17 @@ describe('TopHeroesWidget', () => {
         ],
       },
     })
-    const rows = w.findAll('li:not(.bd-placeholder)')
+    // Height-filler placeholders are aria-hidden, so the role query
+    // sees only real rows.
+    const rows = screen.getAllByRole('listitem')
     expect(rows).toHaveLength(2)
-    expect(rows[0]!.find('.bd-name').text()).toBe('lucio')
-    expect(rows[0]!.find('.bd-time').text()).toBe('7h32min')
-    expect(rows[0]!.find('.bd-stats').text()).toBe('60%')
+    expect(within(rows[0]!).getByText('lucio')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('7h32min')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('60%')).toBeInTheDocument()
   })
 
   it('renders the eyebrow label', () => {
-    const w = mountWidget(TopHeroesWidget, { dossier: { topHeroesByMinutes: [] } })
-    expect(w.find('.breakdown-eyebrow').text()).toBe('Most played heroes')
+    renderWidget(TopHeroesWidget, { dossier: { topHeroesByMinutes: [] } })
+    expect(screen.getByText('Most played heroes')).toBeInTheDocument()
   })
 })

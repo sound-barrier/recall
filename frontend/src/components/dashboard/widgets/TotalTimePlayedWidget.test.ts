@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { screen } from '@testing-library/vue'
 import TotalTimePlayedWidget from '@/components/dashboard/widgets/TotalTimePlayedWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 
 const ttp = (minutes: number, label: string, recordsWithTime: number, recordsTotal: number) => ({
   minutes,
@@ -11,57 +12,57 @@ const ttp = (minutes: number, label: string, recordsWithTime: number, recordsTot
 
 describe('TotalTimePlayedWidget', () => {
   it('renders the formatPlayMinutes label by default (hh:mm unit)', () => {
-    const w = mountWidget(TotalTimePlayedWidget, {
+    renderWidget(TotalTimePlayedWidget, {
       dossier: { totalTimePlayed: ttp(452, '7h32min', 14, 14) },
     })
-    expect(w.find('.kpi-value').text()).toBe('7h32min')
+    expect(screen.getByText('7h32min')).toBeInTheDocument()
   })
 
   it('renders the rounded-hours form when unit=h', () => {
-    const w = mountWidget(TotalTimePlayedWidget, {
+    renderWidget(TotalTimePlayedWidget, {
       dossier:    { totalTimePlayed: ttp(452, '7h32min', 14, 14) },
       configSeed: { 'total-time': { unit: 'h' } },
     })
     // 452 / 60 ≈ 7.53 → rounds to 8h.
-    expect(w.find('.kpi-value').text()).toBe('8h')
+    expect(screen.getByText('8h')).toBeInTheDocument()
   })
 
   it('renders the days + hours form when unit=d-h', () => {
-    const w = mountWidget(TotalTimePlayedWidget, {
+    renderWidget(TotalTimePlayedWidget, {
       // 50 hours = 2d 2h.
       dossier:    { totalTimePlayed: ttp(3000, '50h', 14, 14) },
       configSeed: { 'total-time': { unit: 'd-h' } },
     })
-    expect(w.find('.kpi-value').text()).toBe('2d 2h')
+    expect(screen.getByText('2d 2h')).toBeInTheDocument()
   })
 
   it('falls back to rem-only h when sub-day in d-h mode', () => {
-    const w = mountWidget(TotalTimePlayedWidget, {
+    renderWidget(TotalTimePlayedWidget, {
       dossier:    { totalTimePlayed: ttp(120, '2h', 4, 4) },
       configSeed: { 'total-time': { unit: 'd-h' } },
     })
-    expect(w.find('.kpi-value').text()).toBe('2h')
+    expect(screen.getByText('2h')).toBeInTheDocument()
   })
 
   it('shows coverage subtitle when records lack game_length', () => {
-    const w = mountWidget(TotalTimePlayedWidget, {
+    renderWidget(TotalTimePlayedWidget, {
       dossier: { totalTimePlayed: ttp(40, '40min', 2, 4) },
     })
-    expect(w.find('.kpi-sub').text()).toBe('2 of 4 matches')
+    expect(screen.getByText('2 of 4 matches')).toBeInTheDocument()
   })
 
   it('hides coverage subtitle when every record contributed time', () => {
-    const w = mountWidget(TotalTimePlayedWidget, {
+    renderWidget(TotalTimePlayedWidget, {
       dossier: { totalTimePlayed: ttp(80, '1h20min', 4, 4) },
     })
-    expect(w.find('.kpi-sub').exists()).toBe(false)
+    expect(screen.queryByText(/of \d+ matches/)).not.toBeInTheDocument()
   })
 
   it('renders em-dash when NO record contributed', () => {
-    const w = mountWidget(TotalTimePlayedWidget, {
+    renderWidget(TotalTimePlayedWidget, {
       dossier: { totalTimePlayed: ttp(0, '—', 0, 4) },
     })
-    expect(w.find('.kpi-value').text()).toBe('—')
-    expect(w.find('.kpi-sub').exists()).toBe(false)
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText(/of \d+ matches/)).not.toBeInTheDocument()
   })
 })

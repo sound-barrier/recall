@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { screen, within } from '@testing-library/vue'
 import TimeOfDayWidget from '@/components/dashboard/widgets/TimeOfDayWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 import type { BucketEntry } from '@/composables/matches/useMatchesDossier'
 
 function bucket(label: string, over: Partial<BucketEntry> = {}): BucketEntry {
@@ -11,14 +12,15 @@ describe('TimeOfDayWidget', () => {
   it('renders six no-sample rows when every bucket is empty', () => {
     const buckets = ['00–04', '04–08', '08–12', '12–16', '16–20', '20–24']
       .map((label) => bucket(label))
-    const w = mountWidget(TimeOfDayWidget, { dossier: { timeOfDayBuckets: buckets } })
-    expect(w.findAll('li')).toHaveLength(6)
+    renderWidget(TimeOfDayWidget, { dossier: { timeOfDayBuckets: buckets } })
+    const rows = screen.getAllByRole('listitem')
+    expect(rows).toHaveLength(6)
     // An empty bucket reads as no-sample, not 0%.
-    expect(w.findAll('.bd-stats').at(0)!.text()).toBe('—')
+    expect(within(rows[0]!).getByText('—')).toBeInTheDocument()
   })
 
   it('judges populated rows by win rate; the bar keeps the volume footprint', () => {
-    const w = mountWidget(TimeOfDayWidget, {
+    renderWidget(TimeOfDayWidget, {
       dossier: {
         timeOfDayBuckets: [
           bucket('00–04'), bucket('04–08'), bucket('08–12'), bucket('12–16'),
@@ -27,21 +29,26 @@ describe('TimeOfDayWidget', () => {
         ],
       },
     })
-    const rows = w.findAll('li')
-    expect(rows[4]!.find('.bd-name').text()).toBe('16–20')
-    expect(rows[4]!.find('.bd-time').text()).toBe('18x')
+    const rows = screen.getAllByRole('listitem')
+    expect(within(rows[4]!).getByText('16–20')).toBeInTheDocument()
+    expect(within(rows[4]!).getByText('18x')).toBeInTheDocument()
     // The stat column carries the judgment, not the share.
-    expect(rows[4]!.find('.bd-stats').text()).toBe('61%')
-    expect(rows[5]!.find('.bd-stats').text()).toBe('40%')
+    expect(within(rows[4]!).getByText('61%')).toBeInTheDocument()
+    expect(within(rows[5]!).getByText('40%')).toBeInTheDocument()
     // Width stays the volume share; color comes from the shared
     // judgment engine (18 decisive at 61% clears the evidence floor).
-    expect(rows[4]!.find('.bd-fill').attributes('style')).toContain('width: 60%')
-    expect(rows[4]!.find('.bd-fill').classes()).toContain('cell-win')
-    expect(rows[5]!.find('.bd-fill').classes()).toContain('cell-loss')
+    // The bar communicates only through style + judgment class — no
+    // text or role to query.
+    // eslint-disable-next-line testing-library/no-node-access -- style-only judged bar has no accessible surface
+    const winBar = rows[4]!.querySelector('.bd-fill')
+    expect(winBar?.getAttribute('style')).toContain('width: 60%')
+    expect(winBar).toHaveClass('cell-win')
+    // eslint-disable-next-line testing-library/no-node-access -- style-only judged bar has no accessible surface
+    expect(rows[5]!.querySelector('.bd-fill')).toHaveClass('cell-loss')
   })
 
   it('a played-but-undecided bucket shows volume with a no-sample stat', () => {
-    const w = mountWidget(TimeOfDayWidget, {
+    renderWidget(TimeOfDayWidget, {
       dossier: {
         timeOfDayBuckets: [
           bucket('00–04', { count: 3, share: 100, winrate: null, wins: 0, decisive: 0 }),
@@ -49,8 +56,8 @@ describe('TimeOfDayWidget', () => {
         ],
       },
     })
-    const first = w.findAll('li')[0]!
-    expect(first.find('.bd-time').text()).toBe('3x')
-    expect(first.find('.bd-stats').text()).toBe('—')
+    const first = screen.getAllByRole('listitem')[0]!
+    expect(within(first).getByText('3x')).toBeInTheDocument()
+    expect(within(first).getByText('—')).toBeInTheDocument()
   })
 })

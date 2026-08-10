@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { screen } from '@testing-library/vue'
 import AvgKdaWidget from '@/components/dashboard/widgets/AvgKdaWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 
 const kda = (
   qualifyingMatches: number,
@@ -17,23 +18,23 @@ const kda = (
 
 describe('AvgKdaWidget', () => {
   it('renders the label when averageKDA is set', () => {
-    const w = mountWidget(AvgKdaWidget, { dossier: { averageKDA: kda(3, 3) } })
-    expect(w.find('.kda-value').text()).toBe('3.21 / 4.00 / 5.67')
+    renderWidget(AvgKdaWidget, { dossier: { averageKDA: kda(3, 3) } })
+    expect(screen.getByText('3.21 / 4.00 / 5.67')).toBeInTheDocument()
   })
 
   it('renders em-dash when averageKDA is null', () => {
-    const w = mountWidget(AvgKdaWidget, { dossier: { averageKDA: null } })
-    expect(w.find('.kda-value').text()).toBe('—')
-    expect(w.find('.kpi-sub').exists()).toBe(false)
+    renderWidget(AvgKdaWidget, { dossier: { averageKDA: null } })
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.queryByText(/of \d+ matches/)).not.toBeInTheDocument()
   })
 
   it('shows coverage subtitle when qualifyingMatches < recordsTotal', () => {
-    const w = mountWidget(AvgKdaWidget, { dossier: { averageKDA: kda(2, 4) } })
-    expect(w.find('.kpi-sub').text()).toBe('2 of 4 matches')
+    renderWidget(AvgKdaWidget, { dossier: { averageKDA: kda(2, 4) } })
+    expect(screen.getByText('2 of 4 matches')).toBeInTheDocument()
   })
 
   it('hides coverage subtitle when every record qualified', () => {
-    const w = mountWidget(AvgKdaWidget, { dossier: { averageKDA: kda(4, 4) } })
-    expect(w.find('.kpi-sub').exists()).toBe(false)
+    renderWidget(AvgKdaWidget, { dossier: { averageKDA: kda(4, 4) } })
+    expect(screen.queryByText(/of \d+ matches/)).not.toBeInTheDocument()
   })
 })

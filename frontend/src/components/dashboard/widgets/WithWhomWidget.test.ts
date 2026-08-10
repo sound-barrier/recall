@@ -1,31 +1,35 @@
 import { describe, it, expect } from 'vitest'
+import { screen, within } from '@testing-library/vue'
 import WithWhomWidget from '@/components/dashboard/widgets/WithWhomWidget.vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { renderWidget } from '@/test-utils'
 
 const entry = (key: string, total: number, winrate: number, share = 50) => ({ key, total, winrate, share })
 
 describe('WithWhomWidget', () => {
   it('renders one row per teammate: name, win-rate bar + stat, count overlay', () => {
-    const w = mountWidget(WithWhomWidget, {
+    renderWidget(WithWhomWidget, {
       dossier: { withWhomBreakdown: [entry('Alice', 3, 67), entry('Bob', 2, 50), entry('Solo', 1, 100)] },
     })
-    const rows = w.findAll('li')
+    const rows = screen.getAllByRole('listitem')
     expect(rows).toHaveLength(3)
-    expect(rows[0]!.find('.bd-name').text()).toBe('Alice')
-    expect(rows[0]!.find('.bd-time').text()).toBe('3x')
-    expect(rows[0]!.find('.bd-stats').text()).toBe('67%')
+    expect(within(rows[0]!).getByText('Alice')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('3x')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('67%')).toBeInTheDocument()
     // Bar width binds to WIN RATE (the comparison axis), not share.
-    expect((rows[0]!.find('.bd-fill').element as HTMLElement).style.width).toBe('67%')
+    // The bar communicates only through its width style — no text or
+    // role to query.
+    // eslint-disable-next-line testing-library/no-node-access -- style-only winrate bar has no accessible surface
+    expect((rows[0]!.querySelector('.bd-fill') as HTMLElement).style.width).toBe('67%')
   })
 
   it('shows the teach-me empty state when no teammates are tagged', () => {
-    const w = mountWidget(WithWhomWidget, { dossier: { withWhomBreakdown: [] } })
-    expect(w.findAll('li')).toHaveLength(0)
-    expect(w.find('.breakdown-empty').text()).toMatch(/tag teammates/i)
+    renderWidget(WithWhomWidget, { dossier: { withWhomBreakdown: [] } })
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    expect(screen.getByText(/tag teammates/i)).toBeInTheDocument()
   })
 
   it('renders the eyebrow label', () => {
-    const w = mountWidget(WithWhomWidget, { dossier: { withWhomBreakdown: [] } })
-    expect(w.find('.breakdown-eyebrow').text()).toBe('Win rate by teammate')
+    renderWidget(WithWhomWidget, { dossier: { withWhomBreakdown: [] } })
+    expect(screen.getByText('Win rate by teammate')).toBeInTheDocument()
   })
 })
