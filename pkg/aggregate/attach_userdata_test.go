@@ -10,8 +10,8 @@ import (
 	"recall/pkg/parser"
 )
 
-func ocrRecord(key string) match.MatchRecord {
-	return match.MatchRecord{
+func ocrRecord(key string) match.Record {
+	return match.Record{
 		MatchKey:    key,
 		SourceFiles: []string{key + ".png"},
 		Source:      match.SourceOCR,
@@ -26,7 +26,7 @@ func TestAttachUserData_ScalarOverrideWinsIncludingExplicitZero(t *testing.T) {
 	zero := 0
 	ud := map[string]db.UserMatchData{"match-1": {MatchKey: "match-1", Damage: &zero}}
 
-	recs := []match.MatchRecord{rec}
+	recs := []match.Record{rec}
 	aggregate.AttachUserData(recs, ud)
 
 	if recs[0].Data.Damage != 0 {
@@ -49,7 +49,7 @@ func TestAttachUserData_EditedHeroReDerivesRole(t *testing.T) {
 	newHero := "ana"
 	ud := map[string]db.UserMatchData{"match-1": {MatchKey: "match-1", Hero: &newHero}}
 
-	recs := []match.MatchRecord{rec}
+	recs := []match.Record{rec}
 	aggregate.AttachUserData(recs, ud)
 
 	wantRole := parser.HeroRole("ana")
@@ -67,13 +67,13 @@ func TestAttachUserData_EditedHeroReDerivesRole(t *testing.T) {
 // A manual match (no screenshot rows) is SourceManual with no EditedFields — the
 // badge conveys provenance — and falls back to UpdatedAt for ParsedAt.
 func TestAttachUserData_ManualHasNoEditedFields(t *testing.T) {
-	manual := match.MatchRecord{MatchKey: "match-x", SourceFiles: []string{}, Source: match.SourceManual}
+	manual := match.Record{MatchKey: "match-x", SourceFiles: []string{}, Source: match.SourceManual}
 	won := "victory"
 	ud := map[string]db.UserMatchData{"match-x": {
 		MatchKey: "match-x", Result: &won, UpdatedAt: "2026-06-15T00:00:00Z",
 	}}
 
-	recs := []match.MatchRecord{manual}
+	recs := []match.Record{manual}
 	aggregate.AttachUserData(recs, ud)
 
 	if recs[0].Source != match.SourceManual {
@@ -100,7 +100,7 @@ func TestAttachUserData_StatOverlayKeepsRoster(t *testing.T) {
 		HeroStats: []db.UserMatchHeroStat{{Hero: "junkrat", StatKey: "rip_tire_kill", Value: 4}},
 	}}
 
-	recs := []match.MatchRecord{rec}
+	recs := []match.Record{rec}
 	aggregate.AttachUserData(recs, ud)
 
 	hp := recs[0].Data.HeroesPlayed
@@ -118,7 +118,7 @@ func TestAttachUserData_StatOverlayKeepsRoster(t *testing.T) {
 // A user-data key with no screenshot-backed record becomes a synthesized manual
 // shell; the result re-sorts by match_key so manual + OCR interleave.
 func TestSynthesizeManualMatches_AppendsShellForKeylessUserData(t *testing.T) {
-	recs := []match.MatchRecord{ocrRecord("match-b")}
+	recs := []match.Record{ocrRecord("match-b")}
 	ud := map[string]db.UserMatchData{
 		"match-b": {MatchKey: "match-b"}, // already present as OCR
 		"match-a": {MatchKey: "match-a"}, // manual-only

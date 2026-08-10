@@ -127,7 +127,7 @@ func TestAttachPlayModes_UsesOverrideOnly(t *testing.T) {
 		"k1": {PlayMode: "quickplay", OverriddenAt: "2026-06-01T10:00:00Z"},
 		"k3": {PlayMode: "competitive", OverriddenAt: "2026-06-02T10:00:00Z"},
 	}
-	recs := []match.MatchRecord{
+	recs := []match.Record{
 		{MatchKey: "k1", Data: parser.MatchResult{Playlist: "competitive"}},
 		{MatchKey: "k2", Data: parser.MatchResult{Playlist: "competitive"}}, // no override
 		{MatchKey: "k3", Data: parser.MatchResult{Playlist: "quickplay"}},
@@ -150,7 +150,7 @@ func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
 	// a rank screenshot. New behavior: rank presence does NOT
 	// surface play_mode unless the user has explicitly set the
 	// override.
-	recs := []match.MatchRecord{{
+	recs := []match.Record{{
 		MatchKey:    "k1",
 		Data:        parser.MatchResult{Playlist: "competitive"},
 		SourceTypes: map[string]string{"r.png": "rank"},
@@ -162,7 +162,7 @@ func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
 }
 
 func TestAttachPlayModes_NoSignalLeavesEmpty(t *testing.T) {
-	recs := []match.MatchRecord{{
+	recs := []match.Record{{
 		MatchKey:    "k1",
 		Data:        parser.MatchResult{Playlist: ""},
 		SourceTypes: map[string]string{"s.png": "summary"},

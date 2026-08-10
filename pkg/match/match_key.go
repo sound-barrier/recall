@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// MatchKey is the typed form of the stringly-typed `match_key`
+// Key is the typed form of the stringly-typed `match_key`
 // identity used across the codebase. A match key is one of three
 // shapes:
 //
@@ -26,20 +26,20 @@ import (
 // This type is OPT-IN at internal call sites today — consumers can
 // keep treating match_key as a bare string for back-compat. New code
 // that needs to BRANCH on the kind (e.g. "is this an ambiguous
-// row?") should parse via ParseMatchKey and switch on .Kind rather
+// row?") should parse via ParseKey and switch on .Kind rather
 // than `strings.HasPrefix`.
 
-type MatchKeyKind int
+type KeyKind int
 
 const (
-	KindInvalid MatchKeyKind = iota
+	KindInvalid KeyKind = iota
 	KindTracked
 	KindUnmatched
 	KindAmbiguous
 )
 
-type MatchKey struct {
-	Kind MatchKeyKind
+type Key struct {
+	Kind KeyKind
 	// Raw is the original input string, preserved so String() round-
 	// trips. Cheaper than re-formatting from Kind + Body, and lets
 	// the type carry forward shape oddities (case, trailing dots)
@@ -52,46 +52,46 @@ type MatchKey struct {
 	Body string
 }
 
-// ErrInvalidMatchKey is returned by ParseMatchKey for any input that
+// ErrInvalidKey is returned by ParseKey for any input that
 // doesn't carry one of the three known prefixes. The caller can
 // errors.Is against this sentinel for graceful handling.
-var ErrInvalidMatchKey = errors.New("invalid match key")
+var ErrInvalidKey = errors.New("invalid match key")
 
-// ParseMatchKey returns the typed form of `s`, or ErrInvalidMatchKey
+// ParseKey returns the typed form of `s`, or ErrInvalidKey
 // if `s` doesn't carry one of the three known prefixes.
-func ParseMatchKey(s string) (MatchKey, error) {
+func ParseKey(s string) (Key, error) {
 	switch {
 	case strings.HasPrefix(s, "match-"):
-		return MatchKey{Kind: KindTracked, Raw: s, Body: s[len("match-"):]}, nil
+		return Key{Kind: KindTracked, Raw: s, Body: s[len("match-"):]}, nil
 	case strings.HasPrefix(s, "unmatched-"):
-		return MatchKey{Kind: KindUnmatched, Raw: s, Body: s[len("unmatched-"):]}, nil
+		return Key{Kind: KindUnmatched, Raw: s, Body: s[len("unmatched-"):]}, nil
 	case strings.HasPrefix(s, "ambiguous-"):
-		return MatchKey{Kind: KindAmbiguous, Raw: s, Body: s[len("ambiguous-"):]}, nil
+		return Key{Kind: KindAmbiguous, Raw: s, Body: s[len("ambiguous-"):]}, nil
 	}
-	return MatchKey{}, ErrInvalidMatchKey
+	return Key{}, ErrInvalidKey
 }
 
 // String returns the wire form of the key. Round-trips through
-// ParseMatchKey unchanged.
-func (k MatchKey) String() string { return k.Raw }
+// ParseKey unchanged.
+func (k Key) String() string { return k.Raw }
 
 // IsAmbiguous is a thin convenience over Kind == KindAmbiguous —
 // the most common branch at every existing call site. Keeps the
 // .Kind enum private at the consumer.
-func (k MatchKey) IsAmbiguous() bool { return k.Kind == KindAmbiguous }
+func (k Key) IsAmbiguous() bool { return k.Kind == KindAmbiguous }
 
 // IsUnmatched mirrors IsAmbiguous for unmatched keys.
-func (k MatchKey) IsUnmatched() bool { return k.Kind == KindUnmatched }
+func (k Key) IsUnmatched() bool { return k.Kind == KindUnmatched }
 
 // IsTracked mirrors IsAmbiguous for normal tracked keys.
-func (k MatchKey) IsTracked() bool { return k.Kind == KindTracked }
+func (k Key) IsTracked() bool { return k.Kind == KindTracked }
 
 // Filename returns the body of an unmatched or ambiguous key.
 // For tracked keys (where Body is the timestamp) the result is
 // the empty string — tracked keys are minted from a timestamp,
 // not a filename. Callers branch on .Kind / .IsX() first when
 // the semantic matters.
-func (k MatchKey) Filename() string {
+func (k Key) Filename() string {
 	if k.Kind != KindUnmatched && k.Kind != KindAmbiguous {
 		return ""
 	}
@@ -112,21 +112,21 @@ func (k MatchKey) Filename() string {
 // concatenate the prefix inline; centralizing here keeps the
 // wire format in one place — flip the prefix once instead of
 // hunting every call site.
-func NewAmbiguousMatchKey(filename string) MatchKey {
+func NewAmbiguousMatchKey(filename string) Key {
 	enc := base64.RawURLEncoding.EncodeToString([]byte(filename))
-	return MatchKey{Kind: KindAmbiguous, Raw: "ambiguous-" + enc, Body: enc}
+	return Key{Kind: KindAmbiguous, Raw: "ambiguous-" + enc, Body: enc}
 }
 
 // NewUnmatchedMatchKey builds an `unmatched-<base64url(filename)>` key.
-func NewUnmatchedMatchKey(filename string) MatchKey {
+func NewUnmatchedMatchKey(filename string) Key {
 	enc := base64.RawURLEncoding.EncodeToString([]byte(filename))
-	return MatchKey{Kind: KindUnmatched, Raw: "unmatched-" + enc, Body: enc}
+	return Key{Kind: KindUnmatched, Raw: "unmatched-" + enc, Body: enc}
 }
 
 // NewTrackedMatchKey builds a `match-<timestamp>` key. The caller
 // passes the timestamp string already in the project's dash-
 // separated ISO form (`YYYY-MM-DDTHH-MM-SS`) since this constructor
 // is shape-agnostic about what counts as a valid timestamp body.
-func NewTrackedMatchKey(timestamp string) MatchKey {
-	return MatchKey{Kind: KindTracked, Raw: "match-" + timestamp, Body: timestamp}
+func NewTrackedMatchKey(timestamp string) Key {
+	return Key{Kind: KindTracked, Raw: "match-" + timestamp, Body: timestamp}
 }

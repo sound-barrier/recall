@@ -5,7 +5,7 @@ import "fmt"
 // Per-match review-status tag. Presence in match_reviews IS the
 // "reviewed" signal; absence means "not reviewed." SetReview is an
 // idempotent upsert; ClearReview is a targeted delete; LoadReviews
-// returns the full snapshot the aggregator merges into MatchRecord
+// returns the full snapshot the aggregator merges into match.Record
 // at read time.
 //
 // The CHECK constraint on the reviewed_by column ('self' | 'coach')

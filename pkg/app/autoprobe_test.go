@@ -20,7 +20,7 @@ func TestAutoProbeOnFirstRun_AppliesWhenSettingIsEmpty(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 
-	tried := probe.ProbeCandidates()
+	tried := probe.Candidates()
 	if len(tried) == 0 {
 		t.Skipf("no probe candidates on %s", runtime.GOOS)
 	}
@@ -50,7 +50,7 @@ func TestAutoProbeOnFirstRun_NoOpWhenAlreadyConfigured(t *testing.T) {
 	if err := os.MkdirAll(preset, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", preset, err)
 	}
-	tried := probe.ProbeCandidates()
+	tried := probe.Candidates()
 	if len(tried) > 0 {
 		if err := os.MkdirAll(tried[0], 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", tried[0], err)

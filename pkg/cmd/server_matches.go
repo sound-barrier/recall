@@ -149,7 +149,7 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 // handleCreateManualMatch hand-enters a match for users without OCR. Derives
 // the match_key from played_at (default now), 409s on a collision with any
 // existing match, writes the override + queue / play-mode rows, and returns the
-// created MatchRecord (source: manual).
+// created match.Record (source: manual).
 func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var input match.ManualMatchInput
@@ -351,7 +351,7 @@ func parseMatchesPagination(r *http.Request) (int, string) {
 // arbitrary string: rejecting a schema-valid value trips
 // schemathesis's positive-data check, and a stale cursor is a
 // legitimate mid-pagination state, not a malformed request.
-func applyMatchesPagination(rows []match.MatchRecord, limit int, cursor string) []match.MatchRecord {
+func applyMatchesPagination(rows []match.Record, limit int, cursor string) []match.Record {
 	start := 0
 	if cursor != "" {
 		found := false
@@ -365,11 +365,11 @@ func applyMatchesPagination(rows []match.MatchRecord, limit int, cursor string) 
 		if !found {
 			// Never `nil` so the JSON wire shape stays `[]` (the
 			// arrays-are-not-null rule in api-design.md).
-			return []match.MatchRecord{}
+			return []match.Record{}
 		}
 	}
 	if start >= len(rows) {
-		return []match.MatchRecord{}
+		return []match.Record{}
 	}
 	tail := rows[start:]
 	if limit > 0 && len(tail) > limit {

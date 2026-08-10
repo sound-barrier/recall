@@ -271,7 +271,7 @@ func withReleaseAssetURL(t *testing.T, builder func(version, name string) string
 // gamedata.MainVersionURL) so tests stay hermetic. Tests that don't care
 // about the main channel pass closedServerURL (a pre-closed
 // httptest server) — every main-channel fetch returns a connection
-// error which collapses to GameDataStatus{} (empty CommitSHA, no diff)
+// error which collapses to gamedata.Status{} (empty CommitSHA, no diff)
 // — exactly the "Pages unreachable" branch.
 //
 // Tests that DO care about the main channel pass a builder routed

@@ -6,7 +6,7 @@ import "fmt"
 // the "queue known" signal; absence means "queue not set."
 // SetMatchQueue is an idempotent upsert; ClearMatchQueue is a
 // targeted delete; LoadMatchQueues returns the full snapshot the
-// aggregator merges into MatchRecord at read time.
+// aggregator merges into match.Record at read time.
 //
 // The CHECK constraint on the queue_type column ('role' | 'open')
 // is the source of truth for the enum — the App layer additionally

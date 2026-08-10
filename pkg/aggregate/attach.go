@@ -13,7 +13,7 @@ import (
 // AttachReviews writes `ReviewedBy` + `ReviewedAt` on every record
 // carrying a review-status row. Pure function, called once per
 // aggregateAll.
-func AttachReviews(recs []match.MatchRecord, reviews map[string]db.ReviewState) {
+func AttachReviews(recs []match.Record, reviews map[string]db.ReviewState) {
 	if len(reviews) == 0 {
 		return
 	}
@@ -27,7 +27,7 @@ func AttachReviews(recs []match.MatchRecord, reviews map[string]db.ReviewState) 
 
 // AttachQueues writes `QueueType` on every record carrying a
 // match_queue row. Pure function, called once per aggregateAll.
-func AttachQueues(recs []match.MatchRecord, queues map[string]db.QueueState) {
+func AttachQueues(recs []match.Record, queues map[string]db.QueueState) {
 	if len(queues) == 0 {
 		return
 	}
@@ -48,7 +48,7 @@ func AttachQueues(recs []match.MatchRecord, queues map[string]db.QueueState) {
 // the user's "unless I know otherwise it should be unset" intent.
 //
 // Pure function, called once per aggregateAll.
-func AttachPlayModes(recs []match.MatchRecord, overrides map[string]db.PlayModeState) {
+func AttachPlayModes(recs []match.Record, overrides map[string]db.PlayModeState) {
 	if len(overrides) == 0 {
 		return
 	}
@@ -59,33 +59,33 @@ func AttachPlayModes(recs []match.MatchRecord, overrides map[string]db.PlayModeS
 	}
 }
 
-// AttachAmbiguity flags every match.MatchRecord whose match_key starts with
+// AttachAmbiguity flags every match.Record whose match_key starts with
 // "ambiguous-" and attaches its candidate match list. The candidates
 // map is keyed by the filename embedded in the sentinel — every
-// match.MatchRecord that adopted the same sentinel (via the timestamp-window
+// match.Record that adopted the same sentinel (via the timestamp-window
 // pass) shares one candidates entry.
 //
 // Each match.AmbiguousAttribution is enriched with a representative source
 // file (the candidate match's earliest SourceFile + its dir id) so
 // the Unknown-tab picker can render a thumbnail beside each
 // candidate. Built from a one-pass O(N) index over recs.
-func AttachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
+func AttachAmbiguity(recs []match.Record, candidates map[string][]db.AmbiguousCandidate) {
 	// Index recs by match_key for O(1) candidate lookups. Built only
 	// when at least one ambiguous record exists — most aggregate
 	// runs skip this entirely.
-	var byKey map[string]*match.MatchRecord
+	var byKey map[string]*match.Record
 	ensureIndex := func() {
 		if byKey != nil {
 			return
 		}
-		byKey = make(map[string]*match.MatchRecord, len(recs))
+		byKey = make(map[string]*match.Record, len(recs))
 		for i := range recs {
 			byKey[recs[i].MatchKey] = &recs[i]
 		}
 	}
 
 	for i := range recs {
-		mk, err := match.ParseMatchKey(recs[i].MatchKey)
+		mk, err := match.ParseKey(recs[i].MatchKey)
 		if err != nil || !mk.IsAmbiguous() {
 			continue
 		}
@@ -115,7 +115,7 @@ func AttachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.Ambigu
 
 // AttachPinned flips `Pinned` on every record in the starred set.
 // Pure function, called once per aggregateAll.
-func AttachPinned(recs []match.MatchRecord, pinned map[string]bool) {
+func AttachPinned(recs []match.Record, pinned map[string]bool) {
 	if len(pinned) == 0 {
 		return
 	}
@@ -128,7 +128,7 @@ func AttachPinned(recs []match.MatchRecord, pinned map[string]bool) {
 
 // AttachHidden flips `Hidden` to true on every record whose match_key
 // is in the soft-delete set. Pure function, called once per aggregateAll.
-func AttachHidden(recs []match.MatchRecord, hidden map[string]bool) {
+func AttachHidden(recs []match.Record, hidden map[string]bool) {
 	if len(hidden) == 0 {
 		return
 	}
@@ -154,8 +154,8 @@ func sidesOrEmpty(s []string) []string {
 // call sites attach annotations — the bulk aggregate and the single-record
 // sidecar path — and a field added to only one of them goes missing with no
 // compile error, so both go through here.
-func annotationFromRow(a db.Annotation) *match.MatchAnnotation {
-	return &match.MatchAnnotation{
+func annotationFromRow(a db.Annotation) *match.Annotation {
+	return &match.Annotation{
 		Leavers:     sidesOrEmpty(a.Leavers),
 		Throwers:    sidesOrEmpty(a.Throwers),
 		Note:        a.Note,
@@ -167,10 +167,10 @@ func annotationFromRow(a db.Annotation) *match.MatchAnnotation {
 }
 
 // AttachAnnotations grafts user-curated disruption/note records onto the
-// aggregated match.MatchRecord slice. Match-key lookup; missing → nil
+// aggregated match.Record slice. Match-key lookup; missing → nil
 // (unannotated). Pure function, exported only via aggregateAll +
 // the streaming path in app_wails.go / app_server.go's emit.
-func AttachAnnotations(recs []match.MatchRecord, annos map[string]db.Annotation) {
+func AttachAnnotations(recs []match.Record, annos map[string]db.Annotation) {
 	if len(annos) == 0 {
 		return
 	}
@@ -188,7 +188,7 @@ func AttachAnnotations(recs []match.MatchRecord, annos map[string]db.Annotation)
 // record becomes SourceOCREdited (with EditedFields listing the overridden
 // paths); a synthesized shell stays SourceManual. Pure function, called once
 // per aggregateAll, AFTER SynthesizeManualMatches.
-func AttachUserData(recs []match.MatchRecord, userData map[string]db.UserMatchData) {
+func AttachUserData(recs []match.Record, userData map[string]db.UserMatchData) {
 	if len(userData) == 0 {
 		return
 	}
@@ -199,7 +199,7 @@ func AttachUserData(recs []match.MatchRecord, userData map[string]db.UserMatchDa
 	}
 }
 
-func applyUserData(rec *match.MatchRecord, ud db.UserMatchData) {
+func applyUserData(rec *match.Record, ud db.UserMatchData) {
 	manual := len(rec.SourceFiles) == 0
 	var edited []string
 	mark := func(path string) {

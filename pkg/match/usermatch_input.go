@@ -6,7 +6,7 @@ package match
 // distinguish "override to this value" (non-nil, including 0 / "") from "not
 // overridden / reverted" (nil). It mirrors db.UserMatchData but lives in the
 // domain layer so the JSON contract doesn't leak SQL field names (the same
-// reason MatchAnnotation mirrors db.Annotation).
+// reason Annotation mirrors db.Annotation).
 type UserMatchDataInput struct {
 	Map           *string             `json:"map,omitempty"`
 	Hero          *string             `json:"hero,omitempty"`

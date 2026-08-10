@@ -11,7 +11,7 @@ import (
 func TestParseMatchKey_KnownPrefixes(t *testing.T) {
 	cases := []struct {
 		input    string
-		wantKind match.MatchKeyKind
+		wantKind match.KeyKind
 		wantBody string
 	}{
 		{"match-2026-05-10T22-21-11", match.KindTracked, "2026-05-10T22-21-11"},
@@ -20,7 +20,7 @@ func TestParseMatchKey_KnownPrefixes(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
-			got, err := match.ParseMatchKey(c.input)
+			got, err := match.ParseKey(c.input)
 			if err != nil {
 				t.Fatalf("err = %v, want nil", err)
 			}
@@ -46,24 +46,24 @@ func TestParseMatchKey_UnknownPrefixReturnsSentinel(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c, func(t *testing.T) {
-			_, err := match.ParseMatchKey(c)
-			if !errors.Is(err, match.ErrInvalidMatchKey) {
-				t.Errorf("err = %v, want ErrInvalidMatchKey", err)
+			_, err := match.ParseKey(c)
+			if !errors.Is(err, match.ErrInvalidKey) {
+				t.Errorf("err = %v, want ErrInvalidKey", err)
 			}
 		})
 	}
 }
 
 func TestMatchKey_KindHelpers(t *testing.T) {
-	m, _ := match.ParseMatchKey("match-2026-01-01T00-00-00")
+	m, _ := match.ParseKey("match-2026-01-01T00-00-00")
 	if !m.IsTracked() || m.IsAmbiguous() || m.IsUnmatched() {
 		t.Error("IsTracked helper misclassified a match- key")
 	}
-	a, _ := match.ParseMatchKey("ambiguous-x.png")
+	a, _ := match.ParseKey("ambiguous-x.png")
 	if !a.IsAmbiguous() || a.IsTracked() || a.IsUnmatched() {
 		t.Error("IsAmbiguous helper misclassified an ambiguous- key")
 	}
-	u, _ := match.ParseMatchKey("unmatched-x.png")
+	u, _ := match.ParseKey("unmatched-x.png")
 	if !u.IsUnmatched() || u.IsTracked() || u.IsAmbiguous() {
 		t.Error("IsUnmatched helper misclassified an unmatched- key")
 	}
@@ -78,7 +78,7 @@ func TestMatchKey_Filename(t *testing.T) {
 	if got := u.Filename(); got != "bar.png" {
 		t.Errorf("unmatched.Filename() = %q, want %q", got, "bar.png")
 	}
-	m, _ := match.ParseMatchKey("match-2026-01-01T00-00-00")
+	m, _ := match.ParseKey("match-2026-01-01T00-00-00")
 	if got := m.Filename(); got != "" {
 		t.Errorf("tracked.Filename() = %q, want empty (tracked keys are time-derived)", got)
 	}
@@ -86,15 +86,15 @@ func TestMatchKey_Filename(t *testing.T) {
 
 // TestMatchKey_RoundTrip is the cross-cutting guard that wire-format
 // match_key strings produced by the three constructors round-trip
-// through ParseMatchKey → String() unchanged. A drift here means a
+// through ParseKey → String() unchanged. A drift here means a
 // minting site and a parsing site disagree on the wire shape — the
 // exact failure mode the typed identity was introduced to make
 // impossible.
 func TestMatchKey_RoundTrip(t *testing.T) {
-	cases := []match.MatchKey{match.NewTrackedMatchKey("2026-05-10T22-21-11"), match.NewUnmatchedMatchKey("some-screenshot.png"), match.NewAmbiguousMatchKey("other-screenshot.png")}
+	cases := []match.Key{match.NewTrackedMatchKey("2026-05-10T22-21-11"), match.NewUnmatchedMatchKey("some-screenshot.png"), match.NewAmbiguousMatchKey("other-screenshot.png")}
 	for _, c := range cases {
 		t.Run(c.String(), func(t *testing.T) {
-			parsed, err := match.ParseMatchKey(c.String())
+			parsed, err := match.ParseKey(c.String())
 			if err != nil {
 				t.Fatalf("re-parse %q: %v", c.String(), err)
 			}
@@ -137,7 +137,7 @@ func TestSentinelKeys_URLSafeRoundTrip(t *testing.T) {
 		"plain-file.png",
 	}
 	for _, fn := range filenames {
-		for _, k := range []match.MatchKey{
+		for _, k := range []match.Key{
 			match.NewUnmatchedMatchKey(fn),
 			match.NewAmbiguousMatchKey(fn),
 		} {
@@ -145,7 +145,7 @@ func TestSentinelKeys_URLSafeRoundTrip(t *testing.T) {
 			if !urlSafe.MatchString(s) {
 				t.Errorf("key %q is not URL-safe (want match %v)", s, urlSafe)
 			}
-			parsed, err := match.ParseMatchKey(s)
+			parsed, err := match.ParseKey(s)
 			if err != nil {
 				t.Fatalf("re-parse %q: %v", s, err)
 			}

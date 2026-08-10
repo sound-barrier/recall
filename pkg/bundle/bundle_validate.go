@@ -10,13 +10,13 @@ import (
 	"strings"
 )
 
-// BundleIssue is one discrepancy ValidateBundle found between the
+// Issue is one discrepancy ValidateBundle found between the
 // bundle's `manifest.json`, `data.json`, and `screenshots/` contents.
 //
 // `Kind` is a short stable identifier suitable for machine parsing
 // (a future scripted invocation can grep on it). `Message` is the
 // human-readable explanation suitable for the CLI report.
-type BundleIssue struct {
+type Issue struct {
 	Kind    string `json:"kind"`
 	Message string `json:"message"`
 }
@@ -73,7 +73,7 @@ type issueSink func(kind, msg string)
 //     key in manifest.screenshots
 //  10. data.json does NOT carry `screenshots_dirs` (the PII path
 //     map was intentionally stripped — bundles must be sanitized)
-func Validate(zipBytes []byte) ([]BundleIssue, error) {
+func Validate(zipBytes []byte) ([]Issue, error) {
 	zr, err := zip.NewReader(bytes.NewReader(zipBytes), int64(len(zipBytes)))
 	if err != nil {
 		return nil, fmt.Errorf("parse zip: %w", err)
@@ -84,9 +84,9 @@ func Validate(zipBytes []byte) ([]BundleIssue, error) {
 		return nil, err
 	}
 
-	var issues []BundleIssue
+	var issues []Issue
 	add := func(kind, msg string) {
-		issues = append(issues, BundleIssue{Kind: kind, Message: msg})
+		issues = append(issues, Issue{Kind: kind, Message: msg})
 	}
 
 	if manifestBytes == nil {
@@ -151,8 +151,8 @@ func readBundleEntries(zr *zip.Reader) (manifestBytes, dataBytes []byte, screens
 	return manifestBytes, dataBytes, screenshots, nil
 }
 
-func decodeBundleManifest(manifestBytes []byte, add issueSink) (BundleManifestV1, error) {
-	var mf BundleManifestV1
+func decodeBundleManifest(manifestBytes []byte, add issueSink) (ManifestV1, error) {
+	var mf ManifestV1
 	if err := json.Unmarshal(manifestBytes, &mf); err != nil {
 		return mf, fmt.Errorf("decode manifest.json: %w", err)
 	}
@@ -167,8 +167,8 @@ func decodeBundleManifest(manifestBytes []byte, add issueSink) (BundleManifestV1
 // decode for the residual `screenshots_dirs` field. We unmarshal twice
 // (cheap; the file is small) so we can both populate typed row slices AND
 // probe for the path-map leak.
-func decodeBundleData(dataBytes []byte, add issueSink) (BundleDataV2, error) {
-	var dataDoc BundleDataV2
+func decodeBundleData(dataBytes []byte, add issueSink) (DataV2, error) {
+	var dataDoc DataV2
 	if err := json.Unmarshal(dataBytes, &dataDoc); err != nil {
 		return dataDoc, fmt.Errorf("decode data.json: %w", err)
 	}
@@ -190,7 +190,7 @@ func decodeBundleData(dataBytes []byte, add issueSink) (BundleDataV2, error) {
 // validateBundleCounts checks manifest.match_count against data.json's
 // distinct keys (validation 4) and the screenshot_count agreement
 // (validation 5).
-func validateBundleCounts(mf BundleManifestV1, dataKeys, screenshots map[string]struct{}, add issueSink) {
+func validateBundleCounts(mf ManifestV1, dataKeys, screenshots map[string]struct{}, add issueSink) {
 	if len(dataKeys) != mf.MatchCount {
 		add(IssueMatchCountMismatch,
 			fmt.Sprintf("manifest.match_count = %d, data.json has %d distinct match_keys",
@@ -211,7 +211,7 @@ func validateBundleCounts(mf BundleManifestV1, dataKeys, screenshots map[string]
 // validateBundleScreenshotRefs checks the bidirectional screenshot ↔ file
 // map (validations 6 + 7) and that every manifest match_key has a row in
 // data.json (validation 8).
-func validateBundleScreenshotRefs(mf BundleManifestV1, screenshots, dataKeys map[string]struct{}, add issueSink) {
+func validateBundleScreenshotRefs(mf ManifestV1, screenshots, dataKeys map[string]struct{}, add issueSink) {
 	for filename := range mf.Screenshots {
 		if _, ok := screenshots[filename]; !ok {
 			add(IssueManifestMissingFile,
@@ -235,7 +235,7 @@ func validateBundleScreenshotRefs(mf BundleManifestV1, screenshots, dataKeys map
 
 // validateBundleDataFilenames checks that every data.json row filename
 // appears in the manifest's screenshots map (validation 9).
-func validateBundleDataFilenames(dataDoc BundleDataV2, mf BundleManifestV1, add issueSink) {
+func validateBundleDataFilenames(dataDoc DataV2, mf ManifestV1, add issueSink) {
 	for _, fn := range dataRowFilenames(dataDoc) {
 		if _, ok := mf.Screenshots[fn]; !ok {
 			add(IssueDataFileNotInManifest,
@@ -256,7 +256,7 @@ func readZipEntry(f *zip.File) ([]byte, error) {
 
 // dataMatchKeys returns the set of distinct match_keys referenced
 // across every row table in data.json.
-func dataMatchKeys(d BundleDataV2) map[string]struct{} {
+func dataMatchKeys(d DataV2) map[string]struct{} {
 	keys := map[string]struct{}{}
 	// The user layer counts toward the distinct-key set: a manual match
 	// exists ONLY there, and the manifest's match_count includes it.
@@ -283,7 +283,7 @@ func dataMatchKeys(d BundleDataV2) map[string]struct{} {
 
 // dataRowFilenames returns every non-empty `Filename` value across
 // data.json's row tables.
-func dataRowFilenames(d BundleDataV2) []string {
+func dataRowFilenames(d DataV2) []string {
 	out := make([]string, 0)
 	push := func(name string) {
 		if name != "" {

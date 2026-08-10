@@ -124,7 +124,7 @@ func TestDeleteMatchAnnotation_204(t *testing.T) {
 // rejected (schemathesis positive-data check), and a stale cursor is
 // a legitimate mid-pagination state, not a malformed request.
 func TestApplyMatchesPagination_UnknownCursorReturnsEmptyPage(t *testing.T) {
-	rows := []match.MatchRecord{
+	rows := []match.Record{
 		{MatchKey: "m1"},
 		{MatchKey: "m2"},
 		{MatchKey: "m3"},
@@ -140,7 +140,7 @@ func TestApplyMatchesPagination_UnknownCursorReturnsEmptyPage(t *testing.T) {
 
 // A known cursor on the last row also yields the empty terminator.
 func TestApplyMatchesPagination_LastRowCursorReturnsEmptyPage(t *testing.T) {
-	rows := []match.MatchRecord{
+	rows := []match.Record{
 		{MatchKey: "m1"},
 		{MatchKey: "m2"},
 	}

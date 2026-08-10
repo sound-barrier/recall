@@ -24,7 +24,7 @@ import (
 // Each candidate is filtered through checkTesseract — file-exists
 // alone isn't enough since a forgotten 3.x install would otherwise
 // "succeed" while producing wrong OCR output.
-func (a *App) ProbeTesseractBinary() probe.ProbeResult {
+func (a *App) ProbeTesseractBinary() probe.Result {
 	home, _ := os.UserHomeDir()
 	tried := tesseractProbeCandidates(runtime.GOOS, home)
 
@@ -33,7 +33,7 @@ func (a *App) ProbeTesseractBinary() probe.ProbeResult {
 			continue
 		}
 		if checkTesseract(c).Found {
-			return probe.ProbeResult{Found: true, Path: c, Tried: tried}
+			return probe.Result{Found: true, Path: c, Tried: tried}
 		}
 	}
 	// PATH lookup as a last resort. Tracked separately in Tried so
@@ -42,10 +42,10 @@ func (a *App) ProbeTesseractBinary() probe.ProbeResult {
 	if p, err := exec.LookPath(tesseractExecName()); err == nil {
 		tried = append(tried, "PATH: "+p)
 		if checkTesseract(p).Found {
-			return probe.ProbeResult{Found: true, Path: p, Tried: tried}
+			return probe.Result{Found: true, Path: p, Tried: tried}
 		}
 	}
-	return probe.ProbeResult{Found: false, Tried: tried}
+	return probe.Result{Found: false, Tried: tried}
 }
 
 func tesseractExecName() string {

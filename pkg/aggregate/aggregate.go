@@ -10,7 +10,7 @@ import (
 )
 
 // aggregateAll bulk-reads every screenshot row, groups by match_key,
-// folds each group into one match.MatchRecord via correlate.MergeMatchResult, and runs
+// folds each group into one match.Record via correlate.MergeMatchResult, and runs
 // the read-time inference helpers.
 //
 // Read-time only: never mutates DB rows. The same precedence rules
@@ -35,10 +35,10 @@ import (
 // Settings → Advanced → Re-parse all screenshots is the only
 // path (it re-runs Tesseract, which now correctly rejects the
 // short-name fuzzy match).
-func AggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) (match.MatchRecord, bool) {
+func MatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) (match.Record, bool) {
 	vs := collectViewsForKey(snap, key)
 	if len(vs) == 0 {
-		return match.MatchRecord{}, false
+		return match.Record{}, false
 	}
 	rec := FoldGroup(key, vs, snap.ScreenshotsDirs)
 	InferSoleHeroPercent(&rec.Data)
@@ -81,7 +81,7 @@ func collectViewsForKey(snap db.Screenshots, key string) []ScreenshotView {
 
 // attachMatchSidecars decorates rec with the per-key annotation, hidden
 // flag, review state, and ambiguous-attribution candidates.
-func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) {
+func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState, pinned map[string]bool) {
 	if a, ok := annos[key]; ok {
 		rec.Annotation = annotationFromRow(a)
 	}
@@ -95,7 +95,7 @@ func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots
 		rec.ReviewedBy = st.ReviewedBy
 		rec.ReviewedAt = st.ReviewedAt
 	}
-	if mk, err := match.ParseMatchKey(key); err == nil && mk.IsAmbiguous() {
+	if mk, err := match.ParseKey(key); err == nil && mk.IsAmbiguous() {
 		rec.Ambiguous = true
 		if cs, ok := snap.AmbiguousCandidates[mk.Filename()]; ok {
 			rec.Candidates = make([]match.AmbiguousAttribution, 0, len(cs))
@@ -110,7 +110,7 @@ func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots
 	}
 }
 
-func AggregateScreenshots(snap db.Screenshots) []match.MatchRecord {
+func Screenshots(snap db.Screenshots) []match.Record {
 	views := make([]ScreenshotView, 0,
 		len(snap.Summaries)+len(snap.Teams)+len(snap.Personals)+len(snap.Ranks)+len(snap.Unknowns))
 	for _, r := range snap.Summaries {
@@ -140,14 +140,14 @@ func AggregateScreenshots(snap db.Screenshots) []match.MatchRecord {
 	}
 	sort.Strings(keys)
 
-	out := make([]match.MatchRecord, 0, len(keys))
+	out := make([]match.Record, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, FoldGroup(k, groups[k], snap.ScreenshotsDirs))
 	}
 	return out
 }
 
-func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.MatchRecord {
+func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Record {
 	sortViewsForFold(vs)
 
 	var data parser.MatchResult
@@ -188,7 +188,7 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Mat
 	detectedQueue := data.QueueType
 	data.QueueType = ""
 
-	rec := match.MatchRecord{
+	rec := match.Record{
 		MatchKey:       key,
 		SourceFiles:    correlate.UnionSortedStrings(sources, nil),
 		SourceTypes:    types,
@@ -235,12 +235,12 @@ func applyDerivedFields(data *parser.MatchResult) {
 	}
 }
 
-// SynthesizeManualMatches appends an empty MatchRecord for every user-data key
+// SynthesizeManualMatches appends an empty match.Record for every user-data key
 // with no screenshot-backed record — a hand-entered match, which lives entirely
 // in the override layer. AttachUserData fills each shell's Data from the row.
 // The result is re-sorted by match_key so manual and OCR matches interleave in
-// the same order AggregateScreenshots produces.
-func SynthesizeManualMatches(recs []match.MatchRecord, userData map[string]db.UserMatchData) []match.MatchRecord {
+// the same order Screenshots produces.
+func SynthesizeManualMatches(recs []match.Record, userData map[string]db.UserMatchData) []match.Record {
 	if len(userData) == 0 {
 		return recs
 	}
@@ -253,7 +253,7 @@ func SynthesizeManualMatches(recs []match.MatchRecord, userData map[string]db.Us
 		if have[k] {
 			continue
 		}
-		recs = append(recs, match.MatchRecord{
+		recs = append(recs, match.Record{
 			MatchKey:    k,
 			Source:      match.SourceManual,
 			SourceFiles: []string{},

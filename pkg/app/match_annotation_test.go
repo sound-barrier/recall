@@ -16,7 +16,7 @@ func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 		"k1": {MatchKey: "k1", Leavers: []string{"self"}, Note: "left at 2min"},
 		"k3": {MatchKey: "k3", Leavers: []string{"enemy"}},
 	}
-	recs := []match.MatchRecord{
+	recs := []match.Record{
 		{MatchKey: "k1"},
 		{MatchKey: "k2"}, // no annotation
 		{MatchKey: "k3"},

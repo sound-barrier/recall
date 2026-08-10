@@ -42,11 +42,11 @@ func (a *App) emitWatchActivity(ev WatchActivityEvent) {
 	a.SSEHub.BroadcastData("watch-activity", string(data))
 }
 
-// emitMatchUpdated broadcasts a freshly-aggregated match.MatchRecord to the
+// emitMatchUpdated broadcasts a freshly-aggregated match.Record to the
 // Wails event bus and the SSE hub. Fired after each per-screenshot insert
 // resolves a match_key so the frontend can incrementally render the affected
 // card without waiting for parse-complete.
-func (a *App) emitMatchUpdated(rec match.MatchRecord) {
+func (a *App) emitMatchUpdated(rec match.Record) {
 	data, _ := json.Marshal(rec)
 	emitEvent("match-updated", rec)
 	a.SSEHub.BroadcastData("match-updated", string(data))

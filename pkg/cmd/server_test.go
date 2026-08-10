@@ -758,7 +758,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	//
 	// Catches wiring regressions between the three layers: route →
 	// app.SetMatchAnnotation → store, and then store → aggregator →
-	// MatchRecord JSON.
+	// match.Record JSON.
 	store, err := db.NewSQLStore(":memory:")
 	if err != nil {
 		t.Fatalf("NewSQLStore: %v", err)
@@ -794,7 +794,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	}
 
 	// GET /api/v1/matches — expect the annotation to surface on the
-	// returned MatchRecord.
+	// returned match.Record.
 	rec = get(t, mux, "/api/v1/matches")
 	if rec.Code != 200 {
 		t.Fatalf("matches status %d", rec.Code)

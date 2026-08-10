@@ -26,12 +26,12 @@ type ScreenshotView struct {
 	data     parser.MatchResult
 }
 
-// AggregateMatchKey produces a single match.MatchRecord for the given
+// MatchKey produces a single match.Record for the given
 // match_key, reading just its rows out of snap. Returns
 // (record, true) when at least one row matched; (_, false) when
 // nothing in snap references the key.
 //
-// Same precedence rules as AggregateScreenshots — this is the
+// Same precedence rules as Screenshots — this is the
 // per-key extract for the live-streaming "match-updated" event.
 // Inference helpers (InferSoleHeroPercent, InferResultFromRank)
 // are applied so the streamed shape matches GetMatchResults output.

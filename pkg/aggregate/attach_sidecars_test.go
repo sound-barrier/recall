@@ -16,7 +16,7 @@ import (
 // non-matching record untouched (the attach branch, distinct from the
 // already-covered empty-map no-op).
 func TestAttachReviews_SetsStatusOnMatchingKeyOnly(t *testing.T) {
-	recs := []match.MatchRecord{{MatchKey: "match-1"}, {MatchKey: "match-2"}}
+	recs := []match.Record{{MatchKey: "match-1"}, {MatchKey: "match-2"}}
 	aggregate.AttachReviews(recs, map[string]db.ReviewState{
 		"match-1": {ReviewedBy: "self", ReviewedAt: "2026-06-20T00:00:00Z"},
 	})
@@ -32,7 +32,7 @@ func TestAttachReviews_SetsStatusOnMatchingKeyOnly(t *testing.T) {
 // AttachPlayModes is pure-override: PlayMode is set ONLY from the aux row, with
 // no fallback inference.
 func TestAttachPlayModes_OverridesFromAuxRow(t *testing.T) {
-	recs := []match.MatchRecord{{MatchKey: "match-1"}}
+	recs := []match.Record{{MatchKey: "match-1"}}
 	aggregate.AttachPlayModes(recs, map[string]db.PlayModeState{
 		"match-1": {PlayMode: "competitive"},
 	})
@@ -44,7 +44,7 @@ func TestAttachPlayModes_OverridesFromAuxRow(t *testing.T) {
 
 // AttachHidden flips the soft-delete flag only for keys in the set.
 func TestAttachHidden_FlipsOnlyListedKeys(t *testing.T) {
-	recs := []match.MatchRecord{{MatchKey: "match-1"}, {MatchKey: "match-2"}}
+	recs := []match.Record{{MatchKey: "match-1"}, {MatchKey: "match-2"}}
 	aggregate.AttachHidden(recs, map[string]bool{"match-2": true})
 
 	if recs[0].Hidden {
@@ -58,7 +58,7 @@ func TestAttachHidden_FlipsOnlyListedKeys(t *testing.T) {
 // AttachAnnotations grafts the full annotation (scalars + member/tag lists) onto
 // the matching record.
 func TestAttachAnnotations_GraftsFullAnnotation(t *testing.T) {
-	recs := []match.MatchRecord{{MatchKey: "match-1"}}
+	recs := []match.Record{{MatchKey: "match-1"}}
 	aggregate.AttachAnnotations(recs, map[string]db.Annotation{
 		"match-1": {
 			MatchKey:    "match-1",
@@ -90,7 +90,7 @@ func TestAttachAnnotations_GraftsFullAnnotation(t *testing.T) {
 // A non-empty annotation map that lacks a record's key leaves that record
 // unannotated (the present-but-absent branch).
 func TestAttachAnnotations_UnannotatedStaysNil(t *testing.T) {
-	recs := []match.MatchRecord{{MatchKey: "match-1"}}
+	recs := []match.Record{{MatchKey: "match-1"}}
 	aggregate.AttachAnnotations(recs, map[string]db.Annotation{"other": {MatchKey: "other"}})
 
 	if recs[0].Annotation != nil {
@@ -114,7 +114,7 @@ func TestAttachUserData_HeroesListOverrideReplacesRosterPositionOrdered(t *testi
 		},
 	}}
 
-	recs := []match.MatchRecord{rec}
+	recs := []match.Record{rec}
 	aggregate.AttachUserData(recs, ud)
 
 	hp := recs[0].Data.HeroesPlayed
@@ -137,7 +137,7 @@ func TestAttachUserData_SROverrideConverts(t *testing.T) {
 		SR:       []db.HeroSR{{Hero: "ana", SR: 3200, Change: 25}},
 	}}
 
-	recs := []match.MatchRecord{rec}
+	recs := []match.Record{rec}
 	aggregate.AttachUserData(recs, ud)
 
 	got := recs[0].Data.SR
@@ -149,7 +149,7 @@ func TestAttachUserData_SROverrideConverts(t *testing.T) {
 	}
 }
 
-// AggregateMatchKey threads the per-key annotation / hidden / review sidecars
+// MatchKey threads the per-key annotation / hidden / review sidecars
 // through attachMatchSidecars, and folds an "unknown"-type screenshot for the
 // same key via unknownToView (its filename joins the source-file union).
 func TestAggregateMatchKey_AttachesSidecarsAndFoldsUnknown(t *testing.T) {
@@ -161,9 +161,9 @@ func TestAggregateMatchKey_AttachesSidecarsAndFoldsUnknown(t *testing.T) {
 	hidden := map[string]bool{"m1": true}
 	reviews := map[string]db.ReviewState{"m1": {ReviewedBy: "self", ReviewedAt: "2026-06-20T00:00:00Z"}}
 
-	rec, ok := aggregate.AggregateMatchKey("m1", snap, annos, hidden, reviews, nil)
+	rec, ok := aggregate.MatchKey("m1", snap, annos, hidden, reviews, nil)
 	if !ok {
-		t.Fatal("AggregateMatchKey ok=false for an existing key")
+		t.Fatal("MatchKey ok=false for an existing key")
 	}
 	if rec.Annotation == nil || rec.Annotation.Note != "clutch" {
 		t.Errorf("Annotation = %+v, want note clutch", rec.Annotation)
@@ -184,7 +184,7 @@ func TestAggregateMatchKey_AttachesSidecarsAndFoldsUnknown(t *testing.T) {
 // it, the reason stays empty (window / EAD ambiguity).
 func TestAttachAmbiguity_DerivesDuplicateReasonFromDistance(t *testing.T) {
 	sentinel := match.NewAmbiguousMatchKey("dup.png").String()
-	recs := []match.MatchRecord{
+	recs := []match.Record{
 		{MatchKey: sentinel, SourceFiles: []string{"dup.png"}},
 		{MatchKey: "match-orig", SourceFiles: []string{"orig.png"}},
 	}
@@ -206,7 +206,7 @@ func TestAttachAmbiguity_DerivesDuplicateReasonFromDistance(t *testing.T) {
 }
 
 // The single-key aggregate path (attachMatchSidecars via
-// AggregateMatchKey) derives the same reason — pins both candidate-
+// MatchKey) derives the same reason — pins both candidate-
 // building sites.
 func TestAggregateMatchKey_DerivesDuplicateReasonFromDistance(t *testing.T) {
 	sentinel := match.NewAmbiguousMatchKey("dup.png").String()
@@ -216,7 +216,7 @@ func TestAggregateMatchKey_DerivesDuplicateReasonFromDistance(t *testing.T) {
 			"dup.png": {{MatchKey: "match-orig", DistanceSeconds: 11321}},
 		},
 	}
-	rec, ok := aggregate.AggregateMatchKey(sentinel, snap, nil, nil, nil, nil)
+	rec, ok := aggregate.MatchKey(sentinel, snap, nil, nil, nil, nil)
 	if !ok {
 		t.Fatal("expected the sentinel record to aggregate")
 	}
@@ -230,7 +230,7 @@ func TestAggregateMatchKey_DerivesDuplicateReasonFromDistance(t *testing.T) {
 // violates `type: array` — schemathesis's response_schema_conformance catches
 // it on GET /matches, GET /matches/{key}, and POST /matches.
 func TestAttachAnnotations_SidesMarshalAsEmptyArraysNotNull(t *testing.T) {
-	recs := []match.MatchRecord{{MatchKey: "match-1"}}
+	recs := []match.Record{{MatchKey: "match-1"}}
 	aggregate.AttachAnnotations(recs, map[string]db.Annotation{
 		"match-1": {MatchKey: "match-1", Note: "no sides tagged"},
 	})

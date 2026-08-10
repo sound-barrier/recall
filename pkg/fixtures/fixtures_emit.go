@@ -214,7 +214,7 @@ func (fx *Fixture) appendAmbiguousScreenshots(seed int64, n int, rangeStart time
 	ambigRng := rand.New(rand.NewSource(seed + 6))
 	trackedKeys := make([]string, 0, len(fx.Summaries))
 	for _, s := range fx.Summaries {
-		if mk, err := match.ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
+		if mk, err := match.ParseKey(s.MatchKey); err == nil && mk.IsTracked() {
 			trackedKeys = append(trackedKeys, s.MatchKey)
 		}
 	}

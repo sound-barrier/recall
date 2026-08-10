@@ -8,7 +8,7 @@ import (
 	"recall/pkg/match"
 )
 
-func findRec(t *testing.T, recs []match.MatchRecord, key string) match.MatchRecord {
+func findRec(t *testing.T, recs []match.Record, key string) match.Record {
 	t.Helper()
 	for _, r := range recs {
 		if r.MatchKey == key {
@@ -16,7 +16,7 @@ func findRec(t *testing.T, recs []match.MatchRecord, key string) match.MatchReco
 		}
 	}
 	t.Fatalf("match %q not found in %d records", key, len(recs))
-	return match.MatchRecord{}
+	return match.Record{}
 }
 
 func TestApp_GetMatchResults_ThumbnailFile_OnlyWhenFileExists(t *testing.T) {

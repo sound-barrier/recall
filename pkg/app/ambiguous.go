@@ -41,7 +41,7 @@ var ErrAmbiguousNotFound = errors.New("ambiguous screenshot not found")
 // On success, the in-memory aggregate cache (delivered via SSE) is
 // refreshed by re-emitting a match-updated event for resolvedTo.
 func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error {
-	mk, err := match.ParseMatchKey(ambiguousMatchKey)
+	mk, err := match.ParseKey(ambiguousMatchKey)
 	if err != nil || !mk.IsAmbiguous() {
 		return fmt.Errorf("%w: %q", ErrInvalidAmbiguousKey, ambiguousMatchKey)
 	}
@@ -70,7 +70,7 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 		hidden, _ := a.store.LoadHiddenKeys()
 		reviews, _ := a.store.LoadReviews()
 		pinned, _ := a.store.LoadPinnedKeys()
-		if rec, ok := aggregate.AggregateMatchKey(resolvedTo, snap, annos, hidden, reviews, pinned); ok {
+		if rec, ok := aggregate.MatchKey(resolvedTo, snap, annos, hidden, reviews, pinned); ok {
 			a.emitMatchUpdated(rec)
 		}
 	}
@@ -86,6 +86,6 @@ func validResolution(resolvedTo string, cands []db.AmbiguousCandidate) bool {
 			return true
 		}
 	}
-	mk, err := match.ParseMatchKey(resolvedTo)
+	mk, err := match.ParseKey(resolvedTo)
 	return err == nil && mk.IsTracked()
 }

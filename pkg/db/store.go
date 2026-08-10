@@ -141,7 +141,7 @@ type Store interface {
 	// in match_reviews IS the "reviewed" signal; absence means "not
 	// reviewed." SetReview upserts; ClearReview deletes; LoadReviews
 	// returns the full map keyed by match_key for the aggregator to
-	// attach to MatchRecord. Each ReviewState carries `reviewed_at`
+	// attach to match.Record. Each ReviewState carries `reviewed_at`
 	// (a server-assigned timestamp) so the dossier can compute
 	// activity windows like "days since last review."
 	SetReview(matchKey, reviewedBy string) error
@@ -155,7 +155,7 @@ type Store interface {
 	// will also write here when it can count team rows on a
 	// teams screenshot. SetMatchQueue upserts; ClearMatchQueue
 	// deletes; LoadMatchQueues returns the full map keyed by
-	// match_key for the aggregator to attach to MatchRecord.
+	// match_key for the aggregator to attach to match.Record.
 	SetMatchQueue(matchKey, queueType string) error
 	ClearMatchQueue(matchKey string) error
 	LoadMatchQueues() (map[string]QueueState, error)
@@ -172,7 +172,7 @@ type Store interface {
 	// then to rank-row presence (rank only appears in ranked play)
 	// before giving up. SetMatchPlayMode upserts; ClearMatchPlayMode
 	// deletes; LoadMatchPlayModes returns the full map keyed by
-	// match_key for the aggregator to attach to MatchRecord.
+	// match_key for the aggregator to attach to match.Record.
 	SetMatchPlayMode(matchKey, playMode string) error
 	ClearMatchPlayMode(matchKey string) error
 	LoadMatchPlayModes() (map[string]PlayModeState, error)
@@ -246,7 +246,7 @@ type Store interface {
 	// Database health). Health is read-only and safe mid-parse;
 	// Optimize / Vacuum are serialized against parses by the app
 	// layer (Vacuum takes an exclusive lock for its duration).
-	Health() (DBHealth, error)
+	Health() (Health, error)
 	Optimize() error
 	Vacuum() error
 

@@ -15,7 +15,7 @@ func matchByKeyPath(matchKey string) string {
 }
 
 // Seed the fake store with one summary row → triggers an aggregated
-// MatchRecord. Reused across the cases below.
+// match.Record. Reused across the cases below.
 func seedOneSummary(t *testing.T, fs *dbtest.Fake, matchKey, filename string) {
 	t.Helper()
 	if err := fs.UpsertSummary(db.SummaryRow{

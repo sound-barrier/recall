@@ -98,7 +98,7 @@ func TestTesseractProbeCandidates_UnknownGOOSReturnsNothing(t *testing.T) {
 }
 
 func TestProbeTesseractBinary_TriedListMatchesHostOSCandidates(t *testing.T) {
-	// ProbeTesseractBinary's ProbeResult.Tried must echo the same
+	// ProbeTesseractBinary's probe.Result.Tried must echo the same
 	// candidate list tesseractProbeCandidates produces for the host
 	// OS, plus a PATH-lookup entry on a miss. The frontend renders
 	// Tried in the "looked in" disclosure on failure so the user

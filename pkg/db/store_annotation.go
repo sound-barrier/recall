@@ -8,7 +8,7 @@ import (
 // Match annotations — user-curated per-match data (who left, who threw, free
 // text, replay code, group members, tags). UPSERT semantics on SetAnnotation;
 // DeleteAnnotation is a targeted delete; LoadAnnotations returns the full
-// snapshot the aggregator merges into MatchRecord at read time.
+// snapshot the aggregator merges into match.Record at read time.
 //
 // Everything except the scalars lives in a child table keyed on match_key, and
 // each list is rewritten wholesale on Set. The CHECK constraints on the leaver

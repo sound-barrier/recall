@@ -15,9 +15,9 @@ import (
 type (
 	ExportBundleOptions = bundle.ExportBundleOptions
 	ImportSummary       = bundle.ImportSummary
-	BundleIssue         = bundle.BundleIssue
-	BundleDataV2        = bundle.BundleDataV2
-	BundleManifestV1    = bundle.BundleManifestV1
+	BundleIssue         = bundle.Issue
+	BundleDataV2        = bundle.DataV2
+	BundleManifestV1    = bundle.ManifestV1
 )
 
 var ErrImportMalformed = bundle.ErrImportMalformed

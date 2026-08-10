@@ -8,7 +8,7 @@ import "recall/pkg/gamedata"
 // surface byte-identical — the shell only wires the install root in.
 
 type (
-	GameDataStatus   = gamedata.GameDataStatus
+	GameDataStatus   = gamedata.Status
 	RosterDiff       = gamedata.RosterDiff
 	DataUpdateResult = gamedata.DataUpdateResult
 	ChecksumError    = gamedata.ChecksumError

@@ -10,7 +10,7 @@ import (
 )
 
 // foldGroup lifts a teams-detected queue type onto the
-// top-level MatchRecord.QueueType and clears it from the nested Data,
+// top-level match.Record.QueueType and clears it from the nested Data,
 // so the effective value appears exactly once on the wire.
 func TestFoldGroup_LiftsDetectedQueueType(t *testing.T) {
 	vs := []aggregate.ScreenshotView{aggregate.NewScreenshotView(
@@ -29,7 +29,7 @@ func TestFoldGroup_LiftsDetectedQueueType(t *testing.T) {
 // attachQueues is the "manual wins" override: a match_queue annotation
 // replaces the detected value; its absence leaves detection intact.
 func TestAttachQueues_ManualOverridesDetected(t *testing.T) {
-	recs := []match.MatchRecord{
+	recs := []match.Record{
 		{MatchKey: "override-me", QueueType: "open"}, // detected open
 		{MatchKey: "leave-me", QueueType: "role"},    // detected role, no annotation
 	}
