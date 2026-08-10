@@ -13,10 +13,10 @@ import type { TabId } from '@/composables/shared/useTabKeyboardNav'
  * Matches-view bindings (j / k card focus) are suppressed while the
  * panel is up — the panel takes over those keys.
  */
-export type ShortcutContext = 'always' | 'matches-no-panel' | 'panel' | TabId
+type ShortcutContext = 'always' | 'matches-no-panel' | 'panel' | TabId
 
 /** One key→action row in the cheat-sheet. */
-export interface ShortcutBinding {
+interface ShortcutBinding {
   keys: readonly string[]
   action: string
   // How the multiple keys relate: a SEQUENCE you press in order (vim

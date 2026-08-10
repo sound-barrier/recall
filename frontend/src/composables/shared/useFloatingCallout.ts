@@ -4,7 +4,7 @@ import type { CalloutPlacement } from '@/composables/shared/useOnboardingTour'
 import { computeCalloutPosition, rectsEqual } from '@/components/shared/tour-callout-helpers'
 
 /** Viewport-relative rect of the spotlighted target element. */
-export interface FloatingTargetRect {
+interface FloatingTargetRect {
   x: number
   y: number
   w: number
@@ -12,7 +12,7 @@ export interface FloatingTargetRect {
 }
 
 /** Fixed geometry the positioning solver needs from the host component. */
-export interface FloatingCalloutDims {
+interface FloatingCalloutDims {
   /** Fixed callout width in px (the height is measured live). */
   calloutW: number
   /** Height estimate used before the first real measurement. */

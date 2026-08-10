@@ -182,7 +182,7 @@ export function withWhomRows(records: MatchRecord[], limit: number): BreakdownEn
 // renders its column header row deterministically even on first
 // mount before `useOWData()` resolves; if the parser ever ships a
 // new game-mode, this list updates in lockstep with the YAML.
-export const CANONICAL_GAME_MODES = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash'] as const
+const CANONICAL_GAME_MODES = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash'] as const
 
 function cellKey(hero: string, gameMode: string): string {
   return `${hero}\0${gameMode}`
