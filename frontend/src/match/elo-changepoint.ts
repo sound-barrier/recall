@@ -44,20 +44,7 @@ export function detectChangePoint(
   const best = bestSplit(wins, minSegment)
   if (best === null) return null
 
-  // Permutation test: shuffle the sequence (breaking any time structure),
-  // re-scan, and count how often chance alone beats the observed G.
-  const rng = mulberry32(opts.seed ?? 1)
-  let exceed = 0
-  const shuffled = [...wins]
-  for (let p = 0; p < permutations; p++) {
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1))
-      ;[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!]
-    }
-    const perm = bestSplit(shuffled, minSegment)
-    if (perm !== null && perm.g >= best.g) exceed++
-  }
-  const pValue = (exceed + 1) / (permutations + 1)
+  const pValue = permutationPValue(wins, best.g, { minSegment, permutations, seed: opts.seed ?? 1 })
 
   const beforeWins = best.prefixWins
   const beforeN = best.k
@@ -76,6 +63,27 @@ export function detectChangePoint(
     deltaPts,
     pValue,
   }
+}
+
+// Permutation test: shuffle the sequence (breaking any time structure),
+// re-scan, and count how often chance alone beats the observed G.
+function permutationPValue(
+  wins: readonly number[],
+  observedG: number,
+  opts: { minSegment: number; permutations: number; seed: number },
+): number {
+  const rng = mulberry32(opts.seed)
+  let exceed = 0
+  const shuffled = [...wins]
+  for (let p = 0; p < opts.permutations; p++) {
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!]
+    }
+    const perm = bestSplit(shuffled, opts.minSegment)
+    if (perm !== null && perm.g >= observedG) exceed++
+  }
+  return (exceed + 1) / (opts.permutations + 1)
 }
 
 // bestSplit maximizes LL(two rates) via prefix sums; returns the split k,

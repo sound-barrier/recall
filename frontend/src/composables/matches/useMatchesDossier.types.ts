@@ -291,3 +291,41 @@ export interface MapRoleCell {
   total: number
   winrate: number
 }
+
+// One cell of the Hero × Game-Mode band's rectangular grid: the W/L/D
+// tally for a (hero, canonical game-mode) pair. Unlike MapRoleCell,
+// zero cells ARE emitted so the grid stays rectangular — the widget
+// renders them as flat surface tone.
+export interface HeroGameModeCell {
+  hero: string
+  gameMode: string
+  wins: number
+  losses: number
+  draws: number
+  total: number
+  winrate: number
+}
+
+// Per-map tally row for the Hero × Game-Mode band's "maps" drill level
+// — a flat by-map count over an already-pinned hero + game-mode set.
+export interface MapCountRow {
+  map: string
+  wins: number
+  losses: number
+  draws: number
+  total: number
+  winrate: number
+}
+
+// One row of the band's deepest drill level: an individual recent
+// match. `mode` / `queueType` are pre-rendered chip labels (empty
+// string when unset so the drill row can show a "—" placeholder).
+export interface RecentMatchRow {
+  matchKey: string
+  date: string
+  finishedAt: string
+  result: string
+  map: string
+  mode: string
+  queueType: string
+}

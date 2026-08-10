@@ -43,31 +43,42 @@ export function tiltEpisodes(
   const gapMs = (opts.gapHours ?? 3) * 3_600_000
   const seq = decisiveTimeline(records)
   const out: TiltEpisodes = { episodes: 0, tiltGames: 0, tiltWins: 0 }
-  let lossRun = 0
-  let counted = false
+  const state: TiltRunState = { lossRun: 0, counted: false }
   for (let i = 0; i < seq.length; i++) {
+    // A gap of gapHours+ starts a new sitting — runs don't carry across.
     if (i > 0 && seq[i]!.t - seq[i - 1]!.t >= gapMs) {
-      lossRun = 0
-      counted = false
+      state.lossRun = 0
+      state.counted = false
     }
     // Queuing with minRun-1 straight losses already on the board IS the
     // tilt queue — this game and everything after it in the sitting.
-    if (lossRun >= minRun - 1) {
+    if (state.lossRun >= minRun - 1) {
       out.tiltGames++
       if (seq[i]!.win) out.tiltWins++
     }
-    if (seq[i]!.win) {
-      lossRun = 0
-      counted = false
-    } else {
-      lossRun++
-      if (lossRun >= minRun && !counted) {
-        out.episodes++
-        counted = true
-      }
-    }
+    advanceTiltRun(state, seq[i]!.win, minRun, out)
   }
   return out
+}
+
+interface TiltRunState {
+  lossRun: number
+  counted: boolean
+}
+
+// Advance the sitting's loss-run state by one game, crediting an
+// episode the moment the run reaches minRun.
+function advanceTiltRun(state: TiltRunState, win: boolean, minRun: number, out: TiltEpisodes): void {
+  if (win) {
+    state.lossRun = 0
+    state.counted = false
+    return
+  }
+  state.lossRun++
+  if (state.lossRun >= minRun && !state.counted) {
+    out.episodes++
+    state.counted = true
+  }
 }
 
 // decisiveResults is the same sequence as bare win/loss flags.
@@ -163,27 +174,42 @@ const METER_IMPACT_FLOOR = 8
 // streakMeterImpact splits the player's own rank-card meter moves by the
 // parser's streak modifiers. Calibration readings and exact zeroes are
 // excluded (same rule as the calculator's meter seeding).
+// Excludes calibration readings and exact zeroes (same rule as the
+// calculator's meter seeding); returns the usable move + its modifiers.
+function usableStreakMove(
+  d: Pick<MatchRecord, 'data'>['data'],
+): { cp: number; mods: readonly string[] } | null {
+  const cp = d?.change_percent
+  if (typeof cp !== 'number' || cp === 0) return null
+  const mods = d?.modifiers ?? []
+  if (mods.includes('calibration')) return null
+  return { cp, mods }
+}
+
+// 'winning trend' / 'losing trend' are the 2026-07 UI's wording for the
+// same streak chips — bucket both generations together.
+function streakMoveKind(mods: readonly string[]): 'win-streak' | 'loss-streak' | 'normal' {
+  if (mods.includes('win streak') || mods.includes('winning trend')) return 'win-streak'
+  if (mods.includes('loss streak') || mods.includes('losing trend')) return 'loss-streak'
+  return 'normal'
+}
+
 export function streakMeterImpact(records: readonly Pick<MatchRecord, 'data'>[]): StreakMeterImpact | null {
   const streak: number[] = []
   const normal: number[] = []
   let winStreakNet = 0
   let lossStreakNet = 0
   for (const rec of records) {
-    const cp = rec.data?.change_percent
-    if (typeof cp !== 'number' || cp === 0) continue
-    const mods = rec.data?.modifiers ?? []
-    if (mods.includes('calibration')) continue
-    // 'winning trend' / 'losing trend' are the 2026-07 UI's wording for the
-    // same streak chips — bucket both generations together.
-    if (mods.includes('win streak') || mods.includes('winning trend')) {
-      streak.push(Math.abs(cp))
-      winStreakNet += cp
-    } else if (mods.includes('loss streak') || mods.includes('losing trend')) {
-      streak.push(Math.abs(cp))
-      lossStreakNet += cp
-    } else {
-      normal.push(Math.abs(cp))
+    const move = usableStreakMove(rec.data)
+    if (move === null) continue
+    const kind = streakMoveKind(move.mods)
+    if (kind === 'normal') {
+      normal.push(Math.abs(move.cp))
+      continue
     }
+    streak.push(Math.abs(move.cp))
+    if (kind === 'win-streak') winStreakNet += move.cp
+    else lossStreakNet += move.cp
   }
   if (streak.length < METER_IMPACT_FLOOR || normal.length < METER_IMPACT_FLOOR) return null
   const mean = (xs: number[]) => xs.reduce((s, v) => s + v, 0) / xs.length

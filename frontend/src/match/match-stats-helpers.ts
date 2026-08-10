@@ -21,6 +21,10 @@ export interface WLDTally {
 // matches" preference in the narrow panel — the matches still appear in the
 // list, they just don't count toward the win-rate readouts. Throwers are
 // deliberately NOT covered: a thrown match still counts.
+function hasLeaver(r: { annotation?: { leavers?: string[] | null } | null }): boolean {
+  return !!r.annotation?.leavers?.length
+}
+
 export function tallyWLD(
   records: {
     data?: { result?: string | null } | null
@@ -32,7 +36,7 @@ export function tallyWLD(
   let l = 0
   let d = 0
   for (const r of records) {
-    if (skipAnnotated && r.annotation?.leavers?.length) continue
+    if (skipAnnotated && hasLeaver(r)) continue
     const result = (r.data?.result ?? '').toLowerCase()
     if (result === 'victory') w++
     else if (result === 'defeat') l++
@@ -87,6 +91,26 @@ export function formatKda(ratio: number | null): string {
 // filtered set. Ties resolve alphabetically so the readout is stable
 // across reloads.
 export interface Mode<T> { value: T; count: number }
+
+// Ties resolve alphabetically so the readout is stable across reloads.
+function tieBreakWins<T>(candidate: T, best: T | null): boolean {
+  return best !== null
+    && typeof candidate === 'string' && typeof best === 'string'
+    && candidate < best
+}
+
+function pickMode<T>(counts: Map<T, number>): Mode<T> | null {
+  let bestValue: T | null = null
+  let bestCount = -1
+  for (const [v, c] of counts) {
+    if (c > bestCount || (c === bestCount && tieBreakWins(v, bestValue))) {
+      bestCount = c
+      bestValue = v
+    }
+  }
+  return bestValue === null ? null : { value: bestValue, count: bestCount }
+}
+
 export function modeOf<R, T>(records: R[], pick: (r: R) => T | null | undefined): Mode<T> | null {
   const counts = new Map<T, number>()
   for (const r of records) {
@@ -95,20 +119,7 @@ export function modeOf<R, T>(records: R[], pick: (r: R) => T | null | undefined)
     if (typeof v === 'string' && v === '') continue
     counts.set(v, (counts.get(v) ?? 0) + 1)
   }
-  if (counts.size === 0) return null
-  let bestValue: T | null = null
-  let bestCount = -1
-  for (const [v, c] of counts) {
-    if (c > bestCount) {
-      bestCount = c
-      bestValue = v
-    } else if (c === bestCount && bestValue !== null
-      && typeof v === 'string' && typeof bestValue === 'string'
-      && v < bestValue) {
-      bestValue = v
-    }
-  }
-  return bestValue === null ? null : { value: bestValue, count: bestCount }
+  return pickMode(counts)
 }
 
 // Mean of game_length across records that have one parseable. Returns

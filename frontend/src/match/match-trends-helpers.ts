@@ -132,26 +132,35 @@ function orderBuckets<T extends { key: string }>(series: T[]): T[] {
   })
 }
 
+// The tier/level/score slice of a record's RANK data, or null when it
+// carries none (no RANK screenshot parsed, unknown tier, no level).
+function ladderReading(
+  data: TrendInput['data'],
+): { tier: Tier; level: number; progress: number; score: number } | null {
+  const tier = data?.rank
+  if (!tier || !(TIER_ORDER as readonly string[]).includes(tier) || typeof data?.level !== 'number') return null
+  const progress = data.rank_progress ?? 0
+  const score = ladderScore(tier, data.level, progress)
+  if (score == null) return null
+  return { tier: tier as Tier, level: data.level, progress, score }
+}
+
 // Rank-over-time, one line per role bucket. Only matches that carry a
 // rank tier + level (i.e. a RANK screenshot was parsed) contribute.
 export function rankLadderSeries(records: readonly TrendInput[]): RankSeries[] {
   const byBucket = new Map<string, { label: string; points: RankPoint[] }>()
   for (const { rec, t } of timedRecords(records)) {
-    const data = rec.data
-    const tier = data?.rank
-    if (!tier || !(TIER_ORDER as readonly string[]).includes(tier) || typeof data?.level !== 'number') continue
-    const progress = data.rank_progress ?? 0
-    const score = ladderScore(tier, data.level, progress)
-    if (score == null) continue
+    const reading = ladderReading(rec.data)
+    if (reading === null) continue
     const bucket = roleBucket(rec)
     const entry = byBucket.get(bucket.key) ?? { label: bucket.label, points: [] }
     entry.points.push({
       t,
-      score,
-      tier: tier as Tier,
-      level: data.level,
-      progress,
-      change: data.change_percent ?? 0,
+      score: reading.score,
+      tier: reading.tier,
+      level: reading.level,
+      progress: reading.progress,
+      change: rec.data?.change_percent ?? 0,
       matchKey: rec.match_key,
     })
     byBucket.set(bucket.key, entry)
@@ -170,40 +179,61 @@ export function heroRollingWinrateSeries(
   topHeroes = 5,
 ): TrendSeries[] {
   const span = Math.max(1, Math.floor(window))
-  const byHero = new Map<string, { decisive: boolean[]; times: number[]; keys: string[] }>()
+  return topRollingSeries(decisiveTracksBy(records, (rec) => rec.data?.hero), topHeroes, span)
+}
+
+// One bucket's decisive results in played order — the raw material for
+// a rolling-winrate line.
+type DecisiveTrack = { decisive: boolean[]; times: number[]; keys: string[] }
+
+// Decisive results bucketed by an arbitrary key (hero / map); draws
+// and unknown results skipped, keyless records dropped.
+function decisiveTracksBy(
+  records: readonly TrendInput[],
+  keyOf: (rec: TrendInput) => string | undefined,
+): Map<string, DecisiveTrack> {
+  const buckets = new Map<string, DecisiveTrack>()
   for (const { rec, t } of timedRecords(records)) {
     const result = rec.data?.result
-    let win: boolean
-    if (result === 'victory') win = true
-    else if (result === 'defeat') win = false
-    else continue
-    const hero = rec.data?.hero
-    if (!hero) continue
-    const entry = byHero.get(hero) ?? { decisive: [], times: [], keys: [] }
-    entry.decisive.push(win)
+    if (result !== 'victory' && result !== 'defeat') continue
+    const key = keyOf(rec)
+    if (!key) continue
+    const entry = buckets.get(key) ?? { decisive: [], times: [], keys: [] }
+    entry.decisive.push(result === 'victory')
     entry.times.push(t)
     entry.keys.push(rec.match_key)
-    byHero.set(hero, entry)
+    buckets.set(key, entry)
   }
-  const kept = [...byHero.entries()]
-    .sort((a, b) => b[1].decisive.length - a[1].decisive.length)
-    .slice(0, topHeroes)
+  return buckets
+}
 
-  const series: TrendSeries[] = []
-  for (const [hero, entry] of kept) {
-    const points: TrendPoint[] = []
-    for (let i = 0; i < entry.decisive.length; i++) {
-      const start = Math.max(0, i - span + 1)
-      let wins = 0
-      for (let j = start; j <= i; j++) {
-        if (entry.decisive[j]) wins++
-      }
-      const n = i - start + 1
-      points.push({ t: entry.times[i]!, v: Math.round((wins / n) * 100), matchKey: entry.keys[i]! })
+// Trailing-window winrate at every decisive match — early points
+// average over a shorter prefix than the window.
+function rollingPoints(entry: DecisiveTrack, span: number): TrendPoint[] {
+  const points: TrendPoint[] = []
+  for (let i = 0; i < entry.decisive.length; i++) {
+    const start = Math.max(0, i - span + 1)
+    let wins = 0
+    for (let j = start; j <= i; j++) {
+      if (entry.decisive[j]) wins++
     }
-    series.push({ name: hero, key: hero, points })
+    const n = i - start + 1
+    points.push({ t: entry.times[i]!, v: Math.round((wins / n) * 100), matchKey: entry.keys[i]! })
   }
-  return series
+  return points
+}
+
+// Keep the top-N buckets by decisive-match volume — every bucket in a
+// wide pool would chart twenty one-game lines, which is noise.
+function topRollingSeries(
+  buckets: Map<string, DecisiveTrack>,
+  topN: number,
+  span: number,
+): TrendSeries[] {
+  return [...buckets.entries()]
+    .sort((a, b) => b[1].decisive.length - a[1].decisive.length)
+    .slice(0, topN)
+    .map(([key, entry]) => ({ name: key, key, points: rollingPoints(entry, span) }))
 }
 
 // Rolling win-rate per MAP (the per-map trend: "climbing on Numbani,
@@ -217,40 +247,7 @@ export function mapRollingWinrateSeries(
   topMaps = 5,
 ): TrendSeries[] {
   const span = Math.max(1, Math.floor(window))
-  const byMap = new Map<string, { decisive: boolean[]; times: number[]; keys: string[] }>()
-  for (const { rec, t } of timedRecords(records)) {
-    const result = rec.data?.result
-    let win: boolean
-    if (result === 'victory') win = true
-    else if (result === 'defeat') win = false
-    else continue
-    const map = rec.data?.map
-    if (!map) continue
-    const entry = byMap.get(map) ?? { decisive: [], times: [], keys: [] }
-    entry.decisive.push(win)
-    entry.times.push(t)
-    entry.keys.push(rec.match_key)
-    byMap.set(map, entry)
-  }
-  const kept = [...byMap.entries()]
-    .sort((a, b) => b[1].decisive.length - a[1].decisive.length)
-    .slice(0, topMaps)
-
-  const series: TrendSeries[] = []
-  for (const [map, entry] of kept) {
-    const points: TrendPoint[] = []
-    for (let i = 0; i < entry.decisive.length; i++) {
-      const start = Math.max(0, i - span + 1)
-      let wins = 0
-      for (let j = start; j <= i; j++) {
-        if (entry.decisive[j]) wins++
-      }
-      const n = i - start + 1
-      points.push({ t: entry.times[i]!, v: Math.round((wins / n) * 100), matchKey: entry.keys[i]! })
-    }
-    series.push({ name: map, key: map, points })
-  }
-  return series
+  return topRollingSeries(decisiveTracksBy(records, (rec) => rec.data?.map), topMaps, span)
 }
 
 // Trailing win-rate (%) over the last `window` decisive matches, one line
@@ -454,31 +451,37 @@ export interface WinrateGrid {
 // bucketed) and compute win-rate per cell over decisive matches. `weekStart`
 // rotates the day rows so row 0 is the user's first day of the week. Pure —
 // the composable layer supplies the reactive weekStart.
-export function dayTimeWinrateGrid(
-  records: readonly TrendInput[],
-  bucketCount: 6 | 12 | 24,
-  weekStart: WeekStart = 0,
+// UTC day-of-week for a YYYY-MM-DD string — explicit Z so getUTCDay()
+// reads the user-meaningful date regardless of the browser's timezone.
+function utcDay(date: string | undefined): number | null {
+  if (!date) return null
+  const day = new Date(date + 'T00:00:00Z').getUTCDay()
+  return Number.isFinite(day) && day >= 0 && day <= 6 ? day : null
+}
+
+// The 0–23 hour of an HH:MM finished_at string, or null when it
+// doesn't parse.
+function finishHour(fa: string | undefined): number | null {
+  if (!fa || fa.length < 2) return null
+  const hour = Number.parseInt(fa.slice(0, 2), 10)
+  return Number.isFinite(hour) && hour >= 0 && hour <= 23 ? hour : null
+}
+
+// The (day, hour) grid coordinates of a record's finish; null drops
+// the record from the heatmap entirely.
+function dayHourOf(data: TrendInput['data']): { day: number; hour: number } | null {
+  const day = utcDay(data?.date)
+  const hour = finishHour(data?.finished_at)
+  return day === null || hour === null ? null : { day, hour }
+}
+
+// Rows rotated to the user's week start; only played cells emitted.
+function materializeWinrateGrid(
+  wins: number[][],
+  total: number[][],
+  bucketCount: number,
+  weekStart: WeekStart,
 ): WinrateGrid {
-  const hoursPerBucket = 24 / bucketCount
-  const wins = Array.from({ length: 7 }, () => new Array<number>(bucketCount).fill(0))
-  const total = Array.from({ length: 7 }, () => new Array<number>(bucketCount).fill(0))
-  for (const rec of records) {
-    const result = rec.data?.result
-    let win: boolean
-    if (result === 'victory') win = true
-    else if (result === 'defeat') win = false
-    else continue
-    const date = rec.data?.date
-    const fa = rec.data?.finished_at
-    if (!date || !fa || fa.length < 2) continue
-    const day = new Date(date + 'T00:00:00Z').getUTCDay()
-    const hour = Number.parseInt(fa.slice(0, 2), 10)
-    if (!Number.isFinite(day) || day < 0 || day > 6) continue
-    if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue
-    const bucket = Math.floor(hour / hoursPerBucket)
-    total[day]![bucket]!++
-    if (win) wins[day]![bucket]!++
-  }
   const bucketLabels = makeTimeOfDayLabels(bucketCount)
   const dayLabels: string[] = []
   const cells: WinrateCell[] = []
@@ -493,4 +496,24 @@ export function dayTimeWinrateGrid(
     }
   }
   return { dayLabels, bucketLabels, cells }
+}
+
+export function dayTimeWinrateGrid(
+  records: readonly TrendInput[],
+  bucketCount: 6 | 12 | 24,
+  weekStart: WeekStart = 0,
+): WinrateGrid {
+  const hoursPerBucket = 24 / bucketCount
+  const wins = Array.from({ length: 7 }, () => new Array<number>(bucketCount).fill(0))
+  const total = Array.from({ length: 7 }, () => new Array<number>(bucketCount).fill(0))
+  for (const rec of records) {
+    const result = rec.data?.result
+    if (result !== 'victory' && result !== 'defeat') continue
+    const at = dayHourOf(rec.data)
+    if (at === null) continue
+    const bucket = Math.floor(at.hour / hoursPerBucket)
+    total[at.day]![bucket]!++
+    if (result === 'victory') wins[at.day]![bucket]!++
+  }
+  return materializeWinrateGrid(wins, total, bucketCount, weekStart)
 }

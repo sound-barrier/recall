@@ -127,92 +127,170 @@ function sumTally(groups: { tally: WLDTally }[]): WLDTally {
 //
 // sortDir orders all three levels (newest-first under 'desc', oldest-
 // first under 'asc'), including the records inside each day.
+type DayBucket<R> = { date: Date; recs: R[] }
+type WeekBucket<R> = { anchor: Date; days: Map<string, DayBucket<R>> }
+type MonthBucket<R> = { firstOfMonth: Date; weeks: Map<string, WeekBucket<R>> }
+
+// Direction-aware comparators + tally options threaded through the
+// tree builders as one bundle so each level reads the same sort/tally
+// contract without a parameter parade.
+interface TreeBuildContext {
+  byKey: (a: { key: string }, b: { key: string }) => number
+  cmpStr: (a: string, b: string) => number
+  skipAnnotated: boolean
+}
+
+function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {
+  let value = map.get(key)
+  if (!value) {
+    value = create()
+    map.set(key, value)
+  }
+  return value
+}
+
+function bucketByDate<R extends GroupableRecord>(
+  records: R[],
+  weekStart: WeekStart,
+): { months: Map<string, MonthBucket<R>>; undated: R[] } {
+  const months = new Map<string, MonthBucket<R>>()
+  // Records that pass the matched-view filter but lack a parseable
+  // date — captured here and surfaced as a single "UNKNOWN DATE"
+  // group at the bottom of the tree once the dated tree is built.
+  const undated: R[] = []
+  for (const r of records) {
+    const dateStr = r.data?.date
+    const date = dateStr ? parseISODateUTC(dateStr) : null
+    if (!date) { undated.push(r); continue }
+
+    const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+    const month = getOrCreate(months, monthKey, () => ({
+      firstOfMonth: new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)),
+      weeks: new Map<string, WeekBucket<R>>(),
+    }))
+    const anchor = weekAnchorUTC(date, weekStart)
+    const week = getOrCreate(month.weeks, isoDateKey(anchor), () => ({
+      anchor,
+      days: new Map<string, DayBucket<R>>(),
+    }))
+    const day = getOrCreate(week.days, isoDateKey(date), () => ({ date, recs: [] as R[] }))
+    day.recs.push(r)
+  }
+  return { months, undated }
+}
+
+function buildDayGroups<R extends GroupableRecord>(
+  week: WeekBucket<R>,
+  ctx: TreeBuildContext,
+): MatchGroup<R>[] {
+  const dayGroups: MatchGroup<R>[] = []
+  for (const [dayKey, day] of week.days) {
+    const sortedRecs = [...day.recs].sort((a, b) =>
+      ctx.cmpStr(a.data?.finished_at ?? '', b.data?.finished_at ?? ''),
+    )
+    dayGroups.push({
+      key: `day:${dayKey}`,
+      level: 'day',
+      label: dayLabel(day.date),
+      tally: tallyWLD(sortedRecs, ctx.skipAnnotated),
+      matches: sortedRecs,
+    })
+  }
+  dayGroups.sort(ctx.byKey)
+  return dayGroups
+}
+
+function buildWeekGroups<R extends GroupableRecord>(
+  month: MonthBucket<R>,
+  ctx: TreeBuildContext,
+): MatchGroup<R>[] {
+  const weekGroups: MatchGroup<R>[] = []
+  for (const [weekKey, week] of month.weeks) {
+    const dayGroups = buildDayGroups(week, ctx)
+    weekGroups.push({
+      key: `week:${weekKey}`,
+      level: 'week',
+      label: weekLabel(week.anchor),
+      tally: sumTally(dayGroups),
+      children: dayGroups,
+    })
+  }
+  weekGroups.sort(ctx.byKey)
+  return weekGroups
+}
+
+// Year wrapping. When records span multiple calendar years, regroup
+// the flat month list into Year buckets — adds a Year header on top
+// of the existing Month → Week → Day tree. Single-year datasets stay
+// month-rooted (no Year header) so users with a few months of data
+// don't see a noise level in the outline.
+function wrapYears<R extends GroupableRecord>(
+  tree: MatchGroup<R>[],
+  monthYears: Map<MatchGroup<R>, number>,
+  ctx: TreeBuildContext,
+): MatchGroup<R>[] {
+  const yearsSet = new Set([...monthYears.values()])
+  if (yearsSet.size <= 1) return tree
+  const yearBuckets = new Map<number, MatchGroup<R>[]>()
+  for (const m of tree) {
+    const y = monthYears.get(m)!
+    const list = yearBuckets.get(y) ?? []
+    list.push(m)
+    yearBuckets.set(y, list)
+  }
+  const wrapped: MatchGroup<R>[] = []
+  for (const [year, monthList] of yearBuckets) {
+    wrapped.push({
+      key: `year:${year}`,
+      level: 'year',
+      label: String(year),
+      tally: sumTally(monthList),
+      children: monthList,
+    })
+  }
+  wrapped.sort(ctx.byKey)
+  return wrapped
+}
+
+// UNKNOWN DATE bucket — appended AFTER the dated tree sort so it
+// sits at the bottom of the array irrespective of sortDir. Records
+// are sorted by match_key for a stable order (sortDir doesn't apply
+// — there's no meaningful chronology to flip).
+function appendUndatedGroup<R extends GroupableRecord>(tree: MatchGroup<R>[], undated: R[]): void {
+  if (undated.length === 0) return
+  const sortedUndated = [...undated].sort((a, b) =>
+    compareStrings(a.match_key ?? '', b.match_key ?? ''))
+  tree.push({
+    key: 'unknown',
+    level: 'unknown',
+    label: 'UNKNOWN DATE',
+    tally: tallyWLD(sortedUndated),
+    matches: sortedUndated,
+  })
+}
+
 export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   records: R[],
   sortDir: 'asc' | 'desc',
   options: { weekStart?: WeekStart; skipAnnotatedInTally?: boolean } = {},
 ): MatchGroup<R>[] {
   const weekStart: WeekStart = options.weekStart ?? 0
-  const skipAnnotated = options.skipAnnotatedInTally === true
-  type DayBucket = { date: Date; recs: R[] }
-  type WeekBucket = { anchor: Date; days: Map<string, DayBucket> }
-  type MonthBucket = { firstOfMonth: Date; weeks: Map<string, WeekBucket> }
-
-  const months = new Map<string, MonthBucket>()
-  // Records that pass the matched-view filter but lack a parseable
-  // date — captured here and surfaced as a single "UNKNOWN DATE"
-  // group at the bottom of the tree once the dated tree is built.
-  const undated: R[] = []
-
-  for (const r of records) {
-    const dateStr = r.data?.date
-    if (!dateStr) { undated.push(r); continue }
-    const date = parseISODateUTC(dateStr)
-    if (!date) { undated.push(r); continue }
-
-    const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
-    let month = months.get(monthKey)
-    if (!month) {
-      month = {
-        firstOfMonth: new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)),
-        weeks: new Map(),
-      }
-      months.set(monthKey, month)
-    }
-
-    const anchor = weekAnchorUTC(date, weekStart)
-    const weekKey = isoDateKey(anchor)
-    let week = month.weeks.get(weekKey)
-    if (!week) {
-      week = { anchor, days: new Map() }
-      month.weeks.set(weekKey, week)
-    }
-
-    const dayKey = isoDateKey(date)
-    let day = week.days.get(dayKey)
-    if (!day) {
-      day = { date, recs: [] }
-      week.days.set(dayKey, day)
-    }
-    day.recs.push(r)
-  }
-
+  const { months, undated } = bucketByDate(records, weekStart)
   if (months.size === 0 && undated.length === 0) return []
 
   const dir = sortDir === 'asc' ? 1 : -1
-  const byKey = (a: { key: string }, b: { key: string }) => compareStrings(a.key, b.key) * dir
-  const cmpStr = (a: string, b: string) => compareStrings(a, b) * dir
+  const ctx: TreeBuildContext = {
+    byKey: (a, b) => compareStrings(a.key, b.key) * dir,
+    cmpStr: (a, b) => compareStrings(a, b) * dir,
+    skipAnnotated: options.skipAnnotatedInTally === true,
+  }
 
   let tree: MatchGroup<R>[] = []
   // Year tag for each month group — populated alongside the push so
   // the year-wrapping step below can regroup without re-parsing keys.
   const monthYears = new Map<MatchGroup<R>, number>()
   for (const [monthKey, month] of months) {
-    const weekGroups: MatchGroup<R>[] = []
-    for (const [weekKey, week] of month.weeks) {
-      const dayGroups: MatchGroup<R>[] = []
-      for (const [dayKey, day] of week.days) {
-        const sortedRecs = [...day.recs].sort((a, b) =>
-          cmpStr(a.data?.finished_at ?? '', b.data?.finished_at ?? ''),
-        )
-        dayGroups.push({
-          key: `day:${dayKey}`,
-          level: 'day',
-          label: dayLabel(day.date),
-          tally: tallyWLD(sortedRecs, skipAnnotated),
-          matches: sortedRecs,
-        })
-      }
-      dayGroups.sort(byKey)
-      weekGroups.push({
-        key: `week:${weekKey}`,
-        level: 'week',
-        label: weekLabel(week.anchor),
-        tally: sumTally(dayGroups),
-        children: dayGroups,
-      })
-    }
-    weekGroups.sort(byKey)
+    const weekGroups = buildWeekGroups(month, ctx)
     const monthGroup: MatchGroup<R> = {
       key: `month:${monthKey}`,
       level: 'month',
@@ -221,54 +299,10 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
       children: weekGroups,
     }
     tree.push(monthGroup)
-    // Track the year alongside each month so the year-wrapping step
-    // below doesn't have to re-parse keys or labels.
     monthYears.set(monthGroup, month.firstOfMonth.getUTCFullYear())
   }
-  tree.sort(byKey)
-
-  // Year wrapping. When records span multiple calendar years, regroup
-  // the flat month list into Year buckets — adds a Year header on top
-  // of the existing Month → Week → Day tree. Single-year datasets stay
-  // month-rooted (no Year header) so users with a few months of data
-  // don't see a noise level in the outline.
-  const yearsSet = new Set([...monthYears.values()])
-  if (yearsSet.size > 1) {
-    const yearBuckets = new Map<number, MatchGroup<R>[]>()
-    for (const m of tree) {
-      const y = monthYears.get(m)!
-      const list = yearBuckets.get(y) ?? []
-      list.push(m)
-      yearBuckets.set(y, list)
-    }
-    tree = []
-    for (const [year, monthList] of yearBuckets) {
-      tree.push({
-        key: `year:${year}`,
-        level: 'year',
-        label: String(year),
-        tally: sumTally(monthList),
-        children: monthList,
-      })
-    }
-    tree.sort(byKey)
-  }
-
-  // UNKNOWN DATE bucket — appended AFTER the dated tree sort so it
-  // sits at the bottom of the array irrespective of sortDir. Records
-  // are sorted by match_key for a stable order (sortDir doesn't apply
-  // — there's no meaningful chronology to flip).
-  if (undated.length > 0) {
-    const sortedUndated = [...undated].sort((a, b) =>
-      compareStrings(a.match_key ?? '', b.match_key ?? ''))
-    tree.push({
-      key: 'unknown',
-      level: 'unknown',
-      label: 'UNKNOWN DATE',
-      tally: tallyWLD(sortedUndated),
-      matches: sortedUndated,
-    })
-  }
-
+  tree.sort(ctx.byKey)
+  tree = wrapYears(tree, monthYears, ctx)
+  appendUndatedGroup(tree, undated)
   return tree
 }

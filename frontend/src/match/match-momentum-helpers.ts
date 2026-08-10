@@ -307,18 +307,31 @@ function kd(records: readonly MomentumInput[]): number | null {
   return elims / Math.max(1, deaths)
 }
 
-export function tiltNudgeSignal(records: readonly MomentumInput[]): TiltNudgeSignal | null {
-  const timed = records
-    .map(r => ({ r, t: matchEpoch(r) }))
-    .filter((x): x is { r: MomentumInput, t: number } => x.t != null)
-    .sort((a, b) => a.t - b.t)
-  if (timed.length < TILT_MIN_LOSSES + TILT_BASELINE_MIN_SAMPLE) return null
+type TimedMatch = { r: MomentumInput; t: number }
 
+// Records that can place themselves in time, oldest-first.
+function timedSorted(records: readonly MomentumInput[]): TimedMatch[] {
+  return records
+    .map(r => ({ r, t: matchEpoch(r) }))
+    .filter((x): x is TimedMatch => x.t != null)
+    .sort((a, b) => a.t - b.t)
+}
+
+// The trailing all-defeat run, oldest-first.
+function trailingLossStreak(timed: TimedMatch[]): MomentumInput[] {
   const streak: MomentumInput[] = []
   for (let i = timed.length - 1; i >= 0; i--) {
     if (timed[i]!.r.data?.result !== 'defeat') break
     streak.unshift(timed[i]!.r)
   }
+  return streak
+}
+
+export function tiltNudgeSignal(records: readonly MomentumInput[]): TiltNudgeSignal | null {
+  const timed = timedSorted(records)
+  if (timed.length < TILT_MIN_LOSSES + TILT_BASELINE_MIN_SAMPLE) return null
+
+  const streak = trailingLossStreak(timed)
   if (streak.length < TILT_MIN_LOSSES) return null
 
   const latest = timed[timed.length - 1]!.t
@@ -355,27 +368,29 @@ export interface SessionSummary {
   d: number
 }
 
+// The trailing run of games spaced closer than the session gap,
+// newest included, oldest-first.
+function trailingSession(timed: TimedMatch[], gapMs: number): TimedMatch[] {
+  const session = [timed[timed.length - 1]!]
+  for (let i = timed.length - 2; i >= 0; i--) {
+    if (session[0]!.t - timed[i]!.t > gapMs) break
+    session.unshift(timed[i]!)
+  }
+  return session
+}
+
 export function currentSessionSummary(
   records: readonly MomentumInput[],
   now: number = Date.now(),
   gapHours: number = SESSION_GAP_HOURS,
 ): SessionSummary | null {
-  const timed = records
-    .map(r => ({ r, t: matchEpoch(r) }))
-    .filter((x): x is { r: MomentumInput, t: number } => x.t != null)
-    .sort((a, b) => a.t - b.t)
+  const timed = timedSorted(records)
   if (timed.length === 0) return null
 
   const gapMs = gapHours * HOUR_MS
-  const latest = timed[timed.length - 1]!
-  if (now - latest.t > gapMs) return null
+  if (now - timed[timed.length - 1]!.t > gapMs) return null
 
-  const session = [latest]
-  for (let i = timed.length - 2; i >= 0; i--) {
-    if (session[0]!.t - timed[i]!.t > gapMs) break
-    session.unshift(timed[i]!)
-  }
-
+  const session = trailingSession(timed, gapMs)
   const sum: SessionSummary = { matches: session.length, w: 0, l: 0, d: 0 }
   for (const { r } of session) {
     const res = r.data?.result

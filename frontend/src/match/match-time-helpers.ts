@@ -162,6 +162,24 @@ export function computeEarliestMatchDateTime(recs: Pick<MatchRecord, 'data'>[]):
   return earliest ?? ''
 }
 
+// Date portion: "May 9, 2026". Full month names; day not zero-padded.
+// Empty string when the YYYY-MM-DD input doesn't parse.
+function naiveDatePart(date: string | undefined): string {
+  if (!date) return ''
+  const [yStr = '', moStr = '', dayStr = ''] = date.split('-')
+  const y = Number(yStr), mo = Number(moStr), day = Number(dayStr)
+  if (Number.isNaN(y) || Number.isNaN(mo) || Number.isNaN(day) || mo < 1 || mo > 12) return ''
+  return `${MONTHS_FULL[mo - 1]!} ${day}, ${y}`
+}
+
+// Time portion: "9:08pm". Falls back to raw HH:MM if parsing fails.
+function naiveTimePart(finishedAt: string | undefined): string {
+  if (!finishedAt) return ''
+  const [hStr = '', mStr = ''] = finishedAt.split(':')
+  const h = Number(hStr), m = Number(mStr)
+  return (Number.isNaN(h) || Number.isNaN(m)) ? finishedAt : formatHourMinute(h, m)
+}
+
 // Format the match's date + end time for the card header. Parser
 // stores date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the
 // Wails UI prefers a friendlier `May 9, 2026 @ 9:08pm` rendering.
@@ -175,25 +193,8 @@ export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
 
   const d = rec.data ?? {}
   if (!d.date && !d.finished_at) return ''
-
-  // Date portion: "May 9, 2026". Full month names; day not zero-padded.
-  let datePart = ''
-  if (d.date) {
-    const [yStr = '', moStr = '', dayStr = ''] = d.date.split('-')
-    const y = Number(yStr), mo = Number(moStr), day = Number(dayStr)
-    if (!Number.isNaN(y) && !Number.isNaN(mo) && !Number.isNaN(day) && mo >= 1 && mo <= 12) {
-      datePart = `${MONTHS_FULL[mo - 1]!} ${day}, ${y}`
-    }
-  }
-
-  // Time portion: "9:08pm". Falls back to raw HH:MM if parsing fails.
-  let timePart = ''
-  if (d.finished_at) {
-    const [hStr = '', mStr = ''] = d.finished_at.split(':')
-    const h = Number(hStr), m = Number(mStr)
-    timePart = (Number.isNaN(h) || Number.isNaN(m)) ? d.finished_at : formatHourMinute(h, m)
-  }
-
+  const datePart = naiveDatePart(d.date)
+  const timePart = naiveTimePart(d.finished_at)
   if (datePart && timePart) return `${datePart} @ ${timePart}`
   return datePart || timePart
 }

@@ -5,7 +5,9 @@ import { sourceType } from '@/match/match-helpers'
 // (matchToMarkdown: title + stats table + journal + screenshot refs)
 // and the compact Discord one-liner (matchSummaryLine). Pure — the
 // detail panel copies the output to the clipboard; no transport, no
-// side effects. Empty fields drop out rather than rendering blanks.
+// side effects. Empty fields drop out rather than rendering blanks:
+// each section is a spec table of label + extractor rows filtered on
+// truthiness.
 
 export interface MatchMarkdownOptions {
   // Pre-resolved display names (useOWData); raw stored tokens are the
@@ -20,51 +22,77 @@ function eadLine(rec: MatchRecord): string {
   return `${d.eliminations ?? 0} / ${d.assists ?? 0} / ${d.deaths ?? 0}`
 }
 
-export function matchToMarkdown(rec: MatchRecord, opts: MatchMarkdownOptions = {}): string {
+function titleLine(rec: MatchRecord, opts: MatchMarkdownOptions): string {
   const d = rec.data ?? {}
   const map = opts.mapDisplay || d.map || 'Unknown map'
-  const hero = opts.heroDisplay || d.hero || ''
-  const title = [map, d.result, d.date ? `(${d.date})` : '']
+  return [map, d.result, d.date ? `(${d.date})` : '']
     .filter(Boolean)
     .join(' — ')
     .replace(' — (', ' (')
+}
 
-  const stats: [string, string][] = []
-  if (hero) stats.push(['Hero', hero])
-  if (d.result) stats.push(['Result', d.result])
-  if (d.final_score) stats.push(['Final score', d.final_score])
-  const ead = eadLine(rec)
-  if (ead) stats.push(['E / A / D', ead])
-  if (d.damage) stats.push(['Damage', String(d.damage)])
-  if (d.healing) stats.push(['Healing', String(d.healing)])
-  if (d.mitigation) stats.push(['Mitigation', String(d.mitigation)])
-  if (d.game_length) stats.push(['Game length', d.game_length])
+const STAT_ROWS: ReadonlyArray<{
+  label: string
+  value: (rec: MatchRecord, hero: string) => string | number | undefined
+}> = [
+  { label: 'Hero',        value: (_rec, hero) => hero },
+  { label: 'Result',      value: (rec) => rec.data?.result },
+  { label: 'Final score', value: (rec) => rec.data?.final_score },
+  { label: 'E / A / D',   value: (rec) => eadLine(rec) },
+  { label: 'Damage',      value: (rec) => rec.data?.damage },
+  { label: 'Healing',     value: (rec) => rec.data?.healing },
+  { label: 'Mitigation',  value: (rec) => rec.data?.mitigation },
+  { label: 'Game length', value: (rec) => rec.data?.game_length },
+]
 
-  const lines: string[] = [`# ${title}`, '']
-  if (stats.length > 0) {
-    lines.push('| Stat | Value |', '|---|---|')
-    for (const [k, v] of stats) lines.push(`| ${k} | ${v} |`)
-    lines.push('')
-  }
+function statsTableLines(rec: MatchRecord, hero: string): string[] {
+  const rows = STAT_ROWS
+    .map(({ label, value }) => ({ label, value: value(rec, hero) }))
+    .filter((row) => row.value)
+  if (rows.length === 0) return []
+  return [
+    '| Stat | Value |',
+    '|---|---|',
+    ...rows.map((row) => `| ${row.label} | ${String(row.value)} |`),
+    '',
+  ]
+}
 
-  const a = rec.annotation
-  const journal: string[] = []
-  if (a?.note) journal.push(`> ${a.note.replace(/\n/g, '\n> ')}`, '')
-  if (a?.replay_code) journal.push(`- Replay: \`${a.replay_code}\``)
-  if (a?.members?.length) journal.push(`- Squad: ${a.members.join(', ')}`)
-  if (a?.tags?.length) journal.push(`- Tags: ${a.tags.map(t => `#${t}`).join(' ')}`)
-  if (journal.length > 0) {
-    lines.push('## Journal', '', ...journal, '')
-  }
+const JOURNAL_ROWS: ReadonlyArray<(a: NonNullable<MatchRecord['annotation']>) => string[]> = [
+  // The note renders as a quote block followed by a blank line so
+  // the bullet rows below it start their own paragraph.
+  (a) => (a.note ? [`> ${a.note.replace(/\n/g, '\n> ')}`, ''] : []),
+  (a) => (a.replay_code ? [`- Replay: \`${a.replay_code}\``] : []),
+  (a) => (a.members?.length ? [`- Squad: ${a.members.join(', ')}`] : []),
+  (a) => (a.tags?.length ? [`- Tags: ${a.tags.map(t => `#${t}`).join(' ')}`] : []),
+]
 
-  if (rec.source_files?.length) {
-    lines.push('## Screenshots', '')
-    for (const f of rec.source_files) {
-      const t = sourceType(rec, f)
-      lines.push(`- \`${f}\`${t ? ` (${t})` : ''}`)
-    }
-    lines.push('')
-  }
+function journalLines(a: MatchRecord['annotation']): string[] {
+  if (!a) return []
+  const journal = JOURNAL_ROWS.flatMap((row) => row(a))
+  if (journal.length === 0) return []
+  return ['## Journal', '', ...journal, '']
+}
+
+function screenshotLines(rec: MatchRecord): string[] {
+  if (!rec.source_files?.length) return []
+  const refs = rec.source_files.map((f) => {
+    const t = sourceType(rec, f)
+    return `- \`${f}\`${t ? ` (${t})` : ''}`
+  })
+  return ['## Screenshots', '', ...refs, '']
+}
+
+export function matchToMarkdown(rec: MatchRecord, opts: MatchMarkdownOptions = {}): string {
+  const d = rec.data ?? {}
+  const hero = opts.heroDisplay || d.hero || ''
+  const lines = [
+    `# ${titleLine(rec, opts)}`,
+    '',
+    ...statsTableLines(rec, hero),
+    ...journalLines(rec.annotation),
+    ...screenshotLines(rec),
+  ]
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
 }
 

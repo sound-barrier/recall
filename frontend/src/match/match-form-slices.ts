@@ -172,21 +172,23 @@ export function conditionPredicate(
   }
 }
 
+// The sub-pick-free <select> values map straight to their conditions.
+const SIMPLE_CONDITIONS: Record<string, FormCondition> = {
+  'solo': { kind: 'solo' },
+  'weekday': { kind: 'weekday' },
+  'weekend': { kind: 'weekend' },
+  'role:tank': { kind: 'role', role: 'tank' },
+  'role:dps': { kind: 'role', role: 'dps' },
+  'role:support': { kind: 'role', role: 'support' },
+}
+
 // buildCondition maps the view's <select> value (+ its sub-pick) to a
 // FormCondition; an unfilled sub-pick degrades to "any" rather than filtering
 // everything out.
 export function buildCondition(kind: string, member: string, hero: string): FormCondition {
-  switch (kind) {
-    case 'member': return member ? { kind: 'member', name: member } : { kind: 'any' }
-    case 'solo': return { kind: 'solo' }
-    case 'weekday': return { kind: 'weekday' }
-    case 'weekend': return { kind: 'weekend' }
-    case 'role:tank': return { kind: 'role', role: 'tank' }
-    case 'role:dps': return { kind: 'role', role: 'dps' }
-    case 'role:support': return { kind: 'role', role: 'support' }
-    case 'hero': return hero ? { kind: 'hero', hero } : { kind: 'any' }
-    default: return { kind: 'any' }
-  }
+  if (kind === 'member') return member ? { kind: 'member', name: member } : { kind: 'any' }
+  if (kind === 'hero') return hero ? { kind: 'hero', hero } : { kind: 'any' }
+  return SIMPLE_CONDITIONS[kind] ?? { kind: 'any' }
 }
 
 // Saturday/Sunday by the match's local wall-clock date; null-time records

@@ -106,27 +106,38 @@ const SLOPE_MIN_SPREAD = 1
 // forward), converted from logit units to win-rate points per division
 // at the fitted mean rate — the local linearization the decay model
 // actually uses. Null when the history can't identify a slope.
+// A record's own rank reading in ladder units, or null when it
+// carries none.
+function rankReading(d: TrackInput['data']): number | null {
+  if (!d?.rank || typeof d.level !== 'number') return null
+  return ladderScore(d.rank, d.level, d.rank_progress ?? 0)
+}
+
+// Pair each decisive result with the most recent PRE-match rank
+// reading, carried forward from earlier games.
+function pairResultsWithRank(timed: { r: TrackInput }[]): { xs: number[]; wins: boolean[] } {
+  const xs: number[] = []
+  const wins: boolean[] = []
+  let score: number | null = null
+  for (const { r } of timed) {
+    const result = r.data?.result
+    if (score !== null && (result === 'victory' || result === 'defeat')) {
+      xs.push(score)
+      wins.push(result === 'victory')
+    }
+    const next = rankReading(r.data)
+    if (next !== null) score = next
+  }
+  return { xs, wins }
+}
+
 export function measuredDecaySlope(recs: readonly TrackInput[]): MeasuredSlope | null {
   const timed = recs
     .map((r) => ({ r, t: matchEpoch(r) }))
     .filter((x): x is { r: TrackInput; t: number } => x.t !== null)
     .sort((a, b) => a.t - b.t)
 
-  const xs: number[] = []
-  const wins: boolean[] = []
-  let score: number | null = null
-  for (const { r } of timed) {
-    const d = r.data
-    const result = d?.result
-    if (score !== null && (result === 'victory' || result === 'defeat')) {
-      xs.push(score)
-      wins.push(result === 'victory')
-    }
-    if (d?.rank && typeof d.level === 'number') {
-      const next = ladderScore(d.rank, d.level, d.rank_progress ?? 0)
-      if (next !== null) score = next
-    }
-  }
+  const { xs, wins } = pairResultsWithRank(timed)
   if (xs.length < SLOPE_MIN_PAIRS) return null
   if (Math.max(...xs) - Math.min(...xs) < SLOPE_MIN_SPREAD) return null
 
