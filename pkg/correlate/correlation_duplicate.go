@@ -62,6 +62,13 @@ func (l statLine) meaningful() bool {
 	return l.damage > 0
 }
 
+// stampedLine pairs a meaningful TEAMS stat line with its filename
+// capture timestamp for the duplicate sweep's distance checks.
+type stampedLine struct {
+	line statLine
+	ts   time.Time
+}
+
 // FindDuplicateMatches returns existing tracked matches whose TEAMS stat
 // line exactly equals one of newKey's TEAMS rows, between the EAD
 // bridge's outer cap and DuplicateMatchWindow away, with no conflicting
@@ -69,13 +76,23 @@ func (l statLine) meaningful() bool {
 // capture wins) and sorted by distance ascending. Pure function over the
 // snapshot; the pkg/app sweep decides what to do with the result.
 func FindDuplicateMatches(newKey string, snap db.Screenshots) []db.AmbiguousCandidate {
-	type stamped struct {
-		line statLine
-		ts   time.Time
+	newRows := collectStampedLines(newKey, snap)
+	if len(newRows) == 0 {
+		return nil
 	}
-	var newRows []stamped
+	best := scanDuplicateDistances(newKey, newRows, snap)
+	if len(best) == 0 {
+		return nil
+	}
+	return rankDuplicateCandidates(best)
+}
+
+// collectStampedLines gathers key's meaningful, filename-timestamped
+// TEAMS stat lines — the fingerprints the sweep compares against.
+func collectStampedLines(key string, snap db.Screenshots) []stampedLine {
+	var out []stampedLine
 	for _, r := range snap.Teams {
-		if r.MatchKey != newKey {
+		if r.MatchKey != key {
 			continue
 		}
 		l := statLineOf(r)
@@ -83,60 +100,93 @@ func FindDuplicateMatches(newKey string, snap db.Screenshots) []db.AmbiguousCand
 			continue
 		}
 		if ts, ok := ParseFilenameTimestamp(r.Filename); ok {
-			newRows = append(newRows, stamped{line: l, ts: ts})
+			out = append(out, stampedLine{line: l, ts: ts})
 		}
 	}
-	if len(newRows) == 0 {
-		return nil
-	}
+	return out
+}
 
+// duplicateScanRow gates one existing TEAMS row into the duplicate scan:
+// it must belong to another, tracked match, carry a meaningful stat
+// line, and have a parseable filename timestamp.
+func duplicateScanRow(r db.TeamsRow, newKey string) (stampedLine, bool) {
+	if r.MatchKey == newKey {
+		return stampedLine{}, false
+	}
+	if mk, err := match.ParseKey(r.MatchKey); err != nil || !mk.IsTracked() {
+		return stampedLine{}, false
+	}
+	l := statLineOf(r)
+	if !l.meaningful() {
+		return stampedLine{}, false
+	}
+	ts, ok := ParseFilenameTimestamp(r.Filename)
+	if !ok {
+		return stampedLine{}, false
+	}
+	return stampedLine{line: l, ts: ts}, true
+}
+
+// closestStampedDistance returns the smallest gap between row and any
+// new-match line with an identical stat fingerprint, restricted to the
+// sweep's (eadBridgeAmbiguousWindow, DuplicateMatchWindow] band.
+func closestStampedDistance(row stampedLine, newRows []stampedLine) (time.Duration, bool) {
+	var best time.Duration
+	found := false
+	for _, nr := range newRows {
+		if nr.line != row.line {
+			continue
+		}
+		d := nr.ts.Sub(row.ts)
+		if d < 0 {
+			d = -d
+		}
+		if d <= eadBridgeAmbiguousWindow || d > DuplicateMatchWindow {
+			continue
+		}
+		if !found || d < best {
+			best = d
+			found = true
+		}
+	}
+	return best, found
+}
+
+// scanDuplicateDistances walks the existing TEAMS rows and records, per
+// tracked match_key, the closest in-band distance to any of newKey's
+// stat lines — skipping matches whose SUMMARY signature conflicts.
+func scanDuplicateDistances(newKey string, newRows []stampedLine, snap db.Screenshots) map[string]time.Duration {
 	newSig := summarySignature(newKey, snap)
 	heroSets := matchHeroSets(snap)
 	sigCache := map[string]*parser.MatchResult{}
 	best := map[string]time.Duration{}
 	for _, r := range snap.Teams {
-		if r.MatchKey == newKey {
-			continue
-		}
-		if mk, err := match.ParseKey(r.MatchKey); err != nil || !mk.IsTracked() {
-			continue
-		}
-		l := statLineOf(r)
-		if !l.meaningful() {
-			continue
-		}
-		ts, ok := ParseFilenameTimestamp(r.Filename)
+		row, ok := duplicateScanRow(r, newKey)
 		if !ok {
 			continue
 		}
-		for _, nr := range newRows {
-			if nr.line != l {
-				continue
-			}
-			d := nr.ts.Sub(ts)
-			if d < 0 {
-				d = -d
-			}
-			if d <= eadBridgeAmbiguousWindow || d > DuplicateMatchWindow {
-				continue
-			}
-			sig, cached := sigCache[r.MatchKey]
-			if !cached {
-				sig = summarySignature(r.MatchKey, snap)
-				sigCache[r.MatchKey] = sig
-			}
-			if RowsConflict(newSig, sig, heroSets[r.MatchKey]) {
-				continue
-			}
-			if prev, seen := best[r.MatchKey]; !seen || d < prev {
-				best[r.MatchKey] = d
-			}
+		d, ok := closestStampedDistance(row, newRows)
+		if !ok {
+			continue
+		}
+		sig, cached := sigCache[r.MatchKey]
+		if !cached {
+			sig = summarySignature(r.MatchKey, snap)
+			sigCache[r.MatchKey] = sig
+		}
+		if RowsConflict(newSig, sig, heroSets[r.MatchKey]) {
+			continue
+		}
+		if prev, seen := best[r.MatchKey]; !seen || d < prev {
+			best[r.MatchKey] = d
 		}
 	}
-	if len(best) == 0 {
-		return nil
-	}
+	return best
+}
 
+// rankDuplicateCandidates folds the per-key distances into the wire
+// shape, sorted by distance ascending with match_key breaking ties.
+func rankDuplicateCandidates(best map[string]time.Duration) []db.AmbiguousCandidate {
 	cands := make([]db.AmbiguousCandidate, 0, len(best))
 	for k, d := range best {
 		cands = append(cands, db.AmbiguousCandidate{

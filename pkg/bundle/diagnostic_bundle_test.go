@@ -115,7 +115,18 @@ func TestExportDiagnostic_ZipInventoryAndManifest(t *testing.T) {
 		t.Fatalf("ExportDiagnostic: %v", err)
 	}
 	entries := readZip(t, data)
+	assertDiagnosticInventory(t, entries)
 
+	var m diagManifest
+	if err := json.Unmarshal(entries["manifest.json"], &m); err != nil {
+		t.Fatalf("manifest decode: %v", err)
+	}
+	assertDiagnosticManifestEnvelope(t, m)
+	assertDiagnosticFailures(t, m, shots)
+}
+
+func assertDiagnosticInventory(t *testing.T, entries map[string][]byte) {
+	t.Helper()
 	for _, want := range []string{"manifest.json", "screenshots/good.png", "screenshots/corrupt.png", "logs/recall.log"} {
 		if _, ok := entries[want]; !ok {
 			t.Errorf("zip missing %s (have %v)", want, keys(entries))
@@ -127,11 +138,10 @@ func TestExportDiagnostic_ZipInventoryAndManifest(t *testing.T) {
 	if _, ok := entries["logs/recall.log.1"]; ok {
 		t.Error("absent rotation must be skipped, not written empty")
 	}
+}
 
-	var m diagManifest
-	if err := json.Unmarshal(entries["manifest.json"], &m); err != nil {
-		t.Fatalf("manifest decode: %v", err)
-	}
+func assertDiagnosticManifestEnvelope(t *testing.T, m diagManifest) {
+	t.Helper()
 	if m.Schema != "recall-diagnostic/v1" {
 		t.Errorf("schema = %q", m.Schema)
 	}
@@ -144,7 +154,10 @@ func TestExportDiagnostic_ZipInventoryAndManifest(t *testing.T) {
 	if len(m.Logs) != 1 || m.Logs[0] != "logs/recall.log" {
 		t.Errorf("logs = %v, want just logs/recall.log", m.Logs)
 	}
+}
 
+func assertDiagnosticFailures(t *testing.T, m diagManifest, shots string) {
+	t.Helper()
 	if len(m.Failures) != 3 {
 		t.Fatalf("failures = %d, want 3", len(m.Failures))
 	}
@@ -156,6 +169,11 @@ func TestExportDiagnostic_ZipInventoryAndManifest(t *testing.T) {
 	for i, f := range m.Failures {
 		byName[f.Filename] = i
 	}
+	assertDiagnosticFailureDetails(t, m, byName, shots)
+}
+
+func assertDiagnosticFailureDetails(t *testing.T, m diagManifest, byName map[string]int, shots string) {
+	t.Helper()
 	good := m.Failures[byName["good.png"]]
 	if good.Resolution != "32x18" || !good.Included || good.SourceDir != shots || good.Error != "boom" || good.Attempts != 2 {
 		t.Errorf("good.png failure = %+v", good)

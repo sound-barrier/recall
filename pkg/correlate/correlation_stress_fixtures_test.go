@@ -158,91 +158,89 @@ func buildFixtures(spec matchSpec) []fixture {
 	}
 	out := make([]fixture, 0, 5)
 	if spec.emitSummary {
-		out = append(out, fixture{
-			filename: filenameForTS(spec.startTime.Add(spec.summaryOffset), spec.suffix, "summary"),
-			scrType:  "summary",
-			result: &parser.MatchResult{
-				Map:          spec.mapName,
-				Playlist:     spec.mode,
-				GameMode:     spec.matchType,
-				Role:         spec.role,
-				Hero:         spec.primaryHero,
-				HeroesPlayed: spec.heroesPlayed,
-				Result:       spec.result,
-				FinalScore:   spec.finalScore,
-				Date:         spec.date,
-				FinishedAt:   spec.finishedAt,
-				GameLength:   spec.gameLength,
-			},
-			expectedKey: spec.expectedKey,
-			bugNote:     spec.bugNote,
-		})
+		out = append(out, summaryFixture(spec))
 	}
 	if spec.emitTeams {
-		// The in-game teams scoreboard is combat-stats only — no map /
-		// hero / mode. Match identity comes from the SUMMARY / PERSONAL
-		// fixtures in the same cohort.
-		out = append(out, fixture{
-			filename: filenameForTS(spec.startTime.Add(spec.teamsOffset), spec.suffix, "teams"),
-			scrType:  "teams",
-			result: &parser.MatchResult{
-				Eliminations: spec.eliminations,
-				Assists:      spec.assists,
-				Deaths:       spec.deaths,
-				Damage:       spec.damage,
-				Healing:      spec.healing,
-				Mitigation:   spec.mitigation,
-			},
-			expectedKey: spec.expectedKey,
-			bugNote:     spec.bugNote,
-		})
+		out = append(out, teamsFixture(spec))
 	}
 	if spec.emitPersonal {
-		hero := spec.primaryHero
-		if spec.personalHero != "" {
-			hero = spec.personalHero
-		}
-		out = append(out, fixture{
-			filename: filenameForTS(spec.startTime.Add(spec.personalOffset), spec.suffix, "personal"),
-			scrType:  "personal",
-			result: &parser.MatchResult{
-				Hero: hero,
-			},
-			expectedKey: spec.expectedKey,
-			bugNote:     spec.bugNote,
-		})
+		out = append(out, personalFixture(spec))
 	}
 	if spec.emitPersonal2 {
-		hero := spec.personal2Hero
-		if hero == "" {
-			hero = spec.primaryHero
-		}
-		out = append(out, fixture{
-			filename: filenameForTS(spec.startTime.Add(spec.personal2Offset), spec.suffix+"b", "personal"),
-			scrType:  "personal",
-			result: &parser.MatchResult{
-				Hero: hero,
-			},
-			expectedKey: spec.expectedKey,
-			bugNote:     spec.bugNote,
-		})
+		out = append(out, personal2Fixture(spec))
 	}
 	if spec.emitRank {
-		out = append(out, fixture{
-			filename: filenameForTS(spec.startTime.Add(spec.rankOffset), spec.suffix, "rank"),
-			scrType:  "rank",
-			result: &parser.MatchResult{
-				Rank:          spec.rankBand,
-				Level:         spec.rankLevel,
-				RankProgress:  spec.rankProgress,
-				ChangePercent: spec.rankChange,
-				Result:        spec.rankResult,
-			},
-			expectedKey: spec.expectedKey,
-			bugNote:     spec.bugNote,
-		})
+		out = append(out, rankFixture(spec))
 	}
 	return out
+}
+
+// specFixture stamps the shared fixture envelope — filename from the
+// offset timestamp, expected key, bug note — around one screenshot type.
+func specFixture(spec matchSpec, scrType, suffix string, offset time.Duration, r *parser.MatchResult) fixture {
+	return fixture{
+		filename:    filenameForTS(spec.startTime.Add(offset), suffix, scrType),
+		scrType:     scrType,
+		result:      r,
+		expectedKey: spec.expectedKey,
+		bugNote:     spec.bugNote,
+	}
+}
+
+func summaryFixture(spec matchSpec) fixture {
+	return specFixture(spec, "summary", spec.suffix, spec.summaryOffset, &parser.MatchResult{
+		Map:          spec.mapName,
+		Playlist:     spec.mode,
+		GameMode:     spec.matchType,
+		Role:         spec.role,
+		Hero:         spec.primaryHero,
+		HeroesPlayed: spec.heroesPlayed,
+		Result:       spec.result,
+		FinalScore:   spec.finalScore,
+		Date:         spec.date,
+		FinishedAt:   spec.finishedAt,
+		GameLength:   spec.gameLength,
+	})
+}
+
+// teamsFixture emits combat stats only — the in-game teams scoreboard
+// carries no map / hero / mode. Match identity comes from the SUMMARY /
+// PERSONAL fixtures in the same cohort.
+func teamsFixture(spec matchSpec) fixture {
+	return specFixture(spec, "teams", spec.suffix, spec.teamsOffset, &parser.MatchResult{
+		Eliminations: spec.eliminations,
+		Assists:      spec.assists,
+		Deaths:       spec.deaths,
+		Damage:       spec.damage,
+		Healing:      spec.healing,
+		Mitigation:   spec.mitigation,
+	})
+}
+
+func personalFixture(spec matchSpec) fixture {
+	hero := spec.primaryHero
+	if spec.personalHero != "" {
+		hero = spec.personalHero
+	}
+	return specFixture(spec, "personal", spec.suffix, spec.personalOffset, &parser.MatchResult{Hero: hero})
+}
+
+func personal2Fixture(spec matchSpec) fixture {
+	hero := spec.personal2Hero
+	if hero == "" {
+		hero = spec.primaryHero
+	}
+	return specFixture(spec, "personal", spec.suffix+"b", spec.personal2Offset, &parser.MatchResult{Hero: hero})
+}
+
+func rankFixture(spec matchSpec) fixture {
+	return specFixture(spec, "rank", spec.suffix, spec.rankOffset, &parser.MatchResult{
+		Rank:          spec.rankBand,
+		Level:         spec.rankLevel,
+		RankProgress:  spec.rankProgress,
+		ChangePercent: spec.rankChange,
+		Result:        spec.rankResult,
+	})
 }
 
 // filenameForTS renders the timestamp into the OW client's filename

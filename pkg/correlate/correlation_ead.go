@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 // EAD-bridge windows. The EAD-bridge bridges in-game teams ↔
@@ -84,25 +85,8 @@ func MatchByEAD(cand Candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 func eadCandidateKeys(cand Candidate, snap db.Screenshots) map[string]eadKeyInfo {
 	byKey := map[string]eadKeyInfo{}
 	for _, e := range snapshotExisting(snap) {
-		if e.c.r.Eliminations == 0 && e.c.r.Assists == 0 && e.c.r.Deaths == 0 {
-			continue
-		}
-		if e.c.r.Eliminations != cand.r.Eliminations ||
-			e.c.r.Assists != cand.r.Assists ||
-			e.c.r.Deaths != cand.r.Deaths {
-			continue
-		}
-		if RowsConflict(cand.r, e.c.r, e.matchHeroes) {
-			continue
-		}
-		if !e.c.hasTS {
-			continue
-		}
-		d := cand.ts.Sub(e.c.ts)
-		if d < 0 {
-			d = -d
-		}
-		if d > eadBridgeAmbiguousWindow {
+		d, ok := eadRowDistance(cand, e)
+		if !ok {
 			continue
 		}
 		isCorrob := corroborated(cand, e)
@@ -117,6 +101,35 @@ func eadCandidateKeys(cand Candidate, snap db.Screenshots) map[string]eadKeyInfo
 		}
 	}
 	return byKey
+}
+
+// sameNonZeroEAD reports whether existing carries cand's exact non-zero
+// E/A/D triple — the fingerprint the bridge matches on.
+func sameNonZeroEAD(cand, existing *parser.MatchResult) bool {
+	if existing.Eliminations == 0 && existing.Assists == 0 && existing.Deaths == 0 {
+		return false
+	}
+	return existing.Eliminations == cand.Eliminations &&
+		existing.Assists == cand.Assists &&
+		existing.Deaths == cand.Deaths
+}
+
+// eadRowDistance gates one existing row into the EAD-bridge scan and
+// returns its absolute distance from cand: the row must share cand's
+// exact non-zero E/A/D, not conflict on signature fields, and carry a
+// filename timestamp inside the ambiguous window.
+func eadRowDistance(cand Candidate, e existing) (time.Duration, bool) {
+	if !sameNonZeroEAD(cand.r, e.c.r) || RowsConflict(cand.r, e.c.r, e.matchHeroes) || !e.c.hasTS {
+		return 0, false
+	}
+	d := cand.ts.Sub(e.c.ts)
+	if d < 0 {
+		d = -d
+	}
+	if d > eadBridgeAmbiguousWindow {
+		return 0, false
+	}
+	return d, true
 }
 
 // sortEADKeys flattens the by-key map into a slice ordered by ascending

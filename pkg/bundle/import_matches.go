@@ -77,20 +77,42 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 // Returns how many MANUAL matches it imported — keys that exist only in
 // the user layer, which the parent-row partition can't count.
 func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) (int, error) {
-	skip := func(k string) bool {
-		_, ok := existing[k]
-		return ok
+	manual, err := importUserMatchData(store, data, existing)
+	if err != nil {
+		return 0, err
 	}
-	incomingParents := map[string]struct{}{}
-	for k := range dataMatchKeys(DataV2{
+	if err := importAnnotations(store, data.Annotations, existing); err != nil {
+		return 0, err
+	}
+	if err := importKeyedSection(data.Reviews, existing, "review",
+		func(r db.ReviewState) string { return r.ReviewedBy }, store.SetReview); err != nil {
+		return 0, err
+	}
+	if err := importKeyedSection(data.Queues, existing, "queue",
+		func(q db.QueueState) string { return q.QueueType }, store.SetMatchQueue); err != nil {
+		return 0, err
+	}
+	if err := importKeyedSection(data.PlayModes, existing, "play mode",
+		func(pm db.PlayModeState) string { return pm.PlayMode }, store.SetMatchPlayMode); err != nil {
+		return 0, err
+	}
+	if err := importHidden(store, data.Hidden, existing); err != nil {
+		return 0, err
+	}
+	return manual, nil
+}
+
+// importUserMatchData upserts the incoming user-data rows whose keys are
+// new, returning how many were MANUAL matches — keys with no incoming
+// parent row.
+func importUserMatchData(store db.Store, data DataV2, existing map[string]struct{}) (int, error) {
+	incomingParents := dataMatchKeys(DataV2{
 		Summaries: data.Summaries, Teams: data.Teams, Personals: data.Personals,
 		Ranks: data.Ranks, Unknowns: data.Unknowns,
-	}) {
-		incomingParents[k] = struct{}{}
-	}
+	})
 	manual := 0
 	for _, ud := range data.UserMatchData {
-		if skip(ud.MatchKey) {
+		if _, ok := existing[ud.MatchKey]; ok {
 			continue
 		}
 		if err := store.UpsertUserMatchData(ud); err != nil {
@@ -100,47 +122,52 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) 
 			manual++
 		}
 	}
-	for _, ann := range data.Annotations {
-		if skip(ann.MatchKey) {
+	return manual, nil
+}
+
+// importAnnotations writes the incoming annotations whose keys are new.
+func importAnnotations(store db.Store, annotations []db.Annotation, existing map[string]struct{}) error {
+	for _, ann := range annotations {
+		if _, ok := existing[ann.MatchKey]; ok {
 			continue
 		}
 		if err := store.SetAnnotation(ann); err != nil {
-			return 0, fmt.Errorf("import: annotation for %q: %w", ann.MatchKey, err)
+			return fmt.Errorf("import: annotation for %q: %w", ann.MatchKey, err)
 		}
 	}
-	for k, r := range data.Reviews {
-		if skip(k) || r.ReviewedBy == "" {
+	return nil
+}
+
+// importKeyedSection writes one map-shaped user-layer section (reviews /
+// queues / play modes), skipping existing keys and entries whose value
+// is empty. `section` names the section in the error message.
+func importKeyedSection[T any](m map[string]T, existing map[string]struct{}, section string, value func(T) string, set func(key, val string) error) error {
+	for k, v := range m {
+		if _, ok := existing[k]; ok {
 			continue
 		}
-		if err := store.SetReview(k, r.ReviewedBy); err != nil {
-			return 0, fmt.Errorf("import: review for %q: %w", k, err)
-		}
-	}
-	for k, q := range data.Queues {
-		if skip(k) || q.QueueType == "" {
+		val := value(v)
+		if val == "" {
 			continue
 		}
-		if err := store.SetMatchQueue(k, q.QueueType); err != nil {
-			return 0, fmt.Errorf("import: queue for %q: %w", k, err)
+		if err := set(k, val); err != nil {
+			return fmt.Errorf("import: %s for %q: %w", section, k, err)
 		}
 	}
-	for k, pm := range data.PlayModes {
-		if skip(k) || pm.PlayMode == "" {
-			continue
-		}
-		if err := store.SetMatchPlayMode(k, pm.PlayMode); err != nil {
-			return 0, fmt.Errorf("import: play mode for %q: %w", k, err)
-		}
-	}
-	for _, k := range data.Hidden {
-		if skip(k) {
+	return nil
+}
+
+// importHidden hides the incoming soft-deleted keys that are new.
+func importHidden(store db.Store, hidden []string, existing map[string]struct{}) error {
+	for _, k := range hidden {
+		if _, ok := existing[k]; ok {
 			continue
 		}
 		if err := store.HideMatch(k); err != nil {
-			return 0, fmt.Errorf("import: hidden flag for %q: %w", k, err)
+			return fmt.Errorf("import: hidden flag for %q: %w", k, err)
 		}
 	}
-	return manual, nil
+	return nil
 }
 
 // readBundleData extracts and validates the data.json out of a bundle ZIP. A

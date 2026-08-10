@@ -256,98 +256,88 @@ type bundleUserLayer struct {
 // loadBundleUserLayer gathers every user-layer surface for the included
 // match keys. Slices sort by match_key for deterministic bundle bytes.
 func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUserLayer, error) {
-	var out bundleUserLayer
 	userData, err := store.LoadAllUserMatchData()
 	if err != nil {
-		return out, fmt.Errorf("export bundle: load user data: %w", err)
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load user data: %w", err)
 	}
 	annotations, err := store.LoadAnnotations()
 	if err != nil {
-		return out, fmt.Errorf("export bundle: load annotations: %w", err)
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load annotations: %w", err)
 	}
 	reviews, err := store.LoadReviews()
 	if err != nil {
-		return out, fmt.Errorf("export bundle: load reviews: %w", err)
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load reviews: %w", err)
 	}
 	queues, err := store.LoadMatchQueues()
 	if err != nil {
-		return out, fmt.Errorf("export bundle: load queues: %w", err)
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load queues: %w", err)
 	}
 	playModes, err := store.LoadMatchPlayModes()
 	if err != nil {
-		return out, fmt.Errorf("export bundle: load play modes: %w", err)
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load play modes: %w", err)
 	}
 	hidden, err := store.LoadHiddenKeys()
 	if err != nil {
-		return out, fmt.Errorf("export bundle: load hidden keys: %w", err)
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load hidden keys: %w", err)
 	}
-	included := func(k string) bool {
-		_, ok := include[k]
-		return ok
-	}
-	for k, d := range userData {
-		if included(k) {
-			out.userData = append(out.userData, d)
+	return bundleUserLayer{
+		userData:    sortedIncludedValues(userData, include, func(d db.UserMatchData) string { return d.MatchKey }),
+		annotations: sortedIncludedValues(annotations, include, func(a db.Annotation) string { return a.MatchKey }),
+		reviews:     filterIncludedMap(reviews, include),
+		queues:      filterIncludedMap(queues, include),
+		playModes:   filterIncludedMap(playModes, include),
+		hidden:      sortedIncludedKeys(hidden, include),
+	}, nil
+}
+
+// sortedIncludedValues collects the values of a match_key-keyed map whose
+// key is in the include set, sorted by keyOf for deterministic bundle
+// bytes. Returns nil when nothing survives (omitted from the JSON).
+func sortedIncludedValues[V any](m map[string]V, include map[string]struct{}, keyOf func(V) string) []V {
+	var out []V
+	for k, v := range m {
+		if _, ok := include[k]; ok {
+			out = append(out, v)
 		}
 	}
-	sort.Slice(out.userData, func(i, j int) bool { return out.userData[i].MatchKey < out.userData[j].MatchKey })
-	for k, ann := range annotations {
-		if included(k) {
-			out.annotations = append(out.annotations, ann)
+	sort.Slice(out, func(i, j int) bool { return keyOf(out[i]) < keyOf(out[j]) })
+	return out
+}
+
+// filterIncludedMap keeps the entries whose match_key is in the include
+// set. Returns nil when nothing survives (omitted from the JSON).
+func filterIncludedMap[V any](m map[string]V, include map[string]struct{}) map[string]V {
+	var out map[string]V
+	for k, v := range m {
+		if _, ok := include[k]; !ok {
+			continue
+		}
+		if out == nil {
+			out = map[string]V{}
+		}
+		out[k] = v
+	}
+	return out
+}
+
+// sortedIncludedKeys collects the keys of a match_key-keyed map that are
+// in the include set, sorted. Returns nil when nothing survives.
+func sortedIncludedKeys[V any](m map[string]V, include map[string]struct{}) []string {
+	var out []string
+	for k := range m {
+		if _, ok := include[k]; ok {
+			out = append(out, k)
 		}
 	}
-	sort.Slice(out.annotations, func(i, j int) bool { return out.annotations[i].MatchKey < out.annotations[j].MatchKey })
-	for k, r := range reviews {
-		if included(k) {
-			if out.reviews == nil {
-				out.reviews = map[string]db.ReviewState{}
-			}
-			out.reviews[k] = r
-		}
-	}
-	for k, q := range queues {
-		if included(k) {
-			if out.queues == nil {
-				out.queues = map[string]db.QueueState{}
-			}
-			out.queues[k] = q
-		}
-	}
-	for k, pm := range playModes {
-		if included(k) {
-			if out.playModes == nil {
-				out.playModes = map[string]db.PlayModeState{}
-			}
-			out.playModes[k] = pm
-		}
-	}
-	for k := range hidden {
-		if included(k) {
-			out.hidden = append(out.hidden, k)
-		}
-	}
-	sort.Strings(out.hidden)
-	return out, nil
+	sort.Strings(out)
+	return out
 }
 
 // copyBundleScreenshots writes screenshots/<filename> raw bytes off disk.
 // Missing files are silently skipped and pruned from the `screenshots`
 // map so the manifest stays consistent with what the ZIP contains.
 func copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Screenshots, screenshots map[string]string, screenshotsDir string, now time.Time) error {
-	dirByRowFn := func(dirID int64) string {
-		// dir-id 0 falls back to the live screenshots folder (same
-		// rule the screenshot handler uses for unparsed-watch files).
-		if dirID > 0 {
-			if p, ok := snap.ScreenshotsDirs[dirID]; ok && p != "" {
-				return p
-			}
-		}
-		return screenshotsDir
-	}
-	for _, batch := range [][]struct {
-		Filename string
-		DirID    int64
-	}{
+	for _, batch := range [][]fileDir{
 		toFilesDirs(t.summaries, func(r db.SummaryRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
 		toFilesDirs(t.teams, func(r db.TeamsRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
 		toFilesDirs(t.personals, func(r db.PersonalRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
@@ -355,28 +345,50 @@ func copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Screenshots, 
 		toFilesDirs(t.unknowns, func(r db.UnknownRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
 	} {
 		for _, f := range batch {
-			dir := dirByRowFn(f.DirID)
-			if dir == "" {
-				delete(screenshots, f.Filename)
-				continue
-			}
-			// #nosec G304 -- filename comes from the per-screenshot
-			// rows the parser inserted; the validator on the
-			// screenshots-folder setter (validateScreenshotsDir) caps
-			// the dir to a sandboxed user path, and the basename was
-			// produced by the parser, not user input.
-			body, err := os.ReadFile(filepath.Join(dir, f.Filename))
-			if err != nil {
-				if errors.Is(err, fs.ErrNotExist) {
-					delete(screenshots, f.Filename)
-					continue
-				}
-				return fmt.Errorf("export bundle: read %s: %w", f.Filename, err)
-			}
-			if err := bundleWriteRaw(zw, "screenshots/"+f.Filename, body, now); err != nil {
-				return fmt.Errorf("export bundle: write screenshot: %w", err)
+			dir := bundleDirForRow(snap, screenshotsDir, f.DirID)
+			if err := copyBundleScreenshot(zw, dir, f.Filename, screenshots, now); err != nil {
+				return err
 			}
 		}
+	}
+	return nil
+}
+
+// bundleDirForRow resolves a row's screenshots_dirs id to an on-disk
+// path; dir-id 0 / unknown ids fall back to the live screenshots folder
+// (same rule the screenshot handler uses for unparsed-watch files).
+func bundleDirForRow(snap db.Screenshots, screenshotsDir string, dirID int64) string {
+	if dirID > 0 {
+		if p, ok := snap.ScreenshotsDirs[dirID]; ok && p != "" {
+			return p
+		}
+	}
+	return screenshotsDir
+}
+
+// copyBundleScreenshot writes one screenshot's raw bytes into the ZIP,
+// pruning the manifest's `screenshots` entry when the dir is unknown or
+// the file has vanished from disk.
+func copyBundleScreenshot(zw *zip.Writer, dir, filename string, screenshots map[string]string, now time.Time) error {
+	if dir == "" {
+		delete(screenshots, filename)
+		return nil
+	}
+	// #nosec G304 -- filename comes from the per-screenshot
+	// rows the parser inserted; the validator on the
+	// screenshots-folder setter (validateScreenshotsDir) caps
+	// the dir to a sandboxed user path, and the basename was
+	// produced by the parser, not user input.
+	body, err := os.ReadFile(filepath.Join(dir, filename))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			delete(screenshots, filename)
+			return nil
+		}
+		return fmt.Errorf("export bundle: read %s: %w", filename, err)
+	}
+	if err := bundleWriteRaw(zw, "screenshots/"+filename, body, now); err != nil {
+		return fmt.Errorf("export bundle: write screenshot: %w", err)
 	}
 	return nil
 }
@@ -413,27 +425,25 @@ func filterRows[T any](rows []T, keep func(string) bool, keyOf func(T) string) [
 	return out
 }
 
+// fileDir is one screenshot's (filename, dir-id) pair as consumed by the
+// bundle's screenshot-copy loop.
+type fileDir struct {
+	Filename string
+	DirID    int64
+}
+
 // toFilesDirs collapses a typed parent-row slice into the
 // per-screenshot (filename, dir-id) pairs the bundle's screenshot-
 // copy loop consumes. Stable order — sorted by filename — so the
 // in-memory bundle bytes are deterministic across runs.
-func toFilesDirs[T any](rows []T, get func(T) (string, int64)) []struct {
-	Filename string
-	DirID    int64
-} {
-	out := make([]struct {
-		Filename string
-		DirID    int64
-	}, 0, len(rows))
+func toFilesDirs[T any](rows []T, get func(T) (string, int64)) []fileDir {
+	out := make([]fileDir, 0, len(rows))
 	for _, r := range rows {
 		name, dirID := get(r)
 		if name == "" {
 			continue
 		}
-		out = append(out, struct {
-			Filename string
-			DirID    int64
-		}{name, dirID})
+		out = append(out, fileDir{name, dirID})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		return out[i].Filename < out[j].Filename

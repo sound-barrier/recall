@@ -106,10 +106,6 @@ linters:
       # commit deletes its own entries; the campaign finale deletes the
       # whole block. warn-unused (above) flags any entry that goes stale.
       - linters: [gocyclo, gocognit, funlen]
-        path: pkg/aggregate/aggregate\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/aggregate/attach\.go
-      - linters: [gocyclo, gocognit, funlen]
         path: pkg/app/bundle_validate_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/app/check_for_update_test\.go
@@ -156,29 +152,11 @@ linters:
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/app/usermatch_test\.go
       - linters: [gocyclo, gocognit, funlen]
-        path: pkg/bundle/diagnostic_bundle\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/bundle/diagnostic_bundle_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/bundle/export_bundle\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/bundle/import_matches\.go
-      - linters: [gocyclo, gocognit, funlen]
         path: pkg/cmd/server_system\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/cmd/server_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/cmd/wails\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/correlate/correlation\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/correlate/correlation_duplicate\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/correlate/correlation_ead\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/correlate/correlation_stress_fixtures_test\.go
-      - linters: [gocyclo, gocognit, funlen]
-        path: pkg/correlate/correlation_stress_test\.go
       - linters: [gocyclo, gocognit, funlen]
         path: pkg/db/dbtest/fake\.go
       - linters: [gocyclo, gocognit, funlen]
