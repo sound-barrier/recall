@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
+import { bumpTally, newTally } from '@/match/match-dossier-tally'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import BandHeaderControls from '@/components/matches/dossier/BandHeaderControls.vue'
 import MatchHeatmapHeader from '@/components/matches/timeline/MatchHeatmapHeader.vue'
@@ -44,6 +45,11 @@ function resetRange() {
   emit('update:filter-to', '')
 }
 
+// Day-granular inclusive range check; an empty bound passes everything.
+function dateInRange(d: string | undefined, from: string, to: string): d is string {
+  return !!d && !(from && d < from) && !(to && d > to)
+}
+
 // Combined readout over the selected date range — mirrors the Geography band's
 // "N cells · W–L–D · X% WR · N games", with days as the unit (heatmap cells are
 // days). null when no range is active (the slot shows a prompt instead).
@@ -52,18 +58,18 @@ const selectionStats = computed(() => {
   const from = props.filterFrom.slice(0, 10)
   const to = props.filterTo.slice(0, 10)
   const days = new Set<string>()
-  let wins = 0; let losses = 0; let draws = 0; let total = 0
+  const tally = newTally()
   for (const r of props.records) {
     const d = r.data?.date
-    if (!d || (from && d < from) || (to && d > to)) continue
-    days.add(d); total++
-    const result = r.data?.result
-    if (result === 'victory') wins++
-    else if (result === 'defeat') losses++
-    else if (result === 'draw') draws++
+    if (!dateInRange(d, from, to)) continue
+    days.add(d)
+    bumpTally(tally, r.data?.result)
   }
-  const decided = wins + losses
-  return { days: days.size, wins, losses, draws, total, winrate: decided ? Math.round((wins / decided) * 100) : null }
+  const decided = tally.w + tally.l
+  return {
+    days: days.size, wins: tally.w, losses: tally.l, draws: tally.d, total: tally.total,
+    winrate: decided ? Math.round((tally.w / decided) * 100) : null,
+  }
 })
 
 const { WINDOW_MONTHS, windowMonths, pickWindow } = useWindowMonths('recall.timelineWindowMonths')

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { DecayProjection } from '@/match/elo-model'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { fmtGames, fmtGamesRange, fmtRank, fmtScoreRank, fmtWeeks } from '@/components/elo/elo-format'
 import { fmtCeilingRange } from '@/components/elo/elo-verdict'
@@ -36,17 +37,16 @@ const dream = computed(() => {
 // As opponents get tougher — the regression-to-form future. The ceiling is
 // quoted as its credible RANGE (win-rate posterior × slope CI), matching
 // the verdict card — a point rank here overstated three-game samples.
-const reality = computed(() => {
-  const d = decay.value
-  if (!d) return null
-  const openTop = ceiling.value !== null && ceiling.value.hi === null
-  const range = ceiling.value !== null ? fmtCeilingRange(ceiling.value) : fmtScoreRank(d.impliedTrueScore)
-  if (d.expectedGames === 0) return { head: 'Already there', lines: [] }
-  if (!d.reachable && d.requiredWinRate !== null) {
+// The two "levels off" shapes for an unreachable target: with the
+// required-rate line when the asymptote is computable, without it
+// otherwise.
+function levelsOffCard(d: DecayProjection, openTop: boolean, range: string) {
+  // "Levels off near X or higher — no hard ceiling" contradicts itself
+  // in one line; when the slope CI can't bound the top, say that.
+  const head = openTop ? 'No hard ceiling detectable yet' : `Levels off near ${range}`
+  if (d.requiredWinRate !== null) {
     return {
-      // "Levels off near X or higher — no hard ceiling" contradicts itself
-      // in one line; when the slope CI can't bound the top, say that.
-      head: openTop ? 'No hard ceiling detectable yet' : `Levels off near ${range}`,
+      head,
       lines: [
         'Tougher lobbies pull you level here at your current form.',
         // requiredWinRate is the ASYMPTOTE — the rate whose plateau lands
@@ -55,9 +55,16 @@ const reality = computed(() => {
       ],
     }
   }
-  if (!d.reachable) {
-    return { head: openTop ? 'No hard ceiling detectable yet' : `Levels off near ${range}`, lines: ['A losing record settles below the target.'] }
-  }
+  return { head, lines: ['A losing record settles below the target.'] }
+}
+
+const reality = computed(() => {
+  const d = decay.value
+  if (!d) return null
+  const openTop = ceiling.value !== null && ceiling.value.hi === null
+  const range = ceiling.value !== null ? fmtCeilingRange(ceiling.value) : fmtScoreRank(d.impliedTrueScore)
+  if (d.expectedGames === 0) return { head: 'Already there', lines: [] }
+  if (!d.reachable) return levelsOffCard(d, openTop, range)
   const lines = [`A bit slower, but ${effectiveWinRatePct.value}% is high enough to break through.`, `Your ceiling right now: ${range}.`]
   const weeks = fmtWeeks(weeksDecay.value)
   if (weeks) lines.push(weeks)

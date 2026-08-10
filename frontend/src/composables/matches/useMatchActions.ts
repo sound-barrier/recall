@@ -59,6 +59,37 @@ async function writeAnnotation(matchKey: string, input: MatchAnnotationInput): P
   else await DeleteMatchAnnotation(matchKey)
 }
 
+type ExistingAnnotation = NonNullable<MatchRecord['annotation']>
+
+// One tag PUT carrying the existing annotation fields (the PUT replaces
+// the whole annotation row, so a slim body would clear note /
+// replay_code / members / the disruption sides). No-op when the tag is
+// already present.
+async function tagMatch(r: MatchRecord | undefined, key: string, norm: string): Promise<void> {
+  const existing: Partial<ExistingAnnotation> = r?.annotation ?? {}
+  const existingTags = existing.tags ?? []
+  if (existingTags.includes(norm)) return // already tagged
+  await SetMatchAnnotation(key, {
+    leavers:     existing.leavers ?? [],
+    throwers:    existing.throwers ?? [],
+    note:        existing.note ?? undefined,
+    replay_code: existing.replay_code ?? undefined,
+    members:     existing.members ?? undefined,
+    tags:        [...existingTags, norm],
+  })
+}
+
+// Every non-disruption annotation field passed through unchanged — the
+// PUT replaces the entire row, so a slim body would null the rest.
+function passthroughAnnotationFields(prev: Partial<ExistingAnnotation>) {
+  return {
+    note:        prev.note ?? '',
+    replay_code: prev.replay_code ?? '',
+    members:     prev.members ?? [],
+    tags:        prev.tags ?? [],
+  }
+}
+
 // hideToastLabel describes the hidden match(es) for the undo toast — a single
 // match shows "date · map" (the anchor toast's label shape); a bulk hide shows
 // the count.
@@ -131,24 +162,10 @@ export function useMatchActions() {
     const norm = tag.trim().toLowerCase()
     if (!norm) return
     try {
-      // Snapshot records by key so each PUT carries the existing annotation
-      // fields (the PUT replaces the whole annotation row, so a slim body
-      // would clear note / replay_code / members / the disruption sides).
+      // Snapshot records by key so each PUT (tagMatch) carries the
+      // existing annotation fields through.
       const byKey = new Map(records.value.map((r) => [r.match_key, r] as const))
-      await Promise.all(matchKeys.map(async (key) => {
-        const r = byKey.get(key)
-        const existing = r?.annotation
-        const existingTags = existing?.tags ?? []
-        if (existingTags.includes(norm)) return // already tagged
-        await SetMatchAnnotation(key, {
-          leavers:     existing?.leavers ?? [],
-          throwers:    existing?.throwers ?? [],
-          note:        existing?.note ?? undefined,
-          replay_code: existing?.replay_code ?? undefined,
-          members:     existing?.members ?? undefined,
-          tags:        [...existingTags, norm],
-        })
-      }))
+      await Promise.all(matchKeys.map((key) => tagMatch(byKey.get(key), key, norm)))
       await reload()
     } catch (e) {
       onError(String(e))
@@ -211,14 +228,11 @@ export function useMatchActions() {
   ) {
     try {
       const rec = records.value.find(r => r.match_key === matchKey)
-      const prev = rec?.annotation
+      const prev: Partial<ExistingAnnotation> = rec?.annotation ?? {}
       await writeAnnotation(matchKey, {
-        leavers:     kind === 'leavers' ? sides : (prev?.leavers ?? []),
-        throwers:    kind === 'throwers' ? sides : (prev?.throwers ?? []),
-        note:        prev?.note ?? '',
-        replay_code: prev?.replay_code ?? '',
-        members:     prev?.members ?? [],
-        tags:        prev?.tags ?? [],
+        leavers:     kind === 'leavers' ? sides : (prev.leavers ?? []),
+        throwers:    kind === 'throwers' ? sides : (prev.throwers ?? []),
+        ...passthroughAnnotationFields(prev),
       })
       await reload()
     } catch (e) { onError(String(e)) }

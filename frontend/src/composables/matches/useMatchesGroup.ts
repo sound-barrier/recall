@@ -1,6 +1,7 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { isEditedMatch, isManualMatch } from '@/match/match-helpers'
+import { bumpTally, newTally, type WldTally } from '@/match/match-dossier-tally'
 import { matchEpoch } from '@/match/match-trends-helpers'
 import { SESSION_GAP_HOURS } from '@/match/match-momentum-helpers'
 
@@ -113,42 +114,51 @@ function sessionTimeSpan(firstAt: string, lastAt: string): string {
   return firstAt ? ` · ${firstAt}` : ''
 }
 
+interface SessionStats {
+  e: number
+  a: number
+  dth: number
+  statted: number
+}
+
+function accumulateStats(s: SessionStats, r: MatchRecord): void {
+  if (typeof r.data?.eliminations !== 'number') return
+  s.e += r.data.eliminations
+  s.a += r.data.assists ?? 0
+  s.dth += r.data.deaths ?? 0
+  s.statted++
+}
+
+// Draws drop out when empty so short lines stay short.
+function wldLine(t: WldTally): string {
+  return [`${t.w}W`, `${t.l}L`, ...(t.d > 0 ? [`${t.d}D`] : [])].join(' ')
+}
+
+// The session's wall-clock span; empty for a single placeable time.
+function spanLine(epochs: number[]): string {
+  if (epochs.length <= 1) return ''
+  const spanMin = Math.round((Math.max(...epochs) - Math.min(...epochs)) / 60_000)
+  return spanMin >= 60 ? `${Math.floor(spanMin / 60)}h ${spanMin % 60}m` : `${spanMin}m`
+}
+
 // sessionRollup pre-formats the divider's stat line: W/L/D tallies,
 // the session's wall-clock span, and the average E/A/D line across
-// matches that carry stats. Draws and the average drop out when
-// empty so short lines stay short.
+// matches that carry stats (both drop out when empty).
 function sessionRollup(records: MatchRecord[]): string {
-  let w = 0
-  let l = 0
-  let dr = 0
-  let e = 0
-  let a = 0
-  let dth = 0
-  let statted = 0
+  const tally = newTally()
+  const stats: SessionStats = { e: 0, a: 0, dth: 0, statted: 0 }
   const epochs: number[] = []
   for (const r of records) {
-    const res = r.data?.result
-    if (res === 'victory') w++
-    else if (res === 'defeat') l++
-    else if (res === 'draw') dr++
-    if (typeof r.data?.eliminations === 'number') {
-      e += r.data.eliminations
-      a += r.data.assists ?? 0
-      dth += r.data.deaths ?? 0
-      statted++
-    }
+    bumpTally(tally, r.data?.result)
+    accumulateStats(stats, r)
     const t = matchEpoch(r)
     if (t != null) epochs.push(t)
   }
-  const parts: string[] = []
-  const wld = [`${w}W`, `${l}L`, ...(dr > 0 ? [`${dr}D`] : [])].join(' ')
-  parts.push(wld)
-  if (epochs.length > 1) {
-    const spanMin = Math.round((Math.max(...epochs) - Math.min(...epochs)) / 60_000)
-    parts.push(spanMin >= 60 ? `${Math.floor(spanMin / 60)}h ${spanMin % 60}m` : `${spanMin}m`)
-  }
-  if (statted > 0) {
-    parts.push(`avg ${Math.round(e / statted)}/${Math.round(a / statted)}/${Math.round(dth / statted)}`)
+  const parts: string[] = [wldLine(tally)]
+  const span = spanLine(epochs)
+  if (span) parts.push(span)
+  if (stats.statted > 0) {
+    parts.push(`avg ${Math.round(stats.e / stats.statted)}/${Math.round(stats.a / stats.statted)}/${Math.round(stats.dth / stats.statted)}`)
   }
   return parts.join(' · ')
 }
@@ -184,73 +194,81 @@ export function useMatchesGroup(
     if (groupBy.value === 'none') {
       return [{ key: 'all', header: null, records: base }]
     }
-    // Provenance is a categorical grouping (not date-bucketed): each
-    // section holds that source's records, still date-sorted within.
-    // Empty buckets drop out so a corpus with no edited matches doesn't
-    // show an empty "Edited" divider.
-    if (groupBy.value === 'provenance') {
-      return PROVENANCE_SECTIONS
-        .map((s) => ({ key: s.key, header: s.header, records: base.filter(s.match) }))
-        .filter((s) => s.records.length > 0)
-    }
-    // Sessions are sequence-derived, not per-record bucketed: walk the
-    // display-ordered records and break whenever adjacent placeable
-    // times sit further apart than the momentum widgets' session gap.
-    // Records without a placeable time collect into the trailing
-    // no-date section — a session is definitionally about WHEN.
-    if (groupBy.value === 'session') {
-      const gapMs = SESSION_GAP_HOURS * 3_600_000
-      const sections: GroupedSection[] = []
-      let cur: GroupedSection | null = null
-      let prevEpoch: number | null = null
-      let noDateSection: GroupedSection | null = null
-      for (const rec of base) {
-        const t = matchEpoch(rec)
-        if (t == null) {
-          if (!noDateSection) noDateSection = { key: 'no-date', header: 'No date', records: [] }
-          noDateSection.records.push(rec)
-          continue
-        }
-        if (!cur || prevEpoch == null || Math.abs(t - prevEpoch) > gapMs) {
-          cur = { key: `session-${rec.match_key}`, header: '', records: [] }
-          sections.push(cur)
-        }
-        cur.records.push(rec)
-        prevEpoch = t
-      }
-      for (const s of sections) {
-        s.header = sessionHeader(s.records)
-        s.rollup = sessionRollup(s.records)
-      }
-      if (noDateSection) sections.push(noDateSection)
-      return sections
-    }
-    const sections: GroupedSection[] = []
-    let cur: GroupedSection | null = null
-    // Records without a parseable date collect into a dedicated
-    // "no-date" section that's always appended at the end of the
-    // list, regardless of sort order. Otherwise they end up
-    // wherever their parsed_at timestamp lands them in the dated
-    // stream — which is jarring when a recently-parsed undated
-    // row jumps to the top of "newest first" above genuinely
-    // recent matches.
-    let noDateSection: GroupedSection | null = null
-    for (const rec of base) {
-      const { key, label } = bucketFor(rec.data?.date ?? '', groupBy.value)
-      if (key === 'no-date') {
-        if (!noDateSection) noDateSection = { key, header: label, records: [] }
-        noDateSection.records.push(rec)
-        continue
-      }
-      if (!cur || cur.key !== key) {
-        cur = { key, header: label, records: [] }
-        sections.push(cur)
-      }
-      cur.records.push(rec)
-    }
-    if (noDateSection) sections.push(noDateSection)
-    return sections
+    if (groupBy.value === 'provenance') return buildProvenanceSections(base)
+    if (groupBy.value === 'session') return buildSessionSections(base)
+    return buildDateSections(base, groupBy.value)
   }
 
   return { sortedRecords, groupedSections }
+}
+
+// Provenance is a categorical grouping (not date-bucketed): each
+// section holds that source's records, still date-sorted within.
+// Empty buckets drop out so a corpus with no edited matches doesn't
+// show an empty "Edited" divider.
+function buildProvenanceSections(base: MatchRecord[]): GroupedSection[] {
+  return PROVENANCE_SECTIONS
+    .map((s) => ({ key: s.key, header: s.header, records: base.filter(s.match) }))
+    .filter((s) => s.records.length > 0)
+}
+
+// Sessions are sequence-derived, not per-record bucketed: walk the
+// display-ordered records and break whenever adjacent placeable
+// times sit further apart than the momentum widgets' session gap.
+// Records without a placeable time collect into the trailing
+// no-date section — a session is definitionally about WHEN.
+function buildSessionSections(base: MatchRecord[]): GroupedSection[] {
+  const gapMs = SESSION_GAP_HOURS * 3_600_000
+  const sections: GroupedSection[] = []
+  let cur: GroupedSection | null = null
+  let prevEpoch: number | null = null
+  let noDateSection: GroupedSection | null = null
+  for (const rec of base) {
+    const t = matchEpoch(rec)
+    if (t == null) {
+      if (!noDateSection) noDateSection = { key: 'no-date', header: 'No date', records: [] }
+      noDateSection.records.push(rec)
+      continue
+    }
+    if (!cur || prevEpoch == null || Math.abs(t - prevEpoch) > gapMs) {
+      cur = { key: `session-${rec.match_key}`, header: '', records: [] }
+      sections.push(cur)
+    }
+    cur.records.push(rec)
+    prevEpoch = t
+  }
+  for (const s of sections) {
+    s.header = sessionHeader(s.records)
+    s.rollup = sessionRollup(s.records)
+  }
+  if (noDateSection) sections.push(noDateSection)
+  return sections
+}
+
+// Records without a parseable date collect into a dedicated
+// "no-date" section that's always appended at the end of the
+// list, regardless of sort order. Otherwise they end up
+// wherever their parsed_at timestamp lands them in the dated
+// stream — which is jarring when a recently-parsed undated
+// row jumps to the top of "newest first" above genuinely
+// recent matches.
+function buildDateSections(base: MatchRecord[], bucket: GroupBy): GroupedSection[] {
+  const sections: GroupedSection[] = []
+  let cur: GroupedSection | null = null
+  let noDateSection: GroupedSection | null = null
+  for (const rec of base) {
+    const { key, label } = bucketFor(rec.data?.date ?? '', bucket)
+    if (key === 'no-date') {
+      if (!noDateSection) noDateSection = { key, header: label, records: [] }
+      noDateSection.records.push(rec)
+      continue
+    }
+    if (!cur || cur.key !== key) {
+      cur = { key, header: label, records: [] }
+      sections.push(cur)
+    }
+    cur.records.push(rec)
+  }
+  if (noDateSection) sections.push(noDateSection)
+  return sections
 }

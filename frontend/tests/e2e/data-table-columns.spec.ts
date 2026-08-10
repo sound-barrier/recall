@@ -26,25 +26,39 @@ interface Opts {
   parsedAt?: string
 }
 
+const REC_BASE = {
+  map: 'rialto',
+  result: 'victory',
+  parsedAt: '2026-05-10T22:30:00Z',
+} as const
+
+// null → the stat is absent from the row entirely; undefined → the default.
+function statFields(o: Opts): Record<string, unknown> {
+  return {
+    ...(o.elims !== null ? { eliminations: o.elims ?? 15 } : {}),
+    ...(o.assists !== null ? { assists: o.assists ?? 10 } : {}),
+    ...(o.deaths !== null ? { deaths: o.deaths ?? 8 } : {}),
+  }
+}
+
 function record(key: string, o: Opts = {}) {
+  const m = { ...REC_BASE, ...o }
   const rec: Record<string, unknown> = {
     match_key: key,
     source_files: [`${key}.png`],
     data: {
-      map: o.map ?? 'rialto',
+      map: m.map,
       playlist: 'competitive',
       game_mode: 'control',
       role: 'support',
       hero: 'lucio',
-      result: o.result ?? 'victory',
+      result: m.result,
       date: '2026-05-10',
       finished_at: '22:00',
-      ...(o.elims !== null ? { eliminations: o.elims ?? 15 } : {}),
-      ...(o.assists !== null ? { assists: o.assists ?? 10 } : {}),
-      ...(o.deaths !== null ? { deaths: o.deaths ?? 8 } : {}),
+      ...statFields(o),
       heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '11:00' }],
     },
-    parsed_at: o.parsedAt ?? '2026-05-10T22:30:00Z',
+    parsed_at: m.parsedAt,
   }
   if (o.source) rec.source = o.source
   if (o.editedFields) rec.edited_fields = o.editedFields

@@ -17,6 +17,11 @@ export type GameDataApplyState =
 
 export type DiffRow = { kind: 'Hero' | 'Map' | 'Source' | 'Season', sign: '+' | '−' | '~', name: string }
 
+const len = (names: string[] | undefined) => names?.length ?? 0
+
+// One "N new <noun>" headline segment; empty when nothing was added.
+const seg = (n: number, one: string, many: string) => (n > 0 ? `${n} new ${n === 1 ? one : many}` : '')
+
 export function useGameDataUpdate(
   updateInfo: MaybeRefOrGetter<UpdateInfo | null>,
   open: MaybeRefOrGetter<boolean>,
@@ -36,31 +41,32 @@ export function useGameDataUpdate(
   // ("3 NEW · 1 RETIRED" splits visually into gain vs loss).
   const addedCount = computed(() => {
     const g = gameData.value
-    return (g.added_heroes?.length ?? 0) + (g.added_maps?.length ?? 0) + (g.added_sources?.length ?? 0) + (g.added_seasons?.length ?? 0)
+    return len(g.added_heroes) + len(g.added_maps) + len(g.added_sources) + len(g.added_seasons)
   })
   const removedCount = computed(() => {
     const g = gameData.value
-    return (g.removed_heroes?.length ?? 0) + (g.removed_maps?.length ?? 0) + (g.removed_sources?.length ?? 0) + (g.removed_seasons?.length ?? 0)
+    return len(g.removed_heroes) + len(g.removed_maps) + len(g.removed_sources) + len(g.removed_seasons)
   })
   // Changed seasons (same name, shifted window) are neither added nor removed.
-  const changedCount = computed(() => gameData.value.changed_seasons?.length ?? 0)
+  const changedCount = computed(() => len(gameData.value.changed_seasons))
   const changeCount = computed(() => addedCount.value + removedCount.value + changedCount.value)
 
   // Every changed name, grouped by kind, in one flat list: added heroes →
   // maps → sources, then removed, so additions (the common case) lead.
   const diffRows = computed<DiffRow[]>(() => {
     const g = gameData.value
-    const rows: DiffRow[] = []
-    for (const h of g.added_heroes   ?? []) rows.push({ kind: 'Hero',   sign: '+', name: h })
-    for (const m of g.added_maps     ?? []) rows.push({ kind: 'Map',    sign: '+', name: m })
-    for (const s of g.added_sources  ?? []) rows.push({ kind: 'Source', sign: '+', name: s })
-    for (const h of g.removed_heroes ?? []) rows.push({ kind: 'Hero',   sign: '−', name: h })
-    for (const m of g.removed_maps   ?? []) rows.push({ kind: 'Map',    sign: '−', name: m })
-    for (const s of g.removed_sources?? []) rows.push({ kind: 'Source', sign: '−', name: s })
-    for (const s of g.added_seasons   ?? []) rows.push({ kind: 'Season', sign: '+', name: s })
-    for (const s of g.changed_seasons ?? []) rows.push({ kind: 'Season', sign: '~', name: s })
-    for (const s of g.removed_seasons ?? []) rows.push({ kind: 'Season', sign: '−', name: s })
-    return rows
+    const sections: [DiffRow['kind'], DiffRow['sign'], string[] | undefined][] = [
+      ['Hero',   '+', g.added_heroes],
+      ['Map',    '+', g.added_maps],
+      ['Source', '+', g.added_sources],
+      ['Hero',   '−', g.removed_heroes],
+      ['Map',    '−', g.removed_maps],
+      ['Source', '−', g.removed_sources],
+      ['Season', '+', g.added_seasons],
+      ['Season', '~', g.changed_seasons],
+      ['Season', '−', g.removed_seasons],
+    ]
+    return sections.flatMap(([kind, sign, names]) => (names ?? []).map((name) => ({ kind, sign, name })))
   })
 
   // "2 new heroes, 1 new map available" — the headline a player actually reads,
@@ -68,14 +74,13 @@ export function useGameDataUpdate(
   // retirements stay in the manifest below).
   const changeSummary = computed(() => {
     const g = gameData.value
-    const seg = (n: number, one: string, many: string) => (n > 0 ? `${n} new ${n === 1 ? one : many}` : '')
     const parts = [
-      seg(g.added_heroes?.length ?? 0, 'hero', 'heroes'),
-      seg(g.added_maps?.length ?? 0, 'map', 'maps'),
-      seg(g.added_sources?.length ?? 0, 'screenshot source', 'screenshot sources'),
-      seg(g.added_seasons?.length ?? 0, 'season', 'seasons'),
+      seg(len(g.added_heroes), 'hero', 'heroes'),
+      seg(len(g.added_maps), 'map', 'maps'),
+      seg(len(g.added_sources), 'screenshot source', 'screenshot sources'),
+      seg(len(g.added_seasons), 'season', 'seasons'),
     ].filter(Boolean)
-    const changedSeasons = g.changed_seasons?.length ?? 0
+    const changedSeasons = len(g.changed_seasons)
     if (changedSeasons > 0) parts.push(`${changedSeasons} season${changedSeasons === 1 ? '' : 's'} updated`)
     return parts.length ? `${parts.join(', ')} available` : ''
   })

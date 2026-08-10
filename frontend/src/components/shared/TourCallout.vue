@@ -125,25 +125,30 @@ function computePos(): { left: number; top: number; placement: CalloutPlacement 
 // reads as "stable" and we measure the wrong rect (a popover slide
 // caught at x≈226 instead of its final x≈420). Settle only once both
 // hold: past the floor AND stable.
+// One frame's stability verdict: bump the streak when the rect is
+// measurable and unchanged, otherwise restart it.
+function stepStability(s: { prev: ReturnType<typeof getTargetRect>; stable: number }): void {
+  const cur = getTargetRect()
+  const measurable = cur !== null && cur.w > 0 && cur.h > 0
+  if (measurable && s.prev && rectsEqual(cur, s.prev)) {
+    s.stable++
+  } else {
+    s.stable = 0
+  }
+  s.prev = measurable ? cur : null
+}
+
 async function waitForStableTarget(): Promise<void> {
   if (!props.target) return
   const MAX_FRAMES = 90 // ~1.5s cap at 60fps — covers a slow mount + slide
   const MIN_FRAMES = 21 // ~350ms floor past the pre-transition stillness
   const STABLE_NEEDED = 3
-  let prev = getTargetRect()
-  let stable = 0
+  const s = { prev: getTargetRect(), stable: 0 }
   for (let i = 0; i < MAX_FRAMES; i++) {
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
     if (userMoved.value) return
-    const cur = getTargetRect()
-    const measurable = cur !== null && cur.w > 0 && cur.h > 0
-    if (measurable && prev && rectsEqual(cur, prev)) {
-      stable++
-    } else {
-      stable = 0
-    }
-    prev = measurable ? cur : null
-    if (i + 1 >= MIN_FRAMES && stable >= STABLE_NEEDED) return
+    stepStability(s)
+    if (i + 1 >= MIN_FRAMES && s.stable >= STABLE_NEEDED) return
   }
 }
 

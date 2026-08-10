@@ -4,7 +4,7 @@ import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-h
 import { matchTime } from '@/match/match-time-helpers'
 import { matchStartUTC, inSeasonWindow } from '@/match/match-season-helpers'
 import { classifyPoolMembership } from '@/match/match-hero-pool-helpers'
-import type { SearchClause } from '@/match/search-query'
+import type { SearchClause, SearchField } from '@/match/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/useMatchesNarrow'
 import type { PoolFilter } from '@/composables/matches/matchesNarrow.types'
 
@@ -37,6 +37,39 @@ function parsePlayTimeMinutes(s: string): number {
   return parts[0] ?? 0
 }
 
+const lc = (s: string | undefined) => (s ?? '').toLowerCase()
+const lcJoin = (xs: string[] | undefined) => (xs ?? []).join(' ').toLowerCase()
+
+// The per-field surfaces a SCOPED clause matches against. Disruption
+// sides are searchable ONLY through their scoped tokens (`leaver:team`,
+// `thrower:enemy`). They stay out of the bare-token blob on purpose: the
+// values are three generic words, and folding them in would make a
+// search for "self" or "team" match on a tag the user wasn't thinking
+// about.
+function scopedSurfaces(ann: MatchRecord['annotation']): Record<SearchField, string> {
+  return {
+    note:    lc(ann?.note),
+    tag:     lcJoin(ann?.tags),
+    member:  lcJoin(ann?.members),
+    replay:  lc(ann?.replay_code),
+    leaver:  lcJoin(ann?.leavers),
+    thrower: lcJoin(ann?.throwers),
+  }
+}
+
+// The broad lexical blob a BARE clause matches — every visible surface.
+function bareBlob(d: NonNullable<MatchRecord['data']>, ann: MatchRecord['annotation']): string {
+  const heroesPlayedNames = (d.heroes_played ?? []).map((h) => h.hero ?? '').filter(Boolean)
+  return [
+    d.map, d.playlist, d.hero, d.role, d.game_mode,
+    ann?.note,
+    ...heroesPlayedNames,
+    ...(ann?.tags ?? []),
+    ...(ann?.members ?? []),
+    ann?.replay_code,
+  ].filter(Boolean).join(' ').toLowerCase()
+}
+
 // matchesSearch gates a record against the parsed search clauses. A
 // BARE clause (field === null) substring-matches the broad lexical blob
 // (every visible surface); a SCOPED clause matches only its annotation
@@ -47,38 +80,9 @@ export function matchesSearch(r: MatchRecord, clauses: SearchClause[]): boolean 
   if (clauses.length === 0) return true
   const d = r.data
   if (!d) return false
-  const ann = r.annotation
-  const heroesPlayedNames = (d.heroes_played ?? []).map((h) => h.hero ?? '').filter(Boolean)
-  const note = (ann?.note ?? '').toLowerCase()
-  const tags = (ann?.tags ?? []).join(' ').toLowerCase()
-  const members = (ann?.members ?? []).join(' ').toLowerCase()
-  const replay = (ann?.replay_code ?? '').toLowerCase()
-  // Disruption sides are searchable ONLY through their scoped tokens
-  // (`leaver:team`, `thrower:enemy`). They stay out of the bare-token blob
-  // below on purpose: the values are three generic words, and folding them in
-  // would make a search for "self" or "team" match on a tag the user wasn't
-  // thinking about.
-  const leavers = (ann?.leavers ?? []).join(' ').toLowerCase()
-  const throwers = (ann?.throwers ?? []).join(' ').toLowerCase()
-  const blob = [
-    d.map, d.playlist, d.hero, d.role, d.game_mode,
-    ann?.note,
-    ...heroesPlayedNames,
-    ...(ann?.tags ?? []),
-    ...(ann?.members ?? []),
-    ann?.replay_code,
-  ].filter(Boolean).join(' ').toLowerCase()
-  return clauses.every((c) => {
-    switch (c.field) {
-      case 'note':   return note.includes(c.value)
-      case 'tag':    return tags.includes(c.value)
-      case 'member': return members.includes(c.value)
-      case 'replay': return replay.includes(c.value)
-      case 'leaver': return leavers.includes(c.value)
-      case 'thrower': return throwers.includes(c.value)
-      default:       return blob.includes(c.value)
-    }
-  })
+  const scoped = scopedSurfaces(r.annotation)
+  const blob = bareBlob(d, r.annotation)
+  return clauses.every((c) => (c.field ? scoped[c.field] : blob).includes(c.value))
 }
 
 // matchesDateRange places a record on the naive-local time axis via the
@@ -102,8 +106,17 @@ export interface DateRangeBounds {
   toTime?: string
 }
 
+// One inclusive bound check each. An 'HH:MM' time tightens the bound's
+// day to a minute boundary; without one the whole day passes.
+function beforeBound(minute: string, date: string, bound: string, time?: string): boolean {
+  return time ? minute < `${bound}T${time}` : date < bound
+}
+
+function afterBound(minute: string, date: string, bound: string, time?: string): boolean {
+  return time ? minute > `${bound}T${time}` : date > bound
+}
+
 export function matchesDateRange(r: MatchRecord, bounds: DateRangeBounds): boolean {
-  const { from: fromBound, to: toBound, fromTime = '', toTime = '' } = bounds
   const stamp = matchTime(r) || (r.data?.date ?? '')
   if (!stamp) return true
   const minute = stamp.slice(0, 16)
@@ -114,10 +127,10 @@ export function matchesDateRange(r: MatchRecord, bounds: DateRangeBounds): boole
   // write bare YYYY-MM-DD. A raw lexicographic compare between the
   // two forms drops every record on the active day. Sub-day precision
   // comes ONLY from the explicit fromTime/toTime panel inputs.
-  const from = fromBound.slice(0, 10)
-  const to = toBound.slice(0, 10)
-  if (from && (fromTime ? minute < `${from}T${fromTime}` : date < from)) return false
-  if (to && (toTime ? minute > `${to}T${toTime}` : date > to)) return false
+  const from = bounds.from.slice(0, 10)
+  const to = bounds.to.slice(0, 10)
+  if (from && beforeBound(minute, date, from, bounds.fromTime)) return false
+  if (to && afterBound(minute, date, to, bounds.toTime)) return false
   return true
 }
 

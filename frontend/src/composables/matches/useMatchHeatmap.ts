@@ -82,68 +82,88 @@ export function useMatchHeatmap(
       startDate.setDate(startDate.getDate() - 1)
     }
 
-    // Bucket records by date string.
-    const buckets = new Map<string, { w: number; l: number; d: number }>()
-    const startIso = toIsoDate(startDate)
-    const endIso = toIsoDate(endDate)
-    for (const r of records.value) {
-      const date = r.data?.date
-      if (!date) continue
-      if (date < startIso || date > endIso) continue
-      let b = buckets.get(date)
-      if (!b) { b = { w: 0, l: 0, d: 0 }; buckets.set(date, b) }
-      const result = r.data?.result
-      if (result === 'victory') b.w++
-      else if (result === 'defeat') b.l++
-      else if (result === 'draw') b.d++
-    }
-
-    // Walk the window one day at a time, emit a cell each.
-    const cells: HeatmapCell[] = []
-    let maxTotal = 0
-    const cursor = new Date(startDate)
-    let weekIndex = 0
-    while (cursor <= endDate) {
-      const iso = toIsoDate(cursor)
-      const dow = cursor.getDay()
-      const dayOfWeek = (dow - weekStartsOn + 7) % 7
-      const b = buckets.get(iso) ?? { w: 0, l: 0, d: 0 }
-      const total = b.w + b.l + b.d
-      const decided = b.w + b.l
-      const winRate = decided > 0 ? b.w / decided : 0
-      if (total > maxTotal) maxTotal = total
-      cells.push({
-        date: iso, dayOfWeek, weekIndex,
-        wins: b.w, losses: b.l, draws: b.d,
-        total, winRate, empty: total === 0,
-      })
-      // Advance one day; bump weekIndex when we wrap a row.
-      cursor.setDate(cursor.getDate() + 1)
-      if (dayOfWeek === 6) weekIndex++
-    }
-
-    // Month column labels — anchor at the first week of each month
-    // (looking at the cell in the top row, i.e. dayOfWeek === 0).
-    const monthLabels: MonthLabel[] = []
-    let lastMonth = -1
-    for (const c of cells) {
-      if (c.dayOfWeek !== 0) continue
-      const m = parseLocalDate(c.date).getMonth()
-      if (m !== lastMonth) {
-        monthLabels.push({ weekIndex: c.weekIndex, label: MONTHS[m]!, month: c.date.slice(0, 7) })
-        lastMonth = m
-      }
-    }
+    const buckets = bucketByDate(records.value, toIsoDate(startDate), toIsoDate(endDate))
+    const { cells, maxTotal, weekIndex } = walkCells(startDate, endDate, weekStartsOn, buckets)
 
     return {
       cells,
       weeks: weekIndex + (cells.length % 7 === 0 ? 0 : 1),
       start: toIsoDate(startDate),
       end: toIsoDate(endDate),
-      monthLabels,
+      monthLabels: buildMonthLabels(cells),
       maxTotal,
     }
   })
+}
+
+interface DayTally { w: number; l: number; d: number }
+
+function applyResult(b: DayTally, result: string | undefined): void {
+  if (result === 'victory') b.w++
+  else if (result === 'defeat') b.l++
+  else if (result === 'draw') b.d++
+}
+
+// Bucket records by date string, keeping only dates inside the window.
+function bucketByDate(records: MatchRecord[], startIso: string, endIso: string): Map<string, DayTally> {
+  const buckets = new Map<string, DayTally>()
+  for (const r of records) {
+    const date = r.data?.date
+    if (!date) continue
+    if (date < startIso || date > endIso) continue
+    let b = buckets.get(date)
+    if (!b) { b = { w: 0, l: 0, d: 0 }; buckets.set(date, b) }
+    applyResult(b, r.data?.result)
+  }
+  return buckets
+}
+
+// Walk the window one day at a time, emit a cell each.
+function walkCells(
+  startDate: Date,
+  endDate: Date,
+  weekStartsOn: number,
+  buckets: Map<string, DayTally>,
+): { cells: HeatmapCell[]; maxTotal: number; weekIndex: number } {
+  const cells: HeatmapCell[] = []
+  let maxTotal = 0
+  const cursor = new Date(startDate)
+  let weekIndex = 0
+  while (cursor <= endDate) {
+    const iso = toIsoDate(cursor)
+    const dow = cursor.getDay()
+    const dayOfWeek = (dow - weekStartsOn + 7) % 7
+    const b = buckets.get(iso) ?? { w: 0, l: 0, d: 0 }
+    const total = b.w + b.l + b.d
+    const decided = b.w + b.l
+    const winRate = decided > 0 ? b.w / decided : 0
+    if (total > maxTotal) maxTotal = total
+    cells.push({
+      date: iso, dayOfWeek, weekIndex,
+      wins: b.w, losses: b.l, draws: b.d,
+      total, winRate, empty: total === 0,
+    })
+    // Advance one day; bump weekIndex when we wrap a row.
+    cursor.setDate(cursor.getDate() + 1)
+    if (dayOfWeek === 6) weekIndex++
+  }
+  return { cells, maxTotal, weekIndex }
+}
+
+// Month column labels — anchor at the first week of each month
+// (looking at the cell in the top row, i.e. dayOfWeek === 0).
+function buildMonthLabels(cells: HeatmapCell[]): MonthLabel[] {
+  const monthLabels: MonthLabel[] = []
+  let lastMonth = -1
+  for (const c of cells) {
+    if (c.dayOfWeek !== 0) continue
+    const m = parseLocalDate(c.date).getMonth()
+    if (m !== lastMonth) {
+      monthLabels.push({ weekIndex: c.weekIndex, label: MONTHS[m]!, month: c.date.slice(0, 7) })
+      lastMonth = m
+    }
+  }
+  return monthLabels
 }
 
 // parseLocalDate avoids `new Date('YYYY-MM-DD')`'s UTC-midnight bug,

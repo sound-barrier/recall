@@ -203,52 +203,33 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     onDragEnd()
   }
 
+  const lastIdxOf = (row: number) => Math.max(0, opts.rowSize(row) - 1)
+
+  // Up/Down land in the adjacent row at the same index, clamped to
+  // that row's tail; null when there is no row in that direction.
+  function verticalTarget(row: number, idx: number, delta: 1 | -1): { row: number; idx: number } | null {
+    const target = adjacentRow(row, delta)
+    if (target === null) return null
+    return { row: target, idx: Math.min(idx, opts.rowSize(target)) }
+  }
+
+  // The destination one key press moves the handle to, or null when the
+  // key can't move it any further (the event then falls through).
+  const keyTargets: Record<string, (row: number, idx: number) => { row: number; idx: number } | null> = {
+    ArrowLeft:  (row, idx) => (idx === 0 ? null : { row, idx: idx - 1 }),
+    ArrowRight: (row, idx) => (idx >= lastIdxOf(row) ? null : { row, idx: idx + 1 }),
+    ArrowUp:    (row, idx) => verticalTarget(row, idx, -1),
+    ArrowDown:  (row, idx) => verticalTarget(row, idx, 1),
+    Home:       (row, idx) => (idx === 0 ? null : { row, idx: 0 }),
+    End:        (row, idx) => (idx >= lastIdxOf(row) ? null : { row, idx: lastIdxOf(row) }),
+  }
+
   function onHandleKeydown(id: string, row: number, idx: number, e: KeyboardEvent) {
-    let handled = true
-    switch (e.key) {
-      case 'ArrowLeft': {
-        if (idx === 0) { handled = false; break }
-        opts.onMove(id, { row, idx }, { row, idx: idx - 1 })
-        break
-      }
-      case 'ArrowRight': {
-        const lastIdx = Math.max(0, opts.rowSize(row) - 1)
-        if (idx >= lastIdx) { handled = false; break }
-        opts.onMove(id, { row, idx }, { row, idx: idx + 1 })
-        break
-      }
-      case 'ArrowUp': {
-        const upRow = adjacentRow(row, -1)
-        if (upRow === null) { handled = false; break }
-        const clampedIdx = Math.min(idx, opts.rowSize(upRow))
-        opts.onMove(id, { row, idx }, { row: upRow, idx: clampedIdx })
-        break
-      }
-      case 'ArrowDown': {
-        const downRow = adjacentRow(row, 1)
-        if (downRow === null) { handled = false; break }
-        const clampedIdx = Math.min(idx, opts.rowSize(downRow))
-        opts.onMove(id, { row, idx }, { row: downRow, idx: clampedIdx })
-        break
-      }
-      case 'Home': {
-        if (idx === 0) { handled = false; break }
-        opts.onMove(id, { row, idx }, { row, idx: 0 })
-        break
-      }
-      case 'End': {
-        const lastIdx = Math.max(0, opts.rowSize(row) - 1)
-        if (idx >= lastIdx) { handled = false; break }
-        opts.onMove(id, { row, idx }, { row, idx: lastIdx })
-        break
-      }
-      default:
-        handled = false
-    }
-    if (handled) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
+    const target = keyTargets[e.key]?.(row, idx) ?? null
+    if (!target) return
+    opts.onMove(id, { row, idx }, target)
+    e.preventDefault()
+    e.stopPropagation()
   }
 
   return {

@@ -107,10 +107,10 @@ interface Col { slug: string; display: string; gameMode: string; firstInGroup: b
 // order) and alphabetized within each group. mapIndex is keyed by the
 // normalized slug — the same form the parser stores in data.map — so
 // the join below is exact.
-const columns = computed<Col[]>(() => {
-  // Filter the roster by the gear config BEFORE grouping so the
-  // game-mode group headers + first-in-group rules read off the visible set.
-  // Empty filter = pass all; non-empty game-mode + map filters AND together.
+// Filter the roster by the gear config BEFORE grouping so the
+// game-mode group headers + first-in-group rules read off the visible set.
+// Empty filter = pass all; non-empty game-mode + map filters AND together.
+function visibleRosterByGameMode(): Map<string, { slug: string; display: string }[]> {
   const { gameModes, maps } = cfg.config.value
   const gameModeSet = new Set(gameModes)
   const mapSet = new Set(maps)
@@ -124,6 +124,11 @@ const columns = computed<Col[]>(() => {
     arr.push({ slug, display })
     byGameMode.set(gameMode, arr)
   }
+  return byGameMode
+}
+
+const columns = computed<Col[]>(() => {
+  const byGameMode = visibleRosterByGameMode()
   const rank = (t: string) => {
     const i = GAME_MODE_ORDER.indexOf(t)
     return i < 0 ? GAME_MODE_ORDER.length : i

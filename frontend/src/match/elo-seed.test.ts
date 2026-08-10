@@ -21,34 +21,46 @@ interface RecOpts {
   rank?: { tier: string; level: number; progress: number; change?: number; modifiers?: string[] }
 }
 
+const REC_BASE = {
+  queue: 'role',
+  playlist: 'competitive',
+  hero: 'lucio',
+  role: 'support',
+  result: 'victory',
+} as const
+
+function rankFields(rank: RecOpts['rank']): Record<string, unknown> {
+  if (!rank) return {}
+  return {
+    rank: rank.tier,
+    level: rank.level,
+    rank_progress: rank.progress,
+    ...(rank.change !== undefined ? { change_percent: rank.change } : {}),
+    ...(rank.modifiers ? { modifiers: rank.modifiers } : {}),
+  }
+}
+
 function rec(opts: RecOpts = {}): Rec {
   seq++
-  const days = opts.daysAgo ?? Math.ceil(seq / 5)
+  const o = { ...REC_BASE, ...opts }
+  const days = o.daysAgo ?? Math.ceil(seq / 5)
   const d = new Date(Date.UTC(2026, 5, 30, 12, 0, 0) - days * 86_400_000 - seq * 60_000)
   const iso = d.toISOString()
   return {
     match_key: `m${seq}`,
-    queue_type: opts.queue ?? 'role',
-    play_mode: opts.playMode,
+    queue_type: o.queue,
+    play_mode: o.playMode,
     data: {
       map: 'ilios',
-      playlist: opts.playlist ?? 'competitive',
-      hero: opts.hero ?? 'lucio',
-      role: opts.role ?? 'support',
-      result: opts.result ?? 'victory',
+      playlist: o.playlist,
+      hero: o.hero,
+      role: o.role,
+      result: o.result,
       date: iso.slice(0, 10),
       finished_at: iso.slice(11, 16),
       played_at_utc: iso,
-      heroes_played: [{ hero: opts.hero ?? 'lucio', percent_played: 100 }],
-      ...(opts.rank
-        ? {
-            rank: opts.rank.tier,
-            level: opts.rank.level,
-            rank_progress: opts.rank.progress,
-            ...(opts.rank.change !== undefined ? { change_percent: opts.rank.change } : {}),
-            ...(opts.rank.modifiers ? { modifiers: opts.rank.modifiers } : {}),
-          }
-        : {}),
+      heroes_played: [{ hero: o.hero, percent_played: 100 }],
+      ...rankFields(o.rank),
     },
   } as unknown as Rec
 }

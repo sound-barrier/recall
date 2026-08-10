@@ -24,27 +24,28 @@ const refdataGapCallout = useContextualCallout({
   gate: () => matchesStore.referenceGapRecords.length > 0,
 })
 
+// Case-insensitive against the normalized raw token (mirrors the
+// parser's normalize: lowercase + strip diacritics).
+const normalize = (s: string) => s
+  .normalize('NFD')
+  .replace(/\p{M}/gu, '')
+  .toLowerCase()
+  .trim()
+
+function findRecognizedName(raw: string | undefined, latest: string[] | undefined): string | null {
+  if (!raw) return null
+  return (latest ?? []).find((n) => normalize(n) === normalize(raw)) ?? null
+}
+
 // The upgrade tip for a gap-card record IF the upcoming release would recognize
-// its OCR'd name; null otherwise. Case-insensitive against the normalized raw
-// token (mirrors the parser's normalize: lowercase + strip diacritics).
+// its OCR'd name; null otherwise.
 function recognizingRelease(rec: MatchRecord): { version: string; url: string; name: string; kind: 'hero' | 'map' } | null {
   const info = updateInfo.value
   if (!info?.checked || !info.available) return null
-  const normalize = (s: string) => s
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .trim()
-  const heroRaw = rec.data?.hero_raw ?? ''
-  if (heroRaw) {
-    const hit = (info.latest_heroes ?? []).find((h) => normalize(h) === normalize(heroRaw))
-    if (hit) return { version: info.latest, url: info.url, name: hit, kind: 'hero' }
-  }
-  const mapRaw = rec.data?.map_raw ?? ''
-  if (mapRaw) {
-    const hit = (info.latest_maps ?? []).find((m) => normalize(m) === normalize(mapRaw))
-    if (hit) return { version: info.latest, url: info.url, name: hit, kind: 'map' }
-  }
+  const hero = findRecognizedName(rec.data?.hero_raw, info.latest_heroes)
+  if (hero) return { version: info.latest, url: info.url, name: hero, kind: 'hero' }
+  const map = findRecognizedName(rec.data?.map_raw, info.latest_maps)
+  if (map) return { version: info.latest, url: info.url, name: map, kind: 'map' }
   return null
 }
 </script>

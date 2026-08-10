@@ -25,6 +25,35 @@ import {
 // that import these names from this module keep working unchanged.
 export * from '@/composables/matches/useMatchesDossier.types'
 
+// The three per-10-min rates a record contributes to averageKDA, or
+// null unless it carries ALL three fields — a missing field would
+// otherwise pull the average against zero, which is misleading.
+function kdaRates(r: MatchRecord): { elim: number; deaths: number; assists: number } | null {
+  const p = r.data?.performance
+  if (!p) return null
+  const elim    = p.eliminations?.avg_per_10min
+  const deaths  = p.deaths?.avg_per_10min
+  const assists = p.assists?.avg_per_10min
+  if (elim === undefined || deaths === undefined || assists === undefined) return null
+  return { elim, deaths, assists }
+}
+
+// The union of roles a match touched: the primary `data.role` if
+// canonical, plus every role inferred from `data.heroes_played[*].hero`
+// via the resolver — deduped per match, so a match where you played
+// only Lúcio contributes 1 to support, not 1 + 1.
+function matchRoleSet(r: MatchRecord, heroRole: HeroRoleResolver | undefined): Set<Role> {
+  const roles = new Set<Role>()
+  if (isCanonRole(r.data?.role)) roles.add(r.data.role)
+  if (!heroRole) return roles
+  for (const hp of r.data?.heroes_played ?? []) {
+    if (!hp.hero) continue
+    const role = heroRole(hp.hero)
+    if (isCanonRole(role)) roles.add(role)
+  }
+  return roles
+}
+
 // Pure KPI / breakdown computations for the Matches dossier.
 // Extracted from MatchesView so the tally math (winrate excluding
 // draws from the denominator, top-N breakdowns, leaver-tally
@@ -156,15 +185,11 @@ export function useMatchesDossier(
     let elimSum = 0, deathSum = 0, assistSum = 0
     let qualifyingMatches = 0
     for (const r of tallyRecords.value) {
-      const p = r.data?.performance
-      if (!p) continue
-      const elim    = p.eliminations?.avg_per_10min
-      const deaths  = p.deaths?.avg_per_10min
-      const assists = p.assists?.avg_per_10min
-      if (elim === undefined || deaths === undefined || assists === undefined) continue
-      elimSum   += elim
-      deathSum  += deaths
-      assistSum += assists
+      const rates = kdaRates(r)
+      if (!rates) continue
+      elimSum   += rates.elim
+      deathSum  += rates.deaths
+      assistSum += rates.assists
       qualifyingMatches++
     }
     if (qualifyingMatches === 0) return null
@@ -280,16 +305,7 @@ export function useMatchesDossier(
       support: { total: 0, w: 0, l: 0 },
     }
     for (const r of records.value) {
-      const rolesInMatch = new Set<Role>()
-      if (isCanonRole(r.data?.role)) rolesInMatch.add(r.data.role)
-      if (heroRole) {
-        for (const hp of r.data?.heroes_played ?? []) {
-          if (!hp.hero) continue
-          const role = heroRole(hp.hero)
-          if (isCanonRole(role)) rolesInMatch.add(role)
-        }
-      }
-      for (const role of rolesInMatch) {
+      for (const role of matchRoleSet(r, heroRole)) {
         counts[role].total++
         if (r.data?.result === 'victory') counts[role].w++
         else if (r.data?.result === 'defeat') counts[role].l++

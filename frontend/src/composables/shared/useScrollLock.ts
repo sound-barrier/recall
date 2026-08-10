@@ -41,6 +41,17 @@ let prevHtmlOverflow = ''
 let prevBodyOverflow = ''
 let prevBodyPaddingRight = ''
 
+// Can this node still scroll in the wheel's direction? True means the
+// wheel lands in an inner scroll area and should pass through.
+function scrollableConsumesWheel(node: HTMLElement, deltaY: number): boolean {
+  const oy = getComputedStyle(node).overflowY
+  const scrollableY = (oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight
+  if (!scrollableY) return false
+  const atTop = node.scrollTop <= 0
+  const atBottom = Math.ceil(node.scrollTop + node.clientHeight) >= node.scrollHeight
+  return (deltaY < 0 && !atTop) || (deltaY > 0 && !atBottom)
+}
+
 // Block a wheel that would scroll the locked background. Walk from the
 // event target up; if some ancestor can still scroll in the wheel's
 // direction, let the event through so that inner scroll area moves.
@@ -49,13 +60,7 @@ function onWheel(e: WheelEvent): void {
   let node: HTMLElement | null = e.target instanceof HTMLElement ? e.target : null
   const html = document.documentElement
   while (node && node !== document.body && node !== html) {
-    const oy = getComputedStyle(node).overflowY
-    const scrollableY = (oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight
-    if (scrollableY) {
-      const atTop = node.scrollTop <= 0
-      const atBottom = Math.ceil(node.scrollTop + node.clientHeight) >= node.scrollHeight
-      if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return
-    }
+    if (scrollableConsumesWheel(node, e.deltaY)) return
     node = node.parentElement
   }
   e.preventDefault()

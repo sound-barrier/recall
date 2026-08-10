@@ -86,18 +86,11 @@ function assertEditedOcrMatch(m: Match | undefined, when: string) {
   // parent rows AND the user override that shadows them.
   expect(m!.source, `${when}: source`).toBe('ocr_edited')
   expect((m!.source_files ?? []).length, `${when}: parsed screenshot rows survive`).toBeGreaterThan(0)
-  // Every edited field reports the OVERRIDE value, never the OCR original.
-  expect(m!.data?.map, `${when}: map`).toBe('ilios')
-  expect(m!.data?.result, `${when}: result`).toBe('defeat')
-  expect(m!.data?.final_score, `${when}: final_score`).toBe('3-1')
-  expect(m!.data?.finished_at, `${when}: finished_at`).toBe('23:45')
-  expect(m!.data?.game_length, `${when}: game_length`).toBe('12:34')
-  expect(m!.data?.eliminations, `${when}: eliminations`).toBe(42)
-  expect(m!.data?.assists, `${when}: assists`).toBe(38)
-  expect(m!.data?.deaths, `${when}: deaths`).toBe(13)
-  expect(m!.data?.damage, `${when}: damage`).toBe(54321)
-  expect(m!.data?.healing, `${when}: healing`).toBe(43210)
-  expect(m!.data?.mitigation, `${when}: mitigation`).toBe(32109)
+  // Every edited field reports the OVERRIDE value, never the OCR original —
+  // the assertion set IS the EDITS table, so the two can never drift apart.
+  for (const [field, want] of Object.entries(EDITS) as [keyof typeof EDITS, string | number][]) {
+    expect(m!.data?.[field], `${when}: ${field}`).toBe(want)
+  }
   // The annotation sidecar rides along too.
   expect(m!.annotation?.note, `${when}: note`).toBe(NOTE)
   expect(m!.annotation?.tags ?? [], `${when}: tags`).toContain(TAG)

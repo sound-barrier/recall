@@ -24,27 +24,37 @@ interface Opts {
   parsedAt?: string
 }
 
+const REC_BASE = {
+  map: 'rialto',
+  hero: 'lucio',
+  result: 'victory',
+  elims: 15,
+  date: '2026-05-10',
+  finishedAt: '22:00',
+  parsedAt: '2026-05-10T22:30:00Z',
+} as const
+
 function record(key: string, o: Opts = {}) {
-  const hero = o.hero ?? 'lucio'
+  const m = { ...REC_BASE, ...o }
   return {
     match_key: key,
     source_files: [`${key}.png`],
     data: {
-      map: o.map ?? 'rialto',
+      map: m.map,
       playlist: 'competitive',
       game_mode: 'control',
       role: 'support',
-      hero,
-      result: o.result ?? 'victory',
-      date: o.date ?? '2026-05-10',
-      finished_at: o.finishedAt ?? '22:00',
-      eliminations: o.elims ?? 15,
+      hero: m.hero,
+      result: m.result,
+      date: m.date,
+      finished_at: m.finishedAt,
+      eliminations: m.elims,
       assists: 10,
       deaths: 8,
-      heroes_played: o.heroesPlayed ?? [{ hero, percent_played: 100, play_time: '11:00' }],
+      heroes_played: m.heroesPlayed ?? [{ hero: m.hero, percent_played: 100, play_time: '11:00' }],
     },
-    parsed_at: o.parsedAt ?? '2026-05-10T22:30:00Z',
-    ...(o.tags ? { annotation: { tags: o.tags } } : {}),
+    parsed_at: m.parsedAt,
+    ...(m.tags ? { annotation: { tags: m.tags } } : {}),
   }
 }
 

@@ -79,6 +79,19 @@ function keyMatches(shortcut: Shortcut, key: string): boolean {
   return k.includes(key)
 }
 
+// The uniform per-shortcut gate: key match + `when` predicate +
+// input-gating (skip unless allowInInput while focus is editable).
+function shortcutApplies(s: Shortcut, key: string, editable: boolean): boolean {
+  return keyMatches(s, key) && (s.when ? s.when() : true) && (editable ? !!s.allowInInput : true)
+}
+
+// `event.preventDefault()` is called BEFORE the handler so handlers
+// don't need to remember; {preventDefault: false} opts out.
+function fire(s: Shortcut, e: KeyboardEvent): void {
+  if (s.preventDefault !== false) e.preventDefault()
+  s.handler(e)
+}
+
 // Options bag for `useKeyboardShortcuts`. `suppressed` is read by
 // the dispatcher on every keydown — when its `.value` is true the
 // dispatcher early-exits without matching anything, modal-eats-
@@ -103,6 +116,23 @@ export function useKeyboardShortcuts(
 
   let pendingPrefix: { key: string; expiresAt: number } | null = null
 
+  // Try matching a sequence shortcut (prefix + key). The pending prefix
+  // is consumed either way; returns true when a shortcut fired. Expired
+  // prefixes are cleared first so a mid-tap+pause isn't booby-trapped,
+  // and a miss falls through to standard matching — a stale prefix
+  // shouldn't swallow a real shortcut on the next keypress.
+  function matchSequence(e: KeyboardEvent, key: string, editable: boolean): boolean {
+    if (pendingPrefix && pendingPrefix.expiresAt < Date.now()) pendingPrefix = null
+    if (!pendingPrefix) return false
+    const sought = shortcuts.find(s =>
+      s.prefix === pendingPrefix!.key && shortcutApplies(s, key, editable),
+    )
+    pendingPrefix = null
+    if (!sought) return false
+    fire(sought, e)
+    return true
+  }
+
   function onKeydown(e: KeyboardEvent) {
     // Modal suppression — bail before any matching so a pending
     // sequence prefix from before the modal opened doesn't get
@@ -118,51 +148,23 @@ export function useKeyboardShortcuts(
 
     const key = e.key
     const editable = isEditableTarget()
-    const now = Date.now()
 
-    // Clear an expired pending prefix before any matching.
-    if (pendingPrefix && pendingPrefix.expiresAt < now) {
-      pendingPrefix = null
-    }
-
-    // Try matching a sequence shortcut first (prefix + key).
-    if (pendingPrefix) {
-      const sought = shortcuts.find(s =>
-        s.prefix === pendingPrefix!.key &&
-        keyMatches(s, key) &&
-        (s.when ? s.when() : true) &&
-        (editable ? !!s.allowInInput : true),
-      )
-      pendingPrefix = null
-      if (sought) {
-        if (sought.preventDefault !== false) e.preventDefault()
-        sought.handler(e)
-        return
-      }
-      // Fall through to standard matching — a stale prefix
-      // shouldn't swallow a real shortcut on the next keypress.
-    }
+    if (matchSequence(e, key, editable)) return
 
     // Prime a new prefix if this key is one of the declared
     // sequence prefixes — but only when no input is focused (so
     // typing a literal `g` in the search box doesn't enter
     // sequence mode).
     if (prefixKeys.has(key) && !editable) {
-      pendingPrefix = { key, expiresAt: now + SEQUENCE_TIMEOUT_MS }
+      pendingPrefix = { key, expiresAt: Date.now() + SEQUENCE_TIMEOUT_MS }
       e.preventDefault()
       return
     }
 
     // Standard (non-sequence) shortcut.
-    const match = shortcuts.find(s =>
-      !s.prefix &&
-      keyMatches(s, key) &&
-      (s.when ? s.when() : true) &&
-      (editable ? !!s.allowInInput : true),
-    )
+    const match = shortcuts.find(s => !s.prefix && shortcutApplies(s, key, editable))
     if (!match) return
-    if (match.preventDefault !== false) e.preventDefault()
-    match.handler(e)
+    fire(match, e)
   }
 
   document.addEventListener('keydown', onKeydown, { capture: true })

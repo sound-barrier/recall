@@ -68,45 +68,72 @@ interface SettingsOver {
   ignoredCount?:         number
 }
 
+// The seed values every mount starts from; a test's `props` override wins via
+// spread merge. Array-valued seeds stay out of the base (fresh instances are
+// built per mount) so no mutable fixture is shared across tests.
+const SETTINGS_BASE = {
+  screenshotsDir:      '/srv/recall',
+  parseBusy:           false,
+  themeMode:           'dark' as ThemeMode,
+  weekStart:           0 as WeekStart,
+  dataLocation:        null as DataLocation | null,
+  probing:             false,
+  probeMessage:        '',
+  probeStatus:         '' as '' | 'success' | 'blocked',
+  platform:            'darwin',
+  tesseractReady:      true,
+  tesseractSupported:  true,
+  tesseractPickerBusy: false,
+  matchedCount:        0,
+  unknownCount:        0,
+  backingUp:           false,
+  restoring:           false,
+  restoreArmed:        false,
+  importingMatches:    false,
+  backupStatus:        null as { ok: boolean; message: string } | null,
+  clearConfirm:        false,
+  clearingDB:          false,
+}
+
 // Seeds the three stores from the old prop shape (theme/week-start are seeded
 // via the real setters BEFORE the spies are installed so the seed isn't counted
 // as a click), then spies on every action a sub-section button drives.
 function mountSettings(opts: { props?: SettingsOver } = {}) {
-  const over = opts.props ?? {}
+  const over = { ...SETTINGS_BASE, ...opts.props }
   setActivePinia(createPinia())
   const app = useAppStore()
   const matches = useMatchesStore()
   const settings = useSettingsStore()
 
   settings.setTesseractStatus(over.tesseractStatus ?? defaultTess({
-    found:     over.tesseractReady ?? true,
-    supported: over.tesseractSupported ?? true,
-    platform:  over.platform ?? 'darwin',
+    found:     over.tesseractReady,
+    supported: over.tesseractSupported,
+    platform:  over.platform,
   }))
-  settings.setScreenshotsDir(over.screenshotsDir ?? '/srv/recall')
-  settings.setTheme(over.themeMode ?? 'dark')
-  settings.setWeekStart(over.weekStart ?? 0)
+  settings.setScreenshotsDir(over.screenshotsDir)
+  settings.setTheme(over.themeMode)
+  settings.setWeekStart(over.weekStart)
   seedQuery(qk.candidates, over.screenshotCandidates ?? [])
-  settings.probing = over.probing ?? false
-  settings.probeMessage = over.probeMessage ?? ''
-  settings.probeStatus = over.probeStatus ?? ''
+  settings.probing = over.probing
+  settings.probeMessage = over.probeMessage
+  settings.probeStatus = over.probeStatus
   settings.probeTried = over.probeTried ?? []
-  settings.tesseractPickerBusy = over.tesseractPickerBusy ?? false
+  settings.tesseractPickerBusy = over.tesseractPickerBusy
 
-  matches.parseBusy = over.parseBusy ?? false
-  matches.backingUp = over.backingUp ?? false
-  matches.restoring = over.restoring ?? false
-  matches.restoreArmed = over.restoreArmed ?? false
-  matches.importingMatches = over.importingMatches ?? false
-  matches.backupStatus = over.backupStatus ?? null
-  matches.clearConfirm = over.clearConfirm ?? false
-  matches.clearingDB = over.clearingDB ?? false
-  matches.records = makeRecords(over.matchedCount ?? 0, over.unknownCount ?? 0)
+  matches.parseBusy = over.parseBusy
+  matches.backingUp = over.backingUp
+  matches.restoring = over.restoring
+  matches.restoreArmed = over.restoreArmed
+  matches.importingMatches = over.importingMatches
+  matches.backupStatus = over.backupStatus
+  matches.clearConfirm = over.clearConfirm
+  matches.clearingDB = over.clearingDB
+  matches.records = makeRecords(over.matchedCount, over.unknownCount)
   if (over.ignoredCount != null) {
     matches.ignoredScreenshots = Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' }))
   }
 
-  seedQuery(qk.system.dataLocation, over.dataLocation ?? null)
+  seedQuery(qk.system.dataLocation, over.dataLocation)
 
   const spies = {
     pickDir:               vi.spyOn(settings, 'pickDir').mockResolvedValue(undefined),

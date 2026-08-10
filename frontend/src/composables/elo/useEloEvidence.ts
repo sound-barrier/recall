@@ -164,30 +164,38 @@ function streakMeter(recs: readonly MatchRecord[]): EvidenceItem | null {
 // straight losses — and prices the games played from the 5th loss on in
 // the player's own meter. The zero case is shown too: not tilt-queuing
 // is a discipline worth naming.
+// The zero-episode card: not tilt-queuing is a discipline worth naming
+// — but only over a corpus big enough to make the restraint meaningful.
+function tiltDisciplineCard(decisive: number): EvidenceItem | null {
+  if (decisive < 30) return null
+  return {
+    id: 'tilt-queue',
+    label: 'Tilt queuing',
+    value: 'none — discipline holds',
+    gloss: `Across ${decisive} decisive games you never queued past 4 straight losses in one sitting. That restraint is worth divisions over a season — keep it.`,
+    tone: 'good',
+  }
+}
+
+// Prices the tilt games in the player's own meter; empty when the meter
+// pool can't say or the expected delta isn't negative.
+function tiltPricedClause(recs: readonly MatchRecord[], t: ReturnType<typeof tiltEpisodes>): string {
+  const samples = meterMoveSamples(recs)
+  const perGame = expectedMeterDelta(samples, t.tiltGames > 0 ? t.tiltWins / t.tiltGames : 0)
+  if (perGame === null || perGame >= 0) return ''
+  const net = perGame * t.tiltGames
+  return `, ≈${Math.round(Math.abs(net))}% meter given back (~${(Math.abs(net) / 100).toFixed(1)} divisions)`
+}
+
 function tiltQueuing(recs: readonly MatchRecord[]): EvidenceItem | null {
   const t = tiltEpisodes(recs)
   const decisive = recs.filter((r) => r.data?.result === 'victory' || r.data?.result === 'defeat').length
   // The warn card needs a real corpus behind it too: one bad evening inside
   // a 10-game history is an anecdote, not a pattern worth a warning tone.
   if (decisive < TILT_MIN_DECISIVE) return null
-  if (t.episodes === 0) {
-    if (decisive < 30) return null
-    return {
-      id: 'tilt-queue',
-      label: 'Tilt queuing',
-      value: 'none — discipline holds',
-      gloss: `Across ${decisive} decisive games you never queued past 4 straight losses in one sitting. That restraint is worth divisions over a season — keep it.`,
-      tone: 'good',
-    }
-  }
+  if (t.episodes === 0) return tiltDisciplineCard(decisive)
   const tiltWR = t.tiltGames > 0 ? Math.round((t.tiltWins / t.tiltGames) * 100) : 0
-  let priced = ''
-  const samples = meterMoveSamples(recs)
-  const perGame = expectedMeterDelta(samples, t.tiltGames > 0 ? t.tiltWins / t.tiltGames : 0)
-  if (perGame !== null && perGame < 0) {
-    const net = perGame * t.tiltGames
-    priced = `, ≈${Math.round(Math.abs(net))}% meter given back (~${(Math.abs(net) / 100).toFixed(1)} divisions)`
-  }
+  const priced = tiltPricedClause(recs, t)
   return {
     id: 'tilt-queue',
     label: 'Tilt queuing',
@@ -203,6 +211,28 @@ function tiltQueuing(recs: readonly MatchRecord[]): EvidenceItem | null {
 // the advice priced in meter. The quit-timing caveat stays attached:
 // people stop playing differently after wins vs losses, which bends this
 // curve, so trust the direction more than the decimals.
+// The significance clause from the logistic trend; empty when the
+// slope can't be estimated.
+function sessionTrendClause(slope: { slope: number; se: number } | null): { pClause: string; significant: boolean } {
+  if (slope === null || slope.se <= 0) return { pClause: '', significant: false }
+  const p = Math.min(1, 2 * (1 - normalCdf(Math.abs(slope.slope / slope.se))))
+  const significant = p < 0.05 && slope.slope < 0
+  const pClause = significant
+    ? ` The late-session sag is a real pattern (${fmtP(p)}).`
+    : ` The by-game trend is within noise so far (${fmtP(p)}).`
+  return { pClause, significant }
+}
+
+// The advice priced in meter — only when the rank-card pools allow and
+// the late-session cost is at least half a percent per game.
+function sessionPricedClause(recs: readonly MatchRecord[], baselineRate: number, lastRate: number): string {
+  const samples = meterMoveSamples(recs)
+  const atBase = expectedMeterDelta(samples, baselineRate)
+  const atLate = expectedMeterDelta(samples, lastRate)
+  if (atBase === null || atLate === null || atBase - atLate < 0.5) return ''
+  return ` Each game that deep costs ≈${(atBase - atLate).toFixed(1)}% meter vs your typical game — stopping one earlier is nearly free rank.`
+}
+
 function sessionHygiene(recs: readonly MatchRecord[]): EvidenceItem | null {
   const b = winrateBySessionIndex(recs)
   const first = b.buckets[0]
@@ -216,24 +246,8 @@ function sessionHygiene(recs: readonly MatchRecord[]): EvidenceItem | null {
   const totalN = b.buckets.reduce((s2, x) => s2 + x.sample, 0)
   const baseline = Math.round((totalWins / totalN) * 100)
 
-  let pClause = ''
-  let significant = false
-  if (b.slope !== null && b.slope.se > 0) {
-    const p = Math.min(1, 2 * (1 - normalCdf(Math.abs(b.slope.slope / b.slope.se))))
-    significant = p < 0.05 && b.slope.slope < 0
-    pClause = significant
-      ? ` The late-session sag is a real pattern (${fmtP(p)}).`
-      : ` The by-game trend is within noise so far (${fmtP(p)}).`
-  }
-
-  let priced = ''
-  const lastRate = (last.winrate ?? 0) / 100
-  const samples = meterMoveSamples(recs)
-  const atBase = expectedMeterDelta(samples, totalWins / totalN)
-  const atLate = expectedMeterDelta(samples, lastRate)
-  if (atBase !== null && atLate !== null && atBase - atLate >= 0.5) {
-    priced = ` Each game that deep costs ≈${(atBase - atLate).toFixed(1)}% meter vs your typical game — stopping one earlier is nearly free rank.`
-  }
+  const { pClause, significant } = sessionTrendClause(b.slope)
+  const priced = sessionPricedClause(recs, totalWins / totalN, (last.winrate ?? 0) / 100)
 
   const ladder = shown
     .map((x) => `${x.winrate}% at game ${x.index === b.buckets.length ? `${x.index}+` : x.index}`)

@@ -57,6 +57,21 @@ interface SeededForm {
   decaySlopePts: number
 }
 
+// The all-clean marker set — what editedFields reports before a seed
+// has ever been applied (nothing to compare against yet).
+const NO_EDITED_FIELDS: Record<keyof SeededForm, boolean> = {
+  currentTier: false,
+  currentDivision: false,
+  currentProgress: false,
+  targetTier: false,
+  targetDivision: false,
+  winRatePct: false,
+  sampleN: false,
+  meterMovePct: false,
+  gamesPerWeekInput: false,
+  decaySlopePts: false,
+}
+
 // SEASON_WEEKS sizes the "this season" probability window.
 const SEASON_WEEKS = 12
 // With no measured pace the simulator assumes a typical week so the verdict
@@ -228,18 +243,18 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // strip key on. Hero selection and nudges count as edits too.
   const editedFields = computed<Record<keyof SeededForm, boolean>>(() => {
     const f = seededForm.value
-    const cmp = (a: unknown, b: unknown) => f !== null && a !== b
+    if (f === null) return NO_EDITED_FIELDS
     return {
-      currentTier: cmp(currentTier.value, f?.currentTier),
-      currentDivision: cmp(currentDivision.value, f?.currentDivision),
-      currentProgress: cmp(currentProgress.value, f?.currentProgress),
-      targetTier: cmp(targetTier.value, f?.targetTier),
-      targetDivision: cmp(targetDivision.value, f?.targetDivision),
-      winRatePct: cmp(winRatePct.value, f?.winRatePct),
-      sampleN: cmp(sampleN.value, f?.sampleN),
-      meterMovePct: cmp(meterMovePct.value, f?.meterMovePct),
-      gamesPerWeekInput: cmp(gamesPerWeekInput.value, f?.gamesPerWeekInput),
-      decaySlopePts: cmp(decaySlopePts.value, f?.decaySlopePts),
+      currentTier: currentTier.value !== f.currentTier,
+      currentDivision: currentDivision.value !== f.currentDivision,
+      currentProgress: currentProgress.value !== f.currentProgress,
+      targetTier: targetTier.value !== f.targetTier,
+      targetDivision: targetDivision.value !== f.targetDivision,
+      winRatePct: winRatePct.value !== f.winRatePct,
+      sampleN: sampleN.value !== f.sampleN,
+      meterMovePct: meterMovePct.value !== f.meterMovePct,
+      gamesPerWeekInput: gamesPerWeekInput.value !== f.gamesPerWeekInput,
+      decaySlopePts: decaySlopePts.value !== f.decaySlopePts,
     }
   })
   const isEdited = computed(() =>

@@ -24,24 +24,41 @@ interface RecOpts {
   heroesPlayed?: { hero: string; percent_played?: number }[]
 }
 
-function rec(key: string, o: RecOpts = {}): MatchRecord {
+const REC_BASE = {
+  map: 'rialto',
+  playlist: 'competitive',
+  hero: 'lucio',
+  role: 'support',
+  result: 'victory',
+  elims: 10,
+  parsedAt: '2026-05-10T20:00:00Z',
+} as const
+
+function optionalDataFields(o: RecOpts): Record<string, unknown> {
+  return {
+    ...(o.assists !== undefined ? { assists: o.assists } : {}),
+    ...(o.deaths !== undefined ? { deaths: o.deaths } : {}),
+    ...(o.date ? { date: o.date } : {}),
+    ...(o.finishedAt ? { finished_at: o.finishedAt } : {}),
+    ...(o.heroesPlayed ? { heroes_played: o.heroesPlayed } : {}),
+  }
+}
+
+function rec(key: string, opts: RecOpts = {}): MatchRecord {
+  const o = { ...REC_BASE, ...opts }
   return {
     match_key: key,
     source_files: [`${key}.png`],
     data: {
-      map: o.map ?? 'rialto',
-      playlist: o.playlist ?? 'competitive',
-      hero: o.hero ?? 'lucio',
-      role: o.role ?? 'support',
-      result: o.result ?? 'victory',
-      eliminations: o.elims ?? 10,
-      ...(o.assists !== undefined ? { assists: o.assists } : {}),
-      ...(o.deaths !== undefined ? { deaths: o.deaths } : {}),
-      ...(o.date ? { date: o.date } : {}),
-      ...(o.finishedAt ? { finished_at: o.finishedAt } : {}),
-      ...(o.heroesPlayed ? { heroes_played: o.heroesPlayed } : {}),
+      map: o.map,
+      playlist: o.playlist,
+      hero: o.hero,
+      role: o.role,
+      result: o.result,
+      eliminations: o.elims,
+      ...optionalDataFields(opts),
     },
-    parsed_at: o.parsedAt ?? '2026-05-10T20:00:00Z',
+    parsed_at: o.parsedAt,
     ...(o.playMode ? { play_mode: o.playMode } : {}),
     ...(o.queueType ? { queue_type: o.queueType } : {}),
     ...(o.tags ? { annotation: { tags: o.tags } } : {}),

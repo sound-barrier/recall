@@ -324,22 +324,17 @@ function maxDefaultRow(): number {
 // 4-KPI overflow row. We only repurpose overflow rows (not other
 // shapes' default rows) so a stray KPI never lands in the breakdown
 // default row.
-function nextRowForAppend(next: RowLayout, rowIdx: number, shape: 'kpi' | 'breakdown'): number {
-  const cap = shape === 'kpi' ? KPI_ROW_SOFT_MAX : BREAKDOWN_ROW_SOFT_MAX
-
-  // Step 1: defaultRow if it has same-shape capacity.
-  const def = next[rowIdx] ?? []
-  let defShapeCount = 0
-  for (const id of def) {
-    if (widgetById(id)?.shape === shape) defShapeCount++
+function sameShapeCount(row: string[], shape: 'kpi' | 'breakdown'): number {
+  let n = 0
+  for (const id of row) {
+    if (widgetById(id)?.shape === shape) n++
   }
-  if (defShapeCount < cap) {
-    next[rowIdx] = def
-    return rowIdx
-  }
+  return n
+}
 
-  // Step 2: existing overflow rows past max defaultRow, ascending,
-  // matching shape with room.
+// The first existing overflow row (past max defaultRow, ascending)
+// holding only same-shape widgets and still under cap, or null.
+function overflowRowWithRoom(next: RowLayout, shape: 'kpi' | 'breakdown', cap: number): number | null {
   const defaultMax = maxDefaultRow()
   const overflowKeys = Object.keys(next)
     .map((k) => Number(k))
@@ -348,10 +343,26 @@ function nextRowForAppend(next: RowLayout, rowIdx: number, shape: 'kpi' | 'break
   for (const k of overflowKeys) {
     const row = next[k] ?? []
     if (row.length >= cap) continue
-    if (row.every((id) => widgetById(id)?.shape === shape)) {
-      next[k] = row
-      return k
-    }
+    if (row.every((id) => widgetById(id)?.shape === shape)) return k
+  }
+  return null
+}
+
+function nextRowForAppend(next: RowLayout, rowIdx: number, shape: 'kpi' | 'breakdown'): number {
+  const cap = shape === 'kpi' ? KPI_ROW_SOFT_MAX : BREAKDOWN_ROW_SOFT_MAX
+
+  // Step 1: defaultRow if it has same-shape capacity.
+  const def = next[rowIdx] ?? []
+  if (sameShapeCount(def, shape) < cap) {
+    next[rowIdx] = def
+    return rowIdx
+  }
+
+  // Step 2: existing overflow rows matching shape with room.
+  const existing = overflowRowWithRoom(next, shape, cap)
+  if (existing !== null) {
+    next[existing] = next[existing] ?? []
+    return existing
   }
 
   // Step 3: spawn a fresh overflow row.
@@ -432,15 +443,8 @@ function writeLayoutVersion(v: number): void {
 // caps. The result is a deterministic re-pack: same input → same
 // output, no row-index churn for users whose overflow rows were
 // already correctly packed.
-function consolidateOverflowRows(stored: RowLayout): RowLayout {
-  const defaultMax = maxDefaultRow()
-  const out: RowLayout = {}
-  // Carry default rows verbatim.
-  for (const [k, v] of Object.entries(stored)) {
-    const rowIdx = Number(k)
-    if (rowIdx <= defaultMax) out[rowIdx] = [...v]
-  }
-  // Flatten overflow rows into a single ordered list of (id, shape).
+// Flatten overflow rows into a single ordered list of (id, shape).
+function flattenOverflow(stored: RowLayout, defaultMax: number): { id: string; shape: 'kpi' | 'breakdown' }[] {
   const overflow: { id: string; shape: 'kpi' | 'breakdown' }[] = []
   const overflowKeys = Object.keys(stored)
     .map((k) => Number(k))
@@ -453,6 +457,18 @@ function consolidateOverflowRows(stored: RowLayout): RowLayout {
       overflow.push({ id, shape: def.shape })
     }
   }
+  return overflow
+}
+
+function consolidateOverflowRows(stored: RowLayout): RowLayout {
+  const defaultMax = maxDefaultRow()
+  const out: RowLayout = {}
+  // Carry default rows verbatim.
+  for (const [k, v] of Object.entries(stored)) {
+    const rowIdx = Number(k)
+    if (rowIdx <= defaultMax) out[rowIdx] = [...v]
+  }
+  const overflow = flattenOverflow(stored, defaultMax)
   // Re-pack: contiguous same-shape runs into a row each, splitting
   // when the soft cap is reached or the shape changes.
   let nextIdx = defaultMax + 1
