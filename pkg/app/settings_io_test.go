@@ -87,8 +87,8 @@ func TestMarshalSettings_IndentedShape(t *testing.T) {
 
 func TestAppDataDir_RECALLDATADIROverride(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", "/tmp/recall-dev-fixture")
-	if got := app.AppBaseDir(); got != "/tmp/recall-dev-fixture" {
-		t.Errorf("app.AppBaseDir() with RECALL_DATA_DIR set: got %q, want %q",
+	if got := app.BaseDir(); got != "/tmp/recall-dev-fixture" {
+		t.Errorf("app.BaseDir() with RECALL_DATA_DIR set: got %q, want %q",
 			got, "/tmp/recall-dev-fixture")
 	}
 }
@@ -98,11 +98,11 @@ func TestAppDataDir_FallsThroughWhenOverrideUnset(t *testing.T) {
 	// Don't assert the exact platform path — just that we get something
 	// non-empty containing the platform-canonical name. Avoids hard-
 	// coding macOS-vs-Linux paths into the assertion.
-	got := app.AppBaseDir()
+	got := app.BaseDir()
 	if got == "" {
-		t.Fatalf("app.AppBaseDir() returned empty string")
+		t.Fatalf("app.BaseDir() returned empty string")
 	}
 	if !strings.Contains(got, "Recall") && !strings.Contains(got, "recall") {
-		t.Errorf("app.AppBaseDir() = %q, expected to contain Recall/recall", got)
+		t.Errorf("app.BaseDir() = %q, expected to contain Recall/recall", got)
 	}
 }

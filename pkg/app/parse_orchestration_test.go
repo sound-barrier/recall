@@ -17,8 +17,8 @@ func newParseReadyApp(t *testing.T) (*app.App, *dbtest.Fake) {
 	t.Helper()
 	fake := dbtest.New()
 	a := app.NewWithStore(fake)
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
-	app.AppTessStatus(a).Found = true
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
+	app.TessStatus(a).Found = true
 	// Snapshot hooks (pre-reparse + auto-backup) run inside the parse
 	// path; stub the VACUUM INTO seam so unit tests never touch a real
 	// SQLite file. Backup-specific tests re-stub with their recorders.
@@ -78,7 +78,7 @@ func TestApp_ParseScreenshots_SkipsRowOnPerFileError(t *testing.T) {
 
 func TestApp_ParseScreenshots_MissingDirIsError(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
-	app.AppTessStatus(a).Found = true // dir is the unset precondition
+	app.TessStatus(a).Found = true // dir is the unset precondition
 	if err := a.ParseScreenshots(); err == nil {
 		t.Fatal("expected an error when the screenshots dir is unset")
 	}

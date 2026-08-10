@@ -33,7 +33,7 @@ func TestApp_ExportDiagnosticBundle_AssemblesLedgerLogsAndEnv(t *testing.T) {
 	fake := dbtest.New()
 	a := app.NewWithStore(fake)
 	shots := t.TempDir()
-	app.AppSettings(a).ScreenshotsDir = shots
+	app.SettingsOf(a).ScreenshotsDir = shots
 	if err := os.WriteFile(filepath.Join(shots, "bad.png"), []byte("not a png"), 0o600); err != nil {
 		t.Fatalf("write shot: %v", err)
 	}

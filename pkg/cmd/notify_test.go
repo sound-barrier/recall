@@ -1,8 +1,12 @@
 //go:build !serveronly
 
-package cmd
+package cmd_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/cmd"
+)
 
 func TestParseCompleteBody(t *testing.T) {
 	// notifyParseComplete only fires for matchCount > 0, so the body is never
@@ -13,7 +17,7 @@ func TestParseCompleteBody(t *testing.T) {
 		17: "Parsed 17 new matches",
 	}
 	for n, want := range cases {
-		if got := parseCompleteBody(n); got != want {
+		if got := cmd.ParseCompleteBody(n); got != want {
 			t.Errorf("parseCompleteBody(%d) = %q; want %q", n, got, want)
 		}
 	}

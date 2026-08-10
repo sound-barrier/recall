@@ -43,7 +43,7 @@ func seedBundleFixture(t *testing.T) (*app.App, *fakeStore, string) {
 		t.Fatal(err)
 	}
 	a := app.NewWithStore(fs)
-	app.AppSettings(a).ScreenshotsDir = dir
+	app.SettingsOf(a).ScreenshotsDir = dir
 
 	must := func(e error) {
 		t.Helper()

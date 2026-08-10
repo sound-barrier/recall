@@ -23,9 +23,9 @@ func TestCancelParse_FiresStoredCancel_AndIsRepeatedlyDrainable(t *testing.T) {
 	var fired sync.Mutex
 	fired.Lock()
 	a := &app.App{}
-	app.AppParseCancelMu(a).Lock()
-	*app.AppParseCancel(a) = fired.Unlock // releasing fired signals cancel ran
-	app.AppParseCancelMu(a).Unlock()
+	app.ParseCancelMu(a).Lock()
+	*app.ParseCancel(a) = fired.Unlock // releasing fired signals cancel ran
+	app.ParseCancelMu(a).Unlock()
 
 	if err := a.CancelParse(); err != nil {
 		t.Fatalf("CancelParse = %v, want nil", err)
@@ -34,9 +34,9 @@ func TestCancelParse_FiresStoredCancel_AndIsRepeatedlyDrainable(t *testing.T) {
 	fired.Lock()
 	// Pretend the OCR loop's deferred cleanup ran: parseCancel slot
 	// goes back to nil. A second CancelParse must reflect that.
-	app.AppParseCancelMu(a).Lock()
-	*app.AppParseCancel(a) = nil
-	app.AppParseCancelMu(a).Unlock()
+	app.ParseCancelMu(a).Lock()
+	*app.ParseCancel(a) = nil
+	app.ParseCancelMu(a).Unlock()
 	if err := a.CancelParse(); !errors.Is(err, app.ErrNoParseInFlight) {
 		t.Errorf("CancelParse after slot cleared = %v, want ErrNoParseInFlight", err)
 	}

@@ -50,7 +50,7 @@ func TestApp_GetNewScreenshotCount(t *testing.T) {
 	fake := dbtest.New()
 	fake.Summaries = []db.SummaryRow{{Filename: "a.png", MatchKey: "k"}}
 	a := app.NewWithStore(fake)
-	app.AppSettings(a).ScreenshotsDir = dir
+	app.SettingsOf(a).ScreenshotsDir = dir
 
 	n, err := a.GetNewScreenshotCount()
 	if err != nil {
@@ -63,7 +63,7 @@ func TestApp_GetNewScreenshotCount(t *testing.T) {
 	// A configured folder that has since moved or unmounted reports 0, not an
 	// error — the count feeds a button label, and an unreachable folder is the
 	// parse's error to report, not the count's.
-	app.AppSettings(a).ScreenshotsDir = filepath.Join(dir, "gone")
+	app.SettingsOf(a).ScreenshotsDir = filepath.Join(dir, "gone")
 	if n, err := a.GetNewScreenshotCount(); err != nil || n != 0 {
 		t.Errorf("vanished dir: got (%d, %v), want (0, nil)", n, err)
 	}
@@ -79,7 +79,7 @@ func TestApp_GetNewScreenshotCount(t *testing.T) {
 // "0 / 1 files", and the button still read 4 afterwards.
 func TestApp_GetNewScreenshotCount_AgreesWithParseSkipSet(t *testing.T) {
 	a, fake := newParseReadyApp(t)
-	dir := app.AppSettings(a).ScreenshotsDir
+	dir := app.SettingsOf(a).ScreenshotsDir
 	for _, f := range []string{"a.png", "b.png", "c.png", "d.png", "e.png"} {
 		writeFile(t, dir, f, []byte(f))
 	}

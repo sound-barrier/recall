@@ -1,11 +1,15 @@
 //go:build !serveronly
 
-package cmd
+package cmd_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/cmd"
+)
 
 // windowSizeForScreen is unexported with no public entry point (RunWails boots
-// Wails), so this is a white-box test of the pure sizing math.
+// Wails), so the export shim bridges this test of the pure sizing math.
 func TestWindowSizeForScreen(t *testing.T) {
 	cases := []struct {
 		name             string
@@ -20,7 +24,7 @@ func TestWindowSizeForScreen(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			w, h := windowSizeForScreen(c.screenW, c.screenH)
+			w, h := cmd.WindowSizeForScreen(c.screenW, c.screenH)
 			if w != c.wantW || h != c.wantH {
 				t.Errorf("windowSizeForScreen(%d, %d) = %dx%d, want %dx%d", c.screenW, c.screenH, w, h, c.wantW, c.wantH)
 			}

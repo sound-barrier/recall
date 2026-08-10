@@ -20,7 +20,7 @@ func TestApp_ImportMatches_AddsNewSkipsExisting(t *testing.T) {
 
 	// Reset to a DB that already contains match-A only, then merge the
 	// two-match bundle: A is skipped, B is added.
-	if err := app.AppStore(a).Clear(); err != nil {
+	if err := app.Store(a).Clear(); err != nil {
 		t.Fatalf("clear: %v", err)
 	}
 	seedSummary(t, a, "a.png", "match-A")
@@ -33,7 +33,7 @@ func TestApp_ImportMatches_AddsNewSkipsExisting(t *testing.T) {
 		t.Fatalf("summary = %+v, want {Imported:1, Skipped:1}", summary)
 	}
 
-	snap, err := app.AppStore(a).LoadAll()
+	snap, err := app.Store(a).LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestApp_ImportMatches_DataOnly_NoScreenshotsWritten(t *testing.T) {
 	if err := a.SetScreenshotsDir(shotsDir); err != nil {
 		t.Fatalf("SetScreenshotsDir: %v", err)
 	}
-	if err := app.AppStore(a).Clear(); err != nil {
+	if err := app.Store(a).Clear(); err != nil {
 		t.Fatalf("clear: %v", err)
 	}
 

@@ -1,13 +1,17 @@
 //go:build !serveronly
 
-package cmd
+package cmd_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/cmd"
+)
 
 func TestTrayMenu(t *testing.T) {
 	// Pass a nil window: trayMenu only wires it into click callbacks, which a
 	// label-structure check never invokes (FindByLabel recurses the items).
-	m := trayMenu(nil)
+	m := cmd.TrayMenu(nil)
 	for _, label := range []string{"Show Recall", "Check for Updates…", "Quit Recall"} {
 		if m.FindByLabel(label) == nil {
 			t.Errorf("tray menu missing item %q", label)
@@ -31,7 +35,7 @@ func TestCloseQuitsApp(t *testing.T) {
 		{"linux", false, false},
 	}
 	for _, c := range cases {
-		if got := closeQuitsApp(c.goos, c.exitOnClose); got != c.wantQuit {
+		if got := cmd.CloseQuitsApp(c.goos, c.exitOnClose); got != c.wantQuit {
 			t.Errorf("closeQuitsApp(%q, %v) = %v, want %v", c.goos, c.exitOnClose, got, c.wantQuit)
 		}
 	}

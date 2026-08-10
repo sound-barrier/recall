@@ -17,7 +17,7 @@ import (
 // rejection branches and both happy paths are exercised here in
 // isolation — no real HTTP server, just httptest.NewRecorder against
 // the handler the App returns. Tests in this file set
-// app.AppSettings(a).ScreenshotsDir directly (the test is in package app) to
+// app.SettingsOf(a).ScreenshotsDir directly (the test is in package app) to
 // avoid touching real on-disk settings via SetScreenshotsDir.
 //
 // Pre-1.0 break: the URL shape is
@@ -71,7 +71,7 @@ func TestScreenshotHandler_DirID0_ServesConfiguredFile(t *testing.T) {
 	// DB (the parse-progress inline preview path).
 	dir := setupDirWithFile(t, "shot.png", "fake-png-bytes")
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = dir
+	app.SettingsOf(a).ScreenshotsDir = dir
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/0/shot.png")
 
@@ -97,7 +97,7 @@ func TestScreenshotHandler_DirID_ResolvesViaStore(t *testing.T) {
 	dirID := seedFakeWithDir(t, fake, "old.png", oldDir)
 
 	a := app.NewWithStore(fake)
-	app.AppSettings(a).ScreenshotsDir = newDir // current setting points elsewhere
+	app.SettingsOf(a).ScreenshotsDir = newDir // current setting points elsewhere
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/"+strconv.FormatInt(dirID, 10)+"/old.png")
 	if rec.Code != http.StatusOK {
@@ -114,7 +114,7 @@ func TestScreenshotHandler_UnknownDirID_FallsBackToConfigured(t *testing.T) {
 	// than hard-failing.
 	currentDir := setupDirWithFile(t, "fresh.png", "fresh-bytes")
 	a := app.NewWithStore(dbtest.New())
-	app.AppSettings(a).ScreenshotsDir = currentDir
+	app.SettingsOf(a).ScreenshotsDir = currentDir
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/9999/fresh.png")
 	if rec.Code != http.StatusOK {
@@ -131,7 +131,7 @@ func TestScreenshotHandler_RejectsLegacyURLShape(t *testing.T) {
 	// Pre-1.0 break: `/_screenshot/<filename>` (no dir-id segment)
 	// is no longer valid. Old clients return 404.
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/legacy.png")
 	if rec.Code != http.StatusNotFound {
@@ -141,7 +141,7 @@ func TestScreenshotHandler_RejectsLegacyURLShape(t *testing.T) {
 
 func TestScreenshotHandler_RejectsNonIntegerDirID(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/abc/shot.png")
 	if rec.Code != http.StatusNotFound {
@@ -151,7 +151,7 @@ func TestScreenshotHandler_RejectsNonIntegerDirID(t *testing.T) {
 
 func TestScreenshotHandler_RejectsNegativeDirID(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/-1/shot.png")
 	if rec.Code != http.StatusNotFound {
@@ -161,7 +161,7 @@ func TestScreenshotHandler_RejectsNegativeDirID(t *testing.T) {
 
 func TestScreenshotHandler_RejectsPathOutsidePrefix(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/totally/unrelated/path.png")
 	if rec.Code != http.StatusNotFound {
@@ -171,7 +171,7 @@ func TestScreenshotHandler_RejectsPathOutsidePrefix(t *testing.T) {
 
 func TestScreenshotHandler_RejectsMalformedURLEscape(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/_screenshot/0/placeholder.png", nil)
 	req.URL.Path = "/_screenshot/0/%ZZ.png"
@@ -186,7 +186,7 @@ func TestScreenshotHandler_RejectsMalformedURLEscape(t *testing.T) {
 func TestScreenshotHandler_RejectsPathTraversalDotDot(t *testing.T) {
 	dir := setupDirWithFile(t, "shot.png", "fake-png-bytes")
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = dir
+	app.SettingsOf(a).ScreenshotsDir = dir
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/0/..")
 	if rec.Code != http.StatusNotFound {
@@ -196,7 +196,7 @@ func TestScreenshotHandler_RejectsPathTraversalDotDot(t *testing.T) {
 
 func TestScreenshotHandler_RejectsForwardSlashInName(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/0/foo%2Fbar.png")
 	if rec.Code != http.StatusNotFound {
@@ -206,7 +206,7 @@ func TestScreenshotHandler_RejectsForwardSlashInName(t *testing.T) {
 
 func TestScreenshotHandler_RejectsBackslashInName(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/0/foo%5Cbar.png")
 	if rec.Code != http.StatusNotFound {
@@ -216,7 +216,7 @@ func TestScreenshotHandler_RejectsBackslashInName(t *testing.T) {
 
 func TestScreenshotHandler_RejectsEmptyName(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/0/")
 	if rec.Code != http.StatusNotFound {
@@ -235,7 +235,7 @@ func TestScreenshotHandler_RejectsWhenScreenshotsDirUnconfigured(t *testing.T) {
 
 func TestScreenshotHandler_ReturnsNotFoundForMissingFile(t *testing.T) {
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = t.TempDir()
+	app.SettingsOf(a).ScreenshotsDir = t.TempDir()
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/0/missing.png")
 	if rec.Code != http.StatusNotFound {
@@ -251,7 +251,7 @@ func TestScreenshotHandler_ResolvedDirStillGoesThroughContainmentCheck(t *testin
 	fake := dbtest.New()
 	dirID := seedFakeWithDir(t, fake, "../escape.png", oldDir)
 	a := app.NewWithStore(fake)
-	app.AppSettings(a).ScreenshotsDir = oldDir
+	app.SettingsOf(a).ScreenshotsDir = oldDir
 
 	rec := fire(t, a.ScreenshotHandler(), "/_screenshot/"+strconv.FormatInt(dirID, 10)+"/..%2Fescape.png")
 	if rec.Code != http.StatusNotFound {

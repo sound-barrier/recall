@@ -26,7 +26,7 @@ func TestApp_MoveMatches_TransfersUserOverrideData(t *testing.T) {
 
 	const key = "match-2026-05-10T22-00-00"
 	mapName, hero := "rialto", "lucio"
-	if err := app.AppStore(a).UpsertUserMatchData(db.UserMatchData{
+	if err := app.Store(a).UpsertUserMatchData(db.UserMatchData{
 		MatchKey: key, Map: &mapName, Hero: &hero,
 	}); err != nil {
 		t.Fatalf("seed user_match_data: %v", err)

@@ -69,8 +69,8 @@ func FuzzScreenshotHandler_URL(f *testing.F) {
 		f.Fatalf("seed canary: %v", err)
 	}
 	a := &app.App{}
-	app.AppSettings(a).ScreenshotsDir = dir
-	app.SetAppStore(a, dbtest.New())
+	app.SettingsOf(a).ScreenshotsDir = dir
+	app.SetStore(a, dbtest.New())
 	h := a.ScreenshotHandler()
 
 	f.Fuzz(func(t *testing.T, path string) {

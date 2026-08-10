@@ -59,8 +59,8 @@ func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
-	if app.AppSettings(a).ScreenshotsDir != dir {
-		t.Fatalf("test invariant: Startup didn't preserve seed dir; got %q want %q", app.AppSettings(a).ScreenshotsDir, dir)
+	if app.SettingsOf(a).ScreenshotsDir != dir {
+		t.Fatalf("test invariant: Startup didn't preserve seed dir; got %q want %q", app.SettingsOf(a).ScreenshotsDir, dir)
 	}
 
 	// Swap the package-level spawn seam for a recorder. The recorder
@@ -100,16 +100,16 @@ func TestResetScreenshotsDir_ClearsInMemoryAndPersistedState(t *testing.T) {
 	seedSettings(t, app.Settings{ScreenshotsDir: dir})
 	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
-	if app.AppSettings(a).ScreenshotsDir != dir {
-		t.Fatalf("test invariant: seed dir not loaded; got %q want %q", app.AppSettings(a).ScreenshotsDir, dir)
+	if app.SettingsOf(a).ScreenshotsDir != dir {
+		t.Fatalf("test invariant: seed dir not loaded; got %q want %q", app.SettingsOf(a).ScreenshotsDir, dir)
 	}
 
 	if err := a.ResetScreenshotsDir(); err != nil {
 		t.Fatalf("ResetScreenshotsDir: %v", err)
 	}
 
-	if app.AppSettings(a).ScreenshotsDir != "" {
-		t.Errorf("in-memory ScreenshotsDir = %q; want \"\" (Reset must clear)", app.AppSettings(a).ScreenshotsDir)
+	if app.SettingsOf(a).ScreenshotsDir != "" {
+		t.Errorf("in-memory ScreenshotsDir = %q; want \"\" (Reset must clear)", app.SettingsOf(a).ScreenshotsDir)
 	}
 	// And the persisted shape must match — otherwise the next Startup
 	// re-loads the old value and Reset is a no-op across restarts.
@@ -141,7 +141,7 @@ func TestResetScreenshotsDir_StopsArmedWatcher(t *testing.T) {
 	// startup paths, so arm the watcher explicitly here to be sure
 	// we're exercising the stop path.
 	app.StartWatching(a)
-	if app.AppWatcher(a) == nil {
+	if app.Watcher(a) == nil {
 		t.Fatal("test invariant: watcher should be armed before Reset")
 	}
 
@@ -149,7 +149,7 @@ func TestResetScreenshotsDir_StopsArmedWatcher(t *testing.T) {
 		t.Fatalf("ResetScreenshotsDir: %v", err)
 	}
 
-	if app.AppWatcher(a) != nil {
-		t.Errorf("watcher must be torn down after Reset; got non-nil watcher pointing at %q", app.AppWatchedDir(a))
+	if app.Watcher(a) != nil {
+		t.Errorf("watcher must be torn down after Reset; got non-nil watcher pointing at %q", app.WatchedDir(a))
 	}
 }
