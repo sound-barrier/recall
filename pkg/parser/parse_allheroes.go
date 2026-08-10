@@ -32,6 +32,8 @@ func isAllHeroesScreenshot(img image.Image, work string) (bool, error) {
 // parsed value would be an unreliable correlation source. Recognizing it keeps
 // the screen out of the Unknown tab; the AllHeroes marker classifies it, and
 // the write path skips storing it.
+//
+//nolint:unparam // signature fixed by the classify dispatch table; error is part of the shared parse-func shape
 func parseAllHeroes(_ image.Image, _ string) (*MatchResult, error) {
 	return &MatchResult{AllHeroes: true}, nil
 }

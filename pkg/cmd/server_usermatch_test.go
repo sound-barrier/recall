@@ -3,16 +3,13 @@ package cmd_test
 import (
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"testing"
 
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
-func dataPath(matchKey string) string {
-	return "/api/v1/matches/" + url.PathEscape(matchKey) + "/data"
-}
+const matchADataPath = "/api/v1/matches/match-A/data"
 
 func TestCreateManualMatch_Returns201AndManualRecord(t *testing.T) {
 	fs := dbtest.New()
@@ -79,7 +76,7 @@ func TestUpdateMatchData_Persists204(t *testing.T) {
 	fs := dbtest.New()
 	fs.Summaries = []db.SummaryRow{{Filename: "s.png", MatchKey: "match-A", Map: "rialto"}}
 	_, mux := newTestApp(t, fs)
-	rec := put(t, mux, dataPath("match-A"), map[string]any{"map": "ilios"})
+	rec := put(t, mux, matchADataPath, map[string]any{"map": "ilios"})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204; body=%q", rec.Code, rec.Body.String())
 	}
@@ -90,7 +87,7 @@ func TestUpdateMatchData_Persists204(t *testing.T) {
 
 func TestUpdateMatchData_OutOfRangeStatIs400(t *testing.T) {
 	_, mux := newTestApp(t, dbtest.New())
-	rec := put(t, mux, dataPath("match-A"), map[string]any{"damage": -1})
+	rec := put(t, mux, matchADataPath, map[string]any{"damage": -1})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%q", rec.Code, rec.Body.String())
 	}
@@ -98,7 +95,7 @@ func TestUpdateMatchData_OutOfRangeStatIs400(t *testing.T) {
 
 func TestUpdateMatchData_UnknownMapIs409(t *testing.T) {
 	_, mux := newTestApp(t, dbtest.New())
-	rec := put(t, mux, dataPath("match-A"), map[string]any{"map": "notamap"})
+	rec := put(t, mux, matchADataPath, map[string]any{"map": "notamap"})
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want 409; body=%q", rec.Code, rec.Body.String())
 	}
@@ -126,7 +123,7 @@ func TestCreateManualMatch_UnknownMapOrHeroIs409(t *testing.T) {
 
 func TestUpdateMatchData_InvalidResultIs400(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	if rec := put(t, mux, dataPath("match-A"), map[string]any{"result": "win"}); rec.Code != http.StatusBadRequest {
+	if rec := put(t, mux, matchADataPath, map[string]any{"result": "win"}); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%q", rec.Code, rec.Body.String())
 	}
 }
@@ -134,7 +131,7 @@ func TestUpdateMatchData_InvalidResultIs400(t *testing.T) {
 func TestUpdateMatchData_NullBodyIs400(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	// json.RawMessage marshals verbatim, so this sends the literal `null`.
-	if rec := put(t, mux, dataPath("match-A"), json.RawMessage("null")); rec.Code != http.StatusBadRequest {
+	if rec := put(t, mux, matchADataPath, json.RawMessage("null")); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%q", rec.Code, rec.Body.String())
 	}
 }
@@ -144,7 +141,7 @@ func TestResetMatchData_Returns204AndClears(t *testing.T) {
 	dmg := 5
 	fs.UserMatchData = map[string]db.UserMatchData{"match-A": {MatchKey: "match-A", Damage: &dmg}}
 	_, mux := newTestApp(t, fs)
-	if rec := del(t, mux, dataPath("match-A")); rec.Code != http.StatusNoContent {
+	if rec := del(t, mux, matchADataPath); rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204; body=%q", rec.Code, rec.Body.String())
 	}
 	if _, ok := fs.UserMatchData["match-A"]; ok {

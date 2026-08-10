@@ -33,7 +33,7 @@ func withRenameFunc(t *testing.T, fn func(oldpath, newpath string) error) {
 // minimal heroes/maps the test writes into the temp dir would leak
 // into other tests in the package as the global atomic-pointer
 // dataset.
-func applyMainTestSetup(t *testing.T, commit string, heroes, maps, sources []byte) string {
+func applyMainTestSetup(t *testing.T, commit string, heroes, maps, sources []byte) {
 	t.Helper()
 	// Register the parser.Reload cleanup BEFORE t.Setenv so its LIFO
 	// firing puts the Reload AFTER the env restore — by which point
@@ -44,7 +44,6 @@ func applyMainTestSetup(t *testing.T, commit string, heroes, maps, sources []byt
 
 	srv := fakeMainServer(t, commit, heroes, maps, sources)
 	withMainURLs(t, srv.URL)
-	return srv.URL
 }
 
 func TestApplyGameDataUpdate_HappyPath_WritesFilesAndManifest(t *testing.T) {

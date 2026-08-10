@@ -232,9 +232,9 @@ func findBrightClusters(counts []int, xLeft, xRight int) []statCluster {
 // merge runs separated by a small gap (digits inside one number), drop runs
 // too wide to be a stat number (player names/portraits), then drop trailing
 // runs sitting far past the last column (audio/mic icons).
-func mergeStatClusters(raw []statCluster, yT, yB, W int) []image.Rectangle {
-	mergeGap := W / 200    // ~6 px on 1280, ~10 px on 1920
-	maxStatWidth := W / 20 // upper bound for "13,432" style numbers
+func mergeStatClusters(raw []statCluster, yT, yB, w int) []image.Rectangle {
+	mergeGap := w / 200    // ~6 px on 1280, ~10 px on 1920
+	maxStatWidth := w / 20 // upper bound for "13,432" style numbers
 	var grouped []image.Rectangle
 	for _, c := range raw {
 		if c.maxX-c.minX < 2 {
@@ -259,7 +259,7 @@ func mergeStatClusters(raw []statCluster, yT, yB, W int) []image.Rectangle {
 	// Drop trailing clusters whose gap from the previous cluster is far larger
 	// than the typical inter-column spacing — those are audio/mic icons sitting
 	// past the rightmost stat column, not stats themselves.
-	maxColGap := W / 18
+	maxColGap := w / 18
 	for len(filtered) >= 2 {
 		gap := filtered[len(filtered)-1].Min.X - filtered[len(filtered)-2].Max.X
 		if gap > maxColGap {

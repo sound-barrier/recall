@@ -17,7 +17,7 @@ import (
 func stubOCR(t *testing.T, table map[string]string) {
 	t.Helper()
 	original := *parser.RunTesseractFunc
-	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) {
+	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) { //nolint:unparam // signature fixed by RunTesseractFunc
 		if s, ok := table[name]; ok {
 			return s, nil
 		}

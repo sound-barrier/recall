@@ -19,7 +19,7 @@ import (
 func stubBackup(t *testing.T, log *[]string, fail bool) {
 	t.Helper()
 	prev := *app.BackupToFunc
-	*app.BackupToFunc = func(src, dest string) error {
+	*app.BackupToFunc = func(_, dest string) error {
 		*log = append(*log, "backup:"+dest)
 		if fail {
 			return os.ErrPermission

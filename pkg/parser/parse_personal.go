@@ -33,6 +33,8 @@ func isPersonalScreenshot(img image.Image, work string) (bool, error) {
 // Cards are OCR'd individually because PSM 11 on the whole grid interleaves
 // the columns and makes value-label pairing unreliable. Cell labels are kept
 // open-ended (snake_case map keys) so we don't need a per-hero allowlist.
+//
+//nolint:unparam // signature fixed by the classify dispatch table; error is part of the shared parse-func shape
 func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
