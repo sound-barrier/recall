@@ -32,7 +32,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # scripts/ci/bundle-size-budget-history.md — append a row there when
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
-: "${MAX_INITIAL_JS_BYTES:=190500}"
+# 2026-08: 190500 → 319000 — METRIC CHANGE, not a regression. "Initial JS"
+# now measures the whole entry graph (index.html's entry script + every
+# chunk it modulepreloads) instead of index-*.js alone; the old number was
+# only ever a slice of what the browser downloads, and it under-reported
+# by ~240KB the moment the bundler hoisted shared eager code into its own
+# chunk. Numbers in rows above are NOT comparable to this one.
+: "${MAX_INITIAL_JS_BYTES:=319000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -93,7 +99,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # After-N-losses / Session depth widgets, form + loss-streak metrics, layout
 # migration v2, KDA + Source table columns), ~3.4KB in the MatchesView chunk;
 # the rest is the deliberate ~5KB headroom. New feature.
-: "${MAX_TOTAL_JS_BYTES:=1581000}"
+# 2026-08: 1581000 -> 1593000 - routing the five binary endpoints through
+# the generated SDK (backup/restore/export-bundle/export-diagnostic/import)
+# pulls their generated operations + the blob/serializer paths in, net
+# +12.4KB after deleting the hand-rolled fetch/Content-Disposition/error
+# code they replaced. Buys compile-time-checked request bodies on the
+# endpoints that previously hand-built snake_case JSON.
+: "${MAX_TOTAL_JS_BYTES:=1593000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -126,7 +138,23 @@ if [[ ! -d "${DIST_DIR}" ]]; then
   exit 1
 fi
 
-init_js=$(find "${DIST_DIR}" -name 'index-*.js' -exec wc -c {} + | awk 'END{print $1}')
+# Initial JS = the ENTRY GRAPH the browser downloads before first paint:
+# the entry script plus every chunk index.html modulepreloads (Vite emits
+# one link per statically-imported chunk). Measuring index-*.js alone
+# undercounts the moment the bundler hoists shared eager code into its own
+# chunk — which it does as soon as two eager modules share a dependency,
+# and which silently made this gate report a 112KB "improvement" that no
+# user ever saw.
+INDEX_HTML="$(dirname "${DIST_DIR}")/index.html"
+if [[ -f "${INDEX_HTML}" ]]; then
+  init_js=$(grep -oE '(src|href)="[^"]*/assets/[^"]+\.js"' "${INDEX_HTML}" \
+    | sed -E 's/.*\/assets\/([^"]+)"/\1/' | sort -u \
+    | while read -r f; do [[ -f "${DIST_DIR}/${f}" ]] && wc -c <"${DIST_DIR}/${f}"; done \
+    | awk '{s+=$1} END{print s}')
+else
+  echo "::warning::${INDEX_HTML} not found — falling back to index-*.js only" >&2
+  init_js=$(find "${DIST_DIR}" -name 'index-*.js' -exec wc -c {} + | awk 'END{print $1}')
+fi
 init_css=$(find "${DIST_DIR}" -name 'index-*.css' -exec wc -c {} + | awk 'END{print $1}')
 total_js=$(find "${DIST_DIR}" -name '*.js' -exec wc -c {} + | awk 'END{print $1}')
 total_css=$(find "${DIST_DIR}" -name '*.css' -exec wc -c {} + | awk 'END{print $1}')
