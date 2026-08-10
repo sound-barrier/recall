@@ -1,20 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { ref, defineComponent, h, nextTick, type Ref } from 'vue'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import { useScrollLock, _resetScrollLockForTest } from '@/composables/shared/useScrollLock'
 
-const wrappers: VueWrapper[] = []
+const wrappers: Array<{ unmount: () => void }> = []
 
 function host(active: Ref<boolean>) {
-  const w = mount(defineComponent({
+  const view = render(defineComponent({
     setup() {
       useScrollLock(active)
       return () => h('div')
     },
   }))
-  wrappers.push(w)
-  return w
+  wrappers.push(view)
+  return view
 }
 
 function wheel(target: EventTarget, deltaY = 100): WheelEvent {
@@ -57,9 +57,9 @@ describe('useScrollLock', () => {
   })
 
   it('restores on unmount while still locked (no leak)', async () => {
-    const w = host(ref(true))
+    const view = host(ref(true))
     expect(htmlOverflow()).toBe('hidden')
-    w.unmount()
+    view.unmount()
     await nextTick()
     expect(htmlOverflow()).toBe('')
   })

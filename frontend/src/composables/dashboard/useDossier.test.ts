@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 import { defineComponent, h } from 'vue'
 import { useDossier, provideDossier } from '@/composables/dashboard/useDossier'
 import type { MatchesDossier } from '@/composables/matches/useMatchesDossier'
@@ -29,7 +29,7 @@ describe('useDossier / provideDossier', () => {
         return () => h(Child)
       },
     })
-    mount(Parent)
+    render(Parent)
     expect(captured).toBe(fake)
   })
 
@@ -40,6 +40,6 @@ describe('useDossier / provideDossier', () => {
         return () => h('div')
       },
     })
-    expect(() => mount(Orphan)).toThrow(/useDossier\(\) called outside/)
+    expect(() => render(Orphan)).toThrow(/useDossier\(\) called outside/)
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { ref, defineComponent, h, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import {
   useContextualCallout,
@@ -36,8 +36,8 @@ function makeHarness(id: string, initialGate = false) {
       return () => h('div')
     },
   })
-  const wrapper = mount(Comp)
-  return { gate, controller: controller!, wrapper }
+  const view = render(Comp)
+  return { gate, controller: controller!, view }
 }
 
 beforeEach(() => {
@@ -116,11 +116,11 @@ describe('useContextualCallout', () => {
   })
 
   it('releases the singleton on unmount without marking seen', async () => {
-    const { gate, controller, wrapper } = makeHarness('demo')
+    const { gate, controller, view } = makeHarness('demo')
     gate.value = true
     await nextTick()
     expect(controller.active()).toBe(true)
-    wrapper.unmount()
+    view.unmount()
     await nextTick()
     expect(activeCalloutId.value).toBeNull()
     expect(localStorage.getItem(`${CONTEXTUAL_CALLOUT_KEY_PREFIX}demo.seen`)).toBeNull()

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises } from '@/test-utils'
 
 // The singleton caches its fetch across a page load, so each test resets the
 // module registry and re-imports with its own GetProfiles mock.

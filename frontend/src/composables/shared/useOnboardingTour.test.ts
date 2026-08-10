@@ -1,5 +1,5 @@
 import { defineComponent, h, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 import {
@@ -35,7 +35,7 @@ afterEach(() => { vi.unstubAllGlobals() })
 // tour reference for assertions.
 function mountWithTour(opts?: UseOnboardingTourOptions) {
   let tour!: ReturnType<typeof useOnboardingTour>
-  mount(defineComponent({
+  render(defineComponent({
     setup() {
       tour = useOnboardingTour(opts)
       return () => h('div')

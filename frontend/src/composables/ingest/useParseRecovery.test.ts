@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
+import { flushPromises } from '@/test-utils'
 import { defineComponent, ref, type Ref } from 'vue'
 
 import { useParseRecovery, type ParseConnectionState } from '@/composables/ingest/useParseRecovery'
@@ -36,7 +37,7 @@ function harness(opts: { active: Active; parseBusy?: boolean; staleMs?: number }
       return () => null
     },
   })
-  const wrapper = mount(Harness)
+  const wrapper = render(Harness)
   return { wrapper, parseBusy, parseProgress, reload, getActiveParse, state: () => state.value, refresh }
 }
 

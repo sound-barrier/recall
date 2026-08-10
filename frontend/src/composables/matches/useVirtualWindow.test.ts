@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 
@@ -20,9 +20,11 @@ function withGeometry(el: HTMLElement, scrollTop: number, clientHeight: number) 
 function makeHarness(items: number[], itemHeight = 50, overscan?: number) {
   const itemsRef = ref<readonly number[]>(items)
   let api: ReturnType<typeof useVirtualWindow<number>> | null = null
+  // Hoisted so the element the composable wired is read directly off
+  // the ref after render — no DOM traversal needed.
+  const containerRef = ref<HTMLElement | null>(null)
   const Comp = defineComponent({
     setup() {
-      const containerRef = ref<HTMLElement | null>(null)
       api = useVirtualWindow<number>({
         items: itemsRef,
         itemHeight,
@@ -32,12 +34,12 @@ function makeHarness(items: number[], itemHeight = 50, overscan?: number) {
       return () => h('div', { ref: containerRef, class: 'vw-container' })
     },
   })
-  const wrapper = mount(Comp, { attachTo: document.body })
-  const container = wrapper.element as HTMLElement
+  const view = render(Comp)
+  const container = containerRef.value!
   // happy-dom defaults to 0 for both — give the harness a default
   // viewport so the first computed window isn't overscan-only.
   withGeometry(container, 0, 600)
-  return { wrapper, api: api!, itemsRef, container }
+  return { view, api: api!, itemsRef, container }
 }
 
 // requestAnimationFrame in happy-dom delays one tick. To keep tests
@@ -139,9 +141,9 @@ describe('useVirtualWindow', () => {
     // hidden tab). The composable should still render SOMETHING so
     // the first paint after the container reveals isn't blank.
     const itemsRef = ref<readonly number[]>([...Array(100).keys()])
+    const containerRef = ref<HTMLElement | null>(null)
     const Comp = defineComponent({
       setup() {
-        const containerRef = ref<HTMLElement | null>(null)
         const api = useVirtualWindow<number>({
           items:      itemsRef,
           itemHeight: 50,
@@ -154,15 +156,18 @@ describe('useVirtualWindow', () => {
         ])
       },
     })
-    const wrapper = mount(Comp, { attachTo: document.body })
-    const el = wrapper.element as HTMLElement
+    const view = render(Comp)
+    const el = containerRef.value!
     // Force clientHeight = 0 BEFORE the mounted hook reads geometry.
     withGeometry(el, 0, 0)
     await nextTick()
-    // Overscan-only batch (2 * overscan = 10 items).
-    expect(wrapper.find('[data-start]').attributes('data-start')).toBe('0')
-    expect(wrapper.find('[data-end]').attributes('data-end')).toBe('10')
-    wrapper.unmount()
+    // Overscan-only batch (2 * overscan = 10 items). The indices are
+    // painted as data attributes on the harness's own container.
+    // eslint-disable-next-line testing-library/no-node-access -- harness-owned container; the painted attribute IS the assertion
+    expect(el.querySelector('[data-start]')?.getAttribute('data-start')).toBe('0')
+    // eslint-disable-next-line testing-library/no-node-access -- harness-owned container; the painted attribute IS the assertion
+    expect(el.querySelector('[data-end]')?.getAttribute('data-end')).toBe('10')
+    view.unmount()
   })
 
   it('emits topSpacer + bottomSpacer that preserve the scroll height', async () => {
@@ -200,9 +205,9 @@ describe('useVirtualWindow', () => {
     function makeWindowHarness(items: number[], itemHeight = 50) {
       const itemsRef = ref<readonly number[]>(items)
       let api: ReturnType<typeof useVirtualWindow<number>> | null = null
+      const containerRef = ref<HTMLElement | null>(null)
       const Comp = defineComponent({
         setup() {
-          const containerRef = ref<HTMLElement | null>(null)
           api = useVirtualWindow<number>({
             items: itemsRef,
             itemHeight,
@@ -212,9 +217,9 @@ describe('useVirtualWindow', () => {
           return () => h('div', { ref: containerRef, class: 'vw-container' })
         },
       })
-      const wrapper = mount(Comp, { attachTo: document.body })
-      const container = wrapper.element as HTMLElement
-      return { wrapper, api: api!, container, itemsRef }
+      const view = render(Comp)
+      const container = containerRef.value!
+      return { view, api: api!, container, itemsRef }
     }
 
     it('renders the top of the list when the list sits at the viewport top', async () => {

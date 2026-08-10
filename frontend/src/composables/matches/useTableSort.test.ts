@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api'
 import { useTableSort, type TableSortCol } from '@/composables/matches/useTableSort'
@@ -70,7 +70,7 @@ function rec(key: string, opts: RecOpts = {}): MatchRecord {
 // lifecycle hooks (onMounted / onBeforeUnmount) bind to a real instance.
 function mountSort() {
   let api!: ReturnType<typeof useTableSort>
-  mount(defineComponent({
+  render(defineComponent({
     setup() {
       api = useTableSort()
       return () => h('div')

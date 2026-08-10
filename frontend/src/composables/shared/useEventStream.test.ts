@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 // Mock the api module so the composable's EventsOn/Off calls land in
 // our capture map without touching real Wails / fetch transports.
@@ -46,8 +46,8 @@ function mountComposable(api: Parameters<typeof useEventStream>[0]) {
       return () => h('div')
     },
   })
-  const wrapper = mount(Comp)
-  return { wrapper, result }
+  const view = render(Comp)
+  return { view, result }
 }
 
 describe('useEventStream', () => {
@@ -78,8 +78,8 @@ describe('useEventStream', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
-    const { wrapper } = mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
-    wrapper.unmount()
+    const { view } = mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
+    view.unmount()
     expect(offCalls.map(c => c.name).sort()).toEqual([
       'match-updated',
       'parse-canceled',

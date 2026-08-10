@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, defineComponent, h } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import {
   useSectionLayout,
@@ -36,9 +36,9 @@ async function mountHost(seed?: SectionState[] | string) {
       return () => h('div')
     },
   })
-  const wrapper = mount(Host)
+  const view = render(Host)
   await nextTick()
-  return { wrapper, api }
+  return { view, api }
 }
 
 describe('isSectionStateArray', () => {

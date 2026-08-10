@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import {
   useMapRoleConfig,
@@ -30,9 +30,9 @@ async function mountHost(seed?: MapRoleConfig | string) {
   }
   let api!: ReturnType<typeof useMapRoleConfig>
   const Host = defineComponent({ setup() { api = useMapRoleConfig(); return () => h('div') } })
-  const wrapper = mount(Host)
+  const view = render(Host)
   await nextTick()
-  return { wrapper, api }
+  return { view, api }
 }
 
 describe('isMapRoleConfig / reconcileMapRoleConfig', () => {

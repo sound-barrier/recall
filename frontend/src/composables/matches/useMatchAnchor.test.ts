@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, defineComponent, h } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 
 import {
   useMatchAnchor,
@@ -30,7 +30,7 @@ async function mountHost(): Promise<ReturnType<typeof useMatchAnchor>> {
       return () => h('div')
     },
   })
-  mount(Host)
+  render(Host)
   await nextTick()
   return api
 }

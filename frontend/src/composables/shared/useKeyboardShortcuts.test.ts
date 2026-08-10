@@ -1,5 +1,5 @@
 import { defineComponent, h } from 'vue'
-import { mount } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import { useKeyboardShortcuts, SEQUENCE_TIMEOUT_MS, type Shortcut } from '@/composables/shared/useKeyboardShortcuts'
@@ -18,13 +18,13 @@ function press(key: string, opts: KeyboardEventInit = {}): KeyboardEvent {
 // helper: mount a tiny harness so the composable's onScopeDispose
 // fires when we unmount, and return the wrapper + spy bag.
 function mountWithShortcuts(shortcuts: readonly Shortcut[]) {
-  const w = mount(defineComponent({
+  const view = render(defineComponent({
     setup() {
       useKeyboardShortcuts(shortcuts)
       return () => h('div')
     },
   }))
-  return w
+  return view
 }
 
 beforeEach(() => {
@@ -39,43 +39,43 @@ afterEach(() => {
 describe('useKeyboardShortcuts — single-key dispatch', () => {
   it('fires the handler when the matching key is pressed', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn }])
     press('/')
     expect(fn).toHaveBeenCalledTimes(1)
-    w.unmount()
+    view.unmount()
   })
 
   it('preventDefault is called by default', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn }])
     const ev = press('/')
     expect(ev.defaultPrevented).toBe(true)
-    w.unmount()
+    view.unmount()
   })
 
   it('preventDefault opt-out via preventDefault: false', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn, preventDefault: false }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn, preventDefault: false }])
     const ev = press('/')
     expect(ev.defaultPrevented).toBe(false)
-    w.unmount()
+    view.unmount()
   })
 
   it('does NOT fire on a non-matching key', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn }])
     press('a')
     expect(fn).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it('key: [...] array matches any of the listed keys', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: ['j', 'ArrowDown'], handler: fn }])
+    const view = mountWithShortcuts([{ key: ['j', 'ArrowDown'], handler: fn }])
     press('j')
     press('ArrowDown')
     expect(fn).toHaveBeenCalledTimes(2)
-    w.unmount()
+    view.unmount()
   })
 })
 
@@ -83,47 +83,47 @@ describe('useKeyboardShortcuts — when predicate', () => {
   it('skips the handler when when() returns false', () => {
     const fn = vi.fn()
     let gate = false
-    const w = mountWithShortcuts([{ key: 'j', when: () => gate, handler: fn }])
+    const view = mountWithShortcuts([{ key: 'j', when: () => gate, handler: fn }])
     press('j')
     expect(fn).not.toHaveBeenCalled()
     gate = true
     press('j')
     expect(fn).toHaveBeenCalledTimes(1)
-    w.unmount()
+    view.unmount()
   })
 })
 
 describe('useKeyboardShortcuts — modifier suppression', () => {
   it('Ctrl+key does not fire', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn }])
     press('/', { ctrlKey: true })
     expect(fn).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it('Meta+key does not fire', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn }])
     press('/', { metaKey: true })
     expect(fn).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it('Alt+key does not fire', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn }])
     press('/', { altKey: true })
     expect(fn).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it('Shift+key DOES fire (required for ?, !, etc.)', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '?', handler: fn }])
+    const view = mountWithShortcuts([{ key: '?', handler: fn }])
     press('?', { shiftKey: true })
     expect(fn).toHaveBeenCalledTimes(1)
-    w.unmount()
+    view.unmount()
   })
 })
 
@@ -142,18 +142,18 @@ describe('useKeyboardShortcuts — input gating', () => {
 
   it('does NOT fire when focus is in a non-allow-in-input shortcut', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: 'j', handler: fn }])
+    const view = mountWithShortcuts([{ key: 'j', handler: fn }])
     press('j')
     expect(fn).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it('DOES fire when allowInInput: true', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '?', allowInInput: true, handler: fn }])
+    const view = mountWithShortcuts([{ key: '?', allowInInput: true, handler: fn }])
     press('?')
     expect(fn).toHaveBeenCalledTimes(1)
-    w.unmount()
+    view.unmount()
   })
 
   it('treats TEXTAREA as an input', () => {
@@ -162,11 +162,11 @@ describe('useKeyboardShortcuts — input gating', () => {
     document.body.appendChild(ta)
     ta.focus()
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: 'j', handler: fn }])
+    const view = mountWithShortcuts([{ key: 'j', handler: fn }])
     press('j')
     expect(fn).not.toHaveBeenCalled()
     ta.remove()
-    w.unmount()
+    view.unmount()
   })
 
   it('treats contenteditable as an input', () => {
@@ -176,37 +176,37 @@ describe('useKeyboardShortcuts — input gating', () => {
     document.body.appendChild(div)
     div.focus()
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: 'j', handler: fn }])
+    const view = mountWithShortcuts([{ key: 'j', handler: fn }])
     press('j')
     expect(fn).not.toHaveBeenCalled()
     div.remove()
-    w.unmount()
+    view.unmount()
   })
 })
 
 describe('useKeyboardShortcuts — sequence prefix', () => {
   it('g then m fires the prefixed handler', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([
+    const view = mountWithShortcuts([
       { key: 'm', prefix: 'g', handler: fn },
     ])
     press('g')
     expect(fn).not.toHaveBeenCalled() // prefix alone doesn't fire
     press('m')
     expect(fn).toHaveBeenCalledTimes(1)
-    w.unmount()
+    view.unmount()
   })
 
   it('g then m after SEQUENCE_TIMEOUT_MS does NOT fire (prefix expired)', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([
+    const view = mountWithShortcuts([
       { key: 'm', prefix: 'g', handler: fn },
     ])
     press('g')
     vi.advanceTimersByTime(SEQUENCE_TIMEOUT_MS + 50)
     press('m')
     expect(fn).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it('a stale prefix falls through to a non-prefix shortcut on the next key', () => {
@@ -214,7 +214,7 @@ describe('useKeyboardShortcuts — sequence prefix', () => {
     // (which has no prefix and should still fire).
     const seq = vi.fn()
     const slash = vi.fn()
-    const w = mountWithShortcuts([
+    const view = mountWithShortcuts([
       { key: 'm', prefix: 'g', handler: seq },
       { key: '/', handler: slash },
     ])
@@ -223,19 +223,19 @@ describe('useKeyboardShortcuts — sequence prefix', () => {
     press('/')
     expect(seq).not.toHaveBeenCalled()
     expect(slash).toHaveBeenCalledTimes(1)
-    w.unmount()
+    view.unmount()
   })
 
   it('non-matching follow-up after prefix is a no-op (clears the prefix without firing)', () => {
     const seq = vi.fn()
-    const w = mountWithShortcuts([
+    const view = mountWithShortcuts([
       { key: 'm', prefix: 'g', handler: seq },
     ])
     press('g')
     press('x') // not registered as either prefix or shortcut
     press('m') // prefix was cleared by the previous press; this is a bare 'm'
     expect(seq).not.toHaveBeenCalled()
-    w.unmount()
+    view.unmount()
   })
 
   it('g typed in an input element does NOT prime the prefix', () => {
@@ -243,7 +243,7 @@ describe('useKeyboardShortcuts — sequence prefix', () => {
     document.body.appendChild(input)
     input.focus()
     const fn = vi.fn()
-    const w = mountWithShortcuts([
+    const view = mountWithShortcuts([
       { key: 'm', prefix: 'g', handler: fn },
     ])
     press('g')
@@ -251,17 +251,17 @@ describe('useKeyboardShortcuts — sequence prefix', () => {
     press('m')
     expect(fn).not.toHaveBeenCalled()
     input.remove()
-    w.unmount()
+    view.unmount()
   })
 })
 
 describe('useKeyboardShortcuts — cleanup', () => {
   it('unmount removes the document listener', () => {
     const fn = vi.fn()
-    const w = mountWithShortcuts([{ key: '/', handler: fn }])
+    const view = mountWithShortcuts([{ key: '/', handler: fn }])
     press('/')
     expect(fn).toHaveBeenCalledTimes(1)
-    w.unmount()
+    view.unmount()
     press('/')
     expect(fn).toHaveBeenCalledTimes(1) // no second call
   })
@@ -270,7 +270,7 @@ describe('useKeyboardShortcuts — cleanup', () => {
 describe('useKeyboardShortcuts — exposed inspection helpers', () => {
   it('hasPendingPrefix flips after prefix key', () => {
     let api: ReturnType<typeof useKeyboardShortcuts> | undefined
-    const w = mount(defineComponent({
+    const view = render(defineComponent({
       setup() {
         api = useKeyboardShortcuts([{ key: 'm', prefix: 'g', handler: () => {} }])
         return () => h('div')
@@ -281,6 +281,6 @@ describe('useKeyboardShortcuts — exposed inspection helpers', () => {
     expect(api!.hasPendingPrefix()).toBe(true)
     api!.resetPrefix()
     expect(api!.hasPendingPrefix()).toBe(false)
-    w.unmount()
+    view.unmount()
   })
 })

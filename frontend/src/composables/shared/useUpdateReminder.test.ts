@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h, ref, type Ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { render } from '@testing-library/vue'
+import { flushPromises } from '@/test-utils'
 import { useUpdateReminder, UPDATE_REMINDER_DISMISSED_KEY } from '@/composables/shared/useUpdateReminder'
 import type { UpdateInfo } from '@/api'
 
@@ -34,7 +35,7 @@ function mountWith(info: Ref<UpdateInfo | null>, now: () => number) {
       return () => h('div')
     },
   })
-  mount(Comp)
+  render(Comp)
   return api
 }
 
