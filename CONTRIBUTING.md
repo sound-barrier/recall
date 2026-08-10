@@ -94,7 +94,7 @@ Once the prerequisites are in place, the container installs:
 
 - Docker (Docker-in-Docker, for `task build-*` and `task swagger`)
 - System packages via apt: `tesseract`, `sqlite3`, `cloc`, `pipx`
-- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails v3 CLI (`wails3`), `task`, and every linter (`govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `taplo`, `sqlfluff`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
+- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails v3 CLI (`wails3`), `task`, and every linter (`govulncheck`, `golangci-lint`, `deadcode`, `taplo`, `sqlfluff`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
 - `cd frontend && npm ci` for the Vue/Vite toolchain
 - `lefthook install` to wire the pre-commit hooks
 

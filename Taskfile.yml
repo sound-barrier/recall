@@ -269,10 +269,6 @@ tasks:
       - semgrep scan --config=p/javascript --config=p/typescript --config=p/owasp-top-ten --error --metrics=off --quiet frontend/src/
       - echo "[ recall ] ✓  semgrep clean"
 
-  complexity:
-    desc: Report functions with McCabe complexity > 10 across Go + frontend (non-blocking)
-    cmds: [bash scripts/ci/check-complexity.sh]
-
   bundle-audit:
     desc: Print the top bundle chunks by size (informs check-bundle-size.sh decisions)
     cmds: [bash scripts/ci/audit-bundle.sh]
@@ -424,9 +420,8 @@ tasks:
       - echo "[ recall ] verify — dead code…"
       - bash scripts/ci/deadcode-check.sh
       - cd frontend && npm run dead:ts
-      - echo "[ recall ] verify — SAST + complexity (report-only)…"
+      - echo "[ recall ] verify — SAST…"
       - task: lint-semgrep
-      - bash scripts/ci/check-complexity.sh
       - echo "[ recall ] verify — Playwright smoke + API drift…"
       - bash scripts/ci/check-playwright-smoke.sh
       - bash scripts/ci/check-api-drift.sh
