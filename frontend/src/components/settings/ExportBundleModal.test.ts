@@ -1,127 +1,133 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import ExportBundleModal from '@/components/settings/ExportBundleModal.vue'
 
-function mountModal(over: {
+function renderModal(over: {
   open?:          boolean
   selectedCount?: number
   hiddenCount?:   number
   unknownCount?:  number
 } = {}) {
-  return mount(ExportBundleModal, {
+  return render(ExportBundleModal, {
     props: {
       open:           over.open          ?? true,
       selectedCount:  over.selectedCount ?? 3,
       hiddenCount:    over.hiddenCount   ?? 2,
       unknownCount:   over.unknownCount  ?? 5,
     },
-    attachTo: document.body,
   })
 }
 
+const user = () => userEvent.setup()
+const unknownToggle = () => screen.getByRole('checkbox', { name: /unknown match/ })
+const hiddenToggle  = () => screen.getByRole('checkbox', { name: /hidden match/ })
+const submitBtn     = () => screen.getByRole('button', { name: /Export/ })
+const preview       = () => screen.getByText(/Bundle will include/)
+
 describe('ExportBundleModal — render gating', () => {
   it('renders nothing when open=false', () => {
-    const w = mountModal({ open: false })
-    expect(w.find('[data-testid="export-bundle-modal"]').exists()).toBe(false)
+    renderModal({ open: false })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders the dialog when open=true', () => {
-    const w = mountModal({ open: true })
-    const dialog = w.find('[data-testid="export-bundle-modal"]')
-    expect(dialog.exists()).toBe(true)
-    expect(dialog.attributes('role')).toBe('dialog')
-    expect(dialog.attributes('aria-modal')).toBe('true')
+    renderModal({ open: true })
+    const dialog = screen.getByRole('dialog', { name: 'Export bundle' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
   })
 })
 
 describe('ExportBundleModal — count display', () => {
   it('shows the selected-matches count from props', () => {
-    const w = mountModal({ selectedCount: 7 })
-    expect(w.find('.export-bundle-value').text()).toContain('7')
+    renderModal({ selectedCount: 7 })
+    expect(screen.getByText('Selected matches')).toBeInTheDocument()
+    // The count renders twice — the row value and the preview echo
+    // (both toggles start off, so preview === selectedCount).
+    expect(screen.getAllByText('7')).toHaveLength(2)
   })
 
   it('shows the unknown + hidden counts inside their toggle labels', () => {
-    const w = mountModal({ unknownCount: 12, hiddenCount: 4 })
-    const text = w.text()
-    expect(text).toContain('12')
-    expect(text).toContain('4')
+    renderModal({ unknownCount: 12, hiddenCount: 4 })
+    expect(screen.getByRole('checkbox', { name: 'Include 12 unknown matches' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Include 4 hidden matches' })).toBeInTheDocument()
   })
 
   it('disables the unknown toggle when unknownCount is zero', () => {
-    const w = mountModal({ unknownCount: 0 })
-    const cb = w.find('[data-testid="include-unknown"]')
-    expect(cb.attributes('disabled')).toBeDefined()
+    renderModal({ unknownCount: 0 })
+    expect(unknownToggle()).toBeDisabled()
   })
 
   it('disables the hidden toggle when hiddenCount is zero', () => {
-    const w = mountModal({ hiddenCount: 0 })
-    const cb = w.find('[data-testid="include-hidden"]')
-    expect(cb.attributes('disabled')).toBeDefined()
+    renderModal({ hiddenCount: 0 })
+    expect(hiddenToggle()).toBeDisabled()
   })
 })
 
 describe('ExportBundleModal — preview count math', () => {
   it('preview defaults to selectedCount with both toggles off', () => {
-    const w = mountModal({ selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
-    expect(w.find('.export-bundle-preview').text()).toMatch(/\b3\b/)
+    renderModal({ selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    expect(preview()).toHaveTextContent(/\b3\b/)
   })
 
   it('adds hiddenCount when include-hidden is ticked', async () => {
-    const w = mountModal({ selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
-    await w.find('[data-testid="include-hidden"]').setValue(true)
-    expect(w.find('.export-bundle-preview').text()).toMatch(/\b5\b/) // 3 + 2
+    renderModal({ selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    await user().click(hiddenToggle())
+    expect(preview()).toHaveTextContent(/\b5\b/) // 3 + 2
   })
 
   it('adds both when both toggles are ticked', async () => {
-    const w = mountModal({ selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
-    await w.find('[data-testid="include-hidden"]').setValue(true)
-    await w.find('[data-testid="include-unknown"]').setValue(true)
-    expect(w.find('.export-bundle-preview').text()).toMatch(/\b10\b/) // 3 + 2 + 5
+    renderModal({ selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    await user().click(hiddenToggle())
+    await user().click(unknownToggle())
+    expect(preview()).toHaveTextContent(/\b10\b/) // 3 + 2 + 5
   })
 })
 
 describe('ExportBundleModal — submit gating', () => {
   it('disables Export when previewCount is zero', () => {
-    const w = mountModal({ selectedCount: 0, hiddenCount: 0, unknownCount: 0 })
-    expect(w.find('[data-testid="export-submit"]').attributes('disabled')).toBeDefined()
+    renderModal({ selectedCount: 0, hiddenCount: 0, unknownCount: 0 })
+    expect(submitBtn()).toBeDisabled()
   })
 
   it('enables Export when there is any record to export', () => {
-    const w = mountModal({ selectedCount: 1, hiddenCount: 0, unknownCount: 0 })
-    expect(w.find('[data-testid="export-submit"]').attributes('disabled')).toBeUndefined()
+    renderModal({ selectedCount: 1, hiddenCount: 0, unknownCount: 0 })
+    expect(submitBtn()).toBeEnabled()
   })
 })
 
 describe('ExportBundleModal — emits', () => {
   it('emits "close" when Cancel is clicked', async () => {
-    const w = mountModal()
-    await w.find('.export-bundle-cancel').trigger('click')
-    expect(w.emitted('close')).toBeTruthy()
+    const { emitted } = renderModal()
+    await user().click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(emitted('close')).toBeTruthy()
   })
 
   it('emits "close" when the backdrop is clicked', async () => {
-    const w = mountModal()
-    await w.find('.export-bundle-modal-backdrop').trigger('click')
-    expect(w.emitted('close')).toBeTruthy()
+    const { emitted, baseElement } = renderModal()
+    // The backdrop is a deliberately aria-hidden dimming layer.
+    // eslint-disable-next-line testing-library/no-node-access -- aria-hidden dimming layer has no accessible surface
+    await user().click(baseElement.querySelector('.export-bundle-modal-backdrop')!)
+    expect(emitted('close')).toBeTruthy()
   })
 
   it('emits "export" with (filename, includeHidden, includeUnknown) on submit', async () => {
-    const w = mountModal({ selectedCount: 2 })
-    const fn = w.find('[data-testid="filename"]')
-    await fn.setValue('my-backup.zip')
-    await w.find('[data-testid="include-hidden"]').setValue(true)
-    await w.find('[data-testid="export-submit"]').trigger('click')
-    const e = w.emitted('export')
+    const { emitted } = renderModal({ selectedCount: 2 })
+    const fn = screen.getByLabelText('Filename')
+    await user().clear(fn)
+    await user().type(fn, 'my-backup.zip')
+    await user().click(hiddenToggle())
+    await user().click(submitBtn())
+    const e = emitted('export')
     expect(e).toBeTruthy()
-    expect(e![0]).toEqual(['my-backup.zip', true, false])
+    expect(e[0]).toEqual(['my-backup.zip', true, false])
   })
 })
 
 describe('ExportBundleModal — filename defaults', () => {
   it('seeds a recall-bundle-<timestamp>.zip default', () => {
-    const w = mountModal()
-    const fn = w.find('[data-testid="filename"]')
-    expect((fn.element as HTMLInputElement).value).toMatch(/^recall-bundle-\d{8}-\d{6}\.zip$/)
+    renderModal()
+    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-bundle-\d{8}-\d{6}\.zip$/)
   })
 })

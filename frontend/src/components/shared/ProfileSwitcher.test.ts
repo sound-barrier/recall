@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { render, screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import { flushPromises } from '@/test-utils'
 
 // The component talks to the api module — stub it before importing
 // the SFC so the live wrapper never fires. vi.mock factories are
@@ -19,8 +21,8 @@ vi.mock('@/api', () => ({
 }))
 
 // window.location.reload is the post-switch sweep — replace it with
-// a spy so the test doesn't actually trigger a jsdom reload (which
-// would tear down the wrapper before assertions complete).
+// a spy so the test doesn't actually trigger a reload (which would
+// tear down the component before assertions complete).
 const reloadSpy = vi.fn()
 Object.defineProperty(window, 'location', {
   configurable: true,
@@ -37,41 +39,48 @@ beforeEach(() => {
   reloadSpy.mockReset()
 })
 
-async function mountChip(profiles: string[] = ['main'], active = 'main') {
+const user = () => userEvent.setup()
+
+async function renderChip(profiles: string[] = ['main'], active = 'main') {
   GetProfiles.mockResolvedValue({ active, profiles })
-  const wrapper = mount(ProfileSwitcher, { attachTo: document.body })
+  const view = render(ProfileSwitcher)
   await flushPromises()
-  return wrapper
+  return view
 }
+
+const menu = () => screen.queryByRole('menu')
+const openMenu = async (activeName = 'main') => {
+  await user().click(screen.getByRole('button', { name: new RegExp(activeName) }))
+}
+const newTrigger = () => screen.queryByRole('menuitem', { name: 'New profile…' })
+const newInput   = () => screen.queryByLabelText('New profile name')
 
 describe('ProfileSwitcher — masthead chip', () => {
   it('renders the active profile name in the chip on mount', async () => {
-    const wrapper = await mountChip(['main', 'alt'], 'main')
-    expect(wrapper.find('.profile-chip').text()).toContain('main')
+    await renderChip(['main', 'alt'], 'main')
+    expect(screen.getByRole('button', { name: /main/ })).toBeInTheDocument()
     // Dropdown is closed by default — no menu items rendered.
-    expect(wrapper.find('.profile-menu').exists()).toBe(false)
+    expect(menu()).not.toBeInTheDocument()
   })
 
   it('clicking the chip opens the dropdown with every known profile', async () => {
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    expect(wrapper.find('.profile-menu').exists()).toBe(true)
-    const items = wrapper.findAll('.profile-item .profile-item-name')
-    // The "+ New profile…" item shares the .profile-item class — slice it off.
-    const names = items.slice(0, 2).map((n) => n.text())
-    expect(names).toEqual(['alt', 'main'])
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    expect(menu()).toBeInTheDocument()
+    const items = screen.getAllByRole('menuitem')
+    // The "+ New profile…" item shares the menuitem role — slice it off.
+    const names = items.slice(0, 2).map((n) => n.textContent?.trim())
+    expect(names).toEqual(['alt', '✓main'])
     // Active profile carries the .active class.
-    const activeItem = wrapper.find('.profile-item.active')
-    expect(activeItem.text()).toContain('main')
+    expect(screen.getByRole('menuitem', { name: 'main' })).toHaveClass('active')
   })
 
   it('clicking a non-active profile fires SwitchProfile and reloads', async () => {
     SwitchProfile.mockResolvedValue({ active: 'alt', profiles: ['alt', 'main'] })
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
 
-    // Items are in the order [alt, main, +new]; alt is the first.
-    await wrapper.findAll('.profile-item')[0]!.trigger('click')
+    await user().click(screen.getByRole('menuitem', { name: 'alt' }))
     await flushPromises()
 
     expect(SwitchProfile).toHaveBeenCalledWith('alt')
@@ -79,11 +88,10 @@ describe('ProfileSwitcher — masthead chip', () => {
   })
 
   it('clicking the active profile is a no-op (no SwitchProfile, no reload)', async () => {
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
 
-    // main is the second item in [alt, main]. .active item is main.
-    await wrapper.find('.profile-item.active').trigger('click')
+    await user().click(screen.getByRole('menuitem', { name: 'main' }))
     await flushPromises()
 
     expect(SwitchProfile).not.toHaveBeenCalled()
@@ -91,22 +99,22 @@ describe('ProfileSwitcher — masthead chip', () => {
   })
 
   it('"New profile…" opens an inline name input', async () => {
-    const wrapper = await mountChip(['main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.find('.profile-new-trigger').trigger('click')
+    await renderChip(['main'], 'main')
+    await openMenu()
+    await user().click(newTrigger()!)
 
-    expect(wrapper.find('.profile-new-form').exists()).toBe(true)
-    expect(wrapper.find('.profile-new-input').exists()).toBe(true)
+    expect(newInput()).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument()
   })
 
   it('Create with a valid name fires CreateProfile and reloads', async () => {
     CreateProfile.mockResolvedValue({ active: 'alt', profiles: ['alt', 'main'] })
-    const wrapper = await mountChip(['main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.find('.profile-new-trigger').trigger('click')
+    await renderChip(['main'], 'main')
+    await openMenu()
+    await user().click(newTrigger()!)
 
-    await wrapper.find('.profile-new-input').setValue('alt')
-    await wrapper.find('.profile-new-form').trigger('submit')
+    await user().type(newInput()!, 'alt')
+    await user().click(screen.getByRole('button', { name: 'Create' }))
     await flushPromises()
 
     expect(CreateProfile).toHaveBeenCalledWith('alt')
@@ -114,56 +122,55 @@ describe('ProfileSwitcher — masthead chip', () => {
   })
 
   it('Create with an invalid name disables the submit button + shows the hint', async () => {
-    const wrapper = await mountChip(['main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.find('.profile-new-trigger').trigger('click')
+    await renderChip(['main'], 'main')
+    await openMenu()
+    await user().click(newTrigger()!)
 
-    await wrapper.find('.profile-new-input').setValue('../traversal')
-    expect((wrapper.find('.profile-new-confirm').element as HTMLButtonElement).disabled).toBe(true)
-    expect(wrapper.find('.profile-new-hint').exists()).toBe(true)
-    expect(wrapper.find('.profile-new-hint').text()).toContain('a–z')
+    await user().type(newInput()!, '../traversal')
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
+    expect(screen.getByText(/a–z/)).toBeInTheDocument()
   })
 
   it('Cancel exits the new-profile form without firing Create', async () => {
-    const wrapper = await mountChip(['main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.find('.profile-new-trigger').trigger('click')
-    await wrapper.find('.profile-new-input').setValue('alt')
+    await renderChip(['main'], 'main')
+    await openMenu()
+    await user().click(newTrigger()!)
+    await user().type(newInput()!, 'alt')
 
-    await wrapper.find('.profile-new-cancel').trigger('click')
-    expect(wrapper.find('.profile-new-form').exists()).toBe(false)
-    expect(wrapper.find('.profile-new-trigger').exists()).toBe(true)
+    await user().click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(newInput()).not.toBeInTheDocument()
+    expect(newTrigger()).toBeInTheDocument()
     expect(CreateProfile).not.toHaveBeenCalled()
   })
 })
 
 describe('ProfileSwitcher — rename', () => {
   it('hovering reveals a rename trigger per profile item', async () => {
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    expect(wrapper.findAll('.profile-rename-trigger')).toHaveLength(2)
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    expect(screen.getByLabelText('Rename profile alt')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rename profile main')).toBeInTheDocument()
   })
 
   it('clicking the rename trigger swaps the row for an inline input pre-filled with the name', async () => {
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    await user().click(screen.getByLabelText('Rename profile alt'))
 
-    const form = wrapper.find('.profile-rename-form')
-    expect(form.exists()).toBe(true)
-    const input = wrapper.find<HTMLInputElement>('.profile-rename-input')
-    expect(input.exists()).toBe(true)
-    expect(input.element.value).toBe('alt')
+    expect(screen.getByLabelText('New name for profile alt')).toHaveValue('alt')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
   })
 
   it('submitting a valid new name fires RenameProfile and reloads', async () => {
     RenameProfile.mockResolvedValue({ active: 'jokester', profiles: ['jokester', 'main'] })
-    const wrapper = await mountChip(['alt', 'main'], 'alt')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+    await renderChip(['alt', 'main'], 'alt')
+    await openMenu('alt')
+    await user().click(screen.getByLabelText('Rename profile alt'))
 
-    await wrapper.find('.profile-rename-input').setValue('jokester')
-    await wrapper.find('.profile-rename-form').trigger('submit')
+    const input = screen.getByLabelText('New name for profile alt')
+    await user().clear(input)
+    await user().type(input, 'jokester')
+    await user().click(screen.getByRole('button', { name: 'Save' }))
     await flushPromises()
 
     expect(RenameProfile).toHaveBeenCalledWith('alt', 'jokester')
@@ -171,33 +178,37 @@ describe('ProfileSwitcher — rename', () => {
   })
 
   it('an unchanged name disables Save (the rename is a no-op)', async () => {
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
-    expect((wrapper.find('.profile-rename-confirm').element as HTMLButtonElement).disabled).toBe(true)
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    await user().click(screen.getByLabelText('Rename profile alt'))
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   it('an invalid name disables Save', async () => {
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    await user().click(screen.getByLabelText('Rename profile alt'))
 
-    await wrapper.find('.profile-rename-input').setValue('../traversal')
-    expect((wrapper.find('.profile-rename-confirm').element as HTMLButtonElement).disabled).toBe(true)
+    const input = screen.getByLabelText('New name for profile alt')
+    await user().clear(input)
+    await user().type(input, '../traversal')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(RenameProfile).not.toHaveBeenCalled()
   })
 
   it('Cancel reverts to the row layout without firing Rename', async () => {
-    const wrapper = await mountChip(['alt', 'main'], 'main')
-    await wrapper.find('.profile-chip').trigger('click')
-    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
-    await wrapper.find('.profile-rename-input').setValue('jokester')
+    await renderChip(['alt', 'main'], 'main')
+    await openMenu()
+    await user().click(screen.getByLabelText('Rename profile alt'))
+    const input = screen.getByLabelText('New name for profile alt')
+    await user().clear(input)
+    await user().type(input, 'jokester')
 
-    await wrapper.find('.profile-rename-cancel').trigger('click')
-    expect(wrapper.find('.profile-rename-form').exists()).toBe(false)
-    // Two actual profile rows (the "+ New profile…" button also
-    // carries .profile-item, so scope to row descendants).
-    expect(wrapper.findAll('.profile-item-row .profile-item')).toHaveLength(2)
+    await user().click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByLabelText('New name for profile alt')).not.toBeInTheDocument()
+    // Two actual profile rows plus the "+ New profile…" trigger.
+    const items = screen.getAllByRole('menuitem')
+    expect(items.map((i) => within(i).queryByText(/alt|main/) !== null)).toEqual([true, true, false])
     expect(RenameProfile).not.toHaveBeenCalled()
   })
 })

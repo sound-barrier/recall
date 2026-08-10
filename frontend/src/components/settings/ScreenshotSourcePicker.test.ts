@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen, within } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import type { NamedCandidate } from '@/api'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
@@ -21,72 +22,78 @@ const fourCards: NamedCandidate[] = [
   mk({ name: 'steam',   label: 'Steam install',  path: '', exists: false }),
 ]
 
+const grid = () => screen.queryByLabelText('Auto-detected screenshot sources')
+const customTile = () => screen.getByRole('button', { name: /Pick a different folder/ })
+
 describe('ScreenshotSourcePicker', () => {
   it('renders the 2 × 2 grid + four cards on Windows', () => {
-    const w = mount(ScreenshotSourcePicker, {
+    render(ScreenshotSourcePicker, {
       props: { platform: 'windows', candidates: fourCards },
     })
-    expect(w.find('[data-src-grid]').exists()).toBe(true)
-    expect(w.findAll('.src-card')).toHaveLength(4)
+    expect(grid()).toBeInTheDocument()
+    expect(within(grid()!).getAllByRole('button')).toHaveLength(4)
   })
 
   it('emits pick(name, path) when a found card is clicked', async () => {
-    const w = mount(ScreenshotSourcePicker, {
+    const user = userEvent.setup()
+    const { emitted } = render(ScreenshotSourcePicker, {
       props: { platform: 'windows', candidates: fourCards },
     })
-    await w.find('[data-src-name="nvidia"]').trigger('click')
-    expect(w.emitted('pick')![0]).toEqual(['nvidia', 'C:\\Users\\J\\Videos\\Overwatch'])
+    await user.click(screen.getByRole('button', { name: /Nvidia Overlay/ }))
+    expect(emitted('pick')[0]).toEqual(['nvidia', 'C:\\Users\\J\\Videos\\Overwatch'])
   })
 
   it('does not emit pick when a missing card is clicked', async () => {
-    const w = mount(ScreenshotSourcePicker, {
+    const user = userEvent.setup()
+    const { emitted } = render(ScreenshotSourcePicker, {
       props: { platform: 'windows', candidates: fourCards },
     })
-    await w.find('[data-src-name="prntscn"]').trigger('click')
-    expect(w.emitted('pick')).toBeUndefined()
+    await user.click(screen.getByRole('button', { name: /OW default/ }))
+    expect(emitted('pick')).toBeUndefined()
   })
 
   it('marks missing cards as aria-disabled', () => {
-    const w = mount(ScreenshotSourcePicker, {
+    render(ScreenshotSourcePicker, {
       props: { platform: 'windows', candidates: fourCards },
     })
-    const missing = w.find('[data-src-name="prntscn"]')
-    expect(missing.attributes('aria-disabled')).toBe('true')
-    expect(missing.attributes('disabled')).toBeDefined()
+    const missing = screen.getByRole('button', { name: /OW default/ })
+    expect(missing).toHaveAttribute('aria-disabled', 'true')
+    expect(missing).toBeDisabled()
   })
 
   it('emits pick-custom when the custom-pick tile is clicked', async () => {
-    const w = mount(ScreenshotSourcePicker, {
+    const user = userEvent.setup()
+    const { emitted } = render(ScreenshotSourcePicker, {
       props: { platform: 'windows', candidates: fourCards },
     })
-    await w.find('[data-src-pick-custom]').trigger('click')
-    expect(w.emitted('pick-custom')).toBeTruthy()
+    await user.click(customTile())
+    expect(emitted('pick-custom')).toBeTruthy()
   })
 
   it('hides the grid on macOS and shows the platform note', () => {
-    const w = mount(ScreenshotSourcePicker, {
+    render(ScreenshotSourcePicker, {
       props: { platform: 'darwin', candidates: [] },
     })
-    expect(w.find('[data-src-grid]').exists()).toBe(false)
-    expect(w.find('[data-src-platform-note]').text()).toContain('WINDOWS ONLY')
+    expect(grid()).not.toBeInTheDocument()
+    expect(screen.getByText(/WINDOWS ONLY/)).toBeInTheDocument()
     // Pick-custom tile is still rendered so the Mac user can pick
     // their folder manually.
-    expect(w.find('[data-src-pick-custom]').exists()).toBe(true)
+    expect(customTile()).toBeInTheDocument()
   })
 
   it('hides the grid on Linux and shows the platform note', () => {
-    const w = mount(ScreenshotSourcePicker, {
+    render(ScreenshotSourcePicker, {
       props: { platform: 'linux', candidates: [] },
     })
-    expect(w.find('[data-src-grid]').exists()).toBe(false)
-    expect(w.find('[data-src-platform-note]').exists()).toBe(true)
+    expect(grid()).not.toBeInTheDocument()
+    expect(screen.getByText(/WINDOWS ONLY/)).toBeInTheDocument()
   })
 
   it('disables every interactive element while picking', () => {
-    const w = mount(ScreenshotSourcePicker, {
+    render(ScreenshotSourcePicker, {
       props: { platform: 'windows', candidates: fourCards, picking: true },
     })
-    expect(w.find('[data-src-name="nvidia"]').attributes('disabled')).toBeDefined()
-    expect(w.find('[data-src-pick-custom]').attributes('disabled')).toBeDefined()
+    expect(screen.getByRole('button', { name: /Nvidia Overlay/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Opening picker/ })).toBeDisabled()
   })
 })

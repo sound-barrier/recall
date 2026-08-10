@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen, fireEvent } from '@testing-library/vue'
 import { createPinia, setActivePinia } from 'pinia'
 
 import IngestView from '@/components/ingest/IngestView.vue'
@@ -45,7 +45,7 @@ interface IngestOver {
   matchedCount?:       number
 }
 
-function mountIngest(over: IngestOver = {}) {
+function renderIngest(over: IngestOver = {}) {
   setActivePinia(createPinia())
   const app = useAppStore()
   const matches = useMatchesStore()
@@ -61,7 +61,7 @@ function mountIngest(over: IngestOver = {}) {
   matches.lastParsedAt = over.lastParsedAt ?? null
   matches.records = Array.from({ length: over.matchedCount ?? 0 }, (_, i) => rec(i))
 
-  // Spy on the actions the buttons drive (before mount so IngestView's
+  // Spy on the actions the buttons drive (before render so IngestView's
   // destructure captures the spies) — avoids the real parse pipeline / api.
   const spies = {
     parse:         vi.spyOn(matches, 'parse').mockResolvedValue(undefined),
@@ -69,124 +69,127 @@ function mountIngest(over: IngestOver = {}) {
     toggleWatch:   vi.spyOn(settings, 'toggleWatch').mockResolvedValue(undefined),
   }
 
-  const wrapper = mount(IngestView)
-  return { wrapper, app, matches, settings, spies }
+  const view = render(IngestView)
+  return { view, app, matches, settings, spies }
 }
+
+// NOTE: interactions in this view use TL fireEvent, not user-event —
+// user-event's awaited event chain silently drops its dispatches here
+// (the pending-count query notify re-renders between its queued
+// events under happy-dom). fireEvent is the sanctioned fallback and
+// matches the original trigger('click') semantics exactly.
+const checklistHeading = () => screen.queryByRole('heading', { name: 'Two things before you can parse' })
+// The outstanding-vs-done state reads through the fix-it link: an
+// outstanding prerequisite renders its "Settings → …" button, a done
+// one replaces it with the located/It's-set copy.
+const tesseractFix = () => screen.queryByRole('button', { name: /Settings → Engine/ })
+const folderFix    = () => screen.queryByRole('button', { name: /Settings → Folders/ })
+const stopBtn      = () => screen.queryByRole('button', { name: /Stop Parse|Canceling…/ })
 
 describe('IngestView (Parse tab)', () => {
   it('shows the readiness checklist with Tesseract outstanding when not ready', () => {
-    const { wrapper } = mountIngest({ tesseractReady: false })
-    expect(wrapper.find('[data-readiness-checklist]').exists()).toBe(true)
-    const tess = wrapper.find('[data-readiness-item="tesseract"]')
-    expect(tess.classes()).not.toContain('done')
-    expect(tess.text()).toContain('Settings → Engine')
+    renderIngest({ tesseractReady: false })
+    expect(checklistHeading()).toBeInTheDocument()
+    expect(tesseractFix()).toBeInTheDocument()
     // The folder prerequisite (default dir) is already satisfied.
-    expect(wrapper.find('[data-readiness-item="folder"]').classes()).toContain('done')
+    expect(folderFix()).not.toBeInTheDocument()
   })
 
   it('shows the readiness checklist with the folder outstanding when no dir is set', () => {
-    const { wrapper } = mountIngest({ screenshotsDir: '' })
-    expect(wrapper.find('[data-readiness-checklist]').exists()).toBe(true)
-    const folder = wrapper.find('[data-readiness-item="folder"]')
-    expect(folder.classes()).not.toContain('done')
-    expect(folder.text()).toContain('Settings → Folders')
-    expect(wrapper.find('[data-readiness-item="tesseract"]').classes()).toContain('done')
+    renderIngest({ screenshotsDir: '' })
+    expect(checklistHeading()).toBeInTheDocument()
+    expect(folderFix()).toBeInTheDocument()
+    expect(tesseractFix()).not.toBeInTheDocument()
   })
 
   it('hides the checklist once both prerequisites are satisfied', () => {
-    const { wrapper } = mountIngest()
-    expect(wrapper.find('[data-readiness-checklist]').exists()).toBe(false)
+    renderIngest()
+    expect(checklistHeading()).not.toBeInTheDocument()
   })
 
   it('renders the "Ready to parse" heading on a clean install', () => {
-    const { wrapper } = mountIngest()
-    expect(wrapper.text()).toContain('Ready to parse')
+    renderIngest()
+    expect(screen.getByText(/Ready to parse/)).toBeInTheDocument()
   })
 
   it('shows the matched-count heading after parses exist', () => {
-    const { wrapper } = mountIngest({ matchedCount: 42 })
-    expect(wrapper.text()).toContain('42 matches')
+    renderIngest({ matchedCount: 42 })
+    expect(screen.getByText(/42 matches/)).toBeInTheDocument()
   })
 
   it('shows the "Watching" heading when watch is armed', () => {
-    const { wrapper } = mountIngest({ watchEnabled: true })
-    expect(wrapper.text()).toContain('Watching')
+    renderIngest({ watchEnabled: true })
+    expect(screen.getByText(/Watching/)).toBeInTheDocument()
   })
 
   it('Run Parse button drives the matches-store parse action on click', async () => {
-    const { wrapper, spies } = mountIngest({ newScreenshotCount: 5 })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Run Parse'))!
-    await btn.trigger('click')
+    const { spies } = renderIngest({ newScreenshotCount: 5 })
+    await fireEvent.click(screen.getByTestId('run-parse-btn'))
     expect(spies.parse).toHaveBeenCalled()
   })
 
   it('Run Parse button is disabled with "All parsed" copy when newScreenshotCount is 0', () => {
-    const { wrapper } = mountIngest({ newScreenshotCount: 0 })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('All parsed'))!
-    expect(btn.attributes('disabled')).toBeDefined()
-    expect(btn.text()).toContain('nothing new')
-    expect(btn.classes()).toContain('ghost')
+    renderIngest({ newScreenshotCount: 0 })
+    const btn = screen.getByRole('button', { name: /All parsed/ })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveTextContent('nothing new')
+    expect(btn).toHaveClass('ghost')
   })
 
   it('toggles watch via the settings store on the Watch Folder checkbox change', async () => {
-    const { wrapper, spies } = mountIngest()
-    await wrapper.find('input[type="checkbox"]').trigger('change')
+    const { spies } = renderIngest()
+    await fireEvent.change(screen.getByRole('checkbox'))
     expect(spies.toggleWatch).toHaveBeenCalled()
   })
 
   it('navigates to settings when the Settings link is clicked', async () => {
-    const { wrapper, app } = mountIngest({ screenshotsDir: '' })
-    const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Settings'))!
-    await link.trigger('click')
+    const { app } = renderIngest({ screenshotsDir: '' })
+    await fireEvent.click(folderFix()!)
     expect(app.view).toBe('settings')
   })
 
   it('disables Watch Folder while Tesseract is unavailable, and offers a Settings shortcut', async () => {
-    const { wrapper, app } = mountIngest({ tesseractReady: false })
-    const cb = wrapper.find('input[type="checkbox"]')
-    expect((cb.element as HTMLInputElement).disabled).toBe(true)
-    const fix = wrapper.findAll('.empty-link').find(el => el.text().includes('Fix in Settings'))!
-    expect(fix).toBeDefined()
-    await fix.trigger('click')
+    const { app } = renderIngest({ tesseractReady: false })
+    expect(screen.getByRole('checkbox')).toBeDisabled()
+    const fix = screen.getAllByRole('button', { name: /Fix in Settings/ })[0]!
+    await fireEvent.click(fix)
     expect(app.view).toBe('settings')
   })
 
   it('renders only the Parse section — no Engine / Export / Data sections', () => {
-    const { wrapper } = mountIngest()
-    const sections = wrapper.findAll('.settings-section')
-    expect(sections).toHaveLength(1)
-    expect(wrapper.text()).not.toContain('Engine')
-    expect(wrapper.text()).not.toContain('Export Data')
-    expect(wrapper.text()).not.toContain('Clear Database')
+    const { view } = renderIngest()
+    // eslint-disable-next-line testing-library/no-node-access -- pins the single-section layout; sections carry no distinguishing accessible name
+    expect(view.baseElement.querySelectorAll('.settings-section')).toHaveLength(1)
+    expect(screen.queryByText(/Engine/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Export Data/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Clear Database/)).not.toBeInTheDocument()
   })
 })
 
 describe('IngestView — Stop Parse button', () => {
   it('renders Run Parse when not busy; no Stop button in the DOM', () => {
-    const { wrapper } = mountIngest({ parseBusy: false })
-    expect(wrapper.find('[data-testid="cancel-parse-btn"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Run Parse')
+    renderIngest({ parseBusy: false })
+    expect(stopBtn()).not.toBeInTheDocument()
+    expect(screen.getByTestId('run-parse-btn')).toHaveTextContent('Run Parse')
   })
 
   it('renders Stop Parse when parseBusy and not yet canceling', () => {
-    const { wrapper } = mountIngest({ parseBusy: true })
-    const stop = wrapper.find('[data-testid="cancel-parse-btn"]')
-    expect(stop.exists()).toBe(true)
-    expect(stop.text()).toContain('Stop Parse')
-    expect((stop.element as HTMLButtonElement).disabled).toBe(false)
+    renderIngest({ parseBusy: true })
+    const stop = stopBtn()
+    expect(stop).toHaveTextContent('Stop Parse')
+    expect(stop).toBeEnabled()
   })
 
   it('renders Canceling… + disables itself when cancelingParse is true', () => {
-    const { wrapper } = mountIngest({ parseBusy: true, cancelingParse: true })
-    const stop = wrapper.find('[data-testid="cancel-parse-btn"]')
-    expect(stop.exists()).toBe(true)
-    expect(stop.text()).toContain('Canceling…')
-    expect((stop.element as HTMLButtonElement).disabled).toBe(true)
+    renderIngest({ parseBusy: true, cancelingParse: true })
+    const stop = stopBtn()
+    expect(stop).toHaveTextContent('Canceling…')
+    expect(stop).toBeDisabled()
   })
 
   it('click on the Stop button drives the cancel-parse action', async () => {
-    const { wrapper, spies } = mountIngest({ parseBusy: true })
-    await wrapper.find('[data-testid="cancel-parse-btn"]').trigger('click')
+    const { spies } = renderIngest({ parseBusy: true })
+    await fireEvent.click(stopBtn()!)
     expect(spies.onCancelParse).toHaveBeenCalledTimes(1)
   })
 })

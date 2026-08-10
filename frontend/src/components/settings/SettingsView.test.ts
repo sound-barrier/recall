@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen, within, fireEvent } from '@testing-library/vue'
 import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -68,9 +68,9 @@ interface SettingsOver {
   ignoredCount?:         number
 }
 
-// The seed values every mount starts from; a test's `props` override wins via
+// The seed values every render starts from; a test's `props` override wins via
 // spread merge. Array-valued seeds stay out of the base (fresh instances are
-// built per mount) so no mutable fixture is shared across tests.
+// built per render) so no mutable fixture is shared across tests.
 const SETTINGS_BASE = {
   screenshotsDir:      '/srv/recall',
   parseBusy:           false,
@@ -98,7 +98,7 @@ const SETTINGS_BASE = {
 // Seeds the three stores from the old prop shape (theme/week-start are seeded
 // via the real setters BEFORE the spies are installed so the seed isn't counted
 // as a click), then spies on every action a sub-section button drives.
-function mountSettings(opts: { props?: SettingsOver } = {}) {
+function renderSettings(opts: { props?: SettingsOver } = {}) {
   const over = { ...SETTINGS_BASE, ...opts.props }
   setActivePinia(createPinia())
   const app = useAppStore()
@@ -156,173 +156,192 @@ function mountSettings(opts: { props?: SettingsOver } = {}) {
     onClearDatabase:       vi.spyOn(matches, 'onClearDatabase').mockResolvedValue(undefined),
   }
 
-  const wrapper = mount(SettingsView)
-  return { wrapper, app, matches, settings, spies }
+  const view = render(SettingsView)
+  return { view, app, matches, settings, spies }
 }
+
+// Interactions use TL fireEvent (matching the original trigger()
+// dispatch — the query-notify interleaving that trips user-event's
+// awaited chains applies to this store-backed view too).
+const button = (name: string | RegExp) => screen.getByRole('button', { name })
+
+// ── Structural helpers ───────────────────────────────────────────────
+// Section scoping (#sec-engine — two Detect/Reset pairs exist on the
+// page), status tint classes, and the probe chip are only expressed
+// through the scoped classes the e2e suite shares.
+/* eslint-disable testing-library/no-node-access -- section scoping + status tint classes have no accessible-name equivalent */
+const engineSection = () => document.querySelector('#sec-engine') as HTMLElement
+const engineStatus  = () => document.querySelector('.engine-status')
+const engineRow     = () => document.querySelector('.engine-row')
+const engineDesc    = () => document.querySelector('.engine-row .setting-desc')
+const probeChip     = () => document.querySelector('.probe-chip')
+const dataLocGrid   = () => document.querySelector('.data-loc-grid')
+const dataLocActions = () => [...document.querySelectorAll('.data-loc-actions')] as HTMLElement[]
+const settingValue  = () => document.querySelector('.setting-value')
+/* eslint-enable testing-library/no-node-access */
+
+const engineButton = (text: string) =>
+  within(engineSection()).getAllByRole('button').find((b) => b.textContent?.trim() === text)
 
 describe('SettingsView', () => {
   it('shows the empty-state hero when no folder is selected', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    expect(wrapper.text()).toContain('Choose a')
-    expect(wrapper.text()).toContain('screenshots folder')
-    // The empty-state hero card is the primary affordance.
-    expect(wrapper.find('.empty-hero').exists()).toBe(true)
+    expect(screen.getByText(/Choose a/)).toBeInTheDocument()
+    expect(screen.getAllByText(/screenshots folder/).length).toBeGreaterThan(0)
+    // The empty-state hero card owns the primary affordance (the picker).
+    expect(screen.getByRole('button', { name: /Pick a different folder/ })).toBeInTheDocument()
     // No setting-value chip should render — the row is hidden in the
     // empty state because the hero owns the CTA.
-    expect(wrapper.find('.setting-value').exists()).toBe(false)
+    expect(settingValue()).toBeNull()
   })
 
   it('shows the "where Recall reads from" heading once a folder is configured', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '/srv/recall', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    expect(wrapper.text()).toContain('Where Recall reads from')
-    expect(wrapper.find('.setting-value').text()).toBe('/srv/recall')
-    expect(wrapper.find('.empty-hero').exists()).toBe(false)
+    expect(screen.getByText(/Where Recall reads from/)).toBeInTheDocument()
+    expect(screen.getByText('/srv/recall')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pick a different folder/ })).not.toBeInTheDocument()
   })
 
   it('emits pick-screenshots-dir when the Change… button is clicked', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))
-    expect(btn).toBeDefined()
-    await btn!.trigger('click')
+    await fireEvent.click(button('Change…'))
     expect(spies.pickDir).toHaveBeenCalled()
   })
 
   it('disables the Change… button while parseBusy=true', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: true, themeMode: 'dark', weekStart: 0 },
     })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))!
-    expect(btn.attributes('disabled')).toBeDefined()
+    expect(button('Change…')).toBeDisabled()
   })
 
   it('emits set-theme with the picked mode when a swatch is clicked', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    await wrapper.find('.day-swatch').trigger('click')
+    await fireEvent.click(screen.getByRole('radio', { name: /Day/ }))
     expect(spies.setTheme).toHaveBeenCalled()
     expect(spies.setTheme).toHaveBeenCalledWith('day')
   })
 
   it('emits set-theme with "high-contrast" when the Contrast swatch is clicked', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    await wrapper.find('.contrast-swatch').trigger('click')
+    await fireEvent.click(screen.getByRole('radio', { name: /High contrast/ }))
     expect(spies.setTheme).toHaveBeenCalledWith('high-contrast')
   })
 
-  it('marks the active theme swatch per themeMode prop', () => {
-    const { wrapper: dark } = mountSettings({
+  it('marks the active theme swatch per themeMode (dark)', () => {
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    expect(dark.find('.dark-swatch').classes()).toContain('active')
-    expect(dark.find('.day-swatch').classes()).not.toContain('active')
+    expect(screen.getByRole('radio', { name: /Dark/ })).toHaveClass('active')
+    expect(screen.getByRole('radio', { name: /Day/ })).not.toHaveClass('active')
+  })
 
-    const { wrapper: light } = mountSettings({
+  it('marks the active theme swatch per themeMode (day)', () => {
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'day', weekStart: 0 },
     })
-    expect(light.find('.day-swatch').classes()).toContain('active')
-    expect(light.find('.dark-swatch').classes()).not.toContain('active')
+    expect(screen.getByRole('radio', { name: /Day/ })).toHaveClass('active')
+    expect(screen.getByRole('radio', { name: /Dark/ })).not.toHaveClass('active')
   })
 
   it('aria-checked mirrors themeMode on each swatch', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    expect(wrapper.find('.dark-swatch').attributes('aria-checked')).toBe('true')
-    expect(wrapper.find('.day-swatch').attributes('aria-checked')).toBe('false')
+    expect(screen.getByRole('radio', { name: /Dark/ })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /Day/ })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('emits go-to-view ingest when the "Parse →" link is clicked', async () => {
-    const { wrapper, app } = mountSettings({
+    const { app } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Parse'))!
-    await link.trigger('click')
+    await fireEvent.click(button(/Parse/))
     expect(app.view).toBe('ingest')
   })
 
   it('emits go-to-view matches when the "Week of" cross-reference is clicked', async () => {
-    const { wrapper, app } = mountSettings({
+    const { app } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Week of'))!
-    await link.trigger('click')
+    await fireEvent.click(button(/Week of/))
     expect(app.view).toBe('matches')
   })
 
   // ── Calendar section: 7-cell first-day picker ─────────────────
 
+  const weekCells = () => screen.getAllByTitle(/^Weeks begin on /)
+
   it('renders the Calendar section with seven day cells', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    expect(wrapper.text()).toContain('Calendar')
-    expect(wrapper.text()).toContain('First Day of Week')
-    const cells = wrapper.findAll('.weekstart-cell')
-    expect(cells).toHaveLength(7)
+    expect(screen.getByText('Calendar')).toBeInTheDocument()
+    expect(screen.getByText('First Day of Week')).toBeInTheDocument()
+    expect(weekCells()).toHaveLength(7)
   })
 
   it('marks the active weekstart cell per weekStart prop (any day 0-6)', () => {
     for (let day = 0; day <= 6; day++) {
-      const { wrapper } = mountSettings({
+      const { view } = renderSettings({
         props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: day as 0 | 1 | 2 | 3 | 4 | 5 | 6 },
       })
-      const cells = wrapper.findAll('.weekstart-cell')
-      cells.forEach((cell, i) => {
-        if (i === day) expect(cell.classes()).toContain('active')
-        else expect(cell.classes()).not.toContain('active')
+      weekCells().forEach((cell, i) => {
+        if (i === day) expect(cell).toHaveClass('active')
+        else expect(cell).not.toHaveClass('active')
       })
+      view.unmount()
     }
   })
 
   it('aria-checked mirrors weekStart for assistive tech', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 3 },
     })
-    const cells = wrapper.findAll('.weekstart-cell')
-    cells.forEach((cell, i) => {
-      expect(cell.attributes('aria-checked')).toBe(i === 3 ? 'true' : 'false')
+    weekCells().forEach((cell, i) => {
+      expect(cell).toHaveAttribute('aria-checked', i === 3 ? 'true' : 'false')
     })
   })
 
   it('emits set-week-start with the numeric day index on cell click', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
-    const cells = wrapper.findAll('.weekstart-cell')
     // Friday (index 5)
-    await cells[5]!.trigger('click')
+    await fireEvent.click(weekCells()[5]!)
     expect(spies.setWeekStart).toHaveBeenCalledWith(5)
     // Saturday (index 6)
-    await cells[6]!.trigger('click')
+    await fireEvent.click(weekCells()[6]!)
     expect(spies.setWeekStart).toHaveBeenCalledWith(6)
   })
 
   it('shows the resolved day name in the weekstart caption', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 3 },
     })
-    const cap = wrapper.find('.weekstart-caption')
-    expect(cap.text()).toContain('Wednesday')
+    expect(screen.getByText(/Wednesday/)).toBeInTheDocument()
   })
 
   it('renders a help affordance for every setting label', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     // Screenshots Folder, Data Location, Engine, Theme, First Day of
     // Week, Profiles, Backup, Import matches, Restore, Manage ignored
     // screenshots, Re-parse All, Clear DB. The last five live inside the
-    // closed <details> but are still in the DOM.
-    expect(wrapper.findAll('.setting-help')).toHaveLength(12)
+    // closed <details> but are still in the DOM. Each help affordance is
+    // a role="note" span.
+    expect(screen.getAllByRole('note')).toHaveLength(12)
   })
 })
 
@@ -355,43 +374,39 @@ describe('SettingsView — Engine section', () => {
   }
 
   it('shows the engine-status panel as "Detected" when Tesseract is ready', () => {
-    const { wrapper } = mountSettings({ props: baseEngineProps })
-    const status = wrapper.find('.engine-status')
-    expect(status.exists()).toBe(true)
-    expect(status.classes()).toContain('ok')
-    expect(status.text()).toContain('Detected')
+    renderSettings({ props: baseEngineProps })
+    const status = engineStatus()
+    expect(status).toHaveClass('ok')
+    expect(status).toHaveTextContent('Detected')
   })
 
   it('marks the row as alert + status fail when Tesseract is not ready', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...baseEngineProps,
         tesseractReady: false,
         tesseractStatus: readyTesseract({ found: false, error: 'binary not found' }),
       },
     })
-    expect(wrapper.find('.engine-row').classes()).toContain('alert')
-    expect(wrapper.find('.engine-status').classes()).toContain('fail')
-    expect(wrapper.text()).toContain('binary not found')
+    expect(engineRow()).toHaveClass('alert')
+    expect(engineStatus()).toHaveClass('fail')
+    expect(screen.getByText(/binary not found/)).toBeInTheDocument()
   })
 
   it('renders engine-unsupported warning with role="status" for non-5.x Tesseract', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...baseEngineProps,
         tesseractSupported: false,
         tesseractStatus: readyTesseract({ version: '4.1.1', supported: false }),
       },
     })
-    const warn = wrapper.find('.engine-unsupported-warn')
-    expect(warn.exists()).toBe(true)
-    expect(warn.attributes('role')).toBe('status')
+    expect(within(engineSection()).getByRole('status')).toBeInTheDocument()
   })
 
   it('emits pick-tesseract from the Change Binary button', async () => {
-    const { wrapper, spies } = mountSettings({ props: baseEngineProps })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Change Binary'))!
-    await btn.trigger('click')
+    const { spies } = renderSettings({ props: baseEngineProps })
+    await fireEvent.click(button(/Change Binary/))
     expect(spies.pickTesseractBinary).toHaveBeenCalled()
   })
 
@@ -402,53 +417,44 @@ describe('SettingsView — Engine section', () => {
   // Windows" — Detect is the recommended action and gets the primary
   // CTA style when it'd actually do something useful.
   //
-  // Helper: scope button lookups to the Engine row (`#sec-engine`)
-  // because the screenshots-folder row ALSO renders a Detect/Reset
-  // button and `.find()` would return that one first otherwise.
-  function findEngineBtn(wrapper: ReturnType<typeof mount>, text: string) {
-    return wrapper.find('#sec-engine')
-      .findAll('button')
-      .find(b => b.text().trim() === text)
-  }
+  // Lookups are scoped to the Engine section (`#sec-engine`) because
+  // the screenshots-folder row ALSO renders a Detect/Reset button.
 
   it('renders Detect as the primary CTA when Tesseract is not ready', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...baseEngineProps,
         tesseractReady: false,
         tesseractStatus: readyTesseract({ found: false }),
       },
     })
-    const btn = findEngineBtn(wrapper, 'Detect')!
+    const btn = engineButton('Detect')!
     expect(btn).toBeDefined()
-    expect(btn.classes()).toContain('primary')
-    expect(btn.attributes('disabled')).toBeUndefined()
+    expect(btn).toHaveClass('primary')
+    expect(btn).toBeEnabled()
   })
 
   it('disables Detect when Tesseract is already detected', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: baseEngineProps,
     })
-    const btn = findEngineBtn(wrapper, 'Detect')!
-    expect(btn).toBeDefined()
-    expect(btn.attributes('disabled')).toBeDefined()
+    expect(engineButton('Detect')).toBeDisabled()
   })
 
   it('emits detect-tesseract when the Detect button is clicked while not ready', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: {
         ...baseEngineProps,
         tesseractReady: false,
         tesseractStatus: readyTesseract({ found: false }),
       },
     })
-    const btn = findEngineBtn(wrapper, 'Detect')!
-    await btn.trigger('click')
+    await fireEvent.click(engineButton('Detect')!)
     expect(spies.detectTesseractBinary).toHaveBeenCalled()
   })
 
   it('emits reset-tesseract when the Reset button is clicked', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: {
         ...baseEngineProps,
         tesseractStatus: readyTesseract({
@@ -457,13 +463,12 @@ describe('SettingsView — Engine section', () => {
         }),
       },
     })
-    const btn = findEngineBtn(wrapper, 'Reset')!
-    await btn.trigger('click')
+    await fireEvent.click(engineButton('Reset')!)
     expect(spies.resetTesseractPath).toHaveBeenCalled()
   })
 
   it('disables Reset when the configured path is already the platform default', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...baseEngineProps,
         tesseractStatus: readyTesseract({
@@ -472,8 +477,7 @@ describe('SettingsView — Engine section', () => {
         }),
       },
     })
-    const btn = findEngineBtn(wrapper, 'Reset')!
-    expect(btn.attributes('disabled')).toBeDefined()
+    expect(engineButton('Reset')).toBeDisabled()
   })
 })
 
@@ -493,48 +497,48 @@ describe('SettingsView — Engine description per platform', () => {
   }
 
   it('shows only the macOS Homebrew paths when platform=darwin', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'darwin' }) },
     })
-    const desc = wrapper.find('.engine-row .setting-desc')
-    expect(desc.text()).toContain('/opt/homebrew/bin')
-    expect(desc.text()).toContain('/usr/local/bin')
-    expect(desc.text()).not.toContain('Program Files')
-    expect(desc.text()).not.toContain('/usr/bin')
+    const desc = engineDesc()
+    expect(desc).toHaveTextContent('/opt/homebrew/bin')
+    expect(desc).toHaveTextContent('/usr/local/bin')
+    expect(desc).not.toHaveTextContent('Program Files')
+    expect(desc).not.toHaveTextContent(/\/usr\/bin(?!\/)/)
   })
 
   it('shows only the Linux apt path when platform=linux', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'linux' }) },
     })
-    const desc = wrapper.find('.engine-row .setting-desc')
-    expect(desc.text()).toContain('/usr/bin')
-    expect(desc.text()).not.toContain('Program Files')
-    expect(desc.text()).not.toContain('/opt/homebrew/bin')
+    const desc = engineDesc()
+    expect(desc).toHaveTextContent('/usr/bin')
+    expect(desc).not.toHaveTextContent('Program Files')
+    expect(desc).not.toHaveTextContent('/opt/homebrew/bin')
   })
 
   it('shows only the Windows Program Files path when platform=windows', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'windows' }) },
     })
-    const desc = wrapper.find('.engine-row .setting-desc')
-    expect(desc.text()).toContain('Program Files')
-    expect(desc.text()).toContain('Tesseract-OCR')
-    expect(desc.text()).not.toContain('/opt/homebrew/bin')
-    expect(desc.text()).not.toContain('/usr/bin')
+    const desc = engineDesc()
+    expect(desc).toHaveTextContent('Program Files')
+    expect(desc).toHaveTextContent('Tesseract-OCR')
+    expect(desc).not.toHaveTextContent('/opt/homebrew/bin')
+    expect(desc).not.toHaveTextContent(/\/usr\/bin/)
   })
 
   // Fallback: unknown platform (BSD variants, an old client running
   // against a newer server) should still see the lead sentence so the
   // panel doesn't look broken. We just won't promise specific paths.
   it('falls back to a generic sentence when platform is unknown', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'plan9' }) },
     })
-    const desc = wrapper.find('.engine-row .setting-desc')
-    expect(desc.text()).toContain('Tesseract')
-    expect(desc.text()).not.toContain('Program Files')
-    expect(desc.text()).not.toContain('/opt/homebrew/bin')
+    const desc = engineDesc()
+    expect(desc).toHaveTextContent('Tesseract')
+    expect(desc).not.toHaveTextContent('Program Files')
+    expect(desc).not.toHaveTextContent('/opt/homebrew/bin')
   })
 })
 
@@ -546,95 +550,81 @@ describe('SettingsView — Backup & Restore', () => {
   }
 
   it('renders Backup, Import matches, and Restore controls', () => {
-    const { wrapper } = mountSettings({ props: baseProps })
-    const backup = wrapper.findAll('button').find(b => b.text().trim() === 'Backup (.db)')
-    const importMatches = wrapper.findAll('button').find(b => b.text().includes('Import matches'))
-    const restore = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))
-    expect(backup).toBeDefined()
-    expect(importMatches).toBeDefined()
-    expect(restore).toBeDefined()
+    renderSettings({ props: baseProps })
+    expect(button('Backup (.db)')).toBeInTheDocument()
+    expect(button(/Import matches/)).toBeInTheDocument()
+    expect(button(/Restore \(\.db\)/)).toBeInTheDocument()
   })
 
   it('emits backup when the Backup button is clicked', async () => {
-    const { wrapper, spies } = mountSettings({ props: baseProps })
-    const backup = wrapper.findAll('button').find(b => b.text().trim() === 'Backup (.db)')!
-    await backup.trigger('click')
+    const { spies } = renderSettings({ props: baseProps })
+    await fireEvent.click(button('Backup (.db)'))
     expect(spies.backup).toHaveBeenCalled()
   })
 
   it('emits import-matches when the Import matches button is clicked', async () => {
-    const { wrapper, spies } = mountSettings({ props: baseProps })
-    const importBtn = wrapper.findAll('button').find(b => b.text().includes('Import matches'))!
-    await importBtn.trigger('click')
+    const { spies } = renderSettings({ props: baseProps })
+    await fireEvent.click(button(/Import matches/))
     expect(spies.importMatches).toHaveBeenCalled()
   })
 
   it('shows "Saving…" on the Backup button while backingUp and disables it', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, backingUp: true },
     })
-    const saving = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
-    expect(saving.attributes('disabled')).toBeDefined()
+    expect(button(/Saving/)).toBeDisabled()
   })
 
   it('renders the success chip when status.ok is true', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...baseProps,
         backupStatus: { ok: true, message: 'Saved: /tmp/recall.db' },
       },
     })
-    expect(wrapper.text()).toContain('Saved: /tmp/recall.db')
-    expect(wrapper.find('.setting-meta.success').exists()).toBe(true)
+    const chip = screen.getByText('Saved: /tmp/recall.db')
+    expect(chip).toHaveClass('success')
   })
 
   it('renders the failure chip when status.ok is false', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...baseProps,
         backupStatus: { ok: false, message: 'Backup failed: boom' },
       },
     })
-    expect(wrapper.text()).toContain('Backup failed: boom')
-    expect(wrapper.find('.setting-meta.blocked').exists()).toBe(true)
+    const chip = screen.getByText('Backup failed: boom')
+    expect(chip).toHaveClass('blocked')
   })
 
   it('shows the unarmed "Restore (.db)…" button by default', () => {
-    const { wrapper } = mountSettings({ props: baseProps })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))!
-    expect(btn).toBeDefined()
-    expect(btn.classes()).toContain('danger-outline')
+    renderSettings({ props: baseProps })
+    expect(button(/Restore \(\.db\)/)).toHaveClass('danger-outline')
   })
 
   it('arms / confirms / cancels the Restore flow', async () => {
-    const { wrapper, spies, matches } = mountSettings({ props: baseProps })
-    const arm = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))!
-    await arm.trigger('click')
+    const { spies, matches } = renderSettings({ props: baseProps })
+    await fireEvent.click(button(/Restore \(\.db\)/))
     expect(spies.armRestore).toHaveBeenCalled()
 
     matches.restoreArmed = true
     matches.records = makeRecords(5, 0)
     await nextTick()
-    const choose = wrapper.findAll('button').find(b => b.text().includes('Choose File'))!
-    expect(choose).toBeDefined()
-    expect(wrapper.text()).toMatch(/wipes 5 record/)
+    expect(screen.getByText(/wipes 5 record/)).toBeInTheDocument()
 
-    await choose.trigger('click')
+    await fireEvent.click(button(/Choose File/))
     expect(spies.restore).toHaveBeenCalled()
 
-    const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
-    await cancel.trigger('click')
+    await fireEvent.click(button('Cancel'))
     expect(spies.cancelRestore).toHaveBeenCalled()
   })
 
   it('disables Restore + Import while a backup is in flight', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, backingUp: true },
     })
-    const restoreBtn = wrapper.findAll('button').find(b => b.text().includes('Restore (.db)'))!
-    expect(restoreBtn.attributes('disabled')).toBeDefined()
-    const importBtn = wrapper.findAll('button').find(b => b.text().includes('Import matches'))!
-    expect(importBtn.attributes('disabled')).toBeDefined()
+    expect(button(/Restore \(\.db\)/)).toBeDisabled()
+    expect(button(/Import matches/)).toBeDisabled()
   })
 })
 
@@ -646,39 +636,37 @@ describe('SettingsView — Advanced section', () => {
   }
 
   it('renders the Advanced <details> closed by default', () => {
-    const { wrapper } = mountSettings({ props: baseProps })
-    const det = wrapper.find('details.advanced-section')
-    expect(det.exists()).toBe(true)
-    expect((det.element as HTMLDetailsElement).open).toBe(false)
+    renderSettings({ props: baseProps })
+    // The native <details> disclosure state only reads through its
+    // `open` property.
+    // eslint-disable-next-line testing-library/no-node-access -- native details open-state has no accessible-query equivalent in happy-dom
+    const det = document.querySelector('details.advanced-section') as HTMLDetailsElement
+    expect(det).not.toBeNull()
+    expect(det.open).toBe(false)
   })
 
   it('arms Clear Database, confirms delete, then cancels', async () => {
-    const { wrapper, spies, matches } = mountSettings({
+    const { spies, matches } = renderSettings({
       props: { ...baseProps, matchedCount: 4, unknownCount: 0 },
     })
-    const arm = wrapper.findAll('button').find(b => b.text().includes('Clear Database'))!
-    await arm.trigger('click')
+    await fireEvent.click(button(/Clear Database/))
     expect(spies.armClear).toHaveBeenCalled()
 
     matches.clearConfirm = true
     matches.records = makeRecords(4, 0)
     await nextTick()
-    const del = wrapper.findAll('button').find(b => b.text().includes('Delete 4 Records'))!
-    expect(del).toBeDefined()
-    await del.trigger('click')
+    await fireEvent.click(button(/Delete 4 Records/))
     expect(spies.onClearDatabase).toHaveBeenCalled()
 
-    const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
-    await cancel.trigger('click')
+    await fireEvent.click(button('Cancel'))
     expect(spies.cancelClear).toHaveBeenCalled()
   })
 
   it('disables Clear Database when no records exist', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, matchedCount: 0, unknownCount: 0 },
     })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Clear Database'))!
-    expect(btn.attributes('disabled')).toBeDefined()
+    expect(button(/Clear Database/)).toBeDisabled()
   })
 })
 
@@ -696,33 +684,31 @@ describe('SettingsView — Data Location row', () => {
   }
 
   it('renders both paths when dataLocation is populated', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
-    const grid = wrapper.find('.data-loc-grid')
-    expect(grid.exists()).toBe(true)
-    expect(grid.text()).toContain('/data/db/recall.db')
-    expect(grid.text()).toContain('/data/settings.json')
+    const grid = dataLocGrid()
+    expect(grid).toHaveTextContent('/data/db/recall.db')
+    expect(grid).toHaveTextContent('/data/settings.json')
   })
 
   it('hides the path grid when dataLocation is null but still shows the label', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, dataLocation: null },
     })
-    expect(wrapper.text()).toContain('Data Location')
-    expect(wrapper.find('.data-loc-grid').exists()).toBe(false)
+    expect(screen.getByText('Data Location')).toBeInTheDocument()
+    expect(dataLocGrid()).toBeNull()
   })
 
   it('renders a Copy button per path row', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
-    // Two .data-loc-actions clusters — one per path — each with a Copy.
-    const clusters = wrapper.findAll('.data-loc-actions')
+    // Two action clusters — one per path — each with a Copy.
+    const clusters = dataLocActions()
     expect(clusters).toHaveLength(2)
     clusters.forEach(c => {
-      const copy = c.findAll('button').find(b => b.text().trim() === 'Copy')
-      expect(copy).toBeDefined()
+      expect(within(c).getByRole('button', { name: 'Copy' })).toBeInTheDocument()
     })
   })
 
@@ -733,12 +719,10 @@ describe('SettingsView — Data Location row', () => {
       configurable: true,
     })
 
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
-    const clusters = wrapper.findAll('.data-loc-actions')
-    const dbCopy = clusters[0]!.findAll('button').find(b => b.text().trim() === 'Copy')!
-    await dbCopy.trigger('click')
+    await fireEvent.click(within(dataLocActions()[0]!).getByRole('button', { name: 'Copy' }))
     expect(writeText).toHaveBeenCalledWith('/data/db/recall.db')
   })
 
@@ -749,12 +733,10 @@ describe('SettingsView — Data Location row', () => {
       configurable: true,
     })
 
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
-    const clusters = wrapper.findAll('.data-loc-actions')
-    const settingsCopy = clusters[1]!.findAll('button').find(b => b.text().trim() === 'Copy')!
-    await settingsCopy.trigger('click')
+    await fireEvent.click(within(dataLocActions()[1]!).getByRole('button', { name: 'Copy' }))
     expect(writeText).toHaveBeenCalledWith('/data/settings.json')
   })
 
@@ -765,20 +747,18 @@ describe('SettingsView — Data Location row', () => {
         value: { writeText: vi.fn().mockResolvedValue(undefined) },
         configurable: true,
       })
-      const { wrapper } = mountSettings({
+      renderSettings({
         props: { ...baseProps, dataLocation: sampleLoc },
       })
-      const dbCopy = wrapper.findAll('.data-loc-actions')[0]!
-        .findAll('button').find(b => b.text().trim() === 'Copy')!
-      await dbCopy.trigger('click')
+      await fireEvent.click(within(dataLocActions()[0]!).getByRole('button', { name: 'Copy' }))
       await Promise.resolve()
-      await wrapper.vm.$nextTick()
-      expect(wrapper.text()).toContain('Copied ✓')
+      await nextTick()
+      expect(screen.getByText(/Copied ✓/)).toBeInTheDocument()
 
       // The label clears 1.4 s later.
       vi.advanceTimersByTime(1500)
-      await wrapper.vm.$nextTick()
-      expect(wrapper.text()).not.toContain('Copied ✓')
+      await nextTick()
+      expect(screen.queryByText(/Copied ✓/)).not.toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }
@@ -792,12 +772,10 @@ describe('SettingsView — Data Location row', () => {
     const promptSpy = vi.fn().mockReturnValue(null)
     vi.stubGlobal('prompt', promptSpy)
 
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...baseProps, dataLocation: sampleLoc },
     })
-    const dbCopy = wrapper.findAll('.data-loc-actions')[0]!
-      .findAll('button').find(b => b.text().trim() === 'Copy')!
-    await dbCopy.trigger('click')
+    await fireEvent.click(within(dataLocActions()[0]!).getByRole('button', { name: 'Copy' }))
     await Promise.resolve()
     await Promise.resolve()
     expect(promptSpy).toHaveBeenCalledWith('Copy this path:', '/data/db/recall.db')
@@ -815,17 +793,19 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
     screenshotsDir: '', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
+  const sourceGrid = () => screen.queryByLabelText('Auto-detected screenshot sources')
+
   it('mounts the ScreenshotSourcePicker inside the empty-hero', () => {
-    const { wrapper } = mountSettings({ props: emptyProps })
-    expect(wrapper.find('.empty-hero').exists()).toBe(true)
-    expect(wrapper.find('.src-picker').exists()).toBe(true)
+    renderSettings({ props: emptyProps })
+    expect(screen.getByRole('button', { name: /Pick a different folder/ })).toBeInTheDocument()
   })
 
   it('renders the picker grid when platform=windows and candidates supplied', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...emptyProps,
         platform: 'windows',
+        tesseractStatus: defaultTess({ platform: 'windows' }),
         screenshotCandidates: [
           { name: 'nvidia',  label: 'Nvidia Overlay', path: 'C:\\v\\OW', exists: true  },
           { name: 'prntscn', label: 'OW default',     path: 'C:\\d\\OW', exists: false },
@@ -834,15 +814,17 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
         ] as const,
       },
     })
-    expect(wrapper.find('[data-src-grid]').exists()).toBe(true)
-    expect(wrapper.findAll('.src-card')).toHaveLength(4)
+    const grid = sourceGrid()
+    expect(grid).toBeInTheDocument()
+    expect(within(grid!).getAllByRole('button')).toHaveLength(4)
   })
 
   it('emits pick-detected-source with the path when a found card is clicked', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: {
         ...emptyProps,
         platform: 'windows',
+        tesseractStatus: defaultTess({ platform: 'windows' }),
         screenshotCandidates: [
           { name: 'nvidia',  label: 'Nvidia Overlay', path: 'C:\\v\\OW', exists: true  },
           { name: 'prntscn', label: 'OW default',     path: '',           exists: false },
@@ -851,24 +833,24 @@ describe('SettingsView — First-run picker (empty state hero)', () => {
         ] as const,
       },
     })
-    await wrapper.find('[data-src-name="nvidia"]').trigger('click')
+    await fireEvent.click(screen.getByRole('button', { name: /Nvidia Overlay/ }))
     expect(spies.pickDetectedSource).toHaveBeenCalledWith('C:\\v\\OW')
   })
 
   it('emits pick-screenshots-dir when the custom-pick tile is clicked', async () => {
-    const { wrapper, spies } = mountSettings({
+    const { spies } = renderSettings({
       props: { ...emptyProps, platform: 'darwin', screenshotCandidates: [] },
     })
-    await wrapper.find('[data-src-pick-custom]').trigger('click')
+    await fireEvent.click(screen.getByRole('button', { name: /Pick a different folder/ }))
     expect(spies.pickDir).toHaveBeenCalled()
   })
 
   it('hides the grid on macOS', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: { ...emptyProps, platform: 'darwin', screenshotCandidates: [] },
     })
-    expect(wrapper.find('[data-src-grid]').exists()).toBe(false)
-    expect(wrapper.find('[data-src-platform-note]').exists()).toBe(true)
+    expect(sourceGrid()).not.toBeInTheDocument()
+    expect(screen.getByText(/WINDOWS ONLY/)).toBeInTheDocument()
   })
 })
 
@@ -877,32 +859,32 @@ describe('SettingsView — steady-state row affordances', () => {
     screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
+  // The folders row's Detect (the Engine row has its own — scope by
+  // taking the FIRST match in DOM order, which is the folders row).
+  const foldersDetect = () => screen.getAllByRole('button', { name: 'Detect' })[0]!
+
   it('renders a Detect button alongside Change… in the steady-state row', () => {
-    const { wrapper } = mountSettings({ props: setProps })
-    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')
-    expect(detect).toBeDefined()
+    renderSettings({ props: setProps })
+    expect(foldersDetect()).toBeInTheDocument()
   })
 
   // Detect renders but stays disabled when a folder is set — the
   // user must Reset first to re-enable auto-detection. Confirmed
   // emit-side: a click on a disabled button produces no event.
   it('keeps the steady-state Detect button disabled', () => {
-    const { wrapper } = mountSettings({ props: setProps })
-    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')!
-    expect(detect.attributes('disabled')).toBeDefined()
+    renderSettings({ props: setProps })
+    expect(foldersDetect()).toBeDisabled()
   })
 
   it('emits reveal-screenshots-dir when Reveal is clicked', async () => {
-    const { wrapper, spies } = mountSettings({ props: setProps })
-    const reveal = wrapper.findAll('button').find(b => b.text().trim() === 'Reveal')!
-    await reveal.trigger('click')
+    const { spies } = renderSettings({ props: setProps })
+    await fireEvent.click(button('Reveal'))
     expect(spies.revealDir).toHaveBeenCalled()
   })
 
   it('emits reset-screenshots-dir when Reset is clicked', async () => {
-    const { wrapper, spies } = mountSettings({ props: setProps })
-    const reset = wrapper.findAll('button').find(b => b.text().trim() === 'Reset')!
-    await reset.trigger('click')
+    const { spies } = renderSettings({ props: setProps })
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Reset' })[0]!)
     expect(spies.resetDir).toHaveBeenCalled()
   })
 })
@@ -913,22 +895,20 @@ describe('SettingsView — Probe chip', () => {
   }
 
   it('renders the success chip when probeStatus=success', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...emptyProps,
         probeStatus: 'success',
         probeMessage: 'Detected · /home/u/Documents/Overwatch/ScreenShots/Overwatch',
       },
     })
-    const chip = wrapper.find('.probe-chip')
-    expect(chip.exists()).toBe(true)
-    expect(chip.classes()).toContain('success')
-    expect(chip.text()).toContain('Detected')
-    expect(chip.find('.probe-chip-bar').exists()).toBe(true)
+    const chip = probeChip()
+    expect(chip).toHaveClass('success')
+    expect(chip).toHaveTextContent('Detected')
   })
 
   it('renders the blocked chip + Looked-in disclosure when probeStatus=blocked', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...emptyProps,
         probeStatus: 'blocked',
@@ -936,19 +916,13 @@ describe('SettingsView — Probe chip', () => {
         probeTried: ['/a/path', '/b/path'],
       },
     })
-    const chip = wrapper.find('.probe-chip')
-    expect(chip.classes()).toContain('blocked')
-
-    const details = wrapper.find('.probe-tried')
-    expect(details.exists()).toBe(true)
-    const items = wrapper.findAll('.probe-tried-list li')
-    expect(items).toHaveLength(2)
-    expect(items[0]!.text()).toBe('/a/path')
-    expect(items[1]!.text()).toBe('/b/path')
+    expect(probeChip()).toHaveClass('blocked')
+    expect(screen.getByText('/a/path')).toBeInTheDocument()
+    expect(screen.getByText('/b/path')).toBeInTheDocument()
   })
 
   it('hides the Looked-in disclosure when probeTried is empty on the blocked path', () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...emptyProps,
         probeStatus: 'blocked',
@@ -956,41 +930,43 @@ describe('SettingsView — Probe chip', () => {
         probeTried: [],
       },
     })
-    expect(wrapper.find('.probe-tried').exists()).toBe(false)
+    expect(screen.queryByText(/Looked in/)).not.toBeInTheDocument()
   })
 
   it('renders no chip at all when probeMessage is empty', () => {
-    const { wrapper } = mountSettings({ props: emptyProps })
-    expect(wrapper.find('.probe-chip').exists()).toBe(false)
+    renderSettings({ props: emptyProps })
+    expect(probeChip()).toBeNull()
   })
 
   it('dismisses the chip when the close × is clicked', async () => {
-    const { wrapper } = mountSettings({
+    renderSettings({
       props: {
         ...emptyProps,
         probeStatus: 'success',
         probeMessage: 'Detected · /path',
       },
     })
-    expect(wrapper.find('.probe-chip').exists()).toBe(true)
-    await wrapper.find('.probe-chip-close').trigger('click')
-    expect(wrapper.find('.probe-chip').exists()).toBe(false)
+    expect(probeChip()).not.toBeNull()
+    // eslint-disable-next-line testing-library/no-node-access -- the chip close glyph carries no accessible name; scoped by the chip class the e2e shares
+    await fireEvent.click(document.querySelector('.probe-chip-close')!)
+    expect(probeChip()).toBeNull()
   })
 
   it('re-opens the chip when a new probeMessage lands after dismissal', async () => {
-    const { wrapper, settings } = mountSettings({
+    const { settings } = renderSettings({
       props: {
         ...emptyProps,
         probeStatus: 'blocked',
         probeMessage: 'No default on this machine.',
       },
     })
-    await wrapper.find('.probe-chip-close').trigger('click')
-    expect(wrapper.find('.probe-chip').exists()).toBe(false)
+    // eslint-disable-next-line testing-library/no-node-access -- the chip close glyph carries no accessible name; scoped by the chip class the e2e shares
+    await fireEvent.click(document.querySelector('.probe-chip-close')!)
+    expect(probeChip()).toBeNull()
 
     settings.probeStatus = 'success'
     settings.probeMessage = 'Detected · /path'
     await nextTick()
-    expect(wrapper.find('.probe-chip').exists()).toBe(true)
+    expect(probeChip()).not.toBeNull()
   })
 })
