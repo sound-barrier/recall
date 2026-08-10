@@ -36,6 +36,7 @@ import { useMatchesRowContext } from '@/composables/matches/useMatchesRowContext
 import { useNarrowMode } from '@/composables/matches/useNarrowMode'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
+import { IS_WAILS } from '@/platform'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 
 // Matches page — "set workspace" layout.
@@ -365,12 +366,6 @@ function onRowContextCopyLink(matchKey: string) {
 function onRowContextOpenSourceFolder(matchKey: string) {
   void onOpenSourceFolder(matchKey)
 }
-
-// Wails-detect — duplicated as a one-liner so the menu doesn't have
-// to import api.ts (keeps the leaf component's import surface narrow). The
-// native Wails v3 webview's user-agent carries the "wails" marker; a browser
-// doesn't. (Matches the bare token so CodeQL's URL-sanitization rule stays quiet.)
-const IS_WAILS = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails')
 </script>
 
 <template>

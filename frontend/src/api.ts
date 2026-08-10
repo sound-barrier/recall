@@ -17,8 +17,8 @@
  *   - 204 / 202 responses resolve to undefined via unwrapVoid.
  */
 
-import { toApiError } from '@/api-error'
 import { IS_WAILS, wailsCall } from '@/api-platform'
+import { unwrap, unwrapVoid } from '@/api-unwrap'
 import * as sdk from '@/client/sdk.gen'
 import type {
   DbHealth,
@@ -96,34 +96,6 @@ export {
 } from '@/api-platform'
 export type { EventStreamStatus, MatchImportResult } from '@/api-platform'
 export { ApiError } from '@/api-error'
-
-// ─── SDK result unwrapping ─────────────────────────────────────────────────
-
-interface SdkResult<T> {
-  data?: T
-  error?: unknown
-  response?: Response
-}
-
-// unwrap converts the SDK's { data, error, response } envelope into the
-// facade contract: resolve with the payload, throw ApiError on an HTTP
-// error. A transport-level failure (fetch rejected — there is no Response)
-// propagates as-is, matching the old _fetch behavior.
-async function unwrap<T>(p: Promise<SdkResult<T>>): Promise<T> {
-  const { data, error, response } = await p
-  if (error === undefined) return data as T
-  if (!response) {
-    if (error instanceof Error) throw error
-    throw new Error(typeof error === 'string' ? error : JSON.stringify(error))
-  }
-  throw toApiError(response.status, error)
-}
-
-// unwrapVoid is unwrap for 204/202 writers — the empty-body payload is
-// discarded so void-returning callers resolve to undefined.
-async function unwrapVoid(p: Promise<SdkResult<unknown>>): Promise<void> {
-  await unwrap(p)
-}
 
 // ─── System / version / update ─────────────────────────────────────────────
 

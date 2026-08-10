@@ -1,6 +1,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 import { OpenURL } from '@/api-client'
+import { IS_WAILS, isMacOS } from '@/platform'
 import { useAppStore } from '@/stores/app'
 import { useUiStore } from '@/stores/ui'
 import { DOCS_URL, ISSUES_URL } from '@/app-links'
@@ -24,10 +25,9 @@ export function useAppMenu() {
   const menuEl = ref<HTMLElement | null>(null)
 
   // Hide on macOS-Wails (native menu bar present); show everywhere else.
-  const isWails = typeof navigator !== 'undefined' && navigator.userAgent.includes('wails')
-  const isMac = typeof navigator !== 'undefined'
-    && /Mac/i.test(navigator.platform || navigator.userAgent || '')
-  const showMenu = computed(() => !(isWails && isMac))
+  // IS_WAILS is the ONE detector (serving origin) — a local UA-only copy
+  // read false in the Windows desktop build.
+  const showMenu = computed(() => !(IS_WAILS && isMacOS()))
 
   function close() { open.value = false }
   function toggle() { open.value = !open.value }
