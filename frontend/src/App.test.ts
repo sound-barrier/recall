@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises } from '@vue/test-utils'
+import { screen, within, fireEvent } from '@testing-library/vue'
+import { nextTick } from 'vue'
 import type { MatchRecord } from '@/api'
-import { fireEvent, mockedApi, mountApp } from '@/test-utils/mountApp'
+import { fireBackendEvent, flushPromises, mockedApi, renderApp } from '@/test-utils'
 
 // Smoke + behavior tests for App.vue. These do not try to cover every
 // branch of the ~4500-line SFC — the helpers and composables under it
 // have their own dedicated test files. The goal here is to verify
 // that App wires those pieces together correctly: API → composables
 // → DOM. Coverage rolls up via `make cover-frontend`.
+//
+// Interactions use TL fireEvent (matching the original trigger()
+// dispatch — user-event's awaited chains interleave with the query
+// notify re-renders on this store-backed surface).
 
 afterEach(async () => {
   // Settle in-flight lazy-view imports inside the test env — a loader
@@ -18,38 +23,53 @@ afterEach(async () => {
   vi.resetModules()
 })
 
+const tab = (name: RegExp) => screen.getByRole('tab', { name })
+const panel = (name: RegExp) => screen.queryByRole('tabpanel', { name })
+
+// ── Structural helpers ───────────────────────────────────────────────
+// The masthead scoreboard's pulse class + W/L/D cells, the background
+// container's inert state, and the source-order first-focusable pin
+// have no accessible-name equivalent — they are selected directly.
+/* eslint-disable testing-library/no-node-access -- pulse/inert/source-order pins have no accessible-query equivalent */
+const scoreboard = () => document.querySelector('.scoreboard')
+const scoreNums  = () => [...document.querySelectorAll('.scoreboard .score-num')]
+const container  = () => document.querySelector('.container')
+const modalBox   = () => document.querySelector('.modal-box')
+const modalButtons = () => [...document.querySelectorAll('.modal-actions button')]
+const skipLink   = () => document.querySelector('a.skip-link')
+const systemAlert = () => document.querySelector('.system-alert')
+/* eslint-enable testing-library/no-node-access */
+
 describe('App.vue', () => {
-  // 15s budget: the first App mount pays the whole SFC tree's
+  // 15s budget: the first App render pays the whole SFC tree's
   // import + compile cost, and under the pre-push battery the box
   // runs coverage instrumentation concurrently with the playwright
   // harness build — the default 5s flaked a push on pure load. A
-  // real mount hang still fails; it just isn't confused with a
+  // real render hang still fails; it just isn't confused with a
   // saturated machine.
   it('mounts without throwing and shows the RECALL masthead', { timeout: 15_000 }, async () => {
-    const wrapper = await mountApp()
-    expect(wrapper.find('.masthead').exists()).toBe(true)
-    // Masthead text uses the OW Wordmark font on "RECALL".
-    expect(wrapper.text()).toContain('RECALL')
+    await renderApp()
+    // Masthead text uses the OW Wordmark font on "RECALL" (split
+    // across letter spans inside the brandmark link, so assert on the
+    // link's full content).
+    expect(screen.getByRole('link', { name: /GitHub/ })).toHaveTextContent(/RECALL/)
   })
 
   it('defaults to the Matches tab on initial load', async () => {
-    const wrapper = await mountApp()
+    await renderApp()
     // Active tab is reflected in the aria-selected attribute, which the
     // tablist semantics make easy to query without coupling to CSS class
     // names that could shift with theme work.
-    const matchesTab = wrapper.find('#tab-matches')
-    expect(matchesTab.attributes('aria-selected')).toBe('true')
-
-    const settingsTab = wrapper.find('#tab-settings')
-    expect(settingsTab.attributes('aria-selected')).toBe('false')
+    expect(tab(/Matches/)).toHaveAttribute('aria-selected', 'true')
+    expect(tab(/Settings/)).toHaveAttribute('aria-selected', 'false')
   })
 
   it('calls GetMatchResults once on mount via the load() Promise.all', async () => {
     // mockedApi() returns the exact mock object App's stores bound their api
     // functions from, so the call counts we inspect are the ones load() drove
     // (re-importing '@/api' can resolve to a different instance under low fork
-    // counts — see mountApp).
-    await mountApp({
+    // counts — see renderApp).
+    await renderApp({
       records: [
         // Minimal valid MatchRecord — only the fields the helpers actually read.
         { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
@@ -63,23 +83,23 @@ describe('App.vue', () => {
   })
 
   it('switching tabs swaps the visible view panel', async () => {
-    const wrapper = await mountApp()
+    await renderApp()
     // Matches view is rendered by default.
-    expect(wrapper.find('#panel-matches').exists()).toBe(true)
+    expect(panel(/Matches/)).toBeInTheDocument()
 
     // Click the Settings tab; the matches panel disappears, the
     // settings panel appears. flushPromises waits for the async view
     // component (defineAsyncComponent) to resolve its dynamic import.
-    await wrapper.find('#tab-settings').trigger('click')
+    await fireEvent.click(tab(/Settings/))
     await flushPromises()
-    expect(wrapper.find('#panel-settings').exists()).toBe(true)
-    expect(wrapper.find('#panel-matches').exists()).toBe(false)
+    expect(panel(/Settings/)).toBeInTheDocument()
+    expect(panel(/Matches/)).not.toBeInTheDocument()
 
     // And back: clicking matches restores it.
-    await wrapper.find('#tab-matches').trigger('click')
+    await fireEvent.click(tab(/Matches/))
     await flushPromises()
-    expect(wrapper.find('#panel-matches').exists()).toBe(true)
-    expect(wrapper.find('#panel-settings').exists()).toBe(false)
+    expect(panel(/Matches/)).toBeInTheDocument()
+    expect(panel(/Settings/)).not.toBeInTheDocument()
   })
 
   // Note: UNKNOWN DATE bucket rendering is covered directly in
@@ -89,19 +109,17 @@ describe('App.vue', () => {
   // the component-test layer where the seam is explicit.
 
   it('renders the brandmark as a link to the GitHub repo', async () => {
-    const wrapper = await mountApp()
-    const brand = wrapper.find('a.brandmark-link')
-    expect(brand.exists()).toBe(true)
-    expect(brand.attributes('href')).toBe('https://github.com/sound-barrier/recall')
-    expect(brand.attributes('target')).toBe('_blank')
-    expect(brand.attributes('rel')).toContain('noopener')
-    expect(brand.attributes('aria-label')).toContain('GitHub')
+    await renderApp()
+    const brand = screen.getByRole('link', { name: /GitHub/ })
+    expect(brand).toHaveAttribute('href', 'https://github.com/sound-barrier/recall')
+    expect(brand).toHaveAttribute('target', '_blank')
+    expect(brand).toHaveAttribute('rel', expect.stringContaining('noopener'))
   })
 
   it('clicking the brandmark routes through OpenURL (so Wails opens the system browser)', async () => {
-    const wrapper = await mountApp()
+    await renderApp()
     const api = mockedApi()
-    await wrapper.find('a.brandmark-link').trigger('click')
+    await fireEvent.click(screen.getByRole('link', { name: /GitHub/ }))
     expect(api.OpenURL).toHaveBeenCalledWith('https://github.com/sound-barrier/recall')
   })
 })
@@ -116,8 +134,8 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]
-    const wrapper = await mountApp({ records: initial })
-    expect(wrapper.find('.scoreboard').classes()).not.toContain('pulse')
+    await renderApp({ records: initial })
+    expect(scoreboard()).not.toHaveClass('pulse')
 
     // Re-mock GetMatchResults so the next load() returns one more record.
     const api = mockedApi()
@@ -132,9 +150,9 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
     // Fire the watcher event the way the runtime would. The handler
     // re-runs load() asynchronously, so flushPromises lets the
     // Promise.all + the post-load reactive update settle.
-    expect(fireEvent('parse-complete')).toBe(true)
+    expect(fireBackendEvent('parse-complete')).toBe(true)
     await flushPromises()
-    expect(wrapper.find('.scoreboard').classes()).toContain('pulse')
+    expect(scoreboard()).toHaveClass('pulse')
   })
 
   it('does NOT pulse when records count is unchanged on parse-complete', async () => {
@@ -143,10 +161,10 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]
-    const wrapper = await mountApp({ records: seed })
-    expect(fireEvent('parse-complete')).toBe(true)
+    await renderApp({ records: seed })
+    expect(fireBackendEvent('parse-complete')).toBe(true)
     await flushPromises()
-    expect(wrapper.find('.scoreboard').classes()).not.toContain('pulse')
+    expect(scoreboard()).not.toHaveClass('pulse')
   })
 })
 
@@ -178,31 +196,32 @@ describe('App.vue — masthead scoreboard W/L/D consistency', () => {
         map: 'suravasa', hero: 'lucio', result: 'victory',
       } },
     ]
-    const wrapper = await mountApp({ records })
-    const cells = wrapper.findAll('.scoreboard .score-num')
-    expect(cells.length).toBe(3)
-    expect(cells[0]!.text()).toBe('2') // wins
-    expect(cells[1]!.text()).toBe('1') // losses
-    expect(cells[2]!.text()).toBe('0') // draws
+    await renderApp({ records })
+    const cells = scoreNums()
+    expect(cells).toHaveLength(3)
+    expect(cells[0]).toHaveTextContent(/^2$/) // wins
+    expect(cells[1]).toHaveTextContent(/^1$/) // losses
+    expect(cells[2]).toHaveTextContent(/^0$/) // draws
   })
 })
 
 describe('App.vue — tablist keyboard navigation', () => {
   // WAI-ARIA tab pattern with automatic activation: ArrowLeft/Right wrap
   // through the tabs, Home/End jump to either end, and each keypress
-  // both moves focus AND switches the visible view.
+  // both moves focus AND switches the visible view. The keydown
+  // dispatches on the tablist; the nav's listener sees it via bubbling.
   it('ArrowRight from Settings activates Ingest', async () => {
-    const wrapper = await mountApp()
-    await wrapper.find('#tab-settings').trigger('click')
-    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'ArrowRight' })
-    expect(wrapper.find('#tab-ingest').attributes('aria-selected')).toBe('true')
+    await renderApp()
+    await fireEvent.click(tab(/Settings/))
+    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' })
+    expect(tab(/Parse/)).toHaveAttribute('aria-selected', 'true')
   })
 
   it('ArrowLeft from Settings wraps to the Elo Calculator', async () => {
-    const wrapper = await mountApp()
-    await wrapper.find('#tab-settings').trigger('click')
-    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'ArrowLeft' })
-    expect(wrapper.find('#tab-elo').attributes('aria-selected')).toBe('true')
+    await renderApp()
+    await fireEvent.click(tab(/Settings/))
+    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowLeft' })
+    expect(tab(/Elo/)).toHaveAttribute('aria-selected', 'true')
     // Settle the lazy Elo view's dynamic import inside the test so its setup
     // runs while the provider is still mounted; a mount that lands post-teardown
     // makes useEloCalc's inject-guard throw as an unhandled rejection. Unlike a
@@ -210,59 +229,61 @@ describe('App.vue — tablist keyboard navigation', () => {
     // slow coverage run — it resolves exactly when the import finishes.
     await vi.dynamicImportSettled()
     await flushPromises()
-    expect(wrapper.find('#panel-elo').exists()).toBe(true)
+    expect(panel(/Elo/)).toBeInTheDocument()
   })
 
   it('Home jumps to the first tab (Settings)', async () => {
-    const wrapper = await mountApp()
+    await renderApp()
     // Default is Matches; Home should jump to Settings.
-    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'Home' })
-    expect(wrapper.find('#tab-settings').attributes('aria-selected')).toBe('true')
+    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'Home' })
+    expect(tab(/Settings/)).toHaveAttribute('aria-selected', 'true')
   })
 
   it('End jumps to the last tab (Elo Calculator)', async () => {
-    const wrapper = await mountApp()
-    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'End' })
-    expect(wrapper.find('#tab-elo').attributes('aria-selected')).toBe('true')
+    await renderApp()
+    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'End' })
+    expect(tab(/Elo/)).toHaveAttribute('aria-selected', 'true')
     // Settle the lazy Elo view within the test (see the ArrowLeft case above).
     await vi.dynamicImportSettled()
     await flushPromises()
-    expect(wrapper.find('#panel-elo').exists()).toBe(true)
+    expect(panel(/Elo/)).toBeInTheDocument()
   })
 
   it('typing into a tab without an arrow key does not change selection', async () => {
-    const wrapper = await mountApp()
-    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'a' })
-    expect(wrapper.find('#tab-matches').attributes('aria-selected')).toBe('true')
+    await renderApp()
+    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'a' })
+    expect(tab(/Matches/)).toHaveAttribute('aria-selected', 'true')
   })
 })
 
 describe('App.vue — landmarks and skip-link', () => {
   it('renders a skip-link as the first focusable, pointing at #main-content', async () => {
-    const wrapper = await mountApp()
-    const skip = wrapper.find('a.skip-link')
-    expect(skip.exists()).toBe(true)
-    expect(skip.attributes('href')).toBe('#main-content')
+    await renderApp()
+    const skip = skipLink()
+    expect(skip).toBeInTheDocument()
+    expect(skip).toHaveAttribute('href', '#main-content')
     // First <a>/button/input/etc in source order — keyboard users land
     // here on Tab from outside the page.
-    const firstFocusable = wrapper.element.querySelector('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
-    expect(firstFocusable).toBe(skip.element)
+    // eslint-disable-next-line testing-library/no-node-access -- pins SOURCE-ORDER first-focusable, which no accessible query expresses
+    const firstFocusable = document.body.querySelector('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    expect(firstFocusable).toBe(skip)
   })
 
   it('wraps the active view panel in a <main id="main-content">', async () => {
-    const wrapper = await mountApp()
-    const main = wrapper.find('main#main-content')
-    expect(main.exists()).toBe(true)
+    await renderApp()
+    const main = screen.getByRole('main')
+    expect(main).toHaveAttribute('id', 'main-content')
     // tabindex="-1" so the skip-link can move focus to it without
     // putting <main> in the natural tab order.
-    expect(main.attributes('tabindex')).toBe('-1')
+    expect(main).toHaveAttribute('tabindex', '-1')
     // The active panel (matches by default) is rendered inside it.
-    expect(main.find('#panel-matches').exists()).toBe(true)
+    expect(within(main).getByRole('tabpanel', { name: /Matches/ })).toBeInTheDocument()
   })
 
   it('skip-link click focuses the <main> landmark', async () => {
-    const wrapper = await mountApp()
-    await wrapper.find('a.skip-link').trigger('click')
+    await renderApp()
+    await fireEvent.click(skipLink()!)
+    // eslint-disable-next-line testing-library/no-node-access -- focus movement IS the behavior under test; TL has no focus query
     expect((document.activeElement as HTMLElement | null)?.id).toBe('main-content')
   })
 })
@@ -271,107 +292,104 @@ describe('App.vue — unsupported-tesseract modal a11y', () => {
   async function openUnsupportedModal() {
     // Tesseract is detected but reports an unsupported version (e.g. 4.x).
     // Clicking Run Parse opens the confirmation modal instead of parsing.
-    const wrapper = await mountApp({
+    await renderApp({
       screenshotsDir: '/home/me/shots',
       newScreenshotCount: 3,
       tesseract: { found: true, supported: false, version: '4.1.1' },
     })
-    await wrapper.find('#tab-ingest').trigger('click')
+    await fireEvent.click(tab(/Parse/))
     // IngestView is loaded via defineAsyncComponent, so the v-if switch
     // resolves the dynamic import in a microtask. flushPromises waits
     // for that AND the post-import re-render; nextTick alone is not
     // enough.
     await flushPromises()
-    await wrapper.find('.btn.primary.big').trigger('click') // Run Parse
-    await wrapper.vm.$nextTick()
-    return wrapper
+    await fireEvent.click(screen.getByTestId('run-parse-btn'))
+    await nextTick()
   }
 
   it('opening the modal moves focus to the first focusable (Cancel)', async () => {
-    const wrapper = await openUnsupportedModal()
-    expect(wrapper.find('.modal-box').exists()).toBe(true)
+    await openUnsupportedModal()
+    expect(modalBox()).toBeInTheDocument()
     // Cancel is the first <button> inside .modal-actions by markup order,
     // chosen specifically so destructive primary actions (Continue
     // Anyway) never receive default focus.
-    const cancel = wrapper.findAll('.modal-actions button')[0]!
-    expect(document.activeElement).toBe(cancel.element)
+    const cancel = modalButtons()[0]!
+    // eslint-disable-next-line testing-library/no-node-access -- initial-focus placement IS the behavior under test; TL has no focus query
+    expect(document.activeElement).toBe(cancel)
   })
 
   it('Escape on document closes the modal', async () => {
-    const wrapper = await openUnsupportedModal()
+    await openUnsupportedModal()
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('.modal-box').exists()).toBe(false)
+    await nextTick()
+    expect(modalBox()).not.toBeInTheDocument()
   })
 
   it('background container is marked inert and aria-hidden while open', async () => {
-    const wrapper = await openUnsupportedModal()
-    const container = wrapper.find('.container')
+    await openUnsupportedModal()
     // Vue serializes boolean inert as the attribute being present.
-    expect(container.attributes('inert')).toBeDefined()
-    expect(container.attributes('aria-hidden')).toBe('true')
+    expect(container()).toHaveAttribute('inert')
+    expect(container()).toHaveAttribute('aria-hidden', 'true')
   })
 })
 
 describe('App.vue — startup-error modal (item 8)', () => {
   it('stays hidden when GetStartupError returns an empty string', async () => {
-    const wrapper = await mountApp({ records: [] })
-    expect(wrapper.find('[data-testid="startup-error-modal"]').exists()).toBe(false)
+    await renderApp({ records: [] })
+    expect(screen.queryByTestId('startup-error-modal')).not.toBeInTheDocument()
   })
 
   it('renders the captured message when GetStartupError returns non-empty', async () => {
-    const wrapper = await mountApp({
+    await renderApp({
       records: [],
       startupError: 'startup: profile manager init: permission denied',
     })
-    const modal = wrapper.find('[data-testid="startup-error-modal"]')
-    expect(modal.exists()).toBe(true)
-    expect(modal.attributes('role')).toBe('alertdialog')
-    expect(modal.text()).toContain('startup: profile manager init: permission denied')
+    const modal = screen.getByTestId('startup-error-modal')
+    expect(modal).toHaveAttribute('role', 'alertdialog')
+    expect(modal).toHaveTextContent('startup: profile manager init: permission denied')
   })
 
   it('marks the background container inert + aria-hidden while open', async () => {
-    const wrapper = await mountApp({
+    await renderApp({
       records: [],
       startupError: 'startup: open SQLite /home/u/db: read-only filesystem',
     })
-    const container = wrapper.find('.container')
-    expect(container.attributes('inert')).toBeDefined()
-    expect(container.attributes('aria-hidden')).toBe('true')
+    expect(container()).toHaveAttribute('inert')
+    expect(container()).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('has no Close / Cancel button — restart is the only recovery', async () => {
-    const wrapper = await mountApp({
+    await renderApp({
       records: [],
       startupError: 'startup: create db directory /etc/recall: permission denied',
     })
-    const modal = wrapper.find('[data-testid="startup-error-modal"]')
+    const modal = screen.getByTestId('startup-error-modal')
     // The unsupported-tesseract modal has Cancel + Continue Anyway; the
     // startup-error variant intentionally has none. A future PR that
     // adds a "Quit" or "Retry" button can update this expectation.
-    expect(modal.findAll('button')).toHaveLength(0)
+    expect(within(modal).queryAllByRole('button')).toHaveLength(0)
   })
 })
 
 // ── First-run modal gating ───────────────────────────────────────────
 // The modal renders only when `firstRunPending && !tourActive`.
-// Both signals are seeded from localStorage; mountApp's defaults
+// Both signals are seeded from localStorage; renderApp's defaults
 // suppress both, so each test below clears the relevant seed first.
 describe('App.vue — first-run modal gating (item 6 coverage lift)', () => {
   it('does NOT render the first-run modal when the localStorage ack is set', async () => {
-    // mountApp defaults to seeding the ack to "true"; the modal must
+    // renderApp defaults to seeding the ack to "true"; the modal must
     // stay hidden on the first paint.
-    const wrapper = await mountApp({ records: [] })
-    expect(wrapper.find('[data-testid="first-run-modal"]').exists()).toBe(false)
+    await renderApp({ records: [] })
+    expect(screen.queryByTestId('first-run-modal')).not.toBeInTheDocument()
   })
 
   it('keeps the first-run modal hidden across a parse-complete fire', async () => {
     // Defense-in-depth: a runtime event must not flip an
     // already-acknowledged first-run state back on.
-    const wrapper = await mountApp({ records: [] })
-    expect(fireEvent('parse-complete')).toBe(true)
+    await renderApp({ records: [] })
+    expect(fireBackendEvent('parse-complete')).toBe(true)
     await flushPromises()
-    expect(wrapper.find('[data-testid="first-run-modal"]').exists()).toBe(false)
+    expect(screen.queryByTestId('first-run-modal')).not.toBeInTheDocument()
   })
 })
 
@@ -386,19 +404,19 @@ describe('App.vue — tab swap preserves Matches state', () => {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]
-    const wrapper = await mountApp({ records })
+    await renderApp({ records })
     await flushPromises()
 
-    // Initial mount fired one GetMatchResults.
+    // Initial render fired one GetMatchResults.
     const api = mockedApi()
     const mockFn = api.GetMatchResults as ReturnType<typeof vi.fn>
     const initialCalls = mockFn.mock.calls.length
     expect(initialCalls).toBeGreaterThanOrEqual(1)
 
     // Switch to Settings and back to Matches.
-    await wrapper.find('#tab-settings').trigger('click')
+    await fireEvent.click(tab(/Settings/))
     await flushPromises()
-    await wrapper.find('#tab-matches').trigger('click')
+    await fireEvent.click(tab(/Matches/))
     await flushPromises()
 
     // No additional fetch on tab swap — App.vue's `records` ref is
@@ -414,15 +432,15 @@ describe('App.vue — tab swap preserves Matches state', () => {
 // unconfigured OCR engine.
 describe('App.vue — tesseract gate', () => {
   it('renders the System Alert banner when tesseract is not found', async () => {
-    const wrapper = await mountApp({
+    await renderApp({
       records: [],
       tesseract: { found: false, supported: false, error: 'tesseract not on PATH' },
     })
-    expect(wrapper.find('.system-alert').exists()).toBe(true)
+    expect(systemAlert()).toBeInTheDocument()
   })
 
   it('renders no System Alert banner when tesseract is supported', async () => {
-    const wrapper = await mountApp({ records: [], tesseract: { found: true, supported: true } })
-    expect(wrapper.find('.system-alert').exists()).toBe(false)
+    await renderApp({ records: [], tesseract: { found: true, supported: true } })
+    expect(systemAlert()).toBeNull()
   })
 })

@@ -1,23 +1,15 @@
 import { afterAll, afterEach, vi } from 'vitest'
-import { enableAutoUnmount } from '@vue/test-utils'
 import { cleanup } from '@testing-library/vue'
 // Registers the jest-dom matchers (toBeInTheDocument, toBeDisabled, …)
 // on vitest's expect. Static import is safe: it touches only the
 // matcher registry, never the @/api module graph.
 import '@testing-library/jest-dom/vitest'
 
-// Unmount every test-utils wrapper after its test — plain hygiene now that
-// the per-test client reset (below) already stops a stale observer from
-// reaching the next test's cache: it keeps DOM, listeners and timers from
-// piling up across a file. (Retired in the Testing Library migration's
-// final batch — TL's cleanup below covers migrated files.)
-enableAutoUnmount(afterEach)
-
 // Testing Library teardown. TL only auto-registers its cleanup when
 // test.globals is set (it isn't here), so the explicit hook is
 // mandatory — without it every render()'s container div stays in
-// document.body and screen queries start matching stale DOM from
-// earlier tests in the same file.
+// document.body, screen queries start matching stale DOM from earlier
+// tests in the same file, and listeners/timers pile up.
 afterEach(cleanup)
 
 // Fallback fetch for anything a test didn't stub. Two rules:
@@ -87,13 +79,12 @@ afterEach(async () => {
 // cache AND any '@/api' mock registration so the next file starts clean:
 //
 //  - resetModules: a store-/api-importing file caches the module; without a
-//    reset a later mountApp vi.doMock('@/api') can't reach an already-imported
-//    store (App.test then sees 0 GetMatchResults).
+//    reset a later renderApp run can't reach an already-imported store
+//    (App.test then sees 0 GetMatchResults).
 //  - doUnmock: a file with a HOISTED vi.mock('@/api') (MatchesView.test, the
 //    profile/event-stream tests) leaves the mock *registration* in place —
 //    resetModules clears the cache but not the registration, so a later file's
-//    '@/api' re-resolves to that stale mock. (mountApp also doUnmocks at mount
-//    as a second line of defense.)
+//    '@/api' re-resolves to that stale mock.
 //
 // afterAll (not afterEach) so it never fires mid-suite and breaks api.test's
 // static-vs-dynamic `instanceof ApiError`, which only holds within one module

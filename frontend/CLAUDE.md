@@ -119,10 +119,11 @@ NARROW scope — a match edit refetches only `qk.matches`; see
 **Testing a store-reading component**: `vi.mock('@/api', …)` with `importOriginal`
 overriding only the calls the test drives, `setActivePinia(createPinia())`, seed
 the stores via their setters / direct state mutation, `vi.spyOn(store, 'action')`
-BEFORE mount, then assert the spies / api mock / store state — never
-`wrapper.emitted(...)`. (A hoisted `vi.mock('@/api')` still works — it flows
-through `api-client`'s real import.) App-level tests through `mountApp` install
-the mock with `setApiBacking()` on the seam — leak-immune, no module-mock dance;
+BEFORE render, then assert the spies / api mock / store state — never the
+render result's `emitted(...)` (that's for prop/emit leaf components). (A
+hoisted `vi.mock('@/api')` still works — it flows through `api-client`'s real
+import.) App-level tests through `renderApp` install the mock with
+`setApiBacking()` on the seam — leak-immune, no module-mock dance;
 `mockedApi()` returns the installed mock for call-count assertions.
 
 **File layout — group by feature, not flat.** `components/` and `composables/`
@@ -162,7 +163,7 @@ them here.
 
 - **Persisted-preference family** — `ref(default)` + `setX(next)` that writes
   localStorage + an `onMounted` reader. Add a new pref by copying one, and have
-  `mountApp`'s `MountOverrides` seed the matching localStorage key for SFC tests.
+  `renderApp`'s `MountOverrides` seed the matching localStorage key for SFC tests.
   Exemplar: `useTheme`. The shared body lives in `usePersistedRef` — it eager-
   hydrates at setup time (so first render reflects the persisted value) AND
   broadcasts a custom `recall-pref-changed` event on every successful `set()`
@@ -182,8 +183,8 @@ them here.
   and pull their slice via the dossier's query helpers (the dashboard
   panel-options pattern). To add a new configurable knob: extend the widget's schema, the
   widget reads `config.value.<knob>`, the popover renders the new field
-  automatically. Tests use `mountWidget(Component, { dossier, configSeed })`
-  from `test-utils/mountWidget.ts`.
+  automatically. Tests use `renderWidget(Component, { dossier, configSeed })`
+  from `@/test-utils`.
 - **Pure stateful** — view-local filter/sort/derived state exposed as refs +
   computeds. Exemplar: `useMatchesNarrow` (the Matches-view narrow — search,
   picked maps/heroes/roles/results/tags/map-types, preset + custom date range,
@@ -307,7 +308,26 @@ not the wiring:
 
 ## Tests
 
-SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in `frontend/src/test-utils/mountApp.ts` (which installs an api mock via `setApiBacking()` on the `@/api-client` seam, so the Wails/fetch shim never fires). Pattern: `await mountApp({ records: [...] })` then assert on the wrapper's DOM. `mountApp` also exports `fireEvent(name, data?)` for driving captured `EventsOn` handlers (simulating `parse-complete` / `parse-progress`) — pair with `await flushPromises()` for async handlers.
+SFC-level tests use **Testing Library** (`@testing-library/vue` + jest-dom +
+user-event) — `@vue/test-utils` is banned in `src/**/*.test.ts` (eslint
+`no-restricted-imports`; it survives only as a transitive dep of
+`@testing-library/vue`). Query ladder: `getByRole(name)` > `getByLabelText` >
+`getByText` > a justified `querySelector` escape hatch annotated with
+`eslint-disable-next-line testing-library/no-node-access -- <reason>`. App-level
+tests use `renderApp(overrides?)` from `@/test-utils` (installs an api mock via
+`setApiBacking()` on the `@/api-client` seam, so the Wails/fetch shim never
+fires): `await renderApp({ records: [...] })` then assert via `screen`. The
+barrel also exports `fireBackendEvent(name, data?)` for driving captured
+`EventsOn` handlers (simulating `parse-complete` / `parse-progress`) — pair with
+`await flushPromises()` (also from `@/test-utils`) for async handlers — plus
+`renderWidget` for dashboard widgets (fragment roots: query via `screen`, not
+`container`). Import TL query APIs from `@testing-library/vue` (one dom
+instance) and always import the harness from the `@/test-utils` BARREL — the
+eslint plugin's `utils-module: '@/test-utils'` detection keys on that exact
+specifier. Known happy-dom gotcha: user-event's awaited chains can silently
+drop dispatches on store-backed views whose vue-query notify re-renders between
+queued events — fall back to TL `fireEvent` there (equivalent to VTU's old
+`trigger()`).
 
 **Query-cache test hygiene.** The QueryClient is reached ONLY through
 `getQueryClient()` — never a module-level `const` — because it lives in a
@@ -318,7 +338,9 @@ a test's cache clear once). `vitest.setup.ts` installs a FRESH client
 before each test via `resetQueryClient()` (dynamically imported at
 teardown — a static import there would drag the app module graph, and with
 it a real `@/api`, into every file before its own `vi.mock` could apply)
-and auto-unmounts wrappers as plain hygiene. Two rules when a test touches
+and `afterEach(cleanup)` tears down Testing Library renders (test.globals is
+off, so TL's auto-cleanup never self-registers — the explicit hook is
+mandatory). Two rules when a test touches
 server state: (1) **seed the cache BEFORE the store exists** —
 `seedQuery(qk.x, data)` (from `@/test-utils/queryTestUtils`) ahead of the
 first `useXStore()` call means the observer sees fresh data and never

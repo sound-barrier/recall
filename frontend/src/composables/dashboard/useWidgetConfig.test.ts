@@ -5,7 +5,7 @@ import { makeSchema } from '@/dashboard/widget-config-schema'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 
 // happy-dom's localStorage is a no-op without --localstorage-file
-// (vitest's default config doesn't pass it). Mirror mountApp's
+// (vitest's default config doesn't pass it). Mirror renderApp's
 // in-memory shim so the persisted-pref round-trip actually persists.
 function installLocalStorageShim(): Record<string, string> {
   const storage: Record<string, string> = {}
