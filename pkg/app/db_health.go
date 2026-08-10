@@ -15,7 +15,7 @@ var ErrInvalidMaintenanceOp = errors.New("unknown maintenance operation")
 // GetDatabaseHealth runs the read-only health report (integrity check
 // + size/freelist stats). Safe concurrently with a parse — WAL
 // readers don't block the writer.
-func (a *App) GetDatabaseHealth() (db.DBHealth, error) {
+func (a *App) GetDatabaseHealth() (db.Health, error) {
 	return a.store.Health()
 }
 
@@ -24,9 +24,9 @@ func (a *App) GetDatabaseHealth() (db.DBHealth, error) {
 // round-trip. Serialized against the OCR write path exactly like
 // RestoreDatabase: VACUUM takes an exclusive lock for its duration,
 // and running it mid-parse would stall both.
-func (a *App) RunDatabaseMaintenance(operation string) (db.DBHealth, error) {
+func (a *App) RunDatabaseMaintenance(operation string) (db.Health, error) {
 	if _, claimed := a.claimParse(false); !claimed {
-		return db.DBHealth{}, ErrParseInFlight
+		return db.Health{}, ErrParseInFlight
 	}
 	defer a.endParse()
 
@@ -37,10 +37,10 @@ func (a *App) RunDatabaseMaintenance(operation string) (db.DBHealth, error) {
 	case "vacuum":
 		err = a.store.Vacuum()
 	default:
-		return db.DBHealth{}, fmt.Errorf("%w: %q", ErrInvalidMaintenanceOp, operation)
+		return db.Health{}, fmt.Errorf("%w: %q", ErrInvalidMaintenanceOp, operation)
 	}
 	if err != nil {
-		return db.DBHealth{}, err
+		return db.Health{}, err
 	}
 	return a.store.Health()
 }

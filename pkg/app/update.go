@@ -67,7 +67,7 @@ type UpdateInfo struct {
 	// when the Pages fetch succeeded; empty CommitSHA means the Pages
 	// fetch failed (network / Pages outage / invalid version.json) and
 	// the FE shows a "main unreachable" state.
-	GameData GameDataStatus `json:"game_data"`
+	GameData gamedata.Status `json:"game_data"`
 
 	// CanSelfUpdate is true when this install can swap its own binary
 	// in place (desktop Wails build, non-dev, non-macOS, writable exe).
@@ -127,7 +127,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	// hosts (api.github.com vs sound-barrier.github.io) so serial
 	// would double the latency for no benefit. Joined at the end on
 	// success, or drained on the failure path so the goroutine never
-	// leaks; failures collapse to GameDataStatus{} which the FE
+	// leaks; failures collapse to gamedata.Status{} which the FE
 	// renders as "main channel unavailable".
 	gameDataChan := startGameDataFetch()
 
@@ -146,11 +146,11 @@ func (a *App) CheckForUpdate() UpdateInfo {
 
 // startGameDataFetch kicks off the main-channel roster/version probe on a
 // background goroutine, returning the channel its single result lands on.
-func startGameDataFetch() chan GameDataStatus {
-	ch := make(chan GameDataStatus, 1)
+func startGameDataFetch() chan gamedata.Status {
+	ch := make(chan gamedata.Status, 1)
 	go func() {
 		defer applog.RecoverPanic("update")
-		ch <- gamedata.Status(appBaseDir())
+		ch <- gamedata.FetchStatus(appBaseDir())
 	}()
 	return ch
 }

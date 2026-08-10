@@ -13,7 +13,7 @@ var (
 // ComputeGameDataStatusForTest wraps computeGameDataStatus with a constructed
 // mainVersion so the external test can exercise the roster-diff → has_update
 // contract without touching the unexported mainVersion type.
-func ComputeGameDataStatusForTest(baseDir, commitSHA, committedAt string, heroes, maps, sources []string, seasonsYAML string) GameDataStatus {
+func ComputeGameDataStatusForTest(baseDir, commitSHA, committedAt string, heroes, maps, sources []string, seasonsYAML string) Status {
 	var seasons []seasonMeta
 	if seasonsYAML != "" {
 		seasons = parseSeasonMetas([]byte(seasonsYAML))

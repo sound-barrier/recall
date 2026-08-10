@@ -28,7 +28,7 @@ func TestFirstExistingCandidate_FindsFirstMatch(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 
-	tried := probe.ProbeCandidates()
+	tried := probe.Candidates()
 	if len(tried) == 0 {
 		t.Skipf("no probe candidates on %s; nothing to assert", runtime.GOOS)
 	}
@@ -61,7 +61,7 @@ func TestFirstExistingCandidate_EmptyHomeReturnsNotFound(t *testing.T) {
 	// Sanity: probeCandidates produces an under-HOME list — defensive
 	// check kept from the old test so a regression that points the
 	// probe at the real user home still fails loudly.
-	for _, p := range probe.ProbeCandidates() {
+	for _, p := range probe.Candidates() {
 		if !filepath.IsAbs(p) {
 			t.Errorf("candidate %q is not absolute", p)
 		}

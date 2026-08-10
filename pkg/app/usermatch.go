@@ -94,35 +94,35 @@ func (a *App) ResetMatchData(matchKey string) error {
 // match (so the user picks a different minute), writes the override row plus the
 // queue / play-mode aux rows, and returns the aggregated record. The right-side
 // detail-panel choosers then work unchanged — they key on match_key.
-func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.MatchRecord, error) {
+func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.Record, error) {
 	if err := a.assertActiveMutable(); err != nil {
-		return match.MatchRecord{}, err
+		return match.Record{}, err
 	}
 	key, data, err := buildManualMatch(input)
 	if err != nil {
-		return match.MatchRecord{}, err
+		return match.Record{}, err
 	}
 	exists, err := a.store.MatchKeyExists(key)
 	if err != nil {
-		return match.MatchRecord{}, err
+		return match.Record{}, err
 	}
 	if exists {
-		return match.MatchRecord{}, ErrMatchKeyExists
+		return match.Record{}, ErrMatchKeyExists
 	}
 	if err := a.store.UpsertUserMatchData(data); err != nil {
-		return match.MatchRecord{}, err
+		return match.Record{}, err
 	}
 	// Both aux rows are skipped when omitted — a quick-add knows the map and
 	// the outcome, not how the game was queued, and writing "" would claim it
 	// did. The detail-panel choosers can set them later.
 	if input.PlayMode != "" {
 		if err := a.store.SetMatchPlayMode(key, input.PlayMode); err != nil {
-			return match.MatchRecord{}, err
+			return match.Record{}, err
 		}
 	}
 	if input.QueueType != "" {
 		if err := a.store.SetMatchQueue(key, input.QueueType); err != nil {
-			return match.MatchRecord{}, err
+			return match.Record{}, err
 		}
 	}
 	// Disruption sides + the optional annotation fields (replay code / note /
@@ -139,12 +139,12 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.MatchRecord
 			Tags:       input.Tags,
 			Members:    input.Members,
 		}); err != nil {
-			return match.MatchRecord{}, err
+			return match.Record{}, err
 		}
 	}
 	rec, err := a.GetMatchByKey(key)
 	if err != nil {
-		return match.MatchRecord{}, err
+		return match.Record{}, err
 	}
 	a.emitMatchUpdated(rec)
 	return rec, nil

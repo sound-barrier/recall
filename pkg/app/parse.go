@@ -448,7 +448,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	ev.MatchKey = key
 	// The pre-insert aggregate for this key, from the carried snapshot —
 	// the correction tallies diff against it after the write lands.
-	beforeRec, beforeOk := aggregate.AggregateMatchKey(key, st.snap, st.annos, st.hidden, st.reviews, st.pinned)
+	beforeRec, beforeOk := aggregate.MatchKey(key, st.snap, st.annos, st.hidden, st.reviews, st.pinned)
 
 	if err := a.insertParsed(filename, key, ev.Type, st.dirID, result); err != nil {
 		ev.Error = "insert: " + err.Error()
@@ -480,8 +480,8 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 // corrections. New matches (no pre-insert aggregate) still count as
 // updated — they emerged from this run; corrections only fire when both
 // sides resolve a record and the field changed.
-func (st *parseRunState) recordMatchUpdate(key string, beforeRec match.MatchRecord, beforeOk bool) {
-	rec, ok := aggregate.AggregateMatchKey(key, st.snap, st.annos, st.hidden, st.reviews, st.pinned)
+func (st *parseRunState) recordMatchUpdate(key string, beforeRec match.Record, beforeOk bool) {
+	rec, ok := aggregate.MatchKey(key, st.snap, st.annos, st.hidden, st.reviews, st.pinned)
 	if !ok {
 		return
 	}

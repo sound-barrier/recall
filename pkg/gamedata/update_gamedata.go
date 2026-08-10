@@ -13,9 +13,9 @@ import (
 	"recall/pkg/parser"
 )
 
-// RosterDiff is the shared shape GameDataStatus embeds. Mirrors the
+// RosterDiff is the shared shape Status embeds. Mirrors the
 // OpenAPI `RosterDiff` schema (factored via `allOf` from
-// `GameDataStatus`). Embedding here is the Go-side equivalent of
+// `Status`). Embedding here is the Go-side equivalent of
 // allOf composition: the JSON output is flat (no `roster_diff`
 // wrapper key) because Go's `json` package promotes embedded-struct
 // fields to the outer level by default.
@@ -35,12 +35,12 @@ type RosterDiff struct {
 	ChangedSeasons []string `json:"changed_seasons,omitempty"`
 }
 
-// GameDataStatus tracks the live main channel. CommitSHA /
+// Status tracks the live main channel. CommitSHA /
 // AppliedCommit identify the published vs applied main commits;
 // HasUpdate (inherited from RosterDiff) is true whenever they differ.
 // CommitSHA is empty when the Pages fetch fails — the FE uses an
 // empty CommitSHA as the "main channel unavailable" signal.
-type GameDataStatus struct {
+type Status struct {
 	RosterDiff
 	CommitSHA     string `json:"commit_sha"`
 	CommittedAt   string `json:"committed_at,omitempty"`
@@ -290,7 +290,7 @@ func fetchMainAsset(client *http.Client, name string, decode func([]byte) []stri
 // Status fetches the main-channel version + rosters and diffs them
 // against the local manifest + currently-loaded parser tables. The
 // one-call surface the app shell's background game-data probe uses.
-func Status(baseDir string) GameDataStatus {
+func FetchStatus(baseDir string) Status {
 	// Same client across version.json + all three rosters + sidecars —
 	// eight sequential GETs to one Pages host per background probe.
 	client := NewUpdateClient()
@@ -301,17 +301,17 @@ func Status(baseDir string) GameDataStatus {
 }
 
 // computeGameDataStatus reads the local manifest + currently-loaded
-// rosters and returns a GameDataStatus showing what's different
+// rosters and returns a Status showing what's different
 // between the user's applied main commit (per manifest) and the
-// freshly-fetched main rosters. Returns an empty GameDataStatus
+// freshly-fetched main rosters. Returns an empty Status
 // (CommitSHA="") when the Pages fetch failed — the FE uses CommitSHA
 // as the "main channel reachable" gate.
-func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, sources []string, seasons []seasonMeta) GameDataStatus {
+func computeGameDataStatus(baseDir string, ver mainVersion, heroes, maps, sources []string, seasons []seasonMeta) Status {
 	if ver.CommitSHA == "" {
-		return GameDataStatus{}
+		return Status{}
 	}
 	manifest, _ := LoadManifest(baseDir)
-	gd := GameDataStatus{
+	gd := Status{
 		CommitSHA:     shortenCommitSHA(ver.CommitSHA),
 		CommittedAt:   ver.CommittedAt,
 		AppliedCommit: manifest.AppliedMainCommit,

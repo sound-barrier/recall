@@ -96,7 +96,7 @@ func TestApp_HardDeleteMatch_DelegatesAndValidates(t *testing.T) {
 
 func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 	// Two rows for the same match_key: a SUMMARY + a TEAMS. The
-	// aggregator must fuse them into one MatchRecord with both halves
+	// aggregator must fuse them into one match.Record with both halves
 	// of the data.
 	fs := &fakeStore{
 		Summaries: []db.SummaryRow{{
@@ -307,7 +307,7 @@ func TestApp_HideMatch_DelegatesToStore(t *testing.T) {
 
 func TestApp_GetMatchResults_TagsHiddenMatches(t *testing.T) {
 	// When a match_key is in hidden_matches, the aggregator must set
-	// MatchRecord.Hidden = true so the frontend can dim or filter.
+	// match.Record.Hidden = true so the frontend can dim or filter.
 	fs := &fakeStore{
 		Teams: []db.TeamsRow{
 			{ID: 1, Filename: "a.png", MatchKey: "m1", Eliminations: 1},

@@ -18,7 +18,7 @@ CLI shelled out to. The user is a competitive OW player who wants the tool to
 surface what they're good/bad at by hero/map/type.
 
 Data flow at a glance: `screenshots/*.png` → Tesseract/parser → SQLite per-type
-tables (source of truth) → read-time aggregation into `MatchRecord` → Wails/Vue
+tables (source of truth) → read-time aggregation into `match.Record` → Wails/Vue
 UI (dossier + Trends charts). Full pipeline + write/read paths live in
 `.claude/rules/database.md`.
 

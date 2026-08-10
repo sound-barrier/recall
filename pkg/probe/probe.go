@@ -10,12 +10,12 @@ import (
 	"recall/pkg/parser"
 )
 
-// ProbeResult is what `GetProbeResult` / the Detect Overwatch Folder
+// Result is what `GetProbeResult` / the Detect Overwatch Folder
 // button surfaces to the UI. `Path` is the first existing candidate
 // directory; empty when nothing matched. `Tried` lists every path
 // the probe checked, in order — useful diagnostic context to render
 // under the "No default found" state.
-type ProbeResult struct {
+type Result struct {
 	Found bool     `json:"found"`
 	Path  string   `json:"path"`
 	Tried []string `json:"tried"`
@@ -55,7 +55,7 @@ type NamedCandidate struct {
 // helper is the all-platform single-best variant for the
 // startup-quiet code path.
 func FirstExistingCandidate() (string, bool) {
-	for _, p := range ProbeCandidates() {
+	for _, p := range Candidates() {
 		if DirExists(p) {
 			return p, true
 		}
@@ -63,7 +63,7 @@ func FirstExistingCandidate() (string, bool) {
 	return "", false
 }
 
-// ProbeCandidates returns the ordered list of paths to try, derived
+// Candidates returns the ordered list of paths to try, derived
 // from the current OS and the user's $HOME. Each entry points at
 // the directory OW2 writes screenshots into by default — not the
 // parent Documents dir.
@@ -78,7 +78,7 @@ func FirstExistingCandidate() (string, bool) {
 //   - Linux:  Steam Proton wraps OW2 in a Wine prefix at
 //     `~/.steam/steam/steamapps/compatdata/2357570/pfx/...`. Direct
 //     Wine + Lutris installs land under `~/.wine/...`.
-func ProbeCandidates() []string {
+func Candidates() []string {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return nil

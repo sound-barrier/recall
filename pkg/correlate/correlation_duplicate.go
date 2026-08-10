@@ -98,7 +98,7 @@ func FindDuplicateMatches(newKey string, snap db.Screenshots) []db.AmbiguousCand
 		if r.MatchKey == newKey {
 			continue
 		}
-		if mk, err := match.ParseMatchKey(r.MatchKey); err != nil || !mk.IsTracked() {
+		if mk, err := match.ParseKey(r.MatchKey); err != nil || !mk.IsTracked() {
 			continue
 		}
 		l := statLineOf(r)

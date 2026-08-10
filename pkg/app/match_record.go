@@ -36,11 +36,11 @@ func (a *App) GetNewScreenshotCount() (int, error) {
 	return len(pending), nil
 }
 
-// GetMatchResults returns one match.MatchRecord per match, aggregated from
+// GetMatchResults returns one match.Record per match, aggregated from
 // the per-screenshot tables. Read-time inference (aggregate.InferSoleHeroPercent,
 // aggregate.InferResultFromRank) applies after aggregation; the source DB rows
 // are never mutated.
-func (a *App) GetMatchResults() ([]match.MatchRecord, error) {
+func (a *App) GetMatchResults() ([]match.Record, error) {
 	recs, err := a.aggregateAll()
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (a *App) GetMatchResults() ([]match.MatchRecord, error) {
 	return recs, nil
 }
 
-// GetMatchByKey returns a single aggregated match.MatchRecord. Reuses the
+// GetMatchByKey returns a single aggregated match.Record. Reuses the
 // same aggregateAll pipeline as GetMatchResults (so the inference
 // + child-table folding semantics are identical), then filters to
 // the requested key. Returns match.ErrMatchNotFound if no row matches.
@@ -63,17 +63,17 @@ func (a *App) GetMatchResults() ([]match.MatchRecord, error) {
 // table with a `WHERE match_key = ?` filter. Not done yet because
 // the current corpus sizes are small and the predictable shape (one
 // aggregator) is worth the duplication cost.
-func (a *App) GetMatchByKey(matchKey string) (match.MatchRecord, error) {
+func (a *App) GetMatchByKey(matchKey string) (match.Record, error) {
 	recs, err := a.GetMatchResults()
 	if err != nil {
-		return match.MatchRecord{}, err
+		return match.Record{}, err
 	}
 	for _, r := range recs {
 		if r.MatchKey == matchKey {
 			return r, nil
 		}
 	}
-	return match.MatchRecord{}, match.ErrMatchNotFound
+	return match.Record{}, match.ErrMatchNotFound
 }
 
 // ClearDatabase deletes every row across every per-type table. The

@@ -143,7 +143,7 @@ func TestAttachQueues_PopulatesQueueType(t *testing.T) {
 		"k1": {QueueType: "role", OverriddenAt: "2026-06-01T10:00:00Z"},
 		"k3": {QueueType: "open", OverriddenAt: "2026-05-30T08:15:00Z"},
 	}
-	recs := []match.MatchRecord{
+	recs := []match.Record{
 		{MatchKey: "k1"},
 		{MatchKey: "k2"},
 		{MatchKey: "k3"},

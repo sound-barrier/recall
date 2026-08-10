@@ -7,7 +7,7 @@ import (
 )
 
 // aggregateAll bulk-reads every screenshot row, groups by match_key,
-// folds each group into one match.MatchRecord via correlate.MergeMatchResult, and runs
+// folds each group into one match.Record via correlate.MergeMatchResult, and runs
 // the read-time inference helpers.
 //
 // Read-time only: never mutates DB rows. The same precedence rules
@@ -36,7 +36,7 @@ func (a *App) reAggregateUnknowns() (int, error) {
 	return a.store.ReAggregateUnknowns(parser.FirstKnownHeroIn, parser.FirstKnownMapIn)
 }
 
-func (a *App) aggregateAll() ([]match.MatchRecord, error) {
+func (a *App) aggregateAll() ([]match.Record, error) {
 	snap, err := a.store.LoadAll()
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (a *App) aggregateAll() ([]match.MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	recs := aggregate.AggregateScreenshots(snap)
+	recs := aggregate.Screenshots(snap)
 	recs = aggregate.SynthesizeManualMatches(recs, userData)
 	aggregate.AttachUserData(recs, userData)
 	aggregate.AttachAnnotations(recs, annos)

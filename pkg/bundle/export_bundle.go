@@ -36,11 +36,11 @@ const exportSchemaV2 = "recall-export/v2"
 // Exported so cmd/bug-finder can validate by-version.
 const BundleSchemaV1 = "recall-bundle/v1"
 
-// BundleManifestV1 is the on-disk shape of the bundle's
+// ManifestV1 is the on-disk shape of the bundle's
 // `manifest.json`. Captures provenance + the screenshot ↔ match_key
 // mapping for sanity-checking after restore. Exported so
 // cmd/bug-finder can deserialize without redefining the schema.
-type BundleManifestV1 struct {
+type ManifestV1 struct {
 	Schema          string            `json:"schema"`
 	ExportedAt      string            `json:"exported_at"`
 	RecallVersion   string            `json:"recall_version"`
@@ -51,7 +51,7 @@ type BundleManifestV1 struct {
 	Screenshots     map[string]string `json:"screenshots"`
 }
 
-// BundleDataV2 is the on-disk shape of the bundle's `data.json`. The five
+// DataV2 is the on-disk shape of the bundle's `data.json`. The five
 // OCR row tables plus the user layer (v2 additions); it DOES NOT carry
 // the screenshots_dirs map — those paths leak the user's filesystem. On
 // restore via `POST /api/v1/imports`, the rows' `ScreenshotsDirID`
@@ -61,7 +61,7 @@ type BundleManifestV1 struct {
 // A v1 payload unmarshals into this struct with empty user-layer
 // sections — the OCR field names are unchanged — so the import path
 // handles both schemas through one type.
-type BundleDataV2 struct {
+type DataV2 struct {
 	Schema        string           `json:"schema"`
 	ExportedAt    string           `json:"exported_at"`
 	RecallVersion string           `json:"recall_version"`
@@ -116,7 +116,7 @@ type ExportBundleOptions struct {
 // The bundle never streams to disk — it's built in-memory and
 // returned. The HTTP server uses the bytes as the response body;
 // Wails mode threads them into a SaveFileDialog → os.WriteFile.
-func Export(store db.Store, opts ExportBundleOptions, recs []match.MatchRecord, screenshotsDir, version string) ([]byte, error) {
+func Export(store db.Store, opts ExportBundleOptions, recs []match.Record, screenshotsDir, version string) ([]byte, error) {
 	// recs come from the shell's GetMatchResults() — the same
 	// aggregator the Matches view consumes, so the "unknown" and
 	// "hidden" definitions stay in lockstep with the UI.
@@ -160,7 +160,7 @@ func Export(store db.Store, opts ExportBundleOptions, recs []match.MatchRecord, 
 
 // bundleIncludeSet builds the set of match_keys the bundle covers: the
 // explicit keys plus (when toggled) every unknown / hidden match.
-func bundleIncludeSet(opts ExportBundleOptions, recs []match.MatchRecord) map[string]struct{} {
+func bundleIncludeSet(opts ExportBundleOptions, recs []match.Record) map[string]struct{} {
 	include := make(map[string]struct{}, len(opts.MatchKeys))
 	for _, k := range opts.MatchKeys {
 		include[k] = struct{}{}
@@ -220,7 +220,7 @@ func bundleScreenshotMap(t parentTables) map[string]string {
 // filesystem path; restore via POST /api/v1/imports remaps every row's
 // ScreenshotsDirID to 0 (use configured dir).
 func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, exportedAt, version string, now time.Time) error {
-	dataDoc := BundleDataV2{
+	dataDoc := DataV2{
 		Schema:        exportSchemaV2,
 		ExportedAt:    exportedAt,
 		RecallVersion: version,
@@ -385,7 +385,7 @@ func copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Screenshots, 
 // screenshots copy so its `screenshots` map reflects what actually landed
 // in the ZIP.
 func writeBundleManifest(zw *zip.Writer, opts ExportBundleOptions, include map[string]struct{}, screenshots map[string]string, exportedAt, version string, now time.Time) error {
-	mf := BundleManifestV1{
+	mf := ManifestV1{
 		Schema:          BundleSchemaV1,
 		ExportedAt:      exportedAt,
 		RecallVersion:   version,

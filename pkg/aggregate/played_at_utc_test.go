@@ -7,7 +7,7 @@ import (
 	"recall/pkg/db"
 )
 
-// The canonical played_at_utc on a summary row reaches MatchRecord.Data, and a
+// The canonical played_at_utc on a summary row reaches match.Record.Data, and a
 // user_match_data override wins (manual matches + edits).
 func TestAggregate_PlayedAtUTC_FromSummaryAndOverride(t *testing.T) {
 	utc := "2026-05-11T03:29:00Z"
@@ -17,7 +17,7 @@ func TestAggregate_PlayedAtUTC_FromSummaryAndOverride(t *testing.T) {
 			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29", PlayedAtUTC: &utc,
 		}},
 	}
-	recs := aggregate.AggregateScreenshots(snap)
+	recs := aggregate.Screenshots(snap)
 	if len(recs) != 1 {
 		t.Fatalf("want 1 record, got %d", len(recs))
 	}

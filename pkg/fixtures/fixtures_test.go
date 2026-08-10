@@ -663,7 +663,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 	// its own filename — the parser's convention for files without a
 	// resolvable timestamp.
 	for _, u := range fx.Unknowns {
-		mk, err := match.ParseMatchKey(u.MatchKey)
+		mk, err := match.ParseKey(u.MatchKey)
 		if err != nil || !mk.IsUnmatched() {
 			t.Errorf("unknown %s has non-unmatched key %q", u.Filename, u.MatchKey)
 		}
@@ -674,7 +674,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 	// tracked match_keys from the main corpus.
 	trackedSet := make(map[string]bool, len(fx.Summaries))
 	for _, s := range fx.Summaries {
-		if mk, err := match.ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
+		if mk, err := match.ParseKey(s.MatchKey); err == nil && mk.IsTracked() {
 			trackedSet[s.MatchKey] = true
 		}
 	}
@@ -691,7 +691,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 			t.Errorf("ambiguous %s has no companion teams row", a.Filename)
 			continue
 		}
-		mk, err := match.ParseMatchKey(gotKey)
+		mk, err := match.ParseKey(gotKey)
 		if err != nil || !mk.IsAmbiguous() {
 			t.Errorf("ambiguous %s companion teams key %q isn't ambiguous-shaped", a.Filename, gotKey)
 		}

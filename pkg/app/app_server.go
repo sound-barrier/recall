@@ -24,10 +24,10 @@ func (a *App) emitWatchActivity(ev WatchActivityEvent) {
 	a.SSEHub.BroadcastData("watch-activity", string(data))
 }
 
-// emitMatchUpdated broadcasts a freshly-aggregated match.MatchRecord to SSE
+// emitMatchUpdated broadcasts a freshly-aggregated match.Record to SSE
 // subscribers. Counterpart to the Wails build's variant — same wire
 // shape, server-only emit path.
-func (a *App) emitMatchUpdated(rec match.MatchRecord) {
+func (a *App) emitMatchUpdated(rec match.Record) {
 	data, _ := json.Marshal(rec)
 	a.SSEHub.BroadcastData("match-updated", string(data))
 }

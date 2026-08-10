@@ -12,7 +12,7 @@ import (
 // live filesystem, so a data-only import or a deleted/moved screenshot leaves
 // ThumbnailFile empty and the UI shows no preview rather than requesting a URL
 // it knows will 404.
-func (a *App) attachThumbnails(recs []match.MatchRecord) {
+func (a *App) attachThumbnails(recs []match.Record) {
 	dirFiles := map[string]map[string]bool{} // resolved dir -> set of basenames
 	dirByID := map[int64]string{}            // dir-id -> resolved dir (memoized)
 
@@ -53,7 +53,7 @@ func (a *App) attachThumbnails(recs []match.MatchRecord) {
 // pickThumbnail returns the first source file present on disk, preferring the
 // SUMMARY screenshot (the most recognizable thumbnail), then TEAMS, then any
 // remaining source file. Empty when the match has no on-disk image.
-func pickThumbnail(rec match.MatchRecord, onDisk func(dirID int64, filename string) bool) string {
+func pickThumbnail(rec match.Record, onDisk func(dirID int64, filename string) bool) string {
 	exists := func(f string) bool { return onDisk(rec.SourceDirIDs[f], f) }
 
 	var summary, teams string

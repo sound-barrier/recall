@@ -76,13 +76,13 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 // present locally (the same skip-existing rule the parent rows follow).
 // Returns how many MANUAL matches it imported — keys that exist only in
 // the user layer, which the parent-row partition can't count.
-func importUserLayer(store db.Store, data BundleDataV2, existing map[string]struct{}) (int, error) {
+func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) (int, error) {
 	skip := func(k string) bool {
 		_, ok := existing[k]
 		return ok
 	}
 	incomingParents := map[string]struct{}{}
-	for k := range dataMatchKeys(BundleDataV2{
+	for k := range dataMatchKeys(DataV2{
 		Summaries: data.Summaries, Teams: data.Teams, Personals: data.Personals,
 		Ranks: data.Ranks, Unknowns: data.Unknowns,
 	}) {
@@ -146,34 +146,34 @@ func importUserLayer(store db.Store, data BundleDataV2, existing map[string]stru
 // readBundleData extracts and validates the data.json out of a bundle ZIP. A
 // payload that isn't a readable bundle wraps ErrImportMalformed (→ 400); a
 // readable-but-wrong-schema bundle is a plain error (→ 409).
-func readBundleData(payload []byte) (BundleDataV2, error) {
+func readBundleData(payload []byte) (DataV2, error) {
 	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
-		return BundleDataV2{}, fmt.Errorf("%w: open zip: %w", ErrImportMalformed, err)
+		return DataV2{}, fmt.Errorf("%w: open zip: %w", ErrImportMalformed, err)
 	}
 	manifestBytes, err := readZipFile(zr, "manifest.json")
 	if err != nil {
-		return BundleDataV2{}, fmt.Errorf("%w: missing manifest.json: %w", ErrImportMalformed, err)
+		return DataV2{}, fmt.Errorf("%w: missing manifest.json: %w", ErrImportMalformed, err)
 	}
 	var mf struct {
 		Schema string `json:"schema"`
 	}
 	if err := json.Unmarshal(manifestBytes, &mf); err != nil {
-		return BundleDataV2{}, fmt.Errorf("%w: manifest decode: %w", ErrImportMalformed, err)
+		return DataV2{}, fmt.Errorf("%w: manifest decode: %w", ErrImportMalformed, err)
 	}
 	if mf.Schema != BundleSchemaV1 {
-		return BundleDataV2{}, fmt.Errorf("import: unsupported bundle schema %q (this build expects %q)", mf.Schema, BundleSchemaV1)
+		return DataV2{}, fmt.Errorf("import: unsupported bundle schema %q (this build expects %q)", mf.Schema, BundleSchemaV1)
 	}
 	dataBytes, err := readZipFile(zr, "data.json")
 	if err != nil {
-		return BundleDataV2{}, fmt.Errorf("%w: missing data.json: %w", ErrImportMalformed, err)
+		return DataV2{}, fmt.Errorf("%w: missing data.json: %w", ErrImportMalformed, err)
 	}
-	var data BundleDataV2
+	var data DataV2
 	if err := json.Unmarshal(dataBytes, &data); err != nil {
-		return BundleDataV2{}, fmt.Errorf("import: data.json decode: %w", err)
+		return DataV2{}, fmt.Errorf("import: data.json decode: %w", err)
 	}
 	if data.Schema != exportSchemaV1 && data.Schema != exportSchemaV2 {
-		return BundleDataV2{}, fmt.Errorf("import: unsupported data schema %q (this build accepts %q and %q)", data.Schema, exportSchemaV1, exportSchemaV2)
+		return DataV2{}, fmt.Errorf("import: unsupported data schema %q (this build accepts %q and %q)", data.Schema, exportSchemaV1, exportSchemaV2)
 	}
 	return data, nil
 }

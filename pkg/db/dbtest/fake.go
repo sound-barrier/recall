@@ -287,8 +287,8 @@ func (f *Fake) UpsertUnknown(r db.UnknownRow) error {
 // Health reports a canned always-ok snapshot — the Fake has no file
 // to stat and nothing to corrupt. CheckedAt is fixed so tests are
 // deterministic.
-func (f *Fake) Health() (db.DBHealth, error) {
-	return db.DBHealth{Integrity: "ok", CheckedAt: "2026-01-01T00:00:00Z"}, nil
+func (f *Fake) Health() (db.Health, error) {
+	return db.Health{Integrity: "ok", CheckedAt: "2026-01-01T00:00:00Z"}, nil
 }
 
 // Optimize is a no-op — nothing to analyze in memory. Calls are

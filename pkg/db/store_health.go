@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// DBHealth is the point-in-time report behind Settings → Advanced →
+// Health is the point-in-time report behind Settings → Advanced →
 // Database health. Integrity carries "ok" or the FIRST problem line
 // integrity_check reported — surfacing one real problem beats a
 // truncated wall of them; the user's next step (restore a backup)
 // is the same either way.
-type DBHealth struct {
+type Health struct {
 	Integrity     string `json:"integrity"`
 	SizeBytes     int64  `json:"size_bytes"`
 	WALBytes      int64  `json:"wal_bytes"`
@@ -23,8 +23,8 @@ type DBHealth struct {
 // Health runs PRAGMA integrity_check plus the size/freelist pragmas
 // and stats the database + WAL files. Read-only; safe concurrently
 // with a parse (WAL readers don't block the writer).
-func (s *SQLStore) Health() (DBHealth, error) {
-	h := DBHealth{CheckedAt: time.Now().UTC().Format(time.RFC3339)}
+func (s *SQLStore) Health() (Health, error) {
+	h := Health{CheckedAt: time.Now().UTC().Format(time.RFC3339)}
 
 	if err := s.db.QueryRow("PRAGMA integrity_check").Scan(&h.Integrity); err != nil {
 		return h, fmt.Errorf("health: integrity check: %w", err)

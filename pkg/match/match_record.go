@@ -6,11 +6,11 @@ import (
 	"recall/pkg/parser"
 )
 
-// MatchRecord is the per-match shape returned by GetMatchResults.
+// Record is the per-match shape returned by GetMatchResults.
 // It's assembled at read time by aggregation, which fuses every
 // per-type screenshot row that shares a match_key. No `id` field —
 // the previous single-table primary key is gone; match_key is identity.
-type MatchRecord struct {
+type Record struct {
 	MatchKey       string            `json:"match_key"`
 	SourceFiles    []string          `json:"source_files"`
 	SourceTypes    map[string]string `json:"source_types,omitempty"`
@@ -48,7 +48,7 @@ type MatchRecord struct {
 	// User-curated annotation. Currently only `leaver` is surfaced in
 	// the UI ("self" | "team" | "enemy"); empty string means no
 	// annotation. Note is reserved for future per-match commentary.
-	Annotation *MatchAnnotation `json:"annotation,omitempty"`
+	Annotation *Annotation `json:"annotation,omitempty"`
 	// True iff the user soft-deleted this match. Omitted from the JSON
 	// when false (the common case). Hidden matches are filtered out of
 	// GetMatchResults by default — the frontend opts back in via the
@@ -93,7 +93,7 @@ type MatchRecord struct {
 	Candidates []AmbiguousAttribution `json:"candidates,omitempty"`
 }
 
-// Match provenance values for MatchRecord.Source.
+// Match provenance values for Record.Source.
 const (
 	SourceOCR       = "ocr"        // parsed from screenshots, unedited
 	SourceOCREdited = "ocr_edited" // parsed, then user-corrected
@@ -120,8 +120,8 @@ type AmbiguousAttribution struct {
 	RepresentativeDirID      int64  `json:"representative_dir_id,omitempty"`
 }
 
-// MatchAnnotation is the per-match user note returned alongside
-// MatchRecord. Mirrors the db.Annotation shape but lives in the domain
+// Annotation is the per-match user note returned alongside
+// Record. Mirrors the db.Annotation shape but lives in the domain
 // layer so the JSON contract doesn't leak SQL field names.
 //
 // Every user-settable field (leavers / throwers / note / replay_code /
@@ -132,7 +132,7 @@ type AmbiguousAttribution struct {
 // `leavers` and `throwers` are SETS of "self" / "team" / "enemy" — a match can
 // be disrupted on both teams at once. They are always present on the wire (no
 // omitempty) so clients can read `.length` without a nil check.
-type MatchAnnotation struct {
+type Annotation struct {
 	Leavers     []string `json:"leavers"`
 	Throwers    []string `json:"throwers"`
 	Note        string   `json:"note,omitempty"`

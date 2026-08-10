@@ -9,7 +9,7 @@ import "fmt"
 //
 // SetMatchPlayMode is an idempotent upsert; ClearMatchPlayMode is a
 // targeted delete; LoadMatchPlayModes returns the full snapshot the
-// aggregator merges into MatchRecord at read time.
+// aggregator merges into match.Record at read time.
 //
 // The CHECK constraint on the play_mode column ('quickplay' |
 // 'competitive') is the source of truth for the enum; the App layer

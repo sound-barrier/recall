@@ -66,7 +66,7 @@ func (st *parseRunState) runCreatedTrackedKeys() []createdKey {
 		if _, existed := st.preRunKeys[key]; existed {
 			return
 		}
-		if mk, err := match.ParseMatchKey(key); err != nil || !mk.IsTracked() {
+		if mk, err := match.ParseKey(key); err != nil || !mk.IsTracked() {
 			return
 		}
 		ts, ok := correlate.ParseFilenameTimestamp(filename)
@@ -137,7 +137,7 @@ func (st *parseRunState) demoteDuplicate(c createdKey, cands []db.AmbiguousCandi
 		delete(st.matchesUpdated, c.key)
 		st.matchesUpdated[sentinel] = struct{}{}
 	}
-	if rec, found := aggregate.AggregateMatchKey(sentinel, st.snap, st.annos, st.hidden, st.reviews, st.pinned); found {
+	if rec, found := aggregate.MatchKey(sentinel, st.snap, st.annos, st.hidden, st.reviews, st.pinned); found {
 		st.app.emitMatchUpdated(rec)
 	}
 	return true

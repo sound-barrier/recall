@@ -286,7 +286,7 @@ type Screenshots struct {
 
 	// ScreenshotsDirs maps screenshots_dirs.id → path so the aggregator
 	// can validate per-row dirIDs before populating SourceDirIDs on
-	// each MatchRecord (stale FKs whose path was deleted yield no
+	// each match.Record (stale FKs whose path was deleted yield no
 	// URL — the client falls back to the configured dir).
 	ScreenshotsDirs map[int64]string
 
