@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import type { MatchRecord } from '@/api'
 import type { SearchClause } from '@/match/search-query'
@@ -44,8 +45,8 @@ function rec(over: Partial<MatchRecord['data']> = {}, key = 'm-1'): MatchRecord 
   } as unknown as MatchRecord
 }
 
-function mountRow(props: Partial<Record<string, unknown>> = {}) {
-  return mount(MatchTableRow, {
+function renderRow(props: Partial<Record<string, unknown>> = {}) {
+  return render(MatchTableRow, {
     props: {
       rec: rec(),
       cardIndex: 0,
@@ -61,62 +62,65 @@ function mountRow(props: Partial<Record<string, unknown>> = {}) {
 
 describe('MatchTableRow', () => {
   it('renders a <tr> carrying the keyboard-nav data attributes', () => {
-    const w = mountRow({ cardIndex: 3 })
-    const tr = w.find('tr.table-row')
-    expect(tr.exists()).toBe(true)
-    expect(tr.attributes('data-match-key')).toBe('m-1')
-    expect(tr.attributes('data-card-index')).toBe('3')
+    renderRow({ cardIndex: 3 })
+    const row = screen.getByRole('row')
+    expect(row).toHaveAttribute('data-match-key', 'm-1')
+    expect(row).toHaveAttribute('data-card-index', '3')
   })
 
   it('renders the map, split E/A/D cells, and a result chip tinted by outcome', () => {
-    const w = mountRow({ rec: rec({ result: 'defeat' }) })
-    expect(w.find('.tc-map').text()).toContain('rialto')
+    renderRow({ rec: rec({ result: 'defeat' }) })
+    expect(screen.getByText('rialto')).toBeInTheDocument()
     // E/A/D each own a column now, not one slash-joined cell.
-    expect(w.find('.tc-elim').text()).toBe('20')
-    expect(w.find('.tc-assist').text()).toBe('10')
-    expect(w.find('.tc-death').text()).toBe('8')
-    expect(w.find('.tc-stats').exists()).toBe(false)
-    const chip = w.find('.tc-result-chip')
-    expect(chip.classes()).toContain('result-defeat')
+    expect(screen.getByText('20')).toBeInTheDocument()
+    expect(screen.getByText('10')).toBeInTheDocument()
+    expect(screen.getByText('8')).toBeInTheDocument()
+    expect(screen.queryByText('20 / 10 / 8')).not.toBeInTheDocument()
+    expect(screen.getByTitle('Filter the set to defeat')).toHaveClass('result-defeat')
   })
 
   it('splits play-mode and queue into their own cells', () => {
-    const w = mountRow({
+    renderRow({
       rec: { ...rec(), play_mode: 'competitive', queue_type: 'role' } as MatchRecord,
     })
-    expect(w.find('.tc-mode .tc-chip').text()).toBe('Competitive')
-    expect(w.find('.tc-queue .tc-chip').text()).toBe('Role Queue')
+    expect(screen.getByText('Competitive')).toBeInTheDocument()
+    expect(screen.getByText('Role Queue')).toBeInTheDocument()
   })
 
   it('emits open-match with the key when the row is clicked', async () => {
-    const w = mountRow()
-    await w.find('tr.table-row').trigger('click')
-    expect(w.emitted('open-match')?.[0]).toEqual(['m-1'])
+    const user = userEvent.setup()
+    const { emitted } = renderRow()
+    await user.click(screen.getByRole('row'))
+    expect(emitted('open-match')?.[0]).toEqual(['m-1'])
   })
 
   it('emits toggle-select (and not open-match) when the checkbox is clicked', async () => {
-    const w = mountRow()
-    await w.find('.leaf-checkbox').trigger('click')
-    expect(w.emitted('toggle-select')?.[0]).toEqual(['m-1'])
-    expect(w.emitted('open-match')).toBeUndefined()
+    const user = userEvent.setup()
+    const { emitted } = renderRow()
+    await user.click(screen.getByRole('checkbox', { name: 'Select match m-1' }))
+    expect(emitted('toggle-select')?.[0]).toEqual(['m-1'])
+    expect(emitted('open-match')).toBeUndefined()
   })
 
   it('marks aria-current when the row is the keyboard-focused card', () => {
-    const focused = mountRow({ cardIndex: 2, focusedCardIndex: 2 })
-    expect(focused.find('tr.table-row').attributes('aria-current')).toBe('true')
-    const unfocused = mountRow({ cardIndex: 2, focusedCardIndex: 5 })
-    expect(unfocused.find('tr.table-row').attributes('aria-current')).toBeUndefined()
+    renderRow({ cardIndex: 2, focusedCardIndex: 2 })
+    expect(screen.getByRole('row')).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('omits aria-current when the row is not the keyboard-focused card', () => {
+    renderRow({ cardIndex: 2, focusedCardIndex: 5 })
+    expect(screen.getByRole('row')).not.toHaveAttribute('aria-current')
   })
 
   it('highlights a bare-term hit in the map cell via <mark class="search-hl">', () => {
-    const w = mountRow({ searchClauses: [{ field: null, value: 'rialto' }] satisfies SearchClause[] })
-    const mark = w.find('.tc-map mark.search-hl')
-    expect(mark.exists()).toBe(true)
-    expect(mark.text()).toBe('rialto')
+    renderRow({ searchClauses: [{ field: null, value: 'rialto' }] satisfies SearchClause[] })
+    const mark = screen.getByText('rialto')
+    expect(mark.tagName).toBe('MARK')
+    expect(mark).toHaveClass('search-hl')
   })
 
   it('renders tag chips with a leading # and highlights a tag-scoped hit', () => {
-    const w = mount(MatchTableRow, {
+    render(MatchTableRow, {
       props: {
         rec: {
           match_key: 'm-tag',
@@ -132,42 +136,48 @@ describe('MatchTableRow', () => {
         searchClauses: [{ field: 'tag', value: 'clutch' }] satisfies SearchClause[],
       },
     })
-    expect(w.find('.tc-tags').text()).toContain('#clutch')
-    expect(w.find('.tc-tags mark.search-hl').text()).toBe('clutch')
+    expect(screen.getByRole('row')).toHaveTextContent('#clutch')
+    const mark = screen.getByText('clutch')
+    expect(mark.tagName).toBe('MARK')
+    expect(mark).toHaveClass('search-hl')
   })
 
   describe('source column', () => {
     // One provenance column — the same compact badge the leaf rows
     // wear, replacing the old Edited / User-entered checkbox pair.
     it('renders the Edited badge for an OCR-then-edited match', () => {
-      const w = mountRow({ rec: { ...rec(), source: 'ocr_edited', edited_fields: ['data.damage'] } as MatchRecord })
-      expect(w.find('.tc-prov .prov-badge').attributes('aria-label')).toContain('Source: Edited')
+      renderRow({ rec: { ...rec(), source: 'ocr_edited', edited_fields: ['data.damage'] } as MatchRecord })
+      expect(screen.getByRole('img', { name: /Source: Edited/ })).toBeInTheDocument()
     })
 
     it('renders the User-entered badge for a manual match', () => {
-      const w = mountRow({ rec: { ...rec(), source: 'manual' } as MatchRecord })
-      expect(w.find('.tc-prov .prov-badge').attributes('aria-label')).toContain('Source: User entered')
+      renderRow({ rec: { ...rec(), source: 'manual' } as MatchRecord })
+      expect(screen.getByRole('img', { name: /Source: User entered/ })).toBeInTheDocument()
     })
 
     it('renders the OCR badge for a pure-OCR match', () => {
-      const w = mountRow()
-      expect(w.find('.tc-prov .prov-badge').attributes('aria-label')).toContain('Source: OCR')
+      renderRow()
+      expect(screen.getByRole('img', { name: /Source: OCR/ })).toBeInTheDocument()
     })
   })
 
   describe('KDA column', () => {
     it('renders (E+A)/D trimmed to two decimals', () => {
-      const w = mountRow({
+      renderRow({
         rec: { ...rec(), data: { ...rec().data, eliminations: 20, assists: 10, deaths: 8 } } as MatchRecord,
       })
-      expect(w.find('.tc-kda').text()).toBe('3.75')
+      expect(screen.getByText('3.75')).toBeInTheDocument()
     })
 
     it('renders an em-dash when the record carries no stats', () => {
       const base = rec()
       const { eliminations: _e, assists: _a, deaths: _d, ...bare } = base.data as Record<string, unknown>
-      const w = mountRow({ rec: { ...base, data: bare } as MatchRecord })
-      expect(w.find('.tc-kda').text()).toBe('—')
+      const { baseElement } = renderRow({ rec: { ...base, data: bare } as MatchRecord })
+      // Several cells legitimately render an em-dash for missing data,
+      // and a lone-row render carries no column headers to bind the KDA
+      // cell to an accessible name — select the column class directly.
+      // eslint-disable-next-line testing-library/no-node-access -- lone-row render has no column-header binding for the KDA cell
+      expect(baseElement.querySelector('.tc-kda')?.textContent?.trim()).toBe('—')
     })
   })
 })

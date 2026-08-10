@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ref, type Ref } from 'vue'
-import { mountWidget } from '@/test-utils/mountWidget'
+import { nextTick, ref, type Ref } from 'vue'
+import { screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import { renderWidget } from '@/test-utils'
 import MatchHeroModeBand from '@/components/matches/dossier/MatchHeroModeBand.vue'
 
 // Mock useOWData to avoid the singleton's GetOWData() side-effect.
@@ -57,99 +59,107 @@ const RECENT = [
 ]
 const FLOOR_CONFIG = { 'hero-game-mode-heatmap': { heroLimit: 8, minMatches: 10 } }
 
+const user = () => userEvent.setup()
+
+const winCell   = () => screen.getByRole('gridcell', { name: /lucio on control: 80% winrate/ })
+const colheads  = () => screen.queryAllByRole('columnheader', { name: /Select all heroes on/ })
+const mapTiles  = () => screen.queryAllByRole('button', { name: /Click for recent matches/ })
+const tileNames = () => mapTiles().map((t) => (t.getAttribute('aria-label') ?? '').split(':')[0])
+const backBtn   = () => screen.getByRole('button', { name: /Go back/ })
+
 describe('MatchHeroModeBand', () => {
   it('renders the root empty-state when decisive matches are below the floor', () => {
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow: makeNarrow(),
       dossier: { heroGameModeCounts: [{ hero: 'lucio', gameMode: 'control', wins: 2, losses: 2, draws: 0, total: 4, winrate: 50 }] },
     })
-    expect(wrapper.text()).toContain('decisive matches')
-    expect(wrapper.find('.heatmap-grid').exists()).toBe(false)
+    expect(screen.getByText(/decisive matches/)).toBeInTheDocument()
+    expect(screen.queryByRole('grid')).not.toBeInTheDocument()
   })
 
   it('prompts to play a match when there are none at all (not the floor message)', () => {
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow: makeNarrow(),
       dossier: { heroGameModeCounts: [] },
     })
-    expect(wrapper.text()).toContain('At least 1 match must be played to display data')
-    expect(wrapper.text()).not.toContain('decisive matches')
-    expect(wrapper.find('.heatmap-grid').exists()).toBe(false)
+    expect(screen.getByText(/At least 1 match must be played to display data/)).toBeInTheDocument()
+    expect(screen.queryByText(/decisive matches/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('grid')).not.toBeInTheDocument()
   })
 
   it('renders the root hero × game-mode grid above the floor', () => {
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow: makeNarrow(),
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: ROOT_CELLS },
     })
-    expect(wrapper.find('.heatmap-grid').exists()).toBe(true)
+    expect(screen.getByRole('grid')).toBeInTheDocument()
     // Five columns: clash (quickplay-only, 0 data in ROOT_CELLS) is gated out.
-    expect(wrapper.findAll('.heatmap-colhead')).toHaveLength(5)
-    expect(wrapper.find('[data-hm-col="clash"]').exists()).toBe(false)
-    expect(wrapper.find('.heatmap-rowhead').text()).toContain('lucio')
+    expect(colheads()).toHaveLength(5)
+    expect(screen.queryByRole('columnheader', { name: 'Select all heroes on clash' })).not.toBeInTheDocument()
+    expect(screen.getByRole('rowheader', { name: /lucio/ })).toBeInTheDocument()
   })
 
   it('shows the Clash column once there is Clash data', () => {
     const cells = ROOT_CELLS.map((c) =>
       c.gameMode === 'clash' ? { ...c, wins: 2, losses: 1, draws: 0, total: 3, winrate: 67 } : c,
     )
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow: makeNarrow(),
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: cells },
     })
-    expect(wrapper.findAll('.heatmap-colhead')).toHaveLength(6)
-    expect(wrapper.find('[data-hm-col="clash"]').exists()).toBe(true)
+    expect(colheads()).toHaveLength(6)
+    expect(screen.getByRole('columnheader', { name: 'Select all heroes on clash' })).toBeInTheDocument()
   })
 
   it('clicking a root cell narrows (hero, mode) and drills into the maps level', async () => {
     const narrow = makeNarrow()
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow,
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
     })
-    await wrapper.find('.heatmap-cell.cell-win').trigger('click')
+    const cell = winCell()
+    expect(cell).toHaveClass('cell-win')
+    await user().click(cell)
     // Global narrow applied.
     expect(narrow.pickHero).toHaveBeenCalledWith('lucio')
     expect(narrow.pickGameMode).toHaveBeenCalledWith('control')
     // Band drilled to the maps level — root grid gone, map tiles shown.
-    expect(wrapper.find('.heatmap-grid').exists()).toBe(false)
-    expect(wrapper.find('[data-hero-mode-maps]').exists()).toBe(true)
-    const tiles = wrapper.findAll('.hm-map-tile')
-    expect(tiles.length).toBe(2)
-    const tileText = tiles.map((t) => t.text()).join(' ')
+    expect(screen.queryByRole('grid')).not.toBeInTheDocument()
+    const tiles = mapTiles()
+    expect(tiles).toHaveLength(2)
+    const tileText = tiles.map((t) => t.textContent).join(' ')
     expect(tileText).toContain('route66')
     expect(tileText).toContain('70%')
-    expect(wrapper.find('.hm-title').text()).toContain('lucio × Control maps')
-    expect(wrapper.find('[data-hero-mode-back]').exists()).toBe(true)
+    expect(screen.getByRole('heading', { name: /lucio × Control maps/ })).toBeInTheDocument()
+    expect(backBtn()).toBeInTheDocument()
   })
 
   it('sorts the drilled-down maps alphabetically by name, not by volume', async () => {
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow: makeNarrow(),
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
     })
-    await wrapper.find('.heatmap-cell.cell-win').trigger('click')
+    await user().click(winCell())
     // route66 has more games (10 vs 4) but havana sorts first alphabetically.
-    const names = wrapper.findAll('.hm-map-tile .hm-map-name').map((n) => n.text())
-    expect(names).toEqual(['havana', 'route66'])
+    expect(tileNames()).toEqual(['havana', 'route66'])
   })
 
   it('Go back pops to the root and reverts only the picks the band applied', async () => {
     const narrow = makeNarrow()
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow,
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
     })
-    await wrapper.find('.heatmap-cell.cell-win').trigger('click')
+    await user().click(winCell())
     expect(narrow.pickedHeroes.value.has('lucio')).toBe(true)
-    await wrapper.find('[data-hero-mode-back]').trigger('click')
+    await user().click(backBtn())
     // Back to root; the band-applied picks are reverted.
-    expect(wrapper.find('.heatmap-grid').exists()).toBe(true)
+    expect(screen.getByRole('grid')).toBeInTheDocument()
     expect(narrow.pickedHeroes.value.has('lucio')).toBe(false)
     expect(narrow.pickedGameModes.value.has('control')).toBe(false)
   })
@@ -157,16 +167,16 @@ describe('MatchHeroModeBand', () => {
   it('a guarded drill does not toggle off a dimension the user pre-filtered', async () => {
     const narrow = makeNarrow()
     narrow.pickedGameModes.value = new Set(['control']) // user already filtered to Control
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow,
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
     })
-    await wrapper.find('.heatmap-cell.cell-win').trigger('click')
+    await user().click(winCell())
     // Hero added by us; game-mode left alone (already present).
     expect(narrow.pickHero).toHaveBeenCalledWith('lucio')
     expect(narrow.pickGameMode).not.toHaveBeenCalled()
-    await wrapper.find('[data-hero-mode-back]').trigger('click')
+    await user().click(backBtn())
     // Go-back reverts only the hero; the user's Control filter survives.
     expect(narrow.pickedHeroes.value.has('lucio')).toBe(false)
     expect(narrow.pickedGameModes.value.has('control')).toBe(true)
@@ -174,54 +184,52 @@ describe('MatchHeroModeBand', () => {
 
   it('clicking a map tile drills into the recent-matches level', async () => {
     const narrow = makeNarrow()
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow,
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS, recentMatches: RECENT },
     })
-    await wrapper.find('.heatmap-cell.cell-win').trigger('click')
+    await user().click(winCell())
     // Maps now sort alphabetically (havana before route66), so target route66 by name.
-    const route66Tile = wrapper.findAll('.hm-map-tile').find((t) => t.text().includes('route66'))
-    await route66Tile!.trigger('click')
+    await user().click(screen.getByRole('button', { name: /^route66:/ }))
     expect(narrow.pickMap).toHaveBeenCalledWith('route66')
-    expect(wrapper.find('[data-hero-mode-matches]').exists()).toBe(true)
-    const matchRows = wrapper.findAll('.hm-match-row')
-    expect(matchRows.length).toBe(2)
-    expect(matchRows[0]!.text().toLowerCase()).toContain('victory')
-    expect(wrapper.find('.hm-title').text()).toContain('route66 · recent matches')
+    const matchRows = screen.getAllByTitle(/^Open /)
+    expect(matchRows).toHaveLength(2)
+    expect(matchRows[0]!.textContent!.toLowerCase()).toContain('victory')
+    expect(screen.getByRole('heading', { name: /route66 · recent matches/ })).toBeInTheDocument()
   })
 
   it('reconciles the stack when the picks are cleared externally', async () => {
     const narrow = makeNarrow()
-    const wrapper = mountWidget(MatchHeroModeBand, {
+    renderWidget(MatchHeroModeBand, {
       narrow,
       configSeed: FLOOR_CONFIG,
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
     })
-    await wrapper.find('.heatmap-cell.cell-win').trigger('click')
-    expect(wrapper.find('[data-hero-mode-maps]').exists()).toBe(true)
+    await user().click(winCell())
+    expect(mapTiles().length).toBeGreaterThan(0)
     // Simulate a rail "clear filters": drop the hero pick.
     narrow.pickedHeroes.value = new Set()
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-hero-mode-maps]').exists()).toBe(false)
-    expect(wrapper.find('.heatmap-grid').exists()).toBe(true)
+    await nextTick()
+    expect(mapTiles()).toHaveLength(0)
+    expect(screen.getByRole('grid')).toBeInTheDocument()
   })
 
   it('renders the trailing-window picker defaulting to 6M and persists a pick', async () => {
-    const wrapper = mountWidget(MatchHeroModeBand, { narrow: makeNarrow(), dossier: { heroGameModeCounts: [] } })
-    const buttons = wrapper.findAll('.bh-window-btn')
+    renderWidget(MatchHeroModeBand, { narrow: makeNarrow(), dossier: { heroGameModeCounts: [] } })
+    const buttons = screen.getAllByRole('button', { name: /^\d+M$/ })
     expect(buttons).toHaveLength(4)
-    expect(buttons[2]!.attributes('aria-pressed')).toBe('true')
-    await buttons[1]!.trigger('click')
-    expect(buttons[1]!.attributes('aria-pressed')).toBe('true')
+    expect(buttons[2]).toHaveAttribute('aria-pressed', 'true')
+    await user().click(buttons[1]!)
+    expect(buttons[1]).toHaveAttribute('aria-pressed', 'true')
     expect(localStorage.getItem('recall.heroModeWindowMonths')).toBe('3')
   })
 
   it('the gear toggles its expanded state (root level)', async () => {
-    const wrapper = mountWidget(MatchHeroModeBand, { narrow: makeNarrow(), dossier: { heroGameModeCounts: [] } })
-    const gear = wrapper.find('[data-hero-mode-config-trigger]')
-    expect(gear.attributes('aria-expanded')).toBe('false')
-    await gear.trigger('click')
-    expect(gear.attributes('aria-expanded')).toBe('true')
+    renderWidget(MatchHeroModeBand, { narrow: makeNarrow(), dossier: { heroGameModeCounts: [] } })
+    const gear = screen.getByRole('button', { name: 'Configure the Hero × Game-Mode band' })
+    expect(gear).toHaveAttribute('aria-expanded', 'false')
+    await user().click(gear)
+    expect(gear).toHaveAttribute('aria-expanded', 'true')
   })
 })

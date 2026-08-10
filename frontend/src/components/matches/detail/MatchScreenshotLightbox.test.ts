@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 
 import MatchScreenshotLightbox from '@/components/matches/detail/MatchScreenshotLightbox.vue'
 
@@ -20,83 +21,83 @@ import MatchScreenshotLightbox from '@/components/matches/detail/MatchScreenshot
 // emit shape (or accidentally fires `next` at the boundary)
 // surfaces at the unit layer first.
 
-function mountLightbox(props: {
+function renderLightbox(props: {
   filename: string | null
   src: string | null
   files: string[]
   index: number
 }) {
-  return mount(MatchScreenshotLightbox, { props, attachTo: document.body })
+  return render(MatchScreenshotLightbox, { props })
 }
 
 const FILES = ['a.png', 'b.png', 'c.png']
 const SRC   = '/_screenshot/b.png'
 
+const prevBtn = () => screen.getByRole('button', { name: 'Previous screenshot in this match' })
+const nextBtn = () => screen.getByRole('button', { name: 'Next screenshot in this match' })
+
 describe('MatchScreenshotLightbox — prev/next buttons', () => {
   it('renders < and > buttons with the literal arrow glyphs', () => {
-    const w = mountLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
-    const prev = w.find('.lightbox-prev')
-    const next = w.find('.lightbox-next')
-    expect(prev.exists()).toBe(true)
-    expect(next.exists()).toBe(true)
-    expect(prev.text()).toContain('<')
-    expect(next.text()).toContain('>')
+    renderLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
+    expect(prevBtn()).toHaveTextContent('<')
+    expect(nextBtn()).toHaveTextContent('>')
   })
 
   it('emits "prev" when the < button is clicked at a navigable position', async () => {
-    const w = mountLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
-    await w.find('.lightbox-prev').trigger('click')
-    expect(w.emitted('prev')).toBeTruthy()
-    expect(w.emitted('next')).toBeFalsy()
+    const user = userEvent.setup()
+    const { emitted } = renderLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
+    await user.click(prevBtn())
+    expect(emitted('prev')).toBeTruthy()
+    expect(emitted('next')).toBeFalsy()
   })
 
   it('emits "next" when the > button is clicked at a navigable position', async () => {
-    const w = mountLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
-    await w.find('.lightbox-next').trigger('click')
-    expect(w.emitted('next')).toBeTruthy()
-    expect(w.emitted('prev')).toBeFalsy()
+    const user = userEvent.setup()
+    const { emitted } = renderLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
+    await user.click(nextBtn())
+    expect(emitted('next')).toBeTruthy()
+    expect(emitted('prev')).toBeFalsy()
   })
 
   it('disables the < button at index 0 (boundary) and clicking it is a no-op', async () => {
-    const w = mountLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: FILES, index: 0 })
-    const prev = w.find('.lightbox-prev')
-    expect(prev.attributes('disabled')).toBeDefined()
-    await prev.trigger('click')
-    expect(w.emitted('prev')).toBeFalsy()
+    const user = userEvent.setup()
+    const { emitted } = renderLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: FILES, index: 0 })
+    expect(prevBtn()).toBeDisabled()
+    await user.click(prevBtn())
+    expect(emitted('prev')).toBeFalsy()
   })
 
   it('disables the > button at the last index and clicking it is a no-op', async () => {
-    const w = mountLightbox({ filename: 'c.png', src: '/_screenshot/c.png', files: FILES, index: 2 })
-    const next = w.find('.lightbox-next')
-    expect(next.attributes('disabled')).toBeDefined()
-    await next.trigger('click')
-    expect(w.emitted('next')).toBeFalsy()
+    const user = userEvent.setup()
+    const { emitted } = renderLightbox({ filename: 'c.png', src: '/_screenshot/c.png', files: FILES, index: 2 })
+    expect(nextBtn()).toBeDisabled()
+    await user.click(nextBtn())
+    expect(emitted('next')).toBeFalsy()
   })
 
   it('disables BOTH arrow buttons when files has length 1', () => {
-    const w = mountLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: ['a.png'], index: 0 })
-    expect(w.find('.lightbox-prev').attributes('disabled')).toBeDefined()
-    expect(w.find('.lightbox-next').attributes('disabled')).toBeDefined()
+    renderLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: ['a.png'], index: 0 })
+    expect(prevBtn()).toBeDisabled()
+    expect(nextBtn()).toBeDisabled()
   })
 })
 
 describe('MatchScreenshotLightbox — "N of M" caption', () => {
   it('renders "i+1 of files.length" when files.length > 1', () => {
-    const w = mountLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
-    expect(w.find('.lightbox-count').exists()).toBe(true)
-    expect(w.find('.lightbox-count').text()).toBe('2 of 3')
+    renderLightbox({ filename: 'b.png', src: SRC, files: FILES, index: 1 })
+    expect(screen.getByText('2 of 3')).toBeInTheDocument()
   })
 
   it('updates the caption as the index prop changes', async () => {
-    const w = mountLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: FILES, index: 0 })
-    expect(w.find('.lightbox-count').text()).toBe('1 of 3')
-    await w.setProps({ filename: 'c.png', src: '/_screenshot/c.png', files: FILES, index: 2 })
-    expect(w.find('.lightbox-count').text()).toBe('3 of 3')
+    const { rerender } = renderLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: FILES, index: 0 })
+    expect(screen.getByText('1 of 3')).toBeInTheDocument()
+    await rerender({ filename: 'c.png', src: '/_screenshot/c.png', files: FILES, index: 2 })
+    expect(screen.getByText('3 of 3')).toBeInTheDocument()
   })
 
   it('suppresses the caption when files.length === 1 — no "1 of 1" noise', () => {
-    const w = mountLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: ['a.png'], index: 0 })
-    expect(w.find('.lightbox-count').exists()).toBe(false)
+    renderLightbox({ filename: 'a.png', src: '/_screenshot/a.png', files: ['a.png'], index: 0 })
+    expect(screen.queryByText('1 of 1')).not.toBeInTheDocument()
   })
 })
 
@@ -111,35 +112,32 @@ describe('MatchScreenshotLightbox — "N of M" caption', () => {
 // ── Lifecycle + emit-shape contracts (item 6 coverage lift) ──────────
 describe('MatchScreenshotLightbox — open/close lifecycle', () => {
   it('renders nothing when filename is null', () => {
-    const w = mountLightbox({ filename: null, src: null, files: [], index: -1 })
-    // Sanity: the backdrop element doesn't exist while filename is null.
-    expect(w.find('.lightbox-backdrop').exists()).toBe(false)
+    renderLightbox({ filename: null, src: null, files: [], index: -1 })
+    // Sanity: the dialog doesn't exist while filename is null.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('emits "close" when the × button is clicked', async () => {
-    const w = mountLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
-    const close = w.find('.lightbox-close')
-    expect(close.exists()).toBe(true)
-    await close.trigger('click')
-    expect(w.emitted('close')).toBeTruthy()
+    const user = userEvent.setup()
+    const { emitted } = renderLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
+    await user.click(screen.getByRole('button', { name: 'Close screenshot preview' }))
+    expect(emitted('close')).toBeTruthy()
   })
 
   it('emits "close" when the backdrop (not the image) is clicked', async () => {
-    const w = mountLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
+    const user = userEvent.setup()
+    const { emitted } = renderLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
     // Backdrop clicks use `@click.self` so only events whose target IS
-    // the backdrop element trigger close. trigger('click') without
-    // overriding target satisfies that — the dispatch target IS the
-    // root element.
-    await w.find('.lightbox-backdrop').trigger('click')
-    expect(w.emitted('close')).toBeTruthy()
+    // the backdrop element trigger close. user.click(dialog) dispatches
+    // on the dialog element itself, which satisfies that.
+    await user.click(screen.getByRole('dialog'))
+    expect(emitted('close')).toBeTruthy()
   })
 
   it('does NOT emit "close" when the image is clicked', async () => {
-    const w = mountLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
-    const img = w.find('.lightbox-img')
-    if (img.exists()) {
-      await img.trigger('click')
-      expect(w.emitted('close')).toBeFalsy()
-    }
+    const user = userEvent.setup()
+    const { emitted } = renderLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
+    await user.click(screen.getByRole('img', { name: 'a.png' }))
+    expect(emitted('close')).toBeFalsy()
   })
 })

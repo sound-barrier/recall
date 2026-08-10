@@ -1,71 +1,72 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { nextTick } from 'vue'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api'
 import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
 
-// The preview teleports to document.body, so assertions query the body.
-let wrapper: VueWrapper | null = null
-function mountPreview(props: { src?: string | null; source?: MatchRecord['source']; editedFields?: string[] }) {
-  wrapper = mount(LeafHoverPreview, { props: { x: 0, y: 0, src: null, ...props } })
-  return wrapper
+// The preview teleports to document.body as an aria-hidden DECORATIVE
+// card (a hover thumbnail duplicating information available elsewhere),
+// so its presence/collapse contract is invisible to role queries —
+// structural checks go through body.querySelector deliberately. Text
+// queries still reach the provenance badge copy.
+/* eslint-disable testing-library/no-node-access -- aria-hidden decorative hover card; presence/collapse is invisible to accessible queries */
+
+function renderPreview(props: { src?: string | null; source?: MatchRecord['source']; editedFields?: string[] }) {
+  return render(LeafHoverPreview, { props: { x: 0, y: 0, src: null, ...props } })
 }
-afterEach(() => {
-  wrapper?.unmount()
-  wrapper = null
-})
+
+const card = () => document.body.querySelector('.leaf-hover-preview')
+const cardImg = () => document.body.querySelector<HTMLImageElement>('.leaf-hover-preview img')
 
 describe('LeafHoverPreview', () => {
   it('renders the screenshot thumbnail when src is set', () => {
-    mountPreview({ src: '/_screenshot/foo.png' })
-    const img = document.body.querySelector<HTMLImageElement>('.leaf-hover-preview img')
+    renderPreview({ src: '/_screenshot/foo.png' })
+    const img = cardImg()
     expect(img).not.toBeNull()
     expect(img!.getAttribute('src')).toContain('foo.png')
   })
 
   it('captions an edited match with the provenance badge', () => {
-    mountPreview({ src: '/_screenshot/foo.png', source: 'ocr_edited', editedFields: ['data.map'] })
-    const prov = document.body.querySelector('[data-hover-prov]')
-    expect(prov).not.toBeNull()
-    expect(prov!.textContent).toContain('Edited')
+    renderPreview({ src: '/_screenshot/foo.png', source: 'ocr_edited', editedFields: ['data.map'] })
+    expect(screen.getByText('Edited')).toBeInTheDocument()
   })
 
   it('shows the badge for a manual match even with no screenshot', () => {
-    mountPreview({ src: null, source: 'manual' })
-    expect(document.body.querySelector('.leaf-hover-preview')).not.toBeNull()
-    expect(document.body.querySelector('.leaf-hover-preview img')).toBeNull()
-    expect(document.body.querySelector('[data-hover-prov]')!.textContent).toContain('User entered')
+    renderPreview({ src: null, source: 'manual' })
+    expect(card()).not.toBeNull()
+    expect(cardImg()).toBeNull()
+    expect(screen.getByText('User entered')).toBeInTheDocument()
   })
 
   it('renders nothing for a pure-OCR match with no screenshot', () => {
-    mountPreview({ src: null, source: 'ocr' })
-    expect(document.body.querySelector('.leaf-hover-preview')).toBeNull()
+    renderPreview({ src: null, source: 'ocr' })
+    expect(card()).toBeNull()
   })
 
   it('shows no provenance caption for a pure-OCR match with a screenshot', () => {
-    mountPreview({ src: '/_screenshot/foo.png', source: 'ocr' })
-    expect(document.body.querySelector('.leaf-hover-preview')).not.toBeNull()
-    expect(document.body.querySelector('[data-hover-prov]')).toBeNull()
+    renderPreview({ src: '/_screenshot/foo.png', source: 'ocr' })
+    expect(card()).not.toBeNull()
+    expect(screen.queryByText('OCR')).not.toBeInTheDocument()
   })
 
   it('drops the thumbnail and collapses when the image fails to load', async () => {
-    mountPreview({ src: '/_screenshot/vanished.png', source: 'ocr' })
-    const img = document.body.querySelector<HTMLImageElement>('.leaf-hover-preview img')
+    renderPreview({ src: '/_screenshot/vanished.png', source: 'ocr' })
+    const img = cardImg()
     expect(img).not.toBeNull()
     img!.dispatchEvent(new Event('error'))
     await nextTick()
     // No broken image, and nothing else to show → the whole card is gone.
-    expect(document.body.querySelector('.leaf-hover-preview img')).toBeNull()
-    expect(document.body.querySelector('.leaf-hover-preview')).toBeNull()
+    expect(cardImg()).toBeNull()
+    expect(card()).toBeNull()
   })
 
   it('keeps the provenance badge when an edited match image fails to load', async () => {
-    mountPreview({ src: '/_screenshot/vanished.png', source: 'ocr_edited', editedFields: ['data.map'] })
-    document.body.querySelector<HTMLImageElement>('.leaf-hover-preview img')!.dispatchEvent(new Event('error'))
+    renderPreview({ src: '/_screenshot/vanished.png', source: 'ocr_edited', editedFields: ['data.map'] })
+    cardImg()!.dispatchEvent(new Event('error'))
     await nextTick()
-    expect(document.body.querySelector('.leaf-hover-preview img')).toBeNull()
+    expect(cardImg()).toBeNull()
     // The card stays because the provenance badge still has something to show.
-    expect(document.body.querySelector('[data-hover-prov]')).not.toBeNull()
+    expect(screen.getByText('Edited')).toBeInTheDocument()
   })
 })

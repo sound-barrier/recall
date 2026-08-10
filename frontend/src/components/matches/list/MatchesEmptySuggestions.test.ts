@@ -1,16 +1,18 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import MatchesEmptySuggestions from '@/components/matches/list/MatchesEmptySuggestions.vue'
 
 describe('MatchesEmptySuggestions', () => {
   it('renders nothing when suggestions is empty', () => {
-    const wrapper = mount(MatchesEmptySuggestions, { props: { suggestions: [] } })
-    expect(wrapper.find('.empty-suggestions').exists()).toBe(false)
+    render(MatchesEmptySuggestions, { props: { suggestions: [] } })
+    expect(screen.queryByText(/Try removing one filter/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('renders one button per suggestion', () => {
     const cleared: string[] = []
-    const wrapper = mount(MatchesEmptySuggestions, {
+    render(MatchesEmptySuggestions, {
       props: {
         suggestions: [
           { clauseId: 'maps',   label: 'map filter',  wouldSurface: 12, clear: () => { cleared.push('maps') } },
@@ -18,23 +20,24 @@ describe('MatchesEmptySuggestions', () => {
         ],
       },
     })
-    const btns = wrapper.findAll('button.empty-suggestion-btn')
-    expect(btns).toHaveLength(2)
-    expect(btns[0]!.attributes('data-clause-id')).toBe('maps')
-    expect(btns[0]!.text()).toContain('Remove map filter')
-    expect(btns[0]!.text()).toContain('12 matches')
+    expect(screen.getAllByRole('button')).toHaveLength(2)
+    const mapsBtn = screen.getByRole('button', { name: 'Remove map filter — would surface 12 matches' })
+    expect(mapsBtn).toHaveAttribute('data-clause-id', 'maps')
+    expect(mapsBtn).toHaveTextContent('Remove map filter')
+    expect(mapsBtn).toHaveTextContent('12 matches')
   })
 
   it('clicking a suggestion calls its clear handler', async () => {
+    const user = userEvent.setup()
     const cleared: string[] = []
-    const wrapper = mount(MatchesEmptySuggestions, {
+    render(MatchesEmptySuggestions, {
       props: {
         suggestions: [
           { clauseId: 'tags', label: 'tag filter', wouldSurface: 3, clear: () => { cleared.push('tags') } },
         ],
       },
     })
-    await wrapper.find('button.empty-suggestion-btn').trigger('click')
+    await user.click(screen.getByRole('button', { name: /Remove tag filter/ }))
     expect(cleared).toEqual(['tags'])
   })
 })
