@@ -22,7 +22,7 @@ import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 // Within a role/mode, heroes (pool + off-pool together) are ranked by
 // statistical significance first (n ≥ 5 outranks a noisy perfect record) then by
 // win rate — the same importance the Wilson floor encodes elsewhere. Bars are
-// coloured by WIN RATE (green→red, faded by volume — the Hero × Game-Mode /
+// colored by WIN RATE (green→red, faded by volume — the Hero × Game-Mode /
 // Map × Role scheme), NOT by pool status, so a high-win off-pool hero reads
 // "play this more" and a losing in-pool hero reads "reconsider"; pool membership
 // rides a small badge instead.
@@ -167,7 +167,7 @@ const configIsDefault = computed(
         type="button"
         class="hp-gear"
         :class="{ 'hp-gear-active': !configIsDefault }"
-        :aria-label="configIsDefault ? 'Configure the Hero Pool band' : 'Hero Pool settings are customised'"
+        :aria-label="configIsDefault ? 'Configure the Hero Pool band' : 'Hero Pool settings are customized'"
         :aria-expanded="configOpen"
         title="Point-touch threshold"
         data-widget-config-trigger
@@ -478,7 +478,7 @@ const configIsDefault = computed(
   color: var(--text-dim);
 }
 
-/* Pool membership rides a badge, NOT the bar colour (colour = win rate). */
+/* Pool membership rides a badge, NOT the bar color (color = win rate). */
 .hp-tag {
   flex: 0 0 auto;
   font-family: var(--mono);
@@ -507,7 +507,7 @@ const configIsDefault = computed(
 
 .hp-fill { display: block; height: 100%; }
 
-/* Colour by WIN RATE (green / grey / red), the Hero × Game-Mode scheme — not
+/* Color by WIN RATE (green / grey / red), the Hero × Game-Mode scheme — not
    by pool status. Opacity fades low-volume heroes (significance). */
 .hp-fill.cell-win  { background: var(--win); }
 .hp-fill.cell-mid  { background: var(--neutral); }

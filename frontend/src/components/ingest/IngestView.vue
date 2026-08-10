@@ -28,7 +28,7 @@ const { tesseractReady, watchEnabled, screenshotsDir } = storeToRefs(settingsSto
 const { toggleWatch } = settingsStore
 const {
   parseBusy,
-  cancellingParse,
+  cancelingParse,
   newScreenshotCount,
   lastParsedAt,
   parseProgress,
@@ -165,17 +165,17 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
                  lands at the next between-files OCR boundary
                  (tesseract is shelled out per file and not
                  context-aware), so the button shows
-                 "Cancelling…" between click and the SSE
+                 "Canceling…" between click and the SSE
                  parse-canceled confirmation. -->
             <button
               v-if="parseBusy"
               class="btn danger big"
               data-testid="cancel-parse-btn"
-              :disabled="cancellingParse"
+              :disabled="cancelingParse"
               @click="onCancelParse()"
             >
               <span class="btn-dot" />
-              <span v-if="cancellingParse">Cancelling…</span>
+              <span v-if="cancelingParse">Canceling…</span>
               <span v-else>Stop Parse</span>
             </button>
             <button

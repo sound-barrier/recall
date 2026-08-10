@@ -91,7 +91,7 @@ type DossierOverride = {
   modifierRecord?:     ModifierRecord | null
   // Bedrock — current rank per role.
   currentRank?:        RankNow[]
-  // Bedrock — behavioural KPIs (tilt/momentum + climb/session).
+  // Bedrock — behavioral KPIs (tilt/momentum + climb/session).
   winrateAfterLoss?:   RateSample
   winrateAfterWin?:    RateSample
   firstGameWinrate?:   RateSample

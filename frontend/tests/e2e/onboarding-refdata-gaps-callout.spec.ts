@@ -5,7 +5,7 @@
  * fallout from the parser capturing a new hero/map name that
  * hasn't shipped in the YAML rosters yet. A static onboarding-tour
  * step couldn't time this surface; a contextual callout fires
- * the first time the section materialises and explains the
+ * the first time the section materializes and explains the
  * wait-for-YAML recovery path + the "Fixed in v<X>" CTAs the user
  * just lit up.
  *

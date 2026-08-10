@@ -3,7 +3,7 @@
 // Both `annotation.leavers` and `annotation.throwers` are sets of up to three
 // sides, so a naive badge-per-side would put six glyphs on an already-dense
 // row. Instead each kind gets ONE letter — `L` / `T` — and the sides collapse
-// into a tint plus an accessible name. Colour is never the sole carrier: the
+// into a tint plus an accessible name. Color is never the sole carrier: the
 // name below is what assistive tech (and the tooltip) reads out, and the detail
 // panel shows the full chips.
 

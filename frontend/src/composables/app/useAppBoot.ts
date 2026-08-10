@@ -21,7 +21,7 @@ export function useAppBoot() {
   const { showStartupErrorModal } = storeToRefs(appStore)
 
   // Non-dismissible: Escape is a no-op — a Startup failure means the store
-  // never initialised, so restart is the only recovery.
+  // never initialized, so restart is the only recovery.
   useModalFocusTrap(showStartupErrorModal, {
     containerSelector: '.modal-box.startup-error',
     onClose: () => {},

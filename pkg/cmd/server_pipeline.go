@@ -26,7 +26,7 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		// `?scope=all` switches to ReParseAll — re-runs OCR on every
 		// PNG in the watched folder regardless of whether it's
 		// already in the per-type tables. The user-curated suppress
-		// list is still honoured. Any other value (or absence)
+		// list is still honored. Any other value (or absence)
 		// invokes the default "parse only new files" semantic.
 		// Unknown query keys yield 400 to stay schemathesis-clean.
 		force := false
@@ -67,7 +67,7 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		writeJSON(w, r, a.ActiveParse(), nil)
 	})
 
-	// Cancel an in-flight parse. Modelled as a DELETE on the
+	// Cancel an in-flight parse. Modeled as a DELETE on the
 	// "active parse" sub-resource so the URL stays a noun. 202
 	// Accepted because the actual stop lands at the next
 	// between-files boundary in the OCR loop, not synchronously

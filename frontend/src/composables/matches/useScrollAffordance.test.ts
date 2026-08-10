@@ -22,7 +22,7 @@ function mountComposable(threshold = 400) {
 // Fake-rAF: invoke the callback synchronously so the threshold flip
 // happens within the same microtask the test asserts on. The composable
 // uses requestAnimationFrame to coalesce scroll events; we don't care
-// about the coalescing semantics here, only the visible behaviour.
+// about the coalescing semantics here, only the visible behavior.
 let rafCallbacks: FrameRequestCallback[] = []
 beforeEach(() => {
   rafCallbacks = []

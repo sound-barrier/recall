@@ -6,7 +6,7 @@ import { useAppStore } from '@/stores/app'
 import { useUiStore } from '@/stores/ui'
 import { DOCS_URL, ISSUES_URL } from '@/app-links'
 
-// Behaviour for the masthead ⋮ application menu — the Chrome/Firefox-style app
+// Behavior for the masthead ⋮ application menu — the Chrome/Firefox-style app
 // menu shown on the platforms WITHOUT a native menu bar (Windows, Linux, and
 // the browser build). macOS gets the native menu bar instead
 // (pkg/cmd/wails.go), so the kebab hides there to avoid duplicating it.

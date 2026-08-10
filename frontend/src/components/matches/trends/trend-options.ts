@@ -5,7 +5,7 @@ import type { TrendOption } from '@/components/matches/trends/echarts'
 import { TIER_ORDER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/match-trends-helpers'
 import { themeColor, withAlpha } from '@/match/theme-colors'
 
-// Consistent colours for known series keys so a line means the same thing
+// Consistent colors for known series keys so a line means the same thing
 // across charts: a Tank line is the same blue on every rank/win-rate chart,
 // and the combat metrics read semantically (eliminations green, deaths red,
 // assists blue). Keys without a mapped token (heroes, maps, modifiers,
@@ -38,7 +38,7 @@ function colorFor(key: string | undefined): string | undefined {
   return token ? themeColor(token) : undefined
 }
 
-// A subtle vertical fill under a line — the series colour at ~25% alpha
+// A subtle vertical fill under a line — the series color at ~25% alpha
 // fading to transparent at the baseline — for a "climb" feel on the rank
 // ladder + cumulative net. Fading out at the bottom keeps overlapping role
 // fills readable; the rare unmapped series (the 'all' bucket) gets a neutral
@@ -46,7 +46,7 @@ function colorFor(key: string | undefined): string | undefined {
 // withAlpha rather than the old `${c}40` hex-suffix concatenation: that
 // assumed a 6-digit hex and produced the invalid `#6df40` for any 3-digit
 // token (high-contrast defines --tank as `#6df`). ECharts treats an
-// unparseable colour as transparent, so the fill silently vanished on that
+// unparseable color as transparent, so the fill silently vanished on that
 // theme with nothing logged.
 function areaFill(key: string | undefined) {
   const c = colorFor(key) ?? themeColor('--text-mute')
@@ -184,8 +184,8 @@ export function winrateOption(series: TrendSeries[]): TrendOption {
 }
 
 // A generic multi-line chart (cumulative net record; modifier frequency).
-// Auto value axis; role-coloured where the series key is a role bucket,
-// else the themed categorical palette (e.g. one colour per modifier).
+// Auto value axis; role-colored where the series key is a role bucket,
+// else the themed categorical palette (e.g. one color per modifier).
 export function lineOption(series: TrendSeries[], opts: { area?: boolean } = {}): TrendOption {
   return {
     ...INTERACTION,
@@ -209,7 +209,7 @@ export function lineOption(series: TrendSeries[], opts: { area?: boolean } = {})
 }
 
 // Per-match rank delta as bars crossing zero (gains up / losses down),
-// one role-coloured series each.
+// one role-colored series each.
 export function rankDeltaOption(series: TrendSeries[]): TrendOption {
   return {
     ...INTERACTION,
@@ -236,8 +236,8 @@ export function rankDeltaOption(series: TrendSeries[]): TrendOption {
 // "Best times to play" — a day-of-week × time-of-day win-rate heatmap. This
 // is a STATIC grid (category × category, no time axis / brush / zoom — the
 // hosting card passes `interactive: false`), so it deliberately omits the
-// shared INTERACTION. Each cell is coloured by win-rate on a red→green
-// diverging scale centred on 50%; cells with no decisive match are absent
+// shared INTERACTION. Each cell is colored by win-rate on a red→green
+// diverging scale centered on 50%; cells with no decisive match are absent
 // from the data and render blank. Volume (W–L) rides in the tooltip.
 export function heatmapOption(grid: WinrateGrid): TrendOption {
   return {

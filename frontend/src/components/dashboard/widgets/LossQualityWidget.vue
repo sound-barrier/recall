@@ -3,7 +3,7 @@
 // normal / stomp from the final score's margin (see
 // match-loss-quality for the mode-agnostic rule). Uniquely
 // actionable for a competitive player: a stomp streak says stop
-// queueing, close losses say keep going. Opt-in.
+// queuing, close losses say keep going. Opt-in.
 import { useDossier } from '@/composables/dashboard/useDossier'
 
 const dossier = useDossier()

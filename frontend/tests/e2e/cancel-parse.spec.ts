@@ -7,7 +7,7 @@
  *     → DELETE /api/v1/parses/active hits the server
  *     → SSE parse-canceled fires
  *     → useEventStream calls onParseCanceled
- *     → App.vue clears cancellingParse + reloads records
+ *     → App.vue clears cancelingParse + reloads records
  *     → IngestView's Stop button flips back to Run
  *
  * The POST /parses mock never resolves (keeps parseBusy=true) so
@@ -116,14 +116,14 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     await expect(stopBtn).toContainText('Stop Parse')
 
     // Click Stop — DELETE fires once; button copy flips to
-    // "Cancelling…" + the button disables itself.
+    // "Canceling…" + the button disables itself.
     await stopBtn.click()
     await expect.poll(() => deleteCount).toBe(1)
-    await expect(stopBtn).toContainText('Cancelling…')
+    await expect(stopBtn).toContainText('Canceling…')
     await expect(stopBtn).toBeDisabled()
 
     // Server fires parse-canceled over SSE → App.vue clears
-    // cancellingParse + parseBusy via the onParseCanceled hook
+    // cancelingParse + parseBusy via the onParseCanceled hook
     // (which calls load()). Run Parse comes back.
     await page.evaluate(() => {
       ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-canceled')

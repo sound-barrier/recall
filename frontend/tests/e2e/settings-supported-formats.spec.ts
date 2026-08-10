@@ -36,7 +36,7 @@ const SOURCES = [
 ]
 
 test.describe('supported capture-source rules', () => {
-  test('the collapsible table lists every parser-recognised source', async ({ page }) => {
+  test('the collapsible table lists every parser-recognized source', async ({ page }) => {
     await page.route('**/api/v1/system/reference-data', async (route: Route) => {
       await route.fulfill({
         status: 200,

@@ -196,7 +196,7 @@ export function monthsAgoISO(months: number): string {
 }
 
 // Current-streak summary for the dossier KPI. `result` carries the
-// streak's class so the widget can colour it; `sinceDate` is the
+// streak's class so the widget can color it; `sinceDate` is the
 // `data.date` of the FIRST match in the streak (used in the tile's
 // subtitle). Null result + zero count when the narrow has no
 // decisive matches.

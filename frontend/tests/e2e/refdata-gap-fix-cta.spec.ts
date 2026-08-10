@@ -2,7 +2,7 @@
  * Reference-data-gap "Fixed in v<X>" CTA.
  *
  * When the user opens About (the update hub) and the upcoming
- * release would recognise an OCR'd hero/map name currently
+ * release would recognize an OCR'd hero/map name currently
  * sitting in the Unknown tab's reference-data-gaps section, each
  * gap-card surfaces a "Fixed in v<X>" CTA linking to the release.
  *
@@ -39,7 +39,7 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
     })
   })
 
-  test('renders "Fixed in v<X>" when the upcoming roster recognises the name', async ({ page }) => {
+  test('renders "Fixed in v<X>" when the upcoming roster recognizes the name', async ({ page }) => {
     await page.route('**/api/v1/system/update', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
@@ -69,7 +69,7 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
     await expect(link).toHaveAttribute('href', 'https://github.com/sound-barrier/recall/releases/tag/v1.2.3')
   })
 
-  test('keeps the generic copy when the upcoming roster does NOT recognise the name', async ({ page }) => {
+  test('keeps the generic copy when the upcoming roster does NOT recognize the name', async ({ page }) => {
     await page.route('**/api/v1/system/update', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',

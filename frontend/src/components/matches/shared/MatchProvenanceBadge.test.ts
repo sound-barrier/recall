@@ -17,7 +17,7 @@ describe('MatchProvenanceBadge', () => {
     expect(w.attributes('title')).toContain('2 fields')
   })
 
-  it('singularises a single edited field', () => {
+  it('singularizes a single edited field', () => {
     const w = mount(MatchProvenanceBadge, {
       props: { source: 'ocr_edited', editedFields: ['data.map'] },
     })

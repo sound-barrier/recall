@@ -6,7 +6,7 @@
 # Why this script exists: deadcode itself always exits 0 regardless of
 # findings, and the project has a small fixed set of intentional
 # unreachables (build-tag stubs, test-only constructors) that must be
-# filtered out. Centralising the allow-list and the gating logic here
+# filtered out. Centralizing the allow-list and the gating logic here
 # means the Taskfile, lefthook, and CI all invoke the same check —
 # previously each carried its own copy of the filter regex and they
 # drifted at least once.

@@ -66,7 +66,7 @@ describe('useOnboardingTour — first-launch gate', () => {
     expect(tour.open.value).toBe(true)
   })
 
-  it('honours autoOpenOnMount: false on first run', async () => {
+  it('honors autoOpenOnMount: false on first run', async () => {
     const tour = mountWithTour({ autoOpenOnMount: false })
     await nextTick()
     expect(tour.open.value).toBe(false)

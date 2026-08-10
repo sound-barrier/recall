@@ -7,7 +7,7 @@ import { tiltNudgeSignal, type TiltNudgeSignal } from '@/match/match-momentum-he
 // tilt is about actual recent play, not the current narrow), and
 // dismissal sticks to the streak's first-loss key for the app
 // session. The same streak never re-nudges; a fresh streak after a
-// win may. Nothing persists — by design, the nudge must not moralise
+// win may. Nothing persists — by design, the nudge must not moralize
 // across launches.
 export function useTiltNudge(records: Readonly<Ref<MatchRecord[]>>) {
   const dismissedStreakKey = ref('')

@@ -15,7 +15,7 @@ import { ref } from 'vue'
 
 export type ExportStatus = { ok: boolean; message: string }
 
-// MatchImportResult mirrors the api.ts return: empty path = user cancelled.
+// MatchImportResult mirrors the api.ts return: empty path = user canceled.
 export interface MatchImportResult {
   path: string
   imported: number
@@ -62,7 +62,7 @@ export function useBackupRestore(api: BackupRestoreApi) {
     try {
       const path = await api.backup()
       if (path) status.value = { ok: true, message: `Saved: ${path}` }
-      // Empty path = user cancelled; stay silent.
+      // Empty path = user canceled; stay silent.
     } catch (e) {
       status.value = { ok: false, message: `Backup failed: ${String(e)}` }
     } finally {

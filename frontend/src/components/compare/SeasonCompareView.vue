@@ -44,7 +44,7 @@ watch(seasons, (list) => {
 
 const scope = ref<'full' | 'filtered'>('full')
 
-// Full-scope source. Beyond hidden-stripping, honour the leaver 'Hide' setting
+// Full-scope source. Beyond hidden-stripping, honor the leaver 'Hide' setting
 // and the unknown-map default here — the narrow applies both in the filtered
 // scope (its leaver clause + includeUnknown=false), so applying them keeps the
 // two scopes consistent (otherwise 'Hide' would count MORE games than 'Drop

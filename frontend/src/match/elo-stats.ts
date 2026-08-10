@@ -159,7 +159,7 @@ export function runsTest(results: readonly boolean[]): RunsTestResult | null {
 export interface LogisticSlopeFit {
   slope: number // logit units per x unit
   se: number // standard error of the slope
-  meanRate: number // fitted win probability at the centred mean x
+  meanRate: number // fitted win probability at the centered mean x
   n: number
 }
 

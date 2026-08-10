@@ -24,9 +24,9 @@ export function wilsonInterval(wins: number, total: number): WilsonInterval | nu
   const z2 = z * z
   const p = wins / total
   const denominator = 1 + z2 / total
-  const centre = p + z2 / (2 * total)
+  const center = p + z2 / (2 * total)
   const spread = z * Math.sqrt((p * (1 - p)) / total + z2 / (4 * total * total))
-  return { lower: (centre - spread) / denominator, upper: (centre + spread) / denominator }
+  return { lower: (center - spread) / denominator, upper: (center + spread) / denominator }
 }
 
 // wilsonLowerBound returns the lower bound of the Wilson score 95%

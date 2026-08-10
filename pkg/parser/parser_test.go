@@ -149,7 +149,7 @@ func TestExtractModifiers(t *testing.T) {
 			want: []string{"uphill battle", "victory"},
 		},
 		{
-			name: "reversal loss (favoured who lost)",
+			name: "reversal loss (favored who lost)",
 			text: "REVERSAL DEFEAT",
 			want: []string{"reversal", "defeat"},
 		},
@@ -388,7 +388,7 @@ func TestExtractSR(t *testing.T) {
 		}
 	})
 
-	// The card shows the change as a coloured arrow, not a sign, so extractSR
+	// The card shows the change as a colored arrow, not a sign, so extractSR
 	// returns the magnitude; parseRank applies the direction from the match
 	// result. A stray "-" in the OCR therefore doesn't flip the sign here.
 	t.Run("change is a magnitude (sign comes from the result)", func(t *testing.T) {

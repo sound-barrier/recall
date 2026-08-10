@@ -42,13 +42,13 @@ describe('Uphill Battle / Reversal KPI widgets', () => {
     expect(w.find('.kpi-sub').text()).toContain('underdog')
   })
 
-  it('reversals shows the count of favoured losses', () => {
+  it('reversals shows the count of favored losses', () => {
     const w = mountWidget(ReversalWidget, {
       dossier: { modifierRecord: { total: 3, winrate: 0 } },
     })
     expect(w.find('.kpi-eyebrow').text()).toBe('Reversals')
     expect(w.find('.kpi-value').text()).toBe('3')
-    expect(w.find('.kpi-sub').text()).toContain('favoured')
+    expect(w.find('.kpi-sub').text()).toContain('favored')
   })
 
   it('renders 0 when the modifier never appears (null record)', () => {

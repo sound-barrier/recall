@@ -26,7 +26,7 @@ export interface FormVerdict {
   movers: string[]
 }
 
-// Weighted contributions, all normalised so "one clearly-felt improvement"
+// Weighted contributions, all normalized so "one clearly-felt improvement"
 // lands near ±1: 10 win-rate points ≈ 1, one fewer death per 10 min ≈ 0.5,
 // two more elims/assists per 10 ≈ 0.25, one division of rank ≈ 0.75.
 const WINRATE_PER_POINT = 0.1
@@ -69,7 +69,7 @@ function signed(n: number, digits = 0): string {
 }
 
 // Rank deltas are fractional divisions: show one decimal, trimmed ("+2", not
-// "+2.0"), and pluralise off the displayed magnitude.
+// "+2.0"), and pluralize off the displayed magnitude.
 function rankLabel(delta: number): string {
   const mag = round1(Math.abs(delta))
   const magText = Number.isInteger(mag) ? String(mag) : mag.toFixed(1)

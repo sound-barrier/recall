@@ -37,7 +37,7 @@ export function formatQueueTypeLabel(
 // Leaf-row chip label for an Unknown hero. Renders "Unknown hero
 // (miyazaki?)" when the raw OCR is preserved, plain "Unknown hero"
 // when it isn't (e.g. a pre-fix record where hero_raw was discarded).
-// The parenthesised raw text gives the user something to recognise
+// The parenthesized raw text gives the user something to recognize
 // AND signals to the maintainer what new heroes need adding to the
 // YAML when this surfaces in the Unknown tab.
 export function formatUnknownHeroLabel(rec: Pick<MatchRecord, 'data'>): string {

@@ -137,7 +137,7 @@ func TestGetMatches_UnknownCursorWithLimit_ReturnsEmptyPage(t *testing.T) {
 
 func TestGetMatches_LimitClampedTo1000(t *testing.T) {
 	// Helper-level exercise — the e2e clamp would need 1001 fake
-	// rows; this is the same behaviour at one level lower.
+	// rows; this is the same behavior at one level lower.
 	if n, _ := cmd.ParseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=999999")); n != 1000 {
 		t.Errorf("limit clamp = %d, want 1000", n)
 	}

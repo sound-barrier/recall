@@ -288,7 +288,7 @@ function onBackdropClick(e: MouseEvent) {
 }
 
 /* Result-tinted left strip so the panel echoes the card's bar.
-   3px wide; same colour scheme as `.match-bar`. */
+   3px wide; same color scheme as `.match-bar`. */
 .detail-panel::before {
   content: '';
   position: absolute;

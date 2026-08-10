@@ -124,7 +124,7 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 
 // SaveBackupToFile opens a native save dialog and writes a complete native
 // SQLite snapshot (BackupDatabase) to the chosen path. Returns the path on
-// success; "" if the user cancelled.
+// success; "" if the user canceled.
 func (a *App) SaveBackupToFile() (string, error) {
 	defaultName := "recall-backup-" + time.Now().UTC().Format("20060102-150405") + ".db"
 	path, err := application.Get().Dialog.SaveFile().
@@ -137,7 +137,7 @@ func (a *App) SaveBackupToFile() (string, error) {
 		return "", err
 	}
 	if path == "" {
-		return "", nil // user cancelled
+		return "", nil // user canceled
 	}
 	data, err := a.BackupDatabase()
 	if err != nil {
@@ -151,7 +151,7 @@ func (a *App) SaveBackupToFile() (string, error) {
 
 // SaveTextToFile writes caller-supplied text (the flat one-row-per-match CSV the
 // matches view assembles client-side) to a user-chosen path via a native save
-// dialog. Returns the chosen path, or "" if the user cancelled.
+// dialog. Returns the chosen path, or "" if the user canceled.
 func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
 	if defaultName == "" {
 		defaultName = "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".csv"
@@ -236,7 +236,7 @@ func (a *App) SaveDiagnosticBundleToFile() (string, error) {
 
 // LoadRestoreFromFile opens a native open dialog, reads the chosen `.db`
 // snapshot, and applies it via RestoreDatabase. Returns the path read on
-// success; "" if cancelled. REPLACES the current database — the caller is
+// success; "" if canceled. REPLACES the current database — the caller is
 // expected to confirm before invoking.
 func (a *App) LoadRestoreFromFile() (string, error) {
 	path, err := application.Get().Dialog.OpenFile().
@@ -262,7 +262,7 @@ func (a *App) LoadRestoreFromFile() (string, error) {
 
 // LoadMatchImportFromFile opens a native open dialog, reads the chosen bundle
 // `.zip`, and merges it via ImportMatches. Returns the path + the merge counts;
-// Path is "" if the user cancelled. Additive — never replaces existing data.
+// Path is "" if the user canceled. Additive — never replaces existing data.
 func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
 	path, err := application.Get().Dialog.OpenFile().
 		SetTitle("Import Recall matches").

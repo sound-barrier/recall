@@ -30,7 +30,7 @@ interface TrendPoint {
 
 // A named line: legend label + its points in ascending time order.
 // `key` is the role-bucket key (tank/dps/support/open/all) so the
-// presentation layer can colour role lines consistently across charts.
+// presentation layer can color role lines consistently across charts.
 export interface TrendSeries {
   name: string
   key?: string
@@ -70,7 +70,7 @@ export function roleBucket(rec: Pick<MatchRecord, 'data' | 'queue_type'>): RoleB
 
 // Epoch milliseconds for a record's match time. Reuses matchTime()
 // (SUMMARY date + finished_at, else the match_key timestamp) so the
-// trends honour the same "when did this match happen" rule as the rest
+// trends honor the same "when did this match happen" rule as the rest
 // of the workspace. Returns null when neither source yields a parseable
 // time — such rows can't be placed on a time axis and are dropped.
 export function matchEpoch(rec: Pick<MatchRecord, 'match_key' | 'data'>): number | null {
@@ -401,12 +401,12 @@ export function modifierFrequencySeries(records: readonly TrendInput[]): TrendSe
 
 // Combat output per 10 minutes over time — one line each for eliminations,
 // deaths, and assists, from the scoreboard's per-10-min figures (which
-// normalise for game length). These stats have intermittent OCR coverage —
+// normalize for game length). These stats have intermittent OCR coverage —
 // they come from a SUMMARY/PERSONAL scoreboard screenshot, not the rank
 // screen — so a match contributes a point to a metric only when that figure
 // was parsed; the chart connects across the gaps. A rising eliminations /
 // assists line or a falling deaths line is the "am I improving mechanically,
-// not just climbing?" signal. Keyed so the presentation layer colours them
+// not just climbing?" signal. Keyed so the presentation layer colors them
 // semantically (eliminations green, deaths red, assists blue).
 const COMBAT_METRICS = [
   { key: 'eliminations', name: 'Eliminations' },
@@ -434,7 +434,7 @@ export function combatSeries(records: readonly TrendInput[]): TrendSeries[] {
 // One cell of the day-of-week × time-of-day win-rate grid ("when do I play
 // my best?"). `x` is the time-bucket column, `y` the day row (after the
 // week-start rotation). Cells with no decisive match are omitted from the
-// grid entirely so the chart leaves them blank rather than colouring 0%.
+// grid entirely so the chart leaves them blank rather than coloring 0%.
 interface WinrateCell {
   x: number
   y: number

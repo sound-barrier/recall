@@ -25,7 +25,7 @@ describe('resolveColor', () => {
   // The regression this module exists for. The high-contrast palette
   // defines --tank as the 3-digit `#6df`; the old chart code built its
   // gradient stops with `${color}40`, yielding the invalid `#6df40`.
-  // ECharts renders an unparseable colour as transparent, so the area
+  // ECharts renders an unparseable color as transparent, so the area
   // fill silently disappeared on that theme only.
   it('expands 3-digit hex so an alpha suffix cannot corrupt it', () => {
     expect(resolveColor('#6df')).toBe('#66ddff')
@@ -67,12 +67,12 @@ describe('withAlpha', () => {
 })
 
 describe('themeColor', () => {
-  it('reads a token and normalises it in one step', () => {
+  it('reads a token and normalizes it in one step', () => {
     setToken('--probe-color', '#6df')
     expect(themeColor('--probe-color')).toBe('#66ddff')
   })
 
-  it('normalises the fallback when the token is missing', () => {
+  it('normalizes the fallback when the token is missing', () => {
     expect(themeColor('--not-a-token', '#6df')).toBe('#66ddff')
   })
 })

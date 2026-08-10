@@ -21,7 +21,7 @@ const { currentStreak: streak } = useDossier()
 </template>
 
 <style scoped>
-/* Per-result colouring picks up the existing palette tokens so the
+/* Per-result coloring picks up the existing palette tokens so the
    streak reads in the matching W/L/D voice regardless of theme. */
 .kpi-streak-win  { color: var(--win); }
 .kpi-streak-loss { color: var(--loss); }

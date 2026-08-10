@@ -6,7 +6,7 @@
 # Builds the serveronly binary, boots it on an isolated HOME +
 # RECALL_DATA_DIR (so it doesn't trample the dev's real install),
 # runs schemathesis, tears the server down. Same invocation as CI's
-# `schemathesis` job — see .github/workflows/ci.yml. Centralised here
+# `schemathesis` job — see .github/workflows/ci.yml. Centralized here
 # so CI + lefthook + ad-hoc `task check-api-drift` all stay in sync.
 #
 # Usage:

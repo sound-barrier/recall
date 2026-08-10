@@ -81,7 +81,7 @@ func TestApplyGameDataUpdate_HappyPath_WritesFilesAndManifest(t *testing.T) {
 		t.Errorf("manifest.AppliedMainCommit: want 'abc1234', got %q", m.AppliedMainCommit)
 	}
 
-	// Parser swapped — Phoenix is now recognised.
+	// Parser swapped — Phoenix is now recognized.
 	if r := parser.HeroRole("Phoenix"); r != "dps" {
 		t.Errorf("after apply, parser.HeroRole(Phoenix) = %q, want dps", r)
 	}

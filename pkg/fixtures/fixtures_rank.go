@@ -153,7 +153,7 @@ const (
 	rustGames   = 14
 	rustMaxPts  = 20.0
 
-	// Tilt queueing: from the tiltRunStart-th consecutive same-day loss on,
+	// Tilt queuing: from the tiltRunStart-th consecutive same-day loss on,
 	// every further game that day is played tilted — each queue digs the
 	// hole deeper until a win (or the day) breaks the spiral.
 	tiltRunStart = 3
@@ -418,7 +418,7 @@ func (w *trackWalk) updateStreak(result string) {
 }
 
 // updateGrace refreshes demotion protection on entering a tier and clears it
-// when a floor defence consumed it.
+// when a floor defense consumed it.
 func (w *trackWalk) updateGrace(preTier int, graceUsed bool) {
 	switch {
 	case graceUsed:

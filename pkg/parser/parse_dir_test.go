@@ -201,11 +201,11 @@ func TestParseScreenshotsDir_AllFilesFailing(t *testing.T) {
 	}
 }
 
-// Cancellation contract: when ctx is cancelled, the loop returns its
+// Cancellation contract: when ctx is canceled, the loop returns its
 // partial results + ctx.Err() at the next between-files boundary. Files
 // already completed stay in the returned map; the rest are skipped. The
 // stub's Cancel() call mid-batch lets us assert "stops at the boundary
-// immediately after the file we cancelled in".
+// immediately after the file we canceled in".
 func TestParseScreenshotsDir_CtxCancelStopsBetweenFiles(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -234,9 +234,9 @@ func TestParseScreenshotsDir_CtxCancelStopsBetweenFiles(t *testing.T) {
 	}
 }
 
-// Pre-cancelled ctx aborts before the first OCR shell-out — guards the
+// Pre-canceled ctx aborts before the first OCR shell-out — guards the
 // common "user clicked Stop just as Parse fired" race.
-func TestParseScreenshotsDir_PreCancelledCtxStopsImmediately(t *testing.T) {
+func TestParseScreenshotsDir_PreCanceledCtxStopsImmediately(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
@@ -252,7 +252,7 @@ func TestParseScreenshotsDir_PreCancelledCtxStopsImmediately(t *testing.T) {
 		t.Errorf("err = %v, want context.Canceled", err)
 	}
 	if called != 0 {
-		t.Errorf("parseSingleFunc called %d times, want 0 (ctx pre-cancelled)", called)
+		t.Errorf("parseSingleFunc called %d times, want 0 (ctx pre-canceled)", called)
 	}
 	if len(results) != 0 {
 		t.Errorf("results = %d, want 0", len(results))

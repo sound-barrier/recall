@@ -17,7 +17,7 @@ in-app updater to fetch; you don't run it directly.
 
 Double-click the downloaded `.exe`. NSIS walks you through:
 
-- Accept the licence (Apache-2.0).
+- Accept the license (Apache-2.0).
 - Pick an install path — the default is
   `%LocalAppData%\Programs\Recall\recall.exe`
   (e.g. `C:\Users\<you>\AppData\Local\Programs\Recall`). This is a
@@ -130,7 +130,7 @@ program folder isn't writable without elevation.)
 
 ## Where Recall stores its data
 
-Recall organises everything by **profile** — each profile (your main
+Recall organizes everything by **profile** — each profile (your main
 account, alts, anything) gets its own settings + match database.
 The install root is:
 

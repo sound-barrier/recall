@@ -174,7 +174,7 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 		// Read the raw body first so we can reject `null` (which Go's
 		// json silently decodes into the zero-value struct, then the
 		// SetMatchAnnotation "all-empty → delete" rule kicks in and
-		// the server returns 204 — schema-violating behaviour
+		// the server returns 204 — schema-violating behavior
 		// schemathesis v4's negative_data_rejection catches).
 		raw, rErr := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if rErr != nil {

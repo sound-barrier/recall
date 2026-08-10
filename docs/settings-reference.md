@@ -274,7 +274,7 @@ hero / map / source name with a `+` (added) or `−` (removed) sign.
 **Update game data** downloads the three YAMLs + per-file SHA-256
 sidecars, verifies each, atomically writes them under
 `<RECALL_DATA_DIR>/data/`, and triggers an in-process parser
-reload so new heroes/maps are recognised immediately. No restart
+reload so new heroes/maps are recognized immediately. No restart
 needed. The button is disabled when game data is already current;
 the modal shows **MAIN UNREACHABLE** when GitHub Pages is blocked
 or down.

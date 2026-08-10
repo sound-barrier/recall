@@ -44,7 +44,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     minPlayMinutes:   ref(0),
     minPlayPercent:   ref(0),
     includeUnknown:   ref(false),
-    // Tests not exercising the anchor pass nothing; we synthesise an
+    // Tests not exercising the anchor pass nothing; we synthesize an
     // always-empty ComputedRef so the filter's `anchorKey.value`
     // reads still work without lifting the wrapper to optional.
     anchorKey:        opts.anchorKey ?? computed(() => ''),

@@ -87,7 +87,7 @@ test.describe('Matches — Unknown hero / map leaf chip', () => {
   test('renders "Unknown hero" (no parens) when hero_raw is missing', async ({ page }) => {
     // Pre-fix record (parsed before hero_raw was preserved). Leaf
     // still surfaces the warning so the user knows the row has a
-    // gap, just without the recognisable OCR hint.
+    // gap, just without the recognizable OCR hint.
     const matches = [{
       match_key:    'k3',
       source_files: ['k3.png'],

@@ -1,8 +1,8 @@
-// Pure colour helpers for the performance heatmaps. Kept in its own
+// Pure color helpers for the performance heatmaps. Kept in its own
 // module (not match-helpers.ts) because match-helpers is pulled into
 // the INITIAL bundle by App.vue's eager `screenshotURL` import — this
 // file is imported only by the lazy Matches-view chunk, so the heatmap
-// colour math stays out of the initial budget.
+// color math stays out of the initial budget.
 
 // The judgment bands: on the ladder anything above 51% is a climb (a
 // slower climb is still a climb) and anything below 48.5% is a slide —
@@ -11,7 +11,7 @@
 // cell stays neutral outright (a 5-0 heater is a nice evening, not
 // evidence). Confidence beyond the floor is carried by
 // heatmapCellOpacity — a 16-game green renders fainter than a 60-game
-// green — NOT by withholding the colour.
+// green — NOT by withholding the color.
 //
 // History: an earlier version also shrank the rate toward 50% with a
 // 90-imaginary-game prior before comparing. That made green cost

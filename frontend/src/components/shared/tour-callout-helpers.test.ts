@@ -83,7 +83,7 @@ describe('rectsEqual', () => {
     )).toBe(false)
   })
 
-  it('honours a custom epsilon', () => {
+  it('honors a custom epsilon', () => {
     expect(rectsEqual(
       { x: 0, y: 0, w: 0, h: 0 },
       { x: 3, y: 0, w: 0, h: 0 },
@@ -98,14 +98,14 @@ describe('rectsEqual', () => {
 })
 
 describe('computeCalloutPosition', () => {
-  it('centres in the viewport when there is no target', () => {
+  it('centers in the viewport when there is no target', () => {
     const out = computeCalloutPosition(null, 200, 1280, 800, 'auto', LAYOUT)
     expect(out.placement).toBe('auto')
     expect(out.left).toBe((1280 - 360) / 2)
     expect(out.top).toBe((800 - 200) / 2)
   })
 
-  it('honours an explicit placement that physically fits', () => {
+  it('honors an explicit placement that physically fits', () => {
     // Target mid-screen with room above → explicit "top" wins without
     // the overlap check.
     const out = computeCalloutPosition(

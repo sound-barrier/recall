@@ -38,7 +38,7 @@ function offsetText(h: HeroPickStat): string {
 // nudged rate is expressed as synthetic win/loss tallies at the same
 // volume — passing it only through `winrate` left the class frozen on the
 // measured record and the nudge changed the bar's width but never its
-// colour. The un-nudged path hands the real tallies straight through.
+// color. The un-nudged path hands the real tallies straight through.
 function heatShape(h: HeroPickStat): { total: number; wins: number; losses: number } {
   const decisive = h.wins + h.losses
   const nudged = nudgedTo(h)

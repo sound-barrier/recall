@@ -20,7 +20,7 @@ flowchart LR
 ```
 
 1. **Capture** — a folder watcher (`fsnotify`) or a manual *Parse* run feeds new
-   `.png`/`.jpg` screenshots into the pipeline. Recall recognises the
+   `.png`/`.jpg` screenshots into the pipeline. Recall recognizes the
    Nvidia Overlay / OW PrntScn / Windows Snip / Steam filename shapes by their
    embedded timestamps.
 2. **OCR + parse** — each screenshot is read by the **Tesseract** CLI (shelled

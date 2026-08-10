@@ -9,7 +9,7 @@ import { useTheme } from '@/composables/settings/useTheme'
 import { cssVar } from '@/match/theme-colors'
 
 // Wraps vue-echarts with the cross-cutting concerns every trend chart
-// needs: app-theme colours (canvas can't inherit CSS, so we read the
+// needs: app-theme colors (canvas can't inherit CSS, so we read the
 // custom properties and register a matching ECharts theme, rebuilt on
 // every theme switch), a screen-reader label (the canvas is opaque to
 // AT), motion that respects prefers-reduced-motion, and the shared
@@ -61,7 +61,7 @@ function registerThemeFromCss(): void {
     // The categorical fallback palette, for series with no semantic token
     // of their own (heroes, maps, modifiers). Slots 5–8 used to be
     // hardcoded, so a chart with five or more series mixed theme-aware
-    // colours with frozen dark-theme ones — visible on Day as four muted
+    // colors with frozen dark-theme ones — visible on Day as four muted
     // lines followed by four bright ones.
     color: [
       cssVar('--accent'),
@@ -93,7 +93,7 @@ function syncMotion(): void {
   reduceMotion.value = motionQuery?.matches ?? false
 }
 
-// Animation is the only prop fed through the option itself; colours go
+// Animation is the only prop fed through the option itself; colors go
 // via the registered theme, the label via ECharts' native aria block.
 const themedOption = computed<TrendOption>(() => ({
   animation: !reduceMotion.value,

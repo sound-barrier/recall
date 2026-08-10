@@ -21,13 +21,13 @@ const evt = (over: Partial<ParseProgressEvent> = {}): ParseProgressEvent => ({
   ...over,
 })
 
-function mountBar(over: { parseProgress?: ParseProgressEvent | null; cancellingParse?: boolean } = {}) {
+function mountBar(over: { parseProgress?: ParseProgressEvent | null; cancelingParse?: boolean } = {}) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const appStore = useAppStore()
   const matchesStore = useMatchesStore()
   matchesStore.parseProgress = over.parseProgress ?? null
-  matchesStore.cancellingParse = over.cancellingParse ?? false
+  matchesStore.cancelingParse = over.cancelingParse ?? false
   // Spy before mount — the component destructures onCancelParse at setup.
   const cancelSpy = vi.spyOn(matchesStore, 'onCancelParse').mockResolvedValue(undefined)
   const w = mount(ParseStatusBar, { global: { plugins: [pinia] } })
@@ -116,8 +116,8 @@ describe('ParseStatusBar — ABORT tile (item 15 extension)', () => {
     expect(w.find('[data-testid="status-bar-cancel-btn"]').exists()).toBe(false)
   })
 
-  it('flips to "ABORTING" + disables itself when cancellingParse is true', () => {
-    const { w } = mountBar({ parseProgress: evt({ done: 1, total: 5, filename: 'a.png' }), cancellingParse: true })
+  it('flips to "ABORTING" + disables itself when cancelingParse is true', () => {
+    const { w } = mountBar({ parseProgress: evt({ done: 1, total: 5, filename: 'a.png' }), cancelingParse: true })
     const btn = w.find('[data-testid="status-bar-cancel-btn"]')
     expect(btn.text()).toContain('ABORTING')
     expect(btn.attributes('aria-label')).toBe('Aborting parse')

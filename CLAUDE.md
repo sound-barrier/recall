@@ -77,9 +77,10 @@ without agreement on direction.
 
 - **Language: American English.** All identifiers, comments, docs, commit
   messages, and user-facing copy use American spellings — color, canceled,
-  organize; never the British forms (colour, cancelled, organise). Enforced
-  mechanically by `misspell` (Go, `locale: US` in `.golangci.yml`) and `typos`
-  (repo-wide, `locale = "en-us"` in `_typos.toml`), both wired into CI.
+  organize; never the British -our/-ise/doubled-l forms. Enforced mechanically
+  by `misspell` (Go, `locale: US` in `.golangci.yml`) and `typos` (repo-wide,
+  `locale = "en-us"` in `_typos.toml`), both wired into CI. (The literal
+  British examples can't be written here — the linters rewrite them.)
 
 - **Naming**: identifiers must reveal intent without a comment. If you find
   yourself writing a comment to explain a name, the name is wrong — rename it.
@@ -404,7 +405,7 @@ and ratchet a floor deliberately when a campaign lifts real coverage
 without explicit justification should not merge.
 
 **Exempt** (no TDD ceremony): typo fixes, doc-only edits, formatter/linter
-passes, dependency bumps, configuration-only changes. Use judgement for
+passes, dependency bumps, configuration-only changes. Use judgment for
 refactors — extracting a helper rarely needs a new test, but changing observable
 behavior does.
 

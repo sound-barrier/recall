@@ -3,7 +3,7 @@ import { useOWData } from '@/composables/shared/useOWData'
 
 // Read-only "Supported capture-source rules" surface in Settings →
 // Advanced: a collapsible table of the filename shapes the parser
-// recognises per capture tool, rendered from the loaded reference data
+// recognizes per capture tool, rendered from the loaded reference data
 // (pkg/parser/screenshot_sources.yaml). Extracted from SettingsAdvanced so
 // the settings panel sheds this static reference block.
 const { data: owData } = useOWData()
@@ -11,19 +11,19 @@ const { data: owData } = useOWData()
 
 <template>
   <!-- Supported capture-source rules — read-only surface so the
-           user can verify which filename shapes the parser recognises
+           user can verify which filename shapes the parser recognizes
            without leaving the app. Closed by default; power-user
            surface only. -->
   <details class="setting-row capture-source-row" data-supported-formats>
     <summary class="capture-source-summary">
       <span class="setting-label">Supported capture-source rules</span>
       <span class="capture-source-summary-hint">
-        {{ owData?.screenshot_sources?.length ?? 0 }} filename formats recognised
+        {{ owData?.screenshot_sources?.length ?? 0 }} filename formats recognized
       </span>
     </summary>
     <div class="capture-source-body">
       <p class="setting-desc">
-        The parser recognises these filename shapes per capture
+        The parser recognizes these filename shapes per capture
         tool. Source-of-truth is the YAML in
         <code>pkg/parser/screenshot_sources.yaml</code>; this
         table renders the loaded entries.

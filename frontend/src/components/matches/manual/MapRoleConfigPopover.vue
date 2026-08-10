@@ -45,7 +45,7 @@ const types = computed(() => {
   })
 })
 
-// Every map's display name, alphabetised — the pickable roster.
+// Every map's display name, alphabetized — the pickable roster.
 const allMaps = computed(() => {
   const out: string[] = []
   for (const [, { display }] of ow.mapIndex.value) out.push(display)

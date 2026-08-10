@@ -6,7 +6,7 @@ import { useProfilesData } from '@/queries/profiles'
 // Stateful logic for the masthead profile chip + dropdown: the profile
 // list, the open/creating/rename UI state, and the create / rename / switch
 // actions. Extracted from ProfileSwitcher.vue so the SFC holds the chip +
-// dropdown markup and this composable holds the behaviour.
+// dropdown markup and this composable holds the behavior.
 //
 // Switching tears down the server's in-memory state for the previous
 // profile, so every successful PUT/POST window.location.reload()s — every

@@ -204,7 +204,7 @@ describe('heroesForHeader', () => {
 
 describe('rolesForHeader', () => {
   // Minimal heroRole stub keyed on the literal name. Mirrors the
-  // useOWData().heroRole shape — anything unrecognised resolves to ''.
+  // useOWData().heroRole shape — anything unrecognized resolves to ''.
   const ROLE: Record<string, string> = {
     lucio: 'support', ana: 'support', mercy: 'support',
     kiriko: 'support', baptiste: 'support', zenyatta: 'support',

@@ -46,10 +46,10 @@ export interface CalloutLayout {
 // Pure placement solver for the tour callout. Given the (already-measured)
 // target rect, the callout's height, the viewport, and the step's preferred
 // side, returns clamped left/top + the resolved placement. No DOM access —
-// the SFC supplies target / height / viewport. Honour an explicit side when
+// the SFC supplies target / height / viewport. Honor an explicit side when
 // it physically fits; otherwise auto-search bottom→right→left→top rejecting
 // any side that would overlap the target; otherwise drop into the viewport
-// corner farthest from the target's centre.
+// corner farthest from the target's center.
 export function computeCalloutPosition(
   target: Rect | null,
   calloutH: number,
@@ -61,7 +61,7 @@ export function computeCalloutPosition(
   const { calloutW, safety, gap } = layout
   const h = calloutH
 
-  // No target → centre.
+  // No target → center.
   if (!target) {
     return {
       left: Math.max(safety, (vw - calloutW) / 2),
@@ -124,7 +124,7 @@ export function computeCalloutPosition(
   }
 
   // No side has room without overlap — fall back to the viewport corner
-  // farthest from the target's centre so the body stays readable.
+  // farthest from the target's center so the body stays readable.
   const targetCx = tt.x + tt.w / 2
   const targetCy = tt.y + tt.h / 2
   const left = targetCx < vw / 2 ? vw - calloutW - safety : safety

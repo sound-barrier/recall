@@ -179,7 +179,7 @@ test.describe('match search — narrow-panel scoped-clause filter', () => {
     await expect(row(page, 'match:2').locator('mark.search-hl')).toHaveCount(0)
   })
 
-  // ── Clear / empty / active-chip (unchanged behaviour) ─────────────
+  // ── Clear / empty / active-chip (unchanged behavior) ─────────────
   test('clearing the input restores the full corpus', async ({ page }) => {
     await openNarrow(page)
     await searchInput(page).fill('clutch')

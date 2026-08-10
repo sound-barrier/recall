@@ -5,7 +5,7 @@
  * loss-streak K/D collapsed >25% below the 30-day baseline. When both
  * hold, a dismissible bottom-right toast suggests a break; dismissing
  * is session-scoped to the current streak (no persistence — it must
- * not moralise on a single bad day, and a NEW streak may nudge again).
+ * not moralize on a single bad day, and a NEW streak may nudge again).
  */
 import type { Route } from '@playwright/test'
 

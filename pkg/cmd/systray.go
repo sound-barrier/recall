@@ -12,7 +12,7 @@ import (
 	"recall/pkg/app"
 )
 
-// trayIcon is the full-colour Recall app icon (assets/icon.png, scaled to
+// trayIcon is the full-color Recall app icon (assets/icon.png, scaled to
 // 128×128) shown in the Windows / Linux tray. Refresh after changing the source:
 //
 //	sips -z 128 128 assets/icon.png --out pkg/cmd/tray-icon.png
@@ -52,7 +52,7 @@ func setupSystemTray(wailsApp *application.App, win *application.WebviewWindow, 
 
 	tray := wailsApp.SystemTray.New()
 	// macOS menu bars expect a monochrome template image (auto-tinted for
-	// light/dark); Windows + Linux trays show the full-colour icon.
+	// light/dark); Windows + Linux trays show the full-color icon.
 	if runtime.GOOS == "darwin" {
 		tray.SetTemplateIcon(trayIconTemplate)
 	} else {

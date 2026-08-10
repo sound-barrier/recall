@@ -70,7 +70,7 @@ export function useDossierQueries(
   // Drives the top-maps, top-heroes-by-count, and top-game-modes
   // widgets — each passes its own getter + limit. The widget's
   // useWidgetConfig output supplies `limit`; PR B callers hardcode
-  // it to match today's behaviour.
+  // it to match today's behavior.
   function topByCount(
     opts: MaybeRefOrGetter<{ getter: (r: MatchRecord) => string | undefined; limit: number }>,
   ): ComputedRef<BreakdownEntry[]> {
@@ -109,7 +109,7 @@ export function useDossierQueries(
   // the headline winrate); `total` is the decisive sample behind each
   // rate and doubles as the `minMatches` qualification gate so a 100%
   // rate over one game doesn't top the list. Uses tallyRecords so the
-  // leaver-handling preference is honoured. Drives the opt-in
+  // leaver-handling preference is honored. Drives the opt-in
   // win-rate-by-hero / -map / -role widgets — each passes its getter.
   function winrateBy(
     opts: MaybeRefOrGetter<{ getter: (r: MatchRecord) => string | undefined; minMatches: number; limit: number }>,
@@ -213,7 +213,7 @@ export function useDossierQueries(
 
   // Count + win-rate for ONE modifier — drives the Uphill Battle / Reversal
   // KPI tiles ("how often do I clutch as the underdog / choke when
-  // favoured"). Null when the modifier never appears in the set.
+  // favored"). Null when the modifier never appears in the set.
   function modifierRecord(
     opts: MaybeRefOrGetter<{ modifier: string }>,
   ): ComputedRef<ModifierRecord | null> {
@@ -357,7 +357,7 @@ export function useDossierQueries(
         // Pick the most-played for scannability, then display A→Z so the
         // rows read as a stable alphabetical list (matching the columns).
         .sort((a, b) => a.localeCompare(b))
-      // Materialise every (top-hero, game-mode) cell — including
+      // Materialize every (top-hero, game-mode) cell — including
       // zeros — so the grid layout is rectangular. The widget
       // renders the empty cells as a flat surface tone (no border,
       // no glyph) so the eye reads the populated cells first.
@@ -738,7 +738,7 @@ export function useDossierQueries(
   }
 
   // Recent results — last N decisive (W / L / D) results in
-  // newest-first order. The widget renders these as small coloured
+  // newest-first order. The widget renders these as small colored
   // pills so the user reads "I just won, lost, lost, won, won" at
   // a glance. PR C's config lets the user pick 3 / 5 / 10.
   function recentResults(

@@ -10,7 +10,7 @@ import (
 // OCR text — used as the `*_raw` fallback when the matchers (extract
 // Heroes / bestKnownMapInText / snapToKnownMap) fail to find a
 // canonical match. The leaf-row chip shows this raw text in
-// parentheses so the user can recognise "Unknown hero (miyazaki?)"
+// parentheses so the user can recognize "Unknown hero (miyazaki?)"
 // and the maintainer can spot what new hero needs adding to
 // heroes.yaml. Returns "" when no plausible token exists.
 //

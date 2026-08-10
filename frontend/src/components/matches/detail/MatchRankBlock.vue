@@ -114,7 +114,7 @@ const ow = useOWData()
 }
 
 /* Borders derive from the same token so a tier can never drift into
-   two different colours, and both follow the theme. */
+   two different colors, and both follow the theme. */
 .rank-tier.bronze    { color: var(--rank-bronze);   border-color: color-mix(in srgb, var(--rank-bronze) 45%, transparent); }
 .rank-tier.silver    { color: var(--rank-silver);   border-color: color-mix(in srgb, var(--rank-silver) 40%, transparent); }
 .rank-tier.gold      { color: var(--rank-gold);     border-color: color-mix(in srgb, var(--rank-gold) 45%, transparent); }

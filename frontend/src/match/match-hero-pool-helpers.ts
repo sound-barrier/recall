@@ -268,7 +268,7 @@ export type PoolMode = 'role' | 'open' | 'quickplay'
 // matchesPoolMode partitions the corpus into the three pool contexts. Quickplay
 // is the casual play mode regardless of queue; Role and Open are competitive.
 // Role is the DEFAULT ranked bucket — an explicit 'open' queue_type goes to Open
-// Queue, and anything else competitive (role, or an unlabelled comp match that
+// Queue, and anything else competitive (role, or an unlabeled comp match that
 // predates queue detection) counts as Role Queue, so the band never strands
 // real games in no mode.
 export function matchesPoolMode(

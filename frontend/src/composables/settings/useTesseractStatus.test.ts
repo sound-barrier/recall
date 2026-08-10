@@ -71,10 +71,10 @@ describe('useTesseractStatus', () => {
   })
 
   it('pickTesseractBinary failure forwards to onError + resets busy flag', async () => {
-    const api = makeApi({ pickTesseractBinary: vi.fn().mockRejectedValue(new Error('cancelled')) })
+    const api = makeApi({ pickTesseractBinary: vi.fn().mockRejectedValue(new Error('canceled')) })
     const { pickTesseractBinary, tesseractPickerBusy } = useTesseractStatus(api)
     await pickTesseractBinary()
-    expect(api.onError).toHaveBeenCalledWith(expect.stringContaining('cancelled'))
+    expect(api.onError).toHaveBeenCalledWith(expect.stringContaining('canceled'))
     expect(tesseractPickerBusy.value).toBe(false)
   })
 

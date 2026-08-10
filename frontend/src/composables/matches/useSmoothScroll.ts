@@ -6,11 +6,11 @@ import { onBeforeUnmount, ref, type Ref } from 'vue'
 // hold one target position: each nudge moves the target, a single rAF loop
 // tweens scrollTop toward it at 18% of the remaining gap per frame
 // (~critically damped). Hold a key → the target outruns the position and the
-// body glides; tap once → the loop runs ~25 frames then stops. Honours
+// body glides; tap once → the loop runs ~25 frames then stops. Honors
 // `prefers-reduced-motion: reduce` by snapping instantly.
 //
 // Extracted from MatchDetailPanel so any tall scroll surface can reuse the
-// keyboard-scroll behaviour. The caller passes the element ref + drives it
+// keyboard-scroll behavior. The caller passes the element ref + drives it
 // via nudgeScroll (relative) / setScrollAbsolute (Home/End).
 export function useSmoothScroll(scrollEl: Ref<HTMLElement | null>) {
   const scrollTarget = ref(0)

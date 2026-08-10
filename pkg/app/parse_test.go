@@ -29,7 +29,7 @@ func TestClaimParse_SingleFlight(t *testing.T) {
 		t.Errorf("ActiveParse after claim = %+v, want running scope=all", s)
 	}
 
-	// A concurrent claim must fail fast — no queueing.
+	// A concurrent claim must fail fast — no queuing.
 	if _, ok2 := app.ClaimParse(a, false); ok2 {
 		t.Errorf("second claimParse succeeded, want fail-fast")
 	}

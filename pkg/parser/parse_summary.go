@@ -122,7 +122,7 @@ func parseHeroesPlayed(text string) []HeroPlay {
 // brackets |/]/[ →1, normalized by normalizePerfDigits). This filters icon
 // noise like "S 4" (the skull-X / crossed-swords misread) while still
 // recovering a value the font mangled — e.g. "11" scanned as "1]", which the
-// old pure-digit pick dropped in favour of the icon's stray "4". The avg is
+// old pure-digit pick dropped in favor of the icon's stray "4". The avg is
 // anchored on "MIN" so we don't match "10" inside "AVG PER 10 MIN".
 var (
 	perfDigitLineRe = regexp.MustCompile(`(?m)^\s*([\dOoQqIilL|\]\[]{1,3})\s*$`)

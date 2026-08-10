@@ -15,7 +15,7 @@ import (
 func TestNewMux_ServesEventStream(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 
-	// Pre-cancelled context so the indefinite-duration stream handler
+	// Pre-canceled context so the indefinite-duration stream handler
 	// returns immediately after writing its headers.
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

@@ -38,7 +38,7 @@ if [ -d "${COMPOSITE_DIR}" ]; then
   SCAN_DIRS+=("${COMPOSITE_DIR}")
 fi
 
-# Extract every "uses: ..." line, normalise leading whitespace + the
+# Extract every "uses: ..." line, normalize leading whitespace + the
 # optional `-`. We only care about external refs of the form
 # `<owner>/<repo>[/<subpath>]@<version>`.
 unpinned=()

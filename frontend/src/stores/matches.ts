@@ -84,11 +84,11 @@ export const useMatchesStore = defineStore('matches', () => {
   )
 
   // ── Parse lifecycle state ─────────────────────────────────────────
-  // parseBusy gates the manual Parse button + peers; cancellingParse spans
+  // parseBusy gates the manual Parse button + peers; cancelingParse spans
   // the Stop click → SSE parse-canceled confirmation; firstLoadPending
   // drives the Matches skeleton from boot until the first load() resolves.
   const parseBusy = ref(false)
-  const cancellingParse = ref(false)
+  const cancelingParse = ref(false)
   // Drives the Matches skeleton from boot until the first fetch settles —
   // isPending never flips back to true across invalidation refetches.
   const firstLoadPending = computed(() => matchesQuery.isPending.value)
@@ -202,20 +202,20 @@ export const useMatchesStore = defineStore('matches', () => {
       appStore.setErrorFromRaw(String(e))
       parseBusy.value = false
       parseProgress.value = null
-      cancellingParse.value = false
+      cancelingParse.value = false
     }
   }
 
   // Stop from IngestView's button OR the status-bar ABORT tile. Flips the
-  // cancelling flag immediately; the clear happens on parse-canceled.
+  // canceling flag immediately; the clear happens on parse-canceled.
   // Swallows 409 (parse finished before the Stop landed).
   async function onCancelParse() {
-    if (cancellingParse.value) return
-    cancellingParse.value = true
+    if (cancelingParse.value) return
+    cancelingParse.value = true
     try {
       await CancelParse()
     } catch (_) {
-      cancellingParse.value = false
+      cancelingParse.value = false
     }
   }
 
@@ -237,7 +237,7 @@ export const useMatchesStore = defineStore('matches', () => {
       appStore.setErrorFromRaw(String(e))
       parseBusy.value = false
       parseProgress.value = null
-      cancellingParse.value = false
+      cancelingParse.value = false
     }
   }
 
@@ -382,7 +382,7 @@ export const useMatchesStore = defineStore('matches', () => {
     }
     parseBusy.value = false
     parseProgress.value = null
-    cancellingParse.value = false
+    cancelingParse.value = false
     if (outcome === 'complete') {
       const n = fresh.length
       announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
@@ -483,7 +483,7 @@ export const useMatchesStore = defineStore('matches', () => {
     hiddenRecords,
     ambiguousRecords,
     parseBusy,
-    cancellingParse,
+    cancelingParse,
     firstLoadPending,
     parseProgress,
     watchActivity,

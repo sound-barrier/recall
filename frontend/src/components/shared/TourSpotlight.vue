@@ -19,7 +19,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 //   4. When `target` is null OR the selector resolves to nothing, the
 //      cutout collapses to zero size and the dim covers the whole
 //      viewport — used for Welcome / Done steps that render a
-//      centred briefing instead.
+//      centered briefing instead.
 //
 // Hit-testing: the SVG overlay carries `pointer-events: none`. The
 // cutout is purely visual — the tour does NOT pass clicks through.

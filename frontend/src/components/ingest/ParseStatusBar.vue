@@ -7,11 +7,11 @@ import { useUiStore } from '@/stores/ui'
 
 // Persistent parse-status footer. Reads the parse lifecycle from the matches
 // store: parseProgress drives the counter / ticks / visibility state machine,
-// cancellingParse drives the ABORT tile's "ABORTING…" state. The ABORT click +
+// cancelingParse drives the ABORT tile's "ABORTING…" state. The ABORT click +
 // the click-to-jump-to-Parse gesture go straight to the stores. Self-applies
 // `inert` while hidden OR while a modal has frozen the background.
 const matchesStore = useMatchesStore()
-const { parseProgress, cancellingParse } = storeToRefs(matchesStore)
+const { parseProgress, cancelingParse } = storeToRefs(matchesStore)
 const { onCancelParse } = matchesStore
 const { goToView } = useAppStore()
 const { backgroundFrozen } = storeToRefs(useUiStore())
@@ -194,12 +194,12 @@ function onJumpToIngest(e: MouseEvent) {
         class="abort-btn"
         data-no-jump
         data-testid="status-bar-cancel-btn"
-        :disabled="cancellingParse"
-        :aria-label="cancellingParse ? 'Aborting parse' : 'Abort parse'"
+        :disabled="cancelingParse"
+        :aria-label="cancelingParse ? 'Aborting parse' : 'Abort parse'"
         @click.stop="onCancelParse"
       >
         <span class="abort-glyph" aria-hidden="true">■</span>
-        <span class="abort-label">{{ cancellingParse ? 'ABORTING' : 'ABORT' }}</span>
+        <span class="abort-label">{{ cancelingParse ? 'ABORTING' : 'ABORT' }}</span>
       </button>
     </div>
   </aside>
@@ -386,7 +386,7 @@ function onJumpToIngest(e: MouseEvent) {
    border + ghost interior; on hover the interior fills with
    the loss tint so the affordance reads as "armed" without
    shouting at idle. Active state slightly inverts. The
-   "ABORTING" cancelling state pulses the border ring so the
+   "ABORTING" canceling state pulses the border ring so the
    user sees the cancel signal landing. */
 .group-abort {
   flex: 0 0 auto;
@@ -433,7 +433,7 @@ function onJumpToIngest(e: MouseEvent) {
 .abort-btn:disabled {
   cursor: not-allowed;
 
-  /* Pulse the border while cancelling so the user sees the
+  /* Pulse the border while canceling so the user sees the
      stop signal in flight without us needing a separate
      spinner. */
   animation: abort-pulse 1.1s ease-in-out infinite;

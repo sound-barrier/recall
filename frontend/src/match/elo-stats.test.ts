@@ -61,7 +61,7 @@ describe('inverseGaussianCdf', () => {
 
   it('is continuous across the asymptotic-tail switch (z₂ = 8)', () => {
     // Sweep a λ range that carries z₂ through 8 at fixed t/μ and check
-    // neighbouring evaluations never jump.
+    // neighboring evaluations never jump.
     let prev: number | null = null
     for (let lambda = 40; lambda <= 90; lambda += 1) {
       const v = inverseGaussianCdf(0.5, 1, lambda)
@@ -181,7 +181,7 @@ describe('logisticSlope', () => {
     for (let i = 0; i < 30; i++) { xs.push(3); wins.push(i < 18) }
     const fit = logisticSlope(xs, wins)!
     expect(fit.slope).toBeCloseTo((Math.log(18 / 12) - Math.log(21 / 9)) / 3, 6)
-    // The fitted rate at the centred midpoint is σ(mean of the two logits).
+    // The fitted rate at the centered midpoint is σ(mean of the two logits).
     const midLogit = (Math.log(21 / 9) + Math.log(18 / 12)) / 2
     expect(fit.meanRate).toBeCloseTo(1 / (1 + Math.exp(-midLogit)), 6)
     expect(fit.se).toBeGreaterThan(0)

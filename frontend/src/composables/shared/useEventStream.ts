@@ -24,7 +24,7 @@ export interface EventStreamApi {
   // refresh whatever the caller wants invalidated.
   onParseComplete: () => Promise<void> | void
   // Called when a parse run was aborted via CancelParse. Distinct
-  // hook so the consumer can flip a "cancelling…" state back to
+  // hook so the consumer can flip a "canceling…" state back to
   // idle, render different toast copy, etc. Optional — if absent,
   // parse-canceled is treated the same as parse-complete (still
   // safe; the records ref reflects the partial state).
@@ -68,7 +68,7 @@ export function useEventStream(api: EventStreamApi) {
     // "no-more-progress-ticks"). The records ref already reflects
     // any partial state because the per-file inserts ran inside the
     // OCR callback; the consumer just needs to know to flip the
-    // Stop button + "cancelling…" indicator back to idle.
+    // Stop button + "canceling…" indicator back to idle.
     EventsOn('parse-canceled', () => {
       if (api.onParseCanceled) {
         void api.onParseCanceled()

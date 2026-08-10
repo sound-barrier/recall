@@ -9,7 +9,7 @@
   "data-elo-evidence=reviews": "Reviewing your games0 of 33 You've reviewed 0% of these games (never reviewed). None with a coach. Reviewing is the single biggest lever you control.",
   "data-elo-evidence=streak-meter": "Streaks move your meter more1.4× inside streaks Your rank cards move ±27% during a streak vs ±20% otherwise (22 streak games measured). Win-streak games have banked +480% meter (≈4.8 divisions); loss-streak games gave back -120% (≈1.2 divisions). Ride the former; cut the latter early — each extra game in a losing run has more ground to give.",
   "data-elo-evidence=streak-tilt": "Deeper into a loss streak83% as losses stack Your next-game win rate: 83% after one loss (baseline 64% over 33 games). Your play holds up inside streaks — if you cut a bad night short, do it for the meter math, not your form.",
-  "data-elo-evidence=tilt-queue": "Tilt queueing1 tilt queue this season 1 sitting reached 5 straight losses and you kept queueing: 3 more games at 0% from there, ≈60% meter given back (~0.6 divisions) — a lot of ground to make up. The cheapest fix in the game is stopping at two.",
+  "data-elo-evidence=tilt-queue": "Tilt queuing1 tilt queue this season 1 sitting reached 5 straight losses and you kept queuing: 3 more games at 0% from there, ≈60% meter given back (~0.6 divisions) — a lot of ground to make up. The cheapest fix in the game is stopping at two.",
   "data-elo-input=decay-slope": "1.5",
   "data-elo-input=games-week": "9.1",
   "data-elo-input=meter-move": "24.8",

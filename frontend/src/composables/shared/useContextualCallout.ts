@@ -6,7 +6,7 @@ import { CONTEXTUAL_CALLOUT_KEY_PREFIX } from '@/composables/shared/storageKeys'
 // just-in-time hint. The full OnboardingTour walks every new user
 // through every surface up front; that flow is heavy and most users
 // skip it. A contextual callout, by contrast, fires the first time
-// a specific surface materialises in the wild — the source-picker
+// a specific surface materializes in the wild — the source-picker
 // grid renders, a Reference-data-gap appears in the Unknown tab —
 // and nudges the user toward the affordance they're about to use
 // without redirecting them.

@@ -6,7 +6,7 @@ import { computeCalloutPosition, rectsEqual } from '@/components/shared/tour-cal
 
 // Anchored callout panel. Renders the step's tag / number / heading
 // / body plus the Skip / Back / Next controls. Anchors to the
-// spotlighted target — or centres in the viewport when no target
+// spotlighted target — or centers in the viewport when no target
 // exists (Welcome / Done).
 //
 // Auto-placement: when placement is 'auto' (default for unspecified
@@ -21,7 +21,7 @@ import { computeCalloutPosition, rectsEqual } from '@/components/shared/tour-cal
 
 const props = defineProps<{
   // CSS selector of the spotlighted target. The callout reads this
-  // for placement geometry; if null/empty the callout centres.
+  // for placement geometry; if null/empty the callout centers.
   target: string | null | undefined
   // Preferred placement; auto picks the side with the most room.
   placement?: CalloutPlacement
@@ -241,8 +241,8 @@ onBeforeUnmount(() => {
 })
 
 // Connector geometry — draws a dashed line from the callout's anchor
-// edge toward the target's centre. Only rendered when a target is
-// present (centred Welcome / Done callouts have no connector).
+// edge toward the target's center. Only rendered when a target is
+// present (centered Welcome / Done callouts have no connector).
 const connector = computed(() => {
   const t = getTargetRect()
   if (!t) return null
@@ -255,9 +255,9 @@ const connector = computed(() => {
   const dx = targetCx - cx
   const dy = targetCy - cy
   // Pick edge: dominant axis. Horizontal-dominant → anchor on the
-  // left/right edge at the callout's vertical centre; vertical-
+  // left/right edge at the callout's vertical center; vertical-
   // dominant → anchor on the top/bottom edge at the horizontal
-  // centre. Single ternary per coord so CodeQL doesn't flag a dead
+  // center. Single ternary per coord so CodeQL doesn't flag a dead
   // initial assignment (the previous let-then-overwrite shape had
   // both branches always rewriting the seed).
   const horizontalDominant = Math.abs(dx) > Math.abs(dy)
@@ -349,7 +349,7 @@ const connector = computed(() => {
     </footer>
   </div>
 
-  <!-- Connector line from the callout toward the target's centre.
+  <!-- Connector line from the callout toward the target's center.
        Drawn as a full-viewport SVG so the absolute coords match the
        callout's own viewport positioning. -->
   <svg
@@ -562,8 +562,8 @@ const connector = computed(() => {
   z-index: 2001;
 }
 
-/* Centred (no-target) callout — slightly wider, no connector visible,
-   skip the slide-from-side animation in favour of a pure fade-up. */
+/* Centered (no-target) callout — slightly wider, no connector visible,
+   skip the slide-from-side animation in favor of a pure fade-up. */
 .tour-callout[data-placement='auto'] {
   width: min(440px, calc(100vw - 2 * 16px)) !important;
 }

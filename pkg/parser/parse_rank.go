@@ -16,7 +16,7 @@ var knownRanks = []string{
 
 // knownModifiers is the OW2 competitive rank-update modifier list — the
 // small pills under the rank-progress bar that explain the SR change.
-// The expectation-vs-outcome quartet (favoured×won = expected, favoured×lost
+// The expectation-vs-outcome quartet (favored×won = expected, favored×lost
 // = reversal, underdog×won = uphill battle, underdog×lost = consolation),
 // the streak/calibration adjustments, the match-condition pills (new-map bonus,
 // leaver compensation), and the result pill itself. Matched as substrings
@@ -144,7 +144,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	// signed change. The card sits ~85-99% across, mid-height. The panel holds up
 	// to three stacked cards; the bottom reaches 75% (not 55/66%) so the third card
 	// — pushed down by a demotion screen's extra row — is still inside the crop and
-	// its hero is recognised at all.
+	// its hero is recognized at all.
 	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*75/100)
 	srText, _ := ocrInverted(img, srRect, work, "rank_sr", "11", "")
 	res.SR = extractSR(srText)
@@ -354,7 +354,7 @@ func anyZeroSR(srs []HeroSR) bool {
 // re-OCR of the card region — starting below the rank-progress caption to skip
 // its "100" noise — under two page-segmentation modes. Stacked cards read
 // differently under each mode (one card's digits surface under PSM 6 while a
-// neighbour's only appear under PSM 3), so the union recovers more than either
+// neighbor's only appear under PSM 3), so the union recovers more than either
 // alone. Recovered SR-range values are assigned, in reading order, to the
 // still-zero cards; a value already read from the card text is kept and excluded
 // from the candidate pool so it can't be double-assigned.

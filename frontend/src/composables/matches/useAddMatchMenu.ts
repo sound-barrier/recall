@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-// Dropdown behaviour for the toolbar's split "Add match ▾" button: the full
+// Dropdown behavior for the toolbar's split "Add match ▾" button: the full
 // hand-entry form, or the leaver-exit quick-add. Per-instance (one toolbar, one
 // menu), so this stays a composable rather than a store.
 //

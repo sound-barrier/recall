@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Tilt queues — the times the player queued through 5+ straight losses in
 // one sitting, with the record of every game played past the 4th loss.
-// The zero case is the win: not tilt-queueing is discipline worth a KPI.
+// The zero case is the win: not tilt-queuing is discipline worth a KPI.
 // Opt-in.
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'

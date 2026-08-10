@@ -99,7 +99,7 @@ describe('useVirtualWindow', () => {
     expect(api.bottomSpacer.value).toBe((1000 - 517) * 50)
   })
 
-  it('honours a custom overscan', async () => {
+  it('honors a custom overscan', async () => {
     const { api } = makeHarness([...Array(100).keys()], 50, 0)
     await nextTick()
     // No overscan → exactly the 12 visible rows.

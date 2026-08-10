@@ -1,7 +1,7 @@
 // The best-vs-worst hero gap: an approximation of how much faster the
 // climb goes on your best heroes than your worst — the per-game meter
 // difference, translated into divisions. Only heroes with real evidence
-// qualify (the same 15-decisive floor the judgment colours use), rates
+// qualify (the same 15-decisive floor the judgment colors use), rates
 // are the shrunk ones (a hot small record can't headline), and the block
 // stays silent when the spread is too small to be advice.
 

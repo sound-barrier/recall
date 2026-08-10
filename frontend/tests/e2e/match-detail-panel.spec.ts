@@ -228,7 +228,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     //   4. .rank-block         (rank — only when present; bumped
     //                           above the journal so the milestone
     //                           sits next to the stats it just
-    //                           contextualised)
+    //                           contextualized)
     //   5. .match-journal      (note / replay / squad / tags)
     //   6. .heroes-played      (Heroes Played list)
     //   7. .sources-block      (Source Screenshots)

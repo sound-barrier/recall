@@ -300,7 +300,7 @@ func TestAggregateMatchKey_SingleScreenshotMatch(t *testing.T) {
 
 func TestAggregateMatchKey_InferenceAppliedAtReadTime(t *testing.T) {
 	// Rank-only match with a positive SR change should have Result
-	// inferred to "victory" — same behaviour as GetMatchResults, which
+	// inferred to "victory" — same behavior as GetMatchResults, which
 	// is the contract for the live-stream event.
 	snap := db.Screenshots{
 		Ranks: []db.RankRow{{

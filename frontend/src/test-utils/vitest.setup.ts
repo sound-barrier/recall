@@ -80,7 +80,7 @@ afterEach(async () => {
 //    profile/event-stream tests) leaves the mock *registration* in place —
 //    resetModules clears the cache but not the registration, so a later file's
 //    '@/api' re-resolves to that stale mock. (mountApp also doUnmocks at mount
-//    as a second line of defence.)
+//    as a second line of defense.)
 //
 // afterAll (not afterEach) so it never fires mid-suite and breaks api.test's
 // static-vs-dynamic `instanceof ApiError`, which only holds within one module

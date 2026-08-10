@@ -48,6 +48,10 @@ linters:
         - G104  # "unhandled errors" — same check as errcheck; double-reports now both run
         # G304 (file path from variable) and G302/G306 (file perms) will still
         # fire in prod — review those case-by-case rather than excluding globally.
+    misspell:
+      # American English (CLAUDE.md "Language: American English") — without
+      # a locale, misspell passes valid British spellings straight through.
+      locale: US
     nolintlint:
       require-explanation: true  # every //nolint must say why
       require-specific: true     # must name the linter, e.g. //nolint:errcheck

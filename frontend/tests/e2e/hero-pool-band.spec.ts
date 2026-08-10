@@ -149,7 +149,7 @@ test.describe('Hero Pool band', () => {
     await expect(page.locator('[data-hero-pool-reset]')).toHaveCount(0)
   })
 
-  test('colour demands evidence — an 8-game 62% record stays neutral', async ({ page }) => {
+  test('color demands evidence — an 8-game 62% record stays neutral', async ({ page }) => {
     await openBand(page)
     // reinhardt is in-pool at 62% over just 8 games: under the judgment
     // bands that's noise, not a signal, so the bar stays neutral instead

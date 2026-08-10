@@ -106,7 +106,7 @@ interface ChartCard {
 const { themeMode } = useTheme()
 
 const cardsById = computed<Record<TrendChartId, ChartCard>>(() => {
-  // Series colours are resolved from palette tokens when the option is
+  // Series colors are resolved from palette tokens when the option is
   // BUILT (see trend-options' SERIES_TOKEN), so this computed has to
   // re-run on a theme switch. Without the dependency, TrendChart
   // re-registers its ECharts theme — repainting axes, grid and tooltip —

@@ -11,7 +11,7 @@ import { nextTick, type Ref } from 'vue'
 // active tab on the next tick so the focus ring matches the selected
 // state.
 //
-// Extracted from App.vue so the keyboard behaviour can be unit-tested
+// Extracted from App.vue so the keyboard behavior can be unit-tested
 // in isolation and so adding a new tab doesn't require re-reading
 // 800 lines of script-setup to find the order constant.
 

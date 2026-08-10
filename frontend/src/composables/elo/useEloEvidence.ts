@@ -45,7 +45,7 @@ export function useEloEvidence(opts: EloEvidenceOpts) {
       poolDiscipline(opts.trackRecs.value, opts.heroRole),
       streakTilt(opts.trackRecs.value),
       streakMeter(opts.trackRecs.value),
-      tiltQueueing(opts.trackRecs.value),
+      tiltQueuing(opts.trackRecs.value),
       sessionHygiene(opts.trackRecs.value),
       consistency(opts.trackRecs.value),
       leavers(opts.trackRecs.value),
@@ -164,11 +164,11 @@ function streakMeter(recs: readonly MatchRecord[]): EvidenceItem | null {
   }
 }
 
-// tiltQueueing counts the sittings where the player queued through 5+
+// tiltQueuing counts the sittings where the player queued through 5+
 // straight losses — and prices the games played from the 5th loss on in
-// the player's own meter. The zero case is shown too: not tilt-queueing
+// the player's own meter. The zero case is shown too: not tilt-queuing
 // is a discipline worth naming.
-function tiltQueueing(recs: readonly MatchRecord[]): EvidenceItem | null {
+function tiltQueuing(recs: readonly MatchRecord[]): EvidenceItem | null {
   const t = tiltEpisodes(recs)
   const decisive = recs.filter((r) => r.data?.result === 'victory' || r.data?.result === 'defeat').length
   // The warn card needs a real corpus behind it too: one bad evening inside
@@ -178,7 +178,7 @@ function tiltQueueing(recs: readonly MatchRecord[]): EvidenceItem | null {
     if (decisive < 30) return null
     return {
       id: 'tilt-queue',
-      label: 'Tilt queueing',
+      label: 'Tilt queuing',
       value: 'none — discipline holds',
       gloss: `Across ${decisive} decisive games you never queued past 4 straight losses in one sitting. That restraint is worth divisions over a season — keep it.`,
       tone: 'good',
@@ -194,9 +194,9 @@ function tiltQueueing(recs: readonly MatchRecord[]): EvidenceItem | null {
   }
   return {
     id: 'tilt-queue',
-    label: 'Tilt queueing',
+    label: 'Tilt queuing',
     value: `${t.episodes} tilt queue${t.episodes === 1 ? '' : 's'} this season`,
-    gloss: `${t.episodes} sitting${t.episodes === 1 ? '' : 's'} reached 5 straight losses and you kept queueing: ${t.tiltGames} more game${t.tiltGames === 1 ? '' : 's'} at ${tiltWR}% from there${priced} — a lot of ground to make up. The cheapest fix in the game is stopping at two.`,
+    gloss: `${t.episodes} sitting${t.episodes === 1 ? '' : 's'} reached 5 straight losses and you kept queuing: ${t.tiltGames} more game${t.tiltGames === 1 ? '' : 's'} at ${tiltWR}% from there${priced} — a lot of ground to make up. The cheapest fix in the game is stopping at two.`,
     tone: 'warn',
   }
 }

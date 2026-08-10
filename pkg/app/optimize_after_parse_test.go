@@ -41,7 +41,7 @@ func TestAutoOptimize_SkipsRunsThatChangedNothing(t *testing.T) {
 	}
 }
 
-func TestAutoOptimize_SkipsCancelledRuns(t *testing.T) {
+func TestAutoOptimize_SkipsCanceledRuns(t *testing.T) {
 	a, fake := newParseReadyApp(t)
 	stubParse(t, func(progress parser.ProgressFunc) error {
 		res := &parser.MatchResult{Result: "victory", Map: "rialto", Hero: "lucio"}
@@ -52,6 +52,6 @@ func TestAutoOptimize_SkipsCancelledRuns(t *testing.T) {
 		t.Fatalf("ParseScreenshots: %v", err)
 	}
 	if fake.OptimizeCalls != 0 {
-		t.Errorf("OptimizeCalls = %d, want 0 on a cancelled run", fake.OptimizeCalls)
+		t.Errorf("OptimizeCalls = %d, want 0 on a canceled run", fake.OptimizeCalls)
 	}
 }

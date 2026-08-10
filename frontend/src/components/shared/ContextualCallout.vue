@@ -68,7 +68,7 @@ function reposition(): void {
   const roomAbove = rect.top - GAP - callH - SAFETY
   const useBottom = prefer === 'bottom' ? roomBelow >= 0 : roomAbove < 0
   const top = useBottom ? rect.bottom + GAP : rect.top - GAP - callH
-  // Centre horizontally on the anchor, clamped to viewport.
+  // Center horizontally on the anchor, clamped to viewport.
   let left = rect.left + rect.width / 2 - W / 2
   if (left < SAFETY) left = SAFETY
   if (left + W > window.innerWidth - SAFETY) left = window.innerWidth - W - SAFETY

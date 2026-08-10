@@ -804,7 +804,7 @@ describe('useMatchesDossier', () => {
       expect(by.dps.total).toBe(1)
     })
 
-    it('drops heroes the resolver does not recognise', () => {
+    it('drops heroes the resolver does not recognize', () => {
       const records = ref([
         roleRec({ primary: 'support', heroes: ['lucio', 'mystery-hero'] }),
       ])
@@ -1270,7 +1270,7 @@ describe('useMatchesDossier', () => {
       expect(counts).toEqual([2, 0, 0, 0, 1, 2])
     })
 
-    it('the bucket judgment honours exclude-tally; the volume read keeps every game', () => {
+    it('the bucket judgment honors exclude-tally; the volume read keeps every game', () => {
       const at = (fa: string, result: 'victory' | 'defeat', leaver = false) => ({
         ...rec({}),
         data: { finished_at: fa, result },
@@ -1400,7 +1400,7 @@ describe('useMatchesDossier', () => {
 // can wire widget configs in confidently.
 describe('useMatchesDossier — query-helper parameterization', () => {
   describe('topByCount', () => {
-    it('honours a custom limit', () => {
+    it('honors a custom limit', () => {
       const records = ref(
         ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((m) => rec({ map: m })),
       )
@@ -1411,7 +1411,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(top10.value).toHaveLength(8)
     })
 
-    it('honours a getter that picks a different field', () => {
+    it('honors a getter that picks a different field', () => {
       const records = ref([
         { ...rec({ map: 'rialto' }),  data: { ...rec({ map: 'rialto'  }).data!, game_mode: 'control' } },
         { ...rec({ map: 'numbani' }), data: { ...rec({ map: 'numbani' }).data!, game_mode: 'hybrid'  } },
@@ -1488,7 +1488,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
   })
 
   describe('topHeroesByMinutes', () => {
-    it('honours a custom limit', () => {
+    it('honors a custom limit', () => {
       const records = ref([
         {
           ...rec({}),
@@ -1665,7 +1665,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(dossier.heroGameModeCounts().value).toEqual([])
     })
 
-    it('materialises a full grid (top heroes × 6 game modes) including zero cells', () => {
+    it('materializes a full grid (top heroes × 6 game modes) including zero cells', () => {
       const records = ref([
         tr({ hero: 'lucio',  game_mode: 'control', result: 'victory' }),
         tr({ hero: 'lucio',  game_mode: 'escort',  result: 'defeat'  }),
@@ -1738,7 +1738,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(cell.winrate).toBe(50)
     })
 
-    it('honours heroLimit — only the top-N heroes by total appearances surface', () => {
+    it('honors heroLimit — only the top-N heroes by total appearances surface', () => {
       const records = ref([
         // ana: 3 matches; lucio: 2; kiriko: 1
         tr({ hero: 'ana', game_mode: 'control' }), tr({ hero: 'ana', game_mode: 'escort' }), tr({ hero: 'ana', game_mode: 'hybrid' }),
@@ -1752,7 +1752,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(heroes).not.toContain('kiriko')
     })
 
-    it('honours windowMonths — drops records older than the cutoff and undated rows', () => {
+    it('honors windowMonths — drops records older than the cutoff and undated rows', () => {
       const records = ref([
         tr({ hero: 'lucio', game_mode: 'control', result: 'victory', date: isoMonthsAgo(1) }),
         tr({ hero: 'lucio', game_mode: 'control', result: 'defeat',  date: isoMonthsAgo(12) }),
@@ -1813,7 +1813,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(dossier.mapCounts().value.map((c) => c.map)).toEqual(['route66'])
     })
 
-    it('honours windowMonths — drops records older than the cutoff and undated rows', () => {
+    it('honors windowMonths — drops records older than the cutoff and undated rows', () => {
       const records = ref([
         mr('route66', 'victory', isoDaysAgo(20)),
         mr('route66', 'defeat', isoDaysAgo(400)),
@@ -1853,7 +1853,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(rows[0]).toMatchObject({ matchKey: 'b', date: '2026-05-03', result: 'defeat', map: 'route66' })
     })
 
-    it('honours windowMonths — drops rows older than the cutoff', () => {
+    it('honors windowMonths — drops rows older than the cutoff', () => {
       const records = ref([
         mr('recent', isoDaysAgo(10), '20:00', 'victory'),
         mr('old', isoDaysAgo(400), '20:00', 'defeat'),
@@ -1883,7 +1883,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(solo).toMatchObject({ total: 1, winrate: 100 })
     })
 
-    it('honours the limit', () => {
+    it('honors the limit', () => {
       const records = ref([
         rec({ key: 'a', members: ['A'] }),
         rec({ key: 'b', members: ['B'] }),

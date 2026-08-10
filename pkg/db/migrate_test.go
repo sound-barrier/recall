@@ -25,7 +25,7 @@ func openMem(t *testing.T) *sql.DB {
 // Pre-1.0 the framework ships with zero migration files. Confirm
 // the framework is a strict no-op in that state: no `schema_version`
 // table, no side effects, no errors. Once the first migration file
-// lands this test gets a sibling that asserts the new behaviour.
+// lands this test gets a sibling that asserts the new behavior.
 func TestApplyMigrations_NoMigrationsIsNoOp(t *testing.T) {
 	d := openMem(t)
 	if err := db.ApplyMigrations(d); err != nil {

@@ -273,7 +273,7 @@ test.describe('first-run profile-name modal', () => {
     await modal.locator('.first-run-keep').click()
 
     // After Keep, the modal advances to step 2 — it does NOT dismiss
-    // until the user finishes step 2. Skip the picker to finalise.
+    // until the user finishes step 2. Skip the picker to finalize.
     await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
     await modal.locator('[data-step-skip]').click()
     await expect(modal).toHaveCount(0)

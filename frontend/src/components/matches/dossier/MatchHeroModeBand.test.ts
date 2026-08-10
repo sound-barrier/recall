@@ -39,7 +39,7 @@ function makeNarrow() {
 // A root corpus with one populated lucio/control cell (above a 10-floor).
 const ROOT_CELLS = [
   // 16W/4L: 80% over 20 decisive — past the 15-decisive floor and the win band
-  // (the drill tests below click the win-coloured cell).
+  // (the drill tests below click the win-colored cell).
   { hero: 'lucio', gameMode: 'control',    wins: 16, losses: 4, draws: 0, total: 20, winrate: 80 },
   { hero: 'lucio', gameMode: 'escort',     wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
   { hero: 'lucio', gameMode: 'flashpoint', wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },

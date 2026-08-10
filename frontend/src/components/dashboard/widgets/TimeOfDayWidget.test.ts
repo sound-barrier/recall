@@ -33,7 +33,7 @@ describe('TimeOfDayWidget', () => {
     // The stat column carries the judgment, not the share.
     expect(rows[4]!.find('.bd-stats').text()).toBe('61%')
     expect(rows[5]!.find('.bd-stats').text()).toBe('40%')
-    // Width stays the volume share; colour comes from the shared
+    // Width stays the volume share; color comes from the shared
     // judgment engine (18 decisive at 61% clears the evidence floor).
     expect(rows[4]!.find('.bd-fill').attributes('style')).toContain('width: 60%')
     expect(rows[4]!.find('.bd-fill').classes()).toContain('cell-win')

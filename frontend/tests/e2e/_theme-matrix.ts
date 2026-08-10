@@ -108,7 +108,7 @@ function match(
 
 /**
  * A corpus broad enough to light up the record-dense surfaces: all three
- * roles (so role-coloured chips render), all three results (win / loss /
+ * roles (so role-colored chips render), all three results (win / loss /
  * draw tints), several maps and modes (so the breakdown widgets and the
  * Trends role series have >1 series), a rank update (the rank block), and
  * two records with no map (the Unknown triage view).
@@ -158,9 +158,9 @@ export const AUDIT_CORPUS = [
       playlist: 'competitive',
       // Field names matter: MatchRankBlock renders `data.rank` as the tier
       // CLASS (.rank-tier.diamond), which is what selects the per-tier
-      // colour. An earlier version of this fixture said `rank_tier`, so the
+      // color. An earlier version of this fixture said `rank_tier`, so the
       // block never rendered and the audit stayed blind to the tier palette
-      // — which is precisely where six unreadable Day colours were hiding.
+      // — which is precisely where six unreadable Day colors were hiding.
       rank: 'diamond',
       level: 3,
       rank_progress: 62,
@@ -319,7 +319,7 @@ export async function settleLayout(page: Page): Promise<void> {
  * Every other value in the snapshot stayed put, because the extra
  * button computes to styles already in the set.
  *
- * A no-op stub rather than a `page.route` fulfil: an aborted or
+ * A no-op stub rather than a `page.route` fulfill: an aborted or
  * empty-bodied SSE response puts EventSource into its reconnect loop,
  * which is just a quieter form of the same nondeterminism. Nothing in
  * this audit depends on receiving an event — the corpus arrives via

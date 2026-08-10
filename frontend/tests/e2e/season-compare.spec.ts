@@ -35,7 +35,7 @@ function rec(key: string, playedUTC: string, map: string, result: string) {
       date: playedUTC.slice(0, 10), finished_at: playedUTC.slice(11, 16), played_at_utc: playedUTC,
       game_length: '12:00', eliminations: 10, assists: 5, deaths: 4,
       // Nepal (S2) carries a worse death rate so the Deaths row renders a
-      // regressed (red ▼) delta — the axe pass then covers that colour too.
+      // regressed (red ▼) delta — the ax pass then covers that color too.
       performance: { eliminations: { avg_per_10min: 18 }, deaths: { avg_per_10min: map === 'nepal' ? 10 : 6 }, assists: { avg_per_10min: 9 } },
       heroes_played: [{ hero: 'lucio', play_time: '12:00', percent_played: 100 }],
     },
@@ -125,9 +125,9 @@ test.describe('season comparison', () => {
   })
 })
 
-// Axe over the POPULATED view (both seasons are <5 decisive, so the n<5 caveat
-// badge + directional delta colours actually render) across every theme — the
-// empty-state axe pass in a11y.spec never exercises the table, selects, or badge.
+// Ax over the POPULATED view (both seasons are <5 decisive, so the n<5 caveat
+// badge + directional delta colors actually render) across every theme — the
+// empty-state ax pass in a11y.spec never exercises the table, selects, or badge.
 test.describe('season comparison — accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -138,7 +138,7 @@ test.describe('season comparison — accessibility', () => {
   })
 
   for (const theme of ['day', 'dark', 'night', 'high-contrast'] as const) {
-    test(`populated comparison (with the n<5 caveat) has no axe violations — ${theme}`, async ({ page }) => {
+    test(`populated comparison (with the n<5 caveat) has no ax violations — ${theme}`, async ({ page }) => {
       await page.addInitScript((t) => {
         try { localStorage.setItem('recall.theme', t) } catch (_) { /* ignore */ }
       }, theme)

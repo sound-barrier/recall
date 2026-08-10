@@ -248,8 +248,8 @@ function onNextClick() {
   user-select: none;
 }
 
-/* Prev / next buttons sit centred on the left and right edges so the
-   user can hit them without travelling far from the image's centre
+/* Prev / next buttons sit centered on the left and right edges so the
+   user can hit them without traveling far from the image's center
    of attention. Mirror the close button's palette so the lightbox
    reads as one coherent chrome. Disabled state dims rather than
    hiding — keeps the layout stable as the user walks to the ends. */

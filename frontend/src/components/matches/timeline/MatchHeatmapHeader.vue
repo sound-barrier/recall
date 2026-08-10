@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
 <template>
   <!-- role=group, not grid: the calendar is a set of day-filter BUTTONS, not
        an arrow-navigable grid (the grid pattern requires row semantics + arrow
-       keys we don't implement — axe rightly rejected gridcells without rows). -->
+       keys we don't implement — ax rightly rejected gridcells without rows). -->
   <div
     class="match-heatmap"
     :class="{ 'is-dragging': isDragging }"

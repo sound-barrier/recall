@@ -37,7 +37,7 @@ type TesseractStatus struct {
 	// only the install-path guidance that matches where the server
 	// is actually running, instead of listing all three OSes in one
 	// paragraph (the earlier shape was confusing to non-technical
-	// users). Pure passthrough — no normalisation, no validation.
+	// users). Pure passthrough — no normalization, no validation.
 	Platform string `json:"platform"`
 }
 

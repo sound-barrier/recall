@@ -156,7 +156,7 @@ useModalFocusTrap(trapOpen, {
 
 // Initial focus into the name input. The composable's auto-focus
 // targets the first focusable, which is the "Keep as main" button by
-// markup order — but we want the name input front-and-centre. Wait
+// markup order — but we want the name input front-and-center. Wait
 // for the trap's initial-focus tick to land then override.
 watch(trapOpen, async (open) => {
   if (open) {

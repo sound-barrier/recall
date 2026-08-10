@@ -84,7 +84,7 @@ MatchKey\.IsUnmatched
 # TestGetMatches_LimitClampedTo1000 / _InvalidLimit_DisablesPagination.
 # The HTTP handler uses parseMatchesPaginationStrict which rejects
 # out-of-bounds limits with 400 (per the OpenAPI spec); the lenient
-# variant survives because its unit tests pin the behaviour the
+# variant survives because its unit tests pin the behavior the
 # strict form intentionally diverges from. Test-only consumer.
 parseMatchesPagination
 

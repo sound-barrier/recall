@@ -195,7 +195,7 @@ describe('useEloEvidence — session hygiene', () => {
   })
 })
 
-describe('useEloEvidence — consistency & tilt queueing', () => {
+describe('useEloEvidence — consistency & tilt queuing', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   function timed(day: string, time: string, result: string): MatchRecord {
@@ -232,7 +232,7 @@ describe('useEloEvidence — consistency & tilt queueing', () => {
     expect(evidenceFrom(rows).items.value.some((i) => i.id === 'consistency')).toBe(false)
   })
 
-  it('flags tilt queueing with the meter bill', () => {
+  it('flags tilt queuing with the meter bill', () => {
     const rows: MatchRecord[] = []
     // Baseline wins/losses feed the meter pools...
     for (let d = 1; d <= 12; d++) {

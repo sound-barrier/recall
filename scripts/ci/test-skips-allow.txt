@@ -20,10 +20,10 @@
 pkg/app/autoprobe_test.go:25:		t.Skipf("no probe candidates on %s", runtime.GOOS)
 pkg/probe/probe_test.go:33:		t.Skipf("no probe candidates on %s; nothing to assert", runtime.GOOS)
 pkg/probe/probe_test.go:77:		t.Skip("Windows has its own assertion below")
-pkg/probe/probe_test.go:87:		t.Skip("Windows-only behaviour")
+pkg/probe/probe_test.go:87:		t.Skip("Windows-only behavior")
 pkg/probe/probe_test.go:126:		t.Skip("Windows has its own assertion below")
-pkg/probe/probe_test.go:136:		t.Skip("Windows-only behaviour")
-pkg/probe/probe_test.go:184:		t.Skip("Windows-only behaviour")
+pkg/probe/probe_test.go:136:		t.Skip("Windows-only behavior")
+pkg/probe/probe_test.go:184:		t.Skip("Windows-only behavior")
 
 # pkg/app/screenshot_handler_fuzz_test.go — the fuzz harness skips
 # inputs httptest.NewRequest can't construct (control bytes that

@@ -42,7 +42,7 @@ import (
 // owMaps + owHeroes are non-colliding rosters big enough for the
 // largest cohort. Picked from `pkg/parser/maps.yaml` and
 // `heroes.yaml` so the names round-trip through the production hero
-// + map normalisers.
+// + map normalizers.
 var owMaps = []string{
 	"rialto", "lijiang tower", "numbani", "oasis", "ilios",
 	"hollywood", "kings row", "junkertown", "route 66", "watchpoint gibraltar",

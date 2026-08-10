@@ -85,7 +85,7 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
   // back to the parent's `openCheatsheet` ref via the `@close` channel —
   // so after Esc the parent's state was stuck `true` and pressing `?`
   // again was a no-op. The mouse-click close button worked because it
-  // emits `close`. Per-press toggle behaviour is the contract the test
+  // emits `close`. Per-press toggle behavior is the contract the test
   // pins.
   test('? then Esc reopens via ? again (no stuck-true parent state)', async ({ page }) => {
     await seed(page)

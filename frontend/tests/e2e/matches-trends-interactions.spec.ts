@@ -84,7 +84,7 @@ test.describe('Matches — Trends interactions', () => {
     await page.goto('/')
     const box = await openRankChart(page)
 
-    // The legend sits at the top-centre of the chart, above the grid.
+    // The legend sits at the top-center of the chart, above the grid.
     await page.mouse.click(box.x + box.width * 0.42, box.y + 18)
     await page.waitForTimeout(300)
     await expect(page.locator('aside.detail-panel')).toHaveCount(0)

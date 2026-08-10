@@ -313,7 +313,7 @@ describe('AboutModal', () => {
       expect(err.exists()).toBe(true)
       expect(err.attributes('role')).toBe('alert')
       expect(err.text()).toContain('checksum mismatch')
-      // The Install control returns (labelled as a retry) so the user can retry.
+      // The Install control returns (labeled as a retry) so the user can retry.
       expect(wrapper.find('[data-self-update-install]').text()).toContain('Try again')
     })
   })

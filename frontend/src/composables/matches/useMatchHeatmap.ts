@@ -7,7 +7,7 @@ function unref<T>(v: MaybeRef<T>): T {
 }
 
 // useMatchHeatmap — buckets a match list into a 7 × N calendar grid
-// (one cell per day, organised in week columns). The component on
+// (one cell per day, organized in week columns). The component on
 // top of this composable renders the SVG; the composable owns the
 // maths.
 //
@@ -48,7 +48,7 @@ export interface HeatmapModel {
   end: string           // 'YYYY-MM-DD' — last date shown
   monthLabels: MonthLabel[]
   maxTotal: number      // peak matches-per-day across the window — used
-                        // by the caller for saturation normalisation
+                        // by the caller for saturation normalization
 }
 
 export interface UseMatchHeatmapOptions {

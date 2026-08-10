@@ -257,10 +257,10 @@ Day, `--accent` is the bright OW orange at 1.9:1 on cream — fine for a border,
 fill or glow, unreadable as text. They're identical under the three dark themes,
 so the distinction only bites on Day and is easy to get wrong. Same shape for
 `--primary-text-on-accent` / `--primary-text-on-danger` (text sitting ON a
-coloured fill) and `--on-dark-plate` (text on the brand-gray tile, which stays
+colored fill) and `--on-dark-plate` (text on the brand-gray tile, which stays
 dark under every theme).
 
-**New colours must clear AA on every surface AND on their own tint.** Check
+**New colors must clear AA on every surface AND on their own tint.** Check
 against `--surface`, `--surface-2`, `--surface-3`, `--bg` — and, for a token
 used as text over its own soft variant (a win chip is `color: var(--win)` on
 `background: var(--win-soft)`), against that composite too. That last case is
@@ -291,7 +291,7 @@ Palette + contrast reasoning is in the A11y section below.
 ## App.vue concerns
 
 State concerns — now owned by the Pinia domain stores (see Architecture) and
-read directly by App.vue + the views; the notes below describe the behaviour,
+read directly by App.vue + the views; the notes below describe the behavior,
 not the wiring:
 
 - **Nav** — 4 tabs: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
@@ -423,7 +423,7 @@ for you.
 
 - **Nested modals: inner Esc needs CAPTURE phase + `stopImmediatePropagation`.** `useModalFocusTrap` registers Esc on `document` at bubble phase; a second modal stacked over the first (lightbox over detail panel, cheatsheet over either) can't prevent the outer trap from also firing by adding another bubble-phase listener — both run on the same target. Use `document.addEventListener('keydown', …, true)` (capture) and call `e.stopImmediatePropagation()` so the outer trap's bubble Esc never sees the event. Pattern in `MatchScreenshotLightbox.vue` + `KeyboardShortcutsModal.vue`. Same logic for the outer modal needing to suppress global shortcuts: `useKeyboardShortcuts` also installs its dispatcher at capture phase, registered at App mount before any per-modal listener — so the composable accepts a `suppressed: Ref<boolean>` opt-out (App.vue passes `openCheatsheet`).
 
-- **Playwright `.click()` on a parent with `@click.stop` children.** The default `.click()` lands on the element's geometric centre. If the centre falls on a child that calls `e.stopPropagation()` (slot chips inside `.sources-toggle`, removable filter chips inside `.mf-trigger`, etc.), the parent's click handler never fires and the test waits-then-fails on state that won't change. Click a stable text-only child instead — e.g. `.sources-toggle .sources-label` — or pass `{ position: { x, y } }` to land on a known coordinate.
+- **Playwright `.click()` on a parent with `@click.stop` children.** The default `.click()` lands on the element's geometric center. If the center falls on a child that calls `e.stopPropagation()` (slot chips inside `.sources-toggle`, removable filter chips inside `.mf-trigger`, etc.), the parent's click handler never fires and the test waits-then-fails on state that won't change. Click a stable text-only child instead — e.g. `.sources-toggle .sources-label` — or pass `{ position: { x, y } }` to land on a known coordinate.
 
 - **No network calls on mount unless the user asked.** The masthead update check used to fire `GET /api/v1/system/update` on every boot — replaced with a "Check for updates" button. New chrome that calls GitHub / external services should follow the same user-pulled pattern (button + Checking… state) rather than silently roundtripping at boot.
 

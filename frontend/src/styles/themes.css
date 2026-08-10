@@ -32,7 +32,7 @@
   --accent: #fa9c1b;
   --accent-bright: #fa3;
 
-  /* Deeper rust, for accent-coloured TYPE (--accent stays the chrome
+  /* Deeper rust, for accent-colored TYPE (--accent stays the chrome
      token: borders, fills, glows).
 
      Tuned against the DARKEST surface tier, not just --surface. The
@@ -40,7 +40,7 @@
      4.2:1 on --surface-3, so any accent label sitting on a raised
      panel — Settings' .setting-info, the inline <code> chips — failed
      while the identical label on the page ground passed. Per
-     .claude/rules/a11y.md, new text colours must clear 4.5:1 on ALL of
+     .claude/rules/a11y.md, new text colors must clear 4.5:1 on ALL of
      --surface / --surface-2 / --surface-3 / --bg; this value does
      (4.9 / 5.5 / 6.3 / 5.9). */
   --accent-text: #8f4500;
@@ -211,10 +211,10 @@
 }
 
 /* HIGH-CONTRAST — opt-in tournament-booth / low-vision mode. Strips
-   every soft surface gradient and intermediate text tone in favour
+   every soft surface gradient and intermediate text tone in favor
    of a pure-black ground, pure-white text, and a boosted gold accent
    (#ffbf4d, the same hue as --accent-bright in dark mode but used as
-   the primary). Win / loss / draw colours go fully saturated so they
+   the primary). Win / loss / draw colors go fully saturated so they
    read from across a room — useful when streaming a session or
    sharing the screen with a coach. Every surface still passes WCAG
    AAA; the previous AA verification continues to hold (verified by
@@ -232,7 +232,7 @@
 
   /* No dim hierarchy in this mode — secondary text is the same
      white as primary, but at slightly tighter letter-spacing in the
-     places that visually segment via spacing rather than colour.
+     places that visually segment via spacing rather than color.
      This is the high-contrast bargain: every typographic level
      reads at the SAME luminance step, with hierarchy carried by
      weight / case / spacing. */
@@ -300,7 +300,7 @@
    motion (view fade-ins, panel scaleY, chip overshoot, nav underline,
    theme transitions) — vestibular-sensitive users get all of it
    collapsed to a sub-frame so the visual state still settles, but
-   without the animation. Scroll-behaviour: auto avoids the smooth-
+   without the animation. Scroll-behavior: auto avoids the smooth-
    scroll variant when a panel programmatically focuses on tab switch. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

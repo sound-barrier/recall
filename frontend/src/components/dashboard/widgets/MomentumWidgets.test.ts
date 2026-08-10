@@ -7,7 +7,7 @@ import AvgGameLengthWidget from '@/components/dashboard/widgets/AvgGameLengthWid
 import LeaverRateWidget from '@/components/dashboard/widgets/LeaverRateWidget.vue'
 import SessionsWidget from '@/components/dashboard/widgets/SessionsWidget.vue'
 
-describe('behavioural KPI widgets', () => {
+describe('behavioral KPI widgets', () => {
   it('TiltCheck shows win-rate after a loss with the after-a-win baseline', () => {
     const w = mountWidget(TiltCheckWidget, {
       dossier: { winrateAfterLoss: { winrate: 40, sample: 10 }, winrateAfterWin: { winrate: 60, sample: 12 } },
@@ -29,7 +29,7 @@ describe('behavioural KPI widgets', () => {
     expect(w.find('.kpi-sub').text()).toContain('8 sessions')
   })
 
-  it('NetRankWeek signs + colours positive and negative movement', () => {
+  it('NetRankWeek signs + colors positive and negative movement', () => {
     const up = mountWidget(NetRankWeekWidget, { dossier: { netRankWeek: 45 } })
     expect(up.find('.kpi-value').text()).toBe('+45%')
     expect(up.find('.kpi-value').classes()).toContain('kpi-up')

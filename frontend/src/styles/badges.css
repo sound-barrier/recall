@@ -213,7 +213,7 @@
   /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
      letterbox behind a screenshot. Black in every theme on purpose: this
      is a photo viewport, and tinting it with a surface token would cast
-     the screenshot's own colours. */
+     the screenshot's own colors. */
   background: #000;
   box-shadow: 0 8px 30px -8px rgb(var(--shadow-rgb) / 50%);
   cursor: zoom-in;
@@ -253,7 +253,7 @@
    (margin, display, gap, border-bottom) and add `eyebrow` for the
    type; the per-component typography declarations are gone.
 
-   Colour: --text-faint is the default; the modifiers cover the two
+   Color: --text-faint is the default; the modifiers cover the two
    other roles that were genuinely in use. Don't add a fourth without
    a reason — the point of this block is that there is one answer. */
 .eyebrow {

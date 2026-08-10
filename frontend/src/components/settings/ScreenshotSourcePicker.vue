@@ -191,7 +191,7 @@ void ({} as NamedCandidateStats)
       v-if="pickerCallout.active()"
       target=".src-card[data-src-name]:first-child"
       heading="Each card is one capture tool"
-      body="Recall recognises the four standard Overwatch screenshot pipelines — Nvidia overlay, in-game PrtSc, Snip & Sketch, and Steam. Pick the one your setup writes to; click Pick a different folder below if you use a third-party tool."
+      body="Recall recognizes the four standard Overwatch screenshot pipelines — Nvidia overlay, in-game PrtSc, Snip & Sketch, and Steam. Pick the one your setup writes to; click Pick a different folder below if you use a third-party tool."
       action-label="Got it"
       @dismiss="pickerCallout.dismiss()"
       @action="pickerCallout.dismiss()"

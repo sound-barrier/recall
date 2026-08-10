@@ -525,7 +525,7 @@ export type UpdateInfo = {
      * (current build is already the latest). The
      * frontend's Unknown-tab "Reference data gaps"
      * section pivots this into a per-card "Update to
-     * v<X> to recognise <name>" CTA.
+     * v<X> to recognize <name>" CTA.
      *
      */
     latest_heroes?: Array<string>;
@@ -695,7 +695,7 @@ export type MatchRecord = {
     /**
      * Stable identity. Either `match-<ISO-timestamp>` (from the
      * earliest screenshot's filename, with all date/time
-     * separators normalised to `-` so the whole key is URL-safe
+     * separators normalized to `-` so the whole key is URL-safe
      * without encoding) or `unmatched-<filename>` for files
      * whose names didn't parse as timestamps.
      *
@@ -926,7 +926,7 @@ export type AmbiguousCandidate = {
  * `note` / `replay_code` / `members` / `tags` are omitted when
  * empty (the server marshals them `omitempty`). The row only
  * exists in the database if at least one field carries content;
- * absence of the row is signalled by a 404 on
+ * absence of the row is signaled by a 404 on
  * `GET /api/v1/matches/{match_key}/annotation`, and the whole
  * annotation object is omitted from `MatchRecord` when the match is
  * unannotated.
@@ -2144,7 +2144,7 @@ export type CancelParseError = CancelParseErrors[keyof CancelParseErrors];
 
 export type CancelParseResponses = {
     /**
-     * Cancellation signalled; SSE `parse-canceled` follows once the loop unwinds.
+     * Cancellation signaled; SSE `parse-canceled` follows once the loop unwinds.
      */
     202: unknown;
 };
@@ -3085,20 +3085,20 @@ export type GetReferenceDataResponses = {
      */
     200: {
         /**
-         * Hero names grouped by role, alphabetised within each role.
+         * Hero names grouped by role, alphabetized within each role.
          */
         heroes_by_role: {
             [key: string]: Array<string>;
         };
         /**
-         * Map names grouped by game mode, alphabetised within each.
+         * Map names grouped by game mode, alphabetized within each.
          */
         maps_by_game_mode: {
             [key: string]: Array<string>;
         };
         /**
          * Per-capture-tool filename grammars the parser
-         * recognises. Source-of-truth is
+         * recognizes. Source-of-truth is
          * `pkg/parser/screenshot_sources.yaml`. Surfaced
          * in Settings → Advanced → "Supported capture-
          * source rules" so the user can verify which

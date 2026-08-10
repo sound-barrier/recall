@@ -48,7 +48,7 @@ describe('tallyWLD', () => {
       { data: { result: 'defeat' }, annotation: { leavers: ['team'] } },   // excused loss
       { data: { result: 'defeat' } },
     ]
-    // Default behaviour counts everything.
+    // Default behavior counts everything.
     expect(tallyWLD(recs)).toEqual({ w: 2, l: 2, d: 0 })
     // With skipAnnotated the two annotated matches drop out.
     expect(tallyWLD(recs, true)).toEqual({ w: 1, l: 1, d: 0 })

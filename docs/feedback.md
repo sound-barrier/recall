@@ -1,7 +1,7 @@
 # Bug reports & feature requests
 
 Recall is maintained in spare time and given away free. Every report
-helps prioritise what gets fixed next. There are three channels,
+helps prioritize what gets fixed next. There are three channels,
 depending on what you want to file.
 
 ## Found a bug

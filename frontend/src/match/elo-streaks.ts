@@ -50,7 +50,7 @@ export function tiltEpisodes(
       lossRun = 0
       counted = false
     }
-    // Queueing with minRun-1 straight losses already on the board IS the
+    // Queuing with minRun-1 straight losses already on the board IS the
     // tilt queue — this game and everything after it in the sitting.
     if (lossRun >= minRun - 1) {
       out.tiltGames++

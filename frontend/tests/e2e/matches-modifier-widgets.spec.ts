@@ -69,6 +69,6 @@ test.describe('Matches — modifier widgets', () => {
 
     const reversal = page.locator('[data-widget-id="reversal"]')
     await expect(reversal.locator('.kpi-value')).toHaveText('2')
-    await expect(reversal).toContainText('favoured')
+    await expect(reversal).toContainText('favored')
   })
 })

@@ -22,7 +22,7 @@ corrupt, or you want a fresh start.
 It **backs up the database first** (to `…\db\backups\recall-<timestamp>.db`)
 and asks you to confirm before deleting.
 
-| Run it | Behaviour |
+| Run it | Behavior |
 |---|---|
 | double-click `Reset-Database.bat` | warn → confirm → back up → delete |
 | `Reset-Database.bat /force` | skip the confirmation prompt |

@@ -51,7 +51,7 @@ func (a *App) attachThumbnails(recs []match.MatchRecord) {
 }
 
 // pickThumbnail returns the first source file present on disk, preferring the
-// SUMMARY screenshot (the most recognisable thumbnail), then TEAMS, then any
+// SUMMARY screenshot (the most recognizable thumbnail), then TEAMS, then any
 // remaining source file. Empty when the match has no on-disk image.
 func pickThumbnail(rec match.MatchRecord, onDisk func(dirID int64, filename string) bool) string {
 	exists := func(f string) bool { return onDisk(rec.SourceDirIDs[f], f) }

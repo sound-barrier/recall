@@ -1,5 +1,5 @@
 /**
- * Background parse-queue visualisation + animated skeleton loaders.
+ * Background parse-queue visualization + animated skeleton loaders.
  *
  * Two related features land in the same spec because they share the
  * "first paint shouldn't feel empty" framing from FEATURES.md:

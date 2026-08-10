@@ -132,7 +132,7 @@ export function measuredDecaySlope(recs: readonly TrackInput[]): MeasuredSlope |
 
   const fit = logisticSlope(xs, wins)
   if (fit === null) return null
-  // Logit slope → probability slope at the fitted centre (delta method).
+  // Logit slope → probability slope at the fitted center (delta method).
   const scale = fit.meanRate * (1 - fit.meanRate)
   const s = -fit.slope * scale
   const half = 1.96 * fit.se * scale

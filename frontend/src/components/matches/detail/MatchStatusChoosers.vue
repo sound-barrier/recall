@@ -232,7 +232,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 <style scoped>
 /* ─── Review-status chooser (top of panel) ───────────────────
 
-   The FIRST artefact in the panel body — a tri-segmented control
+   The FIRST artifact in the panel body — a tri-segmented control
    that reads as a definitive metadata stamp. Visual vocabulary:
    tactical eyebrow + a high-contrast button group rendered as
    three sharp-cornered cells. The active cell carries an accent
@@ -635,7 +635,7 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 /* "Stamped" active state — each value gets its own accent. The
    `none` (default) chip reads as "the standing baseline" rather
    than a stamped pick: stronger border + inset shadow so the user
-   sees it as the current state, but no accent colour fill (which
+   sees it as the current state, but no accent color fill (which
    would imply an affirmative action). */
 .review-chip[data-state="none"][aria-checked="true"] {
   color: var(--text);
