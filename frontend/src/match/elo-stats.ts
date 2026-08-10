@@ -168,6 +168,57 @@ export interface LogisticSlopeFit {
 // measured decay slope. Null on degenerate data (one class, no x
 // spread, too few points) and on complete separation (a runaway MLE
 // says the data can't identify a finite slope).
+interface LogisticFitState {
+  a: number
+  b: number
+  h00: number
+  h01: number
+  h11: number
+}
+
+// Gradient (g0, g1) and Hessian entries (h00, h01, h11) of the
+// logistic log-likelihood at (a, b) over the centered design.
+function scoreAndCurvature(
+  xc: number[],
+  wins: readonly boolean[],
+  a: number,
+  b: number,
+): { g0: number; g1: number; h00: number; h01: number; h11: number } {
+  let g0 = 0, g1 = 0, h00 = 0, h01 = 0, h11 = 0
+  for (let i = 0; i < xc.length; i++) {
+    const p = 1 / (1 + Math.exp(-(a + b * xc[i]!)))
+    const y = wins[i] ? 1 : 0
+    const w = p * (1 - p)
+    g0 += y - p
+    g1 += (y - p) * xc[i]!
+    h00 += w
+    h01 += w * xc[i]!
+    h11 += w * xc[i]! * xc[i]!
+  }
+  return { g0, g1, h00, h01, h11 }
+}
+
+// Newton–Raphson to convergence from intercept a0; null on a singular
+// Hessian or a runaway MLE (complete separation).
+function newtonIterate(xc: number[], wins: readonly boolean[], a0: number): LogisticFitState | null {
+  let a = a0
+  let b = 0
+  let h00 = 0, h01 = 0, h11 = 0
+  for (let iter = 0; iter < 60; iter++) {
+    const s = scoreAndCurvature(xc, wins, a, b)
+    ;({ h00, h01, h11 } = s)
+    const det = h00 * h11 - h01 * h01
+    if (!Number.isFinite(det) || det <= 1e-12) return null
+    const da = (h11 * s.g0 - h01 * s.g1) / det
+    const db = (h00 * s.g1 - h01 * s.g0) / det
+    a += da
+    b += db
+    if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(b) > 50) return null
+    if (Math.abs(da) + Math.abs(db) < 1e-10) break
+  }
+  return { a, b, h00, h01, h11 }
+}
+
 export function logisticSlope(xs: readonly number[], wins: readonly boolean[]): LogisticSlopeFit | null {
   const n = Math.min(xs.length, wins.length)
   if (n < 10) return null
@@ -177,39 +228,11 @@ export function logisticSlope(xs: readonly number[], wins: readonly boolean[]): 
   const xc = xs.slice(0, n).map((v) => v - meanX)
   if (Math.max(...xc) - Math.min(...xc) <= 0) return null
 
-  let a = Math.log(winCount / (n - winCount))
-  let b = 0
-  let h00 = 0
-  let h01 = 0
-  let h11 = 0
-  for (let iter = 0; iter < 60; iter++) {
-    let g0 = 0
-    let g1 = 0
-    h00 = 0
-    h01 = 0
-    h11 = 0
-    for (let i = 0; i < n; i++) {
-      const p = 1 / (1 + Math.exp(-(a + b * xc[i]!)))
-      const y = wins[i] ? 1 : 0
-      const w = p * (1 - p)
-      g0 += y - p
-      g1 += (y - p) * xc[i]!
-      h00 += w
-      h01 += w * xc[i]!
-      h11 += w * xc[i]! * xc[i]!
-    }
-    const det = h00 * h11 - h01 * h01
-    if (!Number.isFinite(det) || det <= 1e-12) return null
-    const da = (h11 * g0 - h01 * g1) / det
-    const db = (h00 * g1 - h01 * g0) / det
-    a += da
-    b += db
-    if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(b) > 50) return null
-    if (Math.abs(da) + Math.abs(db) < 1e-10) break
-  }
-  const det = h00 * h11 - h01 * h01
+  const fit = newtonIterate(xc, wins, Math.log(winCount / (n - winCount)))
+  if (fit === null) return null
+  const det = fit.h00 * fit.h11 - fit.h01 * fit.h01
   if (!Number.isFinite(det) || det <= 1e-12) return null
-  return { slope: b, se: Math.sqrt(h00 / det), meanRate: 1 / (1 + Math.exp(-a)), n }
+  return { slope: fit.b, se: Math.sqrt(fit.h00 / det), meanRate: 1 / (1 + Math.exp(-fit.a)), n }
 }
 
 // twoByTwoChiSquareP is the Yates-corrected chi-square p-value for a

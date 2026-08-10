@@ -88,6 +88,19 @@ export function analyzeHeroPool(
 // whose PRESENT percentages all fall below the threshold falls back to the
 // primary data.hero — a match was necessarily played on SOMETHING — and a
 // record with no hero data at all yields [] (excluded from every tally here).
+// A percent below the threshold was probably a point-contest touch; an
+// ABSENT percent is unknown, not zero, and always qualifies.
+function clearsThreshold(hp: { percent_played?: number }, thresholdPct: number): boolean {
+  return hp.percent_played === undefined || hp.percent_played >= thresholdPct
+}
+
+// A match was necessarily played on SOMETHING — the primary data.hero
+// backstops a record whose present percentages all fall below the
+// threshold (or that has no heroes_played at all).
+function primaryHeroFallback(rec: Pick<MatchRecord, 'data'>): string[] {
+  return rec.data?.hero ? [rec.data.hero] : []
+}
+
 export function meaningfulHeroes(
   rec: Pick<MatchRecord, 'data'>,
   thresholdPct = DEFAULT_HERO_MEANINGFUL_PCT,
@@ -96,12 +109,12 @@ export function meaningfulHeroes(
   const seen = new Set<string>()
   for (const hp of rec.data?.heroes_played ?? []) {
     if (!hp.hero || seen.has(hp.hero)) continue
-    if (hp.percent_played !== undefined && hp.percent_played < thresholdPct) continue
+    if (!clearsThreshold(hp, thresholdPct)) continue
     seen.add(hp.hero)
     out.push(hp.hero)
   }
   if (out.length > 0) return out
-  return rec.data?.hero ? [rec.data.hero] : []
+  return primaryHeroFallback(rec)
 }
 
 function isWin(r: Pick<MatchRecord, 'data'>): boolean {

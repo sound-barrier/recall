@@ -35,16 +35,23 @@ export interface MeterSamples {
 // amplification is exactly what the bootstrap should reproduce — but the
 // SIGN comes from the result, so one mis-signed OCR read can't invert a
 // step.
+// The calculator's meter-seeding exclusions: missing, exact zero,
+// calibration matches. Returns the usable change_percent or null.
+function usableMeterMove(d: Pick<MatchRecord, 'data'>['data']): number | null {
+  const cp = d?.change_percent
+  if (typeof cp !== 'number' || cp === 0) return null
+  if (d?.modifiers?.includes('calibration')) return null
+  return cp
+}
+
 export function meterMoveSamples(recs: readonly Pick<MatchRecord, 'data'>[]): MeterSamples {
   const winMoves: number[] = []
   const lossMoves: number[] = []
   for (const rec of recs) {
-    const d = rec.data
-    const result = d?.result
+    const result = rec.data?.result
     if (result !== 'victory' && result !== 'defeat') continue
-    const cp = d?.change_percent
-    if (typeof cp !== 'number' || cp === 0) continue
-    if (d?.modifiers?.includes('calibration')) continue
+    const cp = usableMeterMove(rec.data)
+    if (cp === null) continue
     if (result === 'victory') winMoves.push(Math.abs(cp))
     else lossMoves.push(-Math.abs(cp))
   }
@@ -110,23 +117,67 @@ export interface SeasonSim {
   sims: number
 }
 
+// Repeated step/100 additions accumulate binary-float error (ten +0.2
+// steps land at 11.999999999999998); an epsilon keeps boundary hits
+// from reading one game late.
+const EPS = 1e-9
+
+const clamp01 = (x: number): number => Math.min(1, Math.max(0, x))
+
+// The per-season constants one simulated season runs against.
+interface SeasonRunCtx {
+  input: SimInput
+  rng: () => number
+  winMoves: number[]
+  lossMoves: number[]
+  checkGames: number[]
+  slope: number
+  climbing: boolean
+}
+
+// One simulated season: the final score plus the 1-based game index
+// the target was first touched (-1 = never). Pushes the running score
+// into checkScores at each checkpoint game.
+function runSeason(ctx: SeasonRunCtx, pSeason: number, checkScores: number[][]): { score: number; hit: number } {
+  const { input, rng } = ctx
+  let score = input.currentScore
+  let hit = -1
+  let check = 0
+  for (let g = 0; g <= input.horizonGames; g++) {
+    if (check < ctx.checkGames.length && g === ctx.checkGames[check]) {
+      checkScores[check]!.push(score)
+      check++
+    }
+    if (g === input.horizonGames) break
+    // Tougher lobbies as you climb: the drawn form rate erodes by the
+    // decay slope per division above the start (and recovers below it).
+    const win = rng() < clamp01(pSeason - ctx.slope * (score - input.currentScore))
+    const pool = win ? ctx.winMoves : ctx.lossMoves
+    const step = pool[Math.floor(rng() * pool.length)] ?? 0
+    score = Math.min(LADDER_MAX, Math.max(0, score + step / 100))
+    if (hit < 0 && ctx.climbing && score >= input.targetScore - EPS) hit = g + 1
+  }
+  return { score, hit }
+}
+
+function resolveSimOpts(opts: SimOpts): Required<Pick<SimOpts, 'sims' | 'seed' | 'checkpoints' | 'prior'>> {
+  return {
+    sims: opts.sims ?? 4000,
+    seed: opts.seed ?? 1,
+    checkpoints: opts.checkpoints ?? 24,
+    prior: opts.prior ?? SKEPTIC_PRIOR,
+  }
+}
+
 // simulateSeasons runs `sims` full seasons of `horizonGames` decisive
 // games and reads the outcomes off as exact order statistics.
 export function simulateSeasons(input: SimInput, opts: SimOpts = {}): SeasonSim {
-  const sims = opts.sims ?? 4000
-  const seed = opts.seed ?? 1
-  const checkpoints = opts.checkpoints ?? 24
-  const prior = opts.prior ?? SKEPTIC_PRIOR
+  const { sims, seed, checkpoints, prior } = resolveSimOpts(opts)
   const rng = mulberry32(seed)
 
   const { winMoves, lossMoves, empirical } = resolveMeter(input)
   const alpha = prior.alpha + input.sampleWins
   const beta = prior.beta + input.sampleLosses
-  const climbing = input.targetScore > input.currentScore
-  // Repeated step/100 additions accumulate binary-float error (ten +0.2
-  // steps land at 11.999999999999998); an epsilon keeps boundary hits
-  // from reading one game late.
-  const EPS = 1e-9
 
   // Checkpoint game indices (0 .. horizon, inclusive) for the fan —
   // deduped: a horizon shorter than the checkpoint count would repeat
@@ -135,35 +186,22 @@ export function simulateSeasons(input: SimInput, opts: SimOpts = {}): SeasonSim 
   const checkGames = [...new Set(Array.from({ length: checkpoints + 1 }, (_, i) =>
     Math.round((input.horizonGames * i) / checkpoints)))]
 
+  const ctx: SeasonRunCtx = {
+    input, rng, winMoves, lossMoves, checkGames,
+    slope: input.decaySlope ?? 0,
+    climbing: input.targetScore > input.currentScore,
+  }
+  const shift = (input.rateShiftPts ?? 0) / 100
+
   const finals: number[] = []
   const hits: number[] = [] // games-to-target per season that reached it
   const checkScores: number[][] = checkGames.map(() => [])
   let reached = 0
   let endedLower = 0
 
-  const slope = input.decaySlope ?? 0
-  const shift = (input.rateShiftPts ?? 0) / 100
-  const clamp01 = (x: number): number => Math.min(1, Math.max(0, x))
-
   for (let s = 0; s < sims; s++) {
     const pSeason = clamp01(betaQuantile(rng(), alpha, beta) + shift)
-    let score = input.currentScore
-    let hit = -1
-    let check = 0
-    for (let g = 0; g <= input.horizonGames; g++) {
-      if (check < checkGames.length && g === checkGames[check]) {
-        checkScores[check]!.push(score)
-        check++
-      }
-      if (g === input.horizonGames) break
-      // Tougher lobbies as you climb: the drawn form rate erodes by the
-      // decay slope per division above the start (and recovers below it).
-      const win = rng() < clamp01(pSeason - slope * (score - input.currentScore))
-      const pool = win ? winMoves : lossMoves
-      const step = pool[Math.floor(rng() * pool.length)] ?? 0
-      score = Math.min(LADDER_MAX, Math.max(0, score + step / 100))
-      if (hit < 0 && climbing && score >= input.targetScore - EPS) hit = g + 1
-    }
+    const { score, hit } = runSeason(ctx, pSeason, checkScores)
     finals.push(score)
     if (hit >= 0) {
       reached++

@@ -35,6 +35,10 @@ export function isFieldEdited(rec: MatchRecord, path: string): boolean {
   return (rec.edited_fields ?? []).includes(path)
 }
 
+function isHeroStatPath(parts: string[]): boolean {
+  return parts.length === 5 && parts[1] === 'heroes_played' && parts[3] === 'stats'
+}
+
 /** Rebuild the full override set currently applied to the record. */
 export function overrideSetFromRecord(rec: MatchRecord): UserMatchDataInput {
   const out: UserMatchDataInput = {}
@@ -44,7 +48,7 @@ export function overrideSetFromRecord(rec: MatchRecord): UserMatchDataInput {
     if (parts[0] !== 'data') continue
     if (parts.length === 2) {
       reconstructTopLevel(out, parts[1] ?? '', data)
-    } else if (parts.length === 5 && parts[1] === 'heroes_played' && parts[3] === 'stats') {
+    } else if (isHeroStatPath(parts)) {
       reconstructStat(out, rec, parts[2] ?? '', parts[4] ?? '')
     }
   }

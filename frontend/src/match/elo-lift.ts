@@ -46,18 +46,32 @@ function timeBucket(hour: number): string {
   return 'night'
 }
 
-// liftTable tallies every condition, shrinks it toward the corpus
-// baseline, and ranks by lift magnitude. Conditions below minN or
-// covering (nearly) the whole corpus — which just restate the baseline —
-// drop out.
-export function liftTable(records: readonly LiftInput[], deps: LiftDeps, opts: LiftOpts = {}): LiftRow[] {
-  const minN = opts.minN ?? 5
-  const strength = opts.strength ?? 10
+type ConditionTally = { dimension: LiftDimension; key: string; wins: number; losses: number }
+type AddCondition = (dimension: LiftDimension, key: string | null | undefined, win: boolean) => void
 
+// One record's non-hero condition memberships: map, mode, local
+// day/time-of-play, and each recorded teammate.
+function addRecordConditions(add: AddCondition, rec: LiftInput, deps: LiftDeps, win: boolean): void {
+  const d = rec.data
+  add('map', d?.map, win)
+  add('mode', d?.map ? deps.mapGameMode(d.map) : null, win)
+  const t = matchEpoch(rec)
+  if (t !== null) {
+    const local = new Date(t)
+    add('day', DAY_NAMES[local.getDay()], win)
+    add('time', timeBucket(local.getHours()), win)
+  }
+  for (const member of rec.annotation?.members ?? []) add('teammate', member, win)
+}
+
+function tallyConditions(
+  records: readonly LiftInput[],
+  deps: LiftDeps,
+): { baseWins: number; baseLosses: number; tallies: Map<string, ConditionTally> } {
   let baseWins = 0
   let baseLosses = 0
-  const tallies = new Map<string, { dimension: LiftDimension; key: string; wins: number; losses: number }>()
-  const add = (dimension: LiftDimension, key: string | null | undefined, win: boolean) => {
+  const tallies = new Map<string, ConditionTally>()
+  const add: AddCondition = (dimension, key, win) => {
     if (!key) return
     const id = `${dimension}:${key}`
     const t = tallies.get(id) ?? { dimension, key, wins: 0, losses: 0 }
@@ -65,45 +79,35 @@ export function liftTable(records: readonly LiftInput[], deps: LiftDeps, opts: L
     else t.losses++
     tallies.set(id, t)
   }
-
   for (const rec of records) {
-    const d = rec.data
-    const result = d?.result
+    const result = rec.data?.result
     if (result !== 'victory' && result !== 'defeat') continue
     const win = result === 'victory'
-    baseWins += win ? 1 : 0
-    baseLosses += win ? 0 : 1
-
-    add('map', d?.map, win)
-    add('mode', d?.map ? deps.mapGameMode(d.map) : null, win)
-    const t = matchEpoch(rec)
-    if (t !== null) {
-      const local = new Date(t)
-      add('day', DAY_NAMES[local.getDay()], win)
-      add('time', timeBucket(local.getHours()), win)
-    }
-    for (const member of rec.annotation?.members ?? []) add('teammate', member, win)
+    if (win) baseWins++
+    else baseLosses++
+    addRecordConditions(add, rec, deps, win)
   }
+  return { baseWins, baseLosses, tallies }
+}
 
-  const baseN = baseWins + baseLosses
-  if (baseN === 0) return []
-  const baseRate = baseWins / baseN
-
-  // Heroes come from the pool analysis so multi-hero matches credit each
-  // meaningfully-played hero — the same per-hero convention the picker uses.
-  const pool = analyzeHeroPool(records, DEFAULT_HERO_MEANINGFUL_PCT, deps.heroRole)
-  for (const h of [...pool.pool, ...pool.outHeroes]) {
-    tallies.set(`hero:${h.key}`, { dimension: 'hero', key: h.key, wins: h.wins, losses: h.losses })
-  }
-
-  const prior = { alpha: strength * baseRate, beta: strength * (1 - baseRate) }
+// Shrink each surviving condition toward the corpus baseline and rank
+// by lift magnitude. Conditions below minN or covering (nearly) the
+// whole corpus — which just restate the baseline — drop out.
+function liftRowsFrom(
+  tallies: Map<string, ConditionTally>,
+  base: { wins: number; losses: number },
+  opts: { minN: number; strength: number },
+): LiftRow[] {
+  const baseN = base.wins + base.losses
+  const baseRate = base.wins / baseN
+  const prior = { alpha: opts.strength * baseRate, beta: opts.strength * (1 - baseRate) }
   const rows: LiftRow[] = []
   for (const t of tallies.values()) {
     const n = t.wins + t.losses
-    if (n < minN) continue
+    if (n < opts.minN) continue
     // A condition covering ~the whole corpus IS the baseline — no signal.
     if (n >= baseN * 0.95) continue
-    const shrunk = shrunkWinRate(t.wins, t.losses, { wins: baseWins, losses: baseLosses }, strength)
+    const shrunk = shrunkWinRate(t.wins, t.losses, base, opts.strength)
     if (shrunk === null) continue
     const iv = credibleInterval(t.wins, t.losses, prior)
     rows.push({
@@ -120,4 +124,21 @@ export function liftTable(records: readonly LiftInput[], deps: LiftDeps, opts: L
     })
   }
   return rows.sort((a, b) => Math.abs(b.lift - 1) - Math.abs(a.lift - 1))
+}
+
+// liftTable tallies every condition, shrinks it toward the corpus
+// baseline, and ranks by lift magnitude.
+export function liftTable(records: readonly LiftInput[], deps: LiftDeps, opts: LiftOpts = {}): LiftRow[] {
+  const minN = opts.minN ?? 5
+  const strength = opts.strength ?? 10
+  const { baseWins, baseLosses, tallies } = tallyConditions(records, deps)
+  if (baseWins + baseLosses === 0) return []
+
+  // Heroes come from the pool analysis so multi-hero matches credit each
+  // meaningfully-played hero — the same per-hero convention the picker uses.
+  const pool = analyzeHeroPool(records, DEFAULT_HERO_MEANINGFUL_PCT, deps.heroRole)
+  for (const h of [...pool.pool, ...pool.outHeroes]) {
+    tallies.set(`hero:${h.key}`, { dimension: 'hero', key: h.key, wins: h.wins, losses: h.losses })
+  }
+  return liftRowsFrom(tallies, { wins: baseWins, losses: baseLosses }, { minN, strength })
 }
