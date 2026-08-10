@@ -6,7 +6,9 @@ version: 2
 # so "CI passed" is the only gate — and a bad release can pass CI and still
 # be wrong. @playwright/test 1.61.0 is the worked example: it shipped, CI
 # went green locally, and its Linux WebKit build crashed two e2e specs on
-# the runner. It is pinned to an exact 1.60.0 to this day.
+# the runner. It stays exact-pinned to this day — the pin only moves
+# deliberately (1.60.0 → 1.62.x once 1.62 was verified against both
+# WebKit specs), never through a range resolve.
 #
 # Cooldown applies to VERSION updates only — per GitHub's reference, "the
 # cooldown option is only available for version updates, not security

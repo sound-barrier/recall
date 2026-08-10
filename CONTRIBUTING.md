@@ -288,7 +288,7 @@ task lint-yaml      # yamllint only
 task lint-openapi   # Spectral only (api/openapi.yaml)
 task test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
 task cover          # Go + frontend coverage reports (umbrella; both gate on thresholds)
-task cover-go       # Go coverage; fails when total < GO_COVERAGE_MIN (default 46%)
+task cover-go       # Go coverage; fails when total < GO_COVERAGE_MIN (default in Taskfile.yml vars)
 task cover-frontend # JS/TS coverage; fails when below the thresholds in vitest.config.ts
 task typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts"> Vue SFCs; allowJs: false enforces no JS
 task gen-types      # regenerate frontend/src/client from api/openapi.yaml (run after every spec edit)
