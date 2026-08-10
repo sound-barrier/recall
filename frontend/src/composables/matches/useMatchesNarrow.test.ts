@@ -17,6 +17,12 @@ interface RecOpts {
   role?: string
   type?: string
   mode?: string
+  gameMode?: string
+  rank?: string
+  modifiers?: string[]
+  playedAtUTC?: string
+  queueType?: 'role' | 'open'
+  playMode?: 'quickplay' | 'competitive'
   result?: 'victory' | 'defeat' | 'draw'
   date?: string
   finishedAt?: string
@@ -69,10 +75,16 @@ function rec(opts: RecOpts = {}): MatchRecord {
       result: o.result,
       date: o.date,
       finished_at: o.finishedAt,
+      game_mode: o.gameMode,
+      rank: o.rank,
+      modifiers: o.modifiers,
+      played_at_utc: o.playedAtUTC,
       heroes_played: o.heroesPlayed ?? [{ hero: o.hero, percent_played: 100, play_time: '10:00' }],
     },
     ...annotationField(opts),
     ...(o.reviewedBy ? { reviewed_by: o.reviewedBy } : {}),
+    ...(o.queueType ? { queue_type: o.queueType } : {}),
+    ...(o.playMode ? { play_mode: o.playMode } : {}),
     ...(o.source ? { source: o.source } : {}),
     parsed_at: o.parsedAt ?? `${o.date}T${o.finishedAt}:00Z`,
   } as unknown as MatchRecord
@@ -840,6 +852,338 @@ describe('useMatchesNarrow', () => {
       // anchorKey survives — it's owned by the useMatchAnchor singleton,
       // not by the narrow-panel reset.
       expect(anchorRef.value).toBe('d3')
+    })
+  })
+
+  describe('queue-type buckets', () => {
+    function corpus() {
+      return ref([
+        rec({ key: 'role-q', queueType: 'role' }),
+        rec({ key: 'open-q', queueType: 'open' }),
+        rec({ key: 'unset' }),
+      ])
+    }
+
+    it('isolates the unset slice so it can be bulk-corrected', () => {
+      const { narrowedRecords, pickQueue } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickQueue('unknown')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['unset'])
+    })
+
+    it('ORs the two real buckets and leaves the unset rows out', () => {
+      const { narrowedRecords, pickQueue } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickQueue('role')
+      pickQueue('open')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['role-q', 'open-q'])
+    })
+  })
+
+  describe('play-mode buckets', () => {
+    function corpus() {
+      return ref([
+        rec({ key: 'comp', playMode: 'competitive' }),
+        rec({ key: 'qp', playMode: 'quickplay' }),
+        rec({ key: 'unset' }),
+      ])
+    }
+
+    it('isolates the unset slice', () => {
+      const { narrowedRecords, pickPlayMode } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickPlayMode('unknown')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['unset'])
+    })
+
+    it('narrows to a picked bucket and drops the rest', () => {
+      const { narrowedRecords, pickPlayMode } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickPlayMode('competitive')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['comp'])
+    })
+  })
+
+  describe('leaver side vs leaver handling', () => {
+    // Two independent controls that happen to read the same annotation: the
+    // FACET scopes the set, the HANDLING governs the W/L tally (and 'hide'
+    // drops the rows outright). Composing them must not surprise.
+    function corpus() {
+      return ref([
+        rec({ key: 'team-leaver', leavers: ['team'] }),
+        rec({ key: 'enemy-leaver', leavers: ['enemy'] }),
+        rec({ key: 'clean' }),
+      ])
+    }
+
+    it('the facet scopes the set to the picked side', () => {
+      const { narrowedRecords, pickLeaver } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickLeaver('team')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['team-leaver'])
+    })
+
+    it("'hide' handling and a side pick compose to nothing — they contradict", () => {
+      const { narrowedRecords, pickLeaver, leaverHandling } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickLeaver('team')
+      leaverHandling.value = 'hide'
+      expect(narrowedRecords.value).toHaveLength(0)
+    })
+
+    it('only offers the sides the corpus recorded, in canonical order', () => {
+      const { availableLeaverSides } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      expect(availableLeaverSides.value).toEqual(['team', 'enemy'])
+    })
+  })
+
+  describe('modifier + rank facets', () => {
+    function corpus() {
+      return ref([
+        rec({ key: 'rev', modifiers: ['reversal', 'victory'], rank: 'gold' }),
+        rec({ key: 'exp', modifiers: ['expected'], rank: 'diamond' }),
+        rec({ key: 'plain', rank: 'gold' }),
+      ])
+    }
+
+    it('modifier picks OR together', () => {
+      const { narrowedRecords, pickModifier } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickModifier('reversal')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['rev'])
+      pickModifier('expected')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['rev', 'exp'])
+    })
+
+    it('rank picks isolate the tier', () => {
+      const { narrowedRecords, pickRank } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickRank('gold')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['rev', 'plain'])
+    })
+  })
+
+  describe('malformed rows', () => {
+    it('never lets a record with no parsed data through the narrow', () => {
+      const records = ref([
+        rec({ key: 'ok' }),
+        { match_key: 'dataless', source_files: ['x.png'] } as unknown as MatchRecord,
+      ])
+      const { narrowedRecords } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['ok'])
+    })
+  })
+
+  describe('tag universe', () => {
+    it('availableTags is the sorted union across the corpus, skipping blanks', () => {
+      const records = ref([
+        rec({ key: 'a', tags: ['stack', 'stream'] }),
+        rec({ key: 'b', tags: ['solo', 'stack'] }),
+        rec({ key: 'c' }),
+      ])
+      const { availableTags } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(availableTags.value).toEqual(['solo', 'stack', 'stream'])
+    })
+  })
+
+  describe('pool-membership filter', () => {
+    const pool = ['lucio', 'ana']
+    function corpus() {
+      return ref([
+        rec({ key: 'pure', heroesPlayed: [{ hero: 'lucio', percent_played: 70 }, { hero: 'ana', percent_played: 30 }] }),
+        rec({ key: 'off', heroesPlayed: [{ hero: 'lucio', percent_played: 60 }, { hero: 'mercy', percent_played: 40 }] }),
+      ])
+    }
+
+    it('scopes to the picked side, and null lifts it again', () => {
+      const { narrowedRecords, setPoolFilter, anyNarrow } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      setPoolFilter({ side: 'pure', keys: pool, thresholdPct: 5 })
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['pure'])
+      expect(anyNarrow.value).toBe(true)
+
+      setPoolFilter({ side: 'off', keys: pool, thresholdPct: 5 })
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['off'])
+
+      setPoolFilter(null)
+      expect(narrowedRecords.value).toHaveLength(2)
+      expect(anyNarrow.value).toBe(false)
+    })
+
+    it('is cleared by resetNarrow — it is transient, not a saved preset', () => {
+      const { setPoolFilter, resetNarrow, anyNarrow } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      setPoolFilter({ side: 'pure', keys: pool, thresholdPct: 5 })
+      resetNarrow()
+      expect(anyNarrow.value).toBe(false)
+    })
+  })
+
+  describe('season picker', () => {
+    it('re-picking the active season clears it (single-select toggle)', () => {
+      const { pickSeason, pickedSeason } = useMatchesNarrow(ref([rec()]), createMatchesNarrowState())
+      pickSeason('Season 2')
+      expect(pickedSeason.value).toBe('Season 2')
+      pickSeason('Season 3')
+      expect(pickedSeason.value).toBe('Season 3')
+      pickSeason('Season 3')
+      expect(pickedSeason.value).toBe('')
+    })
+  })
+
+  describe('available option universes', () => {
+    it('availableRanks follows the tier ladder, not the alphabet', () => {
+      const records = ref([
+        rec({ rank: 'diamond' }), rec({ rank: 'bronze' }), rec({ rank: 'gold' }), rec({ rank: 'bronze' }),
+      ])
+      const { availableRanks } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(availableRanks.value).toEqual(['bronze', 'gold', 'diamond'])
+    })
+
+    it('availableModifiers keeps the canonical vocabulary in order, drops results, appends strays', () => {
+      const records = ref([
+        rec({ modifiers: ['victory', 'reversal', 'zz-unrecognized'] }),
+        rec({ modifiers: ['expected', 'defeat'] }),
+      ])
+      const { availableModifiers } = useMatchesNarrow(records, createMatchesNarrowState())
+      // victory/defeat live on the result filter; 'expected' precedes
+      // 'reversal' in the canonical list; anything unknown sorts in last.
+      expect(availableModifiers.value).toEqual(['expected', 'reversal', 'zz-unrecognized'])
+    })
+
+    it('availableGameModes is the sorted unique corpus set, skipping blanks', () => {
+      const records = ref([
+        rec({ gameMode: 'push' }), rec({ gameMode: 'control' }), rec({ gameMode: 'push' }), rec({}),
+      ])
+      const { availableGameModes } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(availableGameModes.value).toEqual(['control', 'push'])
+    })
+  })
+
+  describe('option universes tolerate malformed rows', () => {
+    it('a record with no data or annotation contributes nothing and breaks nothing', () => {
+      // These lists feed the panel's comboboxes and chip clouds — one
+      // half-written row must not empty them or throw on render.
+      const records = ref([
+        rec({ key: 'ok', map: 'rialto', role: 'support', result: 'victory', gameMode: 'control', tags: ['scrim'], members: ['Alice'] }),
+        { match_key: 'dataless', source_files: ['x.png'] } as unknown as MatchRecord,
+      ])
+      const n = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(n.availableMaps.value).toEqual(['rialto'])
+      expect(n.availableHeroes.value).toEqual(['lucio'])
+      expect(n.availableRoles.value).toEqual(['support'])
+      expect(n.availableResults.value).toEqual(['victory'])
+      expect(n.availableGameModes.value).toEqual(['control'])
+      expect(n.availableTags.value).toEqual(['scrim'])
+      expect(n.availableMembers.value).toEqual(['Alice'])
+    })
+  })
+
+  describe('cross-band record sets (the narrow minus a band’s own dimensions)', () => {
+    // A dossier band reads everything EXCEPT its own filter dimensions so it
+    // reflects the OTHER bands' picks without collapsing from its own.
+    function corpus() {
+      return ref([
+        rec({ key: 'hit',        map: 'rialto', role: 'tank',    hero: 'orisa', gameMode: 'control', result: 'victory' }),
+        rec({ key: 'other-map',  map: 'oasis',  role: 'support', hero: 'ana',   gameMode: 'push',    result: 'victory' }),
+        rec({ key: 'other-result', map: 'rialto', role: 'tank',  hero: 'orisa', gameMode: 'control', result: 'defeat' }),
+      ])
+    }
+
+    it('the Geography band ignores its own map/role picks but honors the rest', () => {
+      const { narrowedRecords, narrowedExceptMapsRoles, pickMap, pickRole, pickResult } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickMap('rialto')
+      pickRole('tank')
+      pickResult('victory')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['hit'])
+      // Map + role lifted, result still applied.
+      expect(narrowedExceptMapsRoles.value.map((r) => r.match_key)).toEqual(['hit', 'other-map'])
+    })
+
+    it('the Hero × Game-Mode band ignores its own hero/game-mode picks but honors the rest', () => {
+      const { narrowedExceptHeroesGameModes, pickHero, pickGameMode, pickResult } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickHero('orisa')
+      pickGameMode('control')
+      pickResult('victory')
+      expect(narrowedExceptHeroesGameModes.value.map((r) => r.match_key)).toEqual(['hit', 'other-map'])
+    })
+
+    it('every cross-band set still drops soft-deleted rows', () => {
+      const records = corpus()
+      records.value = [...records.value, { ...rec({ key: 'gone', map: 'rialto' }), hidden: true } as MatchRecord]
+      const { narrowedExceptMapsRoles, narrowedExceptSeason } =
+        useMatchesNarrow(records, createMatchesNarrowState())
+      expect(narrowedExceptMapsRoles.value.map((r) => r.match_key)).not.toContain('gone')
+      expect(narrowedExceptSeason.value.map((r) => r.match_key)).not.toContain('gone')
+    })
+  })
+
+  describe('preset vs hand-set ranges', () => {
+    it("pickRange('custom') leaves the hand-set bounds alone", () => {
+      const { pickRange, customFrom, customTo, customFromTime } =
+        useMatchesNarrow(ref([rec()]), createMatchesNarrowState())
+      customFrom.value = '2026-01-07'
+      customTo.value = '2026-01-09'
+      customFromTime.value = '11:00'
+      pickRange('custom')
+      expect(customFrom.value).toBe('2026-01-07')
+      expect(customTo.value).toBe('2026-01-09')
+      expect(customFromTime.value).toBe('11:00')
+    })
+  })
+
+  describe('smart-empty suggestion ranking', () => {
+    function corpus() {
+      return ref([
+        rec({ key: 'ana-rialto-1', map: 'rialto', hero: 'ana' }),
+        rec({ key: 'ana-rialto-2', map: 'rialto', hero: 'ana' }),
+        rec({ key: 'lucio-oasis',  map: 'oasis',  hero: 'lucio' }),
+      ])
+    }
+
+    it('puts the most-restrictive clause first and labels each one', () => {
+      const { narrowedRecords, clauseExclusionCounts, pickMap, pickHero } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickMap('oasis')
+      pickHero('ana')
+      expect(narrowedRecords.value).toHaveLength(0)
+
+      // Lifting the map surfaces both ana games; lifting the hero surfaces
+      // only the one oasis game — so the map suggestion leads.
+      expect(clauseExclusionCounts.value.map((s) => [s.clauseId, s.label, s.wouldSurface])).toEqual([
+        ['maps', 'map oasis', 2],
+        ['heroes', 'hero ana', 1],
+      ])
+    })
+
+    it('a single-click suggestion lifts exactly its own clause', () => {
+      const { narrowedRecords, clauseExclusionCounts, pickMap, pickHero, pickedHeroes } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickMap('oasis')
+      pickHero('ana')
+      clauseExclusionCounts.value[0]!.clear()
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['ana-rialto-1', 'ana-rialto-2'])
+      expect(pickedHeroes.value.has('ana')).toBe(true)
+    })
+
+    it('suggests nothing when no single lift would surface a record', () => {
+      const { narrowedRecords, clauseExclusionCounts, pickMap, pickHero } =
+        useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickMap('kings row')
+      pickHero('winston')
+      expect(narrowedRecords.value).toHaveLength(0)
+      // Dropping either one still leaves zero — a suggestion would be a lie.
+      expect(clauseExclusionCounts.value).toEqual([])
+    })
+
+    it('stays quiet while the set still has records', () => {
+      const { clauseExclusionCounts, pickMap } = useMatchesNarrow(corpus(), createMatchesNarrowState())
+      pickMap('rialto')
+      expect(clauseExclusionCounts.value).toEqual([])
+    })
+
+    it('stays quiet on an empty corpus with nothing narrowing it', () => {
+      // Nothing to lift — an empty DB must not be blamed on a filter.
+      const { clauseExclusionCounts, narrowedRecords, includeUnknown } =
+        useMatchesNarrow(ref([]), createMatchesNarrowState())
+      includeUnknown.value = true // the only clause that restricts by default
+      expect(narrowedRecords.value).toHaveLength(0)
+      expect(clauseExclusionCounts.value).toEqual([])
     })
   })
 })

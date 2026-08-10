@@ -97,7 +97,7 @@ test.describe('settings — Engine row Detect / Reset', () => {
     await page.getByRole('tab', { name: 'Settings' }).click()
 
     // Detect button is the primary CTA on the unhealthy Engine row.
-    const detect = page.locator('#sec-engine').getByRole('button', { name: 'Detect' })
+    const detect = page.locator('#sec-engine').getByRole('button', { name: 'Detect', exact: true })
     await expect(detect).toBeVisible()
     await expect(detect).toBeEnabled()
     await detect.click()
@@ -127,7 +127,7 @@ test.describe('settings — Engine row Detect / Reset', () => {
 
     await page.goto('/')
     await page.getByRole('tab', { name: 'Settings' }).click()
-    await page.locator('#sec-engine').getByRole('button', { name: 'Detect' }).click()
+    await page.locator('#sec-engine').getByRole('button', { name: 'Detect', exact: true }).click()
 
     // Failure chip surfaces with the "blocked" styling + "Looked in"
     // disclosure carrying the candidate list.

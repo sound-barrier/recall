@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { nextTick, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
-import { useEloCalculator } from '@/composables/elo/useEloCalculator'
+import { useEloCalc, useEloCalculator } from '@/composables/elo/useEloCalculator'
 
 let seq = 0
 function rec(opts: { result?: string; hero?: string; role?: string; rank?: { tier: string; level: number; progress: number; change?: number } } = {}): MatchRecord {
@@ -408,5 +408,154 @@ describe('useEloCalculator — phase 3 (change-point + lift)', () => {
     const empty = useEloCalculator({ records: [], heroRole, mapGameMode })
     expect(empty.changePoint.value).toBeNull()
     expect(empty.lift.value).toEqual([])
+  })
+})
+
+describe('useEloCalculator — track availability and the seed boundaries', () => {
+  it('offers every track with its evidence, and follows a late-arriving default', async () => {
+    const records = ref<MatchRecord[]>([])
+    const calc = useEloCalculator({ records, heroRole, mapGameMode })
+    expect(calc.tracks.value.map((t) => t.key)).toEqual(['tank', 'dps', 'support', 'open'])
+    expect(calc.tracks.value.every((t) => t.decisiveN === 0 && !t.hasRank)).toBe(true)
+
+    records.value = supportCorpus()
+    await nextTick()
+    expect(calc.track.value).toBe('support')
+    expect(calc.tracks.value.find((t) => t.key === 'support')).toMatchObject({ hasRank: true, decisiveN: 14 })
+  })
+
+  it("leaves a user's chosen track alone when the corpus's default changes under it", async () => {
+    const records = ref<MatchRecord[]>([])
+    const calc = useEloCalculator({ records, heroRole, mapGameMode })
+    calc.setTrack('dps')
+    records.value = supportCorpus()
+    await nextTick()
+    expect(calc.track.value).toBe('dps')
+  })
+
+  it('clamps the default target at the top of the ladder', () => {
+    seq = 0
+    const top = [
+      rec({ rank: { tier: 'champion', level: 3, progress: 20, change: 18 } }),
+      rec({ result: 'defeat', rank: { tier: 'champion', level: 3, progress: 2, change: -18 } }),
+      rec({ rank: { tier: 'champion', level: 4, progress: 90, change: 19 } }),
+    ]
+    const calc = useEloCalculator({ records: top, heroRole, mapGameMode })
+    expect(calc.currentTier.value).toBe('champion')
+    // One tier up from Champion is Champion — and its top division, not 5.
+    expect(calc.targetTier.value).toBe('champion')
+    expect(calc.targetDivision.value).toBe(1)
+  })
+})
+
+describe('useEloCalculator — the season window', () => {
+  it('prices the season at the measured pace', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    expect(calc.gamesPerWeekInput.value).toBe(14)
+    expect(calc.seasonGames.value).toBe(168) // 14/week × a 12-week season
+    expect(calc.paceAssumed.value).toBe(false)
+    expect(calc.simHorizonGames.value).toBe(168)
+    const required = calc.requiredWrForSeason.value!
+    expect(required).toBeGreaterThan(0.5)
+    expect(required).toBeLessThan(1)
+  })
+
+  it('assumes a typical week when the pace is unknown, and says the season is unpriceable', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    calc.editInput('gamesPerWeekInput', null)
+    expect(calc.seasonGames.value).toBeNull()
+    expect(calc.paceAssumed.value).toBe(true)
+    expect(calc.simHorizonGames.value).toBe(120) // 10 games/week × 12 weeks
+    // No pace means no calendar answer — neither weeks nor a season rate.
+    expect(calc.requiredWrForSeason.value).toBeNull()
+    expect(calc.weeksNaive.value).toBeNull()
+    expect(calc.weeksDecay.value).toBeNull()
+  })
+})
+
+describe('useEloCalculator — the ceiling range and the early-read floor', () => {
+  // The same rate held across three divisions of climb: the fitted slope
+  // is ~0 and its CI reaches below the model's floor, so no top can be
+  // bounded — the "still consistent with an improver" case.
+  function bandLevel(i: number): number {
+    if (i < 20) return 2
+    if (i < 40) return 3
+    return 5
+  }
+
+  function flatSlopeCorpus(): MatchRecord[] {
+    seq = 0
+    const rows: MatchRecord[] = []
+    for (let i = 0; i < 60; i++) {
+      const win = i % 10 < 6
+      rows.push(rec({
+        result: win ? 'victory' : 'defeat',
+        rank: { tier: 'gold', level: bandLevel(i), progress: 50, change: win ? 20 : -20 },
+      }))
+    }
+    return rows.reverse()
+  }
+
+  it('drops the measured slope CI as soon as the dial is overridden', () => {
+    const calc = useEloCalculator({ records: flatSlopeCorpus(), heroRole, mapGameMode })
+    expect(calc.lastSeed.value?.decaySlope?.lowerPts).toBeLessThan(0.5)
+    expect(calc.ceiling.value?.hi).toBeNull() // the measurement can't bound the top
+
+    // A chosen slope carries no sampling uncertainty, so the envelope closes.
+    calc.editInput('decaySlopePts', 1.5)
+    expect(calc.ceiling.value?.hi).not.toBeNull()
+  })
+
+  it('flags a sample below the early-read floor, but not an empty one', () => {
+    const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
+    expect(calc.provisional.value).toBe(true) // 14 decisive games
+    calc.editInput('sampleN', 19)
+    expect(calc.provisional.value).toBe(true)
+    calc.editInput('sampleN', 20)
+    expect(calc.provisional.value).toBe(false)
+    calc.editInput('sampleN', 0)
+    expect(calc.provisional.value).toBe(false) // nothing measured isn't "provisional"
+  })
+
+  it('has nothing to quote at all without a projection', () => {
+    const empty = useEloCalculator({ records: [], heroRole, mapGameMode })
+    expect(empty.ceiling.value).toBeNull()
+    expect(empty.provisional.value).toBe(false)
+    expect(empty.probThisSeason.value).toBeNull()
+    expect(empty.requiredWrForSeason.value).toBeNull()
+    expect(empty.lossStreak.value).toBeNull()
+    expect(empty.heroGap.value).toBeNull()
+    // The measured baseline the delta strip prices edits against is empty too.
+    expect(empty.measuredNaive.value).toBeNull()
+    expect(empty.measuredWeeks.value).toBeNull()
+    expect(empty.measuredProbSeason.value).toBeNull()
+  })
+})
+
+describe('useEloCalculator — hero evidence', () => {
+  function twoHeroCorpus(): MatchRecord[] {
+    seq = 0
+    return [
+      ...Array.from({ length: 20 }, (_, i) => rec({ hero: 'lucio', result: i < 14 ? 'victory' : 'defeat' })),
+      ...Array.from({ length: 20 }, (_, i) => rec({ hero: 'ana', result: i < 8 ? 'victory' : 'defeat' })),
+    ]
+  }
+
+  it('prices the best-vs-worst hero gap only once two heroes have real evidence', () => {
+    const gap = useEloCalculator({ records: twoHeroCorpus(), heroRole, mapGameMode }).heroGap.value!
+    expect(gap.best.key).toBe('lucio')
+    expect(gap.worst.key).toBe('ana')
+    expect(gap.gapPerGamePts).toBeGreaterThan(0)
+
+    // One hero, however long the record, has nothing to compare against.
+    seq = 0
+    const soloRecords = Array.from({ length: 20 }, (_, i) => rec({ hero: 'lucio', result: i < 14 ? 'victory' : 'defeat' }))
+    expect(useEloCalculator({ records: soloRecords, heroRole, mapGameMode }).heroGap.value).toBeNull()
+  })
+})
+
+describe('useEloCalc', () => {
+  it('fails loudly when a panel is used outside the calculator provider', () => {
+    expect(() => useEloCalc()).toThrow('useEloCalc() called outside an EloCalculatorView provider.')
   })
 })

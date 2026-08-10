@@ -2,6 +2,7 @@
 import { computed, ref, toRef, onBeforeUnmount } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
+import { bandEndpoints } from '@/components/matches/timeline/sparkline-band'
 
 // Brushable bar sparkline — answers "when did I play, and how much?".
 // Sits to the right of the calendar heatmap on the Matches view; they
@@ -113,49 +114,27 @@ function barLabel(cell: { date: string; wins: number; losses: number; total: num
 const dragStartIndex = ref<number | null>(null)
 const dragEndIndex = ref<number | null>(null)
 
-const isDragging = computed(() => dragStartIndex.value !== null)
+// The user's in-flight choice, in cell-index space, or null when idle.
+const dragSpan = computed<[number, number] | null>(() => {
+  const start = dragStartIndex.value
+  if (start === null) return null
+  return [start, dragEndIndex.value ?? start]
+})
+const isDragging = computed(() => dragSpan.value !== null)
 
-// Clamp a season [from, to] day span to in-grid cell indices: the first cell
-// on/after `from` and the last cell on/before `to`. Returns [null, null] when
-// the span doesn't overlap the visible window.
-function seasonBandIndices(from: string, to: string): [number | null, number | null] {
-  const cells = model.value.cells
-  const lo = cells.findIndex(c => c.date >= from)
-  if (lo < 0) return [null, null]
-  let hi: number | null = null
-  for (let i = cells.length - 1; i >= 0; i--) {
-    if (cells[i]!.date <= to) { hi = i; break }
-  }
-  if (hi == null || hi < lo) return [null, null]
-  return [lo, hi]
-}
-
-// The band endpoints: during a drag the user's in-flight choice;
-// otherwise the applied filterFrom/filterTo; otherwise the picked
-// season. The season's bounds can fall outside the visible window (a
-// season that started before the grid), so those clamp to the in-grid
-// span: first cell on/after seasonFrom → last cell on/before seasonTo.
-function bandEndpoints(): [number | null, number | null] {
-  if (isDragging.value) {
-    return [dragStartIndex.value, dragEndIndex.value ?? dragStartIndex.value]
-  }
-  if (props.filterFrom && props.filterTo) {
-    return [
-      model.value.cells.findIndex(c => c.date === props.filterFrom.slice(0, 10)),
-      model.value.cells.findIndex(c => c.date === props.filterTo.slice(0, 10)),
-    ]
-  }
-  if (props.seasonFrom && props.seasonTo) {
-    return seasonBandIndices(props.seasonFrom, props.seasonTo)
-  }
-  return [null, null]
-}
-
-// Visible selection band — reflects bandEndpoints so the user can SEE
-// the active range while dragging or once a filter is applied.
+// Visible selection band — reflects bandEndpoints (the pure module beside
+// this one) so the user can SEE the active range while dragging or once a
+// filter is applied.
 const selectionBand = computed<{ x: number; width: number } | null>(() => {
-  const [a, b] = bandEndpoints()
-  if (a == null || b == null || a < 0 || b < 0) return null
+  const [a, b] = bandEndpoints({
+    cells: model.value.cells,
+    drag: dragSpan.value,
+    filterFrom: props.filterFrom,
+    filterTo: props.filterTo,
+    seasonFrom: props.seasonFrom ?? '',
+    seasonTo: props.seasonTo ?? '',
+  })
+  if (a === null || b === null) return null
   const lo = Math.min(a, b)
   const hi = Math.max(a, b)
   return {
@@ -191,9 +170,9 @@ function onPointerMove(e: PointerEvent) {
 }
 
 function onPointerUp(e: PointerEvent) {
-  if (!isDragging.value) return
-  const start = dragStartIndex.value!
-  const end = dragEndIndex.value ?? start
+  const span = dragSpan.value
+  if (!span) return
+  const [start, end] = span
   dragStartIndex.value = null
   dragEndIndex.value = null
   const host = e.currentTarget as Element

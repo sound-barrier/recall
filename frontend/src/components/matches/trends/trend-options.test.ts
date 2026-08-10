@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 
-import { rankLadderOption, winrateOption, lineOption, rankDeltaOption } from '@/components/matches/trends/trend-options'
-import type { RankSeries, TrendSeries } from '@/match/match-trends-helpers'
+import { rankLadderOption, winrateOption, lineOption, rankDeltaOption, heatmapOption } from '@/components/matches/trends/trend-options'
+import type { RankPoint, RankSeries, TrendSeries, WinrateGrid } from '@/match/match-trends-helpers'
 
 // The shared INTERACTION spreads a bottom zoom/pan slider into every
 // TIMELINE chart. Narrow the dataZoom union down to the slider shape the
@@ -117,5 +117,262 @@ describe('trend-options — series colors resolve from palette tokens', () => {
       expect(stop.color).toMatch(/^rgba\(/)
       expect(stop.color).not.toContain('#')
     }
+  })
+})
+
+// ─── Shared accessors ──────────────────────────────────────────────
+//
+// TrendOption is the union of every registered ECharts piece, so each
+// assertion narrows to the handful of fields it reads.
+
+interface OptSeries {
+  name?: string
+  type?: string
+  showSymbol?: boolean
+  connectNulls?: boolean
+  data?: { value: [number, number]; matchKey?: string; rank?: RankPoint }[]
+  markLine?: { data?: { yAxis?: number }[] }
+}
+
+function seriesOf(opt: { series?: unknown }): OptSeries[] {
+  return (opt.series ?? []) as OptSeries[]
+}
+
+function valueAxis(opt: { yAxis?: unknown }): {
+  min?: number
+  max?: number
+  interval?: number
+  scale?: boolean
+  axisLabel?: { formatter?: (v: number) => string }
+} {
+  return opt.yAxis as { min?: number; max?: number; interval?: number; scale?: boolean; axisLabel?: { formatter?: (v: number) => string } }
+}
+
+function tooltipOf(opt: { tooltip?: unknown }): {
+  trigger?: string
+  formatter?: (params: unknown) => string
+  valueFormatter?: (v: unknown) => string
+} {
+  return opt.tooltip as { trigger?: string; formatter?: (params: unknown) => string; valueFormatter?: (v: unknown) => string }
+}
+
+function legendShown(opt: { legend?: unknown }): boolean | undefined {
+  return (opt.legend as { show?: boolean } | undefined)?.show
+}
+
+function rankPoint(over: Partial<RankPoint> = {}): RankPoint {
+  return { t: 1, score: 12.4, tier: 'gold', level: 3, progress: 40, change: 2, matchKey: 'm1', ...over }
+}
+
+function trend(key: string, values: number[]): TrendSeries {
+  return { name: key, key, points: values.map((v, i) => ({ t: 1000 + i, v, matchKey: `m${i}` })) }
+}
+
+// ─── Rank ladder ───────────────────────────────────────────────────
+
+describe('trend-options — rank ladder axis', () => {
+  it('brackets the plotted scores to whole tier boundaries', () => {
+    const opt = rankLadderOption([
+      { key: 'tank', label: 'Tank', points: [rankPoint({ score: 12.4 })] },
+      { key: 'dps', label: 'DPS', points: [rankPoint({ score: 27.6 }), rankPoint({ score: 21 })] },
+    ])
+
+    // 12.4 floors to the Gold boundary, 27.6 ceils to the Master one, and the
+    // tier grid stays every 5 ladder units.
+    expect(valueAxis(opt).min).toBe(10)
+    expect(valueAxis(opt).max).toBe(30)
+    expect(valueAxis(opt).interval).toBe(5)
+  })
+
+  it('gives a lone reading a whole tier band to sit in', () => {
+    const opt = rankLadderOption([{ key: 'tank', label: 'Tank', points: [rankPoint({ score: 12.4 })] }])
+
+    expect(valueAxis(opt).min).toBe(10)
+    expect(valueAxis(opt).max).toBe(15)
+    expect(seriesOf(opt)).toHaveLength(1)
+  })
+
+  it('falls back to a bronze→master ladder when there is nothing to plot', () => {
+    const opt = rankLadderOption([{ key: 'tank', label: 'Tank', points: [] }])
+
+    expect(valueAxis(opt).min).toBe(0)
+    expect(valueAxis(opt).max).toBe(40)
+  })
+
+  it('labels only the tier boundaries, and nothing above the ladder', () => {
+    const format = valueAxis(rankLadderOption([])).axisLabel?.formatter
+    expect(format?.(0)).toBe('Bronze')
+    expect(format?.(15)).toBe('Platinum')
+    expect(format?.(35)).toBe('Champion')
+    expect(format?.(12)).toBe('') // between boundaries
+    expect(format?.(40)).toBe('') // past the top tier
+  })
+
+  it('spells the tooltip out as tier, division, progress and this match’s change', () => {
+    const format = tooltipOf(rankLadderOption([])).formatter
+
+    expect(format?.({ seriesName: 'Tank', data: { rank: rankPoint() } }))
+      .toBe('Tank — Gold 3 · 40% · +2% this match')
+    expect(format?.({ seriesName: 'Tank', data: { rank: rankPoint({ change: -3 }) } }))
+      .toContain('-3% this match')
+    // Hovering anything that isn't a rank reading (the mark area, a gap) must
+    // not render a half-built string.
+    expect(format?.({ seriesName: 'Tank', data: {} })).toBe('')
+  })
+
+  it('carries each point’s match key so a click can open that match', () => {
+    const opt = rankLadderOption([{ key: 'tank', label: 'Tank', points: [rankPoint({ t: 77, matchKey: 'k7' })] }])
+
+    expect(seriesOf(opt)[0]?.data?.[0]?.value).toEqual([77, 12.4])
+    expect(seriesOf(opt)[0]?.data?.[0]?.matchKey).toBe('k7')
+  })
+})
+
+// ─── Density + gaps, shared by every line builder ──────────────────
+
+describe('trend-options — line density and gaps', () => {
+  const builders: Record<string, (s: TrendSeries[]) => { series?: unknown }> = {
+    'rolling win-rate': winrateOption,
+    'generic line': (s) => lineOption(s),
+  }
+
+  for (const [name, build] of Object.entries(builders)) {
+    it(`${name}: drops the point symbols once the line passes 80 readings`, () => {
+      const at80 = build([trend('tank', Array.from({ length: 80 }, (_, i) => i))])
+      const at81 = build([trend('tank', Array.from({ length: 81 }, (_, i) => i))])
+
+      expect(seriesOf(at80)[0]?.showSymbol).toBe(true)
+      expect(seriesOf(at81)[0]?.showSymbol).toBe(false)
+    })
+
+    it(`${name}: connects across gaps, since a metric can be missing for a match`, () => {
+      expect(seriesOf(build([trend('eliminations', [1, 2])]))[0]?.connectNulls).toBe(true)
+    })
+  }
+
+  it('shows the legend only once there is more than one line to tell apart', () => {
+    expect(legendShown(winrateOption([trend('tank', [50])]))).toBe(false)
+    expect(legendShown(winrateOption([trend('tank', [50]), trend('dps', [40])]))).toBe(true)
+    expect(legendShown(lineOption([]))).toBe(false)
+  })
+})
+
+// ─── Rolling win-rate ──────────────────────────────────────────────
+
+describe('trend-options — rolling win-rate', () => {
+  it('pins the axis to the full 0–100 range so a flat line still reads as high or low', () => {
+    const axis = valueAxis(winrateOption([trend('tank', [48, 52])]))
+    expect(axis.min).toBe(0)
+    expect(axis.max).toBe(100)
+  })
+
+  it('draws the 50% reference line exactly once, on the first line', () => {
+    const series = seriesOf(winrateOption([trend('tank', [50]), trend('dps', [40]), trend('support', [60])]))
+
+    expect(series[0]?.markLine?.data).toEqual([{ yAxis: 50 }])
+    expect(series[1]?.markLine).toBeUndefined()
+    expect(series[2]?.markLine).toBeUndefined()
+  })
+
+  it('suffixes tooltip values with a percent sign', () => {
+    expect(tooltipOf(winrateOption([])).valueFormatter?.(62)).toBe('62%')
+  })
+})
+
+// ─── Rank delta bars ───────────────────────────────────────────────
+
+describe('trend-options — rank delta', () => {
+  it('plots bars crossing zero, signing the gains', () => {
+    const opt = rankDeltaOption([trend('tank', [22, -18])])
+    const format = tooltipOf(opt).valueFormatter
+
+    expect(seriesOf(opt)[0]?.type).toBe('bar')
+    expect(format?.(22)).toBe('+22%')
+    expect(format?.(-18)).toBe('-18%')
+    expect(format?.(0)).toBe('0%')
+    // ECharts hands the axis tooltip a '-' for a series with no bar at that
+    // tick; rendering "NaN%" there was the alternative.
+    expect(format?.('-')).toBe('')
+  })
+})
+
+// ─── Best-times heatmap ────────────────────────────────────────────
+
+const grid: WinrateGrid = {
+  dayLabels: ['Sun', 'Mon'],
+  bucketLabels: ['00–04', '04–08'],
+  cells: [
+    { x: 0, y: 0, wins: 3, total: 4, winRate: 75 },
+    { x: 1, y: 1, wins: 0, total: 2, winRate: 0 },
+  ],
+}
+
+describe('trend-options — best-times heatmap', () => {
+  it('is a static grid: no zoom slider, no brush', () => {
+    const opt = heatmapOption(grid) as { dataZoom?: unknown; brush?: unknown }
+
+    expect(opt.dataZoom).toBeUndefined()
+    expect(opt.brush).toBeUndefined()
+  })
+
+  it('lays the day rows against the time-of-day columns', () => {
+    const opt = heatmapOption(grid) as {
+      xAxis?: { data?: string[] }
+      yAxis?: { data?: string[]; inverse?: boolean }
+      visualMap?: { min?: number; max?: number }
+    }
+
+    expect(opt.xAxis?.data).toEqual(grid.bucketLabels)
+    expect(opt.yAxis?.data).toEqual(grid.dayLabels)
+    // Rows read top-down from the week start, so the category axis inverts.
+    expect(opt.yAxis?.inverse).toBe(true)
+    // The ramp is anchored to the full 0–100 range, not the observed spread —
+    // otherwise a set of 60–70% cells would paint one of them pure red.
+    expect(opt.visualMap?.min).toBe(0)
+    expect(opt.visualMap?.max).toBe(100)
+  })
+
+  it('plots one cell per played bucket, carrying the volume for the tooltip', () => {
+    const cells = seriesOf(heatmapOption(grid))[0]?.data as unknown as
+      { value: [number, number, number]; wins: number; total: number }[]
+
+    expect(cells).toHaveLength(2)
+    expect(cells[0]).toEqual({ value: [0, 0, 75], wins: 3, total: 4 })
+  })
+
+  it('reads a cell out as day, bucket, record and win rate', () => {
+    const format = tooltipOf(heatmapOption(grid)).formatter
+
+    expect(format?.({ data: { value: [1, 1, 0], wins: 0, total: 2 } })).toBe('Mon 04–08 · 0W–2L · 0%')
+    // An out-of-range coordinate (a stale option against a re-bucketed grid)
+    // degrades to blanks rather than "undefined".
+    expect(format?.({ data: { value: [9, 9, 50], wins: 1, total: 2 } })).toBe('  · 1W–1L · 50%')
+    expect(format?.({})).toBe('')
+  })
+})
+
+// ─── Series with no semantic token ─────────────────────────────────
+
+describe('trend-options — lines with no role token', () => {
+  const unmapped = trend('ana', [50, 60])
+
+  // Heroes, maps and modifiers have no palette token of their own; hardcoding
+  // a color for them would fight the chart theme's categorical palette.
+  it('leaves an unmapped line for the themed categorical palette to color', () => {
+    for (const build of [winrateOption, (s: TrendSeries[]) => lineOption(s), rankDeltaOption]) {
+      expect(seriesOf(build([unmapped]))[0]).not.toHaveProperty('color')
+    }
+    expect(seriesOf(rankLadderOption([{ key: 'ana', label: 'Ana', points: [rankPoint()] }]))[0])
+      .not.toHaveProperty('color')
+  })
+
+  it('still fills the area under it, on the neutral tint', () => {
+    document.documentElement.style.setProperty('--text-mute', '#808080')
+    const areaStyle = seriesOf(lineOption([unmapped], { area: true }))[0] as unknown as
+      { areaStyle?: { color?: { colorStops?: { color: string }[] } } }
+    const stops = areaStyle.areaStyle?.color?.colorStops ?? []
+    document.documentElement.removeAttribute('style')
+
+    expect(stops.map((s) => s.color)).toEqual(['rgba(128, 128, 128, 0.25)', 'rgba(128, 128, 128, 0)'])
   })
 })

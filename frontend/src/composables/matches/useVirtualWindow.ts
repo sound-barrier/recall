@@ -3,8 +3,10 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
+  toValue,
   watch,
   type ComputedRef,
+  type MaybeRefOrGetter,
   type Ref,
 } from 'vue'
 
@@ -56,9 +58,12 @@ export interface UseVirtualWindowOptions<T> {
   // Reactive list. Re-renders the window when the list reference
   // changes (sort, narrow, etc.).
   items: Ref<readonly T[]>
-  // Pixel height of one row. Single number — uniform-height
-  // assumption baked in.
-  itemHeight: number
+  // Pixel height of one row. Uniform-height assumption baked in, but
+  // REACTIVE: a caller that measures its real row height at runtime
+  // (density modes, theme font-size overrides) passes the ref, and the
+  // window + spacers re-compute against the new pitch. A plain number
+  // still works for a caller whose rows are a fixed size.
+  itemHeight: MaybeRefOrGetter<number>
   // The host element the rows live inside. In `mode: 'container'`
   // this is the scroll container itself. In `mode: 'window'` it's
   // the list element in normal flow — the composable uses it
@@ -90,7 +95,8 @@ export interface UseVirtualWindowReturn<T> {
 export function useVirtualWindow<T>(
   opts: UseVirtualWindowOptions<T>,
 ): UseVirtualWindowReturn<T> {
-  const { items, itemHeight, containerRef } = opts
+  const { items, containerRef } = opts
+  const rowHeight = computed(() => toValue(opts.itemHeight))
   const overscan = opts.overscan ?? 5
   const mode = opts.mode ?? 'container'
 
@@ -216,7 +222,7 @@ export function useVirtualWindow<T>(
 
   const startIndex = computed(() => {
     if (clientHeight.value === 0) return 0
-    const raw = Math.floor(scrollTop.value / itemHeight) - overscan
+    const raw = Math.floor(scrollTop.value / rowHeight.value) - overscan
     return Math.max(0, raw)
   })
 
@@ -226,13 +232,13 @@ export function useVirtualWindow<T>(
       // overscan-sized batch so the first paint isn't empty.
       return Math.min(items.value.length, 2 * overscan)
     }
-    const visibleEnd = Math.ceil((scrollTop.value + clientHeight.value) / itemHeight)
+    const visibleEnd = Math.ceil((scrollTop.value + clientHeight.value) / rowHeight.value)
     return Math.min(items.value.length, visibleEnd + overscan)
   })
 
   const visibleItems = computed(() => items.value.slice(startIndex.value, endIndex.value))
-  const topSpacer    = computed(() => startIndex.value * itemHeight)
-  const bottomSpacer = computed(() => Math.max(0, items.value.length - endIndex.value) * itemHeight)
+  const topSpacer    = computed(() => startIndex.value * rowHeight.value)
+  const bottomSpacer = computed(() => Math.max(0, items.value.length - endIndex.value) * rowHeight.value)
 
   return { visibleItems, topSpacer, bottomSpacer, startIndex, endIndex }
 }

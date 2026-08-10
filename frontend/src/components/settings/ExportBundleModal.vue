@@ -53,8 +53,21 @@ const includeHidden  = ref(false)
 const includeUnknown = ref(false)
 const busy           = ref(false)
 
+// Declared ahead of the open-watch below: that watch runs immediately
+// (see its note), so both refs must already be initialized when it does.
+const inputEl = ref<HTMLInputElement | null>(null)
+const lastFocus = ref<HTMLElement | null>(null)
+
 // Reset every time the modal re-opens so a previous run's toggles
 // don't surprise the user.
+//
+// `immediate` is load-bearing, not tidiness: this component is a
+// defineAsyncComponent overlay, so it can mount with `open` ALREADY
+// true (the chunk resolving after the user clicked "Export bundle…").
+// Without it the open transition is never observed on that path and the
+// Esc handler, the Tab trap, and the focus hand-off are all never wired.
+// An immediate run with open=false is a no-op: `prev` is undefined, so
+// the close branch below can't fire either.
 watch(() => props.open, async (next, prev) => {
   if (next) {
     filename.value       = defaultFilename()
@@ -72,10 +85,7 @@ watch(() => props.open, async (next, prev) => {
     lastFocus.value?.focus()
     lastFocus.value = null
   }
-})
-
-const inputEl = ref<HTMLInputElement | null>(null)
-const lastFocus = ref<HTMLElement | null>(null)
+}, { immediate: true })
 
 // Final count includes the checkbox selection plus the toggled-in
 // sets. Doesn't dedupe (the backend handles dedup), but the rough

@@ -246,10 +246,15 @@ export function useFloatingCallout(opts: FloatingCalloutOptions): FloatingCallou
 
   watch(() => [opts.target(), opts.placement(), ...opts.resyncSignals()], () => { void syncPos() })
 
-  onMounted(async () => {
-    await syncPos()
+  // Listeners go on BEFORE the first solve, not after it. syncPos waits
+  // out the target's enter transition (~350ms minimum), and the tour
+  // re-keys this component on every step — registering afterwards meant
+  // an instance destroyed inside that window still attached its scroll
+  // + resize listeners, with no unmount left to remove them.
+  onMounted(() => {
     window.addEventListener('scroll', onWindowScroll, { capture: true, passive: true })
     window.addEventListener('resize', onWindowResize)
+    void syncPos()
   })
 
   onBeforeUnmount(() => {

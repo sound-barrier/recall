@@ -8,9 +8,11 @@ import { useOWData } from '@/composables/shared/useOWData'
 // the patch-drop primitive: "from Jan 7 11:00" splits a day at the patch).
 // Reads + writes pickedRange / customFrom / customTo (+ the panel-owned
 // customFromTime / customToTime) off the shared narrow bundle — picking a
-// preset clears the custom dates and times; editing either date flips
-// pickedRange to 'custom'; emptying a date clears its time (a time without
-// a date is inert, so the input is disabled until its date is set).
+// preset resolves it to a concrete from-bound and drops the to-bound and both
+// minute bounds; editing either date flips pickedRange to 'custom', and
+// emptying the last date returns it to 'all'; emptying a date clears its time
+// (a time without a date is inert, so the input is disabled until its date is
+// set).
 // np-section / np-chip chrome is global (narrow.css); the date/time inputs
 // carry their own scoped styles.
 type MatchesNarrowApi = ReturnType<typeof useMatchesNarrow>
@@ -32,7 +34,10 @@ function onDateInput(side: 'from' | 'to', value: string) {
   const timeRef = side === 'from' ? customFromTime : customToTime
   dateRef.value = value
   if (!value) timeRef.value = ''
-  pickedRange.value = 'custom'
+  // Emptying the LAST remaining bound is "no custom range" — the same state
+  // the Clear-dates button produces. Staying on 'custom' with nothing set
+  // left a clause that counted and blocked Reset while filtering nothing.
+  pickedRange.value = customFrom.value || customTo.value ? 'custom' : 'all'
 }
 
 function onTimeInput(side: 'from' | 'to', value: string) {
@@ -80,7 +85,8 @@ function clearDates() {
         v-for="opt in (['all', '7d', '30d', '90d'] as const)"
         :key="opt"
         class="np-chip"
-        :class="{ picked: pickedRange === opt && !customFrom && !customTo }"
+        :class="{ picked: pickedRange === opt }"
+        :aria-pressed="pickedRange === opt"
         @click="pickRange(opt)"
       >
         {{ opt === 'all' ? 'All time' : `Last ${opt}` }}

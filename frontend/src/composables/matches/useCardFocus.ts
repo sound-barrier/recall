@@ -1,11 +1,16 @@
 import { nextTick, ref } from 'vue'
 
 // Card-focus state for the Matches list — the flat narrowedRecords index of the
-// leaf-row the keyboard motions target (j/k, gg/G, n/N, and the e/t panel
+// row the keyboard motions target (j/k, gg/G, n/N, and the e/t panel
 // openers), plus the DOM-order walk helpers App.vue threads into
 // useGlobalKeyboard. Focus is driven off RENDERED DOM order (the
-// `.leaf-row[data-card-index]` sequence) rather than narrowedRecords order, so
-// it stays correct under any sort or grouping.
+// `[data-card-index]` sequence) rather than narrowedRecords order, so it stays
+// correct under any sort or grouping.
+//
+// The walk is spelled against the data-card-index CONTRACT, not a row class:
+// the same list renders as `li.leaf-row` in the default densities and
+// `tr.table-row` in Data density, and the motions are documented as working in
+// both. Pinning a class silently made every motion inert in the table view.
 //
 // Extracted from App.vue so the focus walk can be unit-reasoned in isolation and
 // App.vue stays the router-shell (REVIEW.md Q13).
@@ -22,7 +27,7 @@ export function useCardFocus() {
     focusedCardIndex.value = idx
     await nextTick()
     const el = document.querySelector<HTMLElement>(
-      `.leaf-row[data-card-index="${idx}"]`,
+      `[data-card-index="${idx}"]`,
     )
     el?.focus({ preventScroll: false })
     if (el) el.scrollIntoView({ block: 'nearest', behavior: 'auto' })
@@ -33,7 +38,7 @@ export function useCardFocus() {
   // wrap at the ends.
   async function focusCardByRenderedDelta(delta: 1 | -1) {
     const rows = Array.from(
-      document.querySelectorAll<HTMLElement>('.leaf-row[data-card-index]'),
+      document.querySelectorAll<HTMLElement>('[data-card-index]'),
     )
     if (rows.length === 0) return
     let currentRowIdx = -1
@@ -61,9 +66,9 @@ export function useCardFocus() {
     await focusCardByIndex(newIndex)
   }
 
-  // Jump card focus to the first / last rendered leaf-row (vim gg / G).
+  // Jump card focus to the first / last rendered row (vim gg / G).
   async function focusCardByRenderedEnd(which: 'first' | 'last') {
-    const rows = document.querySelectorAll<HTMLElement>('.leaf-row[data-card-index]')
+    const rows = document.querySelectorAll<HTMLElement>('[data-card-index]')
     if (rows.length === 0) return
     const target = which === 'first' ? rows[0] : rows[rows.length - 1]
     const newIndex = Number(target?.dataset.cardIndex)
@@ -71,7 +76,7 @@ export function useCardFocus() {
     await focusCardByIndex(newIndex)
   }
 
-  // Collect the first leaf-row of each grouped section — the row that follows
+  // Collect the first row of each grouped section — the row that follows
   // each `.section-divider` (the list start counts as a boundary).
   function sectionAnchorRows(): HTMLElement[] {
     const list = document.querySelector('.leaves-list')
@@ -83,7 +88,7 @@ export function useCardFocus() {
         sawDivider = true
         continue
       }
-      if (child.classList.contains('leaf-row') && child.dataset.cardIndex != null) {
+      if (child.dataset.cardIndex != null) {
         if (sawDivider) {
           anchors.push(child)
           sawDivider = false
@@ -104,7 +109,7 @@ export function useCardFocus() {
     let current = delta > 0 ? -1 : anchors.length
     if (focusedCardIndex.value !== -1) {
       const focusedRow = document.querySelector<HTMLElement>(
-        `.leaf-row[data-card-index="${focusedCardIndex.value}"]`,
+        `[data-card-index="${focusedCardIndex.value}"]`,
       )
       if (focusedRow) {
         for (let i = 0; i < anchors.length; i++) {

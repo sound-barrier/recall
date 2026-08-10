@@ -8,6 +8,7 @@ import { useNarrow } from '@/composables/matches/useNarrow'
 import { useColumnResize } from '@/composables/matches/useColumnResize'
 import { useCellDragSelect } from '@/composables/matches/useCellDragSelect'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useAppStore } from '@/stores/app'
 import type { PlayModePick, QueuePick } from '@/composables/matches/matchesNarrow.types'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/list/MatchTableRow.vue'
@@ -147,12 +148,14 @@ watch(() => props.resetCounter, () => {
 // state machine (threshold, edge auto-scroll, copy keybinding) lives
 // in useCellDragSelect — this shell only binds its three outputs.
 const tableCols = TABLE_SORT_COLUMNS.map((c) => c.col)
+const appStore = useAppStore()
 const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   rows: tableFlatRecords,
   cols: tableCols,
   heroRole: ow.heroRole,
   containerRef: tableScrollRef,
   onOpen: (key) => emit('open-match', key),
+  onError: (message) => appStore.setErrorFromRaw(message),
 })
 </script>
 

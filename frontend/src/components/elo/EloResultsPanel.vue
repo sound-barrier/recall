@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { DecayProjection } from '@/match/elo-model'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
-import { fmtGames, fmtGamesRange, fmtRank, fmtScoreRank, fmtWeeks } from '@/components/elo/elo-format'
+import { fmtGames, fmtGamesRange, fmtRank, fmtWeeks } from '@/components/elo/elo-format'
 import { fmtCeilingRange } from '@/components/elo/elo-verdict'
 
 // The two futures, side by side. The GAP between them is the whole lesson: a
@@ -14,16 +14,24 @@ import { fmtCeilingRange } from '@/components/elo/elo-verdict'
 const {
   naive, decay, projInput, sampleN, effectiveWinRatePct, targetTier, targetDivision,
   weeksNaive, weeksDecay, gamesToCertainty, ceiling, seasonSim, simHorizonGames,
+  currentScore, targetScore,
 } = useEloCalc()
 
 const target = computed(() => fmtRank(targetTier.value, targetDivision.value))
+
+// A target at or BELOW the current rank is "already there" — the same rule
+// the verdict applies. Only the exact-equality case reaches expectedGames
+// === 0, so a lower target used to fall through to the projection branches
+// and tell a 57%-win-rate player their climb was "Out of reach".
+const alreadyThere = computed(() =>
+  currentScore.value !== null && targetScore.value !== null && targetScore.value <= currentScore.value)
 
 // If your wins keep coming — the steady-win-rate future. An upper bound by
 // construction: it assumes matchmaking never stiffens.
 const dream = computed(() => {
   const n = naive.value
   if (!n) return null
-  if (n.expectedGames === 0) return { head: 'Already there', lines: [] }
+  if (alreadyThere.value) return { head: 'Already there', lines: [] }
   if (!n.reachable) {
     return { head: 'Out of reach', lines: ['Below 50%, extra games slowly cost you rank instead of gaining it.'] }
   }
@@ -37,33 +45,28 @@ const dream = computed(() => {
 // As opponents get tougher — the regression-to-form future. The ceiling is
 // quoted as its credible RANGE (win-rate posterior × slope CI), matching
 // the verdict card — a point rank here overstated three-game samples.
-// The two "levels off" shapes for an unreachable target: with the
-// required-rate line when the asymptote is computable, without it
-// otherwise.
 function levelsOffCard(d: DecayProjection, openTop: boolean, range: string) {
   // "Levels off near X or higher — no hard ceiling" contradicts itself
   // in one line; when the slope CI can't bound the top, say that.
   const head = openTop ? 'No hard ceiling detectable yet' : `Levels off near ${range}`
+  const lines = ['Tougher lobbies pull you level here at your current form.']
+  // requiredWinRate is the ASYMPTOTE — the rate whose plateau lands
+  // exactly on the target — so it holds the rank, it doesn't pass it. It
+  // is null only for a target at or below the current rank, which the
+  // already-there branch above has taken by the time we get here.
   if (d.requiredWinRate !== null) {
-    return {
-      head,
-      lines: [
-        'Tougher lobbies pull you level here at your current form.',
-        // requiredWinRate is the ASYMPTOTE — the rate whose plateau lands
-        // exactly on the target — so it holds the rank, it doesn't pass it.
-        `To make ${target.value} your plateau, win about ${(d.requiredWinRate * 100).toFixed(1)}% — passing it takes a bit more.`,
-      ],
-    }
+    lines.push(`To make ${target.value} your plateau, win about ${(d.requiredWinRate * 100).toFixed(1)}% — passing it takes a bit more.`)
   }
-  return { head, lines: ['A losing record settles below the target.'] }
+  return { head, lines }
 }
 
 const reality = computed(() => {
   const d = decay.value
-  if (!d) return null
-  const openTop = ceiling.value !== null && ceiling.value.hi === null
-  const range = ceiling.value !== null ? fmtCeilingRange(ceiling.value) : fmtScoreRank(d.impliedTrueScore)
-  if (d.expectedGames === 0) return { head: 'Already there', lines: [] }
+  const c = ceiling.value
+  if (!d || !c) return null
+  const openTop = c.hi === null
+  const range = fmtCeilingRange(c)
+  if (alreadyThere.value) return { head: 'Already there', lines: [] }
   if (!d.reachable) return levelsOffCard(d, openTop, range)
   const lines = [`A bit slower, but ${effectiveWinRatePct.value}% is high enough to break through.`, `Your ceiling right now: ${range}.`]
   const weeks = fmtWeeks(weeksDecay.value)

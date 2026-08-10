@@ -453,8 +453,10 @@ onUnmounted(() => {
           <NarrowPresets :narrow="narrow" />
 
           <footer class="np-foot">
+            <!-- One text node, not a bare `<span>es</span>` suffix: the split
+                 form left "3 match" + "es" as separate nodes in the a11y tree. -->
             <span class="np-foot-status">
-              {{ narrowedRecords.length }} match<span v-if="narrowedRecords.length !== 1">es</span> in this view
+              {{ narrowedRecords.length }} {{ narrowedRecords.length === 1 ? 'match' : 'matches' }} in this view
             </span>
             <div class="np-foot-actions">
               <button class="np-btn ghost" :disabled="!anyNarrow" @click="resetNarrow">

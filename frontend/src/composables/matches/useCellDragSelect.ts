@@ -35,6 +35,12 @@ export function useCellDragSelect(opts: {
   heroRole: HeroRole
   containerRef: Ref<HTMLElement | null>
   onOpen: (matchKey: string) => void
+  // Surface for a clipboard denial — the browsers that gate writeText
+  // behind a permission reject the promise, and without a sink here the
+  // user just sees a Ctrl+C that did nothing. MatchesTable wires this to
+  // the app-store error banner, the same place every other clipboard
+  // caller reports to.
+  onError?: (message: string) => void
 }) {
   const cellSel = useCellSelection(opts.rows, opts.cols, opts.heroRole)
 
@@ -131,7 +137,7 @@ export function useCellDragSelect(opts: {
     if (e.key === 'Escape') { cellSel.clear(); return }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !isEditable(document.activeElement)) {
       e.preventDefault()
-      void cellSel.copy()
+      cellSel.copy().catch((err: unknown) => opts.onError?.(String(err)))
     }
   }
   onMounted(() => document.addEventListener('keydown', onCellKeydown))

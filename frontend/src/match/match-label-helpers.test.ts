@@ -82,4 +82,13 @@ describe('isMapUnknown / formatUnknownMapLabel', () => {
   it('map empty AND map_raw empty → not unknown', () => {
     expect(isMapUnknown({ data: {} })).toBe(false)
   })
+
+  // The two row components only call this behind isMapUnknown(), which
+  // requires map_raw — so the bare fallback is unreachable from THEM. It
+  // is still the helper's contract for any other caller (map_raw is
+  // optional on the wire type), which is why it is pinned here rather
+  // than deleted.
+  it('map empty AND map_raw empty → bare label', () => {
+    expect(formatUnknownMapLabel({ data: {} })).toBe('Unknown map')
+  })
 })

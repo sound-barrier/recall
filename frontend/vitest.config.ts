@@ -42,31 +42,31 @@ export default defineConfig({
       // coverage floors measure authored code only.
       exclude: ['src/**/*.d.ts', 'src/**/*.test.ts', 'src/client/**'],
       // Project-wide floors. When `npm run test:coverage` (or
-      // `make cover-frontend`) runs, vitest exits non-zero if any of
-      // these aren't met. Tuned a few points below the current state
-      // so a real regression trips the gate while routine refactors
-      // don't. Update these floors deliberately — a PR that ratchets
-      // them upward is the safest way to lock in new coverage.
+      // `task cover-frontend`) runs, vitest exits non-zero if any of
+      // these aren't met. Update them deliberately — a PR that
+      // ratchets them upward is the safest way to lock in coverage.
       //
-      // Numbers dropped from 71/60/55/70 → 65/60/55/68 when the
-      // onboarding tour redesign landed: the new TourSpotlight /
-      // TourCallout / OnboardingTour layer is ~600 LOC of mostly
-      // DOM-geometry code (ResizeObserver, getBoundingClientRect,
-      // SVG mask placement) that doesn't pay back unit tests —
-      // the e2e suite in onboarding-tour-spotlight.spec.ts +
-      // onboarding-tour.spec.ts walks the real component end-to-
-      // end against the spotlighted browser instead. Lines dropped
-      // again 68 → 67 when the same layer grew pointer-drag handlers
-      // + body-overflow lock — same rationale, the e2e pins both
-      // (`callout exposes a draggable header…` + `locks page scroll
-      // while the tour is open`).
-      // Ratcheted by the quality campaign per CONTRIBUTING's
-      // floor(current) − 2 policy (measured 71.6/63.2/63.7/74.0).
+      // All four sit at CONTRIBUTING's ratchet — floor(measured) − 2 —
+      // against what the full-testing campaign left behind (93.8 lines /
+      // 85.1 branches / 91.8 statements / 88.7 functions). That clears
+      // the stackable parity bar (85 lines / 80 branches) by a wide
+      // margin, so the parity numbers are history, not the gate: these
+      // are. Two points is the whole tolerance, which is deliberate —
+      // it is enough for an incidental refactor and not enough to land
+      // a feature with its tests missing.
+      //
+      // The onboarding tour is no longer the exception it once was.
+      // Its geometry (ResizeObserver, getBoundingClientRect, SVG mask
+      // placement) still can't be unit-tested against happy-dom's
+      // zeroed rects, but the pure decisions — mask rect, callout
+      // flip/clamp, step reachability — were extracted into testable
+      // kernels, so only the shells lean on the e2e walk in
+      // onboarding-tour-spotlight.spec.ts.
       thresholds: {
-        statements: 69,
-        branches:   61,
-        functions:  61,
-        lines:      72,
+        statements: 89,
+        branches:   83,
+        functions:  86,
+        lines:      91,
       },
     },
   },

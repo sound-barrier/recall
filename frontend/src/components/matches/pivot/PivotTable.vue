@@ -110,22 +110,27 @@ function parsePayload(raw: string): DragPayload | null {
     return p && typeof p.fieldId === 'string' ? p : null
   } catch { return null }
 }
+// The live region is the only feedback a screen-reader user gets that a
+// drag landed, so it announces what actually changed — a measure aimed at
+// a dimension shelf (or a self-drop) moves nothing and must stay silent.
+function assign(fieldId: string, zone: PivotZone) {
+  if (pivot.assignField(fieldId, zone)) announce(`${labelOf(fieldId)} moved to ${ZONE_LABEL[zone]}`)
+}
 function onDrop(zone: PivotZone | 'tray', raw: string) {
   const p = parsePayload(raw)
   if (!p) return
+  if (p.from === zone && zone !== 'values') return
   if (zone === 'tray') {
     if (p.from === 'values' && p.index !== undefined) pivot.removeValue(p.index)
     else pivot.removeField(p.fieldId)
     announce(`${labelOf(p.fieldId)} removed`)
     return
   }
-  if (p.from === zone && zone !== 'values') return
-  pivot.assignField(p.fieldId, zone)
-  announce(`${labelOf(p.fieldId)} moved to ${ZONE_LABEL[zone]}`)
+  assign(p.fieldId, zone)
 }
 function onDimAct(fieldId: string, zone: PivotZone | 'tray', payload: ChipActPayload) {
   switch (payload.type) {
-    case 'assign': pivot.assignField(fieldId, payload.zone); announce(`${labelOf(fieldId)} moved to ${ZONE_LABEL[payload.zone]}`); break
+    case 'assign': assign(fieldId, payload.zone); break
     case 'remove': pivot.removeField(fieldId); announce(`${labelOf(fieldId)} removed`); break
     case 'move': if (zone === 'rows' || zone === 'columns') pivot.moveField(fieldId, zone, payload.delta); break
     case 'toggleFilter': toggleFilterValue(fieldId, payload.value); break

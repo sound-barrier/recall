@@ -13,6 +13,8 @@ import {
   RestoreDatabase,
   ImportMatches,
   ParseScreenshots,
+  PickScreenshotsDir,
+  PickTesseractBinary,
   ReParseAll,
   SetMatchAnnotation,
   SetMatchReview,
@@ -204,6 +206,93 @@ describe('GET 5xx error', () => {
   })
 })
 
+describe('transport failure (no HTTP response at all)', () => {
+  // A dropped connection produces an error with NO Response to read a
+  // status off. The facade must NOT invent one: callers branch on
+  // `instanceof ApiError` (and on .status) to tell a server-reported
+  // problem from "the app can't reach its backend", and a fabricated
+  // status would route a network outage into the 4xx user-error copy.
+  it('rejects with the raw transport error, not an ApiError', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch') }))
+    const err = await GetMatchResults().catch(e => e)
+    expect(err).not.toBeInstanceOf(ApiError)
+    expect(String(err)).toContain('Failed to fetch')
+  })
+})
+
+// ── server-mode fallbacks for the native pickers ──────────────────────────
+// PickScreenshotsDir / PickTesseractBinary are the only facade calls that
+// branch on the runtime: desktop opens a native dialog, server mode falls
+// back to window.prompt. IS_WAILS is false under Vitest, so these pin the
+// browser half; the Wails half lives in api-platform.wails.test.ts.
+
+describe('PickScreenshotsDir (server mode)', () => {
+  function replyByMethod(current: string): (req: Request) => Response {
+    return req => (req.method === 'GET'
+      ? new Response(JSON.stringify({ path: current }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      : new Response(null, { status: 204 }))
+  }
+
+  it('keeps the configured folder and writes nothing when the prompt is dismissed', async () => {
+    const spy = stubFetch(replyByMethod('/srv/recall'))
+    vi.stubGlobal('prompt', vi.fn(() => null))
+
+    expect(await PickScreenshotsDir()).toBe('/srv/recall')
+    // Only the GET that seeded the prompt — a canceled picker must not PUT.
+    expect(spy.mock.calls.map(c => (c[0] as Request).method)).toEqual(['GET'])
+  })
+
+  it('persists the typed path before resolving with it', async () => {
+    const spy = stubFetch(replyByMethod('/srv/recall'))
+    vi.stubGlobal('prompt', vi.fn(() => '/srv/new'))
+
+    expect(await PickScreenshotsDir()).toBe('/srv/new')
+    const req = lastRequest(spy)
+    expect(req.method).toBe('PUT')
+    expect(JSON.parse(await req.text())).toEqual({ path: '/srv/new' })
+  })
+})
+
+describe('PickTesseractBinary (server mode)', () => {
+  const status = (path: string) => ({
+    path, found: true, version: '5.5.0', supported: true, error: '', default: path, platform: 'linux',
+  })
+
+  it('re-reads the unchanged status when the prompt is dismissed', async () => {
+    const spy = stubFetch(jsonReply(200, status('/usr/bin/tesseract')))
+    const promptSpy = vi.fn(() => '')
+    vi.stubGlobal('prompt', promptSpy)
+
+    expect((await PickTesseractBinary()).path).toBe('/usr/bin/tesseract')
+    // The prompt is pre-filled with the configured path so the user edits
+    // rather than retypes it.
+    expect(promptSpy).toHaveBeenCalledWith('Path to Tesseract binary:', '/usr/bin/tesseract')
+    // Two reads (seed the prompt, then re-detect) and no write.
+    expect(spy.mock.calls.map(c => (c[0] as Request).method)).toEqual(['GET', 'GET'])
+  })
+
+  it('offers an empty default when no binary is configured yet', async () => {
+    stubFetch(jsonReply(200, { ...status(''), found: false, supported: false }))
+    const promptSpy = vi.fn(() => '')
+    vi.stubGlobal('prompt', promptSpy)
+
+    await PickTesseractBinary()
+
+    // A missing path must seed '' — never the string "undefined".
+    expect(promptSpy).toHaveBeenCalledWith('Path to Tesseract binary:', '')
+  })
+
+  it('applies the typed path and resolves with the re-detected status', async () => {
+    const spy = stubFetch(jsonReply(200, status('/opt/tesseract')))
+    vi.stubGlobal('prompt', vi.fn(() => '/opt/tesseract'))
+
+    expect((await PickTesseractBinary()).path).toBe('/opt/tesseract')
+    const req = lastRequest(spy)
+    expect(req.method).toBe('PUT')
+    expect(JSON.parse(await req.text())).toEqual({ path: '/opt/tesseract' })
+  })
+})
+
 // ── writers ───────────────────────────────────────────────────────────────
 
 describe('writers', () => {
@@ -259,6 +348,16 @@ describe('writers', () => {
     expect(new URL(req.url).pathname).toBe('/api/v1/matches/match%3Ax/annotation')
     expect(JSON.parse(await req.text())).toEqual({
       leavers: [], throwers: [], note: 'just a note', replay_code: '', members: [], tags: [],
+    })
+  })
+
+  // The same guarantee from the other direction: a leaver-only quick-add
+  // must not null out a note the user typed a moment earlier.
+  it('SetMatchAnnotation defaults every field the caller omitted', async () => {
+    const spy = stubFetch(emptyReply(204))
+    await SetMatchAnnotation('match:x', { leavers: ['team', 'self'] })
+    expect(JSON.parse(await lastRequest(spy).text())).toEqual({
+      leavers: ['team', 'self'], throwers: [], note: '', replay_code: '', members: [], tags: [],
     })
   })
 })
@@ -369,8 +468,8 @@ describe('RestoreDatabase + ImportMatches (browser mode)', () => {
         const input = el as HTMLInputElement
         vi.spyOn(input, 'click').mockImplementation(() => {
           queueMicrotask(() => {
-            if (event === 'change' && file) {
-              Object.defineProperty(input, 'files', { value: [file] })
+            if (event === 'change') {
+              Object.defineProperty(input, 'files', { value: file ? [file] : [] })
               input.dispatchEvent(new Event('change'))
             } else {
               input.dispatchEvent(new Event('cancel'))
@@ -385,6 +484,15 @@ describe('RestoreDatabase + ImportMatches (browser mode)', () => {
   it('RestoreDatabase returns "" when the user cancels the picker', async () => {
     installFilePicker('cancel')
     expect(await RestoreDatabase()).toBe('')
+  })
+
+  it('RestoreDatabase treats an empty selection like a cancel', async () => {
+    // Some browsers fire `change` with an empty FileList when the dialog
+    // closes; that must not PUT an undefined body at the database.
+    installFilePicker('change')
+    const spy = stubFetch(emptyReply(204))
+    expect(await RestoreDatabase()).toBe('')
+    expect(spy).not.toHaveBeenCalled()
   })
 
   it('RestoreDatabase PUTs the .db bytes to /api/v1/database', async () => {

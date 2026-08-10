@@ -34,6 +34,52 @@ export function rectsEqual(a: Rect, b: Rect, eps = 0.5): boolean {
   )
 }
 
+/** The callout's own placed box, in the same viewport coordinates. */
+export interface CalloutBox {
+  left: number
+  top: number
+  w: number
+  h: number
+}
+
+/** Endpoints of the dashed connector drawn from the callout to the target. */
+export interface ConnectorLine {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+}
+
+// Connector geometry — a line from the callout's anchor edge to the
+// target's center. The anchor edge is picked by DOMINANT AXIS: when the
+// target sits mostly sideways of the callout the line leaves the left or
+// right edge at the callout's vertical center, otherwise the top or
+// bottom edge at its horizontal center. Returns null when there is no
+// target (the centered Welcome / Done callouts draw no connector).
+export function computeConnector(target: Rect | null, callout: CalloutBox): ConnectorLine | null {
+  if (!target) return null
+  const targetCx = target.x + target.w / 2
+  const targetCy = target.y + target.h / 2
+  const cx = callout.left + callout.w / 2
+  const cy = callout.top + callout.h / 2
+  const dx = targetCx - cx
+  const dy = targetCy - cy
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return {
+      x1: dx > 0 ? callout.left + callout.w : callout.left,
+      y1: cy,
+      x2: targetCx,
+      y2: targetCy,
+    }
+  }
+  return {
+    x1: cx,
+    y1: dy > 0 ? callout.top + callout.h : callout.top,
+    x2: targetCx,
+    y2: targetCy,
+  }
+}
+
 // Fixed-pixel layout knobs the placement solver needs. The SFC owns the
 // values (callout width, viewport safety margin, target↔callout gap) and
 // passes them in so this stays pure + unit-testable.

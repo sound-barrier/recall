@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/vue'
+import { render, screen, within, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -7,7 +7,10 @@ import { flushPromises } from '@/test-utils'
 import MatchesView from '@/components/matches/MatchesView.vue'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
-import { GetProfiles, SetMatchVisibility, HardDeleteMatch, MoveMatches } from '@/api'
+import {
+  GetProfiles, SetMatchVisibility, HardDeleteMatch, MoveMatches,
+  BulkSetMatchPlayMode, BulkSetMatchQueue, SetMatchAnnotation,
+} from '@/api'
 import type { MatchRecord } from '@/api'
 
 // MatchesView reads its mutations from useMatchActions (→ the api) + selection
@@ -22,6 +25,9 @@ vi.mock('@/api', async (importOriginal) => ({
   SetMatchVisibility: vi.fn(async () => undefined),
   HardDeleteMatch:    vi.fn(async () => undefined),
   MoveMatches:        vi.fn(async () => undefined),
+  BulkSetMatchPlayMode: vi.fn(async () => undefined),
+  BulkSetMatchQueue:    vi.fn(async () => undefined),
+  SetMatchAnnotation:   vi.fn(async () => undefined),
 }))
 
 // This file imports the matches store, which statically imports '@/api'. Reset
@@ -577,6 +583,115 @@ describe('MatchesView — scroll-to-top button', () => {
   })
 })
 
+// ── Row right-click menu ────────────────────────────────────────────
+//
+// The menu is MatchesView's emit surface to the rest of the app: every
+// item routes to a store action or a mutation. These pin that the right
+// row's key reaches the right handler — a swap there is silent (the menu
+// still opens, it just acts on nothing or on the wrong match).
+describe('MatchesView — row context menu', () => {
+  const openMenuOn = async (index: number) => {
+    await fireEvent.contextMenu(leafRows()[index]!)
+  }
+  const menuItem = (name: RegExp) => screen.getByRole('menuitem', { name })
+
+  it('opens the detail panel on the row the user right-clicked, not the first row', async () => {
+    renderView([
+      makeRecord({ match_key: 'k1' }),
+      makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
+    ])
+    await openMenuOn(1)
+    await user().click(menuItem(/Open detail/))
+
+    const ui = useUiStore()
+    expect(ui.selection.isOpen.value).toBe(true)
+    expect(ui.selection.selectedKey.value).toBe('k1')
+  })
+
+  it('sets the since-anchor from the menu', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    await openMenuOn(0)
+    await user().click(menuItem(/Filter from this match/))
+    expect(useMatchesStore().matchesNarrow.anchorKey.value).toBe('k1')
+  })
+
+  it('Tag… opens the panel AND parks a one-shot focus for the tag input', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    await openMenuOn(0)
+    await user().click(menuItem(/Tag…/))
+
+    const ui = useUiStore()
+    expect(ui.selection.isOpen.value).toBe(true)
+    expect(ui.pendingFocusTarget).toBe('tag')
+  })
+
+  it('Edit annotation parks the note focus instead', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    await openMenuOn(0)
+    await user().click(menuItem(/Edit annotation/))
+    expect(useUiStore().pendingFocusTarget).toBe('note')
+  })
+
+  it('Hide routes through the same single-key bulk path the action bar uses', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    await openMenuOn(0)
+    await user().click(menuItem(/^Hide/))
+
+    await flushPromises()
+    expect(SetMatchVisibility).toHaveBeenCalledWith('k1', true)
+  })
+})
+
+describe('MatchesView — CSV export', () => {
+  it('exports only the ticked rows when a selection exists', async () => {
+    const records = [
+      makeRecord({ match_key: 'k1' }),
+      makeRecord({ match_key: 'k2' }, { finished_at: '22:30', map: 'ilios' }),
+    ]
+    renderView(records)
+    const store = useMatchesStore()
+    const spy = vi.spyOn(store, 'onExportMatchesCSV').mockResolvedValue(undefined)
+
+    await user().click(screen.getByRole('checkbox', { name: 'Select match k2' }))
+    await user().click(inBulkBar().getByRole('button', { name: 'Export CSV' }))
+
+    const [csv, filename] = spy.mock.calls[0]!
+    expect(csv).toContain('k2')
+    expect(csv).not.toContain('k1')
+    expect(filename).toMatch(/^recall-matches-.*\.csv$/)
+  })
+
+  it('hands the selected keys to the bundle exporter', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    const store = useMatchesStore()
+    const spy = vi.spyOn(store, 'onExportBundleRequest').mockResolvedValue(undefined)
+
+    await user().click(leafChecks()[0]!)
+    await user().click(inBulkBar().getByRole('button', { name: /Export bundle/ }))
+    expect(spy).toHaveBeenCalledWith(['k1'])
+  })
+})
+
+describe('MatchesView — sort + group popover', () => {
+  it('re-orders the list when the user flips the sort direction', async () => {
+    const records = [
+      makeRecord({ match_key: 'old' }, { date: '2026-05-01', finished_at: '10:00' }),
+      makeRecord({ match_key: 'new' }, { date: '2026-05-20', finished_at: '10:00' }),
+    ]
+    renderView(records)
+    // Default is newest-first.
+    expect(leafChecks()[0]).toHaveAccessibleName('Select match new')
+
+    // The trigger's accessible name IS the current sort/group summary, so
+    // reach it by its stable title instead.
+    await user().click(screen.getByTitle(/^Sort and group/))
+    expect(screen.getByRole('dialog', { name: 'Sort and group the matches list' })).toBeInTheDocument()
+    await user().click(screen.getByRole('radio', { name: /Oldest first/ }))
+
+    expect(leafChecks()[0]).toHaveAccessibleName('Select match old')
+  })
+})
+
 describe('MatchesView — jump-to-undated button', () => {
   it('renders with the live undated count', () => {
     const records = [
@@ -606,5 +721,225 @@ describe('MatchesView — jump-to-undated button', () => {
     renderView(records)
     const btn = screen.getByRole('button', { name: /1 undated/ })
     expect(btn).toHaveAttribute('title', expect.stringMatching(/Jump to 1 undated match$/))
+  })
+})
+
+describe('MatchesView — bulk play mode / queue', () => {
+  it('writes the picked play mode to every ticked key and clears the selection', async () => {
+    renderView([
+      makeRecord({ match_key: 'k1' }),
+      makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
+    ])
+    await user().click(leafChecks()[0]!)
+    await user().click(leafChecks()[1]!)
+
+    await user().click(inBulkBar().getByRole('button', { name: /Set play mode/ }))
+    await user().click(inBulkBar().getByRole('menuitem', { name: 'Competitive' }))
+
+    await flushPromises()
+    const [keysArg, mode] = vi.mocked(BulkSetMatchPlayMode).mock.calls[0]!
+    expect([...(keysArg as string[])].sort()).toEqual(['k1', 'k2'])
+    expect(mode).toBe('competitive')
+    expect(bulkBar()).not.toBeInTheDocument()
+  })
+
+  it('writes the picked queue type the same way', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    await user().click(leafChecks()[0]!)
+
+    await user().click(inBulkBar().getByRole('button', { name: /Set queue/ }))
+    await user().click(inBulkBar().getByRole('menuitem', { name: 'Open Queue' }))
+
+    await flushPromises()
+    expect(BulkSetMatchQueue).toHaveBeenCalledWith(['k1'], 'open')
+  })
+})
+
+describe('MatchesView — list toolbar', () => {
+  it('Add match opens the manual-entry modal in full mode', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    expect(useUiStore().manualMatchOpen).toBe(false)
+
+    await user().click(screen.getByRole('button', { name: 'Add match' }))
+    await user().click(screen.getByRole('menuitem', { name: /Full entry/ }))
+
+    expect(useUiStore().manualMatchOpen).toBe(true)
+    expect(useUiStore().manualMatchMode).toBe('full')
+  })
+
+  it('Collapse all folds every group section, Expand all restores them', async () => {
+    // Two days → two sections, so folding actually removes rows.
+    renderView([
+      makeRecord({ match_key: 'k1' }, { date: '2026-05-10' }),
+      makeRecord({ match_key: 'k2' }, { date: '2026-05-11' }),
+    ])
+    expect(leafRows()).toHaveLength(2)
+
+    await user().click(screen.getByRole('button', { name: 'Collapse all' }))
+    expect(leafRows()).toHaveLength(0)
+
+    await user().click(screen.getByRole('button', { name: 'Expand all' }))
+    expect(leafRows()).toHaveLength(2)
+  })
+
+  it('the jump button scrolls the undated section into view', async () => {
+    const scrollTo = vi.fn()
+    Object.defineProperty(window, 'scrollTo', { value: scrollTo, writable: true, configurable: true })
+    renderView([
+      makeRecord({ match_key: 'dated' }, { date: '2026-05-10' }),
+      makeRecord({ match_key: 'undated' }, { date: undefined }),
+    ])
+
+    await user().click(screen.getByRole('button', { name: /1 undated/ }))
+    await flushPromises()
+    // The section lives at the very bottom of a windowed list, so the jump
+    // has to expand the window before it can find its target.
+    expect(scrollTo).toHaveBeenCalled()
+  })
+})
+
+describe('MatchesView — scroll anchoring', () => {
+  it('holds the members list under the cursor when a narrow re-flows the dossier above it', async () => {
+    // WebKit (the Wails webview) has no scroll anchoring, so narrowing from
+    // a dossier affordance used to shove the list out from under the click.
+    renderView([
+      makeRecord({ match_key: 'k1' }),
+      makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
+    ])
+    const scrollBy = vi.fn()
+    Object.defineProperty(window, 'scrollBy', { value: scrollBy, writable: true, configurable: true })
+
+    // The watcher measures once BEFORE the re-render and once after; the
+    // dossier's chip strip appearing lifts the list by 120px.
+    let reads = 0
+    // eslint-disable-next-line testing-library/no-node-access -- the members section is a layout landmark measured by rect, not queried by role
+    const section = document.querySelector('.leaves')!
+    section.getBoundingClientRect = () => {
+      const top = reads++ === 0 ? 300 : 180
+      return { top, bottom: top + 400, left: 0, right: 0, width: 0, height: 400, x: 0, y: top, toJSON: () => ({}) } as DOMRect
+    }
+
+    useMatchesStore().matchesNarrow.pickedResults.value = new Set(['victory'])
+    await flushPromises()
+
+    expect(scrollBy).toHaveBeenCalledWith(0, -120)
+  })
+
+  it('leaves the scroll alone when the user is already inside the list', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    const scrollBy = vi.fn()
+    Object.defineProperty(window, 'scrollBy', { value: scrollBy, writable: true, configurable: true })
+
+    // eslint-disable-next-line testing-library/no-node-access -- the members section is a layout landmark measured by rect, not queried by role
+    const section = document.querySelector('.leaves')!
+    section.getBoundingClientRect = () => ({ top: -50, bottom: 350, left: 0, right: 0, width: 0, height: 400, x: 0, y: -50, toJSON: () => ({}) } as DOMRect)
+
+    useMatchesStore().matchesNarrow.pickedResults.value = new Set(['victory'])
+    await flushPromises()
+
+    // Scrolled past the section head — an in-list reset should still land
+    // the user at the top of the list, not get pinned in place.
+    expect(scrollBy).not.toHaveBeenCalled()
+  })
+})
+
+describe('MatchesView — back to top', () => {
+  it('returns the page to the top when the affordance is used', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    const scrollTo = vi.fn()
+    Object.defineProperty(window, 'scrollTo', { value: scrollTo, writable: true, configurable: true })
+    Object.defineProperty(window, 'scrollY', { value: 900, writable: true, configurable: true })
+    window.dispatchEvent(new Event('scroll'))
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    await user().click(await screen.findByRole('button', { name: 'Scroll to top of page' }))
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }))
+  })
+})
+
+describe('MatchesView — bulk tagging', () => {
+  it('coins a typed tag on every ticked match, normalized', async () => {
+    renderView([
+      makeRecord({ match_key: 'k1' }),
+      makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
+    ])
+    await user().click(leafChecks()[0]!)
+    await user().click(leafChecks()[1]!)
+
+    await user().click(inBulkBar().getByRole('button', { name: /^Tag/ }))
+    const combo = inBulkBar().getByRole('combobox', { name: 'Tag selected matches' })
+    await fireEvent.update(combo, 'Tilted')
+    await fireEvent.keyDown(combo, { key: 'Enter' })
+
+    await flushPromises()
+    const tagged = vi.mocked(SetMatchAnnotation).mock.calls.map(c => c[0]).sort()
+    expect(tagged).toEqual(['k1', 'k2'])
+    expect(vi.mocked(SetMatchAnnotation).mock.calls[0]![1].tags).toEqual(['tilted'])
+  })
+})
+
+describe('MatchesView — clipboard actions from the row menu', () => {
+  function stubClipboard() {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    return writeText
+  }
+
+  it('copies the match key as the shareable link', async () => {
+    const writeText = stubClipboard()
+    renderView([makeRecord({ match_key: 'k1' })])
+    await fireEvent.contextMenu(leafRows()[0]!)
+    // fireEvent, not user-event: the queued chain drops this dispatch when
+    // the menu re-renders between events (documented happy-dom gotcha).
+    await fireEvent.click(screen.getByRole('menuitem', { name: /Copy match link/ }))
+
+    await flushPromises()
+    expect(writeText).toHaveBeenCalledWith('k1')
+  })
+
+  it('offers Copy replay code only on a match that HAS one, and copies it', async () => {
+    const writeText = stubClipboard()
+    const withCode = makeRecord({ match_key: 'k1', annotation: { replay_code: '7H1K9P' } } as Partial<MatchRecord>)
+    renderView([withCode])
+    await fireEvent.contextMenu(leafRows()[0]!)
+    await fireEvent.click(screen.getByRole('menuitem', { name: /Copy replay code/ }))
+
+    await flushPromises()
+    expect(writeText).toHaveBeenCalledWith('7H1K9P')
+  })
+
+  it('hides Copy replay code when the match has none', async () => {
+    stubClipboard()
+    renderView([makeRecord({ match_key: 'k1' })])
+    await fireEvent.contextMenu(leafRows()[0]!)
+    expect(screen.queryByRole('menuitem', { name: /Copy replay code/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('MatchesView — grouping', () => {
+  it('switching Group off collapses the day sections into one flat run', async () => {
+    renderView([
+      makeRecord({ match_key: 'k1' }, { date: '2026-05-10' }),
+      makeRecord({ match_key: 'k2' }, { date: '2026-05-11' }),
+    ])
+    // Grouped by day, so the fold-all controls are offered.
+    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
+
+    await user().click(screen.getByTitle(/^Sort and group/))
+    await user().click(screen.getByRole('radio', { name: /^No grouping/ }))
+
+    expect(screen.queryByRole('button', { name: 'Collapse all' })).not.toBeInTheDocument()
+    expect(leafRows()).toHaveLength(2)
+  })
+})
+
+describe('MatchesView — manual entry menu', () => {
+  it('the leaver-exit shortcut opens the modal in its own mode', async () => {
+    renderView([makeRecord({ match_key: 'k1' })])
+    await user().click(screen.getByRole('button', { name: 'Add match' }))
+    await user().click(screen.getByRole('menuitem', { name: /Left after a leaver/ }))
+
+    expect(useUiStore().manualMatchOpen).toBe(true)
+    expect(useUiStore().manualMatchMode).toBe('leaver-exit')
   })
 })

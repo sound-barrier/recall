@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMapRoleConfig, type MapRole } from '@/composables/matches/useMapRoleConfig'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useOWData } from '@/composables/shared/useOWData'
+import { popoverPosition } from '@/components/matches/manual/map-role-popover-position'
 
 // Gear popover for the Geography (Map × Role) band. Three live filter
 // groups — roles, game modes, specific maps — applied to the band the
@@ -82,27 +83,9 @@ function onDocumentPointerDown(e: PointerEvent) {
 onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown, true))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPointerDown, true))
 
-const POPOVER_WIDTH = 300
-const POPOVER_HEIGHT_ESTIMATE = 380
-const VIEWPORT_PADDING = 8
-
-const popoverStyle = computed(() => {
-  const a = props.anchor
-  if (!a) return { display: 'none' }
-  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 720
-  const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1024
-  const roomBelow = viewportH - (a.bottom + 6)
-  const flipAbove = roomBelow < POPOVER_HEIGHT_ESTIMATE && a.top - 6 > roomBelow
-  const top = flipAbove
-    ? Math.max(VIEWPORT_PADDING, a.top - 6 - POPOVER_HEIGHT_ESTIMATE)
-    : Math.max(VIEWPORT_PADDING, a.bottom + 6)
-  const left = Math.max(VIEWPORT_PADDING, Math.min(a.right - POPOVER_WIDTH, viewportW - POPOVER_WIDTH - VIEWPORT_PADDING))
-  return {
-    top: `${top}px`,
-    left: `${left}px`,
-    maxHeight: `${viewportH - top - VIEWPORT_PADDING}px`,
-  }
-})
+const popoverStyle = computed(() =>
+  popoverPosition(props.anchor, { width: window.innerWidth, height: window.innerHeight }),
+)
 </script>
 
 <template>

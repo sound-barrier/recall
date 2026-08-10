@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 import type { CalloutPlacement } from '@/composables/shared/useOnboardingTour'
 import { useFloatingCallout } from '@/composables/shared/useFloatingCallout'
+import { computeConnector } from '@/components/shared/tour-callout-helpers'
 
 // Anchored callout panel. Renders the step's tag / number / heading
 // / body plus the Skip / Back / Next controls. Anchors to the
@@ -77,32 +78,16 @@ const {
   dims: { calloutW: CALLOUT_W, calloutHInitial: CALLOUT_H_INITIAL, safety: SAFETY, gap: GAP },
 })
 
-// Connector geometry — draws a dashed line from the callout's anchor
-// edge toward the target's center. Only rendered when a target is
-// present (centered Welcome / Done callouts have no connector).
-const connector = computed(() => {
-  const t = getTargetRect()
-  if (!t) return null
-  const targetCx = t.x + t.w / 2
-  const targetCy = t.y + t.h / 2
-  // Anchor on the side of the callout closest to the target.
-  const h = calloutHeight()
-  const cx = pos.value.left + CALLOUT_W / 2
-  const cy = pos.value.top + h / 2
-  const dx = targetCx - cx
-  const dy = targetCy - cy
-  // Pick edge: dominant axis. Horizontal-dominant → anchor on the
-  // left/right edge at the callout's vertical center; vertical-
-  // dominant → anchor on the top/bottom edge at the horizontal
-  // center. Early return per axis keeps each coordinate a single
-  // expression (no dead let-then-overwrite seed for CodeQL to flag).
-  if (Math.abs(dx) > Math.abs(dy)) {
-    const anchorX = dx > 0 ? pos.value.left + CALLOUT_W : pos.value.left
-    return { x1: anchorX, y1: pos.value.top + h / 2, x2: targetCx, y2: targetCy }
-  }
-  const anchorY = dy > 0 ? pos.value.top + h : pos.value.top
-  return { x1: pos.value.left + CALLOUT_W / 2, y1: anchorY, x2: targetCx, y2: targetCy }
-})
+// Connector geometry — a dashed line from the callout's anchor edge
+// toward the target's center. The edge-picking math is pure and lives in
+// tour-callout-helpers next to the placement solver; this only supplies
+// the live measurements.
+const connector = computed(() => computeConnector(getTargetRect(), {
+  left: pos.value.left,
+  top:  pos.value.top,
+  w:    CALLOUT_W,
+  h:    calloutHeight(),
+}))
 </script>
 
 <template>

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
+import {
+  spotlightRectFor,
+  bracketLength,
+  cornerBracketPaths,
+} from '@/components/shared/tour-spotlight-helpers'
+
 // Spotlight overlay. Renders a full-viewport SVG with a dim rect over
 // the entire screen and a cutout window where the target lives.
 // Corner brackets (viewfinder/reticle style) draw attention without
@@ -54,21 +60,16 @@ const rect = ref({ x: 0, y: 0, w: 0, h: 0 })
 // from the previous element cleanly.
 const tracked = ref<HTMLElement | null>(null)
 let observer: ResizeObserver | null = null
+// syncTarget parks on a frame and a smooth-scroll timer before it
+// attaches anything. Closing the tour mid-step lands the teardown in
+// that window, so every resumption point re-checks this — otherwise the
+// resumed pass scrolls the page for a tour that is gone and attaches a
+// ResizeObserver onBeforeUnmount has already run past.
+let disposed = false
 
 function recompute() {
   const el = tracked.value
-  if (!el) {
-    rect.value = { x: 0, y: 0, w: 0, h: 0 }
-    return
-  }
-  const r = el.getBoundingClientRect()
-  const p = padding.value
-  rect.value = {
-    x: Math.max(0, r.left - p),
-    y: Math.max(0, r.top  - p),
-    w: r.width  + p * 2,
-    h: r.height + p * 2,
-  }
+  rect.value = spotlightRectFor(el ? el.getBoundingClientRect() : null, padding.value)
 }
 
 function resolveTarget(): HTMLElement | null {
@@ -89,6 +90,7 @@ async function syncTarget() {
   // And one more frame for layout to settle (CSS transitions on the
   // tab panel still mid-flight otherwise).
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  if (disposed) return
   const el = resolveTarget()
   if (observer) observer.disconnect()
   tracked.value = el
@@ -106,6 +108,7 @@ async function syncTarget() {
     // distance is small; long scrolls still land within the
     // ResizeObserver / scroll listener's recompute cycle.
     await new Promise<void>(resolve => setTimeout(resolve, 320))
+    if (disposed) return
     if (typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(recompute)
       observer.observe(el)
@@ -129,19 +132,17 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   if (observer) observer.disconnect()
   window.removeEventListener('scroll', onWindowScroll, true)
   window.removeEventListener('resize', onWindowResize)
 })
 
-// Corner bracket geometry — drawn as four L-shaped paths anchored to
-// the cutout corners. Each bracket is a fraction of the cutout's
-// shorter side (capped) so brackets always look proportional.
-const bracketLen = computed(() => {
-  const r = rect.value
-  if (r.w === 0 || r.h === 0) return 0
-  return Math.max(10, Math.min(20, Math.min(r.w, r.h) * 0.18))
-})
+// Corner bracket geometry — four L-shaped paths anchored to the cutout
+// corners, sized proportionally to the cutout's shorter side. The math
+// lives in tour-spotlight-helpers so it is testable without a layout
+// engine; this only feeds it the live rect.
+const brackets = computed(() => cornerBracketPaths(rect.value, bracketLength(rect.value)))
 
 // Computed mask id used to punch out the cutout. Includes a step
 // hash so two spotlights side-by-side would each have their own
@@ -189,21 +190,10 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
     <!-- Viewfinder corner brackets — only drawn when there's a real
          cutout to anchor to. -->
     <g v-if="cutoutVisible" class="tour-spotlight-brackets">
-      <!-- Top-left -->
       <path
-        :d="`M ${rect.x} ${rect.y + bracketLen} L ${rect.x} ${rect.y} L ${rect.x + bracketLen} ${rect.y}`"
-      />
-      <!-- Top-right -->
-      <path
-        :d="`M ${rect.x + rect.w - bracketLen} ${rect.y} L ${rect.x + rect.w} ${rect.y} L ${rect.x + rect.w} ${rect.y + bracketLen}`"
-      />
-      <!-- Bottom-right -->
-      <path
-        :d="`M ${rect.x + rect.w} ${rect.y + rect.h - bracketLen} L ${rect.x + rect.w} ${rect.y + rect.h} L ${rect.x + rect.w - bracketLen} ${rect.y + rect.h}`"
-      />
-      <!-- Bottom-left -->
-      <path
-        :d="`M ${rect.x + bracketLen} ${rect.y + rect.h} L ${rect.x} ${rect.y + rect.h} L ${rect.x} ${rect.y + rect.h - bracketLen}`"
+        v-for="bracket in brackets"
+        :key="bracket.corner"
+        :d="bracket.d"
       />
     </g>
     <!-- Hairline outline around the cutout — sits between the
