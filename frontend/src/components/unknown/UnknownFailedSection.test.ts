@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
 
 import UnknownFailedSection from '@/components/unknown/UnknownFailedSection.vue'
@@ -35,61 +36,58 @@ const row = (over: Partial<FailedFile> = {}): FailedFile => ({
   ...over,
 })
 
-function mountWith(rows: FailedFile[]) {
+function renderWith(rows: FailedFile[]) {
   setActivePinia(createPinia())
   // Seed BEFORE the store exists: pre-seeded data is fresh (staleTime is
   // Infinity), so the store's observer never fires the initial fetch that
   // would otherwise clobber the seed when its mock resolves.
   seedQuery(qk.failedFiles, rows)
   useMatchesStore()
-  return mount(UnknownFailedSection)
+  return render(UnknownFailedSection)
 }
+
+const user = () => userEvent.setup()
 
 describe('UnknownFailedSection', () => {
   it('renders nothing when the ledger is empty', () => {
-    const wrapper = mountWith([])
-    expect(wrapper.find('#section-failed').exists()).toBe(false)
+    renderWith([])
+    expect(screen.queryByRole('heading', { name: /Failed to read/ })).not.toBeInTheDocument()
   })
 
   it('lists filename, error, and attempt tally', () => {
-    const wrapper = mountWith([row()])
-    const section = wrapper.find('#section-failed')
-    expect(section.exists()).toBe(true)
-    expect(section.text()).toContain('Failed to read (1)')
-    expect(section.text()).toContain('corrupt.png')
-    expect(section.text()).toContain('decoding image: png: invalid format')
-    expect(section.text()).toContain('6 attempts')
-    expect(section.text()).toMatch(/retried on every parse run/i)
+    renderWith([row()])
+    expect(screen.getByRole('heading', { name: 'Failed to read (1)' })).toBeInTheDocument()
+    expect(screen.getByText('corrupt.png')).toBeInTheDocument()
+    expect(screen.getByText(/decoding image: png: invalid format/)).toBeInTheDocument()
+    expect(screen.getByText(/6 attempts/)).toBeInTheDocument()
+    expect(screen.getByText(/retried on every parse run/i)).toBeInTheDocument()
   })
 
   it('the bundle button calls the export and reports the saved name', async () => {
-    const wrapper = mountWith([row()])
-    const btn = wrapper.find('[data-diagnostic-bundle]')
-    expect(btn.exists()).toBe(true)
-
-    await btn.trigger('click')
+    renderWith([row()])
+    await user().click(screen.getByRole('button', { name: 'Save diagnostic bundle' }))
     await new Promise((r) => setTimeout(r))
     expect(ExportDiagnosticBundle).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('Saved recall-diagnostic-x.zip')
+    expect(screen.getByText(/Saved recall-diagnostic-x\.zip/)).toBeInTheDocument()
   })
 
   it('a Wails dialog cancel (empty name) stays silent', async () => {
     vi.mocked(ExportDiagnosticBundle).mockResolvedValueOnce('')
-    const wrapper = mountWith([row()])
-    await wrapper.find('[data-diagnostic-bundle]').trigger('click')
+    renderWith([row()])
+    await user().click(screen.getByRole('button', { name: 'Save diagnostic bundle' }))
     await new Promise((r) => setTimeout(r))
-    expect(wrapper.text()).not.toContain('Saved')
+    expect(screen.queryByText(/Saved/)).not.toBeInTheDocument()
   })
 
   it('two-click Delete forever fires IgnoreScreenshot only on confirm', async () => {
-    const wrapper = mountWith([row()])
-    const btn = wrapper.find('[data-failed-ignore="corrupt.png"]')
+    renderWith([row()])
 
-    await btn.trigger('click')
-    expect(btn.text()).toMatch(/Confirm delete\?/i)
+    await user().click(screen.getByRole('button', { name: 'Permanently ignore corrupt.png' }))
+    const armed = screen.getByRole('button', { name: 'Confirm permanently ignoring corrupt.png' })
+    expect(armed).toHaveTextContent(/Confirm delete\?/i)
     expect(IgnoreScreenshot).not.toHaveBeenCalled()
 
-    await btn.trigger('click')
+    await user().click(armed)
     expect(IgnoreScreenshot).toHaveBeenCalledWith('corrupt.png')
   })
 })

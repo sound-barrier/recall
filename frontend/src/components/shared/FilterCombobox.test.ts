@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen, fireEvent } from '@testing-library/vue'
 import { nextTick } from 'vue'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 
 const HEROES = ['ana', 'kiriko', 'lucio', 'mercy', 'soldier', 'zenyatta']
 
-function mountCombo(overrides: Partial<{
+function renderCombo(overrides: Partial<{
   comboId: string
   label: string
   options: string[]
@@ -14,7 +14,7 @@ function mountCombo(overrides: Partial<{
   placeholder: string
   emptyMessage: string
 }> = {}) {
-  return mount(FilterCombobox, {
+  return render(FilterCombobox, {
     props: {
       comboId: overrides.comboId ?? 'hero',
       label: overrides.label ?? 'Heroes',
@@ -27,154 +27,148 @@ function mountCombo(overrides: Partial<{
   })
 }
 
+const input   = () => screen.getByRole('combobox', { name: 'Heroes' })
+const caret   = () => screen.getByRole('button', { name: /Open Heroes list|Close Heroes list/ })
+const listbox = () => screen.queryByRole('listbox', { name: 'Heroes' })
+const options = () => screen.queryAllByRole('option')
+const option  = (name: string) => options().find((o) => o.textContent?.includes(name))
+const pillRemovers = () => screen.queryAllByLabelText(/^Drop /)
+
 describe('FilterCombobox', () => {
   describe('closed state', () => {
     it('renders the input + caret but hides the dropdown list', () => {
-      const wrapper = mountCombo()
-      expect(wrapper.find('input.combo-input').exists()).toBe(true)
-      expect(wrapper.find('button.combo-caret').exists()).toBe(true)
-      expect(wrapper.find('ul.combo-list').exists()).toBe(false)
+      renderCombo()
+      expect(input()).toBeInTheDocument()
+      expect(caret()).toBeInTheDocument()
+      expect(listbox()).not.toBeInTheDocument()
     })
 
     it('caret has aria-expanded="false"', () => {
-      const wrapper = mountCombo({ open: false })
-      const caret = wrapper.find('button.combo-caret')
-      expect(caret.attributes('aria-expanded')).toBe('false')
+      renderCombo({ open: false })
+      expect(caret()).toHaveAttribute('aria-expanded', 'false')
     })
 
     it('does not render the selected-pills row when nothing is picked', () => {
-      const wrapper = mountCombo({ picked: new Set() })
-      expect(wrapper.find('.combo-selected').exists()).toBe(false)
+      renderCombo({ picked: new Set() })
+      expect(pillRemovers()).toHaveLength(0)
     })
   })
 
   describe('selected pills', () => {
     it('renders one pill per picked item with a remove button', () => {
-      const wrapper = mountCombo({ picked: new Set(['lucio', 'mercy']) })
-      const pills = wrapper.findAll('.combo-pill')
-      expect(pills).toHaveLength(2)
-      const texts = pills.map((p) => p.text())
-      expect(texts.some((t) => t.includes('lucio'))).toBe(true)
-      expect(texts.some((t) => t.includes('mercy'))).toBe(true)
-      // Each pill has a remove button.
-      expect(wrapper.findAll('.combo-pill .combo-pill-x')).toHaveLength(2)
+      renderCombo({ picked: new Set(['lucio', 'mercy']) })
+      // Each pill carries its value + a labeled remove button.
+      expect(screen.getByText(/lucio/)).toBeInTheDocument()
+      expect(screen.getByText(/mercy/)).toBeInTheDocument()
+      expect(pillRemovers()).toHaveLength(2)
     })
 
     it('clicking a pill × emits toggle with that value', async () => {
-      const wrapper = mountCombo({ picked: new Set(['lucio']) })
-      await wrapper.find('.combo-pill-x').trigger('click')
-      expect(wrapper.emitted('toggle')).toEqual([['lucio']])
+      const { emitted } = renderCombo({ picked: new Set(['lucio']) })
+      await fireEvent.click(screen.getByLabelText('Drop lucio'))
+      expect(emitted('toggle')).toEqual([['lucio']])
     })
 
     it('remove button has an accessible aria-label', () => {
-      const wrapper = mountCombo({ picked: new Set(['lucio']) })
-      const xBtn = wrapper.find('.combo-pill-x')
-      expect(xBtn.attributes('aria-label')).toMatch(/drop.*lucio/i)
+      renderCombo({ picked: new Set(['lucio']) })
+      expect(screen.getByRole('button', { name: /drop.*lucio/i })).toBeInTheDocument()
     })
   })
 
   describe('opening', () => {
     it('emits open when the input is focused', async () => {
-      const wrapper = mountCombo({ open: false })
-      await wrapper.find('input.combo-input').trigger('focus')
-      expect(wrapper.emitted('open')).toHaveLength(1)
+      const { emitted } = renderCombo({ open: false })
+      await fireEvent.focus(input())
+      expect(emitted('open')).toHaveLength(1)
     })
 
     it('emits open when the caret is clicked while closed', async () => {
-      const wrapper = mountCombo({ open: false })
-      await wrapper.find('button.combo-caret').trigger('click')
-      expect(wrapper.emitted('open')).toHaveLength(1)
+      const { emitted } = renderCombo({ open: false })
+      await fireEvent.click(caret())
+      expect(emitted('open')).toHaveLength(1)
     })
 
     it('emits close when the caret is clicked while open', async () => {
-      const wrapper = mountCombo({ open: true })
-      await wrapper.find('button.combo-caret').trigger('click')
-      expect(wrapper.emitted('close')).toHaveLength(1)
+      const { emitted } = renderCombo({ open: true })
+      await fireEvent.click(caret())
+      expect(emitted('close')).toHaveLength(1)
     })
   })
 
   describe('open state', () => {
     it('renders the dropdown list with every option', () => {
-      const wrapper = mountCombo({ open: true })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items).toHaveLength(HEROES.length)
+      renderCombo({ open: true })
+      expect(options()).toHaveLength(HEROES.length)
     })
 
     it('list has role=listbox + aria-label', () => {
-      const wrapper = mountCombo({ open: true, label: 'Heroes' })
-      const list = wrapper.find('ul.combo-list')
-      expect(list.attributes('role')).toBe('listbox')
-      expect(list.attributes('aria-label')).toBe('Heroes')
+      renderCombo({ open: true, label: 'Heroes' })
+      expect(listbox()).toBeInTheDocument()
     })
 
     it('each option has role=option + aria-selected reflects picked state', () => {
-      const wrapper = mountCombo({ open: true, picked: new Set(['lucio']) })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      const lucioItem = items.find((i) => i.text().includes('lucio'))
-      const mercyItem = items.find((i) => i.text().includes('mercy'))
-      expect(lucioItem?.attributes('aria-selected')).toBe('true')
-      expect(mercyItem?.attributes('aria-selected')).toBe('false')
+      renderCombo({ open: true, picked: new Set(['lucio']) })
+      expect(option('lucio')).toHaveAttribute('aria-selected', 'true')
+      expect(option('mercy')).toHaveAttribute('aria-selected', 'false')
     })
 
     it('picked options render a check glyph', () => {
-      const wrapper = mountCombo({ open: true, picked: new Set(['lucio']) })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      const lucioItem = items.find((i) => i.text().includes('lucio'))!
-      expect(lucioItem.find('.combo-check').text()).toBe('✓')
+      renderCombo({ open: true, picked: new Set(['lucio']) })
+      expect(option('lucio')).toHaveTextContent('✓')
     })
 
     it('caret has aria-expanded="true"', () => {
-      const wrapper = mountCombo({ open: true })
-      expect(wrapper.find('button.combo-caret').attributes('aria-expanded')).toBe('true')
+      renderCombo({ open: true })
+      expect(caret()).toHaveAttribute('aria-expanded', 'true')
     })
   })
 
   describe('typeahead filtering', () => {
     it('typing in the input narrows the dropdown list', async () => {
-      const wrapper = mountCombo({ open: true })
-      await wrapper.find('input.combo-input').setValue('luc')
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      renderCombo({ open: true })
+      await fireEvent.update(input(), 'luc')
+      const items = options()
       expect(items).toHaveLength(1)
-      expect(items[0]!.text()).toContain('lucio')
+      expect(items[0]).toHaveTextContent('lucio')
     })
 
     it('typing is case-insensitive', async () => {
-      const wrapper = mountCombo({ open: true })
-      await wrapper.find('input.combo-input').setValue('MERCY')
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items).toHaveLength(1)
+      renderCombo({ open: true })
+      await fireEvent.update(input(), 'MERCY')
+      expect(options()).toHaveLength(1)
     })
 
     it('matches by prefix only (not substring)', async () => {
-      const wrapper = mountCombo({ open: true, options: ['ana', 'busan', 'zenyatta'] })
-      await wrapper.find('input.combo-input').setValue('an')
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      renderCombo({ open: true, options: ['ana', 'busan', 'zenyatta'] })
+      await fireEvent.update(input(), 'an')
+      const items = options()
       // "ana" starts with "an"; "busan" contains it but isn't a prefix.
       expect(items).toHaveLength(1)
-      expect(items[0]!.text()).toContain('ana')
+      expect(items[0]).toHaveTextContent('ana')
     })
 
     it('renders the empty-message row when no options match', async () => {
-      const wrapper = mountCombo({ open: true })
-      await wrapper.find('input.combo-input').setValue('zzz')
-      expect(wrapper.findAll('ul.combo-list li[role="option"]')).toHaveLength(0)
-      expect(wrapper.find('.combo-empty').exists()).toBe(true)
+      const { baseElement } = renderCombo({ open: true })
+      await fireEvent.update(input(), 'zzz')
+      expect(options()).toHaveLength(0)
+      // With no emptyMessage prop the row renders blank, so presence is
+      // only observable structurally.
+      // eslint-disable-next-line testing-library/no-node-access -- the default empty row carries no text to query
+      expect(baseElement.querySelector('.combo-empty')).not.toBeNull()
     })
 
     it('emptyMessage prop customizes the no-matches row', async () => {
-      const wrapper = mountCombo({ open: true, emptyMessage: 'no maps in the corpus' })
-      await wrapper.find('input.combo-input').setValue('zzz')
-      expect(wrapper.find('.combo-empty').text()).toContain('no maps in the corpus')
+      renderCombo({ open: true, emptyMessage: 'no maps in the corpus' })
+      await fireEvent.update(input(), 'zzz')
+      expect(screen.getByText('no maps in the corpus')).toBeInTheDocument()
     })
   })
 
   describe('picking an option', () => {
     it('mousedown on an option emits toggle with the value', async () => {
-      const wrapper = mountCombo({ open: true })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      const mercyItem = items.find((i) => i.text().includes('mercy'))!
-      await mercyItem.trigger('mousedown')
-      expect(wrapper.emitted('toggle')).toEqual([['mercy']])
+      const { emitted } = renderCombo({ open: true })
+      await fireEvent.mouseDown(option('mercy')!)
+      expect(emitted('toggle')).toEqual([['mercy']])
     })
 
     it('mousedown is prevented so the input keeps focus', async () => {
@@ -182,64 +176,62 @@ describe('FilterCombobox', () => {
       // raw event with happy-dom, but we can assert the handler is
       // wired via the .prevent modifier — emitting toggle is the
       // proof.
-      const wrapper = mountCombo({ open: true })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      await items[0]!.trigger('mousedown')
-      expect(wrapper.emitted('toggle')).toBeTruthy()
+      const { emitted } = renderCombo({ open: true })
+      await fireEvent.mouseDown(options()[0]!)
+      expect(emitted('toggle')).toBeTruthy()
     })
 
     it('toggle on an already-picked option still emits (parent decides what to do)', async () => {
-      const wrapper = mountCombo({ open: true, picked: new Set(['lucio']) })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      const lucioItem = items.find((i) => i.text().includes('lucio'))!
-      await lucioItem.trigger('mousedown')
-      expect(wrapper.emitted('toggle')).toEqual([['lucio']])
+      const { emitted } = renderCombo({ open: true, picked: new Set(['lucio']) })
+      await fireEvent.mouseDown(option('lucio')!)
+      expect(emitted('toggle')).toEqual([['lucio']])
     })
 
     it('auto-highlights the first match so Enter picks it without Tab', async () => {
-      const wrapper = mountCombo({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.setValue('luc')
-      await input.trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('toggle')).toEqual([['lucio']])
+      const { emitted } = renderCombo({ open: true })
+      await fireEvent.update(input(), 'luc')
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('toggle')).toEqual([['lucio']])
     })
   })
 
   describe('data-combo-id', () => {
     it('exposes data-combo-id on the root so click-outside detection works', () => {
-      const wrapper = mountCombo({ comboId: 'map' })
-      expect((wrapper.element as HTMLElement).getAttribute('data-combo-id')).toBe('map')
+      const { baseElement } = renderCombo({ comboId: 'map' })
+      // The attribute exists precisely for selector-based click-outside
+      // detection, so the node access pins that contract.
+      // eslint-disable-next-line testing-library/no-node-access -- data-combo-id exists FOR selector-based click-outside detection
+      expect(baseElement.querySelector('[data-combo-id="map"]')).not.toBeNull()
     })
   })
 
   describe('placeholder', () => {
     it('uses a sensible default with the option count', () => {
-      const wrapper = mountCombo({ options: HEROES })
-      const input = wrapper.find('input.combo-input')
-      expect(input.attributes('placeholder')).toContain(String(HEROES.length))
+      renderCombo({ options: HEROES })
+      expect(input()).toHaveAttribute('placeholder', expect.stringContaining(String(HEROES.length)))
     })
 
     it('respects an explicit placeholder', () => {
-      const wrapper = mountCombo({ placeholder: 'hunt for a map…' })
-      expect(wrapper.find('input.combo-input').attributes('placeholder')).toBe('hunt for a map…')
+      renderCombo({ placeholder: 'hunt for a map…' })
+      expect(input()).toHaveAttribute('placeholder', 'hunt for a map…')
     })
   })
 
   describe('reactivity', () => {
     it('updates the rendered options when the options prop changes', async () => {
-      const wrapper = mountCombo({ open: true, options: ['a', 'b'] })
-      expect(wrapper.findAll('ul.combo-list li[role="option"]')).toHaveLength(2)
-      await wrapper.setProps({ options: ['x', 'y', 'z'] })
+      const { rerender } = renderCombo({ open: true, options: ['a', 'b'] })
+      expect(options()).toHaveLength(2)
+      await rerender({ options: ['x', 'y', 'z'] })
       await nextTick()
-      expect(wrapper.findAll('ul.combo-list li[role="option"]')).toHaveLength(3)
+      expect(options()).toHaveLength(3)
     })
 
     it('updates the picked-pills row when the picked prop changes', async () => {
-      const wrapper = mountCombo({ picked: new Set(['lucio']) })
-      expect(wrapper.findAll('.combo-pill')).toHaveLength(1)
-      await wrapper.setProps({ picked: new Set(['lucio', 'mercy']) })
+      const { rerender } = renderCombo({ picked: new Set(['lucio']) })
+      expect(pillRemovers()).toHaveLength(1)
+      await rerender({ picked: new Set(['lucio', 'mercy']) })
       await nextTick()
-      expect(wrapper.findAll('.combo-pill')).toHaveLength(2)
+      expect(pillRemovers()).toHaveLength(2)
     })
   })
 })

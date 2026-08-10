@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import { flushPromises } from '@/test-utils'
 import AboutModal from '@/components/shared/AboutModal.vue'
 import * as api from '@/api'
 import type { UpdateInfo } from '@/api'
@@ -27,6 +29,30 @@ const baseInfo: UpdateInfo = {
   can_self_update: false,
 }
 
+interface ModalProps {
+  open: boolean
+  updateInfo: UpdateInfo | null
+  currentVersion: string
+  checking: boolean
+  selfUpdate?: { phase: 'idle' | 'downloading' | 'ready' | 'error'; pct: number | null; error: string }
+}
+
+function renderModal(props: ModalProps) {
+  return render(AboutModal, { props })
+}
+
+const user = () => userEvent.setup()
+const dialog = () => screen.queryByRole('dialog')
+const applyBtn = () => screen.queryByRole('button', { name: /Update game data|Applying|Applied/ })
+const installBtn = () => screen.queryByRole('button', { name: /Install update|Try again/ })
+
+// The About surface repeats version strings and freshness copy across
+// its sections; the data-* regions it shares with the e2e specs are the
+// stable scoping for those assertions.
+/* eslint-disable testing-library/no-node-access -- e2e-shared data-* regions scope copy that repeats across sections */
+const region = (base: Element, sel: string) => base.querySelector(sel)
+/* eslint-enable testing-library/no-node-access */
+
 describe('AboutModal', () => {
   beforeEach(() => {
     vi.spyOn(api, 'ApplyGameDataUpdate').mockImplementation(async () => ({
@@ -40,62 +66,50 @@ describe('AboutModal', () => {
   })
 
   it('leads with the app identity: version + the unofficial-Overwatch disclaimer + project links', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    expect(wrapper.text()).toContain('About Recall')
-    expect(wrapper.find('[data-about-version]').text()).toContain('v1.0.0')
-    expect(wrapper.find('[data-about-disclaimer]').text()).toMatch(/not affiliated/i)
-    expect(wrapper.find('[data-about-github]').exists()).toBe(true)
-    expect(wrapper.find('[data-about-license]').exists()).toBe(true)
-    expect(wrapper.find('[data-about-issues]').exists()).toBe(true)
+    const { baseElement } = renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    expect(screen.getByText(/About Recall/)).toBeInTheDocument()
+    expect(region(baseElement, '[data-about-version]')).toHaveTextContent('v1.0.0')
+    expect(region(baseElement, '[data-about-disclaimer]')).toHaveTextContent(/not affiliated/i)
+    expect(screen.getByRole('button', { name: /Source on GitHub/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /License/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /issue/i })).toBeInTheDocument()
   })
 
   it('shows the identity + disclaimer even while the update check is still in flight', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: null, currentVersion: '1.0.0', checking: true },
-    })
-    expect(wrapper.find('[data-about-version]').text()).toContain('v1.0.0')
-    expect(wrapper.find('[data-about-disclaimer]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Checking GitHub releases…')
+    const { baseElement } = renderModal({ open: true, updateInfo: null, currentVersion: '1.0.0', checking: true })
+    expect(region(baseElement, '[data-about-version]')).toHaveTextContent('v1.0.0')
+    expect(region(baseElement, '[data-about-disclaimer]')).toBeInTheDocument()
+    expect(screen.getByText(/Checking GitHub releases…/)).toBeInTheDocument()
   })
 
   it('opens the GitHub repo when the source link is clicked', async () => {
     const open = vi.spyOn(api, 'OpenURL').mockImplementation(() => {})
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    await wrapper.find('[data-about-github]').trigger('click')
+    renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    await user().click(screen.getByRole('button', { name: /Source on GitHub/ }))
     expect(open).toHaveBeenCalledWith(expect.stringContaining('github.com/sound-barrier/recall'))
   })
 
   it('renders both sections with current vs latest binary version', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    expect(wrapper.text()).toContain('Recall app')
-    expect(wrapper.text()).toContain('Game data')
-    expect(wrapper.text()).toContain('v1.0.0')
-    expect(wrapper.text()).toContain('v1.2.3')
+    renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    expect(screen.getByText('Recall app')).toBeInTheDocument()
+    expect(screen.getByText('Game data')).toBeInTheDocument()
+    expect(screen.getAllByText(/v1\.0\.0/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/v1\.2\.3/).length).toBeGreaterThan(0)
   })
 
   it('renders the release-notes excerpt', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    expect(wrapper.text()).toContain('New hero: Phoenix')
+    renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    expect(screen.getByText(/New hero: Phoenix/)).toBeInTheDocument()
   })
 
   it('leads with a plain-language change summary, never a commit SHA', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
+    const { baseElement } = renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
     // 2 added heroes, 0 added maps → "2 new heroes available".
-    expect(wrapper.find('[data-update-check-summary]').text()).toContain('2 new heroes available')
+    expect(region(baseElement, '[data-update-check-summary]')).toHaveTextContent('2 new heroes available')
     // The meaningless commit SHAs are gone.
-    expect(wrapper.text()).not.toContain('MAIN @')
-    expect(wrapper.text()).not.toContain('abc1234')
-    expect(wrapper.text()).not.toContain('def5678')
+    expect(screen.queryByText(/MAIN @/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/abc1234/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/def5678/)).not.toBeInTheDocument()
   })
 
   // The freshness line reports CONTENT, not age: when nothing has changed it must
@@ -112,94 +126,74 @@ describe('AboutModal', () => {
         has_update: false, // rosters match the live channel — no diff
       },
     }
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: upToDate, currentVersion: '1.0.0', checking: false },
-    })
-    const freshness = wrapper.find('[data-update-check-freshness]').text()
-    expect(freshness).toContain('up to date')
-    expect(freshness).not.toMatch(/days? old/)
+    const { baseElement } = renderModal({ open: true, updateInfo: upToDate, currentVersion: '1.0.0', checking: false })
+    const freshness = region(baseElement, '[data-update-check-freshness]')
+    expect(freshness).toHaveTextContent('up to date')
+    expect(freshness).not.toHaveTextContent(/days? old/)
   })
 
   it('flags an available binary update with the latest version', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    const row = wrapper.find('[data-update-check-available]')
-    expect(row.exists()).toBe(true)
-    expect(row.text()).toContain('v1.2.3')
-    expect(row.text()).toContain('update available')
+    const { baseElement } = renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    const row = region(baseElement, '[data-update-check-available]')
+    expect(row).toHaveTextContent('v1.2.3')
+    expect(row).toHaveTextContent('update available')
   })
 
   it('frames a dev build as ahead of the latest release, not behind it', () => {
     const devInfo: UpdateInfo = { ...baseInfo, dev_build: true, available: false }
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: devInfo, currentVersion: '1.3.0-dev', checking: false },
-    })
-    const dev = wrapper.find('[data-update-check-devbuild]')
-    expect(dev.exists()).toBe(true)
-    expect(dev.text()).toContain('Development build')
-    expect(dev.text()).toContain('v1.3.0-dev')
-    expect(dev.text()).toContain('Ahead of the latest release')
-    expect(dev.text()).toContain('v1.2.3')
+    const { baseElement } = renderModal({ open: true, updateInfo: devInfo, currentVersion: '1.3.0-dev', checking: false })
+    const dev = region(baseElement, '[data-update-check-devbuild]')
+    expect(dev).toHaveTextContent('Development build')
+    expect(dev).toHaveTextContent('v1.3.0-dev')
+    expect(dev).toHaveTextContent('Ahead of the latest release')
+    expect(dev).toHaveTextContent('v1.2.3')
     // No misleading Current/Latest comparison on a dev build.
-    expect(wrapper.find('[data-update-check-available]').exists()).toBe(false)
+    expect(region(baseElement, '[data-update-check-available]')).toBeNull()
   })
 
   it('shows up-to-date copy on the latest release build', () => {
     const currentInfo: UpdateInfo = { ...baseInfo, dev_build: false, available: false }
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: currentInfo, currentVersion: '1.2.3', checking: false },
-    })
-    const uptodate = wrapper.find('[data-update-check-uptodate]')
-    expect(uptodate.exists()).toBe(true)
-    expect(uptodate.text()).toContain('latest release')
-    expect(uptodate.text()).toContain('v1.2.3')
+    const { baseElement } = renderModal({ open: true, updateInfo: currentInfo, currentVersion: '1.2.3', checking: false })
+    const uptodate = region(baseElement, '[data-update-check-uptodate]')
+    expect(uptodate).toHaveTextContent('latest release')
+    expect(uptodate).toHaveTextContent('v1.2.3')
   })
 
   it('renders the counts headline with added + retired counts', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    const counts = wrapper.find('[data-update-check-counts]')
-    expect(counts.exists()).toBe(true)
-    expect(counts.text()).toContain('2 NEW')
-    expect(counts.text()).toContain('1 RETIRED')
+    renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    expect(screen.getByText(/2 NEW/)).toBeInTheDocument()
+    expect(screen.getByText(/1 RETIRED/)).toBeInTheDocument()
   })
 
   it('renders the diff manifest with kind chips + signs + names', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    const manifest = wrapper.find('[data-update-check-manifest]')
-    expect(manifest.exists()).toBe(true)
-    const rows = manifest.findAll('.update-check-modal-manifest-row')
-    expect(rows).toHaveLength(3)
-    expect(manifest.text()).toContain('Phoenix')
-    expect(manifest.text()).toContain('Sojourn')
-    expect(manifest.text()).toContain('Hollywood')
-    expect(manifest.findAll('.update-check-modal-manifest-row-added')).toHaveLength(2)
-    expect(manifest.findAll('.update-check-modal-manifest-row-removed')).toHaveLength(1)
+    const { baseElement } = renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    expect(screen.getByText('Phoenix')).toBeInTheDocument()
+    expect(screen.getByText('Sojourn')).toBeInTheDocument()
+    expect(screen.getByText('Hollywood')).toBeInTheDocument()
+    // Row tint classes (added/removed) are the only expression of the
+    // change kind beyond the sign glyphs.
+    /* eslint-disable testing-library/no-node-access -- added/removed row tint classes have no accessible equivalent */
+    const manifest = region(baseElement, '[data-update-check-manifest]')!
+    expect(manifest.querySelectorAll('.update-check-modal-manifest-row')).toHaveLength(3)
+    expect(manifest.querySelectorAll('.update-check-modal-manifest-row-added')).toHaveLength(2)
+    expect(manifest.querySelectorAll('.update-check-modal-manifest-row-removed')).toHaveLength(1)
+    /* eslint-enable testing-library/no-node-access */
   })
 
   it('emits applied + shows "Applied" button label after clicking Update game data', async () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    await wrapper.find('[data-update-check-apply]').trigger('click')
+    const { emitted } = renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    await user().click(applyBtn()!)
     await flushPromises()
-    expect(wrapper.emitted('applied')).toHaveLength(1)
-    expect(wrapper.find('[data-update-check-apply]').text()).toContain('Applied')
+    expect(emitted('applied')).toHaveLength(1)
+    expect(applyBtn()).toHaveTextContent('Applied')
   })
 
   it('shows an inline error when ApplyGameDataUpdate throws an ApiError', async () => {
     vi.spyOn(api, 'ApplyGameDataUpdate').mockRejectedValueOnce(new api.ApiError(422, 'SHA-256 mismatch'))
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    await wrapper.find('[data-update-check-apply]').trigger('click')
+    renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    await user().click(applyBtn()!)
     await flushPromises()
-    expect(wrapper.text()).toContain('SHA-256 mismatch')
-    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+    expect(screen.getByRole('alert')).toHaveTextContent('SHA-256 mismatch')
   })
 
   it('shows the "main unreachable" state when commit_sha is empty', () => {
@@ -207,11 +201,9 @@ describe('AboutModal', () => {
       ...baseInfo,
       game_data: { commit_sha: '', applied_commit: '', has_update: false },
     }
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: unreachable, currentVersion: '1.0.0', checking: false },
-    })
-    expect(wrapper.find('[data-update-check-main-unreachable]').exists()).toBe(true)
-    expect(wrapper.find('[data-update-check-apply]').exists()).toBe(false)
+    const { baseElement } = renderModal({ open: true, updateInfo: unreachable, currentVersion: '1.0.0', checking: false })
+    expect(region(baseElement, '[data-update-check-main-unreachable]')).toBeInTheDocument()
+    expect(applyBtn()).not.toBeInTheDocument()
   })
 
   it('renders the "ALL CURRENT" state when has_update is false', () => {
@@ -224,26 +216,20 @@ describe('AboutModal', () => {
         has_update: false,
       },
     }
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: upToDate, currentVersion: '1.2.3', checking: false },
-    })
-    expect(wrapper.text()).toContain('ALL CURRENT')
-    expect(wrapper.find('[data-update-check-apply]').exists()).toBe(false)
+    renderModal({ open: true, updateInfo: upToDate, currentVersion: '1.2.3', checking: false })
+    expect(screen.getByText(/ALL CURRENT/)).toBeInTheDocument()
+    expect(applyBtn()).not.toBeInTheDocument()
   })
 
   it('does not render when open is false', () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: false, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    expect(wrapper.find('.update-check-modal-box').exists()).toBe(false)
+    renderModal({ open: false, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    expect(dialog()).not.toBeInTheDocument()
   })
 
   it('emits close when the × button is clicked', async () => {
-    const wrapper = mount(AboutModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    await wrapper.find('.update-check-modal-close').trigger('click')
-    expect(wrapper.emitted('close')).toHaveLength(1)
+    const { emitted } = renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false })
+    await user().click(screen.getByRole('button', { name: 'Close about' }))
+    expect(emitted('close')).toHaveLength(1)
   })
 
   describe('in-app self-update CTAs', () => {
@@ -252,69 +238,52 @@ describe('AboutModal', () => {
     const idle = { phase: 'idle' as const, pct: null, error: '' }
 
     it('shows Install update only when can_self_update is true', () => {
-      const on = mount(AboutModal, {
-        props: { open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: idle },
-      })
-      expect(on.find('[data-self-update-install]').exists()).toBe(true)
+      renderModal({ open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: idle })
+      expect(installBtn()).toBeInTheDocument()
+    })
 
-      const off = mount(AboutModal, {
-        props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false, selfUpdate: idle },
-      })
-      expect(off.find('[data-self-update-install]').exists()).toBe(false)
-      // The release-page fallback is present in both cases.
-      expect(off.find('[data-update-check-open-release]').exists()).toBe(true)
+    it('hides Install update when can_self_update is false, keeping the release-page fallback', () => {
+      renderModal({ open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false, selfUpdate: idle })
+      expect(installBtn()).not.toBeInTheDocument()
+      // The release-page fallback is present regardless.
+      expect(screen.getByRole('button', { name: /Open release page/ })).toBeInTheDocument()
     })
 
     it('emits install when Install update is clicked', async () => {
-      const wrapper = mount(AboutModal, {
-        props: { open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: idle },
-      })
-      await wrapper.find('[data-self-update-install]').trigger('click')
-      expect(wrapper.emitted('install')).toHaveLength(1)
+      const { emitted } = renderModal({ open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false, selfUpdate: idle })
+      await user().click(installBtn()!)
+      expect(emitted('install')).toHaveLength(1)
     })
 
     it('replaces the button with a progressbar while a download is in flight', () => {
-      const wrapper = mount(AboutModal, {
-        props: {
-          open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
-          selfUpdate: { phase: 'downloading', pct: 42, error: '' },
-        },
+      renderModal({
+        open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
+        selfUpdate: { phase: 'downloading', pct: 42, error: '' },
       })
-      const bar = wrapper.find('[data-self-update-progress]')
-      expect(bar.exists()).toBe(true)
-      expect(bar.attributes('role')).toBe('progressbar')
-      expect(bar.attributes('aria-valuenow')).toBe('42')
-      expect(bar.text()).toContain('42%')
+      const bar = screen.getByRole('progressbar')
+      expect(bar).toHaveAttribute('aria-valuenow', '42')
+      expect(bar).toHaveTextContent('42%')
       // The install button is gone while busy.
-      expect(wrapper.find('[data-self-update-install]').exists()).toBe(false)
+      expect(installBtn()).not.toBeInTheDocument()
     })
 
     it('offers Restart now once the update is staged', async () => {
-      const wrapper = mount(AboutModal, {
-        props: {
-          open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
-          selfUpdate: { phase: 'ready', pct: 100, error: '' },
-        },
+      const { emitted } = renderModal({
+        open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
+        selfUpdate: { phase: 'ready', pct: 100, error: '' },
       })
-      const restart = wrapper.find('[data-self-update-restart]')
-      expect(restart.exists()).toBe(true)
-      await restart.trigger('click')
-      expect(wrapper.emitted('restart')).toHaveLength(1)
+      await user().click(screen.getByRole('button', { name: /Restart now/ }))
+      expect(emitted('restart')).toHaveLength(1)
     })
 
     it('shows an alert and a retry affordance in the error phase', () => {
-      const wrapper = mount(AboutModal, {
-        props: {
-          open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
-          selfUpdate: { phase: 'error', pct: null, error: 'checksum mismatch' },
-        },
+      renderModal({
+        open: true, updateInfo: selfUpdatable, currentVersion: '1.0.0', checking: false,
+        selfUpdate: { phase: 'error', pct: null, error: 'checksum mismatch' },
       })
-      const err = wrapper.find('[data-self-update-error]')
-      expect(err.exists()).toBe(true)
-      expect(err.attributes('role')).toBe('alert')
-      expect(err.text()).toContain('checksum mismatch')
+      expect(screen.getByRole('alert')).toHaveTextContent('checksum mismatch')
       // The Install control returns (labeled as a retry) so the user can retry.
-      expect(wrapper.find('[data-self-update-install]').text()).toContain('Try again')
+      expect(installBtn()).toHaveTextContent('Try again')
     })
   })
 })

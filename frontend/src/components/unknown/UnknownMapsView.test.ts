@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen, within, fireEvent } from '@testing-library/vue'
 import { createPinia, setActivePinia } from 'pinia'
 
 import UnknownMapsView from '@/components/unknown/UnknownMapsView.vue'
@@ -39,8 +39,8 @@ interface Extras {
 
 // Seeds the matches store with the union of fixtures (the predicate getters
 // partition them back out) + the app store's updateInfo, and spies on the UI
-// store's preload + openLightbox before mount so the view's setup captures them.
-function mountWith(records: MatchRecord[], extras: Extras = {}) {
+// store's preload + openLightbox before render so the view's setup captures them.
+function renderWith(records: MatchRecord[], extras: Extras = {}) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const union = [
@@ -61,16 +61,38 @@ function mountWith(records: MatchRecord[], extras: Extras = {}) {
   const ui = useUiStore()
   const preloadSpy = vi.spyOn(ui.preview, 'preload')
   const openLightboxSpy = vi.spyOn(ui.preview, 'openLightbox')
-  const wrapper = mount(UnknownMapsView, { global: { plugins: [pinia] }, attachTo: document.body })
-  return { wrapper, app, ui, preloadSpy, openLightboxSpy }
+  const view = render(UnknownMapsView, { global: { plugins: [pinia] } })
+  return { view, app, ui, preloadSpy, openLightboxSpy }
 }
+
+// ── Structural helpers ───────────────────────────────────────────────
+// The triage cards are clickable containers (plain divs per the
+// documented interaction pattern — the keyboard affordance lives on the
+// inner buttons), the diagnostic strip's filled/vacant state and the
+// teleported hover thumb are presentational, and the fix-CTA rows carry
+// their e2e-shared data-key identity. None of those surfaces have an
+// accessible-name equivalent, so they are selected directly. Interactions
+// use TL fireEvent throughout, matching the original trigger() dispatch.
+/* eslint-disable testing-library/no-node-access -- clickable-container cards, presentational strips, and e2e-shared data-keys have no accessible-query equivalent */
+const unknownCards   = () => document.querySelectorAll('.unknown-card')
+const cardHead       = () => document.querySelector('.unknown-card-head')!
+const ambiguousHead  = () => document.querySelector('.ambiguous-card .unknown-card-head')!
+const ambiguousPreviewImg = () => document.querySelector('.ambiguous-card img.source-preview')
+const sourcePreviewImg    = () => document.querySelector('img.source-preview')
+const hoverThumb     = () => document.querySelector<HTMLElement>('.unknown-hover-thumb')
+const fieldCells     = (kind: 'filled' | 'vacant') => document.querySelectorAll(`.field-cell.${kind}`)
+const candidateRows  = () => document.querySelectorAll('.candidate-row')
+const previewPane    = () => document.querySelector('.candidate-preview-pane')
+const fixCta         = (key: string) => document.querySelector(`[data-fix-cta-key="${key}"]`)
+const unknownCard    = () => document.querySelector('.unknown-card')!
+/* eslint-enable testing-library/no-node-access */
 
 describe('UnknownMapsView', () => {
   it('renders the all-resolved state when there are no unknown records', () => {
-    const { wrapper } = mountWith([])
-    expect(wrapper.text()).toContain('All screenshots resolved.')
-    expect(wrapper.text()).toContain('No unresolved records.')
-    expect(wrapper.findAll('.unknown-card')).toHaveLength(0)
+    renderWith([])
+    expect(screen.getByText(/All screenshots resolved\./)).toBeInTheDocument()
+    expect(screen.getByText(/No unresolved records\./)).toBeInTheDocument()
+    expect(unknownCards()).toHaveLength(0)
   })
 
   it('renders one card per unknown record with the right match key', () => {
@@ -80,21 +102,19 @@ describe('UnknownMapsView', () => {
       } },
       { match_key: 'unmatched-broken.png', source_files: ['broken.png'], data: {} },
     ]
-    const { wrapper } = mountWith(records)
-    expect(wrapper.findAll('.unknown-card')).toHaveLength(2)
-    expect(wrapper.text()).toContain('unmatched-scoreboard1.png')
-    expect(wrapper.text()).toContain('unmatched-broken.png')
-    expect(wrapper.text()).toMatch(/2 records.*need your attention/)
+    renderWith(records)
+    expect(unknownCards()).toHaveLength(2)
+    expect(screen.getByText('unmatched-scoreboard1.png')).toBeInTheDocument()
+    expect(screen.getByText('unmatched-broken.png')).toBeInTheDocument()
+    expect(screen.getByText(/need your attention/)).toHaveTextContent(/2 records/)
   })
 
   it('navigates to the Parse tab when the "run Parse" link is clicked', async () => {
     const records: MatchRecord[] = [
       { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
-    const { wrapper, app } = mountWith(records)
-    const link = wrapper.findAll('.empty-link').find(el => el.text().toLowerCase().includes('parse'))
-    expect(link).toBeDefined()
-    await link!.trigger('click')
+    const { app } = renderWith(records)
+    await fireEvent.click(screen.getByRole('button', { name: /parse/i }))
     expect(app.view).toBe('ingest')
   })
 
@@ -102,19 +122,19 @@ describe('UnknownMapsView', () => {
     const records: MatchRecord[] = [
       { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
-    const { wrapper } = mountWith(records)
-    expect(wrapper.find('.source-name').exists()).toBe(false)
-    await wrapper.find('.unknown-card-head').trigger('click')
-    expect(wrapper.find('.source-name').exists()).toBe(true)
+    renderWith(records)
+    expect(screen.queryByText('x.png')).not.toBeInTheDocument()
+    await fireEvent.click(cardHead())
+    expect(screen.getByText('x.png')).toBeInTheDocument()
   })
 
   it('shows the field diagnostic strip with vacant cells for missing values', () => {
     const records: MatchRecord[] = [
       { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
-    const { wrapper } = mountWith(records)
-    expect(wrapper.findAll('.field-cell.filled')).toHaveLength(0)
-    expect(wrapper.findAll('.field-cell.vacant').length).toBeGreaterThan(0)
+    renderWith(records)
+    expect(fieldCells('filled')).toHaveLength(0)
+    expect(fieldCells('vacant').length).toBeGreaterThan(0)
   })
 
   // ─── Ambiguous attribution surface ─────────────────────────
@@ -124,9 +144,10 @@ describe('UnknownMapsView', () => {
       { match_key: 'ambiguous-scoreboard-2.png', source_files: ['scoreboard-2.png'], data: { hero: 'lucio' },
         ambiguous: true, candidates: [{ match_key: 'match:foo', distance_seconds: 720 }] },
     ]
-    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
-    expect(wrapper.text()).toContain('Needs your review — 1')
-    expect(wrapper.findAll('.ambiguous-card')).toHaveLength(1)
+    renderWith([], { ambiguousRecords: ambig })
+    expect(screen.getByText(/Needs your review — 1/)).toBeInTheDocument()
+    // eslint-disable-next-line testing-library/no-node-access -- ambiguous cards are clickable containers without an accessible name
+    expect(document.querySelectorAll('.ambiguous-card')).toHaveLength(1)
   })
 
   it('expanding an ambiguous card surfaces the candidate picker', async () => {
@@ -137,11 +158,11 @@ describe('UnknownMapsView', () => {
     const all: MatchRecord[] = [
       { match_key: 'match:foo', source_files: ['sb1.png'], data: { map: 'rialto', hero: 'lucio', date: '2026-05-10' } },
     ]
-    const { wrapper } = mountWith([], { ambiguousRecords: ambig, allRecords: all })
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    expect(wrapper.findAll('.candidate-row')).toHaveLength(1)
-    expect(wrapper.text()).toContain('12 min apart')
-    expect(wrapper.text()).toContain('rialto')
+    renderWith([], { ambiguousRecords: ambig, allRecords: all })
+    await fireEvent.click(ambiguousHead())
+    expect(candidateRows()).toHaveLength(1)
+    expect(screen.getByText(/12 min apart/)).toBeInTheDocument()
+    expect(screen.getByText(/rialto/)).toBeInTheDocument()
   })
 
   it('clicking Attach resolves the ambiguous record to the candidate key', async () => {
@@ -149,9 +170,9 @@ describe('UnknownMapsView', () => {
       { match_key: 'ambiguous-scoreboard-2.png', source_files: ['scoreboard-2.png'], data: { hero: 'lucio' },
         ambiguous: true, candidates: [{ match_key: 'match:foo', distance_seconds: 720 }] },
     ]
-    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    await wrapper.find('.candidate-attach').trigger('click')
+    renderWith([], { ambiguousRecords: ambig })
+    await fireEvent.click(ambiguousHead())
+    await fireEvent.click(screen.getByRole('button', { name: /Attach to this match/ }))
     expect(ResolveAmbiguousMatch).toHaveBeenCalledWith('ambiguous-scoreboard-2.png', 'match:foo')
   })
 
@@ -161,9 +182,9 @@ describe('UnknownMapsView', () => {
         source_files: ['Overwatch 2 Screenshot 2026.05.10 - 21.41.28.00_scoreboard.png'], data: {},
         ambiguous: true, candidates: [{ match_key: 'match:old', distance_seconds: 720 }] },
     ]
-    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    await wrapper.find('.candidate-fresh').trigger('click')
+    renderWith([], { ambiguousRecords: ambig })
+    await fireEvent.click(ambiguousHead())
+    await fireEvent.click(screen.getByRole('button', { name: /Treat as new match/ }))
     expect(ResolveAmbiguousMatch).toHaveBeenCalled()
     expect((ResolveAmbiguousMatch as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1]).toBe('match-2026-05-10T21-41-28')
   })
@@ -174,12 +195,12 @@ describe('UnknownMapsView', () => {
     const records: MatchRecord[] = [
       { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
-    const { wrapper, openLightboxSpy } = mountWith(records)
-    await wrapper.find('.unknown-card-head').trigger('click')
-    await wrapper.find('.source-name').trigger('click')
-    const img = wrapper.find('img.source-preview')
-    expect(img.exists()).toBe(true)
-    await img.trigger('click')
+    const { openLightboxSpy } = renderWith(records)
+    await fireEvent.click(cardHead())
+    await fireEvent.click(screen.getByText('x.png'))
+    const img = sourcePreviewImg()
+    expect(img).not.toBeNull()
+    await fireEvent.click(img!)
     expect(openLightboxSpy).toHaveBeenCalledWith('x.png', ['x.png'], {})
   })
 
@@ -188,11 +209,11 @@ describe('UnknownMapsView', () => {
       { match_key: 'ambiguous-ambig-sb.png', source_files: ['ambig-sb.png'], data: {},
         ambiguous: true, candidates: [{ match_key: 'match:foo', distance_seconds: 720 }] },
     ]
-    const { wrapper, openLightboxSpy } = mountWith([], { ambiguousRecords: ambig })
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    const img = wrapper.find('.ambiguous-card img.source-preview')
-    expect(img.exists()).toBe(true)
-    await img.trigger('click')
+    const { openLightboxSpy } = renderWith([], { ambiguousRecords: ambig })
+    await fireEvent.click(ambiguousHead())
+    const img = ambiguousPreviewImg()
+    expect(img).not.toBeNull()
+    await fireEvent.click(img!)
     expect(openLightboxSpy).toHaveBeenCalledWith('ambig-sb.png', ['ambig-sb.png'], {})
   })
 
@@ -201,11 +222,11 @@ describe('UnknownMapsView', () => {
       { match_key: 'ambiguous-ambig-sb.png', source_files: ['ambig-sb.png'], data: {},
         ambiguous: true, candidates: [{ match_key: 'match:foo', distance_seconds: 720 }] },
     ]
-    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    expect(wrapper.find('.ambiguous-card img.source-preview').exists()).toBe(true)
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    expect(wrapper.find('.ambiguous-card img.source-preview').exists()).toBe(false)
+    renderWith([], { ambiguousRecords: ambig })
+    await fireEvent.click(ambiguousHead())
+    expect(ambiguousPreviewImg()).not.toBeNull()
+    await fireEvent.click(ambiguousHead())
+    expect(ambiguousPreviewImg()).toBeNull()
   })
 
   it('candidate-picker renders a side-by-side preview pane on the first candidate by default', async () => {
@@ -216,12 +237,14 @@ describe('UnknownMapsView', () => {
           { match_key: 'match:b', distance_seconds: 120, representative_source_file: 'b-sum.png' },
         ] },
     ]
-    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    const pane = wrapper.find('.candidate-preview-pane')
-    expect(pane.exists()).toBe(true)
-    expect(pane.find('img').attributes('src')).toContain(encodeURIComponent('a-sum.png'))
-    expect(wrapper.find('.candidate-row.active').exists()).toBe(true)
+    renderWith([], { ambiguousRecords: ambig })
+    await fireEvent.click(ambiguousHead())
+    const pane = previewPane()
+    expect(pane).not.toBeNull()
+    // eslint-disable-next-line testing-library/no-node-access -- decorative preview img inside the pane carries no alt/role
+    expect(pane!.querySelector('img')?.getAttribute('src')).toContain(encodeURIComponent('a-sum.png'))
+    // eslint-disable-next-line testing-library/no-node-access -- active-row highlight class has no accessible equivalent
+    expect(document.querySelector('.candidate-row.active')).not.toBeNull()
   })
 
   it('hovering a different candidate updates the preview pane', async () => {
@@ -232,92 +255,69 @@ describe('UnknownMapsView', () => {
           { match_key: 'match:b', distance_seconds: 120, representative_source_file: 'b-sum.png' },
         ] },
     ]
-    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
-    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    await wrapper.findAll('.candidate-row')[1]!.trigger('mouseenter')
-    expect(wrapper.find('.candidate-preview-pane img').attributes('src')).toContain(encodeURIComponent('b-sum.png'))
+    renderWith([], { ambiguousRecords: ambig })
+    await fireEvent.click(ambiguousHead())
+    await fireEvent.mouseEnter(candidateRows()[1]!)
+    // eslint-disable-next-line testing-library/no-node-access -- decorative preview img inside the pane carries no alt/role
+    expect(previewPane()!.querySelector('img')?.getAttribute('src')).toContain(encodeURIComponent('b-sum.png'))
   })
 
   // ── Hover thumbnail (Teleport'd to <body>) ──────────────────
   describe('hover thumbnail on collapsed cards', () => {
-    function fireMouseenter(wrapper: ReturnType<typeof mountWith>['wrapper']) {
-      return wrapper.find('.unknown-card').trigger('mouseenter', { clientX: 200, clientY: 300 })
+    function fireMouseenter(coords: { clientX: number; clientY: number } = { clientX: 200, clientY: 300 }) {
+      return fireEvent.mouseEnter(unknownCard(), coords)
     }
 
     it('renders a floating thumbnail with the first source URL on mouseenter', async () => {
-      const { wrapper } = mountWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
-      try {
-        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
-        await fireMouseenter(wrapper)
-        const thumb = document.querySelector<HTMLImageElement>('.unknown-hover-thumb')
-        expect(thumb).not.toBeNull()
-        expect(thumb!.getAttribute('src')).toMatch(/_screenshot\/0\/x\.png/)
-      } finally {
-        wrapper.unmount()
-      }
+      renderWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
+      expect(hoverThumb()).toBeNull()
+      await fireMouseenter()
+      const thumb = hoverThumb()
+      expect(thumb).not.toBeNull()
+      expect(thumb!.getAttribute('src')).toMatch(/_screenshot\/0\/x\.png/)
     })
 
     it('disappears on mouseleave', async () => {
-      const { wrapper } = mountWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
-      try {
-        await fireMouseenter(wrapper)
-        expect(document.querySelector('.unknown-hover-thumb')).not.toBeNull()
-        await wrapper.find('.unknown-card').trigger('mouseleave')
-        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
-      } finally {
-        wrapper.unmount()
-      }
+      renderWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
+      await fireMouseenter()
+      expect(hoverThumb()).not.toBeNull()
+      await fireEvent.mouseLeave(unknownCard())
+      expect(hoverThumb()).toBeNull()
     })
 
     it('does not render when the card is already expanded', async () => {
-      const { wrapper } = mountWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
-      try {
-        await wrapper.find('.unknown-card-head').trigger('click')
-        await fireMouseenter(wrapper)
-        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
-      } finally {
-        wrapper.unmount()
-      }
+      renderWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
+      await fireEvent.click(cardHead())
+      await fireMouseenter()
+      expect(hoverThumb()).toBeNull()
     })
 
     it('does not render when the record has no source_files', async () => {
-      const { wrapper } = mountWith([{ match_key: 'unmatched-empty', source_files: [], data: {} }])
-      try {
-        await fireMouseenter(wrapper)
-        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
-      } finally {
-        wrapper.unmount()
-      }
+      renderWith([{ match_key: 'unmatched-empty', source_files: [], data: {} }])
+      await fireMouseenter()
+      expect(hoverThumb()).toBeNull()
     })
 
     it('uses the first source_file when a record has several', async () => {
-      const { wrapper } = mountWith([{ match_key: 'unmatched-multi', source_files: ['first.png', 'second.png'], data: {} }])
-      try {
-        await fireMouseenter(wrapper)
-        expect(document.querySelector<HTMLImageElement>('.unknown-hover-thumb')!.getAttribute('src')).toMatch(/first\.png/)
-      } finally {
-        wrapper.unmount()
-      }
+      renderWith([{ match_key: 'unmatched-multi', source_files: ['first.png', 'second.png'], data: {} }])
+      await fireMouseenter()
+      expect(hoverThumb()!.getAttribute('src')).toMatch(/first\.png/)
     })
 
     it('updates position on mousemove inside the hovered card', async () => {
-      const { wrapper } = mountWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
-      try {
-        await wrapper.find('.unknown-card').trigger('mouseenter', { clientX: 50, clientY: 80 })
-        const thumb = document.querySelector<HTMLElement>('.unknown-hover-thumb')!
-        const firstLeft = thumb.style.left
-        await wrapper.find('.unknown-card').trigger('mousemove', { clientX: 240, clientY: 380 })
-        expect(thumb.style.left).not.toBe(firstLeft)
-      } finally {
-        wrapper.unmount()
-      }
+      renderWith([{ match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} }])
+      await fireMouseenter({ clientX: 50, clientY: 80 })
+      const thumb = hoverThumb()!
+      const firstLeft = thumb.style.left
+      await fireEvent.mouseMove(unknownCard(), { clientX: 240, clientY: 380 })
+      expect(thumb.style.left).not.toBe(firstLeft)
     })
   })
 
   // ── Preload on mount (warms the HTTP cache via the UI store's preload) ──
   describe('screenshot preload on view mount', () => {
     it('preloads once per record with its first source file URL', () => {
-      const { preloadSpy } = mountWith([
+      const { preloadSpy } = renderWith([
         { match_key: 'unmatched-one.png', source_files: ['one.png'], data: {} },
         { match_key: 'unmatched-two.png', source_files: ['two.png', 'twoB.png'], data: {} },
       ])
@@ -328,7 +328,7 @@ describe('UnknownMapsView', () => {
     })
 
     it('skips records with no source_files', () => {
-      const { preloadSpy } = mountWith([{ match_key: 'unmatched-empty', source_files: [], data: {} }])
+      const { preloadSpy } = renderWith([{ match_key: 'unmatched-empty', source_files: [], data: {} }])
       expect(preloadSpy).not.toHaveBeenCalled()
     })
   })
@@ -350,52 +350,49 @@ describe('UnknownMapsView', () => {
     }
 
     it('surfaces the CTA when a gap record\'s hero_raw is in the latest roster', () => {
-      const { wrapper } = mountWith([], {
+      renderWith([], {
         referenceGapRecords: [gapRecord({ matchKey: 'r1', heroRaw: 'miyazaki' })], updateInfo: baseInfo,
       })
-      const fix = wrapper.find('[data-fix-cta-key="r1"]')
-      expect(fix.exists()).toBe(true)
-      expect(fix.text()).toContain('Fixed in')
-      expect(fix.text()).toContain('v1.2.3')
-      expect(fix.text()).toContain('Miyazaki')
-      expect(fix.find('.fix-link').attributes('href')).toBe(baseInfo.url)
+      const fix = fixCta('r1')
+      expect(fix).toHaveTextContent('Fixed in')
+      expect(fix).toHaveTextContent('v1.2.3')
+      expect(fix).toHaveTextContent('Miyazaki')
+      expect(within(fix as HTMLElement).getByRole('link')).toHaveAttribute('href', baseInfo.url)
     })
 
     it('surfaces the CTA on a map_raw hit too', () => {
-      const { wrapper } = mountWith([], {
+      renderWith([], {
         referenceGapRecords: [gapRecord({ matchKey: 'r2', mapRaw: 'hanaoka' })], updateInfo: baseInfo,
       })
-      const fix = wrapper.find('[data-fix-cta-key="r2"]')
-      expect(fix.exists()).toBe(true)
-      expect(fix.text()).toContain('Hanaoka')
+      expect(fixCta('r2')).toHaveTextContent('Hanaoka')
     })
 
     it('does NOT surface the CTA when updateInfo is null (user hasn\'t pulled yet)', () => {
-      const { wrapper } = mountWith([], {
+      renderWith([], {
         referenceGapRecords: [gapRecord({ matchKey: 'r3', heroRaw: 'miyazaki' })], updateInfo: null,
       })
-      expect(wrapper.find('[data-fix-cta-key="r3"]').exists()).toBe(false)
+      expect(fixCta('r3')).toBeNull()
     })
 
     it('does NOT surface the CTA when the running build is already the latest', () => {
-      const { wrapper } = mountWith([], {
+      renderWith([], {
         referenceGapRecords: [gapRecord({ matchKey: 'r4', heroRaw: 'miyazaki' })], updateInfo: { ...baseInfo, available: false },
       })
-      expect(wrapper.find('[data-fix-cta-key="r4"]').exists()).toBe(false)
+      expect(fixCta('r4')).toBeNull()
     })
 
     it('does NOT surface the CTA when the upcoming release doesn\'t recognize the name', () => {
-      const { wrapper } = mountWith([], {
+      renderWith([], {
         referenceGapRecords: [gapRecord({ matchKey: 'r5', heroRaw: 'unknownhero' })], updateInfo: baseInfo,
       })
-      expect(wrapper.find('[data-fix-cta-key="r5"]').exists()).toBe(false)
+      expect(fixCta('r5')).toBeNull()
     })
 
     it('does NOT surface the CTA when the YAML rosters are empty (sidecar verify failed)', () => {
-      const { wrapper } = mountWith([], {
+      renderWith([], {
         referenceGapRecords: [gapRecord({ matchKey: 'r6', heroRaw: 'miyazaki' })], updateInfo: { ...baseInfo, latest_heroes: [], latest_maps: [] },
       })
-      expect(wrapper.find('[data-fix-cta-key="r6"]').exists()).toBe(false)
+      expect(fixCta('r6')).toBeNull()
     })
   })
 })

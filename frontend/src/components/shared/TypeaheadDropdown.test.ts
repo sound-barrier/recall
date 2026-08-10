@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { render, screen, fireEvent } from '@testing-library/vue'
 import { nextTick } from 'vue'
 import TypeaheadDropdown from '@/components/shared/TypeaheadDropdown.vue'
 
@@ -15,7 +15,7 @@ const DROPDOWN_BASE = {
   open: false,
 }
 
-function mountDropdown(overrides: Partial<{
+function renderDropdown(overrides: Partial<{
   listboxId: string
   label: string
   options: string[]
@@ -26,285 +26,265 @@ function mountDropdown(overrides: Partial<{
   showCheckmark: boolean
   autoHighlightFirst: boolean
 }> = {}) {
-  return mount(TypeaheadDropdown, {
-    attachTo: document.body,
+  return render(TypeaheadDropdown, {
     props: { ...DROPDOWN_BASE, ...overrides },
   })
 }
 
+// Keyboard nav goes through fireEvent.keyDown (the component's contract
+// is its own keydown interception — Tab/Enter/Arrows never leave the
+// input), matching the original trigger() semantics.
+const input   = (label = 'Heroes') => screen.getByRole('combobox', { name: label })
+const listbox = (label = 'Heroes') => screen.queryByRole('listbox', { name: label })
+const options = () => screen.queryAllByRole('option')
+const option  = (name: string) => options().find((o) => o.textContent?.includes(name))!
+
 describe('TypeaheadDropdown', () => {
   describe('closed', () => {
     it('renders input + caret but no listbox', () => {
-      const wrapper = mountDropdown({ open: false })
-      expect(wrapper.find('input.combo-input').exists()).toBe(true)
-      expect(wrapper.find('button.combo-caret').exists()).toBe(true)
-      expect(wrapper.find('ul.combo-list').exists()).toBe(false)
+      renderDropdown({ open: false })
+      expect(input()).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Open Heroes list' })).toBeInTheDocument()
+      expect(listbox()).not.toBeInTheDocument()
     })
   })
 
   describe('open', () => {
     it('renders every option', () => {
-      const wrapper = mountDropdown({ open: true })
-      expect(wrapper.findAll('ul.combo-list li[role="option"]')).toHaveLength(HEROES.length)
+      renderDropdown({ open: true })
+      expect(options()).toHaveLength(HEROES.length)
     })
 
     it('listbox has aria-label = props.label', () => {
-      const wrapper = mountDropdown({ open: true, label: 'Maps' })
-      expect(wrapper.find('ul.combo-list').attributes('aria-label')).toBe('Maps')
+      renderDropdown({ open: true, label: 'Maps' })
+      expect(listbox('Maps')).toBeInTheDocument()
     })
 
     it('listbox id matches props.listboxId so combobox can aria-control it', () => {
-      const wrapper = mountDropdown({ open: true, listboxId: 'hero-list' })
-      expect(wrapper.find('ul.combo-list').attributes('id')).toBe('hero-list')
+      renderDropdown({ open: true, listboxId: 'hero-list' })
+      expect(listbox()).toHaveAttribute('id', 'hero-list')
     })
   })
 
   describe('isSelected', () => {
     it('passes aria-selected through per-option', () => {
-      const wrapper = mountDropdown({
+      renderDropdown({
         open: true,
         isSelected: (o) => o === 'lucio',
       })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      const lucio = items.find((i) => i.text().includes('lucio'))!
-      const mercy = items.find((i) => i.text().includes('mercy'))!
-      expect(lucio.attributes('aria-selected')).toBe('true')
-      expect(mercy.attributes('aria-selected')).toBe('false')
+      expect(option('lucio')).toHaveAttribute('aria-selected', 'true')
+      expect(option('mercy')).toHaveAttribute('aria-selected', 'false')
     })
 
     it('default isSelected returns false for every option', () => {
-      const wrapper = mountDropdown({ open: true })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items.every((i) => i.attributes('aria-selected') === 'false')).toBe(true)
+      renderDropdown({ open: true })
+      expect(options().every((i) => i.getAttribute('aria-selected') === 'false')).toBe(true)
     })
   })
 
   describe('showCheckmark', () => {
     it('renders the ✓ column by default', () => {
-      const wrapper = mountDropdown({
+      renderDropdown({
         open: true,
         isSelected: (o) => o === 'lucio',
       })
-      const lucio = wrapper.findAll('ul.combo-list li[role="option"]')
-        .find((i) => i.text().includes('lucio'))!
-      expect(lucio.find('.combo-check').exists()).toBe(true)
-      expect(lucio.find('.combo-check').text()).toBe('✓')
+      expect(option('lucio')).toHaveTextContent('✓')
     })
 
     it('hides the ✓ column when showCheckmark=false (tag-picker shape)', () => {
-      const wrapper = mountDropdown({
+      renderDropdown({
         open: true,
         showCheckmark: false,
         isSelected: (o) => o === 'lucio',
       })
-      expect(wrapper.find('.combo-check').exists()).toBe(false)
+      expect(option('lucio')).not.toHaveTextContent('✓')
     })
   })
 
   describe('typeahead filtering', () => {
     it('typing in the input narrows the list', async () => {
-      const wrapper = mountDropdown({ open: true })
-      await wrapper.find('input.combo-input').setValue('luc')
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      renderDropdown({ open: true })
+      await fireEvent.update(input(), 'luc')
+      const items = options()
       expect(items).toHaveLength(1)
-      expect(items[0]!.text()).toContain('lucio')
+      expect(items[0]).toHaveTextContent('lucio')
     })
 
     it('matches by prefix (case-insensitive), not substring', async () => {
-      const wrapper = mountDropdown({ open: true, options: ['ana', 'busan', 'zenyatta'] })
-      await wrapper.find('input.combo-input').setValue('AN')
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      renderDropdown({ open: true, options: ['ana', 'busan', 'zenyatta'] })
+      await fireEvent.update(input(), 'AN')
+      const items = options()
       // "ana" starts with "an"; "busan" only contains it, so it's excluded.
       expect(items).toHaveLength(1)
-      expect(items[0]!.text()).toContain('ana')
+      expect(items[0]).toHaveTextContent('ana')
     })
 
     it('renders empty-message row when nothing matches', async () => {
-      const wrapper = mountDropdown({ open: true, emptyMessage: 'no maps in corpus' })
-      await wrapper.find('input.combo-input').setValue('zzz')
-      expect(wrapper.find('.combo-empty').text()).toContain('no maps in corpus')
+      renderDropdown({ open: true, emptyMessage: 'no maps in corpus' })
+      await fireEvent.update(input(), 'zzz')
+      expect(screen.getByText('no maps in corpus')).toBeInTheDocument()
     })
   })
 
   describe('select emit', () => {
     it('mousedown on an option emits select with the value', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const mercy = wrapper.findAll('ul.combo-list li[role="option"]')
-        .find((i) => i.text().includes('mercy'))!
-      await mercy.trigger('mousedown')
-      expect(wrapper.emitted('select')).toEqual([['mercy']])
+      const { emitted } = renderDropdown({ open: true })
+      await fireEvent.mouseDown(option('mercy'))
+      expect(emitted('select')).toEqual([['mercy']])
     })
 
     it('Enter on the keyboard-highlighted option emits select', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.trigger('keydown', { key: 'ArrowDown' })
-      await input.trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('select')).toEqual([[HEROES[0]]])
+      const { emitted } = renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'ArrowDown' })
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('select')).toEqual([[HEROES[0]]])
     })
 
     it('Enter with no cursor + non-empty search emits free-text', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.setValue('miyazaki')
+      const { emitted } = renderDropdown({ open: true })
+      await fireEvent.update(input(), 'miyazaki')
       // No arrow keypress → cursor stays at -1 → Enter falls to free-text
-      await input.trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('free-text')).toEqual([['miyazaki']])
-      expect(wrapper.emitted('select')).toBeUndefined()
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('free-text')).toEqual([['miyazaki']])
+      expect(emitted('select')).toBeUndefined()
     })
 
     it('Enter with empty search emits nothing', async () => {
-      const wrapper = mountDropdown({ open: true })
-      await wrapper.find('input.combo-input').trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('select')).toBeUndefined()
-      expect(wrapper.emitted('free-text')).toBeUndefined()
+      const { emitted } = renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('select')).toBeUndefined()
+      expect(emitted('free-text')).toBeUndefined()
     })
   })
 
   describe('autoHighlightFirst', () => {
     it('pre-highlights the first match while typing so Enter selects it without Tab', async () => {
-      const wrapper = mountDropdown({ open: true, autoHighlightFirst: true })
-      const input = wrapper.find('input.combo-input')
-      await input.setValue('luc')
+      const { emitted } = renderDropdown({ open: true, autoHighlightFirst: true })
+      await fireEvent.update(input(), 'luc')
       // The first (and here only) match carries the cursor highlight.
-      expect(wrapper.find('ul.combo-list li[role="option"]').classes()).toContain('cursor')
+      expect(options()[0]).toHaveClass('cursor')
       // Enter selects it — no Arrow / Tab needed.
-      await input.trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('select')).toEqual([['lucio']])
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('select')).toEqual([['lucio']])
     })
 
     it('highlights the alphabetically-first of several matches', async () => {
-      const wrapper = mountDropdown({ open: true, autoHighlightFirst: true })
-      const input = wrapper.find('input.combo-input')
+      const { emitted } = renderDropdown({ open: true, autoHighlightFirst: true })
       // HEROES are pre-sorted; "a" matches only "ana" by prefix, so use a
       // shared-prefix set to prove "first match" is option 0 of the filtered list.
-      await input.setValue('a')
-      await input.trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('select')).toEqual([['ana']])
+      await fireEvent.update(input(), 'a')
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('select')).toEqual([['ana']])
     })
 
     it('drops the highlight when the query is cleared (Enter on a blank box selects nothing)', async () => {
-      const wrapper = mountDropdown({ open: true, autoHighlightFirst: true })
-      const input = wrapper.find('input.combo-input')
-      await input.setValue('luc')
-      await input.setValue('')
-      await input.trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('select')).toBeUndefined()
+      const { emitted } = renderDropdown({ open: true, autoHighlightFirst: true })
+      await fireEvent.update(input(), 'luc')
+      await fireEvent.update(input(), '')
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('select')).toBeUndefined()
     })
   })
 
   describe('keyboard nav', () => {
     it('ArrowDown advances the cursor', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.trigger('keydown', { key: 'ArrowDown' })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items[0]!.classes()).toContain('cursor')
+      renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'ArrowDown' })
+      expect(options()[0]).toHaveClass('cursor')
     })
 
     it('ArrowUp from cursor=0 wraps to the end', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.trigger('keydown', { key: 'ArrowDown' }) // cursor → 0
-      await input.trigger('keydown', { key: 'ArrowUp' })   // wraps → HEROES.length - 1
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items[HEROES.length - 1]!.classes()).toContain('cursor')
+      renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'ArrowDown' }) // cursor → 0
+      await fireEvent.keyDown(input(), { key: 'ArrowUp' })   // wraps → HEROES.length - 1
+      expect(options()[HEROES.length - 1]).toHaveClass('cursor')
     })
 
     it('Home jumps to the first option', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.trigger('keydown', { key: 'End' })
-      await input.trigger('keydown', { key: 'Home' })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items[0]!.classes()).toContain('cursor')
+      renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'End' })
+      await fireEvent.keyDown(input(), { key: 'Home' })
+      expect(options()[0]).toHaveClass('cursor')
     })
 
     it('End jumps to the last option', async () => {
-      const wrapper = mountDropdown({ open: true })
-      await wrapper.find('input.combo-input').trigger('keydown', { key: 'End' })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items[HEROES.length - 1]!.classes()).toContain('cursor')
+      renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'End' })
+      expect(options()[HEROES.length - 1]).toHaveClass('cursor')
     })
 
     it('Escape emits close', async () => {
-      const wrapper = mountDropdown({ open: true })
-      await wrapper.find('input.combo-input').trigger('keydown', { key: 'Escape' })
-      expect(wrapper.emitted('close')).toHaveLength(1)
+      const { emitted } = renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'Escape' })
+      expect(emitted('close')).toHaveLength(1)
     })
 
     it('keyboard nav is a no-op when closed', async () => {
-      const wrapper = mountDropdown({ open: false })
-      const input = wrapper.find('input.combo-input')
+      const { emitted } = renderDropdown({ open: false })
       // Closed state has no listbox — but the input is still there.
       // Pressing ArrowDown should not advance any cursor or emit.
-      await input.trigger('keydown', { key: 'ArrowDown' })
-      expect(wrapper.emitted('select')).toBeUndefined()
-      expect(wrapper.find('ul.combo-list').exists()).toBe(false)
+      await fireEvent.keyDown(input(), { key: 'ArrowDown' })
+      expect(emitted('select')).toBeUndefined()
+      expect(listbox()).not.toBeInTheDocument()
     })
   })
 
   describe('Tab to complete', () => {
     it('Tab highlights the next match so Enter selects it (no field exit)', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.setValue('luc') // filters to lucio
-      await input.trigger('keydown', { key: 'Tab' })
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items[0]!.classes()).toContain('cursor')
-      await input.trigger('keydown', { key: 'Enter' })
-      expect(wrapper.emitted('select')).toEqual([['lucio']])
+      const { emitted } = renderDropdown({ open: true })
+      await fireEvent.update(input(), 'luc') // filters to lucio
+      await fireEvent.keyDown(input(), { key: 'Tab' })
+      expect(options()[0]).toHaveClass('cursor')
+      await fireEvent.keyDown(input(), { key: 'Enter' })
+      expect(emitted('select')).toEqual([['lucio']])
     })
 
     it('Shift+Tab steps back through the matches', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.trigger('keydown', { key: 'Tab' })                 // -1 → 0
-      await input.trigger('keydown', { key: 'Tab', shiftKey: true }) // 0 → last (wrap)
-      const items = wrapper.findAll('ul.combo-list li[role="option"]')
-      expect(items[HEROES.length - 1]!.classes()).toContain('cursor')
+      renderDropdown({ open: true })
+      await fireEvent.keyDown(input(), { key: 'Tab' })                 // -1 → 0
+      await fireEvent.keyDown(input(), { key: 'Tab', shiftKey: true }) // 0 → last (wrap)
+      expect(options()[HEROES.length - 1]).toHaveClass('cursor')
     })
 
     it('Tab keeps its normal focus move when closed (no match to complete)', async () => {
-      const wrapper = mountDropdown({ open: false })
-      await wrapper.find('input.combo-input').trigger('keydown', { key: 'Tab' })
-      expect(wrapper.emitted('select')).toBeUndefined()
+      const { emitted } = renderDropdown({ open: false })
+      await fireEvent.keyDown(input(), { key: 'Tab' })
+      expect(emitted('select')).toBeUndefined()
     })
   })
 
   describe('open / close emits', () => {
     it('focus on input emits open when closed', async () => {
-      const wrapper = mountDropdown({ open: false })
-      await wrapper.find('input.combo-input').trigger('focus')
-      expect(wrapper.emitted('open')).toHaveLength(1)
+      const { emitted } = renderDropdown({ open: false })
+      await fireEvent.focus(input())
+      expect(emitted('open')).toHaveLength(1)
     })
 
     it('caret click emits open when closed', async () => {
-      const wrapper = mountDropdown({ open: false })
-      await wrapper.find('button.combo-caret').trigger('click')
-      expect(wrapper.emitted('open')).toHaveLength(1)
+      const { emitted } = renderDropdown({ open: false })
+      await fireEvent.click(screen.getByRole('button', { name: 'Open Heroes list' }))
+      expect(emitted('open')).toHaveLength(1)
     })
 
     it('caret click emits close when open', async () => {
-      const wrapper = mountDropdown({ open: true })
-      await wrapper.find('button.combo-caret').trigger('click')
-      expect(wrapper.emitted('close')).toHaveLength(1)
+      const { emitted } = renderDropdown({ open: true })
+      await fireEvent.click(screen.getByRole('button', { name: 'Close Heroes list' }))
+      expect(emitted('close')).toHaveLength(1)
     })
   })
 
   describe('close resets state', () => {
     it('closing wipes search + cursor', async () => {
-      const wrapper = mountDropdown({ open: true })
-      const input = wrapper.find('input.combo-input')
-      await input.setValue('luc')
-      await input.trigger('keydown', { key: 'ArrowDown' })
-      await wrapper.setProps({ open: false })
+      const { rerender } = renderDropdown({ open: true })
+      await fireEvent.update(input(), 'luc')
+      await fireEvent.keyDown(input(), { key: 'ArrowDown' })
+      await rerender({ open: false })
       await nextTick()
-      await wrapper.setProps({ open: true })
+      await rerender({ open: true })
       await nextTick()
       // After reopen: search empty (every option visible), cursor reset.
-      expect(wrapper.findAll('ul.combo-list li[role="option"]')).toHaveLength(HEROES.length)
-      expect((wrapper.find('input.combo-input').element as HTMLInputElement).value).toBe('')
+      expect(options()).toHaveLength(HEROES.length)
+      expect(input()).toHaveValue('')
     })
   })
 })
