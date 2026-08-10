@@ -308,6 +308,18 @@ tasks:
       - cd frontend && npm run typecheck
       - echo "[ recall ] ✓  TypeScript clean"
 
+  # PROBE, not a gate — deliberately absent from `task lint` / `task verify`.
+  # `--stableTypeOrdering` makes TS 6 sort types the way TS 7's parallel
+  # checker will, so anything it flags is a real 7.0 blocker surfaced early.
+  # Expect ONE known failure today, in hey-api's generated runtime
+  # (src/client/core/params.gen.ts) — the trigger to re-run this is the next
+  # @hey-api/openapi-ts bump. See TECHNICAL_DEBT.md §3.
+  typecheck-next:
+    desc: "TS 7.0-readiness probe (vue-tsc --stableTypeOrdering; expect 1 known generated-code hit)"
+    cmds:
+      - echo "[ recall ] Type-checking with TS 7 type ordering (probe, not a gate)…"
+      - cd frontend && npx vue-tsc --noEmit --stableTypeOrdering
+
   # ── Dead code analysis ─────────────────────────────────────────────────
   dead-code:
     desc: Find unreachable Go functions and unused TypeScript exports

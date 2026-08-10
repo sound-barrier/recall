@@ -68,17 +68,30 @@ changed bullets carry an inline re-evaluation note:
   second sortable data-grid surface appears.
 
 - **TS 7.0-readiness: one `stableTypeOrdering` hit, in generated code
-  (2026-08-09).** Under TS 6's `stableTypeOrdering` (which previews 7.0's
-  deterministic type ordering), the whole authored codebase type-checks
-  clean; the single error is in hey-api's bundled runtime
-  (`src/client/core/params.gen.ts` — `unknown` not assignable to
-  `Record<string, unknown>`). Generated code isn't hand-patched (the
-  gen-types drift gate would fight it), so this waits for the next
-  deliberate `@hey-api/openapi-ts` bump — re-run vue-tsc with the flag
-  after regenerating. A `tsgo` (`@typescript/native-preview`) shadow job
-  is deferred until Volar supports the native compiler: tsgo cannot check
-  `.vue` SFCs, so today it would fail on every SFC import rather than
-  shadow anything meaningful.
+  (2026-08-09, re-measured with `tsgo`).** Run `task typecheck-next`.
+  Under TS 6's `--stableTypeOrdering` (which previews 7.0's deterministic
+  type ordering) the whole authored codebase is clean; the single error is
+  in hey-api's bundled runtime (`src/client/core/params.gen.ts` —
+  `unknown` not assignable to `Record<string, unknown>`). Generated code
+  isn't hand-patched (the gen-types drift gate would fight it), so the
+  trigger is the next deliberate `@hey-api/openapi-ts` bump — 0.99.0 is
+  currently both the newest release AND the newest one clearing the 7-day
+  `.npmrc` cooldown, so there is nothing to bump to yet.
+
+  **Measured, not assumed:** a one-off `npx @typescript/native-preview
+  tsgo --noEmit` (the actual TS 7 checker) reports **17 errors, all in
+  `.ts` test files, all one root cause** — tsgo resolves `.vue` imports
+  but not their prop types, so every `mount(Component, { props })` fails
+  against the generic `VNodeProps`. **Zero errors in authored production
+  code, and zero in `src/client/`** — including `params.gen.ts`, which
+  means that `stableTypeOrdering` hit does NOT reproduce under real 7.0
+  semantics and is likely a 6.0-flag artifact rather than a 7.0 blocker.
+  So a `tsgo` shadow CI job stays deferred (it would report 17 lines of
+  SFC-prop noise and nothing else) until the native compiler gains SFC
+  support — but the earlier note that tsgo "would fail on every SFC
+  import" was wrong: imports resolve fine, prop TYPES do not. Adding
+  `@typescript/native-preview` as a devDependency needs approval and
+  buys nothing until that lands.
 
 - **`useMatchesDossierQueries.ts` (~748 lines)** exceeds the 500-line soft cap,
   but it is one cohesive composable — a single `useDossierQueries` factory (the
