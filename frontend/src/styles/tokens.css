@@ -75,6 +75,18 @@
      palette needs it. */
   --neutral: #95a5a6;
 
+  /* The same verdict as TYPE. --neutral is a PLATE — its contrast was tuned
+     for --bg sitting ON it — and a plate color does not transfer to text:
+     as a `color` it lands 3.88:1 on Day and 4.45:1 on Dark, both under AA.
+     This is the same split --accent / --accent-text exists for, and without
+     it the type half of the verdict palette had no way to say "unproven",
+     so consumers reached for a generic muted gray and the Elo headline's
+     third state fell out of the verdict vocabulary.
+     Night and high contrast clear AA at the plate value, so they share it;
+     Day darkens and Dark lightens. Worst surface per theme: Night 6.36,
+     Day 5.22, Dark 5.25, high contrast 7.20. */
+  --neutral-text: #95a5a6;
+
   /* The "no matches here" plate under the two grids that RECORD volume —
      the Campaign Log calendar and the Map × Role band. It was declared
      identically (and separately) on .match-heatmap and .mr-grid, so a

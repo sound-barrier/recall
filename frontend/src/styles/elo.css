@@ -155,14 +155,10 @@
 #panel-elo .elo-answer-head.is-good { color: var(--win); }
 #panel-elo .elo-answer-head.is-hard { color: var(--loss); }
 
-/* Not --neutral, despite is-good/is-hard taking the verdict colors:
-   --neutral is a PLATE token (its contrast is tuned for --bg sitting ON
-   it) and as TYPE it lands 3.88:1 on Day's surface-3 and 4.45:1 on
-   Dark's — both under AA. The verdict palette does not transfer from
-   background to text, the same split --accent / --accent-text exists
-   for. --text-dim is the purpose-built muted type token and clears AA
-   on all four themes (6.22:1 at its tightest). */
-#panel-elo .elo-answer-head.is-early { color: var(--text-dim); }
+/* --neutral-text, not --neutral: the plate value is 3.88:1 on Day and
+   4.45:1 on Dark as type. The companion token says the same thing the
+   plate does — too few games to judge — while clearing AA. */
+#panel-elo .elo-answer-head.is-early { color: var(--neutral-text); }
 
 #panel-elo .elo-answer-sub {
   margin: 0.55rem 0 0;
