@@ -53,8 +53,19 @@ func Move(src, dst db.Store, matchKeys []string) error {
 		keep[k] = true
 	}
 
+	// Validate BEFORE writing anything: phase 2 destroys the source, so a
+	// move that would strand a review card must refuse while both profiles
+	// are still intact.
+	movedShots := movedFilenames(source.snap, keep)
+	if err := checkAmbiguityIsSelfContained(source.snap, keep, movedShots); err != nil {
+		return err
+	}
+
 	resolveDirID := dirIDResolver(dst, source.snap.ScreenshotsDirs)
 	if err := movePhase1Parents(dst, source.snap, keep, resolveDirID); err != nil {
+		return err
+	}
+	if err := movePhase1Ambiguity(dst, source.snap, movedShots); err != nil {
 		return err
 	}
 	if err := movePhase1Sidecars(dst, matchKeys, source); err != nil {
@@ -64,6 +75,69 @@ func Move(src, dst db.Store, matchKeys []string) error {
 		return err
 	}
 	return movePhase2DeleteSource(src, matchKeys)
+}
+
+// movedFilenames collects every parent-row filename belonging to a moved
+// match. HardDeleteMatch wipes ambiguous_candidates by filename as well as by
+// match_key, so the filename set is what the candidate copy is keyed on.
+func movedFilenames(snap db.Screenshots, keep map[string]bool) map[string]bool {
+	out := map[string]bool{}
+	collectMovedFilenames(out, snap.Summaries, keep, func(r db.SummaryRow) (string, string) { return r.MatchKey, r.Filename })
+	collectMovedFilenames(out, snap.Teams, keep, func(r db.TeamsRow) (string, string) { return r.MatchKey, r.Filename })
+	collectMovedFilenames(out, snap.Personals, keep, func(r db.PersonalRow) (string, string) { return r.MatchKey, r.Filename })
+	collectMovedFilenames(out, snap.Ranks, keep, func(r db.RankRow) (string, string) { return r.MatchKey, r.Filename })
+	collectMovedFilenames(out, snap.Unknowns, keep, func(r db.UnknownRow) (string, string) { return r.MatchKey, r.Filename })
+	return out
+}
+
+// collectMovedFilenames adds one parent table's filenames for the kept keys.
+// Generic over the row type so the five parent tables share one loop rather
+// than five copies (which is also what keeps movedFilenames under the
+// complexity ceiling).
+func collectMovedFilenames[T any](out map[string]bool, rows []T, keep map[string]bool, key func(T) (string, string)) {
+	for _, r := range rows {
+		matchKey, filename := key(r)
+		if keep[matchKey] {
+			out[filename] = true
+		}
+	}
+}
+
+// ErrMoveStrandsCandidate reports a move that would land an ambiguous
+// screenshot whose candidate matches stay behind — a review card offering
+// choices that do not exist on the target, and unrecoverable because phase 2
+// deletes the originals.
+var ErrMoveStrandsCandidate = errors.New("move would strand an ambiguous candidate")
+
+// checkAmbiguityIsSelfContained refuses a move whose ambiguous screenshots
+// point at matches outside the moved set.
+func checkAmbiguityIsSelfContained(snap db.Screenshots, keep, movedShots map[string]bool) error {
+	for filename, cands := range snap.AmbiguousCandidates {
+		if !movedShots[filename] {
+			continue
+		}
+		for _, c := range cands {
+			if !keep[c.MatchKey] {
+				return fmt.Errorf("%w: %q offers %q, which is not being moved",
+					ErrMoveStrandsCandidate, filename, c.MatchKey)
+			}
+		}
+	}
+	return nil
+}
+
+// movePhase1Ambiguity reproduces the pending-review candidate lists on the
+// target. Part of phase 1's copy set because HardDeleteMatch wipes them.
+func movePhase1Ambiguity(targetStore db.Store, snap db.Screenshots, movedShots map[string]bool) error {
+	for filename, cands := range snap.AmbiguousCandidates {
+		if !movedShots[filename] || len(cands) == 0 {
+			continue
+		}
+		if err := targetStore.ApplyAmbiguity(filename, cands); err != nil {
+			return fmt.Errorf("move: copy ambiguous candidates for %q: %w", filename, err)
+		}
+	}
+	return nil
 }
 
 // loadMoveSource loads the active profile's full state once so the move
@@ -118,6 +192,16 @@ func dirIDResolver(targetStore db.Store, srcDirs map[int64]string) func(int64) (
 		if id, ok := cache[srcID]; ok {
 			return id, nil
 		}
+		// An empty path is the SENTINEL row (id 1, path ''), which schema.sql
+		// seeds in every store and every parent table defaults to. Returning 0
+		// here is not a lost id: dirIDOrSentinel maps 0 straight back to the
+		// sentinel on the target, which is the right home for a row that had
+		// no real directory.
+		//
+		// A non-sentinel id cannot be missing from srcDirs: screenshots_dir_id
+		// is `REFERENCES screenshots_dirs(id) ON DELETE RESTRICT` under
+		// `PRAGMA foreign_keys = ON`, and loadScreenshotsDirs selects the whole
+		// table — so the snapshot always resolves what its rows reference.
 		path := srcDirs[srcID]
 		if path == "" {
 			return 0, nil
@@ -229,7 +313,11 @@ func copyMatchSidecars(targetStore db.Store, k string, src moveSource) error {
 	if err := copyPresenceFlags(targetStore, k, src); err != nil {
 		return err
 	}
-	if r, ok := src.reviews[k]; ok && r.ReviewedBy != "" {
+	// No blank-reviewer guard: schema.sql pins reviewed_by to the self/coach
+	// vocabulary with a CHECK, so a row that exists always names a reviewer.
+	// (The guard that used to live here was only reachable through a Fake
+	// laxer than the real store; the Fake now mirrors the constraint.)
+	if r, ok := src.reviews[k]; ok {
 		if err := targetStore.SetReview(k, r.ReviewedBy); err != nil {
 			return fmt.Errorf("move: copy review for %q: %w", k, err)
 		}
