@@ -5,6 +5,7 @@ import (
 
 	"recall/pkg/correlate"
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 // Duplicate-sweep fingerprint tests pinning the policy:
@@ -234,6 +235,54 @@ func TestFindDuplicateMatches_MultipleCandidates_SortedByDistanceThenKey(t *test
 			t.Errorf("cands[%d] = %+v, want key %q distance %d", i, cands[i], wantKeys[i], wantDists[i])
 		}
 	}
+}
+
+// The Unknown tab's provenance chip is re-derived from the STORED
+// DistanceSeconds — a second count both producers truncate out of a
+// time.Duration — so the label has to still agree with the window that
+// actually proposed the candidate at the one second where the two bands
+// abut. Wrong here and a re-captured match reads as an EAD near-miss (or
+// a genuine near-miss reads as a duplicate), which is the opposite advice
+// for the user about to resolve it. Drives both producers end to end
+// rather than calling CandidateReason on hand-picked ints, because it is
+// the truncation that has to be proved harmless.
+func TestCandidateReason_AgreesWithTheWindowThatProposedIt(t *testing.T) {
+	t.Run("EAD bridge at its 30-min cap", func(t *testing.T) {
+		snap := db.Screenshots{
+			Teams: []db.TeamsRow{{
+				Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.00.00.11.png",
+				MatchKey:     "match-2026-05-10T21-00-00",
+				Eliminations: 17, Assists: 16, Deaths: 11,
+			}},
+		}
+		cand := correlate.CandidateFromParse(
+			"Overwatch 2 Screenshot 2026.05.10 - 21.30.00.02.png",
+			&parser.MatchResult{Eliminations: 17, Assists: 16, Deaths: 11},
+		)
+		_, cands, ok := correlate.MatchByEAD(cand, snap)
+		if !ok || len(cands) != 1 {
+			t.Fatalf("expected one EAD candidate at the cap, got ok=%v %+v", ok, cands)
+		}
+		if got := correlate.CandidateReason(cands[0].DistanceSeconds); got != "" {
+			t.Errorf("EAD candidate at %ds labeled %q, want the EAD-provenance blank",
+				cands[0].DistanceSeconds, got)
+		}
+	})
+
+	t.Run("duplicate sweep at its tightest distance", func(t *testing.T) {
+		// One second past the EAD cap — the closest a duplicate candidate
+		// can ever sit to the boundary.
+		snap := newSnap("match-2026-05-10T20-44-02")
+		snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 20.44.02.11.png"
+		cands := correlate.FindDuplicateMatches(dupNewKey, snap)
+		if len(cands) != 1 {
+			t.Fatalf("expected one duplicate candidate, got %+v", cands)
+		}
+		if got := correlate.CandidateReason(cands[0].DistanceSeconds); got != correlate.ReasonDuplicateStats {
+			t.Errorf("duplicate candidate at %ds labeled %q, want %q",
+				cands[0].DistanceSeconds, got, correlate.ReasonDuplicateStats)
+		}
+	})
 }
 
 func TestCandidateReason_DerivedFromDistance(t *testing.T) {

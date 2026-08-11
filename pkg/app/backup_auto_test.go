@@ -1,15 +1,22 @@
 package app_test
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"recall/pkg/app"
 	"recall/pkg/parser"
 )
+
+// autoPrefix mirrors the scheduler's snapshot prefix; the constant itself
+// is unexported and has no test seam.
+const autoPrefix = "auto-"
 
 // Re-parse All rewrites every row from OCR, so it takes a silent
 // VACUUM INTO safety snapshot BEFORE the run (keep the newest 2).
@@ -125,6 +132,55 @@ func TestPruneSnapshots_KeepsNewestN(t *testing.T) {
 		if !want[n] {
 			t.Errorf("unexpected survivor %q", n)
 		}
+	}
+}
+
+// lockedBuffer collects log output under a mutex — pkg/app logs from
+// background goroutines (watcher, parse), and a bare bytes.Buffer swapped
+// into slog.Default() races them under -race.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// captureLogs redirects slog.Default() for the duration of the test.
+func captureLogs(t *testing.T) *lockedBuffer {
+	t.Helper()
+	buf := &lockedBuffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	return buf
+}
+
+// A Glob failure is not "nothing to prune". The two were folded into one
+// `err != nil || len(matches) <= keep` return, so an unglobbable backups
+// path — a '[' anywhere in the data dir is enough, and data dirs carry
+// user-chosen profile names — disabled pruning permanently and let
+// backups/ grow without bound, with nothing anywhere saying why. Skipping
+// the prune stays the safe arm; it just has to be a loud one.
+func TestPruneSnapshots_GlobFailureIsLoggedNotSwallowed(t *testing.T) {
+	logs := captureLogs(t)
+
+	// An unterminated '[' makes the joined pattern invalid, which is the
+	// one reachable filepath.ErrBadPattern.
+	app.PruneSnapshots(filepath.Join(t.TempDir(), "profile[1", "backups"), autoPrefix, 3)
+
+	got := logs.String()
+	if !strings.Contains(got, "level=ERROR") || !strings.Contains(got, filepath.ErrBadPattern.Error()) {
+		t.Fatalf("a Glob failure must surface as a logged error; log was %q", got)
 	}
 }
 

@@ -64,6 +64,60 @@ func TestAttachUserData_EditedHeroReDerivesRole(t *testing.T) {
 	}
 }
 
+// derivedField names one override scalar, the derived field it drives, and
+// the seed that puts both in a pre-edit state — one row per re-derivation
+// rule in rederiveEditedFields.
+type derivedField struct {
+	name     string
+	seed     func(*parser.MatchResult)
+	override func(*string) db.UserMatchData
+	readOut  func(parser.MatchResult) string
+}
+
+// Clearing an override back to "" must clear the field it derives too. The
+// override is the ONLY source once applyScalarOverrides wipes MapRaw /
+// HeroRaw, so a surviving GameMode / Role asserts a game mode with no map
+// (or a role with no hero) — the dossier chip and the mode filter both read
+// the derived field, so the match keeps showing and filtering as Control
+// after the user cleared its map.
+func TestAttachUserData_ClearedOverrideClearsItsDerivedField(t *testing.T) {
+	for _, f := range []derivedField{
+		{
+			name: "cleared map clears game mode",
+			seed: func(d *parser.MatchResult) {
+				d.Map, d.MapRaw = "Lijiang Tower", "Lijiane Tovver"
+				d.GameMode = parser.MapGameMode("Lijiang Tower")
+			},
+			override: func(s *string) db.UserMatchData { return db.UserMatchData{MatchKey: "match-1", Map: s} },
+			readOut:  func(d parser.MatchResult) string { return d.GameMode },
+		},
+		{
+			name: "cleared hero clears role",
+			seed: func(d *parser.MatchResult) {
+				d.Hero, d.HeroRaw = "ana", "an4"
+				d.Role = parser.HeroRole("ana")
+			},
+			override: func(s *string) db.UserMatchData { return db.UserMatchData{MatchKey: "match-1", Hero: s} },
+			readOut:  func(d parser.MatchResult) string { return d.Role },
+		},
+	} {
+		t.Run(f.name, func(t *testing.T) {
+			rec := ocrRecord("match-1")
+			f.seed(&rec.Data)
+			if f.readOut(rec.Data) == "" {
+				t.Fatal("precondition: the derived field must start non-empty")
+			}
+			cleared := ""
+			recs := []match.Record{rec}
+			aggregate.AttachUserData(recs, map[string]db.UserMatchData{"match-1": f.override(&cleared)})
+
+			if got := f.readOut(recs[0].Data); got != "" {
+				t.Errorf("derived field = %q, want it cleared with the override", got)
+			}
+		})
+	}
+}
+
 // A manual match (no screenshot rows) is SourceManual with no EditedFields — the
 // badge conveys provenance — and falls back to UpdatedAt for ParsedAt.
 func TestAttachUserData_ManualHasNoEditedFields(t *testing.T) {

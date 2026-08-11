@@ -29,6 +29,16 @@ const ReasonDuplicateStats = "duplicate_stats"
 // and the timestamp window at MergeWindow, so any candidate farther out
 // can only have come from the duplicate sweep. Derived, not stored — the
 // ambiguous_candidates table needs no reason column.
+//
+// Strictly greater, and it must stay strictly greater. Both producers
+// store int(d / time.Second), which truncates — but every distance is a
+// difference of two filename timestamps, and every capture source in
+// screenshot_sources.yaml is second-granular (Nvidia's hundredths and
+// prntscn's milliseconds are deliberately dropped), so d is always a whole
+// number of seconds and the truncation is lossless. That leaves the two
+// bands exactly complementary — EAD [0s, 1800s], sweep [1801s, 7d] — and
+// relaxing this to >= would relabel an EAD candidate sitting on its own
+// 30-minute cap as a duplicate.
 func CandidateReason(distanceSeconds int) string {
 	if time.Duration(distanceSeconds)*time.Second > eadBridgeAmbiguousWindow {
 		return ReasonDuplicateStats

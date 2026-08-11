@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 )
 
 // Security hardening middleware: request-body size caps + a
@@ -65,13 +66,23 @@ func withSecurityHardening(next http.Handler) http.Handler {
 	})
 }
 
+// pprofTruthy is the accepted RECALL_PPROF opt-in vocabulary, matched
+// case-insensitively. An allow-list rather than a deny-list because the
+// variable mounts /debug/pprof on a server that runs without auth: a
+// deny-list of "" / "0" / "false" turned every other spelling of NO —
+// FALSE, no, off — into a silent yes, handing the user the exact opposite
+// of what they typed. Unrecognized values fail closed.
+var pprofTruthy = map[string]bool{
+	"1": true, "t": true, "true": true,
+	"y": true, "yes": true, "on": true,
+}
+
 // pprofEnabled reports whether the RECALL_PPROF opt-in is set to a
 // truthy value. Used both to mount the pprof handlers (NewMux) and to
 // warn when they're mounted on a non-loopback bind (RunServer), so the
 // two stay in lockstep.
 func pprofEnabled() bool {
-	v := os.Getenv("RECALL_PPROF")
-	return v != "" && v != "0" && v != "false"
+	return pprofTruthy[strings.ToLower(strings.TrimSpace(os.Getenv("RECALL_PPROF")))]
 }
 
 // isLoopbackBind reports whether addr listens on a loopback-only
