@@ -361,7 +361,7 @@ const { isReadOnly } = useActiveProfile()
 .profile-new-confirm {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .profile-new-confirm:disabled {
@@ -469,7 +469,7 @@ const { isReadOnly } = useActiveProfile()
 .profile-rename-confirm {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .profile-rename-confirm:disabled {

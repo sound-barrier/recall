@@ -268,7 +268,7 @@ void ({} as NamedCandidateStats)
 
 .src-card:not(:disabled):hover .src-eyebrow,
 .src-card:not(:disabled):focus-visible .src-eyebrow {
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
 }
 
 .src-title {
@@ -311,7 +311,7 @@ void ({} as NamedCandidateStats)
   margin-top: 0.15rem;
 }
 
-.src-status-found  { color: var(--accent-bright, var(--accent)); }
+.src-status-found  { color: var(--accent-bright); }
 .src-status-missing { color: var(--text-faint); }
 
 .src-dot {

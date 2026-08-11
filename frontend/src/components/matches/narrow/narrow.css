@@ -49,7 +49,7 @@
 }
 
 .np-chip:hover {
-  border-color: var(--accent-soft, var(--accent));
+  border-color: var(--accent-soft);
   color: var(--text);
 }
 

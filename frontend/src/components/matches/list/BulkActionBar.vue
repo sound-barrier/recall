@@ -311,7 +311,7 @@ function pickTag(v: string) {
 .bulk-hide {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .bulk-hide:hover { filter: brightness(1.08); }
@@ -345,7 +345,7 @@ function pickTag(v: string) {
 
 .bulk-move-target:hover {
   background: var(--accent);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .bab-prompt {
@@ -412,7 +412,7 @@ function pickTag(v: string) {
   list-style: none;
   padding: 0.3rem;
   margin: 0;
-  background: var(--surface-3, var(--surface-2));
+  background: var(--surface-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: 0 8px 18px rgb(var(--shadow-rgb) / 30%);

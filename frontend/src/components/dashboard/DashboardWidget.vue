@@ -224,7 +224,7 @@ function idxOr(): number { return props.idx ?? 0 }
 
 .dashboard-trash:hover {
   color: var(--loss);
-  border-color: var(--loss-line, var(--loss));
+  border-color: var(--loss-line);
   background: color-mix(in srgb, var(--loss) 12%, var(--surface));
 }
 

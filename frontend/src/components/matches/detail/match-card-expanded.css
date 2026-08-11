@@ -31,7 +31,7 @@
 
 .unknown-alert-eyebrow {
   display: inline-block;
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   margin-bottom: 0.2rem;
 }
 
@@ -74,7 +74,7 @@
   font-size: var(--type-2xs);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   text-decoration: none;
   font-weight: 700;
 }
@@ -145,7 +145,7 @@
 
 .meta-cell-score .meta-value {
   font-size: var(--type-6xl);
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   letter-spacing: 0.05em;
 }
 

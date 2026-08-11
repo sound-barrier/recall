@@ -238,7 +238,7 @@ function onNextClick() {
 
 .lightbox-close:hover {
   background: var(--accent-soft);
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   border-color: var(--accent);
 }
 
@@ -296,7 +296,7 @@ function onNextClick() {
 .lightbox-prev:hover:not(:disabled),
 .lightbox-next:hover:not(:disabled) {
   background: var(--accent-soft);
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   border-color: var(--accent);
 }
 

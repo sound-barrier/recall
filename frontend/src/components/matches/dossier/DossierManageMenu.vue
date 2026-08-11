@@ -271,7 +271,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 
 .dossier-manage-reset:hover {
   color: var(--loss);
-  border-color: var(--loss-line, var(--loss));
+  border-color: var(--loss-line);
 }
 
 .dossier-manage-reset:focus-visible {

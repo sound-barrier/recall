@@ -200,7 +200,7 @@ function cancel() {
 }
 
 .stat-revert:hover {
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
 }
 
 .stat-revert:focus-visible {

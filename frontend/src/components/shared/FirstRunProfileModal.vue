@@ -405,8 +405,8 @@ watch(trapOpen, async (open) => {
 }
 
 .first-run-hint  { color: var(--text-faint); }
-.first-run-hint.first-run-hint-error { color: var(--loss, #e74c3c); }
-.first-run-error { color: var(--loss, #e74c3c); }
+.first-run-hint.first-run-hint-error { color: var(--loss); }
+.first-run-error { color: var(--loss); }
 
 .first-run-actions {
   display: flex;
@@ -445,13 +445,13 @@ watch(trapOpen, async (open) => {
 .first-run-keep:hover:not(:disabled),
 .first-run-skip:hover:not(:disabled) {
   color: var(--text);
-  border-color: var(--border-strong, var(--text-faint));
+  border-color: var(--border-strong);
 }
 
 .first-run-save {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent, var(--bg));
+  color: var(--primary-text-on-accent);
 }
 
 .first-run-save:disabled,

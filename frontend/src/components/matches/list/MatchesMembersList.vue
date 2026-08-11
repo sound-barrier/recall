@@ -291,7 +291,7 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 
 .sd-toggle:hover {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-color: var(--accent-soft, var(--border));
+  border-color: var(--accent-soft);
   color: var(--text);
 }
 

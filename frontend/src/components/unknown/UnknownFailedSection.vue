@@ -197,7 +197,7 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
 .failed-bundle-saved {
   margin: 0;
   font-size: var(--type-sm);
-  color: var(--win, var(--accent));
+  color: var(--win);
 }
 
 .failed-blurb {

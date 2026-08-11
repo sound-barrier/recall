@@ -186,7 +186,7 @@ const emit = defineEmits<{
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 
-.bh-reset:hover { background: var(--accent); color: var(--primary-text-on-accent, var(--bg)); }
+.bh-reset:hover { background: var(--accent); color: var(--primary-text-on-accent); }
 .bh-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Gear — opens the band's display-filter popover. An accent dot in the

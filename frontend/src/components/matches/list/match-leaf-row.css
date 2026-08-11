@@ -173,7 +173,7 @@
    context without crowding the leaf row. */
 .leaf-hero-unknown,
 .leaf-map-unknown {
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   cursor: help;
 }
 

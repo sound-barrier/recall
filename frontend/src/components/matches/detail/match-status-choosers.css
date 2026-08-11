@@ -109,7 +109,7 @@
 .queue-chip[data-state="open"][aria-checked="true"] {
   color: var(--win);
   border-color: var(--win-line);
-  background: var(--win-soft, color-mix(in srgb, var(--win) 12%, transparent));
+  background: var(--win-soft);
   box-shadow:
     inset 0 0 0 1px var(--win-line),
     0 0 14px -6px var(--win-line);
@@ -223,7 +223,7 @@
 .play-mode-chip[data-state="competitive"][aria-checked="true"] {
   color: var(--win);
   border-color: var(--win-line);
-  background: var(--win-soft, color-mix(in srgb, var(--win) 12%, transparent));
+  background: var(--win-soft);
   box-shadow:
     inset 0 0 0 1px var(--win-line),
     0 0 14px -6px var(--win-line);
@@ -426,7 +426,7 @@
 .review-chip[data-state="coach"][aria-checked="true"] {
   color: var(--win);
   border-color: var(--win-line);
-  background: var(--win-soft, color-mix(in srgb, var(--win) 12%, transparent));
+  background: var(--win-soft);
   box-shadow:
     inset 0 0 0 1px var(--win-line),
     0 0 14px -6px var(--win-line);

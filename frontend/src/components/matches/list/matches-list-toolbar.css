@@ -72,7 +72,7 @@
   transition: background var(--duration-fast) ease;
 }
 
-.add-match-btn:hover { background: var(--accent-bright, var(--accent)); }
+.add-match-btn:hover { background: var(--accent-bright); }
 .add-match-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .add-match-btn:disabled,
@@ -327,5 +327,5 @@
 }
 
 .jump-to-undated.has-undated .jump-glyph {
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
 }

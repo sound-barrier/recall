@@ -71,7 +71,7 @@ defineProps<{
 }
 
 .update-check-modal-counts-added {
-  color: var(--win, #4ade80);
+  color: var(--win);
 }
 
 .update-check-modal-counts-removed {
@@ -130,7 +130,7 @@ defineProps<{
 }
 
 .update-check-modal-manifest-row-added .update-check-modal-manifest-sign {
-  color: var(--win, #4ade80);
+  color: var(--win);
 }
 
 .update-check-modal-manifest-row-removed .update-check-modal-manifest-sign {

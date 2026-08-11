@@ -134,7 +134,7 @@
   transition: background var(--duration-instant) ease, color var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
 
-.mm-chip:hover { border-color: var(--accent-soft, var(--accent)); color: var(--text); }
+.mm-chip:hover { border-color: var(--accent-soft); color: var(--text); }
 
 .mm-chip.picked {
   background: color-mix(in srgb, var(--accent) 16%, transparent);

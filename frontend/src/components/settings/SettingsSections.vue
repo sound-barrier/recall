@@ -171,7 +171,7 @@ const reparsing = parseBusy
 .settings-section + .settings-section {
   margin-top: 1.4rem;
   padding-top: 1.4rem;
-  border-top: 1px solid var(--border-soft, var(--border));
+  border-top: 1px solid var(--border-soft);
 }
 
 /* Accent registration mark at the bottom-left of each section block. */
