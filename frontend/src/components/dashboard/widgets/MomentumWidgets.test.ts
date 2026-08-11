@@ -31,15 +31,15 @@ describe('behavioral KPI widgets', () => {
     expect(screen.getByText(/win-rate over 8 session/)).toHaveTextContent('8 sessions')
   })
 
-  it('NetRankWeek signs + colors positive and negative movement', () => {
+  it('NetRankWeek signs + names positive, negative and flat movement', () => {
     renderWidget(NetRankWeekWidget, { dossier: { netRankWeek: 45 } })
-    // Visual tint pins: the sign is already in the visible text, the
-    // class only carries the up/down color. No ARIA encoding exists.
-    // eslint-disable-next-line no-restricted-syntax -- sign tint on the weekly net rank; the +/- in the text carries the direction
-    expect(screen.getByText('+45%')).toHaveClass('kpi-up')
+    // The up/down tint is spoken in the shared vocabulary, so the
+    // direction reaches a screen reader and a colorblind player too.
+    expect(screen.getByText('+45%')).toHaveAccessibleName('+45% — winning')
     renderWidget(NetRankWeekWidget, { dossier: { netRankWeek: -20 } })
-    // eslint-disable-next-line no-restricted-syntax -- sign tint on the weekly net rank; the +/- in the text carries the direction
-    expect(screen.getByText('-20%')).toHaveClass('kpi-down')
+    expect(screen.getByText('-20%')).toHaveAccessibleName('-20% — losing')
+    renderWidget(NetRankWeekWidget, { dossier: { netRankWeek: 0 } })
+    expect(screen.getByText('0%')).toHaveAccessibleName('0% — even')
   })
 
   it('AvgGameLength formats minutes as a clock, em-dash when null', () => {

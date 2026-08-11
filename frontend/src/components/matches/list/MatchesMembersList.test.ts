@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { ref } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, fireEvent } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api-client'
@@ -86,6 +87,9 @@ function renderList(props: Record<string, unknown> = {}) {
 
 let storage: Record<string, string>
 beforeEach(() => {
+  // MatchesTable reads the app store to surface a clipboard denial in the
+  // error banner, so rendering it needs an active Pinia.
+  setActivePinia(createPinia())
   storage = {}
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => storage[key] ?? null,

@@ -9,6 +9,7 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/parser"
 )
 
 // Boot re-aggregator pins the "YAML grew, promote previously-Unknown
@@ -216,6 +217,70 @@ func TestAggregate_PersonalHeroStats_AttachedByHero(t *testing.T) {
 	if hp.Stats["weapon_accuracy"] != 24 || hp.Stats["players_saved"] != 5 {
 		t.Errorf("stats not attached by hero: %+v", hp.Stats)
 	}
+}
+
+// A PERSONAL screenshot whose hero card lost BOTH percent played and play
+// time still files its stats under the named hero — with no timing of its
+// own. The fold runs earliest-capture-first, so BOTH orders have to hold:
+// the untimed entry must accept the SUMMARY's real timing when it seeds the
+// merge, and must not overwrite it when it arrives second. The second
+// direction is the dangerous one — it would silently zero the hero share of
+// every match carrying such a screenshot.
+func TestAggregate_UntimedPersonalHeroDoesNotClobberSummaryTiming(t *testing.T) {
+	const (
+		earlier = "Overwatch 2 Screenshot 2026.05.10 - 21.30.19.95.png"
+		later   = "Overwatch 2 Screenshot 2026.05.10 - 21.30.25.10.png"
+	)
+	orders := []struct{ name, personalFile, summaryFile string }{
+		{"personal captured first", earlier, later},
+		{"summary captured first", later, earlier},
+	}
+	for _, o := range orders {
+		t.Run(o.name, func(t *testing.T) {
+			snap := db.Screenshots{
+				Personals: []db.PersonalRow{{
+					ID: 1, Filename: o.personalFile, MatchKey: "m1", Hero: "kiriko",
+					HeroStats: []db.HeroStat{{Hero: "kiriko", StatKey: "solo_kills", StatValue: 13}},
+				}},
+				Summaries: []db.SummaryRow{{
+					ID: 1, Filename: o.summaryFile, MatchKey: "m1", Hero: "kiriko", Result: "victory",
+					HeroesPlayed: []db.SummaryHeroPlayed{
+						{Hero: "kiriko", PercentPlayed: 62, PlayTime: "9:12"},
+						{Hero: "zarya", PercentPlayed: 38, PlayTime: "5:40"},
+					},
+				}},
+			}
+
+			got := aggregate.Screenshots(snap)
+			if len(got) != 1 {
+				t.Fatalf("expected 1 record, got %d", len(got))
+			}
+			kiriko := heroPlayNamed(t, got[0].Data.HeroesPlayed, "kiriko")
+			if kiriko.PercentPlayed != 62 || kiriko.PlayTime != "9:12" {
+				t.Errorf("kiriko play = %d%%/%q, want 62%%/\"9:12\" — the untimed PERSONAL entry must not win",
+					kiriko.PercentPlayed, kiriko.PlayTime)
+			}
+			if kiriko.Stats["solo_kills"] != 13 {
+				t.Errorf("kiriko stats = %v, want solo_kills=13 carried off the PERSONAL row", kiriko.Stats)
+			}
+			if zarya := heroPlayNamed(t, got[0].Data.HeroesPlayed, "zarya"); zarya.PercentPlayed != 38 {
+				t.Errorf("zarya percent = %d, want 38 — the other heroes are untouched", zarya.PercentPlayed)
+			}
+		})
+	}
+}
+
+// heroPlayNamed returns the heroes_played entry for hero, failing the test
+// when it is absent. Position is not part of the contract under test.
+func heroPlayNamed(t *testing.T, hps []parser.HeroPlay, hero string) parser.HeroPlay {
+	t.Helper()
+	for _, hp := range hps {
+		if hp.Hero == hero {
+			return hp
+		}
+	}
+	t.Fatalf("no heroes_played entry for %q, have %+v", hero, hps)
+	return parser.HeroPlay{}
 }
 
 func TestAggregate_OneMatchRecordPerMatchKey(t *testing.T) {

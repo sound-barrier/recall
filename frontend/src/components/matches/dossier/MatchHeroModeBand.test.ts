@@ -121,12 +121,10 @@ describe('MatchHeroModeBand', () => {
       dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
     })
     const cell = winCell()
-    // heatmapCellClass is a THRESHOLD verdict rendered purely as a tint —
-    // no text, name, or ARIA state carries it, and the shared engine's
-    // contract is that the same win rate paints the same class here and in
-    // the Map × Role band.
-    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
-    expect(cell).toHaveClass('cell-win')
+    // heatmapCellClass is a THRESHOLD verdict; the shared engine's contract
+    // is that the same win rate paints the same band here and in the Map ×
+    // Role band — and now SPEAKS it, so the tint is not the only carrier.
+    expect(cell).toHaveAccessibleName(/— winning\./)
     await user().click(cell)
     // Global narrow applied.
     expect(narrow.pickHero).toHaveBeenCalledWith('lucio')
@@ -140,6 +138,21 @@ describe('MatchHeroModeBand', () => {
     expect(tileText).toContain('70%')
     expect(screen.getByRole('heading', { name: /lucio × Control maps/ })).toBeInTheDocument()
     expect(backBtn()).toBeInTheDocument()
+  })
+
+  it('speaks each drilled map tile\'s band, withholding one under the floor', async () => {
+    renderWidget(MatchHeroModeBand, {
+      narrow: makeNarrow(),
+      configSeed: FLOOR_CONFIG,
+      dossier: { heroGameModeCounts: ROOT_CELLS, mapCounts: MAP_CELLS },
+    })
+    await user().click(winCell())
+    // route66: 14-6 over 20 decisive — judged. havana: 3-1 over 4 — the
+    // tile greys out, so its name must not claim a verdict either.
+    expect(screen.getByRole('button', { name: /^route66/ })).toHaveAccessibleName(/— winning\./)
+    const heater = screen.getByRole('button', { name: /^havana/ })
+    expect(heater).toHaveAccessibleName(/— too few games to judge\./)
+    expect(heater).not.toHaveAccessibleName(/winning|losing/)
   })
 
   it('sorts the drilled-down maps alphabetically by name, not by volume', async () => {

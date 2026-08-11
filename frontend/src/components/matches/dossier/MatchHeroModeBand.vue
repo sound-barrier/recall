@@ -6,7 +6,7 @@ import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import { useDrillNav } from '@/composables/matches/useDrillNav'
-import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
+import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
 import HeroModeHeatmap from '@/components/matches/dossier/HeroModeHeatmap.vue'
 import HeroModeMatches from '@/components/matches/dossier/HeroModeMatches.vue'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
@@ -278,7 +278,7 @@ const levelTitle = computed(() => {
           :class="heatmapCellClass(t.cell)"
           :style="{ opacity: heatmapCellOpacity(t.cell) }"
           :title="`${t.display}: ${t.cell.wins}-${t.cell.losses}-${t.cell.draws} (${t.cell.winrate}% winrate). Click for recent matches.`"
-          :aria-label="`${t.display}: ${t.cell.winrate}% winrate over ${t.cell.total} matches. Click for recent matches.`"
+          :aria-label="`${t.display}: ${t.cell.winrate}% winrate over ${t.cell.total} matches — ${heatmapCellJudgment(t.cell)}. Click for recent matches.`"
           @click="drillToMatches(t.slug)"
         >
           <span class="hm-map-name">{{ t.display }}</span>

@@ -1,5 +1,7 @@
 package parser
 
+import "fmt"
+
 type MatchResult struct {
 	Map string `json:"map"`
 	// MapRaw holds the raw OCR'd text that the parser tried to match
@@ -68,6 +70,24 @@ type MatchResult struct {
 	// or unknown (nothing readable), and the fake row poisons correlation.
 	// Parse-time only — never stored; mirrors the AllHeroes marker.
 	RankScreen bool `json:"rank_screen,omitempty"`
+
+	// Warnings records non-fatal degradations of a parse that still
+	// SUCCEEDED — a stat cell whose OCR failed, a hero card that resolved a
+	// name but lost its timing. The screenshot is stored (a missing stat must
+	// not block the match from landing), but the app copies these into the
+	// failed-files ledger so the file surfaces in the Unknown tab's triage
+	// list for a deliberate re-parse instead of silently counting as clean.
+	//
+	// `json:"-"`: this is a parser→app signal, not match data. It is never
+	// stored, never on the REST/Wails wire, and absent from the golden
+	// projections — the user-visible shape is the ledger row (app.FailedFile).
+	Warnings []string `json:"-"`
+}
+
+// warnf appends one non-fatal parse warning. Callers use it where the
+// alternative is dropping an OCR failure on the floor.
+func (r *MatchResult) warnf(format string, args ...any) {
+	r.Warnings = append(r.Warnings, fmt.Sprintf(format, args...))
 }
 
 type HeroSR struct {

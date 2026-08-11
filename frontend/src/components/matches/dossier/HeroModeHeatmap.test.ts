@@ -113,14 +113,30 @@ describe('HeroModeHeatmap — grid labeling', () => {
     // 7-8 is a 47% slide, but the cell arrives claiming 60 and — at 15
     // decisive — sits exactly ON the volume floor, so it must be judged,
     // not greyed. A regression that fed `cell.winrate` to the judgment
-    // would paint this green.
+    // would paint this green — and now SAY so.
     renderHeatmap({
       rows: [{ hero: 'lucio', cells: [cell('control', 7, 8, { reports: 60 }), cell('escort', 0, 0)] }],
       columnHeaders: COLUMNS,
     })
-    const judged = screen.getByRole('gridcell', { name: /^Lucio on control: 60% winrate over 15 matches/ })
-    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint: the win-rate band is carried by the class alone, no ARIA or text expresses it
-    expect(judged).toHaveClass('cell-loss')
+    expect(screen.getByRole('gridcell', { name: /^Lucio on control/ }))
+      .toHaveAccessibleName(/over 15 matches — losing\./)
+  })
+
+  it('speaks the band in the cell name and stays silent under the evidence floor', () => {
+    renderHeatmap({
+      rows: [
+        // 16-4 over 20 decisive — clear of the floor and past the band.
+        { hero: 'lucio', cells: [cell('control', 16, 4), cell('escort', 0, 0)] },
+        // 3-1 over 4 — a heater the tint greys out; the name must not
+        // dress that grey up as a verdict.
+        { hero: 'ana', cells: [cell('control', 3, 1), cell('escort', 0, 0)] },
+      ],
+      columnHeaders: COLUMNS,
+    })
+    expect(screen.getByRole('gridcell', { name: /^Lucio on control/ })).toHaveAccessibleName(/— winning\./)
+    const heater = screen.getByRole('gridcell', { name: /^Ana on control/ })
+    expect(heater).toHaveAccessibleName(/— too few games to judge\./)
+    expect(heater).not.toHaveAccessibleName(/winning|losing/)
   })
 })
 

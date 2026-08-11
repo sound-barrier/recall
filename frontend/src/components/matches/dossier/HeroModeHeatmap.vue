@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useMapRoleSelection, type MapRoleCoord } from '@/composables/matches/useMapRoleSelection'
-import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
+import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity, JUDGMENT_LABEL } from '@/match/match-heatmap-helpers'
 
 // The Hero × Game-Mode band's root level: a heroes × game-modes win-rate heatmap
 // (hue by win-rate band, opacity by volume), or a floor-gate empty state.
+// The hue is a VERDICT, so the accessible name speaks it too — the tooltip
+// stays the plain tally, the name carries the shared band word.
 //
 // HYBRID interaction: a PLAIN click drills into that hero×mode's maps (emit
 // `cell`); Ctrl/⌘ + Shift add a spreadsheet-style SELECTION — cells, hero rows,
@@ -184,8 +186,8 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
             ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
             : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.wins}-${cell.losses}-${cell.draws} (${cell.winrate}% winrate). Click to drill into maps; Ctrl/Shift-click to select.`"
           :aria-label="cell.total === 0
-            ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
-            : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.winrate}% winrate over ${cell.total} matches. Click to drill into maps.`"
+            ? `${heroLabel(row.hero)} on ${cell.gameMode}: ${JUDGMENT_LABEL.empty}`
+            : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.winrate}% winrate over ${cell.total} matches — ${heatmapCellJudgment(cell)}. Click to drill into maps.`"
           @click="onCellClick(row.hero, cell, $event)"
           @keydown.enter.prevent="emit('cell', row.hero, cell.gameMode)"
           @keydown.space.prevent="emit('cell', row.hero, cell.gameMode)"

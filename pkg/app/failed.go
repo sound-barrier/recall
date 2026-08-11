@@ -5,9 +5,16 @@ import "fmt"
 // FailedFile is the wire shape for one OCR-failure ledger row — the
 // Unknown tab's "Failed to read" triage section. Error carries the most
 // recent attempt's message verbatim; Attempts counts every failed run
-// since FirstFailedAt. Failed files are re-attempted on every parse run
-// (the ledger is visibility, not a skip list), so the list shrinks only
-// when a file finally parses or the user deletes it forever.
+// since FirstFailedAt.
+//
+// Two kinds of row live here. A file that FAILED to parse stored nothing,
+// so it stays in the pending set and is re-attempted on every parse run
+// (the ledger is visibility, not a skip list). A file that parsed but came
+// back DEGRADED (parser.MatchResult.Warnings — an unreadable stat cell, a
+// hero card that lost its timing) stored what it read and is therefore
+// already out of the pending set: it is re-attempted only when the user
+// asks, via Re-parse all screenshots. Either way the row clears when a
+// later parse comes back clean, or when the user deletes the file forever.
 type FailedFile struct {
 	Filename      string `json:"filename"`
 	Error         string `json:"error"`

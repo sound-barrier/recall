@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"cmp"
 	"fmt"
 	"image"
 	"math"
@@ -70,7 +71,13 @@ func parsePersonalGrid(img image.Image, work string, res *MatchResult) {
 				gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
 			)
 			statCell := row != 0 || col != 0
-			cellText := ocrPersonalCell(img, work, name, fullRect, stripRect, statCell)
+			cellText, err := ocrPersonalCell(img, work, name, fullRect, stripRect, statCell)
+			// One unreadable cell is survivable — the other eight cards
+			// still land — but the loss is recorded so the app can put the
+			// file in the failed-files ledger instead of counting it clean.
+			if err != nil {
+				res.warnf("%s: OCR failed: %v", name, err)
+			}
 			if !statCell {
 				parsePersonalHeroCell(cellText, res)
 				continue
@@ -90,15 +97,21 @@ func parsePersonalGrid(img image.Image, work string, res *MatchResult) {
 // Stripping it produces a clean label that the regex picks over the
 // glued-prefix version on length. We keep the full-cell text too because the
 // strip sometimes loses the value (a lone "1" digit next to the icon edge).
-func ocrPersonalCell(img image.Image, work, name string, full, strip image.Rectangle, statCell bool) string {
-	text11, _ := ocrInverted(img, full, ocrSpec{workDir: work, name: name, psm: "11", whitelist: ""})
-	text6, _ := ocrInverted(img, full, ocrSpec{workDir: work, name: name + "_b", psm: "6", whitelist: ""})
+//
+// A failing pass costs the cell its share of the text but never aborts the
+// grid walk, so whatever the other passes read still lands. The first pass
+// error comes back with the text — all three passes read the same region, so
+// one cause names the whole cell's loss — and the caller records it as a
+// non-fatal warning rather than discarding it.
+func ocrPersonalCell(img image.Image, work, name string, full, strip image.Rectangle, statCell bool) (string, error) {
+	text11, err11 := ocrInverted(img, full, ocrSpec{workDir: work, name: name, psm: "11", whitelist: ""})
+	text6, err6 := ocrInverted(img, full, ocrSpec{workDir: work, name: name + "_b", psm: "6", whitelist: ""})
 	cellText := text11 + "\n" + text6
-	if statCell {
-		strip11, _ := ocrInverted(img, strip, ocrSpec{workDir: work, name: name + "_s", psm: "11", whitelist: ""})
-		cellText += "\n" + strip11
+	if !statCell {
+		return cellText, cmp.Or(err11, err6)
 	}
-	return cellText
+	strip11, errStrip := ocrInverted(img, strip, ocrSpec{workDir: work, name: name + "_s", psm: "11", whitelist: ""})
+	return cellText + "\n" + strip11, cmp.Or(err11, err6, errStrip)
 }
 
 // recordPersonalStat parses one stat card's OCR text and files the (key,
@@ -130,7 +143,10 @@ func recordPersonalStat(cellText string, res *MatchResult) {
 func appendSidebarHeroes(img image.Image, work string, res *MatchResult) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
-	sidebarText, _ := ocrInverted(img, image.Rect(0, H*15/100, W*12/100, H*85/100), ocrSpec{workDir: work, name: "personal_sidebar", psm: "11"})
+	sidebarText, err := ocrInverted(img, image.Rect(0, H*15/100, W*12/100, H*85/100), ocrSpec{workDir: work, name: "personal_sidebar", psm: "11"})
+	if err != nil {
+		res.warnf("personal_sidebar: OCR failed: %v", err)
+	}
 	seen := map[string]bool{}
 	for _, hp := range res.HeroesPlayed {
 		seen[hp.Hero] = true
@@ -154,33 +170,60 @@ func appendSidebarHeroes(img image.Image, work string, res *MatchResult) {
 // played, play time) into res.Hero, res.Role, and one HeroPlay entry. Keeps
 // the same shape as the SUMMARY tab's heroes_played so a merge by filename
 // timestamp can fold both into the same record.
+//
+// A named hero whose % and play time BOTH failed to read still gets its
+// entry, untimed: the eight stat cards on screen belong to it, and dropping
+// them (which is what an entry-less hero card does — recordPersonalStat has
+// nowhere to file them) is silent data loss. The missing timing is recorded
+// as a non-fatal warning instead.
 func parsePersonalHeroCell(text string, res *MatchResult) {
-	heroes := extractHeroes(text)
-	if len(heroes) > 0 {
+	resolveHeroCardName(text, res)
+	if res.Hero == "" {
+		return
+	}
+	percentPlayed, playTime := heroCardPlaySplit(text)
+	res.HeroesPlayed = append(res.HeroesPlayed, HeroPlay{
+		Hero:          res.Hero,
+		PercentPlayed: percentPlayed,
+		PlayTime:      playTime,
+	})
+	if percentPlayed == 0 && playTime == "" {
+		res.warnf("hero card: %s read without percent played or play time; its stats are recorded untimed", res.Hero)
+	}
+}
+
+// resolveHeroCardName pins the hero card's name to the roster, setting
+// res.Hero + res.Role. When the matcher rejects the cell but OCR found a
+// hero-name-shaped token, the raw text is kept for the "Unknown hero" UI.
+func resolveHeroCardName(text string, res *MatchResult) {
+	if heroes := extractHeroes(text); len(heroes) > 0 {
 		res.Hero = heroes[0]
 		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
-	} else if cand := candidateNameFromOCR(text); cand != "" {
-		// Matcher rejected the cell but OCR found a hero-name-shaped
-		// token — capture it for the "Unknown hero" UI.
+		return
+	}
+	if cand := candidateNameFromOCR(text); cand != "" {
 		res.HeroRaw = cand
 	}
-	pct := 0
-	if m := regexp.MustCompile(`(\d{1,3})\s*%`).FindStringSubmatch(text); m != nil {
-		pct, _ = strconv.Atoi(m[1])
+}
+
+var (
+	heroCardPercentRe  = regexp.MustCompile(`(\d{1,3})\s*%`)
+	heroCardPlayTimeRe = regexp.MustCompile(`(\d{1,2}:\d{2})`)
+)
+
+// heroCardPlaySplit reads the hero card's share of the match: percent played
+// and MM:SS play time. Zero / empty when the OCR lost them — both sit against
+// the card's icon, which is where Tesseract drops digits first.
+func heroCardPlaySplit(text string) (percentPlayed int, playTime string) {
+	if m := heroCardPercentRe.FindStringSubmatch(text); m != nil {
+		percentPlayed, _ = strconv.Atoi(m[1])
 	}
-	playTime := ""
-	if m := regexp.MustCompile(`(\d{1,2}:\d{2})`).FindStringSubmatch(text); m != nil {
+	if m := heroCardPlayTimeRe.FindStringSubmatch(text); m != nil {
 		playTime = m[1]
 	}
-	if res.Hero != "" && (pct > 0 || playTime != "") {
-		res.HeroesPlayed = append(res.HeroesPlayed, HeroPlay{
-			Hero:          res.Hero,
-			PercentPlayed: pct,
-			PlayTime:      playTime,
-		})
-	}
+	return percentPlayed, playTime
 }
 
 // parsePersonalStatCell extracts (label_key, value) from one stat card.

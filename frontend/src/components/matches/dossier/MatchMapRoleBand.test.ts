@@ -297,26 +297,39 @@ describe('MatchMapRoleBand', () => {
     expect(screen.getByText(/at least 1 match must be played to display data/i)).toBeInTheDocument()
   })
 
-  // The one place a class assertion survives: heatmapCellClass is a
-  // THRESHOLD verdict (green past the band, grey under the evidence floor)
-  // rendered purely as a tint — there is no text, name, or ARIA state that
-  // carries it, and the shared engine's contract is exactly that the same
-  // win rate paints the same class in this band and in Hero × Game-Mode.
-  it('cells carry the shared judgment classes: green past the band, grey under the floor', () => {
+  // heatmapCellClass is a THRESHOLD verdict (past the band, under the
+  // evidence floor) that used to live in the tint alone — WCAG 1.4.1.
+  // The band word is now SPOKEN in the cell's accessible name, from the
+  // one shared vocabulary every judged surface reads.
+  it('speaks the shared judgment band in each cell name', () => {
     renderWidget(MatchMapRoleBand, {
       dossier: { mapRoleCounts: [
-        // 53.3% over 30 decisive — a modest edge with real volume, green.
+        // 53.3% over 30 decisive — a modest edge with real volume.
         { map: 'rialto', role: 'support', wins: 16, losses: 14, draws: 0, total: 30, winrate: 53 },
-        // 75% over 4 — a heater, still under the 15-decisive floor, grey.
+        // 26.7% over 30 — the same volume, bleeding.
+        { map: 'dorado', role: 'dps', wins: 8, losses: 22, draws: 0, total: 30, winrate: 27 },
+      ] },
+      narrow: makeNarrow(),
+    })
+    expect(screen.getByLabelText(/^Support on Rialto/))
+      .toHaveAccessibleName('Support on Rialto: 16-14-0 · 53% win rate over 30 games — winning')
+    expect(screen.getByLabelText(/^DPS on Dorado/))
+      .toHaveAccessibleName('DPS on Dorado: 8-22-0 · 27% win rate over 30 games — losing')
+  })
+
+  it('withholds a verdict under the evidence floor instead of claiming one', () => {
+    renderWidget(MatchMapRoleBand, {
+      dossier: { mapRoleCounts: [
+        // 75% over 4 — a heater, still under the 15-decisive floor: the
+        // tint stays grey, so the name must not say "winning" either.
         { map: 'ilios', role: 'tank', wins: 3, losses: 1, draws: 0, total: 4, winrate: 75 },
       ] },
       narrow: makeNarrow(),
     })
-    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
-    expect(screen.getByLabelText(/^Support on Rialto/)).toHaveClass('cell-win')
-    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
-    expect(screen.getByLabelText(/^Tank on Ilios/)).toHaveClass('cell-mid')
-    // eslint-disable-next-line no-restricted-syntax -- heatmap judgment tint — the winrate threshold band, not a state the cell label carries
-    expect(screen.getByLabelText(/^Support on Ilios/)).toHaveClass('cell-empty')
+    const heater = screen.getByLabelText(/^Tank on Ilios/)
+    expect(heater).toHaveAccessibleName(/— too few games to judge$/)
+    expect(heater).not.toHaveAccessibleName(/winning|losing/)
+    // A never-played cell says so and claims nothing.
+    expect(screen.getByLabelText(/^Tank on Dorado/)).toHaveAccessibleName('Tank on Dorado: no matches')
   })
 })

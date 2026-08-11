@@ -7,7 +7,7 @@ import { useOWData } from '@/composables/shared/useOWData'
 import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import { useMapRoleSelection, type MapRoleCoord } from '@/composables/matches/useMapRoleSelection'
-import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
+import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity, JUDGMENT_LABEL } from '@/match/match-heatmap-helpers'
 import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 import MapRoleConfigPopover from '@/components/matches/manual/MapRoleConfigPopover.vue'
 
@@ -203,9 +203,20 @@ function cellOpacity(slug: string, role: Role): string | undefined {
 function cellLabel(slug: string, role: Role): string {
   const disp = ow.mapDisplayName(slug) || slug
   const c = cellFor(slug, role)
-  if (!c || c.total === 0) return `${ROLE_LABEL[role]} on ${disp}: no matches`
+  if (!c || c.total === 0) return `${ROLE_LABEL[role]} on ${disp}: ${JUDGMENT_LABEL.empty}`
   const games = c.total === 1 ? 'game' : 'games'
   return `${ROLE_LABEL[role]} on ${disp}: ${c.wins}-${c.losses}-${c.draws} · ${c.winrate}% win rate over ${c.total} ${games}`
+}
+
+// The tooltip stays the plain tally; the ACCESSIBLE name carries the
+// tint's verdict too, so the band a sighted player reads off the color
+// reaches everyone else (WCAG 1.4.1). An unjudged cell — never played,
+// all draws, or under the evidence floor — says so instead of claiming
+// a verdict it doesn't have.
+function cellName(slug: string, role: Role): string {
+  const c = cellFor(slug, role)
+  if (!c || c.total === 0) return cellLabel(slug, role)
+  return `${cellLabel(slug, role)} — ${heatmapCellJudgment(c)}`
 }
 
 // ── Spreadsheet-style cell selection. The engine owns the state machine; the
@@ -440,7 +451,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && hasMatchData.value &&
             :aria-pressed="sel.isSelected(col.slug, role)"
             :tabindex="cellTabindex(col.slug, role)"
             :title="cellLabel(col.slug, role)"
-            :aria-label="cellLabel(col.slug, role)"
+            :aria-label="cellName(col.slug, role)"
             @mousedown="sel.onCellPointerDown(col.slug, role, $event)"
             @keydown="sel.onCellKeydown(col.slug, role, $event)"
           />

@@ -16,20 +16,24 @@ describe('CurrentStreakWidget', () => {
     renderWidget(CurrentStreakWidget, {
       dossier: { currentStreak: { count: 5, result: 'victory', sinceDate: '2026-05-04' } },
     })
-    // Visual tint pin: the W/L letter already carries the semantics,
-    // the class only carries the win/loss color. No ARIA encoding.
-    // eslint-disable-next-line no-restricted-syntax -- win/loss streak tint; the W/L letter carries the semantics, the class carries only the color
-    expect(screen.getByText('5W')).toHaveClass('kpi-streak-win')
+    // The win/loss tint is now spoken: the value carries the shared band
+    // word in its accessible name, so the color is not the only carrier.
+    expect(screen.getByText('5W')).toHaveAccessibleName('5W — winning')
     expect(screen.getByText(/since 2026-05-04/)).toBeInTheDocument()
   })
 
-  it('renders an NL count for a loss streak with the loss class', () => {
+  it('renders an NL count for a loss streak, named as losing', () => {
     renderWidget(CurrentStreakWidget, {
       dossier: { currentStreak: { count: 2, result: 'defeat', sinceDate: '2026-05-09' } },
     })
-    // Visual tint pin — see the win-streak case above.
-    // eslint-disable-next-line no-restricted-syntax -- win/loss streak tint; the W/L letter carries the semantics, the class carries only the color
-    expect(screen.getByText('2L')).toHaveClass('kpi-streak-loss')
+    expect(screen.getByText('2L')).toHaveAccessibleName('2L — losing')
+  })
+
+  it('names a draw streak as drawn, in the same vocabulary', () => {
+    renderWidget(CurrentStreakWidget, {
+      dossier: { currentStreak: { count: 3, result: 'draw', sinceDate: '2026-05-11' } },
+    })
+    expect(screen.getByText('3D')).toHaveAccessibleName('3D — drawn')
   })
 
   it('renders a single-match streak as 1W', () => {

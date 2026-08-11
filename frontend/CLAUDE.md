@@ -332,8 +332,18 @@ and focus/source-order pins no TL query expresses.
 `aria-valuetext` for non-percent units) on the **fill** element, never on the
 `.bd-bar` track — a progressbar makes its children presentational, and the
 track holds visible text (`.bd-time`) that must stay in the a11y tree. The
-accessible name is identity-only (`` `${row.key} winrate` ``); the number
-lives in `aria-valuenow`, so tests read
+accessible name is identity-only (`` `${row.key} winrate` ``) — with one
+deliberate exception: a bar whose TINT passes judgment appends that
+judgment to its name (`` `Wed share — winning` ``), because a verdict
+carried by color alone is no verdict at all for a screen-reader or
+colorblind player (WCAG 1.4.1). The vocabulary is a single lookup,
+`JUDGMENT_LABEL` in `@/match/match-heatmap-helpers`, keyed by the same
+band the class is — so a band cannot gain a color without gaining a
+word. The rule is scoped to surfaces where the tint is the ONLY cue: a
+heatmap cell is a bare colored button, so it speaks its band, while the
+hero-pool and Elo-picker rows print `11x · 64%` in text beside the bar
+and are left alone (a redundant encoding is not a 1.4.1 failure). The
+number still lives in `aria-valuenow`, so tests read
 `getByRole('progressbar', { name: 'ana winrate' })` and assert the attribute.
 An indeterminate bar omits `aria-valuenow` rather than lying with 0. App-level
 tests use `renderApp(overrides?)` from `@/test-utils` (installs an api mock via

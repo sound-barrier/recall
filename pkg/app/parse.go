@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"recall/pkg/aggregate"
@@ -249,11 +250,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		a.emitParseProgress(ev)
 		return
 	}
-	// A parse that now succeeds clears any standing failure row — the
-	// file graduated out of the triage list.
-	if err := a.store.RemoveFailedFile(filename); err != nil {
-		applog.Subsystem("parse").Warn("clear failed file", "filename", filename, "err", err)
-	}
+	st.reconcileFailureLedger(filename, result)
 
 	key, ambigCands := correlate.ResolveMatchKey(filename, result, st.snap)
 	ev.MatchKey = key
@@ -284,6 +281,27 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 	ev.HeroCorrections = st.heroCorrections
 	ev.MapCorrections = st.mapCorrections
 	a.emitParseProgress(ev)
+}
+
+// reconcileFailureLedger keeps the triage ledger in step with a parse that
+// SUCCEEDED. A clean parse graduates out of the list. A parse the parser
+// flagged as degraded — a stat cell whose OCR failed, a hero card that lost
+// its timing — keeps a row instead: everything it DID read is still stored
+// (a missing stat must not block the match from landing), but the file stays
+// visible in the Unknown tab so the user can re-parse it deliberately. Ledger
+// writes are a UX nicety, not a correctness invariant, so a store error only
+// logs.
+func (st *parseRunState) reconcileFailureLedger(filename string, result *parser.MatchResult) {
+	if len(result.Warnings) == 0 {
+		if err := st.app.store.RemoveFailedFile(filename); err != nil {
+			applog.Subsystem("parse").Warn("clear failed file", "filename", filename, "err", err)
+		}
+		return
+	}
+	summary := strings.Join(result.Warnings, "; ")
+	if err := st.app.store.RecordFailedFile(filename, st.dirID, summary); err != nil {
+		applog.Subsystem("parse").Warn("record degraded file", "filename", filename, "err", err)
+	}
 }
 
 // recordMatchUpdate diffs the pre-insert aggregate for `key` against the
