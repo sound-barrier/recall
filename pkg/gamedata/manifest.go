@@ -67,9 +67,12 @@ func LoadManifest(baseDir string) (DataManifest, error) {
 	return m, nil
 }
 
-// SaveManifest atomically writes the data-manifest under
-// <baseDir>/data/manifest.json. Used by Apply Data Update after every
-// file has been verified + renamed into place.
+// SaveManifest writes the data-manifest under <baseDir>/data/manifest.json.
+// NOT atomic — a plain os.WriteFile, so a crash mid-write leaves a truncated
+// manifest. That is why the apply path no longer calls it: commitVerifiedAssets
+// stages manifest.json.tmp and renames it LAST, making the rename its commit
+// point. What remains here is the manifest WRITER used to seed a known state
+// in tests, paired with LoadManifest.
 func SaveManifest(baseDir string, m DataManifest) error {
 	dir := filepath.Join(baseDir, dataDirName)
 	if err := os.MkdirAll(dir, 0o700); err != nil {

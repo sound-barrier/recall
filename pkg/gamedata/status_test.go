@@ -2,6 +2,7 @@ package gamedata_test
 
 import (
 	"testing"
+	"time"
 
 	"recall/pkg/gamedata"
 	"recall/pkg/parser"
@@ -44,6 +45,50 @@ func TestComputeGameDataStatus_IdenticalRosters_NoUpdate(t *testing.T) {
 		len(gd.AddedSources) + len(gd.RemovedSources); n != 0 {
 		t.Errorf("expected empty roster diff, got %d changes (added heroes %v, added maps %v)",
 			n, gd.AddedHeroes, gd.AddedMaps)
+	}
+}
+
+// applied_at is what the FE stamps its "Applied main @ <commit> · N days ago"
+// label from, so it may only be filled when the manifest actually records a
+// main-channel apply that happened. A manifest from the retired release
+// channel, or a main manifest with no timestamp, must leave it empty —
+// otherwise the UI dates an apply the user never made from main, next to an
+// empty applied_commit.
+func TestComputeGameDataStatus_AppliedAt_OnlyFromDatedMainManifest(t *testing.T) {
+	applied := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name     string
+		manifest gamedata.DataManifest
+		want     string
+	}{
+		{
+			name:     "dated main apply is stamped",
+			manifest: gamedata.DataManifest{AppliedSource: "main", AppliedMainCommit: "abc1234", AppliedAt: applied},
+			want:     "2026-08-01T12:00:00Z",
+		},
+		{
+			name:     "release-channel manifest is not",
+			manifest: gamedata.DataManifest{AppliedSource: "release", AppliedReleaseTag: "0.9.0", AppliedAt: applied},
+			want:     "",
+		},
+		{
+			name:     "main manifest with no timestamp is not",
+			manifest: gamedata.DataManifest{AppliedSource: "main", AppliedMainCommit: "abc1234"},
+			want:     "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseDir := t.TempDir()
+			if err := gamedata.SaveManifest(baseDir, tt.manifest); err != nil {
+				t.Fatalf("SaveManifest: %v", err)
+			}
+			gd := gamedata.ComputeGameDataStatusForTest(
+				baseDir, "abcdef1234567", "2026-08-02T00:00:00Z", nil, nil, nil, "")
+			if gd.AppliedAt != tt.want {
+				t.Errorf("AppliedAt = %q, want %q", gd.AppliedAt, tt.want)
+			}
+		})
 	}
 }
 

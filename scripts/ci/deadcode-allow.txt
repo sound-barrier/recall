@@ -103,3 +103,10 @@ LoadCheckState
 # hung-binary bound test and the stable entry point for a future
 # Settings → Engine timeout field.
 SetTesseractTimeout
+
+# gamedata.SaveManifest: the apply path stopped calling it when the manifest
+# became the atomic commit point (it stages manifest.json.tmp and renames it
+# last, which a plain WriteFile cannot do). It survives as the manifest writer
+# tests seed state with — pkg/app/export_test.go's shim plus
+# pkg/gamedata/status_test.go — and test code isn't in deadcode's call graph.
+SaveManifest
