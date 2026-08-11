@@ -47,7 +47,7 @@
 .btn.ghost:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--text-faint);
-  background: rgb(255 255 255 / 2.5%);
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
 }
 
 .btn.ghost.tiny {

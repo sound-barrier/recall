@@ -56,6 +56,18 @@ export default {
         'transition-duration',
       ],
       {
+        // The plugin defaults BOTH `ignoreVariables` and `ignoreFunctions`
+        // to true. `ignoreVariables` is the point of the rule — a bare
+        // `var(--token)` is exactly what we want and stays on. But
+        // `ignoreFunctions` passes any value shaped `…(…)`, and that is a
+        // hole the width of the palette: `rgb(245 166 35 / 6%)`,
+        // `rgba(0,0,0,.4)` and `linear-gradient(#111, #222)` were all
+        // lint-clean while a bare `#fff` failed. ~50 raw literals hid in
+        // there, two of them on properties this rule explicitly polices.
+        // Turn it off and let `ignoreValues: ['/var\\(--/']` below be the
+        // only way a function passes — which is the honest test anyway:
+        // the value has to trace back to a token.
+        ignoreFunctions: false,
         // A var() is the goal; keywords that carry no design decision
         // are fine as literals.
         ignoreKeywords: [
@@ -86,6 +98,15 @@ export default {
           '/[^r]em$/',
           // The reduced-motion kill switch in themes.css.
           '0.01ms',
+          // A tint of the element's OWN color. `currentcolor` is already
+          // an allowed keyword above, so a mix over it traces back to
+          // whichever token set `color` — the same test `/var\(--/`
+          // applies, one hop later. No token can express it: the whole
+          // point is that `.probe-chip-close:hover` tints itself with
+          // whatever the chip currently is. Anchored end to end so it
+          // admits ONLY the self-tint idiom — `color-mix(in srgb,
+          // currentcolor 12%, #ff0000)` still fails.
+          '/^color-mix\\(\\s*in srgb\\s*,\\s*currentcolor\\s+[\\d.]+%\\s*,\\s*transparent\\s*\\)$/',
         ],
         disableFix: true,
         expandShorthand: true,

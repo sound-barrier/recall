@@ -121,7 +121,8 @@
    is the brand gray, not the page. A Day override used to darken it "so
    the registration mark still reads against light mode" — but the mark
    was never on light mode, and the dark stencil all but vanished on the
-   plate. */
+   plate. --on-dark-plate is the token for exactly that ground — the same
+   one .brand carries — so the hatch and the wordmark share one hue. */
 .brand-corner {
   position: absolute;
   right: 6px; top: 6px;
@@ -129,7 +130,7 @@
   background:
     repeating-linear-gradient(
       45deg,
-      rgb(255 255 255 / 18%) 0 2px,
+      color-mix(in srgb, var(--on-dark-plate) 18%, transparent) 0 2px,
       transparent 2px 4px
     );
   border-radius: var(--radius-hair);
@@ -228,7 +229,7 @@
   background:
     repeating-linear-gradient(
       45deg,
-      rgb(255 255 255 / 70%) 0 2px,
+      color-mix(in srgb, var(--on-dark-plate) 70%, transparent) 0 2px,
       transparent 2px 4px
     );
   opacity: 0.9;

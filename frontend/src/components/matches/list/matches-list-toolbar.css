@@ -137,7 +137,7 @@
 .import-matches-btn:hover {
   color: var(--text);
   border-color: var(--text-faint);
-  background: rgb(255 255 255 / 2.5%);
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
 }
 
 .import-matches-btn:focus-visible {
@@ -174,7 +174,7 @@
 .sort-group-trigger:hover {
   color: var(--text);
   border-color: var(--text-faint);
-  background: rgb(255 255 255 / 2.5%);
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
 }
 
 .sort-group-trigger.open,
@@ -251,7 +251,7 @@
 
 .seg-btn:hover {
   color: var(--text);
-  background: rgb(255 255 255 / 2.5%);
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
 }
 
 .seg-btn:focus-visible {

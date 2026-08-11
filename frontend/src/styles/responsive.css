@@ -7,6 +7,9 @@
    text, spacing, and the rem-capped content columns keep pace with the
    pixels instead of shrinking into the margins. */
 html {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     this declaration IS the rem the whole --type-* ladder is measured in.
+     A token here would resolve against itself. */
   font-size: clamp(16px, 0.417vw + 8px, 19px);
 }
 

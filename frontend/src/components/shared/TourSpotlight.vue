@@ -230,6 +230,10 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
 }
 
 .tour-spotlight-dim {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     the spotlight scrim: everything outside the cutout. Same rule as a
+     modal scrim in tokens.css — it dims the app in every theme and is
+     deliberately black, and a themed fill would wash out the cutout. */
   fill: rgb(0 0 0 / 78%);
 }
 

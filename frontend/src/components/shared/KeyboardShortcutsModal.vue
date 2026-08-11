@@ -258,6 +258,10 @@ const visibleGroups = computed(() =>
 .kbd-modal-title {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', Impact, sans-serif;
   font-weight: 400;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     the cheatsheet title, set in the condensed display face. It ramps
+     across the --type-* ladder's top (1.5rem) into display scale
+     (1.95rem), so it lands on no single stop by design. */
   font-size: clamp(1.5rem, 2.4vw, 1.95rem);
   letter-spacing: 0.01em;
   line-height: 1.05;
