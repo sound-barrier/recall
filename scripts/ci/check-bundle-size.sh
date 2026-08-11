@@ -105,7 +105,18 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # +12.4KB after deleting the hand-rolled fetch/Content-Disposition/error
 # code they replaced. Buys compile-time-checked request bodies on the
 # endpoints that previously hand-built snake_case JSON.
-: "${MAX_TOTAL_JS_BYTES:=1593000}"
+# 2026-08: 1593000 -> 1605000 - accessibility markup from the full-testing
+# campaign: role="progressbar" + the aria-value triple on 18 meter fills,
+# accessible names on previously-unlabeled chip glyphs / count badges /
+# unknown-map cards, and the judgment vocabulary the tinted surfaces now
+# speak (JUDGMENT_LABEL + the band helpers in match-heatmap-helpers).
+# Measured +6.0KB total JS against main, all of it compiled render-function
+# text for labels a screen-reader user could not previously get at; initial
+# JS did not move (313.4KB against a 319KB budget). The rest is the
+# deliberate ~6KB headroom the note above asks for - main had drifted to
+# 552B of slack, which is what made this a gate failure rather than a
+# rounding error.
+: "${MAX_TOTAL_JS_BYTES:=1605000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
