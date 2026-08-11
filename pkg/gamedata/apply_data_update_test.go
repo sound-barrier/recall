@@ -43,7 +43,13 @@ func mainAssets() map[string][]byte {
 // serveMainChannel points the package's main-channel URL seams at an
 // httptest server publishing each asset plus its sha256 sidecar, so Apply
 // runs its real fetch + verify path against local bytes.
-func serveMainChannel(t *testing.T, commit string, assets map[string][]byte) {
+// mainChannelCommit is the commit every apply test serves; the value is
+// arbitrary, it just has to be a stable 16-hex-char sha.
+const mainChannelCommit = "abc1234567890def"
+
+func serveMainChannel(t *testing.T, assets map[string][]byte) {
+	t.Helper()
+	commit := mainChannelCommit
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/version.json", func(w http.ResponseWriter, _ *http.Request) {
@@ -123,7 +129,7 @@ func TestApply_UnreadableRosterFile_AbortsWithoutTouchingDisk(t *testing.T) {
 	baseDir := t.TempDir()
 	original := []byte("tank:\n  - OriginalTank\n")
 	dataDir := seedRoster(t, baseDir, original)
-	serveMainChannel(t, "abc1234567890def", mainAssets())
+	serveMainChannel(t, mainAssets())
 
 	withReadFileFunc(t, func(path string) ([]byte, error) {
 		if filepath.Base(path) == "heroes.yaml" {
@@ -139,17 +145,40 @@ func TestApply_UnreadableRosterFile_AbortsWithoutTouchingDisk(t *testing.T) {
 	assertNoStagedFiles(t, dataDir)
 }
 
-// The manifest is the apply's commit point. When it cannot be written the
-// roster files must stay exactly as they were: committing data under an
-// unchanged manifest makes computeGameDataStatus report the update as not
-// applied forever, so the UI re-offers the same update on every check while
-// the files on disk are already new.
-func TestApply_UnwritableManifest_LeavesRosterUncommitted(t *testing.T) {
+// The STAGING arm: the manifest cannot even be written to its .tmp path, so
+// the apply aborts before any asset is renamed.
+func TestApply_UnstageableManifest_LeavesRosterUncommitted(t *testing.T) {
 	baseDir := t.TempDir()
 	original := []byte("tank:\n  - OriginalTank\n")
 	dataDir := seedRoster(t, baseDir, original)
-	serveMainChannel(t, "abc1234567890def", mainAssets())
+	serveMainChannel(t, mainAssets())
 	blockManifestWrites(t, dataDir)
+
+	if _, err := gamedata.Apply(baseDir); !errors.Is(err, gamedata.ErrDataUpdateIO) {
+		t.Fatalf("Apply err = %v, want ErrDataUpdateIO", err)
+	}
+	assertFileBytes(t, filepath.Join(dataDir, "heroes.yaml"), original)
+	assertNoStagedFiles(t, dataDir)
+}
+
+// The COMMIT arm, which is the one the "manifest is the commit point" claim
+// actually rests on: staging succeeds, the four rosters are renamed into
+// place, and only then does the manifest rename fail. The assets must go back.
+// Without the rollback on that arm the apply returns an error while the NEW
+// dataset is live under the OLD manifest — computeGameDataStatus then reports
+// "not applied" forever and the UI re-offers an update the user already has.
+//
+// Only <data>/manifest.json is blocked here, so the .tmp write succeeds and
+// the failure lands on the rename. Blocking both paths (the staging test
+// above) never reaches this arm at all.
+func TestApply_UncommittableManifest_RollsTheRosterBack(t *testing.T) {
+	baseDir := t.TempDir()
+	original := []byte("tank:\n  - OriginalTank\n")
+	dataDir := seedRoster(t, baseDir, original)
+	serveMainChannel(t, mainAssets())
+	if err := os.MkdirAll(filepath.Join(dataDir, "manifest.json"), 0o700); err != nil {
+		t.Fatalf("block manifest.json: %v", err)
+	}
 
 	if _, err := gamedata.Apply(baseDir); !errors.Is(err, gamedata.ErrDataUpdateIO) {
 		t.Fatalf("Apply err = %v, want ErrDataUpdateIO", err)
@@ -177,7 +206,7 @@ func blockManifestWrites(t *testing.T, dataDir string) {
 func TestApply_FreshInstall_WritesEveryAssetAndManifest(t *testing.T) {
 	baseDir := t.TempDir()
 	assets := mainAssets()
-	serveMainChannel(t, "abc1234567890def", assets)
+	serveMainChannel(t, assets)
 
 	got, err := gamedata.Apply(baseDir)
 	if err != nil {

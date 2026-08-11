@@ -283,6 +283,19 @@ func TestCandidateReason_AgreesWithTheWindowThatProposedIt(t *testing.T) {
 				cands[0].DistanceSeconds, got, correlate.ReasonDuplicateStats)
 		}
 	})
+
+	// The other side of the abutment, and the one the two subtests above
+	// cannot see: the bands must not OVERLAP either. At exactly the EAD cap
+	// the sweep must stay silent, or the same pair is proposed twice with
+	// two different provenance labels. Widening the sweep's lower bound to
+	// include 1800 leaves every other test in this package green.
+	t.Run("duplicate sweep stays silent at the EAD cap", func(t *testing.T) {
+		snap := newSnap("match-2026-05-10T20-44-03")
+		snap.Teams[0].Filename = "Overwatch 2 Screenshot 2026.05.10 - 20.44.03.11.png"
+		if cands := correlate.FindDuplicateMatches(dupNewKey, snap); len(cands) != 0 {
+			t.Errorf("sweep proposed %+v at the 1800s cap; that distance belongs to the EAD bridge", cands)
+		}
+	})
 }
 
 func TestCandidateReason_DerivedFromDistance(t *testing.T) {

@@ -342,6 +342,12 @@ func (s stagedApply) run() error {
 		return err
 	}
 	if err := s.commitManifest(); err != nil {
+		// The assets are already renamed at this point, so "the manifest is
+		// the commit point" is only true if we put them back. Without this
+		// the apply returns an error while the NEW dataset is live on disk
+		// under the OLD manifest — the exact state this staging was written
+		// to eliminate, and the one the previous implementation produced.
+		s.restore()
 		s.removeStaged()
 		return err
 	}
@@ -406,14 +412,24 @@ func (s stagedApply) commitManifest() error {
 
 // restore puts each snapshotted file back. A nil entry means the file was
 // absent before the apply, so it is removed.
+// restore replays the pre-apply snapshot. Failures here are logged rather
+// than returned: the caller is already returning the error that triggered the
+// rollback, and that error is the more useful one. But they must not be
+// silent — a rollback that did not roll back leaves the user's live roster
+// holding a payload the UI just reported as failed, and that is exactly the
+// swallowed-error class this file was auditing.
 func (s stagedApply) restore() {
 	for name, b := range s.snapshot {
 		final := filepath.Join(s.dataDir, name)
 		if b == nil {
-			_ = os.Remove(final)
+			if err := os.Remove(final); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				applog.Subsystem("apply_data_update").Error("rollback could not remove file", "file", name, "err", err)
+			}
 			continue
 		}
-		_ = os.WriteFile(final, b, 0o600)
+		if err := os.WriteFile(final, b, 0o600); err != nil {
+			applog.Subsystem("apply_data_update").Error("rollback could not restore file", "file", name, "err", err)
+		}
 	}
 }
 

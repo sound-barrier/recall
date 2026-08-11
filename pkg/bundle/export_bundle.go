@@ -224,7 +224,7 @@ func bundleScreenshotMap(t parentTables) map[string]string {
 	return m
 }
 
-// writeBundleData writes data.json — a `recall-export/v1` payload
+// writeBundleData writes data.json — a `recall-export/v2` payload
 // restricted to the included matches, WITHOUT the screenshots_dirs path
 // map. Stripping the map keeps the bundle free of the user's local
 // filesystem path; restore via POST /api/v1/imports remaps every row's
