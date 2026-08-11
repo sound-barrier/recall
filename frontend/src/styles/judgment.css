@@ -1,0 +1,38 @@
+/* The verdict palette — ONE definition for every surface that judges a win
+   rate. The class names come from BAND_CLASS in @/match/match-heatmap-helpers,
+   which is also where the thresholds (51% / 48.5%, 15-decisive floor) and the
+   spoken JUDGMENT_LABEL vocabulary live. Paint them in exactly one place so a
+   53% can never read green on one surface and gray on another.
+
+   These rules were previously duplicated across SIX files — components.css,
+   elo.css, match-map-role-band.css, match-hero-pool-band.css, and the scoped
+   blocks in HeroModeHeatmap.vue and MatchHeroModeBand.vue — which had drifted
+   into four different `cell-empty` values and a `cell-mid` that resolved to
+   --border-strong (orange under Dark, white under high contrast) on the
+   dashboard bars alone.
+
+   Deliberately bare selectors at (0,1,0): a consumer adds `cell-*` to its own
+   element and gets the verdict, while its own rule keeps owning geometry,
+   text color and cursor. Imported AFTER components.css so `.cell-win` beats
+   `.bd-fill`'s base accent gradient on source order. A consumer that needs to
+   override must say why — nothing here is scoped, so nothing here can drift.
+
+   NOT for the surfaces that RECORD rather than judge: the Campaign Log
+   calendar and sparkline keep their continuous hue (see the note on
+   heatmapCellBand), and they carry no `cell-*` class at all. */
+
+.cell-win { background: var(--win); }
+
+/* `even` and `unproven` share this class on purpose — the eye cannot tell
+   "genuinely level" from "not enough games yet", so the accessible name is
+   what keeps them apart. */
+.cell-mid { background: var(--neutral); }
+
+.cell-loss { background: var(--loss); }
+
+.cell-draw { background: var(--draw); }
+
+/* No matches at all. A faint wash of the text color rather than a surface
+   tint, so it adapts with the theme without picking up --border, which is the
+   OW orange under the Dark palette. */
+.cell-empty { background: color-mix(in srgb, var(--text-faint) 30%, transparent); }

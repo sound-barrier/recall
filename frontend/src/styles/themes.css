@@ -72,6 +72,14 @@
   --draw: #7a5010;
   --draw-soft: rgb(122 80 16 / 14%);
   --draw-line: rgb(122 80 16 / 55%);
+
+  /* The no-verdict plate follows the rest of Day's palette darkward. The
+     shared #95a5a6 is a dark-theme grey: a cell-mid heatmap cell paints
+     --bg (cream) as its label, and cream on #95a5a6 is 2.18:1 — less than
+     half the AA floor. #5f6b6b keeps the same desaturated grey and reads
+     4.72:1. Day is the only theme that needs the override; Night 7.70,
+     Dark 5.61 and high contrast 8.21 already clear it. */
+  --neutral: #5f6b6b;
   --unknown-line: rgb(74 74 74 / 40%);
   --tank: #1f5491;
   --tank-soft: rgb(31 84 145 / 14%);

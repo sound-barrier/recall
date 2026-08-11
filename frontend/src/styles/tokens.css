@@ -68,6 +68,20 @@
      palette needs it. */
   --neutral: #95a5a6;
 
+  /* The "no matches here" plate under the two grids that RECORD volume —
+     the Campaign Log calendar and the Map × Role band. It was declared
+     identically (and separately) on .match-heatmap and .mr-grid, so a
+     change to one silently split the two apart.
+
+     Derived rather than literal so it tracks the theme, but note the
+     source: --border is the OW ORANGE under the Dark palette, so this mix
+     warms to #453d33 there instead of the neutral #414040 a text-tinted
+     source would give. Deliberate for now — the empty plate reads as part
+     of the Dark theme's orange chrome — and NOT the same call
+     judgment.css's .cell-empty made, which is a --text-faint wash exactly
+     to avoid that cast. */
+  --heatmap-empty: color-mix(in srgb, var(--surface-2) 92%, var(--border));
+
   /* Categorical chart palette, slots 5–8. Slots 1–4 are the semantic
      tokens (--accent / --win / --loss / --draw); these extend the ramp
      for series with no meaning of their own — heroes, maps, modifiers.

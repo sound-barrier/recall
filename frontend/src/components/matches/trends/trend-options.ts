@@ -3,6 +3,7 @@
 // the data layer does not.
 import type { TrendOption } from '@/components/matches/trends/echarts'
 import { TIER_ORDER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/match-trends-helpers'
+import { heatmapCellClass } from '@/match/match-heatmap-helpers'
 import { themeColor, withAlpha } from '@/match/theme-colors'
 
 // Consistent colors for known series keys so a line means the same thing
@@ -74,19 +75,29 @@ const LEGEND = { type: 'scroll' as const, top: 8, left: 'center' as const }
 // lineX brush (TrendChart arms the cursor) whose selection narrows the set.
 // `handleLabel` shows the date at each slider handle while dragging (echarts
 // 6.1 defaults it to hover-only; we make it always-on).
-const INTERACTION = {
-  dataZoom: [
-    { type: 'slider' as const, bottom: 4, height: 16, handleLabel: { show: true } },
-  ],
-  brush: {
-    xAxisIndex: 0,
-    brushType: 'lineX' as const,
-    brushMode: 'single' as const,
-    throttleType: 'debounce' as const,
-    throttleDelay: 250,
-    removeOnClick: false,
-    brushStyle: { color: 'rgba(245, 166, 35, 0.12)', borderColor: 'rgba(245, 166, 35, 0.55)' },
-  },
+//
+// A FUNCTION, not a const: the brush is tinted with --accent, and a
+// module-level const would resolve it once at import and then keep the
+// importing theme's orange forever. (It used to hard-code
+// rgba(245, 166, 35, …) — Night's accent frozen — which is what made the
+// brush the one element on the page that ignored a theme switch.) Every
+// caller already rebuilds its options when themeMode changes.
+function interaction() {
+  const accent = themeColor('--accent')
+  return {
+    dataZoom: [
+      { type: 'slider' as const, bottom: 4, height: 16, handleLabel: { show: true } },
+    ],
+    brush: {
+      xAxisIndex: 0,
+      brushType: 'lineX' as const,
+      brushMode: 'single' as const,
+      throttleType: 'debounce' as const,
+      throttleDelay: 250,
+      removeOnClick: false,
+      brushStyle: { color: withAlpha(accent, 0.12), borderColor: withAlpha(accent, 0.55) },
+    },
+  }
 }
 
 function tierLabel(tier: Tier): string {
@@ -110,7 +121,7 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
   const max = Number.isFinite(hi) ? Math.ceil(hi / 5) * 5 : 40
 
   return {
-    ...INTERACTION,
+    ...interaction(),
     grid: GRID,
     legend: { ...LEGEND, show: series.length > 1 },
     tooltip: {
@@ -152,7 +163,7 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
 // reference line.
 export function winrateOption(series: TrendSeries[]): TrendOption {
   return {
-    ...INTERACTION,
+    ...interaction(),
     grid: GRID,
     legend: { ...LEGEND, show: series.length > 1 },
     tooltip: { trigger: 'axis', valueFormatter: (v: unknown) => `${String(v)}%` },
@@ -188,7 +199,7 @@ export function winrateOption(series: TrendSeries[]): TrendOption {
 // else the themed categorical palette (e.g. one color per modifier).
 export function lineOption(series: TrendSeries[], opts: { area?: boolean } = {}): TrendOption {
   return {
-    ...INTERACTION,
+    ...interaction(),
     grid: GRID,
     legend: { ...LEGEND, show: series.length > 1 },
     tooltip: { trigger: 'axis' },
@@ -212,7 +223,7 @@ export function lineOption(series: TrendSeries[], opts: { area?: boolean } = {})
 // one role-colored series each.
 export function rankDeltaOption(series: TrendSeries[]): TrendOption {
   return {
-    ...INTERACTION,
+    ...interaction(),
     grid: GRID,
     legend: { ...LEGEND, show: series.length > 1 },
     tooltip: {
@@ -271,10 +282,20 @@ export function heatmapOption(grid: WinrateGrid): TrendOption {
     },
     series: [{
       type: 'heatmap',
+      // The ramp maps win rate, which says nothing about how much evidence
+      // is behind it — a single won match would paint a slot full green and
+      // the card would recommend playing then. Cells the shared judgment
+      // engine will not call (under its 15-decisive floor, or inside the
+      // dead zone around 50%) are pinned to the no-verdict plate instead, so
+      // this chart withholds a recommendation on the same terms as every
+      // other surface that judges a win rate.
       data: grid.cells.map((c) => ({
         value: [c.x, c.y, c.winRate] as [number, number, number],
         wins: c.wins,
         total: c.total,
+        ...(heatmapCellClass({ total: c.total, wins: c.wins, losses: c.total - c.wins }) === 'cell-mid'
+          ? { itemStyle: { color: themeColor('--neutral') } }
+          : {}),
       })),
       label: { show: false },
       // --text, not '#fff': on Day the hover ring was white-on-cream and

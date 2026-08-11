@@ -100,6 +100,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
         :windows="WINDOW_MONTHS"
         :window-months="windowMonths"
         window-group-label="Heatmap window"
+        legend="ramp"
         :reset="dateFilterActive
           ? { title: 'Clear the date filter', attrs: { 'data-timeline-reset': '' } }
           : null"

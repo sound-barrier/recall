@@ -13,10 +13,12 @@ const dossier = useDossier()
 const { config } = useWidgetConfig<FormDeltaConfig>('form-delta', formDeltaSchema)
 const form = dossier.formDelta(() => ({ window: config.value.window }))
 
+// The shared sign tint (styles/verdict-tint.css) — the same pair
+// NetRankWeekWidget wears, so "above the line" is one color app-wide.
 const gapClass = computed(() => {
   const gap = form.value.deltaPts
   if (gap === null || gap === 0) return ''
-  return gap > 0 ? 'gap-up' : 'gap-down'
+  return gap > 0 ? 'tint-up' : 'tint-down'
 })
 
 // The tint is the only thing separating "beating your baseline" from
@@ -42,13 +44,9 @@ const gapName = computed(() => {
 </template>
 
 <style scoped>
-.gap-up {
-  color: var(--win);
-  font-weight: 700;
-}
-
-.gap-down {
-  color: var(--loss);
+/* Color comes from the shared .tint-up / .tint-down pair; this class owns
+   only the weight that lifts the gap out of the surrounding sub-label. */
+.form-gap {
   font-weight: 700;
 }
 </style>

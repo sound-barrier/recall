@@ -9,9 +9,11 @@ import { signJudgment } from '@/match/match-heatmap-helpers'
 
 const { netRankWeek } = useDossier()
 
+// The shared sign tint (styles/verdict-tint.css), same pair as the
+// Recent-form gap.
 const tint = computed(() => {
-  if (netRankWeek.value > 0) return 'kpi-up'
-  return netRankWeek.value < 0 ? 'kpi-down' : ''
+  if (netRankWeek.value > 0) return 'tint-up'
+  return netRankWeek.value < 0 ? 'tint-down' : ''
 })
 const movement = computed(() => `${netRankWeek.value > 0 ? '+' : ''}${netRankWeek.value}%`)
 // Climb velocity is signed in the text but JUDGED in the tint; the
@@ -25,13 +27,3 @@ const spokenName = computed(() => `${movement.value} — ${signJudgment(netRankW
     {{ movement }}
   </span>
 </template>
-
-<style scoped>
-.kpi-up {
-  color: var(--win);
-}
-
-.kpi-down {
-  color: var(--loss);
-}
-</style>

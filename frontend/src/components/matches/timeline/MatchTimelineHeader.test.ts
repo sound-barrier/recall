@@ -113,7 +113,10 @@ describe('MatchTimelineHeader — clearing the range', () => {
   it('forwards a range brushed on the sparkline', async () => {
     const view = renderTimeline()
     const [windowStart, windowEnd] = calendarWindow()
-    const firstBar = screen.getAllByRole('img')[1]!
+    // By name, not by position: the sparkline's container, its bars and the
+    // header's color scale are all role="img", so an index silently brushes
+    // whichever graphic happens to come first in the DOM.
+    const firstBar = screen.getByRole('img', { name: new RegExp(`^${windowStart} — `) })
 
     await fireEvent.pointerDown(firstBar, { clientX: -5000, clientY: 40, button: 0 })
     await fireEvent.pointerMove(firstBar, { clientX: 5000, clientY: 40 })

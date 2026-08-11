@@ -72,6 +72,23 @@ describe('MatchSparklineBrush — the day columns', () => {
     expect(screen.getByRole('img', { name: `${ymd(-2)} — 2 matches (1W 1L)` })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: `${ymd(-3)} — no matches` })).toBeInTheDocument()
   })
+
+  // The bar's fill is the win→loss ramp. A day that decided nothing has no
+  // point on it, and reading that as 0% painted a drawn day as a wipeout.
+  it('counts the draws and paints a day that decided nothing off the ramp', () => {
+    renderBrush({
+      records: [
+        match(ymd(-1), 'draw', 'd1'),
+        match(ymd(-1), 'draw', 'd2'),
+        match(ymd(-2), 'defeat', 'l1'),
+      ],
+    })
+
+    const drawnDay = screen.getByRole('img', { name: `${ymd(-1)} — 2 matches (0W 0L 2D)` })
+    const lostDay = screen.getByRole('img', { name: `${ymd(-2)} — 1 match (0W 1L)` })
+    expect(drawnDay).toHaveAttribute('fill', 'var(--draw)')
+    expect(lostDay).toHaveAttribute('fill', 'color-mix(in srgb, var(--win) 0%, var(--loss))')
+  })
 })
 
 describe('MatchSparklineBrush — the brush gesture', () => {

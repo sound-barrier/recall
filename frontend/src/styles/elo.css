@@ -732,16 +732,8 @@
   transition: width var(--duration-prompt) ease;
 }
 
-/* Color by WIN RATE — the Hero Pool / Hero × Game-Mode scheme. */
-#panel-elo .elo-hero-fill.cell-win { background: var(--win); }
-
-#panel-elo .elo-hero-fill.cell-mid { background: var(--neutral); }
-
-#panel-elo .elo-hero-fill.cell-loss { background: var(--loss); }
-
-#panel-elo .elo-hero-fill.cell-draw { background: var(--draw, #b59c30); }
-
-#panel-elo .elo-hero-fill.cell-empty { background: color-mix(in srgb, var(--text-faint) 30%, transparent); }
+/* Color by WIN RATE — painted by styles/judgment.css, the shared verdict
+   palette. Nothing to override here. */
 
 #panel-elo .elo-hero-stat {
   flex: 0 0 auto;

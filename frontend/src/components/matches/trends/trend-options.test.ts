@@ -337,7 +337,29 @@ describe('trend-options — best-times heatmap', () => {
       { value: [number, number, number]; wins: number; total: number }[]
 
     expect(cells).toHaveLength(2)
-    expect(cells[0]).toEqual({ value: [0, 0, 75], wins: 3, total: 4 })
+    expect(cells[0]?.value).toEqual([0, 0, 75])
+    expect(cells[0]?.wins).toBe(3)
+    expect(cells[0]?.total).toBe(4)
+  })
+
+  // The ramp maps win rate alone, so without a floor a single won match
+  // paints a slot full green and the card recommends playing then.
+  it('withholds the verdict color from a slot with too little evidence', () => {
+    const thin = {
+      ...grid,
+      cells: [
+        { x: 0, y: 0, wins: 1, total: 1, winRate: 100 },   // one match
+        { x: 1, y: 1, wins: 14, total: 20, winRate: 70 },  // past the floor
+      ],
+    }
+    const cells = seriesOf(heatmapOption(thin))[0]?.data as unknown as
+      { itemStyle?: { color?: string } }[]
+
+    // themeColor() reads a real stylesheet, so under happy-dom it resolves
+    // to ''. The contract is that the sub-floor cell is overridden at all and
+    // the judged one is left to the ramp.
+    expect(cells[0]?.itemStyle).toBeDefined()
+    expect(cells[1]?.itemStyle).toBeUndefined()
   })
 
   it('reads a cell out as day, bucket, record and win rate', () => {

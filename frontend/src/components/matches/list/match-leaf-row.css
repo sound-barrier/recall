@@ -51,7 +51,7 @@
 .leaf-strip.is-filtered { width: 6px; box-shadow: 0 0 0 1px var(--accent); }
 .leaf-row.result-victory .leaf-strip { background: var(--win); }
 .leaf-row.result-defeat  .leaf-strip { background: var(--loss); }
-.leaf-row.result-draw    .leaf-strip { background: var(--draw, var(--text-mute)); }
+.leaf-row.result-draw    .leaf-strip { background: var(--draw); }
 
 /* Anchor row treatment — a left-edge accent stripe + a faint accent
    wash so users scanning the list can find their "since" match at a
@@ -376,14 +376,14 @@
      --text into the glyph darkens it in Day and lightens it in dark themes —
      AA in both directions with the hue intact. */
   background: color-mix(in srgb, var(--win) 12%, var(--surface));
-  border-color: var(--win-line, var(--win));
+  border-color: var(--win-line);
   color: color-mix(in srgb, var(--win) 80%, var(--text));
 }
 
 .leaf-result-chip.result-defeat {
   /* Same 80/20 text mix as the victory chip — see the note there. */
   background: color-mix(in srgb, var(--loss) 12%, var(--surface));
-  border-color: var(--loss-line, var(--loss));
+  border-color: var(--loss-line);
   color: color-mix(in srgb, var(--loss) 80%, var(--text));
 }
 

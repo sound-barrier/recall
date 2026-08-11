@@ -7,10 +7,13 @@ const { currentStreak: streak } = useDossier()
 
 type StreakResult = 'victory' | 'defeat' | 'draw'
 
+// The shared result tint (styles/verdict-tint.css) — the same three classes
+// the recent-result pills wear, keyed by the same discriminant
+// resultJudgment reads, so the color and the spoken word cannot disagree.
 const STREAK_TINT: Record<StreakResult, string> = {
-  victory: 'kpi-streak-win',
-  defeat:  'kpi-streak-loss',
-  draw:    'kpi-streak-draw',
+  victory: 'tint-win',
+  defeat:  'tint-loss',
+  draw:    'tint-draw',
 }
 const STREAK_LETTER: Record<StreakResult, string> = { victory: 'W', defeat: 'L', draw: 'D' }
 
@@ -34,11 +37,3 @@ const spokenName = computed(() =>
   >{{ text }}</span>
   <span v-if="streak.sinceDate" class="kpi-sub">since {{ streak.sinceDate }}</span>
 </template>
-
-<style scoped>
-/* Per-result coloring picks up the existing palette tokens so the
-   streak reads in the matching W/L/D voice regardless of theme. */
-.kpi-streak-win  { color: var(--win); }
-.kpi-streak-loss { color: var(--loss); }
-.kpi-streak-draw { color: var(--draw, var(--text-dim)); }
-</style>

@@ -243,7 +243,7 @@ const levelTitle = computed(() => {
             attrs: { 'data-widget-config-trigger': '', 'data-hero-mode-config-trigger': '' },
           }
           : null"
-        :legend="depth <= 1"
+        :legend="depth <= 1 ? 'bands' : 'none'"
         @pick-window="pickWindow"
         @reset="resetFilter"
         @toggle-config="toggleConfig"
@@ -442,11 +442,9 @@ const levelTitle = computed(() => {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-.hm-map-tile.cell-win  { background: var(--win,  #2ecc71); }
-.hm-map-tile.cell-mid  { background: var(--neutral); }
-.hm-map-tile.cell-loss { background: var(--loss, #e74c3c); }
-.hm-map-tile.cell-draw { background: var(--draw, #b59c30); }
-.hm-map-tile.cell-empty { background: var(--surface-2); color: var(--text-faint); cursor: default; }
+
+/* Backgrounds come from styles/judgment.css; an empty tile is inert. */
+.hm-map-tile.cell-empty { color: var(--text-faint); cursor: default; }
 
 .hm-map-name {
   font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
