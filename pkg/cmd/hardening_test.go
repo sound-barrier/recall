@@ -106,17 +106,32 @@ func TestIsLoopbackBind(t *testing.T) {
 	}
 }
 
+// RECALL_PPROF mounts /debug/pprof, so a user who writes FALSE / no / off
+// and gets profiling handlers anyway has been handed the opposite of what
+// they asked for on a server that runs without auth. The opt-in reads
+// case-insensitively and fails closed: anything outside the truthy
+// vocabulary — including a typo — leaves pprof unmounted.
 func TestPprofEnabled(t *testing.T) {
-	for _, off := range []string{"", "0", "false"} {
-		t.Setenv("RECALL_PPROF", off)
-		if cmd.PprofEnabled() {
-			t.Errorf("cmd.PprofEnabled() should be false for %q", off)
-		}
-	}
-	for _, on := range []string{"1", "true", "yes"} {
-		t.Setenv("RECALL_PPROF", on)
-		if !cmd.PprofEnabled() {
-			t.Errorf("cmd.PprofEnabled() should be true for %q", on)
-		}
+	for _, c := range []struct {
+		value string
+		want  bool
+	}{
+		{"", false}, {"0", false}, {"false", false},
+		{"FALSE", false}, {"False", false},
+		{"no", false}, {"NO", false}, {"off", false}, {"Off", false},
+		{"f", false}, {"n", false},
+		{"maybe", false}, {"disabled", false}, // unrecognized → fail closed
+		{"1", true}, {"true", true}, {"yes", true},
+		{"TRUE", true}, {"True", true},
+		{"YES", true}, {"on", true}, {"ON", true},
+		{"t", true}, {"y", true},
+		{" true ", true}, // stray whitespace from a shell export
+	} {
+		t.Run("RECALL_PPROF="+c.value, func(t *testing.T) {
+			t.Setenv("RECALL_PPROF", c.value)
+			if got := cmd.PprofEnabled(); got != c.want {
+				t.Errorf("cmd.PprofEnabled() = %v for %q, want %v", got, c.value, c.want)
+			}
+		})
 	}
 }

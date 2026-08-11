@@ -258,11 +258,18 @@ func applyCollectionOverrides(d *parser.MatchResult, ud db.UserMatchData, mark f
 // rederiveEditedFields recomputes Role / GameMode AFTER overriding so an
 // edited hero / map drives them (derived, never stored; see
 // .claude/rules/database.md).
+//
+// The override is re-derived from unconditionally, empty string included:
+// the API lets a user clear an override back to "", and by then
+// applyScalarOverrides has already wiped the raw OCR text, so a retained
+// Role / GameMode would assert a role with no hero (or a mode with no map)
+// that the dossier chip and the mode filter would both keep believing.
+// HeroRole("") / MapGameMode("") return "", so clearing propagates.
 func rederiveEditedFields(d *parser.MatchResult, ud db.UserMatchData) {
-	if ud.Hero != nil && d.Hero != "" {
+	if ud.Hero != nil {
 		d.Role = parser.HeroRole(d.Hero)
 	}
-	if ud.Map != nil && d.Map != "" {
+	if ud.Map != nil {
 		d.GameMode = parser.MapGameMode(d.Map)
 	}
 }

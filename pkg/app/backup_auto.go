@@ -65,9 +65,21 @@ func (a *App) writeSnapshot(prefix string, keep int) (string, error) {
 // pruneSnapshots removes all but the newest keep files matching
 // prefix*.db in dir. Timestamps embed lexicographically-sortable
 // UTC stamps, so name order IS age order.
+//
+// A Glob failure and "nothing to prune" are separate arms on purpose.
+// Both skip the removal loop — pruning nothing is always the safe
+// choice — but a data dir the pattern can't express (a bracket in a
+// user-chosen profile name yields filepath.ErrBadPattern) would
+// otherwise disable pruning for the life of the install while
+// backups/ grew without bound, and say nothing about it.
 func pruneSnapshots(dir, prefix string, keep int) {
 	matches, err := filepath.Glob(filepath.Join(dir, prefix+"*.db"))
-	if err != nil || len(matches) <= keep {
+	if err != nil {
+		applog.Subsystem("backup").Error("prune skipped; backups path is not a valid glob pattern",
+			"dir", dir, "err", err)
+		return
+	}
+	if len(matches) <= keep {
 		return
 	}
 	sort.Strings(matches)
