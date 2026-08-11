@@ -82,6 +82,14 @@ func deleteUserMatchChildren(tx *sql.Tx, matchKey string) error {
 	return nil
 }
 
+// The three child inserts below use INSERT OR IGNORE, which the modifiers
+// insert further down deliberately does not. The difference is safe here and
+// the reason is worth writing down, because it reads as an inconsistency:
+// these tables carry no CHECK, and their only other constraint is the FK to
+// user_match_data — which cannot fire, since UpsertUserMatchData writes the
+// parent row first in the SAME transaction. So OR IGNORE can only suppress the
+// composite-PK duplicate, which IS the intended dedupe. The modifiers table
+// has a vocabulary CHECK that must surface, hence its ON CONFLICT form.
 func insertUserMatchHeroes(tx *sql.Tx, matchKey string, heroes []UserMatchHero) error {
 	for _, h := range heroes {
 		if h.Hero == "" {

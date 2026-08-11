@@ -1,6 +1,7 @@
 package dbtest
 
 import (
+	"fmt"
 	"maps"
 	"time"
 
@@ -52,6 +53,14 @@ func (f *Fake) UnhideMatch(matchKey string) error {
 }
 
 func (f *Fake) SetReview(matchKey, reviewedBy string) error {
+	// schema.sql pins the vocabulary with a CHECK constraint, so SQLStore
+	// rejects anything else. Mirror it: a Fake that accepts a reviewer the
+	// real store refuses lets every test built on it reach a state
+	// production cannot, and makes the defensive code written for that
+	// state look live.
+	if reviewedBy != "self" && reviewedBy != "coach" {
+		return fmt.Errorf("dbtest: reviewed_by %q violates the self/coach vocabulary", reviewedBy)
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.Reviews == nil {

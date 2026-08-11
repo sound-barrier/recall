@@ -222,6 +222,30 @@ func assertAuxRowsCleared(t *testing.T, s db.Store) {
 	}
 }
 
+// The schema pins the reviewer vocabulary — `reviewed_by TEXT NOT NULL CHECK
+// (reviewed_by IN ('self','coach'))` — so a reviewer outside that set cannot
+// exist in a real store. The Fake must refuse it too. When it does not, every
+// app/handler test built on the Fake can reach a state production cannot, and
+// the defensive code written to cope with that state reads as live: the
+// cross-profile move carried exactly such a guard, on a review row with a
+// blank reviewer that only the Fake could produce.
+func TestStoreContract_SetReviewRefusesAReviewerOutsideTheVocabulary(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			const key = "match-2026-01-01T12-00-00"
+			for _, bad := range []string{"", "SELF", "teammate"} {
+				if err := s.SetReview(key, bad); err == nil {
+					t.Errorf("SetReview(%q) = nil, want a rejection", bad)
+				}
+			}
+			// The vocabulary itself still round-trips.
+			mustNoErr(t, s.SetReview(key, "self"))
+			mustNoErr(t, s.SetReview(key, "coach"))
+		})
+	}
+}
+
 func TestStoreContract_MatchKeyExistsSeesBothLayers(t *testing.T) {
 	for _, impl := range storeImpls {
 		t.Run(impl.name, func(t *testing.T) {

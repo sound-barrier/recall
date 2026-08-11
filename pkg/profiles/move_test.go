@@ -438,3 +438,69 @@ func storeHasSummary(t *testing.T, s db.Store, key string) bool {
 	mustNoErr(t, err)
 	return hasSummary(snap.Summaries, key)
 }
+
+// Move's own doc comment states the invariant: "Phase 1's copy set MUST cover
+// every table HardDeleteMatch wipes." Ambiguous candidates are such a table —
+// forgetAmbiguitySurface deletes them by match_key AND by the parent rows'
+// filename — so moving an unresolved ambiguous match destroyed its candidate
+// list, landing a record on the target that the review card can never resolve.
+func TestMove_CarriesTheAmbiguousCandidateList(t *testing.T) {
+	src, target := &dbtest.Fake{}, &dbtest.Fake{}
+	const ambig = "ambiguous-2026-01-01T12-00-00"
+	const shot = "ambiguous-2026-01-01T12-00-00-summary.png"
+	near, far := "match-2026-01-01T11-58-00", "match-2026-01-01T12-04-00"
+
+	for _, k := range []string{ambig, near, far} {
+		mustNoErr(t, src.UpsertSummary(db.SummaryRow{
+			Filename: k + "-summary.png", MatchKey: k, Map: "rialto",
+		}))
+	}
+	cands := []db.AmbiguousCandidate{
+		{MatchKey: near, DistanceSeconds: 120},
+		{MatchKey: far, DistanceSeconds: 240},
+	}
+	mustNoErr(t, src.ApplyAmbiguity(shot, cands))
+
+	// Moved together with both candidate matches, the review list travels.
+	mustNoErr(t, profiles.Move(src, target, []string{ambig, near, far}))
+
+	got, err := target.LoadAmbiguousCandidatesFor(shot)
+	mustNoErr(t, err)
+	if len(got) != len(cands) {
+		t.Fatalf("target has %d ambiguous candidates, want %d — the move dropped the review list", len(got), len(cands))
+	}
+	if got[0].MatchKey != near || got[1].MatchKey != far {
+		t.Errorf("candidates = %+v, want %s then %s (nearest first)", got, near, far)
+	}
+}
+
+// Moving an ambiguous match WITHOUT the matches it might belong to would land
+// a review card whose every choice is absent — unresolvable, and phase 2 has
+// already deleted the originals by then. Refuse before writing anything.
+func TestMove_RefusesToStrandAnAmbiguousCandidate(t *testing.T) {
+	src, target := &dbtest.Fake{}, &dbtest.Fake{}
+	const ambig = "ambiguous-2026-01-01T12-00-00"
+	const shot = "ambiguous-2026-01-01T12-00-00-summary.png"
+	const near = "match-2026-01-01T11-58-00"
+
+	for _, k := range []string{ambig, near} {
+		mustNoErr(t, src.UpsertSummary(db.SummaryRow{
+			Filename: k + "-summary.png", MatchKey: k, Map: "rialto",
+		}))
+	}
+	mustNoErr(t, src.ApplyAmbiguity(shot, []db.AmbiguousCandidate{
+		{MatchKey: near, DistanceSeconds: 120},
+	}))
+
+	err := profiles.Move(src, target, []string{ambig}) // near left behind
+	if err == nil {
+		t.Fatal("Move succeeded, want a refusal — the candidate would dangle on the target")
+	}
+	// Nothing may have been written or destroyed.
+	if len(target.Summaries) != 0 {
+		t.Errorf("target has %d rows after a refused move, want 0", len(target.Summaries))
+	}
+	if len(src.Summaries) != 2 {
+		t.Errorf("source has %d rows after a refused move, want 2", len(src.Summaries))
+	}
+}
