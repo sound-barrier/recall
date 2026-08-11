@@ -209,6 +209,37 @@ describe('App.vue — masthead scoreboard W/L/D consistency', () => {
     expect(cells[1]).toHaveTextContent(/^1$/) // losses
     expect(cells[2]).toHaveTextContent(/^0$/) // draws
   })
+
+  // The rate is the one number in the scoreboard you cannot count off the
+  // list, so it is spelled out rather than left to arithmetic. Draws are
+  // excluded from the denominator — the house convention: a draw is not a
+  // loss. Two wins and one loss is 67%, not 50%.
+  it('states the win rate under the tally, over decisive games only', async () => {
+    const records: MatchRecord[] = [
+      { match_key: 'm-1', source_files: ['a.png'], data: { map: 'aatlis', hero: 'lucio', result: 'victory' } },
+      { match_key: 'm-2', source_files: ['b.png'], data: { map: 'rialto', hero: 'wuyang', result: 'victory' } },
+      { match_key: 'm-3', source_files: ['c.png'], data: { map: 'busan', hero: 'mercy', result: 'defeat' } },
+      { match_key: 'm-4', source_files: ['d.png'], data: { map: 'ilios', hero: 'ana', result: 'draw' } },
+    ]
+    await renderApp({ records })
+
+    const scoreboard = within(screen.getByRole('group', { name: 'Record' }))
+    expect(scoreboard.getByText('67%')).toBeInTheDocument()
+    expect(scoreboard.getByText(/win rate/i)).toBeInTheDocument()
+  })
+
+  // An all-draws set has nothing decided, so a rate would be a fiction.
+  // 0% would read as "you lost everything", which is the opposite of true.
+  it('shows no rate when nothing was decided', async () => {
+    const records: MatchRecord[] = [
+      { match_key: 'm-1', source_files: ['a.png'], data: { map: 'ilios', hero: 'ana', result: 'draw' } },
+    ]
+    await renderApp({ records })
+
+    const scoreboard = within(screen.getByRole('group', { name: 'Record' }))
+    expect(scoreboard.queryByText('0%')).not.toBeInTheDocument()
+    expect(scoreboard.getByText('—')).toBeInTheDocument()
+  })
 })
 
 describe('App.vue — tablist keyboard navigation', () => {

@@ -262,7 +262,7 @@
 .scoreboard {
   display: grid;
   grid-template-columns: repeat(3, auto);
-  gap: 1.4rem;
+  gap: 0.5rem 1.4rem;
   padding: 0.1rem 0;
   border-radius: var(--radius);
 }
@@ -312,6 +312,45 @@
   letter-spacing: 0.2em;
   color: var(--text-faint);
   text-transform: uppercase;
+}
+
+/* The rate spans the tally it is derived from and hangs off its right edge,
+   so the eye reads three counts then their summary rather than a fourth
+   count. Rule above rather than beside: it is an underline for the row, not
+   a divider between siblings.
+
+   Deliberately untinted. A win rate is a verdict, and this app never passes
+   one without an evidence floor (JUDGMENT_MIN_DECISIVE) — the masthead has
+   no such floor, so it reports the number and leaves the color to the
+   surfaces that do judge. The tint budget here is already spent on the
+   three counts. */
+.score-rate {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 0;
+  padding-top: 0.45rem;
+
+  /* --hairline, not --border: the latter is the OW orange under Dark, which
+     turns this quiet rule into a decorative underline. Same token the
+     masthead's own bottom edge uses. */
+  border-top: 1px solid var(--hairline);
+}
+
+/* Mono, not the display face: the big italic numerals are tallies you can
+   point at in the list below, while this is computed from them. */
+.score-rate-num {
+  font-family: var(--mono);
+  font-size: var(--type-2xl);
+  font-weight: 600;
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+
+.score-rate .score-label {
+  margin-top: 0;
 }
 
 /* Orphan .control-deck / .deck-* rules deleted — no template references.
