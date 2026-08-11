@@ -99,13 +99,57 @@ done <<<"$(grep -rnoE 'var\([[:space:]]*--[a-z0-9-]+[[:space:]]*,' "$SRC" \
 # Literals are CORRECT in the palette definition files — that is what they are
 # for — and in the Appearance swatches, which must paint the OTHER themes'
 # colors and so cannot use the current theme's tokens.
-# `(^|[{;[:space:]])` rather than `^[[:space:]]*`: a declaration written
-# inline — `.x { --y: #fff; }` — is not at the start of its line, and the
-# anchored form waved it through. A comma precedes the fallback in
-# `var(--a, #fff)`, so that shape still cannot match.
+# Two anchoring lessons, both found by probing rather than reading:
+#
+#   * `(^|[{;[:space:]])` rather than `^[[:space:]]*` — a declaration written
+#     inline, `.x { --y: #fff; }`, is not at the start of its line and the
+#     anchored form waved it through.
+#   * The literal is matched ANYWHERE in the value, not just immediately after
+#     the colon. Requiring first position left the laundering route wide open,
+#     because every interesting way to hide a literal wraps it:
+#         --plate: color-mix(in srgb, #000 65%, transparent);
+#         --ring:  0 0 0 2px #f5a623;
+#         --grad:  linear-gradient(#111, #222);
+#
+# `[^;]*` scans to the end of the declaration and no further, so the next
+# declaration on the same line cannot bleed in. `var(--a, #fff)` is still
+# unreachable: a `--name:` has to start the match, and a comma sits between
+# the token and the fallback.
+#
+# Comments must be stripped FIRST, and it takes a state machine rather than a
+# per-line pattern. Widening the scan to the whole value immediately produced
+# a false positive on prose inside a `/* … */` block that happened to mention
+# a token and a hex in the same sentence. A gate that cries wolf gets
+# disabled, so the awk pass below blanks comment spans (multi-line included)
+# while preserving line numbers.
 echo "==> checking custom-property declarations outside the palette files"
-literal_decls=$(grep -rnE '(^|[{;[:space:]])--[a-z0-9-]+[[:space:]]*:[[:space:]]*(#[0-9a-fA-F]{3,8}|rgba?\([[:space:]]*[0-9.]|hsla?\([[:space:]]*[0-9.])' \
-  "$SRC" --include='*.css' --include='*.vue' \
+# shellcheck disable=SC2016 # the awk program is single-quoted on purpose:
+# $0 and FNR are awk's own fields, and must not be expanded by the shell.
+strip_comments() {
+  find "$SRC" \( -name '*.css' -o -name '*.vue' \) -print0 \
+    | xargs -0 awk '
+      FNR == 1 { incomment = 0 }
+      {
+        line = $0; out = ""
+        while (1) {
+          if (incomment) {
+            p = index(line, "*/")
+            if (p == 0) { line = ""; break }
+            line = substr(line, p + 2); incomment = 0
+          } else {
+            p = index(line, "/*")
+            if (p == 0) { out = out line; break }
+            out = out substr(line, 1, p - 1)
+            line = substr(line, p + 2); incomment = 1
+          }
+        }
+        sub(/^[[:space:]]*\/\/.*/, "", out)   # // line comments in .vue script blocks
+        print FILENAME ":" FNR ":" out
+      }'
+}
+
+literal_decls=$(strip_comments \
+  | grep -E '(^|[{;[:space:]])--[a-z0-9-]+[[:space:]]*:[^;]*(#[0-9a-fA-F]{3,8}|rgba?\([[:space:]]*[0-9.]|hsla?\([[:space:]]*[0-9.])' \
   | grep -vE '/styles/(tokens|themes)\.css:' \
   | grep -vE '/settings/SettingsAppearance\.vue:' || true)
 

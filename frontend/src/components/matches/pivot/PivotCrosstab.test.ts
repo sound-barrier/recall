@@ -196,6 +196,19 @@ describe('PivotCrosstab — shared judgment', () => {
     expect(within(rowFor('ana')).getAllByRole('cell', { name: '1' })).toHaveLength(2)
   })
 
+  // A record whose OCR produced no result still lands in the bucket — it has
+  // a hero, it just has no verdict. The Matches column counts it, so a
+  // win-rate cell that says "no matches" over it contradicts the row beside
+  // it. The engine's `empty` band means "nothing here at all"; with records
+  // present but none decided, the honest cell claims nothing.
+  it('does not claim "no matches" over a bucket that has records', () => {
+    renderCrosstab({ columns: [] }, [
+      { match_key: 'u-1', source_files: ['a.png'], data: { hero: 'ana' } },
+      { match_key: 'u-2', source_files: ['b.png'], data: { hero: 'ana' } },
+    ])
+    expect(within(rowFor('ana')).queryByRole('cell', { name: 'no matches' })).not.toBeInTheDocument()
+  })
+
   it('judges each band once the evidence is there', () => {
     renderCrosstab({ columns: [] }, EVIDENCE)
     expect(within(rowFor('ana')).getByRole('cell', { name: '67% — winning' })).toBeInTheDocument()
@@ -203,8 +216,10 @@ describe('PivotCrosstab — shared judgment', () => {
     // 49 of 100 sits inside the 48.5–51% dead zone. The old pivot tinted
     // everything under 50% red; a 49% record over a hundred games is level.
     expect(within(rowFor('echo')).getByRole('cell', { name: '49% — even' })).toBeInTheDocument()
-    // Twenty draws is a 0% win rate and no losses at all — the old pivot
-    // painted that the deepest red on the grid.
-    expect(within(rowFor('lucio')).getByRole('cell', { name: '0% — drawn' })).toBeInTheDocument()
+    // Twenty draws decides nothing, so there is no rate to print — the cell
+    // reads as no-sample and speaks the band alone. It used to render
+    // "0% — drawn": the old pivot divided by every match rather than the
+    // decisive ones, painting a 0% that reads as "you lost them all".
+    expect(within(rowFor('lucio')).getByRole('cell', { name: 'drawn' })).toBeInTheDocument()
   })
 })

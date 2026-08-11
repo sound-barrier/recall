@@ -48,6 +48,31 @@ describe('pivot — aggregation math', () => {
     expect(formatPivotCell(res.grandTotals[0] ?? null, 'winRate')).toBe('75%')
   })
 
+  // The printed percentage and the tint derived from the same tally must
+  // describe the SAME matches. heatmapCellBand judges over decisive games
+  // (wins + losses), so the rate has to as well — otherwise a draw-carrying
+  // bucket prints one number and paints the verdict of another.
+  it('computes win rate over DECISIVE games, so it agrees with the band', () => {
+    const recs = [
+      ...Array.from({ length: 8 }, () => rec({ result: 'victory' })),
+      ...Array.from({ length: 7 }, () => rec({ result: 'defeat' })),
+      ...Array.from({ length: 3 }, () => rec({ result: 'draw' })),
+    ]
+    const res = pivot(recs, cfg({ values: [{ field: 'matches', agg: 'winRate' }] }), fields)
+    // 8 / (8+7) = 53.3, not 8 / 18 = 44.4
+    expect(res.grandTotals[0]).toBeCloseTo((8 / 15) * 100, 5)
+    expect(formatPivotCell(res.grandTotals[0] ?? null, 'winRate')).toBe('53%')
+  })
+
+  // A bucket that decided nothing has no rate to report. 0% would read as
+  // "you lost every game" — the same sentinel the masthead and the heatmap
+  // both refuse to print.
+  it('reports no win rate for an all-draws bucket', () => {
+    const recs = [rec({ result: 'draw' }), rec({ result: 'draw' })]
+    const res = pivot(recs, cfg({ values: [{ field: 'matches', agg: 'winRate' }] }), fields)
+    expect(res.grandTotals[0]).toBeNull()
+  })
+
   it('sums / averages / min / max a measure, skipping null samples', () => {
     const recs = [rec({ eliminations: 10 }), rec({ eliminations: 20 }), rec({})]
     const res = pivot(recs, cfg({
