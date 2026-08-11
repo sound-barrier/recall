@@ -1189,8 +1189,8 @@ export const runDatabaseMaintenance = <ThrowOnError extends boolean = false>(opt
 /**
  * Build a selection-aware export bundle (ZIP)
  *
- * Builds a `.zip` containing the existing `recall-export/v1`
- * JSON (filtered to the requested matches) at `data.json`, every
+ * Builds a `.zip` containing a `recall-export/v2` JSON payload
+ * (filtered to the requested matches) at `data.json`, every
  * referenced screenshot under `screenshots/<filename>`, and a
  * root `manifest.json` listing screenshot → match_key mappings
  * for sanity-checking after restore.
@@ -1204,7 +1204,10 @@ export const runDatabaseMaintenance = <ThrowOnError extends boolean = false>(opt
  * `include_hidden: true` exports every hidden match.
  *
  * Merge into another install via `POST /api/v1/imports` — the
- * `data.json` shape is the `recall-export/v1` envelope.
+ * `data.json` shape is the `recall-export/v2` envelope, which
+ * carries the user layer (edits, annotations, reviews, queue and
+ * play-mode picks, hidden and pinned flags) alongside the OCR row
+ * tables. `recall-export/v1` bundles still import unchanged.
  *
  */
 export const exportBundle = <ThrowOnError extends boolean = false>(options: Options<ExportBundleData, ThrowOnError>): RequestResult<ExportBundleResponses, ExportBundleErrors, ThrowOnError> => (options.client ?? client).post<ExportBundleResponses, ExportBundleErrors, ThrowOnError>({

@@ -45,7 +45,8 @@ type issueSink func(kind, msg string)
 // the three pieces:
 //
 //   - `manifest.json`: provenance + the screenshot → match_key map
-//   - `data.json`:     the `recall-export/v1` row tables
+//   - `data.json`:     the `recall-export/v2` row tables + user layer
+//     (v1 bundles still import; v2 is what export writes)
 //   - `screenshots/`:  the on-disk image bytes
 //
 // Returns a non-nil error only when the ZIP itself can't be parsed

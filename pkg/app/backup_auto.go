@@ -68,10 +68,14 @@ func (a *App) writeSnapshot(prefix string, keep int) (string, error) {
 //
 // A Glob failure and "nothing to prune" are separate arms on purpose.
 // Both skip the removal loop — pruning nothing is always the safe
-// choice — but a data dir the pattern can't express (a bracket in a
-// user-chosen profile name yields filepath.ErrBadPattern) would
-// otherwise disable pruning for the life of the install while
-// backups/ grew without bound, and say nothing about it.
+// choice — but a path the pattern can't express yields
+// filepath.ErrBadPattern, which would otherwise disable pruning for the
+// life of the install while backups/ grew without bound, and say nothing
+// about it. NOT reachable through a profile name: profileNameRe forbids
+// a bracket and every rename path enforces it. The reachable sources are
+// an unmatched '[' in RECALL_DATA_DIR or in the OS home directory the
+// default data dir is built from — neither of which this process
+// validates.
 func pruneSnapshots(dir, prefix string, keep int) {
 	matches, err := filepath.Glob(filepath.Join(dir, prefix+"*.db"))
 	if err != nil {
