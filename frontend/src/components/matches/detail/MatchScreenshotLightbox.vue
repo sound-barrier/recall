@@ -192,11 +192,32 @@ function onNextClick() {
   position: fixed;
   inset: 0;
   z-index: 1100;
+
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     the letterbox this viewer opens into. Same call as .source-preview in
+     badges.css: a photo viewport is black in every theme, because a
+     surface token would cast its own tint over the screenshot's colors. */
   background: rgb(0 0 0 / 92%);
   display: grid;
   place-items: center;
   padding: var(--space-5);
   cursor: zoom-out;
+}
+
+/* The lightbox chrome is ONE plate, declared once. It floats on the black
+   letterbox in every theme, so it can't take a surface token and its type
+   can't take --text: on Day that resolved to #1a1a1a and put the close,
+   counter and prev/next glyphs at 1.16:1 — invisible. --on-dark-plate is
+   the token for type on a permanently dark ground (18:1 here). */
+.lightbox-close,
+.lightbox-count,
+.lightbox-prev,
+.lightbox-next {
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     see above: chrome sitting on the photo letterbox, black in every theme. */
+  background: rgb(0 0 0 / 65%);
+  border: 1px solid var(--border);
+  color: var(--on-dark-plate);
 }
 
 .lightbox-close {
@@ -205,9 +226,6 @@ function onNextClick() {
   left: 0.8rem;
   width: 2.4rem;
   height: 2.4rem;
-  background: rgb(0 0 0 / 65%);
-  border: 1px solid var(--border);
-  color: var(--text);
   font-family: var(--mono);
   font-size: var(--type-5xl);
   line-height: 1;
@@ -237,10 +255,7 @@ function onNextClick() {
   top: 1.2rem;
   left: 4rem;
   padding: 0.25rem 0.55rem;
-  background: rgb(0 0 0 / 65%);
-  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  color: var(--text);
   font-family: var(--mono);
   font-size: var(--type-sm);
   font-feature-settings: "tnum";
@@ -260,9 +275,6 @@ function onNextClick() {
   transform: translateY(-50%);
   width: 3rem;
   height: 4.5rem;
-  background: rgb(0 0 0 / 65%);
-  border: 1px solid var(--border);
-  color: var(--text);
   font-family: var(--mono);
   font-size: var(--type-7xl);
   line-height: 1;

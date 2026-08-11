@@ -271,13 +271,24 @@ function onBack()   { void tour.prev() }
   align-items: center;
   gap: 0.45rem;
   padding: 0.32rem 0.7rem 0.3rem 0.45rem;
+
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     the marker floats over whatever the tour is pointing at, so its plate
+     can't read a surface token — it has to stay dark against every theme's
+     ground the way a scrim does (see tokens.css on --shadow-rgb's scope). */
   background: rgb(0 0 0 / 65%);
-  border: 1px solid var(--border, #3a3a3a);
+  border: 1px solid var(--border);
   border-left: 2px solid var(--accent);
   font-family: var(--mono);
   font-size: var(--type-2xs);
   letter-spacing: 0.22em;
-  color: var(--accent-text);
+
+  /* --accent-text is the DARK rust for type on cream; on this permanently
+     dark plate it landed at 1.10:1 on Day — the label was invisible in the
+     one theme the token exists for. --on-dark-plate is the token for text
+     on a plate that ignores the theme switch (6.9:1 here on Day, 17:1+ on
+     the dark themes); the accent identity stays in the left rail. */
+  color: var(--on-dark-plate);
   user-select: none;
   animation: tour-marker-pulse 3.2s ease-in-out infinite;
 }

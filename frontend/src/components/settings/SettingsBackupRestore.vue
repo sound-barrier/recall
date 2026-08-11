@@ -270,7 +270,7 @@ const INTERVALS = [
 
 .auto-backup-cell:hover {
   color: var(--text);
-  background: rgb(255 255 255 / 3%);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
 }
 
 .auto-backup-cell.active {

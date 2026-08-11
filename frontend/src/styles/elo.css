@@ -141,6 +141,11 @@
 #panel-elo .elo-answer-head {
   margin: 0.2rem 0 0;
   font-family: var(--display);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     the Elo verdict headline. Fluid display type: the config exempts
+     static display sizes (>=1.8rem) as per-surface editorial choices, and
+     this is that choice expressed as a ramp — 2rem to 3.1rem is display
+     scale at both ends, so no --type-* stop can express it. */
   font-size: clamp(2rem, 5.5vw, 3.1rem);
   line-height: 1.02;
   letter-spacing: 0.02em;

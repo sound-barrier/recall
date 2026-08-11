@@ -20,25 +20,44 @@
 }
 
 .badge.mode {
-  background: rgb(255 255 255 / 4%);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
   border-color: var(--border-strong);
 }
 
 .badge.type {
-  background: rgb(255 255 255 / 2.5%);
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
   color: var(--text-faint);
   letter-spacing: 0.12em;
 }
 
+/* The border tracks the role token, not a frozen copy of it. These were
+   the Night hues spelled out longhand (#ff7a5a / #6ab8ff / #7dffac) in a
+   theme-agnostic rule, so on Day the chip painted its tuned dark fill and
+   dark type inside a bright dark-palette outline. */
 .badge.role { font-weight: 700; }
-.badge.role.dps     { background: var(--dps-soft);     color: var(--dps);     border-color: rgb(255 122 90 / 40%); }
-.badge.role.tank    { background: var(--tank-soft);    color: var(--tank);    border-color: rgb(106 184 255 / 40%); }
-.badge.role.support { background: var(--support-soft); color: var(--support); border-color: rgb(125 255 172 / 40%); }
+
+.badge.role.dps {
+  background: var(--dps-soft);
+  color: var(--dps);
+  border-color: color-mix(in srgb, var(--dps) 40%, transparent);
+}
+
+.badge.role.tank {
+  background: var(--tank-soft);
+  color: var(--tank);
+  border-color: color-mix(in srgb, var(--tank) 40%, transparent);
+}
+
+.badge.role.support {
+  background: var(--support-soft);
+  color: var(--support);
+  border-color: color-mix(in srgb, var(--support) 40%, transparent);
+}
 
 .badge.hero {
   background: var(--accent-soft);
   color: var(--accent-text);
-  border-color: rgb(245 166 35 / 40%);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   font-weight: 600;
 }
 
@@ -51,9 +70,13 @@
 
 /* .incomplete-badge family lives in MatchCardHeader.vue. Light-mode
    theme override has to be a global rule because Vue scoped CSS
-   miscompiles `:global([data-theme="day"]) .x`. */
+   miscompiles `:global([data-theme="day"]) .x`.
+
+   The tint was #F5A623 — the NIGHT accent — spelled out inside this Day
+   block, so the one theme the rule exists for was the one theme it got
+   wrong. var(--accent) resolves to Day's #fa9c1b here. */
 [data-theme="day"] .incomplete-badge {
-  background: rgb(245 166 35 / 12%);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent-text);
 }
 

@@ -301,6 +301,11 @@ function onBackdropClick(e: MouseEvent) {
   position: fixed;
   inset: 0;
   z-index: 1090;
+
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     modal scrim. tokens.css scopes --shadow-rgb to outer shadows and
+     calls out scrims by name: they dim the app in every theme and are
+     deliberately black, so Day's warm-gray tint must not reach here. */
   background: rgb(0 0 0 / 70%);
   display: grid;
   place-items: center;

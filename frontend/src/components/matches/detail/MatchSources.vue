@@ -239,10 +239,14 @@ const emit = defineEmits<{
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
 }
 
+/* Recessed toward the page ground rather than toward literal black. The
+   old rgb(0 0 0 / 30%) was a dark-theme value that needed the Day
+   override in badges.css to stay legible; mixing --bg keeps the same
+   depth on Night/HC and stops slamming Dark's mid-gray surfaces. */
 .sources {
   margin-top: 0.55rem;
   padding: 0.65rem 0.75rem;
-  background: rgb(0 0 0 / 30%);
+  background: color-mix(in srgb, var(--bg) 30%, transparent);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   font-family: var(--mono);
@@ -289,27 +293,34 @@ const emit = defineEmits<{
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
 }
 
+/* One tint per chip, taken from the chip's own token rather than a frozen
+   copy of the Night hue. The fills were spelled out longhand (#6ab8ff /
+   #7dffac / #ffc94d), so on Day each chip paired a bright dark-palette
+   wash with the tuned dark type that var(--tank|--support|--draw)
+   resolves to. The -soft variants are the per-theme partners those text
+   tokens were contrast-tuned against, so the pairing is AA by
+   construction now instead of by luck. */
 .source-type-summary {
   background: var(--accent-soft);
-  border-color: rgb(245 166 35 / 50%);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   color: var(--accent-bright);
 }
 
 .source-type-scoreboard {
-  background: rgb(106 184 255 / 12%);
-  border-color: rgb(106 184 255 / 50%);
+  background: var(--tank-soft);
+  border-color: color-mix(in srgb, var(--tank) 50%, transparent);
   color: var(--tank);
 }
 
 .source-type-personal {
-  background: rgb(125 255 172 / 12%);
-  border-color: rgb(125 255 172 / 50%);
+  background: var(--support-soft);
+  border-color: color-mix(in srgb, var(--support) 50%, transparent);
   color: var(--support);
 }
 
 .source-type-rank {
-  background: rgb(255 201 77 / 14%);
-  border-color: rgb(255 201 77 / 50%);
+  background: var(--draw-soft);
+  border-color: color-mix(in srgb, var(--draw) 50%, transparent);
   color: var(--draw);
 }
 

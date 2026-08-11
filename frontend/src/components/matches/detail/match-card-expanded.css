@@ -56,6 +56,12 @@
 .unknown-alert-ocr code {
   font-family: var(--mono);
   font-size: var(--type-sm);
+
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     a recess punched into the alert's accent fill. Black is the one wash
+     that reads as "sunk" in BOTH directions: over the dark themes it
+     deepens, over Day's cream-orange it grays. Every token here flips
+     with the theme and would raise the chip on one side or the other. */
   background: rgb(0 0 0 / 18%);
   padding: 0.05rem 0.3rem;
   border-radius: var(--radius);

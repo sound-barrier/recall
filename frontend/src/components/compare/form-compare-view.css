@@ -167,6 +167,10 @@
 .form-verdict-word {
   margin: 0.15rem 0 0;
   font-family: var(--display);
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     the Form verdict word — fluid display type, 2.2rem to 3.4rem. Display
+     scale at both ends, so it sits in the same per-surface editorial
+     carve-out the config documents for static sizes >=1.8rem. */
   font-size: clamp(2.2rem, 6vw, 3.4rem);
   line-height: 1;
   letter-spacing: 0.04em;
