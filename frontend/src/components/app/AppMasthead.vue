@@ -12,6 +12,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { tallyWLD } from '@/match/match-stats-helpers'
+import { winrateOrNull } from '@/match/match-dossier-tally'
 import { useTabKeyboardNav } from '@/composables/shared/useTabKeyboardNav'
 import { GITHUB_REPO_URL } from '@/app-links'
 import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
@@ -39,6 +40,11 @@ const wld = computed(() => tallyWLD(
   matchesNarrow.narrowedRecords.value,
   matchesNarrow.leaverHandling.value === 'exclude-tally',
 ))
+
+// Decisive games only — the house convention, because a draw is not a loss.
+// Null rather than 0 when nothing was decided: an all-draws set has no rate
+// to report, and 0% would read as "you lost every game".
+const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.value.l))
 </script>
 
 <template>
@@ -183,7 +189,9 @@ const wld = computed(() => tallyWLD(
         v-if="records.length > 0 && view === 'matches'"
         class="scoreboard"
         :class="{ pulse: recordsPulse }"
-        title="Wins · Losses · Draws across the currently filtered matches"
+        role="group"
+        aria-label="Record"
+        title="Wins · Losses · Draws across the currently filtered matches, and the win rate over decisive games"
       >
         <div class="score-cell">
           <span class="score-num win">{{ wld.w }}</span>
@@ -197,6 +205,10 @@ const wld = computed(() => tallyWLD(
           <span class="score-num draw">{{ wld.d }}</span>
           <span class="score-label">Drew</span>
         </div>
+        <p class="score-rate">
+          <span class="score-rate-num">{{ winRate === null ? '—' : `${winRate}%` }}</span>
+          <span class="score-label">Win rate</span>
+        </p>
       </div>
       <ProfileSwitcher />
       <div class="ver-block">
