@@ -579,12 +579,18 @@ export const getIgnoredScreenshots = <ThrowOnError extends boolean = false>(opti
 /**
  * List screenshots whose OCR attempt failed
  *
- * Returns the OCR-failure ledger, most-recently-failed first —
+ * Returns the OCR-trouble ledger, most-recently-recorded first —
  * the Unknown tab's "Failed to read" triage section. A row exists
- * while the file's most recent parse attempt failed; failed files
- * are re-attempted on every parse run (this is visibility, not a
- * skip list). A later successful parse clears its row, as does
- * `PUT /api/v1/screenshots/{filename}/ignore` ("Delete forever").
+ * in two cases: the file's most recent parse attempt FAILED
+ * outright, or it succeeded but DEGRADED (a cell's OCR failed, so
+ * some stats are missing from an otherwise-stored match). The two
+ * differ in retry: a failed file stored no rows and is re-attempted
+ * on every parse run, while a degraded one did store rows and so is
+ * only re-read by "Re-parse all screenshots" — which is why it
+ * surfaces here rather than silently passing as clean. Either way
+ * this is visibility, not a skip list. A later clean parse clears
+ * the row, as does `PUT /api/v1/screenshots/{filename}/ignore`
+ * ("Delete forever").
  *
  */
 export const getFailedFiles = <ThrowOnError extends boolean = false>(options?: Options<GetFailedFilesData, ThrowOnError>): RequestResult<GetFailedFilesResponses, GetFailedFilesErrors, ThrowOnError> => (options?.client ?? client).get<GetFailedFilesResponses, GetFailedFilesErrors, ThrowOnError>({ url: '/api/v1/screenshots/failed', ...options });

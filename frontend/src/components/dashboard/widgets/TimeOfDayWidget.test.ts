@@ -35,17 +35,27 @@ describe('TimeOfDayWidget', () => {
     // The stat column carries the judgment, not the share.
     expect(within(rows[4]!).getByText('61%')).toBeInTheDocument()
     expect(within(rows[5]!).getByText('40%')).toBeInTheDocument()
-    // The meter value is the volume share, matching what the width paints.
-    const winBar = screen.getByRole('progressbar', { name: '16–20 share' })
+    // The meter value is the volume share, matching what the width paints;
+    // the NAME carries the win-rate band the tint paints, which
+    // aria-valuenow (the share) cannot express.
+    const winBar = screen.getByRole('progressbar', { name: '16–20 share — winning' })
     expect(winBar).toHaveAttribute('aria-valuenow', '60')
-    // Color comes from the shared judgment engine (18 decisive at 61%
-    // clears the evidence floor). A threshold tint has no ARIA
-    // encoding — the stat column already carries the rate — so the
-    // class stays as the visual pin.
-    // eslint-disable-next-line no-restricted-syntax -- bucketCellClass judgment tint — the winrate THRESHOLD, which aria-valuenow (the share) cannot express
-    expect(winBar).toHaveClass('cell-win')
-    // eslint-disable-next-line no-restricted-syntax -- bucketCellClass judgment tint — the winrate THRESHOLD, which aria-valuenow (the share) cannot express
-    expect(screen.getByRole('progressbar', { name: '20–24 share' })).toHaveClass('cell-loss')
+    expect(screen.getByRole('progressbar', { name: '20–24 share — losing' })).toBeInTheDocument()
+  })
+
+  it('does not let a short, loud bucket claim a verdict the tint withholds', () => {
+    renderWidget(TimeOfDayWidget, {
+      dossier: {
+        timeOfDayBuckets: [
+          // 5-0 is a 100% evening and still under the 15-decisive floor:
+          // grey bar, and a name that says why rather than "winning".
+          bucket('00–04', { count: 5, share: 100, winrate: 100, wins: 5, decisive: 5 }),
+          bucket('04–08'), bucket('08–12'), bucket('12–16'), bucket('16–20'), bucket('20–24'),
+        ],
+      },
+    })
+    expect(screen.getByRole('progressbar', { name: '00–04 share — too few games to judge' })).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar', { name: /00–04 share — winning/ })).not.toBeInTheDocument()
   })
 
   it('a played-but-undecided bucket shows volume with a no-sample stat', () => {

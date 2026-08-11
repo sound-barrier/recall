@@ -2,7 +2,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widgets'
-import { bucketCellClass } from '@/match/match-heatmap-helpers'
+import { bucketCellClass, bucketCellJudgment } from '@/match/match-heatmap-helpers'
 import type { WeekStart } from '@/match/match-time-helpers'
 
 const dossier = useDossier()
@@ -37,7 +37,7 @@ const buckets = dossier.dayOfWeekBuckets(() => ({
           :aria-valuenow="Math.round(b.share)"
           aria-valuemin="0"
           aria-valuemax="100"
-          :aria-label="`${b.label} share`"
+          :aria-label="`${b.label} share — ${bucketCellJudgment(b)}`"
           :style="{ width: b.share + '%' }"
         />
         <span class="bd-time">{{ b.count }}x</span>

@@ -2,6 +2,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { recentMatchesSchema, type RecentMatchesConfig } from '@/dashboard/widgets'
+import { resultJudgment } from '@/match/match-heatmap-helpers'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<RecentMatchesConfig>('recent-5-matches', recentMatchesSchema)
@@ -18,6 +19,8 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
       :key="idx"
       class="recent-pill"
       :class="`recent-pill-${r}`"
+      role="img"
+      :aria-label="resultJudgment(r)"
       :title="r"
     >
       {{ r === 'victory' ? 'W' : r === 'defeat' ? 'L' : 'D' }}

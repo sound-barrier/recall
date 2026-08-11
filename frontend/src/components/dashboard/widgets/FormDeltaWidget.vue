@@ -7,6 +7,7 @@ import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { formDeltaSchema, type FormDeltaConfig } from '@/dashboard/widgets'
+import { signJudgment } from '@/match/match-heatmap-helpers'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<FormDeltaConfig>('form-delta', formDeltaSchema)
@@ -17,6 +18,17 @@ const gapClass = computed(() => {
   if (gap === null || gap === 0) return ''
   return gap > 0 ? 'gap-up' : 'gap-down'
 })
+
+// The tint is the only thing separating "beating your baseline" from
+// "below it"; role="img" + the shared band word says which (WCAG 1.4.1).
+const gapText = computed(() => {
+  const gap = form.value.deltaPts
+  return gap === null ? '' : `${gap > 0 ? '+' : ''}${gap} pts`
+})
+const gapName = computed(() => {
+  const gap = form.value.deltaPts
+  return gap === null ? undefined : `${gapText.value} — ${signJudgment(gap)}`
+})
 </script>
 
 <template>
@@ -24,7 +36,7 @@ const gapClass = computed(() => {
   <span class="kpi-value">{{ form.recent.winrate === null ? '—' : `${form.recent.winrate}%` }}</span>
   <!-- "n=" mirrors the Winrate tile's sample vocabulary. -->
   <span v-if="form.deltaPts !== null" class="kpi-sub">
-    <span class="form-gap" :class="gapClass">{{ form.deltaPts > 0 ? '+' : '' }}{{ form.deltaPts }} pts</span>
+    <span class="form-gap" :class="gapClass" role="img" :aria-label="gapName">{{ gapText }}</span>
     vs {{ form.overall.winrate }}% overall · n={{ form.recent.sample }}
   </span>
 </template>

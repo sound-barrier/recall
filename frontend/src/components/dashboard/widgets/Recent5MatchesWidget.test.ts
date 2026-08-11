@@ -10,21 +10,20 @@ describe('Recent5MatchesWidget', () => {
     expect(screen.queryAllByTitle(/victory|defeat|draw/)).toHaveLength(0)
   })
 
-  it('renders a pill per result in newest-first order with the right class', () => {
+  it('renders a pill per result in newest-first order, each named by its band', () => {
     renderWidget(Recent5MatchesWidget, {
       dossier: { recentResults: ['victory', 'defeat', 'defeat', 'victory', 'draw'] },
     })
     const pills = screen.getAllByTitle(/victory|defeat|draw/)
     expect(pills).toHaveLength(5)
+    // The pill's per-result tint is the shared win / loss / draw palette,
+    // so it speaks the shared vocabulary rather than leaning on color.
     expect(pills[0]).toHaveTextContent(/^W$/)
-    // eslint-disable-next-line no-restricted-syntax -- result tint; the pill title + W/L/D text already pin the result mapping
-    expect(pills[0]).toHaveClass('recent-pill-victory')
+    expect(pills[0]).toHaveAccessibleName('winning')
     expect(pills[1]).toHaveTextContent(/^L$/)
-    // eslint-disable-next-line no-restricted-syntax -- result tint; the pill title + W/L/D text already pin the result mapping
-    expect(pills[1]).toHaveClass('recent-pill-defeat')
+    expect(pills[1]).toHaveAccessibleName('losing')
     expect(pills[4]).toHaveTextContent(/^D$/)
-    // eslint-disable-next-line no-restricted-syntax -- result tint; the pill title + W/L/D text already pin the result mapping
-    expect(pills[4]).toHaveClass('recent-pill-draw')
+    expect(pills[4]).toHaveAccessibleName('drawn')
   })
 
   it('exposes the count via data-recent-count for selector-based assertions', () => {

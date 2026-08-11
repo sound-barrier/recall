@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"recall/pkg/app"
@@ -71,6 +72,65 @@ func TestApp_ParseScreenshots_SuccessClearsFailedFile(t *testing.T) {
 	}
 	if _, still := fake.FailedFiles["flaky.png"]; still {
 		t.Error("a successful parse must remove the file's failure row")
+	}
+}
+
+// A parse that SUCCEEDED but degraded (the parser recorded a non-fatal
+// warning: a stat cell whose OCR failed, a hero card that lost its timing)
+// must land BOTH ways — the data it did read is stored, and the file keeps a
+// triage-ledger row so the Unknown tab can offer a deliberate re-parse.
+// Without the second half the success path's RemoveFailedFile clears the row
+// and the degradation is invisible forever.
+func TestApp_ParseScreenshots_DegradedParseIsLedgeredAndStillStored(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		res := &parser.MatchResult{
+			Hero: "kiriko",
+			HeroesPlayed: []parser.HeroPlay{
+				{Hero: "kiriko", Stats: map[string]int{"solo_kills": 13}},
+			},
+			Warnings: []string{"personal_r0c2 OCR failed: tesseract failed: exit status 1"},
+		}
+		progress(1, 1, "degraded.png", res, nil)
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	row, ok := fake.FailedFiles["degraded.png"]
+	if !ok {
+		t.Fatalf("a degraded parse must stay in the triage ledger, got %v", fake.FailedFiles)
+	}
+	if !strings.Contains(row.Error, "personal_r0c2") {
+		t.Errorf("ledger error = %q, want the parser's warning carried verbatim", row.Error)
+	}
+	if len(fake.Personals) != 1 {
+		t.Fatalf("stored personals = %d, want 1 — a degraded parse still stores what it read", len(fake.Personals))
+	}
+}
+
+// The ledger must not become a graveyard: once a re-parse comes back clean,
+// the standing row from an earlier degraded run is cleared.
+func TestApp_ParseScreenshots_CleanReparseClearsADegradedLedgerRow(t *testing.T) {
+	a, fake := newParseReadyApp(t)
+	if err := fake.RecordFailedFile("degraded.png", 1, "personal_r0c2 OCR failed"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		res := &parser.MatchResult{
+			Hero:         "kiriko",
+			HeroesPlayed: []parser.HeroPlay{{Hero: "kiriko", PercentPlayed: 100, PlayTime: "9:12", Stats: map[string]int{"solo_kills": 13}}},
+		}
+		progress(1, 1, "degraded.png", res, nil)
+		return nil
+	})
+
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("ParseScreenshots: %v", err)
+	}
+	if _, still := fake.FailedFiles["degraded.png"]; still {
+		t.Error("a warning-free re-parse must clear the standing ledger row")
 	}
 }
 

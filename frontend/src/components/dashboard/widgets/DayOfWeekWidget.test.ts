@@ -36,10 +36,28 @@ describe('DayOfWeekWidget', () => {
     expect(within(rows[2]!).getByText('Wed')).toBeInTheDocument()
     // The stat column carries the judgment, not the share.
     expect(within(rows[2]!).getByText('43%')).toBeInTheDocument()
-    // The bar keeps the volume footprint; the meter value matches it.
-    expect(screen.getByRole('progressbar', { name: 'Wed share' }))
+    // The bar keeps the volume footprint; the meter value matches it. At
+    // 7 decisive the tint is grey for want of evidence, and the name says
+    // exactly that rather than reading 43% as a slide.
+    expect(screen.getByRole('progressbar', { name: 'Wed share — too few games to judge' }))
       .toHaveAttribute('aria-valuenow', '70')
     // A no-play day reads as no-sample.
     expect(within(rows[1]!).getByText('—')).toBeInTheDocument()
+  })
+
+  it('speaks the win-rate band on a day with the volume to earn one', () => {
+    renderWidget(DayOfWeekWidget, {
+      dossier: {
+        dayOfWeekBuckets: [
+          bucket('Mon', { count: 30, share: 60, winrate: 60, wins: 18, decisive: 30 }),
+          bucket('Tue', { count: 20, share: 40, winrate: 40, wins: 8, decisive: 20 }),
+          bucket('Wed'), bucket('Thu'), bucket('Fri'), bucket('Sat'), bucket('Sun'),
+        ],
+      },
+    })
+    expect(screen.getByRole('progressbar', { name: 'Mon share — winning' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Tue share — losing' })).toBeInTheDocument()
+    // A day never played claims nothing at all.
+    expect(screen.getByRole('progressbar', { name: 'Wed share — no matches' })).toBeInTheDocument()
   })
 })
