@@ -1,5 +1,131 @@
 # Changelog
 
+## [0.30.0](https://github.com/sound-barrier/recall/compare/v0.29.0...v0.30.0) (2026-08-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** the stats entries of GET /api/v1/system/screenshots-folder-candidates/stats now carry `recognized_count` instead of `recognised_count`.
+* **api:** the SSE/desktop event `parse-cancelled` is now `parse-canceled`; any external SSE consumer listening for the old name must update.
+* **frontend:** the desktop frontend now talks to the backend exclusively over HTTP served by the asset-server middleware; the Call.ByName RPC transport for API methods is removed. Native dialogs and events still use the Wails runtime.
+* **matches:** the persisted table-sort stack drops stored 'edited'/'manual' levels (the whole stack falls back to the default date-descending key on first load) and stored widths for the removed columns are ignored.
+
+### Features
+
+* **api:** describe the event payloads in the OpenAPI spec ([19bbadd](https://github.com/sound-barrier/recall/commit/19bbadde77adce2a88d769a98dc9c0855aab1e58))
+* **dossier:** add form/recovery metrics and winrate-judged buckets ([5ccb5d2](https://github.com/sound-barrier/recall/commit/5ccb5d235b5072786a946e5d6a5d56de7ad5ddb6))
+* **dossier:** climb-focused install defaults + layout re-seed ([115f15f](https://github.com/sound-barrier/recall/commit/115f15f705872fc7ee33aa538d94c29224ceebc7))
+* **dossier:** climb-form widget family + winrate-judged buckets ([af84bd5](https://github.com/sound-barrier/recall/commit/af84bd5517e4c7b5e5a5dff2f1a22f9f799abb83))
+* **frontend:** add the @tanstack/vue-query client + plugin ([1918b4c](https://github.com/sound-barrier/recall/commit/1918b4c54338918f26deb3e234abd605a27bdd54))
+* **frontend:** unify the api transport on fetch via the generated SDK ([c807362](https://github.com/sound-barrier/recall/commit/c807362c5e5116c2fe26b44c4fccbeda4491c1bc))
+* **masthead:** state the win rate under the W/L/D tally ([928d744](https://github.com/sound-barrier/recall/commit/928d7441146379627b5c1812db4661be350e8b03))
+* **server:** serve the REST API through the Wails asset server ([8801f91](https://github.com/sound-barrier/recall/commit/8801f91a6b48048936429393c3f4b32f876d7472))
+* **styles:** give the unproven verdict a type token ([aa1c82f](https://github.com/sound-barrier/recall/commit/aa1c82faee26bce083365a67c92a29d47a50bd0b))
+
+
+### Bug Fixes
+
+* **app:** reject non-200 release responses in the update check ([1b3b36f](https://github.com/sound-barrier/recall/commit/1b3b36fb533deeb7bba183d043263a89f459816f))
+* **bundle:** carry pinned matches through export and import ([de01caa](https://github.com/sound-barrier/recall/commit/de01caaf91f6823a4d45643146d321badbf443f8))
+* **ci:** fail readably when the bundle gate cannot measure the entry graph ([e9c0da6](https://github.com/sound-barrier/recall/commit/e9c0da65a98b6b651a27a25c54373ecbf4969d71))
+* **ci:** measure the whole entry graph in the bundle-size gate ([88b5e98](https://github.com/sound-barrier/recall/commit/88b5e9820aff400d0012380c81d562d351c43651))
+* **dossier:** carry the raw win tally on BucketEntry ([e951d9c](https://github.com/sound-barrier/recall/commit/e951d9c726c79ffba78cfd790cf1a7133664ddfa))
+* **dossier:** clamp trailing-window cutoffs at month ends ([5ca0cbb](https://github.com/sound-barrier/recall/commit/5ca0cbb2b219dce720a2fcfa36cb64926d6ae22a))
+* **dossier:** review findings — tally coherence, tour copy, budget ([aaf7077](https://github.com/sound-barrier/recall/commit/aaf7077216db68273222a4904e93090698fe924f))
+* **dossier:** UX-review polish — role labels and sample vocabulary ([d6c55e2](https://github.com/sound-barrier/recall/commit/d6c55e20ae19673ce01e4e557f7c249956edee9d))
+* **e2e:** normalize weekday labels glued to the preceding cell ([0467f67](https://github.com/sound-barrier/recall/commit/0467f67412a43c1454d010f013beb0594e704069))
+* **frontend:** adversarial-review findings on the query migration ([af38dbd](https://github.com/sound-barrier/recall/commit/af38dbd3a1c2dfb4f16a42ce97eb31d262c3b864))
+* **gamedata:** make the manifest actually be the commit point ([0814a37](https://github.com/sound-barrier/recall/commit/0814a37a65b0ec2292072b8a65802a6af145e4a5))
+* **gamedata:** make the manifest the commit point of a data update ([2c4fb35](https://github.com/sound-barrier/recall/commit/2c4fb354c31ca72295b52da90ae9e4d7f60e3bca))
+* **matches:** make the pivot cell agree with its own verdict ([216ed7f](https://github.com/sound-barrier/recall/commit/216ed7f466172a6cc2ab7cd479f5a669f14c6f9b))
+* **profiles:** carry the review list when a match changes profile ([b7a1823](https://github.com/sound-barrier/recall/commit/b7a18234e55709fc41aca44c0c507a3a65f190d8))
+* resolve every confirmed adversarial-review finding ([9ccfd32](https://github.com/sound-barrier/recall/commit/9ccfd32bf437ea555c0166074ec9bf7e46047a8d))
+* stop a cleared edit, a spelled-out "off", and a Glob error lying ([6ff9bbc](https://github.com/sound-barrier/recall/commit/6ff9bbccb0b0f6090caf26a6c41e8355236d317d))
+* stop losing OCR work silently, and speak the judgment a tint paints ([9c4d8a9](https://github.com/sound-barrier/recall/commit/9c4d8a9cbcf9ab093d828eb7c92e841208859344))
+* **styles:** make every var() name a token that exists ([2112367](https://github.com/sound-barrier/recall/commit/21123670eea5b4b35657bbcc5db85213e92ee8f1))
+
+
+### Refactors
+
+* **api:** rename recognised_count to recognized_count ([fee6bc2](https://github.com/sound-barrier/recall/commit/fee6bc2c1e33898b76d03ff862fac987e0beff83))
+* **api:** rename the parse-cancelled event to parse-canceled ([360d9ae](https://github.com/sound-barrier/recall/commit/360d9aeece10c0b7ce03b7ce3eb8431150d8009b))
+* bring bundle, correlate, and aggregate under the complexity gate ([d15c93d](https://github.com/sound-barrier/recall/commit/d15c93d74970525ff57e98fe7f1bc5ddfdcc1027))
+* bundle the OCR and sidecar parameter clumps into structs ([fcfa81c](https://github.com/sound-barrier/recall/commit/fcfa81ca976d3ac0af468c4de3c022554d674a7c))
+* clear the last Go carve-outs; the gate now runs bare ([007538d](https://github.com/sound-barrier/recall/commit/007538dda5b78046f10409a4465837334083e1de))
+* **cmd:** split the three flagged pkg/cmd functions ([ffd34c0](https://github.com/sound-barrier/recall/commit/ffd34c0910b1fe145acb946b27ae1ea725240cff))
+* **db:** stage-split the store's three flagged read/write paths ([715a8c9](https://github.com/sound-barrier/recall/commit/715a8c957dece5ebb942c520cbba5225f52e87e3))
+* **dbtest:** one generic row vocabulary for the five-table Fake ([cd82e0f](https://github.com/sound-barrier/recall/commit/cd82e0fff096da57f429197e46be1cf8f0a1b12e))
+* drop the package-prefix stutter from exported Go names ([63305ab](https://github.com/sound-barrier/recall/commit/63305abe8cce99d244c9ab6d2a7744e6fbcf09ab))
+* **fixtures:** registry-dispatch chaos, plan/emit match generation ([280ca11](https://github.com/sound-barrier/recall/commit/280ca11ba7d562c448ac219db3eed038e425acb3))
+* **frontend:** clear the last 45 complexity carve-outs; the gate runs bare ([2b20826](https://github.com/sound-barrier/recall/commit/2b208266742078c81e48c7b3f4280ff2edd27074))
+* **frontend:** drop openapi-typescript and api.gen.d.ts ([6bd19c4](https://github.com/sound-barrier/recall/commit/6bd19c4d634933445d4d81b48a86f65e685a7c9e))
+* **frontend:** extract the dossier kernels and clear the helper tail ([964c648](https://github.com/sound-barrier/recall/commit/964c64869662f61e09971a4564680ad79ca84a77))
+* **frontend:** matches cluster reads as queries ([67ffa8d](https://github.com/sound-barrier/recall/commit/67ffa8d9516932f7544c6ffce15c8b652d3b0e62))
+* **frontend:** move the event stream + parse recovery to useServerEvents ([8f04095](https://github.com/sound-barrier/recall/commit/8f04095493edce8836165b883b1a389158e49cfb))
+* **frontend:** one registry for the data table's column axis ([0613556](https://github.com/sound-barrier/recall/commit/06135563948a95631b122b32c0caae8988242679))
+* **frontend:** reference-data + profiles as queries ([d23be1b](https://github.com/sound-barrier/recall/commit/d23be1b519e235b3eb79045db2144d034a49e537))
+* **frontend:** resolve the QueryClient at call time from a globalThis slot ([f1de02a](https://github.com/sound-barrier/recall/commit/f1de02aa20e0f793f851f9186728eb4b9b7f646f))
+* **frontend:** review cleanups — shared profiles derivation + hydrate helper ([4ad1901](https://github.com/sound-barrier/recall/commit/4ad19015b73811a104d2d75f64565f271d93fb08))
+* **frontend:** route the binary paths through the SDK; origin-only Wails detection ([af886a2](https://github.com/sound-barrier/recall/commit/af886a2b1a95205e94b6c0d0667ffe71fb524449))
+* **frontend:** settings domain as queries ([9c0a954](https://github.com/sound-barrier/recall/commit/9c0a954b4b861ad694a2033b646d27383c336863))
+* **frontend:** strip dead store members left by the query migration ([80e3b74](https://github.com/sound-barrier/recall/commit/80e3b74a43a70b6a2202415a6f3b9e5c8c7db6cc))
+* **frontend:** system surfaces as queries ([f6c67c2](https://github.com/sound-barrier/recall/commit/f6c67c247128fe72dd4f32929be561d62703357e))
+* **frontend:** targeted mutation invalidation ([2c1d9e1](https://github.com/sound-barrier/recall/commit/2c1d9e135ab17dda3b13a060b83298240c9f7ac6))
+* **frontend:** the file-size wave — every adjudicated exemption paid ([7201886](https://github.com/sound-barrier/recall/commit/72018869ea1aa43ce31701452bc07b4b48985f71))
+* **matches:** rework the data-table columns for scanability ([e6f8b77](https://github.com/sound-barrier/recall/commit/e6f8b77777a73413aab189d645192e5afc1fc652))
+* **parser:** stage-split the OCR pipeline under the complexity gate ([9e1951a](https://github.com/sound-barrier/recall/commit/9e1951a95b0d87df4f2635b43b13601c6de0d4ad))
+* **styles:** one color language for every win-rate tint ([07d9dad](https://github.com/sound-barrier/recall/commit/07d9dad29e280f096627b292ff7b8b604c24b4c2))
+
+
+### Documentation
+
+* describe the single-transport client + query layer conventions ([cbaf696](https://github.com/sound-barrier/recall/commit/cbaf69638bc8f0d8a0beea20a30c314d8ddef902))
+* fix the stale coverage default and playwright-pin notes ([db572f5](https://github.com/sound-barrier/recall/commit/db572f58ba6a27182036a6c8dbe8b32ca5f7de36))
+* fix two accuracy defects in the TS 7.0-readiness entry ([aac1c3b](https://github.com/sound-barrier/recall/commit/aac1c3b552844cab95c73352793f2cc1a60410e1))
+* import the stackable working-style standards ([466a246](https://github.com/sound-barrier/recall/commit/466a24601d80cfcccde214d691710d0886959ebb))
+* record the campaign's residuals; root-fix the subpixel flake ([aaaa18a](https://github.com/sound-barrier/recall/commit/aaaa18a453fa1a4b91aa41ab2d967b1d6b9f4203))
+* record the TS 6→7 readiness audit results ([e5d90e4](https://github.com/sound-barrier/recall/commit/e5d90e485b5d53c1e91d63acf0beefb4c1d5c835))
+* replace the TS 7.0-readiness assumption with measured evidence ([1f15a56](https://github.com/sound-barrier/recall/commit/1f15a5683deab4f1896509790ce7485a3ed6e10c))
+* **test:** retell cohort B's narrative for the fixed bridge ([170489b](https://github.com/sound-barrier/recall/commit/170489bd7b5243d19a5b07a1799eb3855d144d34))
+* write down the two testing ladders ([017af2b](https://github.com/sound-barrier/recall/commit/017af2bcc216d08029939ccbcda875ae02a16453))
+
+
+### Build & Packaging
+
+* **ci:** raise the total-JS budget for the accessibility markup ([b6a7821](https://github.com/sound-barrier/recall/commit/b6a782110d023b92f19f779785724c5dba3a78fe))
+* **frontend:** add @hey-api/openapi-ts pipeline alongside openapi-typescript ([59a1498](https://github.com/sound-barrier/recall/commit/59a1498c36435e83ba01f7d7a37a0e081bdc369e))
+* **frontend:** add the e2e + config type-check program ([ef5e303](https://github.com/sound-barrier/recall/commit/ef5e30337cbf140ff015545723b5505a6ada08a4))
+* **frontend:** ratchet the Vitest floors to the campaign's gains ([ef869e1](https://github.com/sound-barrier/recall/commit/ef869e1386998ade5b25d8ddc73a733253d87e4c))
+* **frontend:** upgrade TypeScript to 6.0 ([2cf1e2e](https://github.com/sound-barrier/recall/commit/2cf1e2ed2e07abb7f308c8c254a40eb9b8f177ec))
+* ratchet the Go coverage floor to 77 ([dc61046](https://github.com/sound-barrier/recall/commit/dc610461b707c88e37451c79e82c18e62a6d9e2d))
+* **stylelint:** close the ignoreFunctions gap and fix the fallout ([15efd48](https://github.com/sound-barrier/recall/commit/15efd484db572a8f6eeafa65a49b2b4e262dc48a))
+
+
+### CI
+
+* enforce the Go complexity gate; retire the report-only sweep ([c606773](https://github.com/sound-barrier/recall/commit/c60677342fd211f5b6135d0a796abbfde149e172))
+* **lint:** enforce the frontend complexity gate; drop the sweep config ([fc58dee](https://github.com/sound-barrier/recall/commit/fc58dee656465f9629c6fb664a98e043210bdd42))
+
+
+### Tests
+
+* **app:** finish the Testing Library migration, retire VTU ([e95ec92](https://github.com/sound-barrier/recall/commit/e95ec9274cd7d8468ff0001864dfc24a934e04dd))
+* **composables:** move host-mount suites to Testing Library render ([9d32035](https://github.com/sound-barrier/recall/commit/9d32035a1cf429d325dbe7a3627a7e0a1263e807))
+* **dashboard:** migrate widget + chrome tests to Testing Library ([fc7b953](https://github.com/sound-barrier/recall/commit/fc7b9536b9c1578f5a6da7879289b199ee2525d0))
+* **e2e:** finish the spec sweep for the climb-focused defaults ([1c4be75](https://github.com/sound-barrier/recall/commit/1c4be7514fcc91a378e3563f697a72266fb1e04b))
+* **e2e:** query the page the way a user reaches it ([727fdba](https://github.com/sound-barrier/recall/commit/727fdbabbb9083afe2754247eda1be07b42f7078))
+* **e2e:** re-record the 21 elo snapshots the spelling sweep missed ([668be0b](https://github.com/sound-barrier/recall/commit/668be0b569c8ef69f9f07888213849c6365bcd0a))
+* **e2e:** re-record the matches-view theme snapshot ([a76e679](https://github.com/sound-barrier/recall/commit/a76e6792bd976040c91878015fb744497e920a4e))
+* **e2e:** seed demoted widgets in the remaining dossier specs ([64642be](https://github.com/sound-barrier/recall/commit/64642bebafebbda5c630d9dcbc203e9dd664fc68))
+* **e2e:** type-check the Playwright tree, fixing 32 latent errors ([041cea5](https://github.com/sound-barrier/recall/commit/041cea5965a6a9d2664ab9d53d03a8ac69536eec))
+* **frontend:** assert semantics, not the paint ([48072c7](https://github.com/sound-barrier/recall/commit/48072c7bf2ca765615640d3f2c8d6a6df2f375b4))
+* **frontend:** cover the branches, and fix what they exposed ([154e244](https://github.com/sound-barrier/recall/commit/154e24421a1ddff31b02bc00a836129df5aa2bf4))
+* **go:** cover the paths that eat data when they break ([4a7edf4](https://github.com/sound-barrier/recall/commit/4a7edf42f1a073a3e23e645d1d39b477d9c3d091))
+* **matches:** migrate matches component tests to Testing Library ([7b209d8](https://github.com/sound-barrier/recall/commit/7b209d834d4fd7b21a780daff7dc265a05989180))
+* migrate the seven white-box test files to external packages ([ed7b7af](https://github.com/sound-barrier/recall/commit/ed7b7af076e48f1b0e6dc494d99710ca125f8e56))
+* **settings:** migrate settings/ingest/unknown/shared suites to TL ([0548993](https://github.com/sound-barrier/recall/commit/0548993bfc9a2814fa89d3d7d35cccd435b33255))
+* **unit:** add Testing Library harness + pilot migrations ([751c428](https://github.com/sound-barrier/recall/commit/751c428521109f1c07e6aa35478744532c50b419))
+
 ## [0.29.0](https://github.com/sound-barrier/recall/compare/v0.28.0...v0.29.0) (2026-08-09)
 
 
