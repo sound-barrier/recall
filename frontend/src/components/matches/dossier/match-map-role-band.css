@@ -33,9 +33,9 @@
   padding-bottom: 0.2rem;
 }
 
+/* --heatmap-empty is a token now (styles/tokens.css) — it was declared
+   identically here and on .match-heatmap. */
 .mr-grid {
-  --heatmap-empty: color-mix(in srgb, var(--surface-2) 92%, var(--border));
-
   /* `1fr` columns fill the container and shrink responsively to the
      small per-column min — so the grid width tracks the container and
      never overflows on desktop widths. Deliberately NOT inside an
@@ -126,14 +126,8 @@
   transition: transform var(--duration-instant) ease, box-shadow var(--duration-instant) ease;
 }
 
-/* The shared judgment palette (mirrors HeroModeHeatmap): green above the
-   band, red below, neutral in the dead zone / under the evidence floor.
-   Volume renders as the cell's opacity, not as a hue shift. */
-.mr-cell.cell-empty { background: var(--heatmap-empty); }
-.mr-cell.cell-win  { background: var(--win); }
-.mr-cell.cell-mid  { background: var(--neutral); }
-.mr-cell.cell-loss { background: var(--loss); }
-.mr-cell.cell-draw { background: var(--draw); }
+/* The verdict palette lives in styles/judgment.css. Volume still renders as
+   the cell's opacity (an inline style), not as a hue shift. */
 
 /* Empty cells are still clickable (a click resets the filter, drag can start /
    stop on them) — they just don't get the data-cell hover pop. */

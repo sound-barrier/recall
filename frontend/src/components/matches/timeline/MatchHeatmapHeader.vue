@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, toRef } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
+import { useMatchHeatmap, type HeatmapCell } from '@/composables/matches/useMatchHeatmap'
+import { heatmapCellJudgment } from '@/match/match-heatmap-helpers'
 import { monthDateRange } from '@/match/match-time-helpers'
 
 // Calendar heatmap viz — 7 rows × N week columns of one cell per day.
 // Win-rate drives hue (green → red via --win / --loss); volume drives
-// saturation. Empty cells flatten to --surface-2.
+// saturation. Empty cells flatten to --heatmap-empty.
 //
 // Cell size auto-scales by window: at 3M (13 columns) cells render
 // larger so the grid carries presence; at 12M (52 columns) cells
@@ -74,26 +75,40 @@ const dayLabels = computed(() => {
   }))
 })
 
-function cellBaseFill(cell: { winRate: number; total: number; empty: boolean }): string {
+// The hue a day is recorded in. The ramp stays CONTINUOUS — the calendar
+// records rather than judges, so no discrete bands — but a day that decided
+// nothing has no position on a win→loss ramp at all. It gets --draw instead
+// of the ramp's loss end, which is where a `winRate` of 0 used to put it.
+function ratioHue(winRate: number | null): string {
+  if (winRate === null) return 'var(--draw)'
+  return `color-mix(in srgb, var(--win) ${Math.round(winRate * 100)}%, var(--loss))`
+}
+
+function cellBaseFill(cell: { winRate: number | null; total: number; empty: boolean }): string {
   if (cell.empty) return 'var(--heatmap-empty)'
-  const wrPct = Math.round(cell.winRate * 100)
   const sat = Math.round(20 + Math.min(1, cell.total / Math.max(model.value.maxTotal, 1)) * 80)
-  return `color-mix(in srgb, color-mix(in srgb, var(--win) ${wrPct}%, var(--loss)) ${sat}%, var(--heatmap-empty))`
+  return `color-mix(in srgb, ${ratioHue(cell.winRate)} ${sat}%, var(--heatmap-empty))`
 }
 
 // In-range cells blend toward the accent so the whole span reads as one
 // contiguous block (empty days included) instead of separate outlined boxes.
-function cellFill(cell: { date: string; winRate: number; total: number; empty: boolean }): string {
+function cellFill(cell: { date: string; winRate: number | null; total: number; empty: boolean }): string {
   const base = cellBaseFill(cell)
   if (isActive(cell)) return `color-mix(in srgb, var(--accent) 55%, ${base})`
   return base
 }
 
-function cellLabel(cell: { date: string; wins: number; losses: number; draws: number; total: number; winRate: number; empty: boolean }): string {
+// --draw and the ramp's loss end are separated by HUE, not luminance (on Day
+// they sit 1.03:1 apart), so the tint cannot be the only carrier: a day that
+// decided nothing says the shared judgment word instead of a win rate it
+// doesn't have (WCAG 1.4.1).
+function cellLabel(cell: HeatmapCell): string {
   if (cell.empty) return `${formatHumanDate(cell.date)} — no matches`
-  const wr = Math.round(cell.winRate * 100)
   const drawSuffix = cell.draws > 0 ? `, ${cell.draws} draw${cell.draws === 1 ? '' : 's'}` : ''
-  return `${formatHumanDate(cell.date)} — ${cell.wins} wins, ${cell.losses} losses${drawSuffix}, ${wr}% win rate`
+  const verdict = cell.winRate === null
+    ? heatmapCellJudgment(cell)
+    : `${Math.round(cell.winRate * 100)}% win rate`
+  return `${formatHumanDate(cell.date)} — ${cell.wins} wins, ${cell.losses} losses${drawSuffix}, ${verdict}`
 }
 
 function formatHumanDate(iso: string): string {
@@ -375,9 +390,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* --heatmap-empty is a token now (styles/tokens.css) — it was declared
+   identically here and on .mr-grid. */
 .match-heatmap {
-  --heatmap-empty: color-mix(in srgb, var(--surface-2) 92%, var(--border));
-
   flex: 0 0 auto;
 
   /* Drag-select must not trigger the browser's native blue selection box. */
@@ -406,15 +421,26 @@ onBeforeUnmount(() => {
 }
 
 .month-label:hover .month-hit { fill: color-mix(in srgb, var(--accent) 10%, transparent); }
-.month-label.active .month-hit { fill: color-mix(in srgb, var(--accent) 15%, transparent); }
 
+/* The picked / focused month's plate. 12% rather than the 15% it used to
+   carry: the label ON it is --accent-text, which IS --accent under Dark and
+   Night, and accent type over a 15% accent plate reads 4.38:1 there — under
+   the AA floor. At 12% it clears on every theme (Dark 4.63, Day 5.65, Night
+   6.79, high contrast 10.04). */
+.month-label.active .month-hit,
+.month-label:focus-visible .month-hit { fill: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* --accent-text, never --accent: this is TYPE. The two differ only on Day,
+   where --accent is the bright OW orange at 1.7–1.9:1 on the cream surfaces
+   — a fine border or plate, an unreadable label. --accent-text lands at
+   4.9–6.3:1 there and is identical to --accent under the other three themes,
+   which is exactly why the leak was invisible. */
 .month-label:hover text,
-.month-label.active text { fill: var(--accent); }
+.month-label.active text { fill: var(--accent-text); }
 
 .month-label:focus-visible { outline: none; }
 
 .month-label:focus-visible .month-hit {
-  fill: color-mix(in srgb, var(--accent) 12%, transparent);
   stroke: var(--accent);
   stroke-width: 1;
 }

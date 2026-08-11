@@ -1,12 +1,25 @@
 <script setup lang="ts">
 import type { WindowMonths } from '@/composables/matches/useWindowMonths'
+import { JUDGMENT_LABEL } from '@/match/match-heatmap-helpers'
 
 // Shared header furniture for the three dossier bands (Campaign Log
 // timeline, Geography map × role, Hero × Game-Mode): the time-window
 // picker, the optional filter-reset button, the optional config gear with
-// its active-filter dot, and the win/mixed/loss legend. Extracted on the
+// its active-filter dot, and the cell-color legend. Extracted on the
 // third occurrence per the DRY rule of three — the markup and CSS were
 // triplicated byte-for-byte modulo class prefixes.
+//
+// TWO legends, because the bands below are two different kinds of
+// picture. `bands` describes the discrete verdict palette the Geography
+// and Hero × Game-Mode grids paint — its swatches wear the very
+// .cell-* classes those grids do and its words come straight from
+// JUDGMENT_LABEL, so a legend can no longer describe a color the cells
+// do not use or a word they do not speak. `ramp` describes the Campaign
+// Log's calendar, which RECORDS each day on a continuous hue with no
+// thresholds and no evidence floor; three discrete verdicts over that
+// picture claimed a judgment the calendar never made (a single 1-0 day
+// paints full green, where the shared engine would say
+// "too few games to judge").
 //
 // Reset and gear arrive as nullable bundles rather than boolean+label
 // props so each band's conditional rendering (`filterActive`, root-depth
@@ -33,13 +46,21 @@ withDefaults(defineProps<{
   windowGroupLabel?: string
   reset?: BandResetControl | null
   gear?: BandGearControl | null
-  legend?: boolean
+  legend?: 'bands' | 'ramp' | 'none'
 }>(), {
   windowGroupLabel: 'Time window',
   reset: null,
   gear: null,
-  legend: true,
+  legend: 'bands',
 })
+
+// One name for the whole strip, on one role="img" node, so a screen
+// reader hears a single scale — not three verdicts the calendar is not
+// entitled to. Deliberately free of the JUDGMENT_LABEL vocabulary: this
+// picture has no bands to speak.
+const RAMP_LABEL = 'Calendar color scale: a day\'s win rate ramps continuously from 0% at the left '
+  + 'to 100% at the right, deepening with the number of games played that day. '
+  + 'Each day is recorded, not judged against a threshold.'
 
 const emit = defineEmits<{
   'pick-window': [months: WindowMonths]
@@ -91,11 +112,22 @@ const emit = defineEmits<{
     <span aria-hidden="true">⚙</span>
   </button>
 
-  <ul v-if="legend" class="bh-legend" aria-label="Cell-color legend">
-    <li><span class="bh-swatch bh-loss" /> Losing</li>
-    <li><span class="bh-swatch bh-mixed" /> Mixed</li>
-    <li><span class="bh-swatch bh-win" /> Winning</li>
+  <ul v-if="legend === 'bands'" class="bh-legend" aria-label="Cell-color legend">
+    <li><span class="bh-swatch cell-loss" /> {{ JUDGMENT_LABEL.loss }}</li>
+    <!-- One gray, two meanings: the eye cannot tell a level record from an
+         unproven one, so the swatch says both and only the spoken half
+         carries the second. -->
+    <li>
+      <span class="bh-swatch cell-mid" /> {{ JUDGMENT_LABEL.even }}<span class="sr-only"> or {{ JUDGMENT_LABEL.unproven }}</span>
+    </li>
+    <li><span class="bh-swatch cell-win" /> {{ JUDGMENT_LABEL.win }}</li>
   </ul>
+
+  <div v-else-if="legend === 'ramp'" class="bh-ramp" role="img" :aria-label="RAMP_LABEL">
+    <span class="bh-ramp-cap">0%</span>
+    <span class="bh-ramp-bar" />
+    <span class="bh-ramp-cap">100%</span>
+  </div>
 </template>
 
 <style scoped>
@@ -217,6 +249,10 @@ const emit = defineEmits<{
   gap: 0.35rem;
 }
 
+/* Geometry only — the fill arrives with the .cell-* class the grids below
+   wear, from styles/judgment.css. Declaring a background here would let the
+   legend drift away from the cells again, which is exactly how "Mixed"
+   ended up a red/green blend while the cells it labeled were gray. */
 .bh-swatch {
   display: inline-block;
   width: 10px;
@@ -225,11 +261,37 @@ const emit = defineEmits<{
   border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
 }
 
-.bh-win { background: var(--win); }
-.bh-loss { background: var(--loss); }
-.bh-mixed { background: color-mix(in srgb, var(--win) 50%, var(--loss)); }
+/* Ramp legend — the Campaign Log's continuous scale. */
+.bh-ramp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.6rem;
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.bh-ramp-cap {
+  white-space: nowrap;
+}
+
+/* Two stops interpolated in sRGB is exactly what the calendar's own
+   `color-mix(in srgb, var(--win) <winrate>%, var(--loss))` computes, so the
+   strip IS the ramp rather than a lookalike of it. */
+.bh-ramp-bar {
+  display: inline-block;
+  width: 4.5rem;
+  height: 10px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, currentcolor 25%, transparent);
+  background: linear-gradient(to right, var(--loss), var(--win));
+}
 
 @media (width <= 720px) {
-  .bh-legend { display: none; }
+  .bh-legend,
+  .bh-ramp { display: none; }
 }
 </style>

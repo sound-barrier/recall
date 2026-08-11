@@ -9,8 +9,9 @@ import { bandEndpoints } from '@/components/matches/timeline/sparkline-band'
 // share the same model (cells are already chronological). Each cell
 // becomes one bar; height encodes daily match count, fill encodes the
 // W% (win-tinted bar when you won most of the day, loss-tinted when
-// you lost). Empty days render a 1-px baseline tick so the brush
-// targets are always reachable.
+// you lost, --draw when the day decided nothing at all). Empty days
+// render a 1-px baseline tick so the brush targets are always
+// reachable.
 //
 // Brush UX:
 //   - mousedown → record start cell; show a translucent selection
@@ -95,15 +96,21 @@ function barHeight(total: number): number {
   return Math.max(2, Math.round(ratio * innerHeight))
 }
 
-function barFill(cell: { winRate: number; total: number; empty: boolean }): string {
+// Same ramp the calendar paints, and the same exception: a day that decided
+// nothing has no position on a win→loss ramp, so it is recorded in --draw
+// rather than at the ramp's loss end. The ramp itself stays continuous.
+function barFill(cell: { winRate: number | null; empty: boolean }): string {
   if (cell.empty) return 'var(--sparkline-empty)'
-  const wrPct = Math.round(cell.winRate * 100)
-  return `color-mix(in srgb, var(--win) ${wrPct}%, var(--loss))`
+  if (cell.winRate === null) return 'var(--draw)'
+  return `color-mix(in srgb, var(--win) ${Math.round(cell.winRate * 100)}%, var(--loss))`
 }
 
-function barLabel(cell: { date: string; wins: number; losses: number; total: number }): string {
+// The draw count joins the record whenever there is one, so a bar tinted off
+// the ramp says why in text too (WCAG 1.4.1).
+function barLabel(cell: { date: string; wins: number; losses: number; draws: number; total: number }): string {
   if (cell.total === 0) return `${cell.date} — no matches`
-  return `${cell.date} — ${cell.total} match${cell.total === 1 ? '' : 'es'} (${cell.wins}W ${cell.losses}L)`
+  const drawn = cell.draws > 0 ? ` ${cell.draws}D` : ''
+  return `${cell.date} — ${cell.total} match${cell.total === 1 ? '' : 'es'} (${cell.wins}W ${cell.losses}L${drawn})`
 }
 
 // ─── Brush ─────────────────────────────────────────────────────

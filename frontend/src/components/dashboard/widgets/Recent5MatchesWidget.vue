@@ -7,6 +7,18 @@ import { resultJudgment } from '@/match/match-heatmap-helpers'
 const dossier = useDossier()
 const { config } = useWidgetConfig<RecentMatchesConfig>('recent-5-matches', recentMatchesSchema)
 const results = dossier.recentResults(() => ({ count: config.value.count }))
+
+type PillResult = 'victory' | 'defeat' | 'draw'
+
+// The shared result tint (styles/verdict-tint.css) — the same three classes
+// the Current-streak KPI wears. The pill keeps its own class for the plate
+// (border + soft fill) and geometry only.
+const RESULT_TINT: Record<PillResult, string> = {
+  victory: 'tint-win',
+  defeat:  'tint-loss',
+  draw:    'tint-draw',
+}
+const RESULT_LETTER: Record<PillResult, string> = { victory: 'W', defeat: 'L', draw: 'D' }
 </script>
 
 <template>
@@ -18,12 +30,12 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
       v-for="(r, idx) in results"
       :key="idx"
       class="recent-pill"
-      :class="`recent-pill-${r}`"
+      :class="[`recent-pill-${r}`, RESULT_TINT[r]]"
       role="img"
       :aria-label="resultJudgment(r)"
       :title="r"
     >
-      {{ r === 'victory' ? 'W' : r === 'defeat' ? 'L' : 'D' }}
+      {{ RESULT_LETTER[r] }}
     </span>
   </div>
   <p v-else class="recent-empty">
@@ -33,9 +45,8 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
 
 <style scoped>
 /* Pills sit in a flex row matching the other breakdown rows' inner
-   density. Newest-first reads left-to-right; per-result color comes
-   from the existing --win / --loss / --draw palette tokens so the
-   widget stays palette-consistent across themes. */
+   density. Newest-first reads left-to-right; the glyph color comes from
+   the shared .tint-* classes, these rules own only the plate. */
 .recent-pills {
   display: flex;
   flex-wrap: wrap;
@@ -59,22 +70,23 @@ const results = dossier.recentResults(() => ({ count: config.value.count }))
   user-select: none;
 }
 
+/* One plate recipe, three results. The draw pill used to reach for a bare
+   --draw border and a hand-rolled 12% wash (with a --text-dim fallback for
+   a token that has always existed), which made it the odd one out; it now
+   wears the same -line / -soft pair as the other two. */
 .recent-pill-victory {
-  color: var(--win);
-  border-color: var(--win-line, var(--win));
-  background: var(--win-soft, color-mix(in srgb, var(--win) 12%, transparent));
+  border-color: var(--win-line);
+  background: var(--win-soft);
 }
 
 .recent-pill-defeat {
-  color: var(--loss);
-  border-color: var(--loss-line, var(--loss));
-  background: var(--loss-soft, color-mix(in srgb, var(--loss) 12%, transparent));
+  border-color: var(--loss-line);
+  background: var(--loss-soft);
 }
 
 .recent-pill-draw {
-  color: var(--draw, var(--text-dim));
-  border-color: var(--draw, var(--text-faint));
-  background: color-mix(in srgb, var(--draw, var(--text-faint)) 12%, transparent);
+  border-color: var(--draw-line);
+  background: var(--draw-soft);
 }
 
 .recent-empty {

@@ -189,16 +189,22 @@
   color: var(--text-faint);
 }
 
+/* The same recipe the leaf rows use (match-leaf-row.css) — 12% plate, and
+   the glyph mixed 80/20 with the theme's --text so it darkens on Day and
+   lightens on the dark palettes. The 22% plate under bare --win / --loss
+   this replaced was genuinely sub-AA at this 9.6px bold size: Day read
+   4.30 (victory) / 4.33 (defeat), Dark 4.20 and Night 4.46 on defeat.
+   The converged pair reads 5.95–13.18 across all four themes. */
 .tc-result-chip.result-victory {
-  background: color-mix(in srgb, var(--win) 22%, var(--surface));
-  border-color: var(--win-line, var(--win));
-  color: var(--win);
+  background: color-mix(in srgb, var(--win) 12%, var(--surface));
+  border-color: var(--win-line);
+  color: color-mix(in srgb, var(--win) 80%, var(--text));
 }
 
 .tc-result-chip.result-defeat {
-  background: color-mix(in srgb, var(--loss) 22%, var(--surface));
-  border-color: var(--loss-line, var(--loss));
-  color: var(--loss);
+  background: color-mix(in srgb, var(--loss) 12%, var(--surface));
+  border-color: var(--loss-line);
+  color: color-mix(in srgb, var(--loss) 80%, var(--text));
 }
 
 .tc-result-chip.result-draw {

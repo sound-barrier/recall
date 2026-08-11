@@ -223,13 +223,8 @@
 
 .hp-fill { display: block; height: 100%; }
 
-/* Color by WIN RATE (green / grey / red), the Hero × Game-Mode scheme — not
-   by pool status. Opacity fades low-volume heroes (significance). */
-.hp-fill.cell-win  { background: var(--win); }
-.hp-fill.cell-mid  { background: var(--neutral); }
-.hp-fill.cell-loss { background: var(--loss); }
-.hp-fill.cell-draw { background: var(--draw, #b59c30); }
-.hp-fill.cell-empty { background: color-mix(in srgb, var(--text-faint) 30%, transparent); }
+/* Color by WIN RATE — not by pool status — from styles/judgment.css.
+   Opacity fades low-volume heroes (significance). */
 
 .hp-stat {
   flex: 0 0 auto;

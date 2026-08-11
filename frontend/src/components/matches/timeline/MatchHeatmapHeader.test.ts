@@ -111,6 +111,25 @@ describe('MatchHeatmapHeader — what a day cell says', () => {
     expect(dayCell(-4)).toHaveAccessibleName(`${human(-4)} — 1 wins, 1 losses, 2 draws, 50% win rate`)
     expect(dayCell(-3)).toHaveAccessibleName(`${human(-3)} — no matches`)
   })
+
+  // A day that decided nothing has no win rate to report, and it must not be
+  // painted from the ramp's loss end — a drawn day is not a wipeout.
+  it('says a day of nothing but draws drew, rather than claiming a 0% win rate', () => {
+    renderHeatmap({
+      records: [
+        { match_key: 'x', source_files: ['x.png'], data: { date: ymd(-2), result: 'draw' } },
+        { match_key: 'y', source_files: ['y.png'], data: { date: ymd(-2), result: 'draw' } },
+        { match_key: 'z', source_files: ['z.png'], data: { date: ymd(-4), result: 'defeat' } },
+      ] as unknown as MatchRecord[],
+    })
+
+    expect(dayCell(-2)).toHaveAccessibleName(`${human(-2)} — 0 wins, 0 losses, 2 draws, drawn`)
+    expect(dayCell(-4)).toHaveAccessibleName(`${human(-4)} — 0 wins, 1 losses, 0% win rate`)
+    // The fill is the other half of the claim: the drawn day is mixed from
+    // --draw, the lost day from the win→loss ramp's loss end.
+    expect(dayCell(-2)).toHaveAttribute('fill', expect.stringContaining('var(--draw)'))
+    expect(dayCell(-4)).toHaveAttribute('fill', expect.stringContaining('var(--win) 0%, var(--loss)'))
+  })
 })
 
 describe('MatchHeatmapHeader — the week start', () => {

@@ -1,0 +1,35 @@
+/* The verdict as TYPE — judgment.css's sibling. judgment.css paints the
+   PLATE a band sits on (`.cell-*`, a background); this file paints the
+   GLYPH (`.tint-*`, a color), which is what a KPI number, a signed delta
+   and a result pill need.
+
+   Two vocabularies, one palette, because the helpers in
+   @/match/match-heatmap-helpers speak two:
+
+     resultJudgment(result)  → a match happened and it was a win / loss /
+                               draw          → .tint-win / -loss / -draw
+     signJudgment(delta)     → a signed movement is above or below the
+                               line          → .tint-up / .tint-down
+
+   Both return WORDS only, which is why four widgets had each hand-rolled
+   their own copy of the same three declarations — FormDeltaWidget's
+   .gap-up/.gap-down, NetRankWeekWidget's .kpi-up/.kpi-down,
+   CurrentStreakWidget's STREAK_TINT map and Recent5MatchesWidget's
+   .recent-pill-* — and why the fourth had drifted to a --text-dim draw
+   nobody else used.
+
+   Deliberately bare selectors at (0,1,0), imported after components.css so
+   `.tint-win` beats `.kpi-value`'s base `color: var(--text)` on source
+   order. A consumer adds the class for the COLOR and keeps its own class
+   for weight, plate and geometry.
+
+   Every value clears AA 4.5:1 as small text on all four surfaces in all
+   four themes; the tightest is Day's --win at 4.66:1 on --surface-3. */
+
+.tint-win,
+.tint-up { color: var(--win); }
+
+.tint-loss,
+.tint-down { color: var(--loss); }
+
+.tint-draw { color: var(--draw); }

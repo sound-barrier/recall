@@ -341,15 +341,15 @@ defineExpose({ clearSelection: () => { if (sel.count.value > 0) sel.clear() } })
   z-index: 1;
 }
 
-.heatmap-cell.cell-empty {
-  background: var(--surface-2);
-  cursor: default;
-}
+/* Backgrounds come from styles/judgment.css. What stays here is what is
+   specific to a filled grid cell: text sits ON the tint, so it needs the
+   ground color, and an empty cell is not clickable. */
+.heatmap-cell.cell-empty { cursor: default; }
 
-.heatmap-cell.cell-win  { background: var(--win,  #2ecc71); color: var(--bg); }
-.heatmap-cell.cell-mid  { background: var(--neutral); color: var(--bg); }
-.heatmap-cell.cell-loss { background: var(--loss, #e74c3c); color: var(--bg); }
-.heatmap-cell.cell-draw { background: var(--draw, #b59c30); color: var(--bg); }
+.heatmap-cell.cell-win,
+.heatmap-cell.cell-mid,
+.heatmap-cell.cell-loss,
+.heatmap-cell.cell-draw { color: var(--bg); }
 
 .cell-rate {
   font-size: var(--type-sm);

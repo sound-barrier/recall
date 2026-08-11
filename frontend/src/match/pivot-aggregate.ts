@@ -33,6 +33,27 @@ export interface PivotConfig {
   filters: PivotFilter[]
 }
 
+// The decided population behind a bucket, in the shape the shared judgment
+// engine reads (`heatmapCellBand` in @/match/match-heatmap-helpers). A win
+// RATE alone cannot be judged — 100% off one match and 100% off forty are the
+// same number and a very different claim — so every bucket carries the counts
+// the rate was computed from alongside it.
+export interface PivotTally {
+  total: number
+  wins: number
+  losses: number
+}
+
+// The tallies mirror the cells / rowTotals / colTotals / grandTotals grid
+// one-for-one, so a renderer that has a value's coordinates already has its
+// evidence.
+interface PivotTallies {
+  cells: PivotTally[][] // [rowIndex][colIndex]
+  rows: PivotTally[] // [rowIndex]
+  cols: PivotTally[] // [colIndex]
+  grand: PivotTally
+}
+
 export interface PivotResult {
   rowFields: string[]
   colFields: string[]
@@ -46,6 +67,7 @@ export interface PivotResult {
   rowTotals: (number | null)[][] // [rowIndex][valueIndex]
   colTotals: (number | null)[][] // [colIndex][valueIndex]
   grandTotals: (number | null)[] // [valueIndex]
+  tallies: PivotTallies
   recordCount: number
 }
 
@@ -96,10 +118,18 @@ function passesFilters(rec: MatchRecord, filters: PivotFilter[], byId: Map<strin
   return true
 }
 
-function winRateOf(records: readonly MatchRecord[]): number | null {
+// `total` is the DECIDED population — the same denominator winRateOf divides
+// by — so the tint a consumer derives from the tally and the percentage it
+// prints always describe the same matches. Records with no parsed result sit
+// in the bucket but claim nothing.
+function tallyOf(records: readonly MatchRecord[]): PivotTally {
   const { w, l, d } = tallyWLD([...records])
-  const n = w + l + d
-  return n === 0 ? null : (w / n) * 100
+  return { total: w + l + d, wins: w, losses: l }
+}
+
+function winRateOf(records: readonly MatchRecord[]): number | null {
+  const { total, wins } = tallyOf(records)
+  return total === 0 ? null : (wins / total) * 100
 }
 
 function kdOf(records: readonly MatchRecord[]): number {
@@ -234,21 +264,24 @@ export function pivot(records: readonly MatchRecord[], config: PivotConfig, fiel
   const rowKeys = [...rowTupleByKey.values()].sort(compareTuples)
   const colKeys = [...colTupleByKey.values()].sort(compareTuples)
 
-  const cells = rowKeys.map((rt) =>
-    colKeys.map((ct) => {
-      const bucket = cellBuckets.get(`${rt.join(TUPLE_SEP)}|${ct.join(TUPLE_SEP)}`) ?? []
-      return values.map((v) => aggregate(bucket, v, byId))
-    }),
-  )
-  const rowTotals = rowKeys.map((rt) => {
-    const bucket = rowBuckets.get(rt.join(TUPLE_SEP)) ?? []
-    return values.map((v) => aggregate(bucket, v, byId))
-  })
-  const colTotals = colKeys.map((ct) => {
-    const bucket = colBuckets.get(ct.join(TUPLE_SEP)) ?? []
-    return values.map((v) => aggregate(bucket, v, byId))
-  })
-  const grandTotals = values.map((v) => aggregate(filtered, v, byId))
+  // Resolve every bucket once, then fold it twice — into the displayed
+  // measures and into the tally the judgment engine reads.
+  const cellRecords = rowKeys.map((rt) =>
+    colKeys.map((ct) => cellBuckets.get(`${rt.join(TUPLE_SEP)}|${ct.join(TUPLE_SEP)}`) ?? []))
+  const rowRecords = rowKeys.map((rt) => rowBuckets.get(rt.join(TUPLE_SEP)) ?? [])
+  const colRecords = colKeys.map((ct) => colBuckets.get(ct.join(TUPLE_SEP)) ?? [])
+  const fold = (bucket: readonly MatchRecord[]) => values.map((v) => aggregate(bucket, v, byId))
+
+  const cells = cellRecords.map((row) => row.map(fold))
+  const rowTotals = rowRecords.map(fold)
+  const colTotals = colRecords.map(fold)
+  const grandTotals = fold(filtered)
+  const tallies: PivotTallies = {
+    cells: cellRecords.map((row) => row.map(tallyOf)),
+    rows: rowRecords.map(tallyOf),
+    cols: colRecords.map(tallyOf),
+    grand: tallyOf(filtered),
+  }
 
   return {
     rowFields: config.rows,
@@ -263,6 +296,7 @@ export function pivot(records: readonly MatchRecord[], config: PivotConfig, fiel
     rowTotals,
     colTotals,
     grandTotals,
+    tallies,
     recordCount: filtered.length,
   }
 }

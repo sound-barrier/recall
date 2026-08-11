@@ -23,7 +23,7 @@ function unref<T>(v: MaybeRef<T>): T {
 // heavy day doesn't drag W% toward 50% artificially. `total` still
 // counts draws so saturation (caller-side) reflects activity volume.
 
-interface HeatmapCell {
+export interface HeatmapCell {
   date: string          // 'YYYY-MM-DD'
   dayOfWeek: number     // 0..6 — row position, respects weekStartsOn
   weekIndex: number     // 0..N-1 — column position
@@ -31,7 +31,11 @@ interface HeatmapCell {
   losses: number
   draws: number
   total: number         // wins + losses + draws
-  winRate: number       // 0..1; 0 when no decided matches (drawn or empty)
+  // 0..1, or null when the day decided nothing — every match a draw, or no
+  // matches at all. Deliberately NOT a 0 sentinel: the callers paint this
+  // along a win→loss ramp, and a 0 put a day of nothing but draws at the
+  // ramp's loss end, indistinguishable from a day you lost every game.
+  winRate: number | null
   empty: boolean        // total === 0
 }
 
@@ -136,7 +140,7 @@ function walkCells(
     const b = buckets.get(iso) ?? { w: 0, l: 0, d: 0 }
     const total = b.w + b.l + b.d
     const decided = b.w + b.l
-    const winRate = decided > 0 ? b.w / decided : 0
+    const winRate = decided > 0 ? b.w / decided : null
     if (total > maxTotal) maxTotal = total
     cells.push({
       date: iso, dayOfWeek, weekIndex,

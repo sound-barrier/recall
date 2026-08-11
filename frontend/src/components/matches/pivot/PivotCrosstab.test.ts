@@ -39,7 +39,31 @@ function renderCrosstab(config: Partial<PivotConfig> = {}, records = RECORDS) {
   return render(PivotCrosstab, { props: { result } })
 }
 
+function many(count: number, data: Record<string, unknown>): MatchRecord[] {
+  return Array.from({ length: count }, () => rec(data))
+}
+
+// Enough games per hero to clear the shared engine's 15-decisive evidence
+// floor, so each row exercises a DIFFERENT band rather than all landing in
+// "too few games to judge": ana climbing, moira sliding, echo parked inside
+// the 48.5–51% dead zone, lucio nothing but draws.
+const EVIDENCE = [
+  ...many(20, { hero: 'ana', result: 'victory' }),
+  ...many(10, { hero: 'ana', result: 'defeat' }),
+  ...many(5, { hero: 'moira', result: 'victory' }),
+  ...many(25, { hero: 'moira', result: 'defeat' }),
+  ...many(49, { hero: 'echo', result: 'victory' }),
+  ...many(51, { hero: 'echo', result: 'defeat' }),
+  ...many(20, { hero: 'lucio', result: 'draw' }),
+]
+
 const rows = () => screen.getAllByRole('row')
+
+function rowFor(rowHeader: string): HTMLElement {
+  const found = rows().find((row) => within(row).queryByRole('rowheader')?.textContent?.trim() === rowHeader)
+  if (!found) throw new Error(`no crosstab row headed "${rowHeader}"`)
+  return found
+}
 const cellText = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => c.textContent?.trim())
 const headText = (row: HTMLElement) => within(row).getAllByRole('columnheader').map((h) => h.textContent?.trim())
 
@@ -142,5 +166,45 @@ describe('PivotCrosstab — value formatting', () => {
       'Matches', 'Win rate',
       'Matches', 'Win rate',
     ])
+  })
+})
+
+// The crosstab used to run its own color math: a hard pivot at exactly 50%,
+// alpha ∝ |pct − 50|, no evidence floor, no dead zone, no draw or empty band,
+// and no word anywhere — the tint was the only cue, which is a WCAG 1.4.1
+// failure on top of a wrong verdict. It now reads the same judgment engine the
+// dossier bands do, so these pin the verdict a cell SPEAKS; the tint follows
+// from the same call.
+describe('PivotCrosstab — shared judgment', () => {
+  it('withholds a verdict under the evidence floor', () => {
+    renderCrosstab()
+    // ana is 1-0 on rialto. The old crosstab painted that full-strength green
+    // and called it nothing; 15 decisive games is the floor for a claim.
+    expect(within(rowFor('ana')).getByRole('cell', { name: '100% — too few games to judge' }))
+      .toBeInTheDocument()
+  })
+
+  it('names the empty bucket instead of leaving an em-dash unexplained', () => {
+    renderCrosstab()
+    expect(within(rowFor('dva')).getByRole('cell', { name: 'no matches' })).toBeInTheDocument()
+  })
+
+  it('leaves a volume cell unjudged — a match count claims nothing about form', () => {
+    renderCrosstab()
+    // Exact-name match: ana's two 1-match counts would fail this query if a
+    // judgment word had been appended to them.
+    expect(within(rowFor('ana')).getAllByRole('cell', { name: '1' })).toHaveLength(2)
+  })
+
+  it('judges each band once the evidence is there', () => {
+    renderCrosstab({ columns: [] }, EVIDENCE)
+    expect(within(rowFor('ana')).getByRole('cell', { name: '67% — winning' })).toBeInTheDocument()
+    expect(within(rowFor('moira')).getByRole('cell', { name: '17% — losing' })).toBeInTheDocument()
+    // 49 of 100 sits inside the 48.5–51% dead zone. The old pivot tinted
+    // everything under 50% red; a 49% record over a hundred games is level.
+    expect(within(rowFor('echo')).getByRole('cell', { name: '49% — even' })).toBeInTheDocument()
+    // Twenty draws is a 0% win rate and no losses at all — the old pivot
+    // painted that the deepest red on the grid.
+    expect(within(rowFor('lucio')).getByRole('cell', { name: '0% — drawn' })).toBeInTheDocument()
   })
 })

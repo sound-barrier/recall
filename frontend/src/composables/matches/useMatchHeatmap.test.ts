@@ -79,11 +79,25 @@ describe('useMatchHeatmap', () => {
     expect(mixedDay).toMatchObject({ wins: 1, losses: 0, draws: 1, total: 2, winRate: 1 })
   })
 
+  // A day that decided nothing has no position on the win→loss ramp. Reporting
+  // 0 put it at the ramp's loss end, so a day of nothing but draws painted
+  // identically to a day you lost every game.
+  it('reports no win rate at all for a day whose matches were every one a draw', () => {
+    const records = ref<MatchRecord[]>([
+      rec('2026-05-12', 'draw', 'a'),
+      rec('2026-05-12', 'draw', 'b'),
+    ])
+    const model = useMatchHeatmap(records)
+
+    const drawnDay = model.value.cells.find(c => c.date === '2026-05-12')!
+    expect(drawnDay).toMatchObject({ wins: 0, losses: 0, draws: 2, total: 2, winRate: null, empty: false })
+  })
+
   it('marks days with zero matches as empty', () => {
     const records = ref<MatchRecord[]>([rec('2026-05-10', 'victory')])
     const model = useMatchHeatmap(records)
     const noMatchDay = model.value.cells.find(c => c.date === '2026-05-13')!
-    expect(noMatchDay).toMatchObject({ total: 0, empty: true, winRate: 0 })
+    expect(noMatchDay).toMatchObject({ total: 0, empty: true, winRate: null })
   })
 
   it('honors the windowWeeks option (e.g. 52 for 12-month view)', () => {
