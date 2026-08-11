@@ -3,8 +3,10 @@ package gamedata
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,22 +19,27 @@ import (
 
 // Apply Game Data Update flow:
 //
-//  1. Download {heroes,maps,screenshot_sources}.yaml + their .sha256
-//     sidecars from the Pages-published main channel at
+//  1. Download {heroes,maps,screenshot_sources,seasons}.yaml + their
+//     .sha256 sidecars from the Pages-published main channel at
 //     https://sound-barrier.github.io/recall/data/.
 //  2. Verify each YAML against its sidecar (existing verifySha256).
-//  3. Snapshot the existing on-disk files (if any) into memory so a
-//     partial-write failure can revert.
-//  4. Write each YAML as <file>.tmp under <RECALL_DATA_DIR>/data.
-//  5. Rename all .tmp → final.
-//  6. parser.Reload() — the atomic-pointer swap publishes the new
+//  3. Snapshot the existing on-disk files into memory so a partial
+//     rename can revert. A file that cannot be read aborts here — an
+//     un-snapshotted file has no restorable copy.
+//  4. Stage every file as <file>.tmp under <RECALL_DATA_DIR>/data —
+//     the four YAMLs AND manifest.json.
+//  5. Rename the YAML .tmp files → final.
+//  6. Rename manifest.json.tmp → manifest.json. This is the apply's
+//     commit point: it runs last, so every fallible write is already
+//     done and a manifest failure leaves the previous dataset and the
+//     previous manifest both in place, with the apply retryable.
+//  7. parser.Reload() — the atomic-pointer swap publishes the new
 //     dataset to in-flight readers.
-//  7. SaveManifest() so subsequent CheckForUpdate calls show the
-//     applied commit.
 //
-// Any failure rolls back from the in-memory snapshot, removes any
-// remaining .tmp files, and returns a typed sentinel for the HTTP
-// handler to map to 422 / 500 / 502.
+// Any failure before the data renames removes the staged .tmp files; a
+// failed data rename also reverts from the in-memory snapshot. Every
+// failure returns a typed sentinel for the HTTP handler to map to
+// 422 / 500 / 502.
 
 // Sentinel errors. Handlers errors.Is each into a status code (see
 // registerSystemRoutes in pkg/cmd/server_system.go).
@@ -96,6 +103,15 @@ var dataUpdateMu sync.Mutex
 // production; tests swap it for a wrapper that fails on the Nth call.
 var RenameFunc = os.Rename
 
+// ReadFileFunc is the test seam for the pre-apply snapshot read, mirroring
+// RenameFunc. Defaults to os.ReadFile in production; tests swap it for a
+// reader that fails on a file which exists but cannot be read.
+var ReadFileFunc = os.ReadFile
+
+// tmpSuffix names the staging sibling of every file the apply writes —
+// <file>.tmp is written first, then renamed into place.
+const tmpSuffix = ".tmp"
+
 // dataYAMLFiles is the canonical list of asset names Apply Data
 // Update writes. Order is the on-disk write order so the partial-
 // failure rollback test can be deterministic.
@@ -134,7 +150,6 @@ func Apply(baseDir string) (DataUpdateResult, error) {
 		AppliedSource:     "main",
 		AppliedMainCommit: short,
 		AppliedAt:         time.Now().UTC(),
-		Files:             map[string]ManifestFile{},
 	}
 	added, err := commitVerifiedAssets(baseDir, verified, manifest)
 	if err != nil {
@@ -144,69 +159,104 @@ func Apply(baseDir string) (DataUpdateResult, error) {
 	return added, nil
 }
 
-// commitVerifiedAssets takes pre-fetched + pre-verified asset bytes
-// and applies them: snapshot → write+rename → parser.Reload → write
-// manifest → return diff. Shared between ApplyDataUpdate and
-// ApplyMainDataUpdate so both channels share rollback semantics.
+// commitVerifiedAssets takes pre-fetched + pre-verified asset bytes and
+// applies them: validate → snapshot → stage → rename assets → commit the
+// manifest → parser.Reload → return the diff.
 //
 // Callers populate manifest.AppliedSource + AppliedReleaseTag /
 // AppliedMainCommit + AppliedAt. The manifest's Files map is filled
 // in here from verified.
 func commitVerifiedAssets(baseDir string, verified map[string]verifiedAsset, manifest DataManifest) (DataUpdateResult, error) {
-	// Reject a checksum-valid-but-unparseable payload BEFORE anything is
-	// written: past this point the files are committed and the manifest
-	// records the version as applied, while parser.Reload would silently
-	// fall back to embedded data with a permanent load-error banner.
-	for _, name := range dataYAMLFiles {
-		if err := parser.ValidateDataYAML(name, verified[name].bytes); err != nil {
-			return DataUpdateResult{}, fmt.Errorf("%w: %s: %w", ErrDataUpdateMalformed, name, err)
-		}
+	if err := validateVerifiedAssets(verified); err != nil {
+		return DataUpdateResult{}, err
 	}
 	dataDir := filepath.Join(baseDir, dataDirName)
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return DataUpdateResult{}, fmt.Errorf("%w: mkdir data: %w", ErrDataUpdateIO, err)
 	}
-	snapshot := snapshotDataDir(dataDir)
+	snapshot, err := snapshotDataDir(dataDir)
+	if err != nil {
+		return DataUpdateResult{}, err
+	}
+	before := currentRosters()
 
-	prevHeroes := flattenRoster(parser.HeroesByRole())
-	prevMaps := flattenRoster(parser.MapsByGameMode())
-	prevSources := sourceNames(parser.Sources())
-	prevSeasons := parser.Seasons()
-
-	if err := writeAndRename(dataDir, verified); err != nil {
-		restoreSnapshot(dataDir, snapshot)
-		removeTmpFiles(dataDir)
+	manifest.Files = manifestFiles(verified)
+	staged := stagedApply{
+		baseDir:  baseDir,
+		dataDir:  dataDir,
+		verified: verified,
+		manifest: manifest,
+		snapshot: snapshot,
+	}
+	if err := staged.run(); err != nil {
 		return DataUpdateResult{}, err
 	}
 
+	// A Reload failure stays a warning: the apply itself succeeded — the
+	// files on disk are the new dataset and the manifest truthfully records
+	// them, so the next boot loads them. Every payload was parsed by
+	// validateVerifiedAssets before any write, so reaching here means
+	// something changed the files underneath us; failing the apply would
+	// mean un-committing a commit that worked.
 	if err := parser.Reload(); err != nil {
 		applog.Subsystem("apply_data_update").Warn("parser.Reload returned errors after apply", "err", err)
 	}
+	return diffSince(before), nil
+}
 
+// validateVerifiedAssets rejects a checksum-valid-but-unparseable payload
+// BEFORE anything is written: past the commit the manifest records the
+// version as applied, while parser.Reload would silently fall back to
+// embedded data with a permanent load-error banner.
+func validateVerifiedAssets(verified map[string]verifiedAsset) error {
+	for _, name := range dataYAMLFiles {
+		if err := parser.ValidateDataYAML(name, verified[name].bytes); err != nil {
+			return fmt.Errorf("%w: %s: %w", ErrDataUpdateMalformed, name, err)
+		}
+	}
+	return nil
+}
+
+// manifestFiles records the post-write checksum + byte count of every asset
+// the apply is about to commit.
+func manifestFiles(verified map[string]verifiedAsset) map[string]ManifestFile {
+	out := make(map[string]ManifestFile, len(dataYAMLFiles))
 	for _, name := range dataYAMLFiles {
 		v := verified[name]
-		manifest.Files[name] = ManifestFile{SHA256: v.sha256, Size: int64(len(v.bytes))}
+		out[name] = ManifestFile{SHA256: v.sha256, Size: int64(len(v.bytes))}
 	}
-	if err := SaveManifest(baseDir, manifest); err != nil {
-		return DataUpdateResult{}, fmt.Errorf("%w: write manifest: %w", ErrDataUpdateIO, err)
+	return out
+}
+
+// loadedRosters is the parser's published state at one instant — the
+// pre-apply half of the diff the FE renders as "what this update changed".
+type loadedRosters struct {
+	heroes  []string
+	maps    []string
+	sources []string
+	seasons []parser.Season
+}
+
+// currentRosters snapshots what the parser serves right now.
+func currentRosters() loadedRosters {
+	return loadedRosters{
+		heroes:  flattenRoster(parser.HeroesByRole()),
+		maps:    flattenRoster(parser.MapsByGameMode()),
+		sources: sourceNames(parser.Sources()),
+		seasons: parser.Seasons(),
 	}
+}
 
-	addedHeroes, removedHeroes := diffRosters(prevHeroes, flattenRoster(parser.HeroesByRole()))
-	addedMaps, removedMaps := diffRosters(prevMaps, flattenRoster(parser.MapsByGameMode()))
-	addedSources, removedSources := diffRosters(prevSources, sourceNames(parser.Sources()))
-	addedSeasons, removedSeasons, changedSeasons := diffSeasons(prevSeasons, seasonMetasFromParser(parser.Seasons()))
-
-	return DataUpdateResult{
-		AddedHeroes:    addedHeroes,
-		RemovedHeroes:  removedHeroes,
-		AddedMaps:      addedMaps,
-		RemovedMaps:    removedMaps,
-		AddedSources:   addedSources,
-		RemovedSources: removedSources,
-		AddedSeasons:   addedSeasons,
-		RemovedSeasons: removedSeasons,
-		ChangedSeasons: changedSeasons,
-	}, nil
+// diffSince compares the rosters captured before the apply against what the
+// parser serves now.
+func diffSince(before loadedRosters) DataUpdateResult {
+	var out DataUpdateResult
+	out.AddedHeroes, out.RemovedHeroes = diffRosters(before.heroes, flattenRoster(parser.HeroesByRole()))
+	out.AddedMaps, out.RemovedMaps = diffRosters(before.maps, flattenRoster(parser.MapsByGameMode()))
+	out.AddedSources, out.RemovedSources = diffRosters(before.sources, sourceNames(parser.Sources()))
+	out.AddedSeasons, out.RemovedSeasons, out.ChangedSeasons =
+		diffSeasons(before.seasons, seasonMetasFromParser(parser.Seasons()))
+	return out
 }
 
 // fetchAndVerifyMainAssets is the main-channel sibling of
@@ -241,51 +291,124 @@ type verifiedAsset struct {
 	sha256 string
 }
 
-// snapshotDataDir reads any pre-apply file contents into memory so
-// writeAndRename can revert on partial failure. A missing file is
-// recorded as nil — restoreSnapshot interprets nil as "remove file".
-func snapshotDataDir(dataDir string) map[string][]byte {
+// snapshotDataDir reads the pre-apply file contents into memory so a partial
+// rename can be reverted. An absent file is recorded as nil — restore reads
+// nil as "this file did not exist before, remove it".
+//
+// A file that exists but cannot be read fails the whole apply instead: the
+// snapshot is the rollback's only copy, so continuing would let a transient
+// read error turn the next restore into a deleter of the user's live roster
+// YAML. Aborting here costs an update; conflating the two costs the data.
+func snapshotDataDir(dataDir string) (map[string][]byte, error) {
 	out := make(map[string][]byte, len(dataYAMLFiles))
 	for _, name := range dataYAMLFiles {
-		// #nosec G304 -- `name` ranges over dataYAMLFiles, a hardcoded
-		// package-level list of asset basenames. `dataDir` is the
-		// install-global <RECALL_DATA_DIR>/data path. No user input
-		// reaches this filepath.
-		b, err := os.ReadFile(filepath.Join(dataDir, name))
-		if err != nil {
+		b, err := ReadFileFunc(filepath.Join(dataDir, name))
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
 			out[name] = nil
-			continue
+		case err != nil:
+			return nil, fmt.Errorf("%w: snapshot %s: %w", ErrDataUpdateIO, name, err)
+		default:
+			out[name] = b
 		}
-		out[name] = b
 	}
-	return out
+	return out, nil
 }
 
-// writeAndRename writes each verified asset to <dataDir>/<name>.tmp
-// then renames .tmp → final. If any rename fails the caller is
-// responsible for rollback — this function does not clean up.
-func writeAndRename(dataDir string, verified map[string]verifiedAsset) error {
-	for _, name := range dataYAMLFiles {
-		tmp := filepath.Join(dataDir, name+".tmp")
-		if err := os.WriteFile(tmp, verified[name].bytes, 0o600); err != nil {
-			return fmt.Errorf("%w: write %s.tmp: %w", ErrDataUpdateIO, name, err)
-		}
+// stagedApply bundles the two-phase write's collaborators: the payloads to
+// stage, the manifest recording them, and the pre-apply snapshot a failed
+// data rename restores from.
+type stagedApply struct {
+	baseDir  string
+	dataDir  string
+	verified map[string]verifiedAsset
+	manifest DataManifest
+	snapshot map[string][]byte
+}
+
+// run stages every file, renames the assets, then renames the manifest LAST.
+// The manifest rename is the apply's single commit point — every fallible
+// write is already done by then, so a manifest failure leaves the old dataset
+// under the old manifest and the whole apply retryable, with no good data to
+// roll back.
+func (s stagedApply) run() error {
+	if err := s.stage(); err != nil {
+		s.removeStaged()
+		return err
 	}
+	if err := s.renameAssets(); err != nil {
+		s.restore()
+		s.removeStaged()
+		return err
+	}
+	if err := s.commitManifest(); err != nil {
+		s.removeStaged()
+		return err
+	}
+	return nil
+}
+
+// stage writes every file the apply will commit — the assets and the
+// manifest — to sibling .tmp paths. None of it is visible to a reader of the
+// data dir yet.
+func (s stagedApply) stage() error {
+	if err := s.stageAssets(); err != nil {
+		return err
+	}
+	return s.stageManifest()
+}
+
+func (s stagedApply) stageAssets() error {
 	for _, name := range dataYAMLFiles {
-		tmp := filepath.Join(dataDir, name+".tmp")
-		final := filepath.Join(dataDir, name)
-		if err := RenameFunc(tmp, final); err != nil {
-			return fmt.Errorf("%w: rename %s.tmp: %w", ErrDataUpdateIO, name, err)
+		tmp := filepath.Join(s.dataDir, name+tmpSuffix)
+		if err := os.WriteFile(tmp, s.verified[name].bytes, 0o600); err != nil {
+			return fmt.Errorf("%w: write %s%s: %w", ErrDataUpdateIO, name, tmpSuffix, err)
 		}
 	}
 	return nil
 }
 
-// restoreSnapshot puts each captured pre-apply file back. nil entries
-// (file didn't exist before) are removed from disk if present.
-func restoreSnapshot(dataDir string, snapshot map[string][]byte) {
-	for name, b := range snapshot {
-		final := filepath.Join(dataDir, name)
+// stageManifest marshals + writes manifest.json.tmp. It runs BEFORE any asset
+// rename so that a manifest the apply cannot even build never leaves new data
+// behind under a stale manifest (which status reads as "not applied", making
+// the UI re-offer the update forever).
+func (s stagedApply) stageManifest() error {
+	b, err := json.MarshalIndent(s.manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("%w: marshal manifest: %w", ErrDataUpdateIO, err)
+	}
+	if err := os.WriteFile(manifestPath(s.baseDir)+tmpSuffix, b, 0o600); err != nil {
+		return fmt.Errorf("%w: write manifest%s: %w", ErrDataUpdateIO, tmpSuffix, err)
+	}
+	return nil
+}
+
+func (s stagedApply) renameAssets() error {
+	for _, name := range dataYAMLFiles {
+		tmp := filepath.Join(s.dataDir, name+tmpSuffix)
+		final := filepath.Join(s.dataDir, name)
+		if err := RenameFunc(tmp, final); err != nil {
+			return fmt.Errorf("%w: rename %s%s: %w", ErrDataUpdateIO, name, tmpSuffix, err)
+		}
+	}
+	return nil
+}
+
+// commitManifest renames the staged manifest over the live one — the single
+// step that makes the apply "applied".
+func (s stagedApply) commitManifest() error {
+	path := manifestPath(s.baseDir)
+	if err := RenameFunc(path+tmpSuffix, path); err != nil {
+		return fmt.Errorf("%w: commit manifest: %w", ErrDataUpdateIO, err)
+	}
+	return nil
+}
+
+// restore puts each snapshotted file back. A nil entry means the file was
+// absent before the apply, so it is removed.
+func (s stagedApply) restore() {
+	for name, b := range s.snapshot {
+		final := filepath.Join(s.dataDir, name)
 		if b == nil {
 			_ = os.Remove(final)
 			continue
@@ -294,10 +417,11 @@ func restoreSnapshot(dataDir string, snapshot map[string][]byte) {
 	}
 }
 
-// removeTmpFiles drops every <dataDir>/<name>.tmp file. Used after a
-// rename failure to clear leftover state.
-func removeTmpFiles(dataDir string) {
+// removeStaged drops every .tmp file the apply may have left behind,
+// including the staged manifest.
+func (s stagedApply) removeStaged() {
 	for _, name := range dataYAMLFiles {
-		_ = os.Remove(filepath.Join(dataDir, name+".tmp"))
+		_ = os.Remove(filepath.Join(s.dataDir, name+tmpSuffix))
 	}
+	_ = os.Remove(manifestPath(s.baseDir) + tmpSuffix)
 }
