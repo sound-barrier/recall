@@ -151,6 +151,20 @@
      overlay regardless of theme (think "warning sticker"). */
 }
 
+/* High contrast inverts --brand-gray to #fff so every structural plate reads
+   as white — but this plate's text is --on-dark-plate (#f5f3ee, no HC
+   override), which lands 1.11:1 on white. The banner's own title and body
+   were invisible on the upper half of the gradient long before this rule
+   existed; giving --brand-gray-deep an HC value spread that failure across
+   the whole plate (10.26:1 at the bottom stop → 1.39:1).
+   Same fix the brandmark tile already uses under HC: invert the plate to the
+   page ground and ring it in white, which puts the cream text at 18.94:1 and
+   keeps the "dark warning sticker" reading the other three themes have. */
+[data-theme="high-contrast"] .system-alert {
+  background: var(--bg);
+  box-shadow: 0 0 0 2px var(--text) inset;
+}
+
 /* .engine-row/.engine-status/.engine-dot/.engine-state moved to
    IngestView.vue */
 

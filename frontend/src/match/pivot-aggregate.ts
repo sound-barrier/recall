@@ -42,6 +42,13 @@ export interface PivotTally {
   total: number
   wins: number
   losses: number
+  // How many records landed in the bucket at all, parsed result or not. The
+  // judgment engine's `empty` band keys off `total`, which counts only
+  // records that produced a W/L/D — so a bucket of records whose OCR never
+  // yielded a result reads as `empty` and speaks "no matches" while the
+  // Matches column beside it shows a count. Consumers use this to tell
+  // "nothing here" from "nothing decided here".
+  records: number
 }
 
 // The tallies mirror the cells / rowTotals / colTotals / grandTotals grid
@@ -118,18 +125,27 @@ function passesFilters(rec: MatchRecord, filters: PivotFilter[], byId: Map<strin
   return true
 }
 
-// `total` is the DECIDED population — the same denominator winRateOf divides
-// by — so the tint a consumer derives from the tally and the percentage it
-// prints always describe the same matches. Records with no parsed result sit
-// in the bucket but claim nothing.
+// `total` is every match with a parsed result, draws included — it answers
+// "how much was played here", which is what the volume tint and the
+// no-matches-at-all check need. It is deliberately NOT the win-rate
+// denominator; see winRateOf.
 function tallyOf(records: readonly MatchRecord[]): PivotTally {
   const { w, l, d } = tallyWLD([...records])
-  return { total: w + l + d, wins: w, losses: l }
+  return { total: w + l + d, wins: w, losses: l, records: records.length }
 }
 
+// Decisive games only — the house convention, because a draw is not a loss,
+// and the denominator heatmapCellBand judges over. Dividing by `total`
+// instead put the printed number and the tint on different populations: a
+// bucket of 8W/7L/3D printed 44% while the band judged 8/15 = 53% and
+// painted it a win, so the cell contradicted its own color and its own
+// spoken name. Null rather than 0 when nothing was decided — 0% would read
+// as "you lost every game", the sentinel the masthead and heatmap both
+// refuse to print.
 function winRateOf(records: readonly MatchRecord[]): number | null {
-  const { total, wins } = tallyOf(records)
-  return total === 0 ? null : (wins / total) * 100
+  const { wins, losses } = tallyOf(records)
+  const decisive = wins + losses
+  return decisive === 0 ? null : (wins / decisive) * 100
 }
 
 function kdOf(records: readonly MatchRecord[]): number {

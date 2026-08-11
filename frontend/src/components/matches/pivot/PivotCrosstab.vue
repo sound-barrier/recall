@@ -14,7 +14,7 @@ const props = defineProps<{ result: PivotResult }>()
 
 // A cell the grid has no bucket for. Reads as the `empty` band, which is
 // what a missing row/column intersection honestly is.
-const NO_MATCHES: PivotTally = { total: 0, wins: 0, losses: 0 }
+const NO_MATCHES: PivotTally = { total: 0, wins: 0, losses: 0, records: 0 }
 
 const r = computed(() => props.result)
 const leadCols = computed(() => Math.max(r.value.rowFields.length, 1))
@@ -71,15 +71,26 @@ interface CellView {
   name: string | undefined
 }
 
+// The spoken half of the cell. A tint that carries a verdict must say that
+// verdict out loud (WCAG 1.4.1), but only when there is one to say.
+function cellName(text: string, value: number | null, tally: PivotTally): string | undefined {
+  // The engine's `empty` band keys off W/L/D counts, so a bucket whose
+  // records never produced a result reads as `empty` and would speak "no
+  // matches" — contradicting the Matches column right beside it. Records
+  // present but nothing decided: claim nothing.
+  if (tally.total === 0 && tally.records > 0) return undefined
+  const judgment = heatmapCellJudgment(tally)
+  return value === null ? judgment : `${text} — ${judgment}`
+}
+
 function viewOf(value: number | null, tally: PivotTally, v: number): CellView {
   const text = fmt(value, v)
   if (r.value.values[v]?.agg !== 'winRate') return { text, heat: null, volume: undefined, name: undefined }
-  const judgment = heatmapCellJudgment(tally)
   return {
     text,
     heat: heatmapCellClass(tally),
     volume: heatmapCellOpacity(tally),
-    name: value === null ? judgment : `${text} — ${judgment}`,
+    name: cellName(text, value, tally),
   }
 }
 
