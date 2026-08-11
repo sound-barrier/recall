@@ -250,6 +250,10 @@
   --brand-gray: #fff;
   --brand-gray-soft: rgb(255 255 255 / 80%);
 
+  /* One step down from the white plate — same luminance step --text-mute
+     takes — so the gradient still reads as a gradient. */
+  --brand-gray-deep: #d0d0d0;
+
   /* Accent boosted from the dark-mode burnt orange (#F5A623) to the
      warmer gold #ffbf4d — same hue as dark-mode --accent-bright but
      used as the primary here so every accent-touched surface gains
