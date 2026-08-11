@@ -99,12 +99,12 @@
   height: clamp(15rem, 36vh, 19rem);
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--border-strong, var(--border)) transparent;
+  scrollbar-color: var(--border-strong) transparent;
   padding-right: 0.2rem;
 }
 
 .hp-scroll::-webkit-scrollbar { width: 8px; }
-.hp-scroll::-webkit-scrollbar-thumb { background: var(--border-strong, var(--border)); border-radius: var(--radius-lg); }
+.hp-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-lg); }
 .hp-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .hp-scroll::-webkit-scrollbar-track { background: transparent; }
 

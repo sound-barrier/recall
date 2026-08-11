@@ -175,7 +175,7 @@
    (OCR / edited / manual), one glyph per row. */
 .tc-prov { text-align: center; }
 
-.tc-unknown { color: var(--accent-bright, var(--accent)); cursor: help; }
+.tc-unknown { color: var(--accent-bright); cursor: help; }
 
 .tc-result-chip {
   font-size: var(--type-2xs);

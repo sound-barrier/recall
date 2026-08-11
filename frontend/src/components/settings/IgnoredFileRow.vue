@@ -66,7 +66,7 @@ const emit = defineEmits<{
   align-items: center;
   gap: 0.85rem;
   padding: 0.55rem 0.5rem;
-  border-bottom: 1px solid var(--border-soft, var(--border));
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .ignored-row:last-child {

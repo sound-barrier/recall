@@ -85,7 +85,7 @@ const pct = computed(() => {
   background: var(--surface-2);
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius-md);
-  font-family: var(--mono, ui-monospace, 'SF Mono', menlo, monospace);
+  font-family: var(--mono);
   font-size: var(--type-sm);
   letter-spacing: 0.14em;
   color: var(--text);

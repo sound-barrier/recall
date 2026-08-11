@@ -335,11 +335,11 @@ function onBackdropClick(e: MouseEvent) {
   justify-content: space-between;
   gap: var(--space-4);
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--border-soft, var(--border));
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .ignored-title {
-  font-family: var(--display-font, inherit);
+  font-family: var(--display);
   font-size: var(--type-2xl);
   margin: 0;
   display: flex;
@@ -396,7 +396,7 @@ function onBackdropClick(e: MouseEvent) {
   align-items: center;
   gap: var(--space-2);
   padding: 0.7rem 1rem;
-  border-bottom: 1px solid var(--border-soft, var(--border));
+  border-bottom: 1px solid var(--border-soft);
   background: var(--surface);
 }
 
@@ -424,7 +424,7 @@ function onBackdropClick(e: MouseEvent) {
   width: 360px;
   height: 203px;
   object-fit: cover;
-  border: 1px solid var(--border-strong, var(--border));
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 50%);
   pointer-events: none;
@@ -435,7 +435,7 @@ function onBackdropClick(e: MouseEvent) {
   align-items: center;
   gap: 0.4rem;
   padding: 0.65rem 1rem;
-  border-top: 1px solid var(--border-soft, var(--border));
+  border-top: 1px solid var(--border-soft);
   font-size: var(--type-lg);
   color: var(--text-dim);
   background: var(--surface);
@@ -454,7 +454,7 @@ function onBackdropClick(e: MouseEvent) {
 
 .ignored-runparse:hover,
 .ignored-runparse:focus-visible {
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   outline: none;
 }
 

@@ -202,8 +202,8 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   position: fixed;
   z-index: 2002;
   pointer-events: auto;
-  background: var(--surface, #1d1d1d);
-  border: 1px solid var(--border, #3a3a3a);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   padding: 1.05rem 1.15rem 0.85rem;
   box-shadow:
@@ -255,7 +255,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: -0.1em;
-  color: var(--text-faint, #6a6a6a);
+  color: var(--text-faint);
   margin-right: 0.15rem;
   opacity: 0.7;
 }
@@ -273,7 +273,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   width: 0.5rem;
   height: 0.5rem;
   padding: 0;
-  border: 1px solid var(--border-strong, #666);
+  border: 1px solid var(--border-strong);
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
@@ -295,7 +295,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   font-family: var(--mono);
   font-size: var(--type-xs);
   letter-spacing: 0.18em;
-  color: var(--text-faint, #6a6a6a);
+  color: var(--text-faint);
   font-feature-settings: "tnum";
 }
 
@@ -323,7 +323,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   font-weight: 400;
   font-size: var(--type-5xl);
   line-height: 1.05;
-  color: var(--text, #f0f0f0);
+  color: var(--text);
   margin: 0;
   border-bottom: 2px solid var(--accent);
   padding-bottom: 0.35rem;
@@ -332,7 +332,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
 
 .tour-callout-body {
   margin: 0;
-  color: var(--text-dim, #c0c0c0);
+  color: var(--text-dim);
   font-size: var(--type-lg);
   line-height: 1.55;
 }
@@ -343,7 +343,7 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   align-items: center;
   margin-top: 0.55rem;
   padding-top: 0.7rem;
-  border-top: 1px dashed color-mix(in srgb, var(--text-faint, #6a6a6a) 38%, transparent);
+  border-top: 1px dashed color-mix(in srgb, var(--text-faint) 38%, transparent);
 }
 
 .tour-callout-actions-primary {
@@ -359,11 +359,11 @@ const connector = computed(() => computeConnector(getTargetRect(), {
   font-size: var(--type-xs);
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--text-faint, #6a6a6a);
+  color: var(--text-faint);
   cursor: pointer;
 }
 
-.tour-callout-skip:hover { color: var(--text-dim, #c0c0c0); }
+.tour-callout-skip:hover { color: var(--text-dim); }
 
 .tour-callout-skip:focus-visible {
   outline: 2px solid var(--accent);

@@ -217,14 +217,14 @@ async function confirmDelete(name: string) {
 }
 
 .profile-mgmt-delete:hover:not(:disabled) {
-  color: var(--loss, #e74c3c);
-  border-color: var(--loss, #e74c3c);
+  color: var(--loss);
+  border-color: var(--loss);
 }
 
 .profile-mgmt-delete-confirm {
-  background: var(--loss, #e74c3c);
-  border: 1px solid var(--loss, #e74c3c);
-  color: var(--bg, #fff);
+  background: var(--loss);
+  border: 1px solid var(--loss);
+  color: var(--bg);
 }
 
 .profile-mgmt-delete-cancel {
@@ -237,6 +237,6 @@ async function confirmDelete(name: string) {
   margin: 0;
   font-family: var(--mono);
   font-size: var(--type-sm);
-  color: var(--loss, #e74c3c);
+  color: var(--loss);
 }
 </style>

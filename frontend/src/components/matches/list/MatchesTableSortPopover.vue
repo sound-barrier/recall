@@ -325,7 +325,7 @@ function onColumnChange(from: TableSortCol, e: Event) {
   font-size: var(--type-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--accent-text, var(--accent));
+  color: var(--accent-text);
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--border-strong);

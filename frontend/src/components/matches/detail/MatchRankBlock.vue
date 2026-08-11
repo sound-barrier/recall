@@ -83,7 +83,7 @@ const ow = useOWData()
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  color: var(--accent-bright, var(--accent));
+  color: var(--accent-bright);
   letter-spacing: 0.24em;
 }
 

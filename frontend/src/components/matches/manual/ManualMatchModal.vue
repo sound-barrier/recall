@@ -106,7 +106,7 @@ async function submit() {
   width: min(560px, 100%);
   max-height: 92vh;
   background: var(--surface);
-  border: 1px solid var(--border-strong, var(--border));
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: 0 18px 60px rgb(var(--shadow-rgb) / 45%);
   padding: 0.9rem 1rem 0;
@@ -204,7 +204,7 @@ async function submit() {
 }
 
 .mm-btn.ghost:hover { border-color: var(--accent); color: var(--accent-text); }
-.mm-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--primary-text-on-accent, var(--surface)); }
-.mm-btn.primary:hover:not(:disabled) { background: var(--accent-bright, var(--accent)); }
+.mm-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--primary-text-on-accent); }
+.mm-btn.primary:hover:not(:disabled) { background: var(--accent-bright); }
 .mm-btn.primary:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>

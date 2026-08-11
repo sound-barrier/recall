@@ -74,7 +74,7 @@ function reload() {
 
 .vle-reload:hover {
   background: var(--accent);
-  color: var(--primary-text-on-accent, var(--bg));
+  color: var(--primary-text-on-accent);
 }
 
 .vle-reload:focus-visible {

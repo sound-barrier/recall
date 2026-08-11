@@ -322,7 +322,7 @@ function onCancel() {
 
 .wcp-segment-active {
   background: var(--accent);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
   font-weight: 700;
 }
 
@@ -386,7 +386,7 @@ function onCancel() {
 .wcp-btn-primary {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .wcp-btn-primary:hover { filter: brightness(1.08); }

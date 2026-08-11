@@ -258,7 +258,7 @@ function sourceLabel(source: string): string {
   gap: 0.3rem;
   padding: 0.18rem 0.18rem 0.18rem 0.5rem;
   background: var(--surface-2);
-  border: 1px solid var(--accent-soft, var(--accent));
+  border: 1px solid var(--accent-soft);
   border-radius: var(--radius);
   font-family: var(--mono);
   font-size: var(--type-2xs);

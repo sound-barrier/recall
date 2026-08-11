@@ -276,7 +276,7 @@ defineEmits<{
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--draw, #d8a657);
+  background: var(--draw);
   animation: pulse-dot 1.2s ease-in-out infinite;
   flex-shrink: 0;
 }

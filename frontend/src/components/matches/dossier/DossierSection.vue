@@ -145,7 +145,7 @@ function onGripKeydown(e: KeyboardEvent) {
 
 .dossier-section-remove:hover {
   color: var(--loss);
-  border-color: var(--loss-line, var(--loss));
+  border-color: var(--loss-line);
   background: color-mix(in srgb, var(--loss) 12%, var(--surface));
 }
 

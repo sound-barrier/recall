@@ -284,7 +284,7 @@
 .unknown-delete-btn {
   appearance: none;
   background: transparent;
-  border: 1px solid var(--loss-line, var(--loss));
+  border: 1px solid var(--loss-line);
   color: var(--loss);
   font-family: var(--mono);
   font-weight: 700;
@@ -372,7 +372,7 @@
 }
 
 .needs-review-heading {
-  font-family: var(--font-display, var(--mono));
+  font-family: var(--display);
   font-size: var(--type-2xl);
   font-weight: 600;
   color: var(--text);
@@ -398,8 +398,8 @@
    - .ambiguous-card  → --accent (orange · action needed now)
    - .unknown-card    → --draw-line (amber · corrupted / can't classify)
    - .reference-gap-card → --win-line (green · upstream fix landed) */
-.ambiguous-card::before { background: var(--accent, var(--draw-line)); }
-.reference-gap-card::before { background: var(--win-line, var(--draw-line)); }
+.ambiguous-card::before { background: var(--accent); }
+.reference-gap-card::before { background: var(--win-line); }
 
 /* Hover-only floating thumbnail — cursor-anchored. Teleport'd to
    <body> so position: fixed + the dynamic left/top inline style

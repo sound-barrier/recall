@@ -219,7 +219,7 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
 }
 
 .sgp-row.picked {
-  color: var(--accent-text, var(--accent));
+  color: var(--accent-text);
 }
 
 .sgp-row.picked .sgp-label {

@@ -168,7 +168,7 @@ const calloutStyle = computed(() => {
   box-shadow:
     0 16px 36px color-mix(in srgb, var(--bg) 60%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
-  font-family: var(--sans);
+  font-family: var(--body);
 }
 
 .ctx-head {
@@ -223,7 +223,7 @@ const calloutStyle = computed(() => {
   appearance: none;
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent, var(--bg));
+  color: var(--primary-text-on-accent);
   font-family: var(--mono);
   font-size: var(--type-sm);
   font-weight: 700;

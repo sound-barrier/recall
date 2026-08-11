@@ -221,7 +221,7 @@ function onJumpToIngest(e: MouseEvent) {
   background: var(--surface-3);
   border-top: 1px solid var(--accent);
   box-shadow: 0 -8px 24px -10px rgb(var(--shadow-rgb) / 50%);
-  font-family: var(--mono, ui-monospace, 'SF Mono', menlo, monospace);
+  font-family: var(--mono);
   cursor: pointer;
   user-select: none;
 
@@ -274,7 +274,7 @@ function onJumpToIngest(e: MouseEvent) {
 }
 
 .label {
-  font-family: var(--mono, ui-monospace, monospace);
+  font-family: var(--mono);
   font-size: var(--type-xs);
   font-weight: 600;
   letter-spacing: 0.16em;
@@ -405,7 +405,7 @@ function onJumpToIngest(e: MouseEvent) {
   border: 1px solid var(--loss);
   border-radius: var(--radius-hair);
   color: var(--loss);
-  font-family: var(--mono, ui-monospace, monospace);
+  font-family: var(--mono);
   font-size: var(--type-xs);
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -422,7 +422,7 @@ function onJumpToIngest(e: MouseEvent) {
 .abort-btn:active:not(:disabled) {
   transform: translateY(1px);
   background: var(--loss);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .abort-btn:focus-visible {

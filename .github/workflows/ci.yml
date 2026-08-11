@@ -79,6 +79,14 @@ jobs:
       - name: Check CSS theme integrity
         run: bash scripts/ci/check-css-theme-leak.sh
 
+      # `var(--x, fallback)` fails silently: an undefined token quietly
+      # renders the fallback, and nothing — not the browser, not stylelint,
+      # not vue-tsc — reports it. Two headings shipped in the wrong typeface
+      # that way. This also fails a fallback on an always-defined token,
+      # which is dead code that invites palette drift.
+      - name: Check CSS token integrity
+        run: bash scripts/ci/check-css-tokens.sh
+
       - name: Lint Go (default build tags)
         run: golangci-lint run ./...
 

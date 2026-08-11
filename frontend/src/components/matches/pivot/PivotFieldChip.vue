@@ -251,7 +251,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocPointerDo
   display: flex;
   flex-direction: column;
   padding: var(--space-1);
-  background: var(--surface-3, var(--surface));
+  background: var(--surface-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 35%);

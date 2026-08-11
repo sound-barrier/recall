@@ -412,7 +412,7 @@ const {
 .archive-confirm {
   border: 1px solid var(--loss);
   background: var(--loss);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 .archive-confirm:hover { filter: brightness(1.06); }
 

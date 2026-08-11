@@ -277,6 +277,10 @@ tasks:
     desc: Assert no theme rule leaked to a bare <html> selector and no dead theme modes (needs a build)
     cmds: [bash scripts/ci/check-css-theme-leak.sh --build]
 
+  check-css-tokens:
+    desc: Assert every var(--token) resolves and no fallback hides an always-defined token
+    cmds: [bash scripts/ci/check-css-tokens.sh]
+
   lint-openapi:
     desc: Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
     cmds:
@@ -420,6 +424,8 @@ tasks:
       - bash scripts/ci/check-bundle-size.sh --build
       - echo "[ recall ] verify — CSS theme integrity…"
       - bash scripts/ci/check-css-theme-leak.sh --build
+      - echo "[ recall ] verify — CSS token integrity…"
+      - bash scripts/ci/check-css-tokens.sh
       - echo "[ recall ] verify — dead code…"
       - bash scripts/ci/deadcode-check.sh
       - cd frontend && npm run dead:ts

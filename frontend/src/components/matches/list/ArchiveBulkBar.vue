@@ -160,7 +160,7 @@ const {
 .bulk-unhide {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .bulk-unhide:hover { filter: brightness(1.08); }
@@ -176,7 +176,7 @@ const {
 .bulk-confirm {
   border: 1px solid var(--loss);
   background: var(--loss);
-  color: var(--primary-text-on-accent, #111);
+  color: var(--primary-text-on-accent);
 }
 
 .bulk-confirm:hover { filter: brightness(1.06); }

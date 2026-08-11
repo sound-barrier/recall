@@ -230,7 +230,7 @@ const popoverStyle = computed(() =>
   cursor: pointer;
   transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease;
 }
-.mrc-reset:hover:not(:disabled) { color: var(--loss); border-color: var(--loss-line, var(--loss)); }
+.mrc-reset:hover:not(:disabled) { color: var(--loss); border-color: var(--loss-line); }
 .mrc-reset:disabled { opacity: 0.4; cursor: default; }
 .mrc-reset:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 
@@ -281,7 +281,7 @@ const popoverStyle = computed(() =>
   cursor: pointer;
   transition: color var(--duration-instant) ease, border-color var(--duration-instant) ease, background var(--duration-instant) ease;
 }
-.mrc-pill:hover { color: var(--text); border-color: var(--border-strong, var(--border)); }
+.mrc-pill:hover { color: var(--text); border-color: var(--border-strong); }
 
 .mrc-pill.on {
   color: var(--accent-text);

@@ -430,13 +430,13 @@ onBeforeUnmount(() => {
 
 .export-bundle-cancel:hover:not(:disabled) {
   color: var(--text);
-  border-color: var(--border-strong, var(--text-faint));
+  border-color: var(--border-strong);
 }
 
 .export-bundle-save {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: var(--primary-text-on-accent, var(--bg));
+  color: var(--primary-text-on-accent);
 }
 
 .export-bundle-save:disabled {
