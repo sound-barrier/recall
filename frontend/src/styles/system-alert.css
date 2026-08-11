@@ -12,7 +12,7 @@
   gap: 1.2rem;
   padding: 1rem 1.2rem 1rem 1.4rem;
   margin-bottom: 1.6rem;
-  background: linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%);
+  background: linear-gradient(180deg, var(--brand-gray) 0%, var(--brand-gray-deep) 100%);
   border-radius: var(--radius);
   border: 1px solid var(--loss);
   box-shadow: 0 14px 36px -14px rgb(var(--shadow-rgb) / 55%);
@@ -145,7 +145,7 @@
 .btn.alert-cta:hover .alert-cta-arrow { transform: translateX(3px); }
 
 [data-theme="day"] .system-alert {
-  background: linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%);
+  background: linear-gradient(180deg, var(--brand-gray) 0%, var(--brand-gray-deep) 100%);
 
   /* Stays dark in light mode — system alerts feel right as a dark
      overlay regardless of theme (think "warning sticker"). */

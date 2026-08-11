@@ -49,6 +49,10 @@ export default {
     'scale-unlimited/declaration-strict-value': [
       [
         '/color$/',
+        // `background` is policed only because expandShorthand maps it onto
+        // background-color; `background-image` is a longhand that does not
+        // end in -color, so a literal gradient there was never inspected.
+        'background-image',
         'fill',
         'stroke',
         'font-size',
@@ -84,7 +88,23 @@ export default {
           // `rgb(var(--shadow-rgb) / 55%)` and gradients over
           // var(--surface-2) all satisfy it — the plugin just can't see
           // inside a function on its own.
-          '/var\\(--/',
+          // Requires a var(--token) AND forbids any raw literal riding
+          // alongside it. The old spelling was a bare unanchored
+          // `/var\(--/`, which passed the WHOLE value the moment `var(--`
+          // appeared anywhere in it — so
+          // `linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%)`
+          // was lint-clean, and that #3a3a3a stayed frozen while
+          // --brand-gray goes #fff under high contrast.
+          //
+          // The three negative lookaheads reject, in order: a hex literal;
+          // an rgb()/rgba() whose first argument is a NUMBER (so the
+          // token-derived `rgb(var(--shadow-rgb) / 55%)` still passes);
+          // and the same for hsl()/hsla().
+          // [\s\S] rather than `.` throughout: CSS values wrap across lines
+          // (a multi-stop repeating-linear-gradient is the common case) and
+          // JS's `.` does not match a newline, so a `.*` form silently
+          // rejected every token-derived multi-line value.
+          '/^(?=[\\s\\S]*var\\(--)(?![\\s\\S]*#[0-9a-fA-F]{3,8})(?![\\s\\S]*\\brgba?\\(\\s*[\\d.])(?![\\s\\S]*\\bhsla?\\(\\s*[\\d.])[\\s\\S]*$/',
           // Display-scale type (≥1.8rem) is off the ladder ON PURPOSE — a
           // 2.55rem masthead wordmark and a 5rem empty-state glyph are
           // per-surface editorial choices, and the tokens.css comment says

@@ -29,6 +29,13 @@
   /* Overwatch signature grays. Used as a structural brand element —
      the masthead branding tile, strong borders, divider blocks. */
   --brand-gray: #4A4A4A;
+
+  /* Bottom stop of the brand-plate gradient — a step darker than
+     --brand-gray so the plate reads as lit from above. It existed only as
+     a hardcoded #3a3a3a in system-alert.css, which stayed frozen while
+     --brand-gray goes #fff under high contrast: the alert ramped white to
+     near-black there instead of darkening by one step. */
+  --brand-gray-deep: #3a3a3a;
   --brand-gray-soft: rgb(74 74 74 / 55%);
 
   /* Overwatch signature orange. Single hero accent across the UI. */
