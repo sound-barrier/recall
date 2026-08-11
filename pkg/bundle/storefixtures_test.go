@@ -76,6 +76,10 @@ func seedUserLayer(f *dbtest.Fake) {
 	f.Queues = map[string]db.QueueState{"m2": {QueueType: "role", OverriddenAt: "2026-05-02T00:00:00Z"}}
 	f.PlayModes = map[string]db.PlayModeState{"m3": {PlayMode: "competitive", OverriddenAt: "2026-05-02T00:00:00Z"}}
 	f.Hidden = map[string]bool{"m3": true}
+	// Two stars: m1 is inside the single-key export's include set (so the
+	// restriction test can prove pins ship) and m2 is outside it (so the same
+	// test can prove they don't leak).
+	f.Pinned = map[string]bool{"m1": true, "m2": true}
 }
 
 // writeShots drops placeholder bytes at each named basename inside dir.
@@ -164,6 +168,13 @@ func (s *failingStore) LoadHiddenKeys() (map[string]bool, error) {
 	return s.Fake.LoadHiddenKeys()
 }
 
+func (s *failingStore) LoadPinnedKeys() (map[string]bool, error) {
+	if err := s.boom("LoadPinnedKeys"); err != nil {
+		return nil, err
+	}
+	return s.Fake.LoadPinnedKeys()
+}
+
 func (s *failingStore) UpsertSummary(r db.SummaryRow) error {
 	if err := s.boom("UpsertSummary"); err != nil {
 		return err
@@ -239,4 +250,11 @@ func (s *failingStore) HideMatch(matchKey string) error {
 		return err
 	}
 	return s.Fake.HideMatch(matchKey)
+}
+
+func (s *failingStore) PinMatch(matchKey string) error {
+	if err := s.boom("PinMatch"); err != nil {
+		return err
+	}
+	return s.Fake.PinMatch(matchKey)
 }

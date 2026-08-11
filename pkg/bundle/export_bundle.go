@@ -23,9 +23,14 @@ const exportSchemaV1 = "recall-export/v1"
 
 // exportSchemaV2 adds the user layer — inline edits + manual matches
 // (user_match_data with children), annotations, review / queue /
-// play-mode state, and hidden flags — so an export→import round trip
-// preserves every hand-entered correction, and a shared bundle carries
-// the sharer's notes and manual entries.
+// play-mode state, and the hidden + pinned flags — so an export→import
+// round trip preserves every hand-entered correction, and a shared
+// bundle carries the sharer's notes and manual entries.
+//
+// Every user-layer field is `omitempty`, so a section added after this
+// constant was minted (pinned) is simply absent from older bundles and
+// reads back as "none" — which is why the schema string, and
+// BundleSchemaV1 with it, stay put when the layer grows.
 const exportSchemaV2 = "recall-export/v2"
 
 // BundleSchemaV1 is the wire-schema identifier the bundle's
@@ -80,6 +85,7 @@ type DataV2 struct {
 	Queues        map[string]db.QueueState    `json:"queues,omitempty"`
 	PlayModes     map[string]db.PlayModeState `json:"play_modes,omitempty"`
 	Hidden        []string                    `json:"hidden,omitempty"`
+	Pinned        []string                    `json:"pinned,omitempty"`
 }
 
 // ExportBundleOptions controls which matches end up in the bundle.
@@ -92,8 +98,11 @@ type ExportBundleOptions struct {
 	// MatchKeys is the set of match_keys the user ticked in the
 	// Matches list. Empty slice + no toggles produces an empty bundle.
 	MatchKeys []string
-	// IncludeUnknown adds every record whose `data.map` is empty —
-	// the same definition the Matches view's "unknown" filter uses.
+	// IncludeUnknown adds every record whose `data.map` is empty. That
+	// is a SUPERSET of the Unknown tab's count, which also excludes
+	// ambiguous records — an unattributed screenshot with no map rides
+	// in on this toggle. Additive only: a real match whose map OCR
+	// failed still exports when this is off, provided it's in MatchKeys.
 	IncludeUnknown bool
 	// IncludeHidden adds every record currently in `hidden_matches`.
 	IncludeHidden bool
@@ -118,8 +127,9 @@ type ExportBundleOptions struct {
 // Wails mode threads them into a SaveFileDialog → os.WriteFile.
 func Export(store db.Store, opts ExportBundleOptions, recs []match.Record, screenshotsDir, version string) ([]byte, error) {
 	// recs come from the shell's GetMatchResults() — the same
-	// aggregator the Matches view consumes, so the "unknown" and
-	// "hidden" definitions stay in lockstep with the UI.
+	// aggregator the Matches view consumes, so "hidden" means exactly
+	// what the UI means by it (see IncludeUnknown for why the unknown
+	// bucket is wider than the tab of the same name).
 	include := bundleIncludeSet(opts, recs)
 
 	snap, err := store.LoadAll()
@@ -235,6 +245,7 @@ func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, expor
 		Queues:        user.queues,
 		PlayModes:     user.playModes,
 		Hidden:        user.hidden,
+		Pinned:        user.pinned,
 	}
 	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
 		return fmt.Errorf("export bundle: write data.json: %w", err)
@@ -251,6 +262,7 @@ type bundleUserLayer struct {
 	queues      map[string]db.QueueState
 	playModes   map[string]db.PlayModeState
 	hidden      []string
+	pinned      []string
 }
 
 // loadBundleUserLayer gathers every user-layer surface for the included
@@ -280,6 +292,10 @@ func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUse
 	if err != nil {
 		return bundleUserLayer{}, fmt.Errorf("export bundle: load hidden keys: %w", err)
 	}
+	pinned, err := store.LoadPinnedKeys()
+	if err != nil {
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load pinned keys: %w", err)
+	}
 	return bundleUserLayer{
 		userData:    sortedIncludedValues(userData, include, func(d db.UserMatchData) string { return d.MatchKey }),
 		annotations: sortedIncludedValues(annotations, include, func(a db.Annotation) string { return a.MatchKey }),
@@ -287,6 +303,7 @@ func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUse
 		queues:      filterIncludedMap(queues, include),
 		playModes:   filterIncludedMap(playModes, include),
 		hidden:      sortedIncludedKeys(hidden, include),
+		pinned:      sortedIncludedKeys(pinned, include),
 	}, nil
 }
 
