@@ -47,6 +47,7 @@ func TestExport_SurfacesEveryStoreFailure(t *testing.T) {
 		{"LoadMatchQueues", "export bundle: load queues: store down"},
 		{"LoadMatchPlayModes", "export bundle: load play modes: store down"},
 		{"LoadHiddenKeys", "export bundle: load hidden keys: store down"},
+		{"LoadPinnedKeys", "export bundle: load pinned keys: store down"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.method, func(t *testing.T) {
@@ -166,6 +167,9 @@ func TestExport_UserLayerIsRestrictedToTheIncludedKeys(t *testing.T) {
 	}
 	if len(d.Hidden) != 0 {
 		t.Errorf("hidden flags leaked: %v", d.Hidden)
+	}
+	if !slices.Equal(d.Pinned, []string{"m1"}) {
+		t.Errorf("pinned = %v, want only the selected key's star [m1]", d.Pinned)
 	}
 	if _, ok := d.Reviews["m1"]; !ok {
 		t.Errorf("the selected key's own review went missing: %+v", d.Reviews)

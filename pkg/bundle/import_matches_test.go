@@ -27,6 +27,7 @@ func allTablesData() map[string]any {
 		"queues":          map[string]any{"m1": map[string]any{"QueueType": "role"}},
 		"play_modes":      map[string]any{"m1": map[string]any{"PlayMode": "competitive"}},
 		"hidden":          []string{"m1"},
+		"pinned":          []string{"m1"},
 	}
 }
 
@@ -157,6 +158,12 @@ func assertSidecarStatesRoundTripped(t *testing.T, dst *dbtest.Fake) {
 	}
 	if !dst.Hidden["m3"] {
 		t.Error("hidden flag on m3 lost")
+	}
+	// A star is hand-curated state exactly like a note or a hidden flag: an
+	// export→import round trip that drops it silently un-stars every match the
+	// user marked, and nothing in the UI says so.
+	if !dst.Pinned["m1"] || !dst.Pinned["m2"] {
+		t.Errorf("pinned flags lost in transit: %v", dst.Pinned)
 	}
 }
 
@@ -313,6 +320,7 @@ func TestImport_SurfacesEveryStoreFailure(t *testing.T) {
 		{"SetMatchQueue", `import: queue for "m1": store down`},
 		{"SetMatchPlayMode", `import: play mode for "m1": store down`},
 		{"HideMatch", `import: hidden flag for "m1": store down`},
+		{"PinMatch", `import: pinned flag for "m1": store down`},
 	}
 	payload := payloadWithData(t, allTablesData())
 	for _, tc := range tests {

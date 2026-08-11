@@ -31,7 +31,7 @@ type ImportSummary struct {
 // bundle export strips filesystem paths.
 //
 // A v2 data.json also carries the user layer — inline edits, manual matches,
-// annotations, review / queue / play-mode state, hidden flags — which imports
+// annotations, review / queue / play-mode state, hidden + pinned flags — which imports
 // under the same skip-existing rule: an incoming key you already have is
 // skipped wholesale, so a merge can never clobber local edits. v1 bundles
 // (builds ≤0.22.x) simply have no user layer to import.
@@ -110,7 +110,10 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) 
 		func(pm db.PlayModeState) string { return pm.PlayMode }, store.SetMatchPlayMode); err != nil {
 		return err
 	}
-	return importHidden(store, data.Hidden, existing)
+	if err := importFlagKeys(data.Hidden, existing, "hidden", store.HideMatch); err != nil {
+		return err
+	}
+	return importFlagKeys(data.Pinned, existing, "pinned", store.PinMatch)
 }
 
 // importUserMatchData upserts the incoming user-data rows whose keys are new.
@@ -158,14 +161,16 @@ func importKeyedSection[T any](m map[string]T, existing map[string]struct{}, sec
 	return nil
 }
 
-// importHidden hides the incoming soft-deleted keys that are new.
-func importHidden(store db.Store, hidden []string, existing map[string]struct{}) error {
-	for _, k := range hidden {
+// importFlagKeys writes one presence-is-state sidecar section — a bare list of
+// match keys (hidden, pinned) — skipping the keys already present locally.
+// `flag` names the section in the error message.
+func importFlagKeys(keys []string, existing map[string]struct{}, flag string, set func(string) error) error {
+	for _, k := range keys {
 		if _, ok := existing[k]; ok {
 			continue
 		}
-		if err := store.HideMatch(k); err != nil {
-			return fmt.Errorf("import: hidden flag for %q: %w", k, err)
+		if err := set(k); err != nil {
+			return fmt.Errorf("import: %s flag for %q: %w", flag, k, err)
 		}
 	}
 	return nil
