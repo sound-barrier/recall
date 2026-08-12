@@ -12,7 +12,7 @@ import { buildChecks } from '@/components/elo/elo-myth-checks'
 // calculator refs and renders.
 const {
   projInput, pValue, sampleN, lossStreak, streakLen, streakHorizon,
-  percentileNow, percentileTarget, probThisSeason, seasonGames, requiredWrForSeason,
+  probThisSeason, seasonGames, requiredWrForSeason,
   targetTier, targetDivision, currentTier, currentDivision,
   skepticVerdict, trueRateRange, runs, decay, effectiveWinRatePct,
   seasonSim, simHorizonGames, paceAssumed, provisional,
@@ -33,8 +33,6 @@ const checks = computed(() => buildChecks({
   streakLen,
   streakHorizon,
   runs: runs.value,
-  percentileNow: percentileNow.value,
-  percentileTarget: percentileTarget.value,
   probThisSeason: probThisSeason.value,
   seasonGames: seasonGames.value,
   requiredWrForSeason: requiredWrForSeason.value,

@@ -16,8 +16,6 @@ const base: MythCheckInputs = {
   streakLen: 5,
   streakHorizon: 40,
   runs: { pValue: 0.5, z: 0.3, nWins: 20, nLosses: 20, runs: 21, expectedRuns: 21 },
-  percentileNow: 62.1,
-  percentileTarget: 80.5,
   probThisSeason: 0.42,
   seasonGames: 120,
   requiredWrForSeason: 0.55,
@@ -36,9 +34,9 @@ describe('buildChecks', () => {
 
   it('emits the cards in fixed order and drops each behind its own gate', () => {
     expect(buildChecks(base).map((c) => c.id)).toEqual(
-      ['rigged', 'skeptic', 'streaks', 'scripted', 'hardstuck', 'season'])
+      ['rigged', 'skeptic', 'streaks', 'scripted', 'season'])
     const gated = buildChecks({
-      ...base, pValue: null, skepticVerdict: null, lossStreak: null, runs: null, percentileNow: null,
+      ...base, pValue: null, skepticVerdict: null, lossStreak: null, runs: null,
     })
     expect(gated.map((c) => c.id)).toEqual(['season'])
   })
@@ -91,11 +89,6 @@ describe('buildChecks', () => {
     expect(coinLike).toMatchObject({ a: 'Coin-like — nothing scripted', tone: 'good' })
   })
 
-  it('drops the hardstuck framing below the verdict floor but keeps the fact', () => {
-    expect(buildChecks(base).find((c) => c.id === 'hardstuck')!.q).toBe('Hardstuck?')
-    expect(buildChecks({ ...base, provisional: true }).find((c) => c.id === 'hardstuck')!.q)
-      .toBe('Where you stand')
-  })
 
   describe('season card', () => {
     it('quotes the simulator when it ran', () => {
