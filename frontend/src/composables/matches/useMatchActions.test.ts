@@ -41,7 +41,7 @@ vi.mock('@/api', async (importOriginal) => ({
   EventsOn:       vi.fn(),
   EventsOff:      vi.fn(),
   GetActiveParse: vi.fn(async () => null),
-  GetOWData:      vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [] })),
+  GetOWData:      vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [], ranks: [] })),
 }))
 
 type Actions = ReturnType<typeof useMatchActions>

@@ -4,7 +4,8 @@
 // target sits above your current ceiling — a marker at where you plateau.
 // Presentation seam: this file knows ECharts; the model layer doesn't.
 import type { TrendOption } from '@/components/matches/trends/echarts'
-import { TIER_ORDER } from '@/match/match-trends-helpers'
+import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/match-trends-helpers'
+import { LADDER_MAX } from '@/match/elo-model'
 import type { ProjectionCurves } from '@/match/elo-model'
 import type { SeasonSim } from '@/match/elo-simulate'
 import type { SkillCurve } from '@/match/elo-kalman'
@@ -40,7 +41,7 @@ const SIM_NAME = 'Simulated range'
 
 // scoreToRankLabel renders a ladder score as "Gold 2" for the tooltip.
 function scoreToRankLabel(score: number): string {
-  const clamped = Math.min(39.999, Math.max(0, score))
+  const clamped = Math.min(LADDER_MAX - 0.001, Math.max(0, score))
   const tier = TIER_ORDER[Math.floor(clamped / 5)] ?? 'champion'
   const division = 5 - Math.floor(clamped % 5)
   return `${tier.charAt(0).toUpperCase() + tier.slice(1)} ${division}`
@@ -73,7 +74,7 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
     ...(fan ? [...fan.p10, ...fan.p90] : []),
   ]
   const min = Math.max(0, Math.floor(Math.min(...all) / 5) * 5)
-  const max = Math.min(40, Math.ceil(Math.max(...all) / 5) * 5)
+  const max = Math.min(LADDER_MAX, Math.ceil(Math.max(...all) / DIVISIONS_PER_TIER) * DIVISIONS_PER_TIER)
   const xMax = Math.max(curves.horizonGames, fan?.games[fan.games.length - 1] ?? 0)
 
   return {
@@ -211,9 +212,9 @@ export function buildEloProjectionOption(curves: ProjectionCurves, opts: EloChar
 // rank-over-time chart, on the same tier-name ladder axis.
 export function buildSkillCurveOption(curve: SkillCurve, opts: { breakAt?: number } = {}): TrendOption {
   const low = curve.level.map((v, i) => Math.max(0, v - (curve.halfWidth[i] ?? 0)))
-  const high = curve.level.map((v, i) => Math.min(40, v + (curve.halfWidth[i] ?? 0)))
+  const high = curve.level.map((v, i) => Math.min(LADDER_MAX, v + (curve.halfWidth[i] ?? 0)))
   const min = Math.max(0, Math.floor(Math.min(...low) / 5) * 5)
-  const max = Math.min(40, Math.ceil(Math.max(...high) / 5) * 5)
+  const max = Math.min(LADDER_MAX, Math.ceil(Math.max(...high) / DIVISIONS_PER_TIER) * DIVISIONS_PER_TIER)
   const at = (values: number[]): [number, number][] => curve.t.map((t, i) => [t, values[i] ?? 0])
 
   return {

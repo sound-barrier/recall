@@ -119,6 +119,11 @@
   --rank-silver: #d6d6d6;
   --rank-gold: #ffd770;
   --rank-platinum: #7befd9;
+
+  /* Season 4 inserted Emerald between Platinum and Diamond. Green, so it
+     reads as its own tier rather than a second teal beside platinum.
+     8.19:1 at its tightest surface here. */
+  --rank-emerald: #2dd272;
   --rank-diamond: #c2e6ff;
   --rank-master: #d6b4ff;
   --chart-5: #5cc8ff;

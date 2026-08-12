@@ -36,6 +36,7 @@ const OW_DATA: OWData = {
   maps_by_game_mode: { escort: ['Rialto'] },
   screenshot_sources: [],
   seasons: [],
+  ranks: [],
 }
 
 // Two seasons bracketing the frozen NOW, so the same-point preset is offered.

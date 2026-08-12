@@ -23,6 +23,10 @@ ranks:
   - silver
   - gold
   - platinum
+  # Added in Season 4 (2026-08-11), inserted here rather than appended:
+  # "A new Rank has been added between Platinum and Diamond called Emerald."
+  # Everything above it shifted up one ladder position.
+  - emerald
   - diamond
   - master
   - grandmaster

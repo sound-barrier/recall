@@ -151,7 +151,9 @@ describe('EloResultsPanel — the two futures', () => {
     expect(screen.getByText('A bit slower, but 57.1% is high enough to break through.')).toBeInTheDocument()
     // 14 games buy an enormous credible envelope — quoting a point rank
     // here is exactly the overclaim the range replaced.
-    expect(screen.getByText('Your ceiling right now: Bronze 1–Master 4.')).toBeInTheDocument()
+    // One tier lower in NAME than before Emerald: the same ladder score now
+    // sits under an extra tier, which is the redistribution showing through.
+    expect(screen.getByText('Your ceiling right now: Bronze 1–Diamond 4.')).toBeInTheDocument()
   })
 
   it('says the ceiling is undetectable rather than naming a top the slope CI cannot bound', () => {
@@ -163,7 +165,7 @@ describe('EloResultsPanel — the two futures', () => {
     mountPanel(basicCorpus(), (calc) => calc.editInput('winRatePct', 45))
     expect(screen.getByText('Out of reach')).toBeInTheDocument()
     expect(screen.getByText('Below 50%, extra games slowly cost you rank instead of gaining it.')).toBeInTheDocument()
-    expect(screen.getByText('Levels off near Bronze 3–Diamond 2')).toBeInTheDocument()
+    expect(screen.getByText('Levels off near Bronze 3–Emerald 2')).toBeInTheDocument()
     // The required rate is the ASYMPTOTE — it holds the rank, it doesn't pass it.
     expect(screen.getByText('To make Platinum 5 your plateau, win about 52.4% — passing it takes a bit more.')).toBeInTheDocument()
   })

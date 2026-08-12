@@ -2,7 +2,8 @@
 // ECharts options. This is the presentation seam — it knows about ECharts;
 // the data layer does not.
 import type { TrendOption } from '@/components/matches/trends/echarts'
-import { TIER_ORDER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/match-trends-helpers'
+import { LADDER_MAX } from '@/match/elo-model'
+import { TIER_ORDER, DIVISIONS_PER_TIER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/match-trends-helpers'
 import { heatmapCellClass } from '@/match/match-heatmap-helpers'
 import { themeColor, withAlpha } from '@/match/theme-colors'
 
@@ -118,7 +119,7 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
     }
   }
   const min = Number.isFinite(lo) ? Math.floor(lo / 5) * 5 : 0
-  const max = Number.isFinite(hi) ? Math.ceil(hi / 5) * 5 : 40
+  const max = Number.isFinite(hi) ? Math.ceil(hi / DIVISIONS_PER_TIER) * DIVISIONS_PER_TIER : LADDER_MAX
 
   return {
     ...interaction(),

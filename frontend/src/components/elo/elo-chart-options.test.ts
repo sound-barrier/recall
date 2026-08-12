@@ -1,3 +1,5 @@
+import { LADDER_MAX } from '@/match/elo-model'
+
 import { describe, it, expect, afterEach } from 'vitest'
 
 import { buildEloProjectionOption, buildSkillCurveOption } from '@/components/elo/elo-chart-options'
@@ -126,7 +128,11 @@ describe('buildSkillCurveOption', () => {
   // band runs off the bottom — the two clamps in one curve.
   const CURVE: SkillCurve = {
     t: [1000, 2000, 3000],
-    level: [12, 39.5, 0.25],
+    // The middle sample sits half a division under the ladder ceiling so the
+    // +halfWidth genuinely overshoots and the clamp is exercised. Derived —
+    // it was a literal 39.5, which stopped touching the top the moment a
+    // tier was inserted and quietly retired the assertion below.
+    level: [12, LADDER_MAX - 0.5, 0.25],
     halfWidth: [0.5, 2, 1],
     q: 0.1,
     r: 0.2,
@@ -143,10 +149,10 @@ describe('buildSkillCurveOption', () => {
     const option = buildSkillCurveOption(CURVE)
     expect((option.series as ChartSeries[]).map((s) => s.name))
       .toEqual(['skill-band-base', 'skill-band-spread', 'True skill'])
-    // Champion 1 + 2 is still Champion 1; Bronze 5 − 1 is still Bronze 5.
-    expect(skillSeries(option, 'skill-band-base')?.data).toEqual([[1000, 11.5], [2000, 37.5], [3000, 0]])
+    // Top tier + 2 is still the top tier; Bronze 5 − 1 is still Bronze 5.
+    expect(skillSeries(option, 'skill-band-base')?.data).toEqual([[1000, 11.5], [2000, LADDER_MAX - 2.5], [3000, 0]])
     expect(skillSeries(option, 'skill-band-spread')?.data).toEqual([[1000, 1], [2000, 2.5], [3000, 1.25]])
-    expect(skillSeries(option, 'True skill')?.data).toEqual([[1000, 12], [2000, 39.5], [3000, 0.25]])
+    expect(skillSeries(option, 'True skill')?.data).toEqual([[1000, 12], [2000, LADDER_MAX - 0.5], [3000, 0.25]])
   })
 
   it('sizes the y-axis to the band, never past the ladder', () => {
@@ -156,7 +162,7 @@ describe('buildSkillCurveOption', () => {
       axisLabel: { formatter: (v: number) => string }
     }
     expect(yAxis.min).toBe(0)
-    expect(yAxis.max).toBe(40)
+    expect(yAxis.max).toBe(LADDER_MAX)
     expect(yAxis.axisLabel.formatter(15)).toBe('Platinum')
     expect(yAxis.axisLabel.formatter(3)).toBe('') // only labels multiples of 5
   })

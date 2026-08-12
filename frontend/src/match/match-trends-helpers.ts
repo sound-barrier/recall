@@ -46,9 +46,13 @@ export interface TrendSeries {
 // every unit test. A contract test in this file's spec reads the YAML and
 // fails if the two ever disagree, so the duplication cannot drift silently.
 export const TIER_ORDER = [
-  'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'champion',
+  'bronze', 'silver', 'gold', 'platinum', 'emerald', 'diamond', 'master', 'grandmaster', 'champion',
 ] as const
 export type Tier = typeof TIER_ORDER[number]
+
+// Divisions in a tier — the ladder's unit. ladderScore packs a tier into this
+// many units, so the ladder's ceiling is TIER_ORDER.length * DIVISIONS_PER_TIER.
+export const DIVISIONS_PER_TIER = 5
 
 // Which chart line a match belongs to. Role queue splits by the role
 // played; open queue collapses to one line.

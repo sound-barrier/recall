@@ -16,6 +16,7 @@
 
 import { wilsonInterval } from '@/match/match-sample-helpers'
 import { inverseGaussianCdf } from '@/match/elo-stats'
+import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/match-trends-helpers'
 
 // DEFAULT_METER_MOVE_PCT is the fallback per-game rank-meter move
 // (progress-%) when a track has too few rank readings to measure it.
@@ -23,8 +24,11 @@ export const DEFAULT_METER_MOVE_PCT = 21
 // DEFAULT_DECAY_SLOPE is how fast the win rate regresses per division
 // climbed (WR fraction per division): 1.5 points/division.
 export const DEFAULT_DECAY_SLOPE = 0.015
-// LADDER_MAX is Champion 1 @ 100% in ladderScore units.
-export const LADDER_MAX = 40
+// LADDER_MAX is the top of the ladder (last tier, division 1, @100%) in
+// ladderScore units. DERIVED, not a literal: it was 40 for eight tiers, and
+// Emerald's insertion made it 45. Anything that hardcodes the old number
+// silently clamps the top tier away.
+export const LADDER_MAX = TIER_ORDER.length * DIVISIONS_PER_TIER
 
 // Below this many decisive games the verdict is an "Early read": the win
 // rate barely constrains the ceiling (a 1W-2L record once printed "Capped

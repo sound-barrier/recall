@@ -3,6 +3,7 @@
 // the raw stat stays available in a muted aside only where it earns its place.
 import type { GamesRange } from '@/match/elo-model'
 import { TIER_ORDER } from '@/match/match-trends-helpers'
+import { LADDER_MAX } from '@/match/elo-model'
 
 // Decay estimates near the plateau blow up; past this they mean "never" in
 // practice, so we say so instead of printing a meaningless big number.
@@ -15,7 +16,9 @@ export function fmtRank(tier: string, division: number): string {
 // fmtScoreRank names the tier + division a ladder score lands in ("Master 5"),
 // dropping the within-division percentage for prose.
 export function fmtScoreRank(score: number): string {
-  const clamped = Math.min(39.999, Math.max(0, score))
+  // Just inside the top so the last tier decodes to itself rather than
+  // rolling over into a nonexistent one above it.
+  const clamped = Math.min(LADDER_MAX - 0.001, Math.max(0, score))
   const tier = TIER_ORDER[Math.floor(clamped / 5)] ?? 'champion'
   const division = 5 - Math.floor(clamped % 5)
   return fmtRank(tier, division)

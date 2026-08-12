@@ -100,6 +100,7 @@
   --rank-silver: #5c5c5c;
   --rank-gold: #7a5610;
   --rank-platinum: #0f6357;
+  --rank-emerald: #156537;  /* 5.00:1 on --surface-3, the tightest */
   --rank-diamond: #1f5e8c;
   --rank-master: #6b3fa0;
 
@@ -295,6 +296,7 @@
   --rank-silver: #ddd;
   --rank-gold: #fd6;
   --rank-platinum: #6fd;
+  --rank-emerald: #13ec6d;
   --rank-diamond: #9df;
   --rank-master: #c9f;
 
