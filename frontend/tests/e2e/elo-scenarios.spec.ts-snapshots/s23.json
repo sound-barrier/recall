@@ -26,7 +26,6 @@
   "data-elo-slope-hint": "Win-rate points you lose per division climbed (default 1.5) — not enough ranked history to measure yours yet.",
   "data-elo-stat=bayes": "Better than a coin?Very likelyStart from the harshest assumption — that you're a pure coin flip. Your 60 games move the odds to 98 in 100 that your true win rate beats even. The rate itself most likely sits in 50–72%, with more of it above even than below (98 to 2). A slow climb lives exactly in this zone.",
   "data-elo-stat=p-value": "Rigged MMR?No — that rate is realOver 60 games, luck alone almost never lands on 65%. (p = 0.03)",
-  "data-elo-stat=percentile": "Hardstuck?Ahead of 88% of playersDiamond 3 beats 88% of ranked players. Master 5 would put you past 97%. (Blizzard, July 2025)",
   "data-elo-stat=runs": "Scripted streaks?More alternating than chanceYour 60 games form 42 win/loss runs; a fair sequence at your rate averages 28 (p < 0.001). Slightly more regular than random — nothing sinister about that either.",
   "data-elo-stat=season": "This season?87% chancePlaying your 65% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Master 5 within ~84 games at your pace. Touching counts any moment of the season; you can brush it and still slip back.",
   "data-elo-stat=streak": "Endless loss streaks?29% — normalA 5-loss streak in your next 100 games is 29% likely at 65%. Expected, not rigged.",

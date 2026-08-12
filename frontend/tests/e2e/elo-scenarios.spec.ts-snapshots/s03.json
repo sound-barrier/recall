@@ -21,7 +21,6 @@
   "data-elo-slope-hint": "Win-rate points you lose per division climbed (default 1.5) — not enough ranked history to measure yours yet.",
   "data-elo-stat=bayes": "Better than a coin?Probably notStart from the harshest assumption — that you're a pure coin flip. Your 8 games move the odds to 35 in 100 that your true win rate beats even. The rate itself most likely sits in 29–65%, with more of it below even than above (65 to 35) — the playbook above is the way out. At 8 games this is still mostly the skeptic prior talking — it starts you at 50-50 with ~20 pseudo-games of stubbornness. Play on before reading much into it.",
   "data-elo-stat=p-value": "Rigged MMR?Too few games to tellAt 8 games your record still looks like a coin flip — play more before blaming the system. (p = 0.73)",
-  "data-elo-stat=percentile": "Where you standAhead of 1% of playersBronze 3 beats 1% of ranked players. Silver 5 would put you past 2%. (Blizzard, July 2025)",
   "data-elo-stat=season": "This season?18% chancePlaying your 37.5% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Silver 5 within ~96 games at your pace. Touching counts any moment of the season; you can brush it and still slip back. Holding Silver 5 once you touch it would take about 53.8% — the playbook's job, not the queue's.",
   "data-elo-stat=streak": "Endless loss streaks?99% — normalA 5-loss streak in your next 100 games is 99% likely at 37.5%. Expected, not rigged.",
   "data-elo-target=division": "5",

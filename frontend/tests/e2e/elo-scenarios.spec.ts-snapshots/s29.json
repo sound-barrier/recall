@@ -27,7 +27,6 @@
   "data-elo-slope-hint": "Measured from your climb: 2.4 pts per division (95% range -19.3–24.0, 59 ranked games).",
   "data-elo-stat=bayes": "Better than a coin?Probably — 67 in 100Start from the harshest assumption — that you're a pure coin flip. Your 60 games move the odds to 67 in 100 that your true win rate beats even. The rate itself most likely sits in 42–63%, with more of it above even than below (67 to 33). A slow climb lives exactly in this zone.",
   "data-elo-stat=p-value": "Rigged MMR?Too few games to tellAt 60 games your record still looks like a coin flip — play more before blaming the system. (p = 0.70)",
-  "data-elo-stat=percentile": "Hardstuck?Ahead of 29% of playersGold 3 beats 29% of ranked players. Platinum 5 would put you past 47%. (Blizzard, July 2025)",
   "data-elo-stat=runs": "Scripted streaks?More alternating than chanceYour 60 games form 54 win/loss runs; a fair sequence at your rate averages 31 (p < 0.001). Slightly more regular than random — nothing sinister about that either.",
   "data-elo-stat=season": "This season?29% chancePlaying your 53.3% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Platinum 5 within ~84 games at your pace. Touching counts any moment of the season; you can brush it and still slip back. Holding Platinum 5 once you touch it would take about 54.7% — the playbook's job, not the queue's.",
   "data-elo-stat=streak": "Endless loss streaks?71% — normalA 5-loss streak in your next 100 games is 71% likely at 53.3%. Expected, not rigged.",
