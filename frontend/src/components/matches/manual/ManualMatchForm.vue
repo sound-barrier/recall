@@ -3,6 +3,7 @@ import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useOWData } from '@/composables/shared/useOWData'
 import { manualMatchFormKey } from '@/composables/matches/useManualMatchForm'
+import { TIER_ORDER } from '@/match/match-trends-helpers'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 
 // The hand-enter match form body — the map/hero FilterCombobox pickers, the chip
@@ -21,7 +22,16 @@ const f = inject(manualMatchFormKey)!
 const quick = computed(() => f.mode === 'leaver-exit')
 const ow = useOWData()
 
-const TIERS = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster', 'Champion']
+// The tier ladder, derived from TIER_ORDER (itself pinned to
+// pkg/parser/ranks.yaml) rather than a sixth hand-typed copy.
+//
+// The VALUE is the lowercase form every other layer stores and matches on;
+// only the LABEL is title-cased. The old literal emitted Title-case straight
+// into the payload, which nothing validated — so a manually-entered match
+// stored "Platinum", TIER_ORDER.indexOf() returned -1, ladderScore() returned
+// null, and the match vanished from every rank chart while its badge lost its
+// color. Silent, and far from its cause.
+const TIERS = TIER_ORDER.map((t) => ({ value: t, label: t[0]!.toUpperCase() + t.slice(1) }))
 const DIVISIONS = [1, 2, 3, 4, 5]
 // Disruption sides are multi-select toggles, not a single pick: a match can
 // carry a leaver on both teams, and "a teammate left, then I left" is two.
@@ -355,8 +365,8 @@ onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
             <option value="">
               —
             </option>
-            <option v-for="t in TIERS" :key="t" :value="t">
-              {{ t }}
+            <option v-for="t in TIERS" :key="t.value" :value="t.value">
+              {{ t.label }}
             </option>
           </select>
         </label>

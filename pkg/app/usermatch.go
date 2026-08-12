@@ -52,6 +52,12 @@ var (
 	ErrUnknownMap = errors.New("unknown map: not in the Overwatch roster")
 	// ErrUnknownHero maps to 409 — the hero isn't in the Overwatch roster.
 	ErrUnknownHero = errors.New("unknown hero: not in the Overwatch roster")
+	// ErrUnknownRank maps to 409 — the tier isn't on the competitive ladder.
+	// Maps and heroes have been guarded since they were introduced; the tier
+	// never was, so a manual match could store "Platinum" (or anything at all)
+	// and only fail much later and silently, when the frontend could not place
+	// it on the ladder and dropped it from every rank chart.
+	ErrUnknownRank = errors.New("unknown rank: not on the competitive ladder")
 )
 
 // UpdateMatchData replaces the user override set for a match (inline edits send
@@ -282,6 +288,12 @@ func validateManualRank(rank match.ManualRankInput) error {
 		!inRange(rank.Division, levelMin, levelMax),
 		!inRange(rank.ChangePercent, changeMin, changeMax):
 		return ErrInvalidRank
+	}
+	// An empty tier means "no rank on this match", which is legal; anything
+	// else has to be a real tier, matched against the same ladder the parser
+	// and the charts use.
+	if rank.Tier != "" && !parser.IsKnownRank(rank.Tier) {
+		return ErrUnknownRank
 	}
 	return nil
 }

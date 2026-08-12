@@ -217,6 +217,16 @@ func TestCreateManualMatch_Validates(t *testing.T) {
 		}, app.ErrInvalidRank},
 		{"unknown map", func(m *match.ManualMatchInput) { m.Map = "notamap" }, app.ErrUnknownMap},
 		{"unknown hero", func(m *match.ManualMatchInput) { m.Heroes = []string{"notahero"} }, app.ErrUnknownHero},
+		{"unknown rank", func(m *match.ManualMatchInput) {
+			m.Rank = &match.ManualRankInput{Tier: "notatier", Division: 3, Progress: 50}
+		}, app.ErrUnknownRank},
+		// The bug this guard exists for: the form used to submit the display
+		// case. It is spec-valid free text, so nothing rejected it, and the
+		// match silently fell off every rank chart because the ladder is keyed
+		// on the lowercase form.
+		{"tier in display case", func(m *match.ManualMatchInput) {
+			m.Rank = &match.ManualRankInput{Tier: "Platinum", Division: 3, Progress: 50}
+		}, app.ErrUnknownRank},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
