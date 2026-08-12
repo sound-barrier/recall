@@ -288,7 +288,7 @@ describe('ManualMatchForm — rank', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(submitBtn()).toBeEnabled()
 
-    await fireEvent.update(screen.getByLabelText('Tier'), 'Gold')
+    await fireEvent.update(screen.getByLabelText('Tier'), 'gold')
     expect(screen.getByRole('alert')).toHaveTextContent('Progress must be between 0 and 100.')
     expect(submitBtn()).toBeDisabled()
 
@@ -302,7 +302,11 @@ describe('ManualMatchForm — rank', () => {
     renderModal()
     await fillMinimalFullForm()
     await fireEvent.click(chip('Competitive'))
-    await fireEvent.update(screen.getByLabelText('Tier'), 'Diamond')
+    // The option VALUE is the lowercase form every other layer stores; the
+    // label is title-cased for display only. This test used to drive it with
+    // 'Diamond' and assert 'Diamond' came back — pinning the bug where a
+    // manual match stored a tier no chart could resolve.
+    await fireEvent.update(screen.getByLabelText('Tier'), 'diamond')
     await fireEvent.update(screen.getByLabelText('Division'), '3')
     await fireEvent.update(screen.getByLabelText('Progress %'), '65')
     await fireEvent.update(screen.getByLabelText('RR change %'), '-12')
@@ -310,7 +314,7 @@ describe('ManualMatchForm — rank', () => {
 
     await fireEvent.click(submitBtn())
     expect(sentPayload().rank).toEqual({
-      tier: 'Diamond',
+      tier: 'diamond',
       division: 3,
       progress: 65,
       change_percent: -12,

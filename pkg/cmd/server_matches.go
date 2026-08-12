@@ -169,6 +169,7 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrInvalidRank, probInvalidBody},
 			errStatus{app.ErrUnknownMap, probConflict},
 			errStatus{app.ErrUnknownHero, probConflict},
+			errStatus{app.ErrUnknownRank, probConflict},
 			errStatus{app.ErrMatchKeyExists, probConflict},
 			errStatus{app.ErrProfileImmutable, probConflict}) {
 			return
