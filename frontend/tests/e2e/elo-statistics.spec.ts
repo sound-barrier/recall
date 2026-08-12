@@ -152,7 +152,10 @@ test.describe('Elo Calculator — statistics layer', () => {
     await page.locator('.elo-advanced summary').click()
     await expect(page.locator('[data-elo-slope-hint]')).toContainText(/measured from your climb/i)
     // Live consequence line: names the rank the current slope levels off at.
-    await expect(page.locator('[data-elo-plateau]')).toContainText(/gold|platinum|diamond|master/i)
+    // Any real tier — an alternation of a few names silently went stale the
+    // moment Emerald was inserted and the plateau landed on it.
+    await expect(page.locator('[data-elo-plateau]')).toContainText(
+      /bronze|silver|gold|platinum|emerald|diamond|master|grandmaster|champion/i)
     // The measured value seeds the input inside its 0.5–5 band.
     const v = Number(await page.locator('[data-elo-input="decay-slope"]').inputValue())
     expect(v).toBeGreaterThanOrEqual(0.5)

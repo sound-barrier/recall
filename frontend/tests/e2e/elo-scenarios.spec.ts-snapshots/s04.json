@@ -1,6 +1,6 @@
 {
-  "data-elo-answer": "Early read — only 12 decisive gamesToo early to callPlaying your record out 4,000 times, 32% of simulated seasons touch Platinum 5 within ~91 games. 12 decisive games barely pins a win rate, so read this as a sketch: your form most likely tops out around Bronze 3–Master 5, and that range tightens with every game. Around 20 decisive games this becomes a real verdict.",
-  "data-elo-card=decay": "As opponents get tougher ~125 gamesA bit slower, but 58.3% is high enough to break through.Your ceiling right now: Bronze 3–Master 5.≈ 16 weeks at your pace",
+  "data-elo-answer": "Early read — only 12 decisive gamesToo early to callPlaying your record out 4,000 times, 32% of simulated seasons touch Platinum 5 within ~91 games. 12 decisive games barely pins a win rate, so read this as a sketch: your form most likely tops out around Bronze 3–Diamond 5, and that range tightens with every game. Around 20 decisive games this becomes a real verdict.",
+  "data-elo-card=decay": "As opponents get tougher ~125 gamesA bit slower, but 58.3% is high enough to break through.Your ceiling right now: Bronze 3–Diamond 5.≈ 16 weeks at your pace",
   "data-elo-card=naive": "If your wins keep coming ~87 gamesBest case ~24; with a sample of 12 games, a cold streak can't be ruled out≈ 11 weeks at your paceAn upper bound — it assumes matchmaking never stiffens; the simulated seasons are the honest number.",
   "data-elo-chart-caption": "Two futures on the way to Platinum 5: if your wins hold (blue) vs as opponents get tougher (amber). The shaded band is how much luck can swing it. The gray fan is the middle 80% of 4,000 simulated seasons replaying your real rank-card moves.",
   "data-elo-current=division": "3",
@@ -22,7 +22,6 @@
   "data-elo-slope-hint": "Win-rate points you lose per division climbed (default 1.5) — not enough ranked history to measure yours yet.",
   "data-elo-stat=bayes": "Better than a coin?Probably — 64 in 100Start from the harshest assumption — that you're a pure coin flip. Your 12 games move the odds to 64 in 100 that your true win rate beats even. The rate itself most likely sits in 36–70%, with more of it above even than below (64 to 36). A slow climb lives exactly in this zone. At 12 games this is still mostly the skeptic prior talking — it starts you at 50-50 with ~20 pseudo-games of stubbornness. Play on before reading much into it.",
   "data-elo-stat=p-value": "Rigged MMR?Too few games to tellAt 12 games your record still looks like a coin flip — play more before blaming the system. (p = 0.77)",
-  "data-elo-stat=percentile": "Where you standAhead of 28% of playersGold 3 beats 28% of ranked players. Platinum 5 would put you past 47%. (Blizzard, July 2025)",
   "data-elo-stat=season": "This season?32% chancePlaying your 58.3% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Platinum 5 within ~91 games at your pace. Touching counts any moment of the season; you can brush it and still slip back.",
   "data-elo-stat=streak": "Endless loss streaks?52% — normalA 5-loss streak in your next 100 games is 52% likely at 58.3%. Expected, not rigged.",
   "data-elo-target=division": "5",

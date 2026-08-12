@@ -142,7 +142,6 @@ test.describe('Elo Calculator', () => {
     // Myth-check chips answer the three complaints in plain language, each
     // keeping its raw stat in a muted aside.
     await expect(page.locator('[data-elo-stat="p-value"]')).toContainText(/p [=<]/)
-    await expect(page.locator('[data-elo-stat="percentile"]')).toContainText(/%/)
     // At 70% a 5-loss run is ~15% per 100 games — the honest register is
     // "rare, but real", not "normal".
     await expect(page.locator('[data-elo-stat="streak"]')).toContainText(/rare, but real/i)

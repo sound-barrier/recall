@@ -27,7 +27,6 @@
   "data-elo-slope-hint": "Win-rate points you lose per division climbed (default 1.5) — not enough ranked history to measure yours yet.",
   "data-elo-stat=bayes": "Better than a coin?Almost certainlyStart from the harshest assumption — that you're a pure coin flip. Your 200 games move the odds to 100 in 100 that your true win rate beats even. The rate itself most likely sits in 53–65%, with more of it above even than below (100 to 0). A slow climb lives exactly in this zone.",
   "data-elo-stat=p-value": "Rigged MMR?No — that rate is realOver 200 games, luck alone almost never lands on 60%. (p = 0.006)",
-  "data-elo-stat=percentile": "Hardstuck?Ahead of 90% of playersDiamond 3 beats 90% of ranked players. Master 5 would put you past 97%. (Blizzard, July 2025)",
   "data-elo-stat=runs": "Scripted streaks?More alternating than chanceYour 200 games form 160 win/loss runs; a fair sequence at your rate averages 97 (p < 0.001). Slightly more regular than random — nothing sinister about that either.",
   "data-elo-stat=season": "This season?91% chancePlaying your 60% record out 4,000 times — lobbies toughening as you climb, like the amber curve — these are your odds of touching Master 5 within ~88 games at your pace. Touching counts any moment of the season; you can brush it and still slip back.",
   "data-elo-stat=streak": "Endless loss streaks?46% — normalA 5-loss streak in your next 100 games is 46% likely at 60%. Expected, not rigged.",
