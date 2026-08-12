@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.30.1](https://github.com/sound-barrier/recall/compare/v0.30.0...v0.30.1) (2026-08-12)
+
+
+### Features
+
+* **parser:** add Season 4 and the tank hero D.Mon ([6279ab8](https://github.com/sound-barrier/recall/commit/6279ab87c226dc88be5084ddcb398de1b991892f))
+* **parser:** add the Emerald tier between Platinum and Diamond ([0444423](https://github.com/sound-barrier/recall/commit/044442313874dbf9396449125fe815bf5b31fce2))
+
+
+### Bug Fixes
+
+* **matches:** reject a manual tier the ladder cannot place ([5e2a4d1](https://github.com/sound-barrier/recall/commit/5e2a4d19722026d717e025b984b11e00225269e0))
+
+
+### Refactors
+
+* **elo:** drop the superseded population percentile ([a928122](https://github.com/sound-barrier/recall/commit/a928122f708aacc0ae976735e814073c63c1b056))
+* **parser:** make the rank ladder one source of truth ([a6dfb5c](https://github.com/sound-barrier/recall/commit/a6dfb5c3e57d8919107eac40607b31176525cdf6))
+
+
+### Tests
+
+* **e2e:** re-record the Elo captures for the new ladder ([553f9d3](https://github.com/sound-barrier/recall/commit/553f9d32ae8548d7f002f4a16ada6c47e78b2d41))
+
 ## [0.30.0](https://github.com/sound-barrier/recall/compare/v0.29.0...v0.30.0) (2026-08-11)
 
 
