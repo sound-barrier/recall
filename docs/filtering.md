@@ -117,7 +117,7 @@ there as "1 season updated".
 
 ### Map + Game Mode, Hero + Role
 
-**Map** and **Hero** are typeahead comboboxes — 31 maps and 51
+**Map** and **Hero** are typeahead comboboxes — 32 maps and 53
 heroes are too many for a chip cloud. Click the input, type to
 narrow the list, click an option to pick or unpick. Selected
 items appear as removable pills above the input; `×` drops one.

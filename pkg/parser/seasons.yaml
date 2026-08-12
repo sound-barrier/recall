@@ -23,3 +23,13 @@ seasons:
     number: 3
     start: "2026-06-16T19:00:00Z"
     end: "2026-08-11T19:00:00Z"
+  # Blizzard titles this one "Season 4: Heroes of Busan"; the subtitle is
+  # dropped here as every earlier entry drops its own (Season 2 shipped as
+  # "Summit"). The END is an ESTIMATE — Blizzard published no end date, and
+  # the prior seasons ran 63 / 63 / 56 days, so this is 9 weeks out. Correct
+  # it when announced; per the header, a corrected end ships as a data update.
+  - name: "Reign of Talon — Season 4"
+    chapter: "Reign of Talon"
+    number: 4
+    start: "2026-08-11T19:00:00Z"
+    end: "2026-10-13T19:00:00Z"

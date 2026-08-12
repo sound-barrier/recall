@@ -1,12 +1,47 @@
 package gamedata_test
 
 import (
+	"strings"
 	"testing"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	"recall/pkg/gamedata"
 	"recall/pkg/parser"
 )
+
+// embeddedSeasonsYAML renders the EMBEDDED season list back to the on-the-wire
+// YAML shape. These fixtures used to be hand-copied literals, so every shipped
+// season broke them with "season N removed" — which reads like a diffing bug
+// rather than a stale fixture. Derived, they cannot drift.
+func embeddedSeasonsYAML(t *testing.T) string {
+	t.Helper()
+	type entry struct {
+		Name    string `yaml:"name"`
+		Chapter string `yaml:"chapter"`
+		Number  int    `yaml:"number"`
+		Start   string `yaml:"start"`
+		End     string `yaml:"end"`
+	}
+	var doc struct {
+		Seasons []entry `yaml:"seasons"`
+	}
+	for _, s := range parser.Seasons() {
+		doc.Seasons = append(doc.Seasons, entry{
+			Name:    s.Name,
+			Chapter: s.Chapter,
+			Number:  s.Number,
+			Start:   s.Start.UTC().Format(time.RFC3339),
+			End:     s.End.UTC().Format(time.RFC3339),
+		})
+	}
+	out, err := yaml.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal embedded seasons: %v", err)
+	}
+	return string(out)
+}
 
 func flattenRoster(grouped map[string][]string) []string {
 	out := make([]string, 0, 32)
@@ -122,32 +157,24 @@ func TestComputeGameDataStatus_ChangedSeasonWindow_HasUpdate(t *testing.T) {
 	maps := flattenRoster(parser.MapsByGameMode())
 	sources := sourceNames(parser.Sources())
 
-	// Live seasons.yaml with Season 3's end corrected (Aug 11 → Aug 12).
-	liveSeasons := `seasons:
-  - name: "Reign of Talon — Season 1"
-    chapter: "Reign of Talon"
-    number: 1
-    start: "2026-02-10T19:00:00Z"
-    end: "2026-04-14T19:00:00Z"
-  - name: "Reign of Talon — Season 2"
-    chapter: "Reign of Talon"
-    number: 2
-    start: "2026-04-14T19:00:00Z"
-    end: "2026-06-16T19:00:00Z"
-  - name: "Reign of Talon — Season 3"
-    chapter: "Reign of Talon"
-    number: 3
-    start: "2026-06-16T19:00:00Z"
-    end: "2026-08-12T19:00:00Z"
-`
+	// The embedded list with the NEWEST season's end shifted by a day — the
+	// "a corrected end date ships as an update" case the seasons.yaml header
+	// describes. Derived from the embedded set so only the one field differs.
+	newest := parser.Seasons()[len(parser.Seasons())-1]
+	shifted := newest.End.UTC().AddDate(0, 0, 1).Format(time.RFC3339)
+	liveSeasons := strings.Replace(
+		embeddedSeasonsYAML(t),
+		newest.End.UTC().Format(time.RFC3339),
+		shifted, 1)
+
 	gd := gamedata.ComputeGameDataStatusForTest(
 		t.TempDir(), "abcdef1234567", "2026-07-01T00:00:00Z", heroes, maps, sources, liveSeasons)
 
 	if !gd.HasUpdate {
 		t.Fatal("HasUpdate = false; want true when a season window changed")
 	}
-	if len(gd.ChangedSeasons) != 1 || gd.ChangedSeasons[0] != "Reign of Talon — Season 3" {
-		t.Errorf("ChangedSeasons = %v, want [Reign of Talon — Season 3]", gd.ChangedSeasons)
+	if len(gd.ChangedSeasons) != 1 || gd.ChangedSeasons[0] != newest.Name {
+		t.Errorf("ChangedSeasons = %v, want [%s]", gd.ChangedSeasons, newest.Name)
 	}
 	if len(gd.AddedSeasons) != 0 || len(gd.RemovedSeasons) != 0 {
 		t.Errorf("added/removed should be empty: +%v -%v", gd.AddedSeasons, gd.RemovedSeasons)
@@ -159,23 +186,8 @@ func TestComputeGameDataStatus_IdenticalSeasons_NoSeasonDiff(t *testing.T) {
 	heroes := flattenRoster(parser.HeroesByRole())
 	maps := flattenRoster(parser.MapsByGameMode())
 	sources := sourceNames(parser.Sources())
-	identical := `seasons:
-  - name: "Reign of Talon — Season 1"
-    chapter: "Reign of Talon"
-    number: 1
-    start: "2026-02-10T19:00:00Z"
-    end: "2026-04-14T19:00:00Z"
-  - name: "Reign of Talon — Season 2"
-    chapter: "Reign of Talon"
-    number: 2
-    start: "2026-04-14T19:00:00Z"
-    end: "2026-06-16T19:00:00Z"
-  - name: "Reign of Talon — Season 3"
-    chapter: "Reign of Talon"
-    number: 3
-    start: "2026-06-16T19:00:00Z"
-    end: "2026-08-11T19:00:00Z"
-`
+	identical := embeddedSeasonsYAML(t)
+
 	gd := gamedata.ComputeGameDataStatusForTest(
 		t.TempDir(), "abcdef1234567", "2026-07-01T00:00:00Z", heroes, maps, sources, identical)
 	if len(gd.AddedSeasons)+len(gd.RemovedSeasons)+len(gd.ChangedSeasons) != 0 {

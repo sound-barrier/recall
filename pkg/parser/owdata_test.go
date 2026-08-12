@@ -45,6 +45,38 @@ func TestRoster_RecognizesNewHeroShion(t *testing.T) {
 	}
 }
 
+// TestRoster_RecognizesNewHeroDMon guards the D.Mon roster addition — the
+// Season 4 tank. The name carries a period, so this also pins that normalize()
+// keeps it in the OCR key ("d.mon") rather than stripping it the way it strips
+// the colon from "Soldier: 76".
+//
+// The display spelling is Blizzard's ("D.Mon", capital M) and was transcribed
+// from their hero page, NOT from parser output — see the Neon Junction test
+// below for why that distinction is load-bearing.
+func TestRoster_RecognizesNewHeroDMon(t *testing.T) {
+	if !parser.IsKnownHero("d.mon") {
+		t.Error(`IsKnownHero("d.mon") = false, want true`)
+	}
+	if got := parser.HeroRole("d.mon"); got != "tank" {
+		t.Errorf(`HeroRole("d.mon") = %q, want "tank"`, got)
+	}
+}
+
+// TestRoster_DMonDoesNotShadowDVa pins the collision this addition risks.
+// "d.mon" and "d.va" are both short and share the "d." prefix, and
+// closestFuzzyHero only skips candidates under 5 characters — "d.mon" is
+// exactly 5, so it IS fuzzy-matchable. Each must still resolve to itself.
+func TestRoster_DMonDoesNotShadowDVa(t *testing.T) {
+	if got := parser.HeroRole("d.va"); got != "tank" {
+		t.Errorf(`HeroRole("d.va") = %q, want "tank"`, got)
+	}
+	for raw, want := range map[string]string{"D.Va": "d.va", "D.Mon": "d.mon"} {
+		if got := parser.FirstKnownHeroIn(raw); got != want {
+			t.Errorf("FirstKnownHeroIn(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}
+
 // TestRoster_NeonJunctionCanonical guards the Neon Junction roster entry.
 // The map originally landed in maps.yaml as "Neon Function" — an OCR garble
 // (J→F) transcribed from the parser's own output, which then made every

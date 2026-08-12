@@ -5,6 +5,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/parser"
 )
 
 // GetOWData surfaces the embedded competitive seasons with UTC RFC3339
@@ -12,8 +13,12 @@ import (
 func TestGetOWData_IncludesSeasons(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
 	ow := a.GetOWData()
-	if len(ow.Seasons) != 3 {
-		t.Fatalf("want 3 seasons, got %d", len(ow.Seasons))
+	// Derived, not a literal: pkg/parser owns the count (seasons_test.go), and
+	// duplicating it here only meant every new season failed two packages. What
+	// this test is actually for is the WIRE shape — RFC3339 strings, not
+	// time.Time — so assert the wiring, not the number.
+	if want := len(parser.Seasons()); len(ow.Seasons) != want {
+		t.Fatalf("want %d seasons, got %d", want, len(ow.Seasons))
 	}
 	s2 := ow.Seasons[1]
 	if s2.Name != "Reign of Talon — Season 2" || s2.Chapter != "Reign of Talon" || s2.Number != 2 {

@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"gopkg.in/yaml.v3"
 
 	"recall/pkg/app"
 	"recall/pkg/gamedata"
@@ -227,22 +230,34 @@ func validSourcesYAML() []byte {
 
 // validSeasonsYAML matches the embedded pkg/parser/seasons.yaml so a live-vs-
 // applied season diff is empty in tests that don't intend a season change.
+// validSeasonsYAML mirrors the EMBEDDED season list, generated from it rather
+// than hand-copied. The literal it replaced had to be re-synced by hand every
+// time a season shipped — and until someone did, three unrelated tests in two
+// packages failed with "season 4 removed", which reads as a diffing bug rather
+// than a stale fixture. Deriving it means the fixture cannot drift.
 func validSeasonsYAML() []byte {
-	return []byte(`seasons:
-  - name: "Reign of Talon — Season 1"
-    chapter: "Reign of Talon"
-    number: 1
-    start: "2026-02-10T19:00:00Z"
-    end: "2026-04-14T19:00:00Z"
-  - name: "Reign of Talon — Season 2"
-    chapter: "Reign of Talon"
-    number: 2
-    start: "2026-04-14T19:00:00Z"
-    end: "2026-06-16T19:00:00Z"
-  - name: "Reign of Talon — Season 3"
-    chapter: "Reign of Talon"
-    number: 3
-    start: "2026-06-16T19:00:00Z"
-    end: "2026-08-11T19:00:00Z"
-`)
+	type entry struct {
+		Name    string `yaml:"name"`
+		Chapter string `yaml:"chapter"`
+		Number  int    `yaml:"number"`
+		Start   string `yaml:"start"`
+		End     string `yaml:"end"`
+	}
+	var doc struct {
+		Seasons []entry `yaml:"seasons"`
+	}
+	for _, s := range parser.Seasons() {
+		doc.Seasons = append(doc.Seasons, entry{
+			Name:    s.Name,
+			Chapter: s.Chapter,
+			Number:  s.Number,
+			Start:   s.Start.UTC().Format(time.RFC3339),
+			End:     s.End.UTC().Format(time.RFC3339),
+		})
+	}
+	out, err := yaml.Marshal(doc)
+	if err != nil {
+		panic("marshal embedded seasons: " + err.Error())
+	}
+	return out
 }
