@@ -1787,7 +1787,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [heroes_by_role, maps_by_game_mode, screenshot_sources, seasons]
+                required: [heroes_by_role, maps_by_game_mode, screenshot_sources, seasons, ranks]
                 properties:
                   heroes_by_role:
                     type: object
@@ -1843,6 +1843,16 @@ paths:
                         number:  { type: integer, description: "Season number within the chapter." }
                         start:   { type: string, format: date-time, description: "Season start, UTC RFC 3339 (inclusive)." }
                         end:     { type: string, format: date-time, description: "Season end, UTC RFC 3339 (exclusive; = next start)." }
+                  ranks:
+                    type: array
+                    description: |
+                      Competitive tier ladder, LOWEST to HIGHEST. Source-of-truth
+                      is `pkg/parser/ranks.yaml`. ORDER IS THE PAYLOAD — a tier's
+                      index is its ladder position, which drives the rank charts'
+                      axis and the Elo calculator's score arithmetic. Lowercase,
+                      matching the `rank` field stored on a match.
+                    items: { type: string }
+                    example: [bronze, silver, gold, platinum, diamond, master, grandmaster, champion]
 
   /api/v1/system/screenshots-folder-candidates:
     get:

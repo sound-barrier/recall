@@ -69,6 +69,9 @@ var embeddedScreenshotSourcesYAML []byte
 //go:embed seasons.yaml
 var embeddedSeasonsYAML []byte
 
+//go:embed ranks.yaml
+var embeddedRanksYAML []byte
+
 // owDataset bundles every parser lookup into one immutable snapshot.
 // Reload() builds a fresh *owDataset and atomic-Pointer-Stores it;
 // readers call loadDataset() once per call site and read fields off
@@ -95,6 +98,10 @@ type owDataset struct {
 
 	// Competitive season windows (see seasons.yaml).
 	seasons []Season
+
+	// Competitive tier ladder, lowest→highest (see ranks.yaml). Order is
+	// load-bearing: the index is the ladder coordinate.
+	ranks []string
 
 	// Combined load error from this snapshot's construction. nil
 	// means every YAML loaded cleanly; non-nil means at least one
@@ -214,6 +221,9 @@ func Reload() error {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "hero_stats.yaml", embeddedHeroStatsYAML, unmarshalHeroStats); err != nil {
+		errs = append(errs, err)
+	}
+	if err := loadInto(ds, "ranks.yaml", embeddedRanksYAML, unmarshalRanks); err != nil {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "seasons.yaml", embeddedSeasonsYAML, unmarshalSeasons); err != nil {

@@ -746,7 +746,9 @@ func TestGenerateMatchFixture_ReviewRate(t *testing.T) {
 
 // --- Rank-progression integration (black box, via GenerateMatchFixture) ---
 
-var rankTestTiers = []string{"bronze", "silver", "gold", "platinum", "diamond", "master", "grandmaster", "champion"}
+// Derived from pkg/parser/ranks.yaml — a fifth hand-copied ladder used to live
+// here, so an inserted tier silently changed what these tests measured.
+var rankTestTiers = parser.Ranks()
 
 // ladderScoreOf mirrors the frontend ladderScore encoding so the tests reason
 // about "did this track climb" in the same numeric space the chart plots.

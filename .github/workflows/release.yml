@@ -19,7 +19,7 @@ on:
 
 permissions: {}  # deny all by default; each job declares only what it needs
 
-# Improvement #4 (audit): serialise concurrent runs against the same tag.
+# Improvement #4 (audit): serialize concurrent runs against the same tag.
 # Two ways the same tag could fire this workflow concurrently: (a) push
 # trigger races with workflow_dispatch when a maintainer fires it manually
 # after the auto-trigger; (b) re-runs from the UI. cancel-in-progress is
@@ -182,7 +182,7 @@ jobs:
           # (gamedata.FetchReleaseRosters), so omitting an unchanged one is safe.
           prev_tag="$(git describe --tags --abbrev=0 "v${VERSION}^" 2>/dev/null || true)"
           echo "Previous release tag: ${prev_tag:-<none>}"
-          for name in heroes maps screenshot_sources seasons; do
+          for name in heroes maps screenshot_sources seasons ranks; do
             src="pkg/parser/${name}.yaml"
             if [ -z "$prev_tag" ] \
                || ! git rev-parse -q --verify "${prev_tag}:${src}" >/dev/null 2>&1 \
@@ -218,6 +218,7 @@ jobs:
             recall-*-maps.yaml
             recall-*-screenshot_sources.yaml
             recall-*-seasons.yaml
+            recall-*-ranks.yaml
             recall-*-Reset-Database.bat
 
       # Per-artifact .sha256 files for every release binary and reference-

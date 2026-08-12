@@ -1,8 +1,12 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { describe, it, expect } from 'vitest'
 
 import type { MatchResult, MatchRecord } from '@/api'
 import {
   ladderScore,
+  TIER_ORDER,
   roleBucket,
   rankLadderSeries,
   rollingWinrateSeries,
@@ -46,6 +50,25 @@ function rec(date: string, time: string, s: Stub = {}): TrendInput {
     data,
   }
 }
+
+// TIER_ORDER duplicates pkg/parser/ranks.yaml, which is the single source. The
+// ladder used to live in FIVE hand-maintained copies whose comments claimed
+// they matched each other and nothing checked it; the Go copies now derive from
+// the YAML, and this is what holds the frontend's copy to it. A tier added to
+// the YAML fails here until TIER_ORDER agrees — including its POSITION, because
+// the index is the ladder coordinate.
+describe('TIER_ORDER contract with pkg/parser/ranks.yaml', () => {
+  it('matches the single source exactly, in order', () => {
+    // Vitest runs with cwd = frontend/, so the source sits one level up.
+    const yamlPath = resolve(process.cwd(), '../pkg/parser/ranks.yaml')
+    const fromYaml = readFileSync(yamlPath, 'utf8')
+      .split('\n')
+      .filter((l) => /^\s*-\s/.test(l))
+      .map((l) => l.replace(/^\s*-\s*/, '').trim())
+    expect(fromYaml.length).toBeGreaterThan(0)
+    expect([...TIER_ORDER]).toEqual(fromYaml)
+  })
+})
 
 describe('ladderScore', () => {
   it('rises monotonically up the tier ladder', () => {
