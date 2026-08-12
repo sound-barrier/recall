@@ -36,7 +36,7 @@ globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
   if (url.includes('/system/reference-data')) {
     // The hey-api client reads the body via text() and content-type via
     // headers — keep all three response views serving the same payload.
-    const payload = { heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [] }
+    const payload = { heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [], ranks: [] }
     return {
       ok: true,
       status: 200,

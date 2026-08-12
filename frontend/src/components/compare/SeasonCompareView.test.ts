@@ -28,6 +28,7 @@ function owData(seasons: OWData['seasons']): OWData {
     maps_by_game_mode: { escort: ['Rialto'] },
     screenshot_sources: [],
     seasons,
+    ranks: [],
   }
 }
 

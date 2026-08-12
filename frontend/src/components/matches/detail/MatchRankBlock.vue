@@ -122,6 +122,7 @@ const ow = useOWData()
 .rank-tier.silver    { color: var(--rank-silver);   border-color: color-mix(in srgb, var(--rank-silver) 40%, transparent); }
 .rank-tier.gold      { color: var(--rank-gold);     border-color: color-mix(in srgb, var(--rank-gold) 45%, transparent); }
 .rank-tier.platinum  { color: var(--rank-platinum); border-color: color-mix(in srgb, var(--rank-platinum) 45%, transparent); }
+.rank-tier.emerald   { color: var(--rank-emerald); border-color: color-mix(in srgb, var(--rank-emerald) 45%, transparent); }
 .rank-tier.diamond   { color: var(--rank-diamond);  border-color: color-mix(in srgb, var(--rank-diamond) 45%, transparent); }
 .rank-tier.master    { color: var(--rank-master);   border-color: color-mix(in srgb, var(--rank-master) 45%, transparent); }
 .rank-tier.grandmaster, .rank-tier.champion { color: var(--loss); border-color: var(--loss-line); }

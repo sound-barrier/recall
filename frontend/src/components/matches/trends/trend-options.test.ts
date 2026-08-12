@@ -1,3 +1,6 @@
+import { LADDER_MAX } from '@/match/elo-model'
+import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/match-trends-helpers'
+
 import { describe, it, expect, afterEach } from 'vitest'
 
 import { rankLadderOption, winrateOption, lineOption, rankDeltaOption, heatmapOption } from '@/components/matches/trends/trend-options'
@@ -192,20 +195,25 @@ describe('trend-options — rank ladder axis', () => {
     expect(seriesOf(opt)).toHaveLength(1)
   })
 
-  it('falls back to a bronze→master ladder when there is nothing to plot', () => {
+  it('falls back to the whole ladder when there is nothing to plot', () => {
     const opt = rankLadderOption([{ key: 'tank', label: 'Tank', points: [] }])
 
     expect(valueAxis(opt).min).toBe(0)
-    expect(valueAxis(opt).max).toBe(40)
+    // Derived, so inserting a tier moves the axis instead of failing here.
+    expect(valueAxis(opt).max).toBe(LADDER_MAX)
   })
 
   it('labels only the tier boundaries, and nothing above the ladder', () => {
     const format = valueAxis(rankLadderOption([])).axisLabel?.formatter
     expect(format?.(0)).toBe('Bronze')
+    // Emerald sits between Platinum and Diamond, so every boundary above
+    // Platinum moved up one tier-width.
     expect(format?.(15)).toBe('Platinum')
-    expect(format?.(35)).toBe('Champion')
+    expect(format?.(20)).toBe('Emerald')
+    expect(format?.(25)).toBe('Diamond')
+    expect(format?.((TIER_ORDER.length - 1) * DIVISIONS_PER_TIER)).toBe('Champion')
     expect(format?.(12)).toBe('') // between boundaries
-    expect(format?.(40)).toBe('') // past the top tier
+    expect(format?.(LADDER_MAX)).toBe('') // past the top tier
   })
 
   it('spells the tooltip out as tier, division, progress and this match’s change', () => {
