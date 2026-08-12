@@ -39,6 +39,12 @@ support:
   - Wuyang
   - Zenyatta
 tank:
+  # Season 4 (2026-08-11). Spelling and role transcribed from Blizzard's own
+  # hero page — capital M — NOT from parser output, and NOT yet checked against
+  # a real scoreboard, so the in-game rendering OCR will see is unconfirmed.
+  # First D.Mon match parsed is the check; see the Neon Junction entry in
+  # maps.yaml for what a garbled name made canonical costs.
+  - "D.Mon"
   - Domina
   - Doomfist
   - "D.va"

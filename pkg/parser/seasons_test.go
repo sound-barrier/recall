@@ -6,24 +6,50 @@ import (
 	"recall/pkg/parser"
 )
 
-func TestSeasons_EmbeddedLoadsWithExpectedWindows(t *testing.T) {
+const rfc3339Z = "2006-01-02T15:04:05Z"
+
+// The embedded windows, pinned. Table-driven so a new season is one row rather
+// than another branch — the single-func spelling this replaced hit the
+// complexity gate the moment Season 4 was added.
+func TestSeasons_EmbeddedWindows(t *testing.T) {
 	seasons := parser.Seasons()
-	if len(seasons) != 3 {
-		t.Fatalf("want 3 embedded seasons, got %d", len(seasons))
+	if len(seasons) != 4 {
+		t.Fatalf("want 4 embedded seasons, got %d", len(seasons))
 	}
-	s2 := seasons[1]
-	if s2.Name != "Reign of Talon — Season 2" || s2.Chapter != "Reign of Talon" || s2.Number != 2 {
-		t.Errorf("season 2 = %+v", s2)
+	for _, c := range []struct {
+		idx                int
+		name, chapter      string
+		number             int
+		wantStart, wantEnd string
+	}{
+		{1, "Reign of Talon — Season 2", "Reign of Talon", 2, "2026-04-14T19:00:00Z", "2026-06-16T19:00:00Z"},
+		{3, "Reign of Talon — Season 4", "Reign of Talon", 4, "2026-08-11T19:00:00Z", "2026-10-13T19:00:00Z"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			s := seasons[c.idx]
+			if s.Name != c.name || s.Chapter != c.chapter || s.Number != c.number {
+				t.Errorf("season = %+v", s)
+			}
+			if got := s.Start.UTC().Format(rfc3339Z); got != c.wantStart {
+				t.Errorf("start = %s, want %s", got, c.wantStart)
+			}
+			if got := s.End.UTC().Format(rfc3339Z); got != c.wantEnd {
+				t.Errorf("end = %s, want %s", got, c.wantEnd)
+			}
+		})
 	}
-	if got := s2.Start.UTC().Format("2006-01-02T15:04:05Z"); got != "2026-04-14T19:00:00Z" {
-		t.Errorf("season 2 start = %s", got)
-	}
-	if got := s2.End.UTC().Format("2006-01-02T15:04:05Z"); got != "2026-06-16T19:00:00Z" {
-		t.Errorf("season 2 end = %s", got)
-	}
-	// Back-to-back: each season's end equals the next season's start.
-	if !seasons[0].End.Equal(seasons[1].Start) || !seasons[1].End.Equal(seasons[2].Start) {
-		t.Error("seasons should be back-to-back (end == next start)")
+}
+
+// Back-to-back: each season's end equals the next season's start. A loop, not a
+// hand-listed pair chain — the old spelling named seasons[0..2] explicitly, so
+// appending a season left the NEWEST boundary unchecked while still passing.
+func TestSeasons_AreBackToBack(t *testing.T) {
+	seasons := parser.Seasons()
+	for i := 0; i+1 < len(seasons); i++ {
+		if !seasons[i].End.Equal(seasons[i+1].Start) {
+			t.Errorf("season %d end (%s) != season %d start (%s)",
+				seasons[i].Number, seasons[i].End, seasons[i+1].Number, seasons[i+1].Start)
+		}
 	}
 }
 
