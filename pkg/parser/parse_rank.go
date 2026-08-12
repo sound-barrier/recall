@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-// knownRanks is the OW competitive tier list, used to snap OCR'd tier text.
-var knownRanks = []string{
-	"bronze", "silver", "gold", "platinum", "diamond",
-	"master", "grandmaster", "champion",
-}
-
 // knownModifiers is the OW2 competitive rank-update modifier list — the
 // small pills under the rank-progress bar that explain the SR change.
 // The expectation-vs-outcome quartet (favored×won = expected, favored×lost
@@ -247,7 +241,7 @@ var rankWordRe = regexp.MustCompile(`[a-z]+`)
 // returns the matched text token, so the level read can anchor on the
 // (possibly garbled) word rather than the canonical tier.
 func snapTier(lower string) (tier, word string) {
-	for _, r := range knownRanks {
+	for _, r := range loadDataset().ranks {
 		if strings.Contains(lower, r) {
 			return r, r
 		}
@@ -260,7 +254,7 @@ func snapTier(lower string) (tier, word string) {
 		if len(w) < 3 {
 			continue
 		}
-		for _, r := range knownRanks {
+		for _, r := range loadDataset().ranks {
 			threshold := max(len(r)*rankFuzzyMaxPct/100, 1)
 			if d := levenshtein(w, r); d <= threshold && (bestDist < 0 || d < bestDist) {
 				bestDist, tier, word = d, r, w

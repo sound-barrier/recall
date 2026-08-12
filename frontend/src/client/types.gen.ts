@@ -3156,6 +3156,15 @@ export type GetReferenceDataResponses = {
              */
             end: string;
         }>;
+        /**
+         * Competitive tier ladder, LOWEST to HIGHEST. Source-of-truth
+         * is `pkg/parser/ranks.yaml`. ORDER IS THE PAYLOAD — a tier's
+         * index is its ladder position, which drives the rank charts'
+         * axis and the Elo calculator's score arithmetic. Lowercase,
+         * matching the `rank` field stored on a match.
+         *
+         */
+        ranks: Array<string>;
     };
 };
 

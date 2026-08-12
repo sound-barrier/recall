@@ -37,6 +37,10 @@ func mainAssets() map[string][]byte {
     start: "2026-02-10T19:00:00Z"
     end: "2026-04-14T19:00:00Z"
 `),
+		// A deliberately SHORT ladder: these tests exercise Apply's fetch and
+		// rollback, not the real tier list, and a literal here keeps them
+		// independent of pkg/parser's embedded data.
+		"ranks.yaml": []byte("ranks:\n  - bronze\n  - silver\n"),
 	}
 }
 

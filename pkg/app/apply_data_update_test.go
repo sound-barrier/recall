@@ -230,6 +230,22 @@ func validSourcesYAML() []byte {
 
 // validSeasonsYAML matches the embedded pkg/parser/seasons.yaml so a live-vs-
 // applied season diff is empty in tests that don't intend a season change.
+// validRanksYAML mirrors the EMBEDDED tier ladder, generated from it for the
+// same reason validSeasonsYAML is: a hand-copied literal would have to be
+// re-synced by hand every time the ladder changes, and until someone did, the
+// apply tests would fail in a way that looks like a transport bug.
+func validRanksYAML() []byte {
+	var doc struct {
+		Ranks []string `yaml:"ranks"`
+	}
+	doc.Ranks = parser.Ranks()
+	out, err := yaml.Marshal(doc)
+	if err != nil {
+		panic("marshal embedded ranks: " + err.Error())
+	}
+	return out
+}
+
 // validSeasonsYAML mirrors the EMBEDDED season list, generated from it rather
 // than hand-copied. The literal it replaced had to be re-synced by hand every
 // time a season shipped — and until someone did, three unrelated tests in two

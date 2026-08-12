@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 // This file models a realistic competitive-rank climb for the seed generator.
@@ -29,11 +30,11 @@ type ladderPos struct {
 	prog int
 }
 
-// tierNames indexes tier → the lowercase tier string stored in data.rank
-// (identical to the frontend TIER_ORDER and the parser's knownRanks).
-var tierNames = []string{
-	"bronze", "silver", "gold", "platinum", "diamond", "master", "grandmaster", "champion",
-}
+// tierNames indexes tier → the lowercase tier string stored in data.rank.
+// Derived from pkg/parser/ranks.yaml, the single source — this used to be a
+// hand-copied literal whose comment claimed it was "identical to the frontend
+// TIER_ORDER and the parser's knownRanks" with nothing enforcing it.
+var tierNames = parser.Ranks()
 
 // rankStartPositions is each track's staggered starting rank. DPS is the main
 // role (OW's most-played, and flex gives the main role 60% of role queue), so

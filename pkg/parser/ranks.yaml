@@ -1,0 +1,29 @@
+# Competitive rank tiers, LOWEST to HIGHEST. Order is the whole point of this
+# file: a tier's index drives ladderScore (index*5 + division + progress), the
+# rank charts' axis, "one tier up" in the Elo calculator, and the narrow
+# panel's chip sort. Reordering it silently rewrites every rank number in the
+# app; appending or inserting shifts every tier above the insertion point.
+#
+# This is the SINGLE source. It used to be five hand-maintained copies —
+# pkg/parser/parse_rank.go, pkg/fixtures/fixtures_rank.go, a test copy, the
+# frontend's TIER_ORDER, and the manual-entry form's dropdown — kept in sync
+# by comments alone, with nothing failing when they drifted. The Go copies now
+# derive from here; the frontend constant is pinned to this file by a contract
+# test (frontend/src/match/match-trends-helpers.test.ts).
+#
+# Names are the lowercase form stored in data.rank and matched by the OCR
+# snapper, NOT display case — the UI title-cases for rendering.
+#
+# Adding a tier: edit this file, rebuild, then update the ladder constants the
+# insertion shifts (LADDER_MAX in frontend/src/match/elo-model.ts and the
+# per-tier color tokens in styles/tokens.css + themes.css). The contract test
+# and the rank-tier-legibility e2e spec will tell you what you missed.
+ranks:
+  - bronze
+  - silver
+  - gold
+  - platinum
+  - diamond
+  - master
+  - grandmaster
+  - champion

@@ -37,8 +37,14 @@ export interface TrendSeries {
   points: TrendPoint[]
 }
 
-// The OW2 competitive tier ladder, lowest → highest. Matches the parser's
-// `knownRanks` (pkg/parser/parse_rank.go) and the data's lowercase `rank`.
+// The OW2 competitive tier ladder, lowest → highest, and the ordinal spine of
+// the app: a tier's INDEX is its ladder coordinate (see ladderScore).
+//
+// pkg/parser/ranks.yaml is the single source. This stays a plain const rather
+// than a value read from the API because ladderScore and the Elo math are pure
+// helpers — making them await a fetch would push async into every caller and
+// every unit test. A contract test in this file's spec reads the YAML and
+// fails if the two ever disagree, so the duplication cannot drift silently.
 export const TIER_ORDER = [
   'bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'grandmaster', 'champion',
 ] as const

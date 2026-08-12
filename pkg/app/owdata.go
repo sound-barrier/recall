@@ -19,6 +19,9 @@ type OWData struct {
 	MapsByGameMode    map[string][]string `json:"maps_by_game_mode"`
 	ScreenshotSources []ScreenshotSource  `json:"screenshot_sources"`
 	Seasons           []Season            `json:"seasons"`
+	// Ranks is the competitive tier ladder, LOWEST to HIGHEST. Order is the
+	// payload: consumers derive a tier's ladder position from its index.
+	Ranks []string `json:"ranks"`
 }
 
 // Season surfaces a competitive season window to the frontend (season
@@ -78,5 +81,6 @@ func (a *App) GetOWData() OWData {
 		MapsByGameMode:    parser.MapsByGameMode(),
 		ScreenshotSources: sources,
 		Seasons:           seasons,
+		Ranks:             parser.Ranks(),
 	}
 }

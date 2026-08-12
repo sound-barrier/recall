@@ -45,6 +45,7 @@ on:
       - 'pkg/parser/maps.yaml'
       - 'pkg/parser/screenshot_sources.yaml'
       - 'pkg/parser/seasons.yaml'
+      - 'pkg/parser/ranks.yaml'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -151,7 +152,7 @@ jobs:
       - name: Stage live reference-data channel
         run: |
           mkdir -p _site/data
-          for name in heroes.yaml maps.yaml screenshot_sources.yaml seasons.yaml; do
+          for name in heroes.yaml maps.yaml screenshot_sources.yaml seasons.yaml ranks.yaml; do
             cp "pkg/parser/${name}" "_site/data/${name}"
             ( cd _site/data && sha256sum "${name}" > "${name}.sha256" )
           done
@@ -162,7 +163,7 @@ jobs:
           # would make the app report a "new" data commit (and a fresher "N days
           # old") when heroes & maps are byte-identical. Keying off the roster
           # files keeps the published version stable until the rosters move.
-          roster_paths="pkg/parser/heroes.yaml pkg/parser/maps.yaml pkg/parser/screenshot_sources.yaml pkg/parser/seasons.yaml"
+          roster_paths="pkg/parser/heroes.yaml pkg/parser/maps.yaml pkg/parser/screenshot_sources.yaml pkg/parser/seasons.yaml pkg/parser/ranks.yaml"
           # shellcheck disable=SC2086  # roster_paths is a fixed, space-safe list
           commit_sha="$(git -C . log -1 --format=%H  -- $roster_paths)"
           # shellcheck disable=SC2086
