@@ -31,8 +31,6 @@ export interface MythCheckInputs {
   streakLen: number
   streakHorizon: number
   runs: { pValue: number; z: number; nWins: number; nLosses: number; runs: number; expectedRuns: number } | null
-  percentileNow: number | null
-  percentileTarget: number | null
   probThisSeason: number | null
   seasonGames: number | null
   requiredWrForSeason: number | null
@@ -51,7 +49,6 @@ export function buildChecks(i: MythCheckInputs): Check[] {
     skepticCheck(i),
     streakCheck(i),
     runsCheck(i),
-    hardstuckCheck(i),
     seasonCheck(i),
   ]
   return cards.filter((c): c is Check => c !== null)
@@ -238,18 +235,6 @@ function runsCheck(i: MythCheckInputs): Check | null {
     a: runsAnswer(coinLike, r.z),
     note: `Your ${r.nWins + r.nLosses} games form ${r.runs} win/loss runs; a fair sequence at your rate averages ${Math.round(r.expectedRuns)} (${fmtPValue(r.pValue)}). ${runsReading(coinLike, r.z)}`,
     tone: coinLike ? 'good' : 'neutral',
-  }
-}
-
-// The rank is a fact at any sample size; the "hardstuck" DIAGNOSIS
-// isn't — below the verdict floor, drop the framing and keep the fact.
-function hardstuckCheck(i: MythCheckInputs): Check | null {
-  if (i.percentileNow === null) return null
-  return {
-    id: 'hardstuck', stat: 'percentile', q: i.provisional ? 'Where you stand' : 'Hardstuck?',
-    a: `Ahead of ${fmtPct(i.percentileNow)} of players`,
-    note: `${i.rankNow} beats ${fmtPct(i.percentileNow)} of ranked players. ${i.target} would put you past ${fmtPct(i.percentileTarget)}. (Blizzard, July 2025)`,
-    tone: 'neutral',
   }
 }
 

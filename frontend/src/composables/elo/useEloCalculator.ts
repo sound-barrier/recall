@@ -32,7 +32,6 @@ import {
 import { liftTable, type LiftRow } from '@/match/elo-lift'
 import { clampHeroAdjust, heroWhatIf, type HeroWhatIf } from '@/match/elo-whatif'
 import { heroClimbGap, type HeroGap } from '@/match/elo-hero-gap'
-import { populationPercentile } from '@/match/elo-distribution'
 
 // The Elo Calculator's single state owner (loan-calculator semantics):
 // picking a track re-fills every input from that track's history; every
@@ -290,8 +289,6 @@ export function useEloCalculator(opts: EloCalcOpts) {
     const inp = projInput.value
     return inp ? binomialTwoSidedP(inp.sampleWins, inp.sampleWins + inp.sampleLosses) : null
   })
-  const percentileNow = computed(() => (currentScore.value === null ? null : populationPercentile(currentScore.value)))
-  const percentileTarget = computed(() => (targetScore.value === null ? null : populationPercentile(targetScore.value)))
 
   const weeksNaive = computed(() => gamesToWeeks(naive.value?.expectedGames ?? null, gamesPerWeekInput.value))
   const weeksDecay = computed(() => gamesToWeeks(decay.value?.expectedGames ?? null, gamesPerWeekInput.value))
@@ -410,7 +407,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     // derived
     trackRecs, currentScore, targetScore, projInput, naive, decay, curves,
     ceiling, provisional,
-    pValue, percentileNow, percentileTarget, weeksNaive, weeksDecay,
+    pValue, weeksNaive, weeksDecay,
     seasonGames, simHorizonGames, paceAssumed, probThisSeason, requiredWrForSeason,
     lossStreak, streakLen: STREAK_LEN, streakHorizon: STREAK_HORIZON,
     skepticVerdict, trueRateRange, gamesToCertainty,

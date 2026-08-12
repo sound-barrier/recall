@@ -109,8 +109,6 @@ describe('useEloCalculator', () => {
   it('derives the shared statistics from the inputs', () => {
     const calc = useEloCalculator({ records: supportCorpus(), heroRole, mapGameMode })
     expect(calc.pValue.value).not.toBeNull()
-    expect(calc.percentileNow.value).toBeGreaterThan(0)
-    expect(calc.percentileTarget.value).toBeGreaterThan(calc.percentileNow.value!)
     expect(calc.probThisSeason.value).not.toBeNull()
     expect(calc.lossStreak.value).not.toBeNull()
     expect(calc.lossStreak.value!).toBeGreaterThan(0)

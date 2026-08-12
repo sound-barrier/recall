@@ -16,7 +16,7 @@ const TILT_MIN_DECISIVE = 20
 
 // "What actually moves your rank" — the levers a player controls, each an item
 // pairing one measured number with a plain-language gloss. The myth-busting
-// stats (rigged MMR, streaks, percentile) live in EloMythChecks; this is the
+// stats (rigged MMR, streaks) live in EloMythChecks; this is the
 // constructive half. Items whose sample is empty hide (never show zeros as
 // insight).
 
