@@ -90,7 +90,16 @@
   font-family: var(--display);
   font-weight: 900;
   font-size: 3rem;
-  color: var(--brand-gray);
+
+  /* --text-faint, not --brand-gray. --brand-gray is a structural PLATE token
+     (the brandmark tile, the dossier surfaces) and this is TYPE: as a color on
+     the dark grounds it lands 1.84:1 on Night and 1.28:1 on Dark, where large
+     text needs 3:1. It read fine on Day and high contrast only because those
+     themes give --brand-gray a different value, which is why it survived so
+     long. Same plate-vs-type split as --accent / --accent-text.
+     Worst surface per theme with --text-faint: Night 4.73, Day 4.85,
+     Dark 6.40, high contrast 14.76. */
+  color: var(--text-faint);
   letter-spacing: -0.03em;
   line-height: 0.85;
   font-feature-settings: "tnum";
