@@ -71,6 +71,17 @@ gh_latest() {
   curl -fsSL "https://api.github.com/repos/${1}/releases/latest" | jq -r .tag_name
 }
 
+# GitHub's /releases/latest deliberately EXCLUDES prereleases. For a project
+# tracking a pre-release line on purpose — Wails v3 betas — that means it
+# always compares against the newest STABLE tag from the PREVIOUS major
+# (v2.14.0) and reports the pin out of date forever. This line had been ✗ on
+# every run for as long as the v3 track has been pinned, which is how a gate
+# teaches people to ignore it. Match against the track we are actually on.
+gh_latest_matching() {
+  curl -fsSL "https://api.github.com/repos/${1}/releases?per_page=50" \
+    | jq -r --arg re "${2}" '[.[] | select(.tag_name | test($re))] | first | .tag_name // empty'
+}
+
 npm_latest() {
   curl -fsSL "https://registry.npmjs.org/${1}/latest" | jq -r .version
 }
@@ -119,11 +130,11 @@ printf '  %s\n' "─────────────────────
 # ── Exact tool pins (mise.toml) ────────────────────────────────────────────
 # These are exact pins; a mismatch means mise + CI are behind upstream.
 
-# The live CLI is the v3 alpha (the v2 pin was a dead migration leftover).
-# gh_latest reports the newest stable release, so a mismatch against the
-# alpha pin is expected until v3 goes stable — informational, like the rest.
+# The live CLI is on the v3 pre-release track. Compare against the newest v3
+# tag, not the newest STABLE tag — /releases/latest skips prereleases and so
+# answered v2.14.0, which made this row a permanent ✗ nobody could act on.
 WAILS_PINNED=$(mise_pin 'go:github.com/wailsapp/wails/v3/cmd/wails3')
-WAILS_LATEST=$(gh_latest wailsapp/wails)
+WAILS_LATEST=$(gh_latest_matching wailsapp/wails '^v3\.')
 check "Wails CLI" "$WAILS_PINNED" "$WAILS_LATEST" "mise.toml [tools]"
 
 SPECTRAL_LATEST=$(npm_latest @stoplight/spectral-cli)
