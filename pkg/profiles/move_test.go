@@ -72,6 +72,11 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 	mustNoErr(t, s.SetMatchQueue(key, "role"))
 	mustNoErr(t, s.SetMatchPlayMode(key, "competitive"))
 	mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{MatchKey: key, Result: &result}))
+	_, err := s.UpsertMatchCoachNote(db.MatchCoachNote{
+		NoteID: "note-" + key, MatchKey: key, CoachName: "Ordo", SessionDate: "2026-08-08",
+		Text: "hold high ground", FocusTags: []string{"positioning"},
+	})
+	mustNoErr(t, err)
 }
 
 // sidecarPresence reports, per sidecar table, whether the store still carries
@@ -93,11 +98,14 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	mustNoErr(t, err)
 	playModes, err := s.LoadMatchPlayModes()
 	mustNoErr(t, err)
+	coachNotes, err := s.LoadMatchCoachNotes()
+	mustNoErr(t, err)
 	_, hasAnnotation := annotations[key]
 	_, hasReview := reviews[key]
 	_, hasUserData := userData[key]
 	_, hasQueue := queues[key]
 	_, hasPlayMode := playModes[key]
+	_, hasCoachNote := coachNotes[key]
 	return map[string]bool{
 		"annotation": hasAnnotation,
 		"hidden":     hidden[key],
@@ -106,6 +114,7 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 		"user_data":  hasUserData,
 		"queue":      hasQueue,
 		"play_mode":  hasPlayMode,
+		"coach_note": hasCoachNote,
 	}
 }
 

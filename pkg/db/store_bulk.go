@@ -107,6 +107,24 @@ func scanMatchKeys(rows *sql.Rows, out map[string]bool) error {
 	return rows.Err()
 }
 
+// LoadMatchKeys returns every DISTINCT match_key the profile tracks: the
+// five parent tables plus the user override layer (a manual match lives only
+// there). The same table set MatchKeyExists probes, read in bulk.
+func (s *SQLStore) LoadMatchKeys() (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, t := range append(append([]string{}, parentTables...), "user_match_data") {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		rows, err := s.db.Query(`SELECT DISTINCT match_key FROM ` + t)
+		if err != nil {
+			return nil, fmt.Errorf("load match keys: %w", err)
+		}
+		if err := scanMatchKeys(rows, out); err != nil {
+			return nil, fmt.Errorf("load match keys: %w", err)
+		}
+	}
+	return out, nil
+}
+
 func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
 	// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 	rows, err := s.db.Query(`SELECT filename FROM ` + table)
@@ -128,12 +146,17 @@ func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
 // (children cascade), the screenshots_dirs lookup, the per-match
 // auxiliary tables (match_reviews, match_annotations with its
 // children cascading, hidden_matches, ambiguous_candidates, match_
-// queue, match_play_mode), AND the ignored_screenshots suppress
-// list. Used by App.ClearDatabase, which expects a "wipe everything"
-// semantic. Callers that
+// queue, match_play_mode, the received coach layer), AND the
+// ignored_screenshots suppress list. Used by App.ClearDatabase, which
+// expects a "wipe my match history" semantic. Callers that
 // want the suppress list to survive (App.ClearDatabase's keep-
 // ignored opt-out path) snapshot the list, call Clear, then re-
 // insert via AddIgnoredScreenshot.
+//
+// Deliberately NOT wiped: the coach-AUTHORED family (coach_players,
+// coach_notes, coach_session_summaries). Those are notes this user wrote
+// about OTHER players' matches — not match history — and a coach clearing
+// an empty database must not lose their coaching work.
 func (s *SQLStore) Clear() error {
 	// One transaction for the whole wipe + sentinel reseed — the
 	// crash-consistency convention the per-concern bulk writers follow. A
@@ -164,7 +187,9 @@ func (s *SQLStore) Clear() error {
 		"ambiguous_candidates",
 		"ignored_screenshots",
 		"all_heroes_screenshots",
-		"user_match_data", // user_match_* children cascade on the match_key FK
+		"user_match_data",   // user_match_* children cascade on the match_key FK
+		"match_coach_notes", // tag children cascade
+		"coach_returns",     // coach_return_decisions cascade
 	} {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := tx.Exec(`DELETE FROM ` + t); err != nil {

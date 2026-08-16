@@ -78,6 +78,17 @@ type Fake struct {
 	// without going through the resolver / write path.
 	Ambiguous map[string][]db.AmbiguousCandidate
 
+	// Coach-AUTHORED family (survives Clear): players this user has
+	// coached, their notes keyed player id → match_key, and the per-player
+	// session summary. Coach-RECEIVED family (wiped like match history):
+	// accepted blocks on this user's own matches and the staged returns
+	// they came from (decisions live inside each CoachReturn).
+	CoachPlayers    []db.CoachPlayer
+	CoachNotes      map[int64]map[string]db.CoachNote
+	CoachSummaries  map[int64]db.CoachSummary
+	MatchCoachNotes []db.MatchCoachNote
+	CoachReturns    []db.CoachReturn
+
 	// Inspectable counters / call lists. Tests assert on these to
 	// verify the App layer (or HTTP handlers) actually reached the
 	// store.
@@ -303,6 +314,10 @@ func (f *Fake) Clear() error {
 	f.Ignored = nil
 	f.IgnoredAt = nil
 	f.AllHeroes = nil
+	// The received coach layer is match history; the authored family
+	// (CoachPlayers / CoachNotes / CoachSummaries) deliberately survives.
+	f.MatchCoachNotes = nil
+	f.CoachReturns = nil
 	return nil
 }
 
@@ -387,6 +402,7 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	delete(f.UserMatchData, matchKey)
 	delete(f.Queues, matchKey)
 	delete(f.PlayModes, matchKey)
+	f.dropCoachLayerForKey(matchKey)
 	return nil
 }
 
