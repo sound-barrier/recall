@@ -6,6 +6,7 @@ import CoachReelDay from '@/components/coach/CoachReelDay.vue'
 import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/coach-room-props'
 import type { CoachNoteDraft } from '@/match/coach-notes'
 import type { ReelDay } from '@/match/coach-reel-helpers'
+import { playerClockNote } from '@/match/match-time-helpers'
 
 // The film strip: the player's matches, her days newest first, each
 // frame a click target. The list is named for her AND for whose clock
@@ -32,7 +33,7 @@ const reelLabel = computed(() => `${props.handle}'s matches — times in ${props
         The reel
       </h2>
       <p class="reel-clock">
-        Times in {{ handle }}'s clock
+        {{ playerClockNote(handle) }}
       </p>
     </header>
     <ol v-if="days.length" class="reel-strip" :aria-label="reelLabel">

@@ -31,7 +31,12 @@
   overflow: hidden;
 }
 
+/* A column, because the identity prompt stacks above the desk on the
+   sessions where the bundle named nobody. */
 .coach-room-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
   min-width: 0;
 }
 

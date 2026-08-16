@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import CoachReturnCard from '@/components/coach/CoachReturnCard.vue'
@@ -29,12 +29,28 @@ const notes = computed(() => returnSheet.value?.notes ?? [])
 const mismatchedHandle = computed(() =>
   returnSheet.value?.player_mismatch ? returnSheet.value.player_handle : '')
 
+// Set when the write came back an error. The verdicts are still in hand,
+// so the honest move is to say so and let the player press Finish again —
+// closing would throw away work the server never took.
+const saveFailed = ref(false)
+
 // One commit path behind both buttons: "Decide later" and "Finish" write
 // the same partial map — they differ in what the player means by them, not
 // in what is saved. An untouched sheet closes without a request.
+//
+// The store REJECTS on a failed write rather than swallowing it into the
+// error banner, precisely so this caller can keep the dialog up.
 async function commit() {
   const sheet = returnSheet.value
-  if (sheet && decisions.dirty.value) await coach.decide(sheet.id, decisions.body.value)
+  if (sheet && decisions.dirty.value) {
+    try {
+      await coach.decide(sheet.id, decisions.body.value)
+    } catch (_) {
+      saveFailed.value = true
+      return
+    }
+  }
+  saveFailed.value = false
   coach.closeReturnSheet()
 }
 
@@ -61,6 +77,10 @@ useModalFocusTrap(open, {
         </p>
         <p v-if="mismatchedHandle" class="return-mismatch">
           This archive was written about {{ mismatchedHandle }}. Accept only what belongs here.
+        </p>
+        <p v-if="saveFailed" class="return-failed" role="alert">
+          Your decisions could not be saved. Nothing was lost — they are still on this sheet.
+          Try Finish again.
         </p>
       </header>
 
@@ -142,12 +162,15 @@ useModalFocusTrap(open, {
   color: var(--ink-dim);
 }
 
-.return-mismatch {
+.return-mismatch,
+.return-failed {
   margin: 0;
   font-size: var(--type-sm);
   line-height: 1.45;
   color: var(--paper-loss);
 }
+
+.return-failed { font-weight: 700; }
 
 .return-bulk {
   display: flex;

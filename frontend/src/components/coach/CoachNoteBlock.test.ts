@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/vue'
+import { render, screen, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { createPinia, setActivePinia } from 'pinia'
 
 import type { MatchCoachNote } from '@/api-client'
 import CoachNoteBlock from '@/components/coach/CoachNoteBlock.vue'
 import { useCoachStore } from '@/stores/coach'
+import { resetWriteGate, setWritesLocked, STUB_LOCK_REASON } from '@/test-utils/writeGateStub'
+
+// Removing a block is a write, so the block asks the gate like every other
+// writer; which lock is which is the gate's own test.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 // The coach's block on a match: signed, dated, tagged, and removable. It
 // is the RECEIVED layer — the player's own journal entry is a separate
@@ -38,7 +43,7 @@ function renderBlock(note: MatchCoachNote = coachNote()) {
 const block = () => screen.getByRole('region', { name: "Coach's note from Ordo" })
 
 describe('CoachNoteBlock', () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => { vi.clearAllMocks(); resetWriteGate() })
 
   it('is a named region carrying the note, the clock, the tags and the signature', () => {
     renderBlock()
@@ -66,5 +71,35 @@ describe('CoachNoteBlock', () => {
     const { remove } = renderBlock(coachNote({ id: 42 }))
     await userEvent.setup().click(screen.getByRole('button', { name: 'Remove this note' }))
     expect(remove).toHaveBeenCalledWith(MATCH_KEY, 42)
+  })
+})
+
+// "Remove this note" was the one journal control with no gate: during a
+// coaching session every sibling was disabled while this one stayed live,
+// 409'd, and reported the refusal in a red banner from a control the gate
+// had promised was off.
+describe('CoachNoteBlock — the write gate', () => {
+  beforeEach(() => { vi.clearAllMocks(); resetWriteGate() })
+
+  it('disables Remove and titles it with the lock reason', () => {
+    setWritesLocked(true, { session: true })
+    renderBlock()
+    const button = screen.getByRole('button', { name: 'Remove this note' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('title', STUB_LOCK_REASON)
+  })
+
+  it('refuses the write even when the click arrives anyway', async () => {
+    setWritesLocked(true, { session: true })
+    const { remove } = renderBlock()
+    // dispatch rather than user-click: a disabled button swallows a real
+    // click, so only this proves the GUARD refuses rather than the attribute.
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove this note' }))
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it('leaves Remove live when writes are open', () => {
+    renderBlock()
+    expect(screen.getByRole('button', { name: 'Remove this note' })).toBeEnabled()
   })
 })

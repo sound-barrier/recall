@@ -73,6 +73,13 @@ func (a *App) SaveBundleToFile(_ []string, _, _ bool) (string, error) {
 	return "", errors.New("native dialogs unavailable in server mode; use POST /api/v1/exports/bundle")
 }
 
+// SaveShareBundleToFile is not available in server mode (no native dialogs).
+// The HTTP API exposes POST /api/v1/exports/bundle, whose optional `share`
+// block produces the same identified payload.
+func (a *App) SaveShareBundleToFile(_ []string, _, _ bool, _ SharePlayer) (string, error) {
+	return "", errors.New("native dialogs unavailable in server mode; use POST /api/v1/exports/bundle with a share block")
+}
+
 // SaveDiagnosticBundleToFile is not available in server mode (no native
 // dialogs). The HTTP API exposes POST /api/v1/exports/diagnostic for
 // the same payload.

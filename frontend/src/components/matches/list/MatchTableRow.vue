@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
+import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
   formatRowDate,
@@ -68,6 +69,10 @@ const emit = defineEmits<{
 
 const ow = useOWData()
 
+// A loaned coaching corpus prints the PLAYER's naive clock — the same one
+// the row is grouped and filtered under (design rule 7).
+const clock = useMatchClock()
+
 // Click-to-filter pick values for the mode + queue cells (the narrow's
 // PlayModePick / QueuePick unions), derived the same way the labels are.
 const playModePick = computed(() => {
@@ -130,8 +135,8 @@ const kda = computed(() => formatKda(kdaRatio(props.rec.data)))
       </button>
     </td>
     <td class="tc tc-date" :data-col="0" :class="{ 'is-cell-selected': sel(0) }">
-      <span class="tc-date-d">{{ formatRowDate(rec) }}</span>
-      <span class="tc-date-t">{{ formatFinishedAt(rec) }}</span>
+      <span class="tc-date-d">{{ formatRowDate(rec, clock) }}</span>
+      <span class="tc-date-t">{{ formatFinishedAt(rec, clock) }}</span>
     </td>
     <td class="tc tc-result" :data-col="1" :class="{ 'is-cell-selected': sel(1) }">
       <button

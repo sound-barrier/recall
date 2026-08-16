@@ -161,6 +161,56 @@ func TestRead_ShareBundleYieldsPlayer(t *testing.T) {
 	}
 }
 
+// A manifest is JSON inside a file somebody handed the coach: hand-edited,
+// corrupted or written by other tooling, its identity can say anything.
+// Read holds it to the same rules Export does, so a junk id can never reach
+// the coach's store — where it would key a player row whose notes the notes
+// file would then refuse to carry, blocking that coach's export for good.
+func TestRead_RefusesAnInvalidPlayerIdentity(t *testing.T) {
+	tests := map[string]map[string]any{
+		"id that is not a UUID":   {"id": "sable-1", "handle": "Sable"},
+		"id with a non-hex rune":  {"id": "0f8fad5b-d9cb-469f-a165-70867728950g", "handle": "Sable"},
+		"blank handle":            {"id": sharePlayer().ID, "handle": "   "},
+		"handle over 64 runes":    {"handle": strings.Repeat("é", 65)},
+		"message over 2000 runes": {"handle": "Sable", "message": strings.Repeat("ü", 2001)},
+	}
+	for name, player := range tests {
+		t.Run(name, func(t *testing.T) {
+			mf := okManifest()
+			mf["player"] = player
+			payload := buildZip(t,
+				jsonFileEntry(t, "manifest.json", mf),
+				jsonFileEntry(t, "data.json", okData()),
+			)
+			contents, err := bundle.Read(payload)
+			if !errors.Is(err, bundle.ErrPlayerIdentityInvalid) {
+				t.Fatalf("err = %v, want it to wrap ErrPlayerIdentityInvalid", err)
+			}
+			if contents.Manifest.Player != nil {
+				t.Errorf("a refused bundle handed back an identity: %+v", contents.Manifest.Player)
+			}
+		})
+	}
+}
+
+// The handle is a display label the coach's UI renders; padding it in the
+// manifest must not survive the read.
+func TestRead_TrimsThePlayerHandle(t *testing.T) {
+	mf := okManifest()
+	mf["player"] = map[string]any{"id": sharePlayer().ID, "handle": "  Sable\t"}
+	payload := buildZip(t,
+		jsonFileEntry(t, "manifest.json", mf),
+		jsonFileEntry(t, "data.json", okData()),
+	)
+	contents, err := bundle.Read(payload)
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if contents.Manifest.Player == nil || contents.Manifest.Player.Handle != "Sable" {
+		t.Errorf("player = %+v, want the trimmed handle", contents.Manifest.Player)
+	}
+}
+
 // A coach who mis-clicks Import… on a bundle a player shared for review must
 // not merge that player's matches into their own history. The refusal is a
 // 409 (readable, refused) and it happens before the store is so much as read.

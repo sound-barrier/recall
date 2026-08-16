@@ -23,6 +23,10 @@ const emit = defineEmits<{
 }>()
 
 const orphan = computed(() => isOrphan(props.note))
+// The server derives this from a block already sitting on the match — a
+// fact the client cannot see for itself. Without it a repeat session shows
+// notes the player already took as indistinguishable from the new ones.
+const alreadyAccepted = computed(() => props.note.status === 'accepted')
 const reviewedOnly = computed(() => props.note.kind === 'reviewed_only')
 const tags = computed(() => [...props.note.focus_tags, ...props.note.extra_tags])
 
@@ -47,13 +51,23 @@ function pick(decision: CoachDecisionEnum) {
 </script>
 
 <template>
-  <article class="paper return-card" :class="{ 'is-orphan': orphan }">
+  <article
+    class="paper return-card"
+    :class="{ 'is-orphan': orphan, 'is-taken': alreadyAccepted }"
+    :aria-label="alreadyAccepted
+      ? `Note about ${matchLabel} — already accepted`
+      : `Note about ${matchLabel}`"
+  >
     <header class="return-card-head">
       <h3 class="return-card-match">
         {{ matchLabel }}
       </h3>
       <span v-if="playedLabel" class="return-card-when">{{ playedLabel }}</span>
     </header>
+
+    <p v-if="alreadyAccepted" class="return-card-taken">
+      You already accepted this one — it is on the match now.
+    </p>
 
     <p v-if="reviewedOnly" class="return-card-text is-mark">
       Reviewed — nothing to add.
@@ -193,5 +207,19 @@ function pick(decision: CoachDecisionEnum) {
 
 .return-card.is-orphan {
   border-style: dashed;
+}
+
+.return-card-taken {
+  margin: 0;
+  font-size: var(--type-sm);
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+/* A taken note recedes rather than disappears — the player may still want
+   to skip it, which removes the block. The state is carried by the
+   sentence above and the accessible name, never by this tint alone. */
+.return-card.is-taken {
+  background: var(--paper-2);
 }
 </style>

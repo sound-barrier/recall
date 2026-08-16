@@ -21,9 +21,15 @@ const props = withDefaults(defineProps<{
   matchKey: string
   draft: CoachNoteDraft
   saveState?: CoachSaveState
+  /**
+   * Why nothing typed here could be saved — an unconfirmed player, say.
+   * Non-empty makes the whole editor inert and replaces the autosave line,
+   * because accepting a paragraph that every PUT will refuse loses it.
+   */
+  blockedReason?: string
   hasPrev?: boolean
   hasNext?: boolean
-}>(), { saveState: 'idle', hasPrev: false, hasNext: false })
+}>(), { saveState: 'idle', blockedReason: '', hasPrev: false, hasNext: false })
 
 const emit = defineEmits<{
   update: [draft: CoachNoteDraft]
@@ -64,6 +70,13 @@ const clockInvalid = computed(() => clockRaw.value.trim() !== '' && parseMatchCl
 const reviewed = computed(() => props.draft.kind === 'reviewed_only')
 const written = computed(() => noteMark(props.draft) === 'written')
 const reviewedBlockedReason = 'A written note already counts as reviewed — clear it first.'
+
+const blocked = computed(() => props.blockedReason !== '')
+const statusLine = computed(() => (blocked.value ? props.blockedReason : SAVE_LABEL[props.saveState]))
+const reviewedDisabledReason = computed(() => {
+  if (blocked.value) return props.blockedReason
+  return written.value ? reviewedBlockedReason : undefined
+})
 
 function emitDraft(patch: Partial<CoachNoteDraft>): void {
   emit('update', { ...props.draft, ...patch })
@@ -112,8 +125,8 @@ function toggleReviewed(): void {
   <div class="paper coach-note">
     <div class="note-head">
       <span class="eyebrow ink">Your note</span>
-      <p class="note-save" role="status">
-        {{ SAVE_LABEL[saveState] }}
+      <p class="note-save" :class="{ 'note-blocked': blocked }" role="status">
+        {{ statusLine }}
       </p>
     </div>
 
@@ -124,6 +137,8 @@ function toggleReviewed(): void {
         type="button"
         class="paper-chip"
         :aria-pressed="draft.focusTags.includes(tag)"
+        :disabled="blocked"
+        :title="blocked ? blockedReason : undefined"
         @click="toggleTag('focusTags', tag)"
       >
         {{ focusTagLabel(tag) }}
@@ -134,11 +149,19 @@ function toggleReviewed(): void {
         type="button"
         class="paper-chip"
         aria-pressed="true"
+        :disabled="blocked"
         @click="toggleTag('extraTags', tag)"
       >
         {{ tag }}
       </button>
-      <button v-if="!addingTag" type="button" class="paper-chip note-add" @click="startAddingTag">
+      <button
+        v-if="!addingTag"
+        type="button"
+        class="paper-chip note-add"
+        :disabled="blocked"
+        :title="blocked ? blockedReason : undefined"
+        @click="startAddingTag"
+      >
         + Add
       </button>
       <input
@@ -161,6 +184,8 @@ function toggleReviewed(): void {
       class="note-text"
       rows="5"
       :value="draft.text"
+      :disabled="blocked"
+      :title="blocked ? blockedReason : undefined"
       placeholder="What should she watch for next time?"
       @input="onNoteInput"
     />
@@ -176,6 +201,7 @@ function toggleReviewed(): void {
           :value="clockRaw"
           :aria-describedby="CLOCK_HINT_ID"
           :aria-invalid="clockInvalid ? 'true' : undefined"
+          :disabled="blocked"
           placeholder="MM:SS"
           @input="onClockInput"
         >
@@ -189,8 +215,8 @@ function toggleReviewed(): void {
         class="paper-chip note-switch"
         role="switch"
         :aria-checked="reviewed"
-        :disabled="written"
-        :title="written ? reviewedBlockedReason : undefined"
+        :disabled="written || blocked"
+        :title="reviewedDisabledReason"
         @click="toggleReviewed"
       >
         Reviewed
@@ -230,6 +256,16 @@ function toggleReviewed(): void {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-faint);
+}
+
+/* A block is a refusal, not a status — it takes the loss color and drops
+   the shout-case so it reads as a sentence. */
+.note-blocked {
+  font-family: var(--body);
+  font-size: var(--type-md);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--paper-loss);
 }
 
 .note-chips {

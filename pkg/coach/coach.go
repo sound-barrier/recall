@@ -61,9 +61,10 @@ var (
 	// ErrReturnOrphan — a decision targets a note whose match is not in the
 	// player's history (409).
 	ErrReturnOrphan = errors.New("coach: note is not about a match in your history")
-	// ErrReturnNoMatches — none of the archive's notes match a local match
-	// (409).
-	ErrReturnNoMatches = errors.New("coach: none of these notes match a match in your history")
+	// ErrReturnNoMatches — the archive has nothing to show: no summary, and
+	// no note about a match in this history (409). The wrapped message says
+	// which of the two cases it is.
+	ErrReturnNoMatches = errors.New("coach: nothing in this notes file applies to your history")
 	// ErrCoachNameRequired — export needs the coach's name set (409).
 	ErrCoachNameRequired = errors.New("coach: coach name is required")
 	// ErrNothingToExport — no notes and no summary to export (409).

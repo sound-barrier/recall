@@ -4,14 +4,17 @@ import { computed, toRef } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import type { GroupBy, SortOrder } from '@/composables/matches/useMatchesGroup'
 import { useMembersListWindow } from '@/composables/matches/useMembersListWindow'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import type { PlayModePick, QueuePick } from '@/composables/matches/matchesNarrow.types'
 import type { Density } from '@/composables/matches/useDensity'
 import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import { playerClockNote } from '@/match/match-time-helpers'
 import type { SearchClause } from '@/match/search-query'
 import MatchLeafRow from '@/components/matches/list/MatchLeafRow.vue'
 import MatchesTable from '@/components/matches/list/MatchesTable.vue'
 import MatchesEmptySuggestions from '@/components/matches/list/MatchesEmptySuggestions.vue'
+import { useCoachStore } from '@/stores/coach'
 
 type NarrowApi = ReturnType<typeof useMatchesNarrow>
 
@@ -109,10 +112,22 @@ const {
   focusedCardIndex: toRef(props, 'focusedCardIndex'),
 })
 
+// Design rule 7: the rows below are clocked in the PLAYER's zone while a
+// bundle is open, and the list is the surface that says so — once, above
+// the rows whose When cell it explains.
+const { sessionActive } = useWriteGate()
+const coach = useCoachStore()
+const clockNote = computed(() =>
+  (sessionActive.value ? playerClockNote(coach.player?.handle ?? '') : ''))
+
 defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
 </script>
 
 <template>
+  <p v-if="clockNote" class="leaves-clock">
+    {{ clockNote }}
+  </p>
+
   <ul
     v-if="density !== 'data' && sortedRecords.length"
     ref="leavesListRef"
@@ -432,5 +447,16 @@ defineExpose({ expandWindowToAll, collapseAllSections, expandAllSections })
   letter-spacing: 0.08em;
   color: var(--text-faint);
   white-space: nowrap;
+}
+
+/* The player's-clock label. --text-mute drops below AA on Day's darker
+   surfaces, so this content line takes --text-dim. */
+.leaves-clock {
+  margin: 0 0 0.4rem;
+  font-family: var(--mono);
+  font-size: var(--type-3xs);
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-transform: uppercase;
 }
 </style>

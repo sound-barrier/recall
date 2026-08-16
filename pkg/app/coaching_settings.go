@@ -48,14 +48,19 @@ func (a *App) SetCoachingSettings(coachName string) (CoachingSettings, error) {
 // manifest. The stable player id is minted on the first share and kept
 // forever; the handle defaults to the last one used, so a repeat share
 // needs no re-typing. Both are persisted before the export so the id in a
-// bundle already in someone else's hands is always the id on disk.
+// bundle already in someone else's hands is always the id on disk — which
+// is why the handle is bounded HERE and not left to the packer: a handle
+// the packer would reject must never be the one a later share remembers.
 func (a *App) shareIdentity(player SharePlayer) (bundle.PlayerIdentity, error) {
 	handle := strings.TrimSpace(player.Handle)
 	if handle == "" {
 		handle = a.settingsSnapshot().PlayerHandle
 	}
-	if handle == "" {
+	switch {
+	case handle == "":
 		return bundle.PlayerIdentity{}, fmt.Errorf("%w: a handle is required to share with a coach", bundle.ErrPlayerIdentityInvalid)
+	case utf8.RuneCountInString(handle) > maxCoachHandleRunes:
+		return bundle.PlayerIdentity{}, fmt.Errorf("%w: handle exceeds %d characters", bundle.ErrPlayerIdentityInvalid, maxCoachHandleRunes)
 	}
 	snap := a.mutateSettings(func(s *Settings) {
 		if s.PlayerID == "" {

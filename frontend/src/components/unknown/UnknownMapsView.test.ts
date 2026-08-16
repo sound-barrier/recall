@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/vue'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -10,6 +10,11 @@ import { ResolveAmbiguousMatch } from '@/api'
 import type { MatchRecord, UpdateInfo } from '@/api'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
+
+// The triage sections go quiet about screenshots during a coaching session;
+// stub the gate so these cases pin the VIEW's contract, not the gate's.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 // UnknownMapsView reads its triage lists + per-card state + actions from the
 // stores now: the unknown/ambiguous/reference-gap getters off the matches
@@ -402,5 +407,43 @@ describe('UnknownMapsView', () => {
       })
       expect(fixCta('r6')).toBeNull()
     })
+  })
+})
+
+// Design rule 8: a coaching session loans records, never files. An
+// "include unknown" export carries the player's unmatched and ambiguous
+// records, and every /_screenshot/ URL built from one resolves against the
+// COACH's own disk under the player's filenames.
+describe('UnknownMapsView — screenshots during a coaching session', () => {
+  beforeEach(resetWriteGate)
+  afterEach(resetWriteGate)
+
+  const loanedAmbiguous: MatchRecord[] = [
+    { match_key: 'ambiguous-scoreboard-2.png', source_files: ['scoreboard-2.png'], data: { hero: 'lucio' },
+      ambiguous: true,
+      candidates: [{ match_key: 'match:foo', distance_seconds: 720, representative_source_file: 'foo.png' }] },
+  ] as unknown as MatchRecord[]
+
+  it('requests no image for a loaned record and says screenshots are not part of a session', async () => {
+    setWritesLocked(true, { session: true })
+    const { preloadSpy } = renderWith([], { ambiguousRecords: loanedAmbiguous })
+    await fireEvent.click(ambiguousHead())
+
+    expect(preloadSpy).not.toHaveBeenCalled()
+    expect(ambiguousPreviewImg()).toBeNull()
+    // The candidate picker's own thumbnails and comparison pane are the
+    // same coach's-disk request by another route.
+    expect(screen.queryByRole('complementary', { name: /^Preview of / })).toBeNull()
+    expect(screen.queryByRole('button', { name: /screenshot in lightbox$/ })).toBeNull()
+    expect(screen.getByText(/Screenshots aren't included in a coaching session/)).toBeInTheDocument()
+  })
+
+  it("still previews the coach's own ambiguous screenshots outside a session", async () => {
+    const { preloadSpy } = renderWith([], { ambiguousRecords: loanedAmbiguous })
+    await fireEvent.click(ambiguousHead())
+
+    expect(preloadSpy).toHaveBeenCalled()
+    expect(ambiguousPreviewImg()).not.toBeNull()
+    expect(screen.getByRole('complementary', { name: /^Preview of / })).toBeInTheDocument()
   })
 })

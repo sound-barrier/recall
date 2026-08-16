@@ -18,6 +18,12 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // parent via the cardState prop; the card chrome lives in the global unknown.css.
 const props = defineProps<{ cardState: CardStateApi }>()
 
+// "Delete forever" suppresses the file and wipes its row — a write. And
+// design rule 8: a coaching session loans records, never files, so every
+// /_screenshot/ URL below would resolve against the COACH's own disk under
+// the player's filenames. The strip says so instead of asking for bytes.
+const { writesLocked, lockReason, sessionActive } = useWriteGate()
+
 const matchesStore = useMatchesStore()
 const uiStore = useUiStore()
 const { onIgnoreScreenshot } = useMatchActions()
@@ -82,12 +88,14 @@ const {
 } = useHoverThumbnail({
   isVisible: () => true,
   srcFor: (key) => {
+    if (sessionActive.value) return ''
     const rec = matchesStore.unknownRecords.find((r) => r.match_key === key)
     const first = rec?.source_files?.[0]
     return first ? screenshotURL(first, rec.source_dir_ids?.[first] ?? 0) : ''
   },
-  // Suppress the peek while the card is expanded (its inline previews cover it).
-  canShow: (key) => !props.cardState.isSelected(key),
+  // Suppress the peek while the card is expanded (its inline previews cover
+  // it) and for a loaned record, which has no image on this machine.
+  canShow: (key) => !sessionActive.value && !props.cardState.isSelected(key),
 })
 function onHoverUnknown(rec: MatchRecord, e: MouseEvent) { onHover(rec.match_key, e) }
 function onMoveUnknown(rec: MatchRecord, e: MouseEvent) { onMove(rec.match_key, e) }
@@ -97,6 +105,7 @@ function onMoveUnknown(rec: MatchRecord, e: MouseEvent) { onMove(rec.match_key, 
 // Idempotent — the composable dedupes URLs, so the in-card source-preview <img>'s
 // later request reads from the same cached response.
 function preloadVisibleScreenshots() {
+  if (sessionActive.value) return
   for (const rec of matchesStore.unknownRecords) {
     const first = rec.source_files?.[0]
     if (!first) continue
@@ -176,8 +185,6 @@ function onCardHeadClick(rec: MatchRecord) {
   props.cardState.toggleExpand(rec.match_key)
 }
 
-// "Delete forever" suppresses the file and wipes its row — a write.
-const { writesLocked, lockReason } = useWriteGate()
 </script>
 
 <template>
@@ -247,7 +254,10 @@ const { writesLocked, lockReason } = useWriteGate()
       <!-- Expanded: source files + previews + any stats that parsed -->
       <template v-if="cardState.isSelected(rec.match_key)">
         <div class="unknown-expanded">
-          <div v-if="rec.source_files?.length" class="unknown-sources">
+          <p v-if="sessionActive" class="unknown-sources-in-session">
+            Screenshots aren't included in a coaching session.
+          </p>
+          <div v-else-if="rec.source_files?.length" class="unknown-sources">
             <div class="eyebrow block-eyebrow">
               Source Files
             </div>

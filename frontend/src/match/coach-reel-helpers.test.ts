@@ -82,9 +82,21 @@ describe('groupReelByPlayerDay', () => {
     expect(days[0]!.wld).toEqual({ w: 1, l: 0, d: 0 })
   })
 
+  // Design rule 6: a note can only be written on a TRACKED key, so a frame
+  // whose key is a sentinel would open an editor whose every keystroke the
+  // server refuses with a 404. Untracked records never reach the reel.
+  it('drops the unmatched and ambiguous sentinels rather than offering them as frames', () => {
+    const days = groupReelByPlayerDay([
+      rec({ key: 'unmatched-Zm9vLnBuZw', result: 'defeat' }),
+      rec({ key: 'ambiguous-YmFyLnBuZw', result: 'defeat' }),
+      rec({ date: dayA, time: '21:14', result: 'victory' }),
+    ])
+    expect(flattenReel(days).map((r) => r.match_key)).toEqual([`match-${dayA}T21-14-00`])
+  })
+
   it('collects undated records into a trailing "Undated" day', () => {
     const days = groupReelByPlayerDay([
-      rec({ key: 'unmatched-foo.png', result: 'defeat' }),
+      rec({ key: 'match-not-a-timestamp', result: 'defeat' }),
       rec({ date: dayA, time: '21:14', result: 'victory' }),
     ])
     expect(days.map((d) => d.dayKey)).toEqual([dayA, ''])

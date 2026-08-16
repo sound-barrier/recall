@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref, type Ref } from 'vue'
 import { fireEvent, render, screen } from '@testing-library/vue'
 import { createPinia, setActivePinia } from 'pinia'
@@ -9,6 +9,12 @@ import { useUiStore } from '@/stores/ui'
 import { IgnoreScreenshot } from '@/api'
 import type { MatchRecord } from '@/api'
 import type { CardStateApi } from '@/types/cardState'
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
+
+// "Delete forever" is a write and the screenshot strip goes quiet during a
+// coaching session; both read the gate, stubbed here so these cases pin the
+// SECTION's contract rather than the gate's.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 // The Unmatched triage card: a diagnostic strip over whatever the parser
 // salvaged, an expandable source/stats block, a two-click "Delete forever"
@@ -346,5 +352,51 @@ describe('UnknownUnmatchedSection — touch long-press peek', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+// Design rule 8: a coaching session loans RECORDS, never files. Every
+// /_screenshot/ URL built from a loaned record resolves against the COACH's
+// own disk under the player's filenames — a wrong image at best, and a
+// request that had no business being made.
+describe('UnknownUnmatchedSection — screenshots during a coaching session', () => {
+  const ImageOriginal = globalThis.Image
+  let issued: string[]
+
+  beforeEach(() => {
+    resetWriteGate()
+    issued = []
+    class FakeImage {
+      set src(value: string) { issued.push(value) }
+    }
+    globalThis.Image = FakeImage as unknown as typeof Image
+  })
+  afterEach(() => { globalThis.Image = ImageOriginal; resetWriteGate() })
+
+  it('requests no image and says screenshots are not part of a session', async () => {
+    setWritesLocked(true, { session: true })
+    renderWith([unmatched('a.png')])
+    expect(issued).toEqual([])
+
+    await fireEvent.click(cardHead())
+    expect(screen.getByText(/Screenshots aren't included in a coaching session/)).toBeInTheDocument()
+    // No filename link, so no href and no preview to open.
+    expect(screen.queryByText('a.png')).toBeNull()
+  })
+
+  it('shows no cursor peek for a loaned record', async () => {
+    setWritesLocked(true, { session: true })
+    renderWith([unmatched('a.png')])
+    await fireEvent.mouseEnter(card(), { clientX: 100, clientY: 120 })
+    await nextTick()
+    expect(hoverThumb()).toBeNull()
+    expect(issued).toEqual([])
+  })
+
+  it("still previews the coach's own screenshots outside a session", async () => {
+    renderWith([unmatched('a.png')])
+    expect(issued).toEqual(['/_screenshot/0/a.png'])
+    await fireEvent.click(cardHead())
+    expect(screen.getByText('a.png')).toBeInTheDocument()
   })
 })

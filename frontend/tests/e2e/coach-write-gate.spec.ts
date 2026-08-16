@@ -13,17 +13,46 @@ import type { Page, Route } from '@playwright/test'
 import { test, expect } from './_fixtures'
 import {
   KINGS_ROW_MATCH,
+  SESSION_FIXTURE,
   backToFilmRoom,
   enterFilmRoom,
   loanSlip,
   mockCoachSession,
   openSessionViaMasthead,
   seedCoachOwnMatches,
+  type SessionFixture,
 } from './_coach'
 import { seedProfiles, silenceParseEvents } from './_theme-matrix'
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const LOCK_REASON = /end the session/i
+
+/**
+ * Sable's bundle with a coach layer already accepted on the King's Row
+ * match — the shape that exposed "Remove this note" as the one journal
+ * control with no gate. Its DELETE goes to the coach's own database, so
+ * the tripwire below would catch it too.
+ */
+const WITH_COACH_LAYER: SessionFixture = {
+  ...SESSION_FIXTURE,
+  matches: SESSION_FIXTURE.matches.map((m) =>
+    m.match_key === KINGS_ROW_MATCH.match_key
+      ? {
+          ...m,
+          coach_notes: [{
+            id: 1,
+            note_id: 'f1e2d3c4-5b6a-4790-8c1d-2e3f4a5b6c7d',
+            coach_name: 'Vex',
+            session_date: '2026-08-10',
+            text: 'Held the high ground — keep doing that.',
+            match_clock: '04:12',
+            focus_tags: ['positioning'],
+            extra_tags: [],
+            accepted_at: '2026-08-11T09:15:00Z',
+          }],
+        }
+      : m),
+}
 
 /**
  * Registered LAST so it is consulted FIRST: reads fall through to the
@@ -54,11 +83,11 @@ async function armWriteTripwire(page: Page): Promise<string[]> {
   return tripped
 }
 
-async function openSession(page: Page): Promise<string[]> {
+async function openSession(page: Page, session: SessionFixture = SESSION_FIXTURE): Promise<string[]> {
   await silenceParseEvents(page)
   await seedProfiles(page)
   await seedCoachOwnMatches(page)
-  await mockCoachSession(page)
+  await mockCoachSession(page, { session })
   // The CI runner has no Tesseract; a found binary keeps the Parse
   // affordances in their normal (enabled) state so only the gate disables them.
   await page.route('**/api/v1/settings/tesseract', async (route: Route) => {
@@ -140,6 +169,23 @@ test.describe('coaching session — write gate', () => {
     await reviewRadios.nth(1).dispatchEvent('click')
     await page.getByRole('button', { name: /Open in the film room/ }).click()
     await expect(page.locator('#panel-coach')).toBeVisible()
+    expect(tripped, 'mutating requests during the session').toEqual([])
+  })
+
+  test('"Remove this note" on an accepted coach block is locked like every sibling', async ({ page }) => {
+    const tripped = await openSession(page, WITH_COACH_LAYER)
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await page.locator('.leaf-row', { hasText: /king's row/i }).click()
+
+    const block = page.getByRole('region', { name: /Coach.s note from Vex/ })
+    await expect(block).toBeVisible()
+    const remove = block.getByRole('button', { name: 'Remove this note' })
+    await expect(remove).toBeDisabled()
+    await expect(remove).toHaveAttribute('title', LOCK_REASON)
+
+    // Same proof as the pin above: dispatch fires the handler past the
+    // disabled attribute, so this shows the GUARD refusing the write.
+    await remove.dispatchEvent('click')
     expect(tripped, 'mutating requests during the session').toEqual([])
   })
 })

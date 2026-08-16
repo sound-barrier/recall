@@ -30,6 +30,42 @@ func returnedNotes(t *testing.T) []byte {
 	return payload
 }
 
+// summaryOnlyNotes is the file a coach exports after a session they only
+// summarized: the set-level verdict and not one per-match note.
+func summaryOnlyNotes(t *testing.T) []byte {
+	t.Helper()
+	f := validNotesFile()
+	f.Notes = nil
+	return writeNotes(t, f)
+}
+
+// unmatchedNotes is a file whose every note is about a match the player does
+// not have, with no summary to fall back on.
+func unmatchedNotes(t *testing.T) []byte {
+	t.Helper()
+	f := validNotesFile()
+	f.Summary = ""
+	return writeNotes(t, f)
+}
+
+// emptyNotes carries neither notes nor a summary — nothing the player could
+// be shown, which is the one file staging still refuses outright.
+func emptyNotes(t *testing.T) []byte {
+	t.Helper()
+	f := validNotesFile()
+	f.Notes, f.Summary = nil, ""
+	return writeNotes(t, f)
+}
+
+func writeNotes(t *testing.T, f coach.NotesFile) []byte {
+	t.Helper()
+	payload, err := coach.WriteNotesArchive(f, fixedNow)
+	if err != nil {
+		t.Fatalf("WriteNotesArchive: %v", err)
+	}
+	return payload
+}
+
 func stageReturn(t *testing.T, st coach.ReturnStore, payload []byte, localHandle string) coach.ReturnSheet {
 	t.Helper()
 	sheet, already, err := coach.Stage(st, payload, localHandle)

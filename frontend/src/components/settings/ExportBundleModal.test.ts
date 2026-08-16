@@ -120,7 +120,7 @@ describe('ExportBundleModal — emits', () => {
     expect(emitted('close')).toBeTruthy()
   })
 
-  it('emits "export" with (filename, includeHidden, includeUnknown) on submit', async () => {
+  it('emits "export" with the whole request on submit', async () => {
     const { emitted } = renderModal({ selectedCount: 2 })
     const fn = screen.getByLabelText('Filename')
     await user().clear(fn)
@@ -129,7 +129,9 @@ describe('ExportBundleModal — emits', () => {
     await user().click(submitBtn())
     const e = emitted('export')
     expect(e).toBeTruthy()
-    expect(e[0]).toEqual(['my-backup.zip', true, false])
+    expect(e[0]).toEqual([{
+      filename: 'my-backup.zip', includeHidden: true, includeUnknown: false, share: null,
+    }])
   })
 })
 
@@ -246,5 +248,89 @@ describe('ExportBundleModal — open/close lifecycle', () => {
     // A leaked document listener would keep emitting close from a closed
     // modal — and, stacked under another dialog, would swallow its Esc.
     expect(emitted('close')).toBeUndefined()
+  })
+})
+
+// Two exports leave this modal and they are not the same artifact: a plain
+// bundle is a backup, a share bundle names its player so a coach can open it
+// as a session (and a mis-clicked Import refuses it). The player has to be
+// able to tell which one they just made.
+describe('ExportBundleModal — sharing with a coach', () => {
+  const shareToggle = () => screen.getByRole('checkbox', { name: /Share with a coach/ })
+  const handleField = () => screen.getByLabelText('Your handle')
+
+  it('offers a plain export by default, with no identity asked for', () => {
+    renderModal()
+    expect(shareToggle()).not.toBeChecked()
+    expect(screen.queryByLabelText('Your handle')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Export bundle' })).toBeInTheDocument()
+  })
+
+  it('asks who the coach is reviewing once share mode is on', async () => {
+    renderModal()
+    await user().click(shareToggle())
+    expect(handleField()).toBeInTheDocument()
+    expect(screen.getByLabelText(/Message for your coach/)).toBeInTheDocument()
+  })
+
+  it('renames itself, the button and the file so the two modes cannot be confused', async () => {
+    renderModal()
+    await user().click(shareToggle())
+    expect(screen.getByRole('dialog', { name: 'Share with a coach' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Filename')).toHaveDisplayValue(/^recall-share-\d{8}-\d{6}\.zip$/)
+  })
+
+  it('will not share until the handle is filled in', async () => {
+    renderModal()
+    await user().click(shareToggle())
+    expect(screen.getByRole('button', { name: 'Share' })).toBeDisabled()
+    await user().type(handleField(), 'Sable')
+    expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled()
+  })
+
+  it('emits the share identity with the request', async () => {
+    const { emitted } = renderModal({ selectedCount: 2 })
+    await user().click(shareToggle())
+    await user().type(handleField(), 'Sable')
+    await user().type(screen.getByLabelText(/Message for your coach/), 'Ult timing?')
+    await user().click(screen.getByRole('button', { name: 'Share' }))
+
+    expect(emitted('export')[0]).toEqual([expect.objectContaining({
+      includeHidden: false,
+      includeUnknown: false,
+      share: { handle: 'Sable', message: 'Ult timing?' },
+    })])
+  })
+
+  it('emits no identity for a plain export', async () => {
+    const { emitted } = renderModal({ selectedCount: 2 })
+    await user().click(hiddenToggle())
+    await user().click(submitBtn())
+
+    expect(emitted('export')[0]).toEqual([expect.objectContaining({
+      includeHidden: true,
+      includeUnknown: false,
+      share: null,
+    })])
+  })
+
+  it('drops back to a plain export when the modal is reopened', async () => {
+    const { rerender } = renderModal()
+    await user().click(shareToggle())
+    await rerender({ open: false, selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    await rerender({ open: true, selectedCount: 3, hiddenCount: 2, unknownCount: 5 })
+    await nextTick()
+
+    expect(shareToggle()).not.toBeChecked()
+  })
+})
+
+describe('ExportBundleModal — the eyebrow', () => {
+  it('reads as prose in both modes', async () => {
+    renderModal()
+    expect(screen.getByText('Data & Export')).toBeInTheDocument()
+    await user().click(screen.getByRole('checkbox', { name: /Share with a coach/ }))
+    expect(screen.getByText('Coaching')).toBeInTheDocument()
   })
 })

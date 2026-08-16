@@ -360,6 +360,16 @@
   margin-bottom: 0.45rem;
 }
 
+/* Rule 8: a loaned record has no image on this machine, so the strip says
+   so rather than requesting one. --text-mute drops below AA on Day's
+   darker surfaces; this is content, so it takes --text-dim. */
+.unknown-sources-in-session {
+  margin: 0;
+  font-size: var(--type-md);
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+}
+
 .unknown-stats .block-eyebrow {
   margin-bottom: 0.6rem;
 }

@@ -13,6 +13,7 @@ import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
 import MatchStatusChoosers from '@/components/matches/detail/MatchStatusChoosers.vue'
 import EditableStat from '@/components/matches/detail/EditableStat.vue'
 import { withScalarEdit, withoutField, isEmptyOverrideSet, isFieldEdited, scalarPath, type ScalarField } from '@/match/match-overrides'
+import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Expanded match-card body: leaver chooser → free-text annotation
@@ -118,6 +119,10 @@ const emit = defineEmits<{
 // app-state-free.
 const { writesLocked, lockReason } = useWriteGate()
 
+// A loaned match is clocked in the PLAYER's zone, like the row it was
+// opened from and the day it is grouped under (design rule 7).
+const clock = useMatchClock()
+
 const unknownHero = computed(() => isHeroUnknown(props.record))
 const unknownMap  = computed(() => isMapUnknown(props.record))
 
@@ -208,12 +213,12 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
          before scrolling into the journal. Three small lockups in
          one row; collapses to a stack on narrow widths. -->
     <div
-      v-if="fmtTime(record) || record.data?.final_score || record.parsed_at"
+      v-if="fmtTime(record, clock) || record.data?.final_score || record.parsed_at"
       class="detail-meta-strip"
     >
-      <div v-if="fmtTime(record)" class="meta-cell meta-cell-when">
+      <div v-if="fmtTime(record, clock)" class="meta-cell meta-cell-when">
         <span class="eyebrow meta-eyebrow">When</span>
-        <span class="meta-value">{{ fmtTime(record) }}</span>
+        <span class="meta-value">{{ fmtTime(record, clock) }}</span>
       </div>
       <div v-if="record.data?.final_score" class="meta-cell meta-cell-score">
         <span class="eyebrow meta-eyebrow">Final Score</span>

@@ -14,7 +14,12 @@ import { useCoachStore } from '@/stores/coach'
 
 const coach = useCoachStore()
 
-const handle = computed(() => coach.player?.handle ?? '')
+// A plain export names nobody, so the slip has a blank where the handle
+// goes until the room's "Who is this?" prompt is answered. Saying so is
+// better than a masthead that reads "reviewing" and then stops.
+const UNNAMED_PLAYER = 'a player not yet named'
+const handle = computed(() =>
+  (coach.needsPlayerHandle ? UNNAMED_PLAYER : coach.player?.handle ?? ''))
 const label = computed(() => `Coaching session: reviewing ${handle.value}`)
 
 const loanLine = computed(() => {
@@ -29,11 +34,11 @@ const noteCount = computed(() =>
   Object.values(coach.notes).filter(draft => noteMark(draft) !== null).length)
 const notesLine = computed(() => `Notes · ${noteCount.value}`)
 
-const canExport = computed(() => coach.coachName !== '')
+// The store owns both refusals — an unsigned archive and one that would be
+// missing a note whose save never landed.
+const canExport = computed(() => coach.canExportNotes)
 const exportTitle = computed(() =>
-  canExport.value
-    ? 'Save the notes archive for the player'
-    : 'Set a coach name in Settings before exporting notes')
+  canExport.value ? 'Save the notes archive for the player' : coach.exportBlockedReason)
 
 // Ending discards the loan. The notes themselves are saved server-side, but
 // the ARCHIVE the player receives only exists once it has been exported —

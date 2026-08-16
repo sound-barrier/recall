@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/bundle"
 	"recall/pkg/coach"
 	"recall/pkg/db/dbtest"
 )
@@ -62,6 +63,23 @@ func TestCoachSession_ViewDescribesTheLoanedCorpus(t *testing.T) {
 	}
 	if view.Player.Handle != playerHandle || !view.HandleFromBundle {
 		t.Errorf("player = %+v (from bundle %v), want %s from the bundle", view.Player, view.HandleFromBundle, playerHandle)
+	}
+}
+
+// A bundle whose manifest was hand-edited to carry an id no export would
+// write is refused at the door — the coach's store must never learn an
+// identity their own notes file would later reject, which would block their
+// export with no way back.
+func TestCoachSession_RefusesATamperedPlayerIdentity(t *testing.T) {
+	a, store := coachApp(t)
+	if _, err := a.OpenCoachSession(tamperedShareBundle(t)); !errors.Is(err, bundle.ErrPlayerIdentityInvalid) {
+		t.Fatalf("OpenCoachSession(tampered) = %v, want bundle.ErrPlayerIdentityInvalid", err)
+	}
+	if len(store.CoachPlayers) != 0 {
+		t.Errorf("a refused bundle wrote player rows: %+v", store.CoachPlayers)
+	}
+	if _, err := a.GetCoachSession(); !errors.Is(err, coach.ErrNoSession) {
+		t.Errorf("a refused bundle left a session open: %v", err)
 	}
 }
 

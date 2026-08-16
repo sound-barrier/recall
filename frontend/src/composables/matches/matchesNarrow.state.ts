@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier'
 import type {
   CreateMatchesNarrowStateOptions,
@@ -50,5 +50,52 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     anchorKey:        opts.anchorKey ?? computed(() => ''),
     sinceAnchorActive: ref(false),
     poolFilter:       ref<PoolFilter | null>(null),
+  }
+}
+
+// ── Snapshot / restore ────────────────────────────────────────────────
+//
+// A coaching session puts the coach's own narrow aside for the length of
+// the loan (design rule 12) and End puts it back. The pair lives here
+// because this module owns the state's shape — a field list restated
+// anywhere else is one rename away from silently dropping a dimension.
+
+/** Every mutable narrow field's value, taken at one instant. */
+export type MatchesNarrowSnapshot = ReadonlyMap<string, unknown>
+
+// `anchorKey` is a readonly ComputedRef owned by useMatchAnchor and
+// persisted per profile — writing it back would throw a Vue warning, and
+// the snapshot has no business restoring somebody else's storage.
+const ANCHOR_FIELD = 'anchorKey'
+
+// The state is a bundle of same-shaped refs, so it is walked reflectively
+// rather than field by field: a new dimension is then covered the day it is
+// added to the factory above.
+function mutableFields(state: MatchesNarrowState): [string, Ref<unknown>][] {
+  const fields = state as unknown as Record<string, Ref<unknown>>
+  return Object.keys(fields)
+    .filter((field) => field !== ANCHOR_FIELD)
+    .map((field) => [field, fields[field] as Ref<unknown>])
+}
+
+// The picked-* dimensions are Sets. The narrow's own setters replace rather
+// than mutate them, but a snapshot that shared the instance would be one
+// stray `.add()` away from lying.
+function cloneFieldValue(value: unknown): unknown {
+  return value instanceof Set ? new Set(value) : value
+}
+
+/** Capture the coach's narrow so End can hand it back untouched. */
+export function snapshotMatchesNarrowState(state: MatchesNarrowState): MatchesNarrowSnapshot {
+  return new Map(mutableFields(state).map(([field, holder]) => [field, cloneFieldValue(holder.value)]))
+}
+
+/** Put a snapshot back. Fields the snapshot never carried are left alone. */
+export function restoreMatchesNarrowState(
+  state: MatchesNarrowState,
+  snapshot: MatchesNarrowSnapshot,
+): void {
+  for (const [field, holder] of mutableFields(state)) {
+    if (snapshot.has(field)) holder.value = cloneFieldValue(snapshot.get(field))
   }
 }

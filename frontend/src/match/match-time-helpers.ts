@@ -17,6 +17,32 @@ export const WEEKDAYS_FULL = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ] as const
 
+/**
+ * Which clock a match time is rendered in.
+ *
+ * `'viewer'` renders the canonical UTC instant in the viewer's own zone —
+ * the right answer for the viewer's own history, and the default on every
+ * surface. `'player'` renders the naive scoreboard fields exactly as the
+ * player's client wrote them.
+ *
+ * The second mode exists for a coaching session, where the records on
+ * screen were exported by someone in another timezone: her 21:14 is not
+ * the coach's 21:14, and often not even the coach's day. Grouping, the
+ * date filter and the heatmap all bucket on those same naive fields, so a
+ * row that printed the instant would show one day and file the match under
+ * another.
+ */
+export type ClockMode = 'viewer' | 'player'
+
+/**
+ * The one sentence a player-clocked surface carries, so a coach reading
+ * 21:14 knows whose 21:14 it is. Rule 7 asks for it once per surface —
+ * the reel, the desk, the members list, the detail panel.
+ */
+export function playerClockNote(handle: string): string {
+  return `Times in ${handle || 'the player'}'s clock`
+}
+
 // Locale preference for "what day starts a week" — any day 0-6 per
 // JS Date.getDay() (0=Sun … 6=Sat). Threaded through the grouping
 // helpers + the matches view's "Week of <date>" labels so US users
@@ -180,23 +206,29 @@ function naiveTimePart(finishedAt: string | undefined): string {
   return (Number.isNaN(h) || Number.isNaN(m)) ? finishedAt : formatHourMinute(h, m)
 }
 
-// Format the match's date + end time for the card header. Parser
-// stores date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the
-// Wails UI prefers a friendlier `May 9, 2026 @ 9:08pm` rendering.
-export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
-  // Prefer the canonical UTC instant, rendered in the viewer's current zone,
-  // so the display is timezone-correct (and matches parsed_at's convention).
-  // For a stationary viewer this equals the naive rendering below; the naive
-  // path stays as the fallback for rows without a played_at_utc.
-  const utc = rec.data?.played_at_utc
-  if (utc) return formatLocalFromUTC(utc)
-
-  const d = rec.data ?? {}
+// The naive scoreboard pair rendered as "May 9, 2026 @ 9:08pm"; whichever
+// half exists when only one does, '' when neither.
+function naiveWhen(data: MatchRecord['data']): string {
+  const d = data ?? {}
   if (!d.date && !d.finished_at) return ''
   const datePart = naiveDatePart(d.date)
   const timePart = naiveTimePart(d.finished_at)
   if (datePart && timePart) return `${datePart} @ ${timePart}`
   return datePart || timePart
+}
+
+// Format the match's date + end time for the card header. Parser
+// stores date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the
+// Wails UI prefers a friendlier `May 9, 2026 @ 9:08pm` rendering.
+//
+// Prefers the canonical UTC instant in the viewer's current zone, so the
+// display is timezone-correct (and matches parsed_at's convention). For a
+// stationary viewer that equals the naive rendering; the naive path is the
+// fallback for rows without a played_at_utc — and the ONLY path in the
+// player's clock, which is naive by definition.
+export function fmtTime(rec: Pick<MatchRecord, 'data'>, clock: ClockMode = 'viewer'): string {
+  const utc = clock === 'player' ? undefined : rec.data?.played_at_utc
+  return utc ? formatLocalFromUTC(utc) : naiveWhen(rec.data)
 }
 
 // formatParsedAt renders an ISO8601 timestamp (the shape stored in

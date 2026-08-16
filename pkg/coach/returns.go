@@ -79,8 +79,10 @@ type Decision struct {
 
 // Stage imports a notes archive on the player's side: reads and validates
 // it, and either returns the sheet already staged for the same file
-// (alreadyStaged=true) or stages it. A file none of whose notes match a
-// local match is ErrReturnNoMatches and is not staged.
+// (alreadyStaged=true) or stages it. A file with nothing to show — no
+// summary, and no note about a match in this history — is
+// ErrReturnNoMatches and is not staged; a summary alone is enough, because
+// a coach may end a session having written only that.
 func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnSheet, alreadyStaged bool, err error) {
 	f, raw, err := readNotesArchive(payload)
 	if err != nil {
@@ -97,8 +99,8 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 	if err != nil {
 		return ReturnSheet{}, false, fmt.Errorf("coach: load match keys: %w", err)
 	}
-	if !anyLocalNote(f.Notes, keys) {
-		return ReturnSheet{}, false, ErrReturnNoMatches
+	if strings.TrimSpace(f.Summary) == "" && !anyLocalNote(f.Notes, keys) {
+		return ReturnSheet{}, false, nothingToStage(f.Notes)
 	}
 	id, err := st.InsertCoachReturn(db.CoachReturn{
 		ContentHash: hash, CoachName: f.CoachName, PlayerHandle: f.Player.Handle,
@@ -109,6 +111,16 @@ func Stage(st ReturnStore, payload []byte, localHandle string) (sheet ReturnShee
 	}
 	sheet, err = Sheet(st, id, localHandle)
 	return sheet, false, err
+}
+
+// nothingToStage names which of the two empty cases the refused file is, so
+// the player reads why their archive was turned away rather than a generic
+// "no matches".
+func nothingToStage(notes []Note) error {
+	if len(notes) == 0 {
+		return fmt.Errorf("%w: it carries no notes and no summary", ErrReturnNoMatches)
+	}
+	return fmt.Errorf("%w: none of its %d notes name a match you have, and it carries no summary", ErrReturnNoMatches, len(notes))
 }
 
 func anyLocalNote(notes []Note, keys map[string]bool) bool {

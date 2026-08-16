@@ -186,3 +186,27 @@ describe('CoachNoteEditor — moving and saving', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Saved')
   })
 })
+
+// A note the server will refuse is worse than no note: the coach types a
+// paragraph, every keystroke fails with "Not saved" in 10 px mono, and the
+// words are gone. When the room knows the save cannot land, the editor
+// stops accepting the typing and says why instead.
+describe('CoachNoteEditor — blocked from saving', () => {
+  const REASON = 'Say who this bundle is about before writing notes.'
+
+  it('refuses the typing and gives the reason', () => {
+    renderEditor({}, { blockedReason: REASON })
+    expect(screen.getByRole('textbox', { name: 'Note' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'In-match clock' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'positioning' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Reviewed' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(REASON)
+  })
+
+  it('takes the typing again once the block lifts', async () => {
+    const view = renderEditor({}, { blockedReason: REASON })
+    await view.rerender({ blockedReason: '' })
+    expect(screen.getByRole('textbox', { name: 'Note' })).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Autosaves as you write')
+  })
+})

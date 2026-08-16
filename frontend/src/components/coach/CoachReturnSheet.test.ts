@@ -106,6 +106,37 @@ describe('CoachReturnSheet', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  // A failed PUT used to close the dialog anyway, throwing away every
+  // verdict the player had just recorded — the one state where the work is
+  // gone AND the banner still nags. The store rejects; the CALLER decides,
+  // and the only safe decision is to hold the sheet open.
+  it('keeps the sheet open and every verdict when the save fails', async () => {
+    const user = userEvent.setup()
+    const { decide } = open()
+    decide.mockRejectedValue(new Error('server said no'))
+    await user.click(within(cards()[0]!).getByRole('radio', { name: 'Accept' }))
+    await user.click(within(cards()[1]!).getByRole('radio', { name: 'Skip' }))
+    await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+
+    expect(decide).toHaveBeenCalledWith(7, { 'n-1': 'accepted', 'n-2': 'skipped' })
+    expect(dialog()).toBeInTheDocument()
+    expect(within(dialog()).getByRole('alert')).toHaveTextContent(/could not be saved/i)
+    expect(within(cards()[0]!).getByRole('radio', { name: 'Accept' })).toBeChecked()
+    expect(within(cards()[1]!).getByRole('radio', { name: 'Skip' })).toBeChecked()
+  })
+
+  it('clears the failure notice once a retry lands', async () => {
+    const user = userEvent.setup()
+    const { decide } = open()
+    decide.mockRejectedValueOnce(new Error('server said no'))
+    await user.click(within(cards()[0]!).getByRole('radio', { name: 'Accept' }))
+    await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+    expect(within(dialog()).getByRole('alert')).toBeInTheDocument()
+
+    await user.click(within(dialog()).getByRole('button', { name: /^Finish/ }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('"Decide later" saves the partial map — undecided notes are omitted', async () => {
     const user = userEvent.setup()
     const { decide } = open()
@@ -128,6 +159,25 @@ describe('CoachReturnSheet', () => {
     expect(within(cards()[0]!).getByRole('radio', { name: 'Accept' })).toBeChecked()
     expect(within(cards()[1]!).getByRole('radio', { name: 'Skip' })).toBeChecked()
     expect(within(dialog()).getByRole('button', { name: /^Finish · save 1 accepted/ })).toBeInTheDocument()
+  })
+
+  // A second session re-sends notes the player already accepted. The server
+  // knows (a block with that note_id sits on the match); the player cannot,
+  // unless the card says so — otherwise five taken notes and two new ones
+  // look identical and re-deciding them re-runs their effect.
+  it('marks the notes the player already accepted, so the new ones stand out', () => {
+    open(sheet({
+      notes: [
+        note('n-old', { status: 'accepted' }),
+        note('n-new', { match_key: MATCH_B }),
+      ],
+    }))
+
+    const already = screen.getByRole('article', { name: /already accepted/i })
+    expect(within(already).getByText(/note n-old/)).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: /already accepted/i })).not.toContainElement(
+      screen.getByText(/note n-new/),
+    )
   })
 
   it('an orphan can be skipped but never accepted, and says why', async () => {

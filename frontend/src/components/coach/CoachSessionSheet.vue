@@ -23,6 +23,8 @@ withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update-summary': [text: string]
+  /** Re-open the room's "who is this?" prompt — the bundle only suggested. */
+  'change-player': []
   export: []
   end: []
 }>()
@@ -35,9 +37,19 @@ function onSummaryInput(e: Event): void {
 
 <template>
   <section class="paper coach-sheet" aria-label="Session sheet">
-    <h2 class="sheet-title">
-      Reviewing {{ player.handle }}
-    </h2>
+    <div class="sheet-head">
+      <h2 class="sheet-title">
+        Reviewing {{ player.handle || 'nobody yet' }}
+      </h2>
+      <button
+        type="button"
+        class="paper-btn sheet-change"
+        title="The bundle only suggested this name — file the notes under a different player"
+        @click="emit('change-player')"
+      >
+        Change player
+      </button>
+    </div>
     <blockquote v-if="player.message" class="sheet-message">
       {{ player.message }}
     </blockquote>
@@ -116,6 +128,20 @@ function onSummaryInput(e: Event): void {
   flex-direction: column;
   gap: 0.8rem;
   padding: 1rem 1.05rem 1.1rem;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sheet-change {
+  flex: none;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--type-xs);
+  letter-spacing: 0.06em;
 }
 
 .sheet-title {

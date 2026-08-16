@@ -11,6 +11,7 @@
 //   - match-group-helpers.ts   — Month → Week → Day grouping
 
 import type { MatchRecord, HeroPlay, ScreenshotType } from '@/api-client'
+import type { ClockMode } from '@/match/match-time-helpers'
 
 export interface ScreenshotSlot {
   key: ScreenshotType
@@ -221,8 +222,8 @@ export function formatRoles(
 // date isn't in the current calendar year ("Dec 31, 2025" vs "Jun 3"),
 // so a multi-year corpus reads in correct chronological order instead of
 // looking scrambled when same-month/day labels collide across years.
-export function formatRowDate(rec: Pick<MatchRecord, 'data'>): string {
-  const dt = rowDateInstant(rec)
+export function formatRowDate(rec: Pick<MatchRecord, 'data'>, clock: ClockMode = 'viewer'): string {
+  const dt = rowDateInstant(rec, clock)
   if (!dt) return '—'
   if (isNaN(dt.getTime())) return rec.data?.date ?? '—'
   const sameYear = dt.getFullYear() === new Date().getFullYear()
@@ -233,18 +234,20 @@ export function formatRowDate(rec: Pick<MatchRecord, 'data'>): string {
 
 // Prefer the canonical UTC instant, rendered in the viewer's current zone
 // (equals the naive date for a stationary viewer); fall back to the naive
-// date for rows without a played_at_utc.
-function rowDateInstant(rec: Pick<MatchRecord, 'data'>): Date | null {
-  const utc = rec.data?.played_at_utc
+// date for rows without a played_at_utc. The player's clock takes the naive
+// date always — it is the day the record is grouped and filtered under.
+function rowDateInstant(rec: Pick<MatchRecord, 'data'>, clock: ClockMode): Date | null {
+  const utc = clock === 'player' ? undefined : rec.data?.played_at_utc
   if (utc) return new Date(utc)
   const date = rec.data?.date
   return date ? new Date(date + 'T00:00:00') : null
 }
 
 // Finish time-of-day for a row, '' when absent. Prefers the canonical UTC
-// instant (rendered as local 24h HH:MM), else the naive finished_at.
-export function formatFinishedAt(rec: Pick<MatchRecord, 'data'>): string {
-  const utc = rec.data?.played_at_utc
+// instant (rendered as local 24h HH:MM), else the naive finished_at — which
+// is what the player's clock reads in every case.
+export function formatFinishedAt(rec: Pick<MatchRecord, 'data'>, clock: ClockMode = 'viewer'): string {
+  const utc = clock === 'player' ? undefined : rec.data?.played_at_utc
   if (utc) {
     const dt = new Date(utc)
     if (!isNaN(dt.getTime())) {

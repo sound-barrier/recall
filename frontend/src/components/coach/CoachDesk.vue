@@ -15,10 +15,18 @@ withDefaults(defineProps<{
   handle: string
   draft: CoachNoteDraft
   saveState?: CoachSaveState
+  /** Why the note editor is inert — relayed straight through. */
+  blockedReason?: string
   hasPrev?: boolean
   hasNext?: boolean
   labels?: CoachLabels
-}>(), { saveState: 'idle', hasPrev: false, hasNext: false, labels: () => DEFAULT_COACH_LABELS })
+}>(), {
+  saveState: 'idle',
+  blockedReason: '',
+  hasPrev: false,
+  hasNext: false,
+  labels: () => DEFAULT_COACH_LABELS,
+})
 
 const emit = defineEmits<{
   'update-note': [draft: CoachNoteDraft]
@@ -35,6 +43,7 @@ const emit = defineEmits<{
         :match-key="record.match_key"
         :draft="draft"
         :save-state="saveState"
+        :blocked-reason="blockedReason"
         :has-prev="hasPrev"
         :has-next="hasNext"
         @update="(next: CoachNoteDraft) => emit('update-note', next)"

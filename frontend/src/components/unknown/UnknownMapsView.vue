@@ -12,6 +12,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 // Global (unscoped) styles for the Unknown view + its section sub-components —
 // the card chrome is shared across them, so it lives in one place.
 import './unknown.css'
@@ -34,6 +35,11 @@ const matchesStore = useMatchesStore()
 // its own card-expand state (the set-workspace doesn't share it); the
 // source-preview/lightbox state comes from the UI store, so the CardStateApi
 // bundle is assembled here and forwarded to the cards.
+// Design rule 8: a coaching session loans records, never files, so no
+// /_screenshot/ URL is built from one — it would resolve against the
+// COACH's own disk under the player's filenames.
+const { sessionActive } = useWriteGate()
+
 const appStore = useAppStore()
 const uiStore = useUiStore()
 const { onResolveAmbiguous } = useMatchActions()
@@ -78,7 +84,7 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
 function onAmbiguousHeadClick(rec: MatchRecord) {
   const willOpen = !cardState.isSelected(rec.match_key)
   cardState.toggleExpand(rec.match_key)
-  if (!willOpen) return
+  if (!willOpen || sessionActive.value) return
   for (const cand of rec.candidates ?? []) {
     if (!cand.representative_source_file) continue
     preloadScreenshot(
@@ -172,7 +178,10 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
                    actual screenshot they're triaging before picking a
                    candidate, instead of choosing blind from the match-
                    key strings alone. -->
-              <div v-if="rec.source_files?.length" class="unknown-sources">
+              <p v-if="sessionActive" class="unknown-sources-in-session">
+                Screenshots aren't included in a coaching session.
+              </p>
+              <div v-else-if="rec.source_files?.length" class="unknown-sources">
                 <div class="eyebrow block-eyebrow">
                   Source Screenshot
                 </div>

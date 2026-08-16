@@ -98,6 +98,20 @@ func TestOpenSession_FlagsAMissingIdentity(t *testing.T) {
 	}
 }
 
+// The identity a bundle suggests is read straight off a file the coach was
+// handed, so a session must not open on one that no export could have
+// written — it would key the coach's notes on an id their own notes file
+// then refuses to carry.
+func TestOpenSession_RejectsATamperedIdentity(t *testing.T) {
+	payload := zipWithEntries(t, map[string][]byte{
+		"manifest.json": []byte(`{"schema":"recall-bundle/v1","player":{"id":"sable-1","handle":"Sable"}}`),
+		"data.json":     []byte(`{"schema":"recall-export/v2"}`),
+	})
+	if _, err := coach.OpenSession(payload, fixedNow); !errors.Is(err, bundle.ErrPlayerIdentityInvalid) {
+		t.Fatalf("err = %v, want bundle.ErrPlayerIdentityInvalid", err)
+	}
+}
+
 func TestOpenSession_RejectsANotesArchive(t *testing.T) {
 	payload := zipWithEntries(t, map[string][]byte{"notes.json": []byte("{}"), "ledger.html": []byte("<p>")})
 	_, err := coach.OpenSession(payload, fixedNow)

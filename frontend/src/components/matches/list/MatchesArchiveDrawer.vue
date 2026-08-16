@@ -9,6 +9,7 @@
 // pipe to App.vue). The shared move-to-profile picker state stays in
 // MatchesView — this drawer just signals intent (begin-move /
 // move-to-profile / cancel-move) and the per-row unhide / hard-delete.
+import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { UseArchiveSelectionApi } from '@/composables/matches/useArchiveSelection'
 import { formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '@/match/match-helpers'
@@ -32,6 +33,10 @@ const emit = defineEmits<{
 }>()
 
 const ow = useOWData()
+
+// Hidden loaned matches are still the player's — same clock as the rows
+// they were archived from (design rule 7).
+const clock = useMatchClock()
 
 // Refs inside a prop-passed object don't auto-unwrap; destructure to
 // top-level so the template auto-unwraps them (the `narrow`-prop
@@ -112,8 +117,8 @@ const {
           </button>
           <span class="archive-row-strip" aria-hidden="true" />
           <div class="archive-row-when">
-            <span class="archive-row-date">{{ formatRowDate(rec) }}</span>
-            <span class="archive-row-time">{{ formatFinishedAt(rec) }}</span>
+            <span class="archive-row-date">{{ formatRowDate(rec, clock) }}</span>
+            <span class="archive-row-time">{{ formatFinishedAt(rec, clock) }}</span>
           </div>
           <div class="archive-row-map">
             <span class="archive-row-map-name">{{ rec.data?.map || 'unknown' }}</span>
