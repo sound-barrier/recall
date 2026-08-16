@@ -93,6 +93,15 @@ export const useUiStore = defineStore('ui', () => {
   const tourReplayRequested = ref(false)
   function requestTourReplay() { tourReplayRequested.value = true }
   function clearTourReplayRequest() { tourReplayRequested.value = false }
+
+  // One-shot "open the Trends section" request — the same shape as the tour
+  // replay above. The coaching session's nav strip offers "Trends" among the
+  // player's views, but Trends is a SECTION of the Matches view rather than a
+  // tab, so the strip goes to Matches and raises this; TrendsSection opens
+  // itself once and clears it.
+  const trendsOpenRequested = ref(false)
+  function requestTrendsOpen() { trendsOpenRequested.value = true }
+  function clearTrendsOpenRequest() { trendsOpenRequested.value = false }
   // A manual match was created → close the modal, reload so it lands in the
   // feed, and open it so the user can add the right-panel review / replay-code.
   async function onManualMatchCreated(rec: MatchRecord) {
@@ -146,6 +155,9 @@ export const useUiStore = defineStore('ui', () => {
     tourReplayRequested,
     requestTourReplay,
     clearTourReplayRequest,
+    trendsOpenRequested,
+    requestTrendsOpen,
+    clearTrendsOpenRequest,
     cheatsheetOpen,
     openCheatsheet,
     closeCheatsheet,

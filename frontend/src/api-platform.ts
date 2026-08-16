@@ -21,6 +21,7 @@ import { Browser, Call, Events } from '@wailsio/runtime'
 import { unwrap, unwrapWithResponse } from '@/api-unwrap'
 import { IS_WAILS } from '@/platform'
 import * as sdk from '@/client/sdk.gen'
+import type { CoachReturnSheet, CoachSessionView } from '@/client/types.gen'
 
 // Fully-qualified prefix for the bound App service — the v3 runtime resolves a
 // Call.ByName against `packagePath.typeName.method` (see pkg/app's App service,
@@ -53,14 +54,32 @@ export function OpenURL(url: string): void {
 
 // ─── Binary import/export ──────────────────────────────────────────────────
 
-// MatchImportResult is the outcome of a merge import: where it came from
-// (empty path = user canceled) plus how many matches were added vs skipped
-// because their key already existed locally.
+// Which archive an import turned out to be. The server sniffs ZIP entry
+// names before parsing anything, so one affordance ("Import matches…")
+// accepts both a shared bundle and a coach's notes.
+export type MatchImportKind = 'bundle' | 'coach_notes'
+
+// MatchImportResult is the outcome of an import: where it came from (empty
+// path = user canceled) plus the server's union answer — merge counts for a
+// bundle, the staged return sheet for a coach's notes archive. The counts
+// are always present (a bundle whose keys all existed is "imported 0,
+// skipped 12"); `return` only on the coach_notes arm.
 export interface MatchImportResult {
   path:     string
+  kind:     MatchImportKind
   imported: number
   skipped:  number
+  return?:  CoachReturnSheet
 }
+
+// CoachSessionResult is the native open-a-bundle dialog's return: the path
+// the coach picked (empty on cancel) plus the session it opened.
+interface CoachSessionResult {
+  path:     string
+  session?: CoachSessionView
+}
+
+const IMPORT_CANCELED: MatchImportResult = { path: '', kind: 'bundle', imported: 0, skipped: 0 }
 
 // tsFilenameStamp builds a filesystem-safe `YYYY-MM-DDTHH-MM-SS` stamp for a
 // fallback download name when the server omits Content-Disposition.
@@ -206,17 +225,49 @@ export async function RestoreDatabase(): Promise<string> {
   return file.name
 }
 
-// ImportMatches MERGES the matches in a chosen bundle `.zip` into the local
-// database — additive, existing keys skipped, nothing wiped. Wails opens a
-// native picker (LoadMatchImportFromFile) returning the merge counts; server
-// mode reads the chosen file, POSTs it to /api/v1/imports, and reads the
-// {imported, skipped} summary. Resolves with an empty path on cancel.
+// ImportMatches takes either archive a user can hand Recall. A bundle
+// MERGES its matches into the local database (additive, existing keys
+// skipped, nothing wiped); a coach's notes archive is STAGED as a return
+// sheet and changes no match until the player accepts a note. Wails opens a
+// native picker (LoadMatchImportFromFile); server mode reads the chosen file
+// and POSTs it to /api/v1/imports. Resolves with an empty path on cancel —
+// Go's zero result carries no kind, so a cancel normalizes onto the bundle
+// arm and the discriminant stays trustworthy once `path` is non-empty.
 export async function ImportMatches(): Promise<MatchImportResult> {
-  if (IS_WAILS) return wailsCall<MatchImportResult>('LoadMatchImportFromFile')
+  if (IS_WAILS) {
+    const picked = await wailsCall<MatchImportResult>('LoadMatchImportFromFile')
+    return picked?.path ? picked : IMPORT_CANCELED
+  }
   const file = await pickFile('application/zip,.zip')
-  if (!file) return { path: '', imported: 0, skipped: 0 }
-  const summary = await unwrap(sdk.importMatches({ body: file }))
-  return { path: file.name, imported: summary.imported, skipped: summary.skipped }
+  if (!file) return IMPORT_CANCELED
+  const outcome = await unwrap(sdk.importMatches({ body: file }))
+  return { path: file.name, ...outcome }
+}
+
+// OpenCoachBundle opens a player's exported bundle as a coaching session:
+// the records are loaned to the app in memory and never reach the coach's
+// database. Wails opens a native picker (LoadCoachBundleFromFile); server
+// mode POSTs the chosen bytes to /api/v1/coach/session. Resolves null when
+// the user cancels; rejects with ApiError on a refused open (409 when a
+// session is already live, or the payload is a notes archive).
+export async function OpenCoachBundle(): Promise<CoachSessionView | null> {
+  if (IS_WAILS) {
+    const opened = await wailsCall<CoachSessionResult>('LoadCoachBundleFromFile')
+    return opened?.session ?? null
+  }
+  const file = await pickFile('application/zip,.zip')
+  if (!file) return null
+  return unwrap(sdk.openCoachSession({ body: file }))
+}
+
+// ExportCoachNotes packs the session's notes into the archive the coach
+// hands the player (notes.json + ledger.html). Wails writes it through a
+// native save dialog (SaveCoachNotesToFile, "" on cancel); server mode
+// streams the ZIP into a browser download. Rejects with ApiError when the
+// coach has no name set (409) or there is nothing to export.
+export function ExportCoachNotes(): Promise<string> {
+  if (IS_WAILS) return wailsCall<string>('SaveCoachNotesToFile')
+  return saveBlobResponse(sdk.exportCoachNotes(), `recall-coach-notes-${tsFilenameStamp()}.zip`)
 }
 
 // ─── Events ────────────────────────────────────────────────────────────────

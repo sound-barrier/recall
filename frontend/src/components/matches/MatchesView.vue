@@ -9,6 +9,7 @@ import { useSortGroupMenu } from '@/composables/matches/useSortGroupMenu'
 import { useScrollAffordance } from '@/composables/matches/useScrollAffordance'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useArchiveSelection } from '@/composables/matches/useArchiveSelection'
+import CoachInboxBanner from '@/components/coach/CoachInboxBanner.vue'
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
 import MatchesDossierSections from '@/components/matches/dossier/MatchesDossierSections.vue'
 import BulkActionBar from '@/components/matches/list/BulkActionBar.vue'
@@ -393,6 +394,11 @@ function onRowContextOpenSourceFolder(matchKey: string) {
     />
 
     <div class="matches-content-column">
+      <!-- Coach notes waiting on a decision. Server-derived, so it
+           survives a reload and a "Decide later" until every note in
+           the inbox has a verdict. -->
+      <CoachInboxBanner />
+
       <!-- ─── SET DOSSIER ─────────────────────────────────────────
          Summary + customizable widget grid + Add menu + popover-mode
          narrow trigger, all in MatchesDossierHead. Its widgets inject

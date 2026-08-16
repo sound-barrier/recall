@@ -2,6 +2,7 @@ import { nextTick } from 'vue'
 
 import { SeedTestProfile, SwitchProfile } from '@/api-client'
 import { cacheActiveProfile } from '@/composables/shared/profileStorage'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
@@ -14,12 +15,18 @@ import { ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
 // panel update in one pass. Lives in a composable because it reaches into the DOM.
 export function useOnboardingTourBridge() {
   const appStore = useAppStore()
+  // Session > tour, and the two are mutually exclusive: seeding the demo
+  // profile mid-session would swap the record set out from under a loaned
+  // corpus. Only the SESSION blocks it — a read-only profile must still be
+  // able to (re)seed, since the sample profile IS what the tour runs on.
+  const { sessionActive } = useWriteGate()
   const narrowState = useMatchesStore().matchesNarrowState
 
   // Seed + switch to the demo "test" profile, parking the step to resume on.
   // SwitchProfile reloads the SPA, so the tour reopens at resumeStepIndex (now
   // in the test profile) via the resume key.
   async function onTourSeedAndSwitch(resumeStepIndex: number): Promise<void> {
+    if (sessionActive.value) return
     await SeedTestProfile()
     try { localStorage.setItem(ONBOARDING_RESUME_KEY, String(resumeStepIndex)) } catch (_) { /* ignore */ }
     await SwitchProfile('test')

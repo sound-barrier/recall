@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { useScrollLock } from '@/composables/shared/useScrollLock'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Right-click context menu for a Matches list row. Quick actions
 // without first opening the detail panel:
@@ -43,6 +44,10 @@ const props = defineProps<{
 // Freeze the page while the menu is up (position non-null = open) so it
 // doesn't scroll away from the row it's anchored to.
 useScrollLock(computed(() => props.position !== null))
+
+// Three items write (Tag and Edit annotation open the journal to do it,
+// Hide flips visibility); the rest read or navigate and stay live.
+const { writesLocked, lockedTitle } = useWriteGate()
 
 const emit = defineEmits<{
   close:        []
@@ -211,6 +216,8 @@ const menuStyle = computed(() => {
           role="menuitem"
           class="match-row-ctx-item"
           data-row-ctx-tag
+          :disabled="writesLocked"
+          :title="lockedTitle('Open the journal with the tag field focused')"
           @click="onTag"
         >
           <span class="match-row-ctx-glyph" aria-hidden="true">#</span>
@@ -221,6 +228,8 @@ const menuStyle = computed(() => {
           role="menuitem"
           class="match-row-ctx-item"
           data-row-ctx-edit-annotation
+          :disabled="writesLocked"
+          :title="lockedTitle('Open the journal with the note focused')"
           @click="onEditAnnotation"
         >
           <span class="match-row-ctx-glyph" aria-hidden="true">✎</span>
@@ -269,6 +278,8 @@ const menuStyle = computed(() => {
           role="menuitem"
           class="match-row-ctx-item is-danger"
           data-row-ctx-hide
+          :disabled="writesLocked"
+          :title="lockedTitle('Move this match to the archive')"
           @click="onHide"
         >
           <span class="match-row-ctx-glyph" aria-hidden="true">×</span>
@@ -312,6 +323,11 @@ const menuStyle = computed(() => {
   border-radius: var(--radius);
   cursor: pointer;
   transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
+}
+
+.match-row-ctx-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .match-row-ctx-item:hover,

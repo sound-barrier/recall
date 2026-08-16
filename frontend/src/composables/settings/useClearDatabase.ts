@@ -1,5 +1,7 @@
 import { ref } from 'vue'
 
+import { useWriteGate } from '@/composables/shared/useWriteGate'
+
 // Two-step destructive "Clear database" flow.
 //
 // First click arms the confirm UI (`clearConfirm = true`); second
@@ -23,10 +25,14 @@ export interface ClearDatabaseApi {
 }
 
 export function useClearDatabase(api: ClearDatabaseApi) {
+  // The most destructive write in the app — armed UI or not, it asks the
+  // gate before it wipes anything.
+  const { guardWrite } = useWriteGate()
   const clearingDB = ref(false)
   const clearConfirm = ref(false)
 
   async function clearDatabase() {
+    if (!guardWrite()) return
     clearingDB.value = true
     clearConfirm.value = false
     try {

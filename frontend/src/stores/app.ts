@@ -10,7 +10,7 @@ import {
   SelfUpdateEvents,
   type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
 } from '@/self-update-events'
-import type { TabId } from '@/composables/shared/useTabKeyboardNav'
+import type { ViewId } from '@/composables/shared/useTabKeyboardNav'
 import { useMatchesStore } from '@/stores/matches'
 
 // The error banner's Retry handler. May be async (the matches store passes its
@@ -24,12 +24,14 @@ type RetryHandler = () => void | Promise<void>
 // later commits of the Pinia migration.
 export const useAppStore = defineStore('app', () => {
   // ── Nav ───────────────────────────────────────────────────────────
-  // Which top-level tab is shown. goToView switches it AND moves focus into
-  // the newly-visible panel (each <section> has tabindex="-1") so keyboard
-  // users land in the new content, not on the nav button.
-  const view = ref<TabId>('matches')
+  // Which top-level view is shown. Six of them are tabs; 'coach' — the
+  // film room — is reached from the loan slip, the back affordance, or
+  // `g f`, and deliberately has no tab. goToView switches it AND moves
+  // focus into the newly-visible panel (each <section> has tabindex="-1")
+  // so keyboard users land in the new content, not on the nav button.
+  const view = ref<ViewId>('matches')
   async function goToView(next: string) {
-    view.value = next as TabId
+    view.value = next as ViewId
     // Entering Parse: re-read the pending-screenshot count so "Run Parse · N"
     // reflects the folder now, not the initial-load batch. Fire-and-forget.
     if (next === 'ingest') void useMatchesStore().refreshNewCount()

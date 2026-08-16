@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { DeleteProfile } from '@/api-client'
 import { plainLanguageError } from '@/error-helpers'
 import { invalidateProfiles, useProfilesData } from '@/queries/profiles'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Profiles management panel of the Settings view. Lists every profile
 // on disk; non-active rows expose a two-step delete affordance that
@@ -11,6 +12,10 @@ import { invalidateProfiles, useProfilesData } from '@/queries/profiles'
 // switch profiles first via the masthead chip.
 
 const { query: profilesQuery, profiles, active } = useProfilesData()
+// Deleting a profile wipes a database directory — a write, and one a
+// coaching session must not run underneath (ending the session first is
+// the documented order).
+const { writesLocked, lockedTitle, guardWrite } = useWriteGate()
 const busy     = ref(false)
 // Action failures land here; a load failure surfaces from the query so
 // the panel isn't silently empty. Both route through plainLanguageError —
@@ -41,6 +46,7 @@ function cancelDelete() {
 }
 
 async function confirmDelete(name: string) {
+  if (!guardWrite()) return
   if (busy.value) return
   busy.value = true
   try {
@@ -98,7 +104,8 @@ async function confirmDelete(name: string) {
                   v-if="confirmTarget !== p"
                   type="button"
                   class="profile-mgmt-delete"
-                  :disabled="busy"
+                  :disabled="busy || writesLocked"
+                  :title="lockedTitle(`Permanently delete ${p}`)"
                   :aria-label="`Delete profile ${p}`"
                   @click="armDelete(p)"
                 >
@@ -108,8 +115,8 @@ async function confirmDelete(name: string) {
                   <button
                     type="button"
                     class="profile-mgmt-delete-confirm"
-                    :disabled="busy"
-                    :title="`Permanently delete ${p}`"
+                    :disabled="busy || writesLocked"
+                    :title="lockedTitle(`Permanently delete ${p}`)"
                     @click="confirmDelete(p)"
                   >
                     {{ busy ? '…' : 'Confirm delete' }}

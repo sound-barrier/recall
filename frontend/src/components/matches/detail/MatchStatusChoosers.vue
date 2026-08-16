@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord, PlayMode, QueueType, ReviewedBy } from '@/api-client'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // The match-status pickers at the top of the expanded card: queue type,
 // play mode, and review status (three ARIA radiogroups) plus the "since
@@ -19,6 +20,10 @@ const emit = defineEmits<{
   'set-match-review':    [matchKey: string, reviewedBy: ReviewedBy]
   'set-anchor':          [matchKey: string]
 }>()
+
+// Queue, play mode and review status are per-match writes; the anchor
+// toggle below is a local view preference, so it stays live.
+const { writesLocked, lockedTitle } = useWriteGate()
 
 // When this card's record IS the active anchor, the toggle shows the
 // "filtering from here" state instead of the "set me" state.
@@ -46,7 +51,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="!record.queue_type"
         :tabindex="!record.queue_type ? 0 : -1"
-        title="Queue type not set."
+        :disabled="writesLocked"
+        :title="lockedTitle('Queue type not set.')"
         @click="!record.queue_type || emit('set-match-queue', record.match_key, '')"
       >
         <span class="queue-chip-glyph" aria-hidden="true">⬡</span>
@@ -59,7 +65,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="record.queue_type === 'role'"
         :tabindex="record.queue_type === 'role' ? 0 : -1"
-        title="5v5 role queue (locked 1-2-2 composition)."
+        :disabled="writesLocked"
+        :title="lockedTitle('5v5 role queue (locked 1-2-2 composition).')"
         @click="emit('set-match-queue', record.match_key, record.queue_type === 'role' ? '' : 'role')"
       >
         <span class="queue-chip-glyph" aria-hidden="true">▣</span>
@@ -72,7 +79,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="record.queue_type === 'open'"
         :tabindex="record.queue_type === 'open' ? 0 : -1"
-        title="6v6 open queue (any composition)."
+        :disabled="writesLocked"
+        :title="lockedTitle('6v6 open queue (any composition).')"
         @click="emit('set-match-queue', record.match_key, record.queue_type === 'open' ? '' : 'open')"
       >
         <span class="queue-chip-glyph" aria-hidden="true">◇</span>
@@ -102,7 +110,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="!record.play_mode"
         :tabindex="!record.play_mode ? 0 : -1"
-        title="No play mode set."
+        :disabled="writesLocked"
+        :title="lockedTitle('No play mode set.')"
         @click="!record.play_mode || emit('set-match-play-mode', record.match_key, '')"
       >
         <span class="play-mode-chip-glyph" aria-hidden="true">⬡</span>
@@ -115,7 +124,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="record.play_mode === 'quickplay'"
         :tabindex="record.play_mode === 'quickplay' ? 0 : -1"
-        title="Casual game (no SR / rank progress)."
+        :disabled="writesLocked"
+        :title="lockedTitle('Casual game (no SR / rank progress).')"
         @click="emit('set-match-play-mode', record.match_key, record.play_mode === 'quickplay' ? '' : 'quickplay')"
       >
         <span class="play-mode-chip-glyph" aria-hidden="true">◎</span>
@@ -128,7 +138,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="record.play_mode === 'competitive'"
         :tabindex="record.play_mode === 'competitive' ? 0 : -1"
-        title="Ranked game (SR + rank progress applies)."
+        :disabled="writesLocked"
+        :title="lockedTitle('Ranked game (SR + rank progress applies).')"
         @click="emit('set-match-play-mode', record.match_key, record.play_mode === 'competitive' ? '' : 'competitive')"
       >
         <span class="play-mode-chip-glyph" aria-hidden="true">◆</span>
@@ -159,7 +170,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="!record.reviewed_by"
         :tabindex="!record.reviewed_by ? 0 : -1"
-        title="Not yet reviewed."
+        :disabled="writesLocked"
+        :title="lockedTitle('Not yet reviewed.')"
         @click="!record.reviewed_by || emit('set-match-review', record.match_key, '')"
       >
         <span class="review-chip-glyph" aria-hidden="true">⬡</span>
@@ -172,7 +184,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="record.reviewed_by === 'self'"
         :tabindex="record.reviewed_by === 'self' ? 0 : -1"
-        title="You reviewed the VOD yourself."
+        :disabled="writesLocked"
+        :title="lockedTitle('You reviewed the VOD yourself.')"
         @click="emit('set-match-review', record.match_key, record.reviewed_by === 'self' ? '' : 'self')"
       >
         <span class="review-chip-glyph" aria-hidden="true">◐</span>
@@ -185,7 +198,8 @@ const isAnchor = computed(() => props.anchorKey === props.record.match_key)
         role="radio"
         :aria-checked="record.reviewed_by === 'coach'"
         :tabindex="record.reviewed_by === 'coach' ? 0 : -1"
-        title="A coach reviewed the VOD with you."
+        :disabled="writesLocked"
+        :title="lockedTitle('A coach reviewed the VOD with you.')"
         @click="emit('set-match-review', record.match_key, record.reviewed_by === 'coach' ? '' : 'coach')"
       >
         <span class="review-chip-glyph" aria-hidden="true">★</span>

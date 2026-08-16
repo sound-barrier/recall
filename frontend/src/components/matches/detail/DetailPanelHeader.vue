@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { MatchRecord } from '@/api-client'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
 
 // The detail panel's header chrome: the sticky toolbar (close + map·result title
 // + prev/next match navigation) and the provenance banner (edited / hand-entered
@@ -8,7 +11,7 @@ import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBad
 // multi-root fragment so the two strips stay direct flex children of
 // `.detail-panel`. The parent owns selection + the reset action; this is
 // presentational and signals intent via emits.
-defineProps<{
+const props = defineProps<{
   record: MatchRecord
   mapDisplay: string
   provenanceSummary: string
@@ -17,6 +20,19 @@ defineProps<{
   positionIndex: number
   positionTotal: number
 }>()
+
+// Pinning writes; the film-room hand-off does not. During a session the
+// panel is a reading surface for the player's loaned match, and the one
+// place a coach can say anything about it is the room — so the header
+// points there instead of pretending the pin works.
+const { writesLocked, sessionActive, lockedTitle } = useWriteGate()
+const appStore = useAppStore()
+const coachStore = useCoachStore()
+
+function openInFilmRoom() {
+  coachStore.selectKey(props.record.match_key)
+  void appStore.goToView('coach')
+}
 
 const emit = defineEmits<{
   close: []
@@ -75,9 +91,10 @@ const emit = defineEmits<{
       class="detail-icon-btn detail-pin"
       :class="{ pinned: record.pinned }"
       data-pin-toggle
+      :disabled="writesLocked"
       :aria-pressed="record.pinned ? 'true' : 'false'"
       :aria-label="record.pinned ? 'Unpin this match' : 'Pin this match'"
-      :title="record.pinned ? 'Unpin — remove from the Pinned section' : 'Pin — keep above the date groups'"
+      :title="lockedTitle(record.pinned ? 'Unpin — remove from the Pinned section' : 'Pin — keep above the date groups')"
       @click="emit('pin')"
     >
       <span aria-hidden="true">{{ record.pinned ? '★' : '☆' }}</span>
@@ -110,6 +127,23 @@ const emit = defineEmits<{
       </button>
     </div>
   </header>
+
+  <!-- In-session strip. This match belongs to the player whose bundle is
+       open, so nothing here writes — the coach's note about it is written
+       on the desk, one click away. -->
+  <div v-if="sessionActive" class="detail-session-strip" data-session-strip>
+    <span class="eyebrow accent">Coaching session</span>
+    <span class="detail-session-note">This match is on loan — notes go in the film room.</span>
+    <button
+      type="button"
+      class="detail-film-room"
+      data-open-film-room
+      title="Write about this match on the desk in the film room"
+      @click="openInFilmRoom"
+    >
+      Open in the film room →
+    </button>
+  </div>
 
   <!-- Provenance banner — pinned under the toolbar so an edited / hand-entered
        match can't be missed. Pure-OCR matches render nothing. -->
@@ -181,6 +215,43 @@ const emit = defineEmits<{
 .detail-icon-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* The one affordance a coaching session ADDS to this header: the way to
+   the desk, where the coach's note about this match actually goes. */
+.detail-session-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.detail-session-note {
+  flex: 1 1 auto;
+  font-size: var(--type-md);
+  color: var(--text-dim);
+}
+
+.detail-film-room {
+  appearance: none;
+  padding: 0.25rem 0.55rem;
+  font-family: var(--mono);
+  font-size: var(--type-2xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--accent-text);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.detail-film-room:hover {
+  background: var(--accent-soft);
 }
 
 .detail-close {

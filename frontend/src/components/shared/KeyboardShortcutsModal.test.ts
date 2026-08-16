@@ -2,11 +2,11 @@ import { render, screen, fireEvent } from '@testing-library/vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import KeyboardShortcutsModal from '@/components/shared/KeyboardShortcutsModal.vue'
-import type { TabId } from '@/composables/shared/useTabKeyboardNav'
+import type { ViewId } from '@/composables/shared/useTabKeyboardNav'
 
 interface ModalProps {
   open?: boolean
-  view?: TabId
+  view?: ViewId
   panelOpen?: boolean
 }
 
@@ -51,6 +51,17 @@ describe('KeyboardShortcutsModal — context gating', () => {
     // panel's own bindings here would be a lie.
     expect(groupHeading('Detail panel')).not.toBeInTheDocument()
     expect(groupHeading('Screenshots (in the fullscreen lightbox)')).not.toBeInTheDocument()
+  })
+
+  // The film room is a view without a tab: its reel bindings are only
+  // reachable during a coaching session, so the group only shows there.
+  it('surfaces the film-room bindings in the room, and nowhere else', () => {
+    const view = renderCheatsheet({ view: 'coach' })
+    expect(groupHeading('Film room')).toBeInTheDocument()
+    view.unmount()
+
+    renderCheatsheet({ view: 'matches' })
+    expect(groupHeading('Film room')).not.toBeInTheDocument()
   })
 
   it('flips to the detail-panel scopes once the panel takes the keyboard', () => {

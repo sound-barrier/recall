@@ -7,6 +7,7 @@ import {
   type IgnoredScreenshot,
 } from '@/api-client'
 import type { TabId } from '@/composables/shared/useTabKeyboardNav'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Ignored-screenshots panel state + actions — the suppress-list a user builds
 // from the Unknown tab, the count chip the Parse view shows, and the
@@ -23,6 +24,9 @@ export interface IgnoredScreenshotsDeps {
 }
 
 export function useIgnoredScreenshots(deps: IgnoredScreenshotsDeps) {
+  // Restoring a suppressed file and clearing the whole suppress-list are
+  // writes; the panel disables them too, this is the backstop.
+  const { guardWrite } = useWriteGate()
   const ignoredScreenshots = ref<IgnoredScreenshot[]>([])
   const ignoredCount = computed(() => ignoredScreenshots.value.length)
   const ignoredPanelOpen = ref(false)
@@ -48,6 +52,7 @@ export function useIgnoredScreenshots(deps: IgnoredScreenshotsDeps) {
   // Per-row Restore from the panel. Removes the file from the suppress-list and
   // refreshes the list — the next Parse run re-discovers the file from disk.
   async function onUnignoreScreenshot(filename: string) {
+    if (!guardWrite()) return
     try {
       await UnignoreScreenshot(filename)
       await loadIgnored()
@@ -58,6 +63,7 @@ export function useIgnoredScreenshots(deps: IgnoredScreenshotsDeps) {
 
   // Bulk Re-enable all — truncates the suppress-list in one call.
   async function onClearIgnoredScreenshots() {
+    if (!guardWrite()) return
     try {
       await ClearIgnoredScreenshots()
       await loadIgnored()
@@ -69,6 +75,7 @@ export function useIgnoredScreenshots(deps: IgnoredScreenshotsDeps) {
   // "Run Parse now" link inside the panel — close the modal, switch to the
   // Parse tab, and kick the existing manual-parse flow.
   function onRunParseFromIgnored() {
+    if (!guardWrite()) return
     closeIgnoredPanel()
     deps.goToView('ingest')
     void deps.parse()

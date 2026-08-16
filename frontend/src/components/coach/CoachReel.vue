@@ -74,7 +74,10 @@ const reelLabel = computed(() => `${props.handle}'s matches — times in ${props
   font-family: var(--mono);
   font-size: var(--type-3xs);
   letter-spacing: 0.1em;
-  color: var(--text-mute);
+
+  /* --text-mute is 3.98:1 on Day's frame surface — this is the player's
+     clock, content rather than decoration, so it takes --text-dim. */
+  color: var(--text-dim);
   text-transform: uppercase;
 }
 

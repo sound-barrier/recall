@@ -4,6 +4,7 @@
 // MatchesView's action handlers (hideSelected, beginMoveLive, etc.)
 // stay where they wire to App.vue's API.
 import { ref } from 'vue'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { PlayMode, QueueType } from '@/api-client'
 import TypeaheadDropdown from '@/components/shared/TypeaheadDropdown.vue'
 
@@ -58,6 +59,10 @@ function toggleMenu(name: 'play-mode' | 'queue' | 'tag') {
   openMenu.value = openMenu.value === name ? '' : name
 }
 
+// Hide, play-mode, queue, tag and move all write across the selection;
+// Export reads. Selection itself is local state and stays live.
+const { writesLocked, lockedTitle } = useWriteGate()
+
 function pickPlayMode(v: PlayMode) {
   openMenu.value = ''
   emit('bulkPlayMode', v)
@@ -98,7 +103,13 @@ function pickTag(v: string) {
       >
         Select all ({{ sortedCount }})
       </button>
-      <button type="button" class="bulk-hide" @click="emit('hide')">
+      <button
+        type="button"
+        class="bulk-hide"
+        :disabled="writesLocked"
+        :title="lockedTitle('Move the selected matches to the archive')"
+        @click="emit('hide')"
+      >
         <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
         Hide
       </button>
@@ -130,6 +141,8 @@ function pickTag(v: string) {
           :aria-expanded="openMenu === 'play-mode' ? 'true' : 'false'"
           aria-haspopup="menu"
           data-bulk-menu="play-mode"
+          :disabled="writesLocked"
+          :title="lockedTitle('Set the play mode on every selected match')"
           @click="toggleMenu('play-mode')"
         >
           Set play mode <span class="bab-caret" aria-hidden="true">▾</span>
@@ -169,6 +182,8 @@ function pickTag(v: string) {
           :aria-expanded="openMenu === 'queue' ? 'true' : 'false'"
           aria-haspopup="menu"
           data-bulk-menu="queue"
+          :disabled="writesLocked"
+          :title="lockedTitle('Set the queue type on every selected match')"
           @click="toggleMenu('queue')"
         >
           Set queue <span class="bab-caret" aria-hidden="true">▾</span>
@@ -209,6 +224,8 @@ function pickTag(v: string) {
           :aria-expanded="openMenu === 'tag' ? 'true' : 'false'"
           aria-haspopup="menu"
           data-bulk-menu="tag"
+          :disabled="writesLocked"
+          :title="lockedTitle('Tag every selected match')"
           @click="toggleMenu('tag')"
         >
           Tag <span class="bab-caret" aria-hidden="true">▾</span>
@@ -238,6 +255,8 @@ function pickTag(v: string) {
         v-if="otherProfiles.length > 0"
         type="button"
         class="bulk-move"
+        :disabled="writesLocked"
+        :title="lockedTitle('Move the selected matches to another profile')"
         @click="emit('moveBegin')"
       >
         Move to…

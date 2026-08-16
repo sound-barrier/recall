@@ -33,6 +33,10 @@ export interface EventStreamApi {
   // status (a cold-boot Defender scan finally let the binary run). Lets the
   // engine banner self-heal without an app restart.
   onTesseractStatus?: (status: TesseractStatus) => void
+  // Called when a coaching session opens or closes in ANOTHER window on
+  // this install. Both windows share one backend, so the one that did not
+  // open the session still has to lock its writes.
+  onCoachSessionChanged?: (active: boolean) => void
   // Maximum entries in the rolling log (default 50).
   logCap?: number
 }
@@ -88,6 +92,10 @@ export function useEventStream(api: EventStreamApi) {
     EventsOn<TesseractStatus>('tesseract-status', (s) => {
       if (s) api.onTesseractStatus?.(s)
     })
+    // A coaching session opened or ended — possibly in another window.
+    EventsOn<{ active?: boolean }>('coach-session-changed', (ev) => {
+      api.onCoachSessionChanged?.(ev?.active === true)
+    })
     // Watcher pending-file tally - the masthead's "watching · N new" dot.
     EventsOn<WatchActivityEvent>('watch-activity', (ev) => {
       if (ev && api.watchActivity) api.watchActivity.value = ev
@@ -100,6 +108,7 @@ export function useEventStream(api: EventStreamApi) {
     EventsOff('parse-canceled')
     EventsOff('match-updated')
     EventsOff('tesseract-status')
+    EventsOff('coach-session-changed')
     EventsOff('watch-activity')
   }
 

@@ -5,6 +5,11 @@ import userEvent from '@testing-library/user-event'
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import type { MatchRecord } from '@/api'
 
+// The write gate reads the profiles query + the coaching-session store;
+// these cases pin this component's own contract, so stub it open.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
+
 // The nested MatchJournal now writes annotations store-direct through
 // useMatchActions (for the saved-pulse persistence receipt). These tests
 // pin MatchCardExpanded's own contract, so stub the action layer rather
@@ -111,6 +116,13 @@ describe('MatchCardExpanded — play-mode auto-detect on open', () => {
     const rec = makeRecord({ playlist: 'competitive' }, { play_mode: 'quickplay' } as unknown as Partial<MatchRecord>)
     const { emitted } = renderCard({ record: rec })
     expect(emitted('set-match-play-mode')).toBeFalsy()
+  })
+
+  it('stays silent while writes are locked — a loaned match has no row here to sync', () => {
+    setWritesLocked(true, { session: true })
+    const { emitted } = renderCard({ record: makeRecord({ playlist: 'competitive' }) })
+    expect(emitted('set-match-play-mode')).toBeFalsy()
+    resetWriteGate()
   })
 
   it('ignores a playlist value that is not one of the two real modes', () => {

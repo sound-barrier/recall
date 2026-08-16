@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
 import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.vue'
+
+// The write gate reads the profiles query + the coaching-session store;
+// these cases pin this component's own contract, so stub it open.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 // The menu teleports to <body> as a role="menu", so queries run
 // through screen (document-scoped) rather than the container.

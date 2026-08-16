@@ -158,3 +158,23 @@ and the blob/body-serializer paths into the bundle. The hand-written
 fetch/Content-Disposition/error code they replaced comes back out. What it
 buys: compile-time-checked request bodies on endpoints that previously
 hand-built snake_case JSON, and one error mapper instead of two.
+
+## 2026-08-16 — coaching session (the Film Room)
+
+| metric | old | new | measured |
+|---|---|---|---|
+| initial JS | 319000 | 331000 | 325565 |
+| initial CSS | 76000 | 80000 | 78007 |
+| total JS | 1605000 | 1660000 | 1647634 |
+| total CSS | 372000 | 396000 | 389658 |
+
+The eager cost is the coach store, the write gate (every writer calls it,
+so it cannot be lazy), and the api facade wrappers; on the CSS side it is
+`paper.css` and its token family, eager because the loan slip and the
+session rule render on every tab while a session is open.
+
+Everything a coach only sees inside a session is lazy — the film room, the
+return sheet, the loan slip and the nav strip each load on first use, and
+`App.lazy-views.test.ts` fails if one of them drifts back into the entry
+graph. That test is the reason the initial number grew by 6.5KB rather
+than by the ~55KB the feature actually weighs.

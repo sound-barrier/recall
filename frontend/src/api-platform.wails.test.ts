@@ -65,6 +65,8 @@ describe('native dialog dispatch (Wails mode)', () => {
     ['ExportDiagnosticBundle', 'SaveDiagnosticBundleToFile'],
     ['RestoreDatabase', 'LoadRestoreFromFile'],
     ['ImportMatches', 'LoadMatchImportFromFile'],
+    ['OpenCoachBundle', 'LoadCoachBundleFromFile'],
+    ['ExportCoachNotes', 'SaveCoachNotesToFile'],
     ['PickScreenshotsDir', 'PickScreenshotsDir'],
     ['PickTesseractBinary', 'PickTesseractBinary'],
   ] as const)('%s dispatches Call.ByName(%s)', async (fn, goMethod) => {
@@ -77,6 +79,32 @@ describe('native dialog dispatch (Wails mode)', () => {
     const { ExportMatchesCSV } = await import('@/api')
     await ExportMatchesCSV('a,b\n1,2', 'matches.csv')
     expect(callByName).toHaveBeenCalledWith(FQN + 'SaveTextToFile', 'matches.csv', 'a,b\n1,2')
+  })
+
+  // POST /imports answers with a union: merge counts for a bundle, a
+  // staged return sheet for a coach's notes archive. The native path
+  // carries the same shape, and a cancel (Go's zero MatchImportResult,
+  // kind "") normalizes onto the bundle arm so callers can trust the
+  // discriminant once they've checked `path`.
+  it('ImportMatches carries the staged return sheet from the native path', async () => {
+    const sheet = { id: 7, coach_name: 'Ordo', notes: [], decisions: {} }
+    callByName.mockResolvedValueOnce({ path: '/n.zip', kind: 'coach_notes', imported: 0, skipped: 0, return: sheet })
+    const { ImportMatches } = await import('@/api')
+    const outcome = await ImportMatches()
+    expect(outcome.kind).toBe('coach_notes')
+    expect(outcome.return).toEqual(sheet)
+  })
+
+  it('ImportMatches normalizes a canceled native pick onto the bundle arm', async () => {
+    callByName.mockResolvedValueOnce({ path: '', kind: '', imported: 0, skipped: 0 })
+    const { ImportMatches } = await import('@/api')
+    expect(await ImportMatches()).toEqual({ path: '', kind: 'bundle', imported: 0, skipped: 0 })
+  })
+
+  it('OpenCoachBundle resolves null when the coach cancels the native picker', async () => {
+    callByName.mockResolvedValueOnce({ path: '' })
+    const { OpenCoachBundle } = await import('@/api')
+    expect(await OpenCoachBundle()).toBeNull()
   })
 
   it('ExportBundle passes (keys, includeUnknown, includeHidden) to SaveBundleToFile', async () => {

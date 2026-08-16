@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { UseArchiveSelectionApi } from '@/composables/matches/useArchiveSelection'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Archive bulk action bar — appears in the Hidden drawer as soon as any archive
 // row is ticked. Mirrors the live BulkActionBar's contextual pattern but is a
@@ -18,6 +19,9 @@ const emit = defineEmits<{
   'move-to-profile': [target: string]
   'cancel-move': []
 }>()
+
+// Unhide, move and delete-forever all write; selection is local.
+const { writesLocked, lockedTitle } = useWriteGate()
 
 const {
   hiddenRecords,
@@ -51,18 +55,32 @@ const {
       >
         Select all ({{ hiddenRecords.length }})
       </button>
-      <button type="button" class="bulk-unhide" @click="unhideSelectedArchive">
+      <button
+        type="button"
+        class="bulk-unhide"
+        :disabled="writesLocked"
+        :title="lockedTitle('Bring the selected matches back into the list')"
+        @click="unhideSelectedArchive"
+      >
         Unhide
       </button>
       <button
         v-if="otherProfiles.length > 0"
         type="button"
         class="bulk-move"
+        :disabled="writesLocked"
+        :title="lockedTitle('Move the selected matches to another profile')"
         @click="emit('begin-move')"
       >
         Move to…
       </button>
-      <button type="button" class="bulk-delete" @click="requestBulkHardDelete">
+      <button
+        type="button"
+        class="bulk-delete"
+        :disabled="writesLocked"
+        :title="lockedTitle('Delete the selected matches for good')"
+        @click="requestBulkHardDelete"
+      >
         Delete forever
       </button>
       <button type="button" class="bulk-cancel" @click="clearArchiveSelection">
@@ -89,7 +107,13 @@ const {
       <span class="bab-warn-text">
         Delete {{ archiveSelectedKeys.size }} {{ archiveSelectedKeys.size === 1 ? 'match' : 'matches' }} from the database?
       </span>
-      <button type="button" class="bulk-confirm" @click="commitBulkHardDelete">
+      <button
+        type="button"
+        class="bulk-confirm"
+        :disabled="writesLocked"
+        :title="lockedTitle('Delete the selected matches for good')"
+        @click="commitBulkHardDelete"
+      >
         Confirm
       </button>
       <button type="button" class="bulk-cancel" @click="cancelBulkHardDelete">

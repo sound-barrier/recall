@@ -7,6 +7,7 @@ import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
 import type { MatchRecord } from '@/api-client'
 
 // The post-mutation reload contract: a match edit refetches ONLY the
@@ -43,6 +44,10 @@ vi.mock('@/api', async (importOriginal) => ({
   GetActiveParse: vi.fn(async () => null),
   GetOWData:      vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {}, screenshot_sources: [], seasons: [], ranks: [] })),
 }))
+
+// The write gate is stubbed so a locked run is a switch, not a whole
+// profiles/session fixture; its own contract lives in useWriteGate.test.ts.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 type Actions = ReturnType<typeof useMatchActions>
 type Annotation = NonNullable<MatchRecord['annotation']>
@@ -335,5 +340,50 @@ describe('useMatchActions — clipboard and error surfacing', () => {
     api.RevealScreenshotsDir.mockRejectedValueOnce(new Error('no such directory'))
     await onOpenSourceFolder('k1')
     expect(useAppStore().error).toContain('no such directory')
+  })
+})
+
+describe('useMatchActions — the write gate', () => {
+  beforeEach(resetWriteGate)
+
+  it('sends nothing while writes are locked — the disabled buttons are only the polite half', async () => {
+    const actions = await boot([rec('k1')])
+    setWritesLocked(true, { session: true })
+
+    await actions.onSetMatchPinned('k1', true)
+    await actions.onSetMatchHidden('k1', true)
+    await actions.onSetMatchReview('k1', 'self')
+    await actions.onSetMatchQueue('k1', 'role')
+    await actions.onSetMatchPlayMode('k1', 'competitive')
+    await actions.onSetMatchAnnotation('k1', { note: 'no' })
+    await actions.onUpdateMatchData('k1', {})
+    await actions.onResetMatchData('k1')
+    await actions.onHardDeleteMatch('k1')
+    await actions.onHideMatches(['k1'])
+    await actions.onBulkTag(['k1'], 'tilted')
+    await actions.onMoveMatches(['k1'], 'other')
+    await actions.onIgnoreScreenshot('a.png')
+    await actions.onResolveAmbiguous('ambiguous-a.png', 'k1')
+
+    for (const call of Object.values(api)) {
+      if (call === api.GetMatchResults || call === api.GetNewScreenshotCount) continue
+      if (call === api.GetFailedFiles || call === api.GetIgnoredScreenshots) continue
+      expect(call).not.toHaveBeenCalled()
+    }
+  })
+
+  it('reports the annotation write as NOT saved so the journal cannot flash a false receipt', async () => {
+    const { onSetMatchAnnotation } = await boot([rec('k1')])
+    setWritesLocked(true)
+    await expect(onSetMatchAnnotation('k1', { note: 'no' })).resolves.toBe(false)
+  })
+
+  it('still copies and reveals — those read', async () => {
+    const { onCopyMatchLink, onOpenSourceFolder } = await boot([rec('k1')])
+    setWritesLocked(true, { session: true })
+    await onCopyMatchLink('k1')
+    await onOpenSourceFolder('k1')
+    expect(writeText).toHaveBeenCalledWith('k1')
+    expect(api.RevealScreenshotsDir).toHaveBeenCalled()
   })
 })

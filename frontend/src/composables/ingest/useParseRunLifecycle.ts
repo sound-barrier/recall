@@ -7,6 +7,7 @@ import { qk } from '@/queries/keys'
 import type { ParseProgressEvent, WatchActivityEvent } from '@/components/ingest/parse-progress'
 import { currentSessionSummary, type SessionSummary } from '@/match/match-momentum-helpers'
 import { profileScopedKey } from '@/composables/shared/profileStorage'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { ParseConnectionState } from '@/composables/ingest/useParseRecovery'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
@@ -25,6 +26,12 @@ export interface ParseRunDeps {
 }
 
 export function useParseRunLifecycle(deps: ParseRunDeps) {
+  // A user-initiated run is a write (it adds matches); the background
+  // folder watcher is NOT gated — it only ever writes the coach's own
+  // screenshots into the coach's own database. What it must not do during
+  // a session is TALK: the toast, the tally and the polite announcement
+  // all belong to a corpus the user isn't looking at.
+  const { guardWrite, sessionActive } = useWriteGate()
   // parseBusy gates the manual Parse button + peers; cancelingParse spans
   // the Stop click → SSE parse-canceled confirmation.
   const parseBusy = ref(false)
@@ -67,6 +74,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   const showUnsupportedModal = ref(false)
 
   async function runParse() {
+    if (!guardWrite()) return
     const appStore = useAppStore()
     appStore.clearError()
     parseBusy.value = true
@@ -99,6 +107,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // "Re-parse all" (Settings → Advanced) — forces re-OCR; skips the
   // unsupported-version modal (the user committed to a multi-minute run).
   async function onReParseAll() {
+    if (!guardWrite()) return
     const appStore = useAppStore()
     if (!useSettingsStore().tesseractReady) {
       appStore.setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
@@ -142,6 +151,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // status bar goes inert at run end, leaving screen readers no signal).
   const parseAnnouncement = ref('')
   function announceParse(msg: string) {
+    if (sessionActive.value) return
     parseAnnouncement.value = msg
     setTimeout(() => { if (parseAnnouncement.value === msg) parseAnnouncement.value = '' }, 2000)
   }
@@ -156,7 +166,7 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     // resolves, and the session summary must see the new batch.
     const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
     if (outcome === 'complete') {
-      const session = currentSessionSummary(fresh)
+      const session = sessionActive.value ? null : currentSessionSummary(fresh)
       sessionToast.value = session ? { ...session, token: Date.now() } : null
       lastParsedAt.value = Date.now()
       try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }

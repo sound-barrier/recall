@@ -1,6 +1,7 @@
 import { ref, computed, watchEffect, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { SwitchProfile, CreateProfile, RenameProfile } from '@/api-client'
 import { cacheActiveProfile } from '@/composables/shared/profileStorage'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useProfilesData } from '@/queries/profiles'
 
 // Stateful logic for the masthead profile chip + dropdown: the profile
@@ -16,6 +17,11 @@ export function useProfileSwitcher() {
   // leaves both empty (the chip renders unnamed), matching the old catch
   // path.
   const { query: profilesQuery, profiles, active } = useProfilesData()
+  // Creating and renaming a profile write to the profile registry, so they
+  // ask the gate. SWITCHING deliberately does not: it is navigation, and
+  // blocking it on the read-only sample profile would strand the user
+  // there with no way back to their own data.
+  const { guardWrite } = useWriteGate()
   // Freshen the sync-readable scope for profile-scoped localStorage keys
   // (profileStorage.ts) — setup-time reads used the previous session's
   // cache; this heals any out-of-band change for the next boot.
@@ -71,6 +77,7 @@ export function useProfileSwitcher() {
   }
 
   async function confirmCreate() {
+    if (!guardWrite()) return
     if (busy.value || !newNameValid.value) return
     busy.value = true
     try {
@@ -124,6 +131,7 @@ export function useProfileSwitcher() {
   }
 
   async function confirmRename() {
+    if (!guardWrite()) return
     if (busy.value || renameTarget.value === null) return
     if (renameUnchanged.value) {
       cancelRename()

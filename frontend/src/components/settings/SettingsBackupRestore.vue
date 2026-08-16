@@ -2,7 +2,7 @@
 import { storeToRefs } from 'pinia'
 import type { ExportStatus } from '@/composables/settings/useBackupRestore'
 import { useSettingsStore } from '@/stores/settings'
-import { useActiveProfile } from '@/composables/shared/useActiveProfile'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { formatIgnoredAt } from '@/match/match-time-helpers'
 
 // Backup & Restore panel:
@@ -37,8 +37,9 @@ const emit = defineEmits<{
 const settingsStore = useSettingsStore()
 const { autoBackup } = storeToRefs(settingsStore)
 // Import and Restore write matches — rejected (409) on the read-only sample
-// profile, so disable them there. Backup (read-only) stays enabled.
-const { isReadOnly } = useActiveProfile()
+// profile and while a coaching session is open, so disable them there.
+// Backup (read-only) stays enabled.
+const { writesLocked, lockedTitle } = useWriteGate()
 
 // Interval segments — mirrors the calendar week-start radiogroup.
 const INTERVALS = [
@@ -164,8 +165,8 @@ const INTERVALS = [
         <div class="setting-control">
           <button
             class="btn ghost"
-            :disabled="importingMatches || restoring || backingUp || isReadOnly"
-            :title="isReadOnly ? 'This is a read-only sample profile.' : ''"
+            :disabled="importingMatches || restoring || backingUp || writesLocked"
+            :title="lockedTitle('')"
             @click="emit('import-matches')"
           >
             <span v-if="importingMatches">Importing…</span>
@@ -199,8 +200,8 @@ const INTERVALS = [
           <template v-if="!restoreArmed">
             <button
               class="btn danger-outline"
-              :disabled="restoring || backingUp || importingMatches || isReadOnly"
-              :title="isReadOnly ? 'This is a read-only sample profile.' : ''"
+              :disabled="restoring || backingUp || importingMatches || writesLocked"
+              :title="lockedTitle('')"
               @click="emit('arm-restore')"
             >
               Restore (.db)…

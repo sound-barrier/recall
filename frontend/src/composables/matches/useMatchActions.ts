@@ -26,6 +26,7 @@ import {
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
 import { useUiStore } from '@/stores/ui'
@@ -105,6 +106,13 @@ export function useMatchActions() {
   const matchesStore = useMatchesStore()
   const appStore = useAppStore()
   const uiStore = useUiStore()
+  // Every handler below that WRITES asks the gate first. The disabled
+  // affordances are the polite half; this is the half that holds when a
+  // keyboard path, a forced click, or a stale menu tries anyway — and while
+  // a coaching session is open, the keys on screen belong to another
+  // player's loaned corpus, so a write here would orphan a row in the
+  // coach's own database.
+  const { guardWrite } = useWriteGate()
   const records = computed(() => matchesStore.records)
   // An ordinary match edit (annotation, status, pin, hide) can't change
   // the pending-screenshot count or the OCR-failure ledger, so the
@@ -158,6 +166,7 @@ export function useMatchActions() {
   }
 
   async function onBulkTag(matchKeys: string[], tag: string) {
+    if (!guardWrite()) return
     if (matchKeys.length === 0 || !tag) return
     const norm = tag.trim().toLowerCase()
     if (!norm) return
@@ -175,6 +184,7 @@ export function useMatchActions() {
   // Hard-delete — drawer "Delete forever" after the two-step confirm.
   // Idempotent server-side, so a double-fire from a stale UI is safe.
   async function onHardDeleteMatch(matchKey: string) {
+    if (!guardWrite()) return
     try {
       await HardDeleteMatch(matchKey)
       await reloadCluster()
@@ -186,6 +196,7 @@ export function useMatchActions() {
   // Bulk unhide — Archive drawer's bulk-action bar. Fan out in parallel,
   // single reload when all PUTs settle.
   async function onUnhideMatches(matchKeys: string[]) {
+    if (!guardWrite()) return
     if (matchKeys.length === 0) return
     try {
       await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, false)))
@@ -196,6 +207,7 @@ export function useMatchActions() {
   }
 
   async function onHardDeleteMatches(matchKeys: string[]) {
+    if (!guardWrite()) return
     if (matchKeys.length === 0) return
     try {
       await Promise.all(matchKeys.map((k) => HardDeleteMatch(k)))
@@ -208,6 +220,7 @@ export function useMatchActions() {
   // Bulk move-to-profile — server runs the two-phase transfer (write
   // target, delete source); reload after so moved rows leave the dossier.
   async function onMoveMatches(matchKeys: string[], targetProfile: string) {
+    if (!guardWrite()) return
     if (matchKeys.length === 0) return
     try {
       await MoveMatches(matchKeys, targetProfile)
@@ -226,6 +239,7 @@ export function useMatchActions() {
     kind: 'leavers' | 'throwers',
     sides: DisruptionSide[],
   ) {
+    if (!guardWrite()) return
     try {
       const rec = records.value.find(r => r.match_key === matchKey)
       const prev: Partial<ExistingAnnotation> = rec?.annotation ?? {}
@@ -241,17 +255,21 @@ export function useMatchActions() {
   // real receipt (MatchJournal wires this straight into
   // useMatchAnnotationEditor's emitAnnotation seam).
   async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput): Promise<boolean> {
+    if (!guardWrite()) return false
     try { await writeAnnotation(matchKey, input); await reload(); return true } catch (e) { onError(String(e)); return false }
   }
   async function onUpdateMatchData(matchKey: string, overrides: UserMatchDataInput) {
+    if (!guardWrite()) return
     try { await UpdateMatchData(matchKey, overrides); await reload() } catch (e) { onError(String(e)) }
   }
   async function onResetMatchData(matchKey: string) {
+    if (!guardWrite()) return
     try { await ResetMatchData(matchKey); await reload() } catch (e) { onError(String(e)) }
   }
 
   // ── Per-match status (hide / review / queue / play-mode) ──────────
   async function onSetMatchPinned(matchKey: string, pinned: boolean) {
+    if (!guardWrite()) return
     try {
       await SetMatchPin(matchKey, pinned)
       await reload()
@@ -259,6 +277,7 @@ export function useMatchActions() {
   }
 
   async function onSetMatchHidden(matchKey: string, hidden: boolean) {
+    if (!guardWrite()) return
     try {
       // Capture the label off the still-present record before the reload drops it.
       const label = hidden ? hideToastLabel([matchKey], records.value) : ''
@@ -268,17 +287,21 @@ export function useMatchActions() {
     } catch (e) { onError(String(e)) }
   }
   async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
+    if (!guardWrite()) return
     try { await SetMatchReview(matchKey, reviewedBy); await reload() } catch (e) { onError(String(e)) }
   }
   async function onSetMatchQueue(matchKey: string, queueType: QueueType) {
+    if (!guardWrite()) return
     try { await SetMatchQueue(matchKey, queueType); await reload() } catch (e) { onError(String(e)) }
   }
   async function onSetMatchPlayMode(matchKey: string, playMode: PlayMode) {
+    if (!guardWrite()) return
     try { await SetMatchPlayMode(matchKey, playMode); await reload() } catch (e) { onError(String(e)) }
   }
 
   // ── Bulk (archive drawer) ─────────────────────────────────────────
   async function onHideMatches(matchKeys: string[]) {
+    if (!guardWrite()) return
     if (matchKeys.length === 0) return
     try {
       const label = hideToastLabel(matchKeys, records.value)
@@ -288,22 +311,26 @@ export function useMatchActions() {
     } catch (e) { onError(String(e)) }
   }
   async function onBulkPlayMode(matchKeys: string[], playMode: PlayMode) {
+    if (!guardWrite()) return
     if (matchKeys.length === 0) return
     try { await BulkSetMatchPlayMode(matchKeys, playMode); await reload() } catch (e) { onError(String(e)) }
   }
   async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
+    if (!guardWrite()) return
     if (matchKeys.length === 0) return
     try { await BulkSetMatchQueue(matchKeys, queueType); await reload() } catch (e) { onError(String(e)) }
   }
 
   // ── Unknown-tab resolution ────────────────────────────────────────
   async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
+    if (!guardWrite()) return
     try { await ResolveAmbiguousMatch(ambiguousKey, resolvedTo); await reload() } catch (e) { onError(String(e)) }
   }
   // "Delete forever" — suppress the filename + wipe the unmatched row.
   // Suppressing a file DOES reach the wider cluster (it leaves the
   // pending count and the failure ledger), so this one reloads all three.
   async function onIgnoreScreenshot(filename: string) {
+    if (!guardWrite()) return
     try { await IgnoreScreenshot(filename); await reloadIgnored(); await reloadCluster() } catch (e) { onError(String(e)) }
   }
 

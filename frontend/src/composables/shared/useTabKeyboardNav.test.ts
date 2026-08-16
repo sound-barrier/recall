@@ -107,6 +107,20 @@ describe('useTabKeyboardNav', () => {
     expect(prevented).toHaveBeenCalled()
   })
 
+  // The film room is a view without a tab. Arrowing out of it used to be
+  // dead (the hardcoded order had no index for it) — the cycle now steps
+  // from whichever tab the user actually has focused.
+  it('steps from the FOCUSED tab when the view is outside the tablist', () => {
+    const view = ref<string>('coach')
+    const go = vi.fn()
+    const { onTabKeydown } = useTabKeyboardNav(view, go)
+    document.getElementById('tab-matches')!.focus()
+
+    onTabKeydown(key('ArrowRight'))
+
+    expect(go).toHaveBeenCalledWith('unknown')
+  })
+
   it('off-list view does not call goToView (defensive)', () => {
     const view = ref<string>('something-unexpected')
     const go = vi.fn()

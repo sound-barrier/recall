@@ -16,12 +16,14 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 describe('App.vue lazy-loaded components', () => {
-  // The four views stay in App.vue; the overlay/modal chunks moved to
-  // AppOverlays.vue. Concatenate both sources so the lazy-pattern assertions
-  // match wherever the component now lives — the bundle-size win is identical.
+  // The views stay in App.vue; the overlay/modal chunks live in
+  // AppOverlays.vue and the coaching-session chrome in AppMasthead.vue.
+  // Concatenate all three so the lazy-pattern assertions match wherever the
+  // component now lives — the bundle-size win is identical.
   const source =
     readFileSync(resolve(__dirname, 'App.vue'), 'utf-8') +
-    readFileSync(resolve(__dirname, 'components/app/AppOverlays.vue'), 'utf-8')
+    readFileSync(resolve(__dirname, 'components/app/AppOverlays.vue'), 'utf-8') +
+    readFileSync(resolve(__dirname, 'components/app/AppMasthead.vue'), 'utf-8')
 
   const views: Array<{ name: string; path: string }> = [
     { name: 'IngestView',             path: '@/components/ingest/IngestView.vue' },
@@ -48,6 +50,15 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'SettingsModal',          path: '@/components/settings/SettingsModal.vue' },
     // Manual-entry modal — only mounted when the user clicks "Add match".
     { name: 'ManualMatchModal',       path: '@/components/matches/manual/ManualMatchModal.vue' },
+    // The return-of-notes sheet — only ever opened by a player who
+    // imported a coach's archive, so its bytes stay off everyone else's
+    // first paint.
+    { name: 'CoachReturnSheet',       path: '@/components/coach/CoachReturnSheet.vue' },
+    // The film room and its masthead chrome — a coach's surfaces. Nobody
+    // who never opens a bundle should carry a byte of them.
+    { name: 'CoachRoomView',          path: '@/components/coach/CoachRoomView.vue' },
+    { name: 'CoachLoanSlip',          path: '@/components/coach/CoachLoanSlip.vue' },
+    { name: 'CoachNavStrip',          path: '@/components/coach/CoachNavStrip.vue' },
   ]
 
   for (const { name, path } of views) {

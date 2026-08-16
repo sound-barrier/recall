@@ -25,6 +25,7 @@ import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshot
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
 import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -41,8 +42,22 @@ export const useMatchesStore = defineStore('matches', () => {
   // through setQueryData so the cache stays the single source of truth.
   const matchesQuery = useMatchesQuery()
   const realRecords = computed(() => matchesQuery.data.value ?? [])
+  const coach = useCoachStore()
+
+  // Overlay precedence is SESSION > TOUR > real, and the two overlays are
+  // MUTUALLY EXCLUSIVE: a session cannot open while the tour runs (the
+  // switcher's "Open a player's bundle…" item is disabled), and the tour
+  // can neither auto-open nor be replayed while a session is live
+  // (onTourActiveChange below refuses). So the order below is the
+  // documented precedence, not an arbitration of a race that can happen.
+  function visibleRecords(): MatchRecord[] {
+    if (coach.sessionActive) return coach.loanedRecords
+    if (tourActive.value) return demoRecords.value
+    return realRecords.value
+  }
+
   const records = computed({
-    get: () => (tourActive.value ? demoRecords.value : realRecords.value),
+    get: visibleRecords,
     set: (next: MatchRecord[]) => {
       // Cancel any in-flight fetch first: a direct write is newer than
       // whatever that response would carry (the match-updated upsert in
@@ -116,7 +131,17 @@ export const useMatchesStore = defineStore('matches', () => {
   }
   const tourActive = ref(readTourWillOpen())
   const demoRecords = ref<MatchRecord[]>([])
+  // The coach store can't import this one (the corpus flows the other
+  // way), so the tour flag is PUSHED to it — that is how "opening a
+  // session while the tour runs is refused" is enforced from over there.
+  coach.setTourOpen(tourActive.value)
+
   async function onTourActiveChange(active: boolean) {
+    // The other half of the exclusivity above: neither the first-launch
+    // auto-open nor Settings' Replay may put demo data over a player's
+    // loaned corpus mid-session.
+    if (active && coach.sessionActive) return
+    coach.setTourOpen(active)
     if (active) {
       const { DEMO_MATCHES } = await import('@/composables/shared/useDemoMatches')
       demoRecords.value = [...DEMO_MATCHES]
@@ -286,6 +311,10 @@ export const useMatchesStore = defineStore('matches', () => {
     backup: BackupDatabase,
     restore: RestoreDatabase,
     importMatches: ImportMatches,
+    // A coach's notes archive comes back through the same Import…
+    // affordance and merges nothing — it stages a return sheet the player
+    // decides on, so the sheet opens and no reload follows.
+    onCoachNotes: (sheet) => { coach.stageImportedNotes(sheet) },
     // Restore replaces the whole database and an import can carry
     // suppress-list entries — refresh the ignored list along with the
     // cluster so the Settings panel doesn't show a stale one.

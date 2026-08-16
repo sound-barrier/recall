@@ -20,8 +20,17 @@ const props = withDefaults(
     max?: number
     // Optional display formatter (e.g. thousands separators for damage).
     format?: (v: number | string) => string
+    // The owning card's write gate, threaded down as plain props so this
+    // generic cell stays free of app state: the value still READS, the edit
+    // affordance goes dead and says why.
+    locked?: boolean
+    lockReason?: string
   }>(),
-  { edited: false, kind: 'number', min: 0, max: 1_000_000, format: (v: number | string) => String(v) },
+  {
+    edited: false, kind: 'number', min: 0, max: 1_000_000,
+    format: (v: number | string) => String(v),
+    locked: false, lockReason: '',
+  },
 )
 
 const emit = defineEmits<{
@@ -40,6 +49,7 @@ const displayValue = computed(() => {
 })
 
 async function startEdit() {
+  if (props.locked) return
   draft.value = props.value === null || props.value === undefined ? '' : String(props.value)
   error.value = ''
   editing.value = true
@@ -104,6 +114,8 @@ function cancel() {
       v-else
       type="button"
       class="stat-value stat-edit-trigger"
+      :disabled="locked"
+      :title="lockReason || undefined"
       :aria-label="`${label}: ${displayValue}. Click to edit.`"
       @click="startEdit"
     >
@@ -118,8 +130,9 @@ function cancel() {
         v-if="edited"
         type="button"
         class="stat-revert"
+        :disabled="locked"
         :aria-label="`Revert ${label} to the scanned value`"
-        title="Edited — click to revert to the scanned value"
+        :title="lockReason || 'Edited — click to revert to the scanned value'"
         @click="emit('revert')"
       >✎</button>
     </span>

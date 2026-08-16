@@ -168,6 +168,47 @@ const PROFILES: WireCase[] = [
   },
 ]
 
+// The coaching surface. The session is a server-side STATE, so its verbs
+// carry the lifecycle: POST opens (binary, so it lives on the platform
+// seam), GET reads, DELETE ends. Per-match notes follow the same
+// PUT-upserts / DELETE-clears rule as the other per-match sub-resources —
+// an emptied draft must DELETE the row, never PUT an empty note.
+const COACH: WireCase[] = [
+  { name: 'GetCoachSession',        call: () => api.GetCoachSession(),        method: 'GET',    path: '/api/v1/coach/session' },
+  { name: 'CloseCoachSession',      call: () => api.CloseCoachSession(),      method: 'DELETE', path: '/api/v1/coach/session' },
+  { name: 'GetCoachSessionMatches', call: () => api.GetCoachSessionMatches(), method: 'GET',    path: '/api/v1/coach/session/matches' },
+  {
+    name: 'SetCoachSessionPlayer', method: 'PUT', path: '/api/v1/coach/session/player',
+    call: () => api.SetCoachSessionPlayer('Sable'), body: { handle: 'Sable' },
+  },
+  {
+    name: 'PutCoachNote', method: 'PUT', path: `/api/v1/coach/session/notes/${KEY}`,
+    call: () => api.PutCoachNote(KEY, {
+      kind: 'note', text: 'Peel earlier.', focus_tags: ['positioning'], extra_tags: [], match_clock: '04:12',
+    }),
+    body: { kind: 'note', text: 'Peel earlier.', focus_tags: ['positioning'], extra_tags: [], match_clock: '04:12' },
+  },
+  { name: 'DeleteCoachNote', call: () => api.DeleteCoachNote(KEY), method: 'DELETE', path: `/api/v1/coach/session/notes/${KEY}` },
+  {
+    name: 'PutCoachSummary', method: 'PUT', path: '/api/v1/coach/session/summary',
+    call: () => api.PutCoachSummary('Ult economy first.'), body: { text: 'Ult economy first.' },
+  },
+  { name: 'ListCoachReturns',  call: () => api.ListCoachReturns(),   method: 'GET',    path: '/api/v1/coach/returns' },
+  { name: 'GetCoachReturn',    call: () => api.GetCoachReturn(7),    method: 'GET',    path: '/api/v1/coach/returns/7' },
+  { name: 'DeleteCoachReturn', call: () => api.DeleteCoachReturn(7), method: 'DELETE', path: '/api/v1/coach/returns/7' },
+  {
+    name: 'DecideCoachReturn', method: 'PUT', path: '/api/v1/coach/returns/7/decisions',
+    call: () => api.DecideCoachReturn(7, { 'note-1': 'accepted', 'note-2': 'skipped' }),
+    body: { decisions: { 'note-1': 'accepted', 'note-2': 'skipped' } },
+  },
+  { name: 'DeleteMatchCoachNote', call: () => api.DeleteMatchCoachNote(KEY, 3), method: 'DELETE', path: `/api/v1/matches/${KEY}/coach-notes/3` },
+  { name: 'GetCoachName', call: () => api.GetCoachName(), method: 'GET', path: '/api/v1/settings/coaching' },
+  {
+    name: 'SetCoachName', method: 'PUT', path: '/api/v1/settings/coaching',
+    call: () => api.SetCoachName('Ordo'), body: { coach_name: 'Ordo' },
+  },
+]
+
 const DATABASE: WireCase[] = [
   { name: 'GetDatabaseHealth', call: () => api.GetDatabaseHealth(), method: 'GET', path: '/api/v1/database/health' },
   {
@@ -195,5 +236,6 @@ describe('api facade → wire contract', () => {
   describe('screenshots + parse', () => { pinsWire(SCREENSHOTS) })
   describe('settings', () => { pinsWire(SETTINGS) })
   describe('profiles', () => { pinsWire(PROFILES) })
+  describe('coaching', () => { pinsWire(COACH) })
   describe('database', () => { pinsWire(DATABASE) })
 })

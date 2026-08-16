@@ -1,4 +1,4 @@
-import type { TabId } from '@/composables/shared/useTabKeyboardNav'
+import type { ViewId } from '@/composables/shared/useTabKeyboardNav'
 
 // Binding catalog for the "?" cheat-sheet modal. Data only — the modal
 // SFC owns the context gating and rendering.
@@ -8,12 +8,12 @@ import type { TabId } from '@/composables/shared/useTabKeyboardNav'
  *   - 'always'           → render unconditionally
  *   - 'matches-no-panel' → only on the Matches view AND no panel up
  *   - 'panel'            → only when the detail panel is open
- *   - <TabId>            → only on that view
+ *   - <ViewId>           → only on that view (the film room included)
  * The Matches/Detail-panel pair flips on `panelOpen` because
  * Matches-view bindings (j / k card focus) are suppressed while the
  * panel is up — the panel takes over those keys.
  */
-type ShortcutContext = 'always' | 'matches-no-panel' | 'panel' | TabId
+type ShortcutContext = 'always' | 'matches-no-panel' | 'panel' | ViewId
 
 /** One key→action row in the cheat-sheet. */
 interface ShortcutBinding {
@@ -48,7 +48,23 @@ export const SHORTCUT_GROUPS: readonly ShortcutBindingGroup[] = [
       { keys: ['g', 'u'],       action: 'Go to Unknown view', seq: true },
       { keys: ['g', 'c'],       action: 'Go to Compare view', seq: true },
       { keys: ['g', 'e'],       action: 'Go to Elo Calculator view', seq: true },
+      { keys: ['g', 'f'],       action: 'Go to the film room (during a coaching session)', seq: true },
       { keys: ['?'],            action: 'Show this cheatsheet' },
+    ],
+  },
+  {
+    // Only reachable while a player's bundle is open, so the group only
+    // shows there. The bracket keys work from anywhere IN the room — the
+    // coach's hands are on the note, not the reel.
+    scope: 'Film room',
+    context: 'coach',
+    bindings: [
+      { keys: ['j', '↓'],       action: 'Next frame on the reel' },
+      { keys: ['k', '↑'],       action: 'Previous frame on the reel' },
+      { keys: [']'],            action: 'Next frame, from anywhere in the room' },
+      { keys: ['['],            action: 'Previous frame, from anywhere in the room' },
+      { keys: ['Home'],         action: 'First frame' },
+      { keys: ['End'],          action: 'Last frame' },
     ],
   },
   {

@@ -21,6 +21,11 @@ import { IS_WAILS, wailsCall } from '@/api-platform'
 import { unwrap, unwrapVoid } from '@/api-unwrap'
 import * as sdk from '@/client/sdk.gen'
 import type {
+  CoachDecisionEnum,
+  CoachNote,
+  CoachNoteInput,
+  CoachReturnSheet,
+  CoachSessionView,
   DbHealth,
   GetReferenceDataResponses,
   GetScreenshotsFolderCandidateStatsResponses,
@@ -46,6 +51,18 @@ import type {
 export type {
   ActiveParse,
   AutoBackupStatus,
+  CoachDecisionEnum,
+  CoachFocusTagEnum,
+  CoachMatchContext,
+  CoachNote,
+  CoachNoteInput,
+  CoachNoteKindEnum,
+  CoachPlayer,
+  CoachReturnItem,
+  CoachReturnSheet,
+  CoachSessionChangedEvent,
+  CoachSessionView,
+  MatchCoachNote,
   DataLocation,
   DataUpdateResult,
   FailedFile,
@@ -87,14 +104,16 @@ export {
   EventsOff,
   EventsOn,
   ExportBundle,
+  ExportCoachNotes,
   ExportDiagnosticBundle,
   ExportMatchesCSV,
   ImportMatches,
+  OpenCoachBundle,
   OpenURL,
   RestoreDatabase,
   setEventStreamStatusHandler,
 } from '@/api-platform'
-export type { EventStreamStatus, MatchImportResult } from '@/api-platform'
+export type { EventStreamStatus, MatchImportKind, MatchImportResult } from '@/api-platform'
 export { ApiError } from '@/api-error'
 
 // ─── System / version / update ─────────────────────────────────────────────
@@ -516,6 +535,121 @@ export function RenameProfile(oldName: string, newName: string): Promise<Profile
 // that succeeded.
 export function DeleteProfile(name: string): Promise<void> {
   return unwrapVoid(sdk.deleteProfile({ path: { name } }))
+}
+
+// ─── Coaching session (the coach's side) ───────────────────────────────────
+//
+// A session is server-side STATE, not a resource the client assembles:
+// POST opens it from a bundle's bytes (OpenCoachBundle, on the platform
+// seam because it needs a file picker), GET reads it, DELETE ends it and
+// discards the loaned records. While one is open every mutating endpoint
+// answers 409 — the coach is looking at somebody else's history.
+
+// The open session, hydrated with everything the coach has written about
+// this player. Rejects with ApiError 404 when no session is open; the
+// query layer maps that to null rather than the banner.
+export function GetCoachSession(): Promise<CoachSessionView> {
+  return unwrap(sdk.getCoachSession())
+}
+
+// End the session and discard the loaned records. Idempotent — closing an
+// already-closed session resolves quietly.
+export function CloseCoachSession(): Promise<void> {
+  return unwrapVoid(sdk.closeCoachSession())
+}
+
+// The loaned corpus. These records never touch the coach's database and
+// carry no screenshot paths, so nothing resolves against the coach's disk.
+export function GetCoachSessionMatches(): Promise<MatchRecord[]> {
+  return unwrap(sdk.getCoachSessionMatches())
+}
+
+// The bundle suggests a player, the coach confirms (or corrects) one. The
+// echoed view carries THAT player's notes, which is how work from an
+// earlier session resurfaces.
+export function SetCoachSessionPlayer(handle: string): Promise<CoachSessionView> {
+  return unwrap(sdk.setCoachSessionPlayer({ body: { handle } }))
+}
+
+// The note body as the editor holds it. Deliberately looser than the
+// generated CoachNoteInput on one field: focus_tags is `string[]` here
+// because the room's draft type is, and the vocabulary is validated
+// server-side (a tag outside it is a 400, not a compile error). Widening
+// once at the boundary keeps the assertion out of the store and the
+// editor.
+export interface CoachNoteBody {
+  kind:        CoachNoteInput['kind']
+  text:        string
+  focus_tags:  string[]
+  extra_tags:  string[]
+  match_clock: string
+}
+
+// Upsert the coach's one note about one of the session's matches. The
+// autosave target: 404 on a key the loaned corpus doesn't carry, 400 when
+// the kind rules are violated (a reviewed-only mark carries no content; a
+// note must say or tag something).
+export function PutCoachNote(matchKey: string, input: CoachNoteBody): Promise<CoachNote> {
+  return unwrap(sdk.putCoachNote({
+    path: { match_key: matchKey },
+    body: input as CoachNoteInput,
+  }))
+}
+
+// Clear the coach's note about one match. An emptied draft sends THIS, not
+// a PUT with empty fields. Idempotent.
+export function DeleteCoachNote(matchKey: string): Promise<void> {
+  return unwrapVoid(sdk.deleteCoachNote({ path: { match_key: matchKey } }))
+}
+
+// The set-level "what to work on" note. An empty string clears it.
+export function PutCoachSummary(text: string): Promise<void> {
+  return unwrapVoid(sdk.putCoachSummary({ body: { text } }))
+}
+
+// ─── Coaching returns (the player's side) ──────────────────────────────────
+
+// Every staged notes archive with its per-note decisions so far. Powers
+// the Matches banner's "N notes from <coach> waiting".
+export function ListCoachReturns(): Promise<CoachReturnSheet[]> {
+  return unwrap(sdk.listCoachReturns())
+}
+
+export function GetCoachReturn(id: number): Promise<CoachReturnSheet> {
+  return unwrap(sdk.getCoachReturn({ path: { id } }))
+}
+
+// Discard a staged return. Notes already accepted onto matches stay —
+// removing one of those is DeleteMatchCoachNote.
+export function DeleteCoachReturn(id: number): Promise<void> {
+  return unwrapVoid(sdk.deleteCoachReturn({ path: { id } }))
+}
+
+// Record the player's verdicts, keyed by note_id. PARTIAL: only the notes
+// named here are decided and an omitted note stays pending, so "Decide
+// later" is simply a smaller map. The echoed sheet carries the new state.
+export function DecideCoachReturn(
+  id: number,
+  decisions: Record<string, CoachDecisionEnum>,
+): Promise<CoachReturnSheet> {
+  return unwrap(sdk.decideCoachReturn({ path: { id }, body: { decisions } }))
+}
+
+// Remove one accepted coach block from a match. `id` is the local row
+// (MatchCoachNote.id), not the archive-level note_id UUID.
+export function DeleteMatchCoachNote(matchKey: string, id: number): Promise<void> {
+  return unwrapVoid(sdk.deleteMatchCoachNote({ path: { match_key: matchKey, id } }))
+}
+
+// The name this user signs notes with as a coach. A server setting, not a
+// browser preference — the exported ledger is rendered server-side and
+// needs it. Empty means "not set yet", which is what disables Export.
+export function GetCoachName(): Promise<string> {
+  return unwrap(sdk.getCoachingSettings()).then(d => d.coach_name)
+}
+
+export function SetCoachName(coachName: string): Promise<string> {
+  return unwrap(sdk.setCoachingSettings({ body: { coach_name: coachName } })).then(d => d.coach_name)
 }
 
 // ─── Database health / maintenance ─────────────────────────────────────────

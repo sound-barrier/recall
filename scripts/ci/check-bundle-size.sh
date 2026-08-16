@@ -38,7 +38,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # only ever a slice of what the browser downloads, and it under-reported
 # by ~240KB the moment the bundler hoisted shared eager code into its own
 # chunk. Numbers in rows above are NOT comparable to this one.
-: "${MAX_INITIAL_JS_BYTES:=319000}"
+# 2026-08: 319000 → 331000 — the coaching session's EAGER surface: the
+# coach store, the write gate every writer now calls, and the api facade
+# wrappers (measured 325565B). The film room, the return sheet, the loan
+# slip and the nav strip are all lazy chunks and cost nothing here —
+# App.lazy-views.test.ts pins that. ~5KB headroom.
+: "${MAX_INITIAL_JS_BYTES:=331000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -52,7 +57,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # source of truth on type/radius/motion. Set with ~3KB headroom rather
 # than to the byte: landing on a razor-thin margin just means the next
 # one-line change fails the gate for no useful reason.
-: "${MAX_INITIAL_CSS_BYTES:=76000}"
+# 2026-08: 76000 → 80000 — paper.css, the coaching session's ink-on-paper
+# surface, plus its token family across four themes (measured 78007B).
+# It is eager because the loan slip and session rule appear on every tab
+# while a session is open. ~2KB headroom.
+: "${MAX_INITIAL_CSS_BYTES:=80000}"
 # The Matches "Trends" charts pull in ECharts (tree-shaken to line + bar
 # charts, grid/tooltip/legend/markline/data-zoom/brush components, canvas
 # renderer). It rides in its own lazily-loaded chunk (TrendChart-*.js),
@@ -116,7 +125,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # deliberate ~6KB headroom the note above asks for - main had drifted to
 # 552B of slack, which is what made this a gate failure rather than a
 # rounding error.
-: "${MAX_TOTAL_JS_BYTES:=1605000}"
+# 2026-08: 1605000 → 1660000 — the coaching feature's lazy chunks: the
+# film room (reel/desk/sheet/editor), the return sheet, and the slip and
+# strip (measured 1647634B).
+: "${MAX_TOTAL_JS_BYTES:=1660000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -127,7 +139,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # evidence grid, chart frame), ~5.5KB. New feature.
 # 2026-07: 355000 → 368000 — same design-token adoption as the initial
 # CSS bump above; total raw 347710 → 362389, total gzipped +674B (1.3%).
-: "${MAX_TOTAL_CSS_BYTES:=372000}"
+# 2026-08: 372000 → 396000 — the film room's geometry plus the paper
+# family's per-theme values (measured 389658B).
+: "${MAX_TOTAL_CSS_BYTES:=396000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
