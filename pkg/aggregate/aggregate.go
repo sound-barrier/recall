@@ -36,14 +36,16 @@ import (
 // path (it re-runs Tesseract, which now correctly rejects the
 // short-name fuzzy match).
 // Sidecars bundles the user-layer maps that decorate an aggregated
-// record — annotation, hidden flag, review state, pinned flag. They
-// always travel together (the data-clump rule), so they thread as one
-// value instead of four parallel parameters.
+// record — annotation, hidden flag, review state, pinned flag, and the
+// coach-received note blocks. They always travel together (the
+// data-clump rule), so they thread as one value instead of five
+// parallel parameters.
 type Sidecars struct {
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
 	Reviews     map[string]db.ReviewState
 	Pinned      map[string]bool
+	CoachNotes  map[string][]db.MatchCoachNote
 }
 
 func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
@@ -82,7 +84,10 @@ func appendViewsForKey[T any](vs []ScreenshotView, rows []T, key string, keyOf f
 }
 
 // attachMatchSidecars decorates rec with the per-key annotation, hidden
-// flag, review state, and ambiguous-attribution candidates.
+// flag, pinned flag, review state, coach-received note blocks, and
+// ambiguous-attribution candidates. Annotations and coach notes go
+// through the same converters as the bulk Attach* pass so the two read
+// paths cannot disagree.
 func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc Sidecars) {
 	if a, ok := sc.Annotations[key]; ok {
 		rec.Annotation = annotationFromRow(a)
@@ -97,18 +102,32 @@ func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc 
 		rec.ReviewedBy = st.ReviewedBy
 		rec.ReviewedAt = st.ReviewedAt
 	}
-	if mk, err := match.ParseKey(key); err == nil && mk.IsAmbiguous() {
-		rec.Ambiguous = true
-		if cs, ok := snap.AmbiguousCandidates[mk.Filename()]; ok {
-			rec.Candidates = make([]match.AmbiguousAttribution, 0, len(cs))
-			for _, c := range cs {
-				rec.Candidates = append(rec.Candidates, match.AmbiguousAttribution{
-					MatchKey:        c.MatchKey,
-					DistanceSeconds: c.DistanceSeconds,
-					Reason:          correlate.CandidateReason(c.DistanceSeconds),
-				})
-			}
-		}
+	if rows, ok := sc.CoachNotes[key]; ok {
+		rec.CoachNotes = coachNotesFromRows(rows)
+	}
+	attachMatchAmbiguity(rec, key, snap.AmbiguousCandidates)
+}
+
+// attachMatchAmbiguity flags an ambiguous-sentinel key and attaches its
+// candidate list (the single-key sibling of AttachAmbiguity, minus the
+// representative-thumbnail enrichment that needs the whole record set).
+func attachMatchAmbiguity(rec *match.Record, key string, candidates map[string][]db.AmbiguousCandidate) {
+	mk, err := match.ParseKey(key)
+	if err != nil || !mk.IsAmbiguous() {
+		return
+	}
+	rec.Ambiguous = true
+	cs, ok := candidates[mk.Filename()]
+	if !ok {
+		return
+	}
+	rec.Candidates = make([]match.AmbiguousAttribution, 0, len(cs))
+	for _, c := range cs {
+		rec.Candidates = append(rec.Candidates, match.AmbiguousAttribution{
+			MatchKey:        c.MatchKey,
+			DistanceSeconds: c.DistanceSeconds,
+			Reason:          correlate.CandidateReason(c.DistanceSeconds),
+		})
 	}
 }
 
