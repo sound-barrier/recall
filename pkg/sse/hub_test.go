@@ -1,33 +1,34 @@
-package app_test
+package sse_test
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
-	"recall/pkg/app"
+	"recall/pkg/sse"
 )
 
-// SSEHub is the broadcast layer behind the server-mode SSE endpoint.
+// Hub is the broadcast layer behind the server-mode SSE endpoint.
 // Sub-100-line file but 0%-covered prior to this — every parse-progress
 // event flows through here, and the slow-consumer drop branch is the
 // failure mode worth pinning (a stuck reader can't block the producer).
 
-func TestSSEHub_SubscribeReturnsBufferedChannel(t *testing.T) {
-	h := app.NewSSEHub()
+func TestHub_SubscribeReturnsBufferedChannel(t *testing.T) {
+	h := sse.NewHub()
 	ch := h.Subscribe()
 	if cap(ch) == 0 {
 		t.Fatal("Subscribe returned an unbuffered channel — slow readers would block the producer")
 	}
 }
 
-func TestSSEHub_Broadcast_DeliversToAllSubscribers(t *testing.T) {
-	h := app.NewSSEHub()
+func TestHub_Broadcast_DeliversToAllSubscribers(t *testing.T) {
+	h := sse.NewHub()
 	a := h.Subscribe()
 	b := h.Subscribe()
 
 	h.Broadcast("parse-complete")
 
-	mustReceive := func(name string, ch chan app.SseMsg) {
+	mustReceive := func(name string, ch chan sse.Msg) {
 		t.Helper()
 		select {
 		case m := <-ch:
@@ -45,8 +46,8 @@ func TestSSEHub_Broadcast_DeliversToAllSubscribers(t *testing.T) {
 	mustReceive("subscriber B", b)
 }
 
-func TestSSEHub_BroadcastData_CarriesJSONPayload(t *testing.T) {
-	h := app.NewSSEHub()
+func TestHub_BroadcastData_CarriesJSONPayload(t *testing.T) {
+	h := sse.NewHub()
 	ch := h.Subscribe()
 	h.BroadcastData("parse-progress", `{"done":5,"total":10}`)
 	select {
@@ -69,19 +70,19 @@ func TestSSEHub_BroadcastData_CarriesJSONPayload(t *testing.T) {
 // method to no-op when the hub hasn't been wired (Wails non-server
 // build). Pinned so a future refactor that pulls the nil guard
 // can't silently regress to a nil-pointer panic.
-func TestSSEHub_Broadcast_NilReceiver_IsNoOp(t *testing.T) {
-	var h *app.SSEHub
+func TestHub_Broadcast_NilReceiver_IsNoOp(t *testing.T) {
+	var h *sse.Hub
 	// Must not panic. No assertion on side effects — there are none.
 	h.Broadcast("parse-complete")
 }
 
-func TestSSEHub_BroadcastData_NilReceiver_IsNoOp(t *testing.T) {
-	var h *app.SSEHub
+func TestHub_BroadcastData_NilReceiver_IsNoOp(t *testing.T) {
+	var h *sse.Hub
 	h.BroadcastData("parse-progress", `{"done":1,"total":2}`)
 }
 
-func TestSSEHub_Unsubscribe_RemovesAndClosesChannel(t *testing.T) {
-	h := app.NewSSEHub()
+func TestHub_Unsubscribe_RemovesAndClosesChannel(t *testing.T) {
+	h := sse.NewHub()
 	ch := h.Subscribe()
 	h.Unsubscribe(ch)
 
@@ -95,10 +96,10 @@ func TestSSEHub_Unsubscribe_RemovesAndClosesChannel(t *testing.T) {
 	h.Broadcast("post-unsubscribe")
 }
 
-func TestSSEHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
+func TestHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 	// One subscriber that never reads — the producer must keep
 	// flowing for every other subscriber.
-	h := app.NewSSEHub()
+	h := sse.NewHub()
 	slow := h.Subscribe()
 	_ = slow
 	fast := h.Subscribe()
@@ -143,8 +144,8 @@ func TestSSEHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 // until a manual reload (TECHNICAL_DEBT.md section 9). The hub may drop
 // stream events (BroadcastData) for a slow consumer, but never a
 // terminal one — it evicts the oldest buffered message instead.
-func TestSSEHub_Broadcast_TerminalEventSurvivesFullBuffer(t *testing.T) {
-	h := app.NewSSEHub()
+func TestHub_Broadcast_TerminalEventSurvivesFullBuffer(t *testing.T) {
+	h := sse.NewHub()
 	ch := h.Subscribe()
 
 	// Stuff the buffer past capacity with lossy progress events.
@@ -170,10 +171,39 @@ func TestSSEHub_Broadcast_TerminalEventSurvivesFullBuffer(t *testing.T) {
 	}
 }
 
-func TestSSEHub_BroadcastData_StillDropsOnFullBuffer(t *testing.T) {
+// The eviction loop under a consumer that never drains at all — the
+// shape it exists for, and stronger than "the terminal event arrived":
+// each over-capacity send must evict exactly ONE message and it must
+// be the OLDEST, so the buffer holds a fixed-size window of the most
+// recent lifecycle events. A reconnecting tab that reads a stale
+// window is the same stranded spinner by another route, and an
+// eviction loop that over-drains silently loses events nobody counts.
+func TestHub_Broadcast_StalledConsumerKeepsTheNewestWindow(t *testing.T) {
+	h := sse.NewHub()
+	ch := h.Subscribe()
+
+	const overflow = 4
+	for i := range cap(ch) + overflow {
+		h.Broadcast("terminal-" + strconv.Itoa(i))
+	}
+
+	if got := len(ch); got != cap(ch) {
+		t.Fatalf("buffer holds %d messages, want exactly its capacity %d — eviction drained the wrong amount", got, cap(ch))
+	}
+
+	for i := range cap(ch) {
+		want := "terminal-" + strconv.Itoa(i+overflow)
+		m := <-ch
+		if m.Event != want {
+			t.Fatalf("position %d: got %q, want %q — the newest window did not survive eviction", i, m.Event, want)
+		}
+	}
+}
+
+func TestHub_BroadcastData_StillDropsOnFullBuffer(t *testing.T) {
 	// The lossy contract for stream events is load-bearing: a stalled
 	// reader must never make the producer block OR grow the buffer.
-	h := app.NewSSEHub()
+	h := sse.NewHub()
 	ch := h.Subscribe()
 
 	for range cap(ch) {
@@ -198,10 +228,10 @@ func TestSSEHub_BroadcastData_StillDropsOnFullBuffer(t *testing.T) {
 	}
 }
 
-func TestSSEHub_Subscribe_IsConcurrencySafe(t *testing.T) {
+func TestHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 	// Subscribe + Broadcast hammered from goroutines must not race.
 	// `go test -race` catches missing locks here.
-	h := app.NewSSEHub()
+	h := sse.NewHub()
 	done := make(chan struct{})
 	for range 8 {
 		go func() {
