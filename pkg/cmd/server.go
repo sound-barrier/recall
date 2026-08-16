@@ -7,7 +7,6 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -132,6 +131,33 @@ func decodeRequiredString(r *http.Request, field string) (string, error) {
 	return v, nil
 }
 
+// decodeStringBody is decodeRequiredString's sibling for the fields whose
+// EMPTY value is meaningful — "" clears the coaching summary and unsets the
+// coach name, so a blank string is a legal write rather than a malformed
+// body. Absent, null, and non-string values are still 400-shaped errors:
+// the spec declares each field required and non-nullable.
+func decodeStringBody(r *http.Request, field string) (string, error) {
+	body := map[string]json.RawMessage{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
+	}
+	raw, ok := body[field]
+	if !ok {
+		return "", fmt.Errorf("%s is required", field)
+	}
+	// encoding/json unmarshals `null` into a string as a no-op — no error,
+	// value untouched — so without this guard an explicit null would read
+	// as "" and quietly perform the clear the empty string means.
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return "", fmt.Errorf("%s must be a string, not null", field)
+	}
+	var v string
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return "", fmt.Errorf("%s must be a string", field)
+	}
+	return v, nil
+}
+
 // decodeRequiredStringArray decodes a required `type: array` body
 // field whose items are strings. Rejects `null` and `[null, ...]`
 // shapes that Go's default decoder otherwise accepts as nil / "".
@@ -150,7 +176,7 @@ func decodeRequiredStringArray(field string, raw json.RawMessage) ([]string, err
 	return derefStringArray(field, in)
 }
 
-// decodeOptionalBool mirrors decodeOptionalString for boolean fields
+// decodeOptionalBool is decodeStringBody's boolean sibling, for fields
 // that the OpenAPI spec declares as `type: boolean` with a default.
 // Absent field → default-zero (false) + no error. Explicit `null` is
 // a schema violation (boolean is non-nullable in OpenAPI 3.1 unless
@@ -307,6 +333,11 @@ func newAPIMux(a *app.App) *http.ServeMux {
 	// register in server_backup.go.
 	registerBackupRoutes(apiMux, a)
 
+	// ── Coaching ────────────────────────────────────────────────────
+	// /api/v1/coach/... + /api/v1/settings/coaching + the per-match
+	// coach-notes DELETE register in server_coach.go.
+	registerCoachRoutes(apiMux, a)
+
 	// ── Test-harness-only routes ────────────────────────────────────
 	// No-op unless RECALL_E2E=1 (the Playwright e2e harness). Never in
 	// production. See server_test_reset.go.
@@ -329,126 +360,4 @@ func methodNotAllowed(allow string) http.HandlerFunc {
 		w.Header().Set("Allow", allow)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-// ─── RFC 9457 problem+json errors ──────────────────────────────────────────
-//
-// Every 4xx/5xx is an application/problem+json object (RFC 9457). `type` is a
-// stable URI under problemBase that integrators can switch on; `instance` is the
-// request path. Extension members (§3.2: errors, failed_assets) carry domain
-// detail. The desktop Wails path returns Go errors directly and never reaches
-// here — this is the HTTP/server contract only.
-
-const problemBase = "https://github.com/sound-barrier/recall/problems/"
-
-// problemType is one stable problem class: a slug (→ the type URI), a
-// human-readable title, and the HTTP status it carries.
-type problemType struct {
-	slug   string
-	title  string
-	status int
-}
-
-var (
-	probInvalidBody = problemType{"invalid-body", "Bad Request", http.StatusBadRequest}
-	probNotFound    = problemType{"not-found", "Not Found", http.StatusNotFound}
-	probConflict    = problemType{"conflict", "Conflict", http.StatusConflict}
-	// Self-update isn't possible on this install (server mode, dev build,
-	// macOS, or an unwritable install dir). 409 not 400: the request is
-	// well-formed, the server just can't act on it here.
-	probSelfUpdateUnavailable = problemType{"self-update-unavailable", "Conflict", http.StatusConflict}
-	probDataVerify            = problemType{"data-verification-failed", "Unprocessable Entity", http.StatusUnprocessableEntity}
-	probRestoreInvalid        = problemType{"restore-invalid", "Unprocessable Entity", http.StatusUnprocessableEntity}
-	probBadGateway            = problemType{"upstream-fetch-failed", "Bad Gateway", http.StatusBadGateway}
-	probInternal              = problemType{"internal", "Internal Server Error", http.StatusInternalServerError}
-)
-
-// fieldError is one entry in the `errors` extension member — a single offending
-// request field and why it was rejected.
-type fieldError struct {
-	Field  string `json:"field"`
-	Detail string `json:"detail"`
-}
-
-// problemDetails is the RFC 9457 object. type/title/status are always present;
-// detail/instance and the extension members omit when empty.
-type problemDetails struct {
-	Type         string       `json:"type"`
-	Title        string       `json:"title"`
-	Status       int          `json:"status"`
-	Detail       string       `json:"detail,omitempty"`
-	Instance     string       `json:"instance,omitempty"`
-	Errors       []fieldError `json:"errors,omitempty"`
-	FailedAssets []string     `json:"failed_assets,omitempty"`
-}
-
-// problemOpt attaches an RFC 9457 §3.2 extension member to a problem.
-type problemOpt func(*problemDetails)
-
-func withFieldErrors(errs ...fieldError) problemOpt {
-	return func(p *problemDetails) { p.Errors = append(p.Errors, errs...) }
-}
-
-func withFailedAssets(assets ...string) problemOpt {
-	return func(p *problemDetails) { p.FailedAssets = append(p.FailedAssets, assets...) }
-}
-
-// writeProblem emits one application/problem+json response for pt, with the
-// human-readable detail and the request path as `instance`.
-func writeProblem(w http.ResponseWriter, r *http.Request, pt problemType, detail string, opts ...problemOpt) {
-	p := problemDetails{
-		Type:     problemBase + pt.slug,
-		Title:    pt.title,
-		Status:   pt.status,
-		Detail:   detail,
-		Instance: r.URL.Path,
-	}
-	for _, o := range opts {
-		o(&p)
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(pt.status)
-	if encErr := json.NewEncoder(w).Encode(p); encErr != nil {
-		applog.Subsystem("server").Error("problem encode", "err", encErr)
-	}
-}
-
-// writeJSON encodes v as JSON. If err is non-nil it writes a 500 problem instead.
-func writeJSON(w http.ResponseWriter, r *http.Request, v any, err error) {
-	if err != nil {
-		writeProblem(w, r, probInternal, err.Error())
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if encErr := json.NewEncoder(w).Encode(v); encErr != nil {
-		applog.Subsystem("server").Error("json encode", "err", encErr)
-	}
-}
-
-// errStatus pairs an app-layer sentinel error with the problem type that
-// writeError maps it to.
-type errStatus struct {
-	is error
-	pt problemType
-}
-
-// writeError writes err to w as an RFC 9457 problem and reports whether it wrote
-// anything. A nil err writes nothing and returns false, so a handler can guard
-// its happy path with `if writeError(w, r, a.Foo(), …) { return }`. For a
-// non-nil err, the first sentinel in cases that err matches (errors.Is) selects
-// the problem type; an unmatched err falls through to a 500 internal problem.
-// This keeps the "known sentinel → 4xx, everything else → 500" ladder in one
-// place instead of repeating it in every write handler.
-func writeError(w http.ResponseWriter, r *http.Request, err error, cases ...errStatus) bool {
-	if err == nil {
-		return false
-	}
-	for _, c := range cases {
-		if errors.Is(err, c.is) {
-			writeProblem(w, r, c.pt, err.Error())
-			return true
-		}
-	}
-	writeProblem(w, r, probInternal, err.Error())
-	return true
 }

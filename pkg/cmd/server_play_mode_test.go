@@ -15,6 +15,7 @@ func playModePath(matchKey string) string {
 
 func TestMatchPlayMode_PutCompetitivePersistsAndReturns204(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-A")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, playModePath("match-A"), map[string]string{"play_mode": "competitive"})
 	if rec.Code != http.StatusNoContent {
@@ -27,6 +28,7 @@ func TestMatchPlayMode_PutCompetitivePersistsAndReturns204(t *testing.T) {
 
 func TestMatchPlayMode_PutQuickplayOverwritesCompetitive(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-A")
 	_, mux := newTestApp(t, fs)
 	_ = put(t, mux, playModePath("match-A"), map[string]string{"play_mode": "competitive"})
 	rec := put(t, mux, playModePath("match-A"), map[string]string{"play_mode": "quickplay"})

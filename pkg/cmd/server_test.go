@@ -35,6 +35,18 @@ func newTestApp(t *testing.T, fs *dbtest.Fake) (*app.App, *http.ServeMux) {
 	return a, mux
 }
 
+// seedMatchKeys gives the fake a real screenshot row per key so the
+// per-match writers' unknown-key guard (pkg/app/match_key_guard.go) sees a
+// match there. A sidecar write on a key the database has never seen is a
+// 404 by design, so a route test that only cares about the sidecar states
+// "these matches exist" with this instead of spelling out a corpus. Twin of
+// the helper in pkg/app/store_integration_test.go.
+func seedMatchKeys(fs *dbtest.Fake, keys ...string) {
+	for _, key := range keys {
+		fs.Summaries = append(fs.Summaries, db.SummaryRow{Filename: key + ".png", MatchKey: key})
+	}
+}
+
 // fire builds and dispatches an httptest request. Encoding the body
 // as JSON happens unconditionally when body != nil — the handlers
 // all accept JSON requests.
@@ -353,6 +365,7 @@ func TestServerMux_DeleteSingleMatch_DelegatesToStore(t *testing.T) {
 
 func TestServerMux_BulkSetMatchQueue_AppliesValueToEveryKey(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "m1", "m2", "m3")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, "/api/v1/matches/queue", map[string]any{
 		"match_keys": []string{"m1", "m2", "m3"}, "queue_type": "role",
@@ -400,6 +413,7 @@ func TestServerMux_BulkSetMatchQueue_400OnInvalidValue(t *testing.T) {
 
 func TestServerMux_BulkSetMatchPlayMode_AppliesValueToEveryKey(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "m1", "m2")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, "/api/v1/matches/play-mode", map[string]any{
 		"match_keys": []string{"m1", "m2"}, "play_mode": "competitive",
@@ -577,6 +591,7 @@ func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
 
 func TestMatchAnnotations_Upsert(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "k1")
 	_, mux := newTestApp(t, fs)
 
 	rec := put(t, mux, annotationPath("k1"), map[string]any{
@@ -603,6 +618,7 @@ func TestMatchAnnotations_EmptyLeaverRejected(t *testing.T) {
 
 func TestMatchVisibility_Hide(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "k1")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, visibilityPath("k1"), map[string]any{
 		"hidden": true,
@@ -724,6 +740,7 @@ func TestMatchAnnotations_InvalidLeaver400(t *testing.T) {
 
 func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "k1")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, annotationPath("k1"), map[string]any{
 		"leavers":     []string{"team", "self"},
@@ -740,6 +757,7 @@ func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
 func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
 	// No disruption sides but a note present — the row should persist.
 	fs := dbtest.New()
+	seedMatchKeys(fs, "k1")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, annotationPath("k1"), map[string]any{
 		"leavers": []string{},

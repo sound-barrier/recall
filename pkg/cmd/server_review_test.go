@@ -15,6 +15,7 @@ func reviewPath(matchKey string) string {
 
 func TestMatchReview_PutSelfPersistsAndReturns204(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-A")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, reviewPath("match-A"), map[string]string{"reviewed_by": "self"})
 	if rec.Code != http.StatusNoContent {
@@ -27,6 +28,7 @@ func TestMatchReview_PutSelfPersistsAndReturns204(t *testing.T) {
 
 func TestMatchReview_PutCoachOverwritesSelf(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-A")
 	_, mux := newTestApp(t, fs)
 	_ = put(t, mux, reviewPath("match-A"), map[string]string{"reviewed_by": "self"})
 	rec := put(t, mux, reviewPath("match-A"), map[string]string{"reviewed_by": "coach"})

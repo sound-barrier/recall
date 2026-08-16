@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -101,9 +100,12 @@ func handleRestoreDatabase(a *app.App) http.HandlerFunc {
 	}
 }
 
-// handleImportMatches MERGES a previously-exported bundle's matches into the
-// live DB. Additive: matches whose key already exists are skipped, nothing is
-// wiped. Responds 200 with the {imported, skipped} counts.
+// handleImportMatches ingests either archive a user can hand Recall, told
+// apart by ZIP entry names before any JSON is parsed. A bundle MERGES into
+// the live DB — additive, matches whose key already exists are skipped,
+// nothing is wiped; a coach notes archive is STAGED as a return sheet and
+// changes no match until the player accepts a note. Responds 200 with the
+// ImportOutcome, whose `kind` says which happened.
 func handleImportMatches(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, importMaxBodyBytes))
@@ -111,18 +113,11 @@ func handleImportMatches(a *app.App) http.HandlerFunc {
 			writeProblem(w, r, probInvalidBody, "read body: "+err.Error())
 			return
 		}
-		summary, err := a.ImportMatches(body)
-		// ErrImportMalformed → 400 (payload isn't a readable bundle);
-		// anything else → 409 (unsupported schema, write failure).
-		if errors.Is(err, app.ErrImportMalformed) {
-			writeProblem(w, r, probInvalidBody, err.Error())
+		outcome, err := a.ImportMatches(body)
+		if writeArchiveError(w, r, err) {
 			return
 		}
-		if err != nil {
-			writeProblem(w, r, probConflict, err.Error())
-			return
-		}
-		writeJSON(w, r, summary, nil)
+		writeJSON(w, r, outcome, nil)
 	}
 }
 

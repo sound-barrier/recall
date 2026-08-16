@@ -226,6 +226,20 @@ fi
 #                                     generate a ZIP. Covered by
 #                                     pkg/cmd/server_backup_test.go +
 #                                     the e2e bundle round-trip.
+#   --exclude-path /api/v1/coach/session
+#                                   — POST opens a coaching session from a
+#                                     player's exported ZIP. Same binary-body
+#                                     limitation as /imports. Covered by
+#                                     pkg/cmd/server_coach_test.go.
+#   --exclude-path '/api/v1/coach/session/notes/{match_key}'
+#                                   — PUT validates the note before it
+#                                     checks for an open session, so a
+#                                     spec-valid but empty note
+#                                     ({"kind":"note","text":""}) is a
+#                                     deliberate 400 and trips
+#                                     positive_data_acceptance — the same
+#                                     reason ErrEmptyAnnotation is a 409.
+#                                     Covered by pkg/cmd/server_coach_test.go.
 # DELETE methods are no longer excluded — the test server runs in an
 # isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
@@ -246,6 +260,8 @@ schemathesis run \
   --exclude-path '/api/v1/profiles/test/seed' \
   --exclude-path /api/v1/database \
   --exclude-path /api/v1/imports \
+  --exclude-path /api/v1/coach/session \
+  --exclude-path '/api/v1/coach/session/notes/{match_key}' \
   api/openapi.yaml
 
 echo "[ recall ] ✓  API spec ↔ server in sync"
