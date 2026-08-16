@@ -126,6 +126,8 @@ only on URL.
 | `render-pr-report.py` | Renders the markdown PR report from CI artifacts. |
 | `audit-bundle.sh` | Top-N (default 20) Vite chunks by size + JS/CSS totals. Snapshot tool, not a gate — informs lazy-load decisions. Pair with the size gate in `check-bundle-size.sh`. |
 | `check-bundle-size.sh` | Per-chunk + total JS/CSS budgets. Runs on every CI push + lefthook pre-push; fails non-zero when a chunk exceeds its budget. |
+| `check-package-size.sh` | Per-directory file budgets for Go packages and `frontend/src` / `frontend/tests`. Reads `scripts/ci/package-size-budgets.txt` (a budget + its reason per entry, `exempt` for generated trees, an optional third column recording a temporary over-target waiver); unregistered directories get a default of 12. A gate: CI's `lint` job, `task verify`, lefthook pre-push. Run `--list` (or `task package-size-audit`) for the read-only audit that informs split-vs-bump. |
+| `gobco-report.sh` | Go condition (branch) coverage via `rillig/gobco` — informational, never gates. Names each condition never observed both true and false, so every line is one missing test case. Runs inside a throwaway `git worktree` (gobco copies the module per package), `-short`, default build tags, never `-race`. `task cover-go-branch`; CI job `branch-coverage` is `continue-on-error`. |
 
 ## Bundle audit cadence
 

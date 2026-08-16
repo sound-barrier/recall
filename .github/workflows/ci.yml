@@ -38,6 +38,16 @@ jobs:
             go node task ruff shfmt shellcheck jq taplo pipx:sqlfluff
             go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
+      # Package + directory file budgets. A gate, not a report. Runs FIRST in
+      # this job because it needs nothing but git and awk — a structural
+      # regression fails in under a second instead of after a Vite build and
+      # four golangci-lint passes. The budgets and the reason for each number
+      # live in scripts/ci/package-size-budgets.txt; the metric is documented
+      # in the script header. Same script `task check-package-size` and
+      # `task verify` run, so the local and CI signals are 1:1.
+      - name: Enforce package + directory size budgets
+        run: bash scripts/ci/check-package-size.sh
+
       # Wails v3's desktop code imports a CGo WebKit2GTK webview, so the default
       # build tags need these system libs to typecheck on the Ubuntu runner.
       - uses: ./.github/actions/linux-webview-deps
@@ -543,23 +553,22 @@ jobs:
       - name: Convert coverage profile to Cobertura XML
         run: gocover-cobertura < coverage/go/coverage.out > coverage/go/cobertura.xml
 
-      # Surface line + branch coverage in the job summary. Go has no native
-      # branch coverage, so "branch" is basic-block coverage (covered/total
-      # blocks in the coverprofile) — its branch-equivalent. Mirrors e2e.yml's
-      # coverage summary; informational (the func total above is what gates).
-      - name: Coverage summary (line + branch)
+      # Surface statement coverage in the job summary. Real condition (branch)
+      # coverage is the branch-coverage job's business — it runs gobco, which
+      # measures each condition's true AND false arm. The basic-block
+      # approximation that used to print here was removed with it: two numbers
+      # under the word "branch" that disagree is worse than one.
+      - name: Coverage summary (statement)
         run: |
           line=$(awk '/^total:/ { gsub(/%/,"",$NF); print $NF }' coverage/go/coverage.txt)
-          block=$(awk 'NR>1 { t++; if ($NF+0>0) c++ } END { if (t) printf "%.1f", 100*c/t }' coverage/go/coverage.out)
           {
             echo "### Go coverage (unit)"
             echo ""
             echo "| Metric | Coverage |"
             echo "|---|---:|"
             echo "| Line (statement) | ${line}% |"
-            echo "| Branch (basic-block) | ${block}% |"
             echo ""
-            echo "_Go has no native branch coverage; basic-block coverage is its branch-equivalent._"
+            echo "_Condition (branch) coverage is reported by the branch-coverage job._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report
@@ -610,3 +619,59 @@ jobs:
         # short-circuits with an actionable error if schemathesis or
         # frontend/dist are missing.
         run: SKIP_FRONTEND_BUILD=1 bash scripts/ci/check-api-drift.sh
+
+  # ── Job 10: Go condition (branch) coverage ──────────────────────────────
+  # REPORT-ONLY (continue-on-error) — it can never red a run. gobco measures
+  # each condition's true AND false arm, which the coverage-go job's statement
+  # coverage cannot see: an `if a && b` reads as covered the moment the line
+  # runs. Its per-condition output ("was 12 times true but never false") is a
+  # worklist of missing test cases, not a percentage to chase — which is why
+  # there is no threshold here and must not be one.
+  #
+  # Runs on default (desktop) build tags, so it needs the same CGo WebKit2GTK
+  # deps the coverage-go job does. It does NOT need frontend/dist: gobco never
+  # builds the root package.
+  branch-coverage:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # mise.toml [env] is the version truth for the pinned CLIs; same grep the
+      # schemathesis job uses. gobco is exact-pinned because a version change
+      # changes the number this job reports.
+      - name: Load tool versions from mise.toml
+        run: grep -E '^[A-Z_]+_VERSION *= *"' mise.toml | tr -d ' "' >> "$GITHUB_ENV"
+
+      - name: Install gobco
+        run: go install "github.com/rillig/gobco@${GOBCO_VERSION}"
+
+      - uses: ./.github/actions/linux-webview-deps
+
+      - name: Measure condition coverage
+        run: bash scripts/ci/gobco-report.sh | tee /tmp/gobco.txt
+
+      - name: Condition coverage summary
+        run: |
+          {
+            echo "### Go condition coverage (gobco ${GOBCO_VERSION})"
+            echo ""
+            echo '```'
+            sed -n '/Condition coverage/,$p' /tmp/gobco.txt
+            echo '```'
+            echo ""
+            echo "_Short mode, default (desktop) build tags, no \`-race\`._"
+            echo "_Informational — the Go coverage gate is \`GO_COVERAGE_MIN\` in the_"
+            echo "_coverage-go job. Per-condition detail is in the artifact._"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload condition coverage data
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: go-branch-coverage
+          path: coverage/go/branch/
+          retention-days: 30

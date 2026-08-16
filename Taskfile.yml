@@ -281,6 +281,14 @@ tasks:
     desc: Assert every var(--token) resolves and no fallback hides an always-defined token
     cmds: [bash scripts/ci/check-css-tokens.sh]
 
+  check-package-size:
+    desc: Assert no Go package / frontend dir exceeds its declared file budget
+    cmds: [bash scripts/ci/check-package-size.sh]
+
+  package-size-audit:
+    desc: Print every directory with its file count + budget (informs split-vs-bump)
+    cmds: [bash scripts/ci/check-package-size.sh --list]
+
   lint-openapi:
     desc: Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
     cmds:
@@ -426,6 +434,8 @@ tasks:
       - bash scripts/ci/check-css-theme-leak.sh --build
       - echo "[ recall ] verify — CSS token integrity…"
       - bash scripts/ci/check-css-tokens.sh
+      - echo "[ recall ] verify — package + directory size budgets…"
+      - bash scripts/ci/check-package-size.sh
       - echo "[ recall ] verify — dead code…"
       - bash scripts/ci/deadcode-check.sh
       - cd frontend && npm run dead:ts
@@ -595,14 +605,6 @@ tasks:
       - go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
       - go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
       - |
-        # Go has no native branch coverage. Basic-block coverage (covered/total
-        # blocks in the coverprofile — each block sits between branch points) is
-        # its branch-equivalent. Informational; the func total above is what gates.
-        # With -coverpkg every test binary reports every package's blocks,
-        # so the same block appears once per binary — dedupe by block id
-        # and keep the max count, or the denominator inflates ~10x.
-        awk 'NR>1 { key=$1; cnt=$NF+0; if (cnt > max[key]) max[key]=cnt } END { t=0; c=0; for (k in max) { t++; if (max[k] > 0) c++ } if (t) printf "[ recall ] ℹ  Go block (branch-equivalent) coverage %.1f%% (%d/%d blocks)\n", 100*c/t, c, t }' coverage/go/coverage.out
-      - |
         pct=$(awk '/^total:/ { gsub(/%/, "", $NF); print $NF }' coverage/go/coverage.txt)
         awk -v p="$pct" -v m="{{.GO_COVERAGE_MIN}}" 'BEGIN {
           if (p+0 < m+0) { printf "[ recall ] ✗  Go coverage %.1f%% is below threshold %s%%\n", p, m; exit 1 }
@@ -616,6 +618,18 @@ tasks:
       - echo "[ recall ] Generating frontend coverage report…"
       - cd frontend && npm run test:coverage
       - echo "[ recall ] ✓  Coverage report written to frontend/coverage/"
+
+  # PROBE, not a gate — deliberately absent from `task lint` / `task verify` /
+  # lefthook, like typecheck-next. gobco rewrites each package into a temp copy
+  # and runs its tests there, so a full sweep is minutes, not seconds. Replaces
+  # the basic-block approximation cover-go used to print: gobco measures each
+  # condition's TRUE and FALSE arms separately, which basic-block coverage
+  # cannot see.
+  cover-go-branch:
+    desc: "Go condition (branch) coverage via gobco — informational, never gates"
+    cmds:
+      - bash scripts/ci/gobco-report.sh
+      - echo "[ recall ] ✓  Condition coverage written to coverage/go/branch/"
 
   cover-e2e:
     desc: Generate integration coverage (Go + frontend) from the Playwright suite → coverage/e2e/
