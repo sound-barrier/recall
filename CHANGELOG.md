@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.2](https://github.com/sound-barrier/recall/compare/v0.30.1...v0.30.2) (2026-08-16)
+
+
+### Build & Packaging
+
+* **hooks:** run the pre-push suites sequentially ([5997562](https://github.com/sound-barrier/recall/commit/599756265259705bfd51e5950bb2245fbf40b307))
+
 ## [0.30.1](https://github.com/sound-barrier/recall/compare/v0.30.0...v0.30.1) (2026-08-12)
 
 
