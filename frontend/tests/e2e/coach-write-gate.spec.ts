@@ -1,0 +1,142 @@
+/**
+ * Coaching session — the write gate.
+ *
+ * While a session is open the six tabs run on the PLAYER's loaned records,
+ * and nothing the coach does there may write to the coach's own database:
+ * every mutating affordance is disabled with a reason, and — the real
+ * guarantee — a catch-all route fails the test the moment ANY mutating
+ * request leaves the page. The server 409s these too; this spec proves the
+ * UI never even asks.
+ */
+import type { Page, Route } from '@playwright/test'
+
+import { test, expect } from './_fixtures'
+import {
+  KINGS_ROW_MATCH,
+  backToFilmRoom,
+  enterFilmRoom,
+  loanSlip,
+  mockCoachSession,
+  openSessionViaMasthead,
+  seedCoachOwnMatches,
+} from './_coach'
+import { seedProfiles, silenceParseEvents } from './_theme-matrix'
+
+const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+const LOCK_REASON = /end the session/i
+
+/**
+ * Registered LAST so it is consulted FIRST: reads fall through to the
+ * seeds beneath; any write is recorded and answered with a 500 so a
+ * hypothetical optimistic UI cannot mistake it for success.
+ */
+async function armWriteTripwire(page: Page): Promise<string[]> {
+  const tripped: string[] = []
+  const trip = async (route: Route) => {
+    const req = route.request()
+    if (!MUTATING.has(req.method())) {
+      await route.fallback()
+      return
+    }
+    tripped.push(`${req.method()} ${new URL(req.url()).pathname}`)
+    await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+  }
+  const globs = [
+    '**/api/v1/matches',
+    '**/api/v1/matches/**',
+    '**/api/v1/parses*',
+    '**/api/v1/imports',
+    '**/api/v1/database',
+    '**/api/v1/database/*',
+    '**/api/v1/screenshots/**',
+  ]
+  for (const glob of globs) await page.route(glob, trip)
+  return tripped
+}
+
+async function openSession(page: Page): Promise<string[]> {
+  await silenceParseEvents(page)
+  await seedProfiles(page)
+  await seedCoachOwnMatches(page)
+  await mockCoachSession(page)
+  // The CI runner has no Tesseract; a found binary keeps the Parse
+  // affordances in their normal (enabled) state so only the gate disables them.
+  await page.route('**/api/v1/settings/tesseract', async (route: Route) => {
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ path: '/opt/homebrew/bin/tesseract', found: true, version: '5.3.4', supported: true, error: '', platform: 'darwin' }),
+    })
+  })
+  const tripped = await armWriteTripwire(page)
+  await page.goto('/')
+  await openSessionViaMasthead(page)
+  await expect(loanSlip(page)).toBeVisible()
+  await enterFilmRoom(page)
+  return tripped
+}
+
+test.describe('coaching session — write gate', () => {
+  test('Matches, Parse and Settings disable every write with the session reason', async ({ page }) => {
+    const tripped = await openSession(page)
+
+    // Matches toolbar.
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await expect(page.locator('[data-add-match]')).toBeDisabled()
+    await expect(page.locator('[data-add-match]')).toHaveAttribute('title', LOCK_REASON)
+    await expect(page.locator('[data-import-matches]')).toBeDisabled()
+    await expect(page.locator('[data-import-matches]')).toHaveAttribute('title', LOCK_REASON)
+
+    // Parse: the lock note replaces the read-only one; Run + Watch are off.
+    await page.getByRole('tab', { name: 'Parse' }).click()
+    await expect(page.locator('[data-readonly-note]')).toBeVisible()
+    await expect(page.locator('[data-readonly-note]')).toContainText(/coaching session/i)
+    await expect(page.getByTestId('run-parse-btn')).toBeDisabled()
+    await expect(page.locator('.big-switch input[type="checkbox"]')).toBeDisabled()
+
+    // Settings → Backup & Restore + Advanced.
+    await page.getByRole('tab', { name: 'Settings' }).click()
+    await expect(page.getByRole('button', { name: /import matches/i })).toBeDisabled()
+    await expect(page.getByRole('button', { name: /import matches/i })).toHaveAttribute('title', LOCK_REASON)
+    await expect(page.getByRole('button', { name: /^Restore \(\.db\)/ })).toBeDisabled()
+    await page.locator('#sec-advanced').evaluate((el) => { (el as HTMLDetailsElement).open = true })
+    await expect(page.locator('[data-reparse-all-arm]')).toBeDisabled()
+    await expect(page.getByRole('button', { name: /^Clear Database/ })).toBeDisabled()
+    await expect(page.locator('[data-replay-tour]')).toBeDisabled()
+
+    // The whole tour left no write behind.
+    await expect(backToFilmRoom(page)).toBeVisible()
+    expect(tripped, 'mutating requests during the session').toEqual([])
+  })
+
+  test("a loaned match's detail panel is read-only and points back to the room", async ({ page }) => {
+    const tripped = await openSession(page)
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+
+    // Right-click: the destructive items are dead.
+    const row = page.locator('.leaf-row', { hasText: /king's row/i })
+    await row.click({ button: 'right' })
+    await expect(page.getByRole('menuitem', { name: 'Hide match' })).toBeDisabled()
+    await page.keyboard.press('Escape')
+
+    // Open the panel: journal, status radios and pin are all off; the way
+    // to write about this match is the Film Room.
+    await row.click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+    await expect(page.locator(`#note-${KINGS_ROW_MATCH.match_key}`)).toBeDisabled()
+    const reviewRadios = page.getByRole('radiogroup', { name: 'Match review status' }).getByRole('radio')
+    await expect(reviewRadios).toHaveCount(3)
+    for (let i = 0; i < 3; i++) await expect(reviewRadios.nth(i)).toBeDisabled()
+    const queueRadios = page.getByRole('radiogroup', { name: 'Match queue type' }).getByRole('radio')
+    await expect(queueRadios).toHaveCount(3)
+    for (let i = 0; i < 3; i++) await expect(queueRadios.nth(i)).toBeDisabled()
+    await expect(page.locator('[data-pin-toggle]')).toBeDisabled()
+    await expect(page.getByRole('button', { name: /Open in the film room/ })).toBeVisible()
+
+    // Trying anyway must not send anything.
+    await page.locator('[data-pin-toggle]').click({ force: true })
+    await reviewRadios.nth(1).click({ force: true })
+    await page.getByRole('button', { name: /Open in the film room/ }).click()
+    await expect(page.locator('#panel-coach')).toBeVisible()
+    expect(tripped, 'mutating requests during the session').toEqual([])
+  })
+})
