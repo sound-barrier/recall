@@ -142,7 +142,27 @@ function buildMock(overrides: MountOverrides = {}) {
     })),
     BackupDatabase:      vi.fn(async () => ''),
     RestoreDatabase:     vi.fn(async () => ''),
-    ImportMatches:       vi.fn(async () => ({ path: '', imported: 0, skipped: 0 })),
+    ImportMatches:       vi.fn(async () => ({ path: '', kind: 'bundle', imported: 0, skipped: 0 })),
+    // Coaching — no session open, no notes waiting: the state every test
+    // that isn't about coaching should see. The session GET is gated on a
+    // localStorage flag no test seeds, so it never fires; the inbox read
+    // does, and would otherwise reach the setup's 503 fallback.
+    ListCoachReturns:       vi.fn(async () => []),
+    GetCoachSession:        vi.fn(async () => null),
+    GetCoachSessionMatches: vi.fn(async () => []),
+    OpenCoachBundle:        vi.fn(async () => null),
+    CloseCoachSession:      vi.fn(async () => undefined),
+    SetCoachSessionPlayer:  vi.fn(async () => null),
+    PutCoachNote:           vi.fn(async () => undefined),
+    DeleteCoachNote:        vi.fn(async () => undefined),
+    PutCoachSummary:        vi.fn(async () => undefined),
+    ExportCoachNotes:       vi.fn(async () => ''),
+    GetCoachReturn:         vi.fn(async () => null),
+    DeleteCoachReturn:      vi.fn(async () => undefined),
+    DecideCoachReturn:      vi.fn(async () => null),
+    DeleteMatchCoachNote:   vi.fn(async () => undefined),
+    GetCoachName:           vi.fn(async () => ''),
+    SetCoachName:           vi.fn(async () => ''),
     // Profiles — single default profile is the natural test state.
     // Tests that need multi-profile state can override these with
     // their own vi.doMock before mounting.
@@ -249,6 +269,11 @@ export async function renderApp(overrides: MountOverrides = {}): Promise<RenderR
     import('@/components/matches/MatchesView.vue'),
     import('@/components/settings/SettingsView.vue'),
     import('@/components/unknown/UnknownMapsView.vue'),
+    // The coaching-session chrome is lazy in the masthead for the same
+    // reason and needs the same pre-warm — a test that seeds a session
+    // would otherwise assert against a slip that hasn't resolved yet.
+    import('@/components/coach/CoachLoanSlip.vue'),
+    import('@/components/coach/CoachNavStrip.vue'),
   ])
   // Each render starts from an empty cache. getQueryClient() reads a
   // globalThis slot, so this resolves the SAME client the freshly-imported

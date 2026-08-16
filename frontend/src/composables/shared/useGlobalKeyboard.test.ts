@@ -3,7 +3,7 @@ import { render } from '@testing-library/vue'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { useGlobalKeyboard, type GlobalKeyboardDeps } from '@/composables/shared/useGlobalKeyboard'
 import type { MatchRecord } from '@/api-client'
-import type { TabId } from '@/composables/shared/useTabKeyboardNav'
+import type { TabId, ViewId } from '@/composables/shared/useTabKeyboardNav'
 
 function press(key: string) {
   document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
@@ -60,7 +60,8 @@ afterEach(() => {
 
 function makeDeps(overrides: Partial<GlobalKeyboardDeps> = {}): GlobalKeyboardDeps {
   return {
-    view: ref<TabId>('matches'),
+    view: ref<ViewId>('matches'),
+    coachSessionActive: ref(false),
     openCheatsheet: ref(false),
     modalOpen: ref(false),
     selectionIsOpen: ref(false),
@@ -155,7 +156,7 @@ describe('useGlobalKeyboard — typing in a field', () => {
 
 describe('useGlobalKeyboard — view navigation', () => {
   it('routes every `g <key>` sequence to its own tab', () => {
-    const deps = makeDeps({ view: ref<TabId>('settings') })
+    const deps = makeDeps({ view: ref<ViewId>('settings') })
     const view = mountKeyboard(deps)
 
     const routes: [string, TabId][] = [
@@ -172,10 +173,35 @@ describe('useGlobalKeyboard — view navigation', () => {
   })
 
   it('does nothing on a bare prefix press', () => {
-    const deps = makeDeps({ view: ref<TabId>('settings') })
+    const deps = makeDeps({ view: ref<ViewId>('settings') })
     const view = mountKeyboard(deps)
 
     press('g')
+
+    expect(deps.goToView).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  // `g f` is the film room. It is a view without a tab, and it only exists
+  // while a bundle is open — outside a session the key must do nothing
+  // rather than land the user on an empty panel.
+  it('routes `g f` to the film room while a coaching session is open', () => {
+    const deps = makeDeps({ view: ref<ViewId>('matches'), coachSessionActive: ref(true) })
+    const view = mountKeyboard(deps)
+
+    press('g')
+    press('f')
+
+    expect(deps.goToView).toHaveBeenCalledWith('coach')
+    view.unmount()
+  })
+
+  it('ignores `g f` when no session is open', () => {
+    const deps = makeDeps({ view: ref<ViewId>('matches') })
+    const view = mountKeyboard(deps)
+
+    press('g')
+    press('f')
 
     expect(deps.goToView).not.toHaveBeenCalled()
     view.unmount()
@@ -212,7 +238,7 @@ describe('useGlobalKeyboard — Matches list motions', () => {
   })
 
   it('stays quiet on every other view', () => {
-    const deps = makeDeps({ view: ref<TabId>('settings') })
+    const deps = makeDeps({ view: ref<ViewId>('settings') })
     const view = mountKeyboard(deps)
 
     press('j')
@@ -322,7 +348,7 @@ describe('useGlobalKeyboard — opening the focused card', () => {
 
 describe('useGlobalKeyboard — the / shortcut', () => {
   it('switches to Matches, opens the narrow panel, and focuses its search', async () => {
-    const deps = makeDeps({ view: ref<TabId>('settings') })
+    const deps = makeDeps({ view: ref<ViewId>('settings') })
     const view = mountKeyboard(deps)
     fixtureNarrowTrigger()
 

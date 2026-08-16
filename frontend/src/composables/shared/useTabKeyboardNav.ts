@@ -19,6 +19,11 @@ export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown', 'compare',
 
 export type TabId = typeof TAB_ORDER[number]
 
+// Every surface App can show. The film room is a VIEW but not a TAB: it is
+// reached from the loan slip, the back affordance, or `g f`, and the
+// tablist stays six wide.
+export type ViewId = TabId | 'coach'
+
 // h/l act as vim aliases for ArrowLeft/ArrowRight. The tab buttons
 // are not editable, so absorbing single-letter keys is safe.
 const isLeftKey  = (key: string) => key === 'ArrowLeft'  || key === 'h'
@@ -37,6 +42,17 @@ function nextTabIndex(key: string, current: number, length: number): number {
   return length - 1
 }
 
+// Where the cycle starts. Normally that is the active view — but the film
+// room is a view with no tab, so there the anchor is whichever tab button
+// the user has focused. -1 when neither answers, and the cycle stays put.
+function cycleAnchor(view: string): number {
+  const fromView = TAB_ORDER.indexOf(view as TabId)
+  if (fromView !== -1) return fromView
+  const focused = document.activeElement
+  const id = focused instanceof HTMLElement ? focused.id : ''
+  return TAB_ORDER.indexOf(id.replace(/^tab-/, '') as TabId)
+}
+
 export function useTabKeyboardNav(
   view: Readonly<Ref<string>>,
   goToView: (next: TabId) => void | Promise<void>,
@@ -45,7 +61,7 @@ export function useTabKeyboardNav(
     if (!isTabNavKey(e.key)) return
     e.preventDefault()
     const order = TAB_ORDER
-    const current = order.indexOf(view.value as TabId)
+    const current = cycleAnchor(view.value)
     if (current === -1) return
     const target = order[nextTabIndex(e.key, current, order.length)]!
     void goToView(target)

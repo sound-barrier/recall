@@ -3,6 +3,7 @@ import { computed, provide, ref, toRef } from 'vue'
 import { ApiError, CreateManualMatch, type MatchRecord } from '@/api-client'
 import { useManualMatchForm, manualMatchFormKey, type ManualMatchMode } from '@/composables/matches/useManualMatchForm'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import ManualMatchForm from '@/components/matches/manual/ManualMatchForm.vue'
 
 // Hand-enter a match for users without OCR. A centered popup modal (solid
@@ -24,10 +25,15 @@ useModalFocusTrap(toRef(props, 'open'), {
   keepOpenOnFieldEscape: true,
 })
 
+// A hand-entered match is a write like any other — refused on the
+// read-only sample profile and while a coaching session holds the view.
+const { writesLocked, lockedTitle, guardWrite } = useWriteGate()
+
 const submitting = ref(false)
 const errorMsg = ref('')
 
 async function submit() {
+  if (!guardWrite()) return
   if (!f.canSubmit.value || submitting.value) return
   // Commit any tag / teammate the user typed but didn't press Enter on.
   f.addTag()
@@ -76,7 +82,13 @@ async function submit() {
             <button class="mm-btn ghost" @click="emit('close')">
               Cancel
             </button>
-            <button class="mm-btn primary" data-mm-submit :disabled="!f.canSubmit.value || submitting" @click="submit">
+            <button
+              class="mm-btn primary"
+              data-mm-submit
+              :disabled="!f.canSubmit.value || submitting || writesLocked"
+              :title="lockedTitle('Save this match')"
+              @click="submit"
+            >
               {{ submitting ? 'Adding…' : 'Add match' }}
             </button>
           </div>

@@ -4,6 +4,7 @@ import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 import SupportedSourcesRow from '@/components/settings/SupportedSourcesRow.vue'
 import SettingsDatabaseHealth from '@/components/settings/SettingsDatabaseHealth.vue'
 import { useUiStore } from '@/stores/ui'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Advanced collapsible at the bottom of Settings — destructive Clear
 // Database flow, Manage ignored files (the Unknown-tab "Delete
@@ -19,6 +20,10 @@ import { useUiStore } from '@/stores/ui'
 // shared with the Backup/Restore section's Import-arm flow.
 
 const uiStore = useUiStore()
+// Every row in here writes: re-parse rewrites records, Clear wipes them,
+// and the tour swaps the whole record set for demo data — which a coaching
+// session must not do on top of a loaned corpus (session > tour).
+const { writesLocked, lockedTitle } = useWriteGate()
 
 const props = defineProps<{
   clearingDB?:       boolean
@@ -136,7 +141,7 @@ watch(
 <template>
   <details id="sec-advanced" class="settings-section advanced-section">
     <summary class="advanced-summary">
-      <span class="section-num">08</span>
+      <span class="section-num">09</span>
       <span class="section-slash" aria-hidden="true">/</span>
       <span class="section-title">Advanced</span>
       <span class="advanced-chev" aria-hidden="true">›</span>
@@ -196,7 +201,8 @@ watch(
           <template v-if="!reparseConfirm">
             <button
               class="btn"
-              :disabled="reparsing"
+              :disabled="reparsing || writesLocked"
+              :title="lockedTitle('Re-run OCR on every screenshot')"
               data-reparse-all-arm
               @click="armReparse"
             >
@@ -241,7 +247,13 @@ watch(
           </p>
         </div>
         <div class="setting-control">
-          <button class="btn" data-replay-tour @click="uiStore.requestTourReplay()">
+          <button
+            class="btn"
+            data-replay-tour
+            :disabled="writesLocked"
+            :title="lockedTitle('Walk the guided tour again')"
+            @click="uiStore.requestTourReplay()"
+          >
             Replay tour
           </button>
         </div>
@@ -281,7 +293,8 @@ watch(
           <template v-if="!clearConfirm">
             <button
               class="btn danger-outline"
-              :disabled="clearingDB || ((matchedCount ?? 0) + (unknownCount ?? 0)) === 0"
+              :disabled="clearingDB || writesLocked || ((matchedCount ?? 0) + (unknownCount ?? 0)) === 0"
+              :title="lockedTitle('Delete every parsed match')"
               @click="emit('arm-clear')"
             >
               Clear Database…

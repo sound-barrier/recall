@@ -9,6 +9,7 @@ import {
   sourceType,
 } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // The expanded card's Sources block — the collapsible per-match screenshot
 // list (coverage chips on the toggle row, inline previews, lightbox launch)
@@ -25,6 +26,12 @@ const props = defineProps<{
   isActive: (field: string, value: string) => boolean
 }>()
 
+// Rule 8: a coaching session loans RECORDS, never files. The bundle
+// carries no screenshots and the keys are another player's, so every path
+// in here — the thumbnail URL, the lightbox, the coverage chips — would be
+// resolving against the coach's own disk. Say so instead.
+const { sessionActive } = useWriteGate()
+
 const emit = defineEmits<{
   'toggle-sources': []
   'toggle-preview': [filename: string]
@@ -35,7 +42,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div v-if="record.source_files?.length" class="sources-block">
+  <p v-if="sessionActive" class="sources-block sources-in-session">
+    Screenshots aren't included in a coaching session.
+  </p>
+  <div v-else-if="record.source_files?.length" class="sources-block">
     <div class="sources-toggle" @click="emit('toggle-sources')">
       <span class="chev small" :class="{ open: isSourcesOpen }">›</span>
       <span class="sources-label">Source Screenshots</span>
@@ -186,6 +196,13 @@ const emit = defineEmits<{
   margin-top: 0.2rem;
   border-top: 1px dashed var(--border);
   padding-top: 0.85rem;
+}
+
+.sources-in-session {
+  margin-bottom: 0;
+  font-size: var(--type-md);
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
 }
 
 .sources-toggle {

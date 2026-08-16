@@ -44,6 +44,7 @@ const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/d
 const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = lazyOverlay(() => import('@/components/matches/manual/ManualMatchModal.vue'))
 const OnboardingTour = lazyOverlay(() => import('@/components/shared/OnboardingTour.vue'))
+const CoachReturnSheet = lazyOverlay(() => import('@/components/coach/CoachReturnSheet.vue'))
 
 const appStore = useAppStore()
 const matchesStore = useMatchesStore()
@@ -255,4 +256,9 @@ const lightboxSrc = computed(() => {
   <!-- Settings dialog — the ⌘, / app-menu / kebab Preferences surface. Mirrors
        the Settings tab's sections; the tab stays. Lazy-loaded. -->
   <SettingsModal :open="settingsDialogOpen" @close="closeSettingsDialog" />
+
+  <!-- The return of notes — one card per note the coach sent back, opened by
+       the import that staged it or by the Matches banner. Reads the staged
+       sheet off the coach store, so it takes no props. -->
+  <CoachReturnSheet />
 </template>

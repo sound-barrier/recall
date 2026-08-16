@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Density } from '@/composables/matches/useDensity'
-import { useActiveProfile } from '@/composables/shared/useActiveProfile'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useAddMatchMenu } from '@/composables/matches/useAddMatchMenu'
 
 // The Matches members-section header toolbar: the "N matches" title, the
@@ -40,8 +40,9 @@ const emit = defineEmits<{
 }>()
 
 // Manual add + bundle import write matches — rejected (409) on the read-only
-// sample profile, so disable them there.
-const { isReadOnly } = useActiveProfile()
+// sample profile AND while a coaching session holds the view, so disable
+// them there with the reason on the title.
+const { writesLocked, lockedTitle } = useWriteGate()
 // Destructured to top-level consts: a template `ref="…"` binds by NAME and
 // cannot take a dotted path, so `ref="addMenu.triggerEl"` would silently
 // register a ref literally called "addMenu.triggerEl" and leave the
@@ -70,10 +71,10 @@ const {
           type="button"
           class="add-match-btn"
           data-add-match
-          :disabled="isReadOnly"
+          :disabled="writesLocked"
           :aria-expanded="addMenuOpen ? 'true' : 'false'"
           aria-haspopup="menu"
-          :title="isReadOnly ? 'This is a read-only sample profile.' : 'Record a match by hand — no screenshots needed'"
+          :title="lockedTitle('Record a match by hand — no screenshots needed')"
           @click="toggleAddMenu"
         >
           <span class="add-match-plus" aria-hidden="true">+</span>
@@ -112,8 +113,8 @@ const {
         type="button"
         class="import-matches-btn"
         data-import-matches
-        :disabled="isReadOnly"
-        :title="isReadOnly ? 'This is a read-only sample profile.' : 'Merge matches from a shared bundle (.zip) — additive, existing matches are skipped'"
+        :disabled="writesLocked"
+        :title="lockedTitle('Merge matches from a shared bundle (.zip) — additive, existing matches are skipped')"
         @click="emit('import-matches')"
       >
         Import matches…

@@ -1,8 +1,30 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+import type { CoachReturnSheet } from '@/api-client'
 import { useBackupRestore, type BackupRestoreApi, type MatchImportResult } from '@/composables/settings/useBackupRestore'
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
+
+// Restore + import ask the write gate first; the gate itself is covered by
+// its own test, so here it is a switch the cases flip.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 function result(over: Partial<MatchImportResult> = {}): MatchImportResult {
-  return { path: '/tmp/bundle.zip', imported: 2, skipped: 1, ...over }
+  return { path: '/tmp/bundle.zip', kind: 'bundle', imported: 2, skipped: 1, ...over }
+}
+
+function returnSheet(): CoachReturnSheet {
+  return {
+    id: 7,
+    coach_name: 'Ordo',
+    player_handle: 'Sable',
+    session_date: '2026-08-14',
+    imported_at: '2026-08-15T09:12:00Z',
+    summary: '',
+    notes: [],
+    decisions: {},
+    pending: 3,
+    player_mismatch: false,
+  }
 }
 
 function makeApi(overrides: Partial<BackupRestoreApi> = {}): BackupRestoreApi {
@@ -11,12 +33,13 @@ function makeApi(overrides: Partial<BackupRestoreApi> = {}): BackupRestoreApi {
     restore: vi.fn().mockResolvedValue('/tmp/recall-backup.db'),
     importMatches: vi.fn().mockResolvedValue(result()),
     reload: vi.fn(),
+    onCoachNotes: vi.fn(),
     ...overrides,
   }
 }
 
 describe('useBackupRestore', () => {
-  beforeEach(() => { vi.useFakeTimers() })
+  beforeEach(() => { vi.useFakeTimers(); resetWriteGate() })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
 
   it('backup() sets a Saved chip on success', async () => {
@@ -158,5 +181,54 @@ describe('useBackupRestore', () => {
     expect(status.value?.ok).toBe(false)
     expect(status.value?.message).toContain('unsupported schema')
     expect(api.reload).not.toHaveBeenCalled()
+  })
+
+  describe('a coach\'s notes archive', () => {
+    it('opens the return sheet instead of merging — no reload, no counts chip', async () => {
+      const sheet = returnSheet()
+      const onCoachNotes = vi.fn()
+      const api = makeApi({
+        importMatches: vi.fn().mockResolvedValue(result({ kind: 'coach_notes', imported: 0, skipped: 0, return: sheet })),
+        onCoachNotes,
+      })
+      const { importMatches, status } = useBackupRestore(api)
+      await importMatches()
+      expect(onCoachNotes).toHaveBeenCalledWith(sheet)
+      expect(api.reload).not.toHaveBeenCalled()
+      expect(status.value).toBeNull()
+    })
+
+    it('falls back to the bundle arm when the sheet is missing', async () => {
+      const onCoachNotes = vi.fn()
+      const api = makeApi({
+        importMatches: vi.fn().mockResolvedValue(result({ kind: 'coach_notes', imported: 0, skipped: 0 })),
+        onCoachNotes,
+      })
+      const { importMatches, status } = useBackupRestore(api)
+      await importMatches()
+      expect(onCoachNotes).not.toHaveBeenCalled()
+      expect(status.value?.ok).toBe(true)
+    })
+  })
+
+  describe('the write gate', () => {
+    it('refuses restore and import while writes are locked', async () => {
+      setWritesLocked(true)
+      const api = makeApi()
+      const { restore, importMatches, status } = useBackupRestore(api)
+      await restore()
+      await importMatches()
+      expect(api.restore).not.toHaveBeenCalled()
+      expect(api.importMatches).not.toHaveBeenCalled()
+      expect(status.value).toBeNull()
+    })
+
+    it('still allows a backup — it only reads', async () => {
+      setWritesLocked(true)
+      const api = makeApi()
+      const { backup } = useBackupRestore(api)
+      await backup()
+      expect(api.backup).toHaveBeenCalled()
+    })
   })
 })

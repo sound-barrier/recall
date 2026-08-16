@@ -7,10 +7,15 @@ import { formatIgnoredAt } from '@/match/match-time-helpers'
 // the panel owns the hover-thumb state + the restore/lightbox actions; this row
 // forwards the cursor events (so the panel can position the floating preview)
 // and the click intents.
-defineProps<{
+withDefaults(defineProps<{
   screenshot: IgnoredScreenshot
   thumbnailUrl: string
-}>()
+  // The panel's write gate, threaded down: restoring a file is a write, so
+  // it goes dead (with the reason) on a locked profile or during a
+  // coaching session. The row itself stays readable.
+  restoreDisabled?: boolean
+  restoreTitle?: string
+}>(), { restoreDisabled: false, restoreTitle: '' })
 
 const emit = defineEmits<{
   'hover-enter': [event: MouseEvent]
@@ -52,6 +57,8 @@ const emit = defineEmits<{
     <button
       type="button"
       class="btn primary ignored-restore"
+      :disabled="restoreDisabled"
+      :title="restoreTitle || undefined"
       @click="emit('restore')"
     >
       Restore

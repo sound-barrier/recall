@@ -1,5 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useClearDatabase, type ClearDatabaseApi } from '@/composables/settings/useClearDatabase'
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
+
+// Clearing asks the write gate first; the gate's own contract lives in
+// useWriteGate.test.ts.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 function makeApi(overrides: Partial<ClearDatabaseApi> = {}): ClearDatabaseApi {
   return {
@@ -12,6 +17,17 @@ function makeApi(overrides: Partial<ClearDatabaseApi> = {}): ClearDatabaseApi {
 }
 
 describe('useClearDatabase', () => {
+  beforeEach(resetWriteGate)
+
+  it('refuses to clear while writes are locked', async () => {
+    setWritesLocked(true, { session: true })
+    const api = makeApi()
+    const { clearDatabase } = useClearDatabase(api)
+    await clearDatabase()
+    expect(api.clearDatabase).not.toHaveBeenCalled()
+    expect(api.afterClear).not.toHaveBeenCalled()
+  })
+
   it('armClear flips clearConfirm without calling the API', () => {
     const api = makeApi()
     const { armClear, clearConfirm } = useClearDatabase(api)

@@ -6,6 +6,7 @@ import { useEventStream } from '@/composables/shared/useEventStream'
 import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
+import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -46,6 +47,10 @@ export function useServerEvents() {
     // the settings store so the System Alert banner self-heals without an
     // app restart.
     onTesseractStatus: (s) => { settingsStore.setTesseractStatus(s) },
+    // A coaching session opened or ended — possibly in another window.
+    // The write gate reads sessionActive, so this is what keeps a second
+    // window from offering edits the server is about to refuse.
+    onCoachSessionChanged: (active) => { void useCoachStore().onSessionChangedElsewhere(active) },
   })
 
   // Server-mode parse-stream recovery: detect a mid-parse SSE drop,

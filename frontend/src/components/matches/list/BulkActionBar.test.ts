@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/vue'
 
 import BulkActionBar from '@/components/matches/list/BulkActionBar.vue'
+
+// The write gate reads the profiles query + the coaching-session store;
+// these cases pin this component's own contract, so stub it open.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
 
 function renderBar(props: Record<string, unknown> = {}) {
   return render(BulkActionBar, {

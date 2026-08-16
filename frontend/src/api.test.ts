@@ -9,7 +9,9 @@ import {
   IgnoreScreenshot,
   BackupDatabase,
   ExportBundle,
+  ExportCoachNotes,
   ExportDiagnosticBundle,
+  OpenCoachBundle,
   RestoreDatabase,
   ImportMatches,
   ParseScreenshots,
@@ -445,6 +447,17 @@ describe('binary downloads (browser mode)', () => {
     expect(name).toBe('recall-bundle-x.zip')
   })
 
+  it('ExportCoachNotes POSTs the session export and saves the named zip', async () => {
+    const spy = stubFetch(blobReply('attachment; filename="recall-coach-notes-sable-2026-08-15.zip"'))
+    stubDownloadDom()
+
+    const name = await ExportCoachNotes()
+    const req = lastRequest(spy)
+    expect(req.method).toBe('POST')
+    expect(new URL(req.url).pathname).toBe('/api/v1/coach/session/export')
+    expect(name).toBe('recall-coach-notes-sable-2026-08-15.zip')
+  })
+
   it('ExportDiagnosticBundle POSTs and saves the returned zip', async () => {
     const spy = stubFetch(blobReply('attachment; filename="recall-diagnostic-x.zip"'))
     stubDownloadDom()
@@ -521,19 +534,52 @@ describe('RestoreDatabase + ImportMatches (browser mode)', () => {
 
   it('ImportMatches returns an empty-path result when the user cancels', async () => {
     installFilePicker('cancel')
-    expect(await ImportMatches()).toEqual({ path: '', imported: 0, skipped: 0 })
+    expect(await ImportMatches()).toEqual({ path: '', kind: 'bundle', imported: 0, skipped: 0 })
   })
 
   it('ImportMatches POSTs the bundle and returns the merge summary', async () => {
     const file = new File([new Uint8Array([0x50, 0x4B, 0x03, 0x04])], 'bundle.zip', { type: 'application/zip' })
     installFilePicker('change', file)
-    const spy = stubFetch(jsonReply(200, { imported: 2, skipped: 1 }))
+    const spy = stubFetch(jsonReply(200, { kind: 'bundle', imported: 2, skipped: 1 }))
 
-    expect(await ImportMatches()).toEqual({ path: 'bundle.zip', imported: 2, skipped: 1 })
+    expect(await ImportMatches()).toEqual({ path: 'bundle.zip', kind: 'bundle', imported: 2, skipped: 1 })
     const req = lastRequest(spy)
     expect(req.method).toBe('POST')
     expect(new URL(req.url).pathname).toBe('/api/v1/imports')
     expect(req.headers.get('content-type')).toBe('application/zip')
+  })
+
+  // The union's second arm: a coach's notes archive stages a return sheet
+  // and merges nothing, so the counts stay 0 and the sheet rides along.
+  it("ImportMatches carries the staged return sheet on a coach's notes archive", async () => {
+    const file = new File([new Uint8Array([0x50, 0x4B, 0x03, 0x04])], 'notes.zip', { type: 'application/zip' })
+    installFilePicker('change', file)
+    const sheet = { id: 7, coach_name: 'Ordo', notes: [], decisions: {}, pending: 0 }
+    stubFetch(jsonReply(200, { kind: 'coach_notes', imported: 0, skipped: 0, return: sheet }))
+
+    const outcome = await ImportMatches()
+    expect(outcome.kind).toBe('coach_notes')
+    expect(outcome.return).toEqual(sheet)
+  })
+
+  it('OpenCoachBundle POSTs the picked bundle to /api/v1/coach/session', async () => {
+    const file = new File([new Uint8Array([0x50, 0x4B, 0x03, 0x04])], 'sable.zip', { type: 'application/zip' })
+    installFilePicker('change', file)
+    const spy = stubFetch(jsonReply(201, { player: { id: '', handle: 'Sable', message: '' }, notes: [] }))
+
+    const view = await OpenCoachBundle()
+    const req = lastRequest(spy)
+    expect(req.method).toBe('POST')
+    expect(new URL(req.url).pathname).toBe('/api/v1/coach/session')
+    expect(req.headers.get('content-type')).toBe('application/zip')
+    expect(view?.player.handle).toBe('Sable')
+  })
+
+  it('OpenCoachBundle resolves null — and sends nothing — when the coach cancels', async () => {
+    installFilePicker('cancel')
+    const spy = stubFetch(emptyReply(201))
+    expect(await OpenCoachBundle()).toBeNull()
+    expect(spy).not.toHaveBeenCalled()
   })
 
   it('ImportMatches throws ApiError when the server rejects the bundle', async () => {

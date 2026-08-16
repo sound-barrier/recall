@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
 import { useSettingsStore } from '@/stores/settings'
+import { qk } from '@/queries/keys'
+import { seedQuery } from '@/test-utils/queryTestUtils'
 import type { MatchRecord, TesseractStatus, DataLocation } from '@/api'
 
 // Direct unit tests for the boot-time domain loaders useAppBoot fans into —
@@ -21,6 +23,11 @@ const api = vi.hoisted(() => ({
   GetExitOnClose:        vi.fn(),
   GetNewScreenshotCount: vi.fn(),
   GetDataLocation:       vi.fn(),
+  // The store now reads the coaching overlay, which brings the coach
+  // store's own observers along; stub their reads so no unit test dials
+  // an endpoint it isn't about.
+  ListCoachReturns:        vi.fn(),
+  GetCoachSessionMatches:  vi.fn(),
 }))
 vi.mock('@/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api')>()),
@@ -52,6 +59,19 @@ function setHappyDefaults() {
   api.GetExitOnClose.mockResolvedValue(false)
   api.GetNewScreenshotCount.mockResolvedValue(3)
   api.GetDataLocation.mockResolvedValue(DATA_LOC)
+  api.ListCoachReturns.mockResolvedValue([])
+  api.GetCoachSessionMatches.mockResolvedValue([rec('loan-1')])
+}
+
+const SESSION_VIEW = {
+  player: { id: 'sable-id', handle: 'Sable', message: '' },
+  exported_at: '2026-08-14T18:30:00Z',
+  session_date: '2026-08-15',
+  match_count: 1,
+  coach_name: 'Ordo',
+  summary: '',
+  notes: [],
+  handle_from_bundle: true,
 }
 
 beforeEach(() => {
@@ -125,6 +145,32 @@ describe('matches store — load() boot coordinator', () => {
     // Probe failure → found:false (NOT a false "detected"), and matches still loaded.
     expect(settings.tesseractReady).toBe(false)
     expect(matches.records).toHaveLength(2)
+  })
+
+  // Overlay precedence is session > tour > real. The two overlays are
+  // mutually exclusive by construction, so what these pin is both halves
+  // of that exclusivity — not a race the ternary has to arbitrate.
+  it('hands every view the LOANED corpus while a coaching session is open', async () => {
+    seedQuery(qk.coach.session, SESSION_VIEW)
+    seedQuery(qk.coach.matches, [rec('loan-1')])
+    const matches = useMatchesStore()
+
+    await matches.load()
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(matches.records.map(r => r.match_key)).toEqual(['loan-1'])
+  })
+
+  it('refuses to open the tour on top of a session — the coach keeps the player\'s data', async () => {
+    seedQuery(qk.coach.session, SESSION_VIEW)
+    seedQuery(qk.coach.matches, [rec('loan-1')])
+    const matches = useMatchesStore()
+    await new Promise(r => setTimeout(r, 0))
+
+    await matches.onTourActiveChange(true)
+
+    expect(matches.tourActive).toBe(false)
+    expect(matches.records.map(r => r.match_key)).toEqual(['loan-1'])
   })
 
   it('keeps demo records showing while the tour is active — the real fetch lands in the cache', async () => {

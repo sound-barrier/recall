@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/vue'
 
+import { createPinia, setActivePinia } from 'pinia'
+
 import MatchJournal from '@/components/matches/detail/MatchJournal.vue'
 import type { MatchRecord } from '@/api'
 import type { SearchClause } from '@/match/search-query'
+
+// The write gate reads the profiles query + the coaching-session store;
+// these cases pin this component's own contract, so stub it open.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
 
 type MatchAnnotation = NonNullable<MatchRecord['annotation']>
 
@@ -364,5 +371,66 @@ describe('MatchJournal — adopting a suggestion by mouse', () => {
 
     await fireEvent.mouseDown(second!)
     expect(onSetMatchAnnotation).toHaveBeenCalledWith(KEY, expect.objectContaining({ tags: ['throw'] }))
+  })
+})
+
+describe('MatchJournal — the coach layer', () => {
+  // CoachNoteBlock reaches the coach store for its Remove action.
+  beforeEach(() => { setActivePinia(createPinia()) })
+
+  const coachBlock = (over: Record<string, unknown> = {}) => ({
+    id: 1,
+    note_id: 'n-1',
+    coach_name: 'Ordo',
+    session_date: '2026-08-14',
+    text: 'Late peel on B.',
+    match_clock: '06:40',
+    focus_tags: ['positioning'],
+    extra_tags: [],
+    accepted_at: '2026-08-15T09:15:00Z',
+    ...over,
+  })
+
+  function withCoachNotes(notes: ReturnType<typeof coachBlock>[], note = 'my own read of it') {
+    const record = makeRecord({ note })
+    return { ...record, coach_notes: notes } as MatchRecord
+  }
+
+  it('renders one block per coach and never merges them into the player\'s note', () => {
+    renderJournal({
+      record: withCoachNotes([
+        coachBlock(),
+        coachBlock({ id: 2, note_id: 'n-2', coach_name: 'Vex', text: 'Different session.' }),
+      ]),
+    })
+    expect(screen.getByRole('region', { name: "Coach's note from Ordo" })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: "Coach's note from Vex" })).toBeInTheDocument()
+    // The player's own note is exactly where it was, untouched.
+    expect(screen.getByText('my own read of it')).toBeInTheDocument()
+  })
+
+  it('renders no coach section on a match with no accepted notes', () => {
+    renderJournal({ record: makeRecord({ note: 'mine only' }) })
+    expect(screen.queryByRole('region', { name: /Coach's note/ })).toBeNull()
+  })
+})
+
+describe('MatchJournal — the write gate', () => {
+  beforeEach(resetWriteGate)
+
+  it('disables every field while writes are locked', () => {
+    setWritesLocked(true, { session: true })
+    renderJournal()
+    expect(screen.getByLabelText('Note')).toBeDisabled()
+    expect(screen.getByLabelText('Replay code')).toBeDisabled()
+    expect(tagInput()).toBeDisabled()
+    for (const t of screen.getAllByRole('button', { pressed: false })) expect(t).toBeDisabled()
+  })
+
+  it('a locked note preview does not open the editor', async () => {
+    setWritesLocked(true, { session: true })
+    renderJournal({ record: makeRecord({ note: 'read only' }) })
+    await fireEvent.click(screen.getByText('read only'))
+    expect(screen.queryByLabelText('Note')).toBeNull()
   })
 })

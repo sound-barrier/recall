@@ -17,6 +17,15 @@ export const qk = {
     autoBackup:     ['settings', 'auto-backup'] as const,
   },
   profiles:       ['profiles'] as const,
+  // The loaned corpus nests UNDER the session on purpose: ending a
+  // session invalidates the whole `['coach','session']` prefix and the
+  // player's records go with it. The returns inbox is the player's own
+  // side of the loop and lives on its own branch.
+  coach: {
+    session: ['coach', 'session'] as const,
+    matches: ['coach', 'session', 'matches'] as const,
+    returns: ['coach', 'returns'] as const,
+  },
   system: {
     referenceData: ['system', 'reference-data'] as const,
     version:       ['system', 'version'] as const,

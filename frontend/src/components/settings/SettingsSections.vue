@@ -8,6 +8,7 @@ import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
 import SettingsAppearance from '@/components/settings/SettingsAppearance.vue'
 import SettingsBackupRestore from '@/components/settings/SettingsBackupRestore.vue'
 import SettingsCalendar from '@/components/settings/SettingsCalendar.vue'
+import SettingsCoach from '@/components/settings/SettingsCoach.vue'
 import SettingsEngine from '@/components/settings/SettingsEngine.vue'
 import SettingsFolders from '@/components/settings/SettingsFolders.vue'
 import SettingsProfiles from '@/components/settings/SettingsProfiles.vue'
@@ -139,6 +140,8 @@ const reparsing = parseBusy
   />
 
   <SettingsWindow />
+
+  <SettingsCoach />
 
   <SettingsAdvanced
     :clearing-d-b="clearingDB"

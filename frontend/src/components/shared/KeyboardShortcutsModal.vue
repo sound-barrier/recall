@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, toRef } from 'vue'
 import { SHORTCUT_GROUPS } from '@/components/shared/keyboard-shortcuts.data'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useSmoothScroll } from '@/composables/matches/useSmoothScroll'
-import type { TabId } from '@/composables/shared/useTabKeyboardNav'
+import type { ViewId } from '@/composables/shared/useTabKeyboardNav'
 
 // "?" cheat-sheet modal. Lists keyboard bindings filtered to the
 // user's current context — the binding catalog covers every scope
@@ -25,8 +25,9 @@ import type { TabId } from '@/composables/shared/useTabKeyboardNav'
 
 const props = defineProps<{
   open: boolean
-  // Current top-level view. Used to gate per-view groups.
-  view: TabId
+  // Current top-level view — the film room included, which is how its
+  // group surfaces only during a coaching session.
+  view: ViewId
   // True when the detail panel is open in front of the current
   // view — flips the Matches/Detail-panel pair of groups.
   panelOpen: boolean

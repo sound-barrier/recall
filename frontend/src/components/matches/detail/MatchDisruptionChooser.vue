@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DisruptionSide, MatchRecord } from '@/api-client'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // The expanded card's disruption chooser — three side chips (self / ally /
 // enemy) + a Clear chip. Mounted twice, once per kind, because leavers and
@@ -19,6 +20,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'set-disruption': [matchKey: string, kind: 'leavers' | 'throwers', sides: DisruptionSide[]]
 }>()
+
+// Tagging a disruption rewrites the match's annotation — a write.
+const { writesLocked, lockedTitle } = useWriteGate()
 
 const SIDES: { side: DisruptionSide; glyph: string; leaverLabel: string; throwerLabel: string }[] = [
   { side: 'self',  glyph: '⊘', leaverLabel: 'I left',     throwerLabel: 'I threw' },
@@ -51,7 +55,8 @@ function toggle(side: DisruptionSide) {
       :class="{ active: isOn(s.side) }"
       :aria-pressed="isOn(s.side)"
       :data-disruption="`${kind}-${s.side}`"
-      :title="`Tag this match: ${sideLabel(s)}.`"
+      :disabled="writesLocked"
+      :title="lockedTitle(`Tag this match: ${sideLabel(s)}.`)"
       @click="toggle(s.side)"
     >
       <span class="dis-chip-glyph" :class="`dis-${s.side}`" aria-hidden="true">{{ s.glyph }}</span>
@@ -62,7 +67,8 @@ function toggle(side: DisruptionSide) {
       type="button"
       class="dis-chip dis-clear"
       :data-disruption-clear="kind"
-      :title="`Remove the ${kind === 'leavers' ? 'leaver' : 'thrower'} annotation.`"
+      :disabled="writesLocked"
+      :title="lockedTitle(`Remove the ${kind === 'leavers' ? 'leaver' : 'thrower'} annotation.`)"
       @click="emit('set-disruption', record.match_key, kind, [])"
     >
       × Clear

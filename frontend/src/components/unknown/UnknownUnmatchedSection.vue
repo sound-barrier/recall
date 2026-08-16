@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { MatchRecord } from '@/api-client'
 import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
@@ -174,6 +175,9 @@ function onCardHeadClick(rec: MatchRecord) {
   }
   props.cardState.toggleExpand(rec.match_key)
 }
+
+// "Delete forever" suppresses the file and wipes its row — a write.
+const { writesLocked, lockReason } = useWriteGate()
 </script>
 
 <template>
@@ -323,6 +327,8 @@ function onCardHeadClick(rec: MatchRecord) {
                 ? `Confirm permanently ignoring ${rec.source_files[0]}`
                 : `Permanently ignore ${rec.source_files[0]}`"
               :data-ignore-btn="rec.match_key"
+              :disabled="writesLocked"
+              :title="lockReason || undefined"
               @click="onIgnoreClick(rec)"
             >
               {{ isIgnoreArmed(rec.match_key) ? 'Confirm delete?' : 'Delete forever' }}

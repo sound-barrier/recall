@@ -1,7 +1,8 @@
-import { watch, nextTick } from 'vue'
+import { computed, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
@@ -56,8 +57,14 @@ export function useAppKeyboard() {
     document.getElementById(`match-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 
+  // `g f` reaches the film room, so the registry needs to know whether one
+  // is open — a computed rather than the store's own ref so the gate reads
+  // live without the keyboard module importing Pinia state itself.
+  const coachSessionActive = computed(() => useCoachStore().sessionActive)
+
   useGlobalKeyboard({
     view,
+    coachSessionActive,
     openCheatsheet: cheatsheetOpen,
     modalOpen: shortcutMutingModalOpen,
     selectionIsOpen: selection.isOpen,

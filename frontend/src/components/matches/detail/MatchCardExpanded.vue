@@ -13,6 +13,7 @@ import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
 import MatchStatusChoosers from '@/components/matches/detail/MatchStatusChoosers.vue'
 import EditableStat from '@/components/matches/detail/EditableStat.vue'
 import { withScalarEdit, withoutField, isEmptyOverrideSet, isFieldEdited, scalarPath, type ScalarField } from '@/match/match-overrides'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Expanded match-card body: leaver chooser → free-text annotation
 // (Note / Replay / Group members) → stats grid → rank block →
@@ -112,6 +113,11 @@ const emit = defineEmits<{
 // pattern used elsewhere (isHeroUnknown / isMapUnknown live in
 // match-helpers so the same predicate can drive leaf rows + the
 // Unknown tab section).
+// The card hosts every per-match write on this surface. It reads the gate
+// once and hands the two plain values to the leaf stat cells, which stay
+// app-state-free.
+const { writesLocked, lockReason } = useWriteGate()
+
 const unknownHero = computed(() => isHeroUnknown(props.record))
 const unknownMap  = computed(() => isMapUnknown(props.record))
 
@@ -125,6 +131,10 @@ const unknownMap  = computed(() => isMapUnknown(props.record))
 // so a new selection destroys-and-remounts this component. Queue
 // type has no OCR source, so nothing to auto-detect there.
 onMounted(() => {
+  // The one write this card starts on its own. It must not fire on a
+  // loaned match: that key does not exist in the coach's database, and the
+  // sync would write a play-mode row for another player's match.
+  if (writesLocked.value) return
   const m = props.record.data?.playlist
   if (!props.record.play_mode && (m === 'quickplay' || m === 'competitive')) {
     emit('set-match-play-mode', props.record.match_key, m)
@@ -232,6 +242,8 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       </div>
       <div class="stats">
         <EditableStat
+          :locked="writesLocked"
+          :lock-reason="lockReason"
           label="Elims"
           :value="record.data?.eliminations ?? null"
           :edited="isFieldEdited(record, scalarPath('eliminations'))"
@@ -239,6 +251,8 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
           @revert="() => revertScalar('eliminations')"
         />
         <EditableStat
+          :locked="writesLocked"
+          :lock-reason="lockReason"
           label="Assists"
           :value="record.data?.assists ?? null"
           :edited="isFieldEdited(record, scalarPath('assists'))"
@@ -246,6 +260,8 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
           @revert="() => revertScalar('assists')"
         />
         <EditableStat
+          :locked="writesLocked"
+          :lock-reason="lockReason"
           label="Deaths"
           :value="record.data?.deaths ?? null"
           :edited="isFieldEdited(record, scalarPath('deaths'))"
@@ -253,6 +269,8 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
           @revert="() => revertScalar('deaths')"
         />
         <EditableStat
+          :locked="writesLocked"
+          :lock-reason="lockReason"
           label="Damage"
           :value="record.data?.damage ?? null"
           :format="thousands"
@@ -261,6 +279,8 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
           @revert="() => revertScalar('damage')"
         />
         <EditableStat
+          :locked="writesLocked"
+          :lock-reason="lockReason"
           label="Healing"
           :value="record.data?.healing ?? null"
           :format="thousands"
@@ -269,6 +289,8 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
           @revert="() => revertScalar('healing')"
         />
         <EditableStat
+          :locked="writesLocked"
+          :lock-reason="lockReason"
           label="Mitigation"
           :value="record.data?.mitigation ?? null"
           :format="thousands"

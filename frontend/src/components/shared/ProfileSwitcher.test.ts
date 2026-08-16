@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { flushPromises } from '@/test-utils'
@@ -18,6 +19,11 @@ vi.mock('@/api', () => ({
   SwitchProfile,
   CreateProfile,
   RenameProfile,
+  // The switcher is also the "whose data" control for a coaching session,
+  // so its dropdown reaches the coach store — whose observers read these.
+  ListCoachReturns: vi.fn(async () => []),
+  GetCoachSession: vi.fn(async () => null),
+  GetCoachSessionMatches: vi.fn(async () => []),
 }))
 
 // window.location.reload is the post-switch sweep — replace it with
@@ -32,6 +38,7 @@ Object.defineProperty(window, 'location', {
 import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
 
 beforeEach(() => {
+  setActivePinia(createPinia())
   GetProfiles.mockReset()
   SwitchProfile.mockReset()
   CreateProfile.mockReset()
@@ -145,6 +152,30 @@ describe('ProfileSwitcher — masthead chip', () => {
   })
 })
 
+// A coaching session is a "whose data am I looking at" switch, which is
+// exactly what this control already is — so the entry point lives here
+// rather than as a seventh thing in the masthead.
+describe('ProfileSwitcher — opening a player\'s bundle', () => {
+  it('offers the coaching entry point in the dropdown', async () => {
+    await renderChip(['main'], 'main')
+    await openMenu()
+    expect(screen.getByRole('menuitem', { name: /Open a player's bundle/ })).toBeInTheDocument()
+  })
+
+  it('hands the click to the coach store and closes the menu', async () => {
+    const { useCoachStore } = await import('@/stores/coach')
+    const openBundle = vi.spyOn(useCoachStore(), 'openBundle').mockResolvedValue(undefined)
+    await renderChip(['main'], 'main')
+    await openMenu()
+
+    await user().click(screen.getByRole('menuitem', { name: /Open a player's bundle/ }))
+    await flushPromises()
+
+    expect(openBundle).toHaveBeenCalled()
+    expect(menu()).not.toBeInTheDocument()
+  })
+})
+
 describe('ProfileSwitcher — rename', () => {
   it('hovering reveals a rename trigger per profile item', async () => {
     await renderChip(['alt', 'main'], 'main')
@@ -207,9 +238,10 @@ describe('ProfileSwitcher — rename', () => {
 
     await user().click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByLabelText('New name for profile alt')).not.toBeInTheDocument()
-    // Two actual profile rows plus the "+ New profile…" trigger.
+    // Two actual profile rows, then the "+ New profile…" trigger and the
+    // coaching entry point — neither of which names a profile.
     const items = screen.getAllByRole('menuitem')
-    expect(items.map((i) => within(i).queryByText(/alt|main/) !== null)).toEqual([true, true, false])
+    expect(items.map((i) => within(i).queryByText(/alt|main/) !== null)).toEqual([true, true, false, false])
     expect(RenameProfile).not.toHaveBeenCalled()
   })
 })

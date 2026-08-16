@@ -132,9 +132,12 @@ test.describe('coaching session — write gate', () => {
     await expect(page.locator('[data-pin-toggle]')).toBeDisabled()
     await expect(page.getByRole('button', { name: /Open in the film room/ })).toBeVisible()
 
-    // Trying anyway must not send anything.
-    await page.locator('[data-pin-toggle]').click({ force: true })
-    await reviewRadios.nth(1).click({ force: true })
+    // Trying anyway must not send anything. dispatchEvent rather than a
+    // forced click: it fires the handler even though the control is
+    // disabled and off-screen, so this proves the GUARD refuses the write
+    // rather than the disabled attribute merely suppressing the click.
+    await page.locator('[data-pin-toggle]').dispatchEvent('click')
+    await reviewRadios.nth(1).dispatchEvent('click')
     await page.getByRole('button', { name: /Open in the film room/ }).click()
     await expect(page.locator('#panel-coach')).toBeVisible()
     expect(tripped, 'mutating requests during the session').toEqual([])

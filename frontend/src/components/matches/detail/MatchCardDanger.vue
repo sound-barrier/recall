@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import { useWriteGate } from '@/composables/shared/useWriteGate'
+
 // Soft-delete row at the bottom of MatchCard's expanded view.
 //
 // Hide is destructive in user intent ("I don't want to see this
@@ -20,6 +22,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   'set-hidden': [matchKey: string, hidden: boolean]
 }>()
+
+// Hide / unhide write the match's visibility row.
+const { writesLocked, lockedTitle } = useWriteGate()
 
 const confirmingHide = ref(false)
 
@@ -48,7 +53,8 @@ function unhide() {
         <button
           type="button"
           class="danger-btn"
-          title="Hide this match. Soft delete — the row stays in the database (a re-parse won't re-add the screenshots), and you can unhide it later via the Hidden toggle in the filter rail."
+          :disabled="writesLocked"
+          :title="lockedTitle('Hide this match. Soft delete — the row stays in the database (a re-parse won\'t re-add the screenshots), and you can unhide it later via the Hidden toggle in the filter rail.')"
           @click="startHideConfirm"
         >
           <span class="danger-glyph" aria-hidden="true">⌫</span>
@@ -60,7 +66,8 @@ function unhide() {
         <button
           type="button"
           class="danger-btn danger-confirm"
-          title="Confirm. The match will disappear from the list. Reveal it again via the Hidden · N toggle in the filter rail."
+          :disabled="writesLocked"
+          :title="lockedTitle('Confirm. The match will disappear from the list. Reveal it again via the Hidden · N toggle in the filter rail.')"
           @click="confirmHide"
         >
           Confirm
@@ -83,7 +90,8 @@ function unhide() {
       <button
         type="button"
         class="danger-btn danger-unhide"
-        title="Restore this match to the list."
+        :disabled="writesLocked"
+        :title="lockedTitle('Restore this match to the list.')"
         @click="unhide"
       >
         Unhide

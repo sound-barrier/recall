@@ -193,7 +193,9 @@ const accessibleName = computed(
   margin-top: 0.15rem;
   font-size: var(--type-2xs);
   line-height: 1.35;
-  color: var(--text-mute);
+
+  /* The player's own words — --text-mute drops under AA on Day here. */
+  color: var(--text-dim);
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;

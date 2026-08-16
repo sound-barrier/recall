@@ -20,6 +20,13 @@ export const ONBOARDING_COMPLETED_KEY = 'recall.onboardingCompleted'
 // chunk.
 export const ONBOARDING_RESUME_KEY = 'recall.onboarding.resumeStep'
 
+// Set while a coaching session is open on the server, so a reload knows
+// to ask for it. Without the flag the app never issues the session GET —
+// a coach who isn't in a session pays no boot round-trip, and a 404 is
+// never the normal case. Cleared when the session ends (or when the
+// server answers that it is already gone).
+export const COACH_SESSION_RESUME_KEY = 'recall.coach.sessionOpen'
+
 // Per-contextual-callout "seen" state lives at this prefix + the
 // callout id (the same id passed to useContextualCallout). The full
 // onboarding tour's completed key (above) gates the WHOLE family:

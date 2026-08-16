@@ -59,12 +59,13 @@ describe('useEventStream', () => {
 
   afterEach(() => { vi.clearAllMocks() })
 
-  it('subscribes to all six lifecycle events on mount', () => {
+  it('subscribes to all seven lifecycle events on mount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
     mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
     expect(onCalls.map(c => c.name).sort()).toEqual([
+      'coach-session-changed',
       'match-updated',
       'parse-canceled',
       'parse-complete',
@@ -74,13 +75,14 @@ describe('useEventStream', () => {
     ])
   })
 
-  it('unsubscribes from all six on unmount', () => {
+  it('unsubscribes from all seven on unmount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
     const { view } = mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
     view.unmount()
     expect(offCalls.map(c => c.name).sort()).toEqual([
+      'coach-session-changed',
       'match-updated',
       'parse-canceled',
       'parse-complete',
@@ -99,6 +101,21 @@ describe('useEventStream', () => {
     const status = { path: '/usr/bin/tesseract', found: true, version: '5.3.0', supported: true, error: '', default: '', platform: 'linux' }
     handlers['tesseract-status']!(status)
     expect(onTesseractStatus).toHaveBeenCalledWith(status)
+  })
+
+  // Two windows on one install share a session: the one that did not open
+  // it must still lock its writes, or it will try to edit the coach's own
+  // matches while the corpus on screen belongs to someone else.
+  it('coach-session-changed forwards the active flag to onCoachSessionChanged', () => {
+    const records = ref<MatchRecord[]>([])
+    const parseProgress = ref<ParseProgressEvent | null>(null)
+    const parseLog = ref<ParseProgressEvent[]>([])
+    const onCoachSessionChanged = vi.fn()
+    mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn(), onCoachSessionChanged })
+    handlers['coach-session-changed']!({ active: true })
+    expect(onCoachSessionChanged).toHaveBeenCalledWith(true)
+    handlers['coach-session-changed']!({ active: false })
+    expect(onCoachSessionChanged).toHaveBeenLastCalledWith(false)
   })
 
   it('parse-canceled fires the caller-supplied onParseCanceled when provided', () => {

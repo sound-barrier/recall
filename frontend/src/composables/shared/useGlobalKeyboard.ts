@@ -1,7 +1,7 @@
 import { computed, nextTick, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { useKeyboardShortcuts, type Shortcut } from '@/composables/shared/useKeyboardShortcuts'
-import { type TabId } from '@/composables/shared/useTabKeyboardNav'
+import { type ViewId } from '@/composables/shared/useTabKeyboardNav'
 
 // Global shortcut registry, hoisted out of App.vue so the keyboard
 // rules can be unit-tested in isolation and App.vue stops carrying
@@ -18,8 +18,12 @@ import { type TabId } from '@/composables/shared/useTabKeyboardNav'
 
 export interface GlobalKeyboardDeps {
   // The active view, used to gate Matches-specific shortcuts and
-  // to forward `g <x>` sequence navigation to the right tab.
-  view: Ref<TabId>
+  // to forward `g <x>` sequence navigation to the right one.
+  view: Ref<ViewId>
+  // True while a player's bundle is open. Gates `g f`: the film room only
+  // exists during a session, so outside one the key must do nothing rather
+  // than land the user on an empty panel.
+  coachSessionActive: Ref<boolean>
   // Cheatsheet open state — the `?` shortcut writes it, and it feeds the
   // dispatcher's suppression (no shortcut fires while the modal is up).
   openCheatsheet: Ref<boolean>
@@ -46,8 +50,9 @@ export interface GlobalKeyboardDeps {
   narrowedRecords: Ref<MatchRecord[]>
   // Tab-nav helper from App.vue, awaited by `/` so the keypress can
   // bring the Matches tab into focus before clicking the dossier
-  // trigger.
-  goToView: (tab: TabId) => void | Promise<void>
+  // trigger. Takes a ViewId, not a TabId — `g f` targets the film room,
+  // which is a view outside the tablist.
+  goToView: (view: ViewId) => void | Promise<void>
   // Vertical move helper from App.vue — j/k delegate here so the
   // scroll-into-view + aria-current bookkeeping lives in one place.
   focusCardByRenderedDelta: (delta: 1 | -1) => void | Promise<void>
@@ -64,14 +69,20 @@ export interface GlobalKeyboardDeps {
   toggleExpand: (matchKey: string) => void | Promise<void>
 }
 
-// The `g <x>` sequence's follow-key → tab mapping.
-const VIEW_NAV_TARGETS: Record<'m' | 'i' | 's' | 'u' | 'c' | 'e', TabId> = {
-  m: 'matches', i: 'ingest', s: 'settings', u: 'unknown', c: 'compare', e: 'elo',
+// The `g <x>` sequence's follow-key → view mapping. `f` is the film room,
+// the one target that isn't a tab.
+const VIEW_NAV_FOLLOW_KEYS = ['m', 'i', 's', 'u', 'c', 'e', 'f'] as const
+
+type ViewNavKey = typeof VIEW_NAV_FOLLOW_KEYS[number]
+
+const VIEW_NAV_TARGETS: Record<ViewNavKey, ViewId> = {
+  m: 'matches', i: 'ingest', s: 'settings', u: 'unknown', c: 'compare', e: 'elo', f: 'coach',
 }
 
 export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
   const {
     view,
+    coachSessionActive,
     openCheatsheet,
     modalOpen,
     selectionIsOpen,
@@ -114,12 +125,13 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
         })()
       },
     },
-    // Global: vim-style view navigation (`g` then m/i/s/u/c/e).
-    ...(['m', 'i', 's', 'u', 'c', 'e'] as const).map((follow): Shortcut => {
-      const target: TabId = VIEW_NAV_TARGETS[follow]
+    // Global: vim-style view navigation (`g` then m/i/s/u/c/e/f).
+    ...VIEW_NAV_FOLLOW_KEYS.map((follow): Shortcut => {
+      const target: ViewId = VIEW_NAV_TARGETS[follow]
       return {
         key: follow,
         prefix: 'g',
+        when: target === 'coach' ? () => coachSessionActive.value : undefined,
         handler: () => { void goToView(target) },
       }
     }),

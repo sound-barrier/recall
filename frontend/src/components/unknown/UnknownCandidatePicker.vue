@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { MatchRecord } from '@/api-client'
 import { screenshotURL, isDuplicateCandidate, hasDuplicateCandidate } from '@/match/match-helpers'
 import { formatCandidateDistance } from '@/match/match-time-helpers'
@@ -49,6 +50,9 @@ function freshKey(): string | null {
   const m = /(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})/.exec(filename)
   return m ? `match-${m[1]}-${m[2]}-${m[3]}T${m[4]}-${m[5]}-${m[6]}` : null
 }
+
+// Resolving an ambiguous screenshot rewrites its match key — a write.
+const { writesLocked, lockedTitle } = useWriteGate()
 </script>
 
 <template>
@@ -96,6 +100,8 @@ function freshKey(): string | null {
           <button
             type="button"
             class="btn primary candidate-attach"
+            :disabled="writesLocked"
+            :title="lockedTitle('Attach this screenshot to the match')"
             @click="emit('pick', cand.match_key)"
           >
             {{ isDuplicateCandidate(cand) ? 'Same match — merge screenshots' : 'Attach to this match' }}
@@ -105,6 +111,8 @@ function freshKey(): string | null {
           v-if="freshKey()"
           type="button"
           class="btn ghost candidate-fresh"
+          :disabled="writesLocked"
+          :title="lockedTitle('Keep this screenshot as its own match')"
           @click="emit('pick', freshKey()!)"
         >
           {{ hasDuplicateCandidate(rec) ? 'Different match — keep separate' : 'Treat as new match' }}

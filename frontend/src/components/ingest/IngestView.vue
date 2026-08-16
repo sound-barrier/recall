@@ -6,7 +6,7 @@ import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import ParseProgressPanel from '@/components/ingest/ParseProgressPanel.vue'
-import { useActiveProfile } from '@/composables/shared/useActiveProfile'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // IngestView (presented to users as the "Parse" tab) — the
 // operational panel. One job: run the parse pipeline. Engine setup,
@@ -37,11 +37,21 @@ const {
   parseConnectionState,
 } = storeToRefs(matchesStore)
 const { parse, onCancelParse, refreshParse } = matchesStore
-// The tour's sample profile is read-only — parsing new screenshots into it is
-// rejected server-side (409), so disable the affordances here.
-const { isReadOnly } = useActiveProfile()
+// Parsing writes matches: rejected server-side (409) on the tour's
+// read-only sample profile and while a coaching session holds the view, so
+// both affordances go dead with the reason on them.
+const { writesLocked, sessionActive, lockReason } = useWriteGate()
 const matchedCount = computed(() => matchesStore.records.length)
 const unknownCount = computed(() => matchesStore.unknownRecords.length)
+
+// One reason wins, most specific first — a locked profile or session first
+// (nothing can run), then the two operational blocks.
+const runParseTitle = computed(() => {
+  if (writesLocked.value) return lockReason.value
+  if (!tesseractReady.value) return 'Locate Tesseract in Settings → Engine first.'
+  if (newScreenshotCount.value === 0) return 'All screenshots in the folder have already been parsed.'
+  return ''
+})
 </script>
 
 <template>
@@ -50,7 +60,11 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
       <p class="eyebrow settings-eyebrow">
         Parse Pipeline
       </p>
-      <p v-if="isReadOnly" class="readonly-note" data-readonly-note>
+      <p v-if="sessionActive" class="readonly-note" data-readonly-note>
+        🔒 A coaching session is open — parsing and watching are disabled while you
+        review another player's matches. End the session to parse your own again.
+      </p>
+      <p v-else-if="writesLocked" class="readonly-note" data-readonly-note>
         🔒 This is a read-only sample profile — parsing and watching are disabled.
         Switch to your own profile to add matches.
       </p>
@@ -118,11 +132,13 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
             </p>
           </div>
           <div class="setting-control">
-            <label class="big-switch" :class="{ on: watchEnabled, disabled: !tesseractReady || isReadOnly }">
+            <label class="big-switch" :class="{ on: watchEnabled, disabled: !tesseractReady || writesLocked }">
               <input
                 type="checkbox"
                 :checked="watchEnabled"
-                :disabled="!tesseractReady || isReadOnly"
+                :disabled="!tesseractReady || writesLocked"
+                :title="lockReason || undefined"
+                aria-label="Watch the screenshots folder"
                 @change="toggleWatch()"
               >
               <span class="big-switch-track"><span class="big-switch-knob" /></span>
@@ -182,9 +198,9 @@ const unknownCount = computed(() => matchesStore.unknownRecords.length)
               v-else
               class="btn primary big"
               data-testid="run-parse-btn"
-              :class="{ ghost: (tesseractReady && newScreenshotCount === 0) || isReadOnly }"
-              :disabled="!tesseractReady || newScreenshotCount === 0 || isReadOnly"
-              :title="isReadOnly ? 'This is a read-only sample profile.' : !tesseractReady ? 'Locate Tesseract in Settings → Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
+              :class="{ ghost: (tesseractReady && newScreenshotCount === 0) || writesLocked }"
+              :disabled="!tesseractReady || newScreenshotCount === 0 || writesLocked"
+              :title="runParseTitle"
               @click="parse()"
             >
               <span class="btn-dot" />

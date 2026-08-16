@@ -12,8 +12,11 @@ import '@/styles/app.css'
 import { defineAsyncComponent, type Component } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
+import { useOWData } from '@/composables/shared/useOWData'
+import type { CoachLabels } from '@/components/coach/coach-room-props'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
 import { useAppBoot } from '@/composables/app/useAppBoot'
@@ -61,12 +64,23 @@ const SettingsView = lazyView(() => import('@/components/settings/SettingsView.v
 const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsView.vue'))
 const SeasonCompareView = lazyView(() => import('@/components/compare/SeasonCompareView.vue'))
 const EloCalculatorView = lazyView(() => import('@/components/elo/EloCalculatorView.vue'))
+// The film room is a view without a tab — reached from the loan slip, the
+// back affordance, or `g f`, and only while a bundle is open.
+const CoachRoomView = lazyView(() => import('@/components/coach/CoachRoomView.vue'))
 
 // App-shell cross-cutting state (error banner, version, update check, data
 // location) lives in the Pinia app store. Destructure with the same local
 // names so the existing call sites in this file stay unchanged.
 const appStore = useAppStore()
 const { view } = storeToRefs(appStore)
+
+// The coaching session. The room is presentational by design — props in,
+// events out — so the shell hands it the store's state and routes every
+// intent straight back to a store action. Canonical hero/map spellings come
+// from the shared reference-data lookups.
+const coachStore = useCoachStore()
+const { mapDisplayName, heroDisplayName } = useOWData()
+const coachLabels: CoachLabels = { map: mapDisplayName, hero: heroDisplayName }
 
 // Matches domain: the first-load skeleton gate, the unsupported-OCR modal gate
 // (focus-trapped here), the parse sr-only announcement, and the records count
@@ -165,6 +179,28 @@ useServerEvents()
 
         <!-- ─── ELO CALCULATOR VIEW ──────────────────────────────── -->
         <EloCalculatorView v-if="view === 'elo'" />
+
+        <!-- ─── FILM ROOM (a coaching session's home) ─────────────── -->
+        <!-- Presentational by design: the shell hands it the session's
+             state and routes each intent back to a store action. -->
+        <CoachRoomView
+          v-if="view === 'coach' && coachStore.player"
+          :player="coachStore.player"
+          :records="coachStore.loanedRecords"
+          :notes="coachStore.notes"
+          :selected-key="coachStore.selectedKey"
+          :summary="coachStore.summary"
+          :coach-name="coachStore.coachName"
+          :save-state="coachStore.saveState"
+          :can-export="coachStore.coachName !== ''"
+          :export-reason="coachStore.coachName === '' ? 'Set a coach name in Settings before exporting notes' : undefined"
+          :labels="coachLabels"
+          @select="coachStore.selectKey"
+          @update-note="coachStore.updateNote"
+          @update-summary="coachStore.updateSummary"
+          @export="coachStore.exportNotes"
+          @end="coachStore.endSession"
+        />
 
         <!-- ─── MATCHES VIEW ───────────────────────────────────── -->
         <!-- First paint: render skeleton leaf-rows until the initial

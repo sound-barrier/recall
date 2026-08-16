@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { SetMatchVisibility } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useAppStore } from '@/stores/app'
 
 export interface UndoHideToastState { matchKeys: string[]; label: string; token: number }
@@ -16,6 +17,9 @@ export interface UndoHideToastState { matchKeys: string[]; label: string; token:
 // hide restarts the auto-dismiss countdown in the toast component.
 export function useUndoHideToast() {
   const appStore = useAppStore()
+  // Un-hiding is a write like any other: a toast left on screen when the
+  // gate closed (a session opening mid-countdown) must not fire it.
+  const { guardWrite } = useWriteGate()
 
   const undoHideToast = ref<UndoHideToastState | null>(null)
   let token = 0
@@ -30,6 +34,7 @@ export function useUndoHideToast() {
     const keys = undoHideToast.value?.matchKeys ?? []
     undoHideToast.value = null
     if (keys.length === 0) return
+    if (!guardWrite()) return
     try {
       await Promise.all(keys.map((k) => SetMatchVisibility(k, false)))
       // Un-hiding only changes the records — matches-only refetch.

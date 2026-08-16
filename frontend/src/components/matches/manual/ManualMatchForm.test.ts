@@ -7,6 +7,10 @@ import type { ManualMatchMode } from '@/composables/matches/useManualMatchForm'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 
+// The write gate reads the profiles query + the coaching-session store;
+// these cases pin this component's own contract, so stub it open.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
+
 // The form is inseparable from its shell: ManualMatchModal owns the single
 // useManualMatchForm instance and provides it, and the submit path is the only
 // place the assembled payload is observable. So these drive the real pair and

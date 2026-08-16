@@ -5,6 +5,7 @@ import { useScrollLock } from '@/composables/shared/useScrollLock'
 import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
 import type { IgnoredScreenshot } from '@/api-client'
 import IgnoredFileRow from '@/components/settings/IgnoredFileRow.vue'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // IgnoredFilesPanel — Settings → Advanced → "Manage ignored files."
 // Modal dialog listing every row from the suppress-list with the
@@ -51,6 +52,10 @@ const emit = defineEmits<{
 // "Re-enable all" two-step arm. First click arms (3 s auto-disarm);
 // second click within the window fires `restore-all`.
 const ARM_MS = 3000
+// Restoring a suppressed file and re-running the parse both write; the
+// panel stays open and readable, its actions do not.
+const { writesLocked, lockedTitle } = useWriteGate()
+
 const armed = ref(false)
 let armTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -228,6 +233,8 @@ function onBackdropClick(e: MouseEvent) {
               v-if="!armed"
               type="button"
               class="btn ghost ignored-restore-all"
+              :disabled="writesLocked"
+              :title="lockedTitle('Bring every ignored file back')"
               @click="onRestoreAllClick"
             >
               Re-enable all ({{ screenshots.length }})
@@ -257,6 +264,8 @@ function onBackdropClick(e: MouseEvent) {
               :key="s.filename"
               :screenshot="s"
               :thumbnail-url="screenshotURL(s.filename)"
+              :restore-disabled="writesLocked"
+              :restore-title="lockedTitle('Bring this file back')"
               @hover-enter="(e) => onHoverRow(s.filename, e)"
               @hover-move="(e) => onMoveRow(s.filename, e)"
               @hover-leave="onLeaveRow"
@@ -271,6 +280,8 @@ function onBackdropClick(e: MouseEvent) {
           <button
             type="button"
             class="ignored-runparse"
+            :disabled="writesLocked"
+            :title="lockedTitle('Run a parse now')"
             @click="emit('run-parse')"
           >
             Run Parse now

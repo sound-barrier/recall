@@ -12,6 +12,10 @@ import { nextTick } from 'vue'
 
 import IgnoredFilesPanel from '@/components/settings/IgnoredFilesPanel.vue'
 
+// The write gate reads the profiles query + the coaching-session store;
+// these cases pin this component's own contract, so stub it open.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
+
 const SAMPLE = [
   { filename: 'a.png', ignored_at: '2026-06-04T15:00:00Z' },
   { filename: 'b.png', ignored_at: '2026-06-04T14:00:00Z' },

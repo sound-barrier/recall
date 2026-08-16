@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onMounted, nextTick } from 'vue'
+import { computed, onMounted, nextTick } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
+import CoachNoteBlock from '@/components/coach/CoachNoteBlock.vue'
 import { useMatchAnnotationEditor } from '@/composables/matches/useMatchAnnotationEditor'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // The expanded match card's MATCH JOURNAL — note / replay / squad / tags
 // editor. Owns useMatchAnnotationEditor (the draft state + commit logic)
@@ -34,6 +36,20 @@ const emit = defineEmits<{
 // chain, lets its Promise<boolean> outcome reach the editor so the
 // "saved" pulse is a real persistence receipt.
 const { onSetMatchAnnotation } = useMatchActions()
+
+// Read-only sample profile or an open coaching session: the journal is the
+// player's own writing surface, and neither state may write to it. The
+// coach's own notes are written in the Film Room, not here.
+const { writesLocked, lockReason, lockedTitle } = useWriteGate()
+
+// The coach-received layer: one block per coach and session, alongside
+// (never merged into) the player's own note.
+const coachNotes = computed(() => props.record.coach_notes ?? [])
+
+function enterEditModeIfWritable(e: MouseEvent | KeyboardEvent) {
+  if (writesLocked.value) return
+  enterEditMode(e)
+}
 
 const {
   noteDraft,
@@ -129,6 +145,8 @@ onMounted(() => {
           type="button"
           class="journal-apply-btn"
           data-journal-apply
+          :disabled="writesLocked"
+          :title="lockReason || undefined"
           :aria-label="`Apply members and tags from ${applySource.match_key}`"
           @click="applyAnnotationDraft(applySource.annotation ?? {})"
         >
@@ -156,10 +174,10 @@ onMounted(() => {
           role="textbox"
           aria-readonly="true"
           tabindex="0"
-          title="Click to edit"
-          @click="enterEditMode"
-          @keydown.enter.prevent="enterEditMode"
-          @keydown.space.prevent="enterEditMode"
+          :title="lockedTitle('Click to edit')"
+          @click="enterEditModeIfWritable"
+          @keydown.enter.prevent="enterEditModeIfWritable"
+          @keydown.space.prevent="enterEditModeIfWritable"
         >
           <template v-for="(seg, i) in noteHighlightSegments" :key="i">
             <mark v-if="seg.hit" class="note-hit">{{ seg.text }}</mark>
@@ -175,6 +193,8 @@ onMounted(() => {
           v-model="noteDraft"
           class="match-notes-textarea"
           rows="2"
+          :disabled="writesLocked"
+          :title="lockReason || undefined"
           placeholder="What happened this match? Mistakes, wins, who was carrying…"
           @blur="exitNoteEditMode"
         />
@@ -193,6 +213,8 @@ onMounted(() => {
             :id="`replay-${record.match_key}`"
             v-model="replayDraft"
             class="match-notes-input mono"
+            :disabled="writesLocked"
+            :title="lockReason || undefined"
             placeholder="e.g. 7H1K9P"
             spellcheck="false"
             autocomplete="off"
@@ -220,6 +242,8 @@ onMounted(() => {
               <button
                 type="button"
                 class="member-chip-remove"
+                :disabled="writesLocked"
+                :title="lockReason || undefined"
                 :aria-label="`Remove ${m} from group`"
                 @click="removeMember(m)"
               >
@@ -230,6 +254,8 @@ onMounted(() => {
               :id="`members-${record.match_key}`"
               v-model="memberInput"
               class="match-notes-input member-input mono"
+              :disabled="writesLocked"
+              :title="lockReason || undefined"
               :placeholder="memberDraft.length ? 'Add BattleTag…' : 'Add BattleTag · Enter to confirm'"
               spellcheck="false"
               autocomplete="off"
@@ -260,6 +286,8 @@ onMounted(() => {
             :class="{ active: hasTag(t) }"
             :data-tag="t"
             :data-tag-add="t"
+            :disabled="writesLocked"
+            :title="lockReason || undefined"
             :aria-pressed="hasTag(t)"
             @click="toggleNamedTag(t)"
           >
@@ -277,6 +305,8 @@ onMounted(() => {
             <button
               type="button"
               class="match-tag-x"
+              :disabled="writesLocked"
+              :title="lockReason || undefined"
               :aria-label="`Remove ${t} tag`"
               @click="removeTag(t)"
             >×</button>
@@ -286,6 +316,8 @@ onMounted(() => {
               :id="`tags-${record.match_key}`"
               v-model="tagInput"
               class="match-tag-input"
+              :disabled="writesLocked"
+              :title="lockReason || undefined"
               placeholder="add tag"
               spellcheck="false"
               autocomplete="off"
@@ -322,6 +354,15 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
+      <!-- The coach layer: one block per coach and session, below the
+           player's own entry and never merged into it. -->
+      <CoachNoteBlock
+        v-for="coachNote in coachNotes"
+        :key="coachNote.id"
+        :match-key="record.match_key"
+        :note="coachNote"
+      />
     </div>
   </section>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import type { FailedFile } from '@/api-client'
 import { ExportDiagnosticBundle } from '@/api-client'
 import { screenshotURL } from '@/match/match-helpers'
@@ -85,6 +86,9 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
   srcFor: (filename) => screenshotURL(filename, 0),
   canShow: () => true,
 })
+
+// "Delete forever" suppresses the file and wipes its row — a write.
+const { writesLocked, lockReason } = useWriteGate()
 </script>
 
 <template>
@@ -141,6 +145,8 @@ const { hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave } = useH
               ? `Confirm permanently ignoring ${row.filename}`
               : `Permanently ignore ${row.filename}`"
             :data-failed-ignore="row.filename"
+            :disabled="writesLocked"
+            :title="lockReason || undefined"
             @click="onIgnoreClick(row)"
           >
             {{ isIgnoreArmed(row.filename) ? 'Confirm delete?' : 'Delete forever' }}
