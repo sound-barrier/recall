@@ -299,3 +299,12 @@
 .eyebrow.alert {
   color: var(--loss);
 }
+
+/* Kickers written on paper (the coaching session's reel day labels and
+   session strip, see paper.css). Full ink rather than the faint step:
+   on a paper strip the kicker IS the heading, and the strip may sit on
+   the dark reel where the theme's --text-faint would be the wrong ink
+   entirely. */
+.eyebrow.ink {
+  color: var(--ink);
+}
