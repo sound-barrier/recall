@@ -104,10 +104,6 @@ func ParseCancel(a *App) *context.CancelFunc { return &a.parseCancel }
 func ParseRunning(a *App) *bool              { return &a.parseRunning }
 func ParseCancelMu(a *App) *sync.Mutex       { return &a.parseCancelMu }
 
-// SseMsg aliases the unexported SSE message envelope (exported fields) so the
-// SSE test can type its channels.
-type SseMsg = sseMsg
-
 // Manifest IO at the historical zero-config signatures — production
 // reaches the manifest through pkg/gamedata directly; only tests
 // want the appBaseDir()-resolved convenience.
