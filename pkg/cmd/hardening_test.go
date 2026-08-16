@@ -80,6 +80,16 @@ func TestMaxBodyForPath(t *testing.T) {
 	if got := cmd.MaxBodyForPath("/api/v1/imports"); got != cmd.ImportMaxBodyBytes {
 		t.Errorf("imports cap = %d, want %d", got, cmd.ImportMaxBodyBytes)
 	}
+	// A coach opens a full bundle — screenshot bytes and all — over the
+	// session endpoint, so it belongs in the import class.
+	if got := cmd.MaxBodyForPath("/api/v1/coach/session"); got != cmd.ImportMaxBodyBytes {
+		t.Errorf("coach session cap = %d, want %d", got, cmd.ImportMaxBodyBytes)
+	}
+	// The notes routes carry one small JSON note, not an archive — they
+	// stay on the default cap.
+	if got := cmd.MaxBodyForPath("/api/v1/coach/session/notes/match-A"); got != cmd.DefaultMaxBodyBytes {
+		t.Errorf("coach note cap = %d, want %d", got, cmd.DefaultMaxBodyBytes)
+	}
 	if got := cmd.MaxBodyForPath("/api/v1/matches/queue"); got != cmd.DefaultMaxBodyBytes {
 		t.Errorf("default cap = %d, want %d", got, cmd.DefaultMaxBodyBytes)
 	}

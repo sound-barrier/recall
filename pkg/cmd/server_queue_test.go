@@ -15,6 +15,7 @@ func queuePath(matchKey string) string {
 
 func TestMatchQueue_PutRolePersistsAndReturns204(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-A")
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, queuePath("match-A"), map[string]string{"queue_type": "role"})
 	if rec.Code != http.StatusNoContent {
@@ -27,6 +28,7 @@ func TestMatchQueue_PutRolePersistsAndReturns204(t *testing.T) {
 
 func TestMatchQueue_PutOpenOverwritesRole(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-A")
 	_, mux := newTestApp(t, fs)
 	_ = put(t, mux, queuePath("match-A"), map[string]string{"queue_type": "role"})
 	rec := put(t, mux, queuePath("match-A"), map[string]string{"queue_type": "open"})

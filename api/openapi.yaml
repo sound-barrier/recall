@@ -67,6 +67,10 @@ tags:
     description: Build metadata, update check, reference data, on-disk paths.
   - name: Backup
     description: Database export + restore.
+  - name: Coaching
+    description: |
+      The coaching loop — a coach reviews a player's bundle in a session,
+      and the player decides on the notes that come back.
   - name: Events
     description: Server-Sent Events stream.
   - name: Assets
@@ -2230,19 +2234,33 @@ paths:
     post:
       operationId: ImportMatches
       tags: [Backup]
-      summary: Merge matches from a previously-exported bundle
+      summary: Import a bundle's matches or a coach's notes archive
       description: |
-        Merges the matches in an uploaded `recall-bundle/v1` ZIP (as
-        produced by `POST /api/v1/exports/bundle`) into the local
-        database. ADDITIVE — a match whose key already exists locally is
-        skipped, and nothing is ever wiped. Only the bundle's parsed rows
-        (`data.json`) are imported; the embedded screenshot images are
-        ignored (data-only).
+        Accepts either archive a user can hand Recall and tells them apart
+        by ZIP entry names before any JSON is parsed, so a hostile payload
+        cannot pick its own reader. The response's `kind` says which one
+        arrived.
+
+        A `recall-bundle/v1` ZIP (as produced by
+        `POST /api/v1/exports/bundle`) MERGES into the local database.
+        ADDITIVE — a match whose key already exists locally is skipped, and
+        nothing is ever wiped. Only the bundle's parsed rows (`data.json`)
+        are imported; the embedded screenshot images are ignored
+        (data-only).
+
+        A `recall-coach-notes/v1` ZIP is STAGED as a return sheet and
+        changes no match: the player accepts or skips each note through
+        `PUT /api/v1/coach/returns/{id}/decisions`. Because staging writes
+        no match data, it is allowed on the read-only sample profile — a
+        bundle merge is not.
 
         Payload-level failures (not a ZIP, unreadable archive, missing
-        manifest/data.json) are rejected with `400`; semantic failures
-        (unsupported bundle schema) with `409`. Existing data is left
-        untouched in both rejection paths.
+        manifest/data.json or notes.json) are rejected with `400`;
+        semantic failures — an unsupported schema, a bundle a player
+        shared FOR coaching (open it as a session instead), a coaching
+        session in progress, no note about any match in this history —
+        with `409`. Existing data is left untouched in both rejection
+        paths.
 
         For a full-fidelity backup/restore (every table, including edits
         and review state) use `GET` / `PUT /api/v1/database` instead.
@@ -2253,30 +2271,488 @@ paths:
             schema:
               type: string
               format: binary
-              description: A recall-bundle/v1 ZIP from POST /api/v1/exports/bundle.
+              description: |
+                A recall-bundle/v1 ZIP from POST /api/v1/exports/bundle,
+                or a recall-coach-notes/v1 ZIP from
+                POST /api/v1/coach/session/export.
       responses:
         "200":
-          description: Merge applied; counts of added vs skipped matches.
+          description: |
+            Import applied: merge counts for a bundle, the staged return
+            sheet for a coach notes archive.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ImportSummary"
+                $ref: "#/components/schemas/ImportOutcome"
         "400":
           description: |
-            Payload was not a readable Recall bundle (not a ZIP, archive
-            open failure, missing or undecodable manifest/data.json).
+            Payload was not a readable Recall archive (not a ZIP, archive
+            open failure, missing or undecodable manifest/data.json or
+            notes.json).
           content:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
         "409":
           description: |
-            The bundle was readable but its schema is unsupported by this
-            build.
+            The archive was readable but refused: an unsupported schema, a
+            bundle shared for coaching, a coaching session in progress, a
+            read-only profile, or a notes file about no match in this
+            history.
           content:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/session:
+    post:
+      operationId: OpenCoachSession
+      tags: [Coaching]
+      summary: Open a player's bundle as a coaching session
+      description: |
+        Loans a player's exported bundle into memory for the length of a
+        review. The player's matches are rendered from the ZIP and never
+        written to this database, and they are discarded when the session
+        closes. Only the coach's OWN notes about the player persist — keyed
+        by player, so they resurface the next time that bundle is opened.
+
+        One session at a time: a second open is a `409`. While a session is
+        open every mutating endpoint is refused with `409` — the coach is
+        looking at somebody else's history, so a write aimed at "this
+        match" would land on a key this database has never seen.
+
+        A bundle that names its player (a "share with a coach" export)
+        arrives with the handle pre-filled; an anonymous one leaves it
+        blank until `PUT /api/v1/coach/session/player` confirms one.
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema:
+              type: string
+              format: binary
+              description: A recall-bundle/v1 ZIP the player exported.
+      responses:
+        "201":
+          description: Session opened; the view the Film Room renders.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachSessionView"
+        "400":
+          description: Payload was not a readable Recall bundle.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: |
+            A session is already open, the payload is a coach notes
+            archive rather than a bundle, or its schema is unsupported.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      operationId: GetCoachSession
+      tags: [Coaching]
+      summary: Read the open coaching session
+      description: |
+        Returns the open session hydrated with everything the coach has
+        already written about this player. `404` when none is open — which
+        is how a reloaded tab learns its resume flag is stale.
+      responses:
+        "200":
+          description: The open session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachSessionView"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: CloseCoachSession
+      tags: [Coaching]
+      summary: End the coaching session
+      description: |
+        Discards the loaned records. The coach's notes about the player
+        stay — they are keyed by player, not by session. Idempotent:
+        closing a session that is already gone returns 204.
+      responses:
+        "204":
+          description: Session closed (or none was open).
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/session/player:
+    put:
+      operationId: SetCoachSessionPlayer
+      tags: [Coaching]
+      summary: Confirm who the session is about
+      description: |
+        The bundle suggests, the coach confirms. When the bundle minted a
+        stable player id the row is found by that id and renamed; when it
+        did not, the handle itself is the identity, so typing a different
+        one switches to that player. Either way the notes for the resolved
+        player re-hydrate, which is why the whole view is the response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [handle]
+              properties:
+                handle:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: The display handle the coach confirmed.
+              example:
+                handle: Sable
+      responses:
+        "200":
+          description: The session, re-hydrated for the confirmed player.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachSessionView"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/session/matches:
+    get:
+      operationId: GetCoachSessionMatches
+      tags: [Coaching]
+      summary: The loaned corpus
+      description: |
+        The player's matches as the six tabs render them while a session is
+        open — the same `MatchRecord` shape as `GET /api/v1/matches`,
+        assembled from the bundle in memory with no store involved.
+
+        Two deliberate departures: no ambiguity candidates travel in a
+        bundle, and `thumbnail_file` / `source_dir_ids` are blank so
+        nothing ever resolves a screenshot against the coach's disk.
+      responses:
+        "200":
+          description: The loaned records, ascending by match_key.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchRecord"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/session/notes/{match_key}:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: PutCoachNote
+      tags: [Coaching]
+      summary: Save the coach's note about one match
+      description: |
+        Upserts the coach's one note about one of the session's matches —
+        the note editor's autosave target. The note replaces any earlier
+        one for the same match; its identity (`note_id`) is minted once and
+        survives every re-save and re-export, so the player's side can
+        dedupe and record decisions against it.
+
+        `404` when no session is open or the match is not in the loaned
+        corpus, `409` before the player's handle has been confirmed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachNoteInput"
+      responses:
+        "200":
+          description: The saved note, as the reel renders it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachNote"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteCoachNote
+      tags: [Coaching]
+      summary: Remove the coach's note about one match
+      description: |
+        What the autosave sends when a draft goes empty. Idempotent —
+        deleting a note that was never written returns 204.
+      responses:
+        "204":
+          description: Note removed (or never existed).
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/session/summary:
+    put:
+      operationId: PutCoachSummary
+      tags: [Coaching]
+      summary: Save the session summary
+      description: |
+        The one set-level note for the session's player ("what to work
+        on"). An empty `text` clears it, so the field is required but may
+        be blank.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 20000
+                  description: |
+                    The summary. Empty string clears the stored summary.
+      responses:
+        "204":
+          description: Summary saved (or cleared).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/session/export:
+    post:
+      operationId: ExportCoachNotes
+      tags: [Coaching]
+      summary: Export the session's notes as an archive (ZIP)
+      description: |
+        Packs the coach's work into the archive they hand the player:
+        `notes.json` (the machine copy the player's side ingests) and
+        `ledger.html` (the human copy nothing ever parses). `POST` because
+        it assembles a document rather than reading a resource.
+
+        Refuses rather than shipping something unattributable: `404` with
+        no session open, `409` without a coach name in Settings, before the
+        player's handle is confirmed, or when there is no note and no
+        summary yet.
+      responses:
+        "200":
+          description: |
+            ZIP archive with a `Content-Disposition: attachment;
+            filename="recall-coach-notes-<handle>-<date>.zip"` header.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/returns:
+    get:
+      operationId: ListCoachReturns
+      tags: [Coaching]
+      summary: The player's inbox of returned notes
+      description: |
+        Every notes archive staged by `POST /api/v1/imports`, newest first,
+        with each note's derived status. "Pending" is derived, not stored:
+        a note with no decision whose match is still in this history. The
+        Matches banner counts exactly those.
+      responses:
+        "200":
+          description: Staged return sheets, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachReturnSheet"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/returns/{id}:
+    parameters:
+      - $ref: "#/components/parameters/CoachReturnID"
+    get:
+      operationId: GetCoachReturn
+      tags: [Coaching]
+      summary: Read one staged return sheet
+      description: |
+        One archive out of the inbox, with every note's status recomputed
+        against the current history — a note whose match was deleted since
+        it was staged reads back as an orphan.
+      responses:
+        "200":
+          description: The staged return.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachReturnSheet"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteCoachReturn
+      tags: [Coaching]
+      summary: Discard a staged return sheet
+      description: |
+        Drops the staged archive and its decisions. Blocks an earlier
+        accept already wrote onto matches STAY — they are the player's
+        notes now, and
+        `DELETE /api/v1/matches/{match_key}/coach-notes/{id}` removes those
+        one at a time.
+      responses:
+        "204":
+          description: Return sheet discarded.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/coach/returns/{id}/decisions:
+    parameters:
+      - $ref: "#/components/parameters/CoachReturnID"
+    put:
+      operationId: DecideCoachReturn
+      tags: [Coaching]
+      summary: Accept or skip notes on a return sheet
+      description: |
+        Records the player's verdicts and returns the recomputed sheet. The
+        body is a PARTIAL map keyed by `note_id` — the player decides one
+        card at a time and a note the map omits stays pending, which is
+        what "Decide later" leaves behind.
+
+        An accept writes the coach's block onto the match and marks it
+        reviewed by coach (overwriting a `self` review); a `reviewed_only`
+        mark sets only the flag. A skip removes a block an earlier accept
+        wrote. The batch is validated whole before anything is written, so
+        one bad entry writes nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachDecisionsRequest"
+      responses:
+        "200":
+          description: The recomputed sheet.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachReturnSheet"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: |
+            A note on the sheet is about a match no longer in this history
+            (an orphan), or a coaching session is open.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/matches/{match_key}/coach-notes/{id}:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+      - $ref: "#/components/parameters/CoachNoteID"
+    delete:
+      operationId: DeleteMatchCoachNote
+      tags: [Coaching]
+      summary: Remove an accepted coach note from a match
+      description: |
+        The match journal's "Remove this note". The note must be ON that
+        match: a mismatched pair is a `404` rather than a delete of
+        somebody else's row.
+      responses:
+        "204":
+          description: Coach note removed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/settings/coaching:
+    get:
+      operationId: GetCoachingSettings
+      tags: [Coaching]
+      summary: Read the coaching settings
+      description: |
+        The name this user signs notes with as a coach. Empty means "not
+        set yet" — the Export affordance stays disabled until it is filled
+        in, because the ledger is rendered server-side and needs it.
+      responses:
+        "200":
+          description: The coaching settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingSettings"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      operationId: SetCoachingSettings
+      tags: [Coaching]
+      summary: Set the coach name
+      description: |
+        Persists the name, trimmed. An empty string clears it — export then
+        refuses with `409` rather than shipping an unsigned archive.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachingSettings"
+      responses:
+        "200":
+          description: The saved coaching settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingSettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -2307,6 +2783,10 @@ paths:
             screenshot and when a parse run starts; payload is
             `WatchActivityEvent`. Drives the masthead's
             "watching · N new" dot.
+          * `coach-session-changed` — fired when a coaching session opens
+            or closes; payload is `CoachSessionChangedEvent`. Every other
+            tab flips its write gate off `active` rather than re-fetching
+            the session.
           * Keepalive comment lines every 25 s so reverse proxies
             don't close the connection
 
@@ -2346,6 +2826,8 @@ paths:
               $ref: "#/components/schemas/TesseractStatus"
             watch-activity:
               $ref: "#/components/schemas/WatchActivityEvent"
+            coach-session-changed:
+              $ref: "#/components/schemas/CoachSessionChangedEvent"
 
   /_screenshot/{dir_id}/{filename}:
     get:
@@ -2415,6 +2897,33 @@ components:
         and `ambiguous-<filename>` variants the embedded filename
         still needs the usual encoding for spaces / unicode.
       example: "match-2026-05-10T22-21-11"
+
+    CoachReturnID:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      description: |
+        Identity of a staged return sheet, as `CoachReturnSheet.id`
+        carries it.
+      example: 7
+
+    CoachNoteID:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      description: |
+        Identity of one accepted coach block on a match, as
+        `MatchCoachNote.id` carries it. Distinct from the archive-level
+        `note_id` UUID — this is the local row.
+      example: 4
 
   schemas:
     DBHealth:
@@ -3206,14 +3715,24 @@ components:
             when not yet set.
           example: /Users/jacob/Documents/Overwatch/Screenshots
 
-    ImportSummary:
+    ImportOutcome:
       type: object
       description: |
-        Outcome of a merge import (`POST /api/v1/imports`): how many
-        matches were added versus skipped because their key already
-        existed locally.
-      required: [imported, skipped]
+        What `POST /api/v1/imports` produced. `kind` is the discriminant:
+        `bundle` carries the merge counts, `coach_notes` carries the
+        staged return sheet the player decides on.
+
+        The counts carry no omitempty on purpose — a bundle whose matches
+        were all already present is the "imported 0, skipped 12" case, and
+        dropping the zeros would leave the client rendering an absent
+        number. They are both 0 for a `coach_notes` import, which writes no
+        match.
+      required: [kind, imported, skipped]
       properties:
+        kind:
+          type: string
+          enum: [bundle, coach_notes]
+          description: Which archive the payload turned out to be.
         imported:
           type: integer
           minimum: 0
@@ -3222,6 +3741,372 @@ components:
           type: integer
           minimum: 0
           description: Matches skipped because their key already existed.
+        return:
+          allOf:
+            - $ref: "#/components/schemas/CoachReturnSheet"
+          description: |
+            The staged return sheet. Present only when
+            `kind: coach_notes`. Re-importing the same file re-opens the
+            sheet it already staged, decisions intact.
+
+    CoachSessionChangedEvent:
+      type: object
+      description: |
+        Payload of the `coach-session-changed` SSE event — fired when a
+        coaching session opens or closes so every other tab flips its write
+        gate without re-fetching.
+      required: [active]
+      properties:
+        active:
+          type: boolean
+          description: True when a session is now open.
+
+    CoachPlayer:
+      type: object
+      description: |
+        Who a session is about. `id` is the stable UUID a "share with a
+        coach" export mints once — the coach's notes key on it, so they
+        follow the player across a handle change. A bundle from a build
+        that predates the identity, or an anonymous export, carries an
+        empty id and the handle IS the identity.
+      required: [id, handle, message]
+      properties:
+        id:
+          type: string
+          description: Stable player UUID, or empty for an anonymous bundle.
+          example: 4c1c8f6e-2d3a-4b7e-9f10-6a5d2c8e1b47
+        handle:
+          type: string
+          description: Display handle the coach sees, and may correct.
+          example: Sable
+        message:
+          type: string
+          description: The player's optional note to their coach.
+
+    CoachNoteKindEnum:
+      type: string
+      enum: [note, reviewed_only]
+      description: |
+        `note` carries text and/or tags; `reviewed_only` is the "I looked
+        at this, nothing to add" mark and carries neither — accepting one
+        sets only the reviewed flag on the match.
+
+    CoachFocusTagEnum:
+      type: string
+      enum:
+        - positioning
+        - ult_economy
+        - target_priority
+        - cooldowns
+        - hero_pick
+        - comms
+        - mechanics
+        - mental
+      description: |
+        The fixed focus vocabulary, in display order. Mirrors the CHECK
+        constraint on the focus-tag tables; anything outside it belongs in
+        `extra_tags`, which is freeform.
+
+    CoachMatchContext:
+      type: object
+      description: |
+        A descriptive snapshot of the match a note is about, carried inside
+        the notes archive so an orphaned note still renders on the return
+        sheet as "not in your history".
+      required: [map, hero, result, date, finished_at]
+      properties:
+        map:
+          type: string
+        hero:
+          type: string
+        result:
+          type: string
+        date:
+          type: string
+          description: The player's naive local date (YYYY-MM-DD).
+        finished_at:
+          type: string
+          description: The player's naive local finish time (HH:MM).
+
+    CoachNoteInput:
+      type: object
+      description: |
+        Body of a note write — the note minus its identity. Text and clock
+        are trimmed; focus tags are deduplicated and sorted; extra tags are
+        deduplicated case-insensitively.
+
+        Kind rules: a `reviewed_only` mark must carry no text, tags, or
+        clock, and a `note` must carry text or at least one tag. Violations
+        are `400`.
+      required: [kind]
+      properties:
+        kind:
+          $ref: "#/components/schemas/CoachNoteKindEnum"
+        text:
+          type: string
+          maxLength: 4000
+        focus_tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachFocusTagEnum"
+        extra_tags:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 40
+          description: Freeform tags outside the fixed vocabulary.
+        match_clock:
+          type: string
+          pattern: "^[0-9]{1,3}:[0-5][0-9]$"
+          description: |
+            Optional in-match timestamp, `MM:SS`. Empty when the note is
+            not about a moment.
+          example: "06:40"
+
+    CoachNote:
+      type: object
+      description: |
+        One coach-authored note. `note_id` is minted once and survives
+        every re-save and re-export, so the player's side dedupes and
+        records decisions against it.
+      required: [note_id, match_key, kind, text, focus_tags, extra_tags, match_clock, updated_at]
+      properties:
+        note_id:
+          type: string
+          description: Stable note UUID.
+        match_key:
+          type: string
+          description: The match this note is about.
+        kind:
+          $ref: "#/components/schemas/CoachNoteKindEnum"
+        text:
+          type: string
+        focus_tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachFocusTagEnum"
+        extra_tags:
+          type: array
+          items:
+            type: string
+        match_clock:
+          type: string
+        updated_at:
+          type: string
+          description: When the note was last saved (RFC3339).
+        match:
+          allOf:
+            - $ref: "#/components/schemas/CoachMatchContext"
+          description: |
+            The match snapshot. Present on notes read out of an archive;
+            omitted on a live session note, where the corpus already
+            carries the match.
+
+    CoachSessionView:
+      type: object
+      description: |
+        The open coaching session as the Film Room renders it: who it is
+        about, when the bundle was exported, and everything the coach has
+        written about this player so far.
+      required: [player, exported_at, session_date, match_count, coach_name, summary, notes, handle_from_bundle]
+      properties:
+        player:
+          $ref: "#/components/schemas/CoachPlayer"
+        exported_at:
+          type: string
+          description: When the player exported the bundle (RFC3339).
+        session_date:
+          type: string
+          description: The UTC date this session is dated with (YYYY-MM-DD).
+        match_count:
+          type: integer
+          minimum: 0
+          description: Matches in the loaned corpus.
+        coach_name:
+          type: string
+          description: |
+            The name notes are signed with, from
+            `GET /api/v1/settings/coaching`. Empty until it is set, which
+            is what disables Export.
+        summary:
+          type: string
+          description: The set-level "what to work on" note.
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachNote"
+          description: |
+            Notes already written about this player — including ones from
+            an earlier session, which is what "resurfaces when that
+            player's bundle is opened again" means.
+        handle_from_bundle:
+          type: boolean
+          description: |
+            True when the bundle named the player, so the handle is
+            pre-filled rather than waiting on the coach to confirm one.
+
+    CoachDecisionEnum:
+      type: string
+      enum: [accepted, skipped]
+      description: |
+        The player's verdict on one returned note: `accepted` writes the
+        coach's block onto the match, `skipped` removes a block an earlier
+        accept wrote.
+
+    CoachReturnItem:
+      type: object
+      description: |
+        One note on a return sheet: the note as the archive carries it plus
+        its derived status.
+      required: [note_id, match_key, kind, text, focus_tags, extra_tags, match_clock, updated_at, status]
+      properties:
+        note_id:
+          type: string
+        match_key:
+          type: string
+        kind:
+          $ref: "#/components/schemas/CoachNoteKindEnum"
+        text:
+          type: string
+        focus_tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachFocusTagEnum"
+        extra_tags:
+          type: array
+          items:
+            type: string
+        match_clock:
+          type: string
+        updated_at:
+          type: string
+        match:
+          $ref: "#/components/schemas/CoachMatchContext"
+        status:
+          type: string
+          enum: [pending, accepted, skipped, orphan]
+          description: |
+            `pending` is derived, never stored — undecided and decidable.
+            `orphan` means the note is about a match this history no longer
+            has, so it cannot be accepted at all.
+
+    CoachReturnSheet:
+      type: object
+      description: |
+        One staged notes archive on the player's side: the header, every
+        note with its status, and the decisions recorded so far.
+      required: [id, coach_name, player_handle, session_date, imported_at, summary, notes, decisions, pending, player_mismatch]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Local identity of the staged return.
+        coach_name:
+          type: string
+          description: Who signed the archive.
+        player_handle:
+          type: string
+          description: The handle the archive was written about.
+        session_date:
+          type: string
+          description: The coach's session date (YYYY-MM-DD).
+        imported_at:
+          type: string
+          description: When this archive was staged (RFC3339).
+        summary:
+          type: string
+          description: The coach's set-level note.
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachReturnItem"
+        decisions:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CoachDecisionEnum"
+          description: |
+            Decisions so far, keyed by `note_id`. A note with no entry is
+            undecided.
+        pending:
+          type: integer
+          minimum: 0
+          description: |
+            Notes still awaiting a decision, orphans excluded — the number
+            the Matches banner counts.
+        player_mismatch:
+          type: boolean
+          description: |
+            True when this archive was written about somebody else: the
+            local player handle is set and differs from the file's.
+
+    CoachDecisionsRequest:
+      type: object
+      description: |
+        Body of `PUT /api/v1/coach/returns/{id}/decisions`. PARTIAL — only
+        the notes named here are decided, and an omitted note stays
+        pending.
+      required: [decisions]
+      properties:
+        decisions:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CoachDecisionEnum"
+          description: Verdicts keyed by `note_id`.
+
+    CoachingSettings:
+      type: object
+      description: |
+        The name this user signs notes with as a coach. Empty means "not
+        set yet"; the ledger is rendered server-side, so this is a server
+        setting rather than a browser preference.
+      required: [coach_name]
+      properties:
+        coach_name:
+          type: string
+          maxLength: 64
+          description: Display name on exported notes. Empty clears it.
+
+    MatchCoachNote:
+      type: object
+      description: |
+        One accepted coach note as it hangs off a match — the
+        coach-RECEIVED layer. `id` is the local row (what
+        `DELETE /api/v1/matches/{match_key}/coach-notes/{id}` takes);
+        `note_id` is the archive-level UUID, stable across re-exports, so a
+        re-imported archive updates the same block instead of duplicating
+        it.
+      required: [id, note_id, coach_name, session_date, text, accepted_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        note_id:
+          type: string
+        coach_name:
+          type: string
+        session_date:
+          type: string
+          description: The coach's session date (YYYY-MM-DD).
+        text:
+          type: string
+        match_clock:
+          type: string
+          description: Optional `MM:SS` moment. Omitted when unset.
+        focus_tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachFocusTagEnum"
+          description: |
+            Absent or null on a block whose note carried no focus tag —
+            the received layer is stored as the archive handed it over.
+        extra_tags:
+          type: array
+          items:
+            type: string
+        accepted_at:
+          type: string
+          description: When the player accepted the note (RFC3339).
 
     MatchRecord:
       type: object
@@ -3399,6 +4284,16 @@ components:
             `distance_seconds` ascending.
           items:
             $ref: "#/components/schemas/AmbiguousCandidate"
+        coach_notes:
+          type: array
+          description: |
+            The coach-received layer: every coach note the user accepted
+            onto this match, oldest first. Notes accumulate — one block per
+            coach and session — and each is removed individually via
+            `DELETE /api/v1/matches/{match_key}/coach-notes/{id}`. Omitted
+            for matches no coach has written about.
+          items:
+            $ref: "#/components/schemas/MatchCoachNote"
 
     AutoBackupStatus:
       type: object

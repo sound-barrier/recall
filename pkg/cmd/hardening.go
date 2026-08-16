@@ -44,13 +44,18 @@ const (
 )
 
 // maxBodyForPath returns the body-size ceiling for a request path. The
-// bundle-import (POST /imports) and native-restore (PUT /database) endpoints
-// accept large binary uploads; everything else is small JSON.
+// bundle-import (POST /imports), native-restore (PUT /database) and
+// coaching-session (POST /coach/session) endpoints accept large binary
+// uploads — the session opens the same kind of bundle /imports merges,
+// screenshot bytes and all. Everything else is small JSON, the coaching
+// note + summary writes included.
 func maxBodyForPath(p string) int64 {
-	if p == "/api/v1/imports" || p == "/api/v1/database" {
+	switch p {
+	case "/api/v1/imports", "/api/v1/database", "/api/v1/coach/session":
 		return importMaxBodyBytes
+	default:
+		return defaultMaxBodyBytes
 	}
-	return defaultMaxBodyBytes
 }
 
 func withSecurityHardening(next http.Handler) http.Handler {

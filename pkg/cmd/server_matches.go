@@ -14,7 +14,9 @@ import (
 // registerMatchRoutes attaches every /api/v1/matches/... handler to
 // apiMux. New routes under this resource family go in this file
 // (collection + bulk handlers) or server_matches_item.go (the
-// per-{match_key} sub-resource handlers), not in NewMux.
+// per-{match_key} sub-resource handlers), not in NewMux. The one
+// exception is DELETE /matches/{match_key}/coach-notes/{id}, which
+// registers with the rest of the coaching lifecycle in server_coach.go.
 func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/matches", handleGetMatches(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches", handleClearMatches(a))

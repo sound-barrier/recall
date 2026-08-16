@@ -668,12 +668,22 @@ export type DataLocation = {
 };
 
 /**
- * Outcome of a merge import (`POST /api/v1/imports`): how many
- * matches were added versus skipped because their key already
- * existed locally.
+ * What `POST /api/v1/imports` produced. `kind` is the discriminant:
+ * `bundle` carries the merge counts, `coach_notes` carries the
+ * staged return sheet the player decides on.
+ *
+ * The counts carry no omitempty on purpose — a bundle whose matches
+ * were all already present is the "imported 0, skipped 12" case, and
+ * dropping the zeros would leave the client rendering an absent
+ * number. They are both 0 for a `coach_notes` import, which writes no
+ * match.
  *
  */
-export type ImportSummary = {
+export type ImportOutcome = {
+    /**
+     * Which archive the payload turned out to be.
+     */
+    kind: 'bundle' | 'coach_notes';
     /**
      * Matches added to the local database.
      */
@@ -682,6 +692,338 @@ export type ImportSummary = {
      * Matches skipped because their key already existed.
      */
     skipped: number;
+    /**
+     * The staged return sheet. Present only when
+     * `kind: coach_notes`. Re-importing the same file re-opens the
+     * sheet it already staged, decisions intact.
+     *
+     */
+    return?: CoachReturnSheet;
+};
+
+/**
+ * Payload of the `coach-session-changed` SSE event — fired when a
+ * coaching session opens or closes so every other tab flips its write
+ * gate without re-fetching.
+ *
+ */
+export type CoachSessionChangedEvent = {
+    /**
+     * True when a session is now open.
+     */
+    active: boolean;
+};
+
+/**
+ * Who a session is about. `id` is the stable UUID a "share with a
+ * coach" export mints once — the coach's notes key on it, so they
+ * follow the player across a handle change. A bundle from a build
+ * that predates the identity, or an anonymous export, carries an
+ * empty id and the handle IS the identity.
+ *
+ */
+export type CoachPlayer = {
+    /**
+     * Stable player UUID, or empty for an anonymous bundle.
+     */
+    id: string;
+    /**
+     * Display handle the coach sees, and may correct.
+     */
+    handle: string;
+    /**
+     * The player's optional note to their coach.
+     */
+    message: string;
+};
+
+/**
+ * `note` carries text and/or tags; `reviewed_only` is the "I looked
+ * at this, nothing to add" mark and carries neither — accepting one
+ * sets only the reviewed flag on the match.
+ *
+ */
+export type CoachNoteKindEnum = 'note' | 'reviewed_only';
+
+/**
+ * The fixed focus vocabulary, in display order. Mirrors the CHECK
+ * constraint on the focus-tag tables; anything outside it belongs in
+ * `extra_tags`, which is freeform.
+ *
+ */
+export type CoachFocusTagEnum = 'positioning' | 'ult_economy' | 'target_priority' | 'cooldowns' | 'hero_pick' | 'comms' | 'mechanics' | 'mental';
+
+/**
+ * A descriptive snapshot of the match a note is about, carried inside
+ * the notes archive so an orphaned note still renders on the return
+ * sheet as "not in your history".
+ *
+ */
+export type CoachMatchContext = {
+    map: string;
+    hero: string;
+    result: string;
+    /**
+     * The player's naive local date (YYYY-MM-DD).
+     */
+    date: string;
+    /**
+     * The player's naive local finish time (HH:MM).
+     */
+    finished_at: string;
+};
+
+/**
+ * Body of a note write — the note minus its identity. Text and clock
+ * are trimmed; focus tags are deduplicated and sorted; extra tags are
+ * deduplicated case-insensitively.
+ *
+ * Kind rules: a `reviewed_only` mark must carry no text, tags, or
+ * clock, and a `note` must carry text or at least one tag. Violations
+ * are `400`.
+ *
+ */
+export type CoachNoteInput = {
+    kind: CoachNoteKindEnum;
+    text?: string;
+    focus_tags?: Array<CoachFocusTagEnum>;
+    /**
+     * Freeform tags outside the fixed vocabulary.
+     */
+    extra_tags?: Array<string>;
+    /**
+     * Optional in-match timestamp, `MM:SS`. Empty when the note is
+     * not about a moment.
+     *
+     */
+    match_clock?: string;
+};
+
+/**
+ * One coach-authored note. `note_id` is minted once and survives
+ * every re-save and re-export, so the player's side dedupes and
+ * records decisions against it.
+ *
+ */
+export type CoachNote = {
+    /**
+     * Stable note UUID.
+     */
+    note_id: string;
+    /**
+     * The match this note is about.
+     */
+    match_key: string;
+    kind: CoachNoteKindEnum;
+    text: string;
+    focus_tags: Array<CoachFocusTagEnum>;
+    extra_tags: Array<string>;
+    match_clock: string;
+    /**
+     * When the note was last saved (RFC3339).
+     */
+    updated_at: string;
+    /**
+     * The match snapshot. Present on notes read out of an archive;
+     * omitted on a live session note, where the corpus already
+     * carries the match.
+     *
+     */
+    match?: CoachMatchContext;
+};
+
+/**
+ * The open coaching session as the Film Room renders it: who it is
+ * about, when the bundle was exported, and everything the coach has
+ * written about this player so far.
+ *
+ */
+export type CoachSessionView = {
+    player: CoachPlayer;
+    /**
+     * When the player exported the bundle (RFC3339).
+     */
+    exported_at: string;
+    /**
+     * The UTC date this session is dated with (YYYY-MM-DD).
+     */
+    session_date: string;
+    /**
+     * Matches in the loaned corpus.
+     */
+    match_count: number;
+    /**
+     * The name notes are signed with, from
+     * `GET /api/v1/settings/coaching`. Empty until it is set, which
+     * is what disables Export.
+     *
+     */
+    coach_name: string;
+    /**
+     * The set-level "what to work on" note.
+     */
+    summary: string;
+    /**
+     * Notes already written about this player — including ones from
+     * an earlier session, which is what "resurfaces when that
+     * player's bundle is opened again" means.
+     *
+     */
+    notes: Array<CoachNote>;
+    /**
+     * True when the bundle named the player, so the handle is
+     * pre-filled rather than waiting on the coach to confirm one.
+     *
+     */
+    handle_from_bundle: boolean;
+};
+
+/**
+ * The player's verdict on one returned note: `accepted` writes the
+ * coach's block onto the match, `skipped` removes a block an earlier
+ * accept wrote.
+ *
+ */
+export type CoachDecisionEnum = 'accepted' | 'skipped';
+
+/**
+ * One note on a return sheet: the note as the archive carries it plus
+ * its derived status.
+ *
+ */
+export type CoachReturnItem = {
+    note_id: string;
+    match_key: string;
+    kind: CoachNoteKindEnum;
+    text: string;
+    focus_tags: Array<CoachFocusTagEnum>;
+    extra_tags: Array<string>;
+    match_clock: string;
+    updated_at: string;
+    match?: CoachMatchContext;
+    /**
+     * `pending` is derived, never stored — undecided and decidable.
+     * `orphan` means the note is about a match this history no longer
+     * has, so it cannot be accepted at all.
+     *
+     */
+    status: 'pending' | 'accepted' | 'skipped' | 'orphan';
+};
+
+/**
+ * One staged notes archive on the player's side: the header, every
+ * note with its status, and the decisions recorded so far.
+ *
+ */
+export type CoachReturnSheet = {
+    /**
+     * Local identity of the staged return.
+     */
+    id: number;
+    /**
+     * Who signed the archive.
+     */
+    coach_name: string;
+    /**
+     * The handle the archive was written about.
+     */
+    player_handle: string;
+    /**
+     * The coach's session date (YYYY-MM-DD).
+     */
+    session_date: string;
+    /**
+     * When this archive was staged (RFC3339).
+     */
+    imported_at: string;
+    /**
+     * The coach's set-level note.
+     */
+    summary: string;
+    notes: Array<CoachReturnItem>;
+    /**
+     * Decisions so far, keyed by `note_id`. A note with no entry is
+     * undecided.
+     *
+     */
+    decisions: {
+        [key: string]: CoachDecisionEnum;
+    };
+    /**
+     * Notes still awaiting a decision, orphans excluded — the number
+     * the Matches banner counts.
+     *
+     */
+    pending: number;
+    /**
+     * True when this archive was written about somebody else: the
+     * local player handle is set and differs from the file's.
+     *
+     */
+    player_mismatch: boolean;
+};
+
+/**
+ * Body of `PUT /api/v1/coach/returns/{id}/decisions`. PARTIAL — only
+ * the notes named here are decided, and an omitted note stays
+ * pending.
+ *
+ */
+export type CoachDecisionsRequest = {
+    /**
+     * Verdicts keyed by `note_id`.
+     */
+    decisions: {
+        [key: string]: CoachDecisionEnum;
+    };
+};
+
+/**
+ * The name this user signs notes with as a coach. Empty means "not
+ * set yet"; the ledger is rendered server-side, so this is a server
+ * setting rather than a browser preference.
+ *
+ */
+export type CoachingSettings = {
+    /**
+     * Display name on exported notes. Empty clears it.
+     */
+    coach_name: string;
+};
+
+/**
+ * One accepted coach note as it hangs off a match — the
+ * coach-RECEIVED layer. `id` is the local row (what
+ * `DELETE /api/v1/matches/{match_key}/coach-notes/{id}` takes);
+ * `note_id` is the archive-level UUID, stable across re-exports, so a
+ * re-imported archive updates the same block instead of duplicating
+ * it.
+ *
+ */
+export type MatchCoachNote = {
+    id: number;
+    note_id: string;
+    coach_name: string;
+    /**
+     * The coach's session date (YYYY-MM-DD).
+     */
+    session_date: string;
+    text: string;
+    /**
+     * Optional `MM:SS` moment. Omitted when unset.
+     */
+    match_clock?: string;
+    /**
+     * Absent or null on a block whose note carried no focus tag —
+     * the received layer is stored as the archive handed it over.
+     *
+     */
+    focus_tags?: Array<CoachFocusTagEnum>;
+    extra_tags?: Array<string>;
+    /**
+     * When the player accepted the note (RFC3339).
+     */
+    accepted_at: string;
 };
 
 /**
@@ -843,6 +1185,15 @@ export type MatchRecord = {
      *
      */
     candidates?: Array<AmbiguousCandidate>;
+    /**
+     * The coach-received layer: every coach note the user accepted
+     * onto this match, oldest first. Notes accumulate — one block per
+     * coach and session — and each is removed individually via
+     * `DELETE /api/v1/matches/{match_key}/coach-notes/{id}`. Omitted
+     * for matches no coach has written about.
+     *
+     */
+    coach_notes?: Array<MatchCoachNote>;
 };
 
 /**
@@ -1181,6 +1532,21 @@ export type CloseBehaviorFlag = {
  *
  */
 export type MatchKey = string;
+
+/**
+ * Identity of a staged return sheet, as `CoachReturnSheet.id`
+ * carries it.
+ *
+ */
+export type CoachReturnId = number;
+
+/**
+ * Identity of one accepted coach block on a match, as
+ * `MatchCoachNote.id` carries it. Distinct from the archive-level
+ * `note_id` UUID — this is the local row.
+ *
+ */
+export type CoachNoteId = number;
 
 export type ClearMatchesData = {
     body?: never;
@@ -3488,7 +3854,10 @@ export type ExportDiagnosticBundleResponse = ExportDiagnosticBundleResponses[key
 
 export type ImportMatchesData = {
     /**
-     * A recall-bundle/v1 ZIP from POST /api/v1/exports/bundle.
+     * A recall-bundle/v1 ZIP from POST /api/v1/exports/bundle,
+     * or a recall-coach-notes/v1 ZIP from
+     * POST /api/v1/coach/session/export.
+     *
      */
     body: Blob | File;
     path?: never;
@@ -3498,14 +3867,17 @@ export type ImportMatchesData = {
 
 export type ImportMatchesErrors = {
     /**
-     * Payload was not a readable Recall bundle (not a ZIP, archive
-     * open failure, missing or undecodable manifest/data.json).
+     * Payload was not a readable Recall archive (not a ZIP, archive
+     * open failure, missing or undecodable manifest/data.json or
+     * notes.json).
      *
      */
     400: ProblemDetails;
     /**
-     * The bundle was readable but its schema is unsupported by this
-     * build.
+     * The archive was readable but refused: an unsupported schema, a
+     * bundle shared for coaching, a coaching session in progress, a
+     * read-only profile, or a notes file about no match in this
+     * history.
      *
      */
     409: ProblemDetails;
@@ -3519,12 +3891,626 @@ export type ImportMatchesError = ImportMatchesErrors[keyof ImportMatchesErrors];
 
 export type ImportMatchesResponses = {
     /**
-     * Merge applied; counts of added vs skipped matches.
+     * Import applied: merge counts for a bundle, the staged return
+     * sheet for a coach notes archive.
+     *
      */
-    200: ImportSummary;
+    200: ImportOutcome;
 };
 
 export type ImportMatchesResponse = ImportMatchesResponses[keyof ImportMatchesResponses];
+
+export type CloseCoachSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session';
+};
+
+export type CloseCoachSessionErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type CloseCoachSessionError = CloseCoachSessionErrors[keyof CloseCoachSessionErrors];
+
+export type CloseCoachSessionResponses = {
+    /**
+     * Session closed (or none was open).
+     */
+    204: void;
+};
+
+export type CloseCoachSessionResponse = CloseCoachSessionResponses[keyof CloseCoachSessionResponses];
+
+export type GetCoachSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session';
+};
+
+export type GetCoachSessionErrors = {
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type GetCoachSessionError = GetCoachSessionErrors[keyof GetCoachSessionErrors];
+
+export type GetCoachSessionResponses = {
+    /**
+     * The open session.
+     */
+    200: CoachSessionView;
+};
+
+export type GetCoachSessionResponse = GetCoachSessionResponses[keyof GetCoachSessionResponses];
+
+export type OpenCoachSessionData = {
+    /**
+     * A recall-bundle/v1 ZIP the player exported.
+     */
+    body: Blob | File;
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session';
+};
+
+export type OpenCoachSessionErrors = {
+    /**
+     * Payload was not a readable Recall bundle.
+     */
+    400: ProblemDetails;
+    /**
+     * A session is already open, the payload is a coach notes
+     * archive rather than a bundle, or its schema is unsupported.
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type OpenCoachSessionError = OpenCoachSessionErrors[keyof OpenCoachSessionErrors];
+
+export type OpenCoachSessionResponses = {
+    /**
+     * Session opened; the view the Film Room renders.
+     */
+    201: CoachSessionView;
+};
+
+export type OpenCoachSessionResponse = OpenCoachSessionResponses[keyof OpenCoachSessionResponses];
+
+export type SetCoachSessionPlayerData = {
+    body: {
+        /**
+         * The display handle the coach confirmed.
+         */
+        handle: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session/player';
+};
+
+export type SetCoachSessionPlayerErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SetCoachSessionPlayerError = SetCoachSessionPlayerErrors[keyof SetCoachSessionPlayerErrors];
+
+export type SetCoachSessionPlayerResponses = {
+    /**
+     * The session, re-hydrated for the confirmed player.
+     */
+    200: CoachSessionView;
+};
+
+export type SetCoachSessionPlayerResponse = SetCoachSessionPlayerResponses[keyof SetCoachSessionPlayerResponses];
+
+export type GetCoachSessionMatchesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session/matches';
+};
+
+export type GetCoachSessionMatchesErrors = {
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type GetCoachSessionMatchesError = GetCoachSessionMatchesErrors[keyof GetCoachSessionMatchesErrors];
+
+export type GetCoachSessionMatchesResponses = {
+    /**
+     * The loaned records, ascending by match_key.
+     */
+    200: Array<MatchRecord>;
+};
+
+export type GetCoachSessionMatchesResponse = GetCoachSessionMatchesResponses[keyof GetCoachSessionMatchesResponses];
+
+export type DeleteCoachNoteData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/coach/session/notes/{match_key}';
+};
+
+export type DeleteCoachNoteErrors = {
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteCoachNoteError = DeleteCoachNoteErrors[keyof DeleteCoachNoteErrors];
+
+export type DeleteCoachNoteResponses = {
+    /**
+     * Note removed (or never existed).
+     */
+    204: void;
+};
+
+export type DeleteCoachNoteResponse = DeleteCoachNoteResponses[keyof DeleteCoachNoteResponses];
+
+export type PutCoachNoteData = {
+    body: CoachNoteInput;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+    };
+    query?: never;
+    url: '/api/v1/coach/session/notes/{match_key}';
+};
+
+export type PutCoachNoteErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type PutCoachNoteError = PutCoachNoteErrors[keyof PutCoachNoteErrors];
+
+export type PutCoachNoteResponses = {
+    /**
+     * The saved note, as the reel renders it.
+     */
+    200: CoachNote;
+};
+
+export type PutCoachNoteResponse = PutCoachNoteResponses[keyof PutCoachNoteResponses];
+
+export type PutCoachSummaryData = {
+    body: {
+        /**
+         * The summary. Empty string clears the stored summary.
+         *
+         */
+        text: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session/summary';
+};
+
+export type PutCoachSummaryErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type PutCoachSummaryError = PutCoachSummaryErrors[keyof PutCoachSummaryErrors];
+
+export type PutCoachSummaryResponses = {
+    /**
+     * Summary saved (or cleared).
+     */
+    204: void;
+};
+
+export type PutCoachSummaryResponse = PutCoachSummaryResponses[keyof PutCoachSummaryResponses];
+
+export type ExportCoachNotesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/session/export';
+};
+
+export type ExportCoachNotesErrors = {
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ExportCoachNotesError = ExportCoachNotesErrors[keyof ExportCoachNotesErrors];
+
+export type ExportCoachNotesResponses = {
+    /**
+     * ZIP archive with a `Content-Disposition: attachment;
+     * filename="recall-coach-notes-<handle>-<date>.zip"` header.
+     *
+     */
+    200: Blob | File;
+};
+
+export type ExportCoachNotesResponse = ExportCoachNotesResponses[keyof ExportCoachNotesResponses];
+
+export type ListCoachReturnsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/coach/returns';
+};
+
+export type ListCoachReturnsErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type ListCoachReturnsError = ListCoachReturnsErrors[keyof ListCoachReturnsErrors];
+
+export type ListCoachReturnsResponses = {
+    /**
+     * Staged return sheets, newest first.
+     */
+    200: Array<CoachReturnSheet>;
+};
+
+export type ListCoachReturnsResponse = ListCoachReturnsResponses[keyof ListCoachReturnsResponses];
+
+export type DeleteCoachReturnData = {
+    body?: never;
+    path: {
+        /**
+         * Identity of a staged return sheet, as `CoachReturnSheet.id`
+         * carries it.
+         *
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/coach/returns/{id}';
+};
+
+export type DeleteCoachReturnErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteCoachReturnError = DeleteCoachReturnErrors[keyof DeleteCoachReturnErrors];
+
+export type DeleteCoachReturnResponses = {
+    /**
+     * Return sheet discarded.
+     */
+    204: void;
+};
+
+export type DeleteCoachReturnResponse = DeleteCoachReturnResponses[keyof DeleteCoachReturnResponses];
+
+export type GetCoachReturnData = {
+    body?: never;
+    path: {
+        /**
+         * Identity of a staged return sheet, as `CoachReturnSheet.id`
+         * carries it.
+         *
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/coach/returns/{id}';
+};
+
+export type GetCoachReturnErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type GetCoachReturnError = GetCoachReturnErrors[keyof GetCoachReturnErrors];
+
+export type GetCoachReturnResponses = {
+    /**
+     * The staged return.
+     */
+    200: CoachReturnSheet;
+};
+
+export type GetCoachReturnResponse = GetCoachReturnResponses[keyof GetCoachReturnResponses];
+
+export type DecideCoachReturnData = {
+    body: CoachDecisionsRequest;
+    path: {
+        /**
+         * Identity of a staged return sheet, as `CoachReturnSheet.id`
+         * carries it.
+         *
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/coach/returns/{id}/decisions';
+};
+
+export type DecideCoachReturnErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * A note on the sheet is about a match no longer in this history
+     * (an orphan), or a coaching session is open.
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DecideCoachReturnError = DecideCoachReturnErrors[keyof DecideCoachReturnErrors];
+
+export type DecideCoachReturnResponses = {
+    /**
+     * The recomputed sheet.
+     */
+    200: CoachReturnSheet;
+};
+
+export type DecideCoachReturnResponse = DecideCoachReturnResponses[keyof DecideCoachReturnResponses];
+
+export type DeleteMatchCoachNoteData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * Identity of one accepted coach block on a match, as
+         * `MatchCoachNote.id` carries it. Distinct from the archive-level
+         * `note_id` UUID — this is the local row.
+         *
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/coach-notes/{id}';
+};
+
+export type DeleteMatchCoachNoteErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteMatchCoachNoteError = DeleteMatchCoachNoteErrors[keyof DeleteMatchCoachNoteErrors];
+
+export type DeleteMatchCoachNoteResponses = {
+    /**
+     * Coach note removed.
+     */
+    204: void;
+};
+
+export type DeleteMatchCoachNoteResponse = DeleteMatchCoachNoteResponses[keyof DeleteMatchCoachNoteResponses];
+
+export type GetCoachingSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/coaching';
+};
+
+export type GetCoachingSettingsErrors = {
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type GetCoachingSettingsError = GetCoachingSettingsErrors[keyof GetCoachingSettingsErrors];
+
+export type GetCoachingSettingsResponses = {
+    /**
+     * The coaching settings.
+     */
+    200: CoachingSettings;
+};
+
+export type GetCoachingSettingsResponse = GetCoachingSettingsResponses[keyof GetCoachingSettingsResponses];
+
+export type SetCoachingSettingsData = {
+    body: CoachingSettings;
+    path?: never;
+    query?: never;
+    url: '/api/v1/settings/coaching';
+};
+
+export type SetCoachingSettingsErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SetCoachingSettingsError = SetCoachingSettingsErrors[keyof SetCoachingSettingsErrors];
+
+export type SetCoachingSettingsResponses = {
+    /**
+     * The saved coaching settings.
+     */
+    200: CoachingSettings;
+};
+
+export type SetCoachingSettingsResponse = SetCoachingSettingsResponses[keyof SetCoachingSettingsResponses];
 
 export type EventsData = {
     body?: never;

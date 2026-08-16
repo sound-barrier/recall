@@ -19,6 +19,7 @@ func pinPath(matchKey string) string {
 
 func TestMatchPin_PutTrueThenFalseRoundTrips(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-A")
 	_, mux := newTestApp(t, fs)
 
 	if rec := put(t, mux, pinPath("match-A"), map[string]any{"pinned": true}); rec.Code != http.StatusNoContent {
@@ -49,6 +50,7 @@ func TestMatchPin_PutTrueThenFalseRoundTrips(t *testing.T) {
 // stay a 204 rather than conflicting.
 func TestMatchPin_RepeatedPinStaysNoContent(t *testing.T) {
 	fs := dbtest.New()
+	seedMatchKeys(fs, "match-B")
 	_, mux := newTestApp(t, fs)
 	for i := range 2 {
 		if rec := put(t, mux, pinPath("match-B"), map[string]any{"pinned": true}); rec.Code != http.StatusNoContent {
