@@ -24,6 +24,28 @@ var (
 	ProbDataVerify   = probDataVerify
 )
 
+// The error→status ladder itself. writeError is what every write handler
+// funnels a failure through, so the sentinel-ladder test drives it directly
+// rather than standing up a route per sentinel; defaultProblems is the
+// route-INDEPENDENT half of the mapping, and the test asserts which sentinels
+// belong to it (the rest get their status from a handler's own cases).
+var (
+	WriteError      = writeError
+	DefaultProblems = defaultProblems
+	ProblemStatus   = func(pt problemType) int { return pt.status }
+	ProblemSlug     = func(pt problemType) string { return pt.slug }
+)
+
+// ErrStatusIs exposes the sentinel half of an errStatus rung so the ladder
+// test can enumerate defaultProblems without importing the unexported type.
+func ErrStatusIs(i int) error { return defaultProblems[i].is }
+
+// ErrStatusProblem exposes the problem half of the same rung.
+func ErrStatusProblem(i int) (slug string, status int) {
+	pt := defaultProblems[i].pt
+	return pt.slug, pt.status
+}
+
 // Middleware + hardening internals. The request-id / security-hardening
 // middleware wrap a caller-supplied handler (NewMux can't inject one), and the
 // body-cap / loopback / pprof predicates are pure helpers with no public seam.
