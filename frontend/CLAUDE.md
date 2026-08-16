@@ -136,8 +136,10 @@ are organized into feature subfolders, not one giant flat directory:
 cross-feature pieces (`FilterCombobox`, `MastheadParseChip`, `ProfileSwitcher`,
 generic modals). Colocate
 a feature's UI with its state. Per the root `CLAUDE.md` *Package & directory
-size* rule, a flat dir past ~20–25 files wants subdividing; `ls` stays the source
-of truth — don't enumerate files here. (`composables/` has no `unknown/` — no
+size* rule, each of these directories carries a declared file budget in
+`scripts/ci/package-size-budgets.txt` — read the number there, and run
+`task package-size-audit` to see where a folder stands. `ls` stays the source of
+truth for *what is in* a folder; don't enumerate files here. (`composables/` has no `unknown/` — no
 composable is unknown-specific.)
 
 **Imports use the `@/` alias** (`@/` → `frontend/src/`) — the canonical Vue

@@ -30,6 +30,11 @@ TYPOS_VERSION = "v1.49.0"
 GOCYCLO_VERSION = "latest"
 SEMGREP_VERSION = "1.173.0"
 HONKIT_VERSION = "6.2.2"
+# gobco (condition/branch coverage) is a MEASUREMENT tool: the version changes
+# the number it reports, so it is exact-pinned rather than "latest". CI greps
+# every ^[A-Z_]+_VERSION line here into $GITHUB_ENV, so the branch-coverage job
+# installs this exact version without a second copy of the string.
+GOBCO_VERSION = "v1.3.4"
 SCHEMATHESIS_VERSION = "4.24.3"
 TESSERACT_VERSION = "5.5.2"
 RUFF_VERSION = "0.16.3"
@@ -74,6 +79,12 @@ jq = "latest"
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "latest"
 "go:golang.org/x/tools/cmd/deadcode" = "latest"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+# Condition (branch) coverage — an informational report, never a gate. Go's
+# own -cover only does statements; gobco instruments each boolean expression
+# and reports the conditions never observed BOTH true and false. Exact-pinned
+# (see GOBCO_VERSION in [env], which CI reads) because the version moves the
+# number.
+"go:github.com/rillig/gobco" = "v1.3.4"
 # Wails v3 CLI (beta) — drives the v3 Taskfile-native build under build/. Keep
 # in lockstep with the wails/v3 module in go.mod: the CLI generates bindings the
 # module has to understand, so a split between them fails at generate time, not

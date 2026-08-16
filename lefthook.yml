@@ -215,6 +215,16 @@ pre-push:
       glob: "pkg/**/*_test.go"
       run: bash scripts/ci/check-test-skips.sh
 
+    # Package/directory file budgets — sub-second, the same script CI's lint
+    # job runs. A structural regression is cheaper to learn about here than
+    # after a CI round-trip.
+    #
+    # Deliberately NO glob: a glob would skip this on a push that only
+    # DELETES files, and a deletion is exactly what turns a paid waiver into
+    # a required budget-file edit.
+    package-size:
+      run: bash scripts/ci/check-package-size.sh
+
 # Commit-message format check (optional but pairs with release-please).
 # Enable conventional commits via `commit-msg` hook — see release-please
 # workflow for how commit messages drive automated versioning.

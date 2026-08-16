@@ -104,22 +104,42 @@ without agreement on direction.
   call out (don't silently grow) files that blow well past it. The sibling rule
   below governs the *grouping* a file lives in.
 
-- **Package & directory size — cohesion over count.** Size a grouping by
-  responsibility, not file count. **Go**: a package is *one* cohesive
-  responsibility behind a small, intentional exported API. Many files in a
-  package is idiomatic and good — keep file-per-concern; `pkg/db`, `pkg/parser`,
-  and `pkg/cmd` are correctly single-responsibility packages with many files and
-  must **not** be split to chase a number. Split a *package* only when it carries
-  more than one reason to change (distinct sub-domains) **and** the extraction
-  won't create an import cycle — typically by pulling pure logic into a leaf
-  package the shell delegates to (`pkg/match`, `pkg/correlate`, `pkg/aggregate`,
-  … carved out of the former `pkg/app` god-package; the `*App` shell keeps the
-  wiring). **Vue/TS**: group by feature/domain, never one giant flat directory. A
-  flat `components/` or `composables/` past ~20–25 files wants feature subfolders
-  (`components/<feature>/`, `composables/<feature>/`, `shared/` for cross-feature
-  pieces); colocate a feature's UI with its state, mirroring `components/widgets/`.
-  Same best-effort spirit as File length — this is the direction of travel, not a
-  gate; call out (don't silently grow) a grouping that sprawls across concerns.
+- **Package & directory size — cohesion first, a budget as the backstop.** Size
+  a grouping by responsibility: **Go** — a package is *one* cohesive
+  responsibility behind a small, intentional exported API; **Vue/TS** — a folder
+  is one feature's UI colocated with its state. Many files is idiomatic when
+  they are one concern spelled file-per-file: `pkg/db` is the canonical
+  **correctly-large** package (schema, migration engine, per-type CRUD — one
+  responsibility, 30 files) and it must **not** be split to chase a number.
+  But cohesion is a judgment call, and judgment calls lose to entropy. `pkg/app`
+  reached 54 files one individually-defensible file at a time; a documented
+  "~20–25 files" frontend ceiling sat in these rules for months while six
+  directories quietly cleared it; `TECHNICAL_DEBT.md` recorded per-file growth
+  triggers that three files then passed unnoticed. So every grouping also
+  carries a **declared file budget** with the reason it is that number, gated by
+  `scripts/ci/check-package-size.sh` against
+  `scripts/ci/package-size-budgets.txt` (`task check-package-size`; CI's `lint`
+  job; lefthook pre-push). **Read the numbers there, never here** — prose
+  restatements drift, exactly as the coverage floors did. Budgets are
+  zero-headroom on purpose: a file count moves only when someone deliberately
+  adds a file, which is precisely the moment to think, so the gate trips on the
+  *first* file past the line. A trip has exactly two legitimate answers.
+  **Split** when the grouping really carries more than one reason to change and
+  the extraction won't create an import cycle — pull pure logic into a leaf
+  package the shell delegates to (`pkg/match`, `pkg/correlate`, `pkg/aggregate`
+  were carved out of the former `pkg/app` god-package; the `*App` shell kept the
+  wiring), or give a feature its own subfolder (`components/<feature>/`,
+  `composables/<feature>/`, `shared/` for cross-feature pieces). Splitting is
+  cheaper in Vue/TS than in Go — a folder has no API boundary, no import-cycle
+  risk, and the `@/` alias means a moved file doesn't rewrite its own imports —
+  which is why the frontend budgets sit below the Go ones. **Bump** when the new
+  file is the same responsibility spelled one concern wider (a new migration, a
+  new screenshot type, a new endpoint on an existing surface): raise the number,
+  rewrite the WHY in the comment block directly above the entry, and append a
+  row to `scripts/ci/package-size-budget-history.md`. What never justifies a
+  bump: "the gate was in the way." What never justifies a split: the number
+  alone — a two-file package carved out to duck a budget is a worse outcome than
+  the file that tripped the gate.
 
 - **McCabe cyclomatic complexity ≤ 10 — enforced, not aspirational.**
   `gocyclo`/`gocognit`/`funlen` (Go, `.golangci.yml`) and ESLint's
