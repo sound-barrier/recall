@@ -1,0 +1,61 @@
+/* ─── Film Room geometry ─────────────────────────────────────────
+   Three columns: the reel (a fixed strip, so frames never reflow as
+   the window changes), the desk (everything the match has), and the
+   session sheet, which sticks while the desk scrolls — the coach
+   writes the summary against whatever is on the desk.
+
+   Only geometry lives here. The room's surfaces come from the app's
+   tokens and, on the sheet and the note, from `.paper` (paper.css). */
+
+.coach-room {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  gap: 1.1rem;
+  align-items: start;
+  padding: 0.4rem 0 2rem;
+}
+
+/* The reel is its own scroll region, one viewport tall, so the strip
+   runs beside the desk instead of stretching the page. */
+.coach-room-reel {
+  position: sticky;
+  top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-height: calc(100vh - 9rem);
+  padding: 0.75rem 0.6rem 0.6rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.coach-room-desk {
+  min-width: 0;
+}
+
+.coach-room-sheet {
+  position: sticky;
+  top: 0.6rem;
+  min-width: 0;
+}
+
+/* Below the three-column width the sheet leads (it is the session's
+   frame of reference), then the desk, with the reel last as a
+   horizontal strip — the same order the room reads in on a wide
+   screen, top to bottom. */
+@media (width <= 1180px) {
+  .coach-room {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .coach-room-reel, .coach-room-sheet {
+    position: static;
+    max-height: none;
+  }
+
+  .coach-room-reel { order: 3; }
+  .coach-room-desk { order: 2; }
+  .coach-room-sheet { order: 1; }
+}
