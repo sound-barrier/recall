@@ -1,4 +1,4 @@
-package app_test
+package seed_test
 
 import (
 	"encoding/json"
@@ -7,16 +7,17 @@ import (
 	"strings"
 	"testing"
 
-	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/profiles"
+	"recall/pkg/seed"
 )
 
-// SeedOptions edge behavior: the input guard, the destructive Force path, and
+// Options edge behavior: the input guard, the destructive Force path, and
 // the "don't clobber the user's screenshots folder" rule.
 
-func newSeedManager(t *testing.T) *app.Profiles {
+func newSeedManager(t *testing.T) *profiles.Profiles {
 	t.Helper()
-	p, err := app.LoadProfiles(t.TempDir())
+	p, err := profiles.LoadProfiles(t.TempDir())
 	mustNoErr(t, err)
 	return p
 }
@@ -25,10 +26,10 @@ func newSeedManager(t *testing.T) *app.Profiles {
 // flag. A zero or negative N must be refused up front — the fixture generator
 // would otherwise produce an empty profile that then reads as "already seeded"
 // on every later run.
-func TestSeedProfile_RejectsNonPositiveN(t *testing.T) {
+func TestProfile_RejectsNonPositiveN(t *testing.T) {
 	p := newSeedManager(t)
 	for _, n := range []int{0, -1} {
-		res, err := app.SeedProfile(p, "test", app.SeedOptions{N: n, Seed: 8, Style: "flex"})
+		res, err := seed.Profile(p, "test", seed.Options{N: n, Seed: 8, Style: "flex"})
 		if err == nil {
 			t.Fatalf("N=%d accepted, got %+v", n, res)
 		}
@@ -45,13 +46,13 @@ func TestSeedProfile_RejectsNonPositiveN(t *testing.T) {
 // Force is the destructive reseed: it must WIPE, not merge. A merge would leave
 // two generations of fixtures interleaved and silently break every "the demo
 // profile holds exactly the seeded corpus" assumption.
-func TestSeedProfile_ForceWipesThePreviousCorpus(t *testing.T) {
+func TestProfile_ForceWipesThePreviousCorpus(t *testing.T) {
 	p := newSeedManager(t)
-	first, err := app.SeedProfile(p, "test", app.SeedOptions{N: 20, Seed: 1, Style: "flex"})
+	first, err := seed.Profile(p, "test", seed.Options{N: 20, Seed: 1, Style: "flex"})
 	mustNoErr(t, err)
 	before := summaryKeys(t, loadStore(t, p, "test"))
 
-	second, err := app.SeedProfile(p, "test", app.SeedOptions{N: 8, Seed: 2, Style: "flex", Force: true})
+	second, err := seed.Profile(p, "test", seed.Options{N: 8, Seed: 2, Style: "flex", Force: true})
 	mustNoErr(t, err)
 	if second.AlreadySeeded {
 		t.Fatal("Force reported AlreadySeeded — it reused instead of reseeding")
@@ -86,7 +87,7 @@ func summaryKeys(t *testing.T, store db.Store) map[string]bool {
 // ambiguous-resolution cards render — but only when the folder isn't already
 // configured. Overwriting would silently redirect a real player's watched
 // folder at a directory of synthetic PNG files.
-func TestSeedProfile_OnlySetsScreenshotsDirWhenUnset(t *testing.T) {
+func TestProfile_OnlySetsScreenshotsDirWhenUnset(t *testing.T) {
 	const configured = "/home/player/Pictures/Overwatch"
 	cases := []struct {
 		name    string
@@ -114,7 +115,7 @@ func TestSeedProfile_OnlySetsScreenshotsDirWhenUnset(t *testing.T) {
 			if tc.preset != "" {
 				writeSettingsScreenshotsDir(t, dir, tc.preset)
 			}
-			res, err := app.SeedProfile(p, tc.profile, app.SeedOptions{N: 250, Seed: 8, Style: "flex"})
+			res, err := seed.Profile(p, tc.profile, seed.Options{N: 250, Seed: 8, Style: "flex"})
 			mustNoErr(t, err)
 			if res.Images == 0 {
 				t.Fatal("no preview images written — the screenshots_dir step never ran")
