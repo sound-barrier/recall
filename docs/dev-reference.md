@@ -74,6 +74,7 @@ env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
 | `pkg/cmd` | `RunWails` (Wails init) and `RunServer` (HTTP server + REST API). |
 | `pkg/db` | SQLite `Init()` + `DB` variable. |
 | `pkg/parser` | OCR pipeline split per concern. `ls pkg/parser/*.go` is the source of truth. |
+| `pkg/coach` | The coaching session, as a leaf: bundle → in-memory records (no store), note validation, the notes archive + `ledger.html`, and the player-side return sheet. Depends on `bundle`/`aggregate`/`db`/`match`; nothing depends back. Store access goes through the consumer-side `NoteStore` / `ReturnStore` seams, which is what makes "a session never writes the coach's database" a property you can test rather than a claim. |
 
 `.devcontainer/devcontainer.json` + `postCreate.sh` mirror the Brewfile on a
 Debian + Docker-in-Docker base for VS Code Dev Containers / Codespaces. The Wails
