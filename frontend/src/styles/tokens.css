@@ -148,6 +148,43 @@
   --on-dark-plate: #f5f3ee;
   --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
 
+  /* ─── Paper — the coaching session's ink-on-paper surface ──────
+     The Film Room's note editor, session sheet, and the coach's note
+     block in a player's journal are written on PAPER: a light plate that
+     stays light under every theme, the way --on-dark-plate is text on a
+     plate that stays dark. It cannot borrow the surface/text tokens
+     (they flip with the theme), so it carries its own set. styles/
+     paper.css re-maps --text* / --accent-text / --win|loss|draw /
+     --hairline to these INSIDE `.paper`, so .eyebrow, .badge, .score-num
+     render on paper with no parallel rules.
+
+     Two rules for the set: --paper-accent is the Day accent-text rust,
+     never the bright --accent (1.9:1 on a light ground as type); and the
+     verdict trio is one step darker than Day's so each clears AA as text
+     on its OWN 12% tint over --paper-2, the darkest paper composite (Day's
+     values sat at 4.3–4.5:1 there).
+
+     Worst-surface contrast (on --paper-2), Night — Dark inherits the
+     whole set, its page ground does not touch a self-contained plate:
+       --ink 13.98 · --ink-dim 7.99 · --ink-faint 5.77 · --paper-accent
+       5.63 · --paper-win 6.78 (5.63 on its tint) · --paper-loss 6.22
+       (5.16) · --paper-draw 6.52 (5.46) · --paper-focus 5.63 (needs 3:1)
+       · paper text on an ink fill 15.57.
+     Day and high contrast override the plate values below in themes.css
+     and carry their own numbers. */
+  --paper: #f5f3ee;
+  --paper-2: #ebe7dd;
+  --paper-rule: rgb(31 26 20 / 16%);
+  --paper-edge: #c9c2b2;
+  --ink: #1f1a14;
+  --ink-dim: #4a4238;
+  --ink-faint: #5f5749;
+  --paper-accent: #8f4500;
+  --paper-win: #0a5a2a;
+  --paper-loss: #9c2537;
+  --paper-draw: #6f480e;
+  --paper-focus: #8f4500;
+
   /* Shadow tint, as a bare `R G B` triplet so each rule keeps its OWN
      alpha: `box-shadow: 0 8px 24px rgb(var(--shadow-rgb) / 45%)`.
      Elevation shadows were hardcoded to `rgb(0 0 0 / …)` across ~38

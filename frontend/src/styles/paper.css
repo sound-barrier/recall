@@ -1,0 +1,164 @@
+/* ─── Paper — the coaching session's ink-on-paper family ────────────
+   A coach's notes are written on paper: a light plate with dark ink that
+   stays that way under every theme (tokens in tokens.css, per-theme values
+   in themes.css). This file holds the family; the Film Room's geometry
+   stays scoped to its own components.
+
+   `.paper` re-maps the app's text / accent-type / verdict / hairline
+   tokens to the paper set INSIDE the plate. That is what lets .eyebrow,
+   .badge, .score-num and friends render on paper unchanged — one visual
+   concept stays one rule, and no `.paper .badge` twins accumulate.
+   The surface and border tokens come along for the same reason: a plain
+   .badge paints --surface-3, which is near-black under Night, and would
+   otherwise sit as a dark tile on the paper. Theme differences are token
+   overrides only — no [data-theme] selector lives here. */
+
+.paper {
+  --text: var(--ink);
+  --text-dim: var(--ink-dim);
+  --text-faint: var(--ink-faint);
+  --text-mute: var(--ink-faint);
+  --accent-text: var(--paper-accent);
+  --win: var(--paper-win);
+  --win-soft: color-mix(in srgb, var(--paper-win) 12%, transparent);
+  --win-line: color-mix(in srgb, var(--paper-win) 55%, transparent);
+  --loss: var(--paper-loss);
+  --loss-soft: color-mix(in srgb, var(--paper-loss) 12%, transparent);
+  --loss-line: color-mix(in srgb, var(--paper-loss) 55%, transparent);
+  --draw: var(--paper-draw);
+  --draw-soft: color-mix(in srgb, var(--paper-draw) 12%, transparent);
+  --draw-line: color-mix(in srgb, var(--paper-draw) 55%, transparent);
+  --hairline: var(--paper-rule);
+  --surface: var(--paper);
+  --surface-2: var(--paper-2);
+  --surface-3: var(--paper-2);
+  --border: var(--paper-edge);
+  --border-soft: var(--paper-rule);
+  --border-strong: var(--ink-faint);
+
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-md);
+
+  /* Native form controls (the note textarea, the clock input) key their
+     default chrome off color-scheme; the plate is a light surface under
+     every theme, including the three dark ones. */
+  color-scheme: light;
+}
+
+.paper :focus-visible {
+  outline: 2px solid var(--paper-focus);
+  outline-offset: 2px;
+}
+
+/* Focus-tag chips. Pressed state is carried by the inverted fill AND the
+   heavier weight, never by color alone. */
+.paper-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.6rem;
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink-faint);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.paper-chip:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border-color: var(--ink);
+}
+
+.paper-chip[aria-pressed="true"] {
+  font-weight: 800;
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.paper-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.9rem;
+  font-family: var(--body);
+  font-size: var(--type-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.paper-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  transform: translateY(-1px);
+}
+
+.paper-btn:active:not(:disabled) { transform: translateY(0); }
+.paper-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.paper-btn.primary {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.paper-btn.primary:hover:not(:disabled) {
+  background: var(--ink-dim);
+  border-color: var(--ink-dim);
+}
+
+/* The mark a noted frame carries on the reel's sprocket rail: a scrap of
+   paper on the dark rail. `.hollow` is the reviewed-only variant — the
+   state is also spoken by the frame's accessible-name suffix. */
+.paper-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.9rem;
+  height: 0.9rem;
+  padding: 0 0.2rem;
+  font-family: var(--mono);
+  font-size: var(--type-4xs);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-hair);
+}
+
+.paper-mark.hollow {
+  color: var(--paper);
+  background: transparent;
+  border-color: var(--paper);
+  border-style: dashed;
+}
+
+/* Ruled-paper hatch for the session strip and the reel's day labels —
+   the same technique as .brand-corner, on paper. The gradient's stroke
+   is --paper-rule, so it follows the theme's ink. */
+.paper-rule-hatch {
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      var(--paper-rule) 0 2px,
+      transparent 2px 6px
+    ),
+    var(--paper);
+}

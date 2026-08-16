@@ -129,6 +129,19 @@
      geometry and only the hue changes. */
   --shadow-rgb: 74 74 74;
   --color-scheme: light;
+
+  /* Paper on cream. Night's --paper is a near-twin of this palette's
+     --surface, so on Day the plate would vanish into the page; the
+     legal-pad yellow makes it a distinct surface, and the brand-gray edge
+     is the same bordered-card guarantee every Day card carries. The ink
+     set is inherited — one ink for every paper. Worst surface (--paper-2):
+     --ink 13.59 · --ink-dim 7.77 · --ink-faint 5.61 · --paper-accent 5.47
+     · --paper-win 6.59 (5.47 on its tint) · --paper-loss 6.05 (5.01) ·
+     --paper-draw 6.33 (5.32) · --paper-focus 5.47 · paper on ink 15.03. */
+  --paper: #f7efd6;
+  --paper-2: #efe4c0;
+  --paper-rule: rgb(74 74 74 / 22%);
+  --paper-edge: #4a4a4a;
 }
 
 /* DARK — sits between Day's cream and Night's near-black. Grounds
@@ -226,6 +239,10 @@
   --atmos-coral:  rgb(255 102 128 / 5%);
   --grid-line:    rgb(255 255 255 / 4%);
   --primary-text-on-accent: #2a1a00;
+
+  /* No --paper* overrides: the paper plate is self-contained (its own
+     ground and ink), and Night's set is already tuned for a light plate
+     on a dark page — the #2a2a2a ground here changes nothing on it. */
 }
 
 /* HIGH-CONTRAST — opt-in tournament-booth / low-vision mode. Strips
@@ -315,6 +332,25 @@
   /* Black, not the inherited white: this palette's --loss is the bright
      #f35, where white sits at ~3.5:1 and black clears ~5.9:1. */
   --primary-text-on-danger: #000;
+
+  /* Paper goes to the same extremes as the rest of this palette: a white
+     plate, black ink, no dim step (hierarchy by weight, as with --text-dim
+     above), a white edge like every other border here, and a black focus
+     ring — the boosted gold accent is ~1.6:1 on white and cannot ring a
+     control on paper. --paper-accent and the verdict trio inherit; they
+     were tuned for a light ground and only gain contrast on pure white.
+     Worst surface (--paper-2): --ink 17.78 · --ink-faint 14.73 ·
+     --paper-accent 5.89 · --paper-win 7.09 (5.86 on its tint) ·
+     --paper-loss 6.50 (5.35) · --paper-draw 6.81 (5.68) · --paper-focus
+     17.78 · paper on ink 21.00. */
+  --paper: #fff;
+  --paper-2: #ececec;
+  --paper-rule: rgb(0 0 0 / 40%);
+  --paper-edge: #fff;
+  --ink: #000;
+  --ink-dim: #000;
+  --ink-faint: #1a1a1a;
+  --paper-focus: #000;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
