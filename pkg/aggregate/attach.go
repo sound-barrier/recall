@@ -191,6 +191,55 @@ func AttachAnnotations(recs []match.Record, annos map[string]db.Annotation) {
 	}
 }
 
+// coachNoteFromRow converts one accepted coach block into its domain shape.
+// Both attach sites — the bulk aggregate and the single-record sidecar
+// path — go through here so the list read and the single-match read
+// cannot disagree on a field. Tag slices are carried as the store hands
+// them over (nil stays nil, empty stays empty).
+func coachNoteFromRow(n db.MatchCoachNote) match.CoachNote {
+	return match.CoachNote{
+		ID:          n.ID,
+		NoteID:      n.NoteID,
+		CoachName:   n.CoachName,
+		SessionDate: n.SessionDate,
+		Text:        n.Text,
+		MatchClock:  n.MatchClock,
+		FocusTags:   n.FocusTags,
+		ExtraTags:   n.ExtraTags,
+		AcceptedAt:  n.AcceptedAt,
+	}
+}
+
+// coachNotesFromRows converts a store-ordered block list wholesale. The
+// store already orders by (accepted_at, id), so the order is kept, not
+// re-sorted; an empty list yields nil so CoachNotes stays absent on the
+// wire.
+func coachNotesFromRows(rows []db.MatchCoachNote) []match.CoachNote {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]match.CoachNote, 0, len(rows))
+	for _, n := range rows {
+		out = append(out, coachNoteFromRow(n))
+	}
+	return out
+}
+
+// AttachCoachNotes grafts the coach-received layer — every accepted coach
+// block, in store order — onto the aggregated match.Record slice.
+// Match-key lookup; missing → nil (no coach has written about it). Pure
+// function, called once per aggregateAll.
+func AttachCoachNotes(recs []match.Record, notes map[string][]db.MatchCoachNote) {
+	if len(notes) == 0 {
+		return
+	}
+	for i := range recs {
+		if rows, ok := notes[recs[i].MatchKey]; ok {
+			recs[i].CoachNotes = coachNotesFromRows(rows)
+		}
+	}
+}
+
 // AttachUserData overlays the per-match user override layer onto the aggregated
 // records: non-nil scalars win over the OCR Data, the heroes-played list is
 // replaced when the user supplied one, stat-cell and SR overrides overlay, and

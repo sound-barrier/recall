@@ -40,7 +40,8 @@ func (a *App) loadSidecars() aggregate.Sidecars {
 	hidden, _ := a.store.LoadHiddenKeys()
 	reviews, _ := a.store.LoadReviews()
 	pinned, _ := a.store.LoadPinnedKeys()
-	return aggregate.Sidecars{Annotations: annos, Hidden: hidden, Reviews: reviews, Pinned: pinned}
+	coachNotes, _ := a.store.LoadMatchCoachNotes()
+	return aggregate.Sidecars{Annotations: annos, Hidden: hidden, Reviews: reviews, Pinned: pinned, CoachNotes: coachNotes}
 }
 
 func (a *App) reAggregateUnknowns() (int, error) {
@@ -80,6 +81,10 @@ func (a *App) aggregateAll() ([]match.Record, error) {
 	if err != nil {
 		return nil, err
 	}
+	coachNotes, err := a.store.LoadMatchCoachNotes()
+	if err != nil {
+		return nil, err
+	}
 	recs := aggregate.Screenshots(snap)
 	recs = aggregate.SynthesizeManualMatches(recs, userData)
 	aggregate.AttachUserData(recs, userData)
@@ -87,6 +92,7 @@ func (a *App) aggregateAll() ([]match.Record, error) {
 	aggregate.AttachHidden(recs, hidden)
 	aggregate.AttachPinned(recs, pinned)
 	aggregate.AttachReviews(recs, reviews)
+	aggregate.AttachCoachNotes(recs, coachNotes)
 	aggregate.AttachQueues(recs, queues)
 	aggregate.AttachPlayModes(recs, playModes)
 	aggregate.AttachAmbiguity(recs, snap.AmbiguousCandidates)
