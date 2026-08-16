@@ -157,7 +157,19 @@ pre-commit:
 # an on-demand full local battery. Skip a hook with
 # LEFTHOOK_EXCLUDE=<name> git push.
 pre-push:
-  parallel: true
+  # SEQUENTIAL on purpose. unit-go (-race, ~4min) and unit-frontend (Vitest,
+  # ~35s) used to run concurrently and starve each other: Vitest's per-test
+  # timeout is 5s, and under the load of a parallel `go test -race ./...` on a
+  # laptop, whichever tests happened to be scheduled during the crunch timed
+  # out. Three consecutive pushes failed on three DIFFERENT tests
+  # (boot-requests, then App + profiles) while both suites passed in full
+  # standalone — a hook that fails randomly teaches you to reach for
+  # LEFTHOOK_EXCLUDE, which is exactly what the header above forbids.
+  #
+  # The cost is small: the other three checks are sub-second (actionlint
+  # ~50ms, test-skips, gen-types-drift), so serializing the whole hook adds
+  # a couple of seconds to a run the Go suite already dominates.
+  parallel: false
   commands:
     # actionlint + the SHA-pin policy — Go binary, ~50ms across the
     # workflows; catches deprecated inputs, run-block shellcheck issues,
