@@ -34,6 +34,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"recall/pkg/applog"
+	"recall/pkg/coach"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -117,6 +118,17 @@ type App struct {
 	// selfUpdateRunning single-flights StartSelfUpdate so a double-click
 	// can't launch two concurrent download+install passes.
 	selfUpdateRunning atomic.Bool
+	// coachMu guards coachSession. The session methods take it for
+	// write, every mutating orchestrator reads it through
+	// assertNoCoachSession, and the store-teardown paths discard
+	// through it — so a profile swap can never strand a session
+	// pointing at another profile's coach rows.
+	coachMu sync.RWMutex
+	// coachSession is the open coaching session: a player's exported
+	// bundle rendered to records in memory. Non-nil only between
+	// OpenCoachSession and CloseCoachSession. The records NEVER reach a
+	// store (design rule 3) — pkg/app/coach_session.go.
+	coachSession *coach.Session
 	// startupErr records a non-recoverable Startup failure (profile
 	// init, --profile override, DB-dir create, DB open) without
 	// crashing the process. Callers can read it via StartupError()

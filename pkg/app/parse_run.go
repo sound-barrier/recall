@@ -73,6 +73,9 @@ type ActiveParseStatus struct {
 // Synchronous (blocks until the run finishes) — the Wails IPC path +
 // Go tests rely on that. Server mode uses StartParse instead.
 func (a *App) ReParseAll() error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	return a.parseSync(true)
 }
 
@@ -81,7 +84,15 @@ func (a *App) ReParseAll() error {
 // screenshot in filename-timestamp order so cross-file deps (e.g. a
 // PERSONAL adopting the SUMMARY it shares a match with) see the
 // already-inserted siblings. Synchronous; see ReParseAll / StartParse.
+// The coaching-session gate lives on the USER-initiated entry points
+// (here, ReParseAll, StartParse) rather than in parseSync, because the
+// folder watcher's debounce calls parseSync directly and must keep
+// ingesting the coach's own screenshots into the coach's own store while a
+// session is open (design rule 1).
 func (a *App) ParseScreenshots() error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	return a.parseSync(false)
 }
 
@@ -94,6 +105,9 @@ func (a *App) ParseScreenshots() error {
 // ErrParseInFlight. This is what makes the run survive a client network
 // drop — there's no held-open request to lose.
 func (a *App) StartParse(force bool) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	dir, err := a.validateParsePreconditions()
 	if err != nil {
 		return err

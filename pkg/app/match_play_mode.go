@@ -26,11 +26,17 @@ var ErrInvalidPlayMode = errors.New("invalid play_mode: must be 'quickplay' or '
 //
 // Use ClearMatchPlayMode to revert to "follow the parser."
 func (a *App) SetMatchPlayMode(matchKey, playMode string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}
 	if !validPlayModes[playMode] {
 		return ErrInvalidPlayMode
+	}
+	if err := a.assertMatchExists(matchKey); err != nil {
+		return err
 	}
 	return a.store.SetMatchPlayMode(matchKey, playMode)
 }
@@ -39,6 +45,9 @@ func (a *App) SetMatchPlayMode(matchKey, playMode string) error {
 // back to the parser." Idempotent — clearing a match with no
 // override is a no-op.
 func (a *App) ClearMatchPlayMode(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}
@@ -50,8 +59,17 @@ func (a *App) ClearMatchPlayMode(matchKey string) error {
 // Clear). Validates the value before reaching SQL so an invalid
 // input never starts a partial-write.
 func (a *App) BulkSetMatchPlayMode(matchKeys []string, playMode string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if playMode != "" && !validPlayModes[playMode] {
 		return ErrInvalidPlayMode
+	}
+	// Only the set direction creates rows — see BulkSetMatchQueue.
+	if playMode != "" {
+		if err := a.assertMatchesExist(matchKeys); err != nil {
+			return err
+		}
 	}
 	return a.store.BulkSetMatchPlayMode(matchKeys, playMode)
 }

@@ -14,6 +14,7 @@ import (
 func TestSetMatchPlayMode_PersistsValidValue(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1", "m2")
 	if err := a.SetMatchPlayMode("m1", "competitive"); err != nil {
 		t.Fatalf("SetMatchPlayMode competitive: %v", err)
 	}
@@ -40,6 +41,7 @@ func TestSetMatchPlayMode_RejectsInvalidValue(t *testing.T) {
 func TestBulkSetMatchPlayMode_WritesEveryKey(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1", "m2", "m3")
 	if err := a.BulkSetMatchPlayMode([]string{"m1", "m2", "m3"}, "competitive"); err != nil {
 		t.Fatalf("bulk set: %v", err)
 	}
@@ -54,6 +56,7 @@ func TestBulkSetMatchPlayMode_WritesEveryKey(t *testing.T) {
 func TestBulkSetMatchPlayMode_EmptyValueClearsRows(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1", "m2")
 	_ = a.SetMatchPlayMode("m1", "competitive")
 	_ = a.SetMatchPlayMode("m2", "quickplay")
 	if err := a.BulkSetMatchPlayMode([]string{"m1"}, ""); err != nil {
@@ -79,6 +82,7 @@ func TestBulkSetMatchPlayMode_RejectsInvalidValue(t *testing.T) {
 func TestSetMatchPlayMode_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1")
 	if err := a.SetMatchPlayMode("m1", "competitive"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}

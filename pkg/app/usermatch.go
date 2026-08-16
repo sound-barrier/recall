@@ -65,6 +65,9 @@ var (
 // omitted). The override layer is kept separate from the parsed OCR rows, so a
 // later ResetMatchData restores the original. Emits the re-aggregated record.
 func (a *App) UpdateMatchData(matchKey string, input match.UserMatchDataInput) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return ErrMatchKeyRequired
 	}
@@ -72,6 +75,12 @@ func (a *App) UpdateMatchData(matchKey string, input match.UserMatchDataInput) e
 		return ErrInvalidResult
 	}
 	if err := validateUserMatchData(input); err != nil {
+		return err
+	}
+	// An override row on an unknown key does not annotate a match — it
+	// SYNTHESIZES one (SynthesizeManualMatches), so a stray edit would
+	// resurrect somebody else's match as a phantom in this history.
+	if err := a.assertMatchExists(matchKey); err != nil {
 		return err
 	}
 	if err := a.store.UpsertUserMatchData(userMatchDataFromInput(matchKey, input)); err != nil {
@@ -85,6 +94,9 @@ func (a *App) UpdateMatchData(matchKey string, input match.UserMatchDataInput) e
 // OCR match to pure OCR. (Deleting a hand-entered match is HardDeleteMatch, which
 // also clears its queue / play-mode aux rows.) Idempotent.
 func (a *App) ResetMatchData(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return ErrMatchKeyRequired
 	}
@@ -101,6 +113,9 @@ func (a *App) ResetMatchData(matchKey string) error {
 // queue / play-mode aux rows, and returns the aggregated record. The right-side
 // detail-panel choosers then work unchanged — they key on match_key.
 func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.Record, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return match.Record{}, err
+	}
 	if err := a.assertActiveMutable(); err != nil {
 		return match.Record{}, err
 	}

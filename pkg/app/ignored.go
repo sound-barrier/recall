@@ -36,6 +36,9 @@ var ErrIgnoreFilenameRequired = errors.New("filename is required")
 // Idempotent: ignoring an already-ignored filename refreshes the
 // timestamp; wiping a non-existent matchKey is a no-op.
 func (a *App) IgnoreScreenshot(filename string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if filename == "" {
 		return ErrIgnoreFilenameRequired
 	}
@@ -81,6 +84,9 @@ func (a *App) IgnoreScreenshot(filename string) error {
 // Surfaced for completeness; no UI affordance ships in PR 4 (debug /
 // future "show ignored" panel).
 func (a *App) UnignoreScreenshot(filename string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if filename == "" {
 		return ErrIgnoreFilenameRequired
 	}
@@ -116,6 +122,9 @@ func (a *App) GetIgnoredScreenshots() ([]IgnoredScreenshot, error) {
 // next Parse run will re-discover every previously-ignored file from
 // disk (the on-disk files never moved). Idempotent on an empty list.
 func (a *App) ClearIgnoredScreenshots() error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if err := a.store.ClearIgnoredScreenshots(); err != nil {
 		return fmt.Errorf("clear ignored screenshots: %w", err)
 	}

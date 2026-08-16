@@ -24,11 +24,17 @@ var ErrInvalidQueueType = errors.New("invalid queue_type: must be 'role' or 'ope
 //
 // Use ClearMatchQueue to revert to the "queue not set" state.
 func (a *App) SetMatchQueue(matchKey, queueType string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}
 	if !validQueueTypes[queueType] {
 		return ErrInvalidQueueType
+	}
+	if err := a.assertMatchExists(matchKey); err != nil {
+		return err
 	}
 	return a.store.SetMatchQueue(matchKey, queueType)
 }
@@ -36,6 +42,9 @@ func (a *App) SetMatchQueue(matchKey, queueType string) error {
 // ClearMatchQueue removes the queue-type tag. Idempotent — clearing
 // an unset match is a no-op.
 func (a *App) ClearMatchQueue(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}
@@ -48,8 +57,18 @@ func (a *App) ClearMatchQueue(matchKey string) error {
 // input never starts a partial-write. The slice is allowed to be
 // empty — returns nil without touching the store.
 func (a *App) BulkSetMatchQueue(matchKeys []string, queueType string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if queueType != "" && !validQueueTypes[queueType] {
 		return ErrInvalidQueueType
+	}
+	// Only the set direction creates rows; a bulk clear on stale keys
+	// removes nothing and stays idempotent.
+	if queueType != "" {
+		if err := a.assertMatchesExist(matchKeys); err != nil {
+			return err
+		}
 	}
 	return a.store.BulkSetMatchQueue(matchKeys, queueType)
 }

@@ -15,6 +15,16 @@ import (
 // …}") keeps the same shape it had when fakeStore was defined here.
 type fakeStore = dbtest.Fake
 
+// seedMatchKeys gives the fake a real screenshot row per key, so the
+// per-match writers' unknown-key guard (match_key_guard.go) sees a match
+// there. Tests that only care about a sidecar's own behavior use this to
+// state "these matches exist" without spelling out a corpus.
+func seedMatchKeys(fs *fakeStore, keys ...string) {
+	for _, key := range keys {
+		fs.Summaries = append(fs.Summaries, db.SummaryRow{Filename: key + ".png", MatchKey: key})
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // App methods that delegate to the store.
 // ──────────────────────────────────────────────────────────────────────────
@@ -272,6 +282,7 @@ func TestApp_HideMatch_RequiresMatchKey(t *testing.T) {
 func TestApp_HideMatch_DelegatesToStore(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1")
 	if err := a.HideMatch("m1"); err != nil {
 		t.Fatalf("HideMatch: %v", err)
 	}

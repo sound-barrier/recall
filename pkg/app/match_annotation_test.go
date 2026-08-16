@@ -36,6 +36,7 @@ func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 func TestSetMatchAnnotation_AllFieldsRoundTrip(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k1")
 	in := app.AnnotationInput{
 		MatchKey:   "k1",
 		Leavers:    []string{"team"},
@@ -62,6 +63,7 @@ func TestSetMatchAnnotation_AllFieldsRoundTrip(t *testing.T) {
 func TestSetMatchAnnotation_AllEmptyRejected(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k1")
 	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k1", Leavers: []string{"team"}, Note: "x"}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -77,6 +79,7 @@ func TestSetMatchAnnotation_AllEmptyRejected(t *testing.T) {
 func TestSetMatchAnnotation_TrimsAndDedupesMembers(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k1")
 	in := app.AnnotationInput{
 		MatchKey: "k1",
 		Leavers:  []string{"team"},
@@ -99,6 +102,7 @@ func TestSetMatchAnnotation_TrimsAndDedupesMembers(t *testing.T) {
 func TestSetMatchAnnotation_NormalizesTags(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k1")
 	in := app.AnnotationInput{
 		MatchKey: "k1",
 		// Cases include the three conventional tags plus duplicates,
@@ -127,6 +131,7 @@ func TestSetMatchAnnotation_NormalizesTags(t *testing.T) {
 func TestSetMatchAnnotation_TagsOnlyKeepsRow(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k")
 	if err := a.SetMatchAnnotation(app.AnnotationInput{
 		MatchKey: "k",
 		Tags:     []string{"stack"},
@@ -144,6 +149,7 @@ func TestSetMatchAnnotation_TagsOnlyKeepsRow(t *testing.T) {
 func TestDeleteMatchAnnotation(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k")
 	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k", Tags: []string{"stack"}}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -174,6 +180,7 @@ func TestSetMatchAnnotation_NoteOnlyKeepsRow(t *testing.T) {
 	// which the schema relaxation enables.
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k")
 	if err := a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k", Note: "no leaver tag yet"}); err != nil {
 		t.Fatalf("SetMatchAnnotation: %v", err)
 	}
@@ -189,6 +196,7 @@ func TestSetMatchAnnotation_NoteOnlyKeepsRow(t *testing.T) {
 func TestSetMatchAnnotation_EmptyLeaverPreservesOtherFields(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "k")
 	_ = a.SetMatchAnnotation(app.AnnotationInput{
 		MatchKey: "k", Leavers: []string{"team"}, Note: "important",
 		ReplayCode: "ABC", Members: []string{"Apollo#1"},

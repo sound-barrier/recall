@@ -13,6 +13,7 @@ import (
 func TestSetMatchReview_PersistsValidReviewer(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1", "m2")
 	if err := a.SetMatchReview("m1", "self"); err != nil {
 		t.Fatalf("SetMatchReview self: %v", err)
 	}
@@ -39,6 +40,7 @@ func TestSetMatchReview_RejectsInvalidReviewer(t *testing.T) {
 func TestSetMatchReview_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1")
 	if err := a.SetMatchReview("m1", "self"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}

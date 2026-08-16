@@ -42,6 +42,9 @@ func (a *App) BackupDatabase() ([]byte, error) {
 // tears down the store (mirroring the profile-switch teardown), atomically
 // swaps the file, drops stale WAL/shm sidecars, and reopens.
 func (a *App) RestoreDatabase(payload []byte) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if err := a.assertActiveMutable(); err != nil {
 		return err
 	}
@@ -110,6 +113,9 @@ func (a *App) stageRestoreCandidate(payload []byte, dir string) (string, error) 
 // closeStoreForSwap tears down everything holding the live DB file open so it
 // can be replaced. Mirrors the active-profile teardown in activateAndReload.
 func (a *App) closeStoreForSwap() {
+	// The session's notes hang off THIS store's coach_players rows; the
+	// file about to be swapped in has different ones (design rule 4).
+	a.endCoachSession()
 	a.saveSettingsBestEffort()
 	a.stopWatching()
 	if a.store != nil {

@@ -85,6 +85,9 @@ func (a *App) GetMatchByKey(matchKey string) (match.Record, error) {
 // standard "factory reset" semantic; pass `true` when the user
 // explicitly opts into keeping their curated ignore list.
 func (a *App) ClearDatabase(keepIgnored bool) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if !keepIgnored {
 		return a.store.Clear()
 	}

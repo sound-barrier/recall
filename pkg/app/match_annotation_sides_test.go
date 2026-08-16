@@ -15,6 +15,7 @@ import (
 func TestSetMatchAnnotation_ThrowersOnlyIsStorable(t *testing.T) {
 	fake := dbtest.New()
 	a := app.NewWithStore(fake)
+	seedMatchKeys(fake, "k1")
 	if err := a.SetMatchAnnotation(app.AnnotationInput{
 		MatchKey: "k1", Throwers: []string{"enemy"},
 	}); err != nil {
@@ -29,6 +30,7 @@ func TestSetMatchAnnotation_ThrowersOnlyIsStorable(t *testing.T) {
 func TestSetMatchAnnotation_MultipleSidesPerKind(t *testing.T) {
 	fake := dbtest.New()
 	a := app.NewWithStore(fake)
+	seedMatchKeys(fake, "k1")
 	if err := a.SetMatchAnnotation(app.AnnotationInput{
 		MatchKey: "k1",
 		Leavers:  []string{"team", "self"},

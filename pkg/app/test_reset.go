@@ -15,6 +15,10 @@ func (a *App) ResetForTest() error {
 	if a.profiles == nil {
 		return errors.New("profiles: not initialized")
 	}
+	// A reset is a clean slate, and a session left open would refuse every
+	// step below through the coaching write gate. Schemathesis opens
+	// sessions, so this is load-bearing, not defensive (design rule 12).
+	a.endCoachSession()
 	// "main" must be active before we can delete the others (Delete refuses the
 	// active profile) and so we clear the canonical DB.
 	if a.profiles.Active() != DefaultProfileName {

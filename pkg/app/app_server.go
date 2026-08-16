@@ -39,6 +39,14 @@ func (a *App) emitTesseractStatus(s TesseractStatus) {
 	a.SSEHub.BroadcastData("tesseract-status", string(data))
 }
 
+// emitCoachSessionChanged broadcasts the coaching session's open/closed
+// state to SSE subscribers — the server-mode twin of the Wails emit, so
+// every connected tab flips its write gate together.
+func (a *App) emitCoachSessionChanged(active bool) {
+	data, _ := json.Marshal(CoachSessionChangedEvent{Active: active})
+	a.SSEHub.BroadcastData("coach-session-changed", string(data))
+}
+
 // emitParseComplete is a no-op in server mode — the SSE hub handles
 // parse-complete notifications instead of the Wails event bus. The match count
 // drives the desktop native notification only, so server mode ignores it.
@@ -89,6 +97,20 @@ func (a *App) LoadRestoreFromFile() (string, error) {
 // The HTTP API exposes POST /api/v1/imports which accepts the same bundle.
 func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
 	return MatchImportResult{}, errors.New("native dialogs unavailable in server mode; use POST /api/v1/imports")
+}
+
+// LoadCoachBundleFromFile is not available in server mode (no native
+// dialogs). The HTTP API exposes POST /api/v1/coach/session, which takes
+// the same bundle bytes.
+func (a *App) LoadCoachBundleFromFile() (CoachSessionResult, error) {
+	return CoachSessionResult{}, errors.New("native dialogs unavailable in server mode; use POST /api/v1/coach/session")
+}
+
+// SaveCoachNotesToFile is not available in server mode (no native
+// dialogs). The HTTP API exposes POST /api/v1/coach/session/export, which
+// streams the same archive.
+func (a *App) SaveCoachNotesToFile() (string, error) {
+	return "", errors.New("native dialogs unavailable in server mode; use POST /api/v1/coach/session/export")
 }
 
 // PickTesseractBinary is not available in server mode (no native dialogs).
