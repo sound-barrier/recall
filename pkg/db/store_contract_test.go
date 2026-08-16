@@ -80,6 +80,11 @@ func seedFullMatch(t *testing.T, s db.Store, key, filename string) {
 	mustNoErr(t, s.HideMatch(key))
 	mapName := "dorado"
 	mustNoErr(t, s.UpsertUserMatchData(db.UserMatchData{MatchKey: key, Map: &mapName}))
+	_, err := s.UpsertMatchCoachNote(db.MatchCoachNote{
+		NoteID: "note-" + filename, MatchKey: key, CoachName: "Ordo", SessionDate: "2026-08-08",
+		Text: "hold high ground", FocusTags: []string{"positioning"},
+	})
+	mustNoErr(t, err)
 }
 
 // HardDeleteMatch's contract: NO trace remains on any surface. The Fake
@@ -130,6 +135,9 @@ func assertNoTraceRemains(t *testing.T, s db.Store) {
 	if cands, _ := s.LoadAmbiguousCandidatesFor("pending.png"); len(cands) != 0 {
 		t.Errorf("ambiguous candidacy survived: %v", cands)
 	}
+	if notes, _ := s.LoadMatchCoachNotes(); len(notes) != 0 {
+		t.Errorf("received coach notes survived: %v", notes)
+	}
 }
 
 // Clear's contract: every surface empties, and the store remains usable
@@ -170,6 +178,9 @@ func assertClearedSurfaces(t *testing.T, s db.Store) {
 	}
 	if ud, _ := s.LoadAllUserMatchData(); len(ud) != 0 {
 		t.Errorf("user data survived Clear: %v", ud)
+	}
+	if notes, _ := s.LoadMatchCoachNotes(); len(notes) != 0 {
+		t.Errorf("received coach notes survived Clear: %v", notes)
 	}
 }
 

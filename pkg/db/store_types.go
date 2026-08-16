@@ -304,3 +304,92 @@ type AmbiguousCandidate struct {
 	MatchKey        string
 	DistanceSeconds int
 }
+
+// ── Coaching ────────────────────────────────────────────────────────────
+//
+// Two families that must never be confused, because one machine can be both
+// a coach and a player:
+//
+//   * coach-AUTHORED — what THIS user wrote about someone else's matches
+//     while a coaching session was open. Keyed by the player they were
+//     written about (CoachPlayer), not by any local match. Survives Clear().
+//   * coach-RECEIVED — notes another coach wrote about THIS user's matches,
+//     accepted through the return sheet. Keyed by local match_key like every
+//     other sidecar. Wiped by Clear() and HardDeleteMatch().
+
+// CoachPlayer identifies a player the local user has coached. PlayerID is
+// the stable UUID a "share with a coach" export mints on the player's side;
+// it is empty for anonymous/older bundles, where the handle (matched
+// case-insensitively) is the best identity available. Handle is display
+// only and may be corrected by the coach.
+type CoachPlayer struct {
+	ID       int64
+	PlayerID string
+	Handle   string
+}
+
+// CoachNote is one coach-authored note against one of a player's matches.
+// NoteID is a UUID minted on first save and stable across re-exports — it is
+// the identity the player's side dedupes on. Kind is "note" or
+// "reviewed_only" (the "I looked at this, nothing to add" mark, which
+// carries no text or tags).
+type CoachNote struct {
+	NoteID     string
+	PlayerRef  int64
+	MatchKey   string
+	Kind       string
+	Text       string
+	MatchClock string
+	FocusTags  []string
+	ExtraTags  []string
+	CreatedAt  string
+	UpdatedAt  string
+}
+
+// CoachSummary is the coach's one set-level note for a player ("what to work
+// on"), authored once per player and re-surfaced on every session.
+type CoachSummary struct {
+	PlayerRef int64
+	Text      string
+	UpdatedAt string
+}
+
+// MatchCoachNote is a coach-RECEIVED note the local user accepted onto one
+// of their own matches. NoteID is the coach's UUID, so importing the same
+// notes file twice upserts rather than duplicates. Blocks accumulate per
+// match — one per (coach, session) — and are never merged into the user's
+// own annotation.
+type MatchCoachNote struct {
+	ID          int64
+	NoteID      string
+	MatchKey    string
+	CoachName   string
+	SessionDate string
+	Text        string
+	MatchClock  string
+	FocusTags   []string
+	ExtraTags   []string
+	AcceptedAt  string
+}
+
+// CoachReturn is a staged notes file the player has imported but not
+// finished deciding on. The file's notes.json is kept verbatim (it is an
+// uploaded document; only the decisions are relational) and content-hashed
+// so the same file imported twice is the same row.
+type CoachReturn struct {
+	ID           int64
+	ContentHash  string
+	CoachName    string
+	PlayerHandle string
+	SessionDate  string
+	NotesJSON    []byte
+	ImportedAt   string
+	// Decisions is keyed by note_id; a note with no entry is undecided.
+	Decisions map[string]CoachDecision
+}
+
+// CoachDecision is the player's verdict on one staged note.
+type CoachDecision struct {
+	Decision  string // "accepted" | "skipped"
+	DecidedAt string
+}

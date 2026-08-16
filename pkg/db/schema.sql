@@ -446,3 +446,132 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
   PRIMARY KEY (match_key, modifier)
 ) STRICT;
 -- statement-end
+
+-- ── Coaching ────────────────────────────────────────────────────────────
+--
+-- Two families that one machine may carry at once (a user can be both a
+-- coach and a player):
+--
+--   * coach-AUTHORED (coach_players / coach_notes / coach_session_summaries)
+--     — what THIS user wrote about someone else's matches during a coaching
+--     session. Keyed by the player, never by a local match_key; Clear() and
+--     HardDeleteMatch() leave this family alone.
+--   * coach-RECEIVED (match_coach_notes / coach_returns) — notes another
+--     coach wrote about THIS user's matches, staged as a return and accepted
+--     per note. Keyed by local match_key like every other sidecar, so
+--     HardDeleteMatch / Clear / profiles.Move treat it as match history.
+
+-- player_id is the UUID a "share with a coach" export mints on the player's
+-- side; NULL for anonymous/older bundles, where the case-insensitive handle
+-- is the only identity available (UNIQUE tolerates many NULLs). handle is
+-- display-only and may be corrected by the coach.
+CREATE TABLE IF NOT EXISTS coach_players (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id TEXT UNIQUE,
+  handle TEXT NOT NULL COLLATE NOCASE
+) STRICT;
+-- statement-end
+
+-- One note per (player, match). note_id is the UUID the player's side
+-- dedupes on, minted on first save and never rewritten by a re-save.
+CREATE TABLE IF NOT EXISTS coach_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  note_id TEXT NOT NULL UNIQUE,
+  player_ref INTEGER NOT NULL REFERENCES coach_players (id) ON DELETE CASCADE,
+  match_key TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('note', 'reviewed_only')),
+  text TEXT NOT NULL DEFAULT '',
+  match_clock TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  UNIQUE (player_ref, match_key)
+) STRICT;
+-- statement-end
+
+-- The fixed focus vocabulary lives in the CHECK (mirrored by the coach
+-- package and the frontend chip list); freeform "+ add" tags go in the
+-- extra_tags sibling with no vocabulary.
+CREATE TABLE IF NOT EXISTS coach_note_focus_tags (
+  coach_note_id INTEGER NOT NULL REFERENCES coach_notes (id) ON DELETE CASCADE,
+  tag TEXT NOT NULL CHECK (tag IN (
+    'positioning', 'ult_economy', 'target_priority', 'cooldowns',
+    'hero_pick', 'comms', 'mechanics', 'mental'
+  )),
+  PRIMARY KEY (coach_note_id, tag)
+) STRICT;
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS coach_note_extra_tags (
+  coach_note_id INTEGER NOT NULL REFERENCES coach_notes (id) ON DELETE CASCADE,
+  tag TEXT NOT NULL,
+  PRIMARY KEY (coach_note_id, tag)
+) STRICT;
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS coach_session_summaries (
+  player_ref INTEGER PRIMARY KEY REFERENCES coach_players (id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
+-- Accepted coach notes on this user's own matches. Blocks accumulate per
+-- match (one per coach note); note_id is the coach's UUID so importing the
+-- same notes file twice upserts instead of duplicating.
+CREATE TABLE IF NOT EXISTS match_coach_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  note_id TEXT NOT NULL UNIQUE,
+  match_key TEXT NOT NULL,
+  coach_name TEXT NOT NULL,
+  session_date TEXT NOT NULL,
+  text TEXT NOT NULL,
+  match_clock TEXT NOT NULL DEFAULT '',
+  accepted_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+CREATE INDEX IF NOT EXISTS idx_match_coach_notes_match_key ON match_coach_notes (match_key);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS match_coach_note_focus_tags (
+  match_coach_note_id INTEGER NOT NULL REFERENCES match_coach_notes (id) ON DELETE CASCADE,
+  -- Same vocabulary as coach_note_focus_tags — keep the two CHECK lists in
+  -- sync, or a tag a coach can write becomes unacceptable on the way back.
+  tag TEXT NOT NULL CHECK (tag IN (
+    'positioning', 'ult_economy', 'target_priority', 'cooldowns',
+    'hero_pick', 'comms', 'mechanics', 'mental'
+  )),
+  PRIMARY KEY (match_coach_note_id, tag)
+) STRICT;
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS match_coach_note_extra_tags (
+  match_coach_note_id INTEGER NOT NULL REFERENCES match_coach_notes (id) ON DELETE CASCADE,
+  tag TEXT NOT NULL,
+  PRIMARY KEY (match_coach_note_id, tag)
+) STRICT;
+-- statement-end
+
+-- A staged notes file the player imported but has not finished deciding on.
+-- notes_json is the file's notes.json kept verbatim (an uploaded document —
+-- only the decisions are relational); content_hash makes the same file
+-- imported twice the same row. "Pending" is derived (undecided + decidable);
+-- there is no finish state.
+CREATE TABLE IF NOT EXISTS coach_returns (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content_hash TEXT NOT NULL UNIQUE,
+  coach_name TEXT NOT NULL,
+  player_handle TEXT NOT NULL,
+  session_date TEXT NOT NULL,
+  notes_json TEXT NOT NULL,
+  imported_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS coach_return_decisions (
+  return_id INTEGER NOT NULL REFERENCES coach_returns (id) ON DELETE CASCADE,
+  note_id TEXT NOT NULL,
+  decision TEXT NOT NULL CHECK (decision IN ('accepted', 'skipped')),
+  decided_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  PRIMARY KEY (return_id, note_id)
+) STRICT;
+-- statement-end

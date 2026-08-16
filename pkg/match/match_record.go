@@ -91,6 +91,10 @@ type Record struct {
 
 	Ambiguous  bool                   `json:"ambiguous,omitempty"`
 	Candidates []AmbiguousAttribution `json:"candidates,omitempty"`
+
+	// CoachNotes is the coach-received layer: every accepted coach note on
+	// this match, oldest first. Empty for matches no coach has written about.
+	CoachNotes []CoachNote `json:"coach_notes,omitempty"`
 }
 
 // Match provenance values for Record.Source.
@@ -140,6 +144,22 @@ type Annotation struct {
 	Members     []string `json:"members,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	AnnotatedAt string   `json:"annotated_at,omitempty"`
+}
+
+// CoachNote is one accepted coach note on this match — the coach-received
+// layer. It sits BESIDE the user's own Annotation, never inside it: the
+// user's words and the coach's words stay separately attributed, and blocks
+// accumulate (one per coach and session) rather than replace.
+type CoachNote struct {
+	ID          int64    `json:"id"`
+	NoteID      string   `json:"note_id"`
+	CoachName   string   `json:"coach_name"`
+	SessionDate string   `json:"session_date"`
+	Text        string   `json:"text"`
+	MatchClock  string   `json:"match_clock,omitempty"`
+	FocusTags   []string `json:"focus_tags"`
+	ExtraTags   []string `json:"extra_tags,omitempty"`
+	AcceptedAt  string   `json:"accepted_at"`
 }
 
 // ErrMatchNotFound is returned by GetMatchByKey when no match has the

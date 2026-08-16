@@ -240,7 +240,14 @@ type Store interface {
 	UpsertAllHeroesScreenshot(filename string) error
 	LoadAllHeroesFilenames() (map[string]bool, error)
 
-	// Clear deletes every row in every table — children cascade.
+	// Coaching surface — coach-authored notes keyed by player, the received
+	// layer keyed by match_key, staged returns, and the tracked-key
+	// registry. See store_coach.go.
+	CoachStore
+
+	// Clear deletes every row in every table — children cascade — EXCEPT the
+	// coach-authored family (coach_players / coach_notes /
+	// coach_session_summaries), which is not match history.
 	Clear() error
 	// Database health + maintenance surface (Settings → Advanced →
 	// Database health). Health is read-only and safe mid-parse;

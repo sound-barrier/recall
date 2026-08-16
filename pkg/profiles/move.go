@@ -21,9 +21,9 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 //     the user-override layer (user_match_data + the queue / play-mode
 //     aux rows — a manual match or an edited OCR match lives entirely
 //     there) + every annotation + the hidden_matches and pinned_matches
-//     flags + the review status. Filenames carry over verbatim so a
-//     future re-parse of the same source PNG on the new profile is a
-//     no-op.
+//     flags + the review status + the accepted coach-note blocks.
+//     Filenames carry over verbatim so a future re-parse of the same
+//     source PNG on the new profile is a no-op.
 //  2. Hard-delete the rows on src. Per-key HardDeleteMatch so a
 //     single bad key doesn't strand the rest.
 //
@@ -164,6 +164,9 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 	if out.reviews, err = src.LoadReviews(); err != nil {
 		return moveSource{}, fmt.Errorf("move: load reviews: %w", err)
 	}
+	if out.coachNotes, err = src.LoadMatchCoachNotes(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load coach notes: %w", err)
+	}
 	return out, nil
 }
 
@@ -177,6 +180,7 @@ type moveSource struct {
 	hidden      map[string]bool
 	pinned      map[string]bool
 	reviews     map[string]db.ReviewState
+	coachNotes  map[string][]db.MatchCoachNote
 }
 
 // dirIDResolver re-maps a source screenshots_dir_id onto the target by
@@ -291,9 +295,10 @@ func movePhase1Parents(targetStore db.Store, src db.Screenshots, keep map[string
 }
 
 // movePhase1Sidecars copies the per-key sidecar state (annotations,
-// hidden / pinned flags, review status) into the target. SetReview stamps a
-// fresh reviewed_at on the target — the same timestamp-refresh convention
-// HideMatch already applies to hidden_at on move.
+// hidden / pinned flags, review status, accepted coach notes) into the
+// target. SetReview stamps a fresh reviewed_at on the target — the same
+// timestamp-refresh convention HideMatch already applies to hidden_at on
+// move (and UpsertMatchCoachNote to accepted_at).
 func movePhase1Sidecars(targetStore db.Store, matchKeys []string, src moveSource) error {
 	for _, k := range matchKeys {
 		if err := copyMatchSidecars(targetStore, k, src); err != nil {
@@ -320,6 +325,18 @@ func copyMatchSidecars(targetStore db.Store, k string, src moveSource) error {
 	if r, ok := src.reviews[k]; ok {
 		if err := targetStore.SetReview(k, r.ReviewedBy); err != nil {
 			return fmt.Errorf("move: copy review for %q: %w", k, err)
+		}
+	}
+	return copyCoachNotes(targetStore, k, src.coachNotes[k])
+}
+
+// copyCoachNotes reproduces the accepted coach-note blocks on the target.
+// note_id is the block's identity on both sides, so a retry after a failed
+// phase 2 upserts in place instead of duplicating.
+func copyCoachNotes(targetStore db.Store, k string, notes []db.MatchCoachNote) error {
+	for _, n := range notes {
+		if _, err := targetStore.UpsertMatchCoachNote(n); err != nil {
+			return fmt.Errorf("move: copy coach note %q for %q: %w", n.NoteID, k, err)
 		}
 	}
 	return nil
