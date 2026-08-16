@@ -83,6 +83,25 @@ func assertManifestPlayer(t *testing.T, payload []byte, wantID, wantHandle, want
 	}
 }
 
+// A handle the bundle format cannot carry is refused BEFORE it is
+// remembered: shareIdentity persists what it resolves, so a handle that
+// only the packer rejects would be reused by every later share — including
+// the ones that pass no handle at all — and none of them could ever export.
+func TestExportShareBundle_DoesNotRememberAnUnusableHandle(t *testing.T) {
+	isolateInstall(t)
+	store := dbtest.New()
+	mustNoErr(t, playerCorpus(store))
+	a := app.NewWithStore(store)
+
+	_, err := a.ExportShareBundle(playerBundleOpts(), app.SharePlayer{Handle: strings.Repeat("x", 65)})
+	if !errors.Is(err, bundle.ErrPlayerIdentityInvalid) {
+		t.Fatalf("share with a 65-rune handle = %v, want bundle.ErrPlayerIdentityInvalid", err)
+	}
+	if got := app.LoadSettings(a).PlayerHandle; got != "" {
+		t.Errorf("a refused share remembered the handle %q", got)
+	}
+}
+
 // A share with no handle at all — and none remembered — is refused rather
 // than shipping an unattributable bundle.
 func TestExportShareBundle_NeedsAHandle(t *testing.T) {

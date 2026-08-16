@@ -2,15 +2,22 @@
 import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 
 import { useScrollLock } from '@/composables/shared/useScrollLock'
+import type { ExportBundleRequest } from '@/composables/matches/useExportBundle'
 
 // Selection-aware "Export bundle" modal. Opens from the MatchesView
 // bulk-action bar. Lets the user:
 //   * confirm the destination filename (defaulted to
 //     recall-bundle-<timestamp>.zip),
 //   * optionally add every hidden match to the checkbox selection,
-//   * optionally add every unknown match to the checkbox selection.
-// Submits with the final knobs; App.vue dispatches the actual save
+//   * optionally add every unknown match to the checkbox selection,
+//   * or SHARE the same selection with a coach, which names the player in
+//     the manifest so the file opens as a coaching session.
+// Submits with the final knobs; useExportBundle dispatches the actual save
 // via api.ts ExportBundle (Wails native dialog or browser blob).
+//
+// The two modes are deliberately hard to confuse: sharing renames the
+// dialog, the submit button and the default filename, because a player who
+// cannot tell which file they just made will hand a coach the wrong one.
 //
 // Esc / backdrop click both dismiss (unlike the first-run modal,
 // this is a soft prompt). Focus trap cycles inside the box.
@@ -24,34 +31,49 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  // Caller threads the values back into App.vue's ExportBundle call.
-  // Filename is what the user typed (empty string allowed — caller
-  // falls back to the timestamp default).
-  export: [filename: string, includeHidden: boolean, includeUnknown: boolean]
+  // Caller threads the request into its ExportBundle call. Filename is what
+  // the user typed (empty string allowed — the caller falls back to the
+  // timestamp default); `share` is null for a plain export.
+  export: [request: ExportBundleRequest]
 }>()
 
 // Freeze the page behind the modal (this one wires its own focus trap
 // rather than useModalFocusTrap, so it locks scroll directly).
 useScrollLock(toRef(props, 'open'))
 
-function defaultFilename(): string {
+function defaultFilename(sharing = false): string {
   // Same shape the server emits via Content-Disposition. Local-time
   // is intentional: the user is naming a file they'll find in their
   // own Finder/Explorer, so the local timestamp reads more
-  // naturally than UTC.
+  // naturally than UTC. The stem differs by mode so the two files are
+  // told apart in a folder weeks later.
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   return (
-    'recall-bundle-' +
+    `recall-${sharing ? 'share' : 'bundle'}-` +
     `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-` +
     `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.zip`
   )
 }
 
-const filename       = ref(defaultFilename())
+// The name we last generated, kept so mode switches can re-stem it without
+// overwriting one the user typed.
+const generatedName  = ref(defaultFilename())
+const filename       = ref(generatedName.value)
 const includeHidden  = ref(false)
 const includeUnknown = ref(false)
+const sharing        = ref(false)
+const shareHandle    = ref('')
+const shareMessage   = ref('')
 const busy           = ref(false)
+
+function seedFilename(sharingNow: boolean): void {
+  const untouched = filename.value === generatedName.value
+  generatedName.value = defaultFilename(sharingNow)
+  if (untouched) filename.value = generatedName.value
+}
+
+watch(sharing, seedFilename)
 
 // Declared ahead of the open-watch below: that watch runs immediately
 // (see its note), so both refs must already be initialized when it does.
@@ -70,9 +92,13 @@ const lastFocus = ref<HTMLElement | null>(null)
 // the close branch below can't fire either.
 watch(() => props.open, async (next, prev) => {
   if (next) {
-    filename.value       = defaultFilename()
+    generatedName.value  = defaultFilename()
+    filename.value       = generatedName.value
     includeHidden.value  = false
     includeUnknown.value = false
+    sharing.value        = false
+    shareHandle.value    = ''
+    shareMessage.value   = ''
     busy.value           = false
     lastFocus.value =
       document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -99,14 +125,27 @@ const previewCount = computed(() => {
 
 const canSubmit = computed(() => {
   if (busy.value) return false
+  if (sharing.value && shareHandle.value.trim() === '') return false
   return previewCount.value > 0
 })
+
+// Everything that tells the two modes apart on screen, in one place.
+const title = computed(() => (sharing.value ? 'Share with a coach' : 'Export bundle'))
+const submitLabel = computed(() => (sharing.value ? 'Share' : 'Export'))
+const busyLabel = computed(() => (sharing.value ? 'Sharing…' : 'Exporting…'))
 
 async function onSubmit() {
   if (!canSubmit.value) return
   busy.value = true
   try {
-    emit('export', filename.value.trim(), includeHidden.value, includeUnknown.value)
+    emit('export', {
+      filename: filename.value.trim(),
+      includeHidden: includeHidden.value,
+      includeUnknown: includeUnknown.value,
+      share: sharing.value
+        ? { handle: shareHandle.value.trim(), message: shareMessage.value.trim() }
+        : null,
+    })
   } finally {
     busy.value = false
   }
@@ -120,7 +159,7 @@ function onCancel() {
 function focusable(): HTMLElement[] {
   const box = document.querySelector<HTMLElement>('.export-bundle-modal-box')
   if (!box) return []
-  const sel = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  const sel = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
   return Array.from(box.querySelectorAll<HTMLElement>(sel))
 }
 
@@ -167,12 +206,17 @@ onBeforeUnmount(() => {
       @submit.prevent="onSubmit"
     >
       <p class="eyebrow accent export-bundle-eyebrow">
-        Data &amp; Export
+        {{ sharing ? 'Coaching' : 'Data & Export' }}
       </p>
       <h2 id="export-bundle-title" class="export-bundle-title">
-        Export bundle
+        {{ title }}
       </h2>
-      <p id="export-bundle-desc" class="export-bundle-desc">
+      <p v-if="sharing" id="export-bundle-desc" class="export-bundle-desc">
+        The same <code>.zip</code>, stamped with your name so your coach can
+        open it as a session. Their notes come back as a file you decide on,
+        match by match.
+      </p>
+      <p v-else id="export-bundle-desc" class="export-bundle-desc">
         A <code>.zip</code> containing each match's JSON data and
         every referenced screenshot. Restores via Settings →
         Backup &amp; Restore.
@@ -211,6 +255,36 @@ onBeforeUnmount(() => {
         </span>
       </label>
 
+      <label class="export-bundle-toggle export-bundle-share-toggle">
+        <input v-model="sharing" type="checkbox">
+        <span>Share with a coach</span>
+      </label>
+
+      <div v-if="sharing" class="export-bundle-share">
+        <label class="export-bundle-field-label" for="export-bundle-handle">
+          Your handle
+        </label>
+        <input
+          id="export-bundle-handle"
+          v-model="shareHandle"
+          type="text"
+          class="export-bundle-input"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="The name your coach knows you by"
+        >
+        <label class="export-bundle-field-label" for="export-bundle-message">
+          Message for your coach (optional)
+        </label>
+        <textarea
+          id="export-bundle-message"
+          v-model="shareMessage"
+          class="export-bundle-input export-bundle-message"
+          rows="3"
+          placeholder="What do you want them to look at?"
+        />
+      </div>
+
       <label class="export-bundle-field-label" for="export-bundle-filename">
         Filename
       </label>
@@ -248,7 +322,7 @@ onBeforeUnmount(() => {
           :disabled="!canSubmit"
           data-testid="export-submit"
         >
-          {{ busy ? 'Exporting…' : 'Export' }}
+          {{ busy ? busyLabel : submitLabel }}
         </button>
       </div>
     </form>
@@ -358,6 +432,26 @@ onBeforeUnmount(() => {
 .export-bundle-toggle input:disabled + span {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* The mode switch sits apart from the two "include…" rows: it changes what
+   the file IS, not what goes in it. */
+.export-bundle-share-toggle {
+  margin-top: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+}
+
+.export-bundle-share {
+  padding: 0.2rem 0 0.2rem 0.7rem;
+  border-left: 2px solid var(--accent);
+}
+
+.export-bundle-message {
+  font-family: var(--body);
+  line-height: 1.45;
+  resize: vertical;
 }
 
 .export-bundle-field-label {

@@ -450,6 +450,28 @@ describe('row formatters', () => {
     expect(formatFinishedAt({ data: { finished_at: '21:29' } })).toBe('21:29')
     expect(formatFinishedAt({ data: {} })).toBe('')
   })
+
+  // Design rule 7: a loaned coaching corpus is clocked in the PLAYER's zone
+  // on every surface, the step-into views included. The instant below lands
+  // on a different calendar day than the naive pair in every host zone, so
+  // a row that prints the instant would print a day the grouping (which
+  // reads data.date) never puts it in.
+  const LOANED = { data: { date: '1999-01-01', finished_at: '21:14', played_at_utc: '2026-05-11T03:29:00Z' } }
+
+  it("formatRowDate in the player's clock reads the naive date, not the instant's day", () => {
+    expect(formatRowDate(LOANED, 'player')).toContain('1999')
+  })
+
+  it("formatFinishedAt in the player's clock reads the naive finish time", () => {
+    expect(formatFinishedAt(LOANED, 'player')).toBe('21:14')
+  })
+
+  it('both default to the viewer clock, leaving every non-session surface as it was', () => {
+    const dt = new Date('2026-05-11T03:29:00Z')
+    const pad = (n: number) => String(n).padStart(2, '0')
+    expect(formatRowDate(LOANED)).not.toContain('1999')
+    expect(formatFinishedAt(LOANED, 'viewer')).toBe(`${pad(dt.getHours())}:${pad(dt.getMinutes())}`)
+  })
 })
 
 describe('duplicate-candidate predicates', () => {

@@ -2152,6 +2152,14 @@ paths:
         carries the user layer (edits, annotations, reviews, queue and
         play-mode picks, hidden and pinned flags) alongside the OCR row
         tables. `recall-export/v1` bundles still import unchanged.
+
+        Supplying `share` switches the export to SHARE mode — the
+        bundle a player hands a coach. The manifest then carries a
+        `player` block (stable id + display handle + the player's
+        optional message), which is what `POST /api/v1/coach/session`
+        opens the session on. A share-mode bundle is deliberately NOT
+        importable: `POST /api/v1/imports` refuses it with `409` so a
+        mis-clicked Import cannot merge somebody else's history.
       requestBody:
         required: true
         content:
@@ -2181,6 +2189,8 @@ paths:
                   default: false
                   description: |
                     Add every record currently in `hidden_matches`.
+                share:
+                  $ref: "#/components/schemas/BundleShare"
       responses:
         "200":
           description: |
@@ -2258,9 +2268,10 @@ paths:
         manifest/data.json or notes.json) are rejected with `400`;
         semantic failures — an unsupported schema, a bundle a player
         shared FOR coaching (open it as a session instead), a coaching
-        session in progress, no note about any match in this history —
-        with `409`. Existing data is left untouched in both rejection
-        paths.
+        session in progress, a notes file with nothing to show (no
+        summary AND no note about a match in this history) — with `409`.
+        A notes file carrying only a session summary IS stageable.
+        Existing data is left untouched in both rejection paths.
 
         For a full-fidelity backup/restore (every table, including edits
         and review state) use `GET` / `PUT /api/v1/database` instead.
@@ -2323,9 +2334,13 @@ paths:
         looking at somebody else's history, so a write aimed at "this
         match" would land on a key this database has never seen.
 
-        A bundle that names its player (a "share with a coach" export)
-        arrives with the handle pre-filled; an anonymous one leaves it
-        blank until `PUT /api/v1/coach/session/player` confirms one.
+        A bundle that names its player (a "share with a coach" export —
+        `POST /api/v1/exports/bundle` with a `share` block) arrives with
+        the handle pre-filled; an anonymous one leaves it blank until
+        `PUT /api/v1/coach/session/player` confirms one. An identity no
+        export would have written (a non-UUID id, a blank or oversized
+        handle) is a `409`: it is refused rather than keyed on, because
+        the coach's own notes file would later refuse to carry it.
       requestBody:
         required: true
         content:
@@ -2350,7 +2365,8 @@ paths:
         "409":
           description: |
             A session is already open, the payload is a coach notes
-            archive rather than a bundle, or its schema is unsupported.
+            archive rather than a bundle, its schema is unsupported, or
+            its manifest carries an invalid player identity.
           content:
             application/problem+json:
               schema:
@@ -3760,6 +3776,33 @@ components:
         active:
           type: boolean
           description: True when a session is now open.
+
+    BundleShare:
+      type: object
+      description: |
+        Turns `POST /api/v1/exports/bundle` into a "share with a coach"
+        export: the manifest gains a `player` block and the result opens
+        as a coaching session instead of importing as history.
+
+        Deliberately carries NO id. The stable player UUID is minted on
+        the first share and persisted in this install's settings, so a
+        request body can never claim to be somebody else; an `id` sent
+        here is ignored. The handle is trimmed; blank falls back to the
+        handle remembered from the last share, and having neither is a
+        `400`.
+      required: [handle]
+      properties:
+        handle:
+          type: string
+          maxLength: 64
+          description: Display handle the coach sees pre-filled.
+          example: Sable
+        message:
+          type: string
+          maxLength: 2000
+          description: |
+            The player's optional note to their coach ("mostly Ana this
+            week"), shown on the session sheet.
 
     CoachPlayer:
       type: object

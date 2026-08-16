@@ -110,6 +110,7 @@ beforeEach(() => {
     GetVersion: vi.fn(async () => 'dev'),
     GetDataLocation: vi.fn(async () => null),
     CheckForUpdate: vi.fn(async () => null),
+    GetProfiles: vi.fn(async () => ({ profiles: ['default'], active: 'default', immutable: [] })),
     OpenCoachBundle: vi.fn(async () => sessionView()),
     GetCoachSession: vi.fn(async () => sessionView()),
     GetCoachSessionMatches: vi.fn(async () => [
@@ -260,7 +261,7 @@ describe('coach store — autosave', () => {
       extra_tags: [],
       match_clock: '04:12',
     })
-    expect(coach.saveState).toBe('saved')
+    expect(coach.saveStateFor(MATCH_A)).toBe('saved')
   })
 
   it('sends a DELETE for an emptied draft rather than a PUT of an empty note', async () => {
@@ -299,7 +300,8 @@ describe('coach store — autosave', () => {
     coach.updateNote(MATCH_A, draft())
     await vi.advanceTimersByTimeAsync(1000)
 
-    expect(coach.saveState).toBe('error')
+    expect(coach.saveStateFor(MATCH_A)).toBe('error')
+    expect(coach.hasFailedSaves).toBe(true)
   })
 
   it('autosaves the session summary', async () => {
@@ -328,6 +330,78 @@ describe('coach store — autosave', () => {
   })
 })
 
+// A save that failed is the coach's words with nowhere to land. It has to
+// stay queued, stay visible on its OWN key, and stand between the archive
+// and the player — an export that quietly ships without it is worse than
+// the failure, because the "not exported yet" warning goes with it.
+describe('coach store — a save that failed', () => {
+  function failOn(key: string): void {
+    api.PutCoachNote = vi.fn(async (matchKey: string) => {
+      if (matchKey === key) throw new Error('409')
+      return undefined
+    })
+    setApiBacking(api)
+  }
+
+  it('keeps the failure on its own key when a later save on another lands', async () => {
+    failOn(MATCH_A)
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateNote(MATCH_A, draft({ text: 'The one that failed.' }))
+    await vi.advanceTimersByTimeAsync(1000)
+    coach.updateNote(MATCH_B, draft({ text: 'The one that landed.' }))
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(coach.saveStateFor(MATCH_B)).toBe('saved')
+    expect(coach.saveStateFor(MATCH_A)).toBe('error')
+    expect(coach.hasFailedSaves).toBe(true)
+  })
+
+  it('refuses the archive while a save is still failing, and keeps the warning up', async () => {
+    failOn(MATCH_A)
+    const coach = useCoachStore()
+    const app = useAppStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateNote(MATCH_A, draft({ text: 'Missing from the archive.' }))
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(coach.canExportNotes).toBe(false)
+
+    await coach.exportNotes()
+
+    // Retried on the way out, still refused, and the player-facing
+    // "these notes are not in an archive yet" flag survives.
+    expect(api.PutCoachNote).toHaveBeenCalledTimes(2)
+    expect(api.ExportCoachNotes).not.toHaveBeenCalled()
+    expect(coach.dirtySinceExport).toBe(true)
+    expect(app.error).not.toBe('')
+  })
+
+  it('exports once the retry lands, and the note is in it', async () => {
+    let attempts = 0
+    api.PutCoachNote = vi.fn(async () => {
+      attempts += 1
+      if (attempts === 1) throw new Error('409')
+      return undefined
+    })
+    setApiBacking(api)
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateNote(MATCH_A, draft({ text: 'Saved on the second try.' }))
+    await vi.advanceTimersByTimeAsync(1000)
+    await coach.exportNotes()
+
+    expect(coach.hasFailedSaves).toBe(false)
+    expect(api.ExportCoachNotes).toHaveBeenCalledTimes(1)
+    expect(coach.dirtySinceExport).toBe(false)
+  })
+})
+
 describe('coach store — ending the session', () => {
   it('gives the app back: server told, flag cleared, refs empty, Matches again', async () => {
     const coach = useCoachStore()
@@ -349,20 +423,144 @@ describe('coach store — ending the session', () => {
     expect(getQueryClient().getQueryData(qk.coach.matches)).toBeUndefined()
   })
 
-  it('drops queued autosaves — the session is over, the note has nowhere to land', async () => {
+  // The notes and the summary are keyed by PLAYER, not by session: they
+  // resurface the next time this bundle is opened. Typing the last sentence
+  // and clicking End inside the debounce must not be how it disappears.
+  it('flushes the queued note before closing — the coach keeps what she typed', async () => {
     const coach = useCoachStore()
     await coach.openBundle()
     await settle()
 
-    coach.updateNote(MATCH_A, draft())
+    coach.updateNote(MATCH_A, draft({ text: 'The last sentence.' }))
     await coach.endSession()
-    await vi.advanceTimersByTimeAsync(1000)
 
-    expect(api.PutCoachNote).not.toHaveBeenCalled()
+    expect(api.PutCoachNote).toHaveBeenCalledWith(MATCH_A, expect.objectContaining({
+      text: 'The last sentence.',
+    }))
+  })
+
+  it('says so when the flush could not save everything, rather than closing quietly', async () => {
+    api.PutCoachNote = vi.fn(async () => { throw new Error('409') })
+    setApiBacking(api)
+    const coach = useCoachStore()
+    const app = useAppStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateNote(MATCH_A, draft({ text: 'Never landed.' }))
+    await coach.endSession()
+
+    expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
+    expect(app.error).not.toBe('')
+  })
+
+  it('flushes the summary the coach was still typing when End was clicked', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateSummary('Ult economy first.')
+    await coach.endSession()
+
+    expect(api.PutCoachSummary).toHaveBeenCalledWith('Ult economy first.')
+  })
+})
+
+// Rule 12: the coach's date range, picked map/hero and since-anchor belong
+// to HER corpus. Applied to the player's they show an arbitrary subset and
+// read as a broken export. The matches store owns that state and pushes the
+// hooks here — the same inversion the tour flag uses, because the corpus
+// flows the other way.
+describe('coach store — the coach\'s own narrow', () => {
+  it('suspends the narrow when a bundle opens and restores it on End', async () => {
+    const coach = useCoachStore()
+    const events: string[] = []
+    coach.setNarrowSuspender({
+      suspend: () => events.push('suspend'),
+      restore: () => events.push('restore'),
+    })
+
+    await coach.openBundle()
+    await settle()
+    expect(events).toEqual(['suspend'])
+
+    await coach.endSession()
+    await settle()
+    expect(events).toEqual(['suspend', 'restore'])
+  })
+
+  it('restores it when another window ends the session', async () => {
+    const coach = useCoachStore()
+    const events: string[] = []
+    coach.setNarrowSuspender({
+      suspend: () => events.push('suspend'),
+      restore: () => events.push('restore'),
+    })
+    await coach.openBundle()
+    await settle()
+
+    await coach.onSessionChangedElsewhere(false)
+    await settle()
+
+    expect(events).toEqual(['suspend', 'restore'])
+  })
+
+  it('leaves the narrow alone when the coach cancels the picker', async () => {
+    api.OpenCoachBundle = vi.fn(async () => null)
+    setApiBacking(api)
+    const coach = useCoachStore()
+    const events: string[] = []
+    coach.setNarrowSuspender({
+      suspend: () => events.push('suspend'),
+      restore: () => events.push('restore'),
+    })
+
+    await coach.openBundle()
+
+    expect(events).toEqual([])
   })
 })
 
 describe('coach store — confirming the player', () => {
+  const ANONYMOUS = { player: { id: '', handle: '', message: '' }, handle_from_bundle: false }
+
+  // A bundle that named nobody leaves every note PUT answering 409. The
+  // room has to ASK before the coach types, so the store has to say so.
+  it('asks who this is when the bundle named nobody', async () => {
+    api.OpenCoachBundle = vi.fn(async () => sessionView(ANONYMOUS))
+    setApiBacking(api)
+    const coach = useCoachStore()
+
+    await coach.openBundle()
+    await settle()
+
+    expect(coach.sessionActive).toBe(true)
+    expect(coach.needsPlayerHandle).toBe(true)
+  })
+
+  it('stops asking once the coach confirms one', async () => {
+    api.OpenCoachBundle = vi.fn(async () => sessionView(ANONYMOUS))
+    setApiBacking(api)
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    await coach.setPlayerHandle('Wren')
+    await settle()
+
+    expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren')
+    expect(coach.player?.handle).toBe('Wren')
+    expect(coach.needsPlayerHandle).toBe(false)
+  })
+
+  it('never asks when the bundle already named the player', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    expect(coach.needsPlayerHandle).toBe(false)
+  })
+
   it("re-hydrates from the corrected player's own notes", async () => {
     api.OpenCoachBundle = vi.fn(async () => sessionView({
       player: { id: '', handle: 'unknown', message: '' }, notes: [RESURFACED],
@@ -407,6 +605,42 @@ describe('coach store — the player-side inbox', () => {
 
     expect(coach.pendingNoteCount).toBe(0)
     expect(coach.firstPendingCoach).toBe('')
+  })
+
+  // The server derives `accepted` from a block that already sits on the
+  // match — a fact the client cannot see. Re-counting those notes is how a
+  // repeat session's banner claims seven waiting when five were decided
+  // before the archive was even re-imported.
+  it('trusts the status the server derived for notes it already accepted', async () => {
+    api.ListCoachReturns = vi.fn(async () => [
+      sheet({
+        notes: [
+          returnNote('n-1', { status: 'accepted' }),
+          returnNote('n-2', { status: 'skipped' }),
+          returnNote('n-3', { status: 'pending' }),
+        ],
+      }),
+    ])
+    setApiBacking(api)
+    const coach = useCoachStore()
+    await settle()
+
+    expect(coach.pendingNoteCount).toBe(1)
+  })
+
+  // A note whose status the server did not send must still nag. Counting
+  // only an explicit 'pending' made a missing field mean "decided", which
+  // hides the banner entirely — the player never learns notes are waiting.
+  // Over-counting is visible and recoverable; under-counting is silent.
+  it('counts a note whose status is missing as still waiting', async () => {
+    api.ListCoachReturns = vi.fn(async () => [
+      sheet({ notes: [{ ...returnNote('n-1'), status: undefined } as unknown as CoachReturnItem] }),
+    ])
+    setApiBacking(api)
+    const coach = useCoachStore()
+    await settle()
+
+    expect(coach.pendingNoteCount).toBe(1)
   })
 
   // An orphan's match is not in this history, so it can never be accepted
@@ -480,5 +714,31 @@ describe('coach store — the player-side inbox', () => {
     await coach.removeCoachNote(MATCH_A, 3)
 
     expect(api.DeleteMatchCoachNote).toHaveBeenCalledWith(MATCH_A, 3)
+  })
+
+  // Every writer asks the gate first. A DELETE aimed at the coach's own
+  // match while a player's corpus is on loan is exactly the orphan write
+  // the session lock exists to refuse.
+  it('refuses to remove a note while a coaching session holds the app', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    await coach.removeCoachNote(MATCH_A, 3)
+
+    expect(api.DeleteMatchCoachNote).not.toHaveBeenCalled()
+  })
+
+  // The dialog decides whether to close, so the failure has to reach it
+  // rather than settling quietly into the error banner.
+  it('rejects when the verdicts could not be written', async () => {
+    api.ListCoachReturns = vi.fn(async () => [sheet()])
+    api.DecideCoachReturn = vi.fn(async () => { throw new Error('500') })
+    setApiBacking(api)
+    const coach = useCoachStore()
+    await settle()
+
+    await expect(coach.decide(7, { 'n-1': 'accepted' })).rejects.toThrow()
+    expect(coach.pendingNoteCount).toBe(2)
   })
 })

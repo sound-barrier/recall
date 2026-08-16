@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"recall/pkg/app"
@@ -98,6 +99,28 @@ func shareBundle(t *testing.T) []byte {
 		app.SharePlayer{Handle: playerHandle, Message: "look at my Ana"})
 	mustNoErr(t, err)
 	return payload
+}
+
+// tamperedShareBundle is a real share bundle whose manifest was hand-edited
+// to name an identity no export would have written — the shape a coach can
+// be handed but Recall never produces.
+func tamperedShareBundle(t *testing.T) []byte {
+	t.Helper()
+	return modifyBundle(t, shareBundle(t), func(name string, body []byte) (string, []byte, bool) {
+		if name != "manifest.json" {
+			return "", nil, false
+		}
+		var mf map[string]any
+		if err := json.Unmarshal(body, &mf); err != nil {
+			t.Fatalf("decode manifest: %v", err)
+		}
+		mf["player"] = map[string]any{"id": "not-a-uuid", "handle": playerHandle}
+		edited, err := json.Marshal(mf)
+		if err != nil {
+			t.Fatalf("encode manifest: %v", err)
+		}
+		return "", edited, false
+	})
 }
 
 // coachApp is a coach's App on an empty in-memory store, with their name

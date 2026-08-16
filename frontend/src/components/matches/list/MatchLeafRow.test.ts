@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api-client'
 import type { SearchClause } from '@/match/search-query'
+
+// The row asks the write gate which clock it is in; stub it so these cases
+// pin the ROW's contract without standing up Pinia + the profiles query.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
 
 // Stub the reference-data singleton so the row renders deterministically
 // without firing the once-per-session fetch. heroRole() returns '' →
@@ -280,5 +285,29 @@ describe('MatchLeafRow', () => {
       renderRow({ searchClauses: [{ field: null, value: 'busan' }] satisfies SearchClause[] })
       expect(screen.getByText('rialto').tagName).not.toBe('MARK')
     })
+  })
+})
+
+// Design rule 7: during a coaching session the rows are the PLAYER's, and
+// her scoreboard clock is the only honest one — the canonical instant would
+// render in the coach's zone, here a different day than the one the row is
+// grouped under. The naive pair below is deliberately far from the instant
+// so the two can never coincide, whatever zone the test host is in.
+describe("MatchLeafRow — the player's clock", () => {
+  beforeEach(resetWriteGate)
+
+  const LOANED = { date: '1999-01-01', finished_at: '21:14', played_at_utc: '2026-05-11T03:29:00Z' }
+
+  it("prints the player's naive day and time while a coaching session is open", () => {
+    setWritesLocked(true, { session: true })
+    renderRow({ rec: rec(LOANED) })
+    expect(screen.getByText('21:14')).toBeInTheDocument()
+    expect(screen.getByText(/1999/)).toBeInTheDocument()
+  })
+
+  it("prints the viewer's clock outside a session", () => {
+    renderRow({ rec: rec(LOANED) })
+    expect(screen.queryByText('21:14')).toBeNull()
+    expect(screen.queryByText(/1999/)).toBeNull()
   })
 })

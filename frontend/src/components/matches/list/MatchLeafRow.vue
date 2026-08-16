@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
+import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import {
   formatRowDate,
@@ -65,6 +66,10 @@ const emit = defineEmits<{
 }>()
 
 const ow = useOWData()
+
+// A loaned coaching corpus prints the PLAYER's naive clock — the same one
+// the row is grouped and filtered under (design rule 7).
+const clock = useMatchClock()
 
 const isFocused = computed(
   () => props.focusedCardIndex !== undefined && props.cardIndex === props.focusedCardIndex,
@@ -158,8 +163,8 @@ const resultFiltered = computed(() => props.activeFilters?.results.has(props.rec
 
     <!-- 2. When — date over time. -->
     <div class="leaf-when">
-      <span class="leaf-when-date">{{ formatRowDate(rec) }}</span>
-      <span class="leaf-when-time">{{ formatFinishedAt(rec) }}</span>
+      <span class="leaf-when-date">{{ formatRowDate(rec, clock) }}</span>
+      <span class="leaf-when-time">{{ formatFinishedAt(rec, clock) }}</span>
     </div>
 
     <!-- 3. Where — map (display font) over a pair of chips: play mode

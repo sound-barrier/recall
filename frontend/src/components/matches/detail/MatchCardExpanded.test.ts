@@ -505,3 +505,23 @@ describe('MatchCardExpanded — soft-delete (hidden record)', () => {
     expect(emitted('set-match-hidden')[0]).toEqual([hidden.match_key, false])
   })
 })
+
+// Design rule 7: a loaned match's "When" is the PLAYER's naive clock. The
+// instant below lands on a different calendar day than the naive pair in
+// every host zone, so a panel that rendered it would contradict both the
+// row it was opened from and the day the match is grouped under.
+describe("MatchCardExpanded — the player's clock", () => {
+  const LOANED = { date: '1999-01-01', finished_at: '21:14', played_at_utc: '2026-05-11T03:29:00Z' }
+
+  it("reads the player's naive day and time while a coaching session is open", () => {
+    setWritesLocked(true, { session: true })
+    renderCard({ record: makeRecord(LOANED) })
+    expect(screen.getByText('January 1, 1999 @ 9:14pm')).toBeInTheDocument()
+  })
+
+  it("reads the viewer's clock outside a session", () => {
+    resetWriteGate()
+    renderCard({ record: makeRecord(LOANED) })
+    expect(screen.queryByText('January 1, 1999 @ 9:14pm')).toBeNull()
+  })
+})

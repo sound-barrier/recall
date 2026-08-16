@@ -17,15 +17,18 @@ import type { Route } from '@playwright/test'
 import { must } from './_capture'
 import { test, expect } from './_fixtures'
 import {
+  ANONYMOUS_BUNDLE_FIXTURE,
   COACH_OWN_MATCHES,
   NOTED_MATCH,
   OTHER_PLAYER_FIXTURE,
   RESURFACED_NOTES,
   SESSION_FIXTURE,
   backToFilmRoom,
+  confirmPlayer,
   endSession,
   enterFilmRoom,
   filmRoom,
+  identityPrompt,
   loanSlip,
   mockCoachSession,
   openSessionViaMasthead,
@@ -119,5 +122,75 @@ test.describe('coaching session — open and end', () => {
     await expect(page.getByRole('button', { name: 'positioning', pressed: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /— note written$/ })).toHaveCount(0)
     await expect(page.getByText(must(NOTED_MATCH.annotation?.note, "Sable's own note"))).toHaveCount(0)
+  })
+
+  // A plain export names nobody. Before this, the room opened on a blank
+  // name where every keystroke failed with "Not saved" in 10 px mono and
+  // there was no way to fix it — SessionView.handle_from_bundle existed
+  // precisely so the client could prompt, and nothing read it.
+  test('a bundle that named nobody asks who this is, then takes notes', async ({ page }) => {
+    const session = await mockCoachSession(page, { session: ANONYMOUS_BUNDLE_FIXTURE })
+    await page.goto('/')
+    await openSessionViaMasthead(page)
+    await enterFilmRoom(page)
+
+    // The room asks, and refuses typing it could not save.
+    await expect(identityPrompt(page)).toBeVisible()
+    await expect(page.getByRole('textbox', { name: 'Note' })).toBeDisabled()
+
+    await confirmPlayer(page, 'Wren')
+
+    await expect(identityPrompt(page)).toHaveCount(0)
+    await expect(loanSlip(page, 'Wren')).toBeVisible()
+    const editor = page.getByRole('textbox', { name: 'Note' })
+    await expect(editor).toBeEnabled()
+    await editor.fill('Ult held too long on the second point.')
+    await expect.poll(() => session.notes().map((n) => n.text))
+      .toContain('Ult held too long on the second point.')
+  })
+
+  // A handle the bundle suggested is a suggestion — the locked decision is
+  // "bundle suggests, coach confirms", so the room has to let it be fixed.
+  test('a suggested handle can be corrected from the session sheet', async ({ page }) => {
+    const session = await mockCoachSession(page)
+    await page.goto('/')
+    await openSessionViaMasthead(page)
+    await enterFilmRoom(page)
+    await expect(identityPrompt(page)).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Change player' }).click()
+    await confirmPlayer(page, 'Sable-alt')
+
+    await expect(loanSlip(page, 'Sable-alt')).toBeVisible()
+    expect(session.openCount()).toBe(1)
+  })
+
+  // Design rule 12. The coach's date range and picked map describe HER
+  // corpus; left in place over the player's they show an arbitrary subset
+  // (often zero rows), which reads as "the export is broken".
+  test("opening a session clears the coach's own narrow, and End restores it", async ({ page }) => {
+    await mockCoachSession(page)
+    // Wide enough that the narrow rail (with #np-search) is always visible.
+    await page.setViewportSize({ width: 1500, height: 1000 })
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+
+    const search = page.locator('#np-search')
+    await search.fill('dorado')
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+
+    await openSessionViaMasthead(page)
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+
+    // Every one of the player's matches, not the handful her data happens
+    // to share with the coach's filter.
+    await expect(page.locator('.leaf-row')).toHaveCount(SESSION_FIXTURE.matches.length)
+    await expect(search).toHaveValue('')
+
+    await endSession(page)
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+
+    await expect(search).toHaveValue('dorado')
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
   })
 })

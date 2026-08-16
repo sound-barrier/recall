@@ -8,6 +8,7 @@ import {
   type CoachDecisionEnum, type CoachNote, type CoachReturnSheet, type CoachSessionView,
 } from '@/api-client'
 import type { CoachSaveState } from '@/components/coach/coach-room-props'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { fromWireNote, isEmptyDraft, toNoteInput, type CoachNoteDraft } from '@/match/coach-notes'
 import { getQueryClient } from '@/queries/client'
 import {
@@ -40,8 +41,37 @@ const SUMMARY_SAVE_KEY = 'summary'
 const TOUR_CONFLICT_REASON
   = 'Finish the walkthrough before opening a player\'s bundle.'
 
-interface QueuedSave {
-  timer: ReturnType<typeof setTimeout>
+/** Why Export is refused while a note is still unsaved. */
+const UNSAVED_EXPORT_REASON
+  = 'A note could not be saved, so the archive would be missing it. Try again in a moment.'
+
+/** Reported when the session ends holding a note the server never took. */
+const UNSAVED_END_REASON
+  = 'The session ended with a note that could not be saved — it was not kept.'
+
+/** Why Export is refused before the coach has a name to sign with. */
+const NO_COACH_NAME_REASON = 'Set a coach name in Settings before exporting notes'
+
+/** Why Export is refused before anyone has said who the bundle is about. */
+const UNCONFIRMED_EXPORT_REASON = 'Say who this bundle is about before exporting notes'
+
+/**
+ * The two halves of "put the coach's own narrow aside for the loan".
+ * `stores/matches.ts` owns that filter state and registers these; this
+ * store must not import it, so the hooks are pushed in the same way the
+ * tour flag is.
+ */
+export interface CoachNarrowSuspender {
+  /** Snapshot the coach's narrow and clear it. */
+  suspend: () => void
+  /** Put the snapshot back exactly as it was. */
+  restore: () => void
+}
+
+// One queued autosave. `timer` is null once the run is in flight or has
+// failed — a failed run stays in the map so the next flush retries it.
+interface PendingSave {
+  timer: ReturnType<typeof setTimeout> | null
   run:   () => Promise<void>
 }
 
@@ -49,14 +79,27 @@ function draftsByMatch(wire: CoachNote[]): Record<string, CoachNoteDraft> {
   return Object.fromEntries(wire.map(note => [note.match_key, fromWireNote(note)]))
 }
 
-// "Pending" is derived, never stored: a note is waiting when the player has
-// recorded no verdict on it and it CAN be decided (an orphan's match is not
-// in this history, so it can never be accepted). Deriving it here — rather
-// than trusting the count that came with the sheet — keeps the banner honest
-// the moment a decision is written, without a second round-trip.
+// "Pending" is derived from BOTH sides, because each knows something the
+// other cannot.
+//
+// The server's `status` carries facts no client can see: `accepted` means a
+// block for that note already sits on the match — true across re-imports and
+// fresh installs, where this install recorded no decision of its own — and
+// `orphan` means the match is not in this history at all, so the note can
+// never be accepted. Deriving from the raw notes instead is what makes a
+// repeat session's banner claim seven waiting when five were long accepted.
+//
+// The local decisions map carries the verdict the player just gave, which
+// the server's copy of the sheet won't reflect until it is re-read — so the
+// banner settles the moment the dialog closes, with no round-trip.
 function undecidedCount(sheet: CoachReturnSheet): number {
   const decisions = sheet.decisions ?? {}
-  return (sheet.notes ?? []).filter(n => n.status !== 'orphan' && !decisions[n.note_id]).length
+  // Decided is the closed set — accepted, skipped, or an orphan that can
+  // never land. Anything else, INCLUDING a status the server did not send,
+  // still waits: under-counting hides the banner and the player never
+  // learns notes are here, while over-counting is visible and recoverable.
+  const settled = new Set(['accepted', 'skipped', 'orphan'])
+  return (sheet.notes ?? []).filter(n => !settled.has(n.status ?? '') && !decisions[n.note_id]).length
 }
 
 function withPending(sheet: CoachReturnSheet): CoachReturnSheet {
@@ -80,50 +123,83 @@ export const useCoachStore = defineStore('coach', () => {
   const notes = ref<Record<string, CoachNoteDraft>>({})
   const summary = ref('')
   const selectedKey = ref('')
-  const saveState = ref<CoachSaveState>('idle')
   const dirtySinceExport = ref(false)
 
-  const queuedSaves = new Map<string, QueuedSave>()
+  // Save state is PER KEY. One global flag let a successful save on any
+  // other match erase the only evidence that this one never landed, and the
+  // export then found an empty queue and cleared the "not exported" warning
+  // on an archive that was missing the note.
+  const saveStates = ref<Record<string, CoachSaveState>>({})
+  const pendingSaves = new Map<string, PendingSave>()
 
-  async function runSave(run: () => Promise<void>): Promise<void> {
-    saveState.value = 'saving'
+  function setSaveState(key: string, state: CoachSaveState): void {
+    saveStates.value = { ...saveStates.value, [key]: state }
+  }
+
+  /** Where the autosave for one match key — or the session summary — stands. */
+  function saveStateFor(key: string): CoachSaveState {
+    return saveStates.value[key] ?? 'idle'
+  }
+
+  /** True while any draft is still holding words the server never took. */
+  const hasFailedSaves = computed(() =>
+    Object.values(saveStates.value).some(state => state === 'error'))
+
+  async function failed(run: () => Promise<void>): Promise<boolean> {
+    // The reason is on the wire, not actionable here — the room's
+    // role=status line is the whole report, and the draft is kept so
+    // the coach's words survive a failed save.
     try {
       await run()
-      saveState.value = 'saved'
+      return false
     } catch (_) {
-      // The reason is on the wire, not actionable here — the room's
-      // role=status line is the whole report, and the draft is kept so
-      // the coach's words survive a failed save.
-      saveState.value = 'error'
+      return true
     }
   }
 
-  function cancelSave(key: string): void {
-    const queued = queuedSaves.get(key)
+  // A failed run stays in the map, so the next flush retries it. Dropping it
+  // is how a note leaves with an export that never carried it.
+  async function runSave(key: string): Promise<void> {
+    const queued = pendingSaves.get(key)
     if (!queued) return
-    clearTimeout(queued.timer)
-    queuedSaves.delete(key)
+    clearQueuedTimer(queued)
+    setSaveState(key, 'saving')
+    const broke = await failed(queued.run)
+    // A newer edit may have claimed the key while this one was in flight;
+    // its own run reports for it.
+    if (pendingSaves.get(key) !== queued) return
+    if (broke) {
+      setSaveState(key, 'error')
+      return
+    }
+    pendingSaves.delete(key)
+    setSaveState(key, 'saved')
   }
 
-  function cancelSaves(): void {
-    for (const key of [...queuedSaves.keys()]) cancelSave(key)
+  function clearQueuedTimer(queued: PendingSave): void {
+    if (queued.timer !== null) clearTimeout(queued.timer)
+    queued.timer = null
   }
 
   function queueSave(key: string, run: () => Promise<void>): void {
-    cancelSave(key)
-    const timer = setTimeout(() => {
-      queuedSaves.delete(key)
-      void runSave(run)
-    }, AUTOSAVE_MS)
-    queuedSaves.set(key, { timer, run })
+    const previous = pendingSaves.get(key)
+    if (previous) clearQueuedTimer(previous)
+    pendingSaves.set(key, { timer: setTimeout(() => { void runSave(key) }, AUTOSAVE_MS), run })
   }
 
-  // Run every queued save NOW — the export has to carry what the coach
-  // just typed, not what settled 400 ms ago.
+  // Run every queued save NOW, retries included — the export has to carry
+  // what the coach just typed, not what settled 400 ms ago.
   async function flushSaves(): Promise<void> {
-    const runs = [...queuedSaves.values()].map(queued => queued.run)
-    cancelSaves()
-    await Promise.all(runs.map(runSave))
+    await Promise.all([...pendingSaves.keys()].map(runSave))
+  }
+
+  // Throw the queue away, drafts and failures alike. Only legitimate when
+  // the drafts themselves are going — a different player's notes have
+  // replaced them.
+  function discardSaves(): void {
+    for (const queued of pendingSaves.values()) clearQueuedTimer(queued)
+    pendingSaves.clear()
+    saveStates.value = {}
   }
 
   // The notes map is REPLACED from the session response, never merged. A
@@ -143,11 +219,10 @@ export const useCoachStore = defineStore('coach', () => {
     const identity = identityOf(view)
     if (identity === hydratedFor) return
     hydratedFor = identity
-    cancelSaves()
+    discardSaves()
     notes.value = draftsByMatch(view?.notes ?? [])
     summary.value = view?.summary ?? ''
     selectedKey.value = ''
-    saveState.value = 'idle'
     dirtySinceExport.value = false
   }, { immediate: true })
 
@@ -186,6 +261,29 @@ export const useCoachStore = defineStore('coach', () => {
     tourOpen.value = open
   }
 
+  // The coach's own narrow, pushed in from the matches store for the same
+  // reason (rule 12): her date range and picked map/hero describe HER
+  // corpus, and applied to the player's they show an arbitrary subset that
+  // reads as a broken export.
+  let narrowSuspender: CoachNarrowSuspender | null = null
+  let narrowSuspended = false
+
+  function setNarrowSuspender(hooks: CoachNarrowSuspender): void {
+    narrowSuspender = hooks
+  }
+
+  function suspendCoachNarrow(): void {
+    if (narrowSuspended || !narrowSuspender) return
+    narrowSuspended = true
+    narrowSuspender.suspend()
+  }
+
+  function restoreCoachNarrow(): void {
+    if (!narrowSuspended || !narrowSuspender) return
+    narrowSuspended = false
+    narrowSuspender.restore()
+  }
+
   // Pick a bundle, open it, and hand the app to the player. The POST's
   // answer seeds the cache, so nothing GETs the session it just created.
   async function openBundle(): Promise<void> {
@@ -198,17 +296,24 @@ export const useCoachStore = defineStore('coach', () => {
       if (!view) return
       setCoachSessionData(view)
       setCoachSessionResume(true)
+      suspendCoachNarrow()
       await useAppStore().goToView('coach')
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }
   }
 
-  // End the loan. Queued autosaves are dropped rather than flushed: the
-  // session they belong to is being discarded, and a PUT that lands after
-  // the DELETE is a 404 at best.
+  // End the loan. Queued autosaves are FLUSHED first: notes and the summary
+  // are keyed by player, not by session — they are re-hydrated the next time
+  // this bundle is opened — so a draft caught inside the debounce would
+  // otherwise be lost for good.
   async function endSession(): Promise<void> {
-    cancelSaves()
+    await flushSaves()
+    // The loan goes back either way — refusing to end would trap the coach
+    // in a session a broken server can never let her leave — but a note the
+    // flush could not place is about to be discarded, and that is not
+    // something to find out later.
+    if (hasFailedSaves.value) useAppStore().setError(UNSAVED_END_REASON)
     setCoachSessionResume(false)
     try {
       await CloseCoachSession()
@@ -218,6 +323,7 @@ export const useCoachStore = defineStore('coach', () => {
     // Removes the session AND the corpus nested under it; the hydration
     // watch clears the room's own refs as the session goes null.
     clearCoachSessionData()
+    restoreCoachNarrow()
     await useAppStore().goToView('matches')
   }
 
@@ -230,13 +336,26 @@ export const useCoachStore = defineStore('coach', () => {
     if (active === sessionActive.value) return
     setCoachSessionResume(active)
     if (!active) {
-      cancelSaves()
+      discardSaves()
       clearCoachSessionData()
+      restoreCoachNarrow()
       if (useAppStore().view === 'coach') await useAppStore().goToView('matches')
       return
     }
+    suspendCoachNarrow()
     await sessionQuery.refetch()
   }
+
+  // ── Who this bundle is about ──────────────────────────────────────
+
+  const playerHandle = computed(() => player.value?.handle ?? '')
+
+  /**
+   * No confirmed player yet — an anonymous bundle, or one the coach has not
+   * accepted the suggestion from. Every note PUT answers 409 until this is
+   * false, so the room asks before it lets anyone type.
+   */
+  const needsPlayerHandle = computed(() => sessionActive.value && playerHandle.value === '')
 
   // The bundle suggests a player, the coach confirms one. The echoed view
   // carries THAT player's notes — which is why the room re-hydrates.
@@ -248,8 +367,28 @@ export const useCoachStore = defineStore('coach', () => {
     }
   }
 
+  // ── The archive the player receives ───────────────────────────────
+
+  /** Why Export is unavailable, for the affordance's title. '' when it is. */
+  const exportBlockedReason = computed(() => {
+    if (coachName.value === '') return NO_COACH_NAME_REASON
+    if (needsPlayerHandle.value) return UNCONFIRMED_EXPORT_REASON
+    if (hasFailedSaves.value) return UNSAVED_EXPORT_REASON
+    return ''
+  })
+
+  /** False while the archive would be unsigned, unaddressed or incomplete. */
+  const canExportNotes = computed(() => exportBlockedReason.value === '')
+
+  // An archive missing a note is worse than a refused export: it also clears
+  // `dirtySinceExport`, so the "not exported yet" warning goes with the note.
+  // The flush is the retry — only a failure that survives it refuses.
   async function exportNotes(): Promise<void> {
     await flushSaves()
+    if (hasFailedSaves.value) {
+      useAppStore().setError(UNSAVED_EXPORT_REASON)
+      return
+    }
     try {
       await ExportCoachNotes()
       dirtySinceExport.value = false
@@ -303,19 +442,23 @@ export const useCoachStore = defineStore('coach', () => {
     upsertCoachReturn({ ...sheet, decisions: { ...(sheet.decisions ?? {}), ...decisions } })
   }
 
+  /**
+   * Write the player's verdicts. REJECTS on failure rather than folding the
+   * reason into the error banner: the dialog is what decides whether to
+   * close, and a sheet that closes on a write that never landed loses the
+   * decisions with it.
+   */
   async function decide(id: number, decisions: Record<string, CoachDecisionEnum>): Promise<void> {
-    try {
-      await DecideCoachReturn(id, decisions)
-      applyDecisions(id, decisions)
-      // An accept writes the coach's block onto a match and marks it
-      // reviewed-by-coach — the records the dossier renders are stale now.
-      await getQueryClient().refetchQueries({ queryKey: qk.matches })
-    } catch (e) {
-      useAppStore().setErrorFromRaw(String(e))
-    }
+    await DecideCoachReturn(id, decisions)
+    applyDecisions(id, decisions)
+    // An accept writes the coach's block onto a match and marks it
+    // reviewed-by-coach — the records the dossier renders are stale now.
+    await getQueryClient().refetchQueries({ queryKey: qk.matches })
   }
 
+  /** Take an accepted block back off a match. A write, so it asks the gate. */
   async function removeCoachNote(matchKey: string, id: number): Promise<void> {
+    if (!useWriteGate().guardWrite()) return
     try {
       await DeleteMatchCoachNote(matchKey, id)
       await getQueryClient().refetchQueries({ queryKey: qk.matches })
@@ -333,12 +476,17 @@ export const useCoachStore = defineStore('coach', () => {
     notes,
     summary,
     selectedKey,
-    saveState,
+    saveStateFor,
+    hasFailedSaves,
     dirtySinceExport,
+    canExportNotes,
+    exportBlockedReason,
+    needsPlayerHandle,
     selectKey,
     updateNote,
     updateSummary,
     setTourOpen,
+    setNarrowSuspender,
     openBundle,
     endSession,
     setPlayerHandle,

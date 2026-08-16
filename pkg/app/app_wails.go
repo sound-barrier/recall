@@ -189,6 +189,33 @@ func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
 // ExportBundle payload to the chosen path. Returns the path on success, "" + nil
 // on user cancel.
 func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden bool) (string, error) {
+	return a.saveBundleDialog(bundleSelection(matchKeys, includeUnknown, includeHidden), nil)
+}
+
+// SaveShareBundleToFile is SaveBundleToFile's share-mode sibling: the same
+// selection saved with the player's identity in the manifest, so the coach
+// who receives the file can open it as a coaching session (and a mis-clicked
+// Import refuses it). A separate method rather than a nullable argument on
+// the plain saver, mirroring ExportBundle / ExportShareBundle — the ordinary
+// export stays incapable of stamping an identity. The handle is the display
+// name the coach sees; the stable player id is minted and persisted by the
+// App, never supplied by the caller.
+func (a *App) SaveShareBundleToFile(matchKeys []string, includeUnknown, includeHidden bool, player SharePlayer) (string, error) {
+	return a.saveBundleDialog(bundleSelection(matchKeys, includeUnknown, includeHidden), &player)
+}
+
+func bundleSelection(matchKeys []string, includeUnknown, includeHidden bool) ExportBundleOptions {
+	return ExportBundleOptions{
+		MatchKeys:      matchKeys,
+		IncludeUnknown: includeUnknown,
+		IncludeHidden:  includeHidden,
+	}
+}
+
+// saveBundleDialog is the shared tail of both bundle savers: prompt for a
+// destination, build the payload only once the user has picked one (a cancel
+// costs nothing), write it. A nil player is the ordinary export.
+func (a *App) saveBundleDialog(opts ExportBundleOptions, player *SharePlayer) (string, error) {
 	defaultName := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
 	path, err := application.Get().Dialog.SaveFile().
 		SetMessage("Save Recall bundle").
@@ -202,11 +229,7 @@ func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden
 	if path == "" {
 		return "", nil
 	}
-	data, err := a.ExportBundle(ExportBundleOptions{
-		MatchKeys:      matchKeys,
-		IncludeUnknown: includeUnknown,
-		IncludeHidden:  includeHidden,
-	})
+	data, err := a.exportBundleFor(opts, player)
 	if err != nil {
 		return "", err
 	}
@@ -214,6 +237,13 @@ func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden
 		return "", fmt.Errorf("write bundle: %w", err)
 	}
 	return path, nil
+}
+
+func (a *App) exportBundleFor(opts ExportBundleOptions, player *SharePlayer) ([]byte, error) {
+	if player == nil {
+		return a.ExportBundle(opts)
+	}
+	return a.ExportShareBundle(opts, *player)
 }
 
 // SaveDiagnosticBundleToFile pops a native save dialog defaulting to

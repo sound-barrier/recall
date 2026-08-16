@@ -715,6 +715,32 @@ export type CoachSessionChangedEvent = {
 };
 
 /**
+ * Turns `POST /api/v1/exports/bundle` into a "share with a coach"
+ * export: the manifest gains a `player` block and the result opens
+ * as a coaching session instead of importing as history.
+ *
+ * Deliberately carries NO id. The stable player UUID is minted on
+ * the first share and persisted in this install's settings, so a
+ * request body can never claim to be somebody else; an `id` sent
+ * here is ignored. The handle is trimmed; blank falls back to the
+ * handle remembered from the last share, and having neither is a
+ * `400`.
+ *
+ */
+export type BundleShare = {
+    /**
+     * Display handle the coach sees pre-filled.
+     */
+    handle: string;
+    /**
+     * The player's optional note to their coach ("mostly Ana this
+     * week"), shown on the session sheet.
+     *
+     */
+    message?: string;
+};
+
+/**
  * Who a session is about. `id` is the stable UUID a "share with a
  * coach" export mints once — the coach's notes key on it, so they
  * follow the player across a handle change. A bundle from a build
@@ -3787,6 +3813,7 @@ export type ExportBundleData = {
          *
          */
         include_hidden?: boolean;
+        share?: BundleShare;
     };
     path?: never;
     query?: never;
@@ -3971,7 +3998,8 @@ export type OpenCoachSessionErrors = {
     400: ProblemDetails;
     /**
      * A session is already open, the payload is a coach notes
-     * archive rather than a bundle, or its schema is unsupported.
+     * archive rather than a bundle, its schema is unsupported, or
+     * its manifest carries an invalid player identity.
      *
      */
     409: ProblemDetails;

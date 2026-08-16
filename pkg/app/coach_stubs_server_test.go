@@ -19,24 +19,32 @@ func TestCoachDialogTwins_PointAtTheHTTPRoutes(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
 
 	opened, openErr := a.LoadCoachBundleFromFile()
-	if openErr == nil {
-		t.Fatal("LoadCoachBundleFromFile succeeded in server mode")
-	}
+	assertStubNamesRoute(t, "LoadCoachBundleFromFile", "/api/v1/coach/session", openErr)
 	if opened.Path != "" || opened.Session != nil {
 		t.Errorf("LoadCoachBundleFromFile returned %+v, want the zero result", opened)
 	}
-	if !strings.Contains(openErr.Error(), "/api/v1/coach/session") {
-		t.Errorf("open stub error = %q, want it to name the session route", openErr)
-	}
 
 	saved, saveErr := a.SaveCoachNotesToFile()
-	if saveErr == nil {
-		t.Fatal("SaveCoachNotesToFile succeeded in server mode")
-	}
+	assertStubNamesRoute(t, "SaveCoachNotesToFile", "/api/v1/coach/session/export", saveErr)
 	if saved != "" {
 		t.Errorf("SaveCoachNotesToFile returned %q, want \"\"", saved)
 	}
-	if !strings.Contains(saveErr.Error(), "/api/v1/coach/session/export") {
-		t.Errorf("save stub error = %q, want it to name the export route", saveErr)
+
+	shared, shareErr := a.SaveShareBundleToFile(nil, false, false, app.SharePlayer{Handle: "Sable"})
+	assertStubNamesRoute(t, "SaveShareBundleToFile", "/api/v1/exports/bundle", shareErr)
+	if shared != "" {
+		t.Errorf("SaveShareBundleToFile returned %q, want \"\"", shared)
+	}
+}
+
+// assertStubNamesRoute holds one dialog stub to its half of the contract:
+// it must fail, and the failure must name the route that replaces it.
+func assertStubNamesRoute(t *testing.T, method, route string, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("%s succeeded in server mode", method)
+	}
+	if !strings.Contains(err.Error(), route) {
+		t.Errorf("%s stub error = %q, want it to name %s", method, err, route)
 	}
 }

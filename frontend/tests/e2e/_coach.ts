@@ -6,6 +6,9 @@
  * accepts each one. Five specs drive that loop and they all need the same
  * corpus + route mocks, so those live here:
  *
+ *   - ANONYMOUS_BUNDLE_FIXTURE a PLAIN export, naming nobody: the session
+ *                            opens with a blank handle and the note routes
+ *                            409 until the coach confirms one
  *   - SESSION_FIXTURE        the player "Sable": six matches over three of
  *                            HER local days, one rank screen, one with a
  *                            note of her own. Every `played_at_utc` sits
@@ -20,6 +23,7 @@
  *   - mockCoachSession()     every /coach/session* + /settings/coaching route
  *   - mockInbox()            the player-side /coach/returns routes
  *   - openSessionViaMasthead / pinSessionResume / enterFilmRoom / endSession
+ *   - identityPrompt / confirmPlayer  the room's "Who is this?" gate
  *   - openCoachRoom()        theme-pinned room for the a11y matrix
  *
  * Reuses seedProfiles / silenceParseEvents / pinTheme / settle* from
@@ -77,6 +81,8 @@ export interface CoachSessionView {
   coach_name: string
   summary: string
   notes: CoachSessionNote[]
+  /** True when the bundle named the player, so the handle arrives pre-filled. */
+  handle_from_bundle: boolean
 }
 
 /** A match as the loaned corpus (`/coach/session/matches`) and `/matches` carry it. */
@@ -122,6 +128,10 @@ export interface CoachReturnNote {
   extra_tags: string[]
   match_clock: string
   match: { map: string; hero: string; result: string; date: string; finished_at: string }
+  /** Server-derived, always present on the wire: pending until the player
+      decides, accepted once a block sits on the match, orphan when the
+      match is not in this history. The client must see the real shape. */
+  status: 'pending' | 'accepted' | 'skipped' | 'orphan'
 }
 
 export type CoachDecision = 'accepted' | 'skipped'
@@ -285,6 +295,21 @@ export const OTHER_PLAYER_FIXTURE: SessionFixture = {
   ],
 }
 
+/**
+ * A plain (not "share with a coach") export: the manifest names nobody, so
+ * the session opens with a blank handle and every note PUT answers 409
+ * until the coach confirms one. Every other fixture here hardcodes "Sable",
+ * which is exactly why the blank-handle dead end went unnoticed.
+ */
+export const ANONYMOUS_BUNDLE_FIXTURE: SessionFixture = {
+  player: { id: '', handle: '', message: '' },
+  exported_at: `${daysAgo(1)}T21:40:00Z`,
+  matches: [
+    sessionMatch({ map: 'suravasa', mode: 'flashpoint', hero: 'mercy', role: 'support', result: 'victory', dayOffset: 3, time: '22:14', score: '3-2', ead: [7, 24, 4], healing: 11400 }),
+    sessionMatch({ map: 'esperanca', mode: 'push', hero: 'baptiste', role: 'support', result: 'defeat', dayOffset: 3, time: '21:35', score: '1-2', ead: [12, 17, 6], healing: 9120 }),
+  ],
+}
+
 /** The coach's OWN two matches — what `/matches` shows outside a session. */
 export const COACH_OWN_MATCHES: SessionMatch[] = [
   sessionMatch({ map: 'dorado', mode: 'escort', hero: 'cassidy', role: 'dps', result: 'victory', dayOffset: 6, time: '20:10', score: '3-2', ead: [24, 5, 7], healing: 0 }),
@@ -335,6 +360,7 @@ export const RETURN_SHEET_FIXTURE: CoachReturnSheet = {
       extra_tags: ['tempo'],
       match_clock: '06:40',
       match: { map: NOTED_MATCH.data.map, hero: NOTED_MATCH.data.hero, result: NOTED_MATCH.data.result, date: NOTED_MATCH.data.date, finished_at: NOTED_MATCH.data.finished_at },
+      status: 'pending',
     },
     {
       note_id: 'd2e3f4a5-1b2c-4d3e-8f4a-5b6c7d8e9f0a',
@@ -345,6 +371,7 @@ export const RETURN_SHEET_FIXTURE: CoachReturnSheet = {
       extra_tags: [],
       match_clock: '',
       match: { map: OLDEST_MATCH.data.map, hero: OLDEST_MATCH.data.hero, result: OLDEST_MATCH.data.result, date: OLDEST_MATCH.data.date, finished_at: OLDEST_MATCH.data.finished_at },
+      status: 'pending',
     },
     {
       note_id: 'e3f4a5b6-2c3d-4e4f-9a5b-6c7d8e9f0a1b',
@@ -355,6 +382,7 @@ export const RETURN_SHEET_FIXTURE: CoachReturnSheet = {
       extra_tags: [],
       match_clock: '',
       match: { map: KINGS_ROW_MATCH.data.map, hero: KINGS_ROW_MATCH.data.hero, result: KINGS_ROW_MATCH.data.result, date: KINGS_ROW_MATCH.data.date, finished_at: KINGS_ROW_MATCH.data.finished_at },
+      status: 'pending',
     },
   ],
   decisions: {},
@@ -444,6 +472,7 @@ interface SessionState {
   summary: string
   coachName: string
   active: boolean
+  handleFromBundle: boolean
   opens: number
   exports: number
 }
@@ -457,6 +486,7 @@ function viewOf(state: SessionState): CoachSessionView {
     coach_name: state.coachName,
     summary: state.summary,
     notes: [...state.notes.values()],
+    handle_from_bundle: state.handleFromBundle,
   }
 }
 
@@ -500,6 +530,13 @@ async function routeSessionResource(page: Page, state: SessionState): Promise<vo
 
 async function routeSessionNotes(page: Page, state: SessionState, mock: CoachSessionMock): Promise<void> {
   await page.route('**/api/v1/coach/session/notes/*', async (route: Route) => {
+    // The server keys notes on the player, so there is nowhere to put one
+    // until a handle is confirmed. Mirroring that 409 here is what makes
+    // "the room asks first" testable rather than cosmetic.
+    if (state.session.player.handle === '') {
+      await fulfillProblem(route, 409, 'confirm the player before writing notes')
+      return
+    }
     const key = lastPathSegment(route)
     if (route.request().method() === 'DELETE') {
       state.notes.delete(key)
@@ -561,12 +598,14 @@ async function routeCoachingSettings(page: Page, state: SessionState, mock: Coac
  * exactly what the resume hunt needs.
  */
 export async function mockCoachSession(page: Page, opts: CoachSessionMockOptions = {}): Promise<CoachSessionMock> {
+  const opened = opts.session ?? SESSION_FIXTURE
   const state: SessionState = {
-    session: opts.session ?? SESSION_FIXTURE,
+    session: opened,
     notes: noteMap(opts.notes ?? []),
     summary: opts.summary ?? '',
     coachName: opts.coachName ?? COACH_NAME,
     active: opts.active ?? false,
+    handleFromBundle: opened.player.handle !== '',
     opens: 0,
     exports: 0,
   }
@@ -584,6 +623,7 @@ export async function mockCoachSession(page: Page, opts: CoachSessionMockOptions
       state.session = session
       state.notes = noteMap(notes)
       state.summary = ''
+      state.handleFromBundle = session.player.handle !== ''
     },
   }
   await routeSessionResource(page, state)
@@ -739,6 +779,17 @@ export async function openSessionViaMasthead(page: Page): Promise<void> {
   const chooser = page.waitForEvent('filechooser')
   await item.click()
   await (await chooser).setFiles({ name: 'sable-bundle.zip', mimeType: 'application/zip', buffer: FAKE_ZIP })
+}
+
+/** The room's "Who is this?" prompt — present until a handle is confirmed. */
+export function identityPrompt(page: Page) {
+  return page.getByRole('region', { name: 'Who is this?' })
+}
+
+/** Answer the room's "Who is this?" prompt. */
+export async function confirmPlayer(page: Page, handle: string): Promise<void> {
+  await identityPrompt(page).getByRole('textbox', { name: 'Player handle' }).fill(handle)
+  await identityPrompt(page).getByRole('button', { name: 'Confirm' }).click()
 }
 
 /**

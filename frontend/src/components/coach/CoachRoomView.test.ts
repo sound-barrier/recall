@@ -111,3 +111,53 @@ describe('CoachRoomView — the region slots', () => {
     expect(screen.getByRole('article')).toBeInTheDocument()
   })
 })
+
+// "Bundle suggests, coach confirms" — and a bundle that suggested nothing
+// leaves the room with a blank name where every note PUT answers 409. The
+// room has to ASK, and it has to let a suggested handle be corrected.
+describe('CoachRoomView — who is this?', () => {
+  const ANONYMOUS = { handle: '' }
+  const handleField = () => screen.getByRole('textbox', { name: 'Player handle' })
+
+  it('asks who the bundle is about when it named nobody', () => {
+    renderRoom({ player: ANONYMOUS })
+    expect(screen.getByRole('heading', { name: 'Who is this?' })).toBeInTheDocument()
+    expect(handleField()).toBeInTheDocument()
+  })
+
+  it('reports the handle the coach confirms', async () => {
+    const view = renderRoom({ player: ANONYMOUS })
+    await fireEvent.update(handleField(), 'Wren')
+    await fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(view.emitted('confirm-player')).toEqual([['Wren']])
+  })
+
+  it('will not take a note that has nowhere to be saved', () => {
+    renderRoom({ player: ANONYMOUS })
+    expect(screen.getByRole('textbox', { name: 'Note' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(/before writing notes/)
+  })
+
+  it('lets the coach correct a handle the bundle suggested', async () => {
+    const view = renderRoom()
+    expect(screen.queryByRole('textbox', { name: 'Player handle' })).not.toBeInTheDocument()
+
+    await fireEvent.click(screen.getByRole('button', { name: /Change player/ }))
+    expect(handleField()).toHaveDisplayValue('Sable')
+    await fireEvent.update(handleField(), 'Wren')
+    await fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(view.emitted('confirm-player')).toEqual([['Wren']])
+  })
+
+  it('keeps the editor writable while a confirmed handle is corrected', async () => {
+    renderRoom()
+    await fireEvent.click(screen.getByRole('button', { name: /Change player/ }))
+    expect(screen.getByRole('textbox', { name: 'Note' })).toBeEnabled()
+  })
+
+  it('shows the save state of the frame on the desk', () => {
+    renderRoom({ saveStateFor: (key: string) => (key === LATE.match_key ? 'saving' : 'idle') })
+    expect(screen.getByRole('status')).toHaveTextContent('Saving')
+  })
+})

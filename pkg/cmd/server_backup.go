@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"recall/pkg/app"
+	"recall/pkg/bundle"
 )
 
 // registerBackupRoutes attaches the backup / restore / import /
@@ -122,45 +126,19 @@ func handleImportMatches(a *app.App) http.HandlerFunc {
 }
 
 // handleExportBundle assembles a compressed bundle export. Body declares the
-// included match keys plus optional include-unknown / include-hidden toggles;
-// response is the assembled `.zip` (manifest.json + data.json +
-// screenshots/<filename>). See pkg/app/export_bundle.go.
+// included match keys, optional include-unknown / include-hidden toggles, and
+// an optional `share` block naming the player when the export is meant for a
+// coach; response is the assembled `.zip` (manifest.json + data.json +
+// screenshots/<filename>). See pkg/app/bundle_alias.go.
 func handleExportBundle(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// json.RawMessage on every field so a literal `null` (which Go's
-		// default decoder silently treats as the zero value) can be rejected
-		// as a schema violation — the spec declares `match_keys` as
-		// `type: array` and the toggles as `type: boolean`, neither nullable.
-		var body struct {
-			MatchKeys      json.RawMessage `json:"match_keys"`
-			IncludeUnknown json.RawMessage `json:"include_unknown"`
-			IncludeHidden  json.RawMessage `json:"include_hidden"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+		req, err := decodeExportBundleBody(r)
+		if err != nil {
+			writeProblem(w, r, probInvalidBody, err.Error())
 			return
 		}
-		matchKeys, mkErr := decodeRequiredStringArray("match_keys", body.MatchKeys)
-		if mkErr != nil {
-			writeProblem(w, r, probInvalidBody, mkErr.Error())
-			return
-		}
-		includeUnknown, ferr := decodeOptionalBool("include_unknown", body.IncludeUnknown)
-		if ferr != nil {
-			writeProblem(w, r, probInvalidBody, ferr.Error())
-			return
-		}
-		includeHidden, ferr := decodeOptionalBool("include_hidden", body.IncludeHidden)
-		if ferr != nil {
-			writeProblem(w, r, probInvalidBody, ferr.Error())
-			return
-		}
-		data, err := a.ExportBundle(app.ExportBundleOptions{
-			MatchKeys:      matchKeys,
-			IncludeUnknown: includeUnknown,
-			IncludeHidden:  includeHidden,
-		})
-		if writeError(w, r, err) {
+		data, err := exportBundlePayload(a, req)
+		if writeError(w, r, err, errStatus{bundle.ErrPlayerIdentityInvalid, probInvalidBody}) {
 			return
 		}
 		fname := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
@@ -168,6 +146,85 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
 		_, _ = w.Write(data)
 	}
+}
+
+// exportBundleRequest is one decoded POST /api/v1/exports/bundle body: the
+// selection, plus who the bundle is about when it is being shared with a
+// coach (nil for the ordinary export).
+type exportBundleRequest struct {
+	opts  app.ExportBundleOptions
+	share *app.SharePlayer
+}
+
+// decodeExportBundleBody validates the request body field by field. Every
+// field decodes from json.RawMessage so a literal `null` (which Go's default
+// decoder silently treats as the zero value) is rejected as the schema
+// violation it is — the spec declares `match_keys` as `type: array`, the
+// toggles as `type: boolean`, and `share` as `type: object`, none nullable.
+func decodeExportBundleBody(r *http.Request) (exportBundleRequest, error) {
+	var body struct {
+		MatchKeys      json.RawMessage `json:"match_keys"`
+		IncludeUnknown json.RawMessage `json:"include_unknown"`
+		IncludeHidden  json.RawMessage `json:"include_hidden"`
+		Share          json.RawMessage `json:"share"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return exportBundleRequest{}, errors.New("invalid JSON body")
+	}
+	matchKeys, err := decodeRequiredStringArray("match_keys", body.MatchKeys)
+	if err != nil {
+		return exportBundleRequest{}, err
+	}
+	includeUnknown, err := decodeOptionalBool("include_unknown", body.IncludeUnknown)
+	if err != nil {
+		return exportBundleRequest{}, err
+	}
+	includeHidden, err := decodeOptionalBool("include_hidden", body.IncludeHidden)
+	if err != nil {
+		return exportBundleRequest{}, err
+	}
+	share, err := decodeOptionalShare("share", body.Share)
+	if err != nil {
+		return exportBundleRequest{}, err
+	}
+	return exportBundleRequest{
+		opts: app.ExportBundleOptions{
+			MatchKeys:      matchKeys,
+			IncludeUnknown: includeUnknown,
+			IncludeHidden:  includeHidden,
+		},
+		share: share,
+	}, nil
+}
+
+// decodeOptionalShare reads the `share` block. Absent means the ordinary
+// export; an explicit null is a schema violation, the same rule
+// decodeOptionalBool applies to the toggles. Only the handle and the message
+// are read: the stable player id is minted and persisted server-side, so a
+// request body can never claim to be somebody else.
+func decodeOptionalShare(field string, raw json.RawMessage) (*app.SharePlayer, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 {
+		return nil, nil
+	}
+	if bytes.Equal(trimmed, []byte("null")) {
+		return nil, fmt.Errorf("%s must be an object, not null", field)
+	}
+	var share app.SharePlayer
+	if err := json.Unmarshal(trimmed, &share); err != nil {
+		return nil, fmt.Errorf("%s: %w", field, err)
+	}
+	return &share, nil
+}
+
+// exportBundlePayload picks the export mode the body asked for. The two are
+// separate App methods on purpose: the plain export is incapable of stamping
+// an identity, so a bundle can only name a player when the request said so.
+func exportBundlePayload(a *app.App, req exportBundleRequest) ([]byte, error) {
+	if req.share == nil {
+		return a.ExportBundle(req.opts)
+	}
+	return a.ExportShareBundle(req.opts, *req.share)
 }
 
 // handleExportDiagnostic assembles the parser-triage zip (failed

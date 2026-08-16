@@ -104,6 +104,40 @@ test.describe('film room — reel', () => {
   })
 })
 
+test.describe('film room — stepping into the app', () => {
+  test("the Matches list runs on the player's clock, and says so", async ({ page }) => {
+    await openRoom(page)
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+
+    // Same match, three clicks from the room: 21:14 is Sable's finish time.
+    // Rendering the canonical instant instead would print the coach's zone —
+    // a different hour, and with the fixture's 9 h offset a different DAY
+    // than the one the row is grouped and filtered under.
+    const row = page.locator('.leaf-row', { hasText: /king's row/i })
+    await expect(row).toContainText(KINGS_ROW_MATCH.data.finished_at)
+    const playerDay = await page.evaluate(
+      (date) => new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      KINGS_ROW_MATCH.data.date,
+    )
+    await expect(row).toContainText(playerDay)
+
+    // Labeled once on this surface — an unlabeled 21:14 is a lie to a coach
+    // in another timezone.
+    await expect(page.getByText(/Times in Sable's clock/)).toHaveCount(1)
+  })
+
+  test("the detail panel keeps the player's clock and names it", async ({ page }) => {
+    await openRoom(page)
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await page.locator('.leaf-row', { hasText: /king's row/i }).click()
+
+    const panel = page.locator('aside.detail-panel')
+    await expect(panel).toBeVisible()
+    await expect(panel).toContainText('9:14pm')
+    await expect(panel.getByText(/Times in Sable's clock/)).toBeVisible()
+  })
+})
+
 test.describe('film room — desk notes', () => {
   test('a note autosaves as a structured PUT and marks the frame', async ({ page }) => {
     const session = await openRoom(page)

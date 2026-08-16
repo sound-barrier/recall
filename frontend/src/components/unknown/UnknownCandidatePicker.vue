@@ -51,8 +51,10 @@ function freshKey(): string | null {
   return m ? `match-${m[1]}-${m[2]}-${m[3]}T${m[4]}-${m[5]}-${m[6]}` : null
 }
 
-// Resolving an ambiguous screenshot rewrites its match key — a write.
-const { writesLocked, lockedTitle } = useWriteGate()
+// Resolving an ambiguous screenshot rewrites its match key — a write. And
+// design rule 8: a loaned candidate's representative file lives on the
+// PLAYER's disk, so neither thumbnail is requested during a session.
+const { writesLocked, lockedTitle, sessionActive } = useWriteGate()
 </script>
 
 <template>
@@ -72,7 +74,7 @@ const { writesLocked, lockedTitle } = useWriteGate()
           @focusin="setActive(cand.match_key)"
         >
           <button
-            v-if="cand.representative_source_file"
+            v-if="cand.representative_source_file && !sessionActive"
             type="button"
             class="candidate-thumb"
             :aria-label="`Open ${cand.match_key} screenshot in lightbox`"
@@ -121,7 +123,7 @@ const { writesLocked, lockedTitle } = useWriteGate()
       <!-- Side-by-side preview pane — the active candidate's representative
            screenshot at a comparison size; click escalates to the lightbox. -->
       <aside
-        v-if="activeCandidate()?.representative_source_file"
+        v-if="activeCandidate()?.representative_source_file && !sessionActive"
         class="candidate-preview-pane"
         :aria-label="`Preview of ${activeCandidate()?.match_key}`"
       >

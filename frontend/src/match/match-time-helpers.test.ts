@@ -12,6 +12,7 @@ import {
   monthDateRange,
   formatCandidateDistance,
   formatRangeBound,
+  playerClockNote,
 } from '@/match/match-time-helpers'
 
 // ─── matchTime ───────────────────────────────────────────────────────
@@ -81,6 +82,34 @@ describe('fmtTime', () => {
 
   it('falls back to the naive rendering when played_at_utc is absent', () => {
     expect(fmtTime({ data: { date: '2026-05-09', finished_at: '21:08' } })).toBe('May 9, 2026 @ 9:08pm')
+  })
+})
+
+describe('playerClockNote', () => {
+  it('names the player whose clock the surface is in', () => {
+    expect(playerClockNote('Sable')).toBe("Times in Sable's clock")
+  })
+
+  it('falls back to a nameless player rather than an empty possessive', () => {
+    expect(playerClockNote('')).toBe("Times in the player's clock")
+  })
+})
+
+describe("fmtTime — the player's clock", () => {
+  // A loaned coaching corpus belongs to someone else: her scoreboard wrote
+  // the naive pair, and the canonical instant renders in the COACH's zone —
+  // here a different hour AND a different calendar day. Design rule 7 says
+  // the step-into views show HER clock, so the printed time agrees with the
+  // day the record is bucketed under (grouping reads data.date).
+  const LOANED = { data: { date: '2026-05-10', finished_at: '21:14', played_at_utc: '2026-05-11T06:14:00Z' } }
+
+  it("renders the player's naive day and time, never the instant", () => {
+    expect(fmtTime(LOANED, 'player')).toBe('May 10, 2026 @ 9:14pm')
+  })
+
+  it('defaults to the viewer clock, so every surface outside a session is unchanged', () => {
+    expect(fmtTime(LOANED)).toBe(formatLocalFromUTC('2026-05-11T06:14:00Z'))
+    expect(fmtTime(LOANED, 'viewer')).toBe(formatLocalFromUTC('2026-05-11T06:14:00Z'))
   })
 })
 

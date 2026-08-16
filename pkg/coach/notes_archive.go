@@ -115,6 +115,10 @@ func writeZipEntry(zw *zip.Writer, name string, body []byte, mt time.Time) error
 // imports. Only notes.json is ever read — ledger.html is an untrusted
 // document the app never opens. Unknown JSON fields are tolerated so a
 // newer minor build's file still stages here.
+//
+// Production staging uses the unexported form below, which also hands back
+// the raw bytes it hashes; this is the decoder other packages read an
+// exported archive with.
 func ReadNotesArchive(payload []byte) (NotesFile, error) {
 	f, _, err := readNotesArchive(payload)
 	return f, err

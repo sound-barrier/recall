@@ -16,6 +16,9 @@ import {
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import {
+  restoreMatchesNarrowState, snapshotMatchesNarrowState, type MatchesNarrowSnapshot,
+} from '@/composables/matches/matchesNarrow.state'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
@@ -210,6 +213,23 @@ export const useMatchesStore = defineStore('matches', () => {
   const matchesNarrowState = createMatchesNarrowState({ anchorKey: matchAnchor.anchorKey })
   const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
   const { searchClauses } = useSearchClauses(matchesNarrowState.searchText)
+
+  // Design rule 12 — the coach's narrow describes HER corpus. Left in place
+  // over a player's loaned records it shows an arbitrary subset (often zero
+  // rows), which reads as "the export is broken". So a session puts it aside
+  // and End hands it back. Pushed to the coach store for the same reason the
+  // tour flag is: that store cannot import this one.
+  let narrowBeforeSession: MatchesNarrowSnapshot | null = null
+  coach.setNarrowSuspender({
+    suspend: () => {
+      narrowBeforeSession = snapshotMatchesNarrowState(matchesNarrowState)
+      matchesNarrow.resetNarrow()
+    },
+    restore: () => {
+      if (narrowBeforeSession) restoreMatchesNarrowState(matchesNarrowState, narrowBeforeSession)
+      narrowBeforeSession = null
+    },
+  })
 
   // Narrow-chip toggle contract for the detail card's inline filter chips:
   // isNarrowChipActive reports whether a hero/role/result/map/type/tag chip is

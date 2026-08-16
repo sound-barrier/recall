@@ -112,6 +112,22 @@ describe('native dialog dispatch (Wails mode)', () => {
     await ExportBundle({ matchKeys: ['match:x'], includeUnknown: true, includeHidden: false })
     expect(callByName).toHaveBeenCalledWith(FQN + 'SaveBundleToFile', ['match:x'], true, false)
   })
+
+  // Share mode is a different native method, not a nullable argument: the
+  // ordinary saver stays incapable of stamping an identity into a manifest.
+  it('ExportBundle routes a share export to SaveShareBundleToFile', async () => {
+    const { ExportBundle } = await import('@/api')
+    await ExportBundle({
+      matchKeys: ['match:x'],
+      includeUnknown: false,
+      includeHidden: true,
+      share: { handle: 'Sable', message: 'Ult timing on control?' },
+    })
+    expect(callByName).toHaveBeenCalledWith(
+      FQN + 'SaveShareBundleToFile',
+      ['match:x'], false, true, { handle: 'Sable', message: 'Ult timing on control?' },
+    )
+  })
 })
 
 // ── single transport ──────────────────────────────────────────────────────

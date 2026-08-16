@@ -7,6 +7,11 @@ import type { MatchRecord } from '@/api-client'
 import { NARROW_KEY, type NarrowApi } from '@/composables/matches/useNarrow'
 import type { SearchClause } from '@/match/search-query'
 
+// The list and its rows ask the write gate whose clock they are in; stub
+// it so these cases pin the LIST's contract without a live session.
+vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/writeGateStub'))
+import { resetWriteGate, setWritesLocked } from '@/test-utils/writeGateStub'
+
 vi.mock('@/composables/shared/useOWData', async () => {
   const { computed } = await import('vue')
   return {
@@ -90,6 +95,7 @@ beforeEach(() => {
   // MatchesTable reads the app store to surface a clipboard denial in the
   // error banner, so rendering it needs an active Pinia.
   setActivePinia(createPinia())
+  resetWriteGate()
   storage = {}
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => storage[key] ?? null,
@@ -285,5 +291,21 @@ describe('MatchesMembersList', () => {
       expect(emitted('hover-move')).toHaveLength(1)
       expect(emitted('hover-leave')).toHaveLength(1)
     })
+  })
+})
+
+// Design rule 7 asks for the label once per surface: the rows print the
+// player's naive clock during a session, and an unlabeled 21:14 is a lie
+// to a coach in another timezone.
+describe("MatchesMembersList — the player's clock", () => {
+  it('labels the list once while a coaching session is open', () => {
+    setWritesLocked(true, { session: true })
+    renderList({ records: [rec('m-1'), rec('m-2')] })
+    expect(screen.getAllByText(/Times in .+'s clock/)).toHaveLength(1)
+  })
+
+  it('says nothing about clocks outside a session', () => {
+    renderList({ records: [rec('m-1')] })
+    expect(screen.queryByText(/Times in .+'s clock/)).toBeNull()
   })
 })

@@ -16,19 +16,19 @@ vi.mock('@/composables/shared/useWriteGate', async () => import('@/test-utils/wr
 
 const KEY = 'match-2026-08-13T21-14-00'
 
-function record(): MatchRecord {
+function record(key = KEY): MatchRecord {
   return {
-    match_key: KEY,
+    match_key: key,
     source_files: ['a.png'],
     data: { map: "king's row", hero: 'ana', result: 'victory' },
   } as unknown as MatchRecord
 }
 
-function renderHeader() {
+function renderHeader(key = KEY) {
   setActivePinia(createPinia())
   return render(DetailPanelHeader, {
     props: {
-      record: record(),
+      record: record(key),
       mapDisplay: "King's Row",
       provenanceSummary: '',
       canPrev: false,
@@ -68,5 +68,28 @@ describe('DetailPanelHeader', () => {
     await userEvent.setup().click(filmRoom()!)
     expect(selectKey).toHaveBeenCalledWith(KEY)
     expect(goToView).toHaveBeenCalledWith('coach')
+  })
+
+  // Design rule 7: the panel's own When cell reads the player's naive
+  // clock during a session, and the strip is where this surface says so.
+  // Design rule 6: a coach's note lives on a tracked key. Handing an
+  // `unmatched-` sentinel to the desk would open an editor whose every
+  // keystroke the server refuses — so the hand-off says why instead.
+  it('refuses the film-room hand-off for a record that was never matched', () => {
+    setWritesLocked(true, { session: true })
+    renderHeader('unmatched-Zm9vLnBuZw')
+    expect(filmRoom()).toBeDisabled()
+    expect(screen.getByText(/never matched to a match/)).toBeInTheDocument()
+  })
+
+  it("names whose clock the panel is in during a session", () => {
+    setWritesLocked(true, { session: true })
+    renderHeader()
+    expect(screen.getByText(/Times in .+'s clock/)).toBeInTheDocument()
+  })
+
+  it('says nothing about clocks outside a session', () => {
+    renderHeader()
+    expect(screen.queryByText(/Times in .+'s clock/)).toBeNull()
   })
 })

@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { MatchRecord } from '@/api-client'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { isTrackedMatchKey } from '@/match/match-key'
+import { playerClockNote } from '@/match/match-time-helpers'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 
@@ -29,7 +33,21 @@ const { writesLocked, sessionActive, lockedTitle } = useWriteGate()
 const appStore = useAppStore()
 const coachStore = useCoachStore()
 
+// Rule 7: the meta strip below reads this match in the PLAYER's naive
+// clock, so the panel names whose clock that is — once, here.
+const clockNote = computed(() => playerClockNote(coachStore.player?.handle ?? ''))
+
+// Design rule 6: a coach's note keys on a TRACKED match. An `unmatched-` /
+// `ambiguous-` sentinel is a screenshot the parser never placed, and its
+// note PUT is a permanent 404 — so the hand-off refuses rather than opening
+// an editor that would swallow a paragraph.
+const NO_MATCH_REASON = 'This screenshot was never matched to a match, so it carries no coach\'s note.'
+const ON_LOAN_NOTE = 'This match is on loan — notes go in the film room.'
+const canHandOff = computed(() => isTrackedMatchKey(props.record.match_key ?? ''))
+const sessionNote = computed(() => (canHandOff.value ? ON_LOAN_NOTE : NO_MATCH_REASON))
+
 function openInFilmRoom() {
+  if (!canHandOff.value) return
   coachStore.selectKey(props.record.match_key)
   void appStore.goToView('coach')
 }
@@ -133,12 +151,14 @@ const emit = defineEmits<{
        on the desk, one click away. -->
   <div v-if="sessionActive" class="detail-session-strip" data-session-strip>
     <span class="eyebrow accent">Coaching session</span>
-    <span class="detail-session-note">This match is on loan — notes go in the film room.</span>
+    <span class="detail-session-note">{{ sessionNote }}</span>
+    <span class="detail-session-clock">{{ clockNote }}</span>
     <button
       type="button"
       class="detail-film-room"
       data-open-film-room
-      title="Write about this match on the desk in the film room"
+      :disabled="!canHandOff"
+      :title="canHandOff ? 'Write about this match on the desk in the film room' : NO_MATCH_REASON"
       @click="openInFilmRoom"
     >
       Open in the film room →
@@ -232,6 +252,17 @@ const emit = defineEmits<{
 .detail-session-note {
   flex: 1 1 auto;
   font-size: var(--type-md);
+  color: var(--text-dim);
+}
+
+/* Rule 7's label for this surface: the meta strip's "When" is the
+   player's naive clock, not the coach's. */
+.detail-session-clock {
+  font-family: var(--mono);
+  font-size: var(--type-3xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
   color: var(--text-dim);
 }
 

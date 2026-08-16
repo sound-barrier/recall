@@ -31,18 +31,45 @@ App\.SaveTextToFile
 App\.LoadRestoreFromFile
 App\.LoadMatchImportFromFile
 
+# App.SaveShareBundleToFile / App.LoadCoachBundleFromFile /
+# App.SaveCoachNotesToFile: the coaching feature's dialogs, same pattern
+# again — Wails file pickers in app_wails.go, server-mode stubs pointing at
+# POST /api/v1/exports/bundle (with a share body), POST /api/v1/coach/session,
+# and POST /api/v1/coach/session/export.
+App\.SaveShareBundleToFile
+App\.LoadCoachBundleFromFile
+App\.SaveCoachNotesToFile
+
 # App.ReParseAll: the desktop "Re-parse all" button drives this
 # synchronous method over Wails IPC. Server mode's POST
 # /parses?scope=all routes through the async StartParse(true) instead
 # (a background job that returns 202 up-front), so the serveronly
-# build never calls ReParseAll directly. ParseScreenshots stays
-# reachable — the file watcher calls it.
+# build never calls ReParseAll directly.
+#
+# App.ParseScreenshots joined it when the coaching write gate landed: the
+# gate sits on the user-initiated entry points, so the file watcher — which
+# is deliberately exempt (it only ever ingests THIS user's screenshots into
+# THIS user's store) — now calls the internal parseSync directly rather than
+# routing through the gated method. ParseScreenshots is therefore the
+# desktop "Parse now" IPC entry only, and the serveronly build never calls
+# it. This comment previously claimed the watcher kept it reachable; that
+# stopped being true, which is why the gate caught it.
 App\.ReParseAll
+App\.ParseScreenshots
 
 # app.NewWithStore: constructor used only by tests (store integration
 # suite). Test code isn't in deadcode's call graph for the production
 # build, so the function looks unreachable.
 NewWithStore
+
+# coach.ReadNotesArchive: the exported archive decoder. Production staging
+# calls the unexported form (it also returns the raw bytes Stage hashes),
+# so the only callers of THIS one are pkg/coach's and pkg/app's external
+# tests — which read back an archive ExportCoachNotes just produced. Same
+# case as NewWithStore: test code isn't in deadcode's call graph. Deleting
+# it and re-exporting through export_test.go does not work, because that
+# shim is only compiled into pkg/coach's own test binary.
+ReadNotesArchive
 
 # parser.ToGolden: per-screenshot-type projection used only by
 # TestParseScreenshot_GoldenFiles to serialize the golden fixtures.

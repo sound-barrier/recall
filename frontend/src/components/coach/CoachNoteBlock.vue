@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import type { MatchCoachNote } from '@/api-client'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { focusTagLabel } from '@/match/coach-notes'
 import { useCoachStore } from '@/stores/coach'
 
@@ -19,9 +20,15 @@ const props = defineProps<{
 
 const coach = useCoachStore()
 
+// Dropping a block is a write on the player's own database, so it obeys the
+// same gate as the journal it sits in. The button disables with the reason,
+// and the guard is what refuses a click that arrives anyway.
+const { writesLocked, lockReason, guardWrite } = useWriteGate()
+
 const tags = computed(() => [...(props.note.focus_tags ?? []), ...(props.note.extra_tags ?? [])])
 
 function remove() {
+  if (!guardWrite()) return
   void coach.removeCoachNote(props.matchKey, props.note.id)
 }
 </script>
@@ -56,7 +63,13 @@ function remove() {
 
     <footer class="cnb-foot">
       <span class="cnb-sign">— {{ note.coach_name }} · {{ note.session_date }}</span>
-      <button type="button" class="paper-btn cnb-remove" @click="remove">
+      <button
+        type="button"
+        class="paper-btn cnb-remove"
+        :disabled="writesLocked"
+        :title="lockReason || undefined"
+        @click="remove"
+      >
         Remove this note
       </button>
     </footer>

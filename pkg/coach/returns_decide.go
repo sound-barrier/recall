@@ -11,10 +11,10 @@ import (
 // reviewed_only mark, only the flag) and marks the match reviewed by coach;
 // a skip removes a block an earlier accept wrote. The batch is validated
 // whole before anything is written — an unknown note_id or decision value
-// is ErrNoteInvalid, a note whose match is not in the player's history is
-// ErrReturnOrphan — and the recomputed sheet is returned (localHandle feeds
-// its PlayerMismatch flag). Partial and repeatable: undecided notes stay
-// pending, a repeat accept upserts.
+// is ErrNoteInvalid, and ACCEPTING a note whose match is not in the
+// player's history is ErrReturnOrphan — and the recomputed sheet is
+// returned (localHandle feeds its PlayerMismatch flag). Partial and
+// repeatable: undecided notes stay pending, a repeat accept upserts.
 func Decide(st ReturnStore, id int64, decisions []Decision, localHandle string) (ReturnSheet, error) {
 	r, ok, err := st.LoadCoachReturn(id)
 	if err != nil {
@@ -50,7 +50,9 @@ type decisionTarget struct {
 }
 
 // resolveDecisions checks every decision against the file and the local
-// history before any is applied.
+// history before any is applied. Only an accept needs a match to land on:
+// skipping is how a player dismisses a note about a match they no longer
+// have, and refusing it would take the rest of the batch down too.
 func resolveDecisions(notes []Note, keys map[string]bool, decisions []Decision) ([]decisionTarget, error) {
 	byID := make(map[string]Note, len(notes))
 	for _, n := range notes {
@@ -65,7 +67,7 @@ func resolveDecisions(notes []Note, keys map[string]bool, decisions []Decision) 
 		if d.Decision != DecisionAccepted && d.Decision != DecisionSkipped {
 			return nil, fmt.Errorf("%w: decision %q must be %q or %q", ErrNoteInvalid, d.Decision, DecisionAccepted, DecisionSkipped)
 		}
-		if !keys[n.MatchKey] {
+		if d.Decision == DecisionAccepted && !keys[n.MatchKey] {
 			return nil, fmt.Errorf("%w: %s", ErrReturnOrphan, n.MatchKey)
 		}
 		out = append(out, decisionTarget{note: n, decision: d.Decision})

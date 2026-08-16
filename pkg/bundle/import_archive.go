@@ -36,8 +36,9 @@ type Contents struct {
 // It strips a leading BOM, sniffs for the PKZip magic, and decodes both core
 // files. A payload that isn't a readable bundle wraps ErrImportMalformed
 // (→ 400); a readable bundle whose manifest or data schema this build doesn't
-// speak is a plain error (→ 409). A bundle from a build that predates the
-// player identity reads back with Manifest.Player == nil.
+// speak is a plain error (→ 409), as is one whose player identity fails the
+// export-side rules (ErrPlayerIdentityInvalid). A bundle from a build that
+// predates the player identity reads back with Manifest.Player == nil.
 func Read(payload []byte) (Contents, error) {
 	payload = stripBOM(payload)
 	if !LooksLikeZIP(payload) {
@@ -58,8 +59,15 @@ func Read(payload []byte) (Contents, error) {
 	return Contents{Manifest: manifest, Data: data}, nil
 }
 
-// readManifestEntry decodes manifest.json and checks its schema. Runs before
-// data.json is touched so a future-layout bundle is refused on the envelope.
+// readManifestEntry decodes manifest.json, checks its schema, and holds any
+// player identity to the rules Export enforces. Runs before data.json is
+// touched so a future-layout bundle is refused on the envelope.
+//
+// The identity check is what keeps a hand-edited or foreign manifest out of
+// the coach's store: an id that isn't a UUID (or a handle nothing can
+// display) would key a coach_players row whose notes the notes file then
+// refuses to carry, and that coach's export would be blocked for good with
+// no way back. Refusing the bundle is the only failure the coach can act on.
 func readManifestEntry(zr *zip.Reader) (ManifestV1, error) {
 	manifestBytes, err := ReadZipEntry(zr, "manifest.json", maxZipEntryBytes)
 	if err != nil {
@@ -71,6 +79,13 @@ func readManifestEntry(zr *zip.Reader) (ManifestV1, error) {
 	}
 	if mf.Schema != BundleSchemaV1 {
 		return ManifestV1{}, fmt.Errorf("import: unsupported bundle schema %q (this build expects %q)", mf.Schema, BundleSchemaV1)
+	}
+	if mf.Player != nil {
+		player, err := normalizePlayerIdentity(*mf.Player)
+		if err != nil {
+			return ManifestV1{}, err
+		}
+		mf.Player = &player
 	}
 	return mf, nil
 }

@@ -21,7 +21,7 @@ import { Browser, Call, Events } from '@wailsio/runtime'
 import { unwrap, unwrapWithResponse } from '@/api-unwrap'
 import { IS_WAILS } from '@/platform'
 import * as sdk from '@/client/sdk.gen'
-import type { CoachReturnSheet, CoachSessionView } from '@/client/types.gen'
+import type { BundleShare, CoachReturnSheet, CoachSessionView } from '@/client/types.gen'
 
 // Fully-qualified prefix for the bound App service — the v3 runtime resolves a
 // Call.ByName against `packagePath.typeName.method` (see pkg/app's App service,
@@ -173,29 +173,43 @@ export async function ExportMatchesCSV(csv: string, defaultName: string): Promis
 // streams the ZIP into a browser download. Resolves with the filename the
 // bundle was saved as ("" on user cancel in Wails mode). Throws ApiError on
 // a non-2xx HTTP response.
+//
+// With `share` set the result is a DIFFERENT artifact: the manifest names
+// the player, a coach can open it as a session, and a mis-clicked Import
+// refuses to merge it. The stable player id is minted and persisted by the
+// backend — the caller only supplies the display handle and the optional
+// message. Share mode dispatches its own native method rather than passing a
+// nullable argument, so the ordinary saver stays incapable of stamping an
+// identity into a manifest.
 export function ExportBundle(opts: {
   matchKeys:       string[]
   includeUnknown:  boolean
   includeHidden:   boolean
+  share?:          BundleShare
 }): Promise<string> {
-  if (IS_WAILS) {
-    return wailsCall<string>(
-      'SaveBundleToFile',
-      opts.matchKeys,
-      opts.includeUnknown,
-      opts.includeHidden,
-    )
-  }
+  if (IS_WAILS) return saveBundleNatively(opts)
   return saveBlobResponse(
     sdk.exportBundle({
       body: {
         match_keys:      opts.matchKeys,
         include_unknown: opts.includeUnknown,
         include_hidden:  opts.includeHidden,
+        ...(opts.share ? { share: opts.share } : {}),
       },
     }),
-    `recall-bundle-${tsFilenameStamp()}.zip`,
+    `recall-${opts.share ? 'share' : 'bundle'}-${tsFilenameStamp()}.zip`,
   )
+}
+
+function saveBundleNatively(opts: {
+  matchKeys:      string[]
+  includeUnknown: boolean
+  includeHidden:  boolean
+  share?:         BundleShare
+}): Promise<string> {
+  const selection = [opts.matchKeys, opts.includeUnknown, opts.includeHidden] as const
+  if (opts.share) return wailsCall<string>('SaveShareBundleToFile', ...selection, opts.share)
+  return wailsCall<string>('SaveBundleToFile', ...selection)
 }
 
 // ExportDiagnosticBundle builds the parser-triage zip (failed screenshots +

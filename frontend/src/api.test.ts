@@ -447,6 +447,28 @@ describe('binary downloads (browser mode)', () => {
     expect(name).toBe('recall-bundle-x.zip')
   })
 
+  // A share export is a different artifact: the manifest names the player,
+  // the coach's session opens on it, and a mis-clicked Import refuses it.
+  // The only thing that says so on the wire is this block.
+  it('ExportBundle carries the share identity when the export is for a coach', async () => {
+    const spy = stubFetch(blobReply('attachment; filename="recall-share-sable.zip"'))
+    stubDownloadDom()
+
+    await ExportBundle({
+      matchKeys: ['k1'],
+      includeUnknown: false,
+      includeHidden: false,
+      share: { handle: 'Sable', message: 'Mostly worried about ult timing.' },
+    })
+
+    expect(JSON.parse(await lastRequest(spy).text())).toEqual({
+      match_keys: ['k1'],
+      include_unknown: false,
+      include_hidden: false,
+      share: { handle: 'Sable', message: 'Mostly worried about ult timing.' },
+    })
+  })
+
   it('ExportCoachNotes POSTs the session export and saves the named zip', async () => {
     const spy = stubFetch(blobReply('attachment; filename="recall-coach-notes-sable-2026-08-15.zip"'))
     stubDownloadDom()

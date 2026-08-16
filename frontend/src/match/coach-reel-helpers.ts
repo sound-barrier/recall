@@ -5,6 +5,7 @@
 
 import type { MatchRecord } from '@/api-client'
 import { formatPlayerDay, playerClockDayKey, playerClockTime } from '@/match/coach-time'
+import { isTrackedMatchKey } from '@/match/match-key'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
 
 /** The record fields the reel reads — a narrower shape than MatchRecord so tests can feed minimal rows. */
@@ -45,11 +46,21 @@ function toReelDay<T extends ReelRecord>(dayKey: string, frames: T[]): ReelDay<T
   }
 }
 
-/** Group visible records by the player's day: newest day first, undated last, frames newest first within a day. */
+// A frame is an invitation to write a note, and design rule 6 allows a note
+// only on a TRACKED key — the server 404s the `unmatched-` / `ambiguous-`
+// sentinels, permanently. An "include unknown" export carries those records,
+// so without this the reel would hand the coach an editor that accepts a
+// paragraph and then loses it. A screenshot with no match is not a match to
+// review; it never reaches the reel.
+function isReelable(rec: ReelRecord): boolean {
+  return !rec.hidden && isTrackedMatchKey(rec.match_key ?? '')
+}
+
+/** Group reviewable records by the player's day: newest day first, undated last, frames newest first within a day. */
 export function groupReelByPlayerDay<T extends ReelRecord>(records: T[]): ReelDay<T>[] {
   const byDay = new Map<string, T[]>()
   for (const rec of records) {
-    if (rec.hidden) continue
+    if (!isReelable(rec)) continue
     const dayKey = playerClockDayKey(rec)
     const bucket = byDay.get(dayKey)
     if (bucket) bucket.push(rec)

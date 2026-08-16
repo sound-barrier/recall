@@ -124,3 +124,23 @@ describe('CoachLoanSlip', () => {
     expect(spies.endSession).toHaveBeenCalled()
   })
 })
+
+// A plain (not "share with a coach") export names nobody, so the slip has
+// nothing to put where the handle goes until the room's prompt is answered.
+describe('CoachLoanSlip — a bundle that named nobody', () => {
+  const unnamedSlip = () =>
+    screen.getByRole('region', { name: 'Coaching session: reviewing a player not yet named' })
+
+  it('says so rather than showing a blank name', () => {
+    renderSlip({ player: { id: '', handle: '', message: '' }, handle_from_bundle: false })
+    expect(unnamedSlip()).toBeInTheDocument()
+  })
+
+  it('refuses to export an archive with nobody to address it to', () => {
+    renderSlip({ player: { id: '', handle: '', message: '' }, handle_from_bundle: false })
+    const button = within(unnamedSlip()).getByRole('button', { name: 'Export notes' })
+
+    expect(button).toBeDisabled()
+    expect(button.title).toMatch(/who this bundle is about/i)
+  })
+})

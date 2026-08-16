@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import CoachDesk from '@/components/coach/CoachDesk.vue'
+import CoachIdentityPrompt from '@/components/coach/CoachIdentityPrompt.vue'
 import CoachReel from '@/components/coach/CoachReel.vue'
 import CoachSessionSheet from '@/components/coach/CoachSessionSheet.vue'
 import {
@@ -29,7 +30,8 @@ const props = withDefaults(defineProps<{
   summary?: string
   /** Signed on the notes; the sheet's tally line names the coach. */
   coachName?: string
-  saveState?: CoachSaveState
+  /** Where each key's autosave stands — the desk reads the frame it shows. */
+  saveStateFor?: (matchKey: string) => CoachSaveState
   canExport?: boolean
   exportReason?: string
   labels?: CoachLabels
@@ -37,7 +39,7 @@ const props = withDefaults(defineProps<{
   selectedKey: '',
   summary: '',
   coachName: '',
-  saveState: 'idle',
+  saveStateFor: (): CoachSaveState => 'idle',
   canExport: true,
   exportReason: undefined,
   labels: () => DEFAULT_COACH_LABELS,
@@ -47,6 +49,7 @@ const emit = defineEmits<{
   select: [matchKey: string]
   'update-note': [matchKey: string, draft: CoachNoteDraft]
   'update-summary': [text: string]
+  'confirm-player': [handle: string]
   export: []
   end: []
 }>()
@@ -69,6 +72,24 @@ const { onReelKeydown } = useCoachReelKeyboard({
 
 const notesLine = computed(() => notesSummaryLine(props.notes, props.coachName))
 
+// Nobody confirmed: the room has to ask before it lets a word be typed,
+// because a note about a nameless player has no row to land in.
+const unconfirmed = computed(() => props.player.handle === '')
+const UNCONFIRMED_REASON
+  = 'Say who this bundle is about before writing notes — nothing can be saved without it.'
+const blockedReason = computed(() => (unconfirmed.value ? UNCONFIRMED_REASON : ''))
+
+// A suggested handle is a suggestion: the sheet re-opens the same prompt to
+// correct it, and a confirmed correction closes it again.
+const correcting = ref(false)
+const askingWho = computed(() => unconfirmed.value || correcting.value)
+watch(() => props.player.handle, () => { correcting.value = false })
+
+function confirmPlayer(handle: string): void {
+  correcting.value = false
+  emit('confirm-player', handle)
+}
+
 function step(key: string | null): void {
   if (key !== null) select(key)
 }
@@ -90,12 +111,21 @@ function step(key: string | null): void {
     </div>
 
     <div class="coach-room-desk">
+      <CoachIdentityPrompt
+        v-if="askingWho"
+        :key="player.handle"
+        :handle="player.handle"
+        :unconfirmed="unconfirmed"
+        @confirm="confirmPlayer"
+        @cancel="correcting = false"
+      />
       <slot name="desk">
         <CoachDesk
           :record="room.selectedRecord.value"
           :handle="player.handle"
           :draft="room.activeDraft.value"
-          :save-state="saveState"
+          :save-state="saveStateFor(room.activeKey.value)"
+          :blocked-reason="blockedReason"
           :has-prev="room.prevKey.value !== null"
           :has-next="room.nextKey.value !== null"
           :labels="labels"
@@ -118,6 +148,7 @@ function step(key: string | null): void {
           :can-export="canExport"
           :export-reason="exportReason"
           @update-summary="(text: string) => emit('update-summary', text)"
+          @change-player="correcting = true"
           @export="emit('export')"
           @end="emit('end')"
         />

@@ -98,14 +98,49 @@ func TestStage_SameFileTwiceIsTheSameSheet(t *testing.T) {
 	}
 }
 
-func TestStage_RefusesAFileWithNoLocalMatches(t *testing.T) {
+// A coach can end a session having written only the set-level summary —
+// ExportNotes allows it deliberately — so the player must be able to stage
+// that file even though it names no match at all.
+func TestStage_AcceptsASummaryWithNoNotes(t *testing.T) {
 	st := dbtest.New()
-	_, _, err := coach.Stage(st, returnedNotes(t), "Sable")
-	if !errors.Is(err, coach.ErrReturnNoMatches) {
-		t.Fatalf("err = %v, want ErrReturnNoMatches", err)
+	sheet := stageReturn(t, st, summaryOnlyNotes(t), "Sable")
+	if sheet.Summary != "Work on ult timing." {
+		t.Errorf("summary = %q, want the file's", sheet.Summary)
 	}
-	if returns, _ := st.LoadCoachReturns(); len(returns) != 0 {
-		t.Error("a refused file was staged anyway")
+	if len(sheet.Notes) != 0 || sheet.Pending != 0 {
+		t.Errorf("sheet = %+v, want no notes and nothing pending", sheet)
+	}
+	if returns, _ := st.LoadCoachReturns(); len(returns) != 1 {
+		t.Errorf("staged returns = %d, want the summary-only file staged", len(returns))
+	}
+}
+
+// The summary is what makes a file about matches the player lacks worth
+// keeping; without one there is nothing to show, and the refusal says which
+// of the two empty cases it is.
+func TestStage_RefusesAFileWithNothingToShow(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload []byte
+		want    string
+	}{
+		{"notes about matches the player lacks", unmatchedNotes(t), "none of its 2 notes name a match you have"},
+		{"neither notes nor summary", emptyNotes(t), "no notes and no summary"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			st := dbtest.New()
+			_, _, err := coach.Stage(st, tc.payload, "Sable")
+			if !errors.Is(err, coach.ErrReturnNoMatches) {
+				t.Fatalf("err = %v, want ErrReturnNoMatches", err)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("refusal = %q, want it to name %q", err, tc.want)
+			}
+			if returns, _ := st.LoadCoachReturns(); len(returns) != 0 {
+				t.Error("a refused file was staged anyway")
+			}
+		})
 	}
 }
 
@@ -249,6 +284,45 @@ func TestDecide_SkipAfterAcceptDeletesTheBlock(t *testing.T) {
 	}
 	if state := stateOf(got); !reflect.DeepEqual(state, wantBothSkipped) {
 		t.Errorf("sheet after the second skip = %+v, want %+v", state, wantBothSkipped)
+	}
+}
+
+// Skipping a note about a match the player no longer has is the only way to
+// dismiss it, and "Skip all" sends every note on the sheet in one batch — so
+// refusing the orphan would throw every other verdict away with it.
+func TestDecide_SkipsAnOrphanWithTheRestOfTheBatch(t *testing.T) {
+	st := seededStore(t)
+	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
+	got := decide(t, st, sheet.ID,
+		coach.Decision{NoteID: noteIDOne, Decision: coach.DecisionAccepted},
+		coach.Decision{NoteID: noteIDTwo, Decision: coach.DecisionSkipped},
+		coach.Decision{NoteID: orphanNoteID, Decision: coach.DecisionSkipped},
+	)
+	want := decisionState{
+		Statuses: map[string]string{
+			noteIDOne: coach.StatusAccepted, noteIDTwo: coach.StatusSkipped, orphanNoteID: coach.StatusOrphan,
+		},
+		Decisions: map[string]string{
+			noteIDOne: coach.DecisionAccepted, noteIDTwo: coach.DecisionSkipped, orphanNoteID: coach.DecisionSkipped,
+		},
+		Pending: 0,
+	}
+	if state := stateOf(got); !reflect.DeepEqual(state, want) {
+		t.Errorf("sheet after the batch = %+v, want %+v", state, want)
+	}
+}
+
+// Accepting an orphan stays refused: the accept would write a block for a
+// match this database has never seen.
+func TestDecide_StillRefusesToAcceptAnOrphan(t *testing.T) {
+	st := seededStore(t)
+	sheet := stageReturn(t, st, returnedNotes(t), "Sable")
+	_, err := coach.Decide(st, sheet.ID, []coach.Decision{{NoteID: orphanNoteID, Decision: coach.DecisionAccepted}}, "Sable")
+	if !errors.Is(err, coach.ErrReturnOrphan) {
+		t.Fatalf("err = %v, want ErrReturnOrphan", err)
+	}
+	if blocks, _ := st.LoadMatchCoachNotes(); len(blocks[orphanKey]) != 0 {
+		t.Errorf("a refused accept wrote a block on %s: %+v", orphanKey, blocks[orphanKey])
 	}
 }
 

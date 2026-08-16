@@ -1209,6 +1209,14 @@ export const runDatabaseMaintenance = <ThrowOnError extends boolean = false>(opt
  * play-mode picks, hidden and pinned flags) alongside the OCR row
  * tables. `recall-export/v1` bundles still import unchanged.
  *
+ * Supplying `share` switches the export to SHARE mode — the
+ * bundle a player hands a coach. The manifest then carries a
+ * `player` block (stable id + display handle + the player's
+ * optional message), which is what `POST /api/v1/coach/session`
+ * opens the session on. A share-mode bundle is deliberately NOT
+ * importable: `POST /api/v1/imports` refuses it with `409` so a
+ * mis-clicked Import cannot merge somebody else's history.
+ *
  */
 export const exportBundle = <ThrowOnError extends boolean = false>(options: Options<ExportBundleData, ThrowOnError>): RequestResult<ExportBundleResponses, ExportBundleErrors, ThrowOnError> => (options.client ?? client).post<ExportBundleResponses, ExportBundleErrors, ThrowOnError>({
     url: '/api/v1/exports/bundle',
@@ -1264,9 +1272,10 @@ export const exportDiagnosticBundle = <ThrowOnError extends boolean = false>(opt
  * manifest/data.json or notes.json) are rejected with `400`;
  * semantic failures — an unsupported schema, a bundle a player
  * shared FOR coaching (open it as a session instead), a coaching
- * session in progress, no note about any match in this history —
- * with `409`. Existing data is left untouched in both rejection
- * paths.
+ * session in progress, a notes file with nothing to show (no
+ * summary AND no note about a match in this history) — with `409`.
+ * A notes file carrying only a session summary IS stageable.
+ * Existing data is left untouched in both rejection paths.
  *
  * For a full-fidelity backup/restore (every table, including edits
  * and review state) use `GET` / `PUT /api/v1/database` instead.
@@ -1316,9 +1325,13 @@ export const getCoachSession = <ThrowOnError extends boolean = false>(options?: 
  * looking at somebody else's history, so a write aimed at "this
  * match" would land on a key this database has never seen.
  *
- * A bundle that names its player (a "share with a coach" export)
- * arrives with the handle pre-filled; an anonymous one leaves it
- * blank until `PUT /api/v1/coach/session/player` confirms one.
+ * A bundle that names its player (a "share with a coach" export —
+ * `POST /api/v1/exports/bundle` with a `share` block) arrives with
+ * the handle pre-filled; an anonymous one leaves it blank until
+ * `PUT /api/v1/coach/session/player` confirms one. An identity no
+ * export would have written (a non-UUID id, a blank or oversized
+ * handle) is a `409`: it is refused rather than keyed on, because
+ * the coach's own notes file would later refuse to carry it.
  *
  */
 export const openCoachSession = <ThrowOnError extends boolean = false>(options: Options<OpenCoachSessionData, ThrowOnError>): RequestResult<OpenCoachSessionResponses, OpenCoachSessionErrors, ThrowOnError> => (options.client ?? client).post<OpenCoachSessionResponses, OpenCoachSessionErrors, ThrowOnError>({

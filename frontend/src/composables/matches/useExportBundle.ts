@@ -11,6 +11,27 @@ export interface ExportBundleDeps {
   onError: (raw: string) => void
 }
 
+// Who a share-mode bundle is about. The stable player id is minted
+// server-side, so the player only names themselves.
+interface ExportBundleShare {
+  handle: string
+  message: string
+}
+
+/**
+ * One trip through the export modal. `share` is the whole difference between
+ * a backup and a bundle a coach can open as a session, so it travels with
+ * the rest of the knobs rather than as a fourth positional argument.
+ */
+export interface ExportBundleRequest {
+  /** What the user typed as the destination name; '' falls back to the default. */
+  filename: string
+  includeHidden: boolean
+  includeUnknown: boolean
+  /** null for a plain export. */
+  share: ExportBundleShare | null
+}
+
 export function useExportBundle(deps: ExportBundleDeps) {
   const exportBundleOpen = ref(false)
   const exportBundleSelectedKeys = ref<string[]>([])
@@ -31,16 +52,13 @@ export function useExportBundle(deps: ExportBundleDeps) {
     }
   }
 
-  async function onExportBundleConfirm(
-    _filename: string,
-    includeHidden: boolean,
-    includeUnknown: boolean,
-  ) {
+  async function onExportBundleConfirm(request: ExportBundleRequest) {
     try {
       await ExportBundle({
         matchKeys: exportBundleSelectedKeys.value,
-        includeHidden,
-        includeUnknown,
+        includeHidden: request.includeHidden,
+        includeUnknown: request.includeUnknown,
+        ...(request.share ? { share: request.share } : {}),
       })
     } catch (e) {
       deps.onError(String(e))

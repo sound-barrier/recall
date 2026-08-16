@@ -416,15 +416,40 @@ describe('MatchJournal — the coach layer', () => {
 })
 
 describe('MatchJournal — the write gate', () => {
-  beforeEach(resetWriteGate)
+  // The journal renders the coach layer too, and "Remove this note" is a
+  // write like any other — a default record carries no coach block, which
+  // is exactly how this control stayed live under a lock that claimed to
+  // cover "every field". Pinia is what CoachNoteBlock's store read needs.
+  beforeEach(() => { resetWriteGate(); setActivePinia(createPinia()) })
 
-  it('disables every field while writes are locked', () => {
+  const withCoachBlock = () => ({
+    ...makeRecord(),
+    coach_notes: [{
+      id: 1,
+      note_id: 'n-1',
+      coach_name: 'Ordo',
+      session_date: '2026-08-14',
+      text: 'Late peel on B.',
+      match_clock: '06:40',
+      focus_tags: ['positioning'],
+      extra_tags: [],
+      accepted_at: '2026-08-15T09:15:00Z',
+    }],
+  } as MatchRecord)
+
+  it('disables every control on the surface while writes are locked', () => {
     setWritesLocked(true, { session: true })
-    renderJournal()
+    renderJournal({ record: withCoachBlock() })
     expect(screen.getByLabelText('Note')).toBeDisabled()
     expect(screen.getByLabelText('Replay code')).toBeDisabled()
     expect(tagInput()).toBeDisabled()
     for (const t of screen.getAllByRole('button', { pressed: false })) expect(t).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Remove this note' })).toBeDisabled()
+  })
+
+  it('leaves the coach block removable when writes are open', () => {
+    renderJournal({ record: withCoachBlock() })
+    expect(screen.getByRole('button', { name: 'Remove this note' })).toBeEnabled()
   })
 
   it('a locked note preview does not open the editor', async () => {
