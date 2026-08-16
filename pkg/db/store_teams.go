@@ -14,9 +14,9 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 	var id int64
 	err = tx.QueryRow(
 		`INSERT INTO teams_screenshots (
-			filename, match_key, screenshots_dir_id,
+			filename, match_key, screenshots_dir_id, parsed_at,
 			eliminations, assists, deaths, damage, healing, mitigation, queue_type
-		) VALUES (?,?,?, ?,?,?,?,?,?,?)
+		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -28,7 +28,7 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 			mitigation   = excluded.mitigation,
 			queue_type   = excluded.queue_type
 		RETURNING id`,
-		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
 		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation, r.QueueType,
 	).Scan(&id)
 	if err != nil {

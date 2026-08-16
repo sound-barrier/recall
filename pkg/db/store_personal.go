@@ -13,15 +13,15 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO personal_screenshots (filename, match_key, screenshots_dir_id, hero, hero_raw)
-		VALUES (?,?,?,?,?)
+		`INSERT INTO personal_screenshots (filename, match_key, screenshots_dir_id, parsed_at, hero, hero_raw)
+		VALUES (?,?,?,`+suppliedInstantOrNow+`,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			hero               = excluded.hero,
 			hero_raw           = excluded.hero_raw
 		RETURNING id`,
-		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.Hero, r.HeroRaw,
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt, r.Hero, r.HeroRaw,
 	).Scan(&id)
 	if err != nil {
 		return err

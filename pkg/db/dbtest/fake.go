@@ -110,6 +110,17 @@ type Fake struct {
 // public fields directly before wiring it into `app.NewWithStore`.
 func New() *Fake { return &Fake{} }
 
+// suppliedInstantOrNow mirrors the SQL expression of the same name: the
+// caller's instant when a restore supplies one, the Fake's clock when it
+// doesn't. Only a parent INSERT consults it on the row path — a re-parse
+// keeps the stamp the row already carries.
+func suppliedInstantOrNow(supplied string) string {
+	if supplied != "" {
+		return supplied
+	}
+	return nowRFC3339()
+}
+
 var _ db.Store = (*Fake)(nil)
 
 func (f *Fake) LoadAllFilenames() (map[string]bool, error) {
@@ -190,6 +201,7 @@ func (f *Fake) UpsertSummary(r db.SummaryRow) error {
 			return nil
 		}
 	}
+	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
 	r.ID = int64(len(f.Summaries) + 1)
 	f.Summaries = append(f.Summaries, r)
 	return nil
@@ -210,6 +222,7 @@ func (f *Fake) UpsertTeams(r db.TeamsRow) error {
 			return nil
 		}
 	}
+	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
 	r.ID = int64(len(f.Teams) + 1)
 	f.Teams = append(f.Teams, r)
 	return nil
@@ -230,6 +243,7 @@ func (f *Fake) UpsertPersonal(r db.PersonalRow) error {
 			return nil
 		}
 	}
+	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
 	r.ID = int64(len(f.Personals) + 1)
 	f.Personals = append(f.Personals, r)
 	return nil
@@ -250,6 +264,7 @@ func (f *Fake) UpsertRank(r db.RankRow) error {
 			return nil
 		}
 	}
+	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
 	r.ID = int64(len(f.Ranks) + 1)
 	f.Ranks = append(f.Ranks, r)
 	return nil
@@ -270,6 +285,7 @@ func (f *Fake) UpsertUnknown(r db.UnknownRow) error {
 			return nil
 		}
 	}
+	r.ParsedAt = suppliedInstantOrNow(r.ParsedAt)
 	r.ID = int64(len(f.Unknowns) + 1)
 	f.Unknowns = append(f.Unknowns, r)
 	return nil

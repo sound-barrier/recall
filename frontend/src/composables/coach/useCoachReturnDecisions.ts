@@ -13,7 +13,7 @@ import type { CoachDecisionEnum, CoachReturnItem, CoachReturnSheet } from '@/api
 // contract with the server copy.
 
 /** No verdict yet — the note is still pending. */
-export type Undecided = ''
+type Undecided = ''
 
 export interface ReturnDecisionsApi {
   /** Every verdict, saved and local alike, keyed by note_id. */

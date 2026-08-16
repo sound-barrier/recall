@@ -16,6 +16,9 @@ func (f *Fake) UpsertUserMatchData(d db.UserMatchData) error {
 	if f.UserMatchData == nil {
 		f.UserMatchData = map[string]db.UserMatchData{}
 	}
+	// Mirror SQLStore's updated_at: the restore's instant when it carries one,
+	// the clock when it doesn't.
+	d.UpdatedAt = suppliedInstantOrNow(d.UpdatedAt)
 	f.UserMatchData[d.MatchKey] = d
 	return nil
 }

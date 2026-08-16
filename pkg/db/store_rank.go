@@ -14,9 +14,9 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 	var id int64
 	err = tx.QueryRow(
 		`INSERT INTO rank_screenshots (
-			filename, match_key, screenshots_dir_id,
+			filename, match_key, screenshots_dir_id, parsed_at,
 			rank, level, rank_progress, change_percent, result
-		) VALUES (?,?,?, ?,?,?,?,?)
+		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -26,7 +26,7 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 			change_percent = excluded.change_percent,
 			result         = excluded.result
 		RETURNING id`,
-		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
 		r.Rank, r.Level, r.RankProgress, r.ChangePercent,
 		r.Result,
 	).Scan(&id)

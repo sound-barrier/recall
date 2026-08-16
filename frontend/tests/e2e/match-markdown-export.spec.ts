@@ -58,6 +58,15 @@ test.describe('match markdown export', () => {
         body: JSON.stringify([record()]),
       })
     })
+
+    // Opening a match card writes the play mode detected from data.playlist
+    // when the record carries none. Mocked because these records live only in
+    // the mocked list — before per-match writes checked the key exists, that
+    // PUT silently inserted an orphan sidecar row into the e2e database, which
+    // is exactly the defect the guard closes.
+    await page.route('**/api/v1/matches/*/play-mode', async (route: Route) => {
+      await route.fulfill({ status: 204, body: '' })
+    })
   })
 
   async function copied(page: import('@playwright/test').Page): Promise<string[]> {

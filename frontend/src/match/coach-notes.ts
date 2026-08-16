@@ -36,7 +36,7 @@ export function focusTagLabel(tag: string): string {
   return isFocusTag(tag) ? FOCUS_TAG_LABELS[tag] : tag
 }
 
-export type CoachNoteKind = 'note' | 'reviewed_only'
+type CoachNoteKind = 'note' | 'reviewed_only'
 
 export interface CoachNoteDraft {
   kind: CoachNoteKind

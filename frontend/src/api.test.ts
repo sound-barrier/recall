@@ -447,6 +447,21 @@ describe('binary downloads (browser mode)', () => {
     expect(name).toBe('recall-bundle-x.zip')
   })
 
+  // The modal lets the player name the file. That name is the whole reason
+  // the field exists, so it beats both the server's Content-Disposition and
+  // the generated fallback — it was being collected and dropped.
+  it('ExportBundle saves under the name the user typed', async () => {
+    stubFetch(blobReply('attachment; filename="server-chosen.zip"'))
+    stubDownloadDom()
+
+    const name = await ExportBundle({
+      matchKeys: ['k1'], includeUnknown: false, includeHidden: false,
+      filename: 'my-season-review.zip',
+    })
+
+    expect(name).toBe('my-season-review.zip')
+  })
+
   // The name the file actually lands under when the server sends no
   // Content-Disposition — the stem is the only thing on disk that says
   // which of the two exports this was, weeks later.

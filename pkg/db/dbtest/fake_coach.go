@@ -185,7 +185,9 @@ func (f *Fake) UpsertMatchCoachNote(n db.MatchCoachNote) (int64, error) {
 		return n.ID, nil
 	}
 	n.ID = nextID(f.MatchCoachNotes, func(m db.MatchCoachNote) int64 { return m.ID })
-	n.AcceptedAt = nowRFC3339()
+	// SQLStore's rule: a supplied instant is kept (a restore brings back WHEN
+	// the player accepted the block), an empty one is stamped now.
+	n.AcceptedAt = suppliedInstantOrNow(n.AcceptedAt)
 	f.MatchCoachNotes = append(f.MatchCoachNotes, n)
 	return n.ID, nil
 }

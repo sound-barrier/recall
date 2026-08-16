@@ -107,8 +107,7 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]bool) erro
 	if err := importAnnotations(store, data.Annotations, existing); err != nil {
 		return err
 	}
-	if err := importKeyedSection(data.Reviews, existing, "review",
-		func(r db.ReviewState) string { return r.ReviewedBy }, store.SetReview); err != nil {
+	if err := importReviews(store, data.Reviews, existing); err != nil {
 		return err
 	}
 	if err := importKeyedSection(data.Queues, existing, "queue",
@@ -130,8 +129,8 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]bool) erro
 
 // importCoachNotes writes the accepted coach blocks whose keys are new, with
 // the exporting machine's row id dropped so the store mints its own. The
-// store re-stamps accepted_at on first accept — the block's original accept
-// instant does not survive the trip.
+// accept instant travels with the block: a restore brings back WHEN the
+// player took each note, not when the archive happened to be imported.
 func importCoachNotes(store db.Store, notes []db.MatchCoachNote, existing map[string]bool) error {
 	for _, n := range notes {
 		if existing[n.MatchKey] {
@@ -170,22 +169,40 @@ func importUserMatchData(store db.Store, rows []db.UserMatchData, existing map[s
 	return nil
 }
 
-// importAnnotations writes the incoming annotations whose keys are new.
+// importAnnotations writes the incoming annotations whose keys are new,
+// keeping the annotated_at each carries — a restore replays when the note was
+// written, it does not re-date every note to the import.
 func importAnnotations(store db.Store, annotations []db.Annotation, existing map[string]bool) error {
 	for _, ann := range annotations {
 		if existing[ann.MatchKey] {
 			continue
 		}
-		if err := store.SetAnnotation(ann); err != nil {
+		if err := store.SetAnnotationAt(ann); err != nil {
 			return fmt.Errorf("import: annotation for %q: %w", ann.MatchKey, err)
 		}
 	}
 	return nil
 }
 
-// importKeyedSection writes one map-shaped user-layer section (reviews /
-// queues / play modes), skipping existing keys and entries whose value
-// is empty. `section` names the section in the error message.
+// importReviews writes the incoming review rows whose keys are new, keeping
+// the reviewed_at each carries. Entries naming no reviewer are skipped, the
+// same guard importKeyedSection applies to the queue / play-mode sections.
+func importReviews(store db.Store, reviews map[string]db.ReviewState, existing map[string]bool) error {
+	for key, review := range reviews {
+		if existing[key] || review.ReviewedBy == "" {
+			continue
+		}
+		if err := store.SetReviewAt(key, review.ReviewedBy, review.ReviewedAt); err != nil {
+			return fmt.Errorf("import: review for %q: %w", key, err)
+		}
+	}
+	return nil
+}
+
+// importKeyedSection writes one map-shaped user-layer section (queues / play
+// modes), skipping existing keys and entries whose value is empty. `section`
+// names the section in the error message. Reviews have their own writer —
+// they carry an instant to replay, which this shape has nowhere to put.
 func importKeyedSection[T any](m map[string]T, existing map[string]bool, section string, value func(T) string, set func(key, val string) error) error {
 	for k, v := range m {
 		if existing[k] {

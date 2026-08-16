@@ -29,10 +29,13 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 	defer func() { _ = tx.Rollback() }()
 	// accepted_at is absent from the SET clause: the first-accept instant
 	// survives a repeat import, mirroring parsed_at on the parent tables.
+	// The INSERT honors a supplied instant so a restore brings back WHEN the
+	// player accepted the block, and stamps the clock when there is none
+	// (the live accept).
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock)
-		 VALUES (?, ?, ?, ?, ?, ?)
+		`INSERT INTO match_coach_notes (note_id, match_key, coach_name, session_date, text, match_clock, accepted_at)
+		 VALUES (?, ?, ?, ?, ?, ?, `+suppliedInstantOrNow+`)
 		 ON CONFLICT(note_id) DO UPDATE SET
 		   match_key    = excluded.match_key,
 		   coach_name   = excluded.coach_name,
@@ -40,7 +43,7 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 		   text         = excluded.text,
 		   match_clock  = excluded.match_clock
 		 RETURNING id`,
-		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock,
+		n.NoteID, n.MatchKey, n.CoachName, n.SessionDate, n.Text, n.MatchClock, n.AcceptedAt,
 	).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("upsert match coach note: %w", err)

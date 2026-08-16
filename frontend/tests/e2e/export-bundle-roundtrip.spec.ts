@@ -21,7 +21,11 @@
 import { expect, test } from './_fixtures'
 import { listMatches, parseGolden, reset, stageGolden, unstageGolden } from './_real-server'
 
-type ImportSummary = { imported: number; skipped: number }
+// POST /imports answers with a discriminated outcome now: one affordance
+// takes either a player's bundle or a coach's notes archive, and `kind` says
+// which was recognized. Asserting the whole object (rather than just the
+// counts) is what pins that a bundle is still read as a bundle.
+type ImportOutcome = { kind: string; imported: number; skipped: number }
 
 test.describe('bundle → merge-import round-trip (real server)', () => {
   test.beforeEach(async ({ request }) => {
@@ -54,7 +58,7 @@ test.describe('bundle → merge-import round-trip (real server)', () => {
       data: bundle,
     })
     expect(firstImport.status(), await firstImport.text().catch(() => '')).toBe(200)
-    expect((await firstImport.json()) as ImportSummary).toEqual({ imported: 1, skipped: 0 })
+    expect((await firstImport.json()) as ImportOutcome).toEqual({ kind: 'bundle', imported: 1, skipped: 0 })
 
     const restored = await listMatches(request)
     expect(restored.some((m) => m.match_key === ocrKey)).toBe(true)
@@ -66,7 +70,7 @@ test.describe('bundle → merge-import round-trip (real server)', () => {
       data: bundle,
     })
     expect(secondImport.status()).toBe(200)
-    expect((await secondImport.json()) as ImportSummary).toEqual({ imported: 0, skipped: 1 })
+    expect((await secondImport.json()) as ImportOutcome).toEqual({ kind: 'bundle', imported: 0, skipped: 1 })
     expect(await listMatches(request)).toHaveLength(restored.length)
   })
 })
