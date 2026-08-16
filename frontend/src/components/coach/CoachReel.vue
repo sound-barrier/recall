@@ -6,7 +6,7 @@ import CoachReelDay from '@/components/coach/CoachReelDay.vue'
 import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/coach-room-props'
 import type { CoachNoteDraft } from '@/match/coach-notes'
 import type { ReelDay } from '@/match/coach-reel-helpers'
-import { playerClockNote } from '@/match/match-time-helpers'
+import { playerClockNote, playerClockOwner } from '@/match/match-time-helpers'
 
 // The film strip: the player's matches, her days newest first, each
 // frame a click target. The list is named for her AND for whose clock
@@ -23,7 +23,10 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ select: [matchKey: string] }>()
 
-const reelLabel = computed(() => `${props.handle}'s matches — times in ${props.handle}'s clock`)
+const reelLabel = computed(() => {
+  const owner = playerClockOwner(props.handle)
+  return `${owner}'s matches — times in ${owner}'s clock`
+})
 </script>
 
 <template>

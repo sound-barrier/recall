@@ -10,6 +10,19 @@ function rec(key: string, data: Record<string, unknown>, over: Partial<MatchReco
 }
 
 describe('match-table-tsv', () => {
+  // Copying a cell must say what the cell says. During a coaching session
+  // the visible row is on the player's clock; a TSV built from the viewer's
+  // clock hands the coach a different time — and, across a day boundary, a
+  // different date — than the one they are looking at.
+  it('copies the player\'s clock when the rows are on loan', () => {
+    const r = rec('match-2026-08-14T21-14-00', {
+      date: '2026-08-14', finished_at: '21:14', played_at_utc: '2026-08-15T06:14:00Z',
+      map: 'kings row', result: 'victory',
+    })
+    expect(cellText(r, 'date', heroRole, 'player')).toContain('21:14')
+    expect(cellText(r, 'date', heroRole, 'player')).toContain('Aug 14')
+  })
+
   it('renders multi-value hero/role cells with their in-cell separators', () => {
     const r = rec('a', {
       map: 'rialto',

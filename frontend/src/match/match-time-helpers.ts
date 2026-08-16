@@ -40,7 +40,14 @@ export type ClockMode = 'viewer' | 'player'
  * the reel, the desk, the members list, the detail panel.
  */
 export function playerClockNote(handle: string): string {
-  return `Times in ${handle || 'the player'}'s clock`
+  return `Times in ${playerClockOwner(handle)}'s clock`
+}
+
+// Whose clock it is, for any possessive. A bundle can name nobody until
+// the coach confirms a handle, and "· 's clock" is what that reads as
+// otherwise.
+export function playerClockOwner(handle: string): string {
+  return handle || 'the player'
 }
 
 // Locale preference for "what day starts a week" — any day 0-6 per

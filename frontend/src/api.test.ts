@@ -447,6 +447,21 @@ describe('binary downloads (browser mode)', () => {
     expect(name).toBe('recall-bundle-x.zip')
   })
 
+  // The name the file actually lands under when the server sends no
+  // Content-Disposition — the stem is the only thing on disk that says
+  // which of the two exports this was, weeks later.
+  it('ExportBundle falls back to a share-stemmed filename', async () => {
+    stubFetch(blobReply(''))
+    stubDownloadDom()
+
+    const name = await ExportBundle({
+      matchKeys: ['k1'], includeUnknown: false, includeHidden: false,
+      share: { handle: 'Sable' },
+    })
+
+    expect(name).toMatch(/^recall-share-[\d-]+T[\d-]+\.zip$/)
+  })
+
   // A share export is a different artifact: the manifest names the player,
   // the coach's session opens on it, and a mis-clicked Import refuses it.
   // The only thing that says so on the wire is this block.

@@ -10,7 +10,7 @@ import {
 } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import { formatKda, kdaRatio } from '@/match/match-stats-helpers'
-import { matchTime } from '@/match/match-time-helpers'
+import { matchTime, type ClockMode } from '@/match/match-time-helpers'
 
 // The data table's column axis as ONE registry: header label, ascending
 // comparator, and rendered cell text (the TSV clipboard payload) per
@@ -45,7 +45,9 @@ export interface TableColumnSpec {
   compare(a: MatchRecord, b: MatchRecord): number
   // The displayed value of the cell — mirrors what the cell renders
   // (multi-value hero/role/tags join with their in-cell separators).
-  text(rec: MatchRecord, heroRole: HeroRole): string
+  // `clock` matters only to the When column, but every spec takes it so a
+  // copied cell can never disagree with the cell it was copied from.
+  text(rec: MatchRecord, heroRole: HeroRole, clock?: ClockMode): string
 }
 
 // Victory above draw above defeat when sorting ascending.
@@ -77,7 +79,8 @@ export const TABLE_COLUMNS: Record<TableSortCol, TableColumnSpec> = {
     // parsed_at — the user sorts by when they PLAYED, not when the
     // file was ingested. matchTime() returns a sortable ISO key.
     compare: (a, b) => matchTime(a).localeCompare(matchTime(b)),
-    text: (rec) => [formatRowDate(rec), formatFinishedAt(rec)].filter(Boolean).join(' '),
+    text: (rec, _role, clock) =>
+      [formatRowDate(rec, clock), formatFinishedAt(rec, clock)].filter(Boolean).join(' '),
   },
   result: {
     label: 'Result',

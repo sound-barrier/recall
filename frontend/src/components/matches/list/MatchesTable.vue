@@ -6,6 +6,7 @@ import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composabl
 import { useTableMode } from '@/composables/matches/useTableMode'
 import { useNarrow } from '@/composables/matches/useNarrow'
 import { useColumnResize } from '@/composables/matches/useColumnResize'
+import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useCellDragSelect } from '@/composables/matches/useCellDragSelect'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useAppStore } from '@/stores/app'
@@ -149,6 +150,7 @@ watch(() => props.resetCounter, () => {
 // in useCellDragSelect — this shell only binds its three outputs.
 const tableCols = TABLE_SORT_COLUMNS.map((c) => c.col)
 const appStore = useAppStore()
+const matchClock = useMatchClock()
 const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   rows: tableFlatRecords,
   cols: tableCols,
@@ -156,6 +158,7 @@ const { cellSel, onCellMouseDown, onRowOpen } = useCellDragSelect({
   containerRef: tableScrollRef,
   onOpen: (key) => emit('open-match', key),
   onError: (message) => appStore.setErrorFromRaw(message),
+  clock: matchClock,
 })
 </script>
 

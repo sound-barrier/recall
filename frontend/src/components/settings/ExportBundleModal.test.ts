@@ -273,7 +273,10 @@ describe('ExportBundleModal — sharing with a coach', () => {
     expect(screen.getByLabelText(/Message for your coach/)).toBeInTheDocument()
   })
 
-  it('renames itself, the button and the file so the two modes cannot be confused', async () => {
+  // The default filename the modal OFFERS. What the saved file is actually
+  // called is api-platform's fallback stem, asserted in api.test.ts — this
+  // field is a suggestion the export path does not read.
+  it('renames itself, the button and the filename it offers, so the two modes cannot be confused', async () => {
     renderModal()
     await user().click(shareToggle())
     expect(screen.getByRole('dialog', { name: 'Share with a coach' })).toBeInTheDocument()

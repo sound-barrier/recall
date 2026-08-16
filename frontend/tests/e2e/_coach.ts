@@ -558,6 +558,15 @@ async function routeSessionNotes(page: Page, state: SessionState, mock: CoachSes
     await fulfillJSON(route, saved)
   })
   await page.route('**/api/v1/coach/session/summary', async (route: Route) => {
+    // Same 409 the note route mirrors, and for the same reason: the server
+    // keys the summary on the player too (PutCoachSummary → sessionPlayerLocked).
+    // This mock used to answer 204 here, which is precisely why the harness
+    // built to prove "the room asks first" could not see that the summary box
+    // accepted typing the server would refuse.
+    if (state.session.player.handle === '') {
+      await fulfillProblem(route, 409, 'confirm the player before writing a summary')
+      return
+    }
     const body = parseBody<{ text: string }>(route)
     state.summary = body.text
     mock.summaryPut.set(body)

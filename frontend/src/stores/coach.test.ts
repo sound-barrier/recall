@@ -561,6 +561,27 @@ describe('coach store — confirming the player', () => {
     expect(coach.needsPlayerHandle).toBe(false)
   })
 
+  // Correcting a handle re-keys the notes server-side, so the store drops
+  // its drafts and re-hydrates. Anything still sitting in the 400 ms
+  // debounce has to reach the server BEFORE that, or clicking "Change
+  // player" right after typing throws the sentence away — the same shape as
+  // the End-session bug, on a different button.
+  it('flushes what the coach just typed before switching player', async () => {
+    api.OpenCoachBundle = vi.fn(async () => sessionView({ notes: [] }))
+    setApiBacking(api)
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateNote(MATCH_A, { ...emptyDraft(), text: 'Held the ult too long.' })
+    await coach.setPlayerHandle('Wren')
+    await settle()
+
+    expect(api.PutCoachNote).toHaveBeenCalledWith(MATCH_A, expect.objectContaining({
+      text: 'Held the ult too long.',
+    }))
+  })
+
   it("re-hydrates from the corrected player's own notes", async () => {
     api.OpenCoachBundle = vi.fn(async () => sessionView({
       player: { id: '', handle: 'unknown', message: '' }, notes: [RESURFACED],

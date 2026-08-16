@@ -2,6 +2,7 @@ import { computed, ref, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import type { TableSortCol } from '@/composables/matches/useTableSort'
 import { buildSelectionTsv } from '@/match/match-table-tsv'
+import type { ClockMode } from '@/match/match-time-helpers'
 
 type HeroRole = (hero: string | null | undefined) => string
 interface Cell { key: string; col: number }
@@ -10,7 +11,18 @@ interface Cell { key: string; col: number }
 // cells, Ctrl+C copies it as TSV (pastes into a spreadsheet as a grid). Row
 // coordinates are match keys (stable across the virtual window); columns are
 // indices into `cols`.
-export function useCellSelection(rows: Ref<MatchRecord[]>, cols: readonly TableSortCol[], heroRole: HeroRole) {
+export function useCellSelection(
+  rows: Ref<MatchRecord[]>,
+  cols: readonly TableSortCol[],
+  heroRole: HeroRole,
+  // The clock the table is PAINTING in. Passed rather than read off the
+  // store: a copied cell must say what the cell says, and this composable
+  // has no business dragging a Pinia store into every table's chunk (or
+  // into its own tests) to learn it.
+  clock: Ref<ClockMode> | (() => ClockMode) = () => 'viewer',
+) {
+  const clockMode = (): ClockMode => (typeof clock === 'function' ? clock() : clock.value)
+
   const anchor = ref<Cell | null>(null)
   const focus = ref<Cell | null>(null)
   const dragging = ref(false)
@@ -72,7 +84,7 @@ export function useCellSelection(rows: Ref<MatchRecord[]>, cols: readonly TableS
     if (!r) return ''
     const selRows = rows.value.slice(r.minRow, r.maxRow + 1)
     const selCols = cols.slice(r.minCol, r.maxCol + 1) as TableSortCol[]
-    const tsv = buildSelectionTsv(selRows, selCols, heroRole)
+    const tsv = buildSelectionTsv(selRows, selCols, heroRole, clockMode())
     await navigator.clipboard.writeText(tsv)
     return tsv
   }
