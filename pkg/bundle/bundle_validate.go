@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 )
@@ -143,12 +142,12 @@ func readBundleEntries(zr *zip.Reader) (manifestBytes, dataBytes []byte, screens
 	for _, f := range zr.File {
 		switch {
 		case f.Name == "manifest.json":
-			manifestBytes, err = readZipEntry(f)
+			manifestBytes, err = readEntryCapped(f, maxZipEntryBytes)
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("read manifest.json: %w", err)
 			}
 		case f.Name == "data.json":
-			dataBytes, err = readZipEntry(f)
+			dataBytes, err = readEntryCapped(f, maxZipEntryBytes)
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("read data.json: %w", err)
 			}
@@ -251,15 +250,6 @@ func validateBundleDataFilenames(dataDoc DataV2, mf ManifestV1, add issueSink) {
 					fn))
 		}
 	}
-}
-
-func readZipEntry(f *zip.File) ([]byte, error) {
-	rc, err := f.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rc.Close() }()
-	return io.ReadAll(rc)
 }
 
 // dataMatchKeys returns the set of distinct match_keys referenced

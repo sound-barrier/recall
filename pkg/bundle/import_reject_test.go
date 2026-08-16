@@ -1,6 +1,8 @@
 package bundle_test
 
 import (
+	"archive/zip"
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -203,12 +205,13 @@ func TestImport_RejectsUnsupportedSchemasAsNonMalformed(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := importErr(t, tc.payload(t))
-			if errors.Is(err, bundle.ErrImportMalformed) {
-				t.Fatalf("err = %v, must NOT be ErrImportMalformed (schema skew is a 409, not a 400)", err)
-			}
-			if err.Error() != tc.wantMsg {
-				t.Fatalf("err = %q, want %q", err.Error(), tc.wantMsg)
+			for _, err := range []error{importErr(t, tc.payload(t)), readErr(t, tc.payload(t))} {
+				if errors.Is(err, bundle.ErrImportMalformed) {
+					t.Fatalf("err = %v, must NOT be ErrImportMalformed (schema skew is a 409, not a 400)", err)
+				}
+				if err.Error() != tc.wantMsg {
+					t.Fatalf("err = %q, want %q", err.Error(), tc.wantMsg)
+				}
 			}
 		})
 	}
@@ -217,27 +220,53 @@ func TestImport_RejectsUnsupportedSchemasAsNonMalformed(t *testing.T) {
 // The decompressed per-entry cap is the only thing standing between a 40 KB
 // upload and tens of GB of resident memory, and the "one byte past the cap"
 // read is what makes an entry sitting exactly at the cap still legal. Both
-// sides of that boundary are pinned here.
-func TestImport_DecompressedEntryCapBoundary(t *testing.T) {
+// sides of that boundary are pinned here, against the cap the CALLER passes —
+// a sibling package reading a notes archive brings its own, smaller number.
+func TestReadZipEntry_HonorsTheCallerCap(t *testing.T) {
 	payload := okPayload(t)
 	dataSize := entrySize(t, payload, "data.json")
-	manifestSize := entrySize(t, payload, "manifest.json")
-	if manifestSize >= dataSize {
-		t.Fatalf("fixture precondition: manifest (%d) must be smaller than data.json (%d)", manifestSize, dataSize)
+	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
 	}
 
 	t.Run("entry exactly at the cap is accepted", func(t *testing.T) {
-		withEntryCap(t, dataSize)
-		if _, err := bundle.Import(dbtest.New(), payload); err != nil {
-			t.Fatalf("entry of exactly %d bytes must import; got %v", dataSize, err)
+		got, err := bundle.ReadZipEntry(zr, "data.json", dataSize)
+		if err != nil {
+			t.Fatalf("entry of exactly %d bytes must read; got %v", dataSize, err)
+		}
+		if int64(len(got)) != dataSize {
+			t.Errorf("read %d bytes, want %d", len(got), dataSize)
 		}
 	})
 
 	t.Run("entry one byte over the cap is rejected as a bomb", func(t *testing.T) {
-		withEntryCap(t, dataSize-1)
-		assertMalformed(t, payload, `entry "data.json" exceeds`)
-		assertMalformed(t, payload, "possible zip bomb")
+		_, err := bundle.ReadZipEntry(zr, "data.json", dataSize-1)
+		if !errors.Is(err, bundle.ErrImportMalformed) {
+			t.Fatalf("err = %v, want it to wrap ErrImportMalformed (the 400 class)", err)
+		}
+		for _, want := range []string{`entry "data.json" exceeds`, "possible zip bomb"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("err = %q, want it to mention %q", err, want)
+			}
+		}
 	})
+
+	t.Run("an absent entry is named", func(t *testing.T) {
+		_, err := bundle.ReadZipEntry(zr, "notes.json", dataSize)
+		if err == nil || err.Error() != `zip: "notes.json" not found` {
+			t.Fatalf("err = %v, want the not-found message", err)
+		}
+	})
+}
+
+// Read and Import share one cap for the bundle's own entries; lowering it
+// through the seam proves the wiring, and that the bomb still classes as a
+// malformed payload at the top of the stack.
+func TestImport_OverCapEntryIsMalformed(t *testing.T) {
+	payload := okPayload(t)
+	withEntryCap(t, entrySize(t, payload, "data.json")-1)
+	assertMalformed(t, payload, "possible zip bomb")
 }
 
 // A UTF-8 BOM in front of the archive (Notepad's parting gift when a user
@@ -272,13 +301,26 @@ func importErr(t *testing.T, payload []byte) error {
 	return err
 }
 
+func readErr(t *testing.T, payload []byte) error {
+	t.Helper()
+	_, err := bundle.Read(payload)
+	if err == nil {
+		t.Fatal("Read succeeded, want an error")
+	}
+	return err
+}
+
+// assertMalformed holds Import AND Read to the same 400 class and message:
+// Read is the ZIP→typed step Import is built on, and a coaching session opened
+// through Read must tell the user the same thing Import… would have.
 func assertMalformed(t *testing.T, payload []byte, wantMsg string) {
 	t.Helper()
-	err := importErr(t, payload)
-	if !errors.Is(err, bundle.ErrImportMalformed) {
-		t.Errorf("err = %v, want it to wrap ErrImportMalformed (the 400 class)", err)
-	}
-	if !strings.Contains(err.Error(), wantMsg) {
-		t.Errorf("err = %q, want it to mention %q", err.Error(), wantMsg)
+	for _, err := range []error{importErr(t, payload), readErr(t, payload)} {
+		if !errors.Is(err, bundle.ErrImportMalformed) {
+			t.Errorf("err = %v, want it to wrap ErrImportMalformed (the 400 class)", err)
+		}
+		if !strings.Contains(err.Error(), wantMsg) {
+			t.Errorf("err = %q, want it to mention %q", err.Error(), wantMsg)
+		}
 	}
 }

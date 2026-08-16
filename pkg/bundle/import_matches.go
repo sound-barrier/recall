@@ -1,9 +1,6 @@
 package bundle
 
 import (
-	"archive/zip"
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -16,6 +13,13 @@ import (
 // are not wrapped and map to the default 409.
 var ErrImportMalformed = errors.New("import: malformed payload")
 
+// ErrCoachBundle reports a bundle a player shared for coaching (its manifest
+// names the player) handed to the merge import. A coach who mis-clicks
+// Import… must not end up with the player's matches in their own history;
+// the bundle opens as a coaching session instead. Readable but refused →
+// the default 409.
+var ErrCoachBundle = errors.New("import: this bundle was shared for coaching — open it as a coaching session instead of importing it")
+
 // ImportSummary reports the outcome of a merge import: how many matches were
 // added and how many were skipped because their match_key already existed.
 type ImportSummary struct {
@@ -23,7 +27,7 @@ type ImportSummary struct {
 	Skipped  int `json:"skipped"`
 }
 
-// ImportMatches merges a `recall-bundle/v1` ZIP into the existing database
+// Import merges a `recall-bundle/v1` ZIP into the existing database
 // WITHOUT clearing it. It reads the bundle's data.json (ignoring the embedded
 // screenshot bytes — data-only), skips any incoming match whose match_key
 // already exists locally, and upserts the rest. Every imported row's
@@ -31,19 +35,21 @@ type ImportSummary struct {
 // bundle export strips filesystem paths.
 //
 // A v2 data.json also carries the user layer — inline edits, manual matches,
-// annotations, review / queue / play-mode state, hidden + pinned flags — which imports
-// under the same skip-existing rule: an incoming key you already have is
-// skipped wholesale, so a merge can never clobber local edits. v1 bundles
-// (builds ≤0.22.x) simply have no user layer to import.
+// annotations, review / queue / play-mode state, hidden + pinned flags,
+// accepted coach notes — which imports under the same skip-existing rule: an
+// incoming key you already have is skipped wholesale, so a merge can never
+// clobber local edits. v1 bundles (builds ≤0.22.x) simply have no user layer
+// to import. A bundle shared for coaching is refused with ErrCoachBundle
+// before the store is touched.
 func Import(store db.Store, payload []byte) (ImportSummary, error) {
-	payload = stripBOM(payload)
-	if !looksLikeZIP(payload) {
-		return ImportSummary{}, fmt.Errorf("%w: expected a Recall bundle (.zip)", ErrImportMalformed)
-	}
-	data, err := readBundleData(payload)
+	contents, err := Read(payload)
 	if err != nil {
 		return ImportSummary{}, err
 	}
+	if contents.Manifest.Player != nil {
+		return ImportSummary{}, ErrCoachBundle
+	}
+	data := contents.Data
 	incoming := parentTables{
 		summaries: data.Summaries,
 		teams:     data.Teams,
@@ -52,6 +58,9 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 		unknowns:  data.Unknowns,
 	}
 	if err := validateParentFilenames(incoming); err != nil {
+		return ImportSummary{}, err
+	}
+	if err := requireCoachNoteIDs(data.CoachNotes); err != nil {
 		return ImportSummary{}, err
 	}
 
@@ -77,10 +86,10 @@ func Import(store db.Store, payload []byte) (ImportSummary, error) {
 // counters symmetric: a manual match lands in exactly one of them, so
 // re-importing a bundle of hand-entered matches reports them as skipped instead
 // of vanishing from both totals.
-func summarizeImport(data DataV2, existing map[string]struct{}) ImportSummary {
+func summarizeImport(data DataV2, existing map[string]bool) ImportSummary {
 	var summary ImportSummary
 	for key := range dataMatchKeys(data) {
-		if _, ok := existing[key]; ok {
+		if existing[key] {
 			summary.Skipped++
 			continue
 		}
@@ -91,7 +100,7 @@ func summarizeImport(data DataV2, existing map[string]struct{}) ImportSummary {
 
 // importUserLayer writes the v2 user-layer sections for keys not already
 // present locally (the same skip-existing rule the parent rows follow).
-func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) error {
+func importUserLayer(store db.Store, data DataV2, existing map[string]bool) error {
 	if err := importUserMatchData(store, data.UserMatchData, existing); err != nil {
 		return err
 	}
@@ -113,13 +122,45 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]struct{}) 
 	if err := importFlagKeys(data.Hidden, existing, "hidden", store.HideMatch); err != nil {
 		return err
 	}
-	return importFlagKeys(data.Pinned, existing, "pinned", store.PinMatch)
+	if err := importFlagKeys(data.Pinned, existing, "pinned", store.PinMatch); err != nil {
+		return err
+	}
+	return importCoachNotes(store, data.CoachNotes, existing)
+}
+
+// importCoachNotes writes the accepted coach blocks whose keys are new, with
+// the exporting machine's row id dropped so the store mints its own. The
+// store re-stamps accepted_at on first accept — the block's original accept
+// instant does not survive the trip.
+func importCoachNotes(store db.Store, notes []db.MatchCoachNote, existing map[string]bool) error {
+	for _, n := range notes {
+		if existing[n.MatchKey] {
+			continue
+		}
+		n.ID = 0
+		if _, err := store.UpsertMatchCoachNote(n); err != nil {
+			return fmt.Errorf("import: coach note for %q: %w", n.MatchKey, err)
+		}
+	}
+	return nil
+}
+
+// requireCoachNoteIDs fails if any incoming coach block lacks its note_id —
+// the identity the store keys on. Named table AND index, before anything is
+// written, so a bad block cannot half-import the bundle.
+func requireCoachNoteIDs(notes []db.MatchCoachNote) error {
+	for i, n := range notes {
+		if n.NoteID == "" {
+			return fmt.Errorf("import: coach_notes[%d] missing required note_id", i)
+		}
+	}
+	return nil
 }
 
 // importUserMatchData upserts the incoming user-data rows whose keys are new.
-func importUserMatchData(store db.Store, rows []db.UserMatchData, existing map[string]struct{}) error {
+func importUserMatchData(store db.Store, rows []db.UserMatchData, existing map[string]bool) error {
 	for _, ud := range rows {
-		if _, ok := existing[ud.MatchKey]; ok {
+		if existing[ud.MatchKey] {
 			continue
 		}
 		if err := store.UpsertUserMatchData(ud); err != nil {
@@ -130,9 +171,9 @@ func importUserMatchData(store db.Store, rows []db.UserMatchData, existing map[s
 }
 
 // importAnnotations writes the incoming annotations whose keys are new.
-func importAnnotations(store db.Store, annotations []db.Annotation, existing map[string]struct{}) error {
+func importAnnotations(store db.Store, annotations []db.Annotation, existing map[string]bool) error {
 	for _, ann := range annotations {
-		if _, ok := existing[ann.MatchKey]; ok {
+		if existing[ann.MatchKey] {
 			continue
 		}
 		if err := store.SetAnnotation(ann); err != nil {
@@ -145,9 +186,9 @@ func importAnnotations(store db.Store, annotations []db.Annotation, existing map
 // importKeyedSection writes one map-shaped user-layer section (reviews /
 // queues / play modes), skipping existing keys and entries whose value
 // is empty. `section` names the section in the error message.
-func importKeyedSection[T any](m map[string]T, existing map[string]struct{}, section string, value func(T) string, set func(key, val string) error) error {
+func importKeyedSection[T any](m map[string]T, existing map[string]bool, section string, value func(T) string, set func(key, val string) error) error {
 	for k, v := range m {
-		if _, ok := existing[k]; ok {
+		if existing[k] {
 			continue
 		}
 		val := value(v)
@@ -164,9 +205,9 @@ func importKeyedSection[T any](m map[string]T, existing map[string]struct{}, sec
 // importFlagKeys writes one presence-is-state sidecar section — a bare list of
 // match keys (hidden, pinned) — skipping the keys already present locally.
 // `flag` names the section in the error message.
-func importFlagKeys(keys []string, existing map[string]struct{}, flag string, set func(string) error) error {
+func importFlagKeys(keys []string, existing map[string]bool, flag string, set func(string) error) error {
 	for _, k := range keys {
-		if _, ok := existing[k]; ok {
+		if existing[k] {
 			continue
 		}
 		if err := set(k); err != nil {
@@ -176,71 +217,13 @@ func importFlagKeys(keys []string, existing map[string]struct{}, flag string, se
 	return nil
 }
 
-// readBundleData extracts and validates the data.json out of a bundle ZIP. A
-// payload that isn't a readable bundle wraps ErrImportMalformed (→ 400); a
-// readable-but-wrong-schema bundle is a plain error (→ 409).
-func readBundleData(payload []byte) (DataV2, error) {
-	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
-	if err != nil {
-		return DataV2{}, fmt.Errorf("%w: open zip: %w", ErrImportMalformed, err)
-	}
-	manifestBytes, err := readZipFile(zr, "manifest.json")
-	if err != nil {
-		return DataV2{}, fmt.Errorf("%w: missing manifest.json: %w", ErrImportMalformed, err)
-	}
-	var mf struct {
-		Schema string `json:"schema"`
-	}
-	if err := json.Unmarshal(manifestBytes, &mf); err != nil {
-		return DataV2{}, fmt.Errorf("%w: manifest decode: %w", ErrImportMalformed, err)
-	}
-	if mf.Schema != BundleSchemaV1 {
-		return DataV2{}, fmt.Errorf("import: unsupported bundle schema %q (this build expects %q)", mf.Schema, BundleSchemaV1)
-	}
-	dataBytes, err := readZipFile(zr, "data.json")
-	if err != nil {
-		return DataV2{}, fmt.Errorf("%w: missing data.json: %w", ErrImportMalformed, err)
-	}
-	var data DataV2
-	if err := json.Unmarshal(dataBytes, &data); err != nil {
-		return DataV2{}, fmt.Errorf("%w: data.json decode: %w", ErrImportMalformed, err)
-	}
-	if data.Schema != exportSchemaV1 && data.Schema != exportSchemaV2 {
-		return DataV2{}, fmt.Errorf("import: unsupported data schema %q (this build accepts %q and %q)", data.Schema, exportSchemaV1, exportSchemaV2)
-	}
-	return data, nil
-}
-
-// existingMatchKeys collects every match_key already present — across the five
-// OCR parent tables and the user-data layer (manual matches live only there) —
+// existingMatchKeys collects every match_key already present — the five OCR
+// parent tables and the user-data layer (manual matches live only there) —
 // so the merge can skip collisions.
-func existingMatchKeys(store db.Store) (map[string]struct{}, error) {
-	snap, err := store.LoadAll()
+func existingMatchKeys(store db.Store) (map[string]bool, error) {
+	keys, err := store.LoadMatchKeys()
 	if err != nil {
 		return nil, fmt.Errorf("import: load existing: %w", err)
-	}
-	keys := make(map[string]struct{})
-	for _, r := range snap.Summaries {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Teams {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Personals {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Ranks {
-		keys[r.MatchKey] = struct{}{}
-	}
-	for _, r := range snap.Unknowns {
-		keys[r.MatchKey] = struct{}{}
-	}
-	userData, err := store.LoadAllUserMatchData()
-	if err != nil {
-		return nil, fmt.Errorf("import: load user data: %w", err)
-	}
-	for k := range userData {
-		keys[k] = struct{}{}
 	}
 	return keys, nil
 }
@@ -249,11 +232,8 @@ func existingMatchKeys(store db.Store) (map[string]struct{}, error) {
 // drops the ones the database already holds — a merge never overwrites. The
 // counts the caller reports come from summarizeImport, which sees the
 // user-layer-only keys these row tables can't.
-func partitionByMatchKey(t parentTables, existing map[string]struct{}) parentTables {
-	keep := func(matchKey string) bool {
-		_, ok := existing[matchKey]
-		return !ok
-	}
+func partitionByMatchKey(t parentTables, existing map[string]bool) parentTables {
+	keep := func(matchKey string) bool { return !existing[matchKey] }
 	return parentTables{
 		summaries: filterRows(t.summaries, keep, func(r db.SummaryRow) string { return r.MatchKey }),
 		teams:     filterRows(t.teams, keep, func(r db.TeamsRow) string { return r.MatchKey }),
