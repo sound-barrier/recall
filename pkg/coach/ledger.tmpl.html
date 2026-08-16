@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coaching notes — {{.Player.Handle}} — {{.SessionDate}}</title>
+<style>
+  :root {
+    --paper: #f5f3ee;
+    --paper-2: #ece8df;
+    --ink: #1f1a14;
+    --ink-dim: #4a423a;
+    --ink-faint: #6b6259;
+    --rule: #cfc8bb;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--paper-2); }
+  body {
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+    max-width: 44rem;
+    color: var(--ink);
+    background: var(--paper);
+    font: 16px/1.5 Georgia, "Times New Roman", serif;
+  }
+  h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; margin: 0; }
+  h1 { font-size: 1.75rem; letter-spacing: 0.01em; }
+  h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-dim); }
+  h3 { font-size: 1.15rem; }
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  .eyebrow { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-faint); }
+  .meta { margin: 0.5rem 0 0; padding: 0; list-style: none; color: var(--ink-dim); font-size: 0.9rem; }
+  .meta li { display: inline; }
+  .meta li + li::before { content: " · "; color: var(--ink-faint); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85em; }
+  section.summary { border: 1px solid var(--rule); background: var(--paper-2); padding: 1rem 1.25rem; margin-bottom: 2rem; }
+  article.note { border-top: 1px solid var(--rule); padding: 1.25rem 0; }
+  article.note:last-child { border-bottom: 1px solid var(--rule); }
+  .context { color: var(--ink-dim); font-size: 0.9rem; margin: 0.25rem 0 0.75rem; }
+  .context .label { color: var(--ink-faint); font-style: italic; }
+  .chips { margin: 0 0 0.75rem; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip { display: inline-block; font-size: 0.75rem; letter-spacing: 0.04em; padding: 0.1rem 0.5rem; border-radius: 999px; }
+  .chip.focus { border: 1px solid var(--ink-dim); color: var(--ink); text-transform: uppercase; }
+  .chip.extra { background: var(--paper-2); color: var(--ink-dim); }
+  .clock { color: var(--ink-dim); margin-right: 0.5rem; }
+  .text { white-space: pre-wrap; margin: 0; }
+  .reviewed { color: var(--ink-faint); font-style: italic; margin: 0; }
+  footer { margin-top: 2.5rem; color: var(--ink-faint); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<header>
+  <p class="eyebrow">Recall · coaching notes</p>
+  <h1>{{.Player.Handle}}</h1>
+  <ul class="meta">
+    <li>Coach {{.CoachName}}</li>
+    <li>Session {{.SessionDate}}</li>
+    <li>{{.NoteCount}} {{if eq .NoteCount 1}}note{{else}}notes{{end}}</li>
+  </ul>
+  <ul class="meta">
+    <li>Exported <span class="mono">{{.ExportedAt}}</span></li>
+    <li>Recall {{.RecallVersion}}</li>
+  </ul>
+</header>
+{{if .Summary}}
+<section class="summary">
+  <h2>What to work on</h2>
+  <p class="text">{{.Summary}}</p>
+</section>
+{{end}}
+<main>
+{{range .Notes}}
+<article class="note">
+  {{if .Match}}
+  <h3>{{.Match.Map}}{{if .Match.Hero}} · {{.Match.Hero}}{{end}}{{if .Match.Result}} · {{.Match.Result}}{{end}}</h3>
+  <p class="context">{{.Match.Date}} {{.Match.FinishedAt}} <span class="label">(player's local time)</span> · <span class="mono">{{.MatchKey}}</span></p>
+  {{else}}
+  <h3 class="mono">{{.MatchKey}}</h3>
+  {{end}}
+  {{if .ReviewedOnly}}
+  <p class="reviewed">Reviewed — nothing to add.</p>
+  {{else}}
+  {{if or .FocusTags .ExtraTags}}
+  <ul class="chips">
+    {{range .FocusTags}}<li class="chip focus">{{label .}}</li>{{end}}
+    {{range .ExtraTags}}<li class="chip extra">{{.}}</li>{{end}}
+  </ul>
+  {{end}}
+  <p class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.Text}}</p>
+  {{end}}
+</article>
+{{end}}
+</main>
+<footer>Written in Recall by {{.CoachName}}. Times are shown in the player's local clock.</footer>
+</body>
+</html>
