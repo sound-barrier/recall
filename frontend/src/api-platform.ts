@@ -114,9 +114,12 @@ function contentDispositionName(r: Response, fallback: string): string {
 async function saveBlobResponse(
   result: Promise<{ data?: Blob | File; error?: unknown; response?: Response }>,
   fallbackName: string,
+  // The caller supplied the name deliberately (the user typed it), so the
+  // server's Content-Disposition must not override it.
+  nameIsChosen = false,
 ): Promise<string> {
   const { data, response } = await unwrapWithResponse(result)
-  const name = contentDispositionName(response, fallbackName)
+  const name = nameIsChosen ? fallbackName : contentDispositionName(response, fallbackName)
   triggerBlobDownload(data, name)
   return name
 }
@@ -186,7 +189,14 @@ export function ExportBundle(opts: {
   includeUnknown:  boolean
   includeHidden:   boolean
   share?:          BundleShare
+  /**
+   * What the user typed in the modal. Non-empty wins over the server's
+   * Content-Disposition and over the generated stem — naming the file is
+   * the only reason that field exists.
+   */
+  filename?:       string
 }): Promise<string> {
+  const chosen = opts.filename?.trim() ?? ''
   if (IS_WAILS) return saveBundleNatively(opts)
   return saveBlobResponse(
     sdk.exportBundle({
@@ -197,7 +207,8 @@ export function ExportBundle(opts: {
         ...(opts.share ? { share: opts.share } : {}),
       },
     }),
-    `recall-${opts.share ? 'share' : 'bundle'}-${tsFilenameStamp()}.zip`,
+    chosen || `recall-${opts.share ? 'share' : 'bundle'}-${tsFilenameStamp()}.zip`,
+    chosen !== '',
   )
 }
 

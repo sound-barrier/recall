@@ -12,14 +12,29 @@ import "fmt"
 // is the source of truth for the enum — the App layer additionally
 // validates before reaching SQL so the error surface stays friendly.
 
-func (s *SQLStore) SetReview(matchKey, reviewedBy string) error {
-	_, err := s.db.Exec(
-		`INSERT INTO match_reviews (match_key, reviewed_by) VALUES (?, ?)
+// upsertReviewSQL stamps reviewed_at from the bound instant, falling back to
+// the server clock when it is empty. `excluded.reviewed_at` in the conflict
+// clause is that same computed value, so an update follows the insert's rule
+// instead of carrying a second copy of it.
+const upsertReviewSQL = `INSERT INTO match_reviews (match_key, reviewed_by, reviewed_at)
+		 VALUES (?, ?, ` + suppliedInstantOrNow + `)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   reviewed_by = excluded.reviewed_by,
-		   reviewed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
-		matchKey, reviewedBy,
-	)
+		   reviewed_at = excluded.reviewed_at`
+
+// SetReview records the reviewer and stamps reviewed_at with the server
+// clock — the live path, where marking a match reviewed means "now".
+func (s *SQLStore) SetReview(matchKey, reviewedBy string) error {
+	return s.SetReviewAt(matchKey, reviewedBy, "")
+}
+
+// SetReviewAt is SetReview for a restore: reviewedAt is the instant the
+// bundle carried, replayed verbatim so re-importing a backup doesn't claim
+// every match was reviewed at import time. An empty reviewedAt falls back to
+// the server clock — importing a bundle old enough to carry no instant still
+// lands a row.
+func (s *SQLStore) SetReviewAt(matchKey, reviewedBy, reviewedAt string) error {
+	_, err := s.db.Exec(upsertReviewSQL, matchKey, reviewedBy, reviewedAt)
 	return err
 }
 

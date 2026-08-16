@@ -93,6 +93,12 @@ type Store interface {
 	// returns the full map keyed by match_key for the aggregator to attach
 	// to MatchRecords at read time.
 	SetAnnotation(a Annotation) error
+	// SetAnnotationAt is the restore-only variant: the row keeps the
+	// `annotated_at` it carries instead of being re-stamped with the
+	// import clock (empty still falls back to the server clock). Only a
+	// bundle import supplies an instant — every live edit goes through
+	// SetAnnotation so the timestamp stays the server's to assign.
+	SetAnnotationAt(a Annotation) error
 	DeleteAnnotation(matchKey string) error
 	LoadAnnotations() (map[string]Annotation, error)
 
@@ -145,6 +151,11 @@ type Store interface {
 	// (a server-assigned timestamp) so the dossier can compute
 	// activity windows like "days since last review."
 	SetReview(matchKey, reviewedBy string) error
+	// SetReviewAt is the restore-only variant of SetReview: reviewedAt is
+	// the instant the bundle carried, replayed verbatim (empty falls back
+	// to the server clock). Same split as SetAnnotationAt — a live "mark
+	// reviewed" always stamps now.
+	SetReviewAt(matchKey, reviewedBy, reviewedAt string) error
 	ClearReview(matchKey string) error
 	LoadReviews() (map[string]ReviewState, error)
 
@@ -267,7 +278,9 @@ type Store interface {
 // Per-concern UPSERT methods (one parent + its children) run inside
 // a single transaction so a child constraint violation rolls the
 // parent back too. Parent UPSERT excludes parsed_at from the SET
-// clause so the first-insert timestamp is preserved across re-parses.
+// clause so the first-insert timestamp is preserved across re-parses;
+// the INSERT writes the row's own ParsedAt when it carries one (see
+// suppliedInstantOrNow) so a restore replays the original instant.
 // Child writes use DELETE-then-INSERT — the child table has no UNIQUE
 // on a non-PK column we could hook ON CONFLICT to, and the parent's
 // id may also change semantically on conflict-update. Wiping and
@@ -354,6 +367,13 @@ func NewSQLStore(path string) (*SQLStore, error) {
 }
 
 func (s *SQLStore) Close() error { return s.db.Close() }
+
+// suppliedInstantOrNow is the VALUES expression for a server-assigned
+// timestamp the caller may override: the instant bound to the placeholder
+// when it is non-empty — a bundle restore replays the stamps its rows carried
+// rather than rewriting when everything happened — and the server clock when
+// it is empty, which is what every live path passes.
+const suppliedInstantOrNow = `COALESCE(NULLIF(?,''), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))`
 
 // dirIDOrSentinel maps a zero `screenshots_dir_id` to the sentinel
 // row's id (1, seeded by `schema.sql`). Every parent-row insert must

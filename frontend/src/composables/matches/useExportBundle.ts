@@ -58,6 +58,9 @@ export function useExportBundle(deps: ExportBundleDeps) {
         matchKeys: exportBundleSelectedKeys.value,
         includeHidden: request.includeHidden,
         includeUnknown: request.includeUnknown,
+        // Browser mode saves under this name; in the desktop build the
+        // native save dialog is the naming affordance and owns it.
+        filename: request.filename,
         ...(request.share ? { share: request.share } : {}),
       })
     } catch (e) {

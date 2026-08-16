@@ -56,22 +56,40 @@ func replaceChildSet(tx *sql.Tx, table, column, matchKey string, values []string
 	return nil
 }
 
+// upsertAnnotationSQL stamps annotated_at from the bound instant, falling
+// back to the server clock when it is empty; the conflict clause reuses that
+// same computed value via `excluded`.
+const upsertAnnotationSQL = `INSERT INTO match_annotations (match_key, note, replay_code, annotated_at)
+		 VALUES (?, ?, ?, ` + suppliedInstantOrNow + `)
+		 ON CONFLICT(match_key) DO UPDATE SET
+		   note         = excluded.note,
+		   replay_code  = excluded.replay_code,
+		   annotated_at = excluded.annotated_at`
+
+// SetAnnotation upserts the annotation and stamps annotated_at with the
+// server clock. The instant is the store's to assign on this path: the
+// editor hands back the row it loaded, carried AnnotatedAt and all, and an
+// edit made today must read as made today.
 func (s *SQLStore) SetAnnotation(a Annotation) error {
+	return s.setAnnotation(a, "")
+}
+
+// SetAnnotationAt is SetAnnotation for a restore: the annotation lands with
+// the instant it carries in AnnotatedAt, so re-importing a backup doesn't
+// re-date every note to the import. An empty AnnotatedAt still falls back to
+// the server clock.
+func (s *SQLStore) SetAnnotationAt(a Annotation) error {
+	return s.setAnnotation(a, a.AnnotatedAt)
+}
+
+func (s *SQLStore) setAnnotation(a Annotation, annotatedAt string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
 	// The parent row must land first — every child list FKs to it.
-	if _, err := tx.Exec(
-		`INSERT INTO match_annotations (match_key, note, replay_code)
-		 VALUES (?, ?, ?)
-		 ON CONFLICT(match_key) DO UPDATE SET
-		   note         = excluded.note,
-		   replay_code  = excluded.replay_code,
-		   annotated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
-		a.MatchKey, a.Note, a.ReplayCode,
-	); err != nil {
+	if _, err := tx.Exec(upsertAnnotationSQL, a.MatchKey, a.Note, a.ReplayCode, annotatedAt); err != nil {
 		return err
 	}
 	for _, set := range []struct {

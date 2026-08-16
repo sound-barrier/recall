@@ -24,12 +24,16 @@ func (s *SQLStore) UpsertUserMatchData(d UserMatchData) error {
 	// Pointer scalars pass straight through: a nil *string / *int converts to
 	// SQL NULL ("not overridden"), a non-nil to the value (so 0 / "" round-trip
 	// as real edits).
+	//
+	// updated_at doubles as a manual match's parsed_at at read time, so a
+	// restore replays the instant its bundle carried; every live edit supplies
+	// none and gets the server clock, on the insert and the conflict alike.
 	if _, err := tx.Exec(
 		`INSERT INTO user_match_data (
 		   match_key, map, hero, eliminations, assists, deaths, damage, healing,
 		   mitigation, result, final_score, date, finished_at, game_length, played_at_utc,
-		   rank, level, rank_progress, change_percent)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		   rank, level, rank_progress, change_percent, updated_at)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,`+suppliedInstantOrNow+`)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   map=excluded.map, hero=excluded.hero, eliminations=excluded.eliminations,
 		   assists=excluded.assists, deaths=excluded.deaths, damage=excluded.damage,
@@ -39,10 +43,11 @@ func (s *SQLStore) UpsertUserMatchData(d UserMatchData) error {
 		   game_length=excluded.game_length, played_at_utc=excluded.played_at_utc,
 		   rank=excluded.rank, level=excluded.level,
 		   rank_progress=excluded.rank_progress, change_percent=excluded.change_percent,
-		   updated_at=strftime('%Y-%m-%dT%H:%M:%SZ', 'now')`,
+		   updated_at=excluded.updated_at`,
 		d.MatchKey, d.Map, d.Hero, d.Eliminations, d.Assists, d.Deaths, d.Damage,
 		d.Healing, d.Mitigation, d.Result, d.FinalScore, d.Date, d.FinishedAt,
 		d.GameLength, d.PlayedAtUTC, d.Rank, d.Level, d.RankProgress, d.ChangePercent,
+		d.UpdatedAt,
 	); err != nil {
 		return err
 	}

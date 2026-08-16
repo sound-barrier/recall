@@ -11,12 +11,12 @@ import "database/sql"
 // re-parses idempotent, and parsed_at is deliberately absent from the
 // SET clause so the first-insert timestamp survives them.
 const upsertSummarySQL = `INSERT INTO summary_screenshots (
-			filename, match_key, screenshots_dir_id,
+			filename, match_key, screenshots_dir_id, parsed_at,
 			map, map_raw, playlist, hero, hero_raw, result, final_score, date, finished_at, game_length, played_at_utc,
 			perf_elim_total, perf_elim_avg_per_10min,
 			perf_assists_total, perf_assists_avg_per_10min,
 			perf_deaths_total, perf_deaths_avg_per_10min
-		) VALUES (?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
+		) VALUES (?,?,?,` + suppliedInstantOrNow + `, ?,?,?,?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -49,7 +49,7 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 	var id int64
 	err = tx.QueryRow(
 		upsertSummarySQL,
-		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
 		r.Map, r.MapRaw, r.Playlist, r.Hero, r.HeroRaw,
 		r.Result, r.FinalScore,
 		r.Date, r.FinishedAt, r.GameLength, r.PlayedAtUTC,

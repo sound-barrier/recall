@@ -295,6 +295,8 @@ paths:
           description: Visibility updated.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -328,6 +330,8 @@ paths:
           description: Pin state updated.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -480,6 +484,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "409":
           $ref: "#/components/responses/Conflict"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -525,6 +531,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "409":
           description: A map or hero override isn't in the Overwatch roster.
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -581,6 +589,8 @@ paths:
           description: Review status updated.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -638,6 +648,8 @@ paths:
           description: Queue type updated.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -695,6 +707,8 @@ paths:
           description: Play-mode override updated.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -756,6 +770,8 @@ paths:
           description: All listed matches' queue type updated.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -800,6 +816,8 @@ paths:
           description: All listed matches' play mode updated.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 

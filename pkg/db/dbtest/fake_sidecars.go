@@ -8,12 +8,19 @@ import (
 	"recall/pkg/db"
 )
 
-func (f *Fake) SetAnnotation(a db.Annotation) error {
+func (f *Fake) SetAnnotation(a db.Annotation) error { return f.setAnnotation(a, "") }
+
+// SetAnnotationAt mirrors SQLStore's restore path: the row keeps the instant
+// it carries, and an empty one falls back to the Fake's clock.
+func (f *Fake) SetAnnotationAt(a db.Annotation) error { return f.setAnnotation(a, a.AnnotatedAt) }
+
+func (f *Fake) setAnnotation(a db.Annotation, annotatedAt string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.Annotations == nil {
 		f.Annotations = map[string]db.Annotation{}
 	}
+	a.AnnotatedAt = suppliedInstantOrNow(annotatedAt)
 	f.Annotations[a.MatchKey] = a
 	return nil
 }
@@ -53,6 +60,12 @@ func (f *Fake) UnhideMatch(matchKey string) error {
 }
 
 func (f *Fake) SetReview(matchKey, reviewedBy string) error {
+	return f.SetReviewAt(matchKey, reviewedBy, "")
+}
+
+// SetReviewAt mirrors SQLStore's restore path: a supplied instant is written
+// as given, an empty one falls back to the Fake's clock.
+func (f *Fake) SetReviewAt(matchKey, reviewedBy, reviewedAt string) error {
 	// schema.sql pins the vocabulary with a CHECK constraint, so SQLStore
 	// rejects anything else. Mirror it: a Fake that accepts a reviewer the
 	// real store refuses lets every test built on it reach a state
@@ -66,12 +79,17 @@ func (f *Fake) SetReview(matchKey, reviewedBy string) error {
 	if f.Reviews == nil {
 		f.Reviews = map[string]db.ReviewState{}
 	}
-	// Preserve a previously-seeded ReviewedAt if the test set one;
-	// otherwise stamp "now" so dossier coverage that fans out across
-	// the Fake observes a non-empty timestamp.
+	// Exactly SQLStore's rule: a supplied instant is written as given (the
+	// restore path), an empty one is stamped now — including over a stamp
+	// already there, because re-marking a match reviewed is a live edit.
+	// This deliberately does NOT preserve a previously-seeded value: a Fake
+	// that froze reviewed_at let tests reach a state the real store cannot
+	// produce. Seed a specific instant with SetReviewAt.
 	prev := f.Reviews[matchKey]
-	if prev.ReviewedAt == "" {
-		prev.ReviewedAt = time.Now().UTC().Format(time.RFC3339)
+	if reviewedAt != "" {
+		prev.ReviewedAt = reviewedAt
+	} else {
+		prev.ReviewedAt = nowRFC3339()
 	}
 	prev.ReviewedBy = reviewedBy
 	f.Reviews[matchKey] = prev

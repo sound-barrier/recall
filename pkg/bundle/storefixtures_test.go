@@ -231,18 +231,18 @@ func (s *failingStore) UpsertUserMatchData(d db.UserMatchData) error {
 	return s.Fake.UpsertUserMatchData(d)
 }
 
-func (s *failingStore) SetAnnotation(a db.Annotation) error {
-	if err := s.boom("SetAnnotation"); err != nil {
+func (s *failingStore) SetAnnotationAt(a db.Annotation) error {
+	if err := s.boom("SetAnnotationAt"); err != nil {
 		return err
 	}
-	return s.Fake.SetAnnotation(a)
+	return s.Fake.SetAnnotationAt(a)
 }
 
-func (s *failingStore) SetReview(matchKey, reviewedBy string) error {
-	if err := s.boom("SetReview"); err != nil {
+func (s *failingStore) SetReviewAt(matchKey, reviewedBy, reviewedAt string) error {
+	if err := s.boom("SetReviewAt"); err != nil {
 		return err
 	}
-	return s.Fake.SetReview(matchKey, reviewedBy)
+	return s.Fake.SetReviewAt(matchKey, reviewedBy, reviewedAt)
 }
 
 func (s *failingStore) SetMatchQueue(matchKey, queueType string) error {

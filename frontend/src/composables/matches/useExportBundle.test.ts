@@ -39,6 +39,7 @@ describe('useExportBundle — a plain export', () => {
 
     expect(api.ExportBundle).toHaveBeenCalledWith({
       matchKeys: ['k1', 'k2'],
+      filename: 'my-backup.zip',
       includeHidden: true,
       includeUnknown: false,
     })
@@ -60,6 +61,7 @@ describe('useExportBundle — sharing with a coach', () => {
 
     expect(api.ExportBundle).toHaveBeenCalledWith({
       matchKeys: ['k1', 'k2'],
+      filename: 'for-ordo.zip',
       includeHidden: false,
       includeUnknown: false,
       share: { handle: 'Sable', message: 'Mostly worried about ult timing.' },
@@ -77,5 +79,16 @@ describe('useExportBundle — sharing with a coach', () => {
 
     expect(errors).toHaveLength(1)
     expect(flow.exportBundleOpen.value).toBe(false)
+  })
+
+  // The modal collects a destination name; it used to stop there.
+  it('carries the name the user typed into the export', async () => {
+    const flow = bundle()
+    await flow.onExportBundleConfirm({
+      filename: 'my-season-review.zip', includeHidden: false, includeUnknown: false, share: null,
+    })
+    expect(api.ExportBundle).toHaveBeenCalledWith(
+      expect.objectContaining({ filename: 'my-season-review.zip' }),
+    )
   })
 })

@@ -1806,6 +1806,10 @@ export type SetMatchVisibilityErrors = {
      */
     400: ProblemDetails;
     /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
      * Unhandled server-side error.
      */
     500: ProblemDetails;
@@ -1851,6 +1855,10 @@ export type SetMatchPinErrors = {
      * Malformed request body or query parameters.
      */
     400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
     /**
      * Unhandled server-side error.
      */
@@ -2028,6 +2036,10 @@ export type SetMatchAnnotationErrors = {
      */
     400: ProblemDetails;
     /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
      * The request was syntactically valid, but the resource state or
      * a payload value prevents the action (e.g. duplicate profile
      * name, screenshots directory not configured, invalid Tesseract
@@ -2113,6 +2125,10 @@ export type UpdateMatchDataErrors = {
      * Malformed request body or query parameters.
      */
     400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
     /**
      * A map or hero override isn't in the Overwatch roster.
      */
@@ -2208,6 +2224,10 @@ export type SetMatchReviewErrors = {
      */
     400: ProblemDetails;
     /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
      * Unhandled server-side error.
      */
     500: ProblemDetails;
@@ -2291,6 +2311,10 @@ export type SetMatchQueueErrors = {
      * Malformed request body or query parameters.
      */
     400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
     /**
      * Unhandled server-side error.
      */
@@ -2376,6 +2400,10 @@ export type SetMatchPlayModeErrors = {
      */
     400: ProblemDetails;
     /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
      * Unhandled server-side error.
      */
     500: ProblemDetails;
@@ -2414,6 +2442,10 @@ export type BulkSetMatchQueueErrors = {
      */
     400: ProblemDetails;
     /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
      * Unhandled server-side error.
      */
     500: ProblemDetails;
@@ -2451,6 +2483,10 @@ export type BulkSetMatchPlayModeErrors = {
      * Malformed request body or query parameters.
      */
     400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
     /**
      * Unhandled server-side error.
      */

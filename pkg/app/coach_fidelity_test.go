@@ -32,7 +32,7 @@ func TestCoachSession_FidelityWithStoreBackedImport(t *testing.T) {
 	if len(loaned) != len(stored) {
 		t.Fatalf("record counts differ: session %d, store-backed %d", len(loaned), len(stored))
 	}
-	assertServerStampDeparture(t, loaned, stored)
+	assertBundleParsedAtOnBothPaths(t, loaned, stored)
 	blankDocumentedDepartures(loaned)
 	blankDocumentedDepartures(stored)
 
@@ -75,36 +75,31 @@ func importedRecords(t *testing.T, payload []byte) []match.Record {
 	return recs
 }
 
-// blankDocumentedDepartures erases the three fields the two paths are
-// allowed to disagree on:
+// blankDocumentedDepartures erases the two fields the two paths are allowed
+// to disagree on, both of them about SCREENSHOTS on disk:
 //
 //  1. ThumbnailFile — a session never resolves a screenshot against the
 //     coach's disk (design rule 8), so it is always empty there.
 //  2. SourceDirIDs — a bundle carries no screenshots_dirs, so an import
 //     remaps every row onto the "dir unset" sentinel while the session
 //     blanks the map outright.
-//  3. The server-stamped timestamps — see assertServerStampDeparture.
+//
+// The server-assigned timestamps used to be a third: a merge import
+// re-stamped them with the import clock while the session preserved what the
+// bundle carried. The import now replays them, so the two paths are compared
+// on their instants directly.
 func blankDocumentedDepartures(recs []match.Record) {
 	for i := range recs {
 		recs[i].ThumbnailFile = ""
 		recs[i].SourceDirIDs = nil
-		recs[i].ParsedAt = ""
-		recs[i].SourceParsedAt = nil
-		recs[i].ReviewedAt = ""
-		if recs[i].Annotation != nil {
-			recs[i].Annotation.AnnotatedAt = ""
-		}
 	}
 }
 
-// assertServerStampDeparture pins the third difference — and its direction,
-// because it is NOT the session's doing. A merge import re-stamps every
-// server-side timestamp with the import clock (the parent UPSERT leaves
-// parsed_at to its column DEFAULT; SetReview / SetAnnotation stamp "now"),
-// while a session preserves what the bundle carried. The session is the
-// FAITHFUL side. If bundle import is ever taught to preserve them, this
-// test fails and the normalization above should be deleted with it.
-func assertServerStampDeparture(t *testing.T, loaned, stored []match.Record) {
+// assertBundleParsedAtOnBothPaths pins each path to the bundle's own instant
+// rather than only to each other — two paths that both re-stamped with the
+// import clock would compare equal and still have lost when the screenshots
+// were parsed.
+func assertBundleParsedAtOnBothPaths(t *testing.T, loaned, stored []match.Record) {
 	t.Helper()
 	for i := range loaned {
 		want, ocr := bundleParsedAt[loaned[i].MatchKey]
@@ -114,9 +109,8 @@ func assertServerStampDeparture(t *testing.T, loaned, stored []match.Record) {
 		if loaned[i].ParsedAt != want {
 			t.Errorf("session %s parsed_at = %q, want the bundle's %q", loaned[i].MatchKey, loaned[i].ParsedAt, want)
 		}
-		if stored[i].ParsedAt == want {
-			t.Errorf("store-backed %s parsed_at = %q — the import now preserves it; "+
-				"drop parsed_at from blankDocumentedDepartures", stored[i].MatchKey, stored[i].ParsedAt)
+		if stored[i].ParsedAt != want {
+			t.Errorf("store-backed %s parsed_at = %q, want the bundle's %q", stored[i].MatchKey, stored[i].ParsedAt, want)
 		}
 	}
 }
