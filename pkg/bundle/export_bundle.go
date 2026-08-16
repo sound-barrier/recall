@@ -28,8 +28,8 @@ const exportSchemaV1 = "recall-export/v1"
 // bundle carries the sharer's notes and manual entries.
 //
 // Every user-layer field is `omitempty`, so a section added after this
-// constant was minted (pinned) is simply absent from older bundles and
-// reads back as "none" — which is why the schema string, and
+// constant was minted (pinned, coach_notes) is simply absent from older
+// bundles and reads back as "none" — which is why the schema string, and
 // BundleSchemaV1 with it, stay put when the layer grows.
 const exportSchemaV2 = "recall-export/v2"
 
@@ -45,6 +45,13 @@ const BundleSchemaV1 = "recall-bundle/v1"
 // `manifest.json`. Captures provenance + the screenshot ↔ match_key
 // mapping for sanity-checking after restore. Exported so
 // cmd/bug-finder can deserialize without redefining the schema.
+//
+// Player is present only on a bundle shared for coaching (see
+// PlayerIdentity); it lives on the envelope, not in data.json, so the
+// row payload a merge import consumes is identical either way. Added
+// under `omitempty` after BundleSchemaV1 was minted — the same
+// no-bump precedent as data.json's user-layer sections — so older
+// bundles read back with a nil Player.
 type ManifestV1 struct {
 	Schema          string            `json:"schema"`
 	ExportedAt      string            `json:"exported_at"`
@@ -54,6 +61,7 @@ type ManifestV1 struct {
 	IncludeUnknown  bool              `json:"include_unknown"`
 	IncludeHidden   bool              `json:"include_hidden"`
 	Screenshots     map[string]string `json:"screenshots"`
+	Player          *PlayerIdentity   `json:"player,omitempty"`
 }
 
 // DataV2 is the on-disk shape of the bundle's `data.json`. The five
@@ -86,6 +94,10 @@ type DataV2 struct {
 	PlayModes     map[string]db.PlayModeState `json:"play_modes,omitempty"`
 	Hidden        []string                    `json:"hidden,omitempty"`
 	Pinned        []string                    `json:"pinned,omitempty"`
+	// CoachNotes is the coach-RECEIVED layer — blocks another coach wrote
+	// that this user accepted onto their own matches. Sorted by
+	// (match_key, note_id).
+	CoachNotes []db.MatchCoachNote `json:"coach_notes,omitempty"`
 }
 
 // ExportBundleOptions controls which matches end up in the bundle.
@@ -106,6 +118,10 @@ type ExportBundleOptions struct {
 	IncludeUnknown bool
 	// IncludeHidden adds every record currently in `hidden_matches`.
 	IncludeHidden bool
+	// Player switches the export to share mode: the identity is validated
+	// and written into the manifest so a coach opening the bundle sees who
+	// it is about, and Import refuses to merge it. nil is a plain export.
+	Player *PlayerIdentity
 }
 
 // ExportBundle produces a `.zip` payload containing:
@@ -125,7 +141,15 @@ type ExportBundleOptions struct {
 // The bundle never streams to disk — it's built in-memory and
 // returned. The HTTP server uses the bytes as the response body;
 // Wails mode threads them into a SaveFileDialog → os.WriteFile.
+//
+// With opts.Player set the export is a "share with a coach" bundle:
+// the identity is validated (ErrPlayerIdentityInvalid) and written
+// into the manifest, and Import refuses to merge the result.
 func Export(store db.Store, opts ExportBundleOptions, recs []match.Record, screenshotsDir, version string) ([]byte, error) {
+	opts, err := normalizeShareOptions(opts)
+	if err != nil {
+		return nil, err
+	}
 	// recs come from the shell's GetMatchResults() — the same
 	// aggregator the Matches view consumes, so "hidden" means exactly
 	// what the UI means by it (see IncludeUnknown for why the unknown
@@ -166,6 +190,22 @@ func Export(store db.Store, opts ExportBundleOptions, recs []match.Record, scree
 		return nil, fmt.Errorf("export bundle: close zip: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+// normalizeShareOptions validates a share-mode identity and returns the
+// options carrying the trimmed copy Export writes into the manifest; a
+// plain export (no Player) passes through untouched. Runs before any store
+// read so a bad identity fails fast.
+func normalizeShareOptions(opts ExportBundleOptions) (ExportBundleOptions, error) {
+	if opts.Player == nil {
+		return opts, nil
+	}
+	player, err := normalizePlayerIdentity(*opts.Player)
+	if err != nil {
+		return ExportBundleOptions{}, err
+	}
+	opts.Player = &player
+	return opts, nil
 }
 
 // bundleIncludeSet builds the set of match_keys the bundle covers: the
@@ -246,108 +286,12 @@ func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, expor
 		PlayModes:     user.playModes,
 		Hidden:        user.hidden,
 		Pinned:        user.pinned,
+		CoachNotes:    user.coachNotes,
 	}
 	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
 		return fmt.Errorf("export bundle: write data.json: %w", err)
 	}
 	return nil
-}
-
-// bundleUserLayer is the include-filtered user-layer state riding in a
-// v2 bundle.
-type bundleUserLayer struct {
-	userData    []db.UserMatchData
-	annotations []db.Annotation
-	reviews     map[string]db.ReviewState
-	queues      map[string]db.QueueState
-	playModes   map[string]db.PlayModeState
-	hidden      []string
-	pinned      []string
-}
-
-// loadBundleUserLayer gathers every user-layer surface for the included
-// match keys. Slices sort by match_key for deterministic bundle bytes.
-func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUserLayer, error) {
-	userData, err := store.LoadAllUserMatchData()
-	if err != nil {
-		return bundleUserLayer{}, fmt.Errorf("export bundle: load user data: %w", err)
-	}
-	annotations, err := store.LoadAnnotations()
-	if err != nil {
-		return bundleUserLayer{}, fmt.Errorf("export bundle: load annotations: %w", err)
-	}
-	reviews, err := store.LoadReviews()
-	if err != nil {
-		return bundleUserLayer{}, fmt.Errorf("export bundle: load reviews: %w", err)
-	}
-	queues, err := store.LoadMatchQueues()
-	if err != nil {
-		return bundleUserLayer{}, fmt.Errorf("export bundle: load queues: %w", err)
-	}
-	playModes, err := store.LoadMatchPlayModes()
-	if err != nil {
-		return bundleUserLayer{}, fmt.Errorf("export bundle: load play modes: %w", err)
-	}
-	hidden, err := store.LoadHiddenKeys()
-	if err != nil {
-		return bundleUserLayer{}, fmt.Errorf("export bundle: load hidden keys: %w", err)
-	}
-	pinned, err := store.LoadPinnedKeys()
-	if err != nil {
-		return bundleUserLayer{}, fmt.Errorf("export bundle: load pinned keys: %w", err)
-	}
-	return bundleUserLayer{
-		userData:    sortedIncludedValues(userData, include, func(d db.UserMatchData) string { return d.MatchKey }),
-		annotations: sortedIncludedValues(annotations, include, func(a db.Annotation) string { return a.MatchKey }),
-		reviews:     filterIncludedMap(reviews, include),
-		queues:      filterIncludedMap(queues, include),
-		playModes:   filterIncludedMap(playModes, include),
-		hidden:      sortedIncludedKeys(hidden, include),
-		pinned:      sortedIncludedKeys(pinned, include),
-	}, nil
-}
-
-// sortedIncludedValues collects the values of a match_key-keyed map whose
-// key is in the include set, sorted by keyOf for deterministic bundle
-// bytes. Returns nil when nothing survives (omitted from the JSON).
-func sortedIncludedValues[V any](m map[string]V, include map[string]struct{}, keyOf func(V) string) []V {
-	var out []V
-	for k, v := range m {
-		if _, ok := include[k]; ok {
-			out = append(out, v)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool { return keyOf(out[i]) < keyOf(out[j]) })
-	return out
-}
-
-// filterIncludedMap keeps the entries whose match_key is in the include
-// set. Returns nil when nothing survives (omitted from the JSON).
-func filterIncludedMap[V any](m map[string]V, include map[string]struct{}) map[string]V {
-	var out map[string]V
-	for k, v := range m {
-		if _, ok := include[k]; !ok {
-			continue
-		}
-		if out == nil {
-			out = map[string]V{}
-		}
-		out[k] = v
-	}
-	return out
-}
-
-// sortedIncludedKeys collects the keys of a match_key-keyed map that are
-// in the include set, sorted. Returns nil when nothing survives.
-func sortedIncludedKeys[V any](m map[string]V, include map[string]struct{}) []string {
-	var out []string
-	for k := range m {
-		if _, ok := include[k]; ok {
-			out = append(out, k)
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 // copyBundleScreenshots writes screenshots/<filename> raw bytes off disk.
@@ -423,6 +367,7 @@ func writeBundleManifest(zw *zip.Writer, opts ExportBundleOptions, include map[s
 		IncludeUnknown:  opts.IncludeUnknown,
 		IncludeHidden:   opts.IncludeHidden,
 		Screenshots:     screenshots,
+		Player:          opts.Player,
 	}
 	if err := bundleWriteJSON(zw, "manifest.json", mf, now); err != nil {
 		return fmt.Errorf("export bundle: write manifest: %w", err)

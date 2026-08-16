@@ -28,6 +28,7 @@ func allTablesData() map[string]any {
 		"play_modes":      map[string]any{"m1": map[string]any{"PlayMode": "competitive"}},
 		"hidden":          []string{"m1"},
 		"pinned":          []string{"m1"},
+		"coach_notes":     []map[string]any{{"NoteID": "n-1", "MatchKey": "m1", "CoachName": "Ordo", "Text": "t"}},
 	}
 }
 
@@ -307,8 +308,7 @@ func TestImport_SurfacesEveryStoreFailure(t *testing.T) {
 		method  string
 		wantMsg string
 	}{
-		{"LoadAll", "import: load existing: store down"},
-		{"LoadAllUserMatchData", "import: load user data: store down"},
+		{"LoadMatchKeys", "import: load existing: store down"},
 		{"UpsertSummary", `import: summary "s.png": store down`},
 		{"UpsertTeams", `import: teams "t.png": store down`},
 		{"UpsertPersonal", `import: personal "p.png": store down`},
@@ -321,6 +321,7 @@ func TestImport_SurfacesEveryStoreFailure(t *testing.T) {
 		{"SetMatchPlayMode", `import: play mode for "m1": store down`},
 		{"HideMatch", `import: hidden flag for "m1": store down`},
 		{"PinMatch", `import: pinned flag for "m1": store down`},
+		{"UpsertMatchCoachNote", `import: coach note for "m1": store down`},
 	}
 	payload := payloadWithData(t, allTablesData())
 	for _, tc := range tests {

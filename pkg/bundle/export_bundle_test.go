@@ -48,6 +48,7 @@ func TestExport_SurfacesEveryStoreFailure(t *testing.T) {
 		{"LoadMatchPlayModes", "export bundle: load play modes: store down"},
 		{"LoadHiddenKeys", "export bundle: load hidden keys: store down"},
 		{"LoadPinnedKeys", "export bundle: load pinned keys: store down"},
+		{"LoadMatchCoachNotes", "export bundle: load coach notes: store down"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.method, func(t *testing.T) {

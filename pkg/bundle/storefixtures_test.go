@@ -175,6 +175,20 @@ func (s *failingStore) LoadPinnedKeys() (map[string]bool, error) {
 	return s.Fake.LoadPinnedKeys()
 }
 
+func (s *failingStore) LoadMatchCoachNotes() (map[string][]db.MatchCoachNote, error) {
+	if err := s.boom("LoadMatchCoachNotes"); err != nil {
+		return nil, err
+	}
+	return s.Fake.LoadMatchCoachNotes()
+}
+
+func (s *failingStore) LoadMatchKeys() (map[string]bool, error) {
+	if err := s.boom("LoadMatchKeys"); err != nil {
+		return nil, err
+	}
+	return s.Fake.LoadMatchKeys()
+}
+
 func (s *failingStore) UpsertSummary(r db.SummaryRow) error {
 	if err := s.boom("UpsertSummary"); err != nil {
 		return err
@@ -257,4 +271,11 @@ func (s *failingStore) PinMatch(matchKey string) error {
 		return err
 	}
 	return s.Fake.PinMatch(matchKey)
+}
+
+func (s *failingStore) UpsertMatchCoachNote(n db.MatchCoachNote) (int64, error) {
+	if err := s.boom("UpsertMatchCoachNote"); err != nil {
+		return 0, err
+	}
+	return s.Fake.UpsertMatchCoachNote(n)
 }
