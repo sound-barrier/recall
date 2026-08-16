@@ -138,6 +138,14 @@ describe('CoachRoomView — who is this?', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/before writing notes/)
   })
 
+  // The note editor was blocked but the sheet's summary was not, so a coach
+  // could type "what to work on" against a bundle naming nobody, have every
+  // PUT refused unseen, and lose the paragraph when they answered the prompt.
+  it('will not take a summary that has nowhere to be saved either', () => {
+    renderRoom({ player: ANONYMOUS })
+    expect(screen.getByRole('textbox', { name: 'What to work on' })).toBeDisabled()
+  })
+
   it('lets the coach correct a handle the bundle suggested', async () => {
     const view = renderRoom()
     expect(screen.queryByRole('textbox', { name: 'Player handle' })).not.toBeInTheDocument()

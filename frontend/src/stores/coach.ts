@@ -360,6 +360,13 @@ export const useCoachStore = defineStore('coach', () => {
   // The bundle suggests a player, the coach confirms one. The echoed view
   // carries THAT player's notes — which is why the room re-hydrates.
   async function setPlayerHandle(handle: string): Promise<void> {
+    // Naming or correcting the player re-keys the notes server-side, so the
+    // hydration watch drops every draft and reloads. Whatever is still in
+    // the debounce has to land first — otherwise clicking "Change player"
+    // straight after typing discards the sentence, the same way End session
+    // used to. A no-op while the session is still unnamed: both writing
+    // surfaces are blocked until a handle exists, so nothing is queued.
+    await flushSaves()
     try {
       setCoachSessionData(await SetCoachSessionPlayer(handle))
     } catch (e) {

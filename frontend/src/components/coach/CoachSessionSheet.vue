@@ -19,7 +19,14 @@ withDefaults(defineProps<{
   canExport?: boolean
   /** Why Export is unavailable — shown as its title, per the write-gate copy. */
   exportReason?: string
-}>(), { canExport: true, exportReason: undefined })
+  /**
+   * Non-empty when the summary cannot be saved yet — the session names no
+   * player, so the server has nowhere to key it. The box refuses typing for
+   * the same reason the note editor does: accepting a paragraph every PUT
+   * will refuse loses it.
+   */
+  blockedReason?: string
+}>(), { canExport: true, exportReason: undefined, blockedReason: '' })
 
 const emit = defineEmits<{
   'update-summary': [text: string]
@@ -96,9 +103,14 @@ function onSummaryInput(e: Event): void {
         class="sheet-summary"
         rows="5"
         :value="summary"
+        :disabled="blockedReason !== ''"
+        :title="blockedReason || undefined"
         placeholder="The one thing to take into the next session…"
         @input="onSummaryInput"
       />
+      <p v-if="blockedReason" class="sheet-blocked">
+        {{ blockedReason }}
+      </p>
     </div>
 
     <p class="sheet-persist">
@@ -261,5 +273,12 @@ function onSummaryInput(e: Event): void {
   gap: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--paper-rule);
+}
+
+.sheet-blocked {
+  margin: 0.3rem 0 0;
+  font-size: var(--type-xs);
+  line-height: 1.4;
+  color: var(--ink-dim);
 }
 </style>

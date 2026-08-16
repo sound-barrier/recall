@@ -147,6 +147,7 @@ function step(key: string | null): void {
           :summary="summary"
           :can-export="canExport"
           :export-reason="exportReason"
+          :blocked-reason="blockedReason"
           @update-summary="(text: string) => emit('update-summary', text)"
           @change-player="correcting = true"
           @export="emit('export')"

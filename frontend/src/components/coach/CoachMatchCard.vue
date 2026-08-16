@@ -7,6 +7,7 @@ import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/coach
 import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
 import { formatPlayerDay, playerClockDayKey, playerClockTime } from '@/match/coach-time'
 import { formatPlayModeLabel, formatQueueTypeLabel, formatUnknownMapLabel } from '@/match/match-label-helpers'
+import { playerClockOwner } from '@/match/match-time-helpers'
 
 // The desk: one match, in full, as the coach reads it. Everything here
 // is the PLAYER's — her clock (labeled, because the coach is usually in
@@ -26,6 +27,11 @@ const result = computed(() => data.value.result ?? '')
 const resultWord = computed(() => (result.value ? result.value[0]!.toUpperCase() + result.value.slice(1) : 'No result'))
 const RESULT_TINT: Record<string, string> = { victory: 'win', defeat: 'loss', draw: 'draw' }
 const resultTint = computed(() => RESULT_TINT[result.value] ?? 'none')
+
+// One definition of whose clock this is — playerClockNote falls back to
+// "the player" when a bundle named nobody, a state the identity prompt
+// makes reachable.
+const clockOwner = computed(() => playerClockOwner(props.handle))
 
 const whenLabel = computed(() => {
   const day = formatPlayerDay(playerClockDayKey(props.record))
@@ -62,7 +68,7 @@ const annotation = computed(() => props.record.annotation)
 
     <div class="card-meta">
       <div class="meta-cell">
-        <span class="eyebrow">When · {{ handle }}'s clock</span>
+        <span class="eyebrow">When · {{ clockOwner }}'s clock</span>
         <span class="meta-value">{{ whenLabel }}</span>
       </div>
       <div class="meta-cell">

@@ -1,6 +1,7 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
 
 import { useCellSelection } from '@/composables/matches/useCellSelection'
+import type { ClockMode } from '@/match/match-time-helpers'
 import type { MatchRecord } from '@/api-client'
 import type { TableSortCol } from '@/composables/matches/useTableSort'
 
@@ -41,8 +42,10 @@ export function useCellDragSelect(opts: {
   // the app-store error banner, the same place every other clipboard
   // caller reports to.
   onError?: (message: string) => void
+  /** The clock the table paints in — copied cells must match it. */
+  clock?: Ref<ClockMode> | (() => ClockMode)
 }) {
-  const cellSel = useCellSelection(opts.rows, opts.cols, opts.heroRole)
+  const cellSel = useCellSelection(opts.rows, opts.cols, opts.heroRole, opts.clock)
 
   // Resolve the cell under a pointer event — null on interactive
   // children (so their own click still fires) or off-grid.
