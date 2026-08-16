@@ -241,6 +241,17 @@ than a parallel family. `tests/e2e/a11y-theme-snapshot.spec.ts` records the set
 of DISTINCT computed values per family, so a reintroduced one-off shows up as a
 snapshot diff that has to be justified.
 
+**The paper family is a SURFACE, not a palette.** `styles/paper.css` gives the
+coaching session its ink-on-paper look, and `.paper` works by re-mapping
+`--text*`, `--accent-text`, `--win|loss|draw` and `--hairline` to the ink/paper
+tokens **inside itself** — so `.eyebrow`, `.badge`, `.score-num` and
+`MatchRankBlock` render correctly on paper with no parallel rules to keep in
+sync. Put a component on paper by adding `.paper`, never by restyling its type.
+Per-theme differences are token overrides only (`--paper`, `--ink`, …), which is
+what keeps `check-css-theme-leak` green. Two traps already paid for: `--accent`
+is unreadable on paper (use `--paper-accent`), and `--text-mute` drops to 3.98:1
+on Day's darker surfaces — small content text takes `--text-dim`.
+
 **Use the design tokens — stylelint enforces it.**
 `scale-unlimited/declaration-strict-value` fails the build on a literal for any
 `*-color`, `fill`, `stroke`, `font-size`, `border-radius`, or
@@ -296,6 +307,17 @@ State concerns — now owned by the Pinia domain stores (see Architecture) and
 read directly by App.vue + the views; the notes below describe the behavior,
 not the wiring:
 
+- **A view can live OUTSIDE the tablist.** `ViewId = TabId | 'coach'`: the
+  coaching Film Room is a full view that is deliberately not a tab (the tab set
+  belongs to the user's own data, and the room is someone else's). It is reached
+  from the masthead's loan slip, the "back to the film room" affordance, or
+  `g f`. `useTabKeyboardNav` therefore falls back to the focused button when the
+  current view is not in `TAB_ORDER` — don't reintroduce a hardcoded index.
+- **`useWriteGate()` is the one place writes are refused.** `writesLocked =
+  isReadOnly || sessionActive`; every writer calls `guardWrite()` first and every
+  affordance that could start a write disables with `lockReason` in its title.
+  The frontend gate is defense in depth — the server refuses the same writes with
+  a 409 — but a button that stays enabled is still a lie to the user.
 - **Nav** — 4 tabs: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
 - **Matches view layout** — `MatchesView.vue` is a *set workspace*: dossier (active-clause chips + W/L/D + customizable widget grid via `useMatchesDossier` + per-widget config) at top, Campaign Log (heatmap + brushable sparkline via `MatchTimelineHeader`) in the middle, compact `.leaf-row` list below with sort + Y/M/W/D grouping via `useMatchesGroup`. The left-side *"Narrow this set"* panel mirrors `MatchDetailPanel`'s modal contract (focus trap, Esc, backdrop, `inert` + `aria-hidden` on the background container while open) and consolidates every filter dimension into one place — search, date range (preset + custom), map/map-type/hero/role/result/tags, leaver handling, dual min-play thresholds, include-unknown toggle. State lives in `useMatchesNarrow`; the Map + Hero pickers reuse the `FilterCombobox` component (typeahead + selected-pill row + dropdown listbox with role="option" + aria-selected). Hero filter is **broad match** against the primary `data.hero` AND every `data.heroes_played[]` entry.
 
