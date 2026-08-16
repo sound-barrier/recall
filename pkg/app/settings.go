@@ -26,6 +26,18 @@ type Settings struct {
 	// week (existing installs get protection without touching Settings);
 	// -1 = explicit opt-out; positive = literal days.
 	AutoBackupIntervalDays int `json:"auto_backup_interval_days,omitempty"`
+	// CoachName is the name this user signs coaching notes with. It lives
+	// on the server side of the app, not in a browser preference, because
+	// the exported ledger is rendered here and has to carry it.
+	CoachName string `json:"coach_name,omitempty"`
+	// PlayerID is this install's identity as a PLAYER — a UUID minted once
+	// on the first share-with-a-coach export and never rotated, so a
+	// coach's notes follow the player across handle changes.
+	PlayerID string `json:"player_id,omitempty"`
+	// PlayerHandle is the display handle the last share carried. A
+	// returning notes file is matched against it, so one written about
+	// somebody else is flagged instead of silently accepted.
+	PlayerHandle string `json:"player_handle,omitempty"`
 }
 
 // appBaseDir returns the install-wide base directory. Used by the

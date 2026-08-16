@@ -153,13 +153,19 @@ func (a *App) scheduleParseDebounced() {
 	a.watchTimer = time.AfterFunc(watchDebounce, func() {
 		defer applog.RecoverPanic("watch")
 		logger := applog.Subsystem("watch")
-		logger.Info("debounce elapsed, running ParseScreenshots")
-		// ParseScreenshots is synchronous + emits parse-complete itself
-		// on success (runClaimedParse owns that emit for every path), so
-		// the watcher no longer signals completion separately. A busy
-		// slot returns ErrParseInFlight — a logged skip; the debounce
-		// re-fires on the next file event.
-		if err := a.ParseScreenshots(); err != nil {
+		logger.Info("debounce elapsed, running the watched-folder parse")
+		// parseSync is synchronous + emits parse-complete itself on
+		// success (runClaimedParse owns that emit for every path), so the
+		// watcher no longer signals completion separately. A busy slot
+		// returns ErrParseInFlight — a logged skip; the debounce re-fires
+		// on the next file event.
+		//
+		// Deliberately parseSync and NOT ParseScreenshots: the coaching
+		// write gate sits on the user-initiated entry points, and the
+		// watcher is exempt (design rule 1). It only ever ingests the
+		// coach's own screenshots into the coach's own store, invisibly —
+		// the frontend suppresses its announcements in-session instead.
+		if err := a.parseSync(false); err != nil {
 			logger.Error("parse failed", "err", err)
 			return
 		}

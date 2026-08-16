@@ -130,6 +130,12 @@ type SeedTestProfileResponse struct {
 // AlreadySeeded is true. Seeds a transient store at the test profile's db
 // path, never the active store.
 func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
+	// The tour and a coaching session are mutually exclusive (design rule
+	// 4) — seeding is where a replay would start, so it is refused here
+	// rather than half-built and then abandoned.
+	if err := a.assertNoCoachSession(); err != nil {
+		return SeedTestProfileResponse{}, err
+	}
 	if a.profiles == nil {
 		return SeedTestProfileResponse{}, errors.New("profiles: not initialized")
 	}
@@ -289,6 +295,11 @@ func (a *App) activateAndReload(name string) error {
 // toggle setters all save inline, so this is paranoia — but cheap paranoia),
 // stop the watcher, and close + clear the store.
 func (a *App) closeActiveStore() {
+	// A session's notes are rows in the store being closed, so it cannot
+	// survive the swap — profile switch / create / rename END it rather
+	// than leaving it pointed at another profile's coach rows (design
+	// rule 4).
+	a.endCoachSession()
 	a.saveSettingsBestEffort()
 	a.stopWatching()
 	if a.store != nil {

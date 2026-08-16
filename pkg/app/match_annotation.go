@@ -70,36 +70,54 @@ type AnnotationInput struct {
 //   - replay_code is left as-is — Overwatch's format isn't pinned
 //     strongly enough to validate client-side.
 func (a *App) SetMatchAnnotation(in AnnotationInput) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if in.MatchKey == "" {
 		return errors.New("match_key required")
 	}
-	leavers, err := normalizeSides(in.Leavers, ErrInvalidLeaver)
+	anno, err := normalizeAnnotation(in)
 	if err != nil {
 		return err
+	}
+	// All-empty input is rejected — clearing an annotation is the explicit
+	// DeleteMatchAnnotation, not an all-empty upsert.
+	if annotationIsEmpty(anno) {
+		return ErrEmptyAnnotation
+	}
+	if err := a.assertMatchExists(in.MatchKey); err != nil {
+		return err
+	}
+	return a.store.SetAnnotation(anno)
+}
+
+// normalizeAnnotation validates the disruption sides and normalizes every
+// other field into the row the store takes.
+func normalizeAnnotation(in AnnotationInput) (db.Annotation, error) {
+	leavers, err := normalizeSides(in.Leavers, ErrInvalidLeaver)
+	if err != nil {
+		return db.Annotation{}, err
 	}
 	throwers, err := normalizeSides(in.Throwers, ErrInvalidThrower)
 	if err != nil {
-		return err
+		return db.Annotation{}, err
 	}
-	note := strings.TrimSpace(in.Note)
-	replay := strings.TrimSpace(in.ReplayCode)
-	members := normalizeMembers(in.Members)
-	tags := normalizeTags(in.Tags)
-
-	// All-empty input is rejected — clearing an annotation is the explicit
-	// DeleteMatchAnnotation, not an all-empty upsert.
-	if len(leavers) == 0 && len(throwers) == 0 && note == "" && replay == "" && len(members) == 0 && len(tags) == 0 {
-		return ErrEmptyAnnotation
-	}
-	return a.store.SetAnnotation(db.Annotation{
+	return db.Annotation{
 		MatchKey:   in.MatchKey,
 		Leavers:    leavers,
 		Throwers:   throwers,
-		Note:       note,
-		ReplayCode: replay,
-		Members:    members,
-		Tags:       tags,
-	})
+		Note:       strings.TrimSpace(in.Note),
+		ReplayCode: strings.TrimSpace(in.ReplayCode),
+		Members:    normalizeMembers(in.Members),
+		Tags:       normalizeTags(in.Tags),
+	}, nil
+}
+
+// annotationIsEmpty reports whether a normalized annotation carries no
+// content at all — the upsert-only rule's rejection case.
+func annotationIsEmpty(a db.Annotation) bool {
+	return len(a.Leavers) == 0 && len(a.Throwers) == 0 && a.Note == "" &&
+		a.ReplayCode == "" && len(a.Members) == 0 && len(a.Tags) == 0
 }
 
 // normalizeSides trims, drops empties, dedupes, and validates every side
@@ -129,6 +147,9 @@ func normalizeSides(in []string, invalidErr error) ([]string, error) {
 // tags cascade away with it). Idempotent — deleting a match that has no
 // annotation is a no-op, so a stale UI firing twice is safe.
 func (a *App) DeleteMatchAnnotation(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}

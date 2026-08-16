@@ -41,6 +41,9 @@ var ErrAmbiguousNotFound = errors.New("ambiguous screenshot not found")
 // On success, the in-memory aggregate cache (delivered via SSE) is
 // refreshed by re-emitting a match-updated event for resolvedTo.
 func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error {
+	if serr := a.assertNoCoachSession(); serr != nil {
+		return serr
+	}
 	mk, err := match.ParseKey(ambiguousMatchKey)
 	if err != nil || !mk.IsAmbiguous() {
 		return fmt.Errorf("%w: %q", ErrInvalidAmbiguousKey, ambiguousMatchKey)
@@ -62,15 +65,21 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 	if !ok {
 		return ErrAmbiguousNotFound
 	}
-	// Re-aggregate the resolved match so subscribers see the updated
-	// state without needing to re-fetch the full match list.
-	snap, err := a.store.LoadAll()
-	if err == nil {
-		if rec, ok := aggregate.MatchKey(resolvedTo, snap, a.loadSidecars()); ok {
-			a.emitMatchUpdated(rec)
-		}
-	}
+	a.emitResolvedMatch(resolvedTo)
 	return nil
+}
+
+// emitResolvedMatch re-aggregates the just-resolved match and broadcasts
+// it so subscribers see the new state without re-fetching the full list.
+// Best-effort: a read failure costs a refresh, not the resolution.
+func (a *App) emitResolvedMatch(matchKey string) {
+	snap, err := a.store.LoadAll()
+	if err != nil {
+		return
+	}
+	if rec, ok := aggregate.MatchKey(matchKey, snap, a.loadSidecars()); ok {
+		a.emitMatchUpdated(rec)
+	}
 }
 
 // validResolution accepts the picked target if it's one of the

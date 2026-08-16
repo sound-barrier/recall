@@ -12,8 +12,14 @@ import "errors"
 // Idempotent: hiding an already-hidden match refreshes the
 // `hidden_at` timestamp but is otherwise a no-op.
 func (a *App) HideMatch(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
+	}
+	if err := a.assertMatchExists(matchKey); err != nil {
+		return err
 	}
 	return a.store.HideMatch(matchKey)
 }
@@ -21,6 +27,9 @@ func (a *App) HideMatch(matchKey string) error {
 // UnhideMatch removes the soft-delete flag. Idempotent: unhiding a
 // match that wasn't hidden is a no-op.
 func (a *App) UnhideMatch(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}
@@ -30,14 +39,23 @@ func (a *App) UnhideMatch(matchKey string) error {
 // PinMatch stars a match — the list renders pinned matches in a
 // leading section above the date groups. Idempotent.
 func (a *App) PinMatch(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
+	}
+	if err := a.assertMatchExists(matchKey); err != nil {
+		return err
 	}
 	return a.store.PinMatch(matchKey)
 }
 
 // UnpinMatch removes the star. Idempotent.
 func (a *App) UnpinMatch(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}
@@ -49,6 +67,9 @@ func (a *App) UnpinMatch(matchKey string) error {
 // already moved the match to the archive and explicitly confirmed.
 // Idempotent: unknown keys complete with no error.
 func (a *App) HardDeleteMatch(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}

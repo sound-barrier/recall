@@ -105,3 +105,38 @@ func TestApp_TestProfileRejectsMutations(t *testing.T) {
 		t.Error("ClearDatabase should be allowed on the read-only sample (it's a removal, not an import)")
 	}
 }
+
+// A coach's notes archive rides the same Import… affordance as a bundle,
+// but it imports no MATCHES — it stages decisions the user then makes one
+// at a time. So it is allowed on the read-only sample profile where a
+// bundle is not.
+func TestApp_TestProfileAllowsCoachNotesButNotABundle(t *testing.T) {
+	notes := notesArchive(t)
+	isolateInstall(t)
+
+	a := app.NewWithStore(&fakeStore{})
+	a.Startup(context.Background())
+	mustNoErr(t, playerCorpus(app.Store(a)))
+	if _, err := a.SeedTestProfile(); err != nil {
+		t.Fatalf("SeedTestProfile: %v", err)
+	}
+	if err := a.SwitchProfile("test"); err != nil {
+		t.Fatalf("SwitchProfile(test): %v", err)
+	}
+	// SwitchProfile swapped in the seeded profile's real store; put the
+	// fixture history back so the archive has matches to land on.
+	fake := &fakeStore{}
+	app.SetStore(a, fake)
+	mustNoErr(t, playerCorpus(fake))
+
+	if _, err := a.ImportMatches(plainBundle(t)); !errors.Is(err, app.ErrProfileImmutable) {
+		t.Errorf("bundle import on the read-only sample = %v, want ErrProfileImmutable", err)
+	}
+	outcome, err := a.ImportMatches(notes)
+	if err != nil {
+		t.Fatalf("coach notes import on the read-only sample: %v", err)
+	}
+	if outcome.Kind != app.ImportKindCoachNotes || outcome.Return == nil {
+		t.Errorf("outcome = %+v, want a staged coach_notes return", outcome)
+	}
+}

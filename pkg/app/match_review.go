@@ -22,11 +22,17 @@ var ErrInvalidReviewedBy = errors.New("invalid reviewed_by: must be 'self' or 'c
 //
 // Use ClearMatchReview to revert to the "not reviewed" state.
 func (a *App) SetMatchReview(matchKey, reviewedBy string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}
 	if !validReviewers[reviewedBy] {
 		return ErrInvalidReviewedBy
+	}
+	if err := a.assertMatchExists(matchKey); err != nil {
+		return err
 	}
 	return a.store.SetReview(matchKey, reviewedBy)
 }
@@ -34,6 +40,9 @@ func (a *App) SetMatchReview(matchKey, reviewedBy string) error {
 // ClearMatchReview removes the review-status tag. Idempotent —
 // clearing an unreviewed match is a no-op.
 func (a *App) ClearMatchReview(matchKey string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if matchKey == "" {
 		return errors.New("match_key required")
 	}

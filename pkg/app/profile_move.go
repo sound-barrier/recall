@@ -16,6 +16,9 @@ import (
 // contract); this shell method owns the request validation and the
 // target store's lifecycle.
 func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
 	if a.profiles == nil {
 		return errors.New("profiles: not initialized")
 	}

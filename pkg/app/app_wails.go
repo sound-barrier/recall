@@ -61,6 +61,16 @@ func (a *App) emitTesseractStatus(s TesseractStatus) {
 	a.SSEHub.BroadcastData("tesseract-status", string(data))
 }
 
+// emitCoachSessionChanged tells every surface that a coaching session
+// opened or ended, so a second window (or a second browser tab in
+// --server mode) flips its write gate without polling.
+func (a *App) emitCoachSessionChanged(active bool) {
+	ev := CoachSessionChangedEvent{Active: active}
+	data, _ := json.Marshal(ev)
+	emitEvent("coach-session-changed", ev)
+	a.SSEHub.BroadcastData("coach-session-changed", string(data))
+}
+
 // emitParseComplete notifies the Wails frontend that a parse run finished.
 // Gated by the !serveronly build tag so the v3 application import is absent
 // from server-only binaries.
@@ -260,13 +270,15 @@ func (a *App) LoadRestoreFromFile() (string, error) {
 	return path, nil
 }
 
-// LoadMatchImportFromFile opens a native open dialog, reads the chosen bundle
-// `.zip`, and merges it via ImportMatches. Returns the path + the merge counts;
-// Path is "" if the user canceled. Additive — never replaces existing data.
+// LoadMatchImportFromFile opens a native open dialog, reads the chosen
+// `.zip`, and hands it to ImportMatches — which decides for itself whether
+// it is a bundle to merge or a coach's notes to stage. Returns the path +
+// the outcome; Path is "" if the user canceled. Additive — never replaces
+// existing data.
 func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
 	path, err := application.Get().Dialog.OpenFile().
-		SetTitle("Import Recall matches").
-		AddFilter("Recall bundle (ZIP)", "*.zip").
+		SetTitle("Import matches or coach's notes").
+		AddFilter("Recall bundle or notes (ZIP)", "*.zip").
 		AddFilter("All files", "*").
 		PromptForSingleSelection()
 	if err != nil {
@@ -279,11 +291,65 @@ func (a *App) LoadMatchImportFromFile() (MatchImportResult, error) {
 	if err != nil {
 		return MatchImportResult{}, fmt.Errorf("read import: %w", err)
 	}
-	summary, err := a.ImportMatches(data)
+	outcome, err := a.ImportMatches(data)
 	if err != nil {
 		return MatchImportResult{}, err
 	}
-	return MatchImportResult{Path: path, Imported: summary.Imported, Skipped: summary.Skipped}, nil
+	return MatchImportResult{Path: path, ImportOutcome: outcome}, nil
+}
+
+// LoadCoachBundleFromFile opens a native open dialog, reads the chosen
+// player bundle, and opens it as a coaching session. Returns the path read
+// plus the session view; Path is "" and Session nil if the user canceled.
+func (a *App) LoadCoachBundleFromFile() (CoachSessionResult, error) {
+	path, err := application.Get().Dialog.OpenFile().
+		SetTitle("Open a player's bundle").
+		AddFilter("Recall bundle (ZIP)", "*.zip").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
+	if err != nil {
+		return CoachSessionResult{}, err
+	}
+	if path == "" {
+		return CoachSessionResult{}, nil
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path returned by native dialog
+	if err != nil {
+		return CoachSessionResult{}, fmt.Errorf("read coach bundle: %w", err)
+	}
+	view, err := a.OpenCoachSession(data)
+	if err != nil {
+		return CoachSessionResult{}, err
+	}
+	return CoachSessionResult{Path: path, Session: &view}, nil
+}
+
+// SaveCoachNotesToFile writes the session's notes archive to a
+// user-chosen path. The export runs FIRST so the dialog can default to the
+// archive's own name — and so a missing coach name or an empty session is
+// reported before the user picks a destination. Returns the path on
+// success, "" + nil on cancel.
+func (a *App) SaveCoachNotesToFile() (string, error) {
+	defaultName, payload, err := a.ExportCoachNotes()
+	if err != nil {
+		return "", err
+	}
+	path, err := application.Get().Dialog.SaveFile().
+		SetMessage("Save notes for the player").
+		SetFilename(defaultName).
+		AddFilter("Recall coach notes (ZIP)", "*.zip").
+		AddFilter("All files", "*").
+		PromptForSingleSelection()
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	if err := os.WriteFile(path, payload, 0o600); err != nil {
+		return "", fmt.Errorf("write coach notes: %w", err)
+	}
+	return path, nil
 }
 
 // PickScreenshotsDir opens a native directory chooser and persists the

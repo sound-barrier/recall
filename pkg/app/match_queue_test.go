@@ -13,6 +13,7 @@ import (
 func TestSetMatchQueue_PersistsValidValue(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1", "m2")
 	if err := a.SetMatchQueue("m1", "role"); err != nil {
 		t.Fatalf("SetMatchQueue role: %v", err)
 	}
@@ -39,6 +40,7 @@ func TestSetMatchQueue_RejectsInvalidValue(t *testing.T) {
 func TestBulkSetMatchQueue_WritesEveryKey(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1", "m2", "m3")
 	if err := a.BulkSetMatchQueue([]string{"m1", "m2", "m3"}, "role"); err != nil {
 		t.Fatalf("bulk set: %v", err)
 	}
@@ -53,6 +55,7 @@ func TestBulkSetMatchQueue_WritesEveryKey(t *testing.T) {
 func TestBulkSetMatchQueue_EmptyValueClearsRows(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1", "m2", "m3")
 	_ = a.SetMatchQueue("m1", "role")
 	_ = a.SetMatchQueue("m2", "open")
 	_ = a.SetMatchQueue("m3", "role")
@@ -97,6 +100,7 @@ func TestBulkSetMatchQueue_EmptyKeysIsNoOp(t *testing.T) {
 func TestSetMatchQueue_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
 	a := app.NewWithStore(fs)
+	seedMatchKeys(fs, "m1")
 	if err := a.SetMatchQueue("m1", "role"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
