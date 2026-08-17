@@ -16,6 +16,7 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/cmd"
 	"recall/pkg/matchedit"
+	"recall/pkg/snapshot"
 )
 
 // The sentinel ladder — the regression net for carving pkg/app apart.
@@ -234,6 +235,12 @@ func TestSentinelLadder_LeafSentinelsAreTheSameValue(t *testing.T) {
 		{"ErrInvalidPlayedAt", app.ErrInvalidPlayedAt, matchedit.ErrInvalidPlayedAt},
 		{"ErrInvalidRank", app.ErrInvalidRank, matchedit.ErrInvalidRank},
 		{"ErrMatchKeyExists", app.ErrMatchKeyExists, matchedit.ErrMatchKeyExists},
+		{"ErrRestoreInvalid", app.ErrRestoreInvalid, snapshot.ErrRestoreInvalid},
+		// The one carved sentinel whose alias is spelled differently from its
+		// leaf: pkg/cmd keeps naming ErrInvalidBackupInterval, and inside a
+		// package called snapshot the "Backup" half was stutter. A rename on
+		// one side only is exactly the mistake this row catches.
+		{"ErrInvalidBackupInterval", app.ErrInvalidBackupInterval, snapshot.ErrInvalidInterval},
 	}
 
 	for _, c := range carved {

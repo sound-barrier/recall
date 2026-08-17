@@ -1,15 +1,20 @@
 package app_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"recall/pkg/app"
 )
 
-func TestCheckState_RoundTrip(t *testing.T) {
+// The install-root half of the check-state and manifest files. Both
+// stores live in leaf packages that take a baseDir, and their file
+// semantics — missing, corrupt, unreadable — are pinned there. What
+// stays here is the resolution: that <RECALL_DATA_DIR> is what the shell
+// hands them, install-global rather than per-profile, so a profile switch
+// cannot reset the "haven't checked in a while" banner.
+
+func TestCheckState_RoundTripUnderTheInstallRoot(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	want := time.Date(2026, 6, 8, 14, 32, 11, 0, time.UTC)
@@ -23,34 +28,6 @@ func TestCheckState_RoundTrip(t *testing.T) {
 	}
 	if !got.LastCheckedAt.Equal(want) {
 		t.Errorf("LastCheckedAt: got %v, want %v", got.LastCheckedAt, want)
-	}
-}
-
-func TestCheckState_MissingFileReturnsZero(t *testing.T) {
-	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-
-	s, err := app.LoadCheckState()
-	if err != nil {
-		t.Fatalf("LoadCheckState: want nil err for missing file, got %v", err)
-	}
-	if !s.LastCheckedAt.IsZero() {
-		t.Errorf("LastCheckedAt: want zero for missing file, got %v", s.LastCheckedAt)
-	}
-}
-
-func TestCheckState_CorruptFileReturnsZero(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("RECALL_DATA_DIR", dir)
-	if err := os.WriteFile(filepath.Join(dir, "check_state.json"), []byte("@@@not json"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	s, err := app.LoadCheckState()
-	if err != nil {
-		t.Fatalf("LoadCheckState: want nil err for corrupt file, got %v", err)
-	}
-	if !s.LastCheckedAt.IsZero() {
-		t.Errorf("LastCheckedAt: want zero for corrupt file, got %v", s.LastCheckedAt)
 	}
 }
 
@@ -95,7 +72,7 @@ func TestDataManifest_MissingFileReturnsZero(t *testing.T) {
 	}
 }
 
-func TestTouchLastChecked_WritesNow(t *testing.T) {
+func TestTouchLastChecked_WritesUnderTheInstallRoot(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	now := time.Date(2026, 6, 8, 14, 0, 0, 0, time.UTC)
