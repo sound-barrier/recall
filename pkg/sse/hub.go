@@ -27,21 +27,46 @@ func NewHub() *Hub {
 	return &Hub{clients: make(map[chan Msg]struct{})}
 }
 
-// Subscribe registers a client and returns the buffered channel its
-// events arrive on. The caller must Unsubscribe when it disconnects.
+// Subscribe registers a client and returns the buffered channel its events
+// arrive on. The caller must Unsubscribe when it disconnects.
+//
+// NOT nil-receiver safe, deliberately, unlike Broadcast and BroadcastData.
+// That asymmetry is load-bearing: pkg/cmd excludes the SSE route from the
+// desktop mux precisely because Subscribe would panic there, and a panic is
+// the loud failure that keeps it excluded. Returning a nil channel instead
+// would be worse — a receive on a nil channel blocks forever, which is the
+// goroutine leak the exclusion exists to prevent.
+//
+// The zero value is usable: exporting Hub made &sse.Hub{} constructible from
+// anywhere, and a zero Hub's map is nil, so this used to panic with
+// "assignment to entry in nil map" for any caller who did not know NewHub was
+// the only valid constructor. A leaf package cannot rely on that knowledge.
 func (h *Hub) Subscribe() chan Msg {
 	ch := make(chan Msg, 16)
 	h.mu.Lock()
+	if h.clients == nil {
+		h.clients = make(map[chan Msg]struct{})
+	}
 	h.clients[ch] = struct{}{}
 	h.mu.Unlock()
 	return ch
 }
 
 // Unsubscribe deregisters a client and closes its channel.
+//
+// Idempotent: a second call is a no-op rather than a close-of-closed panic.
+// The registry membership check under the lock is what makes that safe — only
+// the call that actually removes the channel closes it. Production has one
+// caller with a single defer, but "safe because the only caller is careful"
+// is not a property worth exporting.
 func (h *Hub) Unsubscribe(ch chan Msg) {
 	h.mu.Lock()
+	_, registered := h.clients[ch]
 	delete(h.clients, ch)
 	h.mu.Unlock()
+	if !registered {
+		return
+	}
 	close(ch)
 }
 

@@ -12,6 +12,7 @@
 package matchedit
 
 import (
+	"errors"
 	"fmt"
 
 	"recall/pkg/db"
@@ -32,6 +33,15 @@ import (
 
 // AssertMatchExists reports match.ErrMatchNotFound when matchKey names no
 // match in this database. The HTTP layer maps that sentinel to 404.
+// ErrMatchKeyRequired is returned by every writer handed an empty match key.
+// It is a sentinel rather than a bare errors.New because the HTTP layer maps
+// it to 400: an empty key is a malformed request, and an unmapped error falls
+// through writeError's ladder to 500, which reads as "we broke" instead of
+// "you sent nothing". The per-match routes cannot reach it — matchKeyFromPath
+// rejects an empty path value first — but the Wails desktop bindings call
+// these methods directly with no such guard.
+var ErrMatchKeyRequired = errors.New("match_key required")
+
 func AssertMatchExists(s db.Store, matchKey string) error {
 	exists, err := s.MatchKeyExists(matchKey)
 	if err != nil {

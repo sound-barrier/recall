@@ -142,6 +142,11 @@ var defaultProblems = []errStatus{
 	{db.ErrMatchCoachNoteUnknown, probNotFound},
 
 	// 400 — the request body doesn't hold up.
+	// An empty match key is malformed input, not a server fault. The
+	// per-match routes never reach it (matchKeyFromPath rejects an empty
+	// path value first), but the Wails desktop bindings call the same App
+	// methods with no such guard — and unmapped, this fell through to 500.
+	{app.ErrMatchKeyRequired, probInvalidBody},
 	{coach.ErrNoteInvalid, probInvalidBody},
 	{coach.ErrHandleInvalid, probInvalidBody},
 	{coach.ErrNotesMalformed, probInvalidBody},

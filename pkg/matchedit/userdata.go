@@ -9,8 +9,6 @@ import (
 )
 
 var (
-	// ErrMatchKeyRequired is returned when a match_key path param is empty.
-	ErrMatchKeyRequired = errors.New("match_key required")
 	// ErrStatOutOfRange maps to 400 — an overridden numeric stat falls outside
 	// the bounds api/openapi.yaml documents for the MatchResult response, which
 	// the override layer echoes back verbatim.

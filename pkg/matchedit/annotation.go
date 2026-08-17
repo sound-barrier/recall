@@ -71,7 +71,7 @@ type AnnotationInput struct {
 //     strongly enough to validate client-side.
 func SetAnnotation(s db.Store, in AnnotationInput) error {
 	if in.MatchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	anno, err := normalizeAnnotation(in)
 	if err != nil {
@@ -93,7 +93,7 @@ func SetAnnotation(s db.Store, in AnnotationInput) error {
 // annotation is a no-op, so a stale UI firing twice is safe.
 func DeleteAnnotation(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	return s.DeleteAnnotation(matchKey)
 }

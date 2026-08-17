@@ -32,7 +32,7 @@ func IsValidQueueType(queueType string) bool { return validQueueTypes[queueType]
 // Use ClearQueue to revert to the "queue not set" state.
 func SetQueue(s db.Store, matchKey, queueType string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	if !validQueueTypes[queueType] {
 		return ErrInvalidQueueType
@@ -47,7 +47,7 @@ func SetQueue(s db.Store, matchKey, queueType string) error {
 // unset match is a no-op.
 func ClearQueue(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	return s.ClearMatchQueue(matchKey)
 }
