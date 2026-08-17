@@ -29,14 +29,21 @@ const ow = useOWData()
     </div>
     <div class="rank-line">
       <span class="rank-tier" :class="record.data.rank">{{ record.data.rank }} {{ record.data.level }}</span>
-      <span v-if="record.data.rank_progress" class="rank-progress">{{ record.data.rank_progress }}% progress</span>
-      <span v-if="record.data.change_percent" class="rank-change">+{{ record.data.change_percent }}%</span>
+      <!-- `!= null`, not truthiness, on both: 0 is a real reading. 0% progress
+           is the bottom of a division and a 0 change is "this match moved the
+           rank by nothing" — hiding either claims the screenshot never reported
+           it. The sign comes from the VALUE: change_percent went signed when
+           the parser learned to read demotions, and a hardcoded '+' rendered
+           "+-32%" on the seven captures that carry a negative. Same shape as
+           the SR delta below. -->
+      <span v-if="record.data.rank_progress != null" class="rank-progress">{{ record.data.rank_progress }}% progress</span>
+      <span v-if="record.data.change_percent != null" class="rank-change">{{ record.data.change_percent >= 0 ? '+' : '' }}{{ record.data.change_percent }}%</span>
       <span v-for="m in record.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
     </div>
     <!-- Season-4 population share. `!= null` rather than a truthiness test:
          0 is a real reading ("above nobody"), and `v-if="…rank_percentile"`
-         would silently hide it — the bug the sibling progress/change lines
-         above still carry. Absent stays absent: a placement screen reports no
+         would silently hide it — the rule the progress/change lines above now
+         follow too. Absent stays absent: a placement screen reports no
          percentile, and printing 0% there would state something false rather
          than nothing. The wording is carried in the text because "57%" beside
          "67% progress" is two bare percentages the reader has to tell apart. -->
