@@ -14,12 +14,15 @@ import (
 //
 // Every band string below is VERBATIM OCR harvested via RECALL_DEBUG_DIR from
 // the season-4 captures, garble included, not an idealized sample.
-func TestExtractRankPercentile(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		band string
-		want int // -1 means "expect nil"
-	}{
+type percentileCase struct {
+	name string
+	band string
+	want int // -1 means "expect nil"
+}
+
+// Every band is VERBATIM OCR from a real capture, garble included.
+func percentileCases() []percentileCase {
+	return []percentileCase{
 		{
 			name: "reads the caption, not the progress percentage on the same row",
 			band: "a) | \\ 2) pe\n\nPLATINUM 2\n\n\\y fi} RANK PROGRESS: 67%\n\nHIGHER RANKED THAN 57% ¢",
@@ -57,13 +60,26 @@ func TestExtractRankPercentile(t *testing.T) {
 			want: -1,
 		},
 		{
+			// The band is multi-line and "RANK PROGRESS: 67%" is the line
+			// ABOVE the caption. If the caption's own number is ever clipped
+			// away, the match must not walk to the next line and store the
+			// progress value as the percentile.
+			name: "does not jump to the next OCR line for its number",
+			band: "PLATINUM 2\n\nHIGHER RANKED THAN\n67%\nOF PLAYERS",
+			want: -1,
+		},
+		{
 			// Guard the sanity bound: a garbled read must not store a number
 			// that cannot be a percentage.
 			name: "out-of-range value is rejected rather than stored",
 			band: "HIGHER RANKED THAN 570% OF PLAYERS",
 			want: -1,
 		},
-	} {
+	}
+}
+
+func TestExtractRankPercentile(t *testing.T) {
+	for _, tc := range percentileCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			got := parser.ExtractRankPercentile(tc.band)
 			if tc.want < 0 {

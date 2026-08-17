@@ -373,6 +373,19 @@ func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(
 	if ud.Hero != nil {
 		d.HeroRaw = ""
 	}
+	// The percentile was MEASURED against the rank the screenshot showed, so
+	// correcting that rank invalidates it — the same reason a map override
+	// clears MapRaw above. Leaving it would print "diamond 5 · higher ranked
+	// than 57% of players" using a number read off a platinum 2 screen, and
+	// the user has no way to see where the 57% came from.
+	//
+	// Cleared rather than recomputed: there is no published distribution to
+	// recompute it from. That absence is exactly why the old Elo population
+	// card was deleted, and inventing a replacement here would be worse than
+	// showing nothing.
+	if ud.Rank != nil || ud.Level != nil {
+		d.RankPercentile = nil
+	}
 }
 
 // userHeroesToPlays converts the user's heroes-played LIST override into the

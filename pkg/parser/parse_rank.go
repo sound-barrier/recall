@@ -177,7 +177,12 @@ var (
 	// clips at the crop's right edge ("HIGHER RANKED THAN 57% ¢") and OCR
 	// wobbles on the surrounding glyphs, but the two words either side of the
 	// number are what make the match unambiguous.
-	rankPercentileRe = regexp.MustCompile(`(?i)HIGHER\s+RANKED\s+THAN\s+(\d{1,3})\s*%`)
+	//
+	// [ \t] rather than \s, deliberately: \s matches a newline, so if the
+	// caption's own number were ever clipped away the match would jump to the
+	// NEXT OCR line and store whatever percentage began it — and the line
+	// above this one in the band is "RANK PROGRESS: 67%".
+	rankPercentileRe = regexp.MustCompile(`(?i)HIGHER[ \t]+RANKED[ \t]+THAN[ \t]+(\d{1,3})[ \t]*%`)
 )
 
 // extractRankPercentile reads the season-4 "HIGHER RANKED THAN 57% OF PLAYERS"

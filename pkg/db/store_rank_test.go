@@ -7,31 +7,39 @@ import (
 	"recall/pkg/db"
 )
 
-// The rank_modifiers.modifier CHECK constrains the column to the OW2 modifier
-// vocabulary, so a parser bug writing an unknown modifier fails loudly instead
-// of persisting silently. Mirrors the queue_type / play_mode enum-CHECK tests.
-func TestSQLStore_RankModifiers_CheckConstraintRejectsBadValue(t *testing.T) {
+// The rank_modifiers.modifier CHECK still constrains the column, so a value
+// outside the vocabulary never reaches the table. What CHANGED is the cost of
+// hitting it: the write no longer takes the rank row down with it.
+//
+// The vocabulary is loaded from modifiers.yaml at RUNTIME (owdata.go's
+// user-override path), while a table's CHECK is frozen in its DDL when the
+// table is created and SQLite cannot widen one afterwards. So the parser
+// emitting something this database will not accept is a reachable state, not
+// a hypothetical — and it used to discard tier, division, progress and SR
+// along with the pill, silently, because pkg/app clears the failed-files
+// ledger entry before the write runs.
+func TestSQLStore_RankModifiers_UnknownValueCostsThePillNotTheRow(t *testing.T) {
 	s := openMemory(t)
 
-	// A known modifier inserts fine.
 	if err := s.UpsertRank(db.RankRow{
-		Filename: "ok.png", MatchKey: "k1",
-		Modifiers: []string{"demotion protection"},
+		Filename: "r.png", MatchKey: "k1", Rank: "platinum", Level: 2, RankProgress: 67,
+		Modifiers: []string{"demotion protection", "unranked yolo"},
+		SR:        []db.HeroSR{{Hero: "juno", SR: 2065}},
 	}); err != nil {
-		t.Fatalf("valid modifier should insert: %v", err)
+		t.Fatalf("UpsertRank = %v, want the row stored without the unknown modifier", err)
 	}
 
-	// An unknown modifier trips the CHECK.
-	err := s.UpsertRank(db.RankRow{
-		Filename: "bad.png", MatchKey: "k2",
-		Modifiers: []string{"unranked yolo"},
-	})
-	if err == nil {
-		t.Fatal("expected CHECK constraint violation for unknown modifier, got nil")
+	got := loadOneRank(t, s)
+	if got.Rank != "platinum" || got.Level != 2 || got.RankProgress != 67 {
+		t.Errorf("rank = %q %d @%d%%, want platinum 2 @67%%", got.Rank, got.Level, got.RankProgress)
 	}
-	if !strings.Contains(strings.ToLower(err.Error()), "check") &&
-		!strings.Contains(strings.ToLower(err.Error()), "constraint") {
-		t.Errorf("error should mention CHECK/constraint, got %v", err)
+	if len(got.SR) != 1 || got.SR[0].SR != 2065 {
+		t.Errorf("sr = %+v, want juno at 2065", got.SR)
+	}
+	// The known one is stored; the unknown one is dropped, not stored raw —
+	// the CHECK is still the gate on what the column may hold.
+	if len(got.Modifiers) != 1 || got.Modifiers[0] != "demotion protection" {
+		t.Errorf("modifiers = %v, want only [demotion protection]", got.Modifiers)
 	}
 }
 
