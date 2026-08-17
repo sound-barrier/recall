@@ -1,0 +1,206 @@
+/**
+ * Hand-entering a match (no OCR) — the no-Tesseract persona.
+ *
+ * Starting from an EMPTY match list, the toolbar's "Add match" button opens
+ * the modal; the map + hero pickers are the Filter-matches FilterCombobox
+ * (searchable, lowercase), the rest are chip toggles. Saving POSTs
+ * ManualMatchInput to /api/v1/matches (201), the app reloads, and the new
+ * match appears with the Manual badge.
+ *
+ * Drives api.ts ↔ POST /api/v1/matches ↔ Go ↔ store ↔ aggregate.
+ */
+import { routeCapture } from '../_capture'
+import { test, expect } from '../_fixtures'
+import type { Route } from '@playwright/test'
+
+// The combobox options come from useOWData; the picked VALUES are the
+// normalized lowercase forms (mapIndex / heroIndex keys), so "Ilios" → "ilios".
+const refData = {
+  heroes_by_role: { tank: ['Reinhardt'], damage: ['Tracer'], support: ['Ana'] },
+  maps_by_game_mode: { control: ['Ilios'], hybrid: ["King's Row"] },
+}
+
+function manualRecord(body: { map?: string; heroes?: string[]; result?: string; play_mode?: string; queue_type?: string }) {
+  return {
+    match_key: 'match-2026-06-15T14-30-00',
+    source_files: [],
+    source: 'manual',
+    edited_fields: [],
+    data: {
+      map: body.map ?? '',
+      hero: body.heroes?.[0] ?? '',
+      result: body.result ?? '',
+      heroes_played: (body.heroes ?? []).map((h, i) => ({ hero: h, percent_played: i === 0 ? 100 : 0 })),
+    },
+    play_mode: body.play_mode,
+    queue_type: body.queue_type,
+  }
+}
+
+test('Add match → fill → save → the match appears with the Manual badge', async ({ page }) => {
+  const postBody = routeCapture<string>('manual-match POST body')
+  const created: unknown[] = []
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }),
+  )
+  await page.route('**/api/v1/matches', async (route: Route) => {
+    const req = route.request()
+    if (req.method() === 'POST') {
+      postBody.set(req.postData() ?? '{}')
+      const rec = manualRecord(JSON.parse(postBody.get()))
+      created.push(rec)
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(rec) })
+    } else {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(created) })
+    }
+  })
+
+  await page.goto('/')
+  await page.getByRole('tab', { name: /^Matches/ }).click()
+
+  await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
+  await expect(page.locator('.mm-modal')).toBeVisible()
+
+  // Esc inside a text field deselects it — it must NOT tear down the modal.
+  await page.locator('[data-combo-id="mm-map"] .combo-input').click()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.mm-modal')).toBeVisible()
+
+  // Toggles first, while no dropdown is open to overlap them.
+  await page.locator('[data-mode="competitive"]').click()
+  await page.locator('[data-queue="role"]').click()
+  // Role queue is single-role: a role is required and constrains the hero
+  // list. Ana is a support, so pick support to surface her.
+  await page.locator('[data-role="support"]').click()
+  await page.locator('[data-result="victory"]').click()
+  await page.locator('[data-leaver="team"]').click()
+
+  // Map — single-select: typing auto-highlights the first match, so Enter
+  // fills it straight away (no Tab needed); the single-select picker then
+  // auto-closes.
+  const mapCombo = page.locator('[data-combo-id="mm-map"]')
+  await mapCombo.locator('.combo-input').click()
+  await mapCombo.locator('.combo-input').fill('ili')
+  await page.keyboard.press('Enter')
+  await expect(mapCombo.locator('.combo-pill')).toContainText('ilios')
+
+  // Hero — same picker; first selected is the primary.
+  const heroCombo = page.locator('[data-combo-id="mm-hero"]')
+  await heroCombo.locator('.combo-input').click()
+  await heroCombo.getByRole('option', { name: 'ana' }).click()
+  await expect(heroCombo.locator('.combo-pill')).toContainText('ana')
+  await page.locator('#mm-title').click()
+
+  // Optional annotation fields — replay code, a note, a tag chip, and a group
+  // member chip (type + Enter adds each chip).
+  await page.locator('#mm-replay').fill('A1B2C3')
+  await page.locator('#mm-note').fill('great comeback')
+  await page.locator('[data-mm-tag-input]').fill('clutch')
+  await page.locator('[data-mm-tag-input]').press('Enter')
+  await expect(page.locator('[data-mm-tag]')).toContainText('clutch')
+  await page.locator('[data-mm-member-input]').fill('Apollo#11234')
+  await page.locator('[data-mm-member-input]').press('Enter')
+  await expect(page.locator('[data-mm-member]')).toContainText('Apollo#11234')
+
+  await page.locator('[data-mm-submit]').click()
+
+  await expect.poll(() => postBody.seen()).toBe(true)
+  const parsed = JSON.parse(postBody.get()) as {
+    map: string; play_mode: string; queue_type: string; heroes: string[]; result: string; leavers: string[]
+    replay_code: string; note: string; tags: string[]; members: string[]
+  }
+  expect(parsed.map).toBe('ilios')
+  expect(parsed.play_mode).toBe('competitive')
+  expect(parsed.queue_type).toBe('role')
+  expect(parsed.heroes).toEqual(['ana'])
+  expect(parsed.result).toBe('victory')
+  expect(parsed.leavers).toEqual(['team'])
+  expect(parsed.replay_code).toBe('A1B2C3')
+  expect(parsed.note).toBe('great comeback')
+  expect(parsed.tags).toEqual(['clutch'])
+  expect(parsed.members).toEqual(['Apollo#11234'])
+
+  // The created manual match surfaces with the Manual provenance badge.
+  await expect(page.locator('.prov-manual').first()).toBeVisible()
+})
+
+test('role queue requires a single role and constrains the hero list', async ({ page }) => {
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }),
+  )
+  await page.route('**/api/v1/matches', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }),
+  )
+
+  await page.goto('/')
+  await page.getByRole('tab', { name: /^Matches/ }).click()
+  await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
+  await expect(page.locator('.mm-modal')).toBeVisible()
+
+  // Role queue → role is now a required field, surfaced in the footer hint.
+  await page.locator('[data-mode="competitive"]').click()
+  await page.locator('[data-queue="role"]').click()
+  await expect(page.locator('.mm-foot-status')).toContainText('role')
+
+  // Before a role is picked there are no selectable heroes — no cross-role
+  // mixing — and the picker nudges the user to choose a role first.
+  const heroCombo = page.locator('[data-combo-id="mm-hero"]')
+  await heroCombo.locator('.combo-input').click()
+  await expect(heroCombo.locator('.combo-list li[role="option"]')).toHaveCount(0)
+  await expect(heroCombo.locator('.combo-empty')).toContainText(/pick a role/i)
+
+  // Pick the tank role → only the tank (Reinhardt) is offered; the support
+  // (Ana) and damage (Tracer) heroes are filtered out entirely.
+  await page.locator('[data-role="tank"]').click()
+  await heroCombo.locator('.combo-input').click()
+  await expect(heroCombo.locator('.combo-list li[role="option"]')).toHaveCount(1)
+  await expect(heroCombo.locator('.combo-list li[role="option"]')).toContainText('reinhardt')
+
+  // Selecting reinhardt, then switching the role to support, drops the
+  // now-illegal tank pick — the selection can never span two roles.
+  await heroCombo.getByRole('option', { name: 'reinhardt' }).click()
+  await expect(heroCombo.locator('.combo-pill')).toContainText('reinhardt')
+  await page.locator('[data-role="support"]').click()
+  await expect(heroCombo.locator('.combo-pill')).toHaveCount(0)
+})
+
+test('an out-of-range rank progress blocks submit with an inline error', async ({ page }) => {
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }))
+  await page.route('**/api/v1/matches', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }))
+
+  await page.goto('/')
+  await page.getByRole('tab', { name: /^Matches/ }).click()
+  await page.locator('[data-add-match]').click()
+  await page.locator('[data-add-match-full]').click()
+  await expect(page.locator('.mm-modal')).toBeVisible()
+
+  await page.locator('[data-mode="competitive"]').click()
+  await page.locator('[data-queue="role"]').click()
+  await page.locator('[data-role="support"]').click()
+  await page.locator('[data-result="victory"]').click()
+  const mapCombo = page.locator('[data-combo-id="mm-map"]')
+  await mapCombo.locator('.combo-input').click()
+  await mapCombo.locator('.combo-input').fill('ili')
+  await page.keyboard.press('Enter')
+  await expect(mapCombo.locator('.combo-pill')).toContainText('ilios')
+  const heroCombo = page.locator('[data-combo-id="mm-hero"]')
+  await heroCombo.locator('.combo-input').click()
+  await heroCombo.getByRole('option', { name: 'ana' }).click()
+  await page.locator('#mm-title').click()
+  await expect(page.locator('[data-mm-submit]')).toBeEnabled()
+
+  // Pick a tier so rank is sent, then push progress out of range.
+  await page.locator('.mm-sublabel').filter({ hasText: 'Tier' }).locator('select').selectOption('Platinum')
+  const progress = page.locator('.mm-sublabel').filter({ hasText: 'Progress' }).locator('input')
+  await progress.fill('150')
+  await expect(page.locator('.mm-rank-error')).toBeVisible()
+  await expect(page.locator('[data-mm-submit]')).toBeDisabled()
+
+  await progress.fill('50')
+  await expect(page.locator('.mm-rank-error')).toBeHidden()
+  await expect(page.locator('[data-mm-submit]')).toBeEnabled()
+})

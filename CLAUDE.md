@@ -164,7 +164,7 @@ without agreement on direction.
 
 - **Accessibility is enforced, not aspirational.**
   `eslint-plugin-vuejs-accessibility` runs in `task lint`; the axe e2e suite
-  (`frontend/tests/e2e/a11y.spec.ts`) fails `task test-e2e` on any WCAG 2.1
+  (`frontend/tests/e2e/a11y/a11y.spec.ts`) fails `task test-e2e` on any WCAG 2.1
   A/AA violation across every theme × view combination. Keep both green:
   label every control, clear AA contrast on every surface AND on a token's
   own tint, preserve the skip link, focus traps, and keyboard operability.
@@ -442,9 +442,10 @@ forbids spelling an already-accessible query as a CSS selector
 `data-*` and class-state pins ARE sanctioned: the built page is the public
 surface here, and a compact structural hook beats a brittle text match for
 rows, chips, and panels that carry no accessible handle. Two harnesses are
-named exemptions that must not be "fixed": `elo-scenarios.spec.ts` sweeps 21
-attributes whose NAMES are the snapshot schema, and `a11y-theme-snapshot.spec.ts`
-probes `[class*=…]` families by documented design. Tabs whose accessible name
+named exemptions that must not be "fixed": `elo/elo-scenarios.spec.ts` sweeps 21
+attributes whose NAMES are the snapshot schema, and
+`a11y/a11y-theme-snapshot.spec.ts` probes `[class*=…]` families by documented
+design. Tabs whose accessible name
 grows a suffix (Matches' filters dot, Unknown's badge count) are queried with
 an anchored regex — `{ name: /^Matches/ }` — never an exact string.
 
@@ -464,8 +465,9 @@ behavior does.
 
 **UI features need a failing Playwright e2e first.** Any feature that adds or
 changes a user-visible affordance (button, filter, card state, modal, view)
-starts with a RED `frontend/tests/e2e/*.spec.ts` driving it through a real
-browser via `page.route()` mocks. Unit tests cover render branches and
+starts with a RED `frontend/tests/e2e/<feature>/*.spec.ts` — the specs live in
+feature folders, helpers stay at the `tests/e2e/` root — driving it through a
+real browser via `page.route()` mocks. Unit tests cover render branches and
 composable contracts, but only the e2e proves the full transport chain
 (api.ts ↔ /api/* ↔ Go handler ↔ Store ↔ aggregator ↔ Vue render). "Stitching a
 known pattern across layers" is NOT an exemption — the match-deletion feature
