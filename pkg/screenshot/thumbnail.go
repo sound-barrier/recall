@@ -1,4 +1,4 @@
-package app
+package screenshot
 
 import (
 	"os"
@@ -6,13 +6,13 @@ import (
 	"recall/pkg/match"
 )
 
-// attachThumbnails resolves each record's ThumbnailFile — the best on-disk
-// screenshot for the leaf-row hover preview. It lists each referenced
-// screenshots directory at most once (not one stat per file) and reflects the
-// live filesystem, so a data-only import or a deleted/moved screenshot leaves
-// ThumbnailFile empty and the UI shows no preview rather than requesting a URL
-// it knows will 404.
-func (a *App) attachThumbnails(recs []match.Record) {
+// AttachThumbnails resolves each record's ThumbnailFile — the best on-disk
+// screenshot for the leaf-row hover preview. It resolves each dir-id at most
+// once and lists each referenced screenshots directory at most once (not one
+// stat per file), and reflects the live filesystem, so a data-only import or a
+// deleted/moved screenshot leaves ThumbnailFile empty and the UI shows no
+// preview rather than requesting a URL it knows will 404.
+func AttachThumbnails(recs []match.Record, resolve DirResolver) {
 	dirFiles := map[string]map[string]bool{} // resolved dir -> set of basenames
 	dirByID := map[int64]string{}            // dir-id -> resolved dir (memoized)
 
@@ -20,7 +20,7 @@ func (a *App) attachThumbnails(recs []match.Record) {
 		if dir, ok := dirByID[dirID]; ok {
 			return dir
 		}
-		dir := a.resolveScreenshotDir(dirID)
+		dir := resolve(dirID)
 		dirByID[dirID] = dir
 		return dir
 	}
