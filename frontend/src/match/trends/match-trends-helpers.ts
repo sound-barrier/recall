@@ -327,6 +327,19 @@ function readableTier(data: TrendInput['data']): Tier | null {
   return tier as Tier
 }
 
+// isPlaceableRank is readableTier's rule, exported so the detail panel can say
+// "missing from the rank charts" and have that be TRUE BY CONSTRUCTION rather
+// than by a second condition that could drift from this one.
+//
+// The level check is not redundant with the tier check: `level` is
+// `json:"level,omitempty"` on the wire, so a division of 0 arrives ABSENT, and
+// a match can carry a perfectly good tier while still being unplaceable. That
+// is why a hand-fill has to capture tier AND division — filling only the tier
+// would leave the match off every chart it was missing from.
+export function isPlaceableRank(data: TrendInput['data']): boolean {
+  return readableTier(data) !== null
+}
+
 export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
   const latest = new Map<string, { t: number } & RankNow>()
   // timedRecords is oldest-first, so a later match with `t >= prev.t`

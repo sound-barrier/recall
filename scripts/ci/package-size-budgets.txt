@@ -170,7 +170,7 @@ frontend/tests/e2e/dossier                    23
 # filename prefixes already drew. A spec count is a feature count here: the TDD
 # rule mandates one per user-visible affordance, so this climbs one considered
 # bump at a time.
-frontend/tests/e2e/match                      20
+frontend/tests/e2e/match                      21
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode

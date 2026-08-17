@@ -306,7 +306,10 @@ const thousands = (v: number | string) => Number(v).toLocaleString()
       </div>
     </section>
 
-    <MatchRankBlock :record="record" />
+    <MatchRankBlock
+      :record="record"
+      @update-match-data="(k, o) => emit('update-match-data', k, o)"
+    />
 
     <MatchJournal
       :record="record"

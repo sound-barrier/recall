@@ -56,6 +56,19 @@ export function sourceType(
 // source_types is populated at parse time from each file's
 // classifier, so a chip is PRESENT iff at least one source file is
 // tagged with that type.
+// hasRankScreenshot reports whether a RANK screenshot was parsed for this
+// match, regardless of how much of it was readable.
+//
+// This is the honest signal for "there is a rank update here": the parser
+// stores a rank screen as type `rank` even when its tier band OCR'd to nothing
+// (the RankScreen marker exists precisely so an occluded capture cannot
+// masquerade as summary or unknown). Testing a rank FIELD instead would either
+// miss those captures or — if `result` were used as a limb — fire on every
+// match in the corpus, since every SUMMARY carries one.
+export function hasRankScreenshot(rec: Pick<MatchRecord, 'source_types'>): boolean {
+  return Object.values(rec.source_types ?? {}).includes('rank')
+}
+
 export function detectScreenshotSlots(rec: Pick<MatchRecord, 'data' | 'source_types'>): ScreenshotSlot[] {
   const storedTypes = new Set(Object.values(rec.source_types ?? {}).filter(Boolean))
   return [

@@ -88,6 +88,20 @@ export function withScalarEdit(rec: MatchRecord, field: ScalarField, value: numb
   return set
 }
 
+/**
+ * Override set with the rank tier AND division filled in one write.
+ *
+ * Both together, never one at a time: the charts require a numeric division as
+ * well as a known tier, so a tier-only fill would persist an edit that left the
+ * match exactly as invisible as it was.
+ */
+export function withRankFill(rec: MatchRecord, tier: string, level: number): UserMatchDataInput {
+  const set = overrideSetFromRecord(rec)
+  ;(set as Record<string, unknown>).rank = tier
+  ;(set as Record<string, unknown>).level = level
+  return set
+}
+
 /** Override set with one hero-stat cell set to `value`. */
 export function withStatEdit(rec: MatchRecord, hero: string, statKey: string, value: number): UserMatchDataInput {
   const set = overrideSetFromRecord(rec)
