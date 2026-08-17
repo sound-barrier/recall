@@ -8,12 +8,15 @@ import "database/sql"
 // at the App layer.
 func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 	_, err := s.db.Exec(
-		`INSERT INTO unknown_screenshots (filename, match_key, screenshots_dir_id, parsed_at)
-		VALUES (?,?,?,`+suppliedInstantOrNow+`)
+		`INSERT INTO unknown_screenshots (filename, match_key, screenshots_dir_id, parsed_at,
+			parser_generation)
+		VALUES (?,?,?,`+suppliedInstantOrNow+`,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
-			screenshots_dir_id = excluded.screenshots_dir_id`,
+			screenshots_dir_id = excluded.screenshots_dir_id,
+			parser_generation  = excluded.parser_generation`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
+		r.ParserGeneration,
 	)
 	return err
 }

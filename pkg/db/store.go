@@ -57,6 +57,16 @@ type Store interface {
 	// them grouped by parent type with children already attached.
 	LoadAll() (Screenshots, error)
 
+	// StaleParseCount reports how many distinct MATCHES hold at least one
+	// screenshot row written by a parser older than `current`
+	// (parser.Generation). It answers exactly one user-facing question — "would
+	// Re-parse All actually improve anything?" — so it counts matches, the unit
+	// the user sees, not screenshot rows.
+	//
+	// A NULL generation counts as stale: those rows predate the column, so they
+	// certainly predate the current parser.
+	StaleParseCount(current int) (int, error)
+
 	// Ambiguous-attribution surface. When a screenshot's parse can't
 	// pin a single match (EAD signature matches in the 5-30 min
 	// ambiguous zone, multiple matches inside 0-30 min, or a
@@ -393,4 +403,45 @@ func dirIDOrSentinel(n int64) int64 {
 		return SentinelScreenshotsDirID
 	}
 	return n
+}
+
+// staleParseTables are the pipeline parents whose rows carry a parser vintage.
+// ignored_screenshots and all_heroes_screenshots are deliberately absent: the
+// first is a user decision rather than parsed data, and the second stores only a
+// recognition marker there is nothing to re-read.
+var staleParseTables = []string{
+	"summary_screenshots", "teams_screenshots",
+	"personal_screenshots", "rank_screenshots", "unknown_screenshots",
+}
+
+// StaleParseCount implements Store.
+func (s *SQLStore) StaleParseCount(current int) (int, error) {
+	keys := map[string]struct{}{}
+	for _, t := range staleParseTables {
+		if err := s.collectStaleKeys(t, current, keys); err != nil {
+			return 0, err
+		}
+	}
+	return len(keys), nil
+}
+
+// collectStaleKeys adds one table's stale match keys to seen. Extracted so a
+// single deferred Close covers every exit path (sqlclosecheck).
+func (s *SQLStore) collectStaleKeys(table string, current int, seen map[string]struct{}) error {
+	// #nosec G202 -- table comes from staleParseTables, a hard-coded list.
+	rows, err := s.db.Query(
+		"SELECT DISTINCT match_key FROM "+table+
+			" WHERE parser_generation IS NULL OR parser_generation < ?", current)
+	if err != nil {
+		return fmt.Errorf("stale parse count %s: %w", table, err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return err
+		}
+		seen[key] = struct{}{}
+	}
+	return rows.Err()
 }

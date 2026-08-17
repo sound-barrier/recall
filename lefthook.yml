@@ -40,7 +40,16 @@ pre-commit:
       # generated artifacts are ignored). The generated API types are
       # excluded so the hook doesn't pass an ignored file to eslint.
       glob: "**/*.{ts,vue,js,cjs}"
-      exclude: "src/client/**"
+      # Both spellings on purpose: `exclude` is matched against the
+      # REPO-relative path, while `run` receives paths relative to `root`. The
+      # bare `src/client/**` form never matched, which stayed invisible for as
+      # long as some non-generated frontend file happened to be staged
+      # alongside — eslint merely warned "file ignored". A commit touching ONLY
+      # the generated client hands eslint nothing but ignored paths, and it
+      # exits 2 with "No files matching the pattern", failing the hook.
+      exclude:
+        - "frontend/src/client/**"
+        - "src/client/**"
       run: npx eslint --fix {staged_files}
       stage_fixed: true
 

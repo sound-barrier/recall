@@ -3338,6 +3338,37 @@ export type MoveMatchesResponses = {
 
 export type MoveMatchesResponse = MoveMatchesResponses[keyof MoveMatchesResponses];
 
+export type GetParseStalenessData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/system/parse-staleness';
+};
+
+export type GetParseStalenessResponses = {
+    /**
+     * Staleness snapshot.
+     */
+    200: {
+        /**
+         * Distinct matches with at least one screenshot row below
+         * the current parser generation. A row stamped with no
+         * generation at all counts as stale — it predates the
+         * column, so it certainly predates this parser.
+         *
+         */
+        stale_matches: number;
+        /**
+         * The build's parser.Generation — the vintage the count is
+         * measured against.
+         *
+         */
+        parser_generation: number;
+    };
+};
+
+export type GetParseStalenessResponse = GetParseStalenessResponses[keyof GetParseStalenessResponses];
+
 export type GetStartupErrorData = {
     body?: never;
     path?: never;

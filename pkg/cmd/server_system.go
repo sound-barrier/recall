@@ -36,6 +36,13 @@ func registerSystemMetaRoutes(apiMux *http.ServeMux, a *app.App) {
 	// unreachable: RunServer log.Fatal's before mounting routes if
 	// StartupError() is non-nil, so a non-empty response is only
 	// possible if someone wires the App differently (e.g. tests).
+	apiMux.HandleFunc("GET /api/v1/system/parse-staleness", func(w http.ResponseWriter, r *http.Request) {
+		st, err := a.GetParseStaleness()
+		if writeError(w, r, err) {
+			return
+		}
+		writeJSON(w, r, st, nil)
+	})
 	apiMux.HandleFunc("GET /api/v1/system/startup-error", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, map[string]string{"message": a.GetStartupError()}, nil)
 	})

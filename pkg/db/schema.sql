@@ -90,7 +90,12 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   perf_assists_total INTEGER NOT NULL DEFAULT 0,
   perf_assists_avg_per_10min REAL NOT NULL DEFAULT 0,
   perf_deaths_total INTEGER NOT NULL DEFAULT 0,
-  perf_deaths_avg_per_10min REAL NOT NULL DEFAULT 0
+  perf_deaths_avg_per_10min REAL NOT NULL DEFAULT 0,
+  -- Parser output vintage that produced this row (parser.Generation). NULL =
+  -- written before the column existed, which is stale by definition. Drives the
+  -- "these matches would gain data from a Re-parse All" count; see
+  -- parser.Generation for when to bump it.
+  parser_generation INTEGER
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_summary_match_key_parsed_at ON summary_screenshots (match_key, parsed_at);
@@ -124,7 +129,12 @@ CREATE TABLE IF NOT EXISTS teams_screenshots (
   -- Queue format inferred from players-per-team on the teams:
   -- 'role' (5v5) or 'open' (6v6); '' when the count couldn't be read.
   -- A user-set match_queue annotation overrides this at read time.
-  queue_type TEXT NOT NULL DEFAULT ''
+  queue_type TEXT NOT NULL DEFAULT '',
+  -- Parser output vintage that produced this row (parser.Generation). NULL =
+  -- written before the column existed, which is stale by definition. Drives the
+  -- "these matches would gain data from a Re-parse All" count; see
+  -- parser.Generation for when to bump it.
+  parser_generation INTEGER
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_teams_match_key_parsed_at ON teams_screenshots (match_key, parsed_at);
@@ -147,7 +157,12 @@ CREATE TABLE IF NOT EXISTS personal_screenshots (
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
   hero TEXT NOT NULL DEFAULT '',
-  hero_raw TEXT NOT NULL DEFAULT ''
+  hero_raw TEXT NOT NULL DEFAULT '',
+  -- Parser output vintage that produced this row (parser.Generation). NULL =
+  -- written before the column existed, which is stale by definition. Drives the
+  -- "these matches would gain data from a Re-parse All" count; see
+  -- parser.Generation for when to bump it.
+  parser_generation INTEGER
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_personal_match_key_parsed_at ON personal_screenshots (match_key, parsed_at);
@@ -186,7 +201,12 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   -- placement screen and on every capture before season 4, and 0 would assert
   -- the player is ranked above nobody rather than "not reported".
   -- Nullable is also what ensureAdditiveColumns can add to an existing DB.
-  rank_percentile INTEGER
+  rank_percentile INTEGER,
+  -- Parser output vintage that produced this row (parser.Generation). NULL =
+  -- written before the column existed, which is stale by definition. Drives the
+  -- "these matches would gain data from a Re-parse All" count; see
+  -- parser.Generation for when to bump it.
+  parser_generation INTEGER
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots (match_key, parsed_at);
@@ -288,7 +308,12 @@ CREATE TABLE IF NOT EXISTS unknown_screenshots (
   match_key TEXT NOT NULL,
   parsed_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
-  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs (id) ON DELETE RESTRICT
+  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
+  -- Parser output vintage that produced this row (parser.Generation). NULL =
+  -- written before the column existed, which is stale by definition. Drives the
+  -- "these matches would gain data from a Re-parse All" count; see
+  -- parser.Generation for when to bump it.
+  parser_generation INTEGER
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_unknown_match_key_parsed_at ON unknown_screenshots (match_key, parsed_at);

@@ -2,6 +2,27 @@ package parser
 
 import "fmt"
 
+// Generation identifies the parser's OUTPUT vintage. Bump it whenever a change
+// means an already-stored row would read DIFFERENTLY if the same screenshot were
+// parsed again — a new field captured, a crop retuned, a value that used to come
+// back wrong or empty.
+//
+// It exists because a parser improvement reaches only files parsed AFTER it
+// ships. Nothing told the user that, so a fix silently applied to new captures
+// while their history kept the old readings and every chart quietly mixed the
+// two. Stamped on each screenshot row at parse time, it lets the app say which
+// rows a Re-parse All would actually improve.
+//
+// Deliberately NOT the app version: a release that never touches the parser
+// would flag every row as stale, and an alarm that fires when nothing changed
+// trains the reader to ignore the one that matters. This is a decision someone
+// makes, which is why it is a hand-bumped constant.
+//
+// 1: signed, nullable rank movement and progress (an unread pill stopped
+//
+//	claiming the rank moved by nothing).
+const Generation = 1
+
 type MatchResult struct {
 	Map string `json:"map"`
 	// MapRaw holds the raw OCR'd text that the parser tried to match
