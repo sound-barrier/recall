@@ -7,7 +7,7 @@ import { useDragReorder } from '@/composables/dashboard/useDragReorder'
 import { useNarrow } from '@/composables/matches/narrow/useNarrow'
 import { useTrendsLayout, type TrendChartId } from '@/composables/matches/trends/useTrendsLayout'
 import type { TrendOption } from '@/components/matches/trends/echarts'
-import { rankLadderOption, winrateOption, lineOption, rankDeltaOption, heatmapOption } from '@/components/matches/trends/trend-options'
+import { rankLadderOption, winrateOption, lineOption, rankDeltaOption, rankPercentileOption, heatmapOption } from '@/components/matches/trends/trend-options'
 
 // ECharts is heavy; defer it to its own chunk that only loads when the
 // user opens the section (the v-if below gates the mount).
@@ -85,6 +85,7 @@ const winrateSeries = dossier.rollingWinrate(windowSize)
 const heroWinrateSeries = dossier.heroRollingWinrate(windowSize)
 const mapWinrateSeries = dossier.mapRollingWinrate(windowSize)
 const rankDeltaSeries = dossier.rankDelta
+const rankPercentileSeries = dossier.rankPercentile
 const cumulativeNetSeries = dossier.cumulativeNet
 const modifierFreqSeries = dossier.modifierFrequency
 const combatStatsSeries = dossier.combat
@@ -143,6 +144,15 @@ const cardsById = computed<Record<TrendChartId, ChartCard>>(() => {
     id: 'rank-delta', title: 'Rank delta per match',
     caption: 'Per-match rank change, by role', option: rankDeltaOption(rankDeltaSeries.value), hasData: someData(rankDeltaSeries.value),
     empty: 'No rank readings — capture a competitive rank screenshot.',
+  },
+  'rank-percentile': {
+    id: 'rank-percentile', title: 'Ranked above',
+    caption: 'Share of players below you, by role',
+    option: rankPercentileOption(rankPercentileSeries.value), hasData: someData(rankPercentileSeries.value),
+    // Distinguishes "no capture reported one" from "no rank screenshots at
+    // all" — only post-placement screens carry the caption, so a player with
+    // plenty of rank captures can still have none of these.
+    empty: 'No capture has reported a percentile yet — the "higher ranked than N%" line appears on post-placement rank screens.',
   },
   'cumulative-net': {
     id: 'cumulative-net', title: 'Cumulative net record',

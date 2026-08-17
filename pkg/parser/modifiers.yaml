@@ -60,3 +60,15 @@ modifiers:
 # which is why it lives here rather than only in Go.
 detected_separately:
   - demotion protection
+
+# Text that ALSO appears in the modifier row but is not a modifier and never
+# will be: other Overwatch UI that overlaps the band. A token matching one of
+# these is dropped rather than reported as unrecognized, because "we could not
+# explain this" would be false — we know exactly what it is.
+#
+# ENDORSEMENT RECEIVED is a post-match toast that lands over the row; the OCR
+# reads it truncated ("ORSEMENT RECEIVED"), which is why these are matched as
+# substrings in either direction rather than compared whole.
+not_modifiers:
+  - endorsement
+  - received

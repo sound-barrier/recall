@@ -127,6 +127,10 @@ export interface RankPoint {
   // bottom of a division is a real place to be, and printing it for an unread
   // caption states a measurement that was never taken.
   progress: number | null
+  // The one rank number that is ground truth off the screenshot rather than a
+  // synthetic composite. null when the capture reported none — every placement
+  // screen, and everything before season 4.
+  percentile: number | null
   change: number
   matchKey: string
 }
@@ -178,11 +182,35 @@ export function rankLadderSeries(records: readonly TrendInput[]): RankSeries[] {
       level: reading.level,
       progress: reading.progress,
       change: rec.data?.change_percent ?? 0,
+      percentile: rec.data?.rank_percentile ?? null,
       matchKey: rec.match_key,
     })
     byBucket.set(bucket.key, entry)
   }
   return orderBuckets([...byBucket.entries()].map(([key, e]) => ({ key, label: e.label, points: e.points })))
+}
+
+// Population percentile over time, one line per role bucket.
+//
+// Unlike rankLadderSeries — whose y-axis is ladderScore(), a synthetic
+// tier/level/progress composite — this axis is a real 0-100 share of players,
+// so a point means the same thing to the reader as it does to the game.
+//
+// SPARSE BY NATURE: only post-placement rank screens report a percentile, so a
+// set of hundreds of matches may contribute a handful of points. Records
+// without a reading are SKIPPED rather than plotted at 0, which would draw a
+// collapse to the bottom of the ladder that never happened.
+export function rankPercentileSeries(records: readonly TrendInput[]): TrendSeries[] {
+  const byBucket = new Map<string, { label: string; points: TrendPoint[] }>()
+  for (const { rec, t } of timedRecords(records)) {
+    const pct = rec.data?.rank_percentile
+    if (typeof pct !== 'number') continue
+    const bucket = roleBucket(rec)
+    const entry = byBucket.get(bucket.key) ?? { label: bucket.label, points: [] }
+    entry.points.push({ t, v: pct, matchKey: rec.match_key })
+    byBucket.set(bucket.key, entry)
+  }
+  return orderBuckets([...byBucket.entries()].map(([key, e]) => ({ key, name: e.label, points: e.points })))
 }
 
 // Rolling win-rate per HERO (the per-hero trend: "improving on Juno,

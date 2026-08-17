@@ -112,6 +112,10 @@ type owDataset struct {
 	// constraints must accept.
 	modifiers         []string
 	storableModifiers []string
+	// Text that appears in the modifier row but is not a modifier — other OW UI
+	// overlapping the band. Dropped from the unrecognized-chip signal, because
+	// reporting it as unexplained would be false.
+	notModifiers []string
 
 	// Combined load error from this snapshot's construction. nil
 	// means every YAML loaded cleanly; non-nil means at least one

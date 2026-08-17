@@ -5,6 +5,7 @@ import {
   currentRankByRole,
   rankLadderSeries,
   rankDeltaSeries,
+  rankPercentileSeries,
   cumulativeNetRecordSeries,
   modifierFrequencySeries,
   combatSeries,
@@ -25,6 +26,7 @@ export function useMatchesTrends(records: Readonly<Ref<MatchRecord[]>>) {
   const rankLadder = computed<RankSeries[]>(() => rankLadderSeries(records.value))
   const currentRank = computed<RankNow[]>(() => currentRankByRole(records.value))
   const rankDelta = computed<TrendSeries[]>(() => rankDeltaSeries(records.value))
+  const rankPercentile = computed<TrendSeries[]>(() => rankPercentileSeries(records.value))
   const cumulativeNet = computed<TrendSeries[]>(() => cumulativeNetRecordSeries(records.value))
   const modifierFrequency = computed<TrendSeries[]>(() => modifierFrequencySeries(records.value))
   const combat = computed<TrendSeries[]>(() => combatSeries(records.value))
@@ -43,5 +45,5 @@ export function useMatchesTrends(records: Readonly<Ref<MatchRecord[]>>) {
     return computed(() => rollingWinrateSeries(records.value, toValue(window)))
   }
 
-  return { rankLadder, currentRank, rankDelta, cumulativeNet, modifierFrequency, combat, rollingWinrate, heroRollingWinrate, mapRollingWinrate }
+  return { rankLadder, currentRank, rankDelta, rankPercentile, cumulativeNet, modifierFrequency, combat, rollingWinrate, heroRollingWinrate, mapRollingWinrate }
 }

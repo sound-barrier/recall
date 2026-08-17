@@ -48,7 +48,7 @@ function firstSeriesAreaStyle(opt: { series?: unknown }): unknown {
 
 describe('trend-options — area fill (climb feel)', () => {
   const rankSeries: RankSeries[] = [
-    { key: 'tank', label: 'Tank', points: [{ t: 1, score: 10, tier: 'gold', level: 3, progress: 0, change: 0, matchKey: 'm1' }] },
+    { key: 'tank', label: 'Tank', points: [{ t: 1, score: 10, tier: 'gold', level: 3, progress: 0, percentile: null, change: 0, matchKey: 'm1' }] },
   ]
   const netSeries: TrendSeries[] = [{ name: 'Tank', key: 'tank', points: [{ t: 1, v: 5, matchKey: 'm1' }] }]
 
@@ -164,7 +164,7 @@ function legendShown(opt: { legend?: unknown }): boolean | undefined {
 }
 
 function rankPoint(over: Partial<RankPoint> = {}): RankPoint {
-  return { t: 1, score: 12.4, tier: 'gold', level: 3, progress: 40, change: 2, matchKey: 'm1', ...over }
+  return { t: 1, score: 12.4, tier: 'gold', level: 3, progress: 40, percentile: null, change: 2, matchKey: 'm1', ...over }
 }
 
 function trend(key: string, values: number[]): TrendSeries {

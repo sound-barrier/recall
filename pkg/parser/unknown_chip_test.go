@@ -79,20 +79,31 @@ func TestUnknownChipTokens(t *testing.T) {
 	}
 }
 
-// Measured, not assumed: this fires on 3 of the 37 rank captures in the corpus
-// that carry no new chip at all — an ENDORSEMENT RECEIVED toast overlapping the
-// band, and two OCR garbles. That 8% is precisely why the caller LOGS rather
-// than raising a parse warning: a warning routes to the failed-files ledger and
-// would mark clean captures as unreadable.
-func TestUnknownChipTokens_KnownFalsePositives(t *testing.T) {
+// The ENDORSEMENT RECEIVED toast is NOT an unrecognized chip. It overlaps the
+// modifier row and the OCR reads it truncated, but it is understood perfectly
+// well — it simply was never a modifier — so reporting it as text the parser
+// could not explain would be a false statement, and one shown to the user.
+// modifiers.yaml's not_modifiers list drops it at the source.
+func TestUnknownChipTokens_DropsKnownNonModifierUI(t *testing.T) {
 	known := parser.StorableModifiers()
 	for _, band := range []string{
 		"ENDORSEMENT RECEIVED!",
-		"AACTARIT ECWNIK",
+		// Truncated exactly as the corpus capture reads it.
+		"ORSEMENT RECEIVED",
 	} {
-		if got := parser.UnknownChipTokens(band, known); len(got) == 0 {
-			t.Errorf("band %q produced no tokens; this test documents that it DOES "+
-				"produce them, which is the reason the signal is a log and not a warning", band)
+		if got := parser.UnknownChipTokens(band, known); len(got) != 0 {
+			t.Errorf("band %q produced %v; the endorsement toast is known UI, not an "+
+				"unexplained chip, and must never reach the user as one", band, got)
 		}
+	}
+}
+
+// What remains after that filter is genuine: OCR garble nobody can account for.
+// It still LOGS rather than raising a parse warning — a warning routes to the
+// failed-files ledger and would mark an otherwise clean capture unreadable.
+func TestUnknownChipTokens_StillReportsGenuineGarble(t *testing.T) {
+	if got := parser.UnknownChipTokens("AACTARIT ECWNIK", parser.StorableModifiers()); len(got) == 0 {
+		t.Error("garbled band produced no tokens; text the vocabulary genuinely " +
+			"cannot explain is the whole signal")
 	}
 }
