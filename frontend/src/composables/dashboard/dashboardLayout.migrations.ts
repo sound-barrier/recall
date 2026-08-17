@@ -32,7 +32,7 @@ export const LAYOUT_VERSION_KEY = 'recall.dashboard.layoutVersion'
 //       re-add), and the version guard returns early. Without this
 //       step two users on the identical build get different dossiers
 //       decided by when they last opened the app.
-export const CURRENT_LAYOUT_VERSION = 3
+export const CURRENT_LAYOUT_VERSION = 4
 
 // The pre-v2 install defaults, frozen for the re-seed migration —
 // membership decides which stored widgets were OUR defaults (safe to
@@ -66,6 +66,31 @@ function applyMigrationSteps(layout: RowLayout, storedVersion: number): RowLayou
   if (storedVersion < 1) next = consolidateOverflowRows(next)
   if (storedVersion < 2) next = reseedClimbDefaults(next)
   if (storedVersion < 3) next = addRankPercentile(next)
+  if (storedVersion < 4) next = addClimbInsights(next)
+  return next
+}
+
+// addClimbInsights seeds the three trailing-window widgets together.
+//
+// ONE version bump, not three. applyMigrationSteps runs every step a stored
+// version has not seen, so three separate steps would execute in the same mount
+// and land in the identical state — three times the code and three idempotency
+// guards for no behavioral difference.
+//
+// They go on row 1 beside the other climb readings, and each is skipped
+// individually if the user already has it, so someone who added one by hand
+// from the gallery does not end up with a duplicate.
+function addClimbInsights(layout: RowLayout): RowLayout {
+  const next: RowLayout = {}
+  for (const [key, ids] of Object.entries(layout)) next[Number(key)] = [...ids]
+
+  const present = new Set(Object.values(next).flat())
+  const missing = ['perf-vs-rank', 'rolling-baseline', 'climb-velocity']
+    .filter((id) => !present.has(id))
+  if (missing.length === 0) return layout
+
+  const row = next[1] ?? []
+  next[1] = [...row, ...missing]
   return next
 }
 

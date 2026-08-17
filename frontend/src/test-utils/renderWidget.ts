@@ -97,7 +97,7 @@ type DossierOverride = {
   winrateAfterLoss?:   RateSample
   winrateAfterWin?:    RateSample
   firstGameWinrate?:   RateSample
-  netRankWeek?:        number
+  netRankWeek?:        { netPercent: number; readCount: number; totalCount: number }
   avgGameLength?:      number | null
   leaverStats?:        LeaverRate
   sessions?:           number
@@ -139,7 +139,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     winrateAfterLoss:    wrap(over.winrateAfterLoss, { winrate: null, sample: 0 } as RateSample),
     winrateAfterWin:     wrap(over.winrateAfterWin, { winrate: null, sample: 0 } as RateSample),
     firstGameWinrate:    wrap(over.firstGameWinrate, { winrate: null, sample: 0 } as RateSample),
-    netRankWeek:         wrap(over.netRankWeek, 0),
+    netRankWeek:         wrap(over.netRankWeek, { netPercent: 0, readCount: 0, totalCount: 0 }),
     avgGameLength:       wrap(over.avgGameLength, null as number | null),
     leaverStats:         wrap(over.leaverStats, { rate: null, leaverCount: 0, total: 0 } as LeaverRate),
     sessions:            wrap(over.sessions, 0),

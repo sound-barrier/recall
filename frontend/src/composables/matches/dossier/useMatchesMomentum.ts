@@ -3,6 +3,10 @@ import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } 
 import type { MatchRecord } from '@/api-client'
 import { avgGameLengthMinutes } from '@/match/match-stats-helpers'
 import {
+  winrateVsBaseline, performanceVsRank, climbVelocity,
+  type BaselineDelta, type PerformanceVsRank, type ClimbVelocity,
+} from '@/match/dossier/match-baseline-helpers'
+import {
   firstGameOfSessionWinrate,
   formDelta as computeFormDelta,
   leaverRate,
@@ -42,11 +46,34 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
   function formDelta(opts: MaybeRefOrGetter<{ window: number }>): ComputedRef<FormDelta> {
     return computed(() => computeFormDelta(records.value, toValue(opts).window))
   }
+  // Trailing-window self-comparison. The windows are DISJOINT — see
+  // splitTrailingWindow — so the recent slice is never part of its own
+  // reference.
+  function rollingBaseline(
+    opts: MaybeRefOrGetter<{ recentDays: number; baselineDays: number }>,
+  ): ComputedRef<BaselineDelta> {
+    return computed(() => winrateVsBaseline(records.value, toValue(opts)))
+  }
+  function perfVsRank(
+    opts: MaybeRefOrGetter<{ recentDays: number; baselineDays: number }>,
+  ): ComputedRef<PerformanceVsRank> {
+    return computed(() => performanceVsRank(records.value, toValue(opts)))
+  }
+  function velocity(opts: MaybeRefOrGetter<{ days: number }>): ComputedRef<ClimbVelocity> {
+    return computed(() => climbVelocity(records.value, {
+      days: toValue(opts).days,
+      // The session denominator is measured over the SAME window, so a
+      // per-session rate cannot be divided by sessions it never counted.
+      sessions: sessionCount(records.value),
+    }))
+  }
+
   function lossStreakRecovery(opts: MaybeRefOrGetter<{ minStreak: number }>): ComputedRef<RateSample> {
     return computed(() => winrateAfterLossStreak(records.value, toValue(opts).minStreak))
   }
 
   return {
+    rollingBaseline, perfVsRank, velocity,
     winrateAfterLoss, winrateAfterWin, firstGameWinrate, netRankWeek,
     avgGameLength, leaverStats, sessions, tiltQueues,
     sessionDepth, formDelta, lossStreakRecovery,

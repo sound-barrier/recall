@@ -42,6 +42,9 @@ import UphillBattleWidget from '@/components/dashboard/widgets/UphillBattleWidge
 import ReversalWidget from '@/components/dashboard/widgets/ReversalWidget.vue'
 import HeroesPerMatchWidget from '@/components/dashboard/widgets/HeroesPerMatchWidget.vue'
 import FormDeltaWidget from '@/components/dashboard/widgets/FormDeltaWidget.vue'
+import PerfVsRankWidget from '@/components/dashboard/widgets/PerfVsRankWidget.vue'
+import RollingBaselineWidget from '@/components/dashboard/widgets/RollingBaselineWidget.vue'
+import ClimbVelocityWidget from '@/components/dashboard/widgets/ClimbVelocityWidget.vue' 
 import LossStreakRecoveryWidget from '@/components/dashboard/widgets/LossStreakRecoveryWidget.vue'
 import SessionDepthWidget from '@/components/dashboard/widgets/SessionDepthWidget.vue'
 
@@ -239,6 +242,46 @@ export const heroGameModeHeatmapSchema = makeSchema<HeroGameModeHeatmapConfig>([
 export interface FormDeltaConfig extends Record<string, unknown> {
   window: number
 }
+export interface PerfVsRankConfig extends Record<string, unknown> { recentDays: number }
+export const perfVsRankSchema = makeSchema<PerfVsRankConfig>([
+  {
+    kind:    'integer-choice',
+    key:     'recentDays',
+    label:   'Recent window (days)',
+    choices: [7, 14, 30],
+    default: 7,
+  },
+])
+
+export interface RollingBaselineConfig extends Record<string, unknown> { recentDays: number; baselineDays: number }
+export const rollingBaselineSchema = makeSchema<RollingBaselineConfig>([
+  {
+    kind:    'integer-choice',
+    key:     'recentDays',
+    label:   'Recent window (days)',
+    choices: [7, 14],
+    default: 7,
+  },
+  {
+    kind:    'integer-choice',
+    key:     'baselineDays',
+    label:   'Baseline window (days)',
+    choices: [30, 60, 90],
+    default: 30,
+  },
+])
+
+export interface ClimbVelocityConfig extends Record<string, unknown> { days: number }
+export const climbVelocitySchema = makeSchema<ClimbVelocityConfig>([
+  {
+    kind:    'integer-choice',
+    key:     'days',
+    label:   'Window (days)',
+    choices: [14, 30, 90],
+    default: 30,
+  },
+])
+
 export const formDeltaSchema = makeSchema<FormDeltaConfig>([
   {
     kind:    'integer-choice',
@@ -315,6 +358,9 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'uphill-battle',       eyebrow: 'Uphill battles',         shape: 'kpi',       defaultRow: 1, component: UphillBattleWidget,    config: EMPTY_SCHEMA          },
   { id: 'reversal',            eyebrow: 'Reversals',              shape: 'kpi',       defaultRow: 1, component: ReversalWidget,        config: EMPTY_SCHEMA          },
   { id: 'heroes-per-match',    eyebrow: 'Heroes per match',       shape: 'breakdown', defaultRow: 2, component: HeroesPerMatchWidget,  config: heroDisciplineSchema  },
+  { id: 'perf-vs-rank',         eyebrow: 'Play vs rank',           shape: 'kpi',       defaultRow: 1, component: PerfVsRankWidget,         config: perfVsRankSchema         },
+  { id: 'rolling-baseline',     eyebrow: 'Vs your baseline',       shape: 'kpi',       defaultRow: 1, component: RollingBaselineWidget,    config: rollingBaselineSchema    },
+  { id: 'climb-velocity',       eyebrow: 'Climb rate',             shape: 'kpi',       defaultRow: 1, component: ClimbVelocityWidget,      config: climbVelocitySchema      },
   { id: 'form-delta',           eyebrow: 'Recent form',            shape: 'kpi',       defaultRow: 1, component: FormDeltaWidget,          config: formDeltaSchema          },
   { id: 'loss-streak-recovery', eyebrow: 'After a loss streak',    shape: 'kpi',       defaultRow: 1, component: LossStreakRecoveryWidget, config: lossStreakRecoverySchema },
   { id: 'session-depth',        eyebrow: 'Session depth',          shape: 'breakdown', defaultRow: 2, component: SessionDepthWidget,       config: EMPTY_SCHEMA             },

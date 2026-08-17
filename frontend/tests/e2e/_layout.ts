@@ -20,7 +20,7 @@ import type { Page } from '@playwright/test'
 // rank-percentile widget) before ten specs made their assertions. Nothing
 // failed, which is precisely the problem — those specs were asserting against a
 // layout none of them had asked for. A unit test now pins the two together.
-export const SEEDED_LAYOUT_VERSION = '3'
+export const SEEDED_LAYOUT_VERSION = '4'
 
 export async function seedDossierLayout(
   page: Page,
