@@ -15,6 +15,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/cmd"
+	"recall/pkg/matchedit"
 )
 
 // The sentinel ladder — the regression net for carving pkg/app apart.
@@ -195,6 +196,59 @@ func TestSentinelLadder_RouteIndependentStatuses(t *testing.T) {
 			want = http.StatusInternalServerError
 		}
 		assertLadderStatus(t, s, want, routeIndependent)
+	}
+}
+
+// The blind spot the tests above cannot see, and the one the carve actually
+// risks. Everything so far compares app.ErrX against ITSELF, so an alias
+// re-declared as `errors.New("<the same message>")` passes all of it: the
+// message matches, it is still distinct from its siblings, it survives its own
+// %w wrap, and writeError still maps it. Production breaks anyway — the leaf
+// returns matchedit.ErrX, pkg/cmd checks app.ErrX, the two are different
+// values, errors.Is is false, and the route answers 500.
+//
+// So this asserts the identity that actually matters: the value a LEAF
+// produces is the value the shell's alias names. Every carved sentinel gets a
+// row; the row is deleted only if the sentinel comes home.
+func TestSentinelLadder_LeafSentinelsAreTheSameValue(t *testing.T) {
+	carved := []struct {
+		name  string
+		alias error
+		leaf  error
+	}{
+		{"ErrInvalidLeaver", app.ErrInvalidLeaver, matchedit.ErrInvalidLeaver},
+		{"ErrInvalidThrower", app.ErrInvalidThrower, matchedit.ErrInvalidThrower},
+		{"ErrEmptyAnnotation", app.ErrEmptyAnnotation, matchedit.ErrEmptyAnnotation},
+		{"ErrInvalidPlayMode", app.ErrInvalidPlayMode, matchedit.ErrInvalidPlayMode},
+		{"ErrInvalidQueueType", app.ErrInvalidQueueType, matchedit.ErrInvalidQueueType},
+		{"ErrInvalidReviewedBy", app.ErrInvalidReviewedBy, matchedit.ErrInvalidReviewedBy},
+		{"ErrIgnoreFilenameRequired", app.ErrIgnoreFilenameRequired, matchedit.ErrIgnoreFilenameRequired},
+		{"ErrMatchKeyRequired", app.ErrMatchKeyRequired, matchedit.ErrMatchKeyRequired},
+		{"ErrInvalidResult", app.ErrInvalidResult, matchedit.ErrInvalidResult},
+		{"ErrStatOutOfRange", app.ErrStatOutOfRange, matchedit.ErrStatOutOfRange},
+		{"ErrUnknownMap", app.ErrUnknownMap, matchedit.ErrUnknownMap},
+		{"ErrUnknownHero", app.ErrUnknownHero, matchedit.ErrUnknownHero},
+		{"ErrUnknownRank", app.ErrUnknownRank, matchedit.ErrUnknownRank},
+		{"ErrManualNeedsMap", app.ErrManualNeedsMap, matchedit.ErrManualNeedsMap},
+		{"ErrInvalidPlayedAt", app.ErrInvalidPlayedAt, matchedit.ErrInvalidPlayedAt},
+		{"ErrInvalidRank", app.ErrInvalidRank, matchedit.ErrInvalidRank},
+		{"ErrMatchKeyExists", app.ErrMatchKeyExists, matchedit.ErrMatchKeyExists},
+	}
+
+	for _, c := range carved {
+		if c.alias == nil || c.leaf == nil {
+			t.Errorf("%s: alias or leaf sentinel is nil", c.name)
+			continue
+		}
+		// Identity, deliberately — NOT errors.Is. errors.Is would also pass
+		// for an alias that merely WRAPS the leaf, and a wrapping alias keeps
+		// the status while silently changing the problem+json detail the
+		// client reads. The two must be the same value.
+		//nolint:errorlint,err113 // identity is the assertion; errors.Is would accept a wrapping alias, which is the bug
+		if c.alias != c.leaf {
+			t.Errorf("%s: the shell's alias is not the leaf's value — a leaf error "+
+				"will not satisfy errors.Is against it, and the route falls to 500", c.name)
+		}
 	}
 }
 

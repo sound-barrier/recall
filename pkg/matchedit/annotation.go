@@ -1,4 +1,4 @@
-package app
+package matchedit
 
 import (
 	"errors"
@@ -19,7 +19,7 @@ import (
 // carries something.
 var validDisruptionSides = map[string]bool{"self": true, "team": true, "enemy": true}
 
-// ErrInvalidLeaver is returned by SetMatchAnnotation when a leaver side isn't
+// ErrInvalidLeaver is returned by SetAnnotation when a leaver side isn't
 // one of the three allowed values. HTTP handlers map this to 400 (user-input
 // error) rather than 500.
 var ErrInvalidLeaver = errors.New("invalid leaver: each side must be 'self', 'team', or 'enemy'")
@@ -28,15 +28,15 @@ var ErrInvalidLeaver = errors.New("invalid leaver: each side must be 'self', 'te
 // sentinels so the 400's message names the field the user actually got wrong.
 var ErrInvalidThrower = errors.New("invalid thrower: each side must be 'self', 'team', or 'enemy'")
 
-// ErrEmptyAnnotation is returned by SetMatchAnnotation when the input carries no
+// ErrEmptyAnnotation is returned by SetAnnotation when the input carries no
 // content after trimming. PUT /annotation is upsert-only; clearing an annotation
-// is the explicit DeleteMatchAnnotation (DELETE) so the verb states the intent
+// is the explicit DeleteAnnotation (DELETE) so the verb states the intent
 // rather than an all-empty PUT meaning "delete." HTTP handlers map this to 400.
 var ErrEmptyAnnotation = errors.New("annotation has no content; use DELETE to clear it")
 
-// AnnotationInput is the App-layer DTO for SetMatchAnnotation. Each
+// AnnotationInput is the caller-facing DTO for SetAnnotation. Each
 // field is optional, but at least one must carry content: an all-empty
-// input is rejected with ErrEmptyAnnotation (clearing is DeleteMatchAnnotation).
+// input is rejected with ErrEmptyAnnotation (clearing is DeleteAnnotation).
 type AnnotationInput struct {
 	MatchKey string
 	// Leavers / Throwers are sets of validDisruptionSides values. Order is not
@@ -53,9 +53,9 @@ type AnnotationInput struct {
 	Tags []string
 }
 
-// SetMatchAnnotation upserts a per-match annotation. It is upsert-only: an
+// SetAnnotation upserts a per-match annotation. It is upsert-only: an
 // all-empty input is rejected with ErrEmptyAnnotation rather than silently
-// deleting, so the API verb states intent (clearing is DeleteMatchAnnotation).
+// deleting, so the API verb states intent (clearing is DeleteAnnotation).
 // Keeping content-free rows out of the table still keeps the FilterRail
 // "leaver / note count" gates accurate.
 //
@@ -69,10 +69,7 @@ type AnnotationInput struct {
 //     equivalence — `Stack` and `stack` collapse to one).
 //   - replay_code is left as-is — Overwatch's format isn't pinned
 //     strongly enough to validate client-side.
-func (a *App) SetMatchAnnotation(in AnnotationInput) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
+func SetAnnotation(s db.Store, in AnnotationInput) error {
 	if in.MatchKey == "" {
 		return errors.New("match_key required")
 	}
@@ -81,14 +78,36 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 		return err
 	}
 	// All-empty input is rejected — clearing an annotation is the explicit
-	// DeleteMatchAnnotation, not an all-empty upsert.
+	// DeleteAnnotation, not an all-empty upsert.
 	if annotationIsEmpty(anno) {
 		return ErrEmptyAnnotation
 	}
-	if err := a.assertMatchExists(in.MatchKey); err != nil {
+	if err := AssertMatchExists(s, in.MatchKey); err != nil {
 		return err
 	}
-	return a.store.SetAnnotation(anno)
+	return s.SetAnnotation(anno)
+}
+
+// DeleteAnnotation removes a match's annotation row entirely (members and
+// tags cascade away with it). Idempotent — deleting a match that has no
+// annotation is a no-op, so a stale UI firing twice is safe.
+func DeleteAnnotation(s db.Store, matchKey string) error {
+	if matchKey == "" {
+		return errors.New("match_key required")
+	}
+	return s.DeleteAnnotation(matchKey)
+}
+
+// ValidateDisruptionSides reports ErrInvalidLeaver / ErrInvalidThrower when
+// either set names a side outside {self, team, enemy}. Exported for the
+// manual-match form, which validates its whole payload up front and only
+// reaches the annotation surface once every field has passed.
+func ValidateDisruptionSides(leavers, throwers []string) error {
+	if _, err := normalizeSides(leavers, ErrInvalidLeaver); err != nil {
+		return err
+	}
+	_, err := normalizeSides(throwers, ErrInvalidThrower)
+	return err
 }
 
 // normalizeAnnotation validates the disruption sides and normalizes every
@@ -141,19 +160,6 @@ func normalizeSides(in []string, invalidErr error) ([]string, error) {
 		out = append(out, s)
 	}
 	return out, nil
-}
-
-// DeleteMatchAnnotation removes a match's annotation row entirely (members and
-// tags cascade away with it). Idempotent — deleting a match that has no
-// annotation is a no-op, so a stale UI firing twice is safe.
-func (a *App) DeleteMatchAnnotation(matchKey string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
-	if matchKey == "" {
-		return errors.New("match_key required")
-	}
-	return a.store.DeleteAnnotation(matchKey)
 }
 
 // normalizeMembers trims whitespace, drops empties, and dedupes

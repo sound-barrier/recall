@@ -11,6 +11,21 @@ import (
 	"recall/pkg/match"
 )
 
+// The shell's half of the user-override surface. Every value rule is pinned at
+// the leaf (pkg/matchedit); what these hold is what only the shell can do —
+// re-read the key, overlay the override onto the folded OCR rows, and hand back
+// an aggregated record with its provenance derived.
+
+// manualInput is the quick-add form at its minimum — the two required fields
+// plus a fixed instant, so each test names only what it varies.
+func manualInput(result string) match.ManualMatchInput {
+	return match.ManualMatchInput{
+		Map:      "ilios",
+		Result:   result,
+		PlayedAt: "2026-06-15T14:30:00Z",
+	}
+}
+
 func TestUpdateMatchData_OverridesOCRAndMarksEdited(t *testing.T) {
 	const key = "match-2026-01-05T21-30-00"
 	fake := dbtest.New()
@@ -37,14 +52,24 @@ func TestUpdateMatchData_OverridesOCRAndMarksEdited(t *testing.T) {
 	}
 }
 
-func TestUpdateMatchData_RejectsInvalidResult(t *testing.T) {
+// The leaf's refusals have to reach the caller as the SAME error values
+// pkg/cmd maps to a status code. An alias that drifted into its own
+// errors.New would still compile and still refuse — and every one of these
+// would silently become a 500 instead of the 4xx the API documents.
+func TestUserMatchWrites_SurfaceTheLeafSentinels(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
 	bad := "win"
 	if err := a.UpdateMatchData("m1", match.UserMatchDataInput{Result: &bad}); !errors.Is(err, app.ErrInvalidResult) {
-		t.Errorf("err = %v, want ErrInvalidResult", err)
+		t.Errorf("bad result: err = %v, want ErrInvalidResult", err)
 	}
 	if err := a.UpdateMatchData("", match.UserMatchDataInput{}); !errors.Is(err, app.ErrMatchKeyRequired) {
 		t.Errorf("empty key: err = %v, want ErrMatchKeyRequired", err)
+	}
+	if err := a.ResetMatchData(""); !errors.Is(err, app.ErrMatchKeyRequired) {
+		t.Errorf("empty key on reset: err = %v, want ErrMatchKeyRequired", err)
+	}
+	if _, err := a.CreateManualMatch(match.ManualMatchInput{Result: "victory"}); !errors.Is(err, app.ErrManualNeedsMap) {
+		t.Errorf("no map: err = %v, want ErrManualNeedsMap", err)
 	}
 }
 
@@ -52,15 +77,11 @@ func TestCreateManualMatch_CreatesManualRecord(t *testing.T) {
 	fake := dbtest.New()
 	a := app.NewWithStore(fake)
 
-	rec, err := a.CreateManualMatch(match.ManualMatchInput{
-		Map:       "ilios",
-		PlayMode:  "competitive",
-		QueueType: "role",
-		Heroes:    []string{"ana", "kiriko"},
-		Result:    "victory",
-		PlayedAt:  "2026-06-15T14:30:00Z",
-		Leavers:   []string{"team"},
-	})
+	in := manualInput("victory")
+	in.PlayMode, in.QueueType = "competitive", "role"
+	in.Heroes, in.Leavers = []string{"ana", "kiriko"}, []string{"team"}
+
+	rec, err := a.CreateManualMatch(in)
 	if err != nil {
 		t.Fatalf("CreateManualMatch: %v", err)
 	}
@@ -104,53 +125,16 @@ func assertManualSideRows(t *testing.T, rec match.Record, fake *dbtest.Fake, wan
 	}
 }
 
-// The played_at timestamp's WALL CLOCK (in its stated offset) is what
-// drives the match key, date, and finished_at — matching OCR rows,
-// which store the player's local wall clock. A UTC conversion here
-// would shift a Denver 8pm entry to 02:00 next-day and break any
-// time-based filtering.
-func TestCreateManualMatch_PreservesLocalWallClock(t *testing.T) {
-	fake := dbtest.New()
-	a := app.NewWithStore(fake)
-
-	rec, err := a.CreateManualMatch(match.ManualMatchInput{
-		Map:       "ilios",
-		PlayMode:  "competitive",
-		QueueType: "role",
-		Heroes:    []string{"ana"},
-		Result:    "victory",
-		PlayedAt:  "2026-06-15T14:30:00-08:00",
-	})
-	if err != nil {
-		t.Fatalf("CreateManualMatch: %v", err)
-	}
-	if want := "match-2026-06-15T14-30-00"; rec.MatchKey != want {
-		t.Errorf("MatchKey = %q, want %q (wall clock, not UTC)", rec.MatchKey, want)
-	}
-	if rec.Data.Date != "2026-06-15" {
-		t.Errorf("Date = %q, want 2026-06-15", rec.Data.Date)
-	}
-	if rec.Data.FinishedAt != "14:30" {
-		t.Errorf("FinishedAt = %q, want 14:30", rec.Data.FinishedAt)
-	}
-}
-
 func TestCreateManualMatch_WritesOptionalAnnotationFields(t *testing.T) {
-	fake := dbtest.New()
-	a := app.NewWithStore(fake)
+	a := app.NewWithStore(dbtest.New())
 
-	rec, err := a.CreateManualMatch(match.ManualMatchInput{
-		Map:        "ilios",
-		PlayMode:   "competitive",
-		QueueType:  "open",
-		Heroes:     []string{"ana"},
-		Result:     "victory",
-		PlayedAt:   "2026-06-15T14:30:00Z",
-		ReplayCode: "ABC123",
-		Note:       "great comeback",
-		Tags:       []string{"clutch", "stream"},
-		Members:    []string{"Apollo#11234"},
-	})
+	in := manualInput("victory")
+	in.PlayMode, in.QueueType = "competitive", "open"
+	in.Heroes = []string{"ana"}
+	in.ReplayCode, in.Note = "ABC123", "great comeback"
+	in.Tags, in.Members = []string{"clutch", "stream"}, []string{"Apollo#11234"}
+
+	rec, err := a.CreateManualMatch(in)
 	if err != nil {
 		t.Fatalf("CreateManualMatch: %v", err)
 	}
@@ -172,110 +156,93 @@ func TestCreateManualMatch_WritesOptionalAnnotationFields(t *testing.T) {
 	}
 }
 
-func TestCreateManualMatch_RejectsCollision(t *testing.T) {
-	const key = "match-2026-06-15T14-30-00"
-	fake := dbtest.New()
-	fake.Summaries = []db.SummaryRow{{Filename: "s.png", MatchKey: key}}
-	a := app.NewWithStore(fake)
+// Overwatch drops a match you leave early from your history, so the OCR
+// pipeline never sees it. The quick-add records one from the map and the result
+// alone — which means manual create can no longer demand a hero, a play mode,
+// or a queue type.
+func TestCreateManualMatch_QuickEntryNeedsOnlyMapAndResult(t *testing.T) {
+	a := app.NewWithStore(dbtest.New())
 
-	_, err := a.CreateManualMatch(match.ManualMatchInput{
-		Map: "ilios", PlayMode: "competitive", QueueType: "role",
-		Heroes: []string{"ana"}, Result: "victory", PlayedAt: "2026-06-15T14:30:00Z",
-	})
-	if !errors.Is(err, app.ErrMatchKeyExists) {
-		t.Errorf("err = %v, want ErrMatchKeyExists", err)
+	in := manualInput("defeat")
+	in.Leavers = []string{"team", "self"}
+
+	rec, err := a.CreateManualMatch(in)
+	if err != nil {
+		t.Fatalf("map + result should be enough, got: %v", err)
+	}
+	if rec.Data.Map != "ilios" || rec.Data.Result != "defeat" {
+		t.Errorf("map/result = %q/%q, want ilios/defeat", rec.Data.Map, rec.Data.Result)
+	}
+	if rec.Data.Hero != "" {
+		t.Errorf("Hero = %q, want empty on a hero-less quick entry", rec.Data.Hero)
+	}
+	if rec.Source != match.SourceManual {
+		t.Errorf("Source = %q, want manual", rec.Source)
+	}
+	if rec.Annotation == nil || len(rec.Annotation.Leavers) != 2 {
+		t.Errorf("annotation leavers = %+v, want both team and self", rec.Annotation)
 	}
 }
 
-func TestCreateManualMatch_Validates(t *testing.T) {
+// An omitted mode / queue must not be invented on the way back out — the
+// aggregator has no aux row to read, and inventing one would fabricate data.
+func TestCreateManualMatch_LeavesModeAndQueueUnsetWhenOmitted(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
-	base := match.ManualMatchInput{
-		Map: "ilios", PlayMode: "competitive", QueueType: "role",
-		Heroes: []string{"ana"}, Result: "victory",
+
+	rec, err := a.CreateManualMatch(manualInput("victory"))
+	if err != nil {
+		t.Fatalf("CreateManualMatch: %v", err)
 	}
-	cases := []struct {
-		name string
-		mut  func(*match.ManualMatchInput)
-		want error
-	}{
-		{"no map", func(m *match.ManualMatchInput) { m.Map = "" }, app.ErrManualNeedsMap},
-		{"bad result", func(m *match.ManualMatchInput) { m.Result = "win" }, app.ErrInvalidResult},
-		{"bad leaver", func(m *match.ManualMatchInput) { m.Leavers = []string{"afk"} }, app.ErrInvalidLeaver},
-		{"bad play_mode", func(m *match.ManualMatchInput) { m.PlayMode = "ranked" }, app.ErrInvalidPlayMode},
-		{"bad queue", func(m *match.ManualMatchInput) { m.QueueType = "5v5" }, app.ErrInvalidQueueType},
-		{"rank progress too high", func(m *match.ManualMatchInput) {
-			m.Rank = &match.ManualRankInput{Division: 3, Progress: 101}
-		}, app.ErrInvalidRank},
-		{"rank progress negative", func(m *match.ManualMatchInput) {
-			m.Rank = &match.ManualRankInput{Division: 3, Progress: -1}
-		}, app.ErrInvalidRank},
-		{"division too high", func(m *match.ManualMatchInput) {
-			m.Rank = &match.ManualRankInput{Division: 6, Progress: 50}
-		}, app.ErrInvalidRank},
-		{"change_percent out of range", func(m *match.ManualMatchInput) {
-			m.Rank = &match.ManualRankInput{Division: 3, Progress: 50, ChangePercent: 2_000_000}
-		}, app.ErrInvalidRank},
-		{"unknown map", func(m *match.ManualMatchInput) { m.Map = "notamap" }, app.ErrUnknownMap},
-		{"unknown hero", func(m *match.ManualMatchInput) { m.Heroes = []string{"notahero"} }, app.ErrUnknownHero},
-		{"unknown rank", func(m *match.ManualMatchInput) {
-			m.Rank = &match.ManualRankInput{Tier: "notatier", Division: 3, Progress: 50}
-		}, app.ErrUnknownRank},
-		// The bug this guard exists for: the form used to submit the display
-		// case. It is spec-valid free text, so nothing rejected it, and the
-		// match silently fell off every rank chart because the ladder is keyed
-		// on the lowercase form.
-		{"tier in display case", func(m *match.ManualMatchInput) {
-			m.Rank = &match.ManualRankInput{Tier: "Platinum", Division: 3, Progress: 50}
-		}, app.ErrUnknownRank},
+	if rec.PlayMode != "" {
+		t.Errorf("PlayMode = %q, want empty — an omitted mode must not be invented", rec.PlayMode)
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			in := base
-			tc.mut(&in)
-			if _, err := a.CreateManualMatch(in); !errors.Is(err, tc.want) {
-				t.Errorf("err = %v, want %v", err, tc.want)
-			}
-		})
+	if rec.QueueType != "" {
+		t.Errorf("QueueType = %q, want empty", rec.QueueType)
 	}
 }
 
-func TestUpdateMatchData_RejectsOutOfRangeStats(t *testing.T) {
+// The rank block the create path writes has to survive the overlay and reach
+// the record the API returns.
+func TestCreateManualMatch_AppliesRankOverride(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
-	neg, big, overLevel, overPct, bigChange := -1, 1_000_001, 6, 101, 2_000_000
-	cases := []struct {
-		name string
-		in   match.UserMatchDataInput
-	}{
-		{"negative damage", match.UserMatchDataInput{Damage: &neg}},
-		{"damage too big", match.UserMatchDataInput{Damage: &big}},
-		{"negative eliminations", match.UserMatchDataInput{Eliminations: &neg}},
-		{"level too high", match.UserMatchDataInput{Level: &overLevel}},
-		{"rank_progress too high", match.UserMatchDataInput{RankProgress: &overPct}},
-		{"change_percent out of range", match.UserMatchDataInput{ChangePercent: &bigChange}},
-		{"hero percent too high", match.UserMatchDataInput{Heroes: []match.UserHeroInput{{Hero: "ana", PercentPlayed: &overPct}}}},
-		{"hero_stat value negative", match.UserMatchDataInput{HeroStats: []match.UserHeroStatInput{{Hero: "ana", StatKey: "damage", Value: -5}}}},
-		{"sr out of range", match.UserMatchDataInput{SR: []match.UserHeroSRInput{{Hero: "ana", SR: -1}}}},
+
+	in := manualInput("victory")
+	in.Rank = &match.ManualRankInput{
+		Tier: "platinum", Division: 3, Progress: 40, ChangePercent: -12,
+		DemotionProtection: true,
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := a.UpdateMatchData("m1", tc.in); !errors.Is(err, app.ErrStatOutOfRange) {
-				t.Errorf("err = %v, want ErrStatOutOfRange", err)
-			}
-		})
+
+	rec, err := a.CreateManualMatch(in)
+	mustNoErr(t, err)
+
+	if rec.Data.Rank != "platinum" || rec.Data.Level != 3 {
+		t.Errorf("rank/level = %q/%d, want platinum/3", rec.Data.Rank, rec.Data.Level)
+	}
+	if rec.Data.RankProgress != 40 || rec.Data.ChangePercent != -12 {
+		t.Errorf("progress/change = %d/%d, want 40/-12", rec.Data.RankProgress, rec.Data.ChangePercent)
+	}
+	if !slices.Contains(rec.Data.Modifiers, "demotion protection") {
+		t.Errorf("Modifiers = %v, want the demotion-protection marker", rec.Data.Modifiers)
 	}
 }
 
-func TestUpdateMatchData_RejectsUnknownMapHero(t *testing.T) {
+// A rank entered without a tier renders as "no rank", not as a blank rank
+// pill — the leaf leaves the column NULL and the record must read that way.
+func TestCreateManualMatch_OmittedTierRendersAsNoRank(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
-	badMap, badHero := "notamap", "notahero"
-	if err := a.UpdateMatchData("m1", match.UserMatchDataInput{Map: &badMap}); !errors.Is(err, app.ErrUnknownMap) {
-		t.Errorf("unknown map: err = %v, want ErrUnknownMap", err)
+
+	in := manualInput("victory")
+	in.Rank = &match.ManualRankInput{Division: 2, Progress: 55, ChangePercent: 9}
+
+	rec, err := a.CreateManualMatch(in)
+	mustNoErr(t, err)
+
+	if rec.Data.Rank != "" {
+		t.Errorf("Rank = %q, want it left unset when no tier was entered", rec.Data.Rank)
 	}
-	if err := a.UpdateMatchData("m1", match.UserMatchDataInput{Hero: &badHero}); !errors.Is(err, app.ErrUnknownHero) {
-		t.Errorf("unknown hero: err = %v, want ErrUnknownHero", err)
-	}
-	if err := a.UpdateMatchData("m1", match.UserMatchDataInput{Heroes: []match.UserHeroInput{{Hero: badHero}}}); !errors.Is(err, app.ErrUnknownHero) {
-		t.Errorf("unknown heroes[]: err = %v, want ErrUnknownHero", err)
+	if rec.Data.RankProgress != 55 || rec.Data.Level != 2 {
+		t.Errorf("progress/level = %d/%d, want 55/2 — the rest of the block still applies",
+			rec.Data.RankProgress, rec.Data.Level)
 	}
 }
 

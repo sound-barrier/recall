@@ -1,9 +1,10 @@
-package app
+package matchedit
 
 import (
 	"errors"
 	"fmt"
 
+	"recall/pkg/db"
 	"recall/pkg/match"
 )
 
@@ -35,19 +36,16 @@ var ErrIgnoreFilenameRequired = errors.New("filename is required")
 //
 // Idempotent: ignoring an already-ignored filename refreshes the
 // timestamp; wiping a non-existent matchKey is a no-op.
-func (a *App) IgnoreScreenshot(filename string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
+func IgnoreScreenshot(s db.Store, filename string) error {
 	if filename == "" {
 		return ErrIgnoreFilenameRequired
 	}
-	if err := a.store.AddIgnoredScreenshot(filename); err != nil {
+	if err := s.AddIgnoredScreenshot(filename); err != nil {
 		return fmt.Errorf("add ignored screenshot: %w", err)
 	}
 	// An ignored file is skipped on every future run, so a standing
 	// OCR-failure row would sit in the triage list forever — clear it.
-	if err := a.store.RemoveFailedFile(filename); err != nil {
+	if err := s.RemoveFailedFile(filename); err != nil {
 		return fmt.Errorf("clear failed-file row for %s: %w", filename, err)
 	}
 	// Deduplicate so a tracked-match lookup that returns the same key
@@ -55,7 +53,7 @@ func (a *App) IgnoreScreenshot(filename string) error {
 	// HardDeleteMatch twice (harmless but noisier in tests + audit
 	// logs). Build the set, then iterate it in a stable order so
 	// failure messages stay reproducible.
-	tracked, err := a.store.LookupMatchKeysForFilename(filename)
+	tracked, err := s.LookupMatchKeysForFilename(filename)
 	if err != nil {
 		return fmt.Errorf("lookup match keys for %s: %w", filename, err)
 	}
@@ -72,7 +70,7 @@ func (a *App) IgnoreScreenshot(filename string) error {
 		keys = append(keys, k)
 	}
 	for _, key := range keys {
-		if err := a.store.HardDeleteMatch(key); err != nil {
+		if err := s.HardDeleteMatch(key); err != nil {
 			return fmt.Errorf("hard delete match for %s: %w", key, err)
 		}
 	}
@@ -83,17 +81,14 @@ func (a *App) IgnoreScreenshot(filename string) error {
 // the next parse re-ingests it. Idempotent on absent filenames.
 // Surfaced for completeness; no UI affordance ships in PR 4 (debug /
 // future "show ignored" panel).
-func (a *App) UnignoreScreenshot(filename string) error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
+func UnignoreScreenshot(s db.Store, filename string) error {
 	if filename == "" {
 		return ErrIgnoreFilenameRequired
 	}
-	return a.store.RemoveIgnoredScreenshot(filename)
+	return s.RemoveIgnoredScreenshot(filename)
 }
 
-// IgnoredScreenshot is the wire shape returned by GetIgnoredScreenshots.
+// IgnoredScreenshot is the wire shape returned by ListIgnoredScreenshots.
 // `Filename` is the raw filename the suppress-list keys on; `IgnoredAt`
 // is the server-assigned timestamp the Settings panel renders so users
 // can tell recent ignores from old ones.
@@ -102,11 +97,11 @@ type IgnoredScreenshot struct {
 	IgnoredAt string `json:"ignored_at"`
 }
 
-// GetIgnoredScreenshots returns the suppress-list with timestamps,
+// ListIgnoredScreenshots returns the suppress-list with timestamps,
 // sorted most-recently-ignored first. Backs the Settings "Manage
 // ignored files" panel.
-func (a *App) GetIgnoredScreenshots() ([]IgnoredScreenshot, error) {
-	rows, err := a.store.ListIgnoredScreenshots()
+func ListIgnoredScreenshots(s db.Store) ([]IgnoredScreenshot, error) {
+	rows, err := s.ListIgnoredScreenshots()
 	if err != nil {
 		return nil, fmt.Errorf("list ignored screenshots: %w", err)
 	}
@@ -121,11 +116,8 @@ func (a *App) GetIgnoredScreenshots() ([]IgnoredScreenshot, error) {
 // "Re-enable all" action on the Settings panel. After the call, the
 // next Parse run will re-discover every previously-ignored file from
 // disk (the on-disk files never moved). Idempotent on an empty list.
-func (a *App) ClearIgnoredScreenshots() error {
-	if err := a.assertNoCoachSession(); err != nil {
-		return err
-	}
-	if err := a.store.ClearIgnoredScreenshots(); err != nil {
+func ClearIgnoredScreenshots(s db.Store) error {
+	if err := s.ClearIgnoredScreenshots(); err != nil {
 		return fmt.Errorf("clear ignored screenshots: %w", err)
 	}
 	return nil
