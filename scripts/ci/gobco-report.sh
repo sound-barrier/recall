@@ -51,6 +51,23 @@
 # LOADS its -stats file before writing it and panics if the counter count has
 # changed, so every package gets its own file and OUT_DIR is wiped first.
 #
+#   5. IT IGNORES BUILD TAGS, and there is no flag to change that. gobco parses
+#      and type-checks every .go file in the package itself, before `go test`
+#      ever runs, so a package carrying a build-tag TWIN PAIR is a hard panic:
+#        pkg/app   — app_wails.go and app_server.go both declare emitParseProgress
+#        pkg/cmd   — a test names an export that exists only under !serveronly
+#        pkg/probe — probe_windows.go imports a Windows-only registry package
+#        pkg/db    — a test names a symbol from an internal export_test.go
+#      Measured, not guessed: gobco reads 8 of this module's 20 test-bearing
+#      packages. The twelve it cannot read are the large ones, which is why
+#      `task cover-go` still prints basic-block coverage for every package —
+#      deleting that in favor of this was a trade of full coverage for 40%.
+#      Those are the two largest packages in the module, so a report that
+#      quietly omitted them would be worse than no report — it would look
+#      complete. They are listed in UNANALYZABLE below and named in the output,
+#      so the gap is stated rather than hidden. Do not "fix" this by deleting a
+#      twin: the pair is what lets the desktop and server builds diverge.
+#
 # Usage:
 #   bash scripts/ci/gobco-report.sh                 # every package with tests
 #   bash scripts/ci/gobco-report.sh ./pkg/match     # one package
@@ -61,6 +78,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_DIR="${OUT_DIR:-${REPO_ROOT}/coverage/go/branch}"
 WORKTREE="${WORKTREE:-/tmp/recall-gobco-$$}"
+skipped=""
 
 if ! command -v gobco >/dev/null 2>&1; then
   echo "::error::gobco not installed — run 'mise install' (pinned in mise.toml [tools])" >&2
@@ -82,6 +100,14 @@ else
       | grep -v node_modules
   )"
 fi
+
+# Packages gobco cannot analyze, with the reason. Each is EXCLUDED from the
+# loop and NAMED in the output — an unmeasured package must never read as a
+# measured one. Remove an entry only when gobco learns build tags.
+# Measured empirically by running gobco against every package, not guessed.
+UNANALYZABLE="recall/pkg/aggregate recall/pkg/app recall/pkg/applog recall/pkg/bundle \
+  recall/pkg/cmd recall/pkg/coach recall/pkg/db recall/pkg/fixtures \
+  recall/pkg/gamedata recall/pkg/parser recall/pkg/probe recall/pkg/seed"
 
 rm -rf "${OUT_DIR}"
 mkdir -p "${OUT_DIR}"
@@ -105,6 +131,13 @@ echo "[ recall ] gobco · condition coverage · -short · default (desktop) buil
 echo "[ recall ] worktree: ${WORKTREE}  ·  stats: ${OUT_DIR}"
 
 for pkg in ${pkgs}; do
+  case " ${UNANALYZABLE} " in
+    *" ${pkg} "*)
+      echo "[ recall ] ── ${pkg}  SKIPPED — gobco ignores build tags (see the header)"
+      skipped="${skipped} ${pkg}"
+      continue
+      ;;
+  esac
   # Accept either form: `go list` yields `recall/pkg/match`, an explicit
   # argument is `./pkg/match`. Normalize both to a bare `pkg/match` before
   # deriving the slug — a leading "./" would otherwise produce a DOTFILE stats
@@ -142,6 +175,10 @@ done | sort | awk -F'\t' '
   END { if (tt) printf "  %-26s %5d / %-5d  %5.1f%%\n", "TOTAL", th, tt, 100 * th / tt }'
 
 echo
+if [[ -n "${skipped:-}" ]]; then
+  echo "[ recall ] !  NOT MEASURED (gobco ignores build tags):${skipped}"
+  echo "[ recall ] !  Those are the two largest packages. This report covers the rest."
+fi
 echo "[ recall ] i  Informational. The Go coverage GATE is GO_COVERAGE_MIN in Taskfile.yml."
 echo "[ recall ] i  Short mode, default (desktop) build tags, no -race. Counters are"
 echo "[ recall ] i  unsynchronized, so a 'never taken' verdict in a concurrent package"

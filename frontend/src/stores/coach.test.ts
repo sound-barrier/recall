@@ -3,7 +3,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 
 import { setApiBacking } from '@/api-client'
-import type { CoachReturnItem, CoachReturnSheet } from '@/api-client'
 import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
@@ -12,9 +11,10 @@ import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { COACH_SESSION_RESUME_KEY } from '@/composables/shared/storageKeys'
 
-// The session store owns the whole coach-side loop: what the app is
-// showing (a loaned corpus), what the coach has written about it (drafts
-// that autosave), and the two lifecycle edges — open and end.
+// The session store owns the coach-side loop: what the app is showing (a
+// loaned corpus), what the coach has written about it (drafts that
+// autosave), and the two lifecycle edges — open and end. The player's
+// inbox is `coachReturns.test.ts`.
 //
 // The hunt these tests exist for is the stale draft: the notes map is
 // hydrated FROM the session response and must be REPLACED wholesale, never
@@ -47,41 +47,6 @@ const RESURFACED = {
   extra_tags: [],
   match_clock: '06:40',
   updated_at: '2026-08-14T19:02:00Z',
-}
-
-function returnNote(noteId: string, over: Partial<CoachReturnItem> = {}): CoachReturnItem {
-  return {
-    note_id: noteId,
-    match_key: MATCH_A,
-    kind: 'note',
-    text: 'Late peel on B.',
-    focus_tags: [],
-    extra_tags: [],
-    match_clock: '',
-    updated_at: '2026-08-14T19:02:00Z',
-    status: 'pending',
-    ...over,
-  }
-}
-
-// Every fixture reports `pending: 0` while carrying undecided notes. That
-// mismatch is the point: pending is DERIVED from the notes and the
-// decisions, so a stale (or absent) count from the wire can't leave the
-// banner lying in either direction.
-function sheet(over: Partial<CoachReturnSheet> = {}): CoachReturnSheet {
-  return {
-    id: 7,
-    coach_name: 'Ordo',
-    player_handle: 'Sable',
-    session_date: '2026-08-14',
-    imported_at: '2026-08-15T09:12:00Z',
-    summary: '',
-    notes: [returnNote('n-1'), returnNote('n-2')],
-    decisions: {},
-    pending: 0,
-    player_mismatch: false,
-    ...over,
-  }
 }
 
 function draft(over: Partial<CoachNoteDraft> = {}): CoachNoteDraft {
@@ -123,10 +88,6 @@ beforeEach(() => {
     DeleteCoachNote: vi.fn(async () => undefined),
     PutCoachSummary: vi.fn(async () => undefined),
     ExportCoachNotes: vi.fn(async () => 'recall-coach-notes-sable.zip'),
-    ListCoachReturns: vi.fn(async () => []),
-    GetCoachReturn: vi.fn(async () => sheet()),
-    DecideCoachReturn: vi.fn(async () => sheet({ pending: 0, decisions: { 'n-1': 'accepted' } })),
-    DeleteMatchCoachNote: vi.fn(async () => undefined),
   }
   setApiBacking(api)
   setCoachSessionResume(false)
@@ -314,6 +275,24 @@ describe('coach store — autosave', () => {
     await vi.advanceTimersByTimeAsync(1000)
 
     expect(api.PutCoachSummary).toHaveBeenCalledWith('Ult economy first.')
+  })
+
+  // The summary rides the same per-key queue as the notes, under a key of
+  // its own. Every match key carries a match-/unmatched-/ambiguous- prefix,
+  // so none can ever claim that slot — if one could, the sentence typed
+  // into the summary would silently replace the note queued beside it.
+  it('queues the summary beside a note in the same burst, never on top of it', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.updateNote(MATCH_A, draft({ text: 'Peel earlier, on B.' }))
+    coach.updateSummary('Ult economy first.')
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(api.PutCoachNote).toHaveBeenCalledTimes(1)
+    expect(api.PutCoachSummary).toHaveBeenCalledTimes(1)
+    expect(coach.saveStateFor(MATCH_A)).toBe('saved')
   })
 
   it('flushes queued autosaves before exporting, so the archive is current', async () => {
@@ -598,168 +577,5 @@ describe('coach store — confirming the player', () => {
     expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren')
     expect(coach.player?.handle).toBe('Wren')
     expect(coach.notes).toEqual({})
-  })
-})
-
-describe('coach store — the player-side inbox', () => {
-  it('tallies undecided notes across sheets and names the first coach waiting', async () => {
-    api.ListCoachReturns = vi.fn(async () => [
-      sheet({ id: 1, coach_name: 'Ordo' }),
-      sheet({ id: 2, coach_name: 'Vale', notes: [returnNote('n-3')] }),
-    ])
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-
-    expect(coach.inbox).toHaveLength(2)
-    expect(coach.pendingNoteCount).toBe(3)
-    expect(coach.firstPendingCoach).toBe('Ordo')
-  })
-
-  it('reports nothing waiting when every note is decided', async () => {
-    api.ListCoachReturns = vi.fn(async () => [
-      sheet({ decisions: { 'n-1': 'accepted', 'n-2': 'skipped' } }),
-    ])
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-
-    expect(coach.pendingNoteCount).toBe(0)
-    expect(coach.firstPendingCoach).toBe('')
-  })
-
-  // The server derives `accepted` from a block that already sits on the
-  // match — a fact the client cannot see. Re-counting those notes is how a
-  // repeat session's banner claims seven waiting when five were decided
-  // before the archive was even re-imported.
-  it('trusts the status the server derived for notes it already accepted', async () => {
-    api.ListCoachReturns = vi.fn(async () => [
-      sheet({
-        notes: [
-          returnNote('n-1', { status: 'accepted' }),
-          returnNote('n-2', { status: 'skipped' }),
-          returnNote('n-3', { status: 'pending' }),
-        ],
-      }),
-    ])
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-
-    expect(coach.pendingNoteCount).toBe(1)
-  })
-
-  // A note whose status the server did not send must still nag. Counting
-  // only an explicit 'pending' made a missing field mean "decided", which
-  // hides the banner entirely — the player never learns notes are waiting.
-  // Over-counting is visible and recoverable; under-counting is silent.
-  it('counts a note whose status is missing as still waiting', async () => {
-    api.ListCoachReturns = vi.fn(async () => [
-      sheet({ notes: [{ ...returnNote('n-1'), status: undefined } as unknown as CoachReturnItem] }),
-    ])
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-
-    expect(coach.pendingNoteCount).toBe(1)
-  })
-
-  // An orphan's match is not in this history, so it can never be accepted
-  // — counting it would leave the banner up with nothing to decide.
-  it('never counts an orphaned note as waiting', async () => {
-    api.ListCoachReturns = vi.fn(async () => [
-      sheet({ notes: [returnNote('n-1', { status: 'orphan' }), returnNote('n-2')] }),
-    ])
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-
-    expect(coach.pendingNoteCount).toBe(1)
-  })
-
-  it('opens a staged sheet on demand and puts it away again', async () => {
-    const coach = useCoachStore()
-    await coach.openReturnSheet(7)
-
-    expect(api.GetCoachReturn).toHaveBeenCalledWith(7)
-    expect(coach.returnSheet?.id).toBe(7)
-
-    coach.closeReturnSheet()
-    expect(coach.returnSheet).toBeNull()
-  })
-
-  it('opens the sheet an import just staged without a round-trip', async () => {
-    const coach = useCoachStore()
-    await settle()
-
-    // pending: 0 as the import reported it — the count is derived from the
-    // notes and their decisions, so the banner still sees two waiting.
-    coach.stageImportedNotes(sheet({ id: 9 }))
-
-    expect(coach.returnSheet?.id).toBe(9)
-    expect(coach.inbox.map(s => s.id)).toContain(9)
-    expect(coach.pendingNoteCount).toBe(2)
-    expect(api.GetCoachReturn).not.toHaveBeenCalled()
-  })
-
-  it('writes the verdicts as one partial map and settles what the banner counts', async () => {
-    api.ListCoachReturns = vi.fn(async () => [sheet()])
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-    expect(coach.pendingNoteCount).toBe(2)
-
-    await coach.openReturnSheet(7)
-    await coach.decide(7, { 'n-1': 'accepted', 'n-2': 'skipped' })
-
-    expect(api.DecideCoachReturn).toHaveBeenCalledWith(7, { 'n-1': 'accepted', 'n-2': 'skipped' })
-    expect(coach.inbox.find(s => s.id === 7)?.pending).toBe(0)
-    expect(coach.pendingNoteCount).toBe(0)
-  })
-
-  // "Decide later" is the partial arm: the notes left undecided stay
-  // pending, so the banner survives the dialog closing.
-  it('leaves an undecided note waiting after a partial write', async () => {
-    api.ListCoachReturns = vi.fn(async () => [sheet()])
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-
-    await coach.decide(7, { 'n-1': 'accepted' })
-
-    expect(coach.pendingNoteCount).toBe(1)
-  })
-
-  it("removes an accepted note from a match and reloads the match's records", async () => {
-    const coach = useCoachStore()
-    await coach.removeCoachNote(MATCH_A, 3)
-
-    expect(api.DeleteMatchCoachNote).toHaveBeenCalledWith(MATCH_A, 3)
-  })
-
-  // Every writer asks the gate first. A DELETE aimed at the coach's own
-  // match while a player's corpus is on loan is exactly the orphan write
-  // the session lock exists to refuse.
-  it('refuses to remove a note while a coaching session holds the app', async () => {
-    const coach = useCoachStore()
-    await coach.openBundle()
-    await settle()
-
-    await coach.removeCoachNote(MATCH_A, 3)
-
-    expect(api.DeleteMatchCoachNote).not.toHaveBeenCalled()
-  })
-
-  // The dialog decides whether to close, so the failure has to reach it
-  // rather than settling quietly into the error banner.
-  it('rejects when the verdicts could not be written', async () => {
-    api.ListCoachReturns = vi.fn(async () => [sheet()])
-    api.DecideCoachReturn = vi.fn(async () => { throw new Error('500') })
-    setApiBacking(api)
-    const coach = useCoachStore()
-    await settle()
-
-    await expect(coach.decide(7, { 'n-1': 'accepted' })).rejects.toThrow()
-    expect(coach.pendingNoteCount).toBe(2)
   })
 })

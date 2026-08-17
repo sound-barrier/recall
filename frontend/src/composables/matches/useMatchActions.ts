@@ -28,6 +28,7 @@ import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useAppStore } from '@/stores/app'
 import { useUiStore } from '@/stores/ui'
 import type { MatchRecord } from '@/api-client'
@@ -104,6 +105,7 @@ function hideToastLabel(matchKeys: string[], records: MatchRecord[]): string {
 
 export function useMatchActions() {
   const matchesStore = useMatchesStore()
+  const parseStore = useParseStore()
   const appStore = useAppStore()
   const uiStore = useUiStore()
   // Every handler below that WRITES asks the gate first. The disabled
@@ -124,7 +126,7 @@ export function useMatchActions() {
   // suppress-list, the count, and the failure ledger.
   const reload = () => getQueryClient().refetchQueries({ queryKey: qk.matches })
   const reloadCluster = () => matchesStore.load()
-  const reloadIgnored = () => matchesStore.loadIgnored()
+  const reloadIgnored = () => parseStore.loadIgnored()
   const setError = (message: string) => appStore.setError(message)
   const onError = (raw: string) => appStore.setErrorFromRaw(raw)
 

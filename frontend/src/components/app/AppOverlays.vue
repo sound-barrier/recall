@@ -12,6 +12,7 @@ import ViewLoadError from '@/components/app/ViewLoadError.vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
@@ -33,21 +34,22 @@ function lazyOverlay(loader: () => Promise<{ default: Component }>) {
 const AboutModal = lazyOverlay(() => import('@/components/update/AboutModal.vue'))
 const SettingsModal = lazyOverlay(() => import('@/components/settings/SettingsModal.vue'))
 const FirstRunProfileModal = lazyOverlay(() => import('@/components/app/FirstRunProfileModal.vue'))
-const ExportBundleModal = lazyOverlay(() => import('@/components/settings/ExportBundleModal.vue'))
-const IgnoredFilesPanel = lazyOverlay(() => import('@/components/settings/IgnoredFilesPanel.vue'))
+const ExportBundleModal = lazyOverlay(() => import('@/components/matches/export/ExportBundleModal.vue'))
+const IgnoredFilesPanel = lazyOverlay(() => import('@/components/ingest/ignored/IgnoredFilesPanel.vue'))
 const MatchDetailPanel = lazyOverlay(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
-const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/list/MatchAnchorToast.vue'))
-const MatchUndoToast = lazyOverlay(() => import('@/components/matches/list/MatchUndoToast.vue'))
-const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/list/TiltNudgeToast.vue'))
-const SessionSummaryToast = lazyOverlay(() => import('@/components/matches/list/SessionSummaryToast.vue'))
+const MatchAnchorToast = lazyOverlay(() => import('@/components/matches/toasts/MatchAnchorToast.vue'))
+const MatchUndoToast = lazyOverlay(() => import('@/components/matches/toasts/MatchUndoToast.vue'))
+const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/toasts/TiltNudgeToast.vue'))
+const SessionSummaryToast = lazyOverlay(() => import('@/components/matches/toasts/SessionSummaryToast.vue'))
 const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/app/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = lazyOverlay(() => import('@/components/matches/manual/ManualMatchModal.vue'))
 const OnboardingTour = lazyOverlay(() => import('@/components/onboarding/OnboardingTour.vue'))
-const CoachReturnSheet = lazyOverlay(() => import('@/components/coach/CoachReturnSheet.vue'))
+const CoachReturnSheet = lazyOverlay(() => import('@/components/coach/inbox/CoachReturnSheet.vue'))
 
 const appStore = useAppStore()
 const matchesStore = useMatchesStore()
+const parseStore = useParseStore()
 const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 // Stateless DOM/nav bridge — its own instance is fine (no shared state).
@@ -75,34 +77,41 @@ const { closeAbout, startSelfUpdate, restartToApply } = appStore
 // Settings — Tesseract + the first-run source candidates.
 const { tesseractStatus, screenshotCandidates, probing } = storeToRefs(settingsStore)
 
-// Matches — record buckets + ignored panel + parse gate + export-bundle modal.
+// Matches — record buckets + the export-bundle modal.
 const {
-  showUnsupportedModal,
-  ignoredPanelOpen,
-  ignoredScreenshots,
   hiddenRecords,
   unknownRecords,
   exportBundleOpen,
   exportBundleSelectedKeys,
   records,
-  sessionToast,
 } = storeToRefs(matchesStore)
+
+// Parse — the unsupported-engine gate, the ignored-screenshots panel, and the
+// post-run session tally toast.
+const {
+  showUnsupportedModal,
+  ignoredPanelOpen,
+  ignoredScreenshots,
+  sessionToast,
+} = storeToRefs(parseStore)
 
 // Tilt nudge — evaluated over the FULL record set (tilt is about
 // actual recent play, not the current narrow); dismissal is
 // session-scoped to the streak inside the composable.
 const tiltNudge = useTiltNudge(records)
 const {
-  confirmUnsupportedParse,
-  closeIgnoredPanel,
-  onUnignoreScreenshot,
-  onClearIgnoredScreenshots,
-  onRunParseFromIgnored,
   load,
   onTourActiveChange,
   closeExportBundle,
   onExportBundleConfirm,
 } = matchesStore
+const {
+  confirmUnsupportedParse,
+  closeIgnoredPanel,
+  onUnignoreScreenshot,
+  onClearIgnoredScreenshots,
+  onRunParseFromIgnored,
+} = parseStore
 
 const lightboxSrc = computed(() => {
   const f = preview.lightboxFilename.value
@@ -137,7 +146,7 @@ const lightboxSrc = computed(() => {
        readout after a run lands during an active session. -->
   <SessionSummaryToast
     :state="sessionToast"
-    @dismiss="matchesStore.dismissSessionToast"
+    @dismiss="parseStore.dismissSessionToast"
   />
 
   <!-- Tilt nudge — dismissible break suggestion on a collapsed loss

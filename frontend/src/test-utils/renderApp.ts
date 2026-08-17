@@ -272,8 +272,8 @@ export async function renderApp(overrides: MountOverrides = {}): Promise<RenderR
     // The coaching-session chrome is lazy in the masthead for the same
     // reason and needs the same pre-warm — a test that seeds a session
     // would otherwise assert against a slip that hasn't resolved yet.
-    import('@/components/coach/CoachLoanSlip.vue'),
-    import('@/components/coach/CoachNavStrip.vue'),
+    import('@/components/coach/room/CoachLoanSlip.vue'),
+    import('@/components/coach/room/CoachNavStrip.vue'),
   ])
   // Each render starts from an empty cache. getQueryClient() reads a
   // globalThis slot, so this resolves the SAME client the freshly-imported

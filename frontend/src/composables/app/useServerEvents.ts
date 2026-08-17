@@ -8,6 +8,7 @@ import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 
 // App-shell wiring for the ingest event stream + parse-stream recovery.
@@ -17,11 +18,12 @@ import { useSettingsStore } from '@/stores/settings'
 // App's lifecycle by accident (the smell frontend/CLAUDE.md documents).
 // This file only WIRES: the parse-lifecycle transitions are store actions
 // (finishParseRun), and event payloads land in the query cache or the
-// matches store's client refs.
+// parse store's client refs.
 export function useServerEvents() {
   const matchesStore = useMatchesStore()
+  const parseStore = useParseStore()
   const settingsStore = useSettingsStore()
-  const { parseProgress, parseLog, watchActivity, parseBusy } = storeToRefs(matchesStore)
+  const { parseProgress, parseLog, watchActivity, parseBusy } = storeToRefs(parseStore)
 
   // The match-updated upsert target reads/writes the qk.matches CACHE
   // directly — never the store's tour-aware `records` computed, whose
@@ -40,8 +42,8 @@ export function useServerEvents() {
     parseProgress,
     parseLog,
     watchActivity,
-    onParseComplete: () => matchesStore.finishParseRun('complete'),
-    onParseCanceled: () => matchesStore.finishParseRun('canceled'),
+    onParseComplete: () => parseStore.finishParseRun('complete'),
+    onParseCanceled: () => parseStore.finishParseRun('canceled'),
     // The backend probes Tesseract in the background after boot (so a
     // cold-boot Defender scan can't stall startup); push each result into
     // the settings store so the System Alert banner self-heals without an
@@ -68,5 +70,5 @@ export function useServerEvents() {
       staleTime: 0,
     }),
   })
-  matchesStore.wireParseRecovery(recovery)
+  parseStore.wireParseRecovery(recovery)
 }

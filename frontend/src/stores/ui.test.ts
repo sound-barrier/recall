@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useUiStore } from '@/stores/ui'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import type { MatchRecord } from '@/api'
 
 // backgroundFrozen is an OR across six modal flags spanning three stores — the
@@ -29,7 +30,7 @@ const rec = (key: string): MatchRecord => ({ match_key: key, source_files: [], d
 async function neutralized() {
   const matches = useMatchesStore()
   await matches.onTourActiveChange(true) // tourActive=true → firstRunModalOpen=false
-  return { matches, app: useAppStore(), ui: useUiStore() }
+  return { matches, app: useAppStore(), parse: useParseStore(), ui: useUiStore() }
 }
 
 beforeEach(() => {
@@ -65,9 +66,9 @@ describe('ui store — backgroundFrozen', () => {
     expect(ui.backgroundFrozen).toBe(true)
   })
 
-  it('flips true for the matches store’s unsupported-OCR modal', async () => {
-    const { ui, matches } = await neutralized()
-    matches.showUnsupportedModal = true
+  it('flips true for the parse store’s unsupported-OCR modal', async () => {
+    const { ui, parse } = await neutralized()
+    parse.showUnsupportedModal = true
     expect(ui.backgroundFrozen).toBe(true)
   })
 

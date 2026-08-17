@@ -27,7 +27,7 @@ import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
 import { useTheme } from '@/composables/settings/useTheme'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 
 // Settings domain: the OCR-engine (Tesseract) configuration + status. Migrated
 // out of App.vue's <script setup>; the composable's deps are wired to the
@@ -145,7 +145,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setScreenshotsDir: SetScreenshotsDir,
     revealScreenshotsDir: RevealScreenshotsDir,
     resetScreenshotsDir: ResetScreenshotsDir,
-    refreshNewCount: () => useMatchesStore().refreshNewCount(),
+    refreshNewCount: () => useParseStore().refreshNewCount(),
     shouldConfirmPickWhile: () => watchEnabled.value,
     onError: (m) => { appStore.setErrorFromRaw(m) },
   })
@@ -162,7 +162,7 @@ export const useSettingsStore = defineStore('settings', () => {
     try {
       await SetScreenshotsDir(path)
       setScreenshotsDir(path)
-      await useMatchesStore().refreshNewCount()
+      await useParseStore().refreshNewCount()
     } catch (e) {
       appStore.setErrorFromRaw(String(e))
     }

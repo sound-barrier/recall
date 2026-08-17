@@ -2,7 +2,7 @@
 import { computed, onMounted, nextTick } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
-import CoachNoteBlock from '@/components/coach/CoachNoteBlock.vue'
+import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
 import { useMatchAnnotationEditor } from '@/composables/matches/detail/useMatchAnnotationEditor'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useWriteGate } from '@/composables/shared/useWriteGate'

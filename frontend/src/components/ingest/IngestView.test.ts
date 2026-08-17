@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import IngestView from '@/components/ingest/IngestView.vue'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 import { useSettingsStore } from '@/stores/settings'
@@ -49,28 +50,29 @@ function renderIngest(over: IngestOver = {}) {
   setActivePinia(createPinia())
   const app = useAppStore()
   const matches = useMatchesStore()
+  const parse = useParseStore()
   const settings = useSettingsStore()
 
   settings.setTesseractStatus(tess(over.tesseractReady ?? true))
   settings.setScreenshotsDir(over.screenshotsDir ?? '/srv/recall')
   settings.setWatchEnabled(over.watchEnabled ?? false)
 
-  matches.parseBusy = over.parseBusy ?? false
-  matches.cancelingParse = over.cancelingParse ?? false
+  parse.parseBusy = over.parseBusy ?? false
+  parse.cancelingParse = over.cancelingParse ?? false
   seedQuery(qk.pendingCount, over.newScreenshotCount ?? 3)
-  matches.lastParsedAt = over.lastParsedAt ?? null
+  parse.lastParsedAt = over.lastParsedAt ?? null
   matches.records = Array.from({ length: over.matchedCount ?? 0 }, (_, i) => rec(i))
 
   // Spy on the actions the buttons drive (before render so IngestView's
   // destructure captures the spies) — avoids the real parse pipeline / api.
   const spies = {
-    parse:         vi.spyOn(matches, 'parse').mockResolvedValue(undefined),
-    onCancelParse: vi.spyOn(matches, 'onCancelParse').mockResolvedValue(undefined),
+    parse:         vi.spyOn(parse, 'parse').mockResolvedValue(undefined),
+    onCancelParse: vi.spyOn(parse, 'onCancelParse').mockResolvedValue(undefined),
     toggleWatch:   vi.spyOn(settings, 'toggleWatch').mockResolvedValue(undefined),
   }
 
   const view = render(IngestView)
-  return { view, app, matches, settings, spies }
+  return { view, app, matches, parse, settings, spies }
 }
 
 // NOTE: interactions in this view use TL fireEvent, not user-event —

@@ -14,9 +14,10 @@ import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useUiStore } from '@/stores/ui'
 import { useOWData } from '@/composables/shared/useOWData'
-import type { CoachLabels } from '@/components/coach/coach-room-props'
+import type { CoachLabels } from '@/components/coach/room/coach-room-props'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
 import { useAppBoot } from '@/composables/app/useAppBoot'
@@ -66,7 +67,7 @@ const SeasonCompareView = lazyView(() => import('@/components/compare/SeasonComp
 const EloCalculatorView = lazyView(() => import('@/components/elo/EloCalculatorView.vue'))
 // The film room is a view without a tab — reached from the loan slip, the
 // back affordance, or `g f`, and only while a bundle is open.
-const CoachRoomView = lazyView(() => import('@/components/coach/CoachRoomView.vue'))
+const CoachRoomView = lazyView(() => import('@/components/coach/room/CoachRoomView.vue'))
 
 // App-shell cross-cutting state (error banner, version, update check, data
 // location) lives in the Pinia app store. Destructure with the same local
@@ -82,16 +83,12 @@ const coachStore = useCoachStore()
 const { mapDisplayName, heroDisplayName } = useOWData()
 const coachLabels: CoachLabels = { map: mapDisplayName, hero: heroDisplayName }
 
-// Matches domain: the first-load skeleton gate, the unsupported-OCR modal gate
-// (focus-trapped here), the parse sr-only announcement, and the records count
-// for the skeleton. Everything else is read by the views/chrome that need it.
-const matchesStore = useMatchesStore()
-const {
-  records,
-  firstLoadPending,
-  showUnsupportedModal,
-  parseAnnouncement,
-} = storeToRefs(matchesStore)
+// Matches domain: the first-load skeleton gate and the records count for the
+// skeleton. Parse domain: the unsupported-OCR modal gate (focus-trapped here)
+// and the parse sr-only announcement. Everything else is read by the
+// views/chrome that need it.
+const { records, firstLoadPending } = storeToRefs(useMatchesStore())
+const { showUnsupportedModal, parseAnnouncement } = storeToRefs(useParseStore())
 
 // All App-shell keyboard wiring — tablist Arrow/Home/End nav, the global
 // shortcut registry (j/k, g-prefix, e/t, ?), and the search→panel auto-track —

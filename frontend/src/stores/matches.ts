@@ -2,17 +2,9 @@ import { computed, markRaw, ref } from 'vue'
 import { defineStore, storeToRefs } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
-import {
-  ClearDatabase,
-  BackupDatabase,
-  RestoreDatabase,
-  ImportMatches,
-} from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
-import {
-  refetchMatchesCluster, useFailedFilesQuery, useMatchesQuery, usePendingCountQuery,
-} from '@/queries/matches'
+import { refetchMatchesCluster, useMatchesQuery } from '@/queries/matches'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
 import { useMatchAnchor } from '@/composables/matches/narrow/useMatchAnchor'
 import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
@@ -22,21 +14,18 @@ import {
 import { useSearchClauses } from '@/composables/matches/narrow/useSearchClauses'
 import { useMatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
-import { profileScopedKey } from '@/composables/profile/profileStorage'
-import { useParseRunLifecycle } from '@/composables/ingest/useParseRunLifecycle'
-import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
-import { useClearDatabase } from '@/composables/settings/useClearDatabase'
-import { useBackupRestore } from '@/composables/settings/useBackupRestore'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useExportBundle } from '@/composables/matches/useExportBundle'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 
 // The matches domain: the parsed-match records (source of truth for the
 // dossier + all four views) and the derived triage lists. Migrated out of
-// App.vue's <script setup>. useAppBoot fans each store's own
-// loaders out at mount (this store's load() covers records + new-count);
-// parse lifecycle, narrow, and the dossier also live here.
+// App.vue's <script setup>. The store-setup query observer IS the boot
+// fetch; load() is the awaitable cluster refetch on top of it. Narrow,
+// the four dossiers, and the export-bundle modal live here too — the
+// pipeline that PRODUCES the records is `stores/parse.ts`.
 export const useMatchesStore = defineStore('matches', () => {
   // The records live in the query cache; this store hosts the one
   // app-lifetime observer. `records` is a WRITABLE computed: reads are
@@ -96,31 +85,9 @@ export const useMatchesStore = defineStore('matches', () => {
     records.value.filter(r => r.ambiguous),
   )
 
-  // ── Parse lifecycle state ─────────────────────────────────────────
   // Drives the Matches skeleton from boot until the first fetch settles —
   // isPending never flips back to true across invalidation refetches.
   const firstLoadPending = computed(() => matchesQuery.isPending.value)
-  // Cluster siblings of the records query — silent keep-last on failure.
-  // newScreenshotCount: image files in the dir not yet in the DB (null =
-  // not yet fetched).
-  const pendingCountQuery = usePendingCountQuery()
-  const newScreenshotCount = computed(() => pendingCountQuery.data.value ?? null)
-  const failedFilesQuery = useFailedFilesQuery()
-  const failedFiles = computed(() => failedFilesQuery.data.value ?? [])
-
-  async function refreshNewCount() {
-    await getQueryClient().refetchQueries({ queryKey: qk.pendingCount })
-  }
-
-  // Brief scoreboard pulse when the watcher / a manual parse brings in
-  // additional records — otherwise the auto-refresh is silent.
-  const recordsPulse = ref(false)
-  let recordsPulseTimer: ReturnType<typeof setTimeout> | null = null
-  function flashRecordsPulse() {
-    recordsPulse.value = true
-    if (recordsPulseTimer) clearTimeout(recordsPulseTimer)
-    recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
-  }
 
   // ── Onboarding tour — demo-records overlay ────────────────────────
   // Seeded from the same localStorage flag the tour reads so the welcome
@@ -161,45 +128,16 @@ export const useMatchesStore = defineStore('matches', () => {
   // finished" ordering. Error/banner handling moved to the query layer:
   // the matches query carries the banner meta, the siblings are silent
   // keep-last, and per-subsystem isolation falls out of one query per
-  // endpoint. The pulse fires here (once per completed reload that grew
-  // the set — the watcher-parse "new matches arrived" signal), never on
-  // the per-file match-updated upserts.
+  // endpoint. This is also the only place that can tell a reload which grew
+  // the set from one that didn't, so it fires the parse store's scoreboard
+  // pulse (the watcher-parse "new matches arrived" signal) — never the
+  // per-file match-updated upserts.
   async function load() {
     const before = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
     await refetchMatchesCluster()
     const after = (getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []).length
-    if (before > 0 && after > before) flashRecordsPulse()
+    if (before > 0 && after > before) useParseStore().flashRecordsPulse()
   }
-
-  // ── Parse-run lifecycle (composed module) ─────────────────────────
-  // Run/stop controls, progress + announcement state, the terminal
-  // transitions, and the stream-recovery bridge — the whole cluster
-  // lives in useParseRunLifecycle; the store spreads it into its public
-  // surface under the same names.
-  const parseRun = useParseRunLifecycle({ load })
-  // The two members the rest of this setup wires directly: `parse`
-  // feeds the ignored-screenshots panel, `lastParsedAt` the clear-DB
-  // reset below.
-  const { parse, lastParsedAt } = parseRun
-
-  // ── Ignored screenshots ───────────────────────────────────────────
-  // The "Delete forever" / un-ignore triage surface; onRunParseFromIgnored
-  // re-runs the parse (this store's own `parse`) so re-included files land.
-  const {
-    ignoredScreenshots,
-    ignoredCount,
-    ignoredPanelOpen,
-    loadIgnored,
-    openIgnoredPanel,
-    closeIgnoredPanel,
-    onUnignoreScreenshot,
-    onClearIgnoredScreenshots,
-    onRunParseFromIgnored,
-  } = useIgnoredScreenshots({
-    onError: (m) => useAppStore().setErrorFromRaw(m),
-    goToView: (v) => useAppStore().goToView(v),
-    parse,
-  })
 
   // ── Narrow filter + anchor cluster ────────────────────────────────
   // The Matches-view filter state lives here so `selection` (the detail
@@ -254,11 +192,12 @@ export const useMatchesStore = defineStore('matches', () => {
   // provideDossier(matchesStore.dossier) in MatchesView. weekStart comes from
   // the settings store (lifecycle-safe there). ONE useOWData() call feeds
   // all four dossiers — each call registers its own reference-data query
-  // observer, so repeating it would create four for no benefit. The
-  // settings-store import is a cycle (settings → matches for
-  // refreshNewCount) but resolves fine: both cross-calls run inside store
-  // setups/callbacks, after the modules load. storeToRefs keeps weekStart
-  // a Ref (the dossier wants Readonly<Ref>); reading
+  // observer, so repeating it would create four for no benefit. This is
+  // the only cross-store call this store makes at SETUP time — the parse
+  // store's is inside load() — which is what keeps the store-module cycles
+  // (matches → settings → parse → matches) inert: every other cross-call
+  // runs in a callback, long after the modules load. storeToRefs keeps
+  // weekStart a Ref (the dossier wants Readonly<Ref>); reading
   // settingsStore.weekStart directly would unwrap it to a value.
   const { weekStart } = storeToRefs(useSettingsStore())
   const { heroRole } = useOWData()
@@ -295,55 +234,6 @@ export const useMatchesStore = defineStore('matches', () => {
     weekStart,
   )
 
-  // ── Clear-DB + backup/restore (data ops, surfaced in Settings) ────
-  // After a wipe/import, reload records + the ignored list. pendingClearOpts
-  // carries SettingsAdvanced's "Keep suppress-list" choice into the api seam.
-  const pendingClearOpts = ref<{ keepIgnored: boolean }>({ keepIgnored: false })
-  const { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear } = useClearDatabase({
-    clearDatabase: () => ClearDatabase(pendingClearOpts.value.keepIgnored),
-    afterClear: async () => {
-      await load()
-      await loadIgnored()
-    },
-    resetLastParsedAt: () => {
-      lastParsedAt.value = null
-      try { localStorage.removeItem(profileScopedKey('lastParsedAt')) } catch (_) { /* non-fatal */ }
-    },
-    onError: (m) => useAppStore().setErrorFromRaw(m),
-  })
-  function onClearDatabase(opts: { keepIgnored: boolean }) {
-    pendingClearOpts.value = opts
-    return clearDatabase()
-  }
-
-  const {
-    backingUp,
-    restoring,
-    restoreArmed,
-    importingMatches,
-    status: backupStatus,
-    backup,
-    armRestore,
-    cancelRestore,
-    restore,
-    importMatches,
-  } = useBackupRestore({
-    backup: BackupDatabase,
-    restore: RestoreDatabase,
-    importMatches: ImportMatches,
-    // A coach's notes archive comes back through the same Import…
-    // affordance and merges nothing — it stages a return sheet the player
-    // decides on, so the sheet opens and no reload follows.
-    onCoachNotes: (sheet) => { coach.stageImportedNotes(sheet) },
-    // Restore replaces the whole database and an import can carry
-    // suppress-list entries — refresh the ignored list along with the
-    // cluster so the Settings panel doesn't show a stale one.
-    reload: async () => {
-      await load()
-      await loadIgnored()
-    },
-  })
-
   // Export flows for the Matches set — the bundle-export modal + the flat CSV
   // export. Delegated to useExportBundle; AppOverlays reads the modal state +
   // the dispatch handlers straight off this store.
@@ -370,40 +260,9 @@ export const useMatchesStore = defineStore('matches', () => {
     hiddenRecords,
     ambiguousRecords,
     firstLoadPending,
-    newScreenshotCount,
-    refreshNewCount,
-    recordsPulse,
     tourActive,
     onTourActiveChange,
     load,
-    // The whole parse-run lifecycle cluster (parseBusy, runParse,
-    // finishParseRun, the recovery bridge, …) under its original names.
-    ...parseRun,
-    ignoredScreenshots,
-    ignoredCount,
-    ignoredPanelOpen,
-    loadIgnored,
-    openIgnoredPanel,
-    closeIgnoredPanel,
-    onUnignoreScreenshot,
-    onClearIgnoredScreenshots,
-    onRunParseFromIgnored,
-    failedFiles,
-    clearingDB,
-    clearConfirm,
-    armClear,
-    cancelClear,
-    onClearDatabase,
-    backingUp,
-    restoring,
-    restoreArmed,
-    importingMatches,
-    backupStatus,
-    backup,
-    armRestore,
-    cancelRestore,
-    restore,
-    importMatches,
     // Export-bundle modal + dispatch (delegated to useExportBundle)
     exportBundleOpen: exportBundle.exportBundleOpen,
     exportBundleSelectedKeys: exportBundle.exportBundleSelectedKeys,
