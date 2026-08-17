@@ -57,6 +57,12 @@ func MergeMatchResult(dst, src *parser.MatchResult) {
 	}
 	dst.RankProgress = FirstNonEmpty(dst.RankProgress, src.RankProgress)
 	dst.ChangePercent = FirstNonEmpty(dst.ChangePercent, src.ChangePercent)
+	// Pointer, so "already set" is nil-ness rather than non-zero-ness — a
+	// legitimately-0 percentile from an earlier screenshot must not be
+	// overwritten by a later one the way FirstNonEmpty would allow.
+	if dst.RankPercentile == nil {
+		dst.RankPercentile = src.RankPercentile
+	}
 	mergeSR(dst, src)
 	mergeHeroesPlayed(dst, src)
 }

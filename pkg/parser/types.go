@@ -57,6 +57,11 @@ type MatchResult struct {
 	RankProgress  int      `json:"rank_progress,omitempty"`  // % into current level
 	ChangePercent int      `json:"change_percent,omitempty"` // % the rank moved this match
 	SR            []HeroSR `json:"sr,omitempty"`             // per-hero SR + change
+	// RankPercentile is the share of players ranked BELOW this one, from the
+	// season-4 "HIGHER RANKED THAN 57% OF PLAYERS" caption. nil = the screen
+	// carried no such caption (every placement screen), which is distinct from
+	// 0 ("above nobody") — hence the pointer.
+	RankPercentile *int `json:"rank_percentile,omitempty"`
 
 	// AllHeroes marks the PERSONAL "All Heroes" aggregate view — recognized
 	// so it stays out of the Unknown tab, but its stats are deliberately not

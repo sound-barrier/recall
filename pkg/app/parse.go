@@ -397,11 +397,23 @@ func buildRankRow(filename, key string, dirID int64, r *parser.MatchResult) db.R
 		RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
 		Result:    r.Result,
 		Modifiers: append([]string(nil), r.Modifiers...),
+		// Copied by value, not aliased: the parse result is reused after this
+		// and a shared pointer would let a later write reach into a stored row.
+		RankPercentile: copyIntPtr(r.RankPercentile),
 	}
 	for _, sr := range r.SR {
 		row.SR = append(row.SR, db.HeroSR{Hero: sr.Hero, SR: sr.SR, Change: sr.Change})
 	}
 	return row
+}
+
+// copyIntPtr clones an optional int so the stored row owns its value.
+func copyIntPtr(v *int) *int {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	return &out
 }
 
 func buildUnknownRow(filename, key string, dirID int64) db.UnknownRow {

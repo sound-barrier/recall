@@ -118,6 +118,10 @@ func rankToView(r db.RankRow) ScreenshotView {
 			Modifiers: append([]string(nil), r.Modifiers...),
 		},
 	}
+	if r.RankPercentile != nil {
+		pct := *r.RankPercentile
+		view.data.RankPercentile = &pct
+	}
 	for _, sr := range r.SR {
 		view.data.SR = append(view.data.SR, parser.HeroSR{
 			Hero: sr.Hero, SR: sr.SR, Change: sr.Change,

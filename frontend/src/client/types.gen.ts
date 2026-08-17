@@ -1426,6 +1426,10 @@ export type MatchResult = {
      * Percentage the rank moved this match (signed).
      */
     change_percent?: number;
+    /**
+     * Share of players ranked below this one, from the season-4 "HIGHER RANKED THAN N% OF PLAYERS" caption. Absent when the screenshot carried no such caption — every placement screen, and every capture predating the season-4 UI. Absent is distinct from 0, which would mean the player is ranked above nobody.
+     */
+    rank_percentile?: number;
     sr?: Array<HeroSr>;
 };
 

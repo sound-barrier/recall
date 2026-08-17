@@ -4573,11 +4573,26 @@ components:
           example: [expected, victory]
         rank_progress:
           type: integer
-          minimum: 0
+          # Signed, despite the name. A demotion screen reads a NEGATIVE
+          # progress, and a committed golden has carried -19 since the
+          # feature shipped — the old `minimum: 0` contradicted the data it
+          # described.
+          minimum: -100
           maximum: 100
         change_percent:
           type: integer
           description: Percentage the rank moved this match (signed).
+        rank_percentile:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: >-
+            Share of players ranked below this one, from the season-4
+            "HIGHER RANKED THAN N% OF PLAYERS" caption. Absent when the
+            screenshot carried no such caption — every placement screen, and
+            every capture predating the season-4 UI. Absent is distinct from
+            0, which would mean the player is ranked above nobody.
+          example: 57
         sr:
           type: array
           items:
