@@ -83,14 +83,20 @@ type PersonalGolden struct {
 // damage/healing/mitigation, score/date/finished_at/game_length,
 // performance, heroes_played.
 type RankGolden struct {
-	Playlist      string   `json:"playlist"`
-	Result        string   `json:"result"`
-	Hero          string   `json:"hero"`
-	Role          string   `json:"role"`
-	Rank          string   `json:"rank"`
-	Level         int      `json:"level"`
-	RankProgress  int      `json:"rank_progress"`
-	ChangePercent int      `json:"change_percent"`
+	Playlist string `json:"playlist"`
+	Result   string `json:"result"`
+	Hero     string `json:"hero"`
+	Role     string `json:"role"`
+	Rank     string `json:"rank"`
+	Level    int    `json:"level"`
+	// Pointers, and deliberately WITHOUT omitempty — unlike RankPercentile
+	// below. These two fields already occupy a line in every committed rank
+	// golden, so emitting an explicit null keeps the regeneration diff readable
+	// as `0` → `null` (the actual information: this capture read no movement)
+	// rather than as a vanished line. It also makes the distinction the
+	// pointers exist for visible in the contract record itself.
+	RankProgress  *int     `json:"rank_progress"`
+	ChangePercent *int     `json:"change_percent"`
 	Modifiers     []string `json:"modifiers,omitempty"`
 	SR            []HeroSR `json:"sr,omitempty"`
 	// Appended at the END on purpose: MarshalIndent follows declaration order,

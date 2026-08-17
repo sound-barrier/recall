@@ -3,6 +3,7 @@ package db_test
 import (
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"recall/pkg/db"
@@ -45,8 +46,13 @@ func openLegacyStore(t *testing.T, checkList string) *db.SQLStore {
 		screenshots_dir_id INTEGER,
 		rank TEXT NOT NULL DEFAULT '',
 		level INTEGER NOT NULL DEFAULT 0,
-		rank_progress INTEGER NOT NULL DEFAULT 0,
-		change_percent INTEGER NOT NULL DEFAULT 0,
+		-- NULLABLE deliberately: this helper exercises a stale MODIFIER
+		-- vocabulary, and a stale NOT NULL on these two is a different failure
+		-- that ensureNoStaleNotNull refuses outright (see the test below). Do
+		-- not "restore" the NOT NULL here — NewSQLStore would reject the fixture
+		-- before any modifier was ever inserted.
+		rank_progress INTEGER,
+		change_percent INTEGER,
 		result TEXT NOT NULL DEFAULT ''
 	)`); err != nil {
 		t.Fatal(err)
@@ -86,7 +92,7 @@ func TestUpsertRank_SurvivesAModifierTheLocalSchemaRejects(t *testing.T) {
 
 	if err := s.UpsertRank(db.RankRow{
 		Filename: "r.png", MatchKey: "k1", Rank: "platinum", Level: 2,
-		RankProgress: 67, Result: "defeat",
+		RankProgress: new(67), Result: "defeat",
 		// 'variance' rides every post-placement season-4 rank screen, so on an
 		// upgraded install this is not an edge case — it is every one of them.
 		Modifiers: []string{"reversal", "variance", "defeat"},
@@ -96,7 +102,7 @@ func TestUpsertRank_SurvivesAModifierTheLocalSchemaRejects(t *testing.T) {
 	}
 
 	got := loadOneRank(t, s)
-	if got.Rank != "platinum" || got.Level != 2 || got.RankProgress != 67 {
+	if got.Rank != "platinum" || got.Level != 2 || *got.RankProgress != 67 {
 		t.Errorf("rank = %q %d @%d%%, want platinum 2 @67%% — the measurement was lost",
 			got.Rank, got.Level, got.RankProgress)
 	}
@@ -154,5 +160,58 @@ func TestUpsertRank_StillFailsOnARejectedSRLine(t *testing.T) {
 	mustNoErr(t, lerr)
 	if len(snap.Ranks) != 0 {
 		t.Errorf("rank rows = %d, want 0 — a genuine child failure still rolls back", len(snap.Ranks))
+	}
+}
+
+// The other half of the same lesson. A column that GAINS nullability cannot be
+// altered in place by SQLite, so an install predating the change keeps NOT NULL
+// forever — and because UpsertRank writes the parent and its children in one
+// transaction, a rejected NULL rolls the entire rank row back. Half the rank
+// captures in the corpus read no movement pill, so on an upgraded install that
+// is most of them, discarded silently while the app still looks healthy.
+//
+// The store therefore refuses to open at all, which routes to the startup
+// failure modal instead of to rows nobody can account for.
+func TestNewSQLStore_RefusesADatabaseWithAStaleNotNull(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stale.db")
+
+	d, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The shape as it stood before the movement/progress columns went nullable.
+	// parsed_at and screenshots_dir_id are carried because applySchema still
+	// runs first and its index references parsed_at — without them the open
+	// fails on the INDEX before ever reaching the nullability check.
+	if _, err := d.Exec(`CREATE TABLE rank_screenshots (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		filename TEXT UNIQUE NOT NULL,
+		match_key TEXT NOT NULL,
+		parsed_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+		screenshots_dir_id INTEGER,
+		rank TEXT NOT NULL DEFAULT '',
+		level INTEGER NOT NULL DEFAULT 0,
+		rank_progress INTEGER NOT NULL DEFAULT 0,
+		change_percent INTEGER NOT NULL DEFAULT 0,
+		result TEXT NOT NULL DEFAULT ''
+	)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := db.NewSQLStore(path)
+	if err == nil {
+		_ = s.Close()
+		t.Fatal("NewSQLStore accepted a database whose rank columns are still NOT NULL; " +
+			"every unread movement would silently discard its rank row")
+	}
+	// The message has to be actionable — the user can only fix this by clearing
+	// and re-parsing, so it must say that rather than naming a constraint.
+	for _, want := range []string{"rank_progress", "Re-parse All"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q", err, want)
+		}
 	}
 }

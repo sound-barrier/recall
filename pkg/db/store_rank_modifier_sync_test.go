@@ -32,7 +32,7 @@ func TestUpsertRank_TrendModifiersSurviveTheRoundTrip(t *testing.T) {
 			s := openMemory(t)
 			row := db.RankRow{
 				Filename: "r.png", MatchKey: "k1", Rank: "platinum", Level: 2,
-				RankProgress: 67, Result: "victory",
+				RankProgress: new(67), Result: "victory",
 				Modifiers: []string{mod},
 				SR:        []db.HeroSR{{Hero: "juno", SR: 2065, Change: 115}},
 			}

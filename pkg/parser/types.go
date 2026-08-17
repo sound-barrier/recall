@@ -51,12 +51,20 @@ type MatchResult struct {
 
 	// Competitive rank-screen fields. Populated only by parseRank for the
 	// post-match competitive rank progress screen.
-	Rank          string   `json:"rank,omitempty"`           // tier name: platinum, gold, etc.
-	Level         int      `json:"level,omitempty"`          // sub-division within tier (1-5)
-	Modifiers     []string `json:"modifiers,omitempty"`      // ["expected", "victory"], etc.
-	RankProgress  int      `json:"rank_progress,omitempty"`  // % into current level
-	ChangePercent int      `json:"change_percent,omitempty"` // % the rank moved this match
-	SR            []HeroSR `json:"sr,omitempty"`             // per-hero SR + change
+	Rank      string   `json:"rank,omitempty"`      // tier name: platinum, gold, etc.
+	Level     int      `json:"level,omitempty"`     // sub-division within tier (1-5)
+	Modifiers []string `json:"modifiers,omitempty"` // ["expected", "victory"], etc.
+	// RankProgress (% into the current level) and ChangePercent (% the rank
+	// moved this match) are pointers for the same reason RankPercentile is: 0 is
+	// a REAL reading for both — the bottom of a division, and a match that moved
+	// the rank by nothing — so a plain int cannot say "this screen did not
+	// report it". It read as one for a long time: 21 of 44 rank captures store a
+	// change of 0 because the movement caption was never recovered, and any
+	// consumer that trusted the number was told those matches moved the rank
+	// exactly nowhere.
+	RankProgress  *int     `json:"rank_progress,omitempty"`
+	ChangePercent *int     `json:"change_percent,omitempty"`
+	SR            []HeroSR `json:"sr,omitempty"` // per-hero SR + change
 	// RankPercentile is the share of players ranked BELOW this one, from the
 	// season-4 "HIGHER RANKED THAN 57% OF PLAYERS" caption. nil = the screen
 	// carried no such caption (every placement screen), which is distinct from

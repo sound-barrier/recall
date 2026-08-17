@@ -20,7 +20,7 @@ func TestUpsertRank_PercentileRoundTrips(t *testing.T) {
 	pct := 57
 	mustNoErr(t, s.UpsertRank(db.RankRow{
 		Filename: "settled.png", MatchKey: "k1", Rank: "platinum", Level: 2,
-		RankProgress: 67, RankPercentile: &pct,
+		RankProgress: new(67), RankPercentile: &pct,
 	}))
 
 	got := loadOneRank(t, s)

@@ -1421,9 +1421,12 @@ export type MatchResult = {
     rank?: string;
     level?: number;
     modifiers?: Array<string>;
+    /**
+     * Percentage into the current level. Absent when the screenshot reported none, which is distinct from 0 — the bottom of a division is a real place to be.
+     */
     rank_progress?: number;
     /**
-     * Percentage the rank moved this match (signed).
+     * Percentage the rank moved this match (signed; a demotion is negative). Absent when the movement pill could not be read, which is distinct from 0 — a match that moved the rank by nothing. They shared one representation until this became nullable, and 21 of the 44 rank captures in the corpus were storing 0 for "unread".
      */
     change_percent?: number;
     /**

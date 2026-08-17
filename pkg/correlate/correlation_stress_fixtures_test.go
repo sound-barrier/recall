@@ -237,8 +237,8 @@ func rankFixture(spec matchSpec) fixture {
 	return specFixture(spec, "rank", spec.suffix, spec.rankOffset, &parser.MatchResult{
 		Rank:          spec.rankBand,
 		Level:         spec.rankLevel,
-		RankProgress:  spec.rankProgress,
-		ChangePercent: spec.rankChange,
+		RankProgress:  &spec.rankProgress,
+		ChangePercent: &spec.rankChange,
 		Result:        spec.rankResult,
 	})
 }

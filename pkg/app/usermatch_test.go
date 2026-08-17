@@ -218,8 +218,10 @@ func TestCreateManualMatch_AppliesRankOverride(t *testing.T) {
 	if rec.Data.Rank != "platinum" || rec.Data.Level != 3 {
 		t.Errorf("rank/level = %q/%d, want platinum/3", rec.Data.Rank, rec.Data.Level)
 	}
-	if rec.Data.RankProgress != 40 || rec.Data.ChangePercent != -12 {
-		t.Errorf("progress/change = %d/%d, want 40/-12", rec.Data.RankProgress, rec.Data.ChangePercent)
+	if rec.Data.RankProgress == nil || *rec.Data.RankProgress != 40 ||
+		rec.Data.ChangePercent == nil || *rec.Data.ChangePercent != -12 {
+		t.Errorf("progress/change = %v/%v, want 40/-12 — nil means the override did not land",
+			rec.Data.RankProgress, rec.Data.ChangePercent)
 	}
 	if !slices.Contains(rec.Data.Modifiers, "demotion protection") {
 		t.Errorf("Modifiers = %v, want the demotion-protection marker", rec.Data.Modifiers)
@@ -240,8 +242,8 @@ func TestCreateManualMatch_OmittedTierRendersAsNoRank(t *testing.T) {
 	if rec.Data.Rank != "" {
 		t.Errorf("Rank = %q, want it left unset when no tier was entered", rec.Data.Rank)
 	}
-	if rec.Data.RankProgress != 55 || rec.Data.Level != 2 {
-		t.Errorf("progress/level = %d/%d, want 55/2 — the rest of the block still applies",
+	if rec.Data.RankProgress == nil || *rec.Data.RankProgress != 55 || rec.Data.Level != 2 {
+		t.Errorf("progress/level = %v/%d, want 55/2 — the rest of the block still applies",
 			rec.Data.RankProgress, rec.Data.Level)
 	}
 }

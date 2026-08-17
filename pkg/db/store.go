@@ -350,6 +350,13 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, fmt.Errorf("backfill legacy nulls: %w", err)
 	}
+	// The opposite direction, and it cannot be healed: a column that has SHED
+	// its NOT NULL can't be altered in place by SQLite. Refuse to open rather
+	// than let every NULL write roll a whole rank row back — see schema.go.
+	if err := ensureNoStaleNotNull(d); err != nil {
+		_ = d.Close()
+		return nil, err
+	}
 	// No-op until the first migration file lands post-1.0; the
 	// framework is wired in so adding one is a drop-in addition.
 	if err := applyMigrations(d); err != nil {
