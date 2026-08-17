@@ -7,6 +7,8 @@ import type { MatchResult, MatchRecord } from '@/api'
 import {
   ladderScore,
   TIER_ORDER,
+  FILTERABLE_MODIFIERS,
+  RESULT_MODIFIERS,
   roleBucket,
   rankLadderSeries,
   rollingWinrateSeries,
@@ -67,6 +69,56 @@ describe('TIER_ORDER contract with pkg/parser/ranks.yaml', () => {
       .map((l) => l.replace(/^\s*-\s*/, '').trim())
     expect(fromYaml.length).toBeGreaterThan(0)
     expect([...TIER_ORDER]).toEqual(fromYaml)
+  })
+})
+
+// FILTERABLE_MODIFIERS duplicates pkg/parser/modifiers.yaml, which is the
+// single source. The vocabulary used to live in four hand-maintained copies —
+// the Go slice, two SQL CHECK lists, and this constant — whose comments claimed
+// they matched and nothing checked it. They drifted three separate ways: the
+// SQL pair silently discarded whole rank rows carrying 'winning trend' /
+// 'losing trend', and this constant was missing 'new map' and
+// 'leaver compensation' entirely, so two real modifiers had no filter chip.
+//
+// The contract is YAML order minus the result trio, plus demotion protection.
+describe('FILTERABLE_MODIFIERS contract with pkg/parser/modifiers.yaml', () => {
+  // modifiers.yaml carries two lists: the substring-matched vocabulary and the
+  // ones the parser detects out-of-band. Read both, keyed by section.
+  function readModifiersYaml(): { modifiers: string[]; detectedSeparately: string[] } {
+    // Vitest runs with cwd = frontend/, so the source sits one level up.
+    const raw = readFileSync(resolve(process.cwd(), '../pkg/parser/modifiers.yaml'), 'utf8')
+    const out = { modifiers: [] as string[], detectedSeparately: [] as string[] }
+    let section: 'modifiers' | 'detectedSeparately' | null = null
+    for (const line of raw.split('\n')) {
+      if (/^modifiers:\s*$/.test(line)) { section = 'modifiers'; continue }
+      if (/^detected_separately:\s*$/.test(line)) { section = 'detectedSeparately'; continue }
+      // Any other top-level, non-comment line closes the current section.
+      if (/^[^\s#]/.test(line)) { section = null; continue }
+      const entry = /^\s*-\s*(.+?)\s*$/.exec(line)
+      if (entry && section) out[section].push(entry[1] as string)
+    }
+    return out
+  }
+
+  it('matches the single source exactly, in order', () => {
+    const { modifiers, detectedSeparately } = readModifiersYaml()
+    expect(modifiers.length).toBeGreaterThan(0)
+    expect(detectedSeparately).toEqual(['demotion protection'])
+
+    const expected = [
+      ...modifiers.filter((m) => !RESULT_MODIFIERS.has(m)),
+      ...detectedSeparately,
+    ]
+    expect([...FILTERABLE_MODIFIERS]).toEqual(expected)
+  })
+
+  // The result trio is the half deliberately excluded, and it is excluded by
+  // NAME rather than by position — so the YAML may reorder without silently
+  // letting a result chip into the modifier breakdowns.
+  it('excludes every result modifier', () => {
+    for (const r of RESULT_MODIFIERS) {
+      expect(FILTERABLE_MODIFIERS).not.toContain(r)
+    }
   })
 })
 

@@ -340,14 +340,20 @@ export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
 // the modifier dossier widgets.
 export const RESULT_MODIFIERS: ReadonlySet<string> = new Set(['victory', 'defeat', 'draw'])
 
-// The non-result rank-update modifiers, in canonical order — the parser's
-// knownModifiers minus victory/defeat/draw, plus demotion protection.
-// Drives the narrow panel's modifier filter chips (ordered, complete) so
-// the user can scope to "show my uphill battles / reversals / …".
+// The non-result rank-update modifiers, in canonical order — pkg/parser/modifiers.yaml
+// minus victory/defeat/draw, plus demotion protection (which the parser detects
+// out-of-band). Drives the narrow panel's modifier filter chips (ordered,
+// complete) so the user can scope to "show my uphill battles / reversals / …".
+//
+// Pinned to the YAML by a contract test in this file's sibling spec. It used to
+// claim it matched the parser and did not: 'new map' and 'leaver compensation'
+// were missing, so two real modifiers had no filter chip at all, and the order
+// had drifted from the source.
 export const FILTERABLE_MODIFIERS = [
   'expected', 'uphill battle', 'reversal', 'consolation',
-  'win streak', 'loss streak', 'winning trend', 'losing trend',
-  'calibration', 'volatile',
+  'win streak', 'loss streak', 'calibration', 'volatile',
+  'winning trend', 'losing trend',
+  'new map', 'leaver compensation',
   'demotion protection',
 ] as const
 
