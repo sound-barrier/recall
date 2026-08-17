@@ -232,8 +232,24 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // screenshot showed, and a hypothetical rank has no measurement. null also
   // covers every reading from before season 4, which carried no caption.
   const measuredPercentile = computed<number | null>(() => {
-    if (editedFields.value.currentTier || editedFields.value.currentDivision) return null
-    return seed.value.rank?.percentile ?? null
+    if (
+      editedFields.value.currentTier
+      || editedFields.value.currentDivision
+      // Progress is part of the measured position, not a rounding of it: the
+      // rank screen prints "RANK PROGRESS: 67%" and the percentile caption on
+      // the SAME row, and dragging 67 to 5 is a division's worth of ladder
+      // movement — the same magnitude as a division edit, which is gated.
+      || editedFields.value.currentProgress
+    ) return null
+    // lastSeed, NOT seed. The tier/division inputs are a SNAPSHOT frozen at
+    // the last applySeed(), and `watch(seed, …)` suppresses re-seeding while
+    // the form is dirty. Reading the live seed therefore drifted from what the
+    // panel displays: edit any unrelated input, let the folder watcher parse a
+    // newer rank screenshot, and the selects still read the old rank while the
+    // percentile jumped to the new one — a number measured against a rank the
+    // panel is not showing. measuredSlopeCI below reads lastSeed for exactly
+    // this reason.
+    return lastSeed.value?.rank?.percentile ?? null
   })
 
   const isEdited = computed(() =>

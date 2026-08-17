@@ -67,7 +67,7 @@ describe('dashboard widget registry', () => {
     // Row 2: winrate-judged breakdowns — "what am I good at". The
     // volume ("most played") breakdowns live in the gallery.
     expect(DEFAULT_ROW_LAYOUT[2]).toEqual([
-      'current-rank', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role',
+      'current-rank', 'rank-percentile', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role',
     ])
   })
 })

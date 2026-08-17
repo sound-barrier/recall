@@ -36,7 +36,7 @@
   },
   "designSystem": {
     "eyebrow": {
-      "count": 16,
+      "count": 17,
       "fontSize": [
         "9.6px"
       ],
@@ -81,7 +81,7 @@
       "borderRadius": []
     },
     "button": {
-      "count": 375,
+      "count": 377,
       "fontSize": [
         "10.56px",
         "11.52px",

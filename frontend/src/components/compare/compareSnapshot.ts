@@ -11,6 +11,7 @@ import {
 } from '@/match/dossier/match-hero-pool-helpers'
 import type { RateStat, SeasonMetrics } from '@/match/compare/match-compare-helpers'
 import { matchTime } from '@/match/match-time-helpers'
+import { roleBucket } from '@/match/trends/match-trends-helpers'
 
 // Shared SeasonMetrics assembly for both Compare modes: the scalar metrics come
 // off a dossier instance, the compare-specific breakdowns off the record slice.
@@ -64,25 +65,55 @@ export interface SnapshotInputs {
   extras?: SnapshotExtras
 }
 
-// latestRankPercentile takes the reading from the LATEST match in the slice
-// rather than averaging: a percentile is a standing, not a rate, so the
-// meaningful number is where the window ended.
+// latestRankPercentile is the slice's ENDING standing in the population.
 //
-// It picks by match time rather than by array position. Callers filter the
-// store's records into slices and the resulting order is not part of any
-// contract — depending on it would give the OLDEST reading whenever that
-// order changed, and "57%" vs "61%" is a difference nothing downstream could
-// flag as wrong.
-function latestRankPercentile(records: readonly MatchRecord[]): number | null {
-  let best: number | null = null
-  let bestAt = ''
+// It is scoped to a single rank TRACK, and that is the whole difficulty.
+// Overwatch keeps a separate rank per role in role queue, so a slice usually
+// contains readings from several ladders; taking "the newest reading" across
+// all of them compares a Support standing in one window against a Tank
+// standing in the other. That is not a smaller version of the same number, it
+// is a different measurement — the dossier widget refuses to collapse them for
+// exactly this reason, and so does currentRankByRole.
+//
+// So: pick the role bucket with the most rank readings in the slice (the one
+// the player actually played), and report that bucket's latest reading. If the
+// two slices end up on different buckets the comparison is still apples to
+// oranges, so the caller is told WHICH bucket and drops the row when they
+// disagree.
+//
+// Selection is by match time rather than array position: the slices are
+// filtered copies whose order is not part of any contract, and depending on it
+// would silently yield the OLDEST reading — 57% against 61% is a difference
+// nothing downstream could flag as wrong.
+export interface SliceStanding {
+  bucket: string
+  percentile: number
+}
+
+function latestRankStanding(records: readonly MatchRecord[]): SliceStanding | null {
+  const byBucket = new Map<string, { pct: number; at: string; n: number }>()
   for (const r of records) {
     const pct = r.data?.rank_percentile
     if (typeof pct !== 'number') continue
-    const t = matchTime(r)
-    if (best === null || t > bestAt) {
-      best = pct
-      bestAt = t
+    const key = roleBucket(r).key
+    const at = matchTime(r)
+    const prev = byBucket.get(key)
+    if (!prev) {
+      byBucket.set(key, { pct, at, n: 1 })
+      continue
+    }
+    prev.n++
+    if (at > prev.at) {
+      prev.pct = pct
+      prev.at = at
+    }
+  }
+  let best: SliceStanding | null = null
+  let bestN = 0
+  for (const [bucket, v] of byBucket) {
+    if (v.n > bestN) {
+      best = { bucket, percentile: v.pct }
+      bestN = v.n
     }
   }
   return best
@@ -146,7 +177,7 @@ export function buildSeasonMetrics(
     // Computed here, not passed as a Form-mode extra, so BOTH compare modes
     // get it — the question "did my standing in the population move?" is at
     // least as interesting across two seasons as across two weeks.
-    rankPercentile: latestRankPercentile(records),
+    rankStanding: latestRankStanding(records),
     ...(extras ?? {}),
   }
 }

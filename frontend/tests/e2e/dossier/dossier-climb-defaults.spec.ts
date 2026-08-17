@@ -16,7 +16,8 @@ import type { Route } from '@playwright/test'
 const RECENT = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toISOString().slice(0, 10) })()
 
 const ROW1_DEFAULT = ['winrate', 'form-delta', 'net-rank-week', 'current-streak', 'tilt-check', 'avg-kda']
-const ROW2_DEFAULT = ['current-rank', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role']
+// 'rank-percentile' sits beside Current rank: it qualifies that reading.
+const ROW2_DEFAULT = ['current-rank', 'rank-percentile', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role']
 
 const DEMOTED = [
   'total-time', 'most-played-hero', 'reviewed-count', 'days-since-review',

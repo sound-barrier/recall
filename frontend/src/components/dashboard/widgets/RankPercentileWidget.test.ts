@@ -43,10 +43,11 @@ describe('RankPercentileWidget', () => {
     expect(screen.queryByText('0%')).not.toBeInTheDocument()
   })
 
-  // Two empties, two different next actions — one needs a rank screenshot at
-  // all, the other needs a newer one. Collapsing them would tell a season-3
-  // user to go capture something they already have.
-  it('distinguishes "no rank yet" from "rank, but no season-4 reading"', () => {
+  // Two empties, two different meanings — one has no rank at all, the other
+  // has a rank whose latest screenshot carried no caption (a placement screen,
+  // which after the detector fix is the common case at every season rollover).
+  // Neither may tell a user to capture something they already have.
+  it('distinguishes "no rank yet" from "rank, but no reading"', () => {
     const { unmount } = renderWidget(RankPercentileWidget, {
       dossier: {
         currentRank: [
@@ -54,7 +55,8 @@ describe('RankPercentileWidget', () => {
         ],
       },
     })
-    expect(screen.getByText(/season 4/i)).toBeInTheDocument()
+    expect(screen.getByText(/not during placements/i)).toBeInTheDocument()
+    expect(screen.queryByText(/capture/i)).not.toBeInTheDocument()
     unmount()
 
     renderWidget(RankPercentileWidget, { dossier: { currentRank: [] } })

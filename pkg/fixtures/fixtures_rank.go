@@ -68,8 +68,16 @@ var tierPercentileCeiling = []int{
 // interpolating within the tier so the number climbs with every division and
 // every point of progress rather than stepping once per tier.
 func (p ladderPos) percentile() int {
-	if p.tier < 0 || p.tier >= len(tierPercentileCeiling) {
+	// Clamp rather than return 0: this field's whole contract is that 0 means
+	// "ranked above nobody", so handing back 0 for "I do not know" is the one
+	// sentinel it must never use. Unreachable today — a test pins the table's
+	// length to the ladder — but the wrong answer here is indistinguishable
+	// from a real bottom-of-Bronze reading.
+	if p.tier < 0 {
 		return 0
+	}
+	if p.tier >= len(tierPercentileCeiling) {
+		return 100
 	}
 	floor := 0
 	if p.tier > 0 {

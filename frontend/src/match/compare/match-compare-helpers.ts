@@ -65,11 +65,14 @@ export interface SeasonMetrics {
   // movers on this so one game's rates can't headline the word.
   combatSamples?: number
   // Where the slice ENDED in the population, from the season-4 rank screen's
-  // "HIGHER RANKED THAN N% OF PLAYERS" caption — the last reading in the
-  // slice, not an average, because a percentile is a standing rather than a
-  // rate. null when no reading in the slice carried one (all of them, before
-  // season 4), and the row is omitted entirely when neither side has it.
-  rankPercentile?: number | null
+  // "HIGHER RANKED THAN N% OF PLAYERS" caption — the last reading, not an
+  // average, because a percentile is a standing rather than a rate.
+  //
+  // It carries its rank TRACK because role queue keeps a separate ladder per
+  // role: a Support standing and a Tank standing are different measurements,
+  // not two samples of one, so the row is emitted only when both slices land
+  // on the same bucket. null when no reading in the slice carried a caption.
+  rankStanding?: { bucket: string; percentile: number } | null
   // Form-mode extras — rows are emitted only when BOTH snapshots carry the
   // field, so the Seasons mode (which doesn't populate them) is unchanged.
   rankProgress?: number | null // net rank-meter movement in divisions (100% = 1)
@@ -310,11 +313,15 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
       title: 'Overview',
       rows: [
         displayRow('record', 'Record (W–L–D)', `${a.wins}–${a.losses}–${a.draws}`, `${b.wins}–${b.losses}–${b.draws}`),
-        ...(a.rankPercentile != null && b.rankPercentile != null
+        // Same bucket on both sides or no row at all. Comparing a Support
+        // standing against a Tank one would render a confident "▼ 48 pts"
+        // regression for a player whose Support rank never moved.
+        ...(a.rankStanding != null && b.rankStanding != null
+          && a.rankStanding.bucket === b.rankStanding.bucket
           ? [numericRow({
               key: 'rankPercentile', label: 'Ranked above', dir: 'higher-better',
-              a: a.rankPercentile, b: b.rankPercentile,
-              fmt: (n) => `${Math.round(n)}%`, fmtDelta: (n) => `${round1(n)} pts`, quantize: round1,
+              a: a.rankStanding.percentile, b: b.rankStanding.percentile,
+              fmt: (n) => `${Math.round(n)}%`, fmtDelta: (n) => `${Math.round(n)} pts`, quantize: Math.round,
             })]
           : []),
         ...(a.rankProgress !== undefined && b.rankProgress !== undefined
