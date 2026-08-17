@@ -41,21 +41,30 @@
 
 # pkg/app — the application shell: the Wails/HTTP-facing method surface,
 # settings, the file watcher, parse orchestration, self-update, coaching entry
-# points. 54 files, and the in-repo cautionary tale for how a god-package forms:
-# every one of those files was individually defensible the day it landed.
+# points. It was 54 files / 7,607 LOC and the in-repo cautionary tale for how a
+# god-package forms — every one of those files was individually defensible the
+# day it landed.
 #
-# PROVISIONAL. This number is today's count, deliberately, because the split
-# that pays it is designed but not yet measured — setting an aspirational target
-# now would be guessing. The decomposition carves pure logic into leaf packages
-# the shell delegates to (pkg/match, pkg/correlate, pkg/aggregate, pkg/bundle,
-# pkg/gamedata and pkg/profiles all came out of here the same way), and the
-# closing commit of that campaign replaces this line with the measured result
-# plus a history row. Until then this entry stops it growing FURTHER, which is
-# the part that matters today.
+# MEASURED, not provisional: this entry replaces that count with the post-carve
+# result. Six leaf packages came out (pkg/sse, pkg/seed, pkg/matchedit,
+# pkg/snapshot, pkg/screenshot, pkg/release), the same way pkg/match,
+# pkg/correlate, pkg/aggregate, pkg/bundle, pkg/gamedata and pkg/profiles came
+# out before them: pure logic takes explicit db.Store + values, the shell keeps
+# the orchestration and the exported method names.
+#
+# What is LEFT is the shell, and it is meant to stay. Nine *_alias.go files
+# (358 LOC) re-export leaf types and error sentinels so pkg/cmd's mappings stay
+# byte-identical — a re-declared sentinel is a silent 500 with no compile error,
+# which is why pkg/cmd/problems_ladder_test.go pins all 41. Three build-tag
+# variants (app_wails/app_server/app_service) are the desktop-vs-server seam.
+# The rest is five mutex-guarded clusters (settings, tesseract, watcher, parse,
+# coach session) and the mutually recursive parse pipeline, none of which carve
+# without inventing a ~10-method host interface — the interface-pollution smell
+# CLAUDE.md names. TECHNICAL_DEBT.md §3 records that adjudication.
 #
 # Do NOT reach a lower number by carving out eight two-file packages. That
 # trades one bad shape for a worse one, and the CLAUDE.md rule says so.
-pkg/app                                       54
+pkg/app                                       47
 
 # pkg/db — the SQLite store: schema + additive-column registry, the migration
 # engine, per-screenshot-type CRUD, the Store interface and its *SQLStore
@@ -179,18 +188,6 @@ frontend/tests/e2e/narrow                     12
 # rather than split by which chrome each spec happens to click.
 frontend/tests/e2e/settings                   19
 
-# frontend/src/composables/matches — the Matches tab's stateful logic. It
-# reached 51 files, the frontend's pkg/app, and is now split into subfolders
-# mirroring components/matches/'s existing folder names exactly (narrow, list,
-# table, dossier, detail, manual, pivot, timeline, trends) — which is what
-# "colocate a feature's UI with its state" means here, and it meant no taxonomy
-# had to be invented. What is left at this root is the pair that serves the
-# whole tab rather than one band of it: useMatchActions and useExportBundle.
-# The budget stays at 20, the low end of the "~20–25" ceiling both CLAUDE.md
-# files documented and nothing ever asserted, so a composable landing back at
-# this root is a deliberate choice rather than the default. Each subfolder
-# answers to the default 12 until its size earns its own line.
-frontend/src/composables/matches              20
 
 # frontend/src/composables/matches/list — the match list's stateful logic: the
 # add/sort/group menus, the two virtual windows over the shared windowing
@@ -201,22 +198,6 @@ frontend/src/composables/matches              20
 # names. The next file here is a budget conversation.
 frontend/src/composables/matches/list         13
 
-# frontend/src/match — the pure-helper layer every SFC and composable pulls
-# from. It reached 45 files whose sub-domains were already visible as filename
-# prefixes, and those prefixes became the subfolders: elo/, coach/, pivot/,
-# dossier/, compare/, trends/, table/, export/. What stays at this root is the
-# cross-domain set with the biggest import fan-outs — match-time-helpers (14
-# directories), match-helpers (8), match-key, match-stats-helpers,
-# match-label-helpers, match-season-helpers, match-overrides, search-query —
-# because an id that every feature imports should never move again. Sub-domain
-# folders and NOT a top-level src/elo/: this tree's top level is a LAYER
-# taxonomy (components/composables/stores/queries/match/styles), and one
-# documented home for pure helpers is the rule people actually apply. The budget
-# stays at 20, the low end of the "~20–25" ceiling both CLAUDE.md files
-# documented and nothing ever asserted, so a helper landing back at this root is
-# a deliberate choice rather than the default. Each subfolder answers to the
-# default 12 until its size earns its own line.
-frontend/src/match                            20
 
 # frontend/src/match/elo — the Elo Calculator's math kernels: the ladder model,
 # the decay-aware simulator every closed form defers to, the Bayesian/Kalman
@@ -242,25 +223,7 @@ frontend/src/match/elo                        13
 # domains. Reopen only after splitting those suites per-widget.
 frontend/src/components/dashboard/widgets     40
 
-# frontend/src/composables/shared — cross-feature composables. It reached 26
-# files, at which point "shared" meant "miscellaneous", the failure mode a
-# shared/ folder always has. The three real features hiding in it moved out to
-# composables/{onboarding,profile,update}/ and the two primitive families to
-# shared/{keyboard,media}/, leaving only the leaves with genuine fan-out —
-# useWriteGate (34 non-test importers) and useOWData (29) at the top of that
-# list. Those two ids in particular should never move again. Target 20
-# stands as the ceiling on this folder becoming a junk drawer a second time.
-frontend/src/composables/shared               20
 
-# frontend/src/components/shared — cross-feature UI primitives. It reached 21
-# files while being four features sharing a folder, so the masthead pieces went
-# to components/app/masthead/ (AppMasthead was their only importer), the tour to
-# components/onboarding/, the update cluster to components/update/, and the app
-# chrome up to components/app/. What is left is what the folder name always
-# claimed: FilterCombobox and the TypeaheadDropdown it composes, both read by
-# more than one feature. Target 20 stands as the ceiling on the same drift
-# recurring — the membership test is "used by two features", not the number.
-frontend/src/components/shared                20
 
 # frontend/src/components/elo — the Elo Calculator tab: input panels, result
 # panels, the projection chart, and four colocated view helpers. Exactly at the

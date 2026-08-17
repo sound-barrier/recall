@@ -245,6 +245,20 @@ printf '%s\n' "${counts}" | awk \
       warn(dir " holds " n " files against a target budget of " max \
            " (temporarily waived to " cap ") — over budget on purpose; the split is owed")
     }
+    # Symmetric to the paid-waiver check above. An entry that grants MORE than
+    # the default while the directory sits UNDER the default asserts nothing:
+    # deleting it would make the limit STRICTER. That is how a split leaves
+    # slack behind — the folder is emptied, the pre-split budget stays, and the
+    # next dozen files land ungated on the folder we just cleaned out.
+    # Registration is earned by size; this is the mechanical form of that rule.
+    # Registering BELOW the default to be deliberately stricter stays legal —
+    # only a budget above the default is checked.
+    if (dir in budget && !(dir in waiver) && max > default_max && n < default_max) {
+      err(dir " is at " n " files with a declared budget of " max ", which is looser" \
+          " than the default " default_max " it would fall back to — the entry grants" \
+          " growth room instead of limiting it. Delete it (registration is earned by" \
+          " size), or lower the budget to a number this directory actually needs.")
+    }
   }
 
   END {
