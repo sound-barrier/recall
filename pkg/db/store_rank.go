@@ -1,6 +1,10 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"recall/pkg/applog"
+)
 
 // UpsertRank writes a RANK parent row + its rank_modifiers and rank_sr
 // children in one transaction. Both child sets use DELETE-then-INSERT.
@@ -41,12 +45,33 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 	if _, err := tx.Exec(`DELETE FROM rank_modifiers WHERE rank_screenshot_id = ?`, id); err != nil {
 		return err
 	}
+	// A rejected modifier is LOGGED AND SKIPPED rather than returned, and this
+	// is the one place in this function that tolerates a child failure.
+	//
+	// The vocabulary is not fixed at compile time. owdata.go loads
+	// modifiers.yaml through the user-override path at RUNTIME, so the parser
+	// can emit a modifier this database's CHECK — frozen in its DDL when the
+	// table was created — has never heard of, with no version skew involved.
+	// SQLite cannot widen a CHECK afterwards: schema.sql is applied with
+	// CREATE TABLE IF NOT EXISTS, additiveColumns handles nullable columns
+	// only, and migrate.go is inert pre-1.0.
+	//
+	// Returning the error here rolled the whole transaction back, so ONE
+	// unrecognized chip discarded the entire rank row — tier, division,
+	// progress, SR, percentile — and pkg/app had already cleared the file from
+	// the failed-files ledger by this point, so it surfaced nowhere at all.
+	//
+	// A modifier is an annotation; a rank row is the measurement. Losing the
+	// measurement to protect the annotation is the wrong trade at any
+	// severity. The SR loop below deliberately still returns: this is a
+	// targeted exception, not permission to ignore write errors.
 	for _, m := range r.Modifiers {
 		if _, err := tx.Exec(
 			`INSERT INTO rank_modifiers (rank_screenshot_id, modifier) VALUES (?,?)`,
 			id, m,
 		); err != nil {
-			return err
+			applog.Subsystem("db").Warn("rank modifier not stored; keeping the rank row",
+				"modifier", m, "filename", r.Filename, "err", err)
 		}
 	}
 

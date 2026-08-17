@@ -193,3 +193,54 @@ func TestSynthesizeManualMatches_AppendsShellForKeylessUserData(t *testing.T) {
 		t.Errorf("out[1] = %+v, want untouched ocr match-b", out[1])
 	}
 }
+
+// A percentile is a reading taken against a SPECIFIC rank, so correcting that
+// rank invalidates it — the same rule that clears MapRaw when the map is
+// corrected. Not clearing it produces a plausible lie: "diamond 5 · higher
+// ranked than 57% of players", where the 57% was read off a platinum 2 screen
+// and nothing on screen says so.
+//
+// Cleared rather than recomputed: there is no published distribution to
+// recompute from. That absence is why the Elo population card was deleted in
+// the first place, and inventing a replacement here would be worse than
+// showing nothing.
+func TestAttachUserData_RankOverrideClearsTheMeasuredPercentile(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		ud   db.UserMatchData
+	}{
+		{"tier corrected", db.UserMatchData{MatchKey: "match-1", Rank: new("diamond")}},
+		{"division corrected", db.UserMatchData{MatchKey: "match-1", Level: new(5)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pct := 57
+			rec := ocrRecord("match-1")
+			rec.Data.Rank, rec.Data.Level, rec.Data.RankPercentile = "platinum", 2, &pct
+
+			recs := []match.Record{rec}
+			aggregate.AttachUserData(recs, map[string]db.UserMatchData{"match-1": tc.ud})
+
+			if recs[0].Data.RankPercentile != nil {
+				t.Errorf("percentile = %d after the rank was corrected, want nil — it was "+
+					"measured against the rank the screenshot showed",
+					*recs[0].Data.RankPercentile)
+			}
+		})
+	}
+}
+
+// An edit that does not touch the rank leaves the reading alone.
+func TestAttachUserData_UnrelatedOverrideKeepsThePercentile(t *testing.T) {
+	pct := 57
+	rec := ocrRecord("match-1")
+	rec.Data.Rank, rec.Data.Level, rec.Data.RankPercentile = "platinum", 2, &pct
+
+	recs := []match.Record{rec}
+	aggregate.AttachUserData(recs, map[string]db.UserMatchData{
+		"match-1": {MatchKey: "match-1", Map: new("ilios")},
+	})
+
+	if recs[0].Data.RankPercentile == nil || *recs[0].Data.RankPercentile != 57 {
+		t.Error("a map correction dropped the rank percentile")
+	}
+}

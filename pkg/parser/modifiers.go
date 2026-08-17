@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -35,8 +36,8 @@ func unmarshalModifiers(ds *owDataset, b []byte) error {
 	seen := make(map[string]bool, len(doc.Modifiers)+len(doc.DetectedSeparately))
 	matched := make([]string, 0, len(doc.Modifiers))
 	for i, m := range doc.Modifiers {
-		if m == "" {
-			return fmt.Errorf("modifiers.yaml: modifier %d is empty", i)
+		if err := checkEntry("modifier", i, m); err != nil {
+			return err
 		}
 		if seen[m] {
 			return fmt.Errorf("modifiers.yaml: duplicate modifier %q", m)
@@ -46,8 +47,8 @@ func unmarshalModifiers(ds *owDataset, b []byte) error {
 	}
 	storable := slices.Clone(matched)
 	for i, m := range doc.DetectedSeparately {
-		if m == "" {
-			return fmt.Errorf("modifiers.yaml: detected_separately %d is empty", i)
+		if err := checkEntry("detected_separately", i, m); err != nil {
+			return err
 		}
 		if seen[m] {
 			return fmt.Errorf("modifiers.yaml: %q is in both modifiers and detected_separately", m)
@@ -60,6 +61,21 @@ func unmarshalModifiers(ds *owDataset, b []byte) error {
 	return nil
 }
 
+// checkEntry rejects an entry that could never match. Matching lowercases the
+// OCR blob and compares against these values verbatim, so a capital or a stray
+// space makes a permanently dead vocabulary slot — the silent-drop failure
+// this file exists to end.
+func checkEntry(field string, i int, m string) error {
+	if m == "" {
+		return fmt.Errorf("modifiers.yaml: %s %d is empty", field, i)
+	}
+	if m != strings.ToLower(strings.TrimSpace(m)) {
+		return fmt.Errorf("modifiers.yaml: %s %q must be lowercase and unpadded — matching "+
+			"is case-sensitive against this value, so it would never match", field, m)
+	}
+	return nil
+}
+
 // Modifiers returns the modifiers matched as substrings of the OCR'd pill row,
 // in file order. The order is load-bearing: it is the order extractModifiers
 // emits, which the golden corpus pins.
@@ -69,16 +85,13 @@ func Modifiers() []string {
 
 // StorableModifiers returns every value the parser can put on a MatchResult —
 // Modifiers() plus the ones parseRank detects out-of-band (demotion
-// protection, whose chip OCRs as a bare stem). This is the set the database
-// CHECK constraints must accept: a value the parser emits but the schema
-// rejects does not drop the pill, it discards the whole rank row, because
-// UpsertRank writes the parent and its children in one transaction.
+// protection, whose chip OCRs as a bare stem). This is the set a freshly
+// created database's CHECK constraints must accept, which a test asserts.
+//
+// An upgraded install is a different matter and is handled in the store: its
+// CHECK is frozen at whatever shipped when the DB was created, and SQLite
+// cannot widen one, so UpsertRank logs and skips a modifier the local schema
+// refuses rather than losing the rank row it belongs to.
 func StorableModifiers() []string {
 	return slices.Clone(loadDataset().storableModifiers)
-}
-
-// IsKnownModifier reports whether name is a storable modifier. Case-sensitive
-// against the stored lowercase form.
-func IsKnownModifier(name string) bool {
-	return slices.Contains(loadDataset().storableModifiers, name)
 }
