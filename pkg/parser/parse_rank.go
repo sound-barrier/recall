@@ -76,7 +76,7 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	res.Rank, res.Level = rank, level
 	res.RankPercentile = extractRankPercentile(tierBand)
 	res.RankProgress = rankProgressPct(img, work)
-	res.ChangePercent = rankChangePct(img, work)
+	res.ChangePercent = rankChangePct(img, work, res.RankProgress)
 	mods, modifierBand := rankModifierPills(img, work)
 	res.Modifiers = mods
 	// A chip the closed vocabulary does not carry is dropped silently, which
@@ -170,7 +170,12 @@ func rankTierLevel(img image.Image, work string) (rank string, level int, bandTe
 
 var (
 	rankProgressRe = regexp.MustCompile(`(-?\d{1,3})\s*%`)
-	rankChangeRe   = regexp.MustCompile(`\+\s*(\d{1,3})\s*%`)
+	// The sign is REQUIRED, not optional, and that is load-bearing. The bands
+	// this runs over also carry "RANK PROGRESS: 67%" and "HIGHER RANKED THAN
+	// 57% OF PLAYERS"; an optional sign would match those and store a progress
+	// or population figure as the match's rank movement. The pill always
+	// renders its sign ("+40%", "-32%"), so requiring one costs nothing.
+	rankChangeRe = regexp.MustCompile(`([+-])\s*(\d{1,3})\s*%`)
 	// Anchored on the WORDS, not on "some percentage in this band". The band
 	// also holds "RANK PROGRESS: 67%", which sits on the same row and would win
 	// a bare `(\d+)%` scan. RANKED is spelled loosely because the caption's tail
@@ -221,31 +226,88 @@ func rankProgressPct(img image.Image, work string) int {
 	return 0
 }
 
-// rankChangePct reads the "+N%" gain pill (green, inside the bar). The
-// inverted pass reads it at 1440p but flattens the thin colored pill at 1080p
-// (it returns 0); fall back to the same raw-at-6x treatment the (also thin,
-// also colored) RANK PROGRESS value needs, so the gain survives a downscaled
-// capture.
-func rankChangePct(img image.Image, work string) int {
+// rankChangePct reads the signed rank-movement pill drawn inside the progress
+// bar ("+40%", "-32%"). A defeat's is NEGATIVE — the meter really did move
+// backwards — which the old unsigned pattern could not express, so every
+// defeat in the corpus stored 0: not "unread", but a confident claim that a
+// lost game moved the rank by nothing.
+//
+// Three passes, none redundant. Each recovers captures the others lose, which
+// only re-running the whole corpus makes visible; the crops and preprocessors
+// below are measurements, not preferences.
+//
+// The fourth pass takes `progress` because it reads a band that CONTAINS the
+// "RANK PROGRESS: N%" caption, and on a demotion that caption is itself
+// negative — so admitting the minus turned it into a false positive that
+// copied rank_progress straight into change_percent (a demotion-protection
+// capture read -20 for both, from a screen showing no movement pill at all).
+// Requiring a sign keeps the other captions out; it cannot keep that one out,
+// so the value is rejected when it is exactly the progress this screen already
+// reported. That band still earns its place: it is the only one that reads two
+// of the corpus's captures.
+func rankChangePct(img image.Image, work string, progress int) int {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
-	changeRect := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
-	changeText, _ := ocrInverted(img, changeRect, ocrSpec{workDir: work, name: "rank_change", psm: "11", whitelist: ""})
-	m := rankChangeRe.FindStringSubmatch(changeText)
-	if m == nil {
-		// 1080p: the pill text is too small for the inverted pass, and over the
-		// wide crop the larger "RANK PROGRESS:" caption dominates OCR. Isolate
-		// just the pill band (below the caption, on the bar) and read it raw at
-		// 6x so the thin colored pill survives the downscale.
-		pillRect := image.Rect(W*30/100, H*76/100, W*52/100, H*83/100)
-		rawText, _ := ocrThreshold(img, pillRect, ocrSpec{workDir: work, name: "rank_change_raw", scale: 6, thresh: 200, psm: "6", whitelist: "+0123456789%"})
-		m = rankChangeRe.FindStringSubmatch(rawText)
+
+	// (a) INVERTED over the whole bar, below the caption row. The pill is drawn
+	// at the edge of the fill, so its x moves with progress: a loss at 67% sits
+	// mid-right, a win at 7% near the left. White text on a colored fill
+	// inverts to dark-on-light.
+	wide := image.Rect(W*24/100, H*760/1000, W*76/100, H*815/1000)
+	if pct, ok := signedPct(ocrText(ocrInverted(img, wide, ocrSpec{workDir: work, name: "rank_change_pill", psm: "6", whitelist: signedPctChars}))); ok {
+		return pct
 	}
-	if m == nil {
-		return 0
+	// (b) THRESHOLDED over the same band. A hard bright-to-black binarization
+	// recovers pills the inverted pass flattens — including every 1080p
+	// capture, where the thin colored pill is lost by both the inverted and
+	// raw passes.
+	if pct, ok := signedPct(ocrText(ocrThreshold(img, wide, ocrSpec{workDir: work, name: "rank_change_raw", scale: 6, thresh: 200, psm: "6", whitelist: signedPctChars}))); ok {
+		return pct
 	}
-	pct, _ := strconv.Atoi(m[1])
-	return pct
+	// (c) THRESHOLDED over the historical NARROW window. Tuned before the wide
+	// band existed and still the only pass that reads two of the corpus's
+	// captures; widening it to match (a) looked tidier and silently zeroed
+	// them. A tuned crop is evidence.
+	narrow := image.Rect(W*30/100, H*760/1000, W*52/100, H*830/1000)
+	if pct, ok := signedPct(ocrText(ocrThreshold(img, narrow, ocrSpec{workDir: work, name: "rank_change_narrow", scale: 6, thresh: 200, psm: "6", whitelist: signedPctChars}))); ok {
+		return pct
+	}
+	// (d) INVERTED over the tall historical band, which reaches above the bar
+	// and so takes in the progress caption. Last, and guarded: a reading equal
+	// to the progress already parsed is that caption bleeding through, not a
+	// movement. See the note above the signature.
+	tall := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
+	if pct, ok := signedPct(ocrText(ocrInverted(img, tall, ocrSpec{workDir: work, name: "rank_change", psm: "11", whitelist: ""}))); ok && pct != progress {
+		return pct
+	}
+	return 0
+}
+
+// signedPctChars is the whitelist every movement pass shares: digits, both
+// signs, and the percent glyph. No letters, which is half of what keeps the
+// surrounding captions from matching.
+const signedPctChars = "+-0123456789%"
+
+// ocrText drops the error from an OCR call whose failure is already expressed
+// as an empty read — every caller here falls through to the next pass.
+func ocrText(s string, _ error) string { return s }
+
+// signedPct reads the rank-movement pill: a REQUIRED sign, then the magnitude.
+// A loss reads negative — the meter really did move backwards — which the
+// old unsigned form could not express, so every defeat in the corpus stored 0.
+func signedPct(text string) (int, bool) {
+	m := rankChangeRe.FindStringSubmatch(text)
+	if m == nil {
+		return 0, false
+	}
+	pct, err := strconv.Atoi(m[2])
+	if err != nil {
+		return 0, false
+	}
+	if m[1] == "-" {
+		pct = -pct
+	}
+	return pct, true
 }
 
 // rankModifierPills reads the modifier pills below the progress bar. The right
