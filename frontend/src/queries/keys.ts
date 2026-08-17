@@ -32,6 +32,7 @@ export const qk = {
     dataLocation:  ['system', 'data-location'] as const,
     startupError:  ['system', 'startup-error'] as const,
     update:        ['system', 'update'] as const,
+    parseStaleness: ['system', 'parse-staleness'] as const,
   },
   activeParse:    ['parses', 'active'] as const,
 }
