@@ -140,8 +140,8 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       states, two Platinum-5 captures, and one background-degraded tier band
       (19.11.20.18) that must stay an honest partial rank row rather than
       landing on the Unknown tab.
-- [x] rank screen — **2026-08 season-4 UI** (×6, 2560×1440), split across the
-      two states the season introduced:
+- [x] rank screen — **2026-08 season-4 UI** (×7, 2560×1440), split across the
+      states the season introduced:
   - **Post-placement, ×3** — the only carriers of the new
     `HIGHER RANKED THAN N% OF PLAYERS` percentile caption (57 / 59 / 61),
     spanning a demotion (`-32%`), a promotion into PLATINUM 1 (`+40%`) and a
@@ -160,14 +160,24 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
     and must stay an honest partial rather than a fabricated row), a clean
     mid-run read (4/10 → PLATINUM 4), and the 10/10 completion that adds a
     `PLACEMENT` tab to the nav.
-  - **Deliberately absent**: the capture whose rank text sits behind a
-    semi-transparent hero model. Its detector band OCRs to fragments (`SS: 3/`
-    is the only survivor), no anchor is recoverable, and fuzzy-matching that
-    would invite false positives on screens the rank probe must not claim. It
-    stays a "Failed to read" row, which is honest for a capture whose text is
-    genuinely obscured — and it could not be a fixture regardless, because the
-    golden test ERRORS on a parse failure rather than skipping, so one
-    unparseable image turns the whole corpus red.
+  - **Occluded by a hero model, ×1** — the capture whose rank card renders over
+    a Kiriko model. This bullet previously said no anchor was recoverable and
+    the file should stay a "Failed to read" row. That was wrong, and wrong in
+    an instructive way: the conclusion came from reading the OUTPUT of the
+    inverted pass (`SS: 3/` was the only survivor) rather than from looking at
+    the pixels, where `PREDICTED RANK` and `COMPETITIVE DEFEAT` are plainly
+    legible to a human. The band was never the problem — the PREPROCESSING was.
+    `ocrInverted` assumes white-on-dark, and a model behind the card makes the
+    captions white-on-BRIGHT, which inverts to dark-on-dark. A hard
+    bright-to-black threshold recovers both, so the detector and the banner
+    each fall back to one on a miss.
+
+    The golden is deliberately a PARTIAL: `rank`/`defeat` with an empty tier.
+    `PLATINUM 5` is faint purple on the model's teal and survives no
+    threshold, scale or PSM tried (a sweep over 4 bands × 5 thresholds × 3
+    PSMs found nothing), so the row says what it read and stays silent about
+    what it did not. That is the point of keeping it: it pins the recovery
+    without inviting a fabricated tier.
 - [x] **signed rank movement** — `change_percent` is negative on a defeat, and
       the corpus now pins it on 10 captures that previously stored 0 (a
       confident claim that a lost game moved the rank by nothing). Four OCR

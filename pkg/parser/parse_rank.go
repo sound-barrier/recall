@@ -54,13 +54,38 @@ func isRankScreenshot(img image.Image, work string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if hasRankAnchor(text) {
+		return true, nil
+	}
+	// The inverted pass assumes white-on-dark, which the rank screen normally
+	// is. It is not when the competitive menu renders a HERO MODEL behind the
+	// card: the captions become white-on-bright, invert to dark-on-dark, and
+	// the band OCRs to fragments ("SS: 3/" was the only survivor on one
+	// capture). Every probe then declines and the file falls through to
+	// parseTeams, which errors rather than declining — so an occluded capture
+	// produced no row at all and reached the user only as "Failed to read".
+	//
+	// A hard bright-to-black threshold isolates exactly the text the inverted
+	// pass loses. It runs only when the first pass found nothing, so a
+	// normally-lit rank screen still costs one OCR; the price is one extra
+	// pass on screenshots that are not rank screens at all.
+	occluded, err := ocrThreshold(img, rect, ocrSpec{workDir: work, name: "detect_rank_occluded", scale: 3, thresh: 200, psm: "6"})
+	if err != nil {
+		return false, err
+	}
+	return hasRankAnchor(occluded), nil
+}
+
+// hasRankAnchor reports whether an OCR'd band carries any caption unique to the
+// competitive rank screen.
+func hasRankAnchor(text string) bool {
 	upper := strings.ToUpper(text)
 	for _, anchor := range rankScreenAnchors {
 		if strings.Contains(upper, anchor) {
-			return true, nil
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
 // parseRank handles the post-match competitive rank screen: the tier badge
@@ -129,7 +154,16 @@ func rankBannerResult(img image.Image, work string) string {
 	W, H := bounds.Dx(), bounds.Dy()
 	bannerRect := image.Rect(0, H*7/100, W*45/100, H*22/100)
 	bannerText, _ := ocrInverted(img, bannerRect, ocrSpec{workDir: work, name: "rank_banner", psm: "11", whitelist: ""})
-	return detectResult(bannerText)
+	if res := detectResult(bannerText); res != "" {
+		return res
+	}
+	// A hero model rendered behind the banner turns it white-on-bright, which
+	// the inverted pass flattens to dark-on-dark ("[EFFAT"). The threshold pass
+	// recovers it. This matters more than a missing pill: on a placement screen
+	// there are no modifiers, so resultFromModifiers cannot cover for it and the
+	// row would carry no result at all.
+	occluded, _ := ocrThreshold(img, bannerRect, ocrSpec{workDir: work, name: "rank_banner_occluded", scale: 2, thresh: 180, psm: "11"})
+	return detectResult(occluded)
 }
 
 // rankTierLevel reads the tier label ("PLATINUM 5") that sits just below the
