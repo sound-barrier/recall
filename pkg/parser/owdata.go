@@ -72,6 +72,9 @@ var embeddedSeasonsYAML []byte
 //go:embed ranks.yaml
 var embeddedRanksYAML []byte
 
+//go:embed modifiers.yaml
+var embeddedModifiersYAML []byte
+
 // owDataset bundles every parser lookup into one immutable snapshot.
 // Reload() builds a fresh *owDataset and atomic-Pointer-Stores it;
 // readers call loadDataset() once per call site and read fields off
@@ -102,6 +105,13 @@ type owDataset struct {
 	// Competitive tier ladder, lowest→highest (see ranks.yaml). Order is
 	// load-bearing: the index is the ladder coordinate.
 	ranks []string
+
+	// Rank-update modifier pills (see modifiers.yaml). modifiers is the
+	// substring-matched set in emission order; storableModifiers adds the
+	// ones parseRank detects out-of-band, and is the set the SQL CHECK
+	// constraints must accept.
+	modifiers         []string
+	storableModifiers []string
 
 	// Combined load error from this snapshot's construction. nil
 	// means every YAML loaded cleanly; non-nil means at least one
@@ -224,6 +234,9 @@ func Reload() error {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "ranks.yaml", embeddedRanksYAML, unmarshalRanks); err != nil {
+		errs = append(errs, err)
+	}
+	if err := loadInto(ds, "modifiers.yaml", embeddedModifiersYAML, unmarshalModifiers); err != nil {
 		errs = append(errs, err)
 	}
 	if err := loadInto(ds, "seasons.yaml", embeddedSeasonsYAML, unmarshalSeasons); err != nil {

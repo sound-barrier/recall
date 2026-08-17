@@ -8,25 +8,15 @@ import (
 	"strings"
 )
 
-// knownModifiers is the OW2 competitive rank-update modifier list — the
-// small pills under the rank-progress bar that explain the SR change.
-// The expectation-vs-outcome quartet (favored×won = expected, favored×lost
-// = reversal, underdog×won = uphill battle, underdog×lost = consolation),
-// the streak/calibration adjustments, the match-condition pills (new-map bonus,
-// leaver compensation), and the result pill itself. Matched as substrings
-// (multi-word labels included), so "win streak" and "loss streak" stay
-// distinct. "demotion protection" is detected separately in parseRank (its OCR
-// drops the trailing letters).
-var knownModifiers = []string{
-	"expected", "uphill battle", "reversal", "consolation",
-	"win streak", "loss streak", "calibration", "volatile",
-	// 2026-07 UI wording for the streak pair, both fixture-pinned (one
-	// LOSING TREND capture, two WINNING TREND) — a closed list that misses
-	// a chip drops it silently.
-	"winning trend", "losing trend",
-	"new map", "leaver compensation",
-	"victory", "defeat", "draw",
-}
+// knownModifiers is the substring-matched rank-update vocabulary, derived from
+// modifiers.yaml. It used to be a literal slice here, restated by hand in two
+// SQL CHECK lists and a frontend constant; all three drifted. See
+// modifiers.go / modifiers.yaml — adding a modifier is a YAML edit.
+//
+// "demotion protection" is deliberately NOT in this list: its chip OCRs as a
+// bare stem, so parseRank appends it out-of-band below. It IS in
+// StorableModifiers(), which is what the schema must accept.
+func knownModifiers() []string { return Modifiers() }
 
 // isRankScreenshot detects the post-match competitive RANK PROGRESS screen.
 // "RANK PROGRESS" sits in the middle of the screen and is unique to this
@@ -299,7 +289,7 @@ func extractModifiers(text string) []string {
 	lower := strings.ToLower(text)
 	seen := map[string]bool{}
 	var found []string
-	for _, m := range knownModifiers {
+	for _, m := range knownModifiers() {
 		if strings.Contains(lower, m) && !seen[m] {
 			found = append(found, m)
 			seen[m] = true

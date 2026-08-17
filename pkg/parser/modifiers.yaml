@@ -1,0 +1,57 @@
+# Competitive rank-update modifiers — the small pills under the rank-progress
+# bar that explain an SR change.
+#
+# This is the SINGLE source. It used to be four hand-maintained copies: the Go
+# slice in parse_rank.go, the CHECK list on rank_modifiers, the identical CHECK
+# on its user-override twin user_match_rank_modifiers, and the frontend's
+# FILTERABLE_MODIFIERS. They were kept in sync by a comment, and they drifted:
+# "winning trend" and "losing trend" reached the parser for the 2026-07 UI and
+# never reached either CHECK. That is not a dropped pill — UpsertRank writes
+# the parent, its modifiers and its SR lines in ONE transaction and returns the
+# child's error, so a screenshot carrying either chip discarded the ENTIRE rank
+# row. Three committed goldens carry those values; goldens never touch a
+# database, so nothing failed. The Go copies now derive from here and the SQL
+# and TS copies are pinned to it by tests.
+#
+# Names are the lowercase stored form, matched case-insensitively as SUBSTRINGS
+# of the OCR'd pill row — which is why multi-word labels are spelled in full
+# ("win streak" must not collapse into "loss streak").
+
+# ORDER IS LOAD-BEARING. extractModifiers walks this list and appends on the
+# first substring hit, so the output order is this file's order, and the
+# committed goldens pin it. Append rather than insert unless you mean to
+# rewrite every rank golden.
+modifiers:
+  # The expectation-vs-outcome quartet: favored+won = expected,
+  # favored+lost = reversal, underdog+won = uphill battle,
+  # underdog+lost = consolation.
+  - expected
+  - uphill battle
+  - reversal
+  - consolation
+  # Streak and calibration adjustments.
+  - win streak
+  - loss streak
+  - calibration
+  - volatile
+  # 2026-07 UI wording for the streak pair. Both fixture-pinned.
+  - winning trend
+  - losing trend
+  # Match-condition pills.
+  - new map
+  - leaver compensation
+  # The result pill. Kept in this list because parseRank falls back to it for
+  # res.Result when the banner OCR is too garbled to classify — see
+  # resultFromModifiers. The frontend filters these out of modifier breakdowns
+  # (a result is not an SR modifier), which its contract test pins.
+  - victory
+  - defeat
+  - draw
+
+# Emitted by parseRank but NOT substring-matched from this vocabulary: the
+# 2026-07 UI's chip reads as a bare "DEMOTION" and older captures truncate to
+# "DEMOTION PROTECT...", so parse_rank.go detects the stem and appends the full
+# value. It is still a storable modifier, so the SQL CHECK must accept it —
+# which is why it lives here rather than only in Go.
+detected_separately:
+  - demotion protection

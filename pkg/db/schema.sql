@@ -181,13 +181,18 @@ CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots (mat
 
 CREATE TABLE IF NOT EXISTS rank_modifiers (
   rank_screenshot_id INTEGER NOT NULL REFERENCES rank_screenshots (id) ON DELETE CASCADE,
-  -- Vocabulary mirrors parser.knownModifiers + "demotion protection" (detected
-  -- separately in parseRank). Keep in sync: a new modifier in pkg/parser must be
-  -- added here too, or its insert fails. Mirrors the leaver/queue_type/play_mode
-  -- /result enum CHECK constraints on the sibling tables.
+  -- Vocabulary mirrors parser.StorableModifiers(), i.e. pkg/parser/modifiers.yaml
+  -- plus "demotion protection" (detected separately in parseRank). This list is
+  -- ASSERTED against the parser by TestSchemaModifierCheck_MatchesTheParserVocabulary
+  -- -- it is no longer kept in sync by this comment alone, because that failed:
+  -- 'winning trend' / 'losing trend' reached the parser and never reached here,
+  -- and UpsertRank writes parent and children in ONE transaction, so every rank
+  -- row carrying either chip was discarded whole. Mirrors the
+  -- leaver/queue_type/play_mode/result enum constraints on the sibling tables.
   modifier TEXT NOT NULL CHECK (modifier IN (
     'expected', 'uphill battle', 'reversal', 'consolation',
     'win streak', 'loss streak', 'calibration', 'volatile',
+    'winning trend', 'losing trend',
     'new map', 'leaver compensation', 'victory', 'defeat', 'draw',
     'demotion protection'
   )),
@@ -434,12 +439,13 @@ CREATE TABLE IF NOT EXISTS user_match_sr (
 
 CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
   match_key TEXT NOT NULL REFERENCES user_match_data (match_key) ON DELETE CASCADE,
-  -- Same vocabulary as the OCR twin rank_modifiers above — keep the two
-  -- CHECK lists in sync, or a modifier the parser accepts becomes
+  -- Same vocabulary as the OCR twin rank_modifiers above, and asserted against
+  -- the parser by the same test — a modifier the parser accepts must not be
   -- unenterable as a user edit (and vice versa).
   modifier TEXT NOT NULL CHECK (modifier IN (
     'expected', 'uphill battle', 'reversal', 'consolation',
     'win streak', 'loss streak', 'calibration', 'volatile',
+    'winning trend', 'losing trend',
     'new map', 'leaver compensation', 'victory', 'defeat', 'draw',
     'demotion protection'
   )),

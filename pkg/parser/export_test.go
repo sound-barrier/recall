@@ -59,7 +59,6 @@ var (
 	ParseSummary          = parseSummary
 	ParsePersonal         = parsePersonal
 	GetTesseractPath      = getTesseractPath
-	KnownModifiers        = knownModifiers
 
 	// Function-variable seams — pointers so tests can save/set/restore the
 	// stub AND call through the current value.

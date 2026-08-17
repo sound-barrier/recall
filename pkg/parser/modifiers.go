@@ -1,0 +1,84 @@
+package parser
+
+import (
+	"errors"
+	"fmt"
+	"slices"
+
+	"gopkg.in/yaml.v3"
+)
+
+// modifiers.yaml is the single source for the rank-update modifier vocabulary.
+// Like ranks.yaml, ORDER is meaning here: extractModifiers appends on the first
+// substring hit, so the file's order is the order that lands in a golden.
+// Embedded + user-override loaded via owdata.go::Reload; accessors Modifiers()
+// and StorableModifiers(). Adding a modifier is a YAML edit — no Go changes.
+
+type modifiersYAML struct {
+	Modifiers          []string `yaml:"modifiers"`
+	DetectedSeparately []string `yaml:"detected_separately"`
+}
+
+// unmarshalModifiers decodes modifiers.yaml into the dataset. It rejects an
+// empty list, blank entries, and duplicates ACROSS BOTH lists — a value in both
+// would be matched as a substring and appended out-of-band, landing twice in
+// one screenshot's modifier set and tripping the composite primary key on
+// rank_modifiers.
+func unmarshalModifiers(ds *owDataset, b []byte) error {
+	var doc modifiersYAML
+	if err := yaml.Unmarshal(b, &doc); err != nil {
+		return fmt.Errorf("modifiers.yaml: %w", err)
+	}
+	if len(doc.Modifiers) == 0 {
+		return errors.New("modifiers.yaml: no modifiers defined")
+	}
+	seen := make(map[string]bool, len(doc.Modifiers)+len(doc.DetectedSeparately))
+	matched := make([]string, 0, len(doc.Modifiers))
+	for i, m := range doc.Modifiers {
+		if m == "" {
+			return fmt.Errorf("modifiers.yaml: modifier %d is empty", i)
+		}
+		if seen[m] {
+			return fmt.Errorf("modifiers.yaml: duplicate modifier %q", m)
+		}
+		seen[m] = true
+		matched = append(matched, m)
+	}
+	storable := slices.Clone(matched)
+	for i, m := range doc.DetectedSeparately {
+		if m == "" {
+			return fmt.Errorf("modifiers.yaml: detected_separately %d is empty", i)
+		}
+		if seen[m] {
+			return fmt.Errorf("modifiers.yaml: %q is in both modifiers and detected_separately", m)
+		}
+		seen[m] = true
+		storable = append(storable, m)
+	}
+	ds.modifiers = matched
+	ds.storableModifiers = storable
+	return nil
+}
+
+// Modifiers returns the modifiers matched as substrings of the OCR'd pill row,
+// in file order. The order is load-bearing: it is the order extractModifiers
+// emits, which the golden corpus pins.
+func Modifiers() []string {
+	return slices.Clone(loadDataset().modifiers)
+}
+
+// StorableModifiers returns every value the parser can put on a MatchResult —
+// Modifiers() plus the ones parseRank detects out-of-band (demotion
+// protection, whose chip OCRs as a bare stem). This is the set the database
+// CHECK constraints must accept: a value the parser emits but the schema
+// rejects does not drop the pill, it discards the whole rank row, because
+// UpsertRank writes the parent and its children in one transaction.
+func StorableModifiers() []string {
+	return slices.Clone(loadDataset().storableModifiers)
+}
+
+// IsKnownModifier reports whether name is a storable modifier. Case-sensitive
+// against the stored lowercase form.
+func IsKnownModifier(name string) bool {
+	return slices.Contains(loadDataset().storableModifiers, name)
+}
