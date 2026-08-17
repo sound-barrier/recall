@@ -15,7 +15,9 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/cmd"
+	"recall/pkg/gamedata"
 	"recall/pkg/matchedit"
+	"recall/pkg/profiles"
 	"recall/pkg/snapshot"
 )
 
@@ -212,12 +214,16 @@ func TestSentinelLadder_RouteIndependentStatuses(t *testing.T) {
 // So this asserts the identity that actually matters: the value a LEAF
 // produces is the value the shell's alias names. Every carved sentinel gets a
 // row; the row is deleted only if the sentinel comes home.
-func TestSentinelLadder_LeafSentinelsAreTheSameValue(t *testing.T) {
-	carved := []struct {
-		name  string
-		alias error
-		leaf  error
-	}{
+type carvedSentinel struct {
+	name  string
+	alias error
+	leaf  error
+}
+
+// Package-level so the completeness test below can read it too. Kept beside
+// the identity test it primarily serves.
+func carvedSentinels() []carvedSentinel {
+	return []carvedSentinel{
 		{"ErrInvalidLeaver", app.ErrInvalidLeaver, matchedit.ErrInvalidLeaver},
 		{"ErrInvalidThrower", app.ErrInvalidThrower, matchedit.ErrInvalidThrower},
 		{"ErrEmptyAnnotation", app.ErrEmptyAnnotation, matchedit.ErrEmptyAnnotation},
@@ -241,9 +247,30 @@ func TestSentinelLadder_LeafSentinelsAreTheSameValue(t *testing.T) {
 		// package called snapshot the "Backup" half was stutter. A rename on
 		// one side only is exactly the mistake this row catches.
 		{"ErrInvalidBackupInterval", app.ErrInvalidBackupInterval, snapshot.ErrInvalidInterval},
-	}
 
-	for _, c := range carved {
+		// The EARLIER carves. These were not part of this campaign, and that is
+		// precisely why they were missing: the table was written for the six
+		// packages being carved and nothing asserted it covered the rest, so
+		// pkg/profiles and pkg/gamedata sat outside every rung of the ladder.
+		// Re-declaring ErrMoveStrandsCandidate left the whole Go suite green
+		// while POST /api/v1/matches/transfers started answering 500 in place
+		// of 409. The completeness test below is what stops that recurring.
+		{"ErrProfileExists", app.ErrProfileExists, profiles.ErrProfileExists},
+		{"ErrProfileNotFound", app.ErrProfileNotFound, profiles.ErrProfileNotFound},
+		{"ErrProfileActive", app.ErrProfileActive, profiles.ErrProfileActive},
+		{"ErrProfileImmutable", app.ErrProfileImmutable, profiles.ErrProfileImmutable},
+		{"ErrInvalidProfileName", app.ErrInvalidProfileName, profiles.ErrInvalidProfileName},
+		{"ErrMoveTargetIsActive", app.ErrMoveTargetIsActive, profiles.ErrMoveTargetIsActive},
+		{"ErrMoveStrandsCandidate", app.ErrMoveStrandsCandidate, profiles.ErrMoveStrandsCandidate},
+		{"ErrDataUpdateMalformed", app.ErrDataUpdateMalformed, gamedata.ErrDataUpdateMalformed},
+		{"ErrDataUpdateChecksum", app.ErrDataUpdateChecksum, gamedata.ErrDataUpdateChecksum},
+		{"ErrDataUpdateIO", app.ErrDataUpdateIO, gamedata.ErrDataUpdateIO},
+		{"ErrDataUpdateMainFetchFailed", app.ErrDataUpdateMainFetchFailed, gamedata.ErrDataUpdateMainFetchFailed},
+	}
+}
+
+func TestSentinelLadder_LeafSentinelsAreTheSameValue(t *testing.T) {
+	for _, c := range carvedSentinels() {
 		if c.alias == nil || c.leaf == nil {
 			t.Errorf("%s: alias or leaf sentinel is nil", c.name)
 			continue
@@ -298,5 +325,66 @@ func TestSentinelLadder_EveryCmdSentinelIsPinned(t *testing.T) {
 		t.Errorf("pkg/cmd references %d sentinel(s) the ladder does not pin: %s\n"+
 			"Add them to the sentinels table — an unpinned sentinel can lose its "+
 			"identity in a carve and silently become a 500.", len(missing), strings.Join(names, ", "))
+	}
+}
+
+// The carved table above has the same staleness problem the sentinels table
+// has, and for a worse reason: a sentinel that is a leaf re-export AND carries
+// msg:"" in the sentinels table (message owned by the leaf) gets NEITHER
+// message coverage NOR identity coverage if its carved row is missing. It sits
+// in the ladder while being outside every rung of it.
+//
+// That was not hypothetical. Three sentinels were in exactly that state —
+// ErrMoveStrandsCandidate, ErrMoveTargetIsActive, ErrDataUpdateMalformed —
+// left behind by the profiles and gamedata carves that predate this campaign.
+// Re-declaring any of them as a same-message errors.New kept the entire Go
+// suite green while the matching route silently fell from 409 to 500.
+//
+// So: every plain alias in pkg/app/*_alias.go must have an identity row. The
+// alias files are the authoritative list because a plain alias is the ONLY
+// safe form — the alias blocks say so, and this reads them rather than
+// trusting that they were followed.
+func TestSentinelLadder_EveryAliasedSentinelHasAnIdentityRow(t *testing.T) {
+	pinned := map[string]bool{}
+	for _, c := range carvedSentinels() {
+		pinned[c.name] = true
+	}
+
+	files, err := filepath.Glob(filepath.Join("..", "app", "*_alias.go"))
+	if err != nil {
+		t.Fatalf("glob: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("no pkg/app/*_alias.go files found — the carve layout moved and " +
+			"this test would silently pass forever; fix the glob")
+	}
+
+	// `ErrX = leafpkg.ErrY` — the plain-alias form. A re-declaration
+	// (errors.New) or a wrap (fmt.Errorf) does not match, and is caught by the
+	// identity assertions instead.
+	alias := regexp.MustCompile(`(?m)^\s*(Err[A-Za-z0-9]+)\s+=\s+[a-z][A-Za-z0-9_]*\.Err[A-Za-z0-9]+`)
+	missing := map[string]string{}
+	for _, f := range files {
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		for _, m := range alias.FindAllStringSubmatch(string(src), -1) {
+			if !pinned[m[1]] {
+				missing[m[1]] = filepath.Base(f)
+			}
+		}
+	}
+
+	if len(missing) > 0 {
+		names := make([]string, 0, len(missing))
+		for n := range missing {
+			names = append(names, n+" ("+missing[n]+")")
+		}
+		sort.Strings(names)
+		t.Errorf("%d aliased sentinel(s) have no identity row: %s\n"+
+			"Add a row to the carved table. Without one, re-declaring the alias "+
+			"instead of aliasing it passes every test here and turns its route "+
+			"into a silent 500.", len(missing), strings.Join(names, ", "))
 	}
 }
