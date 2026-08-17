@@ -3,6 +3,7 @@ package parser
 import (
 	"image"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -693,8 +694,13 @@ func unknownChipTokens(text string, known []string) []string {
 		if seen[lower] {
 			continue
 		}
+		// Known non-modifier UI that overlaps the row is DROPPED, not reported.
+		// "ENDORSEMENT RECEIVED" is a post-match toast, and the OCR reads it
+		// truncated ("ORSEMENT RECEIVED") — calling that unexplained text would
+		// be false, since it is understood perfectly well; it just was never a
+		// modifier. Matched in both directions for exactly that truncation.
 		accounted := false
-		for _, m := range known {
+		for _, m := range append(slices.Clone(known), NotModifiers()...) {
 			if strings.Contains(m, lower) || strings.Contains(lower, m) {
 				accounted = true
 				break

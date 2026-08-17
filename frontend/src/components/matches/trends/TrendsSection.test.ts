@@ -55,7 +55,7 @@ function series(name: string, key: string): TrendSeries {
 
 const rankSeries: RankSeries[] = [{
   key: 'tank', label: 'Tank',
-  points: [{ t: 1000, score: 12, tier: 'gold', level: 3, progress: 0, change: 2, matchKey: 'm1' }],
+  points: [{ t: 1000, score: 12, tier: 'gold', level: 3, progress: 0, percentile: null, change: 2, matchKey: 'm1' }],
 }]
 
 const grid: WinrateGrid = {

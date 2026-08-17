@@ -132,7 +132,12 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
         const d = p.data?.rank
         if (!d) return ''
         const change = d.change > 0 ? `+${d.change}` : `${d.change}`
-        return `${p.seriesName ?? ''} — ${tierLabel(d.tier)} ${d.level} · ${d.progress}% · ${change}% this match`
+        // Both readings are nullable since the parser learned to tell an unread
+        // caption from a real 0. Interpolating them raw prints the literal
+        // "null%", which is worse than saying nothing.
+        const progress = d.progress == null ? '' : ` · ${d.progress}% progress`
+        const above = d.percentile == null ? '' : ` · above ${d.percentile}%`
+        return `${p.seriesName ?? ''} — ${tierLabel(d.tier)} ${d.level}${progress} · ${change}% this match${above}`
       },
     },
     xAxis: { type: 'time' },
@@ -240,6 +245,44 @@ export function rankDeltaOption(series: TrendSeries[]): TrendOption {
     series: series.map((s) => ({
       name: s.name,
       type: 'bar' as const,
+      ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
+      data: s.points.map((p) => ({ value: [p.t, p.v] as [number, number], matchKey: p.matchKey })),
+    })),
+  }
+}
+
+// "Ranked above" — the share of players below you, over time.
+//
+// A true 0-100 axis, fixed rather than data-fitted: the reader's question is
+// "where am I in the population", and an auto-scaled axis would turn a 3-point
+// wobble between 57 and 61 into a dramatic climb. min/max also keep a
+// single-point series from rendering on a degenerate axis.
+//
+// The line CONNECTS ACROSS GAPS on purpose. Only post-placement rank screens
+// report a percentile, so consecutive readings are usually weeks and dozens of
+// matches apart; drawing them as isolated dots would hide the trend that is the
+// entire reason to plot it. Points are marked so the reader can still see that
+// the underlying evidence is sparse.
+export function rankPercentileOption(series: TrendSeries[]): TrendOption {
+  return {
+    ...interaction(),
+    grid: GRID,
+    legend: { ...LEGEND, show: series.length > 1 },
+    tooltip: {
+      trigger: 'axis',
+      valueFormatter: (v: unknown) => {
+        const n = Number(v)
+        return Number.isFinite(n) ? `above ${n}% of players` : ''
+      },
+    },
+    xAxis: { type: 'time' },
+    yAxis: { type: 'value', min: 0, max: 100 },
+    series: series.map((s) => ({
+      name: s.name,
+      type: 'line' as const,
+      showSymbol: true,
+      symbolSize: 7,
+      connectNulls: true,
       ...(colorFor(s.key) ? { color: colorFor(s.key) } : {}),
       data: s.points.map((p) => ({ value: [p.t, p.v] as [number, number], matchKey: p.matchKey })),
     })),

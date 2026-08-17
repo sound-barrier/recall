@@ -10,6 +10,7 @@ const TREND_CHART_IDS = [
   'map-winrate',
   'combat',
   'rank-delta',
+  'rank-percentile',
   'cumulative-net',
   'modifiers',
   'best-times',

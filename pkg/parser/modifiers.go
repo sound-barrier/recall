@@ -18,6 +18,7 @@ import (
 type modifiersYAML struct {
 	Modifiers          []string `yaml:"modifiers"`
 	DetectedSeparately []string `yaml:"detected_separately"`
+	NotModifiers       []string `yaml:"not_modifiers"`
 }
 
 // unmarshalModifiers decodes modifiers.yaml into the dataset. It rejects an
@@ -56,8 +57,17 @@ func unmarshalModifiers(ds *owDataset, b []byte) error {
 		seen[m] = true
 		storable = append(storable, m)
 	}
+	for i, m := range doc.NotModifiers {
+		if err := checkEntry("not_modifiers", i, m); err != nil {
+			return err
+		}
+		if seen[m] {
+			return fmt.Errorf("modifiers.yaml: %q is both a modifier and a non-modifier", m)
+		}
+	}
 	ds.modifiers = matched
 	ds.storableModifiers = storable
+	ds.notModifiers = slices.Clone(doc.NotModifiers)
 	return nil
 }
 
@@ -94,4 +104,12 @@ func Modifiers() []string {
 // refuses rather than losing the rank row it belongs to.
 func StorableModifiers() []string {
 	return slices.Clone(loadDataset().storableModifiers)
+}
+
+// NotModifiers returns the known non-modifier text that shares the modifier
+// row — post-match toasts and other UI that overlaps it. A token matching one
+// of these is not "unrecognized": it is recognized, as something that was never
+// a modifier.
+func NotModifiers() []string {
+	return slices.Clone(loadDataset().notModifiers)
 }
