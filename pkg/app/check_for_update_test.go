@@ -15,10 +15,21 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/gamedata"
 	"recall/pkg/parser"
+	"recall/pkg/release"
 )
 
+// What is left here after the pkg/release carve is the SHELL's half:
+// CheckForUpdate threading the running version and the install root into
+// the leaf, stamping CanSelfUpdate on the way out, and the game-data /
+// release-roster joins that share their fixtures with
+// apply_data_update_test.go. The version-comparison matrix itself moved
+// to pkg/release, where it needs no httptest server at all.
+
+// The version threading. Version is what ldflags injects and GetVersion
+// resolves; if the shell stopped passing it, this is the assertion that
+// notices — nothing else here would.
 func TestCheckForUpdate_DevBuildReportsLatestAsInformational(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v0.2.0","html_url":"https://github.com/sound-barrier/recall/releases/tag/v0.2.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "dev")
@@ -42,43 +53,8 @@ func TestCheckForUpdate_DevBuildReportsLatestAsInformational(t *testing.T) {
 	}
 }
 
-func TestCheckForUpdate_DevSuffixCountsAsDevBuild(t *testing.T) {
-	// Suffix-based dev detection: a build with version "0.1.0-dev"
-	// (set by ldflags on a non-tagged build) also gets the
-	// informational treatment, not the upgrade prompt.
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.1.0-dev")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !got.DevBuild {
-		t.Error("DevBuild: want true for '0.1.0-dev'")
-	}
-}
-
-func TestCheckForUpdate_CurrentVersionMatchesLatest(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.2.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !got.Checked {
-		t.Fatal("Checked: want true")
-	}
-	if got.Available {
-		t.Error("Available: want false — running latest")
-	}
-	if got.DevBuild {
-		t.Error("DevBuild: want false for tagged release version")
-	}
-}
-
 func TestCheckForUpdate_CanSelfUpdate_FalseWithoutUpdater(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
@@ -91,7 +67,7 @@ func TestCheckForUpdate_CanSelfUpdate_FalseWithoutUpdater(t *testing.T) {
 }
 
 func TestCheckForUpdate_CanSelfUpdate_TrueWithUpdater(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
@@ -100,159 +76,6 @@ func TestCheckForUpdate_CanSelfUpdate_TrueWithUpdater(t *testing.T) {
 
 	if !got.CanSelfUpdate {
 		t.Error("CanSelfUpdate: want true when the updater seam is wired")
-	}
-}
-
-func TestCheckForUpdate_NewerReleaseAvailable(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.2.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !got.Available {
-		t.Error("Available: want true — newer release published")
-	}
-	if got.Latest != "0.3.0" {
-		t.Errorf("Latest: got %q, want %q", got.Latest, "0.3.0")
-	}
-	if got.URL == "" {
-		t.Error("URL: want release page URL")
-	}
-}
-
-func TestCheckForUpdate_NetworkErrorReturnsEmpty(t *testing.T) {
-	// Point at a URL that resolves but refuses connection (immediately
-	// closed httptest server gives us this). Simulates the user being
-	// offline or GitHub being unreachable.
-	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	srv.Close() // close BEFORE the call so the GET fails
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.2.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !isEmptyUpdate(got) {
-		t.Errorf("network failure: want empty UpdateInfo, got %+v", got)
-	}
-}
-
-func TestCheckForUpdate_MalformedJSONReturnsEmpty(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK, `not json at all`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.2.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !isEmptyUpdate(got) {
-		t.Errorf("malformed body: want empty UpdateInfo, got %+v", got)
-	}
-}
-
-func TestCheckForUpdate_EmptyTagReturnsEmpty(t *testing.T) {
-	// The 404 GitHub returns for a missing repo/release also lands
-	// here — the response body has no tag_name, so latest == "" and
-	// we return empty rather than letting the UI prompt to "update
-	// to v".
-	srv := fakeReleasesServer(t, http.StatusOK, `{"tag_name":"","html_url":""}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.2.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !isEmptyUpdate(got) {
-		t.Errorf("empty tag: want empty UpdateInfo, got %+v", got)
-	}
-}
-
-func TestCheckForUpdate_StripsLeadingVFromTag(t *testing.T) {
-	// GitHub release tags carry a leading 'v' by convention
-	// ("v1.2.3"); the function strips it so the version comparison
-	// against ldflags-injected Version (which is bare semver) works.
-	// Verify via the available-update path because the "up to date"
-	// branch returns only {Checked: true} and discards Latest.
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "1.0.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !got.Available {
-		t.Error("Available: want true — 1.0.0 < 1.2.3")
-	}
-	if got.Latest != "1.2.3" {
-		t.Errorf("Latest: want 'v' stripped, got %q", got.Latest)
-	}
-}
-
-// Regression: production binaries built via release.yml have
-// `Version="v0.2.5"` because release.yml passes `${{ github.ref_name }}`
-// (the tag name, WITH the leading `v`) into the Dockerfile's
-// `-ldflags "-X recall/pkg/app.Version=${VERSION}"`. Local Taskfile
-// builds get `"0.2.5"` (no v) from `jq -r '."."'
-// .release-please-manifest.json`. Pre-fix, the up-to-date check
-// stripped only the GitHub tag's `v` and string-compared against
-// Version verbatim — so a user running the OFFICIAL v0.2.5 release
-// always saw "upgrade available" prompting them to 0.2.5 (the
-// version they already had). User report:
-// "I installed the official release for v0.2.5 and yet it still
-// says that an upgrade is available."
-func TestCheckForUpdate_TaggedReleaseWithVPrefixIsNotAnUpgrade(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v0.2.5","html_url":"https://example/v0.2.5"}`)
-	withReleasesURL(t, srv.URL)
-	// Production binaries have the `v` prefix in Version because
-	// of how release.yml passes `github.ref_name` to ldflags.
-	withVersion(t, "v0.2.5")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if !got.Checked {
-		t.Fatal("Checked: want true")
-	}
-	if got.Available {
-		t.Errorf("Available: want false — installed v0.2.5 matches latest v0.2.5, got %+v", got)
-	}
-	if got.DevBuild {
-		t.Error("DevBuild: want false for tagged release version")
-	}
-}
-
-// Belt-and-suspenders: prove semver ordering is used (not raw string
-// equality). Without semver, "0.2.10" < "0.2.9" in lexicographic
-// order — a user on 0.2.10 would be prompted to "upgrade" to 0.2.9
-// because string compare flags them as different and the old `latest
-// != v` branch fires.
-func TestCheckForUpdate_DoubleDigitPatchIsNotOlderThanSingleDigit(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v0.2.9","html_url":"https://example/v0.2.9"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.2.10")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if got.Available {
-		t.Errorf("Available: want false — 0.2.10 > 0.2.9 by semver, got %+v", got)
-	}
-}
-
-// Belt-and-suspenders: prerelease ordering. If a user is on
-// 0.3.0-beta.0 and the latest stable is 0.2.5, semver says
-// 0.2.5 < 0.3.0-beta.0, so no upgrade prompt. Raw string compare
-// would have flagged them as different and prompted to "downgrade"
-// to 0.2.5.
-func TestCheckForUpdate_PrereleaseInstallNeverPromptsDowngrade(t *testing.T) {
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v0.2.5","html_url":"https://example/v0.2.5"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.3.0-beta.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if got.Available {
-		t.Errorf("Available: want false — 0.2.5 < 0.3.0-beta.0 by semver, got %+v", got)
 	}
 }
 
@@ -374,7 +197,7 @@ func fakeAssetServer(t *testing.T, heroesBody, mapsBody, sourcesBody []byte) *ht
 }
 
 func TestCheckForUpdate_AvailableSurfacesLatestRosters(t *testing.T) {
-	releaseSrv := fakeReleasesServer(t, http.StatusOK,
+	releaseSrv := fakeReleasesServer(t,
 		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
 	withReleasesURL(t, releaseSrv.URL)
 	withVersion(t, "1.0.0")
@@ -410,7 +233,7 @@ func TestCheckForUpdate_MismatchedSidecarRejectsRosters(t *testing.T) {
 	// trusting it would let a tampered YAML reach the UI. The
 	// rest of the UpdateInfo (Available, Latest, URL) still
 	// surfaces — only the roster arrays empty out.
-	releaseSrv := fakeReleasesServer(t, http.StatusOK,
+	releaseSrv := fakeReleasesServer(t,
 		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
 	withReleasesURL(t, releaseSrv.URL)
 	withVersion(t, "1.0.0")
@@ -444,28 +267,10 @@ func TestCheckForUpdate_MismatchedSidecarRejectsRosters(t *testing.T) {
 	}
 }
 
-// isEmptyUpdate returns true when no useful fields landed — equivalent
-// to `got == UpdateInfo{}` before LatestHeroes/LatestMaps moved the
-// struct out of comparable territory.
-func isEmptyUpdate(u app.UpdateInfo) bool {
-	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
-		u.LastCheckedAt == "" && u.ReleaseNotes == "" &&
-		hasNoRosters(u) && isEmptyGameData(u.GameData)
-}
-
-// hasNoRosters reports that no latest-roster list landed.
-func hasNoRosters(u app.UpdateInfo) bool {
-	return len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0
-}
-
-// isEmptyGameData reports that the main-channel game-data probe landed nothing.
-func isEmptyGameData(gd gamedata.Status) bool {
-	return gd.AppliedCommit == "" && !gd.HasUpdate
-}
-
-// withReleasesURL swaps *app.ReleasesURL for the duration of the test and
-// restores it after — same shape as parser tests' runTesseractFunc
-// swapping.
+// withReleasesURL swaps release.ReleasesURL for the duration of the test
+// and restores it after — same shape as parser tests' runTesseractFunc
+// swapping. The seam is the leaf's now; the shell only reaches it
+// through CheckForUpdate.
 //
 // Also wires the main-channel URLs at a pre-closed httptest server
 // so the parallel fetch in CheckForUpdate stays hermetic. Tests that
@@ -474,9 +279,9 @@ func isEmptyGameData(gd gamedata.Status) bool {
 // helper's restore fires.
 func withReleasesURL(t *testing.T, url string) {
 	t.Helper()
-	prev := *app.ReleasesURL
-	*app.ReleasesURL = url
-	t.Cleanup(func() { *app.ReleasesURL = prev })
+	prev := release.ReleasesURL
+	release.ReleasesURL = url
+	t.Cleanup(func() { release.ReleasesURL = prev })
 	withMainURLs(t, closedServerURL(t))
 	// Keep the release-roster walk-back hermetic: an unreachable list URL makes
 	// FetchReleaseRosters fall back to trying only the latest tag (the behavior
@@ -497,42 +302,28 @@ func withVersion(t *testing.T, v string) {
 	t.Cleanup(func() { app.Version = prev })
 }
 
-// fakeReleasesServer stands up a one-off httptest server whose single
-// handler responds with the given status + body. Server closes via
-// t.Cleanup so individual tests stay focused on assertions.
-func fakeReleasesServer(t *testing.T, status int, body string) *httptest.Server {
+// fakeReleasesServer stands up a one-off httptest server answering 200
+// with the given body. Server closes via t.Cleanup so individual tests
+// stay focused on assertions. The non-200 arm moved to pkg/release with
+// the rest of the fetch matrix, so nothing here needs a status knob.
+func fakeReleasesServer(t *testing.T, body string) *httptest.Server {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
 		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
 }
 
-// A non-200 response must never surface as an available update, even
-// when its body happens to decode as a plausible release — intercepting
-// proxies and CDN error pages can return 5xx with a JSON body, and
-// before the status check landed such a body walked straight through
-// the decoder and produced a phantom "update available".
-func TestCheckForUpdate_Non200IsNotAnUpdate(t *testing.T) {
-	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	srv := fakeReleasesServer(t, http.StatusInternalServerError,
-		`{"tag_name":"v99.0.0","html_url":"https://example/v99.0.0"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "0.2.0")
-
-	got := (&app.App{}).CheckForUpdate()
-
-	if got.Available {
-		t.Errorf("Available = true from a 500 response; a non-200 must not report an update (latest=%q)", got.Latest)
-	}
-}
-
+// The install-root threading. The leaf writes the stamp wherever it is
+// told to; this is the assertion that the shell tells it appBaseDir(),
+// so the file lands in the install root and survives a restart. Passing
+// "" would scatter check_state.json across working directories with
+// nothing failing.
 func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
@@ -546,9 +337,9 @@ func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {
 		t.Errorf("LastCheckedAt: want RFC3339, got %q (%v)", got.LastCheckedAt, err)
 	}
 
-	// And it must have been persisted — a subsequent LoadCheckState
-	// round-trips the same timestamp so the banner gate survives a
-	// process restart.
+	// And it must have been persisted UNDER THE INSTALL ROOT — the
+	// zero-arg bridge resolves appBaseDir() exactly the way the shell
+	// does, so a round-trip here proves the shell passed it through.
 	s, err := app.LoadCheckState()
 	if err != nil {
 		t.Fatalf("LoadCheckState: %v", err)
@@ -563,7 +354,7 @@ func TestCheckForUpdate_PopulatesReleaseNotesExcerpt(t *testing.T) {
 	body := "## 1.2.0 — Roster bump\n\n* Added: Sojourn (DPS), Mauga (Tank)\n* Map rotation: Antarctic Peninsula now a Control mode entry.\n* Bugfix: teams panel right-edge OCR\n"
 	tagName := "v1.2.0"
 	releaseJSON := fmt.Sprintf(`{"tag_name":%q,"html_url":"https://example/v1.2.0","body":%q}`, tagName, body)
-	srv := fakeReleasesServer(t, http.StatusOK, releaseJSON)
+	srv := fakeReleasesServer(t, releaseJSON)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "1.0.0")
 	assetSrv := fakeAssetServer(t, []byte("tank: []\nsupport: []\ndps: []\n"), []byte("control: []\n"), validSourcesYAML())
@@ -585,7 +376,7 @@ func TestCheckForUpdate_PopulatesReleaseNotesExcerpt(t *testing.T) {
 
 func TestCheckForUpdate_LatestSourcesFetchedFromRelease(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "1.0.0")
@@ -606,7 +397,7 @@ func TestCheckForUpdate_LatestSourcesFetchedFromRelease(t *testing.T) {
 
 func TestCheckForUpdate_GameDataStatusEmpty_WhenPagesUnreachable(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.3.0")
@@ -625,7 +416,7 @@ func TestCheckForUpdate_GameDataStatusEmpty_WhenPagesUnreachable(t *testing.T) {
 
 func TestCheckForUpdate_GameDataStatusPopulatesCommitSHAAndDiff(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.3.0")
@@ -667,7 +458,7 @@ func TestCheckForUpdate_NoGameDataUpdate_WhenRostersMatchDespiteNewCommit(t *tes
 	}); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
-	srv := fakeReleasesServer(t, http.StatusOK,
+	srv := fakeReleasesServer(t,
 		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.3.0")

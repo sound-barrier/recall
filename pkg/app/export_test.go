@@ -3,11 +3,13 @@ package app
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 
 	"recall/pkg/db"
 	"recall/pkg/gamedata"
+	"recall/pkg/release"
 )
 
 // Test-only bridges for the external app_test package. pkg/app is the core
@@ -37,14 +39,10 @@ var (
 )
 
 // ── Backup / snapshot seams ───────────────────────────────────────────────
-var (
-	BackupToFunc    = &backupToFunc
-	PruneSnapshots  = pruneSnapshots
-	MaybeAutoBackup = (*App).maybeAutoBackup
-)
-
-// ── App-release update check (the gamedata seams moved to pkg/gamedata) ──
-var ReleasesURL = &releasesURL
+// The VACUUM INTO seam and the prune helper moved to pkg/snapshot with the
+// carve; tests reach them there. What is left is the one *App method the
+// shell kept, because scheduling needs the profile's paths and settings.
+var MaybeAutoBackup = (*App).maybeAutoBackup
 
 // ── Other function-variable / tunable seams (pointers for save/swap/restore) ──
 var (
@@ -110,3 +108,13 @@ func ParseCancelMu(a *App) *sync.Mutex       { return &a.parseCancelMu }
 func LoadManifest() (DataManifest, error) { return gamedata.LoadManifest(appBaseDir()) }
 
 func SaveManifest(m DataManifest) error { return gamedata.SaveManifest(appBaseDir(), m) }
+
+// Check-state IO at the historical zero-config signatures, same reason
+// as the manifest pair above: production reaches pkg/release directly,
+// and only the shell's tests want appBaseDir() resolved for them — which
+// is exactly what they are asserting the shell still does.
+func LoadCheckState() (CheckState, error) { return release.LoadCheckState(appBaseDir()) }
+
+func SaveCheckState(s CheckState) error { return release.SaveCheckState(appBaseDir(), s) }
+
+func TouchLastChecked(now time.Time) error { return release.TouchLastChecked(appBaseDir(), now) }
