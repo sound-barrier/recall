@@ -37,6 +37,13 @@ export const qk = {
   activeParse:    ['parses', 'active'] as const,
 }
 
-// The "matches cluster" — the three reads the matches store's load()
-// refetched together; every match mutation's widest invalidation set.
-export const matchesCluster = [qk.matches, qk.pendingCount, qk.failedFiles]
+// The "matches cluster" — the reads the matches store's load() refetches
+// together; every match mutation's widest invalidation set.
+//
+// parseStaleness belongs here because load() is what runs after a parse
+// completes, and after a clear / restore / import — exactly the events that
+// change how many matches an older parser read. Without it the staleness notice
+// could not be cleared by the one action it asks for: the user clicks
+// "Re-parse all now", every row is restamped, and the banner keeps naming the
+// same count until the app is restarted.
+export const matchesCluster = [qk.matches, qk.pendingCount, qk.failedFiles, qk.system.parseStaleness]

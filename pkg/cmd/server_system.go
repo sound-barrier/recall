@@ -29,13 +29,8 @@ func registerSystemMetaRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/system/data-location", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, a.GetDataLocation(), nil)
 	})
-	// Startup-error surface. Always returns 200 with a `message`
-	// string — empty when boot was clean. The frontend polls this
-	// on mount and renders a blocking modal when non-empty. In
-	// server mode this is structurally reachable but practically
-	// unreachable: RunServer log.Fatal's before mounting routes if
-	// StartupError() is non-nil, so a non-empty response is only
-	// possible if someone wires the App differently (e.g. tests).
+	// How many matches an older parser read — the input to the "a re-parse
+	// would improve these" notice. Always 200; 0 is the clean case.
 	apiMux.HandleFunc("GET /api/v1/system/parse-staleness", func(w http.ResponseWriter, r *http.Request) {
 		st, err := a.GetParseStaleness()
 		if writeError(w, r, err) {
@@ -43,6 +38,13 @@ func registerSystemMetaRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		writeJSON(w, r, st, nil)
 	})
+	// Startup-error surface. Always returns 200 with a `message`
+	// string — empty when boot was clean. The frontend polls this
+	// on mount and renders a blocking modal when non-empty. In
+	// server mode this is structurally reachable but practically
+	// unreachable: RunServer log.Fatal's before mounting routes if
+	// StartupError() is non-nil, so a non-empty response is only
+	// possible if someone wires the App differently (e.g. tests).
 	apiMux.HandleFunc("GET /api/v1/system/startup-error", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, map[string]string{"message": a.GetStartupError()}, nil)
 	})

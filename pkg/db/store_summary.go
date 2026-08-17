@@ -87,7 +87,10 @@ func loadSummaries(q querier) ([]SummaryRow, error) {
 		map, map_raw, playlist, hero, hero_raw, result, final_score, date, finished_at, game_length, played_at_utc,
 		perf_elim_total, perf_elim_avg_per_10min,
 		perf_assists_total, perf_assists_avg_per_10min,
-		perf_deaths_total, perf_deaths_avg_per_10min
+		perf_deaths_total, perf_deaths_avg_per_10min,
+		-- COALESCE: a row written before the column existed reports 0, which is
+		-- stale by definition — the same reading NULL carries in StaleParseCount.
+		COALESCE(parser_generation, 0)
 		FROM summary_screenshots ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -104,7 +107,7 @@ func loadSummaries(q querier) ([]SummaryRow, error) {
 			&r.Map, &r.MapRaw, &r.Playlist, &r.Hero, &r.HeroRaw, &r.Result, &r.FinalScore, &r.Date, &r.FinishedAt, &r.GameLength, &r.PlayedAtUTC,
 			&r.PerfElimTotal, &r.PerfElimAvgPer10Min,
 			&r.PerfAssistsTotal, &r.PerfAssistsAvgPer10Min,
-			&r.PerfDeathsTotal, &r.PerfDeathsAvgPer10Min,
+			&r.PerfDeathsTotal, &r.PerfDeathsAvgPer10Min, &r.ParserGeneration,
 		); err != nil {
 			return nil, err
 		}

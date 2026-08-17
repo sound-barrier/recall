@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -213,5 +214,76 @@ func TestNewSQLStore_RefusesADatabaseWithAStaleNotNull(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not mention %q", err, want)
 		}
+	}
+}
+
+// The restore path is where a stale column shape does REAL damage, and it is
+// the flow the startup refusal's own advice invites: back up, clear, then
+// restore the backup to get the history back.
+//
+// RestoreDatabase renames the candidate over the live database and only THEN
+// reopens. So a snapshot that passes validation but cannot be opened destroys
+// the previous database and leaves the profile permanently unopenable —
+// integrity_check says ok, the sentinel table is present, and VACUUM INTO
+// preserves nullability, so nothing else in the chain would notice.
+//
+// Validation therefore has to reject it while the live file is still untouched.
+func TestValidateBackupFile_RejectsAStaleNotNullShape(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old-backup.db")
+
+	d, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A snapshot from before the movement/progress columns went nullable, with
+	// the sentinel table present so the older checks all pass.
+	for _, stmt := range []string{
+		`CREATE TABLE summary_screenshots (id INTEGER PRIMARY KEY, filename TEXT)`,
+		`CREATE TABLE rank_screenshots (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			filename TEXT UNIQUE NOT NULL,
+			match_key TEXT NOT NULL,
+			rank_progress INTEGER NOT NULL DEFAULT 0,
+			change_percent INTEGER NOT NULL DEFAULT 0
+		)`,
+	} {
+		if _, err := d.Exec(stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.ValidateBackupFile(path)
+	if err == nil {
+		t.Fatal("ValidateBackupFile accepted a snapshot this build cannot open; " +
+			"restoring it would destroy the live database and strand the profile")
+	}
+	if !errors.Is(err, db.ErrInvalidBackup) {
+		t.Errorf("error %v does not wrap ErrInvalidBackup, so the handler cannot "+
+			"map it to a 4xx and the user gets an opaque 500", err)
+	}
+	// The message has to survive to the user — clearing and re-parsing is the
+	// only way forward, and they cannot guess it.
+	if !strings.Contains(err.Error(), "Re-parse All") {
+		t.Errorf("error %q does not tell the user what to do", err)
+	}
+}
+
+// The control: a database this build CAN open must still validate, or the fix
+// above would have made every legitimate restore fail.
+func TestValidateBackupFile_AcceptsTheCurrentShape(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "current.db")
+	s, err := db.NewSQLStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.ValidateBackupFile(path); err != nil {
+		t.Errorf("ValidateBackupFile rejected a database this build just created: %v", err)
 	}
 }

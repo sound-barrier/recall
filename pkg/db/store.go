@@ -429,9 +429,17 @@ func (s *SQLStore) StaleParseCount(current int) (int, error) {
 // single deferred Close covers every exit path (sqlclosecheck).
 func (s *SQLStore) collectStaleKeys(table string, current int, seen map[string]struct{}) error {
 	// #nosec G202 -- table comes from staleParseTables, a hard-coded list.
+	// Rows whose file is in the all-heroes skip registry are excluded, and that
+	// is a truth claim rather than a convenience: a file that now classifies as
+	// all_heroes keeps its older typed row on purpose (evicting it would turn a
+	// probe false-positive into silent data loss), and re-parsing it just
+	// classifies it as all_heroes again. Its data can never improve, so counting
+	// it would promise a gain Re-parse All cannot deliver — and the count would
+	// never reach zero however many times the user tried.
 	rows, err := s.db.Query(
 		"SELECT DISTINCT match_key FROM "+table+
-			" WHERE parser_generation IS NULL OR parser_generation < ?", current)
+			" WHERE (parser_generation IS NULL OR parser_generation < ?)"+
+			" AND filename NOT IN (SELECT filename FROM all_heroes_screenshots)", current)
 	if err != nil {
 		return fmt.Errorf("stale parse count %s: %w", table, err)
 	}

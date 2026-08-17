@@ -76,7 +76,10 @@ export function seedTrack(records: readonly TrackInput[], track: TrackKey): Trac
   const meter = measuredMeterMove(recs)
   return {
     rank,
-    currentScore: rank ? ladderScore(rank.tier, rank.level, rank.progress) : null,
+    // An unread progress seeds at the division boundary: the calculator needs a
+    // position to start from, and 0 is the honest floor of the division we do
+    // know. It is a model input, not a reading shown to the user.
+    currentScore: rank ? ladderScore(rank.tier, rank.level, rank.progress ?? 0) : null,
     wins,
     losses,
     winRate: wins + losses > 0 ? wins / (wins + losses) : null,

@@ -32,8 +32,19 @@ describe('queryClient defaults', () => {
 })
 
 describe('matchesCluster', () => {
-  it('is exactly the three reads the old load() refetched together', () => {
-    expect(matchesCluster).toEqual([qk.matches, qk.pendingCount, qk.failedFiles])
+  // Pinned so that adding a key is a DECISION rather than a drift. Each entry
+  // has to be something a match reload can actually change.
+  //
+  // parseStaleness earns its place: load() is what runs after a parse
+  // completes and after a clear / restore / import, which are exactly the
+  // events that change how many matches an older parser read. Without it the
+  // staleness notice could not be cleared by the one action it asks for — the
+  // user clicks "Re-parse all now", every row is restamped, and the banner goes
+  // on naming the same count until the app restarts.
+  it('is the reads a match reload refetches together', () => {
+    expect(matchesCluster).toEqual([
+      qk.matches, qk.pendingCount, qk.failedFiles, qk.system.parseStaleness,
+    ])
   })
 })
 

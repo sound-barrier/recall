@@ -179,9 +179,10 @@ func decodeBundleData(dataBytes []byte, add issueSink) (DataV2, error) {
 	if err := json.Unmarshal(dataBytes, &dataDoc); err != nil {
 		return dataDoc, fmt.Errorf("decode data.json: %w", err)
 	}
-	if dataDoc.Schema != exportSchemaV1 && dataDoc.Schema != exportSchemaV2 {
+	if !supportedExportSchema(dataDoc.Schema) {
 		add(IssueWrongDataSchema,
-			fmt.Sprintf("data.schema = %q, want %q or %q", dataDoc.Schema, exportSchemaV1, exportSchemaV2))
+			fmt.Sprintf("data.schema = %q, want one of %q, %q, %q",
+				dataDoc.Schema, exportSchemaV1, exportSchemaV2, exportSchemaV3))
 	}
 	var dataProbe struct {
 		ScreenshotsDirs map[string]string `json:"screenshots_dirs"`

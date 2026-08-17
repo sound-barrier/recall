@@ -105,7 +105,10 @@ func loadRanks(q querier) ([]RankRow, error) {
 		rank, level, rank_progress, change_percent, result, rank_percentile,
 		-- COALESCE so a row written before the column existed reads as "" rather
 		-- than failing the scan into a plain string.
-		COALESCE(modifiers_raw, '')
+		COALESCE(modifiers_raw, ''),
+		-- COALESCE: a row written before the column existed reports 0, which is
+		-- stale by definition — the same reading NULL carries in StaleParseCount.
+		COALESCE(parser_generation, 0)
 		FROM rank_screenshots ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -120,7 +123,7 @@ func loadRanks(q querier) ([]RankRow, error) {
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&r.Rank, &r.Level, &progress, &change, &r.Result,
-			&percentile, &r.ModifiersRaw,
+			&percentile, &r.ModifiersRaw, &r.ParserGeneration,
 		); err != nil {
 			return nil, err
 		}

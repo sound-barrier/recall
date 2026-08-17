@@ -194,13 +194,13 @@ func TestImport_RejectsUnsupportedSchemasAsNonMalformed(t *testing.T) {
 			payload: func(t *testing.T) []byte {
 				t.Helper()
 				d := okData()
-				d["schema"] = "recall-export/v3"
+				d["schema"] = "recall-export/v4"
 				return buildZip(t,
 					jsonFileEntry(t, "manifest.json", okManifest()),
 					jsonFileEntry(t, "data.json", d),
 				)
 			},
-			wantMsg: `import: unsupported data schema "recall-export/v3" (this build accepts "recall-export/v1" and "recall-export/v2")`,
+			wantMsg: `import: unsupported data schema "recall-export/v4" (this build accepts "recall-export/v1", "recall-export/v2" and "recall-export/v3")`,
 		},
 	}
 	for _, tc := range tests {

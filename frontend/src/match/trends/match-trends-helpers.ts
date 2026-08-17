@@ -123,7 +123,10 @@ export interface RankPoint {
   score: number
   tier: Tier
   level: number
-  progress: number
+  // null when the screenshot never reported a progress reading. NOT 0: the
+  // bottom of a division is a real place to be, and printing it for an unread
+  // caption states a measurement that was never taken.
+  progress: number | null
   change: number
   matchKey: string
 }
@@ -146,11 +149,15 @@ function orderBuckets<T extends { key: string }>(series: T[]): T[] {
 // carries none (no RANK screenshot parsed, unknown tier, no level).
 function ladderReading(
   data: TrendInput['data'],
-): { tier: Tier; level: number; progress: number; score: number } | null {
+): { tier: Tier; level: number; progress: number | null; score: number } | null {
   const tier = data?.rank
   if (!tier || !(TIER_ORDER as readonly string[]).includes(tier) || typeof data?.level !== 'number') return null
-  const progress = data.rank_progress ?? 0
-  const score = ladderScore(tier, data.level, progress)
+  const progress = data.rank_progress ?? null
+  // The SCORE still needs a number — it is a y-position, and a point has to sit
+  // somewhere — so an unread progress plots at the division boundary. The
+  // reading carried alongside it stays null, so the tooltip reports what the
+  // screenshot said rather than where the dot had to be drawn.
+  const score = ladderScore(tier, data.level, progress ?? 0)
   if (score == null) return null
   return { tier: tier as Tier, level: data.level, progress, score }
 }
@@ -306,7 +313,10 @@ export interface RankNow {
   label: string
   tier: Tier
   level: number
-  progress: number
+  // null when the screenshot never reported a progress reading. NOT 0 — the
+  // bottom of a division is a real place to be, so printing 0 for an unread
+  // caption states a measurement nobody took.
+  progress: number | null
   /**
    * Share of players ranked below this one, from the season-4
    * "HIGHER RANKED THAN N% OF PLAYERS" caption. `null` when the reading
@@ -357,7 +367,7 @@ export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
         label: bucket.label,
         tier,
         level: data?.level as number,
-        progress: data.rank_progress ?? 0,
+        progress: data.rank_progress ?? null,
         percentile: data.rank_percentile ?? null,
       })
     }
