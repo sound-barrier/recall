@@ -5,7 +5,9 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import SettingsView from '@/components/settings/SettingsView.vue'
 import { useAppStore } from '@/stores/app'
+import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import type { ThemeMode } from '@/composables/settings/useTheme'
 import type { WeekStart } from '@/composables/shared/useWeekStart'
@@ -102,7 +104,9 @@ function renderSettings(opts: { props?: SettingsOver } = {}) {
   const over = { ...SETTINGS_BASE, ...opts.props }
   setActivePinia(createPinia())
   const app = useAppStore()
+  const database = useDatabaseStore()
   const matches = useMatchesStore()
+  const parse = useParseStore()
   const settings = useSettingsStore()
 
   settings.setTesseractStatus(over.tesseractStatus ?? defaultTess({
@@ -120,17 +124,17 @@ function renderSettings(opts: { props?: SettingsOver } = {}) {
   settings.probeTried = over.probeTried ?? []
   settings.tesseractPickerBusy = over.tesseractPickerBusy
 
-  matches.parseBusy = over.parseBusy
-  matches.backingUp = over.backingUp
-  matches.restoring = over.restoring
-  matches.restoreArmed = over.restoreArmed
-  matches.importingMatches = over.importingMatches
-  matches.backupStatus = over.backupStatus
-  matches.clearConfirm = over.clearConfirm
-  matches.clearingDB = over.clearingDB
+  parse.parseBusy = over.parseBusy
+  database.backingUp = over.backingUp
+  database.restoring = over.restoring
+  database.restoreArmed = over.restoreArmed
+  database.importingMatches = over.importingMatches
+  database.backupStatus = over.backupStatus
+  database.clearConfirm = over.clearConfirm
+  database.clearingDB = over.clearingDB
   matches.records = makeRecords(over.matchedCount, over.unknownCount)
   if (over.ignoredCount != null) {
-    matches.ignoredScreenshots = Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' }))
+    parse.ignoredScreenshots = Array.from({ length: over.ignoredCount }, (_, i) => ({ filename: `ig-${i}.png`, ignored_at: '2026-05-10T00:00:00Z' }))
   }
 
   seedQuery(qk.system.dataLocation, over.dataLocation)
@@ -146,18 +150,18 @@ function renderSettings(opts: { props?: SettingsOver } = {}) {
     resetTesseractPath:    vi.spyOn(settings, 'resetTesseractPath').mockResolvedValue(undefined),
     detectTesseractBinary: vi.spyOn(settings, 'detectTesseractBinary').mockResolvedValue(undefined),
     pickDetectedSource:    vi.spyOn(settings, 'pickDetectedSource').mockResolvedValue(undefined),
-    backup:                vi.spyOn(matches, 'backup').mockResolvedValue(undefined),
-    armRestore:            vi.spyOn(matches, 'armRestore'),
-    cancelRestore:         vi.spyOn(matches, 'cancelRestore'),
-    restore:               vi.spyOn(matches, 'restore').mockResolvedValue(undefined),
-    importMatches:         vi.spyOn(matches, 'importMatches').mockResolvedValue(undefined),
-    armClear:              vi.spyOn(matches, 'armClear'),
-    cancelClear:           vi.spyOn(matches, 'cancelClear'),
-    onClearDatabase:       vi.spyOn(matches, 'onClearDatabase').mockResolvedValue(undefined),
+    backup:                vi.spyOn(database, 'backup').mockResolvedValue(undefined),
+    armRestore:            vi.spyOn(database, 'armRestore'),
+    cancelRestore:         vi.spyOn(database, 'cancelRestore'),
+    restore:               vi.spyOn(database, 'restore').mockResolvedValue(undefined),
+    importMatches:         vi.spyOn(database, 'importMatches').mockResolvedValue(undefined),
+    armClear:              vi.spyOn(database, 'armClear'),
+    cancelClear:           vi.spyOn(database, 'cancelClear'),
+    onClearDatabase:       vi.spyOn(database, 'onClearDatabase').mockResolvedValue(undefined),
   }
 
   const view = render(SettingsView)
-  return { view, app, matches, settings, spies }
+  return { view, app, database, matches, parse, settings, spies }
 }
 
 // Interactions use TL fireEvent (matching the original trigger()
@@ -615,11 +619,11 @@ describe('SettingsView — Backup & Restore', () => {
   })
 
   it('arms / confirms / cancels the Restore flow', async () => {
-    const { spies, matches } = renderSettings({ props: baseProps })
+    const { spies, database, matches } = renderSettings({ props: baseProps })
     await fireEvent.click(button(/Restore \(\.db\)/))
     expect(spies.armRestore).toHaveBeenCalled()
 
-    matches.restoreArmed = true
+    database.restoreArmed = true
     matches.records = makeRecords(5, 0)
     await nextTick()
     expect(screen.getByText(/wipes 5 record/)).toBeInTheDocument()
@@ -658,13 +662,13 @@ describe('SettingsView — Advanced section', () => {
   })
 
   it('arms Clear Database, confirms delete, then cancels', async () => {
-    const { spies, matches } = renderSettings({
+    const { spies, database, matches } = renderSettings({
       props: { ...baseProps, matchedCount: 4, unknownCount: 0 },
     })
     await fireEvent.click(button(/Clear Database/))
     expect(spies.armClear).toHaveBeenCalled()
 
-    matches.clearConfirm = true
+    database.clearConfirm = true
     matches.records = makeRecords(4, 0)
     await nextTick()
     await fireEvent.click(button(/Delete 4 Records/))

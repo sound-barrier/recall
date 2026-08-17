@@ -11,7 +11,7 @@ import {
   type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
 } from '@/self-update-events'
 import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 
 // The error banner's Retry handler. May be async (the matches store passes its
 // async load()); the banner fires it and ignores the result.
@@ -34,7 +34,7 @@ export const useAppStore = defineStore('app', () => {
     view.value = next as ViewId
     // Entering Parse: re-read the pending-screenshot count so "Run Parse · N"
     // reflects the folder now, not the initial-load batch. Fire-and-forget.
-    if (next === 'ingest') void useMatchesStore().refreshNewCount()
+    if (next === 'ingest') void useParseStore().refreshNewCount()
     await nextTick()
     const panel = document.getElementById(`panel-${next}`)
     if (panel) panel.focus({ preventScroll: true })

@@ -40,10 +40,10 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'FirstRunProfileModal',   path: '@/components/app/FirstRunProfileModal.vue' },
     // Export bundle modal — only renders when the user clicks
     // "Export bundle…" on the Matches bulk-action bar.
-    { name: 'ExportBundleModal',      path: '@/components/settings/ExportBundleModal.vue' },
+    { name: 'ExportBundleModal',      path: '@/components/matches/export/ExportBundleModal.vue' },
     // Anchor confirmation toast — small, but lazy so the bytes only
     // hit users who actually stamp an anchor.
-    { name: 'MatchAnchorToast',       path: '@/components/matches/list/MatchAnchorToast.vue' },
+    { name: 'MatchAnchorToast',       path: '@/components/matches/toasts/MatchAnchorToast.vue' },
     // About dialog — identity + update hub, only mounted when the user opens it.
     { name: 'AboutModal',             path: '@/components/update/AboutModal.vue' },
     // Settings dialog — the ⌘, / app-menu / kebab Preferences surface.
@@ -53,12 +53,12 @@ describe('App.vue lazy-loaded components', () => {
     // The return-of-notes sheet — only ever opened by a player who
     // imported a coach's archive, so its bytes stay off everyone else's
     // first paint.
-    { name: 'CoachReturnSheet',       path: '@/components/coach/CoachReturnSheet.vue' },
+    { name: 'CoachReturnSheet',       path: '@/components/coach/inbox/CoachReturnSheet.vue' },
     // The film room and its masthead chrome — a coach's surfaces. Nobody
     // who never opens a bundle should carry a byte of them.
-    { name: 'CoachRoomView',          path: '@/components/coach/CoachRoomView.vue' },
-    { name: 'CoachLoanSlip',          path: '@/components/coach/CoachLoanSlip.vue' },
-    { name: 'CoachNavStrip',          path: '@/components/coach/CoachNavStrip.vue' },
+    { name: 'CoachRoomView',          path: '@/components/coach/room/CoachRoomView.vue' },
+    { name: 'CoachLoanSlip',          path: '@/components/coach/room/CoachLoanSlip.vue' },
+    { name: 'CoachNavStrip',          path: '@/components/coach/room/CoachNavStrip.vue' },
   ]
 
   for (const { name, path } of views) {

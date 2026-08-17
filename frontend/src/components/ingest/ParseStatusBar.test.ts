@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import type { ParseProgressEvent } from '@/components/ingest/parse-progress'
 
 // ParseStatusBar is the persistent footer that shows "ingesting N of M" across
@@ -42,13 +42,13 @@ function renderBar(over: { parseProgress?: ParseProgressEvent | null; cancelingP
   const pinia = createPinia()
   setActivePinia(pinia)
   const appStore = useAppStore()
-  const matchesStore = useMatchesStore()
-  matchesStore.parseProgress = over.parseProgress ?? null
-  matchesStore.cancelingParse = over.cancelingParse ?? false
+  const parseStore = useParseStore()
+  parseStore.parseProgress = over.parseProgress ?? null
+  parseStore.cancelingParse = over.cancelingParse ?? false
   // Spy before render — the component destructures onCancelParse at setup.
-  const cancelSpy = vi.spyOn(matchesStore, 'onCancelParse').mockResolvedValue(undefined)
+  const cancelSpy = vi.spyOn(parseStore, 'onCancelParse').mockResolvedValue(undefined)
   const view = render(ParseStatusBar, { global: { plugins: [pinia] } })
-  return { view, appStore, matchesStore, cancelSpy }
+  return { view, appStore, parseStore, cancelSpy }
 }
 
 const bar = () => screen.queryByRole('status')
@@ -94,12 +94,12 @@ describe('ParseStatusBar', () => {
   it('stays visible for a 1.5s grace period after the parse completes', async () => {
     vi.useFakeTimers()
     try {
-      const { matchesStore } = renderBar({ parseProgress: evt({ done: 1, total: 3, filename: 'a.png' }) })
+      const { parseStore } = renderBar({ parseProgress: evt({ done: 1, total: 3, filename: 'a.png' }) })
       // Mid-parse → visible.
       expect(bar()).toBeInTheDocument()
 
       // Bump to done === total → bar should remain visible during grace.
-      matchesStore.parseProgress = evt({ done: 3, total: 3, filename: 'a.png' })
+      parseStore.parseProgress = evt({ done: 3, total: 3, filename: 'a.png' })
       await nextTick()
       expect(bar()).toBeInTheDocument()
 

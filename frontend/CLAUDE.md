@@ -12,11 +12,15 @@ read it before adding or changing any `/api/v1/...` call.
 Vue 3 + composition API. No router. Cross-cutting state lives in **Pinia**
 domain stores under `frontend/src/stores/` — `useAppStore` (view/nav, error
 banner, version, update-check, dataLocation), `useMatchesStore` (records +
-derived triage lists, parse lifecycle, the narrow/anchor filter cluster, the
-dossier-feeding narrowedRecords), `useSettingsStore` (Tesseract/OCR engine,
-folder-watch, screenshots-dir, theme), and `useUiStore` (detail-panel
-selection, screenshot preview/lightbox, card focus, the narrow-panel +
-manual-match modal open-flags). `App.vue` is a thin **declarative shell** (~70
+derived triage lists, the narrow/anchor filter cluster, the dossier-feeding
+narrowedRecords), `useParseStore` (the parse-run lifecycle, ignored
+screenshots, the pending/failed folder ledgers), `useDatabaseStore`
+(clear/backup/restore/import — the whole-database operations, NOT
+preferences), `useSettingsStore` (Tesseract/OCR engine, folder-watch,
+screenshots-dir, theme), `useCoachStore` (the coach's open session) +
+`useCoachReturnsStore` (the player's inbox of returned notes), and
+`useUiStore` (detail-panel selection, screenshot preview/lightbox, card
+focus, the narrow-panel + manual-match modal open-flags). `App.vue` is a thin **declarative shell** (~70
 code lines, hard-capped at 200 — see "App.vue is the shell" below): it reads a
 few store refs, wires the App-shell composables (`composables/app/`), and renders
 the chrome (`AppMasthead`, the banners, `ParseStatusBar`) + one of four view SFCs
@@ -29,7 +33,8 @@ fan-out into each store's loaders + the non-dismissible Startup-failure modal),
 keyboard wiring in
 `useAppKeyboard`, the first-run gate in `useFirstRun`, the anchor toast in
 `useAnchorToast`, the tour bridge in `useOnboardingTourBridge`; the SSE event
-stream + parse lifecycle + clear-DB/backup live in the matches store.
+stream is wired by `useServerEvents` into the parse store, which owns the
+parse lifecycle it drives.
 
 **Store conventions (mirror the existing stores):** setup-style stores
 (`defineStore('x', () => {…})`) ARE composables with a global instance — migrate

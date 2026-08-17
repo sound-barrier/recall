@@ -11,6 +11,7 @@ import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { winrateOrNull } from '@/match/dossier/match-dossier-tally'
@@ -20,20 +21,21 @@ import MastheadParseChip from '@/components/app/masthead/MastheadParseChip.vue'
 import MastheadWatchDot from '@/components/app/masthead/MastheadWatchDot.vue'
 import ProfileSwitcher from '@/components/app/masthead/ProfileSwitcher.vue'
 import AppMenuButton from '@/components/app/AppMenuButton.vue'
-import CoachSessionRule from '@/components/coach/CoachSessionRule.vue'
+import CoachSessionRule from '@/components/coach/room/CoachSessionRule.vue'
 
 // The session chrome is bytes nobody pays for outside a session: the slip
 // and the nav strip are their own chunks, fetched when a bundle opens. The
 // rule is a bare hatched <div> — its own chunk would cost more than it
 // weighs.
-const CoachLoanSlip = defineAsyncComponent(() => import('@/components/coach/CoachLoanSlip.vue'))
-const CoachNavStrip = defineAsyncComponent(() => import('@/components/coach/CoachNavStrip.vue'))
+const CoachLoanSlip = defineAsyncComponent(() => import('@/components/coach/room/CoachLoanSlip.vue'))
+const CoachNavStrip = defineAsyncComponent(() => import('@/components/coach/room/CoachNavStrip.vue'))
 
 const appStore = useAppStore()
 const matchesStore = useMatchesStore()
 const { view, appVersion } = storeToRefs(appStore)
 const { goToView } = appStore
-const { records, unknownRecords, parseProgress, watchActivity, recordsPulse } = storeToRefs(matchesStore)
+const { records, unknownRecords } = storeToRefs(matchesStore)
+const { parseProgress, watchActivity, recordsPulse } = storeToRefs(useParseStore())
 const { watchEnabled } = storeToRefs(useSettingsStore())
 const { matchesNarrow } = matchesStore
 

@@ -605,6 +605,24 @@ tasks:
       - go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
       - go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
       - |
+        # Basic-block coverage — the branch-adjacent number available for EVERY
+        # package. Each block sits between branch points, so covered/total
+        # blocks approximates how many decision paths ran.
+        #
+        # This lived here, was deleted in favor of gobco's real condition
+        # coverage, and is restored deliberately. gobco parses a package
+        # WITHOUT honoring build tags, so it panics on twelve of the twenty
+        # packages here — including pkg/app, pkg/cmd, pkg/db and pkg/parser,
+        # every large one. Trading a metric that covers all packages for one
+        # that covers 40% was the wrong trade. Both run now, and each says
+        # which it is: this is basic-block, `task cover-go-branch` is
+        # condition coverage for the packages gobco can read.
+        #
+        # With -coverpkg every test binary reports every package's blocks, so
+        # the same block appears once per binary — dedupe by block id and keep
+        # the max count, or the denominator inflates ~10x.
+        awk 'NR>1 { key=$1; cnt=$NF+0; if (cnt > max[key]) max[key]=cnt } END { t=0; c=0; for (k in max) { t++; if (max[k] > 0) c++ } if (t) printf "[ recall ] i  Go basic-block coverage %.1f%% (%d/%d blocks) — condition coverage: task cover-go-branch\n", 100*c/t, c, t }' coverage/go/coverage.out
+      - |
         pct=$(awk '/^total:/ { gsub(/%/, "", $NF); print $NF }' coverage/go/coverage.txt)
         awk -v p="$pct" -v m="{{.GO_COVERAGE_MIN}}" 'BEGIN {
           if (p+0 < m+0) { printf "[ recall ] ✗  Go coverage %.1f%% is below threshold %s%%\n", p, m; exit 1 }

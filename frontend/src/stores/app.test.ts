@@ -3,7 +3,7 @@ import { flushPromises } from '@/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { SelfUpdateEvents } from '@/self-update-events'
 
 // checkForUpdates' busy-gate state machine + goToView's Parse-tab side effect
@@ -197,8 +197,8 @@ describe('app store — self-update', () => {
 describe('app store — goToView', () => {
   it('refreshes the pending-screenshot count when entering the Parse tab', async () => {
     const app = useAppStore()
-    const matches = useMatchesStore()
-    const refresh = vi.spyOn(matches, 'refreshNewCount').mockResolvedValue(undefined)
+    const parse = useParseStore()
+    const refresh = vi.spyOn(parse, 'refreshNewCount').mockResolvedValue(undefined)
 
     await app.goToView('ingest')
 
@@ -208,8 +208,8 @@ describe('app store — goToView', () => {
 
   it('does NOT refresh the count for the other tabs', async () => {
     const app = useAppStore()
-    const matches = useMatchesStore()
-    const refresh = vi.spyOn(matches, 'refreshNewCount').mockResolvedValue(undefined)
+    const parse = useParseStore()
+    const refresh = vi.spyOn(parse, 'refreshNewCount').mockResolvedValue(undefined)
 
     await app.goToView('matches')
 

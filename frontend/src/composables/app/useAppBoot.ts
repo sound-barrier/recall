@@ -3,7 +3,7 @@ import { storeToRefs } from 'pinia'
 
 import { fetchStartupError } from '@/queries/system'
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useNativeMenu } from '@/composables/app/useNativeMenu'
 
@@ -17,7 +17,7 @@ import { useNativeMenu } from '@/composables/app/useNativeMenu'
 // there's no app↔domain store import cycle.
 export function useAppBoot() {
   const appStore = useAppStore()
-  const matchesStore = useMatchesStore()
+  const parseStore = useParseStore()
   const { showStartupErrorModal } = storeToRefs(appStore)
 
   // Non-dismissible: Escape is a no-op — a Startup failure means the store
@@ -31,11 +31,11 @@ export function useAppBoot() {
   useNativeMenu()
 
   onMounted(() => {
-    matchesStore.restoreLastParsedAt()
+    parseStore.restoreLastParsedAt()
     // No matchesStore.load() here: the store-setup query observers ARE the
     // boot fetch — a refetch on top would cancel their in-flight requests
     // and re-issue all three GETs (6 requests where 3 do).
-    void matchesStore.loadIgnored()
+    void parseStore.loadIgnored()
     fetchStartupError()
       .then(msg => { if (msg) appStore.setStartupError(msg) })
       .catch(() => {})

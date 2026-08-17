@@ -3,17 +3,17 @@ import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { provideDossier, provideFullDossier, provideGeographyDossier, provideHeroModeDossier } from '@/composables/dashboard/useDossier'
 import { provideNarrow } from '@/composables/matches/narrow/useNarrow'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
-import MatchesTableSortPopover from '@/components/matches/list/MatchesTableSortPopover.vue'
+import MatchesTableSortPopover from '@/components/matches/table/MatchesTableSortPopover.vue'
 import { useDensity } from '@/composables/matches/table/useDensity'
 import { useSortGroupMenu } from '@/composables/matches/list/useSortGroupMenu'
 import { useScrollAffordance } from '@/composables/matches/list/useScrollAffordance'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useArchiveSelection } from '@/composables/matches/list/useArchiveSelection'
-import CoachInboxBanner from '@/components/coach/CoachInboxBanner.vue'
+import CoachInboxBanner from '@/components/coach/inbox/CoachInboxBanner.vue'
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
 import MatchesDossierSections from '@/components/matches/dossier/MatchesDossierSections.vue'
-import BulkActionBar from '@/components/matches/list/BulkActionBar.vue'
-import MatchesArchiveDrawer from '@/components/matches/list/MatchesArchiveDrawer.vue'
+import BulkActionBar from '@/components/matches/bulk/BulkActionBar.vue'
+import MatchesArchiveDrawer from '@/components/matches/bulk/MatchesArchiveDrawer.vue'
 import MatchesMembersList from '@/components/matches/list/MatchesMembersList.vue'
 import MatchesListToolbar from '@/components/matches/list/MatchesListToolbar.vue'
 import { useMatchesSelection } from '@/composables/matches/list/useMatchesSelection'
@@ -35,6 +35,7 @@ import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.v
 import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
 import { useMatchesRowContext } from '@/composables/matches/list/useMatchesRowContext'
 import { useNarrowMode } from '@/composables/matches/narrow/useNarrowMode'
+import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { IS_WAILS } from '@/platform'
@@ -74,6 +75,8 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // manual-match open-flags from the UI store; per-match + bulk mutations from
 // useMatchActions.
 const matchesStore = useMatchesStore()
+// The toolbar's Import… is the same whole-database merge Settings offers.
+const databaseStore = useDatabaseStore()
 const uiStore = useUiStore()
 const { selection, onOpenMatchAndFocus } = uiStore
 const { focusedCardIndex } = uiStore.cardFocus
@@ -448,7 +451,7 @@ function onRowContextOpenSourceFolder(matchKey: string) {
           @jump-to-undated="onJumpToUndated"
           @add-match="uiStore.openManualMatch('full')"
           @add-leaver-exit="uiStore.openManualMatch('leaver-exit')"
-          @import-matches="matchesStore.importMatches"
+          @import-matches="databaseStore.importMatches"
           @expand-all="membersListRef?.expandAllSections()"
           @collapse-all="membersListRef?.collapseAllSections()"
         />

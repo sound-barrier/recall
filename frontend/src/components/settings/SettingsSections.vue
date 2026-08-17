@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
+import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
 import SettingsAppearance from '@/components/settings/SettingsAppearance.vue'
@@ -20,7 +22,9 @@ import SettingsWindow from '@/components/settings/SettingsWindow.vue'
 // adds the intro hero + first-run CTA around this; the dialog frames it in a
 // modal. Reads the stores directly, like every store-bound component.
 const appStore = useAppStore()
+const databaseStore = useDatabaseStore()
 const matchesStore = useMatchesStore()
+const parseStore = useParseStore()
 const settingsStore = useSettingsStore()
 const { goToView } = appStore
 const { dataLocation } = storeToRefs(appStore)
@@ -55,6 +59,13 @@ const {
 } = settingsStore
 const {
   parseBusy,
+  ignoredCount,
+} = storeToRefs(parseStore)
+const {
+  openIgnoredPanel,
+  onReParseAll,
+} = parseStore
+const {
   backingUp,
   restoring,
   restoreArmed,
@@ -62,8 +73,7 @@ const {
   backupStatus,
   clearConfirm,
   clearingDB,
-  ignoredCount,
-} = storeToRefs(matchesStore)
+} = storeToRefs(databaseStore)
 const {
   backup,
   armRestore,
@@ -73,9 +83,7 @@ const {
   armClear,
   cancelClear,
   onClearDatabase,
-  openIgnoredPanel,
-  onReParseAll,
-} = matchesStore
+} = databaseStore
 const matchedCount = computed(() => matchesStore.records.length)
 const unknownCount = computed(() => matchesStore.unknownRecords.length)
 const reparsing = parseBusy

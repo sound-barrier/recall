@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useUiStore } from '@/stores/ui'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
@@ -63,6 +64,10 @@ async function boot(records: MatchRecord[] = []) {
   api.GetMatchResults.mockResolvedValue(records)
   seedQuery(qk.matches, records)
   useMatchesStore()
+  // The pending-count / failed-files observers live in the parse store; the
+  // cluster refetch these tests count only reaches queries something has
+  // mounted, exactly as at boot.
+  useParseStore()
   await new Promise(r => setTimeout(r, 0))
   vi.clearAllMocks()
   return useMatchActions()

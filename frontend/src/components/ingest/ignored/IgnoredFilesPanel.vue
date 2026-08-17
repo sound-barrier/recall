@@ -1,0 +1,490 @@
+<script setup lang="ts">
+import { computed, ref, watch, nextTick, onBeforeUnmount, toRef } from 'vue'
+
+import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
+import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
+import type { IgnoredScreenshot } from '@/api-client'
+import IgnoredFileRow from '@/components/ingest/ignored/IgnoredFileRow.vue'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
+
+// IgnoredFilesPanel — Settings → Advanced → "Manage ignored files."
+// Modal dialog listing every row from the suppress-list with the
+// screenshot's thumbnail, filename, and ignored-at timestamp. Per-row
+// Restore button emits `restore` so App.vue can call UnignoreScreenshot
+// + reload; bulk "Re-enable all" emits `restore-all` after a 2-step
+// arm/confirm (mirrors the destructive-confirm pattern on the Unknown
+// tab's "Delete forever" button + Settings → Clear Database).
+//
+// On any successful restore (per-row or bulk) the panel shows an
+// inline "Run Parse now" link. We don't auto-fire Parse — the user
+// may want to restore multiple files across multiple sessions before
+// re-parsing.
+//
+// Focus + Escape handling mirrors MatchScreenshotLightbox: capture-
+// phase keydown listener installed on document while open, focus
+// returns to the previously-focused element on close.
+
+const props = defineProps<{
+  isOpen:        boolean
+  screenshots:   IgnoredScreenshot[]
+  screenshotURL: (filename: string) => string
+}>()
+
+// Freeze the page behind the panel (it wires its own capture-phase
+// Escape rather than useModalFocusTrap, so it locks scroll directly).
+useScrollLock(toRef(props, 'isOpen'))
+
+const emit = defineEmits<{
+  close:          []
+  restore:        [filename: string]
+  'restore-all':  []
+  'run-parse':    []
+  // Forwarded to App.vue's openLightbox handler. `files` is the
+  // full ignored-files filename list so the lightbox can ←/→
+  // navigate across every row without leaving the modal; `dirIDs`
+  // is all-zero because the suppress list doesn't track per-file
+  // screenshot dirs (the App falls back to the currently-configured
+  // dir, which is correct for ignored files — they live in
+  // whichever folder Recall is reading from).
+  'open-lightbox': [filename: string, files: readonly string[], dirIDs: Record<string, number>]
+}>()
+
+// "Re-enable all" two-step arm. First click arms (3 s auto-disarm);
+// second click within the window fires `restore-all`.
+const ARM_MS = 3000
+// Restoring a suppressed file and re-running the parse both write; the
+// panel stays open and readable, its actions do not.
+const { writesLocked, lockedTitle } = useWriteGate()
+
+const armed = ref(false)
+let armTimer: ReturnType<typeof setTimeout> | null = null
+
+function disarm() {
+  if (armTimer !== null) {
+    clearTimeout(armTimer)
+    armTimer = null
+  }
+  armed.value = false
+}
+
+function onRestoreAllClick() {
+  if (!armed.value) {
+    armed.value = true
+    armTimer = setTimeout(disarm, ARM_MS)
+    return
+  }
+  disarm()
+  showRestoredHint()
+  emit('restore-all')
+}
+
+// Inline "Run Parse now" hint shown after the most recent restore.
+// Resets when the panel closes or a fresh arm starts.
+const showRestoredFooter = ref(false)
+function showRestoredHint() {
+  showRestoredFooter.value = true
+}
+
+function onRestoreClick(filename: string) {
+  showRestoredHint()
+  emit('restore', filename)
+}
+
+// Click the thumbnail → fullscreen lightbox. App.vue's openLightbox
+// owns the MatchScreenshotLightbox instance; we pass the full
+// filename list so the lightbox's ←/→ arrow nav cycles across
+// every ignored row.
+const filenameList = computed(() => props.screenshots.map(s => s.filename))
+function onThumbClick(filename: string) {
+  emit('open-lightbox', filename, filenameList.value, {})
+}
+
+// Hover thumbnail — cursor-anchored floating peek, Teleport'd to body so
+// its `position: fixed` anchors to the viewport (not the modal's transform
+// context) and its z-index can sit above the backdrop. The state + position
+// math live in useHoverThumbnail, shared with the Unknown tab.
+const {
+  hoveredKey: hoveredFilename,
+  hoveredSrc,
+  thumbX,
+  thumbY,
+  showThumb: showHoverThumb,
+  onHover: onHoverRow,
+  onMove: onMoveRow,
+  onLeave: onLeaveRow,
+} = useHoverThumbnail({
+  isVisible: () => props.isOpen,
+  srcFor: (filename) => props.screenshotURL(filename),
+})
+
+// Focus + Escape. Bubble-phase (NOT capture) so that a child modal
+// stacked on top — specifically MatchScreenshotLightbox, opened from
+// the row thumbnails — gets Esc first via its own capture-phase
+// listener and can close itself with stopImmediatePropagation
+// without the panel also reacting. Per the gotcha documented in
+// frontend/CLAUDE.md: stacking two capture-phase Esc handlers makes
+// the inner one unreachable.
+const dialogRef = ref<HTMLElement | null>(null)
+const lastFocus = ref<HTMLElement | null>(null)
+
+// aria-modal="true" promises focus can't Tab out of the dialog —
+// cycle within it (same shape as ExportBundleModal's trap).
+function cycleTab(e: KeyboardEvent, dialog: HTMLElement) {
+  const sel = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  const items = Array.from(dialog.querySelectorAll<HTMLElement>(sel))
+  if (items.length === 0) return
+  const first = items[0]!
+  const last = items[items.length - 1]!
+  const active = document.activeElement as HTMLElement | null
+  if (e.shiftKey && (active === first || active === dialog)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && active === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (!props.isOpen) return
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    emit('close')
+    return
+  }
+  if (e.key !== 'Tab' || !dialogRef.value) return
+  cycleTab(e, dialogRef.value)
+}
+
+watch(
+  () => props.isOpen,
+  async (next, prev) => {
+    if (next && !prev) {
+      lastFocus.value =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null
+      document.addEventListener('keydown', onKeydown)
+      await nextTick()
+      dialogRef.value?.focus()
+    } else if (!next && prev) {
+      document.removeEventListener('keydown', onKeydown)
+      disarm()
+      showRestoredFooter.value = false
+      // Clear hover state too — if the user closes the modal mid-
+      // hover the cursor never crosses the row boundary and the
+      // stale thumb would otherwise stay on screen.
+      onLeaveRow()
+      await nextTick()
+      lastFocus.value?.focus()
+      lastFocus.value = null
+    }
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  // Same (no-capture) flags as the addEventListener in the isOpen watch —
+  // a capture-flagged removal would be a no-op and leak the listener.
+  document.removeEventListener('keydown', onKeydown)
+})
+
+function onBackdropClick(e: MouseEvent) {
+  if (e.target === e.currentTarget) emit('close')
+}
+
+</script>
+
+<template>
+  <transition name="ignored-panel-fade">
+    <div
+      v-if="isOpen"
+      class="ignored-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ignored-panel-title"
+      @click="onBackdropClick"
+    >
+      <div ref="dialogRef" class="ignored-panel" tabindex="-1">
+        <header class="ignored-head">
+          <h2 id="ignored-panel-title" class="ignored-title">
+            Ignored screenshots
+            <span class="ignored-count" :aria-label="`${screenshots.length} ignored files`">{{ screenshots.length }}</span>
+          </h2>
+          <button
+            type="button"
+            class="ignored-close"
+            title="Close (Esc)"
+            aria-label="Close ignored files panel"
+            @click="emit('close')"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+
+        <p v-if="screenshots.length === 0" class="ignored-empty">
+          Nothing ignored. Files you mark as <em>Delete forever</em> on the Unknown tab show up here so you can bring them back.
+        </p>
+
+        <template v-else>
+          <div class="ignored-toolbar">
+            <button
+              v-if="!armed"
+              type="button"
+              class="btn ghost ignored-restore-all"
+              :disabled="writesLocked"
+              :title="lockedTitle('Bring every ignored file back')"
+              @click="onRestoreAllClick"
+            >
+              Re-enable all ({{ screenshots.length }})
+            </button>
+            <template v-else>
+              <span class="ignored-armed-hint">Confirm?</span>
+              <button
+                type="button"
+                class="btn destructive ignored-restore-all-confirm"
+                @click="onRestoreAllClick"
+              >
+                Yes, re-enable all
+              </button>
+              <button
+                type="button"
+                class="btn ghost ignored-restore-all-cancel"
+                @click="disarm"
+              >
+                Cancel
+              </button>
+            </template>
+          </div>
+
+          <ul class="ignored-list">
+            <IgnoredFileRow
+              v-for="s in screenshots"
+              :key="s.filename"
+              :screenshot="s"
+              :thumbnail-url="screenshotURL(s.filename)"
+              :restore-disabled="writesLocked"
+              :restore-title="lockedTitle('Bring this file back')"
+              @hover-enter="(e) => onHoverRow(s.filename, e)"
+              @hover-move="(e) => onMoveRow(s.filename, e)"
+              @hover-leave="onLeaveRow"
+              @thumb-click="onThumbClick(s.filename)"
+              @restore="onRestoreClick(s.filename)"
+            />
+          </ul>
+        </template>
+
+        <footer v-if="showRestoredFooter" class="ignored-foot" role="status">
+          Restored.
+          <button
+            type="button"
+            class="ignored-runparse"
+            :disabled="writesLocked"
+            :title="lockedTitle('Run a parse now')"
+            @click="emit('run-parse')"
+          >
+            Run Parse now
+          </button>
+          to re-discover.
+        </footer>
+      </div>
+    </div>
+  </transition>
+
+  <!-- Cursor-anchored floating hover thumb. Teleport to body so its
+       `position: fixed` anchors to the viewport (not the modal's
+       transform context) and so it can stack above the backdrop via
+       its own z-index. Mirrors the UnknownMapsView pattern. -->
+  <Teleport to="body">
+    <img
+      v-if="showHoverThumb"
+      :src="hoveredSrc"
+      :alt="`Preview of ${hoveredFilename}`"
+      class="ignored-hover-thumb"
+      :style="{ left: thumbX + 'px', top: thumbY + 'px' }"
+    >
+  </Teleport>
+</template>
+
+<style scoped>
+.ignored-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1090;
+
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value --
+     modal scrim. tokens.css scopes --shadow-rgb to outer shadows and
+     calls out scrims by name: they dim the app in every theme and are
+     deliberately black, so Day's warm-gray tint must not reach here. */
+  background: rgb(0 0 0 / 70%);
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+}
+
+.ignored-panel {
+  width: min(720px, 100%);
+  max-height: min(80vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 16px 60px rgb(var(--shadow-rgb) / 45%);
+}
+
+.ignored-panel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ignored-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.ignored-title {
+  font-family: var(--display);
+  font-size: var(--type-2xl);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.ignored-count {
+  display: inline-block;
+  padding: 0 0.4rem;
+  font-size: var(--type-md);
+  line-height: 1.4;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.ignored-close {
+  appearance: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--type-3xl);
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.ignored-close:hover,
+.ignored-close:focus-visible {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.ignored-empty {
+  padding: 1.75rem 1rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ignored-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.ignored-armed-hint {
+  font-size: var(--type-lg);
+  color: var(--text-dim);
+}
+
+.ignored-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Floating cursor-anchored hover thumb. Position is set inline from
+   the script via `top` / `left`; z-index sits above the modal
+   backdrop (1090). Pointer-events: none so it never blocks the row's
+   mouseenter / mouseleave events even when the cursor briefly skims
+   the thumb's bounding box. */
+.ignored-hover-thumb {
+  position: fixed;
+  z-index: 1200;
+  width: 360px;
+  height: 203px;
+  object-fit: cover;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 50%);
+  pointer-events: none;
+}
+
+.ignored-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--border-soft);
+  font-size: var(--type-lg);
+  color: var(--text-dim);
+  background: var(--surface);
+}
+
+.ignored-runparse {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--accent-text);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.ignored-runparse:hover,
+.ignored-runparse:focus-visible {
+  color: var(--accent-bright);
+  outline: none;
+}
+
+/* Fade-in match — mirrors the lightbox transition shape so the
+   panel feels like a peer surface, not a router-shell page change. */
+.ignored-panel-fade-enter-active,
+.ignored-panel-fade-leave-active {
+  transition: opacity var(--duration-fast) ease;
+}
+
+.ignored-panel-fade-enter-from,
+.ignored-panel-fade-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ignored-panel-fade-enter-active,
+  .ignored-panel-fade-leave-active {
+    transition: none;
+  }
+}
+</style>

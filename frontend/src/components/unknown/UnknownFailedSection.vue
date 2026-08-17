@@ -7,7 +7,7 @@ import { screenshotURL } from '@/match/match-helpers'
 import { formatParsedAt } from '@/match/match-time-helpers'
 import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 
 // The "Failed to read" section: screenshots whose OCR attempt failed
@@ -19,10 +19,10 @@ import { useMatchActions } from '@/composables/matches/useMatchActions'
 // section copy says so, because that's why the run counter keeps
 // including them.
 
-const matchesStore = useMatchesStore()
+const parseStore = useParseStore()
 const { onIgnoreScreenshot } = useMatchActions()
 
-const failedFiles = computed(() => matchesStore.failedFiles)
+const failedFiles = computed(() => parseStore.failedFiles)
 
 // "Save diagnostic bundle" — one click, one zip (failed screenshots +
 // logs + environment manifest) for bug reports. Wails saves via the

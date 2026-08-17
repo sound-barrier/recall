@@ -11,6 +11,7 @@ import { useUndoHideToast } from '@/composables/app/useUndoHideToast'
 import { useFirstRun } from '@/composables/app/useFirstRun'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 
 // App-shell UI state: the right-side detail-panel selection, the
 // source-screenshot preview/lightbox cache, and the j/k card-focus index.
@@ -22,6 +23,7 @@ import { useMatchesStore } from '@/stores/matches'
 export const useUiStore = defineStore('ui', () => {
   const appStore = useAppStore()
   const matchesStore = useMatchesStore()
+  const parseStore = useParseStore()
 
   // Detail-panel selection paginates against the SAME narrowedRecords the
   // Matches view shows, so it tracks filter/hide/re-parse changes.
@@ -113,7 +115,7 @@ export const useUiStore = defineStore('ui', () => {
   // Every full-surface modal that should freeze the background — App's
   // `.container` + ParseStatusBar flip `inert` + aria-hidden off this so screen
   // readers + Tab nav don't bleed into the dimmed page. Reads the startup-error
-  // gate from the app store + the unsupported-OCR gate from the matches store;
+  // gate from the app store + the unsupported-OCR gate from the parse store;
   // the rest are this store's own flags. Add to it when a new modal mounts.
   // Every modal that should mute the global keyboard map. The detail panel
   // (selection) deliberately stays out — e-to-close and the j/k interplay
@@ -122,7 +124,7 @@ export const useUiStore = defineStore('ui', () => {
   const shortcutMutingModalOpen = computed(() =>
     firstRun.firstRunModalOpen.value
     || appStore.showStartupErrorModal
-    || matchesStore.showUnsupportedModal
+    || parseStore.showUnsupportedModal
     || narrowOpen.value
     || manualMatchOpen.value
     || settingsDialogOpen.value

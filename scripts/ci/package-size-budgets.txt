@@ -172,12 +172,6 @@ frontend/src/components/dashboard/widgets     40
 # stands as the ceiling on this folder becoming a junk drawer a second time.
 frontend/src/composables/shared               20
 
-# frontend/src/components/matches/list — the match list: row renderers, the
-# table, the toolbar and bulk bars, and four unrelated toasts that are rendered
-# by AppOverlays rather than by the list. Two over target, so this is the
-# cheapest of the frontend splits.
-frontend/src/components/matches/list          20    22
-
 # frontend/src/components/shared — cross-feature UI primitives. It reached 21
 # files while being four features sharing a folder, so the masthead pieces went
 # to components/app/masthead/ (AppMasthead was their only importer), the tour to
@@ -194,12 +188,6 @@ frontend/src/components/shared                20
 # intended behavior, not an accident of measurement.
 frontend/src/components/elo                   20
 
-# frontend/src/components/coach — the coaching session surface: film room
-# (reel/desk/sheet/editor), the return sheet, loan slip, nav strip. Under the
-# ceiling and actively growing, so this entry exists to make the next few files
-# deliberate rather than to force a split now.
-frontend/src/components/coach                 19
-
 # frontend/src/styles — the stylesheet layer: tokens, per-theme value families,
 # and the component/badge/paper families. Not components, so the
 # feature-subfolder remedy does not apply; the grouping is by stylesheet role.
@@ -207,9 +195,14 @@ frontend/src/components/coach                 19
 frontend/src/styles                           18
 
 # frontend/src/components/settings — one component per Settings tab section.
-# Under the ceiling; registered because it is close enough that silent growth
-# would put it over.
-frontend/src/components/settings              18
+# Ratcheted from 18 after three residents were evicted to the features that own
+# them: ExportBundleModal drives composables/matches/useExportBundle and is
+# opened from the Matches bulk bar, and the ignored-files pair is backed by
+# composables/ingest/useIgnoredScreenshots. Settings only RENDERED all three,
+# through the overlay stack, which is a mounting point rather than an ownership
+# claim. Registered because the count is close enough to the ceiling that silent
+# growth would put it over.
+frontend/src/components/settings              15
 
 # frontend/src/components/matches/detail — the match detail panel's sections
 # (header, expanded card, journal, status choosers, lightbox). Under the

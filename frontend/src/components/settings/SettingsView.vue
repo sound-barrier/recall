@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import SettingsSections from '@/components/settings/SettingsSections.vue'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
@@ -45,7 +45,7 @@ const {
   screenshotCandidates,
 } = storeToRefs(settingsStore)
 const { pickDir, pickDetectedSource } = settingsStore
-const { parseBusy } = storeToRefs(useMatchesStore())
+const { parseBusy } = storeToRefs(useParseStore())
 const platform = computed(() => tesseractStatus.value?.platform ?? '')
 
 // Probe-chip dismissal — local-only transient UI noise. Reset whenever a fresh

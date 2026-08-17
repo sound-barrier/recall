@@ -2,17 +2,17 @@
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
-import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useUiStore } from '@/stores/ui'
 
-// Persistent parse-status footer. Reads the parse lifecycle from the matches
+// Persistent parse-status footer. Reads the parse lifecycle from the parse
 // store: parseProgress drives the counter / ticks / visibility state machine,
 // cancelingParse drives the ABORT tile's "ABORTING…" state. The ABORT click +
 // the click-to-jump-to-Parse gesture go straight to the stores. Self-applies
 // `inert` while hidden OR while a modal has frozen the background.
-const matchesStore = useMatchesStore()
-const { parseProgress, cancelingParse } = storeToRefs(matchesStore)
-const { onCancelParse } = matchesStore
+const parseStore = useParseStore()
+const { parseProgress, cancelingParse } = storeToRefs(parseStore)
+const { onCancelParse } = parseStore
 const { goToView } = useAppStore()
 const { backgroundFrozen } = storeToRefs(useUiStore())
 

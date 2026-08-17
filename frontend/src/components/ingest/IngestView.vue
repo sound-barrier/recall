@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { formatRelativeTime } from '@/match/match-time-helpers'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import ParseProgressPanel from '@/components/ingest/ParseProgressPanel.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -19,9 +20,11 @@ import { useWriteGate } from '@/composables/shared/useWriteGate'
 //   02 Manual Parse — one-click "do it now" button + progress panel
 //
 // Reads its state from the stores: Tesseract preflight + watch toggle from
-// settings, the parse stream + record counts from matches, tab nav from app.
+// settings, the parse stream from parse, the record counts from matches, tab
+// nav from app.
 const appStore = useAppStore()
 const matchesStore = useMatchesStore()
+const parseStore = useParseStore()
 const settingsStore = useSettingsStore()
 const { goToView } = appStore
 const { tesseractReady, watchEnabled, screenshotsDir } = storeToRefs(settingsStore)
@@ -35,8 +38,8 @@ const {
   parseLog,
   parseProgressOpen,
   parseConnectionState,
-} = storeToRefs(matchesStore)
-const { parse, onCancelParse, refreshParse } = matchesStore
+} = storeToRefs(parseStore)
+const { parse, onCancelParse, refreshParse } = parseStore
 // Parsing writes matches: rejected server-side (409) on the tour's
 // read-only sample profile and while a coaching session holds the view, so
 // both affordances go dead with the reason on them.

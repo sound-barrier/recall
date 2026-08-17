@@ -553,22 +553,26 @@ jobs:
       - name: Convert coverage profile to Cobertura XML
         run: gocover-cobertura < coverage/go/coverage.out > coverage/go/cobertura.xml
 
-      # Surface statement coverage in the job summary. Real condition (branch)
-      # coverage is the branch-coverage job's business — it runs gobco, which
-      # measures each condition's true AND false arm. The basic-block
-      # approximation that used to print here was removed with it: two numbers
-      # under the word "branch" that disagree is worse than one.
-      - name: Coverage summary (statement)
+      # Statement + basic-block coverage. The block number is restored here
+      # alongside gobco rather than replaced by it: gobco does not honor build
+      # tags and panics on twelve of the twenty packages, including every large
+      # one, so it cannot be the only branch-adjacent metric. The two are
+      # labeled for what they are — block is an approximation over all
+      # packages, condition is exact over the eight gobco can read.
+      - name: Coverage summary (statement + block)
         run: |
           line=$(awk '/^total:/ { gsub(/%/,"",$NF); print $NF }' coverage/go/coverage.txt)
+          block=$(awk 'NR>1 { k=$1; c=$NF+0; if (c>m[k]) m[k]=c } END { t=0; h=0; for (k in m) { t++; if (m[k]>0) h++ } if (t) printf "%.1f", 100*h/t }' coverage/go/coverage.out)
           {
             echo "### Go coverage (unit)"
             echo ""
             echo "| Metric | Coverage |"
             echo "|---|---:|"
             echo "| Line (statement) | ${line}% |"
+            echo "| Basic block (all packages) | ${block}% |"
             echo ""
-            echo "_Condition (branch) coverage is reported by the branch-coverage job._"
+            echo "_Condition (branch) coverage — exact, but only for the 8 packages gobco can_"
+            echo "_parse — is reported by the branch-coverage job._"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage report

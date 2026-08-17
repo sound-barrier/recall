@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { useMatchesStore } from '@/stores/matches'
 import { useAppStore } from '@/stores/app'
+import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
@@ -83,6 +84,10 @@ beforeEach(() => {
 describe('matches store — load() boot coordinator', () => {
   it('the boot fan-out hydrates each store from its OWN loader', async () => {
     const matches = useMatchesStore()
+    // The pending-count / failed-files observers live in the parse store now;
+    // creating it is what puts those cluster siblings in the cache for load()
+    // to refetch.
+    const parse = useParseStore()
     const settings = useSettingsStore()
     const app = useAppStore()
     expect(matches.firstLoadPending).toBe(true)
@@ -96,7 +101,7 @@ describe('matches store — load() boot coordinator', () => {
     expect(settings.screenshotsDir).toBe('/srv/recall')
     expect(settings.watchEnabled).toBe(true)
     expect(settings.tesseractReady).toBe(true)
-    expect(matches.newScreenshotCount).toBe(3)
+    expect(parse.newScreenshotCount).toBe(3)
     expect(app.dataLocation).toEqual(DATA_LOC)
     expect(matches.firstLoadPending).toBe(false)
   })
@@ -104,6 +109,7 @@ describe('matches store — load() boot coordinator', () => {
   it('isolates a GetMatchResults failure: records stay, the OTHER subsystems still load, Retry is wired', async () => {
     api.GetMatchResults.mockRejectedValue(new Error('database is locked'))
     const matches = useMatchesStore()
+    const parse = useParseStore()
     const settings = useSettingsStore()
     const app = useAppStore()
 
@@ -115,7 +121,7 @@ describe('matches store — load() boot coordinator', () => {
     // ...and the independent subsystems still applied (per-subsystem isolation).
     expect(settings.screenshotsDir).toBe('/srv/recall')
     expect(settings.tesseractReady).toBe(true)
-    expect(matches.newScreenshotCount).toBe(3)
+    expect(parse.newScreenshotCount).toBe(3)
     // The error banner is armed with a Retry.
     expect(app.error).toContain('Could not load matches')
     expect(app.errorRetry).toBeTypeOf('function')

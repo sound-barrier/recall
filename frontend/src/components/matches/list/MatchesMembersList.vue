@@ -12,7 +12,7 @@ import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNa
 import { playerClockNote } from '@/match/match-time-helpers'
 import type { SearchClause } from '@/match/search-query'
 import MatchLeafRow from '@/components/matches/list/MatchLeafRow.vue'
-import MatchesTable from '@/components/matches/list/MatchesTable.vue'
+import MatchesTable from '@/components/matches/table/MatchesTable.vue'
 import MatchesEmptySuggestions from '@/components/matches/list/MatchesEmptySuggestions.vue'
 import { useCoachStore } from '@/stores/coach'
 
