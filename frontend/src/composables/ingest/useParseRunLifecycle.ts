@@ -215,7 +215,6 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     restoreLastParsedAt,
     parseProgressOpen,
     showUnsupportedModal,
-    runParse,
     onCancelParse,
     onReParseAll,
     parse,
