@@ -351,7 +351,7 @@ export const RESULT_MODIFIERS: ReadonlySet<string> = new Set(['victory', 'defeat
 // had drifted from the source.
 export const FILTERABLE_MODIFIERS = [
   'expected', 'uphill battle', 'reversal', 'consolation',
-  'win streak', 'loss streak', 'calibration', 'volatile',
+  'win streak', 'loss streak', 'calibration', 'volatile', 'variance',
   'winning trend', 'losing trend',
   'new map', 'leaver compensation',
   'demotion protection',
