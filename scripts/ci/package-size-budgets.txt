@@ -10,14 +10,18 @@
 # A blank line between the comment and the entry breaks the pairing.
 #
 # WHAT IS COUNTED lives in the script's header, not here. Short version:
-# non-test .go files in a Go package; every tracked file except *.test.ts in a
-# frontend directory; per-directory, never recursive.
+# non-test .go files in a Go package; every tracked file in a frontend
+# directory, except *.test.ts under frontend/src (a unit-test sibling is a
+# projection of the file beside it); per-directory, never recursive.
 #
-# A DIRECTORY NOT LISTED gets DEFAULT_MAX_FILES (12). That is the standing
-# decision — "no grouping passes 12 files without a written reason" — not an
+# A DIRECTORY NOT LISTED gets DEFAULT_MAX_FILES, which lives in the script and
+# is deliberately NOT restated here — a number spelled in two places is the
+# drift that already bit this repo three ways with the coverage floors. Run
+# `task package-size-audit` to see it applied. That default is the standing
+# decision — "no grouping grows past it without a written reason" — not an
 # escape hatch. Registration is earned by size, which is why this file is short
 # and every line in it is load-bearing. Deleting an entry does not dodge the
-# gate: an over-budget directory falls back to 12 and fails harder.
+# gate: an over-budget directory falls back to the default and fails harder.
 #
 # BUDGETS ARE ZERO-HEADROOM ON PURPOSE, and this is the one place this file
 # deliberately diverges from check-bundle-size.sh. Byte budgets need slack
@@ -84,9 +88,10 @@ pkg/parser                                    22
 
 # pkg/cmd — the transport surface: HTTP handlers and middleware in server mode,
 # systray/window/self-update wiring in desktop mode, split per endpoint group.
-# Ten of the nineteen are !serveronly, so half this package is one build tag's
-# worth of desktop chrome — a legitimate reason for the count, not a reason to
-# inflate the budget further.
+# Four of the nineteen are !serveronly desktop chrome (selfupdate, systray,
+# wails, window_size); the other fifteen are the server_*.go endpoint groups
+# and their middleware, which is one responsibility spelled per-endpoint-group
+# and the actual reason for the count.
 pkg/cmd                                       19
 
 
@@ -254,9 +259,10 @@ frontend/src/components/matches/detail        15
 
 # frontend/src — the app root: App.vue, main.ts, the api/* seam family
 # (api, api-client, api-platform, api-error, api-unwrap), the error-handling
-# pair, platform detection. Note this counts 14, not the 23 `ls` shows: nine are
-# *.test.ts siblings, which the metric folds into the file they test. The api-*
-# family is the obvious candidate for an @/api/ folder if this grows.
+# pair, platform detection. Note this counts 14, not the 24 tracked files at
+# this root: 10 are *.test.ts siblings, which the metric folds into the file
+# they test. The api-* family is the obvious candidate for an @/api/ folder if
+# this grows.
 frontend/src                                  14
 
 # frontend/src/components/matches/dossier — the dossier band components and
