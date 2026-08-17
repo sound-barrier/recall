@@ -1,17 +1,60 @@
 <script setup lang="ts">
-import type { MatchRecord } from '@/api-client'
+import { computed, ref } from 'vue'
+
+import type { MatchRecord, UserMatchDataInput } from '@/api-client'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useWriteGate } from '@/composables/shared/useWriteGate'
+import { hasRankScreenshot } from '@/match/match-helpers'
+import { withRankFill } from '@/match/match-overrides'
+import { TIER_ORDER, isPlaceableRank } from '@/match/trends/match-trends-helpers'
 
 // The expanded card's Rank Update block — the "rare" milestone surface
 // that only renders for matches carrying a rank-screen screenshot
 // (placements / promos / demos): tier + level + progress + per-hero SR
 // deltas. Extracted from MatchCardExpanded; read-only, just needs the
 // record and the canonical hero-name lookup.
-defineProps<{
+const props = defineProps<{
   record: MatchRecord
 }>()
 
+const emit = defineEmits<{
+  // Carries the FULL override set, like every other edit on this surface —
+  // UpdateMatchData replaces the set wholesale.
+  'update-match-data': [matchKey: string, overrides: UserMatchDataInput]
+}>()
+
 const ow = useOWData()
+const { writesLocked, lockedTitle } = useWriteGate()
+
+// The block renders when a tier is known OR a rank screenshot was parsed at
+// all. Before this, it was gated on the tier alone, so a capture whose tier
+// band was unreadable rendered NOTHING and was indistinguishable from a match
+// that never had a rank screen — the app's own recovery of that capture was
+// invisible to the person it was recovered for.
+const show = computed(() => !!props.record.data?.rank || hasRankScreenshot(props.record))
+
+// Incomplete by the SAME rule the rank charts use, so the sentence below can
+// name the actual consequence instead of guessing at it.
+const incomplete = computed(() => !isPlaceableRank(props.record.data))
+
+// Names what is actually missing. A tier can be present while the division is
+// not — `level` is omitempty on the wire, so a division of 0 arrives absent —
+// and telling the user "tier" when the tier is right there would read as a bug.
+const missing = computed(() =>
+  props.record.data?.rank ? 'division' : 'tier and division')
+
+const TIERS = TIER_ORDER.map((t) => ({ value: t, label: t[0]!.toUpperCase() + t.slice(1) }))
+const DIVISIONS = [1, 2, 3, 4, 5]
+
+const fillTier = ref('')
+const fillDivision = ref(1)
+const canSave = computed(() => !writesLocked.value && fillTier.value !== '')
+
+function saveRank() {
+  if (!canSave.value) return
+  emit('update-match-data', props.record.match_key,
+    withRankFill(props.record, fillTier.value, fillDivision.value))
+}
 </script>
 
 <template>
@@ -22,13 +65,16 @@ const ow = useOWData()
          tag so the user immediately reads it as a milestone, not
          another stat row. Sits above the journal so the milestone
          is read alongside the stats that produced it. -->
-  <div v-if="record.data?.rank" class="rank-block rare">
+  <div v-if="show" class="rank-block rare">
     <div class="eyebrow block-eyebrow rank-eyebrow">
       <span class="rare-pip" aria-hidden="true">◆</span>
       Rank Update
     </div>
     <div class="rank-line">
-      <span class="rank-tier" :class="record.data.rank">{{ record.data.rank }} {{ record.data.level }}</span>
+      <span v-if="record.data?.rank" class="rank-tier" :class="record.data.rank">{{ record.data.rank }} {{ record.data.level }}</span>
+      <!-- The slot the reader's eye goes to answers the question, rather than
+           being silently absent. -->
+      <span v-else class="rank-tier rank-tier-unread">Tier not read</span>
       <!-- `!= null`, not truthiness, on both: 0 is a real reading. 0% progress
            is the bottom of a division and a 0 change is "this match moved the
            rank by nothing" — hiding either claims the screenshot never reported
@@ -39,6 +85,44 @@ const ow = useOWData()
       <span v-if="record.data.rank_progress != null" class="rank-progress">{{ record.data.rank_progress }}% progress</span>
       <span v-if="record.data.change_percent != null" class="rank-change">{{ record.data.change_percent >= 0 ? '+' : '' }}{{ record.data.change_percent }}%</span>
       <span v-for="m in record.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
+    </div>
+    <!-- Names the LOSS, not just the gap, because the loss is what the reader
+         can check. It points at Source Screenshots because that is the actual
+         recovery path — the capture is still on disk and opens in the lightbox.
+         It deliberately does NOT say "re-parse": on the capture this exists for,
+         the tier is occluded by a hero model in the pixels, and every empty-tier
+         golden was produced by the CURRENT parser, so a re-parse is a guaranteed
+         no-op and offering it would waste the user's time. -->
+    <div v-if="incomplete" class="rank-incomplete">
+      <p class="rank-note">
+        This match's rank screen was captured, but its {{ missing }} could not be
+        read — so the match is missing from the rank charts. Read it off the
+        capture in Source Screenshots below and enter it here:
+      </p>
+      <div class="rank-fill">
+        <label class="rank-fill-field">
+          Tier
+          <select v-model="fillTier" class="rank-fill-input">
+            <option value="">Choose…</option>
+            <option v-for="t in TIERS" :key="t.value" :value="t.value">{{ t.label }}</option>
+          </select>
+        </label>
+        <label class="rank-fill-field">
+          Division
+          <select v-model.number="fillDivision" class="rank-fill-input">
+            <option v-for="d in DIVISIONS" :key="d" :value="d">{{ d }}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          class="btn ghost"
+          :disabled="!canSave"
+          :title="lockedTitle('Save this rank onto the match')"
+          @click="saveRank"
+        >
+          Save rank
+        </button>
+      </div>
     </div>
     <!-- A SENTENCE, not a chip beside the real modifiers. A chip would assert
          this text IS a modifier the player earned; the only supported claim is
@@ -74,6 +158,54 @@ const ow = useOWData()
 </template>
 
 <style scoped>
+/* The unread-tier chip keeps the tier slot's shape so the line does not
+   reflow, but drops the tier coloring it has no tier to earn. */
+.rank-tier-unread {
+  font-family: inherit;
+  font-size: var(--type-md);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-dim);
+  border-style: dashed;
+}
+
+.rank-incomplete {
+  margin-top: 0.5rem;
+}
+
+.rank-note {
+  margin: 0 0 0.5rem;
+  font-size: var(--type-sm);
+  color: var(--text-dim);
+}
+
+.rank-fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.rank-fill-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: var(--type-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.rank-fill-input {
+  font-size: var(--type-sm);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.25rem 0.4rem;
+}
+
 /* Muted, but --text-dim not --text-mute: mute drops to 3.98:1 on Day's darker
    surfaces, and this is small content text that has to clear AA. */
 .rank-unknown-modifier {

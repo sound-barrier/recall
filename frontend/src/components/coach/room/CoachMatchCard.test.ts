@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/vue'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
 import CoachMatchCard from '@/components/coach/room/CoachMatchCard.vue'
@@ -27,8 +28,18 @@ const KINGS_ROW: MatchRecord = {
   },
 }
 
+// The rank block this card reuses reads the write gate, which is store-backed:
+// the fill it now offers must be refused during a coaching session, since the
+// match on screen belongs to someone else.
+beforeEach(() => {
+  setActivePinia(createPinia())
+})
+
 function renderCard(record: MatchRecord = KINGS_ROW) {
-  return render(CoachMatchCard, { props: { record, handle: 'Sable' } })
+  return render(CoachMatchCard, {
+    props: { record, handle: 'Sable' },
+    global: { plugins: [createPinia()] },
+  })
 }
 
 describe('CoachMatchCard', () => {
