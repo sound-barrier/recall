@@ -44,6 +44,12 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	{"personal_screenshots", "parser_generation", "INTEGER"},
 	{"rank_screenshots", "parser_generation", "INTEGER"},
 	{"unknown_screenshots", "parser_generation", "INTEGER"},
+	// The one NOT NULL entry, and it is safe for a reason worth stating: SQLite
+	// accepts ADD COLUMN NOT NULL when a CONSTANT default backfills the existing
+	// rows, which '' does. Adding it nullable instead would leave every
+	// pre-existing rank row with a NULL in a column the loader scans into a plain
+	// string — the exact breakage backfillLegacyNulls exists to repair.
+	{"rank_screenshots", "modifiers_raw", "TEXT NOT NULL DEFAULT ''"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

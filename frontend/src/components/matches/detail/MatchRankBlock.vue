@@ -40,6 +40,16 @@ const ow = useOWData()
       <span v-if="record.data.change_percent != null" class="rank-change">{{ record.data.change_percent >= 0 ? '+' : '' }}{{ record.data.change_percent }}%</span>
       <span v-for="m in record.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
     </div>
+    <!-- A SENTENCE, not a chip beside the real modifiers. A chip would assert
+         this text IS a modifier the player earned; the only supported claim is
+         that the vocabulary could not explain it — the same detection fires on
+         roughly 8% of rank captures that carry no new chip at all. Rendering it
+         as prose is the honest strength of that evidence, and it keeps the
+         unrecognized text out of the modifier row the filters count against. -->
+    <p v-if="record.data.modifiers_raw" class="rank-unknown-modifier">
+      Recall read <code>{{ record.data.modifiers_raw }}</code> in the modifier
+      row and does not recognize it.
+    </p>
     <!-- Season-4 population share. `!= null` rather than a truthiness test:
          0 is a real reading ("above nobody"), and `v-if="…rank_percentile"`
          would silently hide it — the rule the progress/change lines above now
@@ -64,6 +74,20 @@ const ow = useOWData()
 </template>
 
 <style scoped>
+/* Muted, but --text-dim not --text-mute: mute drops to 3.98:1 on Day's darker
+   surfaces, and this is small content text that has to clear AA. */
+.rank-unknown-modifier {
+  margin: 0.35rem 0 0;
+  font-size: var(--type-sm);
+  color: var(--text-dim);
+}
+
+.rank-unknown-modifier code {
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* ─── Rank block ─────────────────────────────────────────── */
 
 /* Rare-section framing. Rank updates are uncommon (placements,

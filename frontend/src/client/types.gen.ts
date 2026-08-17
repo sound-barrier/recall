@@ -1422,6 +1422,10 @@ export type MatchResult = {
     level?: number;
     modifiers?: Array<string>;
     /**
+     * Modifier-row text this release's vocabulary could not account for, space-joined in the order it was read. Read-only diagnostic, absent when every chip resolved. NOT a modifier and must never be merged into `modifiers`: the detection fires on roughly 8% of rank captures that carry no new chip at all (an overlapping toast, OCR garble), so the only supported claim is "the parser could not explain this text".
+     */
+    modifiers_raw?: string;
+    /**
      * Percentage into the current level. Absent when the screenshot reported none, which is distinct from 0 — the bottom of a division is a real place to be.
      */
     rank_progress?: number;

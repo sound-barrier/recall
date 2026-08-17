@@ -114,8 +114,9 @@ func rankToView(r db.RankRow) ScreenshotView {
 			Playlist: "competitive", // rank screens are always competitive
 			Rank:     r.Rank, Level: r.Level,
 			RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
-			Result:    r.Result,
-			Modifiers: append([]string(nil), r.Modifiers...),
+			Result:       r.Result,
+			ModifiersRaw: r.ModifiersRaw,
+			Modifiers:    append([]string(nil), r.Modifiers...),
 		},
 	}
 	if r.RankPercentile != nil {

@@ -105,6 +105,8 @@ type RankGolden struct {
 	// has no percentile, and emitting "rank_percentile": null on every
 	// pre-season-4 golden would be noise rather than information.
 	RankPercentile *int `json:"rank_percentile,omitempty"`
+	// Appended after RankPercentile for the same declaration-order reason.
+	ModifiersRaw string `json:"modifiers_raw,omitempty"`
 }
 
 // AllHeroesGolden is the golden projection of the recognized-but-unparsed
@@ -174,6 +176,7 @@ func ToGolden(r *MatchResult) any {
 			Modifiers:      r.Modifiers,
 			SR:             r.SR,
 			RankPercentile: r.RankPercentile,
+			ModifiersRaw:   r.ModifiersRaw,
 		}
 	default:
 		return r

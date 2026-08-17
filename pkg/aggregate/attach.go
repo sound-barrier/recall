@@ -301,6 +301,10 @@ func applyCollectionOverrides(d *parser.MatchResult, ud db.UserMatchData, mark f
 	if len(ud.Modifiers) > 0 {
 		d.Modifiers = ud.Modifiers
 		mark("data.modifiers")
+		// The user replaced the modifier set wholesale, so a surviving
+		// "unrecognized" line would contradict the corrected list they are
+		// looking at. Same wipe as MapRaw / HeroRaw on their overrides.
+		d.ModifiersRaw = ""
 	}
 }
 

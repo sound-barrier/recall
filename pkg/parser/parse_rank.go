@@ -104,26 +104,23 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	res.ChangePercent = rankChangePct(img, work, res.RankProgress)
 	mods, modifierBand := rankModifierPills(img, work)
 	res.Modifiers = mods
-	// A chip the closed vocabulary does not carry is dropped silently, which
-	// is how "variance" rode every post-placement screen of a whole season
-	// unnoticed. Log it so a season change leaves a trace.
+	// A chip the closed vocabulary does not carry used to be logged and then
+	// DROPPED, which is how "variance" rode every post-placement screen of a
+	// whole season unnoticed. Keep the text on the result so it reaches the row.
 	//
-	// A LOG, not a parse warning, and the reason is measured: across the 37
-	// rank captures in the corpus this fires on 3 that have no new chip at all
-	// — an ENDORSEMENT RECEIVED toast that overlaps the band, and two OCR
-	// garbles. A warning routes to the failed-files ledger and would put a
-	// "Failed to read" row on captures with nothing wrong with them, at an 8%
-	// rate, which trains the user to ignore the one that matters.
+	// It is preserved as raw text and never as a modifier. The distinction is
+	// measured, not stylistic: across the 37 rank captures in the corpus this
+	// detection fires on 3 that have no new chip at all — an ENDORSEMENT
+	// RECEIVED toast overlapping the band, and two OCR garbles. At an 8% false
+	// -positive rate, asserting these ARE modifiers would corrupt the vocabulary
+	// the filters and the dossier count against; reporting them as text the
+	// parser could not account for is exactly as strong a claim as the evidence.
 	//
-	// It also aims at the right reader. A missing hero or map surfaces to the
-	// USER because the user can act on it; a missing modifier can only be
-	// fixed by shipping modifiers.yaml, so the audience is whoever is
-	// investigating a season change, and a greppable log serves them without
-	// costing the user anything.
-	for _, tok := range unknownChipTokens(modifierBand, StorableModifiers()) {
-		applog.Subsystem("parser").Info("unrecognized rank modifier chip",
-			"chip", tok, "hint", "modifiers.yaml may be behind the game")
-	}
+	// Still NOT a parse warning, for the same reason: a warning routes to the
+	// failed-files ledger and would put a "Failed to read" row on captures with
+	// nothing wrong with them. The log stays too — it is the greppable trail for
+	// whoever investigates a season change, and it costs the user nothing.
+	recordUnknownChips(res, modifierBand)
 	rankSRPanel(img, work, res)
 
 	// The top-left banner OCR is unreliable (italic ALL-CAPS over a busy
@@ -653,6 +650,21 @@ func srFromRun(run string) int {
 // pill icons ("Ge", "oe", "as", "ns", "nnn"), and every real chip word in the
 // vocabulary is at least five letters.
 var chipTokenRe = regexp.MustCompile(`[A-Z]{5,}`)
+
+// recordUnknownChips preserves the modifier-row words this release's vocabulary
+// cannot account for, so the evidence outlives the parse instead of living only
+// in a log line nobody greps until the next season is already over.
+func recordUnknownChips(res *MatchResult, band string) {
+	toks := unknownChipTokens(band, StorableModifiers())
+	if len(toks) == 0 {
+		return
+	}
+	res.ModifiersRaw = strings.Join(toks, " ")
+	for _, tok := range toks {
+		applog.Subsystem("parser").Info("unrecognized rank modifier chip",
+			"chip", tok, "hint", "modifiers.yaml may be behind the game")
+	}
+}
 
 // unknownChipTokens returns the chip-like words in the modifier band that no
 // known modifier accounts for. Callers pass StorableModifiers() rather than
