@@ -168,6 +168,22 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
     genuinely obscured — and it could not be a fixture regardless, because the
     golden test ERRORS on a parse failure rather than skipping, so one
     unparseable image turns the whole corpus red.
+- [x] **signed rank movement** — `change_percent` is negative on a defeat, and
+      the corpus now pins it on 10 captures that previously stored 0 (a
+      confident claim that a lost game moved the rank by nothing). Four OCR
+      passes are needed and none is redundant; each reads captures the others
+      lose, which only a full-corpus re-run reveals. Two hazards are pinned
+      here rather than in prose alone:
+  - The pill is drawn at the EDGE OF THE FILL, so its x moves with progress —
+    a fixed narrow window contained it on almost no capture, which is what
+    made every defeat read 0.
+  - **A DEMOTION caption is itself signed** (`RANK PROGRESS: -20%`). Requiring
+    an explicit sign keeps `67%` and `57%` out of the movement read, but not
+    that one, so a band reaching above the bar copied rank_progress into
+    change_percent. `2026.06.17 - 03.36.34.56` is the guard fixture: a
+    demotion-protection screen with NO movement pill, whose golden must read
+    `rank_progress -20` with `change_percent 0`. If those two ever match on
+    it, the caption is bleeding through again.
 - [x] SUMMARY / TEAMS / PERSONAL — **2026-08 season-4 UI** (×3): Esperança
       (diacritic, PUSH, 1-0), a TEAMS scoreboard with decorated nameplates and
       player titles whose E/A/D agrees with its own SUMMARY sibling (14/27/12 —

@@ -57,6 +57,7 @@ var (
 	IsPersonalScreenshot  = isPersonalScreenshot
 	ParseRank             = parseRank
 	ExtractRankPercentile = extractRankPercentile
+	SignedPct             = signedPct
 	UnknownChipTokens     = unknownChipTokens
 	ParseSummary          = parseSummary
 	ParsePersonal         = parsePersonal
