@@ -97,7 +97,9 @@ test.describe('where do I stand', () => {
 
     await expect(card).toBeVisible()
     await expect(card).toContainText('61%')
-    await expect(card).toContainText(/up 9%/i)
+    // Points, not percent: the gap between two percentiles is a difference in
+    // percentage POINTS.
+    await expect(card).toContainText(/up 9 pts/i)
     await expect(card).toContainText('52%')
   })
 
@@ -135,7 +137,12 @@ test.describe('where do I stand', () => {
 
     await expect(card).toBeVisible()
     await expect(card).toContainText('61%')
-    await expect(card).toContainText(/nothing to compare/i)
+    // The message names the REASON. "Nothing to compare" would be true but
+    // uninformative here — the user has two readings and deserves to know why
+    // they are not being compared.
+    await expect(card).toContainText(/previous seasons/i)
+    await expect(card).toContainText(/redistribution/i)
+    await expect(card).not.toContainText(/up \d|down \d/i)
   })
 
   // "Hardstuck" was a diagnosis layered on the number, and it needed the

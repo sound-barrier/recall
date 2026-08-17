@@ -1,6 +1,6 @@
 import { matchEpoch } from '@/match/trends/match-trends-helpers'
 import { normalCdf } from '@/match/elo/elo-stats'
-import { type MomentumInput } from '@/match/dossier/match-momentum-helpers'
+import { sessionCount, type MomentumInput } from '@/match/dossier/match-momentum-helpers'
 
 // Self-comparison over a trailing window: "is this week different from my own
 // normal, and is the difference big enough to mean anything?"
@@ -15,6 +15,11 @@ const DAY_MS = 86_400_000
 // expected-cell rule the chi-square helper already applies rather than invented:
 // a handful of games will happily produce a 20-point "swing" that is noise.
 const MIN_SAMPLE = 8
+
+// Share of a window's matches that must actually report a movement before their
+// sum is allowed to stand for the window. One legible pill out of twenty
+// describes those captures, not the week.
+const RANK_COVERAGE = 0.5
 
 export interface Windows<T> {
   recent: T[]
@@ -133,6 +138,7 @@ export interface PerformanceVsRank {
   delta: BaselineDelta
   netPercent: number | null
   readCount: number
+  readOf: number // matches in the window, so a surface can say "4 of 19 read"
   verdict: ClimbVerdict
 }
 
@@ -159,8 +165,16 @@ export function performanceVsRank(
       read++
     }
   }
-  const netPercent = read > 0 ? sum : null
-  return { delta, netPercent, readCount: read, verdict: judgeClimb(delta.sigma, netPercent) }
+  // The RANK side needs its own floor, not just the play side. Without one, a
+  // single legible movement pill in a twenty-match window decided "deflation"
+  // for the whole week — the play side was gated at MIN_SAMPLE while the
+  // evidence it was being compared against could be a sample of one.
+  //
+  // Half the window, because that is the threshold at which the sum is about
+  // the week rather than about whichever captures happened to OCR.
+  const covered = recent.length > 0 && read / recent.length >= RANK_COVERAGE
+  const netPercent = read > 0 && covered ? sum : null
+  return { delta, netPercent, readCount: read, readOf: recent.length, verdict: judgeClimb(delta.sigma, netPercent) }
 }
 
 export interface ClimbVelocity {
@@ -179,7 +193,7 @@ export interface ClimbVelocity {
  */
 export function climbVelocity(
   records: readonly MomentumInput[],
-  opts: { days: number; sessions: number } = { days: 30, sessions: 0 },
+  opts: { days: number } = { days: 30 },
 ): ClimbVelocity {
   const { recent } = splitTrailingWindow(records, opts.days, 0)
   let sum = 0
@@ -191,12 +205,17 @@ export function climbVelocity(
       read++
     }
   }
-  if (read === 0) return { perSession: null, perWeek: null, sessions: opts.sessions, readCount: 0 }
+  // BOTH denominators are derived from the window that produced the sum.
+  // Passing a session count measured over the whole history divided a 30-day
+  // movement by a year's worth of sessions and reported a climb rate several
+  // times too small — a numerator and denominator describing different spans.
+  const sessions = sessionCount(recent)
+  if (read === 0) return { perSession: null, perWeek: null, sessions, readCount: 0 }
   const weeks = opts.days / 7
   return {
-    perSession: opts.sessions > 0 ? sum / opts.sessions : null,
+    perSession: sessions > 0 ? sum / sessions : null,
     perWeek: weeks > 0 ? sum / weeks : null,
-    sessions: opts.sessions,
+    sessions,
     readCount: read,
   }
 }

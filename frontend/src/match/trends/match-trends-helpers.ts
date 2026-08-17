@@ -131,7 +131,12 @@ export interface RankPoint {
   // synthetic composite. null when the capture reported none — every placement
   // screen, and everything before season 4.
   percentile: number | null
-  change: number
+  // Nullable for the same reason as its two siblings above, and it was missed
+  // when they were fixed: a movement pill that did not OCR is not a match that
+  // moved the rank by nothing. 21 of the 44 rank captures in the corpus report
+  // none, and a non-nullable type made the unread case impossible to express in
+  // a test — which is why the gap survived the commit that closed the others.
+  change: number | null
   matchKey: string
 }
 
@@ -181,7 +186,7 @@ export function rankLadderSeries(records: readonly TrendInput[]): RankSeries[] {
       tier: reading.tier,
       level: reading.level,
       progress: reading.progress,
-      change: rec.data?.change_percent ?? 0,
+      change: rec.data?.change_percent ?? null,
       percentile: rec.data?.rank_percentile ?? null,
       matchKey: rec.match_key,
     })

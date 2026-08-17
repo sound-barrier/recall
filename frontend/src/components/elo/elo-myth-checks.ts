@@ -43,7 +43,14 @@ export interface MythCheckInputs {
   // The player's OWN standing and how it moved. Structural shape, matching this
   // file's rule that callers are not forced to satisfy fields the builders
   // never touch.
-  percentileTrail: { now: number; previous: number | null; deltaPts: number | null; n: number } | null
+  percentileTrail: {
+    now: number
+    nowRank: string | null
+    previous: number | null
+    deltaPts: number | null
+    comparableN: number
+    n: number
+  } | null
 }
 
 export function buildChecks(i: MythCheckInputs): Check[] {
@@ -74,29 +81,41 @@ export function buildChecks(i: MythCheckInputs): Check[] {
 function standingCheck(i: MythCheckInputs): Check | null {
   const p = i.percentileTrail
   if (p === null) return null
-  // One reading is the common case — only post-placement rank screens carry the
-  // caption — and it is still worth stating. It just cannot be a movement.
+  // The rank the reading was PRINTED AGAINST, not the calculator's current one.
+  // A percentile is a statement about a specific rank, and the latest capture
+  // carrying a caption can be older than the latest rank reading.
+  const at = p.nowRank ?? i.rankNow
+
+  // Unpaired has two distinct causes and they are not interchangeable. One
+  // reading is simply early. Several readings that refuse to pair means every
+  // earlier one sits in a previous season, which is a different sentence — and
+  // claiming "one reading so far" there would be false.
   if (p.deltaPts === null || p.previous === null) {
     return {
       id: 'standing', stat: 'percentile', q: 'Where do I stand?',
       a: `Above ${fmtPct(p.now)} of players`,
-      note: `Read off your rank screen at ${i.rankNow}. One reading so far, so there is nothing to compare it against yet — a second post-placement rank screenshot this season gives you the movement.`,
+      note: p.n <= 1
+        ? `Read off your rank screen at ${at}. One reading so far, so there is nothing to compare it against yet — a second post-placement rank screenshot this season gives you the movement.`
+        : `Read off your rank screen at ${at}. ${p.n} readings so far, but the earlier ones fall in previous seasons — a rank redistribution moves the whole population, so comparing across one would measure two different ladders.`,
       tone: 'neutral',
     }
   }
   return {
     id: 'standing', stat: 'percentile', q: 'Where do I stand?',
     a: `Above ${fmtPct(p.now)} of players`,
-    note: `${movedPhrase(p.deltaPts)} from ${fmtPct(p.previous)} earlier this season, across ${p.n} readings. Both numbers come off your own rank screens; only same-season readings are compared, because a rank redistribution moves the whole population and would make the difference meaningless.`,
+    note: `${movedPhrase(p.deltaPts)} from ${fmtPct(p.previous)} earlier this season, across ${p.comparableN} readings at ${at}. Both numbers come off your own rank screens; only same-season readings are compared, because a rank redistribution moves the whole population and would make the difference meaningless.`,
     tone: movementTone(p.deltaPts),
   }
 }
 
 // A movement of exactly 0 is "unchanged", not a climb and not a slide — the
 // player held their ground, which is a real answer to the question.
+// "pts", not "%": the gap between two percentiles is a difference in
+// percentage POINTS, and printing it with a % sign invites reading it as a
+// relative change. Matches the Compare tab's convention.
 function movedPhrase(deltaPts: number): string {
-  if (deltaPts > 0) return `up ${fmtPct(deltaPts)}`
-  if (deltaPts < 0) return `down ${fmtPct(Math.abs(deltaPts))}`
+  if (deltaPts > 0) return `up ${deltaPts} pts`
+  if (deltaPts < 0) return `down ${Math.abs(deltaPts)} pts`
   return 'unchanged'
 }
 

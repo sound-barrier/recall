@@ -97,19 +97,20 @@ test.describe('rank percentile over time', () => {
     await expect(card).toContainText(/percentile/i)
   })
 
-  // The ladder tooltip shares RankPoint with this chart. progress is nullable
-  // since the parser learned to tell an unread caption from a real 0, and a
-  // template that interpolates it raw prints the literal "null%".
-  test('never prints a null reading in the ladder tooltip', async ({ page }) => {
-    await openTrends(page, [
-      { ...match('m1', '2026-08-10', '20:00', { percentile: 52 }), data: {
-        ...match('m1', '2026-08-10', '20:00', { percentile: 52 }).data,
-        rank_progress: undefined,
-      } },
-    ])
-
-    const ladder = page.locator('[data-trend-card="rank-ladder"]')
-    await expect(ladder).toBeVisible()
-    await expect(ladder).not.toContainText('null')
-  })
+  // THE LADDER TOOLTIP IS NOT ASSERTED HERE, deliberately.
+  //
+  // Its three readings are all nullable and an unread one must be omitted, but
+  // ECharts paints into a canvas and shows its tooltip only while the pointer
+  // rests on a plotted point — which this harness could not drive reliably. Two
+  // successive attempts to assert it here PASSED against a deliberately broken
+  // formatter, because a negative assertion against an element that never
+  // rendered is indistinguishable from a real pass, and the surrounding page
+  // happens to contain the tier string anyway (the Current rank widget prints
+  // it).
+  //
+  // The formatter is therefore covered where it can actually fail:
+  // trend-options.test.ts drives it directly with null progress, null movement
+  // and null percentile. That test was verified to fail against the raw
+  // template. A vacuous e2e is worse than no e2e — it reports coverage that
+  // does not exist.
 })

@@ -131,13 +131,17 @@ export function rankLadderOption(series: RankSeries[]): TrendOption {
         const p = params as { seriesName?: string; data?: { rank?: RankPoint } }
         const d = p.data?.rank
         if (!d) return ''
-        const change = d.change > 0 ? `+${d.change}` : `${d.change}`
-        // Both readings are nullable since the parser learned to tell an unread
-        // caption from a real 0. Interpolating them raw prints the literal
-        // "null%", which is worse than saying nothing.
+        // ALL THREE readings are nullable, because the parser distinguishes an
+        // unread caption from a real 0. An absent one is omitted rather than
+        // interpolated: raw, that printed the literal "null%" for progress and
+        // — until this was corrected — a stated "0% this match" for a movement
+        // pill nobody ever read, on roughly 40% of rank captures.
         const progress = d.progress == null ? '' : ` · ${d.progress}% progress`
+        const change = d.change == null
+          ? ''
+          : ` · ${d.change > 0 ? '+' : ''}${d.change}% this match`
         const above = d.percentile == null ? '' : ` · above ${d.percentile}%`
-        return `${p.seriesName ?? ''} — ${tierLabel(d.tier)} ${d.level}${progress} · ${change}% this match${above}`
+        return `${p.seriesName ?? ''} — ${tierLabel(d.tier)} ${d.level}${progress}${change}${above}`
       },
     },
     xAxis: { type: 'time' },

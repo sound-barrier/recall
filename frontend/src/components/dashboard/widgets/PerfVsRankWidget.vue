@@ -41,7 +41,10 @@ const detail = computed(() => {
     return `Needs more games either side — ${delta.recentN} recent, ${delta.baselineN} before.`
   }
   if (netPercent === null) {
-    return `No rank movement was read in the window, so there is nothing to compare the play against.`
+    const { readOf } = result.value
+    return readCount === 0
+      ? 'No rank movement was read in the window, so there is nothing to compare the play against.'
+      : `Only ${readCount} of ${readOf} matches reported a rank movement — too thin to judge the week by.`
   }
   const sigma = `${delta.sigma > 0 ? '+' : ''}${delta.sigma.toFixed(1)}σ`
   const moved = `${netPercent > 0 ? '+' : ''}${netPercent}%`
