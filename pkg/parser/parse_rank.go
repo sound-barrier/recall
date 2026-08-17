@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"recall/pkg/applog"
 )
 
 // knownModifiers is the substring-matched rank-update vocabulary, derived from
@@ -75,7 +77,28 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	res.RankPercentile = extractRankPercentile(tierBand)
 	res.RankProgress = rankProgressPct(img, work)
 	res.ChangePercent = rankChangePct(img, work)
-	res.Modifiers = rankModifierPills(img, work)
+	mods, modifierBand := rankModifierPills(img, work)
+	res.Modifiers = mods
+	// A chip the closed vocabulary does not carry is dropped silently, which
+	// is how "variance" rode every post-placement screen of a whole season
+	// unnoticed. Log it so a season change leaves a trace.
+	//
+	// A LOG, not a parse warning, and the reason is measured: across the 37
+	// rank captures in the corpus this fires on 3 that have no new chip at all
+	// — an ENDORSEMENT RECEIVED toast that overlaps the band, and two OCR
+	// garbles. A warning routes to the failed-files ledger and would put a
+	// "Failed to read" row on captures with nothing wrong with them, at an 8%
+	// rate, which trains the user to ignore the one that matters.
+	//
+	// It also aims at the right reader. A missing hero or map surfaces to the
+	// USER because the user can act on it; a missing modifier can only be
+	// fixed by shipping modifiers.yaml, so the audience is whoever is
+	// investigating a season change, and a greppable log serves them without
+	// costing the user anything.
+	for _, tok := range unknownChipTokens(modifierBand, StorableModifiers()) {
+		applog.Subsystem("parser").Info("unrecognized rank modifier chip",
+			"chip", tok, "hint", "modifiers.yaml may be behind the game")
+	}
 	rankSRPanel(img, work, res)
 
 	// The top-left banner OCR is unreliable (italic ALL-CAPS over a busy
@@ -227,12 +250,12 @@ func rankChangePct(img image.Image, work string) int {
 // "VICTC" at the 72% cut, losing the modifier AND the result fallback.
 // 76% still stops short of the right-hand rank-tier badge (~78%+), so no
 // icon noise bleeds in; the old-UI corpus goldens pin that.
-func rankModifierPills(img image.Image, work string) []string {
+func rankModifierPills(img image.Image, work string) (mods []string, bandText string) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	modifierRect := image.Rect(W*10/100, H*78/100, W*76/100, H*90/100)
 	modifierText, _ := ocrInverted(img, modifierRect, ocrSpec{workDir: work, name: "rank_modifiers", psm: "11", whitelist: ""})
-	mods := extractModifiers(modifierText)
+	mods = extractModifiers(modifierText)
 
 	// "DEMOTION PROTECTION" — a shield pill in the modifier row (a loss that
 	// didn't drop the tier). It rides the modifiers list (already persisted via
@@ -247,7 +270,7 @@ func rankModifierPills(img image.Image, work string) []string {
 	if strings.Contains(strings.ToUpper(modifierText), "DEMOTION") {
 		mods = append(mods, "demotion protection")
 	}
-	return mods
+	return mods, modifierText
 }
 
 // rankSRPanel reads the right-side per-hero SR card stack: hero portrait +
@@ -517,4 +540,52 @@ func srFromRun(run string) int {
 		}
 	}
 	return 0
+}
+
+// chipTokenRe finds the ALL-CAPS runs a modifier chip is spelled in. Five
+// characters minimum: the modifier band OCRs a lot of chrome noise from the
+// pill icons ("Ge", "oe", "as", "ns", "nnn"), and every real chip word in the
+// vocabulary is at least five letters.
+var chipTokenRe = regexp.MustCompile(`[A-Z]{5,}`)
+
+// unknownChipTokens returns the chip-like words in the modifier band that no
+// known modifier accounts for. Callers pass StorableModifiers() rather than
+// Modifiers(), so "demotion protection" — matched out-of-band from its
+// DEMOTION stem — counts as known rather than as a discovery.
+//
+// The vocabulary is a closed list, so a chip it does not carry is dropped
+// SILENTLY — which is how a whole season's new modifier goes unnoticed:
+// "variance" shipped on every post-placement screen of the season-4 corpus and
+// nothing anywhere said so. This turns that silence into a parse warning, which
+// the app copies into the failed-files ledger so the capture surfaces in the
+// Unknown tab for a deliberate look instead of counting as clean.
+//
+// Matching is deliberately generous in BOTH directions: a token counts as
+// accounted-for if a known modifier contains it or it contains a known
+// modifier. That absorbs the truncations this band is prone to ("CONSOLAT" for
+// consolation) rather than reporting them as discoveries, at the cost of not
+// reporting a genuinely new chip that happens to be a substring of an existing
+// one — a trade worth making, because a warning nobody trusts is worse than no
+// warning.
+func unknownChipTokens(text string, known []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, tok := range chipTokenRe.FindAllString(text, -1) {
+		lower := strings.ToLower(tok)
+		if seen[lower] {
+			continue
+		}
+		accounted := false
+		for _, m := range known {
+			if strings.Contains(m, lower) || strings.Contains(lower, m) {
+				accounted = true
+				break
+			}
+		}
+		if !accounted {
+			seen[lower] = true
+			out = append(out, tok)
+		}
+	}
+	return out
 }
