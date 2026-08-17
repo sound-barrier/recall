@@ -1,38 +1,54 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
-	"sort"
 	"time"
 
 	"recall/pkg/applog"
-	"recall/pkg/db"
+	"recall/pkg/snapshot"
 )
 
-// Automatic safety snapshots. Two producers share this file:
+// The App-state half of automatic snapshots. pkg/snapshot owns the files —
+// naming, writing, pruning, and reading due-ness back off the names; what
+// stays here is everything that needs the shell: the active profile's paths,
+// the persisted interval behind settingsMu, and the decision that a snapshot
+// failure is logged rather than surfaced.
+//
+// Two producers share the directory:
 //
 //   - snapshotBeforeReparse — Re-parse All rewrites every row from OCR,
-//     so the force path takes a silent snapshot first (keep the newest
-//     preReparseKeep). Belt-and-braces, not a gate: a snapshot failure
-//     is logged and the re-parse proceeds — blocking the user's
-//     explicit request over a backup hiccup would be worse than the
-//     tiny risk the snapshot hedges against.
-//   - the auto-backup scheduler (backup_scheduler.go) writes its
-//     interval snapshots into the same <profile>/backups/ directory
-//     with a different prefix, sharing writeSnapshot/pruneSnapshots.
+//     so the force path takes a silent snapshot first. Belt-and-braces,
+//     not a gate: a snapshot failure is logged and the re-parse
+//     proceeds — blocking the user's explicit request over a backup
+//     hiccup would be worse than the tiny risk the snapshot hedges
+//     against.
+//   - maybeAutoBackup — the interval scheduler, writing under a
+//     different prefix into the same <profile>/backups/ directory.
 
-const preReparseKeep = 2
+// autoBackupOnStartup gates Startup's background backup goroutine —
+// same pattern as probeTesseractOnStartup: OFF by default so tests
+// that run the real Startup never race a stray VACUUM goroutine
+// against their TempDir teardown; the two production entry points opt
+// in. The scheduler logic itself is covered directly in tests.
+var autoBackupOnStartup = false
 
-// backupToFunc is the VACUUM INTO seam (function-variable DI, cf.
-// ParseScreenshotsDirFunc) so tests observe snapshot calls without a
-// real SQLite file.
-var backupToFunc = db.BackupTo
+// EnableAutoBackupOnStartup opts this process into the boot-time
+// backup check. Call once, before Startup runs.
+func EnableAutoBackupOnStartup() { autoBackupOnStartup = true }
+
+// backupsDir is where both producers write, under the active profile.
+func (a *App) backupsDir() string { return filepath.Join(a.dataDir(), "backups") }
+
+// writeSnapshot VACUUMs the active profile's DB into its backups
+// directory under prefix and prunes that prefix down to keep copies.
+func (a *App) writeSnapshot(prefix string, keep int) (string, error) {
+	return snapshot.Write(dbPath(a.dataDir()), a.backupsDir(), prefix, keep)
+}
 
 // snapshotBeforeReparse writes backups/pre-reparse-<ts>.db and prunes
 // older siblings. Never returns an error — see the file comment.
 func (a *App) snapshotBeforeReparse() {
-	dest, err := a.writeSnapshot("pre-reparse-", preReparseKeep)
+	dest, err := a.writeSnapshot(snapshot.ReparsePrefix, snapshot.ReparseKeep)
 	logger := applog.Subsystem("backup")
 	if err != nil {
 		logger.Error("pre-reparse snapshot failed; continuing", "err", err)
@@ -41,55 +57,35 @@ func (a *App) snapshotBeforeReparse() {
 	logger.Info("pre-reparse snapshot written", "dest", dest)
 }
 
-// writeSnapshot VACUUMs the active profile's DB into
-// <profile>/backups/<prefix><ts>.db and prunes that prefix down to
-// keep copies. Returns the written path.
-func (a *App) writeSnapshot(prefix string, keep int) (string, error) {
-	dir := filepath.Join(a.dataDir(), "backups")
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return "", err
-	}
-	dest := filepath.Join(dir, prefix+time.Now().UTC().Format("20060102-150405")+".db")
-	if _, err := os.Stat(dest); err == nil {
-		// Same-second collision (test-speed re-runs) — VACUUM INTO
-		// refuses to overwrite, so reuse the existing snapshot.
-		return dest, nil
-	}
-	if err := backupToFunc(dbPath(a.dataDir()), dest); err != nil {
-		return "", err
-	}
-	pruneSnapshots(dir, prefix, keep)
-	return dest, nil
+// GetAutoBackupStatus reports the effective interval, the newest
+// automatic snapshot's timestamp, and whether it's overdue.
+func (a *App) GetAutoBackupStatus() AutoBackupStatus {
+	return snapshot.StatusFor(a.backupsDir(), a.settingsSnapshot().AutoBackupIntervalDays, time.Now())
 }
 
-// pruneSnapshots removes all but the newest keep files matching
-// prefix*.db in dir. Timestamps embed lexicographically-sortable
-// UTC stamps, so name order IS age order.
-//
-// A Glob failure and "nothing to prune" are separate arms on purpose.
-// Both skip the removal loop — pruning nothing is always the safe
-// choice — but a path the pattern can't express yields
-// filepath.ErrBadPattern, which would otherwise disable pruning for the
-// life of the install while backups/ grew without bound, and say nothing
-// about it. NOT reachable through a profile name: profileNameRe forbids
-// a bracket and every rename path enforces it. The reachable sources are
-// an unmatched '[' in RECALL_DATA_DIR or in the OS home directory the
-// default data dir is built from — neither of which this process
-// validates.
-func pruneSnapshots(dir, prefix string, keep int) {
-	matches, err := filepath.Glob(filepath.Join(dir, prefix+"*.db"))
+// SetAutoBackupInterval persists the interval: -1 disables, 0 resets
+// to the default (weekly), 1..365 are literal days.
+func (a *App) SetAutoBackupInterval(days int) error {
+	if err := snapshot.ValidateInterval(days); err != nil {
+		return err
+	}
+	snap := a.mutateSettings(func(s *Settings) { s.AutoBackupIntervalDays = days })
+	return a.saveSettings(snap)
+}
+
+// maybeAutoBackup writes a fresh automatic snapshot iff one is due.
+// Called after every parse run and once at startup; cheap when not due
+// (one directory glob). Failures are logged, never surfaced.
+func (a *App) maybeAutoBackup() {
+	st := a.GetAutoBackupStatus()
+	if st.IntervalDays <= 0 || !st.Stale {
+		return
+	}
+	dest, err := a.writeSnapshot(snapshot.AutoPrefix, snapshot.AutoKeep)
+	logger := applog.Subsystem("backup")
 	if err != nil {
-		applog.Subsystem("backup").Error("prune skipped; backups path is not a valid glob pattern",
-			"dir", dir, "err", err)
+		logger.Error("auto backup failed", "err", err)
 		return
 	}
-	if len(matches) <= keep {
-		return
-	}
-	sort.Strings(matches)
-	for _, old := range matches[:len(matches)-keep] {
-		if err := os.Remove(old); err != nil {
-			applog.Subsystem("backup").Error("prune failed", "file", old, "err", err)
-		}
-	}
+	logger.Info("auto backup written", "dest", dest)
 }

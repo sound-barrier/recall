@@ -1,39 +1,17 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"recall/pkg/db"
+	"recall/pkg/snapshot"
 )
 
-// ErrRestoreInvalid marks a restore payload that isn't a usable Recall
-// database snapshot (not SQLite, corrupt, or missing the schema). The HTTP
-// layer maps it to 422.
-var ErrRestoreInvalid = errors.New("restore: not a valid Recall database")
-
 // BackupDatabase returns a complete, compacted SQLite snapshot of the active
-// profile's database as bytes. The snapshot is produced with VACUUM INTO to a
-// fresh temp file beside the live DB, read back, and removed. Unlike the
-// former JSON/CSV export it captures every table — reviews, the ignored and
-// all-heroes lists, ambiguous candidates — so it is a true backup.
+// profile's database as bytes.
 func (a *App) BackupDatabase() ([]byte, error) {
-	src := dbPath(a.dataDir())
-	tmp, err := freshTempPath(filepath.Dir(src), "recall-backup-*.db")
-	if err != nil {
-		return nil, fmt.Errorf("backup: temp path: %w", err)
-	}
-	defer func() { _ = os.Remove(tmp) }()
-	if err := db.BackupTo(src, tmp); err != nil {
-		return nil, err
-	}
-	data, err := os.ReadFile(tmp) // #nosec G304 -- tmp is a path this process just created in its own db dir
-	if err != nil {
-		return nil, fmt.Errorf("backup: read snapshot: %w", err)
-	}
-	return data, nil
+	return snapshot.Read(dbPath(a.dataDir()))
 }
 
 // RestoreDatabase replaces the live database with the uploaded snapshot. The
@@ -50,13 +28,18 @@ func (a *App) RestoreDatabase(payload []byte) error {
 	}
 	dst := dbPath(a.dataDir())
 
-	staged, err := a.stageRestoreCandidate(payload, filepath.Dir(dst))
+	staged, err := snapshot.StageRestore(payload, filepath.Dir(dst))
 	if err != nil {
 		return err
 	}
 	keepStaged := false
 	defer func() {
 		if !keepStaged {
+			// #nosec G703 -- staged is os.CreateTemp's own name inside the
+			// profile's db dir. Only the file's CONTENTS came from the
+			// request; gosec stopped being able to see that when the
+			// staging helper moved to pkg/snapshot, since its taint
+			// analysis does not follow a call across packages.
 			_ = os.Remove(staged)
 		}
 	}()
@@ -70,6 +53,8 @@ func (a *App) RestoreDatabase(payload []byte) error {
 
 	a.closeStoreForSwap()
 
+	// #nosec G703 -- staged is os.CreateTemp's own name (see the deferred
+	// cleanup above) and dst is the active profile's database path.
 	if err := os.Rename(staged, dst); err != nil {
 		_ = a.reopenActiveStore() // don't strand the app with a nil store
 		return fmt.Errorf("restore: swap: %w", err)
@@ -79,35 +64,6 @@ func (a *App) RestoreDatabase(payload []byte) error {
 	_ = os.Remove(dst + "-shm")
 
 	return a.reopenActiveStore()
-}
-
-// stageRestoreCandidate writes payload to a temp file in dir (same filesystem
-// as the live DB so the later rename is atomic) and validates it. A file that
-// isn't a usable Recall DB is rejected as ErrRestoreInvalid before any
-// destructive step runs.
-func (a *App) stageRestoreCandidate(payload []byte, dir string) (string, error) {
-	tmp, err := os.CreateTemp(dir, "recall-restore-*.db")
-	if err != nil {
-		return "", fmt.Errorf("restore: temp: %w", err)
-	}
-	name := tmp.Name()
-	if _, err := tmp.Write(payload); err != nil {
-		_ = tmp.Close()
-		_ = os.Remove(name)
-		return "", fmt.Errorf("restore: write temp: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(name)
-		return "", fmt.Errorf("restore: close temp: %w", err)
-	}
-	if err := db.ValidateBackupFile(name); err != nil {
-		_ = os.Remove(name)
-		if errors.Is(err, db.ErrInvalidBackup) {
-			return "", fmt.Errorf("%w: %w", ErrRestoreInvalid, err)
-		}
-		return "", err
-	}
-	return name, nil
 }
 
 // closeStoreForSwap tears down everything holding the live DB file open so it
@@ -124,19 +80,4 @@ func (a *App) closeStoreForSwap() {
 		}
 		a.store = nil
 	}
-}
-
-// freshTempPath reserves a unique, non-existent path in dir so VACUUM INTO can
-// create the file itself (it writes a brand-new database).
-func freshTempPath(dir, pattern string) (string, error) {
-	f, err := os.CreateTemp(dir, pattern)
-	if err != nil {
-		return "", err
-	}
-	name := f.Name()
-	_ = f.Close()
-	if err := os.Remove(name); err != nil {
-		return "", err
-	}
-	return name, nil
 }

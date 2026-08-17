@@ -7,6 +7,7 @@ import (
 	"recall/pkg/app"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/parser"
+	"recall/pkg/snapshot"
 )
 
 // newParseReadyApp wires a fake store + an App whose parse preconditions pass
@@ -22,9 +23,9 @@ func newParseReadyApp(t *testing.T) (*app.App, *dbtest.Fake) {
 	// Snapshot hooks (pre-reparse + auto-backup) run inside the parse
 	// path; stub the VACUUM INTO seam so unit tests never touch a real
 	// SQLite file. Backup-specific tests re-stub with their recorders.
-	prevBackup := *app.BackupToFunc
-	*app.BackupToFunc = func(src, dest string) error { return nil }
-	t.Cleanup(func() { *app.BackupToFunc = prevBackup })
+	prevBackup := snapshot.BackupToFunc
+	snapshot.BackupToFunc = func(src, dest string) error { return nil }
+	t.Cleanup(func() { snapshot.BackupToFunc = prevBackup })
 	return a, fake
 }
 
