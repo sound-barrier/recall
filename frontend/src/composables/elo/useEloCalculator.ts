@@ -3,6 +3,8 @@ import {
   type ComputedRef, type InjectionKey, type MaybeRefOrGetter, type Ref,
 } from 'vue'
 import type { MatchRecord } from '@/api-client'
+import type { Season } from '@/composables/shared/useOWData'
+import { seasonForMatch } from '@/match/match-season-helpers'
 import { TIER_ORDER, ladderScore, rankLadderSeries, type Tier } from '@/match/trends/match-trends-helpers'
 import {
   availableTracks, heroPickerStats, pooledDecisiveMatches, pooledWinLoss, seedTrack, trackRecords,
@@ -43,6 +45,10 @@ export interface EloCalcOpts {
   records: MaybeRefOrGetter<MatchRecord[]>
   heroRole: (hero: string | null | undefined) => string
   mapGameMode: (map: string | null | undefined) => string
+  // Needed to pair two percentile readings honestly: a Rank Redistribution
+  // moves the whole population, so readings either side of a season boundary
+  // measure different ladders and their difference is not a climb.
+  seasons: MaybeRefOrGetter<Season[]>
 }
 
 // SEASON_WEEKS sizes the "this season" probability window.
@@ -88,7 +94,10 @@ export function useEloCalculator(opts: EloCalcOpts) {
   // baseline that edited-field markers and the delta strip compare against.
   const seededForm = ref<EloFormSnapshot | null>(null)
 
-  const seed = computed(() => seedTrack(records.value, track.value))
+  const seed = computed(() => seedTrack(
+    records.value, track.value,
+    (rec) => seasonForMatch(rec, toValue(opts.seasons))?.name ?? null,
+  ))
 
   // The live form values as one plain snapshot — the shape the pure
   // elo-form assembly + diff helpers consume. Reading the refs inside
@@ -227,32 +236,38 @@ export function useEloCalculator(opts: EloCalcOpts) {
     const f = seededForm.value
     return f === null ? NO_EDITED_FIELDS : diffSeededForm(f, formSnapshot())
   })
-  // The season-4 population reading for the MEASURED rank — "higher ranked
-  // than N% of players", straight off the rank screen rather than modeled
-  // from a distribution. It is deliberately withheld once the user edits the
-  // current tier or division: the number was measured against the rank the
-  // screenshot showed, and a hypothetical rank has no measurement. null also
-  // covers every reading from before season 4, which carried no caption.
-  const measuredPercentile = computed<number | null>(() => {
-    if (
-      editedFields.value.currentTier
-      || editedFields.value.currentDivision
-      // Progress is part of the measured position, not a rounding of it: the
-      // rank screen prints "RANK PROGRESS: 67%" and the percentile caption on
-      // the SAME row, and dragging 67 to 5 is a division's worth of ladder
-      // movement — the same magnitude as a division edit, which is gated.
-      || editedFields.value.currentProgress
-    ) return null
-    // lastSeed, NOT seed. The tier/division inputs are a SNAPSHOT frozen at
-    // the last applySeed(), and `watch(seed, …)` suppresses re-seeding while
-    // the form is dirty. Reading the live seed therefore drifted from what the
-    // panel displays: edit any unrelated input, let the folder watcher parse a
-    // newer rank screenshot, and the selects still read the old rank while the
-    // percentile jumped to the new one — a number measured against a rank the
-    // panel is not showing. measuredSlopeCI below reads lastSeed for exactly
-    // this reason.
-    return lastSeed.value?.rank?.percentile ?? null
-  })
+  // Any edit to the measured POSITION invalidates a measured standing: the
+  // percentile was printed against the rank the screenshot showed, and a
+  // hypothetical rank has no measurement. Progress counts — the rank screen
+  // prints "RANK PROGRESS: 67%" and the percentile caption on the SAME row, and
+  // dragging 67 to 5 is a division's worth of ladder movement.
+  const rankInputsEdited = computed(() =>
+    editedFields.value.currentTier
+    || editedFields.value.currentDivision
+    || editedFields.value.currentProgress)
+
+  // The season-4 population reading for the MEASURED rank — "higher ranked than
+  // N% of players", straight off the rank screen rather than modeled from a
+  // distribution. null also covers every reading from before season 4, which
+  // carried no caption.
+  //
+  // lastSeed, NOT seed. The tier/division inputs are a SNAPSHOT frozen at the
+  // last applySeed(), and `watch(seed, …)` suppresses re-seeding while the form
+  // is dirty. Reading the live seed therefore drifted from what the panel
+  // displays: edit any unrelated input, let the folder watcher parse a newer
+  // rank screenshot, and the selects still read the old rank while the
+  // percentile jumped to the new one — a number measured against a rank the
+  // panel is not showing. measuredSlopeCI below reads lastSeed for the same
+  // reason, and so does percentileTrail.
+  const measuredPercentile = computed<number | null>(() =>
+    rankInputsEdited.value ? null : lastSeed.value?.rank?.percentile ?? null)
+
+  // Where that standing has BEEN — the only honest successor to the population
+  // card deleted in a928122f, which needed a published distribution that
+  // season 4's redistribution voided. This needs none: it compares the player
+  // against themselves.
+  const percentileTrail = computed(() =>
+    rankInputsEdited.value ? null : lastSeed.value?.percentileTrail ?? null)
 
   const isEdited = computed(() =>
     Object.values(editedFields.value).some(Boolean)
@@ -428,7 +443,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     // editable inputs + edit API
     currentTier, currentDivision, currentProgress, targetTier, targetDivision,
     winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
-    editInput, lastSeed, editedFields, isEdited, resetToMeasured, measuredPercentile,
+    editInput, lastSeed, editedFields, isEdited, resetToMeasured, measuredPercentile, percentileTrail,
     measuredNaive, measuredWeeks, measuredProbSeason,
     // hero picker + what-if nudges
     heroStats, selectedHeroes, toggleHero, selectAllHeroes, clearHeroSelection,

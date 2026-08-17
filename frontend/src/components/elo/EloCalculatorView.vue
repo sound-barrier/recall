@@ -30,7 +30,7 @@ const matchesStore = useMatchesStore()
 const ow = useOWData()
 
 const records = computed(() => matchesStore.records.filter((r) => !r.hidden))
-const calc = useEloCalculator({ records, heroRole: ow.heroRole, mapGameMode: ow.mapGameMode })
+const calc = useEloCalculator({ records, heroRole: ow.heroRole, mapGameMode: ow.mapGameMode, seasons: ow.seasons })
 provideEloCalculator(calc)
 
 const { items: evidenceItems } = useEloEvidence({

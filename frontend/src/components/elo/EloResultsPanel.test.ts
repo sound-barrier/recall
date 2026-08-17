@@ -84,7 +84,7 @@ const heroRole = (): string => 'support'
 const mapGameMode = (): string => 'control'
 
 function mountPanel(records: MatchRecord[], edit?: (calc: EloCalculator) => void): void {
-  const calc = useEloCalculator({ records, heroRole, mapGameMode })
+  const calc = useEloCalculator({ records, heroRole, mapGameMode , seasons: [] })
   edit?.(calc)
   const host = defineComponent({
     setup() {

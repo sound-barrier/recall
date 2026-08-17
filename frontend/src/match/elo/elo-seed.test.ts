@@ -18,7 +18,7 @@ interface RecOpts {
   playMode?: 'competitive' | 'quickplay'
   playlist?: string
   daysAgo?: number
-  rank?: { tier: string; level: number; progress: number; change?: number; modifiers?: string[] }
+  rank?: { tier: string; level: number; progress: number; change?: number; modifiers?: string[]; percentile?: number }
 }
 
 const REC_BASE = {
@@ -37,6 +37,7 @@ function rankFields(rank: RecOpts['rank']): Record<string, unknown> {
     rank_progress: rank.progress,
     ...(rank.change !== undefined ? { change_percent: rank.change } : {}),
     ...(rank.modifiers ? { modifiers: rank.modifiers } : {}),
+    ...(rank.percentile !== undefined ? { rank_percentile: rank.percentile } : {}),
   }
 }
 
@@ -270,5 +271,58 @@ describe('pooledDecisiveMatches', () => {
     expect(pooledDecisiveMatches(records, both)).toBe(2) // two + solo; draw excluded
     expect(pooledDecisiveMatches(records, new Set(['lucio']))).toBe(1)
     expect(pooledDecisiveMatches(records, new Set(['ashe']))).toBe(0)
+  })
+})
+
+// percentileTrail is the input to the standing card that replaced the deleted
+// population one. It reports only what the player's own screenshots said, so
+// every rule here is about refusing to say more than that.
+describe('percentileTrail', () => {
+  const pct = (percentile: number, daysAgo: number) =>
+    rec({ daysAgo, rank: { tier: 'platinum', level: 2, progress: 40, percentile } })
+  const sameSeason = () => 'S4'
+
+  it('is null when no capture reported a percentile', () => {
+    const seed = seedTrack([rec({ rank: { tier: 'platinum', level: 2, progress: 40 } })], 'support', sameSeason)
+
+    expect(seed.percentileTrail).toBeNull()
+  })
+
+  it('reports the newest reading and its movement within a season', () => {
+    const seed = seedTrack([pct(52, 30), pct(57, 20), pct(61, 5)], 'support', sameSeason)
+
+    expect(seed.percentileTrail?.now).toBe(61)
+    expect(seed.percentileTrail?.previous).toBe(52)
+    expect(seed.percentileTrail?.deltaPts).toBe(9)
+    expect(seed.percentileTrail?.n).toBe(3)
+  })
+
+  // A rank redistribution moves the whole population, so two readings either
+  // side of a season boundary measure different ladders. Refusing to pair them
+  // is the lesson that killed the card this feeds.
+  it('refuses to pair readings from different seasons', () => {
+    const older = pct(52, 40)
+    const newer = pct(61, 5)
+    const seed = seedTrack([older, newer], 'support',
+      (r) => (r.match_key === newer.match_key ? 'S4' : 'S3'))
+
+    expect(seed.percentileTrail?.now).toBe(61)
+    expect(seed.percentileTrail?.previous).toBeNull()
+    expect(seed.percentileTrail?.deltaPts).toBeNull()
+  })
+
+  // The default resolver knows no seasons, so it can only report the fact.
+  it('pairs nothing when the caller supplies no season resolver', () => {
+    const seed = seedTrack([pct(52, 30), pct(61, 5)], 'support')
+
+    expect(seed.percentileTrail?.now).toBe(61)
+    expect(seed.percentileTrail?.previous).toBeNull()
+  })
+
+  // 0 is a real reading — above nobody — and a truthiness filter drops it.
+  it('keeps a reading of zero', () => {
+    const seed = seedTrack([pct(0, 5)], 'support', sameSeason)
+
+    expect(seed.percentileTrail?.now).toBe(0)
   })
 })

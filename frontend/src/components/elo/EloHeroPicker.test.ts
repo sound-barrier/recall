@@ -60,7 +60,7 @@ const ANA_ROW = 'ana off 3x · 33% n<5'
 const JUNO_ROW = 'juno off 2x · 100% n<5'
 
 function mountPicker(records: MatchRecord[]): EloCalculator {
-  const calc = useEloCalculator({ records, heroRole, mapGameMode })
+  const calc = useEloCalculator({ records, heroRole, mapGameMode , seasons: [] })
   const host = defineComponent({
     setup() {
       provideEloCalculator(calc)

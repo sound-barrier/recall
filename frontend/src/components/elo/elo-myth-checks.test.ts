@@ -5,6 +5,7 @@ import { buildChecks, type MythCheckInputs } from '@/components/elo/elo-myth-che
 // Wide credible interval (±15 pts) so the rigged card falls through to
 // the "too few games" register unless a test narrows it.
 const base: MythCheckInputs = {
+  percentileTrail: null,
   projInput: { targetScore: 2900, currentScore: 2500 },
   pValue: 0.5,
   sampleN: 40,
@@ -110,5 +111,55 @@ describe('buildChecks', () => {
         projInput: { targetScore: 2500, currentScore: 2500 },
       }).find((c) => c.id === 'season')).toBeUndefined()
     })
+  })
+})
+
+// The population card deleted in a928122f answered "where do I stand" from a
+// published distribution that season 4's Rank Redistribution voided. Its
+// successor answers from the player's own screenshots, so it needs no
+// distribution — and it must never re-acquire one by implication.
+describe('standing', () => {
+  const trail = (over: Partial<NonNullable<MythCheckInputs['percentileTrail']>> = {}) =>
+    ({ now: 61, previous: 52, deltaPts: 9, n: 3, ...over })
+
+  it('is absent when no capture reported a percentile', () => {
+    expect(buildChecks({ ...base, percentileTrail: null }).find((c) => c.id === 'standing'))
+      .toBeUndefined()
+  })
+
+  it('states the movement when two same-season readings pair', () => {
+    const c = buildChecks({ ...base, percentileTrail: trail() }).find((x) => x.id === 'standing')
+
+    expect(c?.a).toContain('61%')
+    expect(c?.note).toContain('up 9%')
+    expect(c?.note).toContain('52%')
+    expect(c?.tone).toBe('good')
+  })
+
+  it('reads a decline as a decline', () => {
+    const c = buildChecks({ ...base, percentileTrail: trail({ now: 44, previous: 52, deltaPts: -8 }) })
+      .find((x) => x.id === 'standing')
+
+    expect(c?.note).toContain('down 8%')
+    expect(c?.tone).toBe('bad')
+  })
+
+  // One reading is the COMMON case, since only post-placement screens carry the
+  // caption. The fact still stands; only the comparison is missing.
+  it('states the bare standing when there is nothing to pair', () => {
+    const c = buildChecks({ ...base, percentileTrail: trail({ previous: null, deltaPts: null, n: 1 }) })
+      .find((x) => x.id === 'standing')
+
+    expect(c?.a).toContain('61%')
+    expect(c?.note).toMatch(/nothing to compare/i)
+    expect(c?.note).not.toMatch(/up |down /)
+  })
+
+  // The word carried a DIAGNOSIS the number cannot support on its own.
+  it('never calls the player hardstuck', () => {
+    for (const t of [trail(), trail({ previous: null, deltaPts: null, n: 1 })]) {
+      const c = buildChecks({ ...base, percentileTrail: t }).find((x) => x.id === 'standing')
+      expect(`${c?.q} ${c?.a} ${c?.note}`.toLowerCase()).not.toContain('hardstuck')
+    }
   })
 })

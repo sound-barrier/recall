@@ -40,6 +40,10 @@ export interface MythCheckInputs {
   paceAssumed: boolean
   rankNow: string
   target: string
+  // The player's OWN standing and how it moved. Structural shape, matching this
+  // file's rule that callers are not forced to satisfy fields the builders
+  // never touch.
+  percentileTrail: { now: number; previous: number | null; deltaPts: number | null; n: number } | null
 }
 
 export function buildChecks(i: MythCheckInputs): Check[] {
@@ -49,9 +53,57 @@ export function buildChecks(i: MythCheckInputs): Check[] {
     skepticCheck(i),
     streakCheck(i),
     runsCheck(i),
+    standingCheck(i),
     seasonCheck(i),
   ]
   return cards.filter((c): c is Check => c !== null)
+}
+
+// "Where do I stand?" — the successor to the population card deleted in
+// a928122f, and deliberately a different card.
+//
+// The old one answered with a share read out of a published distribution, and
+// season 4's Rank Redistribution voided that distribution: it moved Platinum
+// and Diamond players into a tier that had not existed, so every share it
+// printed became wrong. Nothing replaced the distribution, so this card does not
+// try. It reports what the player's own screenshots said — where they stand, and
+// where they stood before — which needs no population model at all.
+//
+// It also never says "hardstuck". That was a DIAGNOSIS layered on the number,
+// and a diagnosis needs a comparison this card cannot make.
+function standingCheck(i: MythCheckInputs): Check | null {
+  const p = i.percentileTrail
+  if (p === null) return null
+  // One reading is the common case — only post-placement rank screens carry the
+  // caption — and it is still worth stating. It just cannot be a movement.
+  if (p.deltaPts === null || p.previous === null) {
+    return {
+      id: 'standing', stat: 'percentile', q: 'Where do I stand?',
+      a: `Above ${fmtPct(p.now)} of players`,
+      note: `Read off your rank screen at ${i.rankNow}. One reading so far, so there is nothing to compare it against yet — a second post-placement rank screenshot this season gives you the movement.`,
+      tone: 'neutral',
+    }
+  }
+  return {
+    id: 'standing', stat: 'percentile', q: 'Where do I stand?',
+    a: `Above ${fmtPct(p.now)} of players`,
+    note: `${movedPhrase(p.deltaPts)} from ${fmtPct(p.previous)} earlier this season, across ${p.n} readings. Both numbers come off your own rank screens; only same-season readings are compared, because a rank redistribution moves the whole population and would make the difference meaningless.`,
+    tone: movementTone(p.deltaPts),
+  }
+}
+
+// A movement of exactly 0 is "unchanged", not a climb and not a slide — the
+// player held their ground, which is a real answer to the question.
+function movedPhrase(deltaPts: number): string {
+  if (deltaPts > 0) return `up ${fmtPct(deltaPts)}`
+  if (deltaPts < 0) return `down ${fmtPct(Math.abs(deltaPts))}`
+  return 'unchanged'
+}
+
+function movementTone(deltaPts: number): string {
+  if (deltaPts > 0) return 'good'
+  if (deltaPts < 0) return 'bad'
+  return 'neutral'
 }
 
 // A credible interval pinned this tight (± points on the true rate) means
