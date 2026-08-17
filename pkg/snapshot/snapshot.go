@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"recall/pkg/applog"
@@ -110,11 +111,24 @@ func Prune(dir, prefix string, keep int) {
 			"dir", dir, "err", err)
 		return
 	}
-	if len(matches) <= keep {
+	// Only files this package WROTE are ours to count or to delete. A name
+	// whose stamp does not parse is someone's own copy kept in the backups
+	// folder, and it is the lexical max whenever the character after the
+	// prefix is a letter — so counting it toward `keep` spent a retention slot
+	// permanently (it was never the one pruned), while deleting it would
+	// destroy a file the user put there on purpose. Skip it on both counts.
+	ours := make([]string, 0, len(matches))
+	for _, m := range matches {
+		stamp := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(m), prefix), ".db")
+		if _, err := time.Parse(TimeLayout, stamp); err == nil {
+			ours = append(ours, m)
+		}
+	}
+	if len(ours) <= keep {
 		return
 	}
-	sort.Strings(matches)
-	for _, old := range matches[:len(matches)-keep] {
+	sort.Strings(ours)
+	for _, old := range ours[:len(ours)-keep] {
 		if err := os.Remove(old); err != nil {
 			applog.Subsystem("backup").Error("prune failed", "file", old, "err", err)
 		}

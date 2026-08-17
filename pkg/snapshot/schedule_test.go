@@ -93,16 +93,33 @@ func TestLatest_SeparatesPrefixesThatShareASecond(t *testing.T) {
 	}
 }
 
-// A name the layout can't parse reads as "no snapshot", NOT as "fall back to
-// the newest one that does parse". Pinning that keeps the failure honest: a
-// hand-edited or foreign file in backups/ makes the next backup look due,
-// which is the safe direction to be wrong in.
-func TestLatest_RejectsAMalformedNewestStamp(t *testing.T) {
+// REVERSED, deliberately. This used to pin the opposite: a name the layout
+// could not parse read as "no snapshot", on the reasoning that making the next
+// backup look due is "the safe direction to be wrong in".
+//
+// That reasoning assumed the wrongness was transient. It is not — it is
+// permanent and self-reinforcing. A foreign file in backups/ sorts above every
+// real stamp whenever the character after the prefix is a letter, so Latest
+// reported "never backed up" forever: Stale stayed true, a snapshot was
+// written after every parse, and Prune kept the foreign file as its own
+// lexical max. The retention window collapsed from three weekly snapshots to
+// the last two parse runs, and Settings showed a permanent red "never backed
+// up" while backups were in fact being written constantly. Erring toward more
+// backups is only safe if the extra ones are KEPT.
+//
+// Both halves of that are now fixed, and the honest-empty case is pinned
+// separately in latest_poison_test.go: if nothing parses, Latest still reports
+// nothing.
+func TestLatest_IgnoresAMalformedStampBesideAGoodOne(t *testing.T) {
 	dir := t.TempDir()
 	touch(t, dir, "auto-20260701-100000.db", "auto-not-a-stamp.db")
 
-	if got, ok := snapshot.Latest(dir, snapshot.AutoPrefix); ok {
-		t.Errorf("Latest = %s (ok), want no usable stamp", got)
+	got, ok := snapshot.Latest(dir, snapshot.AutoPrefix)
+	if !ok {
+		t.Fatal("Latest reported nothing; the parseable stamp beside the foreign file is a real snapshot")
+	}
+	if want := "2026-07-01"; got.Format("2006-01-02") != want {
+		t.Errorf("Latest = %s, want %s", got.Format("2006-01-02"), want)
 	}
 }
 

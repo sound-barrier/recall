@@ -59,6 +59,15 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	u := release.Check(appBaseDir(), a.GetVersion())
 	// One field covers every gate: the Wails wrapper only sets
 	// a.SelfUpdate when self-update is actually possible here.
-	u.CanSelfUpdate = a.SelfUpdate != nil
+	//
+	// Only on a response that actually CHECKED. A failed fetch comes back as a
+	// zero Info whose whole meaning is "show nothing", and stamping the
+	// capability onto it ships {"checked":false,"available":false,
+	// "can_self_update":true} — a payload that contradicts itself. The old
+	// pre-carve shape returned before this line on the failure path; keeping
+	// that behavior is the point, not a new rule.
+	if u.Checked {
+		u.CanSelfUpdate = a.SelfUpdate != nil
+	}
 	return u
 }

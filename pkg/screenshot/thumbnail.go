@@ -63,29 +63,28 @@ func pickThumbnail(rec match.Record, onDisk func(dirID int64, filename string) b
 }
 
 // thumbnailCandidates orders a match's source files for the thumbnail pick:
-// the first SUMMARY screenshot, then the first TEAMS, then every source file
-// in original order (re-listing the two leaders is harmless — the directory
-// listing behind the on-disk check is memoized).
+// every SUMMARY screenshot, then every TEAMS, then every source file in
+// original order (re-listing the leaders is harmless — the directory listing
+// behind the on-disk check is memoized).
+//
+// ALL of each type, not just the first. Promoting only the first summary meant
+// that when that one file was off disk — the deleted-or-moved case this
+// on-disk check exists for — the promoted teams entry was reached before a
+// second summary that was still present, and a teams screenshot won over an
+// available summary. The type preference has to survive a missing file or it
+// is not a preference, just a guess about the first capture.
+//
+// Within a type the order is SourceFiles order, which aggregate builds with
+// correlate.UnionSortedStrings — sorted, so "first" is the lexically smallest
+// filename and therefore the earliest capture. Deterministic across runs.
 func thumbnailCandidates(rec match.Record) []string {
-	var summary, teams string
-	for _, f := range rec.SourceFiles {
-		switch rec.SourceTypes[f] {
-		case "summary":
-			if summary == "" {
-				summary = f
-			}
-		case "teams":
-			if teams == "" {
-				teams = f
+	candidates := make([]string, 0, len(rec.SourceFiles)*2)
+	for _, want := range [...]string{"summary", "teams"} {
+		for _, f := range rec.SourceFiles {
+			if rec.SourceTypes[f] == want {
+				candidates = append(candidates, f)
 			}
 		}
-	}
-	candidates := make([]string, 0, len(rec.SourceFiles)+2)
-	if summary != "" {
-		candidates = append(candidates, summary)
-	}
-	if teams != "" {
-		candidates = append(candidates, teams)
 	}
 	return append(candidates, rec.SourceFiles...)
 }

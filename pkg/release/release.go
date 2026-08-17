@@ -77,13 +77,29 @@ func Check(baseDir, version string) Info {
 	return u
 }
 
+// fetchGameDataStatus is a function-variable seam (the codebase's DI
+// convention, cf. ReleasesURL / RunTesseractFunc) so the panic path below can
+// be driven from a test without a live main-channel host.
+var fetchGameDataStatus = gamedata.FetchStatus
+
 // startGameDataFetch kicks off the main-channel roster/version probe on a
 // background goroutine, returning the channel its single result lands on.
 func startGameDataFetch(baseDir string) chan gamedata.Status {
 	ch := make(chan gamedata.Status, 1)
 	go func() {
+		// The send is DEFERRED so that a panic still delivers a value.
+		// RecoverPanic swallows the panic and returns normally, so a send
+		// written after the call would simply never run — and both of Check's
+		// receives (the success join and the failure drain) would block
+		// forever. That turns a recovered panic into a permanently hung
+		// request, which is strictly worse than the loud crash the recover
+		// was added to prevent. Defers run LIFO, so RecoverPanic runs first
+		// and this send second, carrying the zero Status the frontend already
+		// renders as "main channel unavailable".
+		status := gamedata.Status{}
+		defer func() { ch <- status }()
 		defer applog.RecoverPanic("update")
-		ch <- gamedata.FetchStatus(baseDir)
+		status = fetchGameDataStatus(baseDir)
 	}()
 	return ch
 }

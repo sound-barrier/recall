@@ -74,10 +74,32 @@ func writeManualAuxRows(s db.Store, key string, in match.ManualMatchInput) error
 	// Disruption sides + the optional annotation fields (replay code / note /
 	// tags / the squad they grouped with) all ride the existing annotation
 	// surface in one upsert — the same row the detail-panel choosers edit later.
-	if !hasManualAnnotation(in) {
+	//
+	// The skip decision reads the NORMALIZED annotation, never the raw form.
+	// Testing the raw fields let anything that vanishes under trimming — an
+	// empty tag chip, a whitespace-only note, a blank leaver — pass this gate
+	// and then trip SetAnnotation's emptiness check, by which point
+	// UpsertUserMatchData had already committed the match. The caller got a
+	// 500 carrying no match_key while the match itself showed up on the next
+	// reload, so it could not undo what it did not know it had made.
+	//
+	// Treating it as OMITTED rather than rejecting it is this file's own
+	// doctrine ("only omission is free") and matches what normalizeSides
+	// already does with an all-blank leaver list.
+	ann := manualAnnotationInput(key, in)
+	norm, err := normalizeAnnotation(ann)
+	if err != nil {
+		return err
+	}
+	if annotationIsEmpty(norm) {
 		return nil
 	}
-	return SetAnnotation(s, AnnotationInput{
+	return SetAnnotation(s, ann)
+}
+
+// manualAnnotationInput projects the manual form onto the annotation surface.
+func manualAnnotationInput(key string, in match.ManualMatchInput) AnnotationInput {
+	return AnnotationInput{
 		MatchKey:   key,
 		Leavers:    in.Leavers,
 		Throwers:   in.Throwers,
@@ -85,14 +107,7 @@ func writeManualAuxRows(s db.Store, key string, in match.ManualMatchInput) error
 		Note:       in.Note,
 		Tags:       in.Tags,
 		Members:    in.Members,
-	})
-}
-
-// hasManualAnnotation reports whether the manual form carries any field that
-// rides the annotation surface.
-func hasManualAnnotation(in match.ManualMatchInput) bool {
-	return len(in.Leavers) > 0 || len(in.Throwers) > 0 || in.ReplayCode != "" ||
-		in.Note != "" || len(in.Tags) > 0 || len(in.Members) > 0
+	}
 }
 
 // validateManualMatchInput checks the manual form's required identity fields,
