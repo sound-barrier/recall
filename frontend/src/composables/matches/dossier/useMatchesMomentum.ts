@@ -7,6 +7,7 @@ import {
   formDelta as computeFormDelta,
   leaverRate,
   netRankProgress,
+  type RankMovement,
   sessionCount,
   winrateAfterLossStreak,
   winrateAfterResult,
@@ -29,7 +30,7 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
   const winrateAfterLoss = computed<RateSample>(() => winrateAfterResult(records.value, 'defeat'))
   const winrateAfterWin = computed<RateSample>(() => winrateAfterResult(records.value, 'victory'))
   const firstGameWinrate = computed<RateSample>(() => firstGameOfSessionWinrate(records.value))
-  const netRankWeek = computed<number>(() => netRankProgress(records.value, NET_RANK_DAYS))
+  const netRankWeek = computed<RankMovement>(() => netRankProgress(records.value, NET_RANK_DAYS))
   const avgGameLength = computed<number | null>(() => avgGameLengthMinutes(records.value))
   const leaverStats = computed<LeaverRate>(() => leaverRate(records.value))
   const sessions = computed<number>(() => sessionCount(records.value))

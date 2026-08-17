@@ -12,13 +12,23 @@ const { netRankWeek } = useDossier()
 // The shared sign tint (styles/verdict-tint.css), same pair as the
 // Recent-form gap.
 const tint = computed(() => {
-  if (netRankWeek.value > 0) return 'tint-up'
-  return netRankWeek.value < 0 ? 'tint-down' : ''
+  if (netRankWeek.value.netPercent > 0) return 'tint-up'
+  return netRankWeek.value.netPercent < 0 ? 'tint-down' : ''
 })
-const movement = computed(() => `${netRankWeek.value > 0 ? '+' : ''}${netRankWeek.value}%`)
+const movement = computed(() => `${netRankWeek.value.netPercent > 0 ? '+' : ''}${netRankWeek.value.netPercent}%`)
 // Climb velocity is signed in the text but JUDGED in the tint; the
 // accessible name carries the judgment word too (WCAG 1.4.1).
-const spokenName = computed(() => `${movement.value} — ${signJudgment(netRankWeek.value)}`)
+const spokenName = computed(() =>
+  `${movement.value} — ${signJudgment(netRankWeek.value.netPercent)}${coverage.value}`)
+
+// What the total was actually built from. change_percent is nullable, so a week
+// whose rank screens mostly went unread would otherwise print a small number
+// that reads as a quiet week rather than as a thin sample.
+const coverage = computed(() => {
+  const { readCount, totalCount } = netRankWeek.value
+  if (totalCount === 0 || readCount === totalCount) return ''
+  return `, from ${readCount} of ${totalCount} matches`
+})
 </script>
 
 <template>
@@ -26,4 +36,5 @@ const spokenName = computed(() => `${movement.value} — ${signJudgment(netRankW
   <span class="kpi-value" :class="tint" role="img" :aria-label="spokenName">
     {{ movement }}
   </span>
+  <span v-if="coverage" class="kpi-sub">{{ netRankWeek.readCount }}/{{ netRankWeek.totalCount }} read</span>
 </template>

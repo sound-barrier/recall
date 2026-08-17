@@ -85,11 +85,11 @@ describe('netRankProgress', () => {
       rec('2026-05-11', '20:00', { change: 20 }),
       rec('2026-05-12', '20:00', { change: -5 }),
     ], 7)
-    expect(sum).toBe(25)
+    expect(sum.netPercent).toBe(25)
   })
 
   it('is zero for an empty set', () => {
-    expect(netRankProgress([], 7)).toBe(0)
+    expect(netRankProgress([], 7).netPercent).toBe(0)
   })
 })
 
@@ -392,5 +392,46 @@ describe('winrateAfterLossStreak', () => {
     ]
     expect(winrateAfterLossStreak(rows, 2)).toEqual({ winrate: 100, sample: 1 })
     expect(winrateAfterLossStreak(rows, 3)).toEqual({ winrate: null, sample: 0 })
+  })
+})
+
+// change_percent is nullable: 21 of the 44 rank captures in the corpus carry no
+// reading because the movement pill was never OCR'd. Summing null as 0 leaves
+// the TOTAL right — adding zero changes nothing — so the defect is not
+// arithmetic. It is that a total with no denominator reads as complete: "+12%
+// this week" looks like the whole week whether it came from every rank screen
+// or from one of nine.
+describe('netRankProgress coverage', () => {
+  const at = (daysAgo: number, change?: number) => ({
+    match_key: `m${daysAgo}`,
+    data: {
+      date: new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10),
+      finished_at: '20:00',
+      ...(change === undefined ? {} : { change_percent: change }),
+    },
+  })
+
+  it('reports how many readings the total was built from', () => {
+    const got = netRankProgress([at(1, 10), at(2, 5), at(3), at(4)], 7)
+
+    expect(got.netPercent).toBe(15)
+    expect(got.readCount).toBe(2)
+    expect(got.totalCount).toBe(4)
+  })
+
+  it('does not count an absent reading as a zero movement', () => {
+    const got = netRankProgress([at(1), at(2), at(3)], 7)
+
+    expect(got.readCount).toBe(0)
+    // The total is still 0, but nothing supports it — the widget needs to be
+    // able to tell that apart from a genuinely flat week.
+    expect(got.totalCount).toBe(3)
+  })
+
+  it('counts a real zero as a reading', () => {
+    const got = netRankProgress([at(1, 0)], 7)
+
+    expect(got.readCount).toBe(1)
+    expect(got.netPercent).toBe(0)
   })
 })
