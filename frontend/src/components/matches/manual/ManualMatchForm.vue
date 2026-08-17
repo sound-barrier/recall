@@ -2,8 +2,8 @@
 import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useOWData } from '@/composables/shared/useOWData'
-import { manualMatchFormKey } from '@/composables/matches/useManualMatchForm'
-import { TIER_ORDER } from '@/match/match-trends-helpers'
+import { manualMatchFormKey } from '@/composables/matches/manual/useManualMatchForm'
+import { TIER_ORDER } from '@/match/trends/match-trends-helpers'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 
 // The hand-enter match form body — the map/hero FilterCombobox pickers, the chip

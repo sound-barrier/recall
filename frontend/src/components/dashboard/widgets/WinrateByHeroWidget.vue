@@ -3,7 +3,7 @@
 // minimum decisive-match sample so noise doesn't top the list. Bar fill
 // is win-rate; the count overlay shows the sample. Opt-in.
 import { useDossier } from '@/composables/dashboard/useDossier'
-import { wilsonMargin } from '@/match/match-sample-helpers'
+import { wilsonMargin } from '@/match/dossier/match-sample-helpers'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { winrateBySchema, type WinrateByConfig } from '@/dashboard/widgets'
 

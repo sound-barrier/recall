@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { TIER_ORDER, type Tier } from '@/match/match-trends-helpers'
+import { TIER_ORDER, type Tier } from '@/match/trends/match-trends-helpers'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
-import { DEFAULT_METER_MOVE_PCT } from '@/match/elo-model'
+import { DEFAULT_METER_MOVE_PCT } from '@/match/elo/elo-model'
 import { fmtScoreRank } from '@/components/elo/elo-format'
 
 // The calculator form: every input starts from the picked track's own games and

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ComparisonRow, ComparisonSection } from '@/match/match-compare-helpers'
+import type { ComparisonRow, ComparisonSection } from '@/match/compare/match-compare-helpers'
 
 // The A / B / Δ evidence table shared by both Compare modes. Sections render
 // as labeled tbody groups; the winning column of a judged row is tinted.

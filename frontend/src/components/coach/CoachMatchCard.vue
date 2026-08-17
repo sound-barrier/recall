@@ -5,7 +5,7 @@ import type { MatchRecord } from '@/api-client'
 import CoachHeroSplit from '@/components/coach/CoachHeroSplit.vue'
 import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/coach-room-props'
 import MatchRankBlock from '@/components/matches/detail/MatchRankBlock.vue'
-import { formatPlayerDay, playerClockDayKey, playerClockTime } from '@/match/coach-time'
+import { formatPlayerDay, playerClockDayKey, playerClockTime } from '@/match/coach/coach-time'
 import { formatPlayModeLabel, formatQueueTypeLabel, formatUnknownMapLabel } from '@/match/match-label-helpers'
 import { playerClockOwner } from '@/match/match-time-helpers'
 

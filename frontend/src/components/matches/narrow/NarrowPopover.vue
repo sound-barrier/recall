@@ -9,14 +9,14 @@
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
-import { useNarrowTabNav } from '@/composables/matches/useNarrowTabNav'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
+import { useNarrowTabNav } from '@/composables/matches/narrow/useNarrowTabNav'
 import {
   LEAVER_LABELS, THROWER_LABELS,
   QUEUE_OPTIONS, PLAY_MODE_OPTIONS, REVIEWED_BY_OPTIONS, PROVENANCE_OPTIONS,
-} from '@/composables/matches/matchesNarrow.options'
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
-import type { QueuePick, PlayModePick, ReviewedByPick, SourcePick } from '@/composables/matches/matchesNarrow.types'
+} from '@/composables/matches/narrow/matchesNarrow.options'
+import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
+import type { QueuePick, PlayModePick, ReviewedByPick, SourcePick } from '@/composables/matches/narrow/matchesNarrow.types'
 import NarrowPresets from '@/components/matches/narrow/NarrowPresets.vue'
 import type { MatchRecord } from '@/api-client'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 
 import { formatLocalFromUTC } from '@/match/match-time-helpers'
-import { noteMark } from '@/match/coach-notes'
+import { noteMark } from '@/match/coach/coach-notes'
 import { useCoachStore } from '@/stores/coach'
 
 // The loan slip — the masthead while a coaching session is open.

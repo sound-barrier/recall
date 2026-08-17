@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { useMapRoleSelection, type MapRoleCoord } from '@/composables/matches/useMapRoleSelection'
-import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity, JUDGMENT_LABEL } from '@/match/match-heatmap-helpers'
+import { useMapRoleSelection, type MapRoleCoord } from '@/composables/matches/dossier/useMapRoleSelection'
+import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity, JUDGMENT_LABEL } from '@/match/trends/match-heatmap-helpers'
 
 // The Hero × Game-Mode band's root level: a heroes × game-modes win-rate heatmap
 // (hue by win-rate band, opacity by volume), or a floor-gate empty state.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
-import { resultJudgment } from '@/match/match-heatmap-helpers'
+import { resultJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const { currentStreak: streak } = useDossier()
 

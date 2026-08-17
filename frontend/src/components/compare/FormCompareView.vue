@@ -6,20 +6,20 @@ import type { MatchRecord } from '@/api-client'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useOWData } from '@/composables/shared/useOWData'
-import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
-import { matchesLeaverHandling } from '@/composables/matches/narrowPredicates'
+import { useMatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
+import { matchesLeaverHandling } from '@/composables/matches/narrow/narrowPredicates'
 import { useFormDrill } from '@/composables/compare/useFormDrill'
 import { N_OPTIONS, useFormPairing } from '@/composables/compare/useFormPairing'
 import { buildSeasonMetrics, topHeroDisplay } from '@/components/compare/compareSnapshot'
 import { SPARK_H, SPARK_W, midY, sparkAria, sparkPoints } from '@/components/compare/form-sparkline'
 import CompareTable from '@/components/compare/CompareTable.vue'
-import { compareSeasons, type ComparisonRow } from '@/match/match-compare-helpers'
-import { judgeForm } from '@/match/match-form-verdict'
-import { leaverRate, sessionCount } from '@/match/match-momentum-helpers'
+import { compareSeasons, type ComparisonRow } from '@/match/compare/match-compare-helpers'
+import { judgeForm } from '@/match/compare/match-form-verdict'
+import { leaverRate, sessionCount } from '@/match/dossier/match-momentum-helpers'
 import {
   buildCondition, conditionDrillable, conditionPredicate, pairByTime, rollingWinrate, windowDays,
   type FormCondition, type TimeWindow,
-} from '@/match/match-form-slices'
+} from '@/match/compare/match-form-slices'
 
 // FORM — the Compare tab's second mode. Two adjacent windows of play — this
 // period vs the previous one (mirrored to the same length) or the last N

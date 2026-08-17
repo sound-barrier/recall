@@ -1,10 +1,10 @@
-import { LADDER_MAX } from '@/match/elo-model'
-import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/match-trends-helpers'
+import { LADDER_MAX } from '@/match/elo/elo-model'
+import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/trends/match-trends-helpers'
 
 import { describe, it, expect, afterEach } from 'vitest'
 
 import { rankLadderOption, winrateOption, lineOption, rankDeltaOption, heatmapOption } from '@/components/matches/trends/trend-options'
-import type { RankPoint, RankSeries, TrendSeries, WinrateGrid } from '@/match/match-trends-helpers'
+import type { RankPoint, RankSeries, TrendSeries, WinrateGrid } from '@/match/trends/match-trends-helpers'
 
 // The shared INTERACTION spreads a bottom zoom/pan slider into every
 // TIMELINE chart. Narrow the dataZoom union down to the slider shape the

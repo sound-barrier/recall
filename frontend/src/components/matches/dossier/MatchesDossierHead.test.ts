@@ -6,16 +6,16 @@ import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.
 import {
   createMatchesNarrowState,
   useMatchesNarrow,
-} from '@/composables/matches/useMatchesNarrow'
+} from '@/composables/matches/narrow/useMatchesNarrow'
 import {
   LAYOUT_STORAGE_KEY,
   LAYOUT_VERSION_KEY,
   CURRENT_LAYOUT_VERSION,
   _resetDashboardLayoutForTest,
 } from '@/composables/dashboard/useDashboardLayout'
-import { _resetSectionLayoutForTest } from '@/composables/matches/useSectionLayout'
+import { _resetSectionLayoutForTest } from '@/composables/matches/dossier/useSectionLayout'
 import type { MatchRecord } from '@/api-client'
-import type { NarrowMode } from '@/composables/matches/useNarrowMode'
+import type { NarrowMode } from '@/composables/matches/narrow/useNarrowMode'
 
 // MatchesDossierHead owns the SET SUMMARY the whole Matches view is read
 // through — the headline that names the active narrow in words, the

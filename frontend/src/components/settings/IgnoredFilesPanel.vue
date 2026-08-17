@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onBeforeUnmount, toRef } from 'vue'
 
-import { useScrollLock } from '@/composables/shared/useScrollLock'
-import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
+import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
+import { useHoverThumbnail } from '@/composables/shared/media/useHoverThumbnail'
 import type { IgnoredScreenshot } from '@/api-client'
 import IgnoredFileRow from '@/components/settings/IgnoredFileRow.vue'
 import { useWriteGate } from '@/composables/shared/useWriteGate'

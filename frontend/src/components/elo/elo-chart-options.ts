@@ -4,12 +4,12 @@
 // target sits above your current ceiling — a marker at where you plateau.
 // Presentation seam: this file knows ECharts; the model layer doesn't.
 import type { TrendOption } from '@/components/matches/trends/echarts'
-import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/match-trends-helpers'
-import { LADDER_MAX } from '@/match/elo-model'
-import type { ProjectionCurves } from '@/match/elo-model'
-import type { SeasonSim } from '@/match/elo-simulate'
-import type { SkillCurve } from '@/match/elo-kalman'
-import { themeColor, withAlpha } from '@/match/theme-colors'
+import { TIER_ORDER, DIVISIONS_PER_TIER } from '@/match/trends/match-trends-helpers'
+import { LADDER_MAX } from '@/match/elo/elo-model'
+import type { ProjectionCurves } from '@/match/elo/elo-model'
+import type { SeasonSim } from '@/match/elo/elo-simulate'
+import type { SkillCurve } from '@/match/elo/elo-kalman'
+import { themeColor, withAlpha } from '@/match/trends/theme-colors'
 
 // Series hues shared with the two future cards (see styles/elo.css, which
 // aliases the same tokens as --elo-dream / --elo-reality): blue = if your

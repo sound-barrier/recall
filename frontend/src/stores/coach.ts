@@ -9,7 +9,7 @@ import {
 } from '@/api-client'
 import type { CoachSaveState } from '@/components/coach/coach-room-props'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
-import { fromWireNote, isEmptyDraft, toNoteInput, type CoachNoteDraft } from '@/match/coach-notes'
+import { fromWireNote, isEmptyDraft, toNoteInput, type CoachNoteDraft } from '@/match/coach/coach-notes'
 import { getQueryClient } from '@/queries/client'
 import {
   clearCoachSessionData, setCoachSessionData, setCoachSessionResume, upsertCoachReturn,

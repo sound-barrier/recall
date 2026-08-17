@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { DecayProjection } from '@/match/elo-model'
+import type { DecayProjection } from '@/match/elo/elo-model'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { fmtGames, fmtGamesRange, fmtRank, fmtWeeks } from '@/components/elo/elo-format'
 import { fmtCeilingRange } from '@/components/elo/elo-verdict'

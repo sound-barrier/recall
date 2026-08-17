@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import type { NamedCandidate, NamedCandidateStats } from '@/api-client'
 import { useScreenshotFolderStats } from '@/composables/settings/useScreenshotFolderStats'
-import { useContextualCallout } from '@/composables/shared/useContextualCallout'
-import ContextualCallout from '@/components/shared/ContextualCallout.vue'
+import { useContextualCallout } from '@/composables/onboarding/useContextualCallout'
+import ContextualCallout from '@/components/onboarding/ContextualCallout.vue'
 
 // First-run picker for the OW screenshots directory. On Windows,
 // renders a 2 × 2 grid of canonical capture sources (Nvidia Overlay

@@ -19,7 +19,7 @@ import {
   formatUnknownMapLabel,
 } from '@/match/match-label-helpers'
 import { formatKda, kdaRatio } from '@/match/match-stats-helpers'
-import { disruptionLabel, disruptionTint } from '@/match/match-disruption'
+import { disruptionLabel, disruptionTint } from '@/match/dossier/match-disruption'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
 import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'

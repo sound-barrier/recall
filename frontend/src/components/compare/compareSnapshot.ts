@@ -1,15 +1,15 @@
 import type { MatchRecord } from '@/api-client'
-import type { MatchesDossier } from '@/composables/matches/useMatchesDossier'
-import type { BreakdownEntry } from '@/composables/matches/useMatchesDossier.types'
+import type { MatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
+import type { BreakdownEntry } from '@/composables/matches/dossier/useMatchesDossier.types'
 import {
   bestHeroByRole, heroPoolsByRole, modeBreakdown, playlistCounts, queueCounts,
   roleRates, topMap, worstHero,
-} from '@/match/match-compare-aggregate'
+} from '@/match/compare/match-compare-aggregate'
 import {
   analyzeHeroPool, heroCountBuckets, DEFAULT_HERO_MEANINGFUL_PCT,
   type HeroCountBucket,
-} from '@/match/match-hero-pool-helpers'
-import type { RateStat, SeasonMetrics } from '@/match/match-compare-helpers'
+} from '@/match/dossier/match-hero-pool-helpers'
+import type { RateStat, SeasonMetrics } from '@/match/compare/match-compare-helpers'
 
 // Shared SeasonMetrics assembly for both Compare modes: the scalar metrics come
 // off a dossier instance, the compare-specific breakdowns off the record slice.

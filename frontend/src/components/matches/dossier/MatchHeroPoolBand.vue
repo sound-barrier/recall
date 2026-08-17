@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useFullDossier } from '@/composables/dashboard/useDossier'
-import { useNarrow } from '@/composables/matches/useNarrow'
+import { useNarrow } from '@/composables/matches/narrow/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { heroDisciplineSchema, type HeroDisciplineConfig } from '@/dashboard/widgets'
 import {
   analyzeHeroPool, matchesPoolMode, rankPoolHeroes, roleWinrates,
   type HeroPoolAnalysis, type PoolMode,
-} from '@/match/match-hero-pool-helpers'
-import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
+} from '@/match/dossier/match-hero-pool-helpers'
+import { heatmapCellClass, heatmapCellOpacity } from '@/match/trends/match-heatmap-helpers'
 import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 
 // HERO POOL — a fixed-height scrolling dossier band (mirroring Hero × Game-Mode)

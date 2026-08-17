@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 
 // Leaver handling — a single-select 3-way over how matches that carried a leaver
 // count toward the W/L tally: Include them, Drop from tally (keep the row, skip

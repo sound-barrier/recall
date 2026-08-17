@@ -2,8 +2,8 @@
 import { computed, defineAsyncComponent, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
-import type { NarrowMode } from '@/composables/matches/useNarrowMode'
+import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
+import type { NarrowMode } from '@/composables/matches/narrow/useNarrowMode'
 import { formatRangeBound } from '@/match/match-time-helpers'
 import { useDashboardGrid } from '@/composables/dashboard/useDashboardGrid'
 import MatchesDossier from '@/components/matches/dossier/MatchesDossier.vue'

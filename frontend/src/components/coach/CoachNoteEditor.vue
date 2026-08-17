@@ -4,7 +4,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import type { CoachSaveState } from '@/components/coach/coach-room-props'
 import {
   FOCUS_TAGS, focusTagLabel, noteMark, parseMatchClock, type CoachNoteDraft,
-} from '@/match/coach-notes'
+} from '@/match/coach/coach-notes'
 
 // The coach's note for the frame on the desk, written on paper. The
 // editor is CONTROLLED: it holds no draft of its own, it reports every

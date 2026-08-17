@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 
 import CoachReturnCard from '@/components/coach/CoachReturnCard.vue'
 import { useCoachReturnDecisions } from '@/composables/coach/useCoachReturnDecisions'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useCoachStore } from '@/stores/coach'
 
 // The return of notes — the player decides on one coach's archive.

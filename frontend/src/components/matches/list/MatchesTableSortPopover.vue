@@ -5,8 +5,8 @@ import {
   useTableSort,
   TABLE_SORT_COLUMNS,
   type TableSortCol,
-} from '@/composables/matches/useTableSort'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+} from '@/composables/matches/table/useTableSort'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 
 // Excel-style "Custom sort" dialog for the Data-density table: the
 // ordered list of sort levels, each with an editable column + direction,

@@ -3,7 +3,7 @@ import { nextTick, ref } from 'vue'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { renderWidget } from '@/test-utils'
-import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
+import type { MapRoleCell } from '@/composables/matches/dossier/useMatchesDossier'
 
 // Stub the reference-data singleton so the column roster is
 // deterministic (no fetch, no cross-test singleton state). Three maps

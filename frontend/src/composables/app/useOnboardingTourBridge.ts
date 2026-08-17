@@ -1,7 +1,7 @@
 import { nextTick } from 'vue'
 
 import { SeedTestProfile, SwitchProfile } from '@/api-client'
-import { cacheActiveProfile } from '@/composables/shared/profileStorage'
+import { cacheActiveProfile } from '@/composables/profile/profileStorage'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'

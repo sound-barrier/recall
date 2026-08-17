@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { useOWData } from '@/composables/shared/useOWData'
-import { nextMoves } from '@/match/elo-next-moves'
+import { nextMoves } from '@/match/elo/elo-next-moves'
 
 // The playbook's opener: up to three ranked, priced actions from the
 // player's own games (the numbering IS the priority). Hidden below two

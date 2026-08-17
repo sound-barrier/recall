@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { WindowMonths } from '@/composables/matches/useWindowMonths'
-import { JUDGMENT_LABEL } from '@/match/match-heatmap-helpers'
+import type { WindowMonths } from '@/composables/matches/dossier/useWindowMonths'
+import { JUDGMENT_LABEL } from '@/match/trends/match-heatmap-helpers'
 
 // Shared header furniture for the three dossier bands (Campaign Log
 // timeline, Geography map × role, Hero × Game-Mode): the time-window

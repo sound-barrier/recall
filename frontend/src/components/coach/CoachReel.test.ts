@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest'
 
 import type { MatchRecord, MatchResult } from '@/api-client'
 import CoachReel from '@/components/coach/CoachReel.vue'
-import { emptyDraft } from '@/match/coach-notes'
-import { groupReelByPlayerDay } from '@/match/coach-reel-helpers'
+import { emptyDraft } from '@/match/coach/coach-notes'
+import { groupReelByPlayerDay } from '@/match/coach/coach-reel-helpers'
 
 function rec(key: string, data: MatchResult): MatchRecord {
   return { match_key: key, source_files: [], data }

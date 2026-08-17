@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 
 // "Since this match" anchor toggle. The anchor is set/cleared from the match
 // detail panel; this surfaces the on/off switch to scope the SET to matches after

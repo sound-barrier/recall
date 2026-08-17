@@ -1,9 +1,9 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
-import { emptyDraft, tallyFocus, type CoachNoteDraft, type FocusCount } from '@/match/coach-notes'
-import { flattenReel, groupReelByPlayerDay, neighborKey, type ReelDay } from '@/match/coach-reel-helpers'
-import { winrateOrNull } from '@/match/match-dossier-tally'
+import { emptyDraft, tallyFocus, type CoachNoteDraft, type FocusCount } from '@/match/coach/coach-notes'
+import { flattenReel, groupReelByPlayerDay, neighborKey, type ReelDay } from '@/match/coach/coach-reel-helpers'
+import { winrateOrNull } from '@/match/dossier/match-dossier-tally'
 import { tallyWLD, type WLDTally } from '@/match/match-stats-helpers'
 
 // Everything the Film Room derives from the loaned corpus + the coach's

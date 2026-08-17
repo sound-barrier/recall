@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 
 // Refinement facet: the per-hero min-play thresholds (minutes OR percent that a
 // picked hero must meet in a match's heroes-played row) plus the include-unknown-

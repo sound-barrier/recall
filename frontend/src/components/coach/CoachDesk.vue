@@ -3,7 +3,7 @@ import type { MatchRecord } from '@/api-client'
 import CoachMatchCard from '@/components/coach/CoachMatchCard.vue'
 import CoachNoteEditor from '@/components/coach/CoachNoteEditor.vue'
 import { DEFAULT_COACH_LABELS, type CoachLabels, type CoachSaveState } from '@/components/coach/coach-room-props'
-import type { CoachNoteDraft } from '@/match/coach-notes'
+import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The middle column: the match the coach is looking at, and the note
 // she is writing about it. The desk owns no state — the room hands it

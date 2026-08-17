@@ -7,7 +7,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { timeOfDaySchema, type TimeOfDayConfig } from '@/dashboard/widgets'
-import { bucketCellClass, bucketCellJudgment } from '@/match/match-heatmap-helpers'
+import { bucketCellClass, bucketCellJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<TimeOfDayConfig>('time-of-day', timeOfDaySchema)

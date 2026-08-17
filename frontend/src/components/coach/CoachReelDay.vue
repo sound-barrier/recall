@@ -2,8 +2,8 @@
 import type { MatchRecord } from '@/api-client'
 import CoachReelFrame from '@/components/coach/CoachReelFrame.vue'
 import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/coach-room-props'
-import type { CoachNoteDraft } from '@/match/coach-notes'
-import { reelDayHeader, type ReelDay } from '@/match/coach-reel-helpers'
+import type { CoachNoteDraft } from '@/match/coach/coach-notes'
+import { reelDayHeader, type ReelDay } from '@/match/coach/coach-reel-helpers'
 
 // One of the player's days on the film strip: a ruled-paper header
 // ("Sat · Aug 8 · 4 played · 2–2") over that day's frames, newest

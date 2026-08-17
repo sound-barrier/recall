@@ -4,8 +4,8 @@
 // is a summary of the simulation, never a second model that can disagree
 // with the cards below it.
 
-import { PROVISIONAL_MIN_DECISIVE, gamesToWeeks } from '@/match/elo-model'
-import type { CeilingRange } from '@/match/elo-bayes'
+import { PROVISIONAL_MIN_DECISIVE, gamesToWeeks } from '@/match/elo/elo-model'
+import type { CeilingRange } from '@/match/elo/elo-bayes'
 import { fmtGames, fmtScoreRank, fmtWeeks } from '@/components/elo/elo-format'
 
 interface VerdictSim {

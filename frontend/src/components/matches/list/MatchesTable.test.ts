@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, fireEvent } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api-client'
-import { NARROW_KEY, type NarrowApi } from '@/composables/matches/useNarrow'
+import { NARROW_KEY, type NarrowApi } from '@/composables/matches/narrow/useNarrow'
 import type { SearchClause } from '@/match/search-query'
 
 // Reference data is a once-per-session fetch; stub it so the table renders

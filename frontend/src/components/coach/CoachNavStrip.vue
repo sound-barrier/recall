@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { ViewId } from '@/composables/shared/useTabKeyboardNav'
+import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useUiStore } from '@/stores/ui'

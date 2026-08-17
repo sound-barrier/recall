@@ -7,7 +7,7 @@ import {
   MAP_ROLE_CONFIG_KEY,
   _resetMapRoleConfigForTest,
   type MapRoleConfig,
-} from '@/composables/matches/useMapRoleConfig'
+} from '@/composables/matches/manual/useMapRoleConfig'
 import type { OWData } from '@/api-client'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'

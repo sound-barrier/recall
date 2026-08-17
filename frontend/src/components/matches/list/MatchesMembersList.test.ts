@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { render, screen, fireEvent } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api-client'
-import { NARROW_KEY, type NarrowApi } from '@/composables/matches/useNarrow'
+import { NARROW_KEY, type NarrowApi } from '@/composables/matches/narrow/useNarrow'
 import type { SearchClause } from '@/match/search-query'
 
 // The list and its rows ask the write gate whose clock they are in; stub

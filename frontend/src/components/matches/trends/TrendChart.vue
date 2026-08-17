@@ -6,7 +6,7 @@ import { registerTheme } from 'echarts/core'
 import '@/components/matches/trends/echarts'
 import type { TrendOption } from '@/components/matches/trends/echarts'
 import { useTheme } from '@/composables/settings/useTheme'
-import { cssVar } from '@/match/theme-colors'
+import { cssVar } from '@/match/trends/theme-colors'
 
 // Wraps vue-echarts with the cross-cutting concerns every trend chart
 // needs: app-theme colors (canvas can't inherit CSS, so we read the
@@ -43,7 +43,7 @@ const emit = defineEmits<{
 
 const { themeMode } = useTheme()
 
-// cssVar moved to @/match/theme-colors so the option builders
+// cssVar moved to @/match/trends/theme-colors so the option builders
 // (trend-options, elo-chart-options) resolve palette tokens the same way
 // this component does — they used to hardcode their series hues instead.
 

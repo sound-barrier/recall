@@ -1,14 +1,14 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
-import type { LeaverHandling } from '@/composables/matches/useMatchesDossier.types'
-import { analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT } from '@/match/match-hero-pool-helpers'
-import { breakRust, leaverRate, winrateBySessionIndex } from '@/match/match-momentum-helpers'
-import { afterResultCounts, streakMeterImpact, tiltEpisodes, winrateByStreakDepth } from '@/match/elo-streaks'
-import { expectedMeterDelta, meterMoveSamples } from '@/match/elo-simulate'
-import { normalCdf } from '@/match/elo-stats'
-import { twoByTwoChiSquareP } from '@/match/elo-stats'
-import { LOW_SAMPLE_N } from '@/match/match-sample-helpers'
+import { useMatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
+import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier.types'
+import { analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT } from '@/match/dossier/match-hero-pool-helpers'
+import { breakRust, leaverRate, winrateBySessionIndex } from '@/match/dossier/match-momentum-helpers'
+import { afterResultCounts, streakMeterImpact, tiltEpisodes, winrateByStreakDepth } from '@/match/elo/elo-streaks'
+import { expectedMeterDelta, meterMoveSamples } from '@/match/elo/elo-simulate'
+import { normalCdf } from '@/match/elo/elo-stats'
+import { twoByTwoChiSquareP } from '@/match/elo/elo-stats'
+import { LOW_SAMPLE_N } from '@/match/dossier/match-sample-helpers'
 
 // The tilt warn card's corpus floor — aligned with the verdict's
 // PROVISIONAL_MIN_DECISIVE: below it, one bad sitting dominates the read.

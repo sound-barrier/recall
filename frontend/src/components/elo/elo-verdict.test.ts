@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { deriveVerdict, type VerdictInput } from '@/components/elo/elo-verdict'
-import { PROVISIONAL_MIN_DECISIVE } from '@/match/elo-model'
+import { PROVISIONAL_MIN_DECISIVE } from '@/match/elo/elo-model'
 
 function input(over: Partial<VerdictInput> = {}): VerdictInput {
   return {

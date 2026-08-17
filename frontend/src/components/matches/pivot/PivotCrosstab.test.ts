@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, within } from '@testing-library/vue'
 
 import type { MatchRecord } from '@/api-client'
-import { makePivotFields } from '@/match/pivot-fields'
-import { pivot, type PivotConfig } from '@/match/pivot-aggregate'
+import { makePivotFields } from '@/match/pivot/pivot-fields'
+import { pivot, type PivotConfig } from '@/match/pivot/pivot-aggregate'
 import PivotCrosstab from '@/components/matches/pivot/PivotCrosstab.vue'
 
 // The crosstab is pure presentation over a PivotResult, so the fixtures run

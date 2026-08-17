@@ -2,13 +2,13 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useOWData } from '@/composables/shared/useOWData'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
-import { useDetailPanelKeyboard } from '@/composables/matches/useDetailPanelKeyboard'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
+import { useDetailPanelKeyboard } from '@/composables/matches/detail/useDetailPanelKeyboard'
 import { useUiStore } from '@/stores/ui'
 import { useMatchesStore } from '@/stores/matches'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { previousAnnotatedRecord } from '@/match/match-helpers'
-import { matchToMarkdown, matchSummaryLine } from '@/match/match-markdown'
+import { matchToMarkdown, matchSummaryLine } from '@/match/export/match-markdown'
 import { useAppStore } from '@/stores/app'
 import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import DetailPanelHeader from '@/components/matches/detail/DetailPanelHeader.vue'
@@ -80,7 +80,7 @@ function toggleSources() { uiStore.toggleSources(selection.selectedKey.value) }
 
 const ow = useOWData()
 
-// Clipboard exports — the pure generators in @/match/match-markdown,
+// Clipboard exports — the pure generators in @/match/export/match-markdown,
 // fed the resolved display names. Failures surface on the app banner
 // (clipboard access can be denied in odd embed contexts).
 async function copyText(text: string) {

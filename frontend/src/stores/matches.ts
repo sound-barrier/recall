@@ -14,15 +14,15 @@ import {
   refetchMatchesCluster, useFailedFilesQuery, useMatchesQuery, usePendingCountQuery,
 } from '@/queries/matches'
 import { ONBOARDING_COMPLETED_KEY } from '@/composables/shared/storageKeys'
-import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
-import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import { useMatchAnchor } from '@/composables/matches/narrow/useMatchAnchor'
+import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 import {
   restoreMatchesNarrowState, snapshotMatchesNarrowState, type MatchesNarrowSnapshot,
-} from '@/composables/matches/matchesNarrow.state'
-import { useSearchClauses } from '@/composables/matches/useSearchClauses'
-import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
+} from '@/composables/matches/narrow/matchesNarrow.state'
+import { useSearchClauses } from '@/composables/matches/narrow/useSearchClauses'
+import { useMatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
 import { useOWData } from '@/composables/shared/useOWData'
-import { profileScopedKey } from '@/composables/shared/profileStorage'
+import { profileScopedKey } from '@/composables/profile/profileStorage'
 import { useParseRunLifecycle } from '@/composables/ingest/useParseRunLifecycle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useClearDatabase } from '@/composables/settings/useClearDatabase'
@@ -146,7 +146,7 @@ export const useMatchesStore = defineStore('matches', () => {
     if (active && coach.sessionActive) return
     coach.setTourOpen(active)
     if (active) {
-      const { DEMO_MATCHES } = await import('@/composables/shared/useDemoMatches')
+      const { DEMO_MATCHES } = await import('@/composables/onboarding/useDemoMatches')
       demoRecords.value = [...DEMO_MATCHES]
       tourActive.value = true
     } else {

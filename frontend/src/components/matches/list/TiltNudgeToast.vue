@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TiltNudgeSignal } from '@/match/match-momentum-helpers'
+import type { TiltNudgeSignal } from '@/match/dossier/match-momentum-helpers'
 
 // The tilt nudge — a bottom-right toast when the latest ≥3 matches are
 // all losses AND the streak K/D collapsed >25% below the 30-day

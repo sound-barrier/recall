@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MatchRecord } from '@/api-client'
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 import { formatRangeBound } from '@/match/match-time-helpers'
 
 // The set-dossier header: the eyebrow + headline + subline and the

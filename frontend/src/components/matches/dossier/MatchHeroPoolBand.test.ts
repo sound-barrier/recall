@@ -4,7 +4,7 @@ import { screen, within } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 
 import type { MatchRecord } from '@/api-client'
-import type { NarrowApi } from '@/composables/matches/useNarrow'
+import type { NarrowApi } from '@/composables/matches/narrow/useNarrow'
 import { renderWidget } from '@/test-utils'
 
 // Stub reference data so hero→role is deterministic (no fetch, no singleton

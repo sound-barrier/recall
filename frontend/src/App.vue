@@ -17,7 +17,7 @@ import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { CoachLabels } from '@/components/coach/coach-room-props'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useAppKeyboard } from '@/composables/app/useAppKeyboard'
 import { useAppBoot } from '@/composables/app/useAppBoot'
 import { useServerEvents } from '@/composables/app/useServerEvents'
@@ -27,7 +27,7 @@ import AppOverlays from '@/components/app/AppOverlays.vue'
 import SystemAlertBanner from '@/components/app/SystemAlertBanner.vue'
 import ErrorBanner from '@/components/app/ErrorBanner.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
-import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
+import UpdateReminderBanner from '@/components/update/UpdateReminderBanner.vue'
 
 // The floating overlay cluster (modals, detail panel, lightbox, toasts, tour)
 // lives in AppOverlays — it owns those lazy-loaded chunks now.
@@ -44,8 +44,8 @@ import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 // (the common case on throttled networks). On LAN / local the
 // chunk lands before the delay elapses and the fallback never
 // renders, keeping the snappy-feel intact.
-import ViewLazyFallback from '@/components/shared/ViewLazyFallback.vue'
-import ViewLoadError from '@/components/shared/ViewLoadError.vue'
+import ViewLazyFallback from '@/components/app/ViewLazyFallback.vue'
+import ViewLoadError from '@/components/app/ViewLoadError.vue'
 const VIEW_LAZY_DELAY = 220
 function lazyView(loader: () => Promise<{ default: Component }>) {
   return defineAsyncComponent({

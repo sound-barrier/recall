@@ -2,7 +2,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { recentMatchesSchema, type RecentMatchesConfig } from '@/dashboard/widgets'
-import { resultJudgment } from '@/match/match-heatmap-helpers'
+import { resultJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<RecentMatchesConfig>('recent-5-matches', recentMatchesSchema)

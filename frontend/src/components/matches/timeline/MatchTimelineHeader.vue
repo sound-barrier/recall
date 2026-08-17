@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { bumpTally, newTally } from '@/match/match-dossier-tally'
-import { useWindowMonths } from '@/composables/matches/useWindowMonths'
+import { bumpTally, newTally } from '@/match/dossier/match-dossier-tally'
+import { useWindowMonths } from '@/composables/matches/dossier/useWindowMonths'
 import BandHeaderControls from '@/components/matches/dossier/BandHeaderControls.vue'
 import MatchHeatmapHeader from '@/components/matches/timeline/MatchHeatmapHeader.vue'
 import MatchSparklineBrush from '@/components/matches/timeline/MatchSparklineBrush.vue'

@@ -8,7 +8,7 @@
 // Esc-to-close + return-focus. keepOpenOnFieldEscape so Esc in a Settings text
 // input (profile rename / new-profile) blurs the field instead of closing.
 import { toRef } from 'vue'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import SettingsSections from '@/components/settings/SettingsSections.vue'
 
 const props = defineProps<{ open: boolean }>()

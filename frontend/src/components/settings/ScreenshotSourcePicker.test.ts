@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import type { NamedCandidate, NamedCandidateStats } from '@/api'
 import { setApiBacking } from '@/api-client'
-import { activeCalloutId } from '@/composables/shared/useContextualCallout'
+import { activeCalloutId } from '@/composables/onboarding/useContextualCallout'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
 
 function mk(over: Partial<NamedCandidate>): NamedCandidate {

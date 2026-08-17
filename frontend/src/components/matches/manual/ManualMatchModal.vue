@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, provide, ref, toRef } from 'vue'
 import { ApiError, CreateManualMatch, type MatchRecord } from '@/api-client'
-import { useManualMatchForm, manualMatchFormKey, type ManualMatchMode } from '@/composables/matches/useManualMatchForm'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useManualMatchForm, manualMatchFormKey, type ManualMatchMode } from '@/composables/matches/manual/useManualMatchForm'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import ManualMatchForm from '@/components/matches/manual/ManualMatchForm.vue'
 

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, watch } from 'vue'
 
 import { useDashboardLayout } from '@/composables/dashboard/useDashboardLayout'
-import { useSectionLayout, type SectionDef } from '@/composables/matches/useSectionLayout'
+import { useSectionLayout, type SectionDef } from '@/composables/matches/dossier/useSectionLayout'
 import { WIDGET_REGISTRY, type WidgetDef, type WidgetShape } from '@/dashboard/widgets'
 
 // Compact "Add / Reset" dropdown for the dossier. Lists everything the

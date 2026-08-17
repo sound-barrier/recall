@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue'
 
-import { useActiveProfile } from '@/composables/shared/useActiveProfile'
+import { useActiveProfile } from '@/composables/profile/useActiveProfile'
 import { useCoachStore } from '@/stores/coach'
 
 // The ONE gate every write asks before it runs. Two independent locks live

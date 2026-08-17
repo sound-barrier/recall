@@ -7,9 +7,9 @@ import {
   aggOptionsFor,
   useMatchPivot,
   type PivotZone,
-} from '@/composables/matches/useMatchPivot'
-import type { PivotField } from '@/match/pivot-fields'
-import { aggLabelOf } from '@/match/pivot-aggregate'
+} from '@/composables/matches/pivot/useMatchPivot'
+import type { PivotField } from '@/match/pivot/pivot-fields'
+import { aggLabelOf } from '@/match/pivot/pivot-aggregate'
 import PivotShelf from '@/components/matches/pivot/PivotShelf.vue'
 import PivotCrosstab from '@/components/matches/pivot/PivotCrosstab.vue'
 import PivotFieldChip, {

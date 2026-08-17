@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, onBeforeUnmount } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
+import { useMatchHeatmap } from '@/composables/matches/timeline/useMatchHeatmap'
 import { bandEndpoints } from '@/components/matches/timeline/sparkline-band'
 
 // Brushable bar sparkline — answers "when did I play, and how much?".

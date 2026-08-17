@@ -1,11 +1,11 @@
-import { LADDER_MAX } from '@/match/elo-model'
+import { LADDER_MAX } from '@/match/elo/elo-model'
 
 import { describe, it, expect, afterEach } from 'vitest'
 
 import { buildEloProjectionOption, buildSkillCurveOption } from '@/components/elo/elo-chart-options'
-import type { ProjectionCurves } from '@/match/elo-model'
-import type { SeasonSim } from '@/match/elo-simulate'
-import type { SkillCurve } from '@/match/elo-kalman'
+import type { ProjectionCurves } from '@/match/elo/elo-model'
+import type { SeasonSim } from '@/match/elo/elo-simulate'
+import type { SkillCurve } from '@/match/elo/elo-kalman'
 
 const CURVES: ProjectionCurves = {
   games: [0, 10, 20],

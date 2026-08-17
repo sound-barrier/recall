@@ -2,10 +2,10 @@
 // ECharts options. This is the presentation seam — it knows about ECharts;
 // the data layer does not.
 import type { TrendOption } from '@/components/matches/trends/echarts'
-import { LADDER_MAX } from '@/match/elo-model'
-import { TIER_ORDER, DIVISIONS_PER_TIER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/match-trends-helpers'
-import { heatmapCellClass } from '@/match/match-heatmap-helpers'
-import { themeColor, withAlpha } from '@/match/theme-colors'
+import { LADDER_MAX } from '@/match/elo/elo-model'
+import { TIER_ORDER, DIVISIONS_PER_TIER, type RankPoint, type RankSeries, type Tier, type TrendSeries, type WinrateGrid } from '@/match/trends/match-trends-helpers'
+import { heatmapCellClass } from '@/match/trends/match-heatmap-helpers'
+import { themeColor, withAlpha } from '@/match/trends/theme-colors'
 
 // Consistent colors for known series keys so a line means the same thing
 // across charts: a Tank line is the same blue on every rank/win-rate chart,
