@@ -15,8 +15,8 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 	err = tx.QueryRow(
 		`INSERT INTO rank_screenshots (
 			filename, match_key, screenshots_dir_id, parsed_at,
-			rank, level, rank_progress, change_percent, result
-		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?)
+			rank, level, rank_progress, change_percent, result, rank_percentile
+		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -24,11 +24,15 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 			level          = excluded.level,
 			rank_progress  = excluded.rank_progress,
 			change_percent = excluded.change_percent,
-			result         = excluded.result
+			result         = excluded.result,
+			-- In the SET clause on purpose: a re-parse whose caption is no
+			-- longer readable must write NULL back, not leave a stale
+			-- percentile attached to a row that no longer supports it.
+			rank_percentile = excluded.rank_percentile
 		RETURNING id`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
 		r.Rank, r.Level, r.RankProgress, r.ChangePercent,
-		r.Result,
+		r.Result, r.RankPercentile,
 	).Scan(&id)
 	if err != nil {
 		return err
@@ -63,7 +67,7 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 func loadRanks(q querier) ([]RankRow, error) {
 	rows, err := q.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
-		rank, level, rank_progress, change_percent, result
+		rank, level, rank_progress, change_percent, result, rank_percentile
 		FROM rank_screenshots ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -75,13 +79,19 @@ func loadRanks(q querier) ([]RankRow, error) {
 	for rows.Next() {
 		var r RankRow
 		var dirID sql.NullInt64
+		var percentile sql.NullInt64
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&r.Rank, &r.Level, &r.RankProgress, &r.ChangePercent, &r.Result,
+			&percentile,
 		); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64
+		if percentile.Valid {
+			pct := int(percentile.Int64)
+			r.RankPercentile = &pct
+		}
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {

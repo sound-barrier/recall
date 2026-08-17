@@ -56,6 +56,7 @@ var (
 	IsRankScreenshot      = isRankScreenshot
 	IsPersonalScreenshot  = isPersonalScreenshot
 	ParseRank             = parseRank
+	ExtractRankPercentile = extractRankPercentile
 	ParseSummary          = parseSummary
 	ParsePersonal         = parsePersonal
 	GetTesseractPath      = getTesseractPath

@@ -24,6 +24,13 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 	mustNoErr(t, err)
 	_, err = d.Exec(`CREATE TABLE user_match_data (match_key TEXT PRIMARY KEY)`)
 	mustNoErr(t, err)
+	// Every table the registry names must exist here. ensureAdditiveColumns
+	// deliberately does NOT skip a missing table — that would turn a typo'd
+	// table name into a permanent silent no-op — so this fixture has to keep
+	// pace with additiveColumns.
+	_, err = d.Exec(`CREATE TABLE rank_screenshots (
+		id INTEGER PRIMARY KEY, filename TEXT, rank TEXT)`)
+	mustNoErr(t, err)
 
 	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
 		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)
@@ -33,17 +40,32 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 		t.Fatalf("ensureAdditiveColumns: %v", err)
 	}
 	for _, tbl := range []string{"summary_screenshots", "user_match_data"} {
-		if has, err := db.ColumnExists(d, tbl, "played_at_utc"); err != nil || !has {
-			t.Errorf("%s.played_at_utc missing after ensure (has=%v err=%v)", tbl, has, err)
-		}
+		assertHasColumn(t, d, tbl, "played_at_utc")
 	}
 	// An insert referencing the new column now works.
 	if _, err := d.Exec(`INSERT INTO summary_screenshots (filename, played_at_utc) VALUES ('a.png', '2026-01-15T19:00:00Z')`); err != nil {
 		t.Errorf("insert into added column: %v", err)
 	}
 
+	// The registry is walked whole, not just its first entry: a second table's
+	// column has to arrive too, or a later addition could silently do nothing.
+	assertHasColumn(t, d, "rank_screenshots", "rank_percentile")
+
 	// Idempotent: a second run is a no-op, not a "duplicate column" error.
 	if err := db.EnsureAdditiveColumns(d); err != nil {
 		t.Errorf("second ensure should be a no-op: %v", err)
+	}
+}
+
+// assertHasColumn fails unless table.column exists.
+func assertHasColumn(t *testing.T, d *sql.DB, table, column string) {
+	t.Helper()
+	has, err := db.ColumnExists(d, table, column)
+	if err != nil {
+		t.Errorf("%s.%s: %v", table, column, err)
+		return
+	}
+	if !has {
+		t.Errorf("%s.%s missing after ensureAdditiveColumns", table, column)
 	}
 }

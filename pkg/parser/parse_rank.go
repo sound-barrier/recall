@@ -70,7 +70,9 @@ func isRankScreenshot(img image.Image, work string) (bool, error) {
 func parseRank(img image.Image, work string) (*MatchResult, error) {
 	res := &MatchResult{Playlist: "competitive", RankScreen: true}
 	res.Result = rankBannerResult(img, work)
-	res.Rank, res.Level = rankTierLevel(img, work)
+	rank, level, tierBand := rankTierLevel(img, work)
+	res.Rank, res.Level = rank, level
+	res.RankPercentile = extractRankPercentile(tierBand)
 	res.RankProgress = rankProgressPct(img, work)
 	res.ChangePercent = rankChangePct(img, work)
 	res.Modifiers = rankModifierPills(img, work)
@@ -113,12 +115,18 @@ func rankBannerResult(img image.Image, work string) string {
 // center crop garbles the tier on some captures ("GOLD" → "GOD" / "6010" /
 // "solo"), so extractRank returns no rank and the whole screen is
 // misclassified as summary/unknown.
-func rankTierLevel(img image.Image, work string) (string, int) {
+// The returned bandText is the PRIMARY (PSM 11) pass over this band. It is
+// handed back rather than discarded because the season-4 percentile caption
+// ("HIGHER RANKED THAN 57% OF PLAYERS") renders inside this same crop and is
+// legible in it on every capture in the corpus — so reading the percentile
+// costs no additional Tesseract invocation, which at ~8 OCR passes per rank
+// screen is worth more than a tidier signature.
+func rankTierLevel(img image.Image, work string) (rank string, level int, bandText string) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 	tierRect := image.Rect(W*10/100, H*55/100, W*70/100, H*78/100)
 	tierText, _ := ocrInverted(img, tierRect, ocrSpec{workDir: work, name: "rank_tier", psm: "11", whitelist: ""})
-	rank, level := extractRank(tierText)
+	rank, level = extractRank(tierText)
 	// The 2026-07 UI renders the division caption in a stylized face whose
 	// numerals the sparse pass misreads as letters ("GOLD 3" → "GOLD J",
 	// "PLATINUM 5" → "PI ATINUM J" — and J is ambiguous between 3 and 5, so
@@ -134,13 +142,39 @@ func rankTierLevel(img image.Image, work string) (string, int) {
 			rank, level = r2, l2
 		}
 	}
-	return rank, level
+	return rank, level, tierText
 }
 
 var (
 	rankProgressRe = regexp.MustCompile(`(-?\d{1,3})\s*%`)
 	rankChangeRe   = regexp.MustCompile(`\+\s*(\d{1,3})\s*%`)
+	// Anchored on the WORDS, not on "some percentage in this band". The band
+	// also holds "RANK PROGRESS: 67%", which sits on the same row and would win
+	// a bare `(\d+)%` scan. RANKED is spelled loosely because the caption's tail
+	// clips at the crop's right edge ("HIGHER RANKED THAN 57% ¢") and OCR
+	// wobbles on the surrounding glyphs, but the two words either side of the
+	// number are what make the match unambiguous.
+	rankPercentileRe = regexp.MustCompile(`(?i)HIGHER\s+RANKED\s+THAN\s+(\d{1,3})\s*%`)
 )
+
+// extractRankPercentile reads the season-4 "HIGHER RANKED THAN 57% OF PLAYERS"
+// caption — the share of the population the player is above.
+//
+// nil means the screen did not show one, which is a real state rather than a
+// failure: the caption is absent for the whole of placements, where there is no
+// settled rank to be a percentile of. That is why the field is a pointer all
+// the way to the database — a 0 here would claim the player is above nobody.
+func extractRankPercentile(bandText string) *int {
+	m := rankPercentileRe.FindStringSubmatch(bandText)
+	if m == nil {
+		return nil
+	}
+	pct, err := strconv.Atoi(m[1])
+	if err != nil || pct < 0 || pct > 100 {
+		return nil
+	}
+	return &pct
+}
 
 // rankProgressPct reads the rank-progress bar's "RANK PROGRESS: 21%" caption
 // value. It can be NEGATIVE on a demotion screen ("-19%"); it's thin, colored

@@ -35,6 +35,7 @@ func applySchema(d *sql.DB) error {
 var additiveColumns = []struct{ table, column, ddl string }{
 	{"summary_screenshots", "played_at_utc", "TEXT"},
 	{"user_match_data", "played_at_utc", "TEXT"},
+	{"rank_screenshots", "rank_percentile", "INTEGER"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

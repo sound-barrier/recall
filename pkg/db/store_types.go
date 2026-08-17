@@ -192,6 +192,10 @@ type RankRow struct {
 	RankProgress     int
 	ChangePercent    int
 	Result           string
+	// RankPercentile is the season-4 "HIGHER RANKED THAN N% OF PLAYERS"
+	// reading. nil = the screen carried no such caption (placements, and
+	// everything before season 4), which is not the same as 0.
+	RankPercentile *int
 
 	Modifiers []string
 	SR        []HeroSR

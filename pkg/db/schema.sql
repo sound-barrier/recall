@@ -173,7 +173,13 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   level INTEGER NOT NULL DEFAULT 0,
   rank_progress INTEGER NOT NULL DEFAULT 0,
   change_percent INTEGER NOT NULL DEFAULT 0,
-  result TEXT NOT NULL DEFAULT ''
+  result TEXT NOT NULL DEFAULT '',
+  -- Season-4 "HIGHER RANKED THAN 57% OF PLAYERS". NULLABLE, unlike its
+  -- NOT NULL DEFAULT 0 siblings above: the caption is absent on every
+  -- placement screen and on every capture predating season 4, and 0 would
+  -- assert the player is ranked above nobody rather than "not reported".
+  -- Nullable is also what ensureAdditiveColumns can add to an existing DB.
+  rank_percentile INTEGER
 ) STRICT;
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots (match_key, parsed_at);

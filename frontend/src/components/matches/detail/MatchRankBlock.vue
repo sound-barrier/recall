@@ -33,6 +33,16 @@ const ow = useOWData()
       <span v-if="record.data.change_percent" class="rank-change">+{{ record.data.change_percent }}%</span>
       <span v-for="m in record.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
     </div>
+    <!-- Season-4 population share. `!= null` rather than a truthiness test:
+         0 is a real reading ("above nobody"), and `v-if="…rank_percentile"`
+         would silently hide it — the bug the sibling progress/change lines
+         above still carry. Absent stays absent: a placement screen reports no
+         percentile, and printing 0% there would state something false rather
+         than nothing. The wording is carried in the text because "57%" beside
+         "67% progress" is two bare percentages the reader has to tell apart. -->
+    <div v-if="record.data.rank_percentile != null" class="rank-percentile">
+      Higher ranked than <strong>{{ record.data.rank_percentile }}%</strong> of players
+    </div>
     <!-- One entry per hero — a real list so the per-hero grouping (hero /
          SR / delta belong together) and the reading ORDER are carried by
          the accessibility tree, not by the flex layout alone. -->
@@ -132,6 +142,21 @@ const ow = useOWData()
   font-size: var(--type-sm);
   color: var(--text-dim);
   font-feature-settings: "tnum";
+}
+
+/* A sentence, not a stat chip: it sits on its own line below the tier row so
+   its "57%" is never read as a second reading of the same thing the
+   progress chip beside it reports. */
+.rank-percentile {
+  margin-top: var(--space-1);
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+}
+
+.rank-percentile strong {
+  font-family: var(--mono);
+  font-feature-settings: "tnum";
+  color: var(--text);
 }
 
 .rank-change {

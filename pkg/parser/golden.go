@@ -93,6 +93,12 @@ type RankGolden struct {
 	ChangePercent int      `json:"change_percent"`
 	Modifiers     []string `json:"modifiers,omitempty"`
 	SR            []HeroSR `json:"sr,omitempty"`
+	// Appended at the END on purpose: MarshalIndent follows declaration order,
+	// so a field inserted mid-struct reflows all 37 committed rank goldens.
+	// omitempty because nil is meaningful here — a placement screen genuinely
+	// has no percentile, and emitting "rank_percentile": null on every
+	// pre-season-4 golden would be noise rather than information.
+	RankPercentile *int `json:"rank_percentile,omitempty"`
 }
 
 // AllHeroesGolden is the golden projection of the recognized-but-unparsed
@@ -151,16 +157,17 @@ func ToGolden(r *MatchResult) any {
 		return &AllHeroesGolden{AllHeroes: true}
 	case "rank":
 		return &RankGolden{
-			Playlist:      r.Playlist,
-			Result:        r.Result,
-			Hero:          r.Hero,
-			Role:          r.Role,
-			Rank:          r.Rank,
-			Level:         r.Level,
-			RankProgress:  r.RankProgress,
-			ChangePercent: r.ChangePercent,
-			Modifiers:     r.Modifiers,
-			SR:            r.SR,
+			Playlist:       r.Playlist,
+			Result:         r.Result,
+			Hero:           r.Hero,
+			Role:           r.Role,
+			Rank:           r.Rank,
+			Level:          r.Level,
+			RankProgress:   r.RankProgress,
+			ChangePercent:  r.ChangePercent,
+			Modifiers:      r.Modifiers,
+			SR:             r.SR,
+			RankPercentile: r.RankPercentile,
 		}
 	default:
 		return r
