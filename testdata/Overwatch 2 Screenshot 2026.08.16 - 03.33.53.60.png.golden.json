@@ -1,0 +1,31 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "defeat",
+    "hero": "kiriko",
+    "role": "support",
+    "rank": "platinum",
+    "level": 2,
+    "rank_progress": 67,
+    "change_percent": 0,
+    "modifiers": [
+      "reversal",
+      "variance",
+      "defeat"
+    ],
+    "sr": [
+      {
+        "hero": "kiriko",
+        "sr": 1773,
+        "change": 0
+      },
+      {
+        "hero": "juno",
+        "sr": 1950,
+        "change": 0
+      }
+    ],
+    "rank_percentile": 57
+  }
+}

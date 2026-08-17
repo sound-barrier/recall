@@ -1,0 +1,26 @@
+{
+  "screenshot_type": "rank",
+  "result": {
+    "playlist": "competitive",
+    "result": "victory",
+    "hero": "lucio",
+    "role": "support",
+    "rank": "platinum",
+    "level": 1,
+    "rank_progress": 7,
+    "change_percent": 40,
+    "modifiers": [
+      "uphill battle",
+      "variance",
+      "victory"
+    ],
+    "sr": [
+      {
+        "hero": "lucio",
+        "sr": 2453,
+        "change": 0
+      }
+    ],
+    "rank_percentile": 59
+  }
+}

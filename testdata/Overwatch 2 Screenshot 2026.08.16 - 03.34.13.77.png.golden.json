@@ -1,0 +1,25 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "support",
+    "hero": "kiriko",
+    "heroes_played": [
+      {
+        "hero": "kiriko",
+        "percent_played": 54,
+        "play_time": "09:25",
+        "stats": {
+          "critical_hit_accuracy": 17,
+          "kitsune_rush_assists": 0,
+          "kunai_kills": 9,
+          "negative_effects_cleansed": 7,
+          "players_saved": 3,
+          "weapon_accuracy": 30
+        }
+      },
+      {
+        "hero": "juno"
+      }
+    ]
+  }
+}

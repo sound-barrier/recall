@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "esperanca",
+    "game_mode": "push",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 12,
+    "assists": 10,
+    "deaths": 3,
+    "result": "victory",
+    "final_score": "1-0",
+    "date": "2026-08-16",
+    "finished_at": "02:30",
+    "game_length": "7:55",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "07:54"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 12,
+        "avg_per_10min": 15.16
+      },
+      "assists": {
+        "total": 10,
+        "avg_per_10min": 12.63
+      },
+      "deaths": {
+        "total": 3,
+        "avg_per_10min": 3.79
+      }
+    }
+  }
+}
