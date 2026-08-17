@@ -33,6 +33,19 @@ const exportSchemaV1 = "recall-export/v1"
 // BundleSchemaV1 with it, stay put when the layer grows.
 const exportSchemaV2 = "recall-export/v2"
 
+// exportSchemaV3 marks a bundle whose rank rows can distinguish "the screenshot
+// did not report this" from a real reading of 0.
+//
+// The version exists because db.RankRow carries no json tags, so a v1/v2 bundle
+// serialized the Go field names with plain ints: every rank row wrote
+// "RankProgress":0,"ChangePercent":0, including the ones that stored 0 only
+// because the caption was never read. Deserializing that into the pointers
+// those fields are now would turn each fabricated zero into a confident
+// measurement — precisely the carry-forward the store refuses to open an old
+// database to prevent. An importer cannot tell the two apart in a v1/v2
+// payload, so it drops both to nil; this version is how it knows to.
+const exportSchemaV3 = "recall-export/v3"
+
 // BundleSchemaV1 is the wire-schema identifier the bundle's
 // manifest carries. Bumping the constant is a breaking change to
 // the bundle layout; the inner `data.json` keeps `exportSchemaV1`
@@ -271,7 +284,7 @@ func bundleScreenshotMap(t parentTables) map[string]string {
 // ScreenshotsDirID to 0 (use configured dir).
 func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, exportedAt, version string, now time.Time) error {
 	dataDoc := DataV2{
-		Schema:        exportSchemaV2,
+		Schema:        exportSchemaV3,
 		ExportedAt:    exportedAt,
 		RecallVersion: version,
 		Summaries:     t.summaries,
@@ -448,4 +461,34 @@ func bundleWriteRaw(zw *zip.Writer, name string, body []byte, mt time.Time) erro
 		return err
 	}
 	return nil
+}
+
+// supportedExportSchema reports whether this build can read a data.json of that
+// vintage. One list, so the validator and the reader can never disagree about
+// what is importable.
+func supportedExportSchema(schema string) bool {
+	switch schema {
+	case exportSchemaV1, exportSchemaV2, exportSchemaV3:
+		return true
+	default:
+		return false
+	}
+}
+
+// dropPreV3RankReadings clears the rank readings a pre-v3 bundle cannot express
+// honestly. Those payloads wrote 0 both for "the meter did not move" and for
+// "the caption never read", so every value is suspect; nil says the bundle did
+// not report it, which is the only true statement available. Re-parsing the
+// screenshots is what recovers the real numbers.
+func dropPreV3RankReadings(schema string, ranks []db.RankRow) []db.RankRow {
+	if schema == exportSchemaV3 {
+		return ranks
+	}
+	out := make([]db.RankRow, len(ranks))
+	copy(out, ranks)
+	for i := range out {
+		out[i].RankProgress = nil
+		out[i].ChangePercent = nil
+	}
+	return out
 }

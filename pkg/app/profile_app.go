@@ -264,6 +264,14 @@ func (a *App) activateAndReload(name string) error {
 	}
 	defer a.endParse()
 
+	// Remembered BEFORE the swap so a failure can put the app back where it
+	// was. Opening the target can fail for reasons the caller cannot fix by
+	// retrying — a database whose column shape this build refuses, most of all
+	// — and without this the store is left nil while the BROKEN profile stays
+	// recorded as active, so every later call nil-derefs and every relaunch
+	// reopens the same unopenable file.
+	previous := a.profiles.Active()
+
 	a.closeActiveStore()
 
 	if err := a.profiles.Activate(name); err != nil {
@@ -279,6 +287,7 @@ func (a *App) activateAndReload(name string) error {
 	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
 	if err != nil {
 		applog.Subsystem("profiles").Error("open db", "name", applog.Scrub(name), "err", err)
+		a.revertToProfile(previous)
 		return fmt.Errorf("profiles: open db for %q: %w", name, err)
 	}
 	a.store = s
@@ -287,6 +296,28 @@ func (a *App) activateAndReload(name string) error {
 		a.startWatching()
 	}
 	return nil
+}
+
+// revertToProfile puts the app back on a profile whose database it could
+// already open, after a switch failed partway through. Best-effort by nature —
+// if the previous profile cannot be reopened either there is nothing further to
+// try — but the common case (the TARGET is broken, the source was fine) leaves
+// the user on a working app with an error message instead of a dead one.
+func (a *App) revertToProfile(previous string) {
+	if previous == "" || previous == a.profiles.Active() {
+		return
+	}
+	if err := a.profiles.Activate(previous); err != nil {
+		applog.Subsystem("profiles").Error("revert activate", "name", applog.Scrub(previous), "err", err)
+		return
+	}
+	a.reloadProfileSettings()
+	s, err := db.NewSQLStore(filepath.Join(a.dataDir(), "db", "recall.db"))
+	if err != nil {
+		applog.Subsystem("profiles").Error("revert open db", "name", applog.Scrub(previous), "err", err)
+		return
+	}
+	a.store = s
 }
 
 // closeActiveStore tears down everything tied to the OLD profile before its

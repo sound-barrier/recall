@@ -21,15 +21,19 @@ const currentRank = dossier.currentRank
         <span
           class="bd-fill"
           role="progressbar"
-          :aria-valuenow="Math.round(Math.max(0, r.progress))"
+          :aria-valuenow="r.progress == null ? undefined : Math.round(Math.max(0, r.progress))"
           aria-valuemin="0"
           aria-valuemax="100"
           :aria-label="`${r.label} progress`"
-          :style="{ width: Math.max(0, r.progress) + '%' }"
+          :style="{ width: Math.max(0, r.progress ?? 0) + '%' }"
         />
         <span class="bd-time cap">{{ r.tier }} {{ r.level }}</span>
       </span>
-      <span class="bd-stats">{{ r.progress }}%</span>
+      <!-- An unread progress prints an em dash, not "0%". The bar above goes
+           INDETERMINATE for the same reason: an aria-valuenow of 0 would tell a
+           screen reader the player sits at the bottom of the division, which the
+           screenshot never said. -->
+      <span class="bd-stats">{{ r.progress == null ? '—' : `${r.progress}%` }}</span>
     </li>
   </ul>
   <p v-else class="cr-empty">

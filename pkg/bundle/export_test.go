@@ -7,3 +7,11 @@ package bundle
 // var-not-const test seam import_archive.go documents. Compiled only under
 // test; widens no real API.
 var MaxZipEntryBytes = &maxZipEntryBytes
+
+// DropPreV3RankReadings + the schema constants, so the external test can pin
+// the rule that a pre-v3 bundle's rank readings are not trustworthy.
+var (
+	DropPreV3RankReadings = dropPreV3RankReadings
+	ExportSchemaV2        = exportSchemaV2
+	ExportSchemaV3        = exportSchemaV3
+)

@@ -69,5 +69,22 @@ func ValidateBackupFile(path string) error {
 	if err != nil {
 		return fmt.Errorf("%w: schema probe: %w", ErrInvalidBackup, err)
 	}
+
+	// Reject a snapshot whose COLUMN SHAPE this build can no longer open, while
+	// the live database is still untouched.
+	//
+	// Without this the restore is a one-way door that destroys data: a backup
+	// taken before a column shed its NOT NULL passes both checks above — the
+	// vacuum preserves nullability, integrity_check says ok, the sentinel table
+	// is there — so StageRestore accepts it, RestoreDatabase renames it over the
+	// live file, and only THEN does reopening fail. The previous database is
+	// gone and the profile can never be opened again.
+	//
+	// The path is not hypothetical: the startup refusal's own advice is to back
+	// up and clear, which invites exactly this sequence, and the profile's
+	// backups/ directory is full of auto-* snapshots written by older builds.
+	if err := ensureNoStaleNotNull(conn); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidBackup, err)
+	}
 	return nil
 }

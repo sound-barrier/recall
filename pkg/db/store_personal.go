@@ -47,7 +47,10 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 
 func loadPersonals(q querier) ([]PersonalRow, error) {
 	rows, err := q.Query(
-		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id, hero, hero_raw
+		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id, hero, hero_raw,
+		-- COALESCE: a row written before the column existed reports 0, which is
+		-- stale by definition — the same reading NULL carries in StaleParseCount.
+		COALESCE(parser_generation, 0)
 		FROM personal_screenshots ORDER BY id`,
 	)
 	if err != nil {
@@ -60,7 +63,7 @@ func loadPersonals(q querier) ([]PersonalRow, error) {
 	for rows.Next() {
 		var r PersonalRow
 		var dirID sql.NullInt64
-		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &r.Hero, &r.HeroRaw); err != nil {
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &r.Hero, &r.HeroRaw, &r.ParserGeneration); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64

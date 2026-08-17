@@ -114,7 +114,9 @@ export function useEloCalculator(opts: EloCalcOpts) {
     if (s.rank) {
       currentTier.value = s.rank.tier
       currentDivision.value = s.rank.level
-      currentProgress.value = Math.max(0, s.rank.progress)
+      // Same rule as the seed: the picker needs a number, and the bottom of the
+      // known division is where an unread progress starts.
+      currentProgress.value = Math.max(0, s.rank.progress ?? 0)
     }
     applyTargetDefault(s.rank?.tier ?? currentTier.value)
     winRatePct.value = s.winRate === null ? null : round1(s.winRate * 100)

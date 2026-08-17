@@ -58,7 +58,10 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 func loadTeams(q querier) ([]TeamsRow, error) {
 	rows, err := q.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
-		eliminations, assists, deaths, damage, healing, mitigation, queue_type
+		eliminations, assists, deaths, damage, healing, mitigation, queue_type,
+		-- COALESCE: a row written before the column existed reports 0, which is
+		-- stale by definition — the same reading NULL carries in StaleParseCount.
+		COALESCE(parser_generation, 0)
 		FROM teams_screenshots ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -73,7 +76,7 @@ func loadTeams(q querier) ([]TeamsRow, error) {
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&r.Eliminations, &r.Assists, &r.Deaths,
-			&r.Damage, &r.Healing, &r.Mitigation, &r.QueueType,
+			&r.Damage, &r.Healing, &r.Mitigation, &r.QueueType, &r.ParserGeneration,
 		); err != nil {
 			return nil, err
 		}

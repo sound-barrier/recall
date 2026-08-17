@@ -23,7 +23,10 @@ func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 
 func loadUnknowns(q querier) ([]UnknownRow, error) {
 	rows, err := q.Query(
-		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id
+		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id,
+		-- COALESCE: a row written before the column existed reports 0, which is
+		-- stale by definition — the same reading NULL carries in StaleParseCount.
+		COALESCE(parser_generation, 0)
 		FROM unknown_screenshots ORDER BY id`,
 	)
 	if err != nil {
@@ -34,7 +37,7 @@ func loadUnknowns(q querier) ([]UnknownRow, error) {
 	for rows.Next() {
 		var r UnknownRow
 		var dirID sql.NullInt64
-		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID); err != nil {
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &r.ParserGeneration); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64
