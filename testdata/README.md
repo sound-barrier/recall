@@ -140,6 +140,39 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       states, two Platinum-5 captures, and one background-degraded tier band
       (19.11.20.18) that must stay an honest partial rank row rather than
       landing on the Unknown tab.
+- [x] rank screen — **2026-08 season-4 UI** (×6, 2560×1440), split across the
+      two states the season introduced:
+  - **Post-placement, ×3** — the only carriers of the new
+    `HIGHER RANKED THAN N% OF PLAYERS` percentile caption (57 / 59 / 61),
+    spanning a demotion (`-32%`), a promotion into PLATINUM 1 (`+40%`) and a
+    plain win (`+37%`). They pin: the percentile read itself, which is
+    anchored on the WORDS because `RANK PROGRESS: N%` sits on the SAME ROW and
+    a bare `(\d+)%` scan takes the wrong one — plausibly, since both are
+    0-100; and the `VARIANCE` chip, new this season and silently dropped by
+    the closed vocabulary until it was added.
+  - **Placement, ×3** — the phase that shows `PREDICTED RANK` and
+    `PLACEMENT PROGRESS: n/10` instead of a settled pill, and so never says
+    "RANK PROGRESS". These were undetected ENTIRELY: rank probes first, every
+    other probe declined, and the file fell through to `parseTeams`, whose row
+    OCR errors rather than declining — aborting the file, so a placement
+    capture produced no rank row at all and surfaced only as "Failed to read".
+    The three span the first placement (1/10, whose tier band reads nothing
+    and must stay an honest partial rather than a fabricated row), a clean
+    mid-run read (4/10 → PLATINUM 4), and the 10/10 completion that adds a
+    `PLACEMENT` tab to the nav.
+  - **Deliberately absent**: the capture whose rank text sits behind a
+    semi-transparent hero model. Its detector band OCRs to fragments (`SS: 3/`
+    is the only survivor), no anchor is recoverable, and fuzzy-matching that
+    would invite false positives on screens the rank probe must not claim. It
+    stays a "Failed to read" row, which is honest for a capture whose text is
+    genuinely obscured — and it could not be a fixture regardless, because the
+    golden test ERRORS on a parse failure rather than skipping, so one
+    unparseable image turns the whole corpus red.
+- [x] SUMMARY / TEAMS / PERSONAL — **2026-08 season-4 UI** (×3): Esperança
+      (diacritic, PUSH, 1-0), a TEAMS scoreboard with decorated nameplates and
+      player titles whose E/A/D agrees with its own SUMMARY sibling (14/27/12 —
+      the cross-check that catches a mis-picked highlighted row), and a Kiriko
+      PERSONAL card.
 - [x] SUMMARY — 2026-07 UI history-browser variant (×6): two NEON JUNCTION
       games (regression pin for the "Neon Function" maps.yaml poisoning — OCR
       garble must snap to the real name, never be canonicalized as one), two
