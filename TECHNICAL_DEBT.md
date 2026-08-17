@@ -49,6 +49,34 @@ Reviewed and deliberately left, so a future pass doesn't burn effort churning
 them. Last re-evaluated **2026-07-06** — every bullet verified against source;
 changed bullets carry an inline re-evaluation note:
 
+- **What is left in `pkg/app`, and why it stays (2026-08-16).** The
+  decomposition took it from 54 files / 7,607 LOC to 47 / 5,673 via six leaf
+  packages (`pkg/sse`, `pkg/seed`, `pkg/matchedit`, `pkg/snapshot`,
+  `pkg/screenshot`, `pkg/release`), on the template the earlier carves set:
+  the leaf takes `db.Store` plus plain values, never `*App`. What remains is
+  the shell, and it is meant to remain. **The five mutex-guarded clusters**
+  (settings, tesseract, watcher, parse, coach session) each hold state the
+  lock exists to protect; moving the logic out from under the lock is how a
+  carve introduces a race that no test would show. **The parse pipeline** is
+  mutually recursive — carving it needs a ~10-method `ParseHost` interface,
+  which is the interface-pollution smell CLAUDE.md names, not a leaf package.
+  **`app_wails.go` / `app_server.go`** are the desktop-vs-server seam; the
+  pair is the point. **The nine `*_alias.go` shims** (358 LOC) are
+  load-bearing rather than residue: `pkg/cmd` maps 41 `app.Err*` sentinels to
+  problem+json statuses inline across seven files, and a sentinel re-declared
+  instead of aliased is a silent 500 with no compile error — pinned by
+  `pkg/cmd/problems_ladder_test.go`, whose own completeness gap let exactly
+  that hide until it was found by mutation.
+
+  **Tesseract stays for a security reason, not a cohesion one.**
+  `safePathChars` is the CodeQL-recognized sanitizer for two
+  `go/command-injection` + `go/path-injection` sinks living in two files, and
+  carving tesseract alone puts the sanitizer on the far side of a package
+  boundary from one of its sinks. That is a security review with its own
+  before/after CodeQL run, not a decomposition commit. **Revisit if** a
+  cluster's mutex disappears, or if the parse pipeline stops being mutually
+  recursive.
+
 - **Table library — @tanstack/vue-table evaluated, declined (2026-08-09).**
   Evaluated during the hey-api + TanStack Query migration. It would replace
   ~330–400 lines of stable, tested composables (`useTableSort`'s multi-key
