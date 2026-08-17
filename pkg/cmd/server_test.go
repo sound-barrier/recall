@@ -36,7 +36,7 @@ func newTestApp(t *testing.T, fs *dbtest.Fake) (*app.App, *http.ServeMux) {
 }
 
 // seedMatchKeys gives the fake a real screenshot row per key so the
-// per-match writers' unknown-key guard (pkg/app/match_key_guard.go) sees a
+// per-match writers' unknown-key guard (pkg/matchedit) sees a
 // match there. A sidecar write on a key the database has never seen is a
 // 404 by design, so a route test that only cares about the sidecar states
 // "these matches exist" with this instead of spelling out a corpus. Twin of

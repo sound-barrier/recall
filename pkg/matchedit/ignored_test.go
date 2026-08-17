@@ -1,4 +1,4 @@
-package app_test
+package matchedit_test
 
 import (
 	"errors"
@@ -6,14 +6,14 @@ import (
 	"slices"
 	"testing"
 
-	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/db/dbtest"
 	"recall/pkg/match"
+	"recall/pkg/matchedit"
 )
 
 func TestIgnoreScreenshot_RejectsEmptyFilename(t *testing.T) {
-	a := app.NewWithStore(&fakeStore{})
-	if err := a.IgnoreScreenshot(""); !errors.Is(err, app.ErrIgnoreFilenameRequired) {
+	if err := matchedit.IgnoreScreenshot(dbtest.New(), ""); !errors.Is(err, matchedit.ErrIgnoreFilenameRequired) {
 		t.Errorf("got err=%v, want ErrIgnoreFilenameRequired", err)
 	}
 }
@@ -26,28 +26,25 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 	// constructors rather than hand-concatenating the filename.
 	encU := match.NewUnmatchedMatchKey("sb.png").String()
 	encA := match.NewAmbiguousMatchKey("sb.png").String()
-	fs := &fakeStore{
+	fake := &dbtest.Fake{
 		Teams: []db.TeamsRow{
 			{Filename: "sb.png", MatchKey: encU},
 			{Filename: "sb2.png", MatchKey: encA},
 		},
 	}
-	a := app.NewWithStore(fs)
 
-	if err := a.IgnoreScreenshot("sb.png"); err != nil {
-		t.Fatalf("IgnoreScreenshot: %v", err)
-	}
+	mustNoErr(t, matchedit.IgnoreScreenshot(fake, "sb.png"))
 
 	// Filename is now in the suppress-list.
-	got, _ := fs.LoadIgnoredFilenames()
+	got, _ := fake.LoadIgnoredFilenames()
 	if !got["sb.png"] {
 		t.Errorf("filename not added to ignore set; got=%v", got)
 	}
 
 	// Both candidate keys went through HardDeleteMatch.
 	wantCalls := []string{encU, encA}
-	if !reflect.DeepEqual(fs.HardDeleteCalls, wantCalls) {
-		t.Errorf("HardDeleteCalls = %v, want %v", fs.HardDeleteCalls, wantCalls)
+	if !reflect.DeepEqual(fake.HardDeleteCalls, wantCalls) {
+		t.Errorf("HardDeleteCalls = %v, want %v", fake.HardDeleteCalls, wantCalls)
 	}
 }
 
@@ -59,7 +56,7 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 // shapes. Pre-fix: the card never disappeared because the actual
 // match-<ts> row stayed and the next reload re-rendered it.
 func TestIgnoreScreenshot_WipesTrackedMatchKeyTooNotJustUnmatchedAndAmbiguous(t *testing.T) {
-	fs := &fakeStore{
+	fake := &dbtest.Fake{
 		Summaries: []db.SummaryRow{
 			// A tracked match whose summary references "broken.png" but
 			// has no Map (the parser failed to OCR it) — surfaces on the
@@ -67,61 +64,67 @@ func TestIgnoreScreenshot_WipesTrackedMatchKeyTooNotJustUnmatchedAndAmbiguous(t 
 			{Filename: "broken.png", MatchKey: "match-2026-05-10T22-21-11", Map: ""},
 		},
 	}
-	a := app.NewWithStore(fs)
 
-	if err := a.IgnoreScreenshot("broken.png"); err != nil {
-		t.Fatalf("IgnoreScreenshot: %v", err)
-	}
+	mustNoErr(t, matchedit.IgnoreScreenshot(fake, "broken.png"))
 
 	// HardDeleteMatch must be called for the actual match_key too —
 	// not just the two name-shaped fallback keys.
 	wantSubset := "match-2026-05-10T22-21-11"
-	found := slices.Contains(fs.HardDeleteCalls, wantSubset)
-	if !found {
-		t.Errorf("HardDeleteCalls = %v, missing actual match key %q", fs.HardDeleteCalls, wantSubset)
+	if !slices.Contains(fake.HardDeleteCalls, wantSubset) {
+		t.Errorf("HardDeleteCalls = %v, missing actual match key %q", fake.HardDeleteCalls, wantSubset)
+	}
+}
+
+// A tracked key the lookup returns that is ALSO one of the two
+// name-shaped fallbacks is deleted once, not twice — the dedupe keeps
+// the audit log and the test expectations honest.
+func TestIgnoreScreenshot_DeletesEachKeyOnce(t *testing.T) {
+	encU := match.NewUnmatchedMatchKey("dupe.png").String()
+	fake := &dbtest.Fake{
+		Summaries: []db.SummaryRow{{Filename: "dupe.png", MatchKey: encU}},
+	}
+	mustNoErr(t, matchedit.IgnoreScreenshot(fake, "dupe.png"))
+	if n := slices.Index(fake.HardDeleteCalls, encU); n != 0 {
+		t.Fatalf("HardDeleteCalls = %v, want the unmatched key first", fake.HardDeleteCalls)
+	}
+	if got := slices.Contains(fake.HardDeleteCalls[1:], encU); got {
+		t.Errorf("HardDeleteCalls = %v, deleted the same key twice", fake.HardDeleteCalls)
 	}
 }
 
 func TestIgnoreScreenshot_IsIdempotent(t *testing.T) {
-	fs := &fakeStore{}
-	a := app.NewWithStore(fs)
-	if err := a.IgnoreScreenshot("dup.png"); err != nil {
-		t.Fatalf("first ignore: %v", err)
-	}
-	if err := a.IgnoreScreenshot("dup.png"); err != nil {
-		t.Fatalf("second ignore: %v", err)
-	}
-	got, _ := fs.LoadIgnoredFilenames()
+	fake := dbtest.New()
+	mustNoErr(t, matchedit.IgnoreScreenshot(fake, "dup.png"))
+	mustNoErr(t, matchedit.IgnoreScreenshot(fake, "dup.png"))
+	got, _ := fake.LoadIgnoredFilenames()
 	if !got["dup.png"] {
 		t.Errorf("filename absent after duplicate ignores; got=%v", got)
 	}
 }
 
 func TestUnignoreScreenshot_RemovesFromSet(t *testing.T) {
-	fs := &fakeStore{}
-	a := app.NewWithStore(fs)
-	if err := a.IgnoreScreenshot("toggle.png"); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	if err := a.UnignoreScreenshot("toggle.png"); err != nil {
-		t.Fatalf("unignore: %v", err)
-	}
-	got, _ := fs.LoadIgnoredFilenames()
+	fake := dbtest.New()
+	mustNoErr(t, matchedit.IgnoreScreenshot(fake, "toggle.png"))
+	mustNoErr(t, matchedit.UnignoreScreenshot(fake, "toggle.png"))
+	got, _ := fake.LoadIgnoredFilenames()
 	if got["toggle.png"] {
 		t.Errorf("filename still present after unignore; got=%v", got)
 	}
 }
 
-func TestGetIgnoredScreenshots_ReturnsRichRowsWithTimestamps(t *testing.T) {
-	fs := &fakeStore{}
-	a := app.NewWithStore(fs)
+func TestUnignoreScreenshot_RejectsEmptyFilename(t *testing.T) {
+	if err := matchedit.UnignoreScreenshot(dbtest.New(), ""); !errors.Is(err, matchedit.ErrIgnoreFilenameRequired) {
+		t.Errorf("got err=%v, want ErrIgnoreFilenameRequired", err)
+	}
+}
+
+func TestListIgnoredScreenshots_ReturnsRichRowsWithTimestamps(t *testing.T) {
+	fake := dbtest.New()
 	for _, f := range []string{"zoo.png", "alpha.png", "middle.png"} {
-		_ = a.IgnoreScreenshot(f)
+		mustNoErr(t, matchedit.IgnoreScreenshot(fake, f))
 	}
-	out, err := a.GetIgnoredScreenshots()
-	if err != nil {
-		t.Fatalf("GetIgnoredScreenshots: %v", err)
-	}
+	out, err := matchedit.ListIgnoredScreenshots(fake)
+	mustNoErr(t, err)
 	if len(out) != 3 {
 		t.Fatalf("expected 3 rows, got %d", len(out))
 	}
@@ -139,20 +142,13 @@ func TestGetIgnoredScreenshots_ReturnsRichRowsWithTimestamps(t *testing.T) {
 }
 
 func TestClearIgnoredScreenshots_TruncatesSuppressList(t *testing.T) {
-	fs := &fakeStore{}
-	a := app.NewWithStore(fs)
+	fake := dbtest.New()
 	for _, f := range []string{"a.png", "b.png"} {
-		if err := a.IgnoreScreenshot(f); err != nil {
-			t.Fatalf("seed %s: %v", f, err)
-		}
+		mustNoErr(t, matchedit.IgnoreScreenshot(fake, f))
 	}
-	if err := a.ClearIgnoredScreenshots(); err != nil {
-		t.Fatalf("ClearIgnoredScreenshots: %v", err)
-	}
-	out, err := a.GetIgnoredScreenshots()
-	if err != nil {
-		t.Fatalf("GetIgnoredScreenshots: %v", err)
-	}
+	mustNoErr(t, matchedit.ClearIgnoredScreenshots(fake))
+	out, err := matchedit.ListIgnoredScreenshots(fake)
+	mustNoErr(t, err)
 	if len(out) != 0 {
 		t.Errorf("expected empty list after ClearIgnoredScreenshots; got %v", out)
 	}

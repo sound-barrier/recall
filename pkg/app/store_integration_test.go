@@ -16,7 +16,7 @@ import (
 type fakeStore = dbtest.Fake
 
 // seedMatchKeys gives the fake a real screenshot row per key, so the
-// per-match writers' unknown-key guard (match_key_guard.go) sees a match
+// per-match writers' unknown-key guard (pkg/matchedit) sees a match
 // there. Tests that only care about a sidecar's own behavior use this to
 // state "these matches exist" without spelling out a corpus.
 func seedMatchKeys(fs *fakeStore, keys ...string) {

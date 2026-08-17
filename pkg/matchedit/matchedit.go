@@ -1,8 +1,20 @@
-package app
+// Package matchedit writes everything a user edits about a match: the
+// per-match sidecars (annotation, review, queue, play-mode, visibility
+// and ignore rows that hang off a match key without belonging to any
+// parsed screenshot), the override layer that shadows the parsed OCR
+// values, and the hand-entered matches that have no OCR rows at all.
+//
+// Every entry point has the same shape — validate the input, guard
+// against an unknown match key, write. Orchestration stays in the shell
+// that calls this package: the coaching-session write gate, event
+// emission, read-time aggregation, and the profile lifecycle are all
+// above this layer, so nothing here needs more than a db.Store.
+package matchedit
 
 import (
 	"fmt"
 
+	"recall/pkg/db"
 	"recall/pkg/match"
 )
 
@@ -18,10 +30,10 @@ import (
 // an unknown key removes nothing and stays idempotent, which is what the
 // UI's fire-and-forget undo paths rely on.
 
-// assertMatchExists reports match.ErrMatchNotFound when matchKey names no
+// AssertMatchExists reports match.ErrMatchNotFound when matchKey names no
 // match in this database. The HTTP layer maps that sentinel to 404.
-func (a *App) assertMatchExists(matchKey string) error {
-	exists, err := a.store.MatchKeyExists(matchKey)
+func AssertMatchExists(s db.Store, matchKey string) error {
+	exists, err := s.MatchKeyExists(matchKey)
 	if err != nil {
 		return err
 	}
@@ -34,11 +46,11 @@ func (a *App) assertMatchExists(matchKey string) error {
 // assertMatchesExist is the bulk twin: one registry read for the whole
 // batch, and the batch is refused whole so a partial write can't leave
 // half the selection tagged.
-func (a *App) assertMatchesExist(matchKeys []string) error {
+func assertMatchesExist(s db.Store, matchKeys []string) error {
 	if len(matchKeys) == 0 {
 		return nil
 	}
-	known, err := a.store.LoadMatchKeys()
+	known, err := s.LoadMatchKeys()
 	if err != nil {
 		return err
 	}
