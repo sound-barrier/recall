@@ -85,7 +85,9 @@ export interface SnapshotInputs {
 // filtered copies whose order is not part of any contract, and depending on it
 // would silently yield the OLDEST reading — 57% against 61% is a difference
 // nothing downstream could flag as wrong.
-export interface SliceStanding {
+// Local to this module: SeasonMetrics declares the shape it stores, and
+// exporting a second name for it made a type nothing imported.
+interface SliceStanding {
   bucket: string
   percentile: number
 }
