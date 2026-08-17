@@ -10,6 +10,7 @@ import {
   type HeroCountBucket,
 } from '@/match/dossier/match-hero-pool-helpers'
 import type { RateStat, SeasonMetrics } from '@/match/compare/match-compare-helpers'
+import { matchTime } from '@/match/match-time-helpers'
 
 // Shared SeasonMetrics assembly for both Compare modes: the scalar metrics come
 // off a dossier instance, the compare-specific breakdowns off the record slice.
@@ -61,6 +62,30 @@ export interface SnapshotInputs {
   topHero: string | null
   ow: SnapshotResolvers
   extras?: SnapshotExtras
+}
+
+// latestRankPercentile takes the reading from the LATEST match in the slice
+// rather than averaging: a percentile is a standing, not a rate, so the
+// meaningful number is where the window ended.
+//
+// It picks by match time rather than by array position. Callers filter the
+// store's records into slices and the resulting order is not part of any
+// contract — depending on it would give the OLDEST reading whenever that
+// order changed, and "57%" vs "61%" is a difference nothing downstream could
+// flag as wrong.
+function latestRankPercentile(records: readonly MatchRecord[]): number | null {
+  let best: number | null = null
+  let bestAt = ''
+  for (const r of records) {
+    const pct = r.data?.rank_percentile
+    if (typeof pct !== 'number') continue
+    const t = matchTime(r)
+    if (best === null || t > bestAt) {
+      best = pct
+      bestAt = t
+    }
+  }
+  return best
 }
 
 export function buildSeasonMetrics(
@@ -118,6 +143,10 @@ export function buildSeasonMetrics(
       decisive: poolAnalysis.split.out.decisive,
       winrate: poolAnalysis.split.out.winrate,
     },
+    // Computed here, not passed as a Form-mode extra, so BOTH compare modes
+    // get it — the question "did my standing in the population move?" is at
+    // least as interesting across two seasons as across two weeks.
+    rankPercentile: latestRankPercentile(records),
     ...(extras ?? {}),
   }
 }

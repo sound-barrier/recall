@@ -583,6 +583,21 @@
   outline-offset: -1px;
 }
 
+/* The measured population reading, under the "Where you are" inputs. A
+   sentence rather than a stat chip: it qualifies the rank above it, and the
+   number is only meaningful with the words attached. */
+#panel-elo .elo-percentile {
+  margin: var(--space-2) 0 0;
+  font-size: var(--type-xs);
+  color: var(--text-dim);
+}
+
+#panel-elo .elo-percentile strong {
+  font-family: var(--mono);
+  font-feature-settings: "tnum";
+  color: var(--text);
+}
+
 #panel-elo .elo-hint {
   font-size: var(--type-xs);
   line-height: 1.35;

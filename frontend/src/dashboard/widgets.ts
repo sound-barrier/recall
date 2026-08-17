@@ -25,6 +25,7 @@ import QuickplayVsCompetitiveWidget from '@/components/dashboard/widgets/Quickpl
 import WinrateByPlayModeWidget from '@/components/dashboard/widgets/WinrateByPlayModeWidget.vue'
 import WithWhomWidget from '@/components/dashboard/widgets/WithWhomWidget.vue'
 import CurrentRankWidget from '@/components/dashboard/widgets/CurrentRankWidget.vue'
+import RankPercentileWidget from '@/components/dashboard/widgets/RankPercentileWidget.vue'
 import WinrateByHeroWidget from '@/components/dashboard/widgets/WinrateByHeroWidget.vue'
 import WinrateByMapWidget from '@/components/dashboard/widgets/WinrateByMapWidget.vue'
 import WinrateByRoleWidget from '@/components/dashboard/widgets/WinrateByRoleWidget.vue'
@@ -298,6 +299,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
   { id: 'with-whom',           eyebrow: 'Win rate by teammate',   shape: 'breakdown', defaultRow: 2, component: WithWhomWidget,        config: withWhomSchema       },
   { id: 'current-rank',        eyebrow: 'Current rank',           shape: 'breakdown', defaultRow: 2, component: CurrentRankWidget,     config: EMPTY_SCHEMA          },
+  { id: 'rank-percentile',     eyebrow: 'Ranked above',           shape: 'breakdown', defaultRow: 2, component: RankPercentileWidget,  config: EMPTY_SCHEMA          },
   { id: 'winrate-by-hero',     eyebrow: 'Win-rate by hero',       shape: 'breakdown', defaultRow: 2, component: WinrateByHeroWidget,  config: winrateBySchema       },
   { id: 'winrate-by-map',      eyebrow: 'Win-rate by map',        shape: 'breakdown', defaultRow: 2, component: WinrateByMapWidget,   config: winrateBySchema       },
   { id: 'winrate-by-role',     eyebrow: 'Win-rate by role',       shape: 'breakdown', defaultRow: 2, component: WinrateByRoleWidget,  config: winrateBySchema       },
@@ -332,7 +334,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
 // review-workflow widgets live in the gallery.
 export const DEFAULT_ROW_LAYOUT: Readonly<Record<number, readonly string[]>> = {
   1: ['winrate', 'form-delta', 'net-rank-week', 'current-streak', 'tilt-check', 'avg-kda'],
-  2: ['current-rank', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role'],
+  2: ['current-rank', 'rank-percentile', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role'],
 }
 
 // Lookup helper. Returns undefined for unknown ids so callers can
