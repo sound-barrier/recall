@@ -1,8 +1,6 @@
 package matchedit
 
 import (
-	"errors"
-
 	"recall/pkg/db"
 )
 
@@ -17,7 +15,7 @@ import (
 // `hidden_at` timestamp but is otherwise a no-op.
 func Hide(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	if err := AssertMatchExists(s, matchKey); err != nil {
 		return err
@@ -29,7 +27,7 @@ func Hide(s db.Store, matchKey string) error {
 // that wasn't hidden is a no-op.
 func Unhide(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	return s.UnhideMatch(matchKey)
 }
@@ -38,7 +36,7 @@ func Unhide(s db.Store, matchKey string) error {
 // section above the date groups. Idempotent.
 func Pin(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	if err := AssertMatchExists(s, matchKey); err != nil {
 		return err
@@ -49,7 +47,7 @@ func Pin(s db.Store, matchKey string) error {
 // Unpin removes the star. Idempotent.
 func Unpin(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	return s.UnpinMatch(matchKey)
 }
@@ -60,7 +58,7 @@ func Unpin(s db.Store, matchKey string) error {
 // Idempotent: unknown keys complete with no error.
 func HardDelete(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	return s.HardDeleteMatch(matchKey)
 }

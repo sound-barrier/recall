@@ -27,7 +27,7 @@ var ErrInvalidReviewedBy = errors.New("invalid reviewed_by: must be 'self' or 'c
 // Use ClearReview to revert to the "not reviewed" state.
 func SetReview(s db.Store, matchKey, reviewedBy string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	if !validReviewers[reviewedBy] {
 		return ErrInvalidReviewedBy
@@ -42,7 +42,7 @@ func SetReview(s db.Store, matchKey, reviewedBy string) error {
 // unreviewed match is a no-op.
 func ClearReview(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	return s.ClearReview(matchKey)
 }

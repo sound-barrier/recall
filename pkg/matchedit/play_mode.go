@@ -34,7 +34,7 @@ func IsValidPlayMode(playMode string) bool { return validPlayModes[playMode] }
 // Use ClearPlayMode to revert to "follow the parser."
 func SetPlayMode(s db.Store, matchKey, playMode string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	if !validPlayModes[playMode] {
 		return ErrInvalidPlayMode
@@ -50,7 +50,7 @@ func SetPlayMode(s db.Store, matchKey, playMode string) error {
 // no-op.
 func ClearPlayMode(s db.Store, matchKey string) error {
 	if matchKey == "" {
-		return errors.New("match_key required")
+		return ErrMatchKeyRequired
 	}
 	return s.ClearMatchPlayMode(matchKey)
 }

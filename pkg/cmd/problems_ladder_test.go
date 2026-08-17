@@ -74,6 +74,7 @@ var sentinels = []sentinel{
 	{"ErrInvalidThrower", app.ErrInvalidThrower, "invalid thrower: each side must be 'self', 'team', or 'enemy'"},
 	{"ErrManualNeedsMap", app.ErrManualNeedsMap, "map is required"},
 	{"ErrMatchKeyExists", app.ErrMatchKeyExists, "a match already exists for that time; pick a different minute"},
+	{"ErrMatchKeyRequired", app.ErrMatchKeyRequired, "match_key required"},
 	{"ErrMoveStrandsCandidate", app.ErrMoveStrandsCandidate, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrMoveTargetIsActive", app.ErrMoveTargetIsActive, ""},     // re-export of a leaf sentinel; message owned there
 	{"ErrNoFailedFiles", app.ErrNoFailedFiles, "no failed files to bundle"},
