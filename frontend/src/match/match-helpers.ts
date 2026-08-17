@@ -8,7 +8,6 @@
 //   - match-label-helpers.ts   — play-mode / queue / unknown labels
 //   - match-time-helpers.ts    — match time + clock + relative formats
 //   - match-stats-helpers.ts   — W/L/D tally + modeOf + numeric formats
-//   - match-group-helpers.ts   — Month → Week → Day grouping
 
 import type { MatchRecord, HeroPlay, ScreenshotType } from '@/api-client'
 import type { ClockMode } from '@/match/match-time-helpers'
