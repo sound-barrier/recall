@@ -144,7 +144,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # the gate on its own merits instead of inheriting a wall. Initial JS is
 # unmoved at 325.7KB against 331KB — both surfaces live in already-lazy view
 # chunks.
-: "${MAX_TOTAL_JS_BYTES:=1674000}"
+# 2026-08: 1674000 → 1682000 — phase 2's three climb-insight widgets and the
+# trailing-window kernel behind them (measured 1674414B). Same shape as the bump
+# above: keep ~7KB of headroom rather than shaving the ceiling to the
+# measurement, so the next feature trips the gate on its own growth instead of
+# inheriting a wall. Initial JS unmoved — all three are dossier widgets inside
+# the already-lazy Matches chunk.
+: "${MAX_TOTAL_JS_BYTES:=1682000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

@@ -97,3 +97,45 @@ describe('the e2e seeder tracks the migration version', () => {
     expect(SEEDED_LAYOUT_VERSION).toBe(String(CURRENT_LAYOUT_VERSION))
   })
 })
+
+// v4 seeds the three trailing-window climb widgets. One step for all three,
+// because applyMigrationSteps runs every unseen step in the same mount — three
+// separate steps would land in the identical state with three times the code.
+describe('layout migration v4 — climb insights', () => {
+  beforeEach(() => { vi.unstubAllGlobals() })
+
+  it('adds all three for a user already on v3', () => {
+    const cell = stub({
+      [LAYOUT_VERSION_KEY]: '3',
+      [LAYOUT_STORAGE_KEY]: JSON.stringify({ 1: ['winrate'] }),
+    })
+
+    runLayoutMigrationsOnce()
+
+    expect(read(cell)[1]).toEqual(['winrate', 'perf-vs-rank', 'rolling-baseline', 'climb-velocity'])
+    expect(cell.get(LAYOUT_VERSION_KEY)).toBe(String(CURRENT_LAYOUT_VERSION))
+  })
+
+  // Someone who already added one from the gallery must not end up with two.
+  it('does not duplicate one the user added by hand', () => {
+    const cell = stub({
+      [LAYOUT_VERSION_KEY]: '3',
+      [LAYOUT_STORAGE_KEY]: JSON.stringify({ 1: ['climb-velocity'] }),
+    })
+
+    runLayoutMigrationsOnce()
+
+    expect(read(cell)[1]).toEqual(['climb-velocity', 'perf-vs-rank', 'rolling-baseline'])
+  })
+
+  it('is a no-op once the version is stamped', () => {
+    const cell = stub({
+      [LAYOUT_VERSION_KEY]: String(CURRENT_LAYOUT_VERSION),
+      [LAYOUT_STORAGE_KEY]: JSON.stringify({ 1: ['winrate'] }),
+    })
+
+    runLayoutMigrationsOnce()
+
+    expect(read(cell)[1]).toEqual(['winrate'])
+  })
+})

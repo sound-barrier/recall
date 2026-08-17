@@ -157,7 +157,7 @@ frontend/tests/e2e/data-table                 16
 # the Compare tab (season and form), which is the same aggregation shown as
 # A/B/Δ. Compare has no folder of its own deliberately — two specs is exactly
 # the two-file grouping the gate's own failure text warns against carving.
-frontend/tests/e2e/dossier                    23
+frontend/tests/e2e/dossier                    24
 
 # frontend/tests/e2e/match — ONE match: the detail panel (contract, keyboard,
 # WebKit), its sidebar toggles (play mode, queue, review), inline data editing,
@@ -234,7 +234,12 @@ frontend/src/match/elo                        13
 # batched suites (FormWidgets, ModifierWidgets, MomentumWidgets) each cut across
 # three or four candidate families, so those groupings are PR batches, not
 # domains. Reopen only after splitting those suites per-widget.
-frontend/src/components/dashboard/widgets     41
+# 44: three trailing-window climb widgets (play-vs-rank, vs-baseline, climb
+# rate) over one shared kernel. The same responsibility spelled three concerns
+# wider — each renders one dossier slice as a tile — and they arrived together
+# because they share match-baseline-helpers, not because the directory grew a
+# new family, which is the condition that would have earned a split instead.
+frontend/src/components/dashboard/widgets     44
 
 
 
