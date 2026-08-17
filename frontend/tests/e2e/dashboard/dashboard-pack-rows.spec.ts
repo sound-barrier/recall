@@ -57,7 +57,9 @@ test.describe('dashboard pack rows migration', () => {
     // Before: 9 rows. v1 packs the overflow into one KPI + one
     // breakdown row; v2 then re-seeds rows 1–2 to the climb defaults,
     // absorbing current-streak (now a default) out of the packed KPI
-    // row. After: 4 widget rows.
+    // row; v3 inserts "Ranked above" beside Current rank on row 2,
+    // which changes that row's contents but not the row COUNT.
+    // After: 4 widget rows.
     const rows = page.locator('.dashboard-row')
     await expect(rows).toHaveCount(4)
 
@@ -68,7 +70,7 @@ test.describe('dashboard pack rows migration', () => {
       layout: JSON.parse(localStorage.getItem('recall.dashboard.layout') ?? '{}'),
       version: localStorage.getItem('recall.dashboard.layoutVersion'),
     }))
-    expect(stored.version).toBe('2')
+    expect(stored.version).toBe('3')
     expect(Object.keys(stored.layout)).toEqual(['1', '2', '3', '4'])
   })
 })
