@@ -57,13 +57,8 @@ func unmarshalModifiers(ds *owDataset, b []byte) error {
 		seen[m] = true
 		storable = append(storable, m)
 	}
-	for i, m := range doc.NotModifiers {
-		if err := checkEntry("not_modifiers", i, m); err != nil {
-			return err
-		}
-		if seen[m] {
-			return fmt.Errorf("modifiers.yaml: %q is both a modifier and a non-modifier", m)
-		}
+	if err := checkNotModifiers(doc.NotModifiers, seen); err != nil {
+		return err
 	}
 	ds.modifiers = matched
 	ds.storableModifiers = storable
@@ -82,6 +77,21 @@ func checkEntry(field string, i int, m string) error {
 	if m != strings.ToLower(strings.TrimSpace(m)) {
 		return fmt.Errorf("modifiers.yaml: %s %q must be lowercase and unpadded — matching "+
 			"is case-sensitive against this value, so it would never match", field, m)
+	}
+	return nil
+}
+
+// checkNotModifiers validates the known-non-modifier list. A value that is also
+// a real modifier would silently suppress it from every screenshot, so the
+// overlap is rejected rather than resolved.
+func checkNotModifiers(entries []string, seen map[string]bool) error {
+	for i, m := range entries {
+		if err := checkEntry("not_modifiers", i, m); err != nil {
+			return err
+		}
+		if seen[m] {
+			return fmt.Errorf("modifiers.yaml: %q is both a modifier and a non-modifier", m)
+		}
 	}
 	return nil
 }
