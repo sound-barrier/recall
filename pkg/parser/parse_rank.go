@@ -18,9 +18,32 @@ import (
 // StorableModifiers(), which is what the schema must accept.
 func knownModifiers() []string { return Modifiers() }
 
-// isRankScreenshot detects the post-match competitive RANK PROGRESS screen.
-// "RANK PROGRESS" sits in the middle of the screen and is unique to this
-// view (SUMMARY / TEAMS / PERSONAL never show it).
+// rankScreenAnchors are the captions unique to a competitive rank-update
+// screen. SUMMARY / TEAMS / PERSONAL never show any of them.
+//
+// "RANK PROGRESS" is the settled screen. The other two are the PLACEMENT
+// screen, which shows a PREDICTED RANK caption and a placement counter instead
+// of a settled pill, and so carries neither of those words — it went undetected
+// for the whole of season 4's placement period. That is not a soft miss: rank
+// probes first, every other probe also declines, and the file falls through to
+// parseTeams, whose row OCR ERRORS on a non-scoreboard ("expected 6 stat
+// columns, found 0") rather than declining. That aborts the file, so the
+// capture yields no rank row at all and lands in the failed-files ledger —
+// visible to the user only as a "Failed to read" row in the Unknown tab, and
+// re-failing on every re-parse. A placement run is when a player has nothing
+// BUT placement screens.
+//
+// Both placement anchors are matched because they are independent OCR risks on
+// the same screen: one is a long sentence that can garble mid-word, the other a
+// short label beside a digit pair.
+var rankScreenAnchors = []string{
+	"RANK PROGRESS",
+	"PLACEMENT PROGRESS",
+	"PREDICTED RANK",
+}
+
+// isRankScreenshot detects the post-match competitive rank screen, settled or
+// mid-placement, by the captions in its middle band.
 func isRankScreenshot(img image.Image, work string) (bool, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
@@ -29,7 +52,13 @@ func isRankScreenshot(img image.Image, work string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return strings.Contains(strings.ToUpper(text), "RANK PROGRESS"), nil
+	upper := strings.ToUpper(text)
+	for _, anchor := range rankScreenAnchors {
+		if strings.Contains(upper, anchor) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // parseRank handles the post-match competitive rank screen: the tier badge
