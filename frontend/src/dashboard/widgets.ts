@@ -379,7 +379,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
 // am I good at" (rank + winrate-judged breakdowns). Volume and
 // review-workflow widgets live in the gallery.
 export const DEFAULT_ROW_LAYOUT: Readonly<Record<number, readonly string[]>> = {
-  1: ['winrate', 'form-delta', 'net-rank-week', 'current-streak', 'tilt-check', 'avg-kda'],
+  1: ['winrate', 'form-delta', 'net-rank-week', 'perf-vs-rank', 'current-streak', 'tilt-check', 'avg-kda'],
   2: ['current-rank', 'rank-percentile', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role'],
 }
 

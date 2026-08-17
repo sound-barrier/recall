@@ -70,27 +70,26 @@ function applyMigrationSteps(layout: RowLayout, storedVersion: number): RowLayou
   return next
 }
 
-// addClimbInsights seeds the three trailing-window widgets together.
+// addClimbInsights seeds ONE of the three trailing-window widgets.
 //
-// ONE version bump, not three. applyMigrationSteps runs every step a stored
-// version has not seen, so three separate steps would execute in the same mount
-// and land in the identical state — three times the code and three idempotency
-// guards for no behavioral difference.
+// Only Play-vs-rank ships on by default, and that restraint is deliberate. Row
+// 1 already carries six KPIs against a soft max of five; adding three more
+// would crowd every user's default dossier to surface two readings most have
+// not asked for. Play-vs-rank earns the slot because it answers the question
+// ranked players actually arrive with — "am I playing well and going nowhere?"
+// — using their own numbers. Vs-baseline and Climb-rate stay one click away in
+// the gallery for anyone the first card makes curious.
 //
-// They go on row 1 beside the other climb readings, and each is skipped
-// individually if the user already has it, so someone who added one by hand
-// from the gallery does not end up with a duplicate.
+// Idempotent: a user who already added it by hand is untouched, and one who
+// trashed it gets it back exactly once, the same bargain every versioned
+// re-seed makes.
 function addClimbInsights(layout: RowLayout): RowLayout {
+  for (const ids of Object.values(layout)) {
+    if (ids.includes('perf-vs-rank')) return layout
+  }
   const next: RowLayout = {}
   for (const [key, ids] of Object.entries(layout)) next[Number(key)] = [...ids]
-
-  const present = new Set(Object.values(next).flat())
-  const missing = ['perf-vs-rank', 'rolling-baseline', 'climb-velocity']
-    .filter((id) => !present.has(id))
-  if (missing.length === 0) return layout
-
-  const row = next[1] ?? []
-  next[1] = [...row, ...missing]
+  next[1] = [...(next[1] ?? []), 'perf-vs-rank']
   return next
 }
 

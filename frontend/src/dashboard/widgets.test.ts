@@ -60,9 +60,13 @@ describe('dashboard widget registry', () => {
     // Row 1: rank velocity, form, streak, and tilt — "am I climbing
     // right now". The review-workflow and volume KPIs are demoted to
     // the "+ Add" gallery, not deleted.
+    //
+    // perf-vs-rank is the ONLY one of the three climb-insight widgets that
+    // ships on. Its siblings (vs-baseline, climb-rate) stay in the gallery
+    // rather than pushing this row further past its soft max of five.
     expect(DEFAULT_ROW_LAYOUT[1]).toEqual([
-      'winrate', 'form-delta', 'net-rank-week', 'current-streak',
-      'tilt-check', 'avg-kda',
+      'winrate', 'form-delta', 'net-rank-week', 'perf-vs-rank',
+      'current-streak', 'tilt-check', 'avg-kda',
     ])
     // Row 2: winrate-judged breakdowns — "what am I good at". The
     // volume ("most played") breakdowns live in the gallery.

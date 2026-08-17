@@ -15,7 +15,9 @@ import type { Route } from '@playwright/test'
 
 const RECENT = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return d.toISOString().slice(0, 10) })()
 
-const ROW1_DEFAULT = ['winrate', 'form-delta', 'net-rank-week', 'current-streak', 'tilt-check', 'avg-kda']
+// perf-vs-rank is the one climb-insight widget that ships on; its two siblings
+// stay in the gallery rather than pushing this row further past its soft max.
+const ROW1_DEFAULT = ['winrate', 'form-delta', 'net-rank-week', 'perf-vs-rank', 'current-streak', 'tilt-check', 'avg-kda']
 // 'rank-percentile' sits beside Current rank: it qualifies that reading.
 const ROW2_DEFAULT = ['current-rank', 'rank-percentile', 'winrate-by-hero', 'winrate-by-map', 'winrate-by-role']
 
