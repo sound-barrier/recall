@@ -46,7 +46,7 @@ afterEach(async () => {
 
 // Unit tests for the contextual multi-select + Hidden drawer surfaces.
 // End-to-end transport chain is covered by
-// frontend/tests/e2e/match-bulk-hide-drawer.spec.ts; these mount the
+// frontend/tests/e2e/matches/match-bulk-hide-drawer.spec.ts; these mount the
 // SFC directly so the branch coverage for the new state-machine code
 // (per-row checkbox toggle, sticky action bar, bulk archive ops, two-
 // step confirms) lives next to the template that exercises it.

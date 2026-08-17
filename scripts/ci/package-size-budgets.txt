@@ -90,14 +90,94 @@ pkg/cmd                                       19
 # covers the client/client/ and client/core/ subdirectories too.
 frontend/src/client                           exempt
 
-# frontend/tests/e2e — the Playwright corpus, 184 spec files flat. Target 20 is
-# the post-regroup ROOT: helpers (_*.ts) and the three coverage-*.ts files named
-# in playwright.config.ts stay at the root while the specs move into feature
-# folders, which lands the root around 14. The specs themselves are a feature
-# counter — the TDD rule mandates one per user-visible affordance — so each
-# feature folder gets its own entry once it exists rather than one number
-# policing the whole corpus.
-frontend/tests/e2e                            20    184
+# frontend/tests/e2e — the Playwright corpus ROOT. The 173 specs that used to
+# sit here flat now live in feature folders below; what is left is the shared
+# harness and nothing else: the eight _*.ts helpers (the underscore keeps them
+# out of Playwright's *.spec.ts glob) plus the three coverage-*.ts files named
+# by path in playwright.config.ts, which is why they cannot move. 11 is the
+# measured count, not the 20 this entry estimated before the split ran — the
+# whole point of zero headroom is that the number is what the directory IS. A
+# ninth helper is a real decision (every spec in the tree may import it) and
+# should trip this line.
+#
+# The two *-snapshots/ directories stay here too, and are not counted: the
+# snapshotPathTemplate resolves {testDir}/{testFileName}, i.e. the CONFIGURED
+# test dir plus the spec's BASENAME, so a nested spec still finds its baselines
+# at this root. Corollary worth knowing before adding a spec: two specs sharing
+# a basename in different feature folders would share one snapshot directory.
+frontend/tests/e2e                            11
+
+# The e2e feature folders below are budgeted individually, on purpose. A spec
+# count is a FEATURE count here — the TDD rule mandates a failing spec per
+# user-visible affordance — so a single number policing the whole corpus would
+# only ever say "the app has features". Eleven of the sixteen folders sit under
+# the default 12 and stay unregistered; these are the ones large enough that the
+# number should be written down next to the reason it is that number.
+
+# frontend/tests/e2e/app — the shell: smoke + tab nav, the ⋮ menu, the masthead
+# (scoreboard, watch dot), global keyboard (shortcut cheatsheet, vim motions),
+# the lightbox, modal scroll-lock, theme, wide-window layout, and the failure
+# surfaces a view cannot own (startup-error modal, lazy-chunk error). Also the
+# two real-server specs that cross every feature rather than exercising one
+# (system-flows, validation-paths). Over the default because "the chrome around
+# the views" is one responsibility with many affordances, and splitting it would
+# manufacture three-file folders.
+frontend/tests/e2e/app                        13
+
+# frontend/tests/e2e/data-table — the tabular display modes of the match set:
+# the data table proper (columns, density, resize, multi-sort, frozen leading
+# columns, cell copy, cell filter), the pivot crosstab it flips into, and the
+# leaf rows the cozy/compact modes render (virtualization, hover preview,
+# click-to-filter, the queue chip). One rendering surface with four modes; the
+# specs share fixtures and break together.
+frontend/tests/e2e/data-table                 16
+
+# frontend/tests/e2e/dossier — read-time aggregation surfaced as UI: the twelve
+# dossier-* widget specs, the full-width bands below them (Hero Pool, Map ×
+# Role), the standalone widgets and KPIs (loss quality, most-played hero
+# winrate, top heroes by time, sample-size honesty, the Wilson interval), and
+# the Compare tab (season and form), which is the same aggregation shown as
+# A/B/Δ. Compare has no folder of its own deliberately — two specs is exactly
+# the two-file grouping the gate's own failure text warns against carving.
+frontend/tests/e2e/dossier                    23
+
+# frontend/tests/e2e/match — ONE match: the detail panel (contract, keyboard,
+# WebKit), its sidebar toggles (play mode, queue, review), inline data editing,
+# tags and tag autocomplete, notes, the annotation journal, markdown export,
+# deletion, and the two hand-entry paths (manual add, leaver quick-add) with
+# the real-server validation spec that guards their range/roster rejections.
+# Distinct from matches/ (the LIST) — the same distinction the singular/plural
+# filename prefixes already drew.
+frontend/tests/e2e/match                      17
+
+# frontend/tests/e2e/matches — the Matches view around the list: grouping and
+# sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode
+# and the bulk setters, tagging and hide/archive with their undo toasts,
+# pinning, provenance and unknown-hero surfacing, session rollups and the
+# nudge/summary toasts, CSV and bundle export, the row context menu. The
+# largest folder in the tree because it is the app's primary view; it is one
+# responsibility, and the specific bands (narrow, trends, table, dossier) are
+# already carved out into their own folders.
+frontend/tests/e2e/matches                    25
+
+# frontend/tests/e2e/narrow — everything that shrinks the set: the narrow panel
+# facets (time scope, season, teammates, reviewed-by, since-anchor, leaver /
+# modifier / rank, thrower), saved presets, the rail-vs-popover viewport
+# contract, scoped-clause search, the smart-empty suggestions that appear when
+# a narrow excludes everything, and the Campaign Log heatmap + sparkline, which
+# are a date-range filter drawn as a calendar (they write the same customFrom /
+# customTo refs). Registered AT the default rather than left implicit, so the
+# next spec trips a number someone chose.
+frontend/tests/e2e/narrow                     12
+
+# frontend/tests/e2e/settings — the Settings tab and the data-administration it
+# owns: the screenshot source picker and folder persistence, the Tesseract engine
+# row, capture-format rules, window close behavior, re-parse all, restore of
+# ignored screenshots, database health, backup (manual round-trip + scheduler),
+# import and the bundle merge-import round-trip, and the profile family
+# (lifecycle, switcher, immutable sample, delete). Profiles live here whole
+# rather than split by which chrome each spec happens to click.
+frontend/tests/e2e/settings                   19
 
 # frontend/src/composables/matches — the Matches tab's stateful logic. It
 # reached 51 files, the frontend's pkg/app, and is now split into subfolders

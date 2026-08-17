@@ -1,0 +1,440 @@
+/**
+ * Hero × Game-Mode — full-width dossier ROW.
+ *
+ * Promoted from an opt-in grid widget to a section that sits below the
+ * dossier grid alongside Campaign Log + Geography: it ships VISIBLE by
+ * default, can be reordered/removed via the section chrome, carries a
+ * 1M/3M/6M/12M trailing-window picker, and an inline gear that opens the
+ * shared widget-config popover. Cells break winrate down by (hero,
+ * game-mode); clicking one narrows the active set to that pair.
+ *
+ * Corpus dates are clock-relative (≈45 days ago) so the 6M default
+ * window always includes them while the 1M window excludes them — the
+ * spec stays robust against the real wall-clock CI runs under.
+ */
+import type { Route } from '@playwright/test'
+
+import { test, expect } from '../_fixtures'
+
+function daysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().slice(0, 10)
+}
+
+// ≈45 days back: inside the 6M/3M windows, outside the 1M window.
+const RECENT = daysAgo(45)
+
+const match = (
+  key: string,
+  { hero, type, result, finished, date = RECENT, map = 'rialto' }: {
+    hero:    string
+    type:    'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash'
+    result:  'victory' | 'defeat'
+    finished: string
+    date?: string
+    map?: string
+  },
+) => ({
+  match_key:    key,
+  source_files: [`${key}.png`],
+  source_types: { [`${key}.png`]: 'summary' },
+  data: {
+    map,
+    game_mode: type,
+    hero,
+    result,
+    date,
+    finished_at: finished,
+    playlist:   'competitive',
+    heroes_played: [{ hero, play_time: '10:00', percent_played: 100 }],
+  },
+  parsed_at: `${date}T${finished}:00Z`,
+})
+
+// Lucio: 6 wins + 4 losses on `control` = 60% over 10 decisive matches.
+// Plus 12 more across ana/kiriko to clear the default 20-decisive floor.
+const CORPUS = [
+  match('m01', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:01' }),
+  match('m02', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:02' }),
+  match('m03', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:03' }),
+  match('m04', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:04' }),
+  match('m05', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:05' }),
+  match('m06', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:06' }),
+  match('m07', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:07' }),
+  match('m08', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:08' }),
+  match('m09', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:09' }),
+  match('m10', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:10' }),
+  match('m11', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:11' }),
+  match('m12', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:12' }),
+  match('m13', { hero: 'ana', type: 'escort', result: 'defeat', finished: '10:13' }),
+  match('m14', { hero: 'ana', type: 'flashpoint', result: 'victory', finished: '10:14' }),
+  match('m15', { hero: 'ana', type: 'flashpoint', result: 'defeat', finished: '10:15' }),
+  match('m16', { hero: 'ana', type: 'hybrid', result: 'victory', finished: '10:16' }),
+  match('m17', { hero: 'kiriko', type: 'push', result: 'victory', finished: '10:17' }),
+  match('m18', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:18' }),
+  match('m19', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:19' }),
+  match('m20', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:20' }),
+  match('m21', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:21' }),
+  match('m22', { hero: 'kiriko', type: 'clash', result: 'defeat', finished: '10:22' }),
+]
+
+async function sectionOrder(page: import('@playwright/test').Page) {
+  return page.locator('[data-section]').evaluateAll(
+    (els) => els.map((e) => e.getAttribute('data-section')),
+  )
+}
+
+test.describe('dossier — Hero × Game-Mode row', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify(CORPUS),
+      })
+    })
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await expect(page.locator('.set-dossier')).toBeVisible()
+  })
+
+  test('renders as a visible row by default with a 3×6 grid (no layout seed)', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await expect(band).toBeVisible()
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    await expect(band.locator('.heatmap-rowhead')).toHaveCount(3)
+    await expect(band.locator('.heatmap-colhead')).toHaveCount(6)
+    await expect(band.locator('.heatmap-cell')).toHaveCount(3 * 6)
+  })
+
+  test('a modest edge with real volume earns green — 53% over 30 decisive', async ({ page }) => {
+    // The regression this guards: the old judgment rule shrank the observed
+    // rate toward 50% with a 90-imaginary-game prior, so a 53.3% hero at 30
+    // games blended to 50.8% and rendered grey — green effectively required
+    // ~57% at realistic per-hero volumes, which read as "the app doesn't
+    // believe I'm climbing". The bands are now judged on the raw rate once
+    // the 15-decisive floor is met; volume confidence is carried by the
+    // cell's opacity ramp instead.
+    await page.unrouteAll({ behavior: 'wait' })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      // Lucio on control: 16W / 14L = 53.3% over 30 decisive.
+      const corpus = Array.from({ length: 30 }, (_, i) =>
+        match(`g${i}`, {
+          hero: 'lucio', type: 'control', result: i < 16 ? 'victory' : 'defeat',
+          finished: `${String(10 + Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`,
+        }))
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
+    })
+    await page.reload()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    const band = page.locator('.hero-mode-band')
+    await expect(band).toBeVisible()
+
+    const lucioControl = band.locator('[data-hm-cell="control|lucio"]')
+    await expect(lucioControl).toBeVisible()
+    await expect(lucioControl).toHaveClass(/cell-win/)
+  })
+
+  test('hides the Clash column when no Clash was played in the window (it is quickplay-only)', async ({ page }) => {
+    await page.unrouteAll({ behavior: 'wait' })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      // 22 decisive matches across five modes, NO clash → the Clash column drops.
+      const corpus = [
+        ...Array.from({ length: 10 }, (_, i) =>
+          match(`c${i}`, { hero: 'lucio', type: 'control', result: i < 6 ? 'victory' : 'defeat', finished: `10:${String(i + 1).padStart(2, '0')}` })),
+        match('e1', { hero: 'ana', type: 'escort', result: 'victory', finished: '11:01' }),
+        match('e2', { hero: 'ana', type: 'escort', result: 'defeat', finished: '11:02' }),
+        match('f1', { hero: 'ana', type: 'flashpoint', result: 'victory', finished: '11:03' }),
+        match('f2', { hero: 'ana', type: 'flashpoint', result: 'defeat', finished: '11:04' }),
+        match('h1', { hero: 'ana', type: 'hybrid', result: 'victory', finished: '11:05' }),
+        match('h2', { hero: 'ana', type: 'hybrid', result: 'defeat', finished: '11:06' }),
+        match('p1', { hero: 'kiriko', type: 'push', result: 'victory', finished: '11:07' }),
+        match('p2', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '11:08' }),
+        match('p3', { hero: 'kiriko', type: 'push', result: 'victory', finished: '11:09' }),
+        match('p4', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '11:10' }),
+        match('p5', { hero: 'kiriko', type: 'push', result: 'victory', finished: '11:11' }),
+        match('p6', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '11:12' }),
+      ]
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) })
+    })
+    await page.reload()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    await expect(band.locator('.heatmap-colhead')).toHaveCount(5)
+    await expect(band.locator('[data-hm-col="clash"]')).toHaveCount(0)
+  })
+
+  test('clicking a cell narrows the page AND drills the band into the maps level', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    const lucioControl = band.locator('.heatmap-cell', { hasText: '60%' }).first()
+    await expect(lucioControl).toBeVisible()
+    await lucioControl.click()
+    // Global narrow applied (the matches list reflects the drill).
+    const chips = page.locator('ul.active-chips')
+    await expect(chips.locator('.active-chip', { hasText: 'lucio' })).toBeVisible()
+    await expect(chips.locator('.active-chip', { hasText: 'control' })).toBeVisible()
+    // Band drilled — the root grid is replaced by the maps level + Go-back.
+    await expect(band.locator('.heatmap-grid')).toHaveCount(0)
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    await expect(band.locator('.hm-title')).toContainText('Control maps')
+    await expect(band.locator('[data-hero-mode-back]')).toBeVisible()
+  })
+
+  test('Ctrl/Cmd-click SELECTS + live-filters a cell instead of drilling (Excel hybrid)', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await band.locator('.heatmap-cell[data-hm-cell="control|lucio"]').click({ modifiers: ['ControlOrMeta'] })
+    // Selected, NOT drilled — the root grid stays, no maps level, a stats bar shows.
+    await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(1)
+    await expect(band.locator('[data-hero-mode-maps]')).toHaveCount(0)
+    await expect(band.locator('[data-hm-selection-stats]')).toContainText(/6.4.0/)
+    // Live-filters immediately (no button), and the headers stay lit.
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'lucio' })).toBeVisible()
+    await expect(band.locator('[data-hm-col="control"]')).toHaveClass(/header-selected/)
+    await expect(band.locator('[data-hm-row="lucio"]')).toHaveClass(/header-selected/)
+  })
+
+  test('hero row + game-mode column headers select + live-filter (highlighted)', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // Ana's row → her 3 played cells; the Ana row header lights + the set narrows.
+    await band.locator('[data-hm-row="ana"]').click()
+    await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(3)
+    await expect(band.locator('[data-hm-row="ana"]')).toHaveClass(/header-selected/)
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'ana' })).toBeVisible()
+    // A game-mode column (plain) replaces it: Control × all heroes = lucio|control only.
+    await band.locator('[data-hm-col="control"]').click()
+    await expect(band.locator('.heatmap-cell.hm-selected')).toHaveCount(1)
+    await expect(band.locator('[data-hm-col="control"]')).toHaveClass(/header-selected/)
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'control' })).toBeVisible()
+  })
+
+  test('the readout slot is reserved — a prompt holds it, no shift on select', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // A faint prompt holds the slot before any Ctrl/Shift selection.
+    await expect(band.locator('[data-hm-selection-empty]')).toBeVisible()
+    await expect(band.locator('[data-hm-selection-bar]')).toHaveCount(0)
+    const before = await band.boundingBox()
+    // Ctrl-click → the stats bar swaps into the same slot; the band doesn't grow.
+    await band.locator('.heatmap-cell[data-hm-cell="control|lucio"]').click({ modifiers: ['ControlOrMeta'] })
+    await expect(band.locator('[data-hm-selection-bar]')).toBeVisible()
+    await expect(band.locator('[data-hm-selection-empty]')).toHaveCount(0)
+    const after = await band.boundingBox()
+    expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(2)
+  })
+
+  test('the header Reset clears the filter (drill + selection) without scrolling', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('[data-hero-mode-reset]')).toHaveCount(0) // hidden with no filter
+    // Drill into Lucio × Control → narrows + descends to the maps level.
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'lucio' })).toBeVisible()
+    await expect(band.locator('[data-hero-mode-reset]')).toBeVisible()
+    // Reset → chips cleared, drill back at the root grid, button gone.
+    await band.locator('[data-hero-mode-reset]').click()
+    await expect(page.locator('ul.active-chips .active-chip', { hasText: 'lucio' })).toHaveCount(0)
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    await expect(band.locator('[data-hero-mode-reset]')).toHaveCount(0)
+  })
+
+  test('the trailing-window picker filters — 1M drops the 45-day-old corpus', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // Default 6M renders the grid.
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    // 1M cutoff excludes the ~45-day-old corpus → falls below the floor.
+    await band.locator('.bh-window-btn', { hasText: '1M' }).click()
+    await expect(band.locator('.heatmap-empty')).toBeVisible()
+    await expect(band.locator('.heatmap-grid')).toHaveCount(0)
+  })
+
+  test('the inline gear opens the config popover; raising min-matches re-renders', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('.heatmap-grid')).toBeVisible() // 22 decisive ≥ 20
+    await band.locator('[data-hero-mode-config-trigger]').click()
+    const popover = page.getByTestId('widget-config-popover')
+    await expect(popover).toBeVisible()
+    // Raise the floor to 50 → 22 decisive is now below it.
+    await popover.locator('[data-widget-config-choice="minMatches=50"]').click()
+    await popover.getByTestId('widget-config-save').click()
+    await expect(band.locator('.heatmap-empty')).toBeVisible()
+  })
+
+  test('the row is reorderable — the section grip moves it above Geography', async ({ page }) => {
+    // Ships last (after campaign-log + geography).
+    expect(await sectionOrder(page)).toEqual(['campaign-log', 'geography', 'hero-game-mode', 'hero-pool'])
+    await page.locator('[data-section-grip="hero-game-mode"]').focus()
+    await page.keyboard.press('ArrowUp')
+    expect(await sectionOrder(page)).toEqual(['campaign-log', 'hero-game-mode', 'geography', 'hero-pool'])
+  })
+
+  test('the empty-state copy surfaces when decisive matches are below the floor', async ({ page }) => {
+    await page.unrouteAll({ behavior: 'wait' })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          match('m01', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:01', date: daysAgo(10) }),
+          match('m02', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:02', date: daysAgo(10) }),
+        ]),
+      })
+    })
+    await page.reload()
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('.heatmap-empty')).toBeVisible()
+    await expect(band.locator('.heatmap-empty')).toContainText('decisive matches')
+    await expect(band.locator('.heatmap-grid')).toHaveCount(0)
+  })
+})
+
+test.describe('dossier — Hero × Game-Mode drill-down', () => {
+  // lucio×control spans two maps (route66 4-2, havana 2-2 → 60% over 10);
+  // ana×hybrid is a single sparse match; the rest clears the 20-floor.
+  const DRILL = [
+    match('m01', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:01', map: 'route66' }),
+    match('m02', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:02', map: 'route66' }),
+    match('m03', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:03', map: 'route66' }),
+    match('m04', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:04', map: 'route66' }),
+    match('m05', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:05', map: 'route66' }),
+    match('m06', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:06', map: 'route66' }),
+    match('m07', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:07', map: 'havana' }),
+    match('m08', { hero: 'lucio', type: 'control', result: 'victory', finished: '10:08', map: 'havana' }),
+    match('m09', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:09', map: 'havana' }),
+    match('m10', { hero: 'lucio', type: 'control', result: 'defeat', finished: '10:10', map: 'havana' }),
+    match('m11', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:11' }),
+    match('m12', { hero: 'ana', type: 'escort', result: 'victory', finished: '10:12' }),
+    match('m13', { hero: 'ana', type: 'escort', result: 'defeat', finished: '10:13' }),
+    match('m14', { hero: 'ana', type: 'flashpoint', result: 'victory', finished: '10:14' }),
+    match('m15', { hero: 'ana', type: 'flashpoint', result: 'defeat', finished: '10:15' }),
+    match('m16', { hero: 'ana', type: 'hybrid', result: 'victory', finished: '10:16', map: 'kings-row' }),
+    match('m17', { hero: 'kiriko', type: 'push', result: 'victory', finished: '10:17' }),
+    match('m18', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:18' }),
+    match('m19', { hero: 'kiriko', type: 'push', result: 'defeat', finished: '10:19' }),
+    match('m20', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:20' }),
+    match('m21', { hero: 'kiriko', type: 'clash', result: 'victory', finished: '10:21' }),
+    match('m22', { hero: 'kiriko', type: 'clash', result: 'defeat', finished: '10:22' }),
+  ]
+
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/matches', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DRILL) }),
+    )
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await expect(page.locator('.hero-mode-band')).toBeVisible()
+  })
+
+  test('drills two levels: cell → maps → matches, applying a narrow at each step', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    const chips = page.locator('ul.active-chips .active-chip:not(.clear)')
+
+    // L0 → L1: click the lucio×control cell (60%).
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    await expect(band.locator('.hm-map-tile')).toHaveCount(2) // route66 + havana
+    await expect(band.locator('.hm-title')).toContainText('Control maps')
+    await expect(chips).toHaveCount(2) // Hero + Type
+
+    // Maps are sorted ALPHABETICALLY, not by volume — havana (4 games) comes
+    // before route66 (6 games).
+    const mapNames = await band.locator('.hm-map-tile .hm-map-name').allInnerTexts()
+    expect(mapNames[0]!.toLowerCase()).toContain('havana')
+    expect(mapNames[1]!.toLowerCase()).toContain('route')
+
+    // L1 → L2: click route66 specifically (it's second now, not first).
+    await band.locator('.hm-map-tile').filter({ hasText: /route/i }).click()
+    await expect(band.locator('[data-hero-mode-matches]')).toBeVisible()
+    await expect(band.locator('.hm-match-row')).toHaveCount(6)
+    await expect(band.locator('.hm-title')).toContainText('recent matches')
+    await expect(chips).toHaveCount(3) // + Map
+  })
+
+  test('depth-2 rows show mode + queue and open the detail panel on click', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // Drill L0 → L1 → L2 on lucio × control (the default corpus is all rialto).
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    await band.locator('.hm-map-tile').first().click()
+    await expect(band.locator('[data-hero-mode-matches]')).toBeVisible()
+    // Each row carries the play mode (the corpus is competitive) + a queue cell.
+    const row = band.locator('[data-hero-mode-match-row]').first()
+    await expect(row.locator('.hm-match-mode')).toHaveText('Competitive')
+    await expect(row.locator('.hm-match-queue')).toBeVisible()
+    // Clicking a row opens the right-side detail panel.
+    await row.click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+  })
+
+  test('Go back pops one level at a time and clears the picks it added', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    const chips = page.locator('ul.active-chips .active-chip:not(.clear)')
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await band.locator('.hm-map-tile').first().click()
+    await expect(band.locator('[data-hero-mode-matches]')).toBeVisible()
+
+    // matches → maps (Map pick reverted).
+    await band.locator('[data-hero-mode-back]').click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    await expect(chips).toHaveCount(2)
+
+    // maps → root (Hero + Type picks reverted).
+    await band.locator('[data-hero-mode-back]').click()
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    await expect(chips).toHaveCount(0)
+  })
+
+  test('the band keeps a constant height across drill levels (no layout shift)', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    const bandHeight = () => band.evaluate((el) => Math.round(el.getBoundingClientRect().height))
+    const h0 = await bandHeight()
+
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    const h1 = await bandHeight()
+
+    await band.locator('.hm-map-tile').first().click()
+    await expect(band.locator('[data-hero-mode-matches]')).toBeVisible()
+    const h2 = await bandHeight()
+
+    // Drilling/going-back must not resize the band (and thus not shift the
+    // matches list below it). Levels that overflow scroll inside instead.
+    expect(Math.abs(h1 - h0)).toBeLessThanOrEqual(2)
+    expect(Math.abs(h2 - h0)).toBeLessThanOrEqual(2)
+    // The fixed-height level body owns the scroll.
+    const overflowY = await band.locator('.hm-body').evaluate((el) => getComputedStyle(el).overflowY)
+    expect(['auto', 'scroll']).toContain(overflowY)
+  })
+
+  test('drilling from the band does not yank the page (no scroll jump)', async ({ page }) => {
+    // Flat list: its reset-on-narrow explicitly scrolls the document to
+    // the list top. Clicking the band (which sits ABOVE the list) must
+    // not trigger that jump. (This is the cross-browser-reproducible
+    // symptom; the same fix also covers the dossier-head reflow that
+    // WebKit — lacking scroll-anchoring — shows in the grouped list.)
+    await page.locator('[data-sort-group-trigger]').click()
+    await page.locator('[data-group-pick="none"]').click()
+    await page.locator('body').click({ position: { x: 4, y: 4 } }) // close popover
+
+    const band = page.locator('.hero-mode-band')
+    const cell = band.locator('.heatmap-cell', { hasText: '60%' }).first()
+    await cell.scrollIntoViewIfNeeded()
+    await expect(cell).toBeVisible()
+    const before = (await band.boundingBox())!.y
+
+    await cell.click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    const after = (await band.boundingBox())!.y
+
+    expect(Math.abs(after - before)).toBeLessThanOrEqual(8)
+  })
+
+  test('a sparse drill shows the level, not the floor wall, and keeps Go-back', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // ana×hybrid is the only 100% cell — a single match. Drilling it must
+    // NOT show the "need 20+ decisive matches" wall.
+    await band.locator('.heatmap-cell', { hasText: '100%' }).first().click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    await expect(band.locator('.hm-map-tile')).toHaveCount(1)
+    await expect(band.locator('.heatmap-empty')).toHaveCount(0)
+    await expect(band.locator('[data-hero-mode-back]')).toBeVisible()
+  })
+})

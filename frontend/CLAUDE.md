@@ -248,7 +248,7 @@ near-identical definitions (`.kpi-eyebrow`, `.breakdown-eyebrow`,
 collapsed to `.eyebrow` (+ `.accent` / `.alert` modifiers) in `badges.css`.
 Components add `eyebrow` for the type and keep their own class only for LAYOUT.
 Reach for the shared class; if a new variant seems needed, add a modifier rather
-than a parallel family. `tests/e2e/a11y-theme-snapshot.spec.ts` records the set
+than a parallel family. `tests/e2e/a11y/a11y-theme-snapshot.spec.ts` records the set
 of DISTINCT computed values per family, so a reintroduced one-off shows up as a
 snapshot diff that has to be justified.
 
@@ -414,9 +414,9 @@ resolves; (2) query results land after the notifyManager's scheduling —
 await a macrotask (`await new Promise(r => setTimeout(r, 0))`), not just
 `flushPromises()`, before asserting on freshly-fetched state.
 
-**Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via Testing Library `render()`). Playwright → `frontend/tests/e2e/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
+**Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via Testing Library `render()`). Playwright → `frontend/tests/e2e/**/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 
-**Playwright e2e.** Specs in `frontend/tests/e2e/`. `make test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Existing files: `smoke.spec.ts` (loads, tab nav, skip-link), `a11y.spec.ts` (axe per view). Per the root `CLAUDE.md` TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation.
+**Playwright e2e.** Specs in `frontend/tests/e2e/<feature>/` — one folder per feature area (`matches`, `match`, `dossier`, `data-table`, `narrow`, `trends`, `unknown`, `coach`, `elo`, `dashboard`, `onboarding`, `update`, `parse`, `settings`, `a11y`, `app`); pick the one whose surface the spec drives. The `tests/e2e/` ROOT holds only the shared harness: the `_*.ts` helpers (import them as `'../_fixtures'`) and the `coverage-*.ts` files `playwright.config.ts` names by path. The two `*-snapshots/` directories also stay at the root and are found by BASENAME (`snapshotPathTemplate` is `{testDir}/{testFileName}-snapshots/`), so two specs must never share a basename across folders. `make test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Start here: `app/smoke.spec.ts` (loads, tab nav, skip-link), `a11y/a11y.spec.ts` (axe per view). Per the root `CLAUDE.md` TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation.
 
 **The e2e locator ladder is NOT the unit ban list.** Native queries come first
 and `playwright/prefer-native-locators` enforces it: `locator('[role=tab]')`,
@@ -428,8 +428,8 @@ text match on rows/chips/panels with no accessible handle. Tabs and panels are
 queried by role; the two whose accessible name grows a suffix use an anchored
 regex (`getByRole('tab', { name: /^Matches/ })` — the filters dot; `/^Unknown/` —
 the badge count). Named exemptions from the rule, deliberately structural:
-`elo-scenarios.spec.ts` (its 21-attribute sweep — the attribute NAMES are the
-snapshot schema) and `a11y-theme-snapshot.spec.ts` (`[class*=…]` family probes).
+`elo/elo-scenarios.spec.ts` (its 21-attribute sweep — the attribute NAMES are the
+snapshot schema) and `a11y/a11y-theme-snapshot.spec.ts` (`[class*=…]` family probes).
 Route-callback captures go through `routeCapture<T>()` in `tests/e2e/_capture.ts`,
 and nullable reads through its `must()` — the specs are type-checked by
 `tsconfig.e2e.json` (`npm run typecheck:e2e`), so `as`-casting past a null is a

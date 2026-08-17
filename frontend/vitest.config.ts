@@ -18,7 +18,7 @@ export default defineConfig({
   },
   test: {
     // Unit tests live as src/**/*.test.ts. Playwright e2e specs in
-    // tests/e2e/*.spec.ts use a different runner and must not be picked
+    // tests/e2e/<feature>/*.spec.ts use a different runner and must not be picked
     // up here — without this scope Vitest tries to import them and
     // crashes on Playwright's test() being called outside a Playwright
     // runner.
