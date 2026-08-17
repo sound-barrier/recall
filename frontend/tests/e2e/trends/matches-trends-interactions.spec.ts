@@ -97,13 +97,13 @@ test.describe('Matches — Trends interactions', () => {
 
     // "Modifiers over time" now starts collapsed, so exercise remove/re-add on
     // a default-visible chart instead.
-    await expect(page.locator('.trend-card')).toHaveCount(8)
+    await expect(page.locator('.trend-card')).toHaveCount(9)
     await page.locator('.trend-card', { hasText: 'Cumulative net record' }).locator('.trend-card-close').click()
-    await expect(page.locator('.trend-card')).toHaveCount(7)
+    await expect(page.locator('.trend-card')).toHaveCount(8)
     const chip = page.locator('.trends-add-chip', { hasText: 'Cumulative net record' })
     await expect(chip).toBeVisible()
     await chip.click()
-    await expect(page.locator('.trend-card')).toHaveCount(8)
+    await expect(page.locator('.trend-card')).toHaveCount(9)
   })
 
   test('Reset view is disabled until a brush, then clears the brushed range', async ({ page }) => {

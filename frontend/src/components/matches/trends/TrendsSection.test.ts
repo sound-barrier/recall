@@ -77,6 +77,7 @@ function fakeDossier(over: TrendsOverride = {}): MatchesDossier {
   return {
     rankLadder: computed(() => over.rankLadder ?? []),
     rankDelta: list([]),
+    rankPercentile: list([]),
     cumulativeNet: list([]),
     modifierFrequency: list([]),
     combat: list(over.combat),

@@ -79,7 +79,7 @@ function mockMatches(page: import('@playwright/test').Page, body: unknown) {
 }
 
 test.describe('Matches — Trends section', () => {
-  test('expands to render the eight default trend charts (Modifiers opt-in)', async ({ page }) => {
+  test('expands to render the nine default trend cards (Modifiers opt-in)', async ({ page }) => {
     await mockMatches(page, CORPUS)
     await page.goto('/')
     await page.getByRole('tab', { name: /^Matches/ }).click()
@@ -98,7 +98,11 @@ test.describe('Matches — Trends section', () => {
     // Cumulative net, Best times to play), each with a painted canvas once the
     // lazy ECharts chunk resolves. "Modifiers over time" starts collapsed
     // (opt-in) — it surfaces as an add-chip, not a card.
-    await expect(page.locator('.trend-card')).toHaveCount(8)
+    await expect(page.locator('.trend-card')).toHaveCount(9)
+    // One fewer CHART than card: none of these matches reports a rank
+    // percentile (only post-placement screens do), so that card renders its
+    // explanation instead of an empty axis. A chart drawn over no readings
+    // would imply the readings exist and are all zero.
     await expect(page.locator('.trend-chart[role="img"]')).toHaveCount(8)
     // Each chart paints at least one canvas once the lazy ECharts chunk
     // resolves; some chart types (the heatmap) add an extra zrender layer, so

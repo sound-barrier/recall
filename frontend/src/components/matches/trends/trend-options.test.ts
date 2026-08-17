@@ -219,10 +219,21 @@ describe('trend-options — rank ladder axis', () => {
   it('spells the tooltip out as tier, division, progress and this match’s change', () => {
     const format = tooltipOf(rankLadderOption([])).formatter
 
+    // "40% progress" rather than a bare "40%": the percentile clause below can
+    // sit on the same line, and two unlabeled percentages leave the reader to
+    // work out which is which.
     expect(format?.({ seriesName: 'Tank', data: { rank: rankPoint() } }))
-      .toBe('Tank — Gold 3 · 40% · +2% this match')
+      .toBe('Tank — Gold 3 · 40% progress · +2% this match')
     expect(format?.({ seriesName: 'Tank', data: { rank: rankPoint({ change: -3 }) } }))
       .toContain('-3% this match')
+    // A NULL progress is omitted, not interpolated: the parser distinguishes an
+    // unread caption from a real 0, and the raw template printed "null%".
+    const unread = format?.({ seriesName: 'Tank', data: { rank: rankPoint({ progress: null }) } })
+    expect(unread).not.toContain('null')
+    expect(unread).toContain('Gold 3')
+    // The ground-truth reading rides along when the capture reported one.
+    expect(format?.({ seriesName: 'Tank', data: { rank: rankPoint({ percentile: 57 }) } }))
+      .toContain('above 57%')
     // Hovering anything that isn't a rank reading (the mark area, a gap) must
     // not render a half-built string.
     expect(format?.({ seriesName: 'Tank', data: {} })).toBe('')
