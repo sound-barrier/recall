@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/vue-query'
 
 import {
-  CheckForUpdate, GetDataLocation, GetOWData, GetStartupError, GetVersion,
+  CheckForUpdate, GetDataLocation, GetOWData, GetParseStaleness, GetStartupError, GetVersion,
   type UpdateInfo,
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
@@ -21,6 +21,13 @@ export function useVersionQuery() {
 
 export function useDataLocationQuery() {
   return useQuery({ queryKey: qk.system.dataLocation, queryFn: GetDataLocation }, getQueryClient())
+}
+
+// No `meta: { banner }` on purpose: a staleness read that fails must stay
+// silent and keep its last answer, like pendingCount and failedFiles. A nag
+// the app could not compute is not worth interrupting the user with.
+export function useParseStalenessQuery() {
+  return useQuery({ queryKey: qk.system.parseStaleness, queryFn: GetParseStaleness }, getQueryClient())
 }
 
 // The GitHub release check is USER-PULLED only ("no network calls on mount

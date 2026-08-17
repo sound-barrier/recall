@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useParseRunLifecycle } from '@/composables/ingest/useParseRunLifecycle'
+import { useParseStalenessQuery } from '@/queries/system'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { useFailedFilesQuery, usePendingCountQuery } from '@/queries/matches'
@@ -62,6 +63,15 @@ export const useParseStore = defineStore('parse', () => {
   const failedFilesQuery = useFailedFilesQuery()
   const failedFiles = computed(() => failedFilesQuery.data.value ?? [])
 
+  // ── Parse vintage ─────────────────────────────────────────────────
+  // How many matches an older parser read, and the generation judging it.
+  // Defaulting BOTH to 0 is load-bearing: before the first response, and on a
+  // failed read, the notice renders nothing rather than flashing a count it
+  // does not have.
+  const stalenessQuery = useParseStalenessQuery()
+  const staleMatches = computed(() => stalenessQuery.data.value?.stale_matches ?? 0)
+  const parserGeneration = computed(() => stalenessQuery.data.value?.parser_generation ?? 0)
+
   async function refreshNewCount() {
     await getQueryClient().refetchQueries({ queryKey: qk.pendingCount })
   }
@@ -95,6 +105,8 @@ export const useParseStore = defineStore('parse', () => {
     newScreenshotCount,
     refreshNewCount,
     failedFiles,
+    staleMatches,
+    parserGeneration,
     recordsPulse,
     flashRecordsPulse,
   }

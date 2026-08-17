@@ -41,6 +41,7 @@ import type {
   DataLocation,
   FailedFile,
   IgnoredScreenshot,
+  GetParseStalenessResponses,
   NamedCandidate,
   ProbeResult,
   UserMatchDataInput,
@@ -90,6 +91,7 @@ export type DBHealth = DbHealth
 // across a session — callers may fetch once at app load and cache. The
 // shape is the spec's inline response schema.
 export type OWData = GetReferenceDataResponses[200]
+export type ParseStaleness = GetParseStalenessResponses[200]
 
 // NamedCandidateStats is the per-source diagnostic blob the picker grid
 // hydrates AFTER the cards mount (file_count + last_modified +
@@ -157,6 +159,13 @@ export function GetOWData(): Promise<OWData> {
 
 export function GetDataLocation(): Promise<DataLocation> {
   return unwrap(sdk.getDataLocation())
+}
+
+// How many matches an older parser read. A parser fix only reaches files
+// parsed AFTER it ships, so without this the improvement lands on new
+// captures while the existing history quietly keeps its old readings.
+export function GetParseStaleness(): Promise<ParseStaleness> {
+  return unwrap(sdk.getParseStaleness())
 }
 
 // ─── Matches (read) ────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { useScrollAffordance } from '@/composables/matches/list/useScrollAfforda
 import { useOWData } from '@/composables/shared/useOWData'
 import { useArchiveSelection } from '@/composables/matches/list/useArchiveSelection'
 import CoachInboxBanner from '@/components/coach/inbox/CoachInboxBanner.vue'
+import ParseStalenessBanner from '@/components/ingest/ParseStalenessBanner.vue'
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
 import MatchesDossierSections from '@/components/matches/dossier/MatchesDossierSections.vue'
 import BulkActionBar from '@/components/matches/bulk/BulkActionBar.vue'
@@ -401,6 +402,7 @@ function onRowContextOpenSourceFolder(matchKey: string) {
            survives a reload and a "Decide later" until every note in
            the inbox has a verdict. -->
       <CoachInboxBanner />
+      <ParseStalenessBanner />
 
       <!-- ─── SET DOSSIER ─────────────────────────────────────────
          Summary + customizable widget grid + Add menu + popover-mode
