@@ -85,16 +85,27 @@ func Latest(dir, prefix string) (time.Time, bool) {
 	if err != nil || len(matches) == 0 {
 		return time.Time{}, false
 	}
-	newest := ""
+	// Parse each candidate and keep the newest that PARSES, rather than taking
+	// the lexical max and parsing only that one. A single file whose stamp is
+	// not a timestamp — a copy someone kept by hand, "auto-keep-this-one.db" —
+	// sorts above every real stamp whenever the character after the prefix is
+	// a letter, and the parse-the-max form then reported "no backups exist"
+	// with a full directory behind it. That is not merely a wrong readout:
+	// Stale stays true forever, so a snapshot is written after every parse,
+	// while Prune keeps the poison file as its own lexical max — one of the
+	// three kept slots gone permanently, and the retention window collapsing
+	// from three weekly snapshots to the last two parse runs.
+	var newest time.Time
+	found := false
 	for _, m := range matches {
-		if base := filepath.Base(m); base > newest {
-			newest = base
+		stamp := strings.TrimSuffix(strings.TrimPrefix(filepath.Base(m), prefix), ".db")
+		t, err := time.Parse(TimeLayout, stamp)
+		if err != nil {
+			continue
+		}
+		if !found || t.After(newest) {
+			newest, found = t, true
 		}
 	}
-	stamp := strings.TrimSuffix(strings.TrimPrefix(newest, prefix), ".db")
-	t, err := time.Parse(TimeLayout, stamp)
-	if err != nil {
-		return time.Time{}, false
-	}
-	return t, true
+	return newest, found
 }

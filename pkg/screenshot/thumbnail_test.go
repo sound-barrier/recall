@@ -141,3 +141,35 @@ func TestAttachThumbnails_RemembersThatADirIDResolvesToNothing(t *testing.T) {
 		t.Errorf("resolver called %d times for one dir-id, want 1", calls)
 	}
 }
+
+// The type preference has to survive a MISSING file, and it did not.
+// thumbnailCandidates promoted only the FIRST summary and the FIRST teams,
+// then appended every source file in order. So when the first summary is off
+// disk — the documented "deleted or moved screenshot" case this whole
+// on-disk check exists for — the promoted teams entry is reached before the
+// SECOND summary, and a teams screenshot wins over a summary that is sitting
+// right there. The docstring promises the opposite.
+//
+// Two summaries on one match is ordinary: OCR captures one per screenshot,
+// and a re-take of the scoreboard is exactly the case where the older file
+// gets cleaned up.
+func TestAttachThumbnails_PrefersASurvivingSummaryOverTeams(t *testing.T) {
+	// Only b-teams and c-summary exist; a-summary was deleted.
+	dir := dirWithFiles(t, "b-teams.png", "c-summary.png")
+	recs := []match.Record{
+		recordWith("summary-deleted", 1,
+			map[string]string{
+				"a-summary.png": "summary",
+				"b-teams.png":   "teams",
+				"c-summary.png": "summary",
+			},
+			"a-summary.png", "b-teams.png", "c-summary.png"),
+	}
+
+	screenshot.AttachThumbnails(recs, fixedDir(dir))
+
+	if got := recs[0].ThumbnailFile; got != "c-summary.png" {
+		t.Errorf("ThumbnailFile = %q, want %q — a summary that is ON DISK outranks "+
+			"a teams screenshot, whichever summary was captured first", got, "c-summary.png")
+	}
+}

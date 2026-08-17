@@ -504,3 +504,32 @@ func loadedRostersYAML(t *testing.T) (heroes, maps, sources []byte) {
 	}
 	return heroes, maps, sources
 }
+
+// Both cases above use a 200. The carve introduced a third: when the release
+// fetch FAILS, pkg/release returns a zero Info meaning "checked nothing, show
+// nothing" — and the shell used to return before stamping anything onto it.
+// Stamping unconditionally makes the response advertise a capability on a
+// payload whose entire meaning is that there is nothing to act on:
+// {"checked":false,"available":false,"can_self_update":true}.
+//
+// Harmless today only because AboutModal gates its CTA on `available &&
+// canSelfUpdate` and the installer re-checks server-side. That is two
+// coincidences holding up a contradiction, so pin the field instead.
+func TestCheckForUpdate_CanSelfUpdate_FalseWhenTheCheckItselfFailed(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.2.0")
+
+	got := (&app.App{SelfUpdate: &fakeSelfUpdater{}}).CheckForUpdate()
+
+	if got.Checked {
+		t.Fatalf("Checked: want false when the release fetch failed, got true")
+	}
+	if got.CanSelfUpdate {
+		t.Error("CanSelfUpdate: want false on a failed check — a response that " +
+			"checked nothing must not advertise that it could install something")
+	}
+}
