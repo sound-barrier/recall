@@ -11,10 +11,16 @@
  */
 import type { Page } from '@playwright/test'
 
-// Mirrors CURRENT_LAYOUT_VERSION in useDashboardLayout.ts. If a new
-// migration bumps that constant, bump this too — otherwise seeded
-// layouts get re-shaped before the spec's assertions run.
-export const SEEDED_LAYOUT_VERSION = '2'
+// Mirrors CURRENT_LAYOUT_VERSION in dashboardLayout.migrations.ts. If a new
+// migration bumps that constant, bump this too — otherwise seeded layouts get
+// re-shaped before the spec's assertions run.
+//
+// It drifted exactly that way once: the v3 migration shipped while this stayed
+// at '2', so every seeded layout was silently re-shaped (v3 inserts the
+// rank-percentile widget) before ten specs made their assertions. Nothing
+// failed, which is precisely the problem — those specs were asserting against a
+// layout none of them had asked for. A unit test now pins the two together.
+export const SEEDED_LAYOUT_VERSION = '3'
 
 export async function seedDossierLayout(
   page: Page,
