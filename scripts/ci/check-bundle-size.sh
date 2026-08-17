@@ -128,7 +128,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 1605000 → 1660000 — the coaching feature's lazy chunks: the
 # film room (reel/desk/sheet/editor), the return sheet, and the slip and
 # strip (measured 1647634B).
-: "${MAX_TOTAL_JS_BYTES:=1660000}"
+# 2026-08: 1660000 → 1667000 — the season-4 rank percentile: the "Ranked
+# above" dossier widget, the layout v3 migration step, the Elo panel line
+# and the Compare standing row (measured 1661002B, i.e. 1002B over the old
+# ceiling — the previous bump left ~12KB of slack and the campaigns since
+# have spent it). Restores the deliberate ~6KB headroom the note above
+# asks for; initial JS is unmoved at 324.7KB against a 331KB budget,
+# because every one of these lands in an already-lazy view chunk.
+: "${MAX_TOTAL_JS_BYTES:=1667000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
