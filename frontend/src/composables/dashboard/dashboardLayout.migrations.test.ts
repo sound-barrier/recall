@@ -83,3 +83,17 @@ describe('layout migration v3 — Ranked above', () => {
     expect(read(cell)[2]).toEqual(['current-rank'])
   })
 })
+
+// The e2e layout seeder stamps a version so the one-shot migrations treat a
+// seeded layout as already-migrated user state. When the two drift, every
+// seeded spec silently gets its layout RE-SHAPED before it asserts — and
+// nothing fails, which is what makes the drift invisible. It happened once
+// already: v3 shipped while the seeder stayed at '2', so ten specs spent that
+// time asserting against a layout none of them had asked for.
+describe('the e2e seeder tracks the migration version', () => {
+  it('stamps the current version, so a seeded layout is never re-migrated', async () => {
+    const { SEEDED_LAYOUT_VERSION } = await import('../../../tests/e2e/_layout')
+
+    expect(SEEDED_LAYOUT_VERSION).toBe(String(CURRENT_LAYOUT_VERSION))
+  })
+})
