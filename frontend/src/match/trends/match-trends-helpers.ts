@@ -307,6 +307,24 @@ export interface RankNow {
   tier: Tier
   level: number
   progress: number
+  /**
+   * Share of players ranked below this one, from the season-4
+   * "HIGHER RANKED THAN N% OF PLAYERS" caption. `null` when the reading
+   * carried none — every placement screen, and every capture predating the
+   * season-4 UI. Not 0: nobody-below is a real and different claim.
+   */
+  percentile: number | null
+}
+
+// A rank reading is usable only when the tier is one the ladder knows AND the
+// division is a number — a partial OCR (a placement screen whose tier band was
+// occluded, say) yields neither, and must not seed a bucket with a half-read
+// rank that then wins on recency.
+function readableTier(data: TrendInput['data']): Tier | null {
+  const tier = data?.rank
+  if (!tier || !(TIER_ORDER as readonly string[]).includes(tier)) return null
+  if (typeof data?.level !== 'number') return null
+  return tier as Tier
 }
 
 export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
@@ -315,8 +333,8 @@ export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
   // wins — the last write per bucket is the newest reading.
   for (const { rec, t } of timedRecords(records)) {
     const data = rec.data
-    const tier = data?.rank
-    if (!tier || !(TIER_ORDER as readonly string[]).includes(tier) || typeof data?.level !== 'number') continue
+    const tier = readableTier(data)
+    if (tier === null) continue
     const bucket = roleBucket(rec)
     const prev = latest.get(bucket.key)
     if (!prev || t >= prev.t) {
@@ -324,9 +342,10 @@ export function currentRankByRole(records: readonly TrendInput[]): RankNow[] {
         t,
         key: bucket.key,
         label: bucket.label,
-        tier: tier as Tier,
-        level: data.level,
+        tier,
+        level: data?.level as number,
         progress: data.rank_progress ?? 0,
+        percentile: data.rank_percentile ?? null,
       })
     }
   }

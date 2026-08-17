@@ -8,8 +8,8 @@ describe('CurrentRankWidget', () => {
     renderWidget(CurrentRankWidget, {
       dossier: {
         currentRank: [
-          { key: 'tank', label: 'Tank', tier: 'platinum', level: 1, progress: 60 },
-          { key: 'dps', label: 'DPS', tier: 'gold', level: 3, progress: 20 },
+          { key: 'tank', label: 'Tank', tier: 'platinum', level: 1, progress: 60, percentile: 62 },
+          { key: 'dps', label: 'DPS', tier: 'gold', level: 3, progress: 20, percentile: 38 },
         ],
       },
     })
@@ -28,7 +28,7 @@ describe('CurrentRankWidget', () => {
 
   it('clamps a negative (demotion) progress to a non-negative meter value', () => {
     renderWidget(CurrentRankWidget, {
-      dossier: { currentRank: [{ key: 'tank', label: 'Tank', tier: 'gold', level: 1, progress: -19 }] },
+      dossier: { currentRank: [{ key: 'tank', label: 'Tank', tier: 'gold', level: 1, progress: -19, percentile: null }] },
     })
     // aria-valuenow reports the same clamped quantity the bar paints.
     expect(screen.getByRole('progressbar', { name: 'Tank progress' }))

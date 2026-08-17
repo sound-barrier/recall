@@ -64,6 +64,12 @@ export interface SeasonMetrics {
   // real denominator (OCR coverage is partial). The verdict gates its combat
   // movers on this so one game's rates can't headline the word.
   combatSamples?: number
+  // Where the slice ENDED in the population, from the season-4 rank screen's
+  // "HIGHER RANKED THAN N% OF PLAYERS" caption — the last reading in the
+  // slice, not an average, because a percentile is a standing rather than a
+  // rate. null when no reading in the slice carried one (all of them, before
+  // season 4), and the row is omitted entirely when neither side has it.
+  rankPercentile?: number | null
   // Form-mode extras — rows are emitted only when BOTH snapshots carry the
   // field, so the Seasons mode (which doesn't populate them) is unchanged.
   rankProgress?: number | null // net rank-meter movement in divisions (100% = 1)
@@ -304,6 +310,13 @@ export function compareSeasons(a: SeasonMetrics, b: SeasonMetrics): ComparisonSe
       title: 'Overview',
       rows: [
         displayRow('record', 'Record (W–L–D)', `${a.wins}–${a.losses}–${a.draws}`, `${b.wins}–${b.losses}–${b.draws}`),
+        ...(a.rankPercentile != null && b.rankPercentile != null
+          ? [numericRow({
+              key: 'rankPercentile', label: 'Ranked above', dir: 'higher-better',
+              a: a.rankPercentile, b: b.rankPercentile,
+              fmt: (n) => `${Math.round(n)}%`, fmtDelta: (n) => `${round1(n)} pts`, quantize: round1,
+            })]
+          : []),
         ...(a.rankProgress !== undefined && b.rankProgress !== undefined
           ? [numericRow({
               key: 'rankProgress', label: 'Rank progress', dir: 'higher-better',

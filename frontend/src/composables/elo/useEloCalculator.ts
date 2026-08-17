@@ -225,6 +225,17 @@ export function useEloCalculator(opts: EloCalcOpts) {
     const f = seededForm.value
     return f === null ? NO_EDITED_FIELDS : diffSeededForm(f, formSnapshot())
   })
+  // The season-4 population reading for the MEASURED rank — "higher ranked
+  // than N% of players", straight off the rank screen rather than modeled
+  // from a distribution. It is deliberately withheld once the user edits the
+  // current tier or division: the number was measured against the rank the
+  // screenshot showed, and a hypothetical rank has no measurement. null also
+  // covers every reading from before season 4, which carried no caption.
+  const measuredPercentile = computed<number | null>(() => {
+    if (editedFields.value.currentTier || editedFields.value.currentDivision) return null
+    return seed.value.rank?.percentile ?? null
+  })
+
   const isEdited = computed(() =>
     Object.values(editedFields.value).some(Boolean)
     || selectedHeroes.value.size > 0
@@ -399,7 +410,7 @@ export function useEloCalculator(opts: EloCalcOpts) {
     // editable inputs + edit API
     currentTier, currentDivision, currentProgress, targetTier, targetDivision,
     winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
-    editInput, lastSeed, editedFields, isEdited, resetToMeasured,
+    editInput, lastSeed, editedFields, isEdited, resetToMeasured, measuredPercentile,
     measuredNaive, measuredWeeks, measuredProbSeason,
     // hero picker + what-if nudges
     heroStats, selectedHeroes, toggleHero, selectAllHeroes, clearHeroSelection,

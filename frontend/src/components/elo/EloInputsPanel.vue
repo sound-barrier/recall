@@ -12,6 +12,7 @@ const {
   currentTier, currentDivision, currentProgress, targetTier, targetDivision,
   winRatePct, sampleN, meterMovePct, gamesPerWeekInput, decaySlopePts,
   editInput, lastSeed, decay, projInput, editedFields, isEdited, resetToMeasured,
+  measuredPercentile,
 } = useEloCalc()
 
 const DIVISIONS = [5, 4, 3, 2, 1]
@@ -99,6 +100,15 @@ const plateauLine = computed(() => {
           >
         </label>
       </div>
+      <!-- The population reading Overwatch printed on the rank screen itself,
+           not a modeled estimate. It is withheld the moment the tier or
+           division is edited: the number was measured against the rank the
+           screenshot showed, and a hypothetical rank has no measurement. That
+           is also why the old "above 25% of players if you are gold" line was
+           removed — it was a stale published figure dressed as your data. -->
+      <p v-if="measuredPercentile !== null" class="elo-percentile" data-elo-percentile>
+        Higher ranked than <strong>{{ measuredPercentile }}%</strong> of players
+      </p>
     </fieldset>
 
     <fieldset class="elo-fieldset">
