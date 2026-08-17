@@ -4,7 +4,7 @@
    and a result pill need.
 
    Two vocabularies, one palette, because the helpers in
-   @/match/match-heatmap-helpers speak two:
+   @/match/trends/match-heatmap-helpers speak two:
 
      resultJudgment(result)  → a match happened and it was a win / loss /
                                draw          → .tint-win / -loss / -draw
