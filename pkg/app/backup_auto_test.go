@@ -1,22 +1,16 @@
 package app_test
 
 import (
-	"bytes"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"recall/pkg/app"
 	"recall/pkg/parser"
+	"recall/pkg/snapshot"
 )
-
-// autoPrefix mirrors the scheduler's snapshot prefix; the constant itself
-// is unexported and has no test seam.
-const autoPrefix = "auto-"
 
 // Re-parse All rewrites every row from OCR, so it takes a silent
 // VACUUM INTO safety snapshot BEFORE the run (keep the newest 2).
@@ -25,8 +19,8 @@ const autoPrefix = "auto-"
 
 func stubBackup(t *testing.T, log *[]string, fail bool) {
 	t.Helper()
-	prev := *app.BackupToFunc
-	*app.BackupToFunc = func(_, dest string) error {
+	prev := snapshot.BackupToFunc
+	snapshot.BackupToFunc = func(_, dest string) error {
 		*log = append(*log, "backup:"+dest)
 		if fail {
 			return os.ErrPermission
@@ -35,7 +29,7 @@ func stubBackup(t *testing.T, log *[]string, fail bool) {
 		// due-ness checks that glob the backups dir see it.
 		return os.WriteFile(dest, []byte("snapshot"), 0o600)
 	}
-	t.Cleanup(func() { *app.BackupToFunc = prev })
+	t.Cleanup(func() { snapshot.BackupToFunc = prev })
 }
 
 // preReparseEntries filters the recorder log down to pre-reparse
@@ -44,7 +38,7 @@ func stubBackup(t *testing.T, log *[]string, fail bool) {
 func preReparseEntries(log []string) []string {
 	var out []string
 	for _, l := range log {
-		if strings.Contains(l, "pre-reparse-") {
+		if strings.Contains(l, snapshot.ReparsePrefix) {
 			out = append(out, l)
 		}
 	}
@@ -102,88 +96,6 @@ func TestReParseAll_SnapshotFailureDoesNotBlockTheRun(t *testing.T) {
 	}
 }
 
-func TestPruneSnapshots_KeepsNewestN(t *testing.T) {
-	dir := t.TempDir()
-	for _, name := range []string{
-		"pre-reparse-20260701-100000.db",
-		"pre-reparse-20260702-100000.db",
-		"pre-reparse-20260703-100000.db",
-		"auto-20260630-090000.db", // different prefix — untouched
-	} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	app.PruneSnapshots(dir, "pre-reparse-", 2)
-	left, _ := filepath.Glob(filepath.Join(dir, "*.db"))
-	var names []string
-	for _, f := range left {
-		names = append(names, filepath.Base(f))
-	}
-	want := map[string]bool{
-		"pre-reparse-20260702-100000.db": true,
-		"pre-reparse-20260703-100000.db": true,
-		"auto-20260630-090000.db":        true,
-	}
-	if len(names) != 3 {
-		t.Fatalf("expected 3 files left, got %v", names)
-	}
-	for _, n := range names {
-		if !want[n] {
-			t.Errorf("unexpected survivor %q", n)
-		}
-	}
-}
-
-// lockedBuffer collects log output under a mutex — pkg/app logs from
-// background goroutines (watcher, parse), and a bare bytes.Buffer swapped
-// into slog.Default() races them under -race.
-type lockedBuffer struct {
-	mu  sync.Mutex
-	buf bytes.Buffer
-}
-
-func (b *lockedBuffer) Write(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.Write(p)
-}
-
-func (b *lockedBuffer) String() string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.buf.String()
-}
-
-// captureLogs redirects slog.Default() for the duration of the test.
-func captureLogs(t *testing.T) *lockedBuffer {
-	t.Helper()
-	buf := &lockedBuffer{}
-	prev := slog.Default()
-	t.Cleanup(func() { slog.SetDefault(prev) })
-	slog.SetDefault(slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
-	return buf
-}
-
-// A Glob failure is not "nothing to prune". The two were folded into one
-// `err != nil || len(matches) <= keep` return, so an unglobbable backups
-// path — a '[' anywhere in the data dir is enough, and data dirs carry
-// user-chosen profile names — disabled pruning permanently and let
-// backups/ grow without bound, with nothing anywhere saying why. Skipping
-// the prune stays the safe arm; it just has to be a loud one.
-func TestPruneSnapshots_GlobFailureIsLoggedNotSwallowed(t *testing.T) {
-	logs := captureLogs(t)
-
-	// An unterminated '[' makes the joined pattern invalid, which is the
-	// one reachable filepath.ErrBadPattern.
-	app.PruneSnapshots(filepath.Join(t.TempDir(), "profile[1", "backups"), autoPrefix, 3)
-
-	got := logs.String()
-	if !strings.Contains(got, "level=ERROR") || !strings.Contains(got, filepath.ErrBadPattern.Error()) {
-		t.Fatalf("a Glob failure must surface as a logged error; log was %q", got)
-	}
-}
-
 // ── Auto-backup scheduler ─────────────────────────────────────────
 
 func TestAutoBackupStatus_DefaultsOnAndStaleWithoutSnapshots(t *testing.T) {
@@ -207,8 +119,8 @@ func TestAutoBackupStatus_ReadsNewestSnapshotAndFreshness(t *testing.T) {
 		t.Fatal(err)
 	}
 	freshTime := time.Now().UTC().Add(-2 * time.Hour).Truncate(time.Second)
-	fresh := freshTime.Format("20060102-150405")
-	for _, name := range []string{"auto-20260101-000000.db", "auto-" + fresh + ".db"} {
+	fresh := freshTime.Format(snapshot.TimeLayout)
+	for _, name := range []string{"auto-20260101-000000.db", snapshot.AutoPrefix + fresh + ".db"} {
 		if err := os.WriteFile(filepath.Join(backups, name), []byte("x"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -255,7 +167,7 @@ func TestMaybeAutoBackup_WritesWhenDue_SkipsWhenFreshOrOff(t *testing.T) {
 	stubBackup(t, &log, false)
 
 	app.MaybeAutoBackup(a) // due: nothing exists yet
-	if len(log) != 1 || !strings.Contains(log[0], "auto-") {
+	if len(log) != 1 || !strings.Contains(log[0], snapshot.AutoPrefix) {
 		t.Fatalf("expected one auto snapshot, got %v", log)
 	}
 
