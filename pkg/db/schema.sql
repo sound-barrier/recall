@@ -196,8 +196,23 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   rank_progress INTEGER,
   change_percent INTEGER,
   result TEXT NOT NULL DEFAULT '',
-  -- Modifier-row text this release's vocabulary could not account for. It has
-  -- DELIBERATELY no CHECK: the rank_modifiers CHECK below IS the vocabulary, so
+  -- Modifier-row text this release's vocabulary could not account for.
+  --
+  -- ONE COLUMN, not a child table, which bends "a new repeating-group dimension
+  -- gets its own CREATE TABLE" in .claude/rules/database.md. The deviation is
+  -- deliberate: there is no chip ENTITY to key rows on. The detector matches
+  -- [A-Z]{5,} at WORD level, so "UPHILL BATTLE" is two tokens and the documented
+  -- false positive "ENDORSEMENT RECEIVED" is two more — a (rank_screenshot_id,
+  -- chip) primary key would normalize word fragments, not chips. rank_modifiers
+  -- earns its table because three consumers query per-modifier (the narrow
+  -- facets, the dossier counts, the user-override twin); this text feeds none of
+  -- them by design, and a table with no join is speculative generality.
+  --
+  -- The trigger that EARNS the split: the first feature that wants to group by
+  -- this value — "count matches by unrecognized chip", or a facet the user can
+  -- filter on. At that point the tokenizer needs to emit whole chips too.
+  --
+  -- It has DELIBERATELY no CHECK: the rank_modifiers CHECK below IS the vocabulary, so
   -- a value that belongs here can never satisfy it — routing this text there
   -- would be a guaranteed constraint violation, which UpsertRank's log-and-skip
   -- would then turn into a guaranteed silent drop. That is this column's own bug

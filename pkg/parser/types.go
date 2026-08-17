@@ -2,10 +2,20 @@ package parser
 
 import "fmt"
 
-// Generation identifies the parser's OUTPUT vintage. Bump it whenever a change
-// means an already-stored row would read DIFFERENTLY if the same screenshot were
-// parsed again — a new field captured, a crop retuned, a value that used to come
-// back wrong or empty.
+// Generation identifies the parser's OUTPUT vintage. Bump it when a re-parse
+// would change something the USER WOULD NOTICE — a corrected reading, a crop
+// retuned, a field that used to come back wrong or empty and now carries a
+// value they act on.
+//
+// "Anything a re-parse would change" is the rule this comment used to state, and
+// it is too wide. The count built on this constant flags a MATCH when any of its
+// rows is behind, and the notice tells the user a re-parse would improve them —
+// so bumping for a change they cannot see spends the whole corpus's worth of
+// attention on nothing. A purely DIAGNOSTIC field is the case where the two
+// readings diverge: modifiers_raw ships forward-only for exactly this reason,
+// and its value is populated on 3 of 44 rank captures, all three of them known
+// false positives. The next modifiers.yaml addition earns the bump instead,
+// because that one changes stored modifiers the filters and dossier count.
 //
 // It exists because a parser improvement reaches only files parsed AFTER it
 // ships. Nothing told the user that, so a fix silently applied to new captures
