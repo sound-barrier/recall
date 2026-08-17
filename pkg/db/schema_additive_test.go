@@ -31,6 +31,11 @@ func TestEnsureAdditiveColumns_AddsMissingColumnIdempotently(t *testing.T) {
 	_, err = d.Exec(`CREATE TABLE rank_screenshots (
 		id INTEGER PRIMARY KEY, filename TEXT, rank TEXT)`)
 	mustNoErr(t, err)
+	// The remaining pipeline parents, named by the parser_generation entries.
+	for _, tbl := range []string{"teams_screenshots", "personal_screenshots", "unknown_screenshots"} {
+		_, err = d.Exec(`CREATE TABLE ` + tbl + ` (id INTEGER PRIMARY KEY, filename TEXT)`)
+		mustNoErr(t, err)
+	}
 
 	if has, err := db.ColumnExists(d, "summary_screenshots", "played_at_utc"); err != nil || has {
 		t.Fatalf("precondition: column should be absent (has=%v err=%v)", has, err)

@@ -36,6 +36,14 @@ var additiveColumns = []struct{ table, column, ddl string }{
 	{"summary_screenshots", "played_at_utc", "TEXT"},
 	{"user_match_data", "played_at_utc", "TEXT"},
 	{"rank_screenshots", "rank_percentile", "INTEGER"},
+	// parser.Generation, stamped per row. Nullable, so the additive path can add
+	// it to a database that predates it — and NULL is exactly the right value
+	// there: a row written before the column existed cannot claim any vintage.
+	{"summary_screenshots", "parser_generation", "INTEGER"},
+	{"teams_screenshots", "parser_generation", "INTEGER"},
+	{"personal_screenshots", "parser_generation", "INTEGER"},
+	{"rank_screenshots", "parser_generation", "INTEGER"},
+	{"unknown_screenshots", "parser_generation", "INTEGER"},
 }
 
 // ensureAdditiveColumns adds any additiveColumns missing from an already-created

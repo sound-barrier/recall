@@ -347,10 +347,33 @@ func canonicalPlayedAtUTC(date, finishedAt string) *string {
 	return &s
 }
 
+// ParseStaleness reports how many matches a Re-parse All would actually improve,
+// alongside the generation doing the judging.
+//
+// A parser fix reaches only files parsed after it ships, and nothing used to say
+// so — the improvement landed on new captures while the existing history kept its
+// old readings, and a chart drawn over both mixed vintages without a hint. This
+// is what lets the UI say "N matches were read by an older version" instead of
+// leaving the user to guess whether Re-parse All has anything to do.
+type ParseStaleness struct {
+	StaleMatches     int `json:"stale_matches"`
+	ParserGeneration int `json:"parser_generation"`
+}
+
+// GetParseStaleness implements the staleness surface.
+func (a *App) GetParseStaleness() (ParseStaleness, error) {
+	n, err := a.store.StaleParseCount(parser.Generation)
+	if err != nil {
+		return ParseStaleness{}, err
+	}
+	return ParseStaleness{StaleMatches: n, ParserGeneration: parser.Generation}, nil
+}
+
 func buildSummaryRow(filename, key string, dirID int64, r *parser.MatchResult) db.SummaryRow {
 	row := db.SummaryRow{
 		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-		Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
+		ParserGeneration: parser.Generation,
+		Map:              r.Map, Playlist: r.Playlist, Hero: r.Hero,
 		Result: r.Result, FinalScore: r.FinalScore,
 		Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
 		PlayedAtUTC: canonicalPlayedAtUTC(r.Date, r.FinishedAt),
@@ -374,7 +397,8 @@ func buildSummaryRow(filename, key string, dirID int64, r *parser.MatchResult) d
 func buildTeamsRow(filename, key string, dirID int64, r *parser.MatchResult) db.TeamsRow {
 	row := db.TeamsRow{
 		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-		Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
+		ParserGeneration: parser.Generation,
+		Eliminations:     r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 		Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 		QueueType: r.QueueType,
 	}
@@ -385,6 +409,7 @@ func buildTeamsRow(filename, key string, dirID int64, r *parser.MatchResult) db.
 func buildPersonalRow(filename, key string, dirID int64, r *parser.MatchResult) db.PersonalRow {
 	row := db.PersonalRow{
 		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID, Hero: r.Hero,
+		ParserGeneration: parser.Generation,
 	}
 	row.HeroStats = flattenHeroStats(r.HeroesPlayed)
 	return row
@@ -393,7 +418,8 @@ func buildPersonalRow(filename, key string, dirID int64, r *parser.MatchResult) 
 func buildRankRow(filename, key string, dirID int64, r *parser.MatchResult) db.RankRow {
 	row := db.RankRow{
 		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-		Rank: r.Rank, Level: r.Level,
+		ParserGeneration: parser.Generation,
+		Rank:             r.Rank, Level: r.Level,
 		RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
 		Result:    r.Result,
 		Modifiers: append([]string(nil), r.Modifiers...),
@@ -417,7 +443,10 @@ func copyIntPtr(v *int) *int {
 }
 
 func buildUnknownRow(filename, key string, dirID int64) db.UnknownRow {
-	return db.UnknownRow{Filename: filename, MatchKey: key, ScreenshotsDirID: dirID}
+	return db.UnknownRow{
+		Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
+		ParserGeneration: parser.Generation,
+	}
 }
 
 func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.MatchResult) error {

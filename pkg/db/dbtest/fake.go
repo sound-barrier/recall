@@ -161,6 +161,31 @@ func (f *Fake) LookupMatchKeysForFilename(filename string) ([]string, error) {
 	return out, nil
 }
 
+// staleKeys adds the match keys of rows older than current to seen. Generic so
+// the five parent tables share one branch instead of five copies.
+func staleKeys[T any](rows []T, current int, seen map[string]struct{}, read func(T) (key string, gen int)) {
+	for _, r := range rows {
+		if key, gen := read(r); gen < current {
+			seen[key] = struct{}{}
+		}
+	}
+}
+
+// StaleParseCount implements db.Store. Mirrors SQLStore: distinct MATCH keys
+// with at least one row below `current`, treating an unstamped 0 as stale the
+// way the SQL treats NULL.
+func (f *Fake) StaleParseCount(current int) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	keys := map[string]struct{}{}
+	staleKeys(f.Summaries, current, keys, func(r db.SummaryRow) (string, int) { return r.MatchKey, r.ParserGeneration })
+	staleKeys(f.Teams, current, keys, func(r db.TeamsRow) (string, int) { return r.MatchKey, r.ParserGeneration })
+	staleKeys(f.Personals, current, keys, func(r db.PersonalRow) (string, int) { return r.MatchKey, r.ParserGeneration })
+	staleKeys(f.Ranks, current, keys, func(r db.RankRow) (string, int) { return r.MatchKey, r.ParserGeneration })
+	staleKeys(f.Unknowns, current, keys, func(r db.UnknownRow) (string, int) { return r.MatchKey, r.ParserGeneration })
+	return len(keys), nil
+}
+
 func (f *Fake) LoadAll() (db.Screenshots, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

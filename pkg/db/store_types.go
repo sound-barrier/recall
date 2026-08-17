@@ -98,6 +98,10 @@ type SummaryRow struct {
 	// NOT NULL: a zero here means "dir unset" and the write path maps
 	// it to the id=1 sentinel row via dirIDOrSentinel before insert.
 	ScreenshotsDirID int64
+	// ParserGeneration is parser.Generation as of the parse that wrote this row.
+	// 0 means unstamped, which is stale by definition. Set by pkg/app, which owns
+	// both sides — the store deliberately does not import the parser.
+	ParserGeneration int
 	Map              string
 	// MapRaw / HeroRaw — raw OCR text preserved when the matcher
 	// rejected the candidate as unknown. Empty when the canonical
@@ -146,6 +150,10 @@ type TeamsRow struct {
 	MatchKey         string
 	ParsedAt         string
 	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
+	// ParserGeneration is parser.Generation as of the parse that wrote this row.
+	// 0 means unstamped, which is stale by definition. Set by pkg/app, which owns
+	// both sides — the store deliberately does not import the parser.
+	ParserGeneration int
 	Eliminations     int
 	Assists          int
 	Deaths           int
@@ -174,6 +182,10 @@ type PersonalRow struct {
 	MatchKey         string
 	ParsedAt         string
 	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
+	// ParserGeneration is parser.Generation as of the parse that wrote this row.
+	// 0 means unstamped, which is stale by definition. Set by pkg/app, which owns
+	// both sides — the store deliberately does not import the parser.
+	ParserGeneration int
 	Hero             string
 	HeroRaw          string
 
@@ -187,6 +199,10 @@ type RankRow struct {
 	MatchKey         string
 	ParsedAt         string
 	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
+	// ParserGeneration is parser.Generation as of the parse that wrote this row.
+	// 0 means unstamped, which is stale by definition. Set by pkg/app, which owns
+	// both sides — the store deliberately does not import the parser.
+	ParserGeneration int
 	Rank             string
 	Level            int
 	// RankProgress and ChangePercent are pointers because nil ("the caption did
@@ -281,6 +297,10 @@ type UnknownRow struct {
 	MatchKey         string
 	ParsedAt         string
 	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
+	// ParserGeneration is parser.Generation as of the parse that wrote this row.
+	// 0 means unstamped, which is stale by definition. Set by pkg/app, which owns
+	// both sides — the store deliberately does not import the parser.
+	ParserGeneration int
 }
 
 // Screenshots is the bulk-load result — every row in the DB grouped by

@@ -15,8 +15,9 @@ const upsertSummarySQL = `INSERT INTO summary_screenshots (
 			map, map_raw, playlist, hero, hero_raw, result, final_score, date, finished_at, game_length, played_at_utc,
 			perf_elim_total, perf_elim_avg_per_10min,
 			perf_assists_total, perf_assists_avg_per_10min,
-			perf_deaths_total, perf_deaths_avg_per_10min
-		) VALUES (?,?,?,` + suppliedInstantOrNow + `, ?,?,?,?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
+			perf_deaths_total, perf_deaths_avg_per_10min,
+			parser_generation
+		) VALUES (?,?,?,` + suppliedInstantOrNow + `, ?,?,?,?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?, ?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -36,7 +37,10 @@ const upsertSummarySQL = `INSERT INTO summary_screenshots (
 			perf_assists_total         = excluded.perf_assists_total,
 			perf_assists_avg_per_10min = excluded.perf_assists_avg_per_10min,
 			perf_deaths_total          = excluded.perf_deaths_total,
-			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min
+			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min,
+			-- In the SET clause: a re-parse re-reads the screenshot, so the row's
+			-- vintage becomes the CURRENT generation, not the one it first had.
+			parser_generation          = excluded.parser_generation
 		RETURNING id`
 
 func (s *SQLStore) UpsertSummary(r SummaryRow) error {
@@ -56,6 +60,7 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 		r.PerfElimTotal, r.PerfElimAvgPer10Min,
 		r.PerfAssistsTotal, r.PerfAssistsAvgPer10Min,
 		r.PerfDeathsTotal, r.PerfDeathsAvgPer10Min,
+		r.ParserGeneration,
 	).Scan(&id)
 	if err != nil {
 		return err

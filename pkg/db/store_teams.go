@@ -15,8 +15,9 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 	err = tx.QueryRow(
 		`INSERT INTO teams_screenshots (
 			filename, match_key, screenshots_dir_id, parsed_at,
-			eliminations, assists, deaths, damage, healing, mitigation, queue_type
-		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?,?)
+			eliminations, assists, deaths, damage, healing, mitigation, queue_type,
+			parser_generation
+		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -26,10 +27,14 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 			damage       = excluded.damage,
 			healing      = excluded.healing,
 			mitigation   = excluded.mitigation,
-			queue_type   = excluded.queue_type
+			queue_type   = excluded.queue_type,
+			-- In the SET clause: a re-parse re-reads the screenshot, so the row's
+			-- vintage becomes the CURRENT generation, not the one it first had.
+			parser_generation = excluded.parser_generation
 		RETURNING id`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
 		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation, r.QueueType,
+		r.ParserGeneration,
 	).Scan(&id)
 	if err != nil {
 		return err

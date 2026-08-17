@@ -1617,6 +1617,49 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/system/parse-staleness:
+    get:
+      operationId: GetParseStaleness
+      tags: [System]
+      summary: Count matches an older parser read
+      description: |
+        Reports how many matches hold at least one screenshot that was read
+        by a parser older than this build, so the UI can say whether a
+        Re-parse All would actually improve anything.
+
+        A parser fix only ever reaches files parsed AFTER it ships. Without
+        this the improvement landed silently on new captures while existing
+        history kept its old readings, and any chart drawn across both mixed
+        the two with nothing to indicate it.
+
+        Counts MATCHES, the unit the user sees, not screenshot rows. Always
+        200; `stale_matches: 0` is the clean case.
+      responses:
+        "200":
+          description: Staleness snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stale_matches, parser_generation]
+                properties:
+                  stale_matches:
+                    type: integer
+                    minimum: 0
+                    description: |
+                      Distinct matches with at least one screenshot row below
+                      the current parser generation. A row stamped with no
+                      generation at all counts as stale — it predates the
+                      column, so it certainly predates this parser.
+                    example: 42
+                  parser_generation:
+                    type: integer
+                    minimum: 0
+                    description: |
+                      The build's parser.Generation — the vintage the count is
+                      measured against.
+                    example: 1
+
   /api/v1/system/startup-error:
     get:
       operationId: GetStartupError

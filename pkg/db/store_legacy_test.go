@@ -103,11 +103,8 @@ func writeLegacyDB(t *testing.T, path string) {
 		screenshots_dir_id INTEGER NOT NULL DEFAULT 1,
 		rank          TEXT,
 		level         INTEGER NOT NULL DEFAULT 0,
-		-- Nullable, matching the current schema. This fixture is about
-		-- HEALING legacy NULL text columns; a stale NOT NULL on these two is a
-		-- separate, unhealable shape that ensureNoStaleNotNull refuses at open
-		-- (see TestNewSQLStore_RefusesADatabaseWithAStaleNotNull), so leaving
-		-- it here would fail this test for an unrelated reason.
+		-- Nullable per the current schema: a stale NOT NULL here is a separate,
+		-- unhealable shape that ensureNoStaleNotNull refuses at open.
 		rank_progress INTEGER,
 		change_percent INTEGER,
 		result        TEXT

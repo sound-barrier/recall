@@ -19,8 +19,9 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 	err = tx.QueryRow(
 		`INSERT INTO rank_screenshots (
 			filename, match_key, screenshots_dir_id, parsed_at,
-			rank, level, rank_progress, change_percent, result, rank_percentile
-		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?)
+			rank, level, rank_progress, change_percent, result, rank_percentile,
+			parser_generation
+		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -32,11 +33,12 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 			-- In the SET clause on purpose: a re-parse whose caption is no
 			-- longer readable must write NULL back, not leave a stale
 			-- percentile attached to a row that no longer supports it.
-			rank_percentile = excluded.rank_percentile
+			rank_percentile = excluded.rank_percentile,
+			parser_generation = excluded.parser_generation
 		RETURNING id`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
 		r.Rank, r.Level, r.RankProgress, r.ChangePercent,
-		r.Result, r.RankPercentile,
+		r.Result, r.RankPercentile, r.ParserGeneration,
 	).Scan(&id)
 	if err != nil {
 		return err
