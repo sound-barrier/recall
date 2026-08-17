@@ -34,6 +34,11 @@ modifiers:
   - loss streak
   - calibration
   - volatile
+  # 2026-08 UI. Appears on every post-placement rank screen in the season-4
+  # corpus, alongside BOTH victory and defeat captures — so it is an SR
+  # adjustment like volatile, not a result chip, and must never feed
+  # resultFromModifiers.
+  - variance
   # 2026-07 UI wording for the streak pair. Both fixture-pinned.
   - winning trend
   - losing trend

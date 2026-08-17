@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS rank_modifiers (
   -- leaver/queue_type/play_mode/result enum constraints on the sibling tables.
   modifier TEXT NOT NULL CHECK (modifier IN (
     'expected', 'uphill battle', 'reversal', 'consolation',
-    'win streak', 'loss streak', 'calibration', 'volatile',
+    'win streak', 'loss streak', 'calibration', 'volatile', 'variance',
     'winning trend', 'losing trend',
     'new map', 'leaver compensation', 'victory', 'defeat', 'draw',
     'demotion protection'
@@ -444,7 +444,7 @@ CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
   -- unenterable as a user edit (and vice versa).
   modifier TEXT NOT NULL CHECK (modifier IN (
     'expected', 'uphill battle', 'reversal', 'consolation',
-    'win streak', 'loss streak', 'calibration', 'volatile',
+    'win streak', 'loss streak', 'calibration', 'volatile', 'variance',
     'winning trend', 'losing trend',
     'new map', 'leaver compensation', 'victory', 'defeat', 'draw',
     'demotion protection'
