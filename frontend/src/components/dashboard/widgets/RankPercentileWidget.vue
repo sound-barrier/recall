@@ -37,11 +37,11 @@ const hasRankButNoPercentile = computed(
         <span
           class="bd-fill"
           role="progressbar"
-          :aria-valuenow="r.percentile ?? 0"
+          :aria-valuenow="r.percentile!"
           aria-valuemin="0"
           aria-valuemax="100"
           :aria-label="`${r.label} — ranked above this share of players`"
-          :style="{ width: (r.percentile ?? 0) + '%' }"
+          :style="{ width: r.percentile + '%' }"
         />
         <span class="bd-time cap">{{ r.tier }} {{ r.level }}</span>
       </span>
@@ -50,9 +50,14 @@ const hasRankButNoPercentile = computed(
   </ul>
   <!-- Two different empties, because they call for two different actions:
        one needs a rank screenshot at all, the other needs a NEWER one. -->
+  <!-- Deliberately does NOT say "capture a screenshot from this season". The
+       reading shown is the NEWEST per role, and a placement screen carries no
+       percentile — so at every season rollover this state is reached by users
+       who already have plenty of readings, and telling them to go capture what
+       they have would be wrong and annoying. -->
   <p v-else-if="hasRankButNoPercentile" class="rp-empty">
-    No population reading yet — Overwatch began printing it in season 4, so a
-    rank screenshot from this season will fill it in.
+    No population reading on your latest rank screenshot. Overwatch prints it on
+    settled ranks only, not during placements.
   </p>
   <p v-else class="rp-empty">
     No rank readings yet — capture a competitive rank screenshot.

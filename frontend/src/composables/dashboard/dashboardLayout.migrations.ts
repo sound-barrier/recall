@@ -25,7 +25,14 @@ export const LAYOUT_VERSION_KEY = 'recall.dashboard.layoutVersion'
 //   2 — re-seed the default rows to the climb-focused layout.
 //       Demoted v1 defaults drop (each stays one "+ Add" away);
 //       widgets the user added themselves keep their stored row.
-export const CURRENT_LAYOUT_VERSION = 2
+//   3 — add the "Ranked above" widget beside Current rank. A new
+//       DEFAULT_ROW_LAYOUT entry alone reaches NOBODY who has already
+//       launched: reconcile() deliberately never re-adds an absent
+//       default (otherwise trashing a widget would lose to a stale
+//       re-add), and the version guard returns early. Without this
+//       step two users on the identical build get different dossiers
+//       decided by when they last opened the app.
+export const CURRENT_LAYOUT_VERSION = 3
 
 // The pre-v2 install defaults, frozen for the re-seed migration —
 // membership decides which stored widgets were OUR defaults (safe to
@@ -41,10 +48,53 @@ const V1_DEFAULT_IDS: ReadonlySet<string> = new Set([
 // fresh row below — keeps the dossier's headline-then-detail
 // rhythm even as the user piles widgets on.
 export const KPI_ROW_SOFT_MAX = 5
-export const BREAKDOWN_ROW_SOFT_MAX = 4
+// Raised from 4 with the v3 default. The cap exists to keep a row tidy, and
+// the shipped default row 2 now holds five breakdowns — leaving it at 4 made
+// the DEFAULT layout permanently over its own threshold, which broke undo:
+// removing a widget from row 2 left 4, and `appendToRow` requires strictly
+// fewer than the cap, so Undo spawned a new row instead of restoring in place.
+export const BREAKDOWN_ROW_SOFT_MAX = 5
 
 /** Row index → ordered widget IDs; the persisted dossier layout shape. */
 export type RowLayout = Record<number, string[]>
+
+// applyMigrationSteps runs every step the stored version has not seen, in
+// order. Adding a future migration: append a step gated on `storedVersion < N`
+// and bump CURRENT_LAYOUT_VERSION.
+function applyMigrationSteps(layout: RowLayout, storedVersion: number): RowLayout {
+  let next = layout
+  if (storedVersion < 1) next = consolidateOverflowRows(next)
+  if (storedVersion < 2) next = reseedClimbDefaults(next)
+  if (storedVersion < 3) next = addRankPercentile(next)
+  return next
+}
+
+// addRankPercentile puts "Ranked above" next to Current rank, the reading it
+// qualifies. It is additive and idempotent: a user who already has the id
+// (added by hand from the gallery) is untouched, and one who deliberately
+// trashed it gets it back exactly once — the same bargain every default
+// re-seed makes, and the reason this is a versioned step rather than a
+// reconcile pass that would re-add it forever.
+function addRankPercentile(layout: RowLayout): RowLayout {
+  for (const ids of Object.values(layout)) {
+    if (ids.includes('rank-percentile')) return layout
+  }
+  const next: RowLayout = {}
+  for (const [key, ids] of Object.entries(layout)) next[Number(key)] = [...ids]
+  for (const key of Object.keys(next)) {
+    const row = next[Number(key)]!
+    const at = row.indexOf('current-rank')
+    if (at !== -1) {
+      row.splice(at + 1, 0, 'rank-percentile')
+      return next
+    }
+  }
+  // No Current rank anywhere — the user removed it. Seed the widget on the
+  // default breakdown row rather than inventing one.
+  const target = next[2] ?? []
+  next[2] = [...target, 'rank-percentile']
+  return next
+}
 
 /** A fresh mutable copy of the shipped install-default layout. */
 export function defaultLayout(): RowLayout {
@@ -101,15 +151,7 @@ export function runLayoutMigrationsOnce(): void {
     // Unreadable or malformed — leave layout null; nothing to migrate.
   }
   if (layout !== null) {
-    let next = layout
-    // Migrations run in order. Adding a future migration: append a
-    // step here that gates on `storedVersion < N`, mutates `next`.
-    if (storedVersion < 1) {
-      next = consolidateOverflowRows(next)
-    }
-    if (storedVersion < 2) {
-      next = reseedClimbDefaults(next)
-    }
+    const next = applyMigrationSteps(layout, storedVersion)
     if (!shallowLayoutEqual(layout, next)) {
       try {
         localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(next))

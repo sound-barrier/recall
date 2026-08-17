@@ -320,29 +320,29 @@ describe('useDashboardLayout', () => {
     expect(api.rows.value[3]).toEqual([kpi])
   })
 
-  it('appendToRow spills to a fresh overflow row when breakdowns >= 4', async () => {
-    // PR B unblocks this case: the registry now holds 7 breakdowns
-    // (3 default + 4 opt-in), so the soft cap of 4 can be reached.
-    // The test seeds row 2 to 4 default-install breakdowns, then
-    // tries to add a 5th breakdown — it should spill to a fresh
-    // overflow row instead of growing row 2.
+  it('appendToRow spills to a fresh overflow row when breakdowns >= 5', async () => {
+    // The soft cap rose to 5 with the v3 default, which ships five
+    // breakdowns on row 2 — a cap below the shipped default made the
+    // default layout permanently over its own threshold and broke
+    // undo-in-place. The spill behavior itself is unchanged: seed the
+    // row to the cap, then try to add one more.
     const breakdowns = WIDGET_REGISTRY
       .filter((w) => w.shape === 'breakdown')
       .map((w) => w.id)
-    expect(breakdowns.length).toBeGreaterThanOrEqual(5)
+    expect(breakdowns.length).toBeGreaterThanOrEqual(6)
     const seed: RowLayout = {
       1: [...DEFAULT_ROW_LAYOUT[1]!],
-      2: breakdowns.slice(0, 4),
+      2: breakdowns.slice(0, 5),
     }
     const { api } = await mountHost(seed)
-    expect(api.rows.value[2]).toHaveLength(4)
-    const fifth = breakdowns[4]!
-    api.removeFromRow(fifth)
-    api.appendToRow(2, fifth)
-    expect(api.rows.value[2]).not.toContain(fifth)
+    expect(api.rows.value[2]).toHaveLength(5)
+    const sixth = breakdowns[5]!
+    api.removeFromRow(sixth)
+    api.appendToRow(2, sixth)
+    expect(api.rows.value[2]).not.toContain(sixth)
     // Spill lands on the next-available row index past every
     // currently-occupied row (= 3 here).
-    expect(api.rows.value[3]).toEqual([fifth])
+    expect(api.rows.value[3]).toEqual([sixth])
   })
 
   // ─── removeFromRow ───────────────────────────────────────────

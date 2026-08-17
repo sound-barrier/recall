@@ -188,3 +188,52 @@ describe('compareSeasons', () => {
     expect(row(compareSeasons(metrics({ worstHero: null }), metrics()), 'worstHero').aDisplay).toBe('—')
   })
 })
+
+// "Ranked above" compares two population STANDINGS, and a standing belongs to
+// one rank track. Overwatch keeps a separate ladder per role in role queue, so
+// a Support standing and a Tank standing are different measurements rather
+// than two samples of one — comparing them renders a confident verdict about
+// a rank that never moved.
+describe('compareSeasons — Ranked above', () => {
+  const row = (a: SeasonMetrics, b: SeasonMetrics) =>
+    compareSeasons(a, b)[0]?.rows.find((r) => r.key === 'rankPercentile')
+
+  it('compares two standings on the same track', () => {
+    const got = row(
+      metrics({ rankStanding: { bucket: 'support', percentile: 57 } }),
+      metrics({ rankStanding: { bucket: 'support', percentile: 61 } }),
+    )
+    expect(got).toBeDefined()
+    expect(got?.aDisplay).toBe('57%')
+    expect(got?.bDisplay).toBe('61%')
+    expect(got?.outcome).toBe('improved')
+  })
+
+  it('omits the row when the two slices ended on DIFFERENT tracks', () => {
+    // The failure this prevents: a player whose last Support game ended at 88%
+    // and who then mostly queued Tank, ending at 40%, would otherwise be shown
+    // "▼ 48 pts" as a regression — for a Support rank that never moved.
+    expect(row(
+      metrics({ rankStanding: { bucket: 'support', percentile: 88 } }),
+      metrics({ rankStanding: { bucket: 'tank', percentile: 40 } }),
+    )).toBeUndefined()
+  })
+
+  it('omits the row when only one side has a reading', () => {
+    expect(row(
+      metrics({ rankStanding: { bucket: 'support', percentile: 57 } }),
+      metrics({ rankStanding: null }),
+    )).toBeUndefined()
+  })
+
+  // 0 is a real standing — the bottom of the ladder — and must not be mistaken
+  // for "no reading".
+  it('renders a genuine zero rather than dropping the row', () => {
+    const got = row(
+      metrics({ rankStanding: { bucket: 'tank', percentile: 0 } }),
+      metrics({ rankStanding: { bucket: 'tank', percentile: 3 } }),
+    )
+    expect(got).toBeDefined()
+    expect(got?.aDisplay).toBe('0%')
+  })
+})
