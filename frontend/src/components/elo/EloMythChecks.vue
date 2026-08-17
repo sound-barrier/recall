@@ -15,7 +15,7 @@ const {
   probThisSeason, seasonGames, requiredWrForSeason,
   targetTier, targetDivision, currentTier, currentDivision,
   skepticVerdict, trueRateRange, runs, decay, effectiveWinRatePct,
-  seasonSim, simHorizonGames, paceAssumed, provisional,
+  seasonSim, simHorizonGames, paceAssumed, provisional, percentileTrail,
 } = useEloCalc()
 
 const rankNow = computed(() => fmtRank(currentTier.value, currentDivision.value))
@@ -42,6 +42,7 @@ const checks = computed(() => buildChecks({
   paceAssumed: paceAssumed.value,
   rankNow: rankNow.value,
   target: target.value,
+  percentileTrail: percentileTrail.value,
 }))
 </script>
 

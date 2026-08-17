@@ -135,7 +135,16 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # have spent it). Restores the deliberate ~6KB headroom the note above
 # asks for; initial JS is unmoved at 324.7KB against a 331KB budget,
 # because every one of these lands in an already-lazy view chunk.
-: "${MAX_TOTAL_JS_BYTES:=1667000}"
+# 2026-08: 1667000 → 1674000 — the usability campaign's phase 2 insights: the
+# "Ranked above" trends chart (its own series + option builder), the Elo
+# "Where do I stand?" card and the percentile trail behind it (measured
+# 1668012B, 1012B over the old ceiling). The previous bump restored ~6KB of
+# headroom and this spent it, which is what a bump is for; 7000 puts ~6KB back
+# rather than shaving the ceiling to the measurement, so the next feature trips
+# the gate on its own merits instead of inheriting a wall. Initial JS is
+# unmoved at 325.7KB against 331KB — both surfaces live in already-lazy view
+# chunks.
+: "${MAX_TOTAL_JS_BYTES:=1674000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

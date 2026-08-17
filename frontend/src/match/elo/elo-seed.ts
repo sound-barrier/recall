@@ -5,7 +5,7 @@
 
 import type { MatchRecord } from '@/api-client'
 import {
-  TIER_ORDER, currentRankByRole, ladderScore, matchEpoch, roleBucket, type RankNow,
+  TIER_ORDER, currentRankByRole, isPlaceableRank, ladderScore, matchEpoch, roleBucket, type RankNow,
 } from '@/match/trends/match-trends-helpers'
 import {
   analyzeHeroPool, DEFAULT_HERO_MEANINGFUL_PCT, meaningfulHeroes,
@@ -56,6 +56,25 @@ export function trackRecords<T extends TrackInput>(records: readonly T[], track:
   return records.filter((r) => roleBucket(r).key === track && isCompetitive(r))
 }
 
+// PercentileTrail is the user's OWN standing, and how it moved.
+//
+// The card this feeds was deleted once (a928122f) because it was built on a
+// published population distribution that season 4's Rank Redistribution voided.
+// Nothing replaces that distribution — so this reports only what the player's
+// screenshots actually said: where they stand now, and where they stood before.
+//
+// `previous` is paired ONLY within the same season, which is the whole lesson of
+// that deletion: a redistribution moves everyone, so a percentile either side of
+// a boundary measures two different populations and the difference is not a
+// climb. Unpairable stays null rather than 0 — "no comparison available" is not
+// "you did not move".
+interface PercentileTrail {
+  now: number
+  previous: number | null
+  deltaPts: number | null
+  n: number
+}
+
 export interface TrackSeed {
   rank: RankNow | null
   currentScore: number | null
@@ -66,10 +85,18 @@ export interface TrackSeed {
   meterSampleN: number
   gamesPerWeek: number | null
   decaySlope: MeasuredSlope | null // measured from the climb; null = use the default
+  percentileTrail: PercentileTrail | null
 }
 
 // seedTrack derives every calculator input from one track's history.
-export function seedTrack(records: readonly TrackInput[], track: TrackKey): TrackSeed {
+export function seedTrack(
+  records: readonly TrackInput[],
+  track: TrackKey,
+  // Injected rather than imported so this module stays free of season fixtures,
+  // the same shape heroRole / mapGameMode already use. Default resolver pairs
+  // nothing, which is the safe answer when the caller knows no seasons.
+  seasonKeyOf: (rec: TrackInput) => string | null = () => null,
+): TrackSeed {
   const recs = trackRecords(records, track)
   const rank = currentRankByRole(recs).find((r) => r.key === track) ?? null
   const { wins, losses } = decisiveTally(recs)
@@ -87,7 +114,48 @@ export function seedTrack(records: readonly TrackInput[], track: TrackKey): Trac
     meterSampleN: meter.n,
     gamesPerWeek: measuredPace(recs),
     decaySlope: measuredDecaySlope(recs),
+    percentileTrail: percentileTrail(recs, seasonKeyOf),
   }
+}
+
+// percentileTrail reads the track's percentile-bearing captures newest-first.
+//
+// Only post-placement rank screens report the caption, so this is sparse by
+// nature — most tracks will have none, and one reading is a common answer.
+function percentileTrail(
+  recs: readonly TrackInput[],
+  seasonKeyOf: (rec: TrackInput) => string | null,
+): PercentileTrail | null {
+  const readings = recs
+    .filter((r) => isPlaceableRank(r.data) && typeof r.data?.rank_percentile === 'number')
+    .map((r) => ({ rec: r, t: matchEpoch(r) ?? 0, pct: r.data?.rank_percentile as number }))
+    .sort((a, b) => a.t - b.t)
+  if (readings.length === 0) return null
+
+  const latest = readings[readings.length - 1]!
+  const previous = pairableEarlier(readings, latest, seasonKeyOf)
+  return {
+    now: latest.pct,
+    previous: previous?.pct ?? null,
+    deltaPts: previous ? latest.pct - previous.pct : null,
+    n: readings.length,
+  }
+}
+
+// pairableEarlier finds the oldest reading that is comparable to the newest —
+// same season, so no redistribution sits between them.
+function pairableEarlier<T extends TrackInput>(
+  readings: readonly { rec: T; t: number; pct: number }[],
+  latest: { rec: T; t: number; pct: number },
+  seasonKeyOf: (rec: T) => string | null,
+): { pct: number } | null {
+  const key = seasonKeyOf(latest.rec)
+  if (key === null) return null
+  for (const r of readings) {
+    if (r === latest) break
+    if (seasonKeyOf(r.rec) === key) return r
+  }
+  return null
 }
 
 export interface MeasuredSlope {
