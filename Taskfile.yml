@@ -544,6 +544,13 @@ tasks:
       - cd frontend && npm run build >/dev/null
       - echo "[ recall ] Building serveronly binary → {{.E2E_HOME}}/recall-server…"
       - mkdir -p {{.E2E_HOME}}
+      # The e2e database is disposable — every fixture arrives through
+      # page.route() mocks — but it was never cleared, so a local run inherited
+      # whatever previous runs left behind while CI always started empty. That
+      # divergence is a flake source on its own (a leaked profile once moved a
+      # button count), and it now also means a DB written before a schema change
+      # fails the run outright at startup. Wipe it so local matches CI.
+      - rm -rf "{{.E2E_HOME}}/data"
       - go build -tags serveronly -o {{.E2E_HOME}}/recall-server .
       - echo "[ recall ] Installing Playwright chromium + webkit (skipped if cached)…"
       - cd frontend && npx playwright install chromium webkit
