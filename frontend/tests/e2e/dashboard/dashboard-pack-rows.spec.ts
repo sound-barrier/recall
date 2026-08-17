@@ -70,7 +70,7 @@ test.describe('dashboard pack rows migration', () => {
       layout: JSON.parse(localStorage.getItem('recall.dashboard.layout') ?? '{}'),
       version: localStorage.getItem('recall.dashboard.layoutVersion'),
     }))
-    expect(stored.version).toBe('3')
+    expect(stored.version).toBe('4')
     expect(Object.keys(stored.layout)).toEqual(['1', '2', '3', '4'])
   })
 })

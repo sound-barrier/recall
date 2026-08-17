@@ -104,7 +104,7 @@ describe('the e2e seeder tracks the migration version', () => {
 describe('layout migration v4 — climb insights', () => {
   beforeEach(() => { vi.unstubAllGlobals() })
 
-  it('adds all three for a user already on v3', () => {
+  it('adds the headline card for a user already on v3', () => {
     const cell = stub({
       [LAYOUT_VERSION_KEY]: '3',
       [LAYOUT_STORAGE_KEY]: JSON.stringify({ 1: ['winrate'] }),
@@ -112,7 +112,9 @@ describe('layout migration v4 — climb insights', () => {
 
     runLayoutMigrationsOnce()
 
-    expect(read(cell)[1]).toEqual(['winrate', 'perf-vs-rank', 'rolling-baseline', 'climb-velocity'])
+    // Only Play-vs-rank. Its two siblings stay in the gallery rather than
+    // crowding a default row that already runs over its soft max.
+    expect(read(cell)[1]).toEqual(['winrate', 'perf-vs-rank'])
     expect(cell.get(LAYOUT_VERSION_KEY)).toBe(String(CURRENT_LAYOUT_VERSION))
   })
 
@@ -120,12 +122,12 @@ describe('layout migration v4 — climb insights', () => {
   it('does not duplicate one the user added by hand', () => {
     const cell = stub({
       [LAYOUT_VERSION_KEY]: '3',
-      [LAYOUT_STORAGE_KEY]: JSON.stringify({ 1: ['climb-velocity'] }),
+      [LAYOUT_STORAGE_KEY]: JSON.stringify({ 1: ['winrate', 'perf-vs-rank'] }),
     })
 
     runLayoutMigrationsOnce()
 
-    expect(read(cell)[1]).toEqual(['climb-velocity', 'perf-vs-rank', 'rolling-baseline'])
+    expect(read(cell)[1]).toEqual(['winrate', 'perf-vs-rank'])
   })
 
   it('is a no-op once the version is stamped', () => {
