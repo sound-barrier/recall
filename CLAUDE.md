@@ -115,15 +115,18 @@ without agreement on direction.
   reached 54 files one individually-defensible file at a time; a documented
   "~20–25 files" frontend ceiling sat in these rules for months while six
   directories quietly cleared it; `TECHNICAL_DEBT.md` recorded per-file growth
-  triggers that three files then passed unnoticed. So every grouping also
-  carries a **declared file budget** with the reason it is that number, gated by
-  `scripts/ci/check-package-size.sh` against
+  triggers that three files then passed unnoticed. So every grouping answers to
+  a file budget, gated by `scripts/ci/check-package-size.sh` against
   `scripts/ci/package-size-budgets.txt` (`task check-package-size`; CI's `lint`
-  job; lefthook pre-push). **Read the numbers there, never here** — prose
-  restatements drift, exactly as the coverage floors did. Budgets are
-  zero-headroom on purpose: a file count moves only when someone deliberately
-  adds a file, which is precisely the moment to think, so the gate trips on the
-  *first* file past the line. A trip has exactly two legitimate answers.
+  job; lefthook pre-push). Most groupings answer to the **default** and are not
+  listed at all — registration is earned by size, which is what keeps that file
+  short and every line in it load-bearing; a directory large enough to need its
+  own number carries it there **with the reason it is that number**. **Read the
+  numbers there, never here** — prose restatements drift, exactly as the
+  coverage floors did. Budgets are zero-headroom in both directions: the gate
+  trips on the *first* file past the line, and equally on a budget left sitting
+  ABOVE its directory's count, because a forgotten post-split ratchet is how a
+  folder silently regrows what it just shed. A trip has two legitimate answers.
   **Split** when the grouping really carries more than one reason to change and
   the extraction won't create an import cycle — pull pure logic into a leaf
   package the shell delegates to (`pkg/match`, `pkg/correlate`, `pkg/aggregate`

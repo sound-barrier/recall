@@ -225,6 +225,36 @@ pre-push:
     package-size:
       run: bash scripts/ci/check-package-size.sh
 
+    # The budget file's doctrine says a number moves only alongside a row in
+    # the history table; that was honor-system, so a budget could be raised
+    # with no audit trail at all. The gate can check that a reason EXISTS but
+    # never that it is true or current — this is the cheap mechanical half.
+    #
+    # Branch-wide (merge-base with origin/main), not per-commit, because the
+    # row may legitimately land in a later commit than the number it explains.
+    #
+    # KNOWN LIMIT, measured rather than assumed: branch-wide means that once
+    # ANY commit on the branch touches the history file, a LATER budget change
+    # on that same branch is unguarded. So this catches the case worth
+    # catching — a branch that moves a number and never writes the row — and
+    # not the second change on a branch already writing rows. The stronger
+    # form (assert a row naming each changed directory) is not worth it: the
+    # table groups directories as {a,b,c} and would false-positive on a
+    # pre-push hook, which is the one place a false positive is expensive.
+    package-size-history:
+      run: |
+        set -e
+        base="$(git merge-base HEAD origin/main 2>/dev/null || true)"
+        [ -n "$base" ] || exit 0
+        changed="$(git diff --name-only "$base"..HEAD -- scripts/ci/package-size-budgets.txt)"
+        [ -n "$changed" ] || exit 0
+        if [ -z "$(git diff --name-only "$base"..HEAD -- scripts/ci/package-size-budget-history.md)" ]; then
+          echo "package-size-budgets.txt changed but package-size-budget-history.md did not." >&2
+          echo "A budget moves WITH a row saying why — that table is the only evidence a" >&2
+          echo "debt was paid rather than re-waived. Append one, or amend the entry back." >&2
+          exit 1
+        fi
+
 # Commit-message format check (optional but pairs with release-please).
 # Enable conventional commits via `commit-msg` hook — see release-please
 # workflow for how commit messages drive automated versioning.

@@ -62,7 +62,7 @@
 #      packages. The twelve it cannot read are the large ones, which is why
 #      `task cover-go` still prints basic-block coverage for every package —
 #      deleting that in favor of this was a trade of full coverage for 40%.
-#      Those are the two largest packages in the module, so a report that
+#      The twelve include the four largest in the module, so a report that
 #      quietly omitted them would be worse than no report — it would look
 #      complete. They are listed in UNANALYZABLE below and named in the output,
 #      so the gap is stated rather than hidden. Do not "fix" this by deleting a
@@ -77,6 +77,11 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_DIR="${OUT_DIR:-${REPO_ROOT}/coverage/go/branch}"
+# Outside the repo on purpose, and this is the one sanctioned exception to the
+# "scratch goes in tmp/ under the repo root" rule: Go's module walker does not
+# read .gitignore, so a worktree at tmp/ would be absorbed into `go list ./...`
+# — the same hazard frontend/scripts/seed-go-sentinel.cjs exists to block for
+# node_modules. $$ keeps concurrent runs from colliding.
 WORKTREE="${WORKTREE:-/tmp/recall-gobco-$$}"
 skipped=""
 
@@ -177,7 +182,8 @@ done | sort | awk -F'\t' '
 echo
 if [[ -n "${skipped:-}" ]]; then
   echo "[ recall ] !  NOT MEASURED (gobco ignores build tags):${skipped}"
-  echo "[ recall ] !  Those are the two largest packages. This report covers the rest."
+  echo "[ recall ] !  Twelve packages, including the four largest (app, cmd, db, parser)."
+  echo "[ recall ] !  This report covers the other eight. task cover-go measures ALL of them."
 fi
 echo "[ recall ] i  Informational. The Go coverage GATE is GO_COVERAGE_MIN in Taskfile.yml."
 echo "[ recall ] i  Short mode, default (desktop) build tags, no -race. Counters are"

@@ -45,7 +45,7 @@
 #     sibling is a projection of the file beside it — same name, same concern,
 #     always adjacent — so counting both double-counts one unit of cognition. A
 #     tests/e2e/*.spec.ts has no source sibling: it IS the unit, so it counts.
-#     (This is why frontend/src reads 14 here and 23 in `ls`.)
+#     (This is why frontend/src reads 14 here and 24 tracked files on disk.)
 #
 #   * Build-tag and GOOS pairs count as the two files they are. app_wails.go and
 #     app_server.go are two files a maintainer must open and keep in agreement,
@@ -94,6 +94,16 @@ HISTORY_FILE="scripts/ci/package-size-budget-history.md"
 
 : "${DEFAULT_MAX_FILES:=12}"
 
+# Validate it. A non-numeric value makes awk fall into STRING comparison, where
+# every count reads as "under budget" — the gate then passes all 93 unregistered
+# directories while printing "3 / 0" for each, i.e. it loosens everything and
+# says nothing. mise's [env] block is exported into $GITHUB_ENV for every CI
+# job, so a future generically-named entry could land here by accident.
+if [[ ! "${DEFAULT_MAX_FILES}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::DEFAULT_MAX_FILES must be a positive integer, got '${DEFAULT_MAX_FILES}'" >&2
+  exit 2
+fi
+
 MODE=gate
 if [[ "${1:-}" == "--list" ]]; then
   MODE=list
@@ -117,12 +127,26 @@ fi
 # One awk does the filtering AND the counting. A grep chain would be more
 # readable and would also be a landmine: under `set -o pipefail` a `grep -v`
 # that filters away every line exits 1 and kills the script with no clue why.
+#
+# core.quotePath=false: git otherwise renders any non-ASCII path in C-escape
+# form (backslash-octal per byte). Such a directory still COUNTS, but it can
+# never be REGISTERED — the budget entry would have to be spelled in escapes
+# to match the quoted name.
 counts="$(
-  git -C "${REPO_ROOT}" ls-files -- '*.go' 'frontend/src' 'frontend/tests' \
+  git -C "${REPO_ROOT}" -c core.quotePath=false ls-files -- '*.go' 'frontend/src' 'frontend/tests' \
     | awk -F/ '
-        /_test\.go$/   { next }
-        /\.test\.ts$/  { next }
-        /-snapshots\// { next }
+        /_test\.go$/                      { next }
+        # Scoped to frontend/src on purpose. A unit-test sibling there is a
+        # projection of the file beside it, and vitest backstops the name
+        # (a non-test module called *.test.ts fails "No test suite found").
+        # Under frontend/tests NOTHING backstops it, and Playwright s default
+        # testMatch accepts *.test.ts — so an unscoped rule would let a real
+        # e2e spec run in CI while being invisible to its folder budget.
+        /^frontend\/src\// && /\.test\.ts$/ { next }
+        # Anchored: the two real snapshot dirs live under frontend/tests, and
+        # an unanchored match let any directory named *-snapshots/ opt itself
+        # out of counting entirely.
+        /^frontend\/tests\/.*-snapshots\// { next }
         {
           if (NF == 1) {
             d = "."
@@ -132,7 +156,11 @@ counts="$(
           }
           n[d]++
         }
-        END { for (d in n) printf "%s %d\n", d, n[d] }
+        # TAB-delimited, and pass 2 splits on tab. With a space separator a
+        # directory name CONTAINING a space re-parsed as dir=$1, n=$2+0 = 0 —
+        # measuring zero files and PASSING, which is the one failure mode a
+        # gate must never have.
+        END { for (d in n) printf "%s\t%d\n", d, n[d] }
       ' \
     | sort
 )"
@@ -142,7 +170,7 @@ if [[ -z "${counts}" ]]; then
   exit 1
 fi
 
-printf '%s\n' "${counts}" | awk \
+printf '%s\n' "${counts}" | awk -F'\t' \
   -v budget_file="${BUDGET_FILE}" \
   -v history_file="${HISTORY_FILE}" \
   -v default_max="${DEFAULT_MAX_FILES}" \
@@ -245,19 +273,30 @@ printf '%s\n' "${counts}" | awk \
       warn(dir " holds " n " files against a target budget of " max \
            " (temporarily waived to " cap ") — over budget on purpose; the split is owed")
     }
-    # Symmetric to the paid-waiver check above. An entry that grants MORE than
-    # the default while the directory sits UNDER the default asserts nothing:
-    # deleting it would make the limit STRICTER. That is how a split leaves
-    # slack behind — the folder is emptied, the pre-split budget stays, and the
-    # next dozen files land ungated on the folder we just cleaned out.
-    # Registration is earned by size; this is the mechanical form of that rule.
-    # Registering BELOW the default to be deliberately stricter stays legal —
-    # only a budget above the default is checked.
-    if (dir in budget && !(dir in waiver) && max > default_max && n < default_max) {
-      err(dir " is at " n " files with a declared budget of " max ", which is looser" \
-          " than the default " default_max " it would fall back to — the entry grants" \
-          " growth room instead of limiting it. Delete it (registration is earned by" \
-          " size), or lower the budget to a number this directory actually needs.")
+    # ZERO HEADROOM, mechanically. The budgets file promises "a budget is the
+    # count on the day it was registered, and the next file trips the gate" —
+    # this is the line that makes that true instead of aspirational. A
+    # non-waived entry must EQUAL the count it names: over is the offender
+    # branch above, under is slack.
+    #
+    # Slack is not a cosmetic defect. It is what a forgotten post-split ratchet
+    # leaves behind — the folder is emptied, the pre-split budget stays, and
+    # the files it just shed can come back ungated. That is precisely the drift
+    # the history rows in this campaign record, so the gate should catch it
+    # rather than the next audit.
+    #
+    # This subsumes an earlier, narrower form that only fired when the budget
+    # exceeded the DEFAULT and the count fell under it. That version missed a
+    # directory sitting exactly AT the default (registering a 12-file folder at
+    # 40 passed) and said nothing at all about headroom above 12 (pkg/db could
+    # go 30 -> 45 silently). Comparing against the count instead of the default
+    # is both simpler and strictly stronger.
+    if (dir in budget && !(dir in waiver) && n < max) {
+      err(dir " is at " n " files but declares a budget of " max " — that is " (max - n) \
+          " file(s) of headroom, and budgets here are zero-headroom by design." \
+          " Ratchet it to " n " (append a row to " history_file "), or delete the entry" \
+          " if " n " is at or under the default " default_max " — registration is earned" \
+          " by size.")
     }
   }
 
@@ -272,7 +311,7 @@ printf '%s\n' "${counts}" | awk \
 
     if (offenders) {
       print ""                                                                         > "/dev/stderr"
-      print "A directory is over its file budget. There are exactly TWO legitimate"     > "/dev/stderr"
+      print "A directory is over its file budget. There are TWO legitimate"             > "/dev/stderr"
       print "responses. Pick one, and say which in the PR:"                             > "/dev/stderr"
       print ""                                                                         > "/dev/stderr"
       print "  1. SPLIT — the grouping carries more than one reason to change."         > "/dev/stderr"
@@ -293,6 +332,11 @@ printf '%s\n' "${counts}" | awk \
       print "     append a row to:"                                                     > "/dev/stderr"
       print "       " history_file                                                      > "/dev/stderr"
       print "     \"The gate was in the way\" is not a reason."                         > "/dev/stderr"
+      print ""                                                                         > "/dev/stderr"
+      print "  (There is a third column, a WAIVER, but it is not an answer to this"     > "/dev/stderr"
+      print "   trip. It records debt above a target during a campaign that has"        > "/dev/stderr"
+      print "   already committed to paying it, and the gate fails once the count"      > "/dev/stderr"
+      print "   reaches the target so the waiver gets deleted rather than rot.)"        > "/dev/stderr"
       print ""                                                                         > "/dev/stderr"
       print "  Not sure which? Run: bash scripts/ci/check-package-size.sh --list"       > "/dev/stderr"
     }
