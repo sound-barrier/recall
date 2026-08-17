@@ -217,20 +217,44 @@ export function firstGameOfSessionWinrate(records: readonly MomentumInput[], gap
 // "recent climb" regardless of when you open the app). Sums the signed
 // per-match `change_percent`. In role queue this aggregates movement
 // across all roles.
-export function netRankProgress(records: readonly MomentumInput[], sinceDays: number): number {
+// RankMovement carries the total AND what it was built from.
+//
+// change_percent is nullable — 21 of the 44 rank captures in the corpus report
+// none, because the movement pill was never read. Summing null as 0 leaves the
+// total correct (adding zero changes nothing), so the defect was never
+// arithmetic: it was presenting a total with no denominator, where "+12% this
+// week" reads as the whole week whether it came from every rank screen or from
+// one of nine. readCount is what lets the surface say which.
+export interface RankMovement {
+  netPercent: number
+  readCount: number // matches in the window that actually reported a movement
+  totalCount: number // matches in the window at all
+}
+
+export function netRankProgress(records: readonly MomentumInput[], sinceDays: number): RankMovement {
   const timed: { rec: MomentumInput; t: number }[] = []
   for (const rec of records) {
     const t = matchEpoch(rec)
     if (t != null) timed.push({ rec, t })
   }
-  if (timed.length === 0) return 0
+  if (timed.length === 0) return { netPercent: 0, readCount: 0, totalCount: 0 }
   const latest = Math.max(...timed.map((x) => x.t))
   const cutoff = latest - sinceDays * DAY_MS
   let sum = 0
+  let read = 0
+  let total = 0
   for (const { rec, t } of timed) {
-    if (t >= cutoff) sum += rec.data?.change_percent ?? 0
+    if (t < cutoff) continue
+    total++
+    const change = rec.data?.change_percent
+    // typeof, not truthiness: a real 0 is a reading — the match resolved and
+    // moved the rank by nothing — and must count toward coverage.
+    if (typeof change === 'number') {
+      sum += change
+      read++
+    }
   }
-  return sum
+  return { netPercent: sum, readCount: read, totalCount: total }
 }
 
 // Share of matches flagged with a leaver (any side). `rate` is null on
