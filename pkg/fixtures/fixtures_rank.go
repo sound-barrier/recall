@@ -37,58 +37,63 @@ type ladderPos struct {
 // TIER_ORDER and the parser's knownRanks" with nothing enforcing it.
 var tierNames = parser.Ranks()
 
-// tierPercentileCeiling is the share of the population at or below the TOP of
-// each tier, indexed like tierNames. It exists so a seeded rank card can carry
-// a rank_percentile ("HIGHER RANKED THAN N% OF PLAYERS") that AGREES with the
-// tier it is printed beside — a Gold player showing 90% would make every
-// screenshot of the dev seed obviously fake.
+// divisionPercentile is the share of the population at or below each ladder
+// rung, in ladder order (Bronze 5 first, Champion 1 last). It exists so a
+// seeded rank card can carry a rank_percentile ("HIGHER RANKED THAN N% OF
+// PLAYERS") that AGREES with the tier printed beside it — a Gold card showing
+// 90% would make every screenshot of the dev seed obviously fake, and the seed
+// is what the onboarding tour shows a first-time user.
 //
-// SYNTHETIC. Blizzard publishes no distribution, which is precisely why
-// commit a928122f deleted the old Elo population card. These are plausible
-// round numbers with a bell-ish shape (the mass sits in gold/platinum), not a
-// measurement, and nothing outside the dev seed may treat them as one. They
-// are calibrated only loosely: the season-4 fixtures read 57-61% around
-// Platinum 1-2, and this curve puts that region in the same neighborhood.
+// SOURCE: the season-4 community rank survey — respondents reported their rank
+// alongside the percentile the game itself printed — with a z-score curve
+// fitted across the 45 rungs. That is a real measurement and a large
+// improvement on the round numbers that were here before, which were invented
+// and badly wrong low on the ladder (they put the top of Gold at 48% against
+// the survey's 24.7%).
 //
-// Length is pinned to the tier ladder by a test, so adding a tier fails loudly
-// here rather than silently reusing its neighbor's ceiling.
-var tierPercentileCeiling = []int{
-	8,   // bronze
-	22,  // silver
-	48,  // gold
-	68,  // platinum
-	82,  // emerald
-	92,  // diamond
-	97,  // master
-	99,  // grandmaster
-	100, // champion
+// It is NOT an official distribution, and nothing outside this dev seed should
+// treat it as one. It is roughly 80 self-reported responses over three days,
+// so it carries selection bias and real spread: Platinum 2 answers ranged from
+// 25% to 58% around a fitted 46.5%. Real percentiles come off the screenshot
+// (parser.MatchResult.RankPercentile); this table only has to make synthetic
+// data look like the game.
+var divisionPercentile = [...]float64{
+	0.3, 0.4, 0.7, 1.0, 1.5, // bronze      5 4 3 2 1
+	2.2, 3.1, 4.2, 5.8, 7.7, // silver
+	10.1, 12.9, 16.3, 20.3, 24.7, // gold
+	29.6, 35.0, 40.6, 46.5, 52.4, // platinum
+	58.3, 64.0, 69.4, 74.4, 78.9, // emerald
+	82.9, 86.4, 89.4, 91.9, 93.9, // diamond
+	95.5, 96.7, 97.7, 98.4, 98.9, // master
+	99.3, 99.5, 99.7, 99.8, 99.9, // grandmaster
+	99.9, 100.0, 100.0, 100.0, 100.0, // champion
 }
 
 // percentile maps a ladder position onto the population share below it,
-// interpolating within the tier so the number climbs with every division and
-// every point of progress rather than stepping once per tier.
+// interpolating toward the next rung by progress so the number climbs with
+// every point of the meter rather than stepping once per division.
 func (p ladderPos) percentile() int {
-	// Clamp rather than return 0: this field's whole contract is that 0 means
-	// "ranked above nobody", so handing back 0 for "I do not know" is the one
-	// sentinel it must never use. Unreachable today — a test pins the table's
-	// length to the ladder — but the wrong answer here is indistinguishable
-	// from a real bottom-of-Bronze reading.
-	if p.tier < 0 {
+	// div 5 is the BOTTOM of a tier and div 1 the top, so (5-div) counts
+	// divisions climbed within it.
+	idx := p.tier*divisionsPerTier + (divisionsPerTier - p.div)
+	if idx < 0 {
 		return 0
 	}
-	if p.tier >= len(tierPercentileCeiling) {
+	if idx >= len(divisionPercentile) {
 		return 100
 	}
-	floor := 0
-	if p.tier > 0 {
-		floor = tierPercentileCeiling[p.tier-1]
+	lo := divisionPercentile[idx]
+	hi := 100.0
+	if idx+1 < len(divisionPercentile) {
+		hi = divisionPercentile[idx+1]
 	}
-	ceiling := tierPercentileCeiling[p.tier]
-	// div 5 is the BOTTOM of a tier and div 1 the top, so (5-div) counts
-	// divisions climbed; prog carries the fraction of the current one.
-	climbed := (float64(5-p.div) + float64(p.prog)/100) / 5
-	return floor + int(math.Round(float64(ceiling-floor)*climbed))
+	prog := min(max(p.prog, 0), 100)
+	return int(math.Round(lo + (hi-lo)*float64(prog)/100))
 }
+
+// divisionsPerTier mirrors the frontend's DIVISIONS_PER_TIER; the ladder is
+// five divisions to a tier everywhere.
+const divisionsPerTier = 5
 
 // rankStartPositions is each track's staggered starting rank. DPS is the main
 // role (OW's most-played, and flex gives the main role 60% of role queue), so
