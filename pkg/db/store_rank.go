@@ -8,20 +8,13 @@ import (
 
 // UpsertRank writes a RANK parent row + its rank_modifiers and rank_sr
 // children in one transaction. Both child sets use DELETE-then-INSERT.
-func (s *SQLStore) UpsertRank(r RankRow) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	var id int64
-	err = tx.QueryRow(
-		`INSERT INTO rank_screenshots (
+// upsertRankSQL is hoisted out of UpsertRank so the function stays inside the
+// length budget as the rank row grows columns; same shape as upsertSummarySQL.
+const upsertRankSQL = `INSERT INTO rank_screenshots (
 			filename, match_key, screenshots_dir_id, parsed_at,
 			rank, level, rank_progress, change_percent, result, rank_percentile,
-			parser_generation
-		) VALUES (?,?,?,`+suppliedInstantOrNow+`, ?,?,?,?,?,?,?)
+			modifiers_raw, parser_generation
+		) VALUES (?,?,?,` + suppliedInstantOrNow + `, ?,?,?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
@@ -34,11 +27,26 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 			-- longer readable must write NULL back, not leave a stale
 			-- percentile attached to a row that no longer supports it.
 			rank_percentile = excluded.rank_percentile,
+			-- In the SET clause with its siblings: a re-parse whose band no longer
+			-- shows the unrecognized text must write '' back rather than leave a
+			-- stale reading on a row that no longer supports it.
+			modifiers_raw = excluded.modifiers_raw,
 			parser_generation = excluded.parser_generation
-		RETURNING id`,
+		RETURNING id`
+
+func (s *SQLStore) UpsertRank(r RankRow) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id int64
+	err = tx.QueryRow(
+		upsertRankSQL,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.ParsedAt,
 		r.Rank, r.Level, r.RankProgress, r.ChangePercent,
-		r.Result, r.RankPercentile, r.ParserGeneration,
+		r.Result, r.RankPercentile, r.ModifiersRaw, r.ParserGeneration,
 	).Scan(&id)
 	if err != nil {
 		return err
@@ -94,7 +102,10 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 func loadRanks(q querier) ([]RankRow, error) {
 	rows, err := q.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
-		rank, level, rank_progress, change_percent, result, rank_percentile
+		rank, level, rank_progress, change_percent, result, rank_percentile,
+		-- COALESCE so a row written before the column existed reads as "" rather
+		-- than failing the scan into a plain string.
+		COALESCE(modifiers_raw, '')
 		FROM rank_screenshots ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -109,7 +120,7 @@ func loadRanks(q querier) ([]RankRow, error) {
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&r.Rank, &r.Level, &progress, &change, &r.Result,
-			&percentile,
+			&percentile, &r.ModifiersRaw,
 		); err != nil {
 			return nil, err
 		}

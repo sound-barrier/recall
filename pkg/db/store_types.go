@@ -218,7 +218,12 @@ type RankRow struct {
 	RankPercentile *int
 
 	Modifiers []string
-	SR        []HeroSR
+	// ModifiersRaw is the modifier-row text this release's vocabulary could not
+	// account for. A plain string, not a pointer: "" is the honest "nothing
+	// unaccounted for", so absent and empty carry the same meaning here — unlike
+	// the three readings above, where 0 is a real value.
+	ModifiersRaw string
+	SR           []HeroSR
 }
 
 // HeroSR is one row of rank_sr.

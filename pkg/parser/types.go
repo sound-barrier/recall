@@ -75,6 +75,18 @@ type MatchResult struct {
 	Rank      string   `json:"rank,omitempty"`      // tier name: platinum, gold, etc.
 	Level     int      `json:"level,omitempty"`     // sub-division within tier (1-5)
 	Modifiers []string `json:"modifiers,omitempty"` // ["expected", "victory"], etc.
+	// ModifiersRaw holds the chip-like words in the modifier row that NO
+	// modifier in this release's vocabulary accounts for, space-joined in band
+	// order. It is not a modifier and must never be merged into Modifiers — the
+	// only thing known about it is that modifiers.yaml could not explain it.
+	//
+	// Sibling of MapRaw / HeroRaw, and for the same reason: an OCR reading the
+	// canonical table cannot place is evidence, not noise. Season 4's VARIANCE
+	// chip rode every post-placement rank screen for a season because this text
+	// existed only in a log line. One difference from those two — there is no
+	// boot-time promotion pass that turns this into a real modifier when the
+	// vocabulary catches up; a re-parse is what reclassifies it.
+	ModifiersRaw string `json:"modifiers_raw,omitempty"`
 	// RankProgress (% into the current level) and ChangePercent (% the rank
 	// moved this match) are pointers for the same reason RankPercentile is: 0 is
 	// a REAL reading for both — the bottom of a division, and a match that moved

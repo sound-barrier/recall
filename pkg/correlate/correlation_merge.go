@@ -52,6 +52,9 @@ func MergeMatchResult(dst, src *parser.MatchResult) {
 	dst.Performance = FirstNonEmpty(dst.Performance, src.Performance)
 	dst.Rank = FirstNonEmpty(dst.Rank, src.Rank)
 	dst.Level = FirstNonEmpty(dst.Level, src.Level)
+	// '' is absence here, not a value worth protecting — same rule as MapRaw and
+	// HeroRaw above.
+	dst.ModifiersRaw = FirstNonEmpty(dst.ModifiersRaw, src.ModifiersRaw)
 	if len(dst.Modifiers) == 0 {
 		dst.Modifiers = src.Modifiers
 	}

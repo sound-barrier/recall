@@ -421,8 +421,9 @@ func buildRankRow(filename, key string, dirID int64, r *parser.MatchResult) db.R
 		ParserGeneration: parser.Generation,
 		Rank:             r.Rank, Level: r.Level,
 		RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
-		Result:    r.Result,
-		Modifiers: append([]string(nil), r.Modifiers...),
+		Result:       r.Result,
+		Modifiers:    append([]string(nil), r.Modifiers...),
+		ModifiersRaw: r.ModifiersRaw,
 		// Copied by value, not aliased: the parse result is reused after this
 		// and a shared pointer would let a later write reach into a stored row.
 		RankPercentile: copyIntPtr(r.RankPercentile),

@@ -196,6 +196,13 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   rank_progress INTEGER,
   change_percent INTEGER,
   result TEXT NOT NULL DEFAULT '',
+  -- Modifier-row text this release's vocabulary could not account for. It has
+  -- DELIBERATELY no CHECK: the rank_modifiers CHECK below IS the vocabulary, so
+  -- a value that belongs here can never satisfy it — routing this text there
+  -- would be a guaranteed constraint violation, which UpsertRank's log-and-skip
+  -- would then turn into a guaranteed silent drop. That is this column's own bug
+  -- moved one layer down.
+  modifiers_raw TEXT NOT NULL DEFAULT '',
   -- Season-4 "HIGHER RANKED THAN 57% OF PLAYERS". Nullable for the same reason
   -- as the two above, which it predates: the caption is absent on every
   -- placement screen and on every capture before season 4, and 0 would assert

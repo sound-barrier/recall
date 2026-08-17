@@ -162,11 +162,15 @@ frontend/tests/e2e/dossier                    23
 # frontend/tests/e2e/match — ONE match: the detail panel (contract, keyboard,
 # WebKit), its sidebar toggles (play mode, queue, review), inline data editing,
 # tags and tag autocomplete, notes, the annotation journal, markdown export,
-# deletion, and the two hand-entry paths (manual add, leaver quick-add) with
-# the real-server validation spec that guards their range/roster rejections.
+# deletion, the two hand-entry paths (manual add, leaver quick-add) with the
+# real-server validation spec that guards their range/roster rejections, and
+# the Rank Update block's own contracts — the population percentile, the signed
+# movement, and the modifier text the vocabulary could not account for.
 # Distinct from matches/ (the LIST) — the same distinction the singular/plural
-# filename prefixes already drew.
-frontend/tests/e2e/match                      18
+# filename prefixes already drew. A spec count is a feature count here: the TDD
+# rule mandates one per user-visible affordance, so this climbs one considered
+# bump at a time.
+frontend/tests/e2e/match                      20
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode
