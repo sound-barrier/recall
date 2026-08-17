@@ -139,17 +139,75 @@ describe('performanceVsRank', () => {
 
 describe('climbVelocity', () => {
   it('divides the movement by sessions and weeks', () => {
-    const got = climbVelocity([rec(1, 'victory', 20), rec(2, 'victory', 20)], { days: 14, sessions: 2 })
+    const got = climbVelocity([rec(1, 'victory', 20), rec(2, 'victory', 20)], { days: 14 })
 
+    // Both denominators come from the window itself. These two matches are a
+    // day apart, well beyond the 3-hour session gap, so they are two sessions:
+    // 40 points over 2 sessions and over 2 weeks.
     expect(got.perSession).toBe(20)
     expect(got.perWeek).toBe(20)
     expect(got.readCount).toBe(2)
   })
 
   it('is null, not zero, when nothing reported a movement', () => {
-    const got = climbVelocity([rec(1, 'victory'), rec(2, 'defeat')], { days: 14, sessions: 2 })
+    const got = climbVelocity([rec(1, 'victory'), rec(2, 'defeat')], { days: 14 })
 
     expect(got.perSession).toBeNull()
     expect(got.perWeek).toBeNull()
+  })
+})
+
+// Two defects the Phase 2 review confirmed in this kernel.
+describe('coverage and denominators', () => {
+  const DAY2 = 86_400_000
+  const r = (daysAgo: number, result: 'victory' | 'defeat', change?: number) => ({
+    match_key: `c${daysAgo}-${Math.random()}`,
+    data: {
+      date: new Date(Date.now() - daysAgo * DAY2).toISOString().slice(0, 10),
+      finished_at: '20:00', result,
+      ...(change === undefined ? {} : { change_percent: change }),
+    },
+  })
+
+  // The play side was gated at MIN_SAMPLE while the rank side it was compared
+  // against could be a sample of ONE — so a single legible pill in a twenty
+  // match window decided "deflation" for the whole week.
+  it('will not judge the climb from one legible pill in a full window', () => {
+    const recent = [
+      ...Array.from({ length: 19 }, (_, i) => r(1 + (i % 5), i < 16 ? 'victory' : 'defeat')),
+      r(2, 'victory', -30), // the lone reading
+    ]
+    const baseline = Array.from({ length: 20 }, (_, i) => r(20 + (i % 5), i < 8 ? 'victory' : 'defeat'))
+
+    const got = performanceVsRank([...recent, ...baseline])
+
+    expect(got.readCount).toBe(1)
+    expect(got.readOf).toBe(20)
+    expect(got.netPercent).toBeNull()
+    expect(got.verdict).toBe('unknown')
+  })
+
+  it('judges once enough of the window reported a movement', () => {
+    const recent = Array.from({ length: 20 }, (_, i) => r(1 + (i % 5), i < 16 ? 'victory' : 'defeat', -2))
+    const baseline = Array.from({ length: 20 }, (_, i) => r(20 + (i % 5), i < 8 ? 'victory' : 'defeat'))
+
+    const got = performanceVsRank([...recent, ...baseline])
+
+    expect(got.netPercent).not.toBeNull()
+    expect(got.verdict).toBe('deflation')
+  })
+
+  // The numerator was a 30-day movement; the denominator was every session in
+  // the record set. A year of history made the reported climb rate a fraction
+  // of the truth.
+  it('divides by the sessions inside the window, not the whole history', () => {
+    const inWindow = [r(1, 'victory', 30)]
+    const ancient = Array.from({ length: 10 }, (_, i) => r(200 + i * 5, 'victory', 50))
+
+    const got = climbVelocity([...inWindow, ...ancient], { days: 30 })
+
+    // One session in the window, so the whole 30 lands on it — not 30/11.
+    expect(got.sessions).toBe(1)
+    expect(got.perSession).toBe(30)
   })
 })

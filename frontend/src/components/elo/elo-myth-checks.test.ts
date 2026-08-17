@@ -120,7 +120,7 @@ describe('buildChecks', () => {
 // distribution — and it must never re-acquire one by implication.
 describe('standing', () => {
   const trail = (over: Partial<NonNullable<MythCheckInputs['percentileTrail']>> = {}) =>
-    ({ now: 61, previous: 52, deltaPts: 9, n: 3, ...over })
+    ({ now: 61, nowRank: 'Platinum 2', previous: 52, deltaPts: 9, comparableN: 3, n: 3, ...over })
 
   it('is absent when no capture reported a percentile', () => {
     expect(buildChecks({ ...base, percentileTrail: null }).find((c) => c.id === 'standing'))
@@ -131,7 +131,7 @@ describe('standing', () => {
     const c = buildChecks({ ...base, percentileTrail: trail() }).find((x) => x.id === 'standing')
 
     expect(c?.a).toContain('61%')
-    expect(c?.note).toContain('up 9%')
+    expect(c?.note).toContain('up 9 pts')
     expect(c?.note).toContain('52%')
     expect(c?.tone).toBe('good')
   })
@@ -140,7 +140,7 @@ describe('standing', () => {
     const c = buildChecks({ ...base, percentileTrail: trail({ now: 44, previous: 52, deltaPts: -8 }) })
       .find((x) => x.id === 'standing')
 
-    expect(c?.note).toContain('down 8%')
+    expect(c?.note).toContain('down 8 pts')
     expect(c?.tone).toBe('bad')
   })
 
@@ -152,7 +152,7 @@ describe('standing', () => {
 
     expect(c?.a).toContain('61%')
     expect(c?.note).toMatch(/nothing to compare/i)
-    expect(c?.note).not.toMatch(/up |down /)
+    expect(c?.note).not.toMatch(/up \d|down \d/)
   })
 
   // The word carried a DIAGNOSIS the number cannot support on its own.
@@ -161,5 +161,47 @@ describe('standing', () => {
       const c = buildChecks({ ...base, percentileTrail: t }).find((x) => x.id === 'standing')
       expect(`${c?.q} ${c?.a} ${c?.note}`.toLowerCase()).not.toContain('hardstuck')
     }
+  })
+})
+
+// Three findings the Phase 2 review confirmed, each about the card claiming
+// more than its data supports.
+describe('standing — what the card is entitled to say', () => {
+  const trail = (over: Record<string, unknown> = {}) =>
+    ({ now: 61, nowRank: 'Platinum 2', previous: 52, deltaPts: 9, comparableN: 3, n: 3, ...over }) as NonNullable<MythCheckInputs['percentileTrail']>
+
+  // A percentile is a statement about a SPECIFIC rank. The latest capture
+  // carrying a caption can be older than the latest rank reading, so quoting
+  // the number beside the calculator's current rank would attach it to a rank
+  // it was never measured at.
+  it('names the rank the reading was printed against, not the current one', () => {
+    const c = buildChecks({
+      ...base, rankNow: 'Diamond 4', percentileTrail: trail({ nowRank: 'Platinum 2', previous: null, deltaPts: null, n: 1, comparableN: 1 }),
+    }).find((x) => x.id === 'standing')
+
+    expect(c?.note).toContain('Platinum 2')
+    expect(c?.note).not.toContain('Diamond 4')
+  })
+
+  // "One reading so far" is false when there are five of them and the earlier
+  // four simply sit in a previous season.
+  it('says why several readings still cannot be compared', () => {
+    const c = buildChecks({
+      ...base, percentileTrail: trail({ previous: null, deltaPts: null, n: 5, comparableN: 1 }),
+    }).find((x) => x.id === 'standing')
+
+    expect(c?.note).toContain('5 readings')
+    expect(c?.note).toMatch(/previous seasons/i)
+    expect(c?.note).not.toMatch(/one reading so far/i)
+  })
+
+  // Counting readings it refused to compare advertises a sample it did not use.
+  it('counts only the readings inside the compared season', () => {
+    const c = buildChecks({
+      ...base, percentileTrail: trail({ n: 9, comparableN: 3 }),
+    }).find((x) => x.id === 'standing')
+
+    expect(c?.note).toContain('across 3 readings')
+    expect(c?.note).not.toContain('across 9 readings')
   })
 })

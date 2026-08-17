@@ -226,6 +226,15 @@ describe('trend-options — rank ladder axis', () => {
       .toBe('Tank — Gold 3 · 40% progress · +2% this match')
     expect(format?.({ seriesName: 'Tank', data: { rank: rankPoint({ change: -3 }) } }))
       .toContain('-3% this match')
+    // An unread MOVEMENT is omitted too. This is the case a non-nullable
+    // RankPoint.change made impossible to write, which is exactly how the
+    // tooltip went on stating "0% this match" for a pill nobody read while its
+    // two siblings were being fixed.
+    const noChange = format?.({ seriesName: 'Tank', data: { rank: rankPoint({ change: null }) } })
+    // "this match" is the movement clause; asserting on "0%" alone would match
+    // the "0%" inside "40% progress".
+    expect(noChange).not.toContain('this match')
+    expect(noChange).toContain('Gold 3')
     // A NULL progress is omitted, not interpolated: the parser distinguishes an
     // unread caption from a real 0, and the raw template printed "null%".
     const unread = format?.({ seriesName: 'Tank', data: { rank: rankPoint({ progress: null }) } })

@@ -60,12 +60,10 @@ export function useMatchesMomentum(records: Readonly<Ref<MatchRecord[]>>) {
     return computed(() => performanceVsRank(records.value, toValue(opts)))
   }
   function velocity(opts: MaybeRefOrGetter<{ days: number }>): ComputedRef<ClimbVelocity> {
-    return computed(() => climbVelocity(records.value, {
-      days: toValue(opts).days,
-      // The session denominator is measured over the SAME window, so a
-      // per-session rate cannot be divided by sessions it never counted.
-      sessions: sessionCount(records.value),
-    }))
+    // climbVelocity derives BOTH denominators from the window it sums, so no
+    // session count is passed in — one measured over the whole history would
+    // divide a 30-day movement by a year of sessions.
+    return computed(() => climbVelocity(records.value, { days: toValue(opts).days }))
   }
 
   function lossStreakRecovery(opts: MaybeRefOrGetter<{ minStreak: number }>): ComputedRef<RateSample> {

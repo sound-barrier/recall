@@ -70,8 +70,17 @@ export function trackRecords<T extends TrackInput>(records: readonly T[], track:
 // "you did not move".
 interface PercentileTrail {
   now: number
+  // The rank the LATEST reading was printed against. A percentile is a
+  // statement about a SPECIFIC rank, and the newest capture carrying a caption
+  // can be older than the newest rank reading — so quoting the number beside
+  // the calculator's current rank would attach it to a rank it never measured.
+  nowRank: string | null
   previous: number | null
   deltaPts: number | null
+  // Readings in the SAME season as the latest — the ones this trail is entitled
+  // to compare. Counting every reading would advertise a sample it refused to
+  // use.
+  comparableN: number
   n: number
 }
 
@@ -134,10 +143,18 @@ function percentileTrail(
 
   const latest = readings[readings.length - 1]!
   const previous = pairableEarlier(readings, latest, seasonKeyOf)
+  const key = seasonKeyOf(latest.rec)
+  const comparable = key === null
+    ? 1
+    : readings.filter((r) => seasonKeyOf(r.rec) === key).length
+  const d = latest.rec.data
+  const rank = d?.rank && typeof d?.level === 'number' ? `${d.rank} ${d.level}` : null
   return {
     now: latest.pct,
+    nowRank: rank,
     previous: previous?.pct ?? null,
     deltaPts: previous ? latest.pct - previous.pct : null,
+    comparableN: comparable,
     n: readings.length,
   }
 }
