@@ -11,7 +11,7 @@ import {
 } from '@/components/coach/coach-room-props'
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
-import { notesSummaryLine, type CoachNoteDraft } from '@/match/coach-notes'
+import { notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The Film Room: reel · desk · sheet. The shell owns the layout and the
 // derived state (useCoachRoom) and nothing else — it takes the loaned

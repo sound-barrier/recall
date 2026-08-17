@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/vue'
 
 import ManualMatchModal from '@/components/matches/manual/ManualMatchModal.vue'
 import { ApiError, setApiBacking, type ManualMatchInput, type MatchRecord, type OWData } from '@/api-client'
-import type { ManualMatchMode } from '@/composables/matches/useManualMatchForm'
+import type { ManualMatchMode } from '@/composables/matches/manual/useManualMatchForm'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 

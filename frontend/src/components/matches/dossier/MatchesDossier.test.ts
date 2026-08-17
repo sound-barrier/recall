@@ -6,7 +6,7 @@ import MatchesDossier from '@/components/matches/dossier/MatchesDossier.vue'
 import {
   createMatchesNarrowState,
   useMatchesNarrow,
-} from '@/composables/matches/useMatchesNarrow'
+} from '@/composables/matches/narrow/useMatchesNarrow'
 import type { MatchRecord } from '@/api-client'
 
 // The dossier head's active-clause chip row: one chip per narrowing

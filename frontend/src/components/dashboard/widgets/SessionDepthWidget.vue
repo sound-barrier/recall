@@ -6,7 +6,7 @@
 // since the meter's own value is the share. Gallery opt-in.
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
-import { bucketCellClass, bucketCellJudgment } from '@/match/match-heatmap-helpers'
+import { bucketCellClass, bucketCellJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const dossier = useDossier()
 const depth = dossier.sessionDepth

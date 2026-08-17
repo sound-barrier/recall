@@ -4,8 +4,8 @@ import { render, screen } from '@testing-library/vue'
 
 import EloSkillCurve from '@/components/elo/EloSkillCurve.vue'
 import { provideEloCalculator, type EloCalculator } from '@/composables/elo/useEloCalculator'
-import type { SkillCurve } from '@/match/elo-kalman'
-import type { ChangePoint, ChangePointContext } from '@/match/elo-changepoint'
+import type { SkillCurve } from '@/match/elo/elo-kalman'
+import type { ChangePoint, ChangePointContext } from '@/match/elo/elo-changepoint'
 
 // ECharts paints to a real canvas; happy-dom has none, so zrender's
 // animation loop throws past the end of the test and fails the run. The

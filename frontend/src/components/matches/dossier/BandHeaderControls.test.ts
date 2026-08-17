@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, within } from '@testing-library/vue'
 
 import BandHeaderControls from '@/components/matches/dossier/BandHeaderControls.vue'
-import { JUDGMENT_LABEL } from '@/match/match-heatmap-helpers'
+import { JUDGMENT_LABEL } from '@/match/trends/match-heatmap-helpers'
 
 // The legend is the one piece of band chrome that makes a CLAIM about the
 // picture beside it, and it drifted twice: the swatches painted a red/green

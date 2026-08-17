@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 import type { MatchRecord, MatchResult } from '@/api-client'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
-import { emptyDraft, type CoachNoteDraft } from '@/match/coach-notes'
+import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
 
 function rec(key: string, data: MatchResult, hidden = false): MatchRecord {
   return { match_key: key, source_files: [`${key}.png`], data, hidden }

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 
 import type { MatchRecord } from '@/api'
-import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
-import type { BreakdownEntry } from '@/composables/matches/useMatchesDossier.types'
+import { useMatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
+import type { BreakdownEntry } from '@/composables/matches/dossier/useMatchesDossier.types'
 import { buildSeasonMetrics, topHeroDisplay, type SnapshotResolvers } from '@/components/compare/compareSnapshot'
 
 // buildSeasonMetrics is the one snapshot assembler both Compare modes share:

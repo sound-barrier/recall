@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
-import { useMapRoleConfig, type MapRole } from '@/composables/matches/useMapRoleConfig'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useMapRoleConfig, type MapRole } from '@/composables/matches/manual/useMapRoleConfig'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useOWData } from '@/composables/shared/useOWData'
 import { popoverPosition } from '@/components/matches/manual/map-role-popover-position'
 

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { useOWData } from '@/composables/shared/useOWData'
-import type { LiftRow } from '@/match/elo-lift'
+import type { LiftRow } from '@/match/elo/elo-lift'
 
 // "What moves your needle" — every split the app knows (heroes, maps,
 // modes, days, times, teammates) as LIFT vs the player's own baseline,

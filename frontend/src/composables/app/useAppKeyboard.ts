@@ -5,8 +5,8 @@ import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useMatchesStore } from '@/stores/matches'
 import { useUiStore } from '@/stores/ui'
-import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/useTabKeyboardNav'
-import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
+import { useTabKeyboardNav, TAB_ORDER } from '@/composables/shared/keyboard/useTabKeyboardNav'
+import { useGlobalKeyboard } from '@/composables/shared/keyboard/useGlobalKeyboard'
 
 // All App-shell keyboard wiring in one place: the tablist Arrow/Home/End nav,
 // the global shortcut registry (j/k, g-prefix tab jumps, e/t card expand, ?

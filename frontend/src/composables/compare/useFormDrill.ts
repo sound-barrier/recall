@@ -1,6 +1,6 @@
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
-import type { FormCondition, TimeWindow } from '@/match/match-form-slices'
+import type { FormCondition, TimeWindow } from '@/match/compare/match-form-slices'
 
 // Drill-through from a Form comparison cell into the Matches tab: reset the
 // shared narrow, write the cell's window as a custom date range, apply the

@@ -1,6 +1,6 @@
 <script lang="ts">
-import type { AggFn } from '@/match/pivot-aggregate'
-import type { PivotZone } from '@/composables/matches/useMatchPivot'
+import type { AggFn } from '@/match/pivot/pivot-aggregate'
+import type { PivotZone } from '@/composables/matches/pivot/useMatchPivot'
 
 // What a chip's menu item does when chosen. The parent (PivotTable) owns
 // the meaning — the chip just renders the offered actions and emits the

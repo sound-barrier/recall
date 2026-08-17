@@ -199,7 +199,7 @@ without agreement on direction.
   - **O — Open/closed.** Adding a variant should *extend*, not edit — prefer a
     registry keyed by a discriminant over a `switch` every new case must
     touch. Exemplars: `NARROW_CLAUSES`
-    (`frontend/src/composables/matches/matchesNarrow.clauses.ts`),
+    (`frontend/src/composables/matches/narrow/matchesNarrow.clauses.ts`),
     `WIDGET_REGISTRY` (`frontend/src/dashboard/widgets.ts`),
     `additiveColumns` (`pkg/db/schema.go`).
   - **L — Liskov substitution.** An implementation must honor the contract its

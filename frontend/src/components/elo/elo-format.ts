@@ -1,9 +1,9 @@
 // Plain-language number formatting for the Elo Calculator. Everything here
 // trades statistical wording for a phrasing a ranked player reads at a glance;
 // the raw stat stays available in a muted aside only where it earns its place.
-import type { GamesRange } from '@/match/elo-model'
-import { TIER_ORDER } from '@/match/match-trends-helpers'
-import { LADDER_MAX } from '@/match/elo-model'
+import type { GamesRange } from '@/match/elo/elo-model'
+import { TIER_ORDER } from '@/match/trends/match-trends-helpers'
+import { LADDER_MAX } from '@/match/elo/elo-model'
 
 // Decay estimates near the plateau blow up; past this they mean "never" in
 // practice, so we say so instead of printing a meaningless big number.

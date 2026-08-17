@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { screen, within } from '@testing-library/vue'
 import TimeOfDayWidget from '@/components/dashboard/widgets/TimeOfDayWidget.vue'
 import { renderWidget } from '@/test-utils'
-import type { BucketEntry } from '@/composables/matches/useMatchesDossier'
+import type { BucketEntry } from '@/composables/matches/dossier/useMatchesDossier'
 
 function bucket(label: string, over: Partial<BucketEntry> = {}): BucketEntry {
   return { label, count: 0, share: 0, winrate: null, wins: 0, decisive: 0, ...over }

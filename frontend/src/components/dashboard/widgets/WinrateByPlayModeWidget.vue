@@ -6,7 +6,7 @@
 // match is noise; over 50 matches is signal). Non-default; users
 // opt in via the dossier customize gallery.
 import { useDossier } from '@/composables/dashboard/useDossier'
-import { wilsonMargin } from '@/match/match-sample-helpers'
+import { wilsonMargin } from '@/match/dossier/match-sample-helpers'
 
 const dossier = useDossier()
 const playModeBreakdown = dossier.playModeBreakdown

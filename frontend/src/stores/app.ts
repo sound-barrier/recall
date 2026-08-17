@@ -10,7 +10,7 @@ import {
   SelfUpdateEvents,
   type SelfUpdateProgress, type SelfUpdateError, type SelfUpdateState,
 } from '@/self-update-events'
-import type { ViewId } from '@/composables/shared/useTabKeyboardNav'
+import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { useMatchesStore } from '@/stores/matches'
 
 // The error banner's Retry handler. May be async (the matches store passes its

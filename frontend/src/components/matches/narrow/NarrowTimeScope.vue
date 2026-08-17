@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 import { formatRangeBound } from '@/match/match-time-helpers'
 import { useOWData } from '@/composables/shared/useOWData'
 

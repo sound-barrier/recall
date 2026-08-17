@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useEloCalc } from '@/composables/elo/useEloCalculator'
 import { useOWData } from '@/composables/shared/useOWData'
-import type { HeroPickStat } from '@/match/elo-seed'
-import { clampHeroAdjust, HERO_ADJUST_MAX, HERO_ADJUST_STEP } from '@/match/elo-whatif'
-import { heatmapCellClass, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
+import type { HeroPickStat } from '@/match/elo/elo-seed'
+import { clampHeroAdjust, HERO_ADJUST_MAX, HERO_ADJUST_STEP } from '@/match/elo/elo-whatif'
+import { heatmapCellClass, heatmapCellOpacity } from '@/match/trends/match-heatmap-helpers'
 
 // Click heroes to use only their games as the win rate ("what if I only
 // queued these?") — a highlighted row is in the sample; none highlighted

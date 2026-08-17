@@ -8,14 +8,14 @@
 // onboarding-tour bridge (a stateless DOM/nav helper) — so App mounts it with no
 // props.
 import { computed, defineAsyncComponent, type Component } from 'vue'
-import ViewLoadError from '@/components/shared/ViewLoadError.vue'
+import ViewLoadError from '@/components/app/ViewLoadError.vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useOnboardingTourBridge } from '@/composables/app/useOnboardingTourBridge'
-import { useTiltNudge } from '@/composables/matches/useTiltNudge'
+import { useTiltNudge } from '@/composables/matches/list/useTiltNudge'
 import { screenshotURL } from '@/match/match-helpers'
 import StartupErrorModal from '@/components/app/StartupErrorModal.vue'
 import UnsupportedModal from '@/components/app/UnsupportedModal.vue'
@@ -30,9 +30,9 @@ function lazyOverlay(loader: () => Promise<{ default: Component }>) {
   return defineAsyncComponent({ loader, errorComponent: ViewLoadError })
 }
 
-const AboutModal = lazyOverlay(() => import('@/components/shared/AboutModal.vue'))
+const AboutModal = lazyOverlay(() => import('@/components/update/AboutModal.vue'))
 const SettingsModal = lazyOverlay(() => import('@/components/settings/SettingsModal.vue'))
-const FirstRunProfileModal = lazyOverlay(() => import('@/components/shared/FirstRunProfileModal.vue'))
+const FirstRunProfileModal = lazyOverlay(() => import('@/components/app/FirstRunProfileModal.vue'))
 const ExportBundleModal = lazyOverlay(() => import('@/components/settings/ExportBundleModal.vue'))
 const IgnoredFilesPanel = lazyOverlay(() => import('@/components/settings/IgnoredFilesPanel.vue'))
 const MatchDetailPanel = lazyOverlay(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
@@ -41,9 +41,9 @@ const MatchUndoToast = lazyOverlay(() => import('@/components/matches/list/Match
 const TiltNudgeToast = lazyOverlay(() => import('@/components/matches/list/TiltNudgeToast.vue'))
 const SessionSummaryToast = lazyOverlay(() => import('@/components/matches/list/SessionSummaryToast.vue'))
 const MatchScreenshotLightbox = lazyOverlay(() => import('@/components/matches/detail/MatchScreenshotLightbox.vue'))
-const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
+const KeyboardShortcutsModal = lazyOverlay(() => import('@/components/app/KeyboardShortcutsModal.vue'))
 const ManualMatchModal = lazyOverlay(() => import('@/components/matches/manual/ManualMatchModal.vue'))
-const OnboardingTour = lazyOverlay(() => import('@/components/shared/OnboardingTour.vue'))
+const OnboardingTour = lazyOverlay(() => import('@/components/onboarding/OnboardingTour.vue'))
 const CoachReturnSheet = lazyOverlay(() => import('@/components/coach/CoachReturnSheet.vue'))
 
 const appStore = useAppStore()

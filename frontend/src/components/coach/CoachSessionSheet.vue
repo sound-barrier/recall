@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CoachPlayerView } from '@/components/coach/coach-room-props'
-import { focusTagLabel, type FocusCount } from '@/match/coach-notes'
+import { focusTagLabel, type FocusCount } from '@/match/coach/coach-notes'
 import type { WLDTally } from '@/match/match-stats-helpers'
 
 // The session sheet: who is being reviewed, how the session went, and

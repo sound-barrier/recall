@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { useContextualCallout } from '@/composables/shared/useContextualCallout'
-import ContextualCallout from '@/components/shared/ContextualCallout.vue'
+import { useContextualCallout } from '@/composables/onboarding/useContextualCallout'
+import ContextualCallout from '@/components/onboarding/ContextualCallout.vue'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 

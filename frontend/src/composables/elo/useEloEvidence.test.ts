@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 import type { MatchRecord } from '@/api-client'
 import { useEloEvidence } from '@/composables/elo/useEloEvidence'
-import type { LeaverHandling } from '@/composables/matches/useMatchesDossier.types'
+import type { LeaverHandling } from '@/composables/matches/dossier/useMatchesDossier.types'
 
 let seq = 0
 interface Opts {

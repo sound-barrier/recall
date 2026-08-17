@@ -4,7 +4,7 @@ import { nextTick } from 'vue'
 
 import { setApiBacking } from '@/api-client'
 import type { CoachReturnItem, CoachReturnSheet } from '@/api-client'
-import { emptyDraft, type CoachNoteDraft } from '@/match/coach-notes'
+import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
 import { setCoachSessionResume } from '@/queries/coach'

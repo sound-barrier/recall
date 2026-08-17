@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
-import { useSectionLayout } from '@/composables/matches/useSectionLayout'
+import { useSectionLayout } from '@/composables/matches/dossier/useSectionLayout'
 import DossierSection from '@/components/matches/dossier/DossierSection.vue'
 import MatchTimelineHeader from '@/components/matches/timeline/MatchTimelineHeader.vue'
 import MatchMapRoleBand from '@/components/matches/dossier/MatchMapRoleBand.vue'

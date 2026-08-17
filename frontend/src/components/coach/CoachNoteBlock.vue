@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 import type { MatchCoachNote } from '@/api-client'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
-import { focusTagLabel } from '@/match/coach-notes'
+import { focusTagLabel } from '@/match/coach/coach-notes'
 import { useCoachStore } from '@/stores/coach'
 
 // One accepted coach note, on the match it is about — the coach-RECEIVED

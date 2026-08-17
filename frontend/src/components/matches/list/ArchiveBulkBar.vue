@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UseArchiveSelectionApi } from '@/composables/matches/useArchiveSelection'
+import type { UseArchiveSelectionApi } from '@/composables/matches/list/useArchiveSelection'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Archive bulk action bar — appears in the Hidden drawer as soon as any archive

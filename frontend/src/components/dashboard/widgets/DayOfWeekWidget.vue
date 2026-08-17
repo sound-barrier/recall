@@ -2,7 +2,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widgets'
-import { bucketCellClass, bucketCellJudgment } from '@/match/match-heatmap-helpers'
+import { bucketCellClass, bucketCellJudgment } from '@/match/trends/match-heatmap-helpers'
 import type { WeekStart } from '@/match/match-time-helpers'
 
 const dossier = useDossier()

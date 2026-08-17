@@ -1,0 +1,54 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { render } from '@testing-library/vue'
+
+import { useColumnResize, DEFAULT_COLUMN_WIDTHS } from '@/composables/matches/table/useColumnResize'
+
+// Mount the composable inside a throwaway component so usePersistedRef's
+// lifecycle hooks bind to a real instance (mirrors useTableSort.test).
+function mountResize() {
+  let api!: ReturnType<typeof useColumnResize>
+  render(defineComponent({
+    setup() {
+      api = useColumnResize()
+      return () => h('div')
+    },
+  }))
+  return api
+}
+
+let storage: Record<string, string>
+beforeEach(() => {
+  storage = {}
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => storage[key] ?? null,
+    setItem: (key: string, value: string) => { storage[key] = value },
+    removeItem: (key: string) => { delete storage[key] },
+    clear: () => { storage = {} },
+  })
+})
+afterEach(() => vi.unstubAllGlobals())
+
+describe('useColumnResize', () => {
+  it('returns the natural default width for an unsized column', () => {
+    const api = mountResize()
+    expect(api.colWidth('map')).toBe(DEFAULT_COLUMN_WIDTHS.map)
+    expect(api.colWidth('hero')).toBe(DEFAULT_COLUMN_WIDTHS.hero)
+  })
+
+  it('reads a persisted width, and setWidth overrides it (clamped to the minimum)', () => {
+    storage['recall.matchesTableColWidths'] = JSON.stringify({ map: 240 })
+    const api = mountResize()
+    expect(api.colWidth('map')).toBe(240)
+    api.setWidth('map', 88)
+    expect(api.colWidth('map')).toBe(88)
+    api.setWidth('map', 5) // below MIN_WIDTH (36) → clamped
+    expect(api.colWidth('map')).toBe(36)
+  })
+
+  it('ignores a corrupt persisted value (falls back to defaults)', () => {
+    storage['recall.matchesTableColWidths'] = '{"map":"wide"}'
+    const api = mountResize()
+    expect(api.colWidth('map')).toBe(DEFAULT_COLUMN_WIDTHS.map)
+  })
+})

@@ -11,7 +11,7 @@
 // move-to-profile / cancel-move) and the per-row unhide / hard-delete.
 import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
-import type { UseArchiveSelectionApi } from '@/composables/matches/useArchiveSelection'
+import type { UseArchiveSelectionApi } from '@/composables/matches/list/useArchiveSelection'
 import { formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '@/match/match-helpers'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import ArchiveBulkBar from '@/components/matches/list/ArchiveBulkBar.vue'

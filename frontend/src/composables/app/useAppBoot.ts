@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { fetchStartupError } from '@/queries/system'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useNativeMenu } from '@/composables/app/useNativeMenu'
 
 // App boot coordinator. On mount it fires the remaining store loaders (the

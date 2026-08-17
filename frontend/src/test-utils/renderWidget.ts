@@ -3,7 +3,7 @@ import { computed, type Component, type ComputedRef } from 'vue'
 import { vi } from 'vitest'
 import type { MatchRecord } from '@/api-client'
 import { DOSSIER_KEY, FULL_DOSSIER_KEY } from '@/composables/dashboard/useDossier'
-import { NARROW_KEY, type NarrowApi } from '@/composables/matches/useNarrow'
+import { NARROW_KEY, type NarrowApi } from '@/composables/matches/narrow/useNarrow'
 import type {
   AverageKDA,
   BestWinrateHero,
@@ -21,11 +21,11 @@ import type {
   TotalTimePlayed,
   WinLossDraw,
   WLDSinceLastReview,
-} from '@/composables/matches/useMatchesDossier'
-import type { RankNow } from '@/match/match-trends-helpers'
-import type { FormDelta, RateSample, LeaverRate, SessionIndexBreakdown } from '@/match/match-momentum-helpers'
-import type { TiltEpisodes } from '@/match/elo-streaks'
-import type { HeroCountBucket, HeroPoolAnalysis } from '@/match/match-hero-pool-helpers'
+} from '@/composables/matches/dossier/useMatchesDossier'
+import type { RankNow } from '@/match/trends/match-trends-helpers'
+import type { FormDelta, RateSample, LeaverRate, SessionIndexBreakdown } from '@/match/dossier/match-momentum-helpers'
+import type { TiltEpisodes } from '@/match/elo/elo-streaks'
+import type { HeroCountBucket, HeroPoolAnalysis } from '@/match/dossier/match-hero-pool-helpers'
 
 // Empty pool analysis for widgets that don't seed heroPool.
 const EMPTY_POOL: HeroPoolAnalysis = {

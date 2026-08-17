@@ -3,8 +3,8 @@ import { computed } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import { DEFAULT_COACH_LABELS, type CoachLabels } from '@/components/coach/coach-room-props'
-import { frameNameSuffix, noteMark, type CoachNoteDraft } from '@/match/coach-notes'
-import { playerClockTime } from '@/match/coach-time'
+import { frameNameSuffix, noteMark, type CoachNoteDraft } from '@/match/coach/coach-notes'
+import { playerClockTime } from '@/match/coach/coach-time'
 import { formatUnknownMapLabel } from '@/match/match-label-helpers'
 
 // One frame on the film strip: the match as a single click target,

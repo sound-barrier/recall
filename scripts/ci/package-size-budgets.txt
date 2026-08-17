@@ -99,20 +99,58 @@ frontend/src/client                           exempt
 # policing the whole corpus.
 frontend/tests/e2e                            20    184
 
-# frontend/src/composables/matches — the Matches tab's stateful logic:
-# narrowing, grouping, sorting, selection, the clause registry, dossier and
-# compare state. 51 files is the frontend's pkg/app. Target 20 = the low end of
-# the "~20–25" ceiling both CLAUDE.md files documented and nothing ever
-# asserted. The split mirrors components/matches/'s existing folder names, which
-# is what "colocate a feature's UI with its state" means here.
-frontend/src/composables/matches              20    51
+# frontend/src/composables/matches — the Matches tab's stateful logic. It
+# reached 51 files, the frontend's pkg/app, and is now split into subfolders
+# mirroring components/matches/'s existing folder names exactly (narrow, list,
+# table, dossier, detail, manual, pivot, timeline, trends) — which is what
+# "colocate a feature's UI with its state" means here, and it meant no taxonomy
+# had to be invented. What is left at this root is the pair that serves the
+# whole tab rather than one band of it: useMatchActions and useExportBundle.
+# The budget stays at 20, the low end of the "~20–25" ceiling both CLAUDE.md
+# files documented and nothing ever asserted, so a composable landing back at
+# this root is a deliberate choice rather than the default. Each subfolder
+# answers to the default 12 until its size earns its own line.
+frontend/src/composables/matches              20
+
+# frontend/src/composables/matches/list — the match list's stateful logic: the
+# add/sort/group menus, the two virtual windows over the shared windowing
+# kernel, scroll affordance and smooth scroll, per-row context, the live and
+# archive selection models, the move picker and the tilt nudge. One over the
+# default, and the count is inherited rather than grown — this is exactly the
+# set that backs components/matches/list, which is the folder the mirror rule
+# names. The next file here is a budget conversation.
+frontend/src/composables/matches/list         13
 
 # frontend/src/match — the pure-helper layer every SFC and composable pulls
-# from. 45 files whose sub-domains are already visible as filename prefixes:
-# elo-* (25 files), coach-*, pivot-*, match-compare-*, match-dossier-*. Those
-# prefixes ARE the subfolders. The hottest ids (match-helpers, match-time-
-# helpers, match-key) stay at the root so the biggest import fan-outs don't move.
-frontend/src/match                            20    45
+# from. It reached 45 files whose sub-domains were already visible as filename
+# prefixes, and those prefixes became the subfolders: elo/, coach/, pivot/,
+# dossier/, compare/, trends/, table/, export/. What stays at this root is the
+# cross-domain set with the biggest import fan-outs — match-time-helpers (14
+# directories), match-helpers (8), match-key, match-stats-helpers,
+# match-label-helpers, match-season-helpers, match-overrides, search-query —
+# because an id that every feature imports should never move again. Sub-domain
+# folders and NOT a top-level src/elo/: this tree's top level is a LAYER
+# taxonomy (components/composables/stores/queries/match/styles), and one
+# documented home for pure helpers is the rule people actually apply. The budget
+# stays at 20, the low end of the "~20–25" ceiling both CLAUDE.md files
+# documented and nothing ever asserted, so a helper landing back at this root is
+# a deliberate choice rather than the default. Each subfolder answers to the
+# default 12 until its size earns its own line.
+frontend/src/match                            20
+
+# frontend/src/match/elo — the Elo Calculator's math kernels: the ladder model,
+# the decay-aware simulator every closed form defers to, the Bayesian/Kalman
+# estimators, change-point and streak detection, lift, seeding, hero-gap and
+# what-if. One over the default, and the count is inherited rather than grown —
+# these thirteen modules were one coherent elo-* family before the regroup and
+# splitting them further would separate the simulator from the closed forms that
+# must agree with it (the whole point of the Elo coherence campaign). The VIEW
+# helpers stay out: components/elo/{elo-format,elo-verdict,elo-myth-checks,
+# elo-chart-options}.ts are colocated with their only consumers, and
+# elo-chart-options imports a type from components/matches/trends/, so moving
+# them here would invert the layering. The next file here is a budget
+# conversation.
+frontend/src/match/elo                        13
 
 # frontend/src/components/dashboard/widgets — one SFC per dossier widget,
 # registered in WIDGET_REGISTRY. DELIBERATELY NOT SPLIT: this is the pkg/db case
@@ -124,12 +162,15 @@ frontend/src/match                            20    45
 # domains. Reopen only after splitting those suites per-widget.
 frontend/src/components/dashboard/widgets     40
 
-# frontend/src/composables/shared — cross-feature composables. 26 files means
-# "shared" has quietly become "miscellaneous", which is the failure mode a
-# shared/ folder always has. Target 20; the fix is extracting the real features
-# (onboarding, profile, update) and pushing single-consumer composables back
-# down to their feature folder, not inventing shared/shared/.
-frontend/src/composables/shared               20    26
+# frontend/src/composables/shared — cross-feature composables. It reached 26
+# files, at which point "shared" meant "miscellaneous", the failure mode a
+# shared/ folder always has. The three real features hiding in it moved out to
+# composables/{onboarding,profile,update}/ and the two primitive families to
+# shared/{keyboard,media}/, leaving only the leaves with genuine fan-out —
+# useWriteGate (34 non-test importers) and useOWData (29) at the top of that
+# list. Those two ids in particular should never move again. Target 20
+# stands as the ceiling on this folder becoming a junk drawer a second time.
+frontend/src/composables/shared               20
 
 # frontend/src/components/matches/list — the match list: row renderers, the
 # table, the toolbar and bulk bars, and four unrelated toasts that are rendered
@@ -137,12 +178,15 @@ frontend/src/composables/shared               20    26
 # cheapest of the frontend splits.
 frontend/src/components/matches/list          20    22
 
-# frontend/src/components/shared — nominally cross-feature UI. In practice it is
-# four features sharing a folder: the masthead pieces (only AppMasthead imports
-# them), the onboarding tour, the update cluster, and app chrome. Only
-# FilterCombobox and TypeaheadDropdown are genuinely cross-feature. Same drift as
-# composables/shared, one file further along.
-frontend/src/components/shared                20    21
+# frontend/src/components/shared — cross-feature UI primitives. It reached 21
+# files while being four features sharing a folder, so the masthead pieces went
+# to components/app/masthead/ (AppMasthead was their only importer), the tour to
+# components/onboarding/, the update cluster to components/update/, and the app
+# chrome up to components/app/. What is left is what the folder name always
+# claimed: FilterCombobox and the TypeaheadDropdown it composes, both read by
+# more than one feature. Target 20 stands as the ceiling on the same drift
+# recurring — the membership test is "used by two features", not the number.
+frontend/src/components/shared                20
 
 # frontend/src/components/elo — the Elo Calculator tab: input panels, result
 # panels, the projection chart, and four colocated view helpers. Exactly at the

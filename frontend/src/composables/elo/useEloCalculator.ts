@@ -3,35 +3,35 @@ import {
   type ComputedRef, type InjectionKey, type MaybeRefOrGetter, type Ref,
 } from 'vue'
 import type { MatchRecord } from '@/api-client'
-import { TIER_ORDER, ladderScore, rankLadderSeries, type Tier } from '@/match/match-trends-helpers'
+import { TIER_ORDER, ladderScore, rankLadderSeries, type Tier } from '@/match/trends/match-trends-helpers'
 import {
   availableTracks, heroPickerStats, pooledDecisiveMatches, pooledWinLoss, seedTrack, trackRecords,
   TRACK_LABELS, type HeroPickStat, type TrackKey, type TrackSeed,
-} from '@/match/elo-seed'
+} from '@/match/elo/elo-seed'
 import {
   decayProjection, gamesToWeeks, naiveProjection, projectionCurves,
   requiredWinRateForGames, DEFAULT_DECAY_SLOPE, DEFAULT_METER_MOVE_PCT,
   PROVISIONAL_MIN_DECISIVE,
   type DecayProjection, type NaiveProjection, type ProjectionCurves, type ProjectionInput,
-} from '@/match/elo-model'
-import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo-stats'
+} from '@/match/elo/elo-model'
+import { binomialTwoSidedP, lossStreakChance, runsTest } from '@/match/elo/elo-stats'
 import {
   NO_EDITED_FIELDS, diffSeededForm, plateauRateFromMeter, projectionInputFromForm,
   round1, seasonSimFromProjection, type EloFormSnapshot,
-} from '@/match/elo-form'
+} from '@/match/elo/elo-form'
 import {
   ceilingRange, credibleInterval, gamesToKnow, probTrueWinRateAbove,
   type CeilingRange, type SlopeCI,
-} from '@/match/elo-bayes'
-import { decisiveResults, decisiveTimeline } from '@/match/elo-streaks'
-import { meterMoveSamples, type SeasonSim } from '@/match/elo-simulate'
-import { skillCurve as computeSkillCurve, type SkillCurve } from '@/match/elo-kalman'
+} from '@/match/elo/elo-bayes'
+import { decisiveResults, decisiveTimeline } from '@/match/elo/elo-streaks'
+import { meterMoveSamples, type SeasonSim } from '@/match/elo/elo-simulate'
+import { skillCurve as computeSkillCurve, type SkillCurve } from '@/match/elo/elo-kalman'
 import {
   changePointContext, detectChangePoint, type ChangePoint, type ChangePointContext,
-} from '@/match/elo-changepoint'
-import { liftTable, type LiftRow } from '@/match/elo-lift'
-import { clampHeroAdjust, heroWhatIf, type HeroWhatIf } from '@/match/elo-whatif'
-import { heroClimbGap, type HeroGap } from '@/match/elo-hero-gap'
+} from '@/match/elo/elo-changepoint'
+import { liftTable, type LiftRow } from '@/match/elo/elo-lift'
+import { clampHeroAdjust, heroWhatIf, type HeroWhatIf } from '@/match/elo/elo-whatif'
+import { heroClimbGap, type HeroGap } from '@/match/elo/elo-hero-gap'
 
 // The Elo Calculator's single state owner (loan-calculator semantics):
 // picking a track re-fills every input from that track's history; every

@@ -1,5 +1,5 @@
 import { inject, provide, type InjectionKey } from 'vue'
-import type { MatchesDossier } from '@/composables/matches/useMatchesDossier'
+import type { MatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
 
 // Symbol-keyed inject token so widgets reach the dossier without
 // threading 18 props through DashboardWidget. MatchesView provides

@@ -5,7 +5,7 @@
 // Opt-in.
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
-import { signJudgment } from '@/match/match-heatmap-helpers'
+import { signJudgment } from '@/match/trends/match-heatmap-helpers'
 
 const { netRankWeek } = useDossier()
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { sortGroupPopoverPosition } from '@/components/matches/list/sort-group-popover-position'
 
 // Combined Sort + Group dropdown for the Matches leaves head. Two

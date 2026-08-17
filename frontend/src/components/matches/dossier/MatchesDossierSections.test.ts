@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEvent, fireEvent, render, screen } from '@testing-library/vue'
 
 import MatchesDossierSections from '@/components/matches/dossier/MatchesDossierSections.vue'
-import { _resetSectionLayoutForTest } from '@/composables/matches/useSectionLayout'
+import { _resetSectionLayoutForTest } from '@/composables/matches/dossier/useSectionLayout'
 
 // The full-width bands below the dossier grid are user-orderable and
 // user-removable, and each band is a heavyweight surface of its own. This

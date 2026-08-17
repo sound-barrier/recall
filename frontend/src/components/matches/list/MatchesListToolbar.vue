@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { Density } from '@/composables/matches/useDensity'
+import type { Density } from '@/composables/matches/table/useDensity'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
-import { useAddMatchMenu } from '@/composables/matches/useAddMatchMenu'
+import { useAddMatchMenu } from '@/composables/matches/list/useAddMatchMenu'
 
 // The Matches members-section header toolbar: the "N matches" title, the
 // Sort+Group trigger, the row-density segmented control, and the

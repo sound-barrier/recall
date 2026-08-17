@@ -4,7 +4,7 @@ import { h } from 'vue'
 
 import type { MatchRecord, MatchResult } from '@/api-client'
 import CoachRoomView from '@/components/coach/CoachRoomView.vue'
-import { emptyDraft } from '@/match/coach-notes'
+import { emptyDraft } from '@/match/coach/coach-notes'
 
 function rec(key: string, data: MatchResult): MatchRecord {
   return { match_key: key, source_files: [], data }

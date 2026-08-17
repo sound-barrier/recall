@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { formatPivotCell, type PivotResult, type PivotTally } from '@/match/pivot-aggregate'
-import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity } from '@/match/match-heatmap-helpers'
+import { formatPivotCell, type PivotResult, type PivotTally } from '@/match/pivot/pivot-aggregate'
+import { heatmapCellClass, heatmapCellJudgment, heatmapCellOpacity } from '@/match/trends/match-heatmap-helpers'
 
 // Renders a PivotResult as a crosstab: row-dimension headers down the
 // left, column-dimension groups across the top (each split into one

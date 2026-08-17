@@ -5,7 +5,7 @@ import type { Season } from '@/composables/shared/useOWData'
 import {
   mirrorPreviousWindow, pairByMatches, pairByTime, samePointWindows, trailingWindow,
   type FormPair, type TimeWindow,
-} from '@/match/match-form-slices'
+} from '@/match/compare/match-form-slices'
 
 // The Form mode's pairing state machine: which two adjacent windows of
 // play get compared (by time or by match count), the preset buttons

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 import {
   fmtRank, fmtScoreRank, fmtGames, fmtGamesRange, fmtWeeks, fmtProb, fmtPct, fmtPValue,
 } from '@/components/elo/elo-format'
-import type { GamesRange } from '@/match/elo-model'
+import type { GamesRange } from '@/match/elo/elo-model'
 
 describe('fmtRank / fmtScoreRank', () => {
   it('capitalizes the tier and appends the division', () => {

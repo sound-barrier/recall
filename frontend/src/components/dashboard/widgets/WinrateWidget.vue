@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useDossier } from '@/composables/dashboard/useDossier'
-import { wilsonMargin } from '@/match/match-sample-helpers'
+import { wilsonMargin } from '@/match/dossier/match-sample-helpers'
 
 const { winrate, wld } = useDossier()
 

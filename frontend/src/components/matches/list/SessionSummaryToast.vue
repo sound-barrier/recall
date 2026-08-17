@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue'
-import type { SessionSummary } from '@/match/match-momentum-helpers'
+import type { SessionSummary } from '@/match/dossier/match-momentum-helpers'
 
 // Post-parse session tally — "Session so far: 3 matches · 2W-1L-0D".
 // Mirrors MatchUndoToast's token/timer mechanics; informational, so it

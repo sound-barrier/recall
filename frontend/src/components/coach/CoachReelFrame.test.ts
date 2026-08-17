@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest'
 
 import type { MatchRecord } from '@/api-client'
 import CoachReelFrame from '@/components/coach/CoachReelFrame.vue'
-import { emptyDraft } from '@/match/coach-notes'
+import { emptyDraft } from '@/match/coach/coach-notes'
 
 const KINGS_ROW: MatchRecord = {
   match_key: 'match-2026-08-08T21-14-00',

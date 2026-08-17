@@ -3,8 +3,8 @@ import { computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useSettingsStore } from '@/stores/settings'
-import { useFirstRunAcknowledged } from '@/composables/shared/useFirstRunAcknowledged'
-import { cacheActiveProfile } from '@/composables/shared/profileStorage'
+import { useFirstRunAcknowledged } from '@/composables/onboarding/useFirstRunAcknowledged'
+import { cacheActiveProfile } from '@/composables/profile/profileStorage'
 
 // First-run "name your main account" gate. Self-persists the dismissal in
 // localStorage so the modal never returns once acknowledged, and is gated on

@@ -4,9 +4,9 @@ import { computed, nextTick, ref } from 'vue'
 
 import TrendsSection from '@/components/matches/trends/TrendsSection.vue'
 import { DOSSIER_KEY } from '@/composables/dashboard/useDossier'
-import { NARROW_KEY, type NarrowApi } from '@/composables/matches/useNarrow'
-import type { MatchesDossier } from '@/composables/matches/useMatchesDossier'
-import type { TrendSeries, RankSeries, WinrateGrid } from '@/match/match-trends-helpers'
+import { NARROW_KEY, type NarrowApi } from '@/composables/matches/narrow/useNarrow'
+import type { MatchesDossier } from '@/composables/matches/dossier/useMatchesDossier'
+import type { TrendSeries, RankSeries, WinrateGrid } from '@/match/trends/match-trends-helpers'
 
 // TrendChart wraps ECharts, which paints to a canvas happy-dom can't give it a
 // context for — and the canvas is opaque to every query anyway. The stub keeps

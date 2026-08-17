@@ -7,7 +7,7 @@ import { ref } from 'vue'
 const readOnly = ref(false)
 const sessionActive = ref(false)
 
-vi.mock('@/composables/shared/useActiveProfile', () => ({
+vi.mock('@/composables/profile/useActiveProfile', () => ({
   useActiveProfile: () => ({ isReadOnly: readOnly }),
 }))
 vi.mock('@/stores/coach', () => ({

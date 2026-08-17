@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import { useScrollLock } from '@/composables/shared/useScrollLock'
+import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 
 // Right-click context menu for a Matches list row. Quick actions

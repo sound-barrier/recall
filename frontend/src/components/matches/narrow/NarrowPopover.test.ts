@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 
 import type { MatchRecord } from '@/api-client'
 import NarrowPopover from '@/components/matches/narrow/NarrowPopover.vue'
-import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import { createMatchesNarrowState, useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 import { qk } from '@/queries/keys'
 import { seedQuery } from '@/test-utils/queryTestUtils'
 

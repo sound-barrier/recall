@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 import type { CoachDecisionEnum, CoachReturnItem } from '@/api-client'
 import { isOrphan } from '@/composables/coach/useCoachReturnDecisions'
-import { focusTagLabel } from '@/match/coach-notes'
+import { focusTagLabel } from '@/match/coach/coach-notes'
 
 // One returned note on the player's decision sheet: what the coach wrote,
 // which match it is about, and the Accept / Skip verdict. Presentational —

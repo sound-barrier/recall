@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
-import type { FormCondition, TimeWindow } from '@/match/match-form-slices'
+import type { FormCondition, TimeWindow } from '@/match/compare/match-form-slices'
 import { useFormDrill } from '@/composables/compare/useFormDrill'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'

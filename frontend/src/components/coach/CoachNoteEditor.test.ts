@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/vue'
 import { describe, it, expect } from 'vitest'
 
 import CoachNoteEditor from '@/components/coach/CoachNoteEditor.vue'
-import { emptyDraft, type CoachNoteDraft } from '@/match/coach-notes'
+import { emptyDraft, type CoachNoteDraft } from '@/match/coach/coach-notes'
 
 const MATCH_KEY = 'match-2026-08-08T21-14-00'
 

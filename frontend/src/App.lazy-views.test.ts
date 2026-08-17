@@ -34,10 +34,10 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'EloCalculatorView',      path: '@/components/elo/EloCalculatorView.vue' },
     { name: 'MatchDetailPanel',       path: '@/components/matches/detail/MatchDetailPanel.vue' },
     { name: 'MatchScreenshotLightbox', path: '@/components/matches/detail/MatchScreenshotLightbox.vue' },
-    { name: 'KeyboardShortcutsModal', path: '@/components/shared/KeyboardShortcutsModal.vue' },
+    { name: 'KeyboardShortcutsModal', path: '@/components/app/KeyboardShortcutsModal.vue' },
     // First-run modal — only renders on a fresh install, so the cost
     // of its bytes should only be paid by users who actually see it.
-    { name: 'FirstRunProfileModal',   path: '@/components/shared/FirstRunProfileModal.vue' },
+    { name: 'FirstRunProfileModal',   path: '@/components/app/FirstRunProfileModal.vue' },
     // Export bundle modal — only renders when the user clicks
     // "Export bundle…" on the Matches bulk-action bar.
     { name: 'ExportBundleModal',      path: '@/components/settings/ExportBundleModal.vue' },
@@ -45,7 +45,7 @@ describe('App.vue lazy-loaded components', () => {
     // hit users who actually stamp an anchor.
     { name: 'MatchAnchorToast',       path: '@/components/matches/list/MatchAnchorToast.vue' },
     // About dialog — identity + update hub, only mounted when the user opens it.
-    { name: 'AboutModal',             path: '@/components/shared/AboutModal.vue' },
+    { name: 'AboutModal',             path: '@/components/update/AboutModal.vue' },
     // Settings dialog — the ⌘, / app-menu / kebab Preferences surface.
     { name: 'SettingsModal',          path: '@/components/settings/SettingsModal.vue' },
     // Manual-entry modal — only mounted when the user clicks "Add match".
