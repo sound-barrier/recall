@@ -9,13 +9,13 @@
 # frontend's TIER_ORDER, and the manual-entry form's dropdown — kept in sync
 # by comments alone, with nothing failing when they drifted. The Go copies now
 # derive from here; the frontend constant is pinned to this file by a contract
-# test (frontend/src/match/match-trends-helpers.test.ts).
+# test (frontend/src/match/trends/match-trends-helpers.test.ts).
 #
 # Names are the lowercase form stored in data.rank and matched by the OCR
 # snapper, NOT display case — the UI title-cases for rendering.
 #
 # Adding a tier: edit this file, rebuild, then update the ladder constants the
-# insertion shifts (LADDER_MAX in frontend/src/match/elo-model.ts and the
+# insertion shifts (LADDER_MAX in frontend/src/match/elo/elo-model.ts and the
 # per-tier color tokens in styles/tokens.css + themes.css). The contract test
 # and the rank-tier-legibility e2e spec will tell you what you missed.
 ranks:

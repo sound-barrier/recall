@@ -130,17 +130,21 @@ import.) App-level tests through `renderApp` install the mock with
 **File layout — group by feature, not flat.** `components/` and `composables/`
 are organized into feature subfolders, not one giant flat directory:
 `components/<feature>/` (`matches/`, `settings/`, `unknown/`, `ingest/`,
-`dashboard/` — owning the widget set, nested under `dashboard/widgets/` —,
-`app/` — the App-shell chrome (`AppMasthead`, the app-level modals + banners) —,
-`shared/`) and the matching `composables/<feature>/`, with `shared/` holding
-cross-feature pieces (`FilterCombobox`, `MastheadParseChip`, `ProfileSwitcher`,
-generic modals). Colocate
+`onboarding/`, `update/`, `dashboard/` — owning the widget set, nested under
+`dashboard/widgets/` —, `app/` — the App-shell chrome (`AppMasthead` and its
+`masthead/` pieces, the app-level modals + banners) —, `shared/`) and the
+matching `composables/<feature>/`, with `shared/` holding only what more than
+one feature reads (`FilterCombobox`, `TypeaheadDropdown`; on the composable
+side the persisted-ref substrate plus `shared/keyboard/` and `shared/media/`).
+**A file used by exactly one feature does not belong in `shared/`** — that is
+how both `shared/` folders became junk drawers the first time. Colocate
 a feature's UI with its state. Per the root `CLAUDE.md` *Package & directory
 size* rule, each of these directories carries a declared file budget in
 `scripts/ci/package-size-budgets.txt` — read the number there, and run
 `task package-size-audit` to see where a folder stands. `ls` stays the source of
-truth for *what is in* a folder; don't enumerate files here. (`composables/` has no `unknown/` — no
-composable is unknown-specific.)
+truth for *what is in* a folder; don't enumerate files here. (The two trees are
+not required to mirror: `composables/` has no `unknown/` — no composable is
+unknown-specific — and its `profile/` has no components counterpart.)
 
 **Imports use the `@/` alias** (`@/` → `frontend/src/`) — the canonical Vue
 convention, configured in `vite.config.ts` + `vitest.config.ts` (`resolve.alias`)
@@ -361,7 +365,7 @@ deliberate exception: a bar whose TINT passes judgment appends that
 judgment to its name (`` `Wed share — winning` ``), because a verdict
 carried by color alone is no verdict at all for a screen-reader or
 colorblind player (WCAG 1.4.1). The vocabulary is a single lookup,
-`JUDGMENT_LABEL` in `@/match/match-heatmap-helpers`, keyed by the same
+`JUDGMENT_LABEL` in `@/match/trends/match-heatmap-helpers`, keyed by the same
 band the class is — so a band cannot gain a color without gaining a
 word. The rule is scoped to surfaces where the tint is the ONLY cue: a
 heatmap cell is a bare colored button, so it speaks its band, while the

@@ -1,5 +1,5 @@
 /* The verdict palette — ONE definition for every surface that judges a win
-   rate. The class names come from BAND_CLASS in @/match/match-heatmap-helpers,
+   rate. The class names come from BAND_CLASS in @/match/trends/match-heatmap-helpers,
    which is also where the thresholds (51% / 48.5%, 15-decisive floor) and the
    spoken JUDGMENT_LABEL vocabulary live. Paint them in exactly one place so a
    53% can never read green on one surface and gray on another.
