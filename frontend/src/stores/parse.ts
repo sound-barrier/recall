@@ -80,7 +80,7 @@ export const useParseStore = defineStore('parse', () => {
   }
 
   return {
-    // The whole parse-run lifecycle cluster (parseBusy, runParse,
+    // The whole parse-run lifecycle cluster (parseBusy, parse,
     // finishParseRun, the recovery bridge, …) under its original names.
     ...parseRun,
     ignoredScreenshots,

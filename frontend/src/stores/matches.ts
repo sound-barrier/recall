@@ -192,11 +192,13 @@ export const useMatchesStore = defineStore('matches', () => {
   // provideDossier(matchesStore.dossier) in MatchesView. weekStart comes from
   // the settings store (lifecycle-safe there). ONE useOWData() call feeds
   // all four dossiers — each call registers its own reference-data query
-  // observer, so repeating it would create four for no benefit. This is
-  // the only cross-store call this store makes at SETUP time — the parse
-  // store's is inside load() — which is what keeps the store-module cycles
-  // (matches → settings → parse → matches) inert: every other cross-call
-  // runs in a callback, long after the modules load. storeToRefs keeps
+  // observer, so repeating it would create four for no benefit. This and
+  // the useCoachStore() above are the store's ONLY setup-time cross-store
+  // calls — the parse store's is inside load() — and what keeps the
+  // store-module cycles (matches → settings → parse → matches) inert is
+  // that neither settings nor coach re-enters a store during ITS OWN
+  // setup; every other cross-call in the graph runs in a callback, long
+  // after the modules load. storeToRefs keeps
   // weekStart a Ref (the dossier wants Readonly<Ref>); reading
   // settingsStore.weekStart directly would unwrap it to a value.
   const { weekStart } = storeToRefs(useSettingsStore())
