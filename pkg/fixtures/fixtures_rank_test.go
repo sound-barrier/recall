@@ -328,10 +328,11 @@ func TestSRFromLadder_Monotonic(t *testing.T) {
 // The percentile printed on a seeded rank card has to agree with the tier
 // printed beside it, or every screenshot of the dev seed is visibly wrong.
 func TestLadderPercentile(t *testing.T) {
-	// Pinned to the ladder, so adding a tier fails here instead of silently
-	// borrowing its neighbor's ceiling and squashing the whole curve.
-	if got, want := len(fixtures.TierPercentileCeiling()), len(parser.Ranks()); got != want {
-		t.Fatalf("tierPercentileCeiling has %d entries, ladder has %d tiers — a tier was "+
+	// One entry per RUNG, pinned to the ladder: adding a tier without adding
+	// its five divisions would silently shift every rung above it onto the
+	// wrong percentile.
+	if got, want := len(fixtures.DivisionPercentile()), len(parser.Ranks())*5; got != want {
+		t.Fatalf("divisionPercentile has %d entries, ladder has %d rungs — a tier was "+
 			"added to ranks.yaml without deciding what share of players sits below it", got, want)
 	}
 
@@ -343,13 +344,21 @@ func TestLadderPercentile(t *testing.T) {
 		t.Errorf("the top of the ladder = %d%%, want 100", got)
 	}
 
-	// Sanity against the real captures: the season-4 fixtures read 57-61%
-	// around Platinum 1-2, so the curve must land that region in the same
-	// neighborhood rather than, say, the 30s.
+	// Anchored to the survey the table is fitted from: Platinum 2 sits at
+	// 46.5% and Platinum 1 at 52.4%, so two-thirds of the way through
+	// Platinum 2 lands around 50. The real season-4 captures read 57 at that
+	// rung, which is inside the survey's own spread for it (responses ranged
+	// 25-58%) — the seed wants the central estimate, not one capture.
 	plat := indexOfTier(t, "platinum")
-	if got := fixtures.LadderPercentile(plat, 2, 67); got < 45 || got > 75 {
-		t.Errorf("Platinum 2 at 67%% progress = %d%%, want roughly the 45-75 band the "+
-			"real season-4 captures sit in (57/59/61)", got)
+	if got := fixtures.LadderPercentile(plat, 2, 67); got < 45 || got > 58 {
+		t.Errorf("Platinum 2 at 67%% progress = %d%%, want ~50 — between the survey's "+
+			"fitted Platinum 2 (46.5) and Platinum 1 (52.4)", got)
+	}
+	// The bottom of the ladder is the half the old invented numbers got most
+	// wrong: they put the top of Gold at 48%, the survey fits 24.7%.
+	gold := indexOfTier(t, "gold")
+	if got := fixtures.LadderPercentile(gold, 1, 0); got < 20 || got > 30 {
+		t.Errorf("the top of Gold = %d%%, want ~25 per the survey fit", got)
 	}
 }
 

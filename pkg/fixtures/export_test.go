@@ -131,9 +131,9 @@ func (p playerProfile) MainRole() string     { return p.mainRole }
 func (p playerProfile) MainPool() []string   { return p.mainPool }
 func (p playerProfile) FlexHeroes() []string { return p.flexHeroes }
 
-// TierPercentileCeiling and LadderPercentile expose the synthetic population
+// DivisionPercentile and LadderPercentile expose the survey-fitted population
 // curve so the external test can pin it to the tier ladder.
-func TierPercentileCeiling() []int { return tierPercentileCeiling }
+func DivisionPercentile() []float64 { return divisionPercentile[:] }
 
 func LadderPercentile(tier, div, prog int) int {
 	return ladderPos{tier: tier, div: div, prog: prog}.percentile()
