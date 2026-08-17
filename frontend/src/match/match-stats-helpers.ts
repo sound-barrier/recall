@@ -1,6 +1,6 @@
 // Stats aggregations + numeric formatters used by the dossier and
 // the matches workspace's aggregate strip. tallyWLD + WLDTally are
-// also imported by match-group-helpers.ts — the grouping tree
+// also imported by the grouping helpers
 // carries a W/L/D tally at every level.
 
 import { parseGameLengthMinutes } from '@/match/match-time-helpers'

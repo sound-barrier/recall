@@ -6,7 +6,7 @@
 import type { MatchRecord } from '@/api-client'
 
 // Single source of truth for month-name rendering. Shared with
-// match-group-helpers.ts (the grouping tree's UPPER + SHORT
+// the grouping helpers (their UPPER + SHORT
 // variants derive from this list).
 export const MONTHS_FULL = [
   'January', 'February', 'March', 'April', 'May', 'June',
