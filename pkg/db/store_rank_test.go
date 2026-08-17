@@ -22,7 +22,7 @@ func TestSQLStore_RankModifiers_UnknownValueCostsThePillNotTheRow(t *testing.T) 
 	s := openMemory(t)
 
 	if err := s.UpsertRank(db.RankRow{
-		Filename: "r.png", MatchKey: "k1", Rank: "platinum", Level: 2, RankProgress: 67,
+		Filename: "r.png", MatchKey: "k1", Rank: "platinum", Level: 2, RankProgress: new(67),
 		Modifiers: []string{"demotion protection", "unranked yolo"},
 		SR:        []db.HeroSR{{Hero: "juno", SR: 2065}},
 	}); err != nil {
@@ -30,7 +30,7 @@ func TestSQLStore_RankModifiers_UnknownValueCostsThePillNotTheRow(t *testing.T) 
 	}
 
 	got := loadOneRank(t, s)
-	if got.Rank != "platinum" || got.Level != 2 || got.RankProgress != 67 {
+	if got.Rank != "platinum" || got.Level != 2 || *got.RankProgress != 67 {
 		t.Errorf("rank = %q %d @%d%%, want platinum 2 @67%%", got.Rank, got.Level, got.RankProgress)
 	}
 	if len(got.SR) != 1 || got.SR[0].SR != 2065 {

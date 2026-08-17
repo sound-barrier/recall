@@ -30,7 +30,7 @@ func TestParseScreenshots_ReclassifiedFileLeavesNoStaleRow(t *testing.T) {
 	}
 
 	stubParse(t, func(progress parser.ProgressFunc) error {
-		progress(1, 1, file, &parser.MatchResult{Playlist: "competitive", Rank: "platinum", Result: "defeat", RankProgress: 12}, nil)
+		progress(1, 1, file, &parser.MatchResult{Playlist: "competitive", Rank: "platinum", Result: "defeat", RankProgress: new(12)}, nil)
 		return nil
 	})
 	// ReParseAll, not ParseScreenshots: a stored file is in the normal run's

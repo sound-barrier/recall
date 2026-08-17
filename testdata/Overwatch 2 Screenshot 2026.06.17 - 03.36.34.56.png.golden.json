@@ -8,7 +8,7 @@
     "rank": "gold",
     "level": 1,
     "rank_progress": -20,
-    "change_percent": 0,
+    "change_percent": null,
     "modifiers": [
       "consolation",
       "defeat",

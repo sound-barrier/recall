@@ -49,7 +49,7 @@ func buildTourStory(t *testing.T) tourStory {
 	}
 	cardByKey := map[string]fixtures.LadderPos{}
 	for _, r := range fx.Ranks {
-		cardByKey[r.MatchKey] = fixtures.NewLadderPos(tierIndex(r.Rank), r.Level, r.RankProgress)
+		cardByKey[r.MatchKey] = fixtures.NewLadderPos(tierIndex(r.Rank), r.Level, derefOrZero(r.RankProgress))
 	}
 	total := len(fx.Summaries)
 	for i, s := range fx.Summaries {

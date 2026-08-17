@@ -47,11 +47,11 @@ func TestScreenshotType_RankScreenMarkerClassifies(t *testing.T) {
 // parse pins as a RankGolden with honest empty rank/level, not as the raw
 // unknown dump or a summary shape.
 func TestToGolden_RankScreenMarkerProjection(t *testing.T) {
-	g, ok := parser.ToGolden(&parser.MatchResult{RankScreen: true, Result: "victory", RankProgress: 100}).(*parser.RankGolden)
+	g, ok := parser.ToGolden(&parser.MatchResult{RankScreen: true, Result: "victory", RankProgress: new(100)}).(*parser.RankGolden)
 	if !ok {
 		t.Fatalf("ToGolden(RankScreen) = %T, want *RankGolden", parser.ToGolden(&parser.MatchResult{RankScreen: true}))
 	}
-	if g.Rank != "" || g.Result != "victory" || g.RankProgress != 100 {
+	if g.Rank != "" || g.Result != "victory" || *g.RankProgress != 100 {
 		t.Errorf("RankGolden = %+v, want empty rank with result/progress preserved", g)
 	}
 }

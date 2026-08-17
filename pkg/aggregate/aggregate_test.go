@@ -173,7 +173,7 @@ func TestAggregate_PartialCoverage_RankOnly(t *testing.T) {
 	snap := db.Screenshots{
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "r.png", MatchKey: "m1",
-			Rank: "platinum", Level: 3, RankProgress: 40, ChangePercent: 5,
+			Rank: "platinum", Level: 3, RankProgress: new(40), ChangePercent: new(5),
 			SR: []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
 	}

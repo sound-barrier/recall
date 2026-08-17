@@ -103,20 +103,18 @@ func loadRanks(q querier) ([]RankRow, error) {
 	out := make([]RankRow, 0)
 	for rows.Next() {
 		var r RankRow
-		var dirID sql.NullInt64
-		var percentile sql.NullInt64
+		var dirID, progress, change, percentile sql.NullInt64
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
-			&r.Rank, &r.Level, &r.RankProgress, &r.ChangePercent, &r.Result,
+			&r.Rank, &r.Level, &progress, &change, &r.Result,
 			&percentile,
 		); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64
-		if percentile.Valid {
-			pct := int(percentile.Int64)
-			r.RankPercentile = &pct
-		}
+		r.RankProgress = nullableInt(progress)
+		r.ChangePercent = nullableInt(change)
+		r.RankPercentile = nullableInt(percentile)
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -175,4 +173,16 @@ func attachRankSR(q querier, byID map[int64]*RankRow) error {
 		}
 	}
 	return rows.Err()
+}
+
+// nullableInt turns a scanned nullable INTEGER into the pointer its row field
+// carries, so NULL survives the round trip as nil rather than collapsing to 0.
+// Three rank columns need exactly this (progress, movement, percentile), each
+// because 0 is a real reading they must not be confused with.
+func nullableInt(n sql.NullInt64) *int {
+	if !n.Valid {
+		return nil
+	}
+	v := int(n.Int64)
+	return &v
 }

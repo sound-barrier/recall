@@ -857,7 +857,7 @@ func foldRankCardsByTrack(t *testing.T, fx fixtures.Fixture) (lastScore map[stri
 			}
 			track = fixtures.RoleOfHero(r.SR[0].Hero)
 		}
-		lastScore[track] = ladderScoreOf(r.Rank, r.Level, r.RankProgress)
+		lastScore[track] = ladderScoreOf(r.Rank, r.Level, derefOrZero(r.RankProgress))
 		count[track]++
 	}
 	return lastScore, count
@@ -871,9 +871,9 @@ func TestGenerateMatchFixture_RankChangePercentSigns(t *testing.T) {
 	pos, neg := 0, 0
 	for _, r := range fx.Ranks {
 		switch {
-		case r.ChangePercent > 0:
+		case derefOrZero(r.ChangePercent) > 0:
 			pos++
-		case r.ChangePercent < 0:
+		case derefOrZero(r.ChangePercent) < 0:
 			neg++
 		}
 	}
@@ -961,4 +961,15 @@ func TestGenerateMatchFixture_RankDeterministic(t *testing.T) {
 	if !reflect.DeepEqual(a.Ranks, b.Ranks) {
 		t.Error("fx.Ranks differ across two identical-seed runs — rank walk isn't deterministic")
 	}
+}
+
+// derefOrZero reads one of the nullable rank readings. The generator always
+// supplies progress and movement — it computes the ladder rather than OCRing it
+// — so nil here means the seed broke its own guarantee; 0 keeps the assertion
+// legible instead of panicking the whole suite on a nil deref.
+func derefOrZero(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
 }

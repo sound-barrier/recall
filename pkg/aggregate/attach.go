@@ -359,13 +359,26 @@ func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(
 		{ud.Healing, &d.Healing, "data.healing"},
 		{ud.Mitigation, &d.Mitigation, "data.mitigation"},
 		{ud.Level, &d.Level, "data.level"},
-		{ud.RankProgress, &d.RankProgress, "data.rank_progress"},
-		{ud.ChangePercent, &d.ChangePercent, "data.change_percent"},
 	} {
 		if n.val != nil {
 			*n.dst = *n.val
 			mark(n.path)
 		}
+	}
+	// RankProgress and ChangePercent are POINTER fields on Data (nil = the
+	// screen reported no such reading), so an override replaces the pointer
+	// instead of writing through it — writing through would nil-deref on
+	// exactly the matches an override is most useful for: the ones whose
+	// screenshot never yielded the value.
+	if ud.RankProgress != nil {
+		v := *ud.RankProgress
+		d.RankProgress = &v
+		mark("data.rank_progress")
+	}
+	if ud.ChangePercent != nil {
+		v := *ud.ChangePercent
+		d.ChangePercent = &v
+		mark("data.change_percent")
 	}
 	if ud.Map != nil {
 		d.MapRaw = ""

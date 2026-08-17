@@ -231,7 +231,7 @@ func TestSQLStore_Rank_UpsertThenLoadRoundTrip(t *testing.T) {
 	s := openMemory(t)
 	want := db.RankRow{
 		Filename: "r.png", MatchKey: "k1",
-		Rank: "platinum", Level: 3, RankProgress: 40, ChangePercent: 5,
+		Rank: "platinum", Level: 3, RankProgress: new(40), ChangePercent: new(5),
 		Result:    "victory",
 		Modifiers: []string{"expected", "victory"},
 		SR: []db.HeroSR{

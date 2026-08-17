@@ -2,6 +2,7 @@ package parser_test
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -181,22 +182,34 @@ func TestParseRank_PrimaryHeroAndRoleComeFromTheTopSRCard(t *testing.T) {
 	}
 }
 
+// showPct renders a nullable rank reading for a failure message. %v on a *int
+// prints an address, which tells the reader nothing about what went wrong.
+func showPct(p *int) string {
+	if p == nil {
+		return "nil (unread)"
+	}
+	return strconv.Itoa(*p)
+}
+
 // A demotion screen's progress bar reads NEGATIVE. An unsigned capture would
 // store -19% as +19% and draw the climb chart moving the wrong way.
 func TestParseRank_RankProgressKeepsTheDemotionSign(t *testing.T) {
 	cases := []struct {
 		name, ocr string
-		want      int
+		want      *int
 	}{
-		{"demotion", "-19%", -19},
-		{"ordinary progress", "21%", 21},
-		{"unreadable", "|||", 0},
+		{"demotion", "-19%", new(-19)},
+		{"ordinary progress", "21%", new(21)},
+		// nil, NOT 0. 0% is the bottom of a division — a real place to be — so
+		// returning it for a caption that did not read would put a legitimate
+		// value on a screen that never showed one.
+		{"unreadable", "|||", nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			res := rankSR(t, map[string]string{"rank_progress": c.ocr})
-			if res.RankProgress != c.want {
-				t.Errorf("RankProgress = %d, want %d", res.RankProgress, c.want)
+			if !reflect.DeepEqual(res.RankProgress, c.want) {
+				t.Errorf("RankProgress = %s, want %s", showPct(res.RankProgress), showPct(c.want))
 			}
 		})
 	}
@@ -209,11 +222,14 @@ func TestParseRank_RankProgressKeepsTheDemotionSign(t *testing.T) {
 func TestParseRank_ChangePercentFallsBackToTheThresholdedPill(t *testing.T) {
 	cases := []struct {
 		name, wide, pill string
-		want             int
+		want             *int
 	}{
-		{"wide inverted pass reads the pill", "RANK PROGRESS: 52% +21%", "", 21},
-		{"1080p: only the thresholded pill band reads", "RANK PROGRESS: 52%", "+7%", 7},
-		{"neither reads", "RANK PROGRESS: 52%", "", 0},
+		{"wide inverted pass reads the pill", "RANK PROGRESS: 52% +21%", "", new(21)},
+		{"1080p: only the thresholded pill band reads", "RANK PROGRESS: 52%", "+7%", new(7)},
+		// nil, not 0 — this is the case the old int could not express, and the
+		// reason 21 of 44 corpus captures claimed a match moved the rank by
+		// nothing when the pill had simply never been read.
+		{"neither reads", "RANK PROGRESS: 52%", "", nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -221,8 +237,8 @@ func TestParseRank_ChangePercentFallsBackToTheThresholdedPill(t *testing.T) {
 				"rank_change":     c.wide,
 				"rank_change_raw": c.pill,
 			})
-			if res.ChangePercent != c.want {
-				t.Errorf("ChangePercent = %d, want %d", res.ChangePercent, c.want)
+			if !reflect.DeepEqual(res.ChangePercent, c.want) {
+				t.Errorf("ChangePercent = %s, want %s", showPct(res.ChangePercent), showPct(c.want))
 			}
 		})
 	}

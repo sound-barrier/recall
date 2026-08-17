@@ -189,9 +189,13 @@ type RankRow struct {
 	ScreenshotsDirID int64 // 0 = dir unset → id=1 sentinel on write (column is NOT NULL)
 	Rank             string
 	Level            int
-	RankProgress     int
-	ChangePercent    int
-	Result           string
+	// RankProgress and ChangePercent are pointers because nil ("the caption did
+	// not read") and 0 (the bottom of a division; a match that moved the rank by
+	// nothing) are different facts that a plain int conflates — which it did for
+	// 21 of the 44 rank captures in the corpus.
+	RankProgress  *int
+	ChangePercent *int
+	Result        string
 	// RankPercentile is the season-4 "HIGHER RANKED THAN N% OF PLAYERS"
 	// reading. nil = the screen carried no such caption (placements, and
 	// everything before season 4), which is not the same as 0.

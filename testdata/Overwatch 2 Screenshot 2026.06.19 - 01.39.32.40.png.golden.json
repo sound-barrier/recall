@@ -8,7 +8,7 @@
     "rank": "gold",
     "level": 2,
     "rank_progress": 45,
-    "change_percent": 0,
+    "change_percent": null,
     "modifiers": [
       "new map",
       "leaver compensation",

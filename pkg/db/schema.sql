@@ -171,13 +171,20 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs (id) ON DELETE RESTRICT,
   rank TEXT NOT NULL DEFAULT '',
   level INTEGER NOT NULL DEFAULT 0,
-  rank_progress INTEGER NOT NULL DEFAULT 0,
-  change_percent INTEGER NOT NULL DEFAULT 0,
+  -- NULLABLE, and that is a correction: both were NOT NULL DEFAULT 0, which
+  -- gave "the caption did not read" and a real reading of 0 the same
+  -- representation. It was not hypothetical — 21 of 44 rank captures in the
+  -- corpus stored change_percent = 0 because the movement pill was never
+  -- recovered, so every consumer was told those matches moved the rank exactly
+  -- nowhere. 0 is meanwhile legitimate for both: the bottom of a division, and
+  -- a match that genuinely moved nothing.
+  rank_progress INTEGER,
+  change_percent INTEGER,
   result TEXT NOT NULL DEFAULT '',
-  -- Season-4 "HIGHER RANKED THAN 57% OF PLAYERS". NULLABLE, unlike its
-  -- NOT NULL DEFAULT 0 siblings above: the caption is absent on every
-  -- placement screen and on every capture predating season 4, and 0 would
-  -- assert the player is ranked above nobody rather than "not reported".
+  -- Season-4 "HIGHER RANKED THAN 57% OF PLAYERS". Nullable for the same reason
+  -- as the two above, which it predates: the caption is absent on every
+  -- placement screen and on every capture before season 4, and 0 would assert
+  -- the player is ranked above nobody rather than "not reported".
   -- Nullable is also what ensureAdditiveColumns can add to an existing DB.
   rank_percentile INTEGER
 ) STRICT;

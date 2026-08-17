@@ -103,26 +103,76 @@ func backfillLegacyNulls(d *sql.DB) error {
 
 // columnExists reports whether table has a column named column.
 func columnExists(d *sql.DB, table, column string) (bool, error) {
-	// #nosec G202 -- table is a hard-coded constant from additiveColumns.
+	found, _, err := columnInfo(d, table, column)
+	return found, err
+}
+
+// columnInfo reports whether table has the named column and whether that column
+// is declared NOT NULL. The nullability half is what detects a database whose
+// shape predates a column becoming nullable — SQLite cannot alter that in place.
+func columnInfo(d *sql.DB, table, column string) (found, notNull bool, err error) {
+	// #nosec G202 -- table is a hard-coded constant from the tables above.
 	rows, err := d.Query("PRAGMA table_info(" + table + ")")
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var (
-			cid, notnull, pk int
-			name, ctype      string
-			dflt             any
+			cid, nn, pk int
+			name, ctype string
+			dflt        any
 		)
-		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
-			return false, err
+		if err := rows.Scan(&cid, &name, &ctype, &nn, &dflt, &pk); err != nil {
+			return false, false, err
 		}
 		if name == column {
-			return true, nil
+			return true, nn != 0, nil
 		}
 	}
-	return false, rows.Err()
+	return false, false, rows.Err()
+}
+
+// nowNullableColumns lists columns whose NOT NULL a later schema DROPPED.
+//
+// SQLite cannot change a column's nullability in place, CREATE TABLE IF NOT
+// EXISTS never alters, and ensureAdditiveColumns is deliberately limited to
+// ADDING nullable columns — so an install created before the change still
+// carries NOT NULL forever. That is not a cosmetic drift: UpsertRank writes the
+// parent and its children in one transaction, so a NULL rejected by the old
+// constraint rolls the whole rank row back. Half the rank captures in the
+// corpus read no movement pill, so on an upgraded install that is most of them,
+// lost silently while the app looks like it is working.
+//
+// Pre-1.0 the model is wipe-and-relaunch and the real fix belongs in the 1.0
+// migration framework. Until then the honest behavior is to refuse to open and
+// SAY SO, which surfaces through the startup-failure modal rather than as
+// missing rows nobody can explain. Re-parse All is what repopulates the new
+// values anyway — the screenshots are the source of truth, not the database.
+var nowNullableColumns = []struct{ table, column string }{
+	{"rank_screenshots", "rank_progress"},
+	{"rank_screenshots", "change_percent"},
+}
+
+// ensureNoStaleNotNull refuses to open a database whose columns still carry a
+// NOT NULL that the current schema drops.
+func ensureNoStaleNotNull(d *sql.DB) error {
+	for _, c := range nowNullableColumns {
+		found, notNull, err := columnInfo(d, c.table, c.column)
+		if err != nil {
+			return err
+		}
+		if found && notNull {
+			return fmt.Errorf(
+				"database predates this build: %s.%s is still NOT NULL, but this "+
+					"version stores NULL there to distinguish \"the screenshot did not "+
+					"report it\" from a real 0. Writing to it would discard whole rank "+
+					"rows. Back up if you want the old file, then clear the database and "+
+					"run Re-parse All \u2014 your screenshots are the source of truth",
+				c.table, c.column)
+		}
+	}
+	return nil
 }
 
 // splitStatements breaks a SQL body into individual statements on

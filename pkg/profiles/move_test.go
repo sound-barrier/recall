@@ -60,7 +60,7 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 	}))
 	mustNoErr(t, s.UpsertRank(db.RankRow{
 		Filename: key + "-rank.png", MatchKey: key, Rank: "platinum", Level: 3,
-		RankProgress: 40, ChangePercent: -12, Result: "victory",
+		RankProgress: new(40), ChangePercent: new(-12), Result: "victory",
 		Modifiers: []string{"expected"},
 		SR:        []db.HeroSR{{Hero: "lucio", SR: 2450, Change: -21}},
 	}))
