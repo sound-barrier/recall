@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"math"
 	"math/rand"
 	"strings"
 	"time"
@@ -35,6 +36,51 @@ type ladderPos struct {
 // hand-copied literal whose comment claimed it was "identical to the frontend
 // TIER_ORDER and the parser's knownRanks" with nothing enforcing it.
 var tierNames = parser.Ranks()
+
+// tierPercentileCeiling is the share of the population at or below the TOP of
+// each tier, indexed like tierNames. It exists so a seeded rank card can carry
+// a rank_percentile ("HIGHER RANKED THAN N% OF PLAYERS") that AGREES with the
+// tier it is printed beside — a Gold player showing 90% would make every
+// screenshot of the dev seed obviously fake.
+//
+// SYNTHETIC. Blizzard publishes no distribution, which is precisely why
+// commit a928122f deleted the old Elo population card. These are plausible
+// round numbers with a bell-ish shape (the mass sits in gold/platinum), not a
+// measurement, and nothing outside the dev seed may treat them as one. They
+// are calibrated only loosely: the season-4 fixtures read 57-61% around
+// Platinum 1-2, and this curve puts that region in the same neighborhood.
+//
+// Length is pinned to the tier ladder by a test, so adding a tier fails loudly
+// here rather than silently reusing its neighbor's ceiling.
+var tierPercentileCeiling = []int{
+	8,   // bronze
+	22,  // silver
+	48,  // gold
+	68,  // platinum
+	82,  // emerald
+	92,  // diamond
+	97,  // master
+	99,  // grandmaster
+	100, // champion
+}
+
+// percentile maps a ladder position onto the population share below it,
+// interpolating within the tier so the number climbs with every division and
+// every point of progress rather than stepping once per tier.
+func (p ladderPos) percentile() int {
+	if p.tier < 0 || p.tier >= len(tierPercentileCeiling) {
+		return 0
+	}
+	floor := 0
+	if p.tier > 0 {
+		floor = tierPercentileCeiling[p.tier-1]
+	}
+	ceiling := tierPercentileCeiling[p.tier]
+	// div 5 is the BOTTOM of a tier and div 1 the top, so (5-div) counts
+	// divisions climbed; prog carries the fraction of the current one.
+	climbed := (float64(5-p.div) + float64(p.prog)/100) / 5
+	return floor + int(math.Round(float64(ceiling-floor)*climbed))
+}
 
 // rankStartPositions is each track's staggered starting rank. DPS is the main
 // role (OW's most-played, and flex gives the main role 60% of role queue), so
@@ -346,6 +392,7 @@ type rankCard struct {
 
 // toRankRow projects a card onto a db.RankRow for the given match.
 func (c rankCard) toRankRow(matchKey, ts, hero, result string) db.RankRow {
+	percentile := c.pos.percentile()
 	return db.RankRow{
 		Filename:      "rank-" + ts + ".png",
 		MatchKey:      matchKey,
@@ -353,9 +400,14 @@ func (c rankCard) toRankRow(matchKey, ts, hero, result string) db.RankRow {
 		Level:         c.pos.div,
 		RankProgress:  c.pos.prog,
 		ChangePercent: c.changePercent,
-		Result:        result,
-		Modifiers:     c.modifiers,
-		SR:            []db.HeroSR{{Hero: hero, SR: c.sr, Change: c.srChange}},
+		// Every seeded card carries one. The real caption only exists from
+		// season 4, but gating the seed on that date would leave the dossier's
+		// percentile widget with a handful of points in a six-month window —
+		// the absent path is covered by tests, not by starving the demo data.
+		RankPercentile: &percentile,
+		Result:         result,
+		Modifiers:      c.modifiers,
+		SR:             []db.HeroSR{{Hero: hero, SR: c.sr, Change: c.srChange}},
 	}
 }
 

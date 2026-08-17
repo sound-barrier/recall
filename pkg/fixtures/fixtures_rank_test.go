@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"recall/pkg/fixtures"
+	"recall/pkg/parser"
 )
 
 // tierIdx is a readable helper for the rank tests.
@@ -322,4 +323,62 @@ func TestSRFromLadder_Monotonic(t *testing.T) {
 			}
 		}
 	}
+}
+
+// The percentile printed on a seeded rank card has to agree with the tier
+// printed beside it, or every screenshot of the dev seed is visibly wrong.
+func TestLadderPercentile(t *testing.T) {
+	// Pinned to the ladder, so adding a tier fails here instead of silently
+	// borrowing its neighbor's ceiling and squashing the whole curve.
+	if got, want := len(fixtures.TierPercentileCeiling()), len(parser.Ranks()); got != want {
+		t.Fatalf("tierPercentileCeiling has %d entries, ladder has %d tiers — a tier was "+
+			"added to ranks.yaml without deciding what share of players sits below it", got, want)
+	}
+
+	// The ends are the ends.
+	if got := fixtures.LadderPercentile(0, 5, 0); got != 0 {
+		t.Errorf("the bottom of bronze = %d%%, want 0", got)
+	}
+	if got := fixtures.LadderPercentile(len(parser.Ranks())-1, 1, 100); got != 100 {
+		t.Errorf("the top of the ladder = %d%%, want 100", got)
+	}
+
+	// Sanity against the real captures: the season-4 fixtures read 57-61%
+	// around Platinum 1-2, so the curve must land that region in the same
+	// neighborhood rather than, say, the 30s.
+	plat := indexOfTier(t, "platinum")
+	if got := fixtures.LadderPercentile(plat, 2, 67); got < 45 || got > 75 {
+		t.Errorf("Platinum 2 at 67%% progress = %d%%, want roughly the 45-75 band the "+
+			"real season-4 captures sit in (57/59/61)", got)
+	}
+}
+
+// Monotonic across the WHOLE ladder: every division of every tier, bottom to
+// top. A non-monotonic curve would let a promotion LOWER the share of players
+// beneath you, which is the one thing this number must never do.
+func TestLadderPercentile_RisesWithEveryRung(t *testing.T) {
+	prev := -1
+	for tier := range parser.Ranks() {
+		for div := 5; div >= 1; div-- {
+			got := fixtures.LadderPercentile(tier, div, 0)
+			if got < prev {
+				t.Fatalf("tier %d div %d = %d%%, below the previous rung's %d%%", tier, div, got, prev)
+			}
+			if got < 0 || got > 100 {
+				t.Errorf("tier %d div %d = %d%%, outside 0-100", tier, div, got)
+			}
+			prev = got
+		}
+	}
+}
+
+func indexOfTier(t *testing.T, name string) int {
+	t.Helper()
+	for i, r := range parser.Ranks() {
+		if r == name {
+			return i
+		}
+	}
+	t.Fatalf("tier %q not on the ladder", name)
+	return 0
 }
