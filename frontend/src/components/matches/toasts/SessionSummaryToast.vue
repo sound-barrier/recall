@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 import type { SessionSummary } from '@/match/dossier/match-momentum-helpers'
+import { signJudgment } from '@/match/trends/match-heatmap-helpers'
 
-// Post-parse session tally — "Session so far: 3 matches · 2W-1L-0D".
-// Mirrors MatchUndoToast's token/timer mechanics; informational, so it
-// auto-dismisses.
+// Post-parse session tally — "Session so far: 3 matches · 2W-1L · +18%".
+//
+// It does NOT auto-dismiss after a few seconds any more, and that is the whole
+// point of this surface. The watcher debounces for 60 seconds before parsing,
+// so the toast appears about a minute after the match ends — by which time the
+// player is back in Overwatch, alt-tabbed away. A six-second toast fired then
+// was one almost nobody ever saw, with no way to get it back.
+//
+// It now stays until the user dismisses it or the SESSION itself goes stale,
+// which is what makes it the "sticky element during a play session" without
+// adding a fourth place that spells the same tally (the masthead scoreboard,
+// the by-session grouping and the dossier already spell it).
 const props = defineProps<{
   state: (SessionSummary & { token: number }) | null
 }>()
@@ -12,8 +22,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   dismiss: [token: number]
 }>()
-
-const AUTO_DISMISS_MS = 6000
 
 let timer: number | null = null
 
@@ -24,16 +32,40 @@ function clearTimer() {
   }
 }
 
+// Armed from the session's own expiry rather than a fixed delay: the session
+// ends when the gap since the newest match elapses, so that is when a "session
+// so far" readout stops being true.
 watch(() => props.state?.token ?? null, (tok) => {
   clearTimer()
-  if (tok === null) return
+  if (tok === null || !props.state) return
+  const ms = props.state.endsAt - Date.now()
+  if (ms <= 0) {
+    emit('dismiss', tok)
+    return
+  }
   timer = window.setTimeout(() => {
     timer = null
     if (props.state && props.state.token === tok) emit('dismiss', tok)
-  }, AUTO_DISMISS_MS)
+  }, ms)
 }, { immediate: true })
 
 onBeforeUnmount(clearTimer)
+
+// The session's rank movement, with what it was built from. Absent entirely
+// when no capture in the session reported one — a session whose pills went
+// unread has an unknown movement, not a flat one.
+const movement = computed(() => {
+  const st = props.state
+  if (!st || st.readCount === 0) return null
+  const signed = `${st.netPercent > 0 ? '+' : ''}${st.netPercent}%`
+  return {
+    text: signed,
+    // The sign is carried in the text, but the tint is not the only cue for a
+    // screen reader either (WCAG 1.4.1).
+    name: `${signed} rank this session — ${signJudgment(st.netPercent)}`,
+    partial: st.readCount < st.matches ? `${st.readCount}/${st.matches} read` : '',
+  }
+})
 </script>
 
 <template>
@@ -47,6 +79,10 @@ onBeforeUnmount(clearTimer)
       <span class="sst-copy">
         Session so far: <strong>{{ state.matches }} match{{ state.matches === 1 ? '' : 'es' }}</strong>
         · {{ state.w }}W-{{ state.l }}L<template v-if="state.d">-{{ state.d }}D</template>
+        <template v-if="movement">
+          · <span class="sst-move" role="img" :aria-label="movement.name">{{ movement.text }}</span>
+          <span v-if="movement.partial" class="sst-partial">({{ movement.partial }})</span>
+        </template>
       </span>
       <button
         type="button"
@@ -61,6 +97,17 @@ onBeforeUnmount(clearTimer)
 </template>
 
 <style scoped>
+.sst-move {
+  font-weight: 700;
+}
+
+/* Muted, and --text-dim not --text-mute: mute drops below AA on Day's darker
+   surfaces and this is small content text. */
+.sst-partial {
+  font-size: var(--type-2xs);
+  color: var(--text-dim);
+}
+
 .session-summary-toast {
   position: fixed;
   right: 1rem;
