@@ -1,0 +1,117 @@
+.matches-set-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* Rail mode — switch to a 2-column grid with the always-visible
+   filter aside in column 1 and everything else in column 2.
+   Activated when `narrowMode === 'rail'` (viewport >= 1400 px or
+   user-forced via useNarrowMode override). */
+.matches-set-workspace-rail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 1.1rem;
+}
+
+.matches-content-column {
+  display: flex;
+  flex-direction: column;
+
+  /* Single source of truth for the vertical rhythm between the
+     dossier, the Campaign Log / Geography sections, and the members
+     list. The bands used to carry their own margin-bottom, which left
+     the dossier→first-section gap tighter than the gaps between bands;
+     the gap now owns all of it uniformly. */
+  gap: 1.2rem;
+  min-width: 0;
+}
+
+/* ─── Leaves head: sort + group ────────────────────────────── */
+
+.leaves {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.7rem 1rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ─── Scroll-to-top button ───────────────────────────────────────
+   Fixed at the lower-left of the viewport, fades in once the user is
+   past ~400 px down (useScrollAffordance). Circular, 44x44 so the
+   target meets the a11y minimum. z-index 5 keeps it above the sticky
+   Campaign Log (z-index 4) but below modals (1090+). */
+
+.scroll-to-top {
+  position: fixed;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 5;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  appearance: none;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: var(--type-3xl);
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgb(var(--shadow-rgb) / 35%);
+  transition: background var(--duration-fast) ease,
+              border-color var(--duration-fast) ease,
+              color var(--duration-fast) ease,
+              transform var(--duration-fast) ease;
+}
+
+.scroll-to-top:hover,
+.scroll-to-top:focus-visible {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.scroll-to-top-glyph {
+  display: block;
+  font-weight: 700;
+}
+
+.scroll-top-fade-enter-active,
+.scroll-top-fade-leave-active {
+  transition: opacity var(--duration-med) ease,
+              transform var(--duration-med) ease;
+}
+
+.scroll-top-fade-enter-from,
+.scroll-top-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* ─── Jump-to-undated button ─────────────────────────────────────
+   Sits as a third sibling next to the density fieldset in the
+   leaves-head-controls row. Same .btn ghost foundation other ghost
+   actions use; the jump-glyph keeps the affordance visually distinct
+   from the density toggle without leaving the row's flow. */
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-top,
+  .scroll-top-fade-enter-active,
+  .scroll-top-fade-leave-active {
+    transition: none;
+  }
+
+  .scroll-to-top:hover,
+  .scroll-to-top:focus-visible {
+    transform: none;
+  }
+}

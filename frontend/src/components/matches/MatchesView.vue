@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import { provideDossier, provideFullDossier, provideGeographyDossier, provideHeroModeDossier } from '@/composables/dashboard/useDossier'
-import { provideNarrow } from '@/composables/matches/narrow/useNarrow'
+import { provideMatchesContext } from '@/composables/matches/useMatchesContext'
 import MatchesSortGroupPopover from '@/components/matches/list/MatchesSortGroupPopover.vue'
 import MatchesTableSortPopover from '@/components/matches/table/MatchesTableSortPopover.vue'
 import { useDensity } from '@/composables/matches/table/useDensity'
 import { useSortGroupMenu } from '@/composables/matches/list/useSortGroupMenu'
 import { useScrollAffordance } from '@/composables/matches/list/useScrollAffordance'
 import { useOWData } from '@/composables/shared/useOWData'
-import { useArchiveSelection } from '@/composables/matches/list/useArchiveSelection'
 import CoachInboxBanner from '@/components/coach/inbox/CoachInboxBanner.vue'
 import ParseStalenessBanner from '@/components/ingest/ParseStalenessBanner.vue'
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
@@ -17,8 +15,6 @@ import BulkActionBar from '@/components/matches/bulk/BulkActionBar.vue'
 import MatchesArchiveDrawer from '@/components/matches/bulk/MatchesArchiveDrawer.vue'
 import MatchesMembersList from '@/components/matches/list/MatchesMembersList.vue'
 import MatchesListToolbar from '@/components/matches/list/MatchesListToolbar.vue'
-import { useMatchesSelection } from '@/composables/matches/list/useMatchesSelection'
-import { useMatchesMovePicker } from '@/composables/matches/list/useMatchesMovePicker'
 import { matchesToCSV } from '@/match/export/match-csv'
 import { seasonWindowToLocalDates } from '@/match/match-season-helpers'
 // NarrowPopover is the heavyweight authoring surface (the search +
@@ -34,7 +30,8 @@ const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/na
 import TrendsSection from '@/components/matches/trends/TrendsSection.vue'
 import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.vue'
 import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
-import { useMatchesRowContext } from '@/composables/matches/list/useMatchesRowContext'
+import { useMatchesBulkActions } from '@/composables/matches/useMatchesBulkActions'
+import { useMatchesRowActions } from '@/composables/matches/useMatchesRowActions'
 import { useNarrowMode } from '@/composables/matches/narrow/useNarrowMode'
 import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
@@ -79,7 +76,7 @@ const matchesStore = useMatchesStore()
 // The toolbar's Import… is the same whole-database merge Settings offers.
 const databaseStore = useDatabaseStore()
 const uiStore = useUiStore()
-const { selection, onOpenMatchAndFocus } = uiStore
+const { selection } = uiStore
 const { focusedCardIndex } = uiStore.cardFocus
 const {
   onHideMatches,
@@ -156,71 +153,31 @@ watch(narrowedRecords, () => {
   })
 }, { flush: 'pre' })
 
-// ─── Selection state (Gmail-style, no mode toggle) ──────────
+// ─── Ticked rows, and what the bulk bars do with them ───────
 //
-// Two parallel selection sets — one for live (visible) match rows,
-// one for archived (hidden) rows. Both follow the same affordance
-// pattern: a checkbox at the start of each row that hover-reveals
-// (subtle when idle, bright on row hover or when ticked), with a
-// contextual action bar appearing as soon as the set is non-empty.
-// Row-body clicks NEVER touch selection — they still open the detail
-// panel (live rows) or are inert (archive rows). The checkbox is the
-// only selection affordance.
+// Live selection, the archive drawer's parallel selection, and the
+// move-to-profile picker they share are wired together in the composable —
+// that wiring changes when the bulk bars grow an action, which is not when
+// this view changes. Destructured to top-level names so the template reads
+// unchanged.
 const {
-  selectedKeys,
-  toggleSelected,
-  clearSelection,
-  hideSelected,
-  selectAllVisible,
-  onBulkPlayMode,
-  onBulkQueue,
-  onBulkTag,
-} = useMatchesSelection({
-  narrowedRecords: () => narrowedRecords.value,
-  onHide: (keys) => void onHideMatches(keys),
-  onBulkPlayMode: (keys, playMode) => void applyBulkPlayMode(keys, playMode),
-  onBulkQueue: (keys, queueType) => void applyBulkQueue(keys, queueType),
-  onBulkTag: (keys, tag) => void applyBulkTag(keys, tag),
+  selectedKeys, toggleSelected, clearSelection, hideSelected, selectAllVisible,
+  onBulkPlayMode, onBulkQueue, onBulkTag,
+  archive, visibleRecords,
+  movePickerOpen, otherProfiles, beginMoveLive, beginMoveArchive, cancelMove, commitMove,
+  commitHardDelete,
+} = useMatchesBulkActions({
+  narrowedRecords,
+  allRecords: () => matchesStore.records,
+  hideMatches: onHideMatches,
+  unhideMatches: onUnhideMatches,
+  hardDeleteMatches: onHardDeleteMatches,
+  hardDeleteMatch: onHardDeleteMatch,
+  moveMatches: onMoveMatches,
+  applyPlayMode: applyBulkPlayMode,
+  applyQueue: applyBulkQueue,
+  applyTag: applyBulkTag,
 })
-
-// Archive-drawer state + bulk-action handlers live in
-// useArchiveSelection. Destructured to top-level refs so the
-// template auto-unwraps them.
-const archive = useArchiveSelection({
-  records: computed(() => matchesStore.records),
-  onUnhideMatches: (keys) => void onUnhideMatches(keys),
-  onHardDeleteMatches: (keys) => void onHardDeleteMatches(keys),
-})
-// MatchesArchiveDrawer consumes the rest of the api via the `archive`
-// prop; MatchesView only needs the live subset + the two handlers its
-// shared move / hard-delete wiring still drives.
-const { archiveSelectedKeys, visibleRecords, clearArchiveSelection, cancelHardDelete } = archive
-
-// ─── Move-to-profile picker (shared by the live bar + archive drawer) ───
-const {
-  movePickerOpen,
-  otherProfiles,
-  beginMoveLive,
-  beginMoveArchive,
-  cancelMove,
-  commitMove,
-} = useMatchesMovePicker({
-  liveKeys: () => [...selectedKeys.value],
-  archiveKeys: () => [...archiveSelectedKeys.value],
-  clearLive: clearSelection,
-  clearArchive: clearArchiveSelection,
-  onMove: (keys, target) => void onMoveMatches(keys, target),
-})
-
-// Single-row inline commit for hard-delete (per-archive-row Delete
-// button → Confirm/Cancel two-step). `confirmHardDelete` and
-// `cancelHardDelete` come from the composable; `commitHardDelete`
-// is the one piece that still emits up to App.vue because it talks
-// to the parent's DELETE handler directly.
-function commitHardDelete(key: string) {
-  cancelHardDelete()
-  void onHardDeleteMatch(key)
-}
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
 //
@@ -300,27 +257,16 @@ async function onJumpToUndated() {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   window.scrollTo({ top: targetTop, behavior: reduce ? 'auto' : 'smooth' })
 }
-// The dossier is built once in the matches store; provideDossier() makes it
-// reachable from every descendant widget via useDossier() so we don't thread
-// 18 props through DashboardWidget. Each widget pulls only the bedrock refs or
-// query helpers it needs, parameterized by its own useWidgetConfig output.
-provideDossier(matchesStore.dossier)
-// The unfiltered companion — bands/widgets read STRUCTURE (stable rows, reserve
-// counts) from it while their DATA stays on the narrowed dossier above.
-provideFullDossier(matchesStore.fullDossier)
-// "Narrow minus self" companions — Geography + Hero×Game-Mode read DATA from
-// these (each excludes its own filter dimension) so the bands indirectly affect
-// each other without collapsing from their own selection.
-provideGeographyDossier(matchesStore.geographyDossier)
-provideHeroModeDossier(matchesStore.heroModeDossier)
-// Same provide/inject shape exposes the narrow handlers (pickHero,
-// pickGameMode, etc.) to widgets that need to drill into a slice of
-// the active set — the hero × game-mode heatmap is the first consumer.
-provideNarrow(matchesStore.matchesNarrow)
+// Every dossier and narrow bundle the descendant widgets inject, provided in
+// one call. Which bundle a widget reads is a real distinction (narrowed data,
+// unfiltered structure, narrow-minus-self for the two bands that would
+// otherwise collapse from their own selection) and it is documented where the
+// provides live — but it is not a distinction this view makes.
+provideMatchesContext(matchesStore)
 
-// Row right-click menu + hover-preview state machine lives in the
-// composable; the menu's *actions* stay here as the emit surface to
-// App.vue ("Open detail", set-anchor, hide, copy replay/link, …).
+// The leaf-row right-click menu — its state machine AND what each item does,
+// both in useMatchesRowActions. The eight one-line forwarders that used to sit
+// here named the menu's contract, so they live with the menu.
 const {
   rowContextMenu,
   onRowContext,
@@ -334,43 +280,14 @@ const {
   onLeafMouseEnter,
   onLeafMouseMove,
   onLeafMouseLeave,
-} = useMatchesRowContext(narrowedRecords)
-
-function onRowContextOpenDetail(matchKey: string) {
-  selection.open(matchKey)
-}
-
-function onRowContextSetAnchor(matchKey: string) {
-  uiStore.onSetAnchor(matchKey)
-}
-
-function onRowContextHide(matchKey: string) {
-  // Reuses the bulk hide event with a single-key array — same code
-  // path the bulk-action bar drives, so the existing
-  // SetMatchVisibility(true) + reload + undo-via-detail-panel
-  // works without a new App.vue handler.
-  void onHideMatches([matchKey])
-}
-
-// New right-click actions added with item 7 — each forwards to App.vue
-// for the heavy lifting (clipboard write, OS reveal, detail-panel
-// focus-on-mount). Keeping the menu thin so feature evolution lives
-// in one place at the top of the tree.
-function onRowContextFocusTag(matchKey: string) {
-  onOpenMatchAndFocus(matchKey, 'tag')
-}
-function onRowContextFocusNote(matchKey: string) {
-  onOpenMatchAndFocus(matchKey, 'note')
-}
-function onRowContextCopyReplay(matchKey: string) {
-  void onCopyReplayCode(matchKey)
-}
-function onRowContextCopyLink(matchKey: string) {
-  void onCopyMatchLink(matchKey)
-}
-function onRowContextOpenSourceFolder(matchKey: string) {
-  void onOpenSourceFolder(matchKey)
-}
+  ...rowAction
+} = useMatchesRowActions({
+  records: narrowedRecords,
+  hideMatches: onHideMatches,
+  copyReplayCode: onCopyReplayCode,
+  copyMatchLink: onCopyMatchLink,
+  openSourceFolder: onOpenSourceFolder,
+})
 </script>
 
 <template>
@@ -555,14 +472,14 @@ function onRowContextOpenSourceFolder(matchKey: string) {
         :replay-code="rowContextMenu ? replayCodeFor(rowContextMenu.matchKey) : null"
         :is-wails="IS_WAILS"
         @close="onRowContextClose"
-        @open-detail="onRowContextOpenDetail"
-        @set-anchor="onRowContextSetAnchor"
-        @open-detail-and-focus-tag="onRowContextFocusTag"
-        @open-detail-and-focus-note="onRowContextFocusNote"
-        @copy-replay-code="onRowContextCopyReplay"
-        @copy-match-link="onRowContextCopyLink"
-        @open-source-folder="onRowContextOpenSourceFolder"
-        @hide="onRowContextHide"
+        @open-detail="rowAction.openDetail"
+        @set-anchor="rowAction.setAnchor"
+        @open-detail-and-focus-tag="rowAction.focusTag"
+        @open-detail-and-focus-note="rowAction.focusNote"
+        @copy-replay-code="rowAction.copyReplay"
+        @copy-match-link="rowAction.copyLink"
+        @open-source-folder="rowAction.openSourceFolder"
+        @hide="rowAction.hide"
       />
     </div>
 
@@ -588,122 +505,4 @@ function onRowContextOpenSourceFolder(matchKey: string) {
   </section>
 </template>
 
-<style scoped>
-.matches-set-workspace {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-/* Rail mode — switch to a 2-column grid with the always-visible
-   filter aside in column 1 and everything else in column 2.
-   Activated when `narrowMode === 'rail'` (viewport >= 1400 px or
-   user-forced via useNarrowMode override). */
-.matches-set-workspace-rail {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  gap: 1.1rem;
-}
-
-.matches-content-column {
-  display: flex;
-  flex-direction: column;
-
-  /* Single source of truth for the vertical rhythm between the
-     dossier, the Campaign Log / Geography sections, and the members
-     list. The bands used to carry their own margin-bottom, which left
-     the dossier→first-section gap tighter than the gaps between bands;
-     the gap now owns all of it uniformly. */
-  gap: 1.2rem;
-  min-width: 0;
-}
-
-/* ─── Leaves head: sort + group ────────────────────────────── */
-
-.leaves {
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 0.7rem 1rem 0.85rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* ─── Scroll-to-top button ───────────────────────────────────────
-   Fixed at the lower-left of the viewport, fades in once the user is
-   past ~400 px down (useScrollAffordance). Circular, 44x44 so the
-   target meets the a11y minimum. z-index 5 keeps it above the sticky
-   Campaign Log (z-index 4) but below modals (1090+). */
-
-.scroll-to-top {
-  position: fixed;
-  left: 1.5rem;
-  bottom: 1.5rem;
-  z-index: 5;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  appearance: none;
-  background: var(--surface-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  font-family: var(--mono);
-  font-size: var(--type-3xl);
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgb(var(--shadow-rgb) / 35%);
-  transition: background var(--duration-fast) ease,
-              border-color var(--duration-fast) ease,
-              color var(--duration-fast) ease,
-              transform var(--duration-fast) ease;
-}
-
-.scroll-to-top:hover,
-.scroll-to-top:focus-visible {
-  background: var(--surface);
-  border-color: var(--accent);
-  color: var(--accent-text);
-  outline: none;
-  transform: translateY(-1px);
-}
-
-.scroll-to-top-glyph {
-  display: block;
-  font-weight: 700;
-}
-
-.scroll-top-fade-enter-active,
-.scroll-top-fade-leave-active {
-  transition: opacity var(--duration-med) ease,
-              transform var(--duration-med) ease;
-}
-
-.scroll-top-fade-enter-from,
-.scroll-top-fade-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-/* ─── Jump-to-undated button ─────────────────────────────────────
-   Sits as a third sibling next to the density fieldset in the
-   leaves-head-controls row. Same .btn ghost foundation other ghost
-   actions use; the jump-glyph keeps the affordance visually distinct
-   from the density toggle without leaving the row's flow. */
-
-@media (prefers-reduced-motion: reduce) {
-  .scroll-to-top,
-  .scroll-top-fade-enter-active,
-  .scroll-top-fade-leave-active {
-    transition: none;
-  }
-
-  .scroll-to-top:hover,
-  .scroll-to-top:focus-visible {
-    transform: none;
-  }
-}
-</style>
+<style scoped src="./MatchesView.css"></style>

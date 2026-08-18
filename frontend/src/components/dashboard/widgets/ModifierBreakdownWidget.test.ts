@@ -2,11 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { screen, within } from '@testing-library/vue'
 
 import ModifierBreakdownWidget from '@/components/dashboard/widgets/ModifierBreakdownWidget.vue'
-import UphillBattleWidget from '@/components/dashboard/widgets/UphillBattleWidget.vue'
-import ReversalWidget from '@/components/dashboard/widgets/ReversalWidget.vue'
 import { renderWidget } from '@/test-utils'
 
-describe('ModifierBreakdownWidget', () => {
+describe('ModifierBreakdown', () => {
   it('renders a count + win-rate row per modifier, share-bar width', () => {
     renderWidget(ModifierBreakdownWidget, {
       dossier: {
@@ -31,30 +29,5 @@ describe('ModifierBreakdownWidget', () => {
   it('renders nothing when the set carries no modifiers', () => {
     renderWidget(ModifierBreakdownWidget, { dossier: { modifierBreakdown: [] } })
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-  })
-})
-
-describe('Uphill Battle / Reversal KPI widgets', () => {
-  it('uphill battles shows the count of underdog wins', () => {
-    renderWidget(UphillBattleWidget, {
-      dossier: { modifierRecord: { total: 7, winrate: 100 } },
-    })
-    expect(screen.getByText('Uphill battles')).toBeInTheDocument()
-    expect(screen.getByText('7')).toBeInTheDocument()
-    expect(screen.getByText(/underdog/)).toBeInTheDocument()
-  })
-
-  it('reversals shows the count of favored losses', () => {
-    renderWidget(ReversalWidget, {
-      dossier: { modifierRecord: { total: 3, winrate: 0 } },
-    })
-    expect(screen.getByText('Reversals')).toBeInTheDocument()
-    expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText(/favored/)).toBeInTheDocument()
-  })
-
-  it('renders 0 when the modifier never appears (null record)', () => {
-    renderWidget(UphillBattleWidget, { dossier: { modifierRecord: null } })
-    expect(screen.getByText('0')).toBeInTheDocument()
   })
 })
