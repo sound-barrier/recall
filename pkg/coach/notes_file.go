@@ -9,35 +9,19 @@ import (
 	"recall/pkg/match"
 )
 
-// The wire-schema identifiers notes.json carries.
+// NotesSchemaV1 is the wire-schema identifier notes.json carries — the
+// sibling of BundleSchemaV1, and the only schema there has ever been.
 //
-// v2 adds timestamped moments inside a note. The writer picks the LOWEST
-// schema that describes the file it is writing — a review with no moments is
-// still v1 — so a coach on a new build can hand a file to a player on an old
-// one and it keeps working, which is the common case and the one worth
-// protecting.
+// It includes timestamped moments. An earlier draft of this feature wrote a
+// v2 when a note carried moments and kept a v1 reader beside it, so a coach
+// on a new build could hand a file to a player on an old one. There is no
+// such player: coaching has never shipped in a release, so no v1 file exists
+// anywhere to be compatible with. That machinery was a backwards-compat shim
+// for undeployed code, which is the one kind this project does not write.
 //
-// When there ARE moments the file says v2, and an older build refuses it by
-// name ("this build expects v1") rather than decoding it and silently dropping
-// them. That refusal is the point: Go's decoder ignores unknown fields, so a
-// v1-labeled file carrying moments would import as a note whose specifics
-// vanished, with nothing anywhere saying so. A player who is told to update
-// has lost nothing; a player who is not has lost the half of the review that
-// pointed at something.
-const (
-	NotesSchemaV1 = "recall-coach-notes/v1"
-	NotesSchemaV2 = "recall-coach-notes/v2"
-)
-
-// notesSchemaFor is the lowest schema that describes this file.
-func notesSchemaFor(notes []Note) string {
-	for _, n := range notes {
-		if len(n.Moments) > 0 {
-			return NotesSchemaV2
-		}
-	}
-	return NotesSchemaV1
-}
+// The version stays in the string so a real v2 — after a release, for a
+// player who could actually be holding v1 — has somewhere to go.
+const NotesSchemaV1 = "recall-coach-notes/v1"
 
 // NotesFile is the machine copy of a coach's notes — notes.json inside the
 // archive the coach hands the player. Player carries the identity the
@@ -89,20 +73,14 @@ func ValidateNotesFile(f NotesFile) error {
 	return nil
 }
 
-// validateNotesSchema checks the label and that it matches the contents.
+// validateNotesSchema checks the file says it is what this build reads.
 func validateNotesSchema(f NotesFile) error {
 	switch {
 	case f.Schema == "":
 		return fmt.Errorf("%w: missing schema", ErrNotesMalformed)
-	case f.Schema != NotesSchemaV1 && f.Schema != NotesSchemaV2:
-		return fmt.Errorf("%w: %q (this build reads %q and %q)",
-			ErrNotesUnsupportedSchema, f.Schema, NotesSchemaV1, NotesSchemaV2)
-	// A v1 file may not carry moments: the schema is what tells an older build
-	// whether it can read the whole file, so a v1 label over v2 content is the
-	// one shape that would make that promise false.
-	case f.Schema == NotesSchemaV1 && notesSchemaFor(f.Notes) == NotesSchemaV2:
-		return fmt.Errorf("%w: notes carry moments but the file says %q — moments need %q",
-			ErrNotesSchemaMismatch, NotesSchemaV1, NotesSchemaV2)
+	case f.Schema != NotesSchemaV1:
+		return fmt.Errorf("%w: %q (this build reads %q)",
+			ErrNotesUnsupportedSchema, f.Schema, NotesSchemaV1)
 	}
 	return nil
 }

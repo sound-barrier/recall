@@ -1312,7 +1312,7 @@ export const exportDiagnosticBundle = <ThrowOnError extends boolean = false>(opt
  * are imported; the embedded screenshot images are ignored
  * (data-only).
  *
- * A `recall-coach-notes/v1` or `/v2` ZIP is STAGED as a return sheet and
+ * A `recall-coach-notes/v1` ZIP is STAGED as a return sheet and
  * changes no match: the player accepts or skips each note through
  * `PUT /api/v1/coach/returns/{id}/decisions`. Because staging writes
  * no match data, it is allowed on the read-only sample profile — a

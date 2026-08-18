@@ -157,7 +157,6 @@ var defaultProblems = []errStatus{
 	{bundle.ErrCoachBundle, probConflict},
 	{coach.ErrNotABundle, probConflict},
 	{coach.ErrNotesUnsupportedSchema, probConflict},
-	{coach.ErrNotesSchemaMismatch, probConflict},
 	{coach.ErrReturnNoMatches, probConflict},
 	{coach.ErrReturnOrphan, probConflict},
 	{coach.ErrHandleRequired, probConflict},
