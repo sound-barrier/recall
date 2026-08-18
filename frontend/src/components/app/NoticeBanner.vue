@@ -37,7 +37,7 @@ onBeforeUnmount(stopTimer)
 </script>
 
 <template>
-  <p v-if="notice" class="notice notice-float" role="status">
+  <p v-if="notice" class="notice notice-float" role="status" aria-label="Receipt">
     <span class="notice-tick" aria-hidden="true">✓</span>
     <span class="notice-msg">{{ notice }}</span>
     <button

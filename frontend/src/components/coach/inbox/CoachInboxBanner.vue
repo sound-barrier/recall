@@ -29,7 +29,12 @@ function review() {
 </script>
 
 <template>
-  <div v-if="pending > 0 && firstPendingId !== null" class="coach-inbox" role="status">
+  <div
+    v-if="pending > 0 && firstPendingId !== null"
+    class="coach-inbox"
+    role="status"
+    aria-label="Coaching inbox"
+  >
     <span class="eyebrow accent coach-inbox-eyebrow">Coaching</span>
     <span class="coach-inbox-line">{{ line }}</span>
     <button type="button" class="btn ghost coach-inbox-review" @click="review">
