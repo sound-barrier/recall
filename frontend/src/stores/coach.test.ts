@@ -119,7 +119,8 @@ describe('coach store — opening a bundle', () => {
     expect(coach.player?.handle).toBe('Sable')
     expect(coach.coachName).toBe('Ordo')
     expect(coach.loanedRecords.map(r => r.match_key)).toEqual([MATCH_A, MATCH_B])
-    expect(app.view).toBe('coach')
+    // The room lives on the Reviews tab.
+    expect(app.view).toBe('reviews')
     // Seeded from the POST — resuming never costs a second GET.
     expect(api.GetCoachSession).not.toHaveBeenCalled()
   })
@@ -501,7 +502,11 @@ describe('coach store — ending the session', () => {
     expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
   })
 
-  it('gives the app back: server told, flag cleared, refs empty, Matches again', async () => {
+  // No navigation on End: the room is the Reviews tab's content, and the tab
+  // shows the shelf the moment the session is gone. A coach who ended from
+  // another tab stays on it, now over their own data again — yanking them
+  // somewhere else was a habit from when the room had no tab to fall back to.
+  it('gives the app back: server told, flag cleared, refs empty, and stays put', async () => {
     const coach = useCoachStore()
     const app = useAppStore()
     await coach.openBundle()
@@ -516,7 +521,7 @@ describe('coach store — ending the session', () => {
     expect(coach.loanedRecords).toEqual([])
     expect(coach.notes).toEqual({})
     expect(localStorage.getItem(COACH_SESSION_RESUME_KEY)).toBeNull()
-    expect(app.view).toBe('matches')
+    expect(app.view).toBe('reviews')
     expect(getQueryClient().getQueryData(qk.coach.session)).toBeNull()
     expect(getQueryClient().getQueryData(qk.coach.matches)).toBeUndefined()
   })

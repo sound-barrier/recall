@@ -16,9 +16,10 @@ import {
   SESSION_FIXTURE,
   backToFilmRoom,
   enterFilmRoom,
+  filmRoom,
   loanSlip,
   mockCoachSession,
-  openSessionViaMasthead,
+  openSessionViaReviewsTab,
   seedCoachOwnMatches,
   type SessionFixture,
 } from '../_coach'
@@ -98,7 +99,7 @@ async function openSession(page: Page, session: SessionFixture = SESSION_FIXTURE
   })
   const tripped = await armWriteTripwire(page)
   await page.goto('/')
-  await openSessionViaMasthead(page)
+  await openSessionViaReviewsTab(page)
   await expect(loanSlip(page)).toBeVisible()
   await enterFilmRoom(page)
   return tripped
@@ -168,7 +169,7 @@ test.describe('coaching session — write gate', () => {
     await page.locator('[data-pin-toggle]').dispatchEvent('click')
     await reviewRadios.nth(1).dispatchEvent('click')
     await page.getByRole('button', { name: /Open in the film room/ }).click()
-    await expect(page.locator('#panel-coach')).toBeVisible()
+    await expect(filmRoom(page)).toBeVisible()
     expect(tripped, 'mutating requests during the session').toEqual([])
   })
 

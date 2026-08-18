@@ -114,7 +114,9 @@ function step(key: string | null): void {
 </script>
 
 <template>
-  <section id="panel-coach" class="coach-room" aria-label="Film room" tabindex="-1">
+  <!-- A region inside the Reviews tabpanel, not a panel of its own: the tab
+       is the panel, and goToView focuses #panel-<view>. -->
+  <section id="film-room" class="coach-room" role="region" aria-label="Film room" tabindex="-1">
     <div ref="reelColumn" class="coach-room-reel" @keydown="onReelKeydown">
       <slot name="reel">
         <CoachReel

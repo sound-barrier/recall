@@ -119,7 +119,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
 
     // Step 2: tablist briefing.
     await tour.getByRole('button', { name: /next/i }).click()
-    await expect(tour).toContainText(/five tabs/i)
+    await expect(tour).toContainText(/seven tabs/i)
 
     // Step 3: Settings tab — the tour switches the underlying view.
     await tour.getByRole('button', { name: /next/i }).click()
@@ -173,7 +173,7 @@ test.describe('onboarding tour — first-launch behavior', () => {
     await expect(previous).toBeDisabled()
 
     await tour.getByRole('button', { name: /next/i }).click()
-    await expect(tour).toContainText(/five tabs/i)
+    await expect(tour).toContainText(/seven tabs/i)
 
     await expect(previous).toBeEnabled()
     await previous.click()

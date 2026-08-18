@@ -53,10 +53,10 @@ describe('KeyboardShortcutsModal — context gating', () => {
     expect(groupHeading('Screenshots (in the fullscreen lightbox)')).not.toBeInTheDocument()
   })
 
-  // The film room is a view without a tab: its reel bindings are only
-  // reachable during a coaching session, so the group only shows there.
-  it('surfaces the film-room bindings in the room, and nowhere else', () => {
-    const view = renderCheatsheet({ view: 'coach' })
+  // The film room lives inside the Reviews tab, so its reel bindings show
+  // on that view and nowhere else.
+  it('surfaces the film-room bindings on Reviews, and nowhere else', () => {
+    const view = renderCheatsheet({ view: 'reviews' })
     expect(groupHeading('Film room')).toBeInTheDocument()
     view.unmount()
 

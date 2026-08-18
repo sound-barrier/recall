@@ -23,10 +23,12 @@ function renderRoom(props: Record<string, unknown> = {}, options: Record<string,
 }
 
 describe('CoachRoomView — the three regions', () => {
-  it('is the coach panel the app shell addresses', () => {
+  // A region inside the Reviews tabpanel, not a panel of its own: the tab is
+  // the panel, and goToView focuses #panel-<view>.
+  it('is the film-room region the Reviews tab hosts', () => {
     const view = renderRoom()
-    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container -- #panel-coach is the room's panel id; the app shell and the e2e both address it, and no TL query expresses an id
-    expect(view.container.querySelector('#panel-coach')).toBeInTheDocument()
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container -- #film-room is the room's element id; the e2e addresses it, and no TL query expresses an id
+    expect(view.container.querySelector('#film-room')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Film room' })).toBeInTheDocument()
   })
 

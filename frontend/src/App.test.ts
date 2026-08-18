@@ -254,19 +254,19 @@ describe('App.vue — tablist keyboard navigation', () => {
     expect(tab(/Parse/)).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('ArrowLeft from Settings wraps to the Elo Calculator', async () => {
+  it('ArrowLeft from Settings wraps to Reviews, the last tab', async () => {
     await renderApp()
     await fireEvent.click(tab(/Settings/))
     await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowLeft' })
-    expect(tab(/Elo/)).toHaveAttribute('aria-selected', 'true')
-    // Settle the lazy Elo view's dynamic import inside the test so its setup
-    // runs while the provider is still mounted; a mount that lands post-teardown
-    // makes useEloCalc's inject-guard throw as an unhandled rejection. Unlike a
-    // vi.waitFor window, dynamicImportSettled has no timeout to lose under CI's
-    // slow coverage run — it resolves exactly when the import finishes.
+    expect(tab(/^Reviews/)).toHaveAttribute('aria-selected', 'true')
+    // Settle the lazy view's dynamic import inside the test so its setup runs
+    // while the provider is still mounted — a mount that lands post-teardown
+    // throws as an unhandled rejection. Unlike a vi.waitFor window,
+    // dynamicImportSettled has no timeout to lose under CI's slow coverage
+    // run — it resolves exactly when the import finishes.
     await vi.dynamicImportSettled()
     await flushPromises()
-    expect(panel(/Elo/)).toBeInTheDocument()
+    expect(panel(/Reviews/)).toBeInTheDocument()
   })
 
   it('Home jumps to the first tab (Settings)', async () => {
@@ -276,14 +276,14 @@ describe('App.vue — tablist keyboard navigation', () => {
     expect(tab(/Settings/)).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('End jumps to the last tab (Elo Calculator)', async () => {
+  it('End jumps to the last tab (Reviews)', async () => {
     await renderApp()
     await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'End' })
-    expect(tab(/Elo/)).toHaveAttribute('aria-selected', 'true')
-    // Settle the lazy Elo view within the test (see the ArrowLeft case above).
+    expect(tab(/^Reviews/)).toHaveAttribute('aria-selected', 'true')
+    // Settle the lazy view within the test (see the ArrowLeft case above).
     await vi.dynamicImportSettled()
     await flushPromises()
-    expect(panel(/Elo/)).toBeInTheDocument()
+    expect(panel(/Reviews/)).toBeInTheDocument()
   })
 
   it('typing into a tab without an arrow key does not change selection', async () => {

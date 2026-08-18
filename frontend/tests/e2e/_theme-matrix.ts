@@ -45,6 +45,7 @@ export const VIEWS: { name: string; tabId: string }[] = [
   { name: 'unknown',  tabId: 'tab-unknown' },
   { name: 'compare',  tabId: 'tab-compare' },
   { name: 'elo',      tabId: 'tab-elo' },
+  { name: 'reviews',  tabId: 'tab-reviews' },
 ]
 
 // Every mode useTheme.applyTheme can write. Keep in sync with

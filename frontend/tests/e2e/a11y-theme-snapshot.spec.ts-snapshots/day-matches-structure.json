@@ -5,7 +5,7 @@
   "activeTab": {
     "id": "tab-matches",
     "ariaSelected": "true",
-    "textContent": "03 Matches"
+    "textContent": "03Matches"
   },
   "mainPresent": true,
   "mastheadPresent": true,
@@ -81,7 +81,7 @@
       "borderRadius": []
     },
     "button": {
-      "count": 380,
+      "count": 381,
       "fontSize": [
         "10.56px",
         "11.52px",

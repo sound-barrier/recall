@@ -67,7 +67,7 @@ describe('DetailPanelHeader', () => {
     expect(filmRoom()).toBeInTheDocument()
     await userEvent.setup().click(filmRoom()!)
     expect(selectKey).toHaveBeenCalledWith(KEY)
-    expect(goToView).toHaveBeenCalledWith('coach')
+    expect(goToView).toHaveBeenCalledWith('reviews')
   })
 
   // Design rule 7: the panel's own When cell reads the player's naive

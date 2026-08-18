@@ -40,7 +40,9 @@ beforeEach(() => {
   })
 })
 
-function renderStrip(startView: 'coach' | 'matches' | 'settings') {
+// 'reviews' IS the room while a session is open — the strip's "in the room"
+// and "on the Reviews tab" are the same fact.
+function renderStrip(startView: 'reviews' | 'matches' | 'settings') {
   seedQuery(qk.coach.session, view())
   const coach = useCoachStore()
   const app = useAppStore()
@@ -51,7 +53,7 @@ function renderStrip(startView: 'coach' | 'matches' | 'settings') {
 
 describe('CoachNavStrip — in the film room', () => {
   it("offers each of the player's views by name", () => {
-    renderStrip('coach')
+    renderStrip('reviews')
 
     expect(screen.getByText(/Step into Sable's/)).toBeInTheDocument()
     for (const label of ['Matches', 'Trends', 'Compare', 'Elo']) {
@@ -61,7 +63,7 @@ describe('CoachNavStrip — in the film room', () => {
   })
 
   it('steps into a tab', async () => {
-    const { goToView } = renderStrip('coach')
+    const { goToView } = renderStrip('reviews')
     await fireEvent.click(screen.getByRole('button', { name: 'Compare' }))
     expect(goToView).toHaveBeenCalledWith('compare')
   })
@@ -69,7 +71,7 @@ describe('CoachNavStrip — in the film room', () => {
   // Trends is a SECTION of the Matches view, not a tab of its own: the
   // strip goes to Matches and asks it to open the section once.
   it('opens Trends by going to Matches and requesting the section', async () => {
-    const { goToView } = renderStrip('coach')
+    const { goToView } = renderStrip('reviews')
     const ui = useUiStore()
 
     await fireEvent.click(screen.getByRole('button', { name: 'Trends' }))
@@ -90,6 +92,6 @@ describe('CoachNavStrip — on a tab', () => {
   it('returns to the room', async () => {
     const { goToView } = renderStrip('settings')
     await fireEvent.click(screen.getByRole('button', { name: /Back to the film room/ }))
-    expect(goToView).toHaveBeenCalledWith('coach')
+    expect(goToView).toHaveBeenCalledWith('reviews')
   })
 })

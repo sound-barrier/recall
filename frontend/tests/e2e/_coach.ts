@@ -22,7 +22,7 @@
  *   - RETURN_SHEET_FIXTURE   the staged notes file the PLAYER imports
  *   - mockCoachSession()     every /coach/session* + /settings/coaching route
  *   - mockInbox()            the player-side /coach/returns routes
- *   - openSessionViaMasthead / pinSessionResume / enterFilmRoom / endSession
+ *   - openSessionViaReviewsTab / pinSessionResume / enterFilmRoom / endSession
  *   - identityPrompt / confirmPlayer  the room's "Who is this?" gate
  *   - openCoachRoom()        theme-pinned room for the a11y matrix
  *
@@ -859,19 +859,21 @@ export function backToFilmRoom(page: Page) {
   return page.getByRole('button', { name: /Back to the film room/ })
 }
 
-/** The Film Room panel — outside the tablist, reached via the slip / back affordance. */
+/** The Film Room — a region inside the Reviews tab's panel while a session is open. */
 export function filmRoom(page: Page) {
-  return page.locator('#panel-coach')
+  return page.locator('#film-room')
 }
 
 /**
- * Open a session the way a coach does: profile chip → "Open a player's
+ * Open a session the way a coach does: the Reviews tab → "Open a player's
  * bundle…" → file chooser. The bytes are a stub; the mocked POST answers.
+ * (It used to be a profile-menu item; the entry moved to the tab that is
+ * coaching's home.)
  */
-export async function openSessionViaMasthead(page: Page): Promise<void> {
-  await page.locator('.profile-chip').click()
-  const item = page.getByRole('menuitem', { name: /Open a player.s bundle/ })
-  // Assert first, so a missing menu item is the failure — not a dangling
+export async function openSessionViaReviewsTab(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: /^Reviews/ }).click()
+  const item = page.getByRole('button', { name: /Open a player.s bundle/ })
+  // Assert first, so a missing button is the failure — not a dangling
   // file-chooser wait that only times out after it.
   await expect(item).toBeVisible()
   const chooser = page.waitForEvent('filechooser')
@@ -931,8 +933,8 @@ export async function openCoachRoom(page: Page, theme: string): Promise<void> {
   await pinSessionResume(page)
   await page.goto('/')
   await enterFilmRoom(page)
-  // settleView derives the panel id from the tab id; the room has no tab
-  // but its panel follows the same `panel-<view>` naming.
-  await settleView(page, 'tab-coach')
+  // The room is inside the Reviews tab's panel, so that is the panel to
+  // settle — the room region is a child of it.
+  await settleView(page, 'tab-reviews')
   await settleLayout(page)
 }

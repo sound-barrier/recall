@@ -38,7 +38,7 @@ export const useMatchesStore = defineStore('matches', () => {
 
   // Overlay precedence is SESSION > TOUR > real, and the two overlays are
   // MUTUALLY EXCLUSIVE: a session cannot open while the tour runs (the
-  // switcher's "Open a player's bundle…" item is disabled), and the tour
+  // coach store's openBundle refuses with the tour reason), and the tour
   // can neither auto-open nor be replayed while a session is live
   // (onTourActiveChange below refuses). So the order below is the
   // documented precedence, not an arbitration of a race that can happen.
@@ -241,6 +241,18 @@ export const useMatchesStore = defineStore('matches', () => {
   // Export flows for the Matches set — the bundle-export modal + the flat CSV
   // export. Delegated to useExportBundle; AppOverlays reads the modal state +
   // the dispatch handlers straight off this store.
+  // Opens the share dialog over the set the user is looking at, already in
+  // share mode. Not "everything": the narrow IS the selection they made, and
+  // a bundle of every match they own is rarely what someone means by "share
+  // with a coach". One action, called from the Reviews tab and the palette,
+  // so the two cannot drift.
+  function shareNarrowedWithCoach(): void {
+    exportBundle.onExportBundleRequest(
+      matchesNarrow.narrowedRecords.value.map((r) => r.match_key),
+      { share: true },
+    )
+  }
+
   const exportBundle = useExportBundle({
     onError: (m) => useAppStore().setErrorFromRaw(m),
     onSaved: (m) => useAppStore().setNotice(m),
@@ -273,7 +285,9 @@ export const useMatchesStore = defineStore('matches', () => {
     // Export-bundle modal + dispatch (delegated to useExportBundle)
     exportBundleOpen: exportBundle.exportBundleOpen,
     exportBundleSelectedKeys: exportBundle.exportBundleSelectedKeys,
+    exportBundleShareIntent: exportBundle.exportBundleShareIntent,
     onExportBundleRequest: exportBundle.onExportBundleRequest,
+    shareNarrowedWithCoach,
     closeExportBundle: exportBundle.closeExportBundle,
     onExportMatchesCSV: exportBundle.onExportMatchesCSV,
     onExportBundleConfirm: exportBundle.onExportBundleConfirm,

@@ -61,7 +61,6 @@ afterEach(() => {
 function makeDeps(overrides: Partial<GlobalKeyboardDeps> = {}): GlobalKeyboardDeps {
   return {
     view: ref<ViewId>('matches'),
-    coachSessionActive: ref(false),
     openCheatsheet: ref(false),
     openPalette: ref(false),
     modalOpen: ref(false),
@@ -162,7 +161,7 @@ describe('useGlobalKeyboard — view navigation', () => {
 
     const routes: [string, TabId][] = [
       ['m', 'matches'], ['i', 'ingest'], ['s', 'settings'],
-      ['u', 'unknown'], ['c', 'compare'], ['e', 'elo'],
+      ['u', 'unknown'], ['c', 'compare'], ['e', 'elo'], ['r', 'reviews'],
     ]
     for (const [follow, tab] of routes) {
       press('g')
@@ -183,21 +182,12 @@ describe('useGlobalKeyboard — view navigation', () => {
     view.unmount()
   })
 
-  // `g f` is the film room. It is a view without a tab, and it only exists
-  // while a bundle is open — outside a session the key must do nothing
-  // rather than land the user on an empty panel.
-  it('routes `g f` to the film room while a coaching session is open', () => {
-    const deps = makeDeps({ view: ref<ViewId>('matches'), coachSessionActive: ref(true) })
-    const view = mountKeyboard(deps)
-
-    press('g')
-    press('f')
-
-    expect(deps.goToView).toHaveBeenCalledWith('coach')
-    view.unmount()
-  })
-
-  it('ignores `g f` when no session is open', () => {
+  // `g f` used to reach the film room and was gated on a session — the room
+  // was a view without a tab, and outside a session the key had to do
+  // nothing rather than land on an empty panel. The room lives inside
+  // Reviews now; `g r` reaches it (or the shelf), unconditionally, and is
+  // covered by the routes table above. A stray `f` after `g` is nothing.
+  it('does nothing on `g f`, which no longer maps to a view', () => {
     const deps = makeDeps({ view: ref<ViewId>('matches') })
     const view = mountKeyboard(deps)
 

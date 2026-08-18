@@ -20,10 +20,6 @@ export interface GlobalKeyboardDeps {
   // The active view, used to gate Matches-specific shortcuts and
   // to forward `g <x>` sequence navigation to the right one.
   view: Ref<ViewId>
-  // True while a player's bundle is open. Gates `g f`: the film room only
-  // exists during a session, so outside one the key must do nothing rather
-  // than land the user on an empty panel.
-  coachSessionActive: Ref<boolean>
   // Cheatsheet open state — the `?` shortcut writes it, and it feeds the
   // dispatcher's suppression (no shortcut fires while the modal is up).
   openCheatsheet: Ref<boolean>
@@ -70,20 +66,20 @@ export interface GlobalKeyboardDeps {
   toggleExpand: (matchKey: string) => void | Promise<void>
 }
 
-// The `g <x>` sequence's follow-key → view mapping. `f` is the film room,
-// the one target that isn't a tab.
-const VIEW_NAV_FOLLOW_KEYS = ['m', 'i', 's', 'u', 'c', 'e', 'f'] as const
+// The `g <x>` sequence's follow-key → view mapping. One key per tab; the
+// film room is inside Reviews, so `g r` reaches it (and the tab's index
+// when no session is open) — there is no session-gated key any more.
+const VIEW_NAV_FOLLOW_KEYS = ['m', 'i', 's', 'u', 'c', 'e', 'r'] as const
 
 type ViewNavKey = typeof VIEW_NAV_FOLLOW_KEYS[number]
 
 const VIEW_NAV_TARGETS: Record<ViewNavKey, ViewId> = {
-  m: 'matches', i: 'ingest', s: 'settings', u: 'unknown', c: 'compare', e: 'elo', f: 'coach',
+  m: 'matches', i: 'ingest', s: 'settings', u: 'unknown', c: 'compare', e: 'elo', r: 'reviews',
 }
 
 export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
   const {
     view,
-    coachSessionActive,
     openCheatsheet,
     openPalette,
     modalOpen,
@@ -127,16 +123,12 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
         })()
       },
     },
-    // Global: vim-style view navigation (`g` then m/i/s/u/c/e/f).
-    ...VIEW_NAV_FOLLOW_KEYS.map((follow): Shortcut => {
-      const target: ViewId = VIEW_NAV_TARGETS[follow]
-      return {
-        key: follow,
-        prefix: 'g',
-        when: target === 'coach' ? () => coachSessionActive.value : undefined,
-        handler: () => { void goToView(target) },
-      }
-    }),
+    // Global: vim-style view navigation (`g` then m/i/s/u/c/e/r).
+    ...VIEW_NAV_FOLLOW_KEYS.map((follow): Shortcut => ({
+      key: follow,
+      prefix: 'g',
+      handler: () => { void goToView(VIEW_NAV_TARGETS[follow]) },
+    })),
     // Matches view: j/k move card focus, no wrap, in RENDERED order
     // (so flipping Sort=Oldest still has j advance down the visible
     // list). ArrowDown/ArrowUp alias j/k so non-vim users get the same

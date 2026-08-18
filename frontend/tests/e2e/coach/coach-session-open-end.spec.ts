@@ -31,7 +31,7 @@ import {
   identityPrompt,
   loanSlip,
   mockCoachSession,
-  openSessionViaMasthead,
+  openSessionViaReviewsTab,
   pinSessionResume,
   seedCoachOwnMatches,
 } from '../_coach'
@@ -57,7 +57,7 @@ test.describe('coaching session — open and end', () => {
     expect(sessionReads).toBe(0)
     await expect(loanSlip(page)).toHaveCount(0)
 
-    await openSessionViaMasthead(page)
+    await openSessionViaReviewsTab(page)
     await expect.poll(() => session.openCount()).toBe(1)
 
     // The slip names the player and takes the profile chip's place.
@@ -86,7 +86,7 @@ test.describe('coaching session — open and end', () => {
   test('a mid-session reload resumes the session and the room shows the marks', async ({ page }) => {
     const session = await mockCoachSession(page, { notes: RESURFACED_NOTES })
     await page.goto('/')
-    await openSessionViaMasthead(page)
+    await openSessionViaReviewsTab(page)
     await expect(loanSlip(page)).toBeVisible()
     await expect.poll(() => session.openCount()).toBe(1)
 
@@ -103,7 +103,7 @@ test.describe('coaching session — open and end', () => {
   test('opening a different player after End starts with an empty editor', async ({ page }) => {
     const session = await mockCoachSession(page, { notes: RESURFACED_NOTES })
     await page.goto('/')
-    await openSessionViaMasthead(page)
+    await openSessionViaReviewsTab(page)
     await enterFilmRoom(page)
 
     // Sable's noted frame hydrates the editor with the resurfaced text…
@@ -115,7 +115,7 @@ test.describe('coaching session — open and end', () => {
 
     // …and Wren's must NOT inherit it. Wren has no notes anywhere.
     session.swapPlayer(OTHER_PLAYER_FIXTURE)
-    await openSessionViaMasthead(page)
+    await openSessionViaReviewsTab(page)
     await expect(loanSlip(page, 'Wren')).toBeVisible()
     await enterFilmRoom(page)
     await page.getByRole('list', { name: /Wren.s matches/ }).getByRole('button').first().click()
@@ -132,7 +132,7 @@ test.describe('coaching session — open and end', () => {
   test('a bundle that named nobody asks who this is, then takes notes', async ({ page }) => {
     const session = await mockCoachSession(page, { session: ANONYMOUS_BUNDLE_FIXTURE })
     await page.goto('/')
-    await openSessionViaMasthead(page)
+    await openSessionViaReviewsTab(page)
     await enterFilmRoom(page)
 
     // The room asks, and refuses typing it could not save.
@@ -155,7 +155,7 @@ test.describe('coaching session — open and end', () => {
   test('a suggested handle can be corrected from the session sheet', async ({ page }) => {
     const session = await mockCoachSession(page)
     await page.goto('/')
-    await openSessionViaMasthead(page)
+    await openSessionViaReviewsTab(page)
     await enterFilmRoom(page)
     await expect(identityPrompt(page)).toHaveCount(0)
 
@@ -180,7 +180,7 @@ test.describe('coaching session — open and end', () => {
     await search.fill('dorado')
     await expect(page.locator('.leaf-row')).toHaveCount(1)
 
-    await openSessionViaMasthead(page)
+    await openSessionViaReviewsTab(page)
     await page.getByRole('tab', { name: /^Matches/ }).click()
 
     // Every one of the player's matches, not the handful their data happens

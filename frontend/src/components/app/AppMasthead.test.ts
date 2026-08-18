@@ -75,15 +75,35 @@ describe('AppMasthead — in a coaching session', () => {
     expect(screen.getByRole('button', { name: /Back to the film room/ })).toBeInTheDocument()
   })
 
-  // The tablist has no selected tab while the room is up, but the
-  // roving-tabindex rule still needs exactly one tab in the tab order.
-  it('parks the tab stop on Matches while the film room is the view', async () => {
+  // The room is the Reviews tab's content, so while it is up the Reviews tab
+  // is the selected one — the roving tab stop lands there like any other
+  // view. (It used to park on Matches by hand, because the room had no tab.)
+  it('selects the Reviews tab while the film room is the view', async () => {
     await renderInSession()
     const { useAppStore } = await import('@/stores/app')
-    await useAppStore().goToView('coach')
+    await useAppStore().goToView('reviews')
     await flushPromises()
 
-    expect(screen.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('tabindex', '0')
-    expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('tabindex', '0')
+    expect(screen.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: /^Matches/ })).toHaveAttribute('tabindex', '-1')
+  })
+})
+
+describe('AppMasthead — the tab set', () => {
+  // Six hand-written buttons with literal 01–06 used to carry the tablist,
+  // and nothing checked they agreed with TAB_ORDER: a tab in the array but
+  // not the masthead compiled and silently had no button. The set is one
+  // definition now, and this pins that the rendered tabs ARE it.
+  it('renders exactly TAB_ORDER, numbered by position', async () => {
+    const { TAB_ORDER, TAB_LABELS } = await import('@/composables/shared/keyboard/useTabKeyboardNav')
+    await renderApp()
+
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs.map((t) => t.id)).toEqual(TAB_ORDER.map((id) => `tab-${id}`))
+    TAB_ORDER.forEach((id, i) => {
+      const num = String(i + 1).padStart(2, '0')
+      expect(tabs[i]).toHaveTextContent(new RegExp(`^${num}\\s*${TAB_LABELS[id]}`))
+    })
   })
 })

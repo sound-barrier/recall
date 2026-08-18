@@ -36,11 +36,11 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('exports TAB_ORDER in nav order', () => {
-    expect(TAB_ORDER).toEqual(['settings', 'ingest', 'matches', 'unknown', 'compare', 'elo'])
+    expect(TAB_ORDER).toEqual(['settings', 'ingest', 'matches', 'unknown', 'compare', 'elo', 'reviews'])
   })
 
   it('ArrowRight moves to the next tab and calls goToView', () => {
-    const view = ref<string>('settings')
+    const view = ref<TabId>('settings')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('ArrowRight'))
@@ -48,7 +48,7 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('ArrowLeft moves to the previous tab', () => {
-    const view = ref<string>('ingest')
+    const view = ref<TabId>('ingest')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('ArrowLeft'))
@@ -56,15 +56,15 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('ArrowLeft from the first tab wraps to the last', () => {
-    const view = ref<string>('settings')
+    const view = ref<TabId>('settings')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('ArrowLeft'))
-    expect(go).toHaveBeenCalledWith('elo')
+    expect(go).toHaveBeenCalledWith('reviews')
   })
 
   it('ArrowRight from the last tab wraps to the first', () => {
-    const view = ref<string>('elo')
+    const view = ref<TabId>('reviews')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('ArrowRight'))
@@ -72,7 +72,7 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('Home jumps to the first tab', () => {
-    const view = ref<string>('matches')
+    const view = ref<TabId>('matches')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('Home'))
@@ -80,15 +80,15 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('End jumps to the last tab', () => {
-    const view = ref<string>('settings')
+    const view = ref<TabId>('settings')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     onTabKeydown(key('End'))
-    expect(go).toHaveBeenCalledWith('elo')
+    expect(go).toHaveBeenCalledWith('reviews')
   })
 
   it('non-navigation keys are ignored (no goToView, no preventDefault)', () => {
-    const view = ref<string>('settings')
+    const view = ref<TabId>('settings')
     const go = vi.fn()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     const ev = key('Enter')
@@ -99,7 +99,7 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('preventDefault is called on navigation keys', () => {
-    const view = ref<string>('settings')
+    const view = ref<TabId>('settings')
     const { onTabKeydown } = useTabKeyboardNav(view, vi.fn())
     const ev = key('ArrowRight')
     const prevented = vi.spyOn(ev, 'preventDefault')
@@ -107,30 +107,12 @@ describe('useTabKeyboardNav', () => {
     expect(prevented).toHaveBeenCalled()
   })
 
-  // The film room is a view without a tab. Arrowing out of it used to be
-  // dead (the hardcoded order had no index for it) — the cycle now steps
-  // from whichever tab the user actually has focused.
-  it('steps from the FOCUSED tab when the view is outside the tablist', () => {
-    const view = ref<string>('coach')
-    const go = vi.fn()
-    const { onTabKeydown } = useTabKeyboardNav(view, go)
-    document.getElementById('tab-matches')!.focus()
-
-    onTabKeydown(key('ArrowRight'))
-
-    expect(go).toHaveBeenCalledWith('unknown')
-  })
-
-  it('off-list view does not call goToView (defensive)', () => {
-    const view = ref<string>('something-unexpected')
-    const go = vi.fn()
-    const { onTabKeydown } = useTabKeyboardNav(view, go)
-    onTabKeydown(key('ArrowRight'))
-    expect(go).not.toHaveBeenCalled()
-  })
+  // Every view is a tab now. The "step from the focused button when the view
+  // is outside the tablist" fallback, and its two cases, went with the film
+  // room's move into the Reviews tab — there is no off-list view to anchor.
 
   it('focuses the newly-active tab button on the next tick', async () => {
-    const view = ref<string>('settings')
+    const view = ref<TabId>('settings')
     const go = vi.fn<(t: TabId) => void>()
     const { onTabKeydown } = useTabKeyboardNav(view, go)
     const ingestBtn = document.getElementById('tab-ingest')!
@@ -142,7 +124,7 @@ describe('useTabKeyboardNav', () => {
 
   it('focusMain focuses #main-content and preventDefaults the click', () => {
     const main = seedMain()
-    const view = ref<string>('settings')
+    const view = ref<TabId>('settings')
     const { focusMain } = useTabKeyboardNav(view, vi.fn())
     const focusSpy = vi.spyOn(main, 'focus')
     const ev = new MouseEvent('click', { cancelable: true })

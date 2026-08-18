@@ -23,12 +23,14 @@ import type { ExportBundleRequest } from '@/composables/matches/useExportBundle'
 // Esc / backdrop click both dismiss (unlike the first-run modal,
 // this is a soft prompt). Focus trap cycles inside the box.
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   open:           boolean
   selectedCount:  number
   hiddenCount:    number
   unknownCount:   number
-}>()
+  /** Open already in share mode — the caller has made the choice. */
+  shareIntent?:   boolean
+}>(), { shareIntent: false })
 
 const emit = defineEmits<{
   close: []
@@ -107,7 +109,7 @@ watch(() => props.open, async (next, prev) => {
     filename.value       = generatedName.value
     includeHidden.value  = false
     includeUnknown.value = false
-    sharing.value        = false
+    sharing.value        = props.shareIntent
     shareHandle.value    = ''
     // Filled in from the server, not awaited: the handle is stored the first
     // time someone shares, and asking for it again every time was friction on

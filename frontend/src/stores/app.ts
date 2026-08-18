@@ -24,11 +24,11 @@ type RetryHandler = () => void | Promise<void>
 // later commits of the Pinia migration.
 export const useAppStore = defineStore('app', () => {
   // ── Nav ───────────────────────────────────────────────────────────
-  // Which top-level view is shown. Six of them are tabs; 'coach' — the
-  // film room — is reached from the loan slip, the back affordance, or
-  // `g f`, and deliberately has no tab. goToView switches it AND moves
-  // focus into the newly-visible panel (each <section> has tabindex="-1")
-  // so keyboard users land in the new content, not on the nav button.
+  // Which top-level view is shown. Every view is a tab; the film room, which
+  // used to be the one exception, lives inside Reviews. goToView switches it
+  // AND moves focus into the newly-visible panel (each <section> has
+  // tabindex="-1") so keyboard users land in the new content, not on the
+  // nav button.
   const view = ref<ViewId>('matches')
   async function goToView(next: string) {
     view.value = next as ViewId
