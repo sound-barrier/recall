@@ -42,3 +42,4 @@ gate was in the way" is not one of them.
 | 2026-08-17 | usability-campaign | `pkg/parser` | 23 → 25 | parse_rank.go (715 lines) split five ways by what it reads, less the three Tesseract-invocation files carved out to the new `pkg/tesseract`. |
 | 2026-08-17 | usability-campaign | `pkg/fixtures` | default 12 → 13 | fixtures_rank.go (682 lines) split four ways: the ladder board, the skill/win-rate model and its constants, the per-track season walk, and the driver. |
 | 2026-08-17 | usability-campaign | `frontend/src/composables/matches/list` | 13 → 15 | useMatchesRowActions (wraps the row-context state machine with its actions) and useMatchesBulkActions (the wiring between live selection, archive selection and the shared move picker), both carved out of MatchesView.vue. |
+| 2026-08-18 | coaching-moments | `frontend/tests/e2e/match` | 21 → 22 | The player's own cue strip in the match journal — its own route, table and write gate, so its own spec. |
