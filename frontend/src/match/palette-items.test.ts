@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { viewItems, matchItems, buildPaletteItems } from '@/match/palette-items'
+import { ACTION_ITEMS, viewItems, matchItems, buildPaletteItems } from '@/match/palette-items'
 import { TAB_ORDER } from '@/composables/shared/keyboard/useTabKeyboardNav'
 
 const rec = (key: string, date: string, hero = 'juno', map = 'rialto') => ({
@@ -84,3 +84,20 @@ describe('display names', () => {
   })
 })
 
+describe('actions', () => {
+  // Coaching had no discoverable surface at all — not a tab, not a palette
+  // entry, and the coach's only door was the fifth item of a dropdown. These
+  // are the entries that make it findable by typing what you want to do.
+  it('offers both sides of coaching', () => {
+    const labels = ACTION_ITEMS.map((a) => a.label.toLowerCase())
+
+    expect(labels.some((l) => l.includes('coach'))).toBe(true)
+    expect(labels.some((l) => l.includes('bundle'))).toBe(true)
+  })
+
+  it('puts them in the searchable corpus', () => {
+    const items = buildPaletteItems([])
+
+    expect(items.filter((i) => i.kind === 'action')).toHaveLength(ACTION_ITEMS.length)
+  })
+})

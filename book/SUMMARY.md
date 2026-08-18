@@ -12,6 +12,7 @@
 * [Settings reference](settings-reference.md)
 * [Filtering and grouping](filtering.md)
 * [Reading your climb](reading-your-climb.md)
+* [Coaching](coaching.md)
 * [Unknown screenshots](unknown-screenshots.md)
 
 ## Getting help

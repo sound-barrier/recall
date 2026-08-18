@@ -5,6 +5,7 @@ import { scoreMatch } from '@/match/palette-score'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useCoachStore } from '@/stores/coach'
 import { useUiStore } from '@/stores/ui'
 
 // Enough to fill the list without scoring the reader's patience. The corpus is
@@ -34,6 +35,7 @@ export function useCommandPalette(): {
   const matches = useMatchesStore()
   const ui = useUiStore()
   const ow = useOWData()
+  const coach = useCoachStore()
 
   const query = ref('')
   const cursor = ref(0)
@@ -87,6 +89,25 @@ export function useCommandPalette(): {
       void app.goToView('matches')
       ui.selection.open(target)
     },
+    // Actions run rather than navigate. Both coaching entries land the user
+    // where the affordance already lives instead of duplicating it: the
+    // palette is a way to FIND the feature, not a second implementation of it.
+    action: (target) => { void runAction(target) },
+  }
+
+  async function runAction(target: string): Promise<void> {
+    if (target === 'open-bundle') {
+      await coach.openBundle()
+      return
+    }
+    // Opens the share dialog over the set the user is already looking at.
+    // Not "everything": the narrow IS the selection they made, and a bundle
+    // of every match they own is rarely what someone means by "share with a
+    // coach".
+    await app.goToView('matches')
+    matches.onExportBundleRequest(
+      matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key),
+    )
   }
 
   // Returns whether anything ran, so the caller can leave the palette open on

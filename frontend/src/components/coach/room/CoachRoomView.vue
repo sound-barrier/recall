@@ -35,6 +35,8 @@ const props = withDefaults(defineProps<{
   coachName?: string
   /** Where each key's autosave stands — the desk reads the frame it shows. */
   saveStateFor?: (matchKey: string) => CoachSaveState
+  /** True once ending has been asked about and not yet confirmed. */
+  endArmed?: boolean
   canExport?: boolean
   exportReason?: string
   labels?: CoachLabels
@@ -44,6 +46,7 @@ const props = withDefaults(defineProps<{
   summary: '',
   coachName: '',
   saveStateFor: (): CoachSaveState => 'idle',
+  endArmed: false,
   canExport: true,
   exportReason: undefined,
   labels: () => DEFAULT_COACH_LABELS,
@@ -59,6 +62,7 @@ const emit = defineEmits<{
   'confirm-player': [handle: string]
   export: []
   end: []
+  'keep-working': []
 }>()
 
 const room = useCoachRoom({
@@ -164,6 +168,7 @@ function step(key: string | null): void {
           :focus-tally="room.focusTally.value"
           :notes-line="notesLine"
           :summary="summary"
+          :end-armed="endArmed"
           :can-export="canExport"
           :export-reason="exportReason"
           :blocked-reason="blockedReason"
@@ -171,6 +176,7 @@ function step(key: string | null): void {
           @change-player="correcting = true"
           @export="emit('export')"
           @end="emit('end')"
+          @keep-working="emit('keep-working')"
         />
       </slot>
     </div>

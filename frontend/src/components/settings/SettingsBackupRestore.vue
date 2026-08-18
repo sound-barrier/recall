@@ -149,17 +149,17 @@ const INTERVALS = [
       <div class="setting-row">
         <div class="setting-info">
           <h4 class="setting-label">
-            Import Matches
+            Import matches or a coach's notes
             <span class="setting-help" tabindex="0" role="note">
               <span class="setting-help-mark" aria-hidden="true">?</span>
               <span class="setting-help-label">About Import</span>
               <span class="setting-help-pop" role="tooltip">
-                Merges matches from a bundle someone exported from their Matches view. <strong>Additive</strong> — matches you already have are skipped, nothing is wiped.
+                Takes either file: a bundle someone exported from their Matches view, or the notes a coach sent back after reviewing yours. Recall tells them apart. <strong>Additive</strong> — matches you already have are skipped, nothing is wiped, and a coach's notes write nothing until you accept them.
               </span>
             </span>
           </h4>
           <p class="setting-desc">
-            Merge matches from a <strong>bundle (.zip)</strong> exported from a Matches view. Adds new matches only — anything already in your database is skipped.
+            Merge matches from a <strong>bundle (.zip)</strong> exported from a Matches view, or open the <strong>notes</strong> a coach sent back. Matches are added, never overwritten; a coach's notes open a sheet you decide on, match by match.
           </p>
         </div>
         <div class="setting-control">
@@ -170,7 +170,7 @@ const INTERVALS = [
             @click="emit('import-matches')"
           >
             <span v-if="importingMatches">Importing…</span>
-            <span v-else>Import matches…</span>
+            <span v-else>Import matches or notes…</span>
           </button>
         </div>
       </div>

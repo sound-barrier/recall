@@ -13,6 +13,8 @@ withDefaults(defineProps<{
   wld: WLDTally
   winRate: number | null
   focusTally: FocusCount[]
+  /** True once ending has been asked about and not yet confirmed. */
+  endArmed?: boolean
   /** "7 notes · 19 moments · 1 reviewed only · Ordo" — from notesSummaryLine(). */
   notesLine: string
   summary: string
@@ -26,9 +28,10 @@ withDefaults(defineProps<{
    * will refuse loses it.
    */
   blockedReason?: string
-}>(), { canExport: true, exportReason: undefined, blockedReason: '' })
+}>(), { canExport: true, exportReason: undefined, blockedReason: '', endArmed: false })
 
 const emit = defineEmits<{
+  'keep-working': []
   'update-summary': [text: string]
   /** Re-open the room's "who is this?" prompt — the bundle only suggested. */
   'change-player': []
@@ -114,7 +117,7 @@ function onSummaryInput(e: Event): void {
     </div>
 
     <p class="sheet-persist">
-      Nothing here is saved to your profile. Her matches leave when the session ends; your notes stay with you and travel as a file.
+      Nothing here is saved to your profile. Their matches leave when the session ends; your notes stay with you and travel as a file.
     </p>
 
     <footer class="sheet-actions">
@@ -127,8 +130,17 @@ function onSummaryInput(e: Event): void {
       >
         Export notes
       </button>
+      <!-- Routes through the same armed question the loan slip asks. -->
       <button type="button" class="paper-btn" @click="emit('end')">
-        End session
+        {{ endArmed ? 'End anyway — notes not exported' : 'End session' }}
+      </button>
+      <button
+        v-if="endArmed"
+        type="button"
+        class="paper-btn"
+        @click="emit('keep-working')"
+      >
+        Keep working
       </button>
     </footer>
   </section>

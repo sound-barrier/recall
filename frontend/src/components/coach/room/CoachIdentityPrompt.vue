@@ -43,7 +43,7 @@ function confirm(): void {
     <p class="identity-copy">
       <template v-if="unconfirmed">
         This bundle did not say who it belongs to. Notes are filed under the
-        name you give here and come back the next time you open her bundle —
+        name you give here and come back the next time you open their bundle —
         nothing can be saved until then.
       </template>
       <template v-else>

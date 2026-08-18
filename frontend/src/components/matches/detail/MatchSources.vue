@@ -26,10 +26,17 @@ const props = defineProps<{
   isActive: (field: string, value: string) => boolean
 }>()
 
-// Rule 8: a coaching session loans RECORDS, never files. The bundle
-// carries no screenshots and the keys are another player's, so every path
-// in here — the thumbnail URL, the lightbox, the coverage chips — would be
-// resolving against the coach's own disk. Say so instead.
+// Rule 8: a coaching session loans RECORDS, never files. The SESSION carries
+// no screenshots — BuildRecords blanks the thumbnail and dir fields, and the
+// reader only decodes the manifest and the data — so every path in here (the
+// thumbnail URL, the lightbox, the coverage chips) would resolve against the
+// coach's own disk. Say so instead.
+//
+// Not to be misread as "the bundle carries no screenshots", which this comment
+// used to say and which is false: Export() writes screenshots/* into every
+// bundle. The images ARE on the coach's disk inside the zip; Recall just does
+// not display them here. What the player is told about that belongs in the
+// share dialog, and is.
 const { sessionActive } = useWriteGate()
 
 const emit = defineEmits<{

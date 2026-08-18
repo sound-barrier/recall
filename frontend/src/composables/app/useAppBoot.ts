@@ -1,8 +1,9 @@
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { fetchStartupError } from '@/queries/system'
 import { useAppStore } from '@/stores/app'
+import { useCoachStore } from '@/stores/coach'
 import { useParseStore } from '@/stores/parse'
 import { useModalFocusTrap } from '@/composables/shared/keyboard/useModalFocusTrap'
 import { useNativeMenu } from '@/composables/app/useNativeMenu'
@@ -29,6 +30,20 @@ export function useAppBoot() {
 
   // Native menu bar (macOS) → in-app dialogs. No-op on other platforms.
   useNativeMenu()
+
+  // A resumed coaching session lands IN the film room. The session survived
+  // the reload; the view did not, so the coach was returned to Matches and had
+  // to find "← Back to the film room" every time — with their own history
+  // read-only and no explanation on the tab they were looking at.
+  //
+  // Watched rather than read once: the session query resolves after mount, so
+  // there is nothing to resume at the moment onMounted runs.
+  const coachStore = useCoachStore()
+  const stop = watch(() => coachStore.sessionActive, (active) => {
+    if (!active) return
+    stop()
+    void appStore.goToView('coach')
+  })
 
   onMounted(() => {
     parseStore.restoreLastParsedAt()

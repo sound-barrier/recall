@@ -186,7 +186,7 @@ function toggleReviewed(): void {
       :value="draft.text"
       :disabled="blocked"
       :title="blocked ? blockedReason : undefined"
-      placeholder="What should she watch for next time?"
+      placeholder="What should they watch for next time?"
       @input="onNoteInput"
     />
 

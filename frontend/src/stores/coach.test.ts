@@ -382,6 +382,44 @@ describe('coach store — a save that failed', () => {
 })
 
 describe('coach store — ending the session', () => {
+  // The arming lives here rather than in one button because there are two —
+  // the loan slip's and the session sheet's — and which one a coach happened
+  // to click used to decide whether unexported work was protected.
+  it('asks once more before ending with unexported notes, and can be told no', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+    coach.updateNote(MATCH_A, draft())
+
+    coach.requestEndSession()
+    await settle()
+
+    expect(coach.endArmed).toBe(true)
+    expect(api.CloseCoachSession).not.toHaveBeenCalled()
+
+    coach.cancelEndSession()
+    expect(coach.endArmed).toBe(false)
+
+    // Asked again, and answered.
+    coach.requestEndSession()
+    coach.requestEndSession()
+    await settle()
+    expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
+  })
+
+  // Nothing is at stake in a clean session, so asking would be ceremony.
+  it('ends a clean session without asking', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+
+    coach.requestEndSession()
+    await settle()
+
+    expect(coach.endArmed).toBe(false)
+    expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
+  })
+
   it('gives the app back: server told, flag cleared, refs empty, Matches again', async () => {
     const coach = useCoachStore()
     const app = useAppStore()
