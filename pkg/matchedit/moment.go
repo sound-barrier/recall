@@ -118,3 +118,67 @@ func clockSeconds(clock string) int {
 	}
 	return minutes*60 + seconds
 }
+
+// MomentStore is the consumer-side seam the moment writes need — three
+// methods, declared here rather than reaching for db.Store, so a caller can
+// see exactly what a moment write touches.
+type MomentStore interface {
+	UpsertMatchMoment(m db.MatchMoment) (db.MatchMoment, error)
+	DeleteMatchMoment(matchKey, momentID string) error
+	LoadMatchMoments() (map[string][]db.MatchMoment, error)
+}
+
+// SetMoment validates and saves one of the player's moments, creating it when
+// momentID is empty. An edit keeps the moment's place; a new one goes after
+// every position already taken — never at len(existing), which collides with
+// a survivor after any delete and leaves the tie to row order.
+func SetMoment(s MomentStore, matchKey, momentID string, in MomentInput) (db.MatchMoment, error) {
+	normalized, err := ValidateMomentInput(in)
+	if err != nil {
+		return db.MatchMoment{}, err
+	}
+	byMatch, err := s.LoadMatchMoments()
+	if err != nil {
+		return db.MatchMoment{}, fmt.Errorf("load match moments: %w", err)
+	}
+	existing := byMatch[matchKey]
+	if err := checkMomentRoom(existing, momentID); err != nil {
+		return db.MatchMoment{}, err
+	}
+	return s.UpsertMatchMoment(db.MatchMoment{
+		MomentID:   momentID,
+		MatchKey:   matchKey,
+		MatchClock: normalized.MatchClock,
+		Text:       normalized.Text,
+		FocusTag:   normalized.FocusTag,
+		SortOrder:  sortOrderFor(existing, momentID),
+	})
+}
+
+// checkMomentRoom refuses a NEW moment past the ceiling; an edit to one
+// already stored always fits.
+func checkMomentRoom(existing []db.MatchMoment, momentID string) error {
+	if momentID != "" && slices.ContainsFunc(existing,
+		func(m db.MatchMoment) bool { return m.MomentID == momentID }) {
+		return nil
+	}
+	if len(existing) >= MaxMomentsPerMatch {
+		return fmt.Errorf("%w: a match holds at most %d moments", ErrInvalidMoment, MaxMomentsPerMatch)
+	}
+	return nil
+}
+
+// sortOrderFor keeps an existing moment's place and puts a new one after every
+// order already taken.
+func sortOrderFor(existing []db.MatchMoment, momentID string) int {
+	next := 0
+	for _, m := range existing {
+		if m.MomentID == momentID {
+			return m.SortOrder
+		}
+		if m.SortOrder >= next {
+			next = m.SortOrder + 1
+		}
+	}
+	return next
+}

@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -181,4 +182,73 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 		}
 	}
 	return out, nil
+}
+
+// ── The player's own timestamped moments ──────────────────────────────────
+//
+// A self-review that can point at seconds, the way a coach's can. Keyed on
+// match_key with no FK to match_annotations: a player may mark moments on a
+// match they never wrote a journal note about, and the annotation is one row
+// by design while these are many.
+
+// UpsertMatchMoment saves one of the player's moments. A re-save keeps the
+// moment_id minted on the first, so an edit is never a new observation.
+func (s *SQLStore) UpsertMatchMoment(m MatchMoment) (MatchMoment, error) {
+	if m.MomentID == "" {
+		m.MomentID = NewCoachNoteID()
+	}
+	err := s.db.QueryRow(
+		`INSERT INTO match_moments (moment_id, match_key, match_clock, text, focus_tag, sort_order)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(moment_id) DO UPDATE SET
+		   match_clock = excluded.match_clock,
+		   text        = excluded.text,
+		   focus_tag   = excluded.focus_tag,
+		   sort_order  = excluded.sort_order,
+		   updated_at  = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		 WHERE match_moments.match_key = excluded.match_key
+		 RETURNING created_at, updated_at`,
+		m.MomentID, m.MatchKey, m.MatchClock, m.Text, m.FocusTag, m.SortOrder,
+	).Scan(&m.CreatedAt, &m.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		// The WHERE on the DO UPDATE refused: this id exists on a DIFFERENT
+		// match. The id is minted by the client, so it is not a namespace to
+		// trust — the coach side learned that the expensive way, where a
+		// collision rewrote another player's observation.
+		return MatchMoment{}, ErrMomentMatchMismatch
+	}
+	if err != nil {
+		return MatchMoment{}, fmt.Errorf("upsert match moment: %w", err)
+	}
+	return m, nil
+}
+
+// DeleteMatchMoment removes one of the player's moments. Scoped to the match
+// for the same reason the upsert is. Absent is a no-op.
+func (s *SQLStore) DeleteMatchMoment(matchKey, momentID string) error {
+	_, err := s.db.Exec(
+		`DELETE FROM match_moments WHERE moment_id = ? AND match_key = ?`, momentID, matchKey)
+	return err
+}
+
+// LoadMatchMoments returns every player-authored moment, keyed by match, each
+// list already in reading order.
+func (s *SQLStore) LoadMatchMoments() (map[string][]MatchMoment, error) {
+	rows, err := s.db.Query(
+		`SELECT moment_id, match_key, match_clock, text, focus_tag, sort_order, created_at, updated_at
+		 FROM match_moments ORDER BY match_key, match_clock, sort_order`)
+	if err != nil {
+		return nil, fmt.Errorf("load match moments: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string][]MatchMoment{}
+	for rows.Next() {
+		var m MatchMoment
+		if err := rows.Scan(&m.MomentID, &m.MatchKey, &m.MatchClock, &m.Text,
+			&m.FocusTag, &m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan match moment: %w", err)
+		}
+		out[m.MatchKey] = append(out[m.MatchKey], m)
+	}
+	return out, rows.Err()
 }

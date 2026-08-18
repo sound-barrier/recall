@@ -906,6 +906,21 @@ export type CoachMoment = {
 };
 
 /**
+ * The body of a player-moment write — the moment minus its identity.
+ * Same rules as a coach's, so a player and their coach describe the same
+ * game in the same words.
+ *
+ */
+export type MatchMomentInput = {
+    match_clock: string;
+    text: string;
+    /**
+     * Optional.
+     */
+    focus_tag?: CoachFocusTagEnum;
+};
+
+/**
  * The body of a moment write — the moment minus its identity.
  */
 export type CoachMomentInput = {
@@ -1295,6 +1310,14 @@ export type MatchRecord = {
      *
      */
     coach_notes?: Array<MatchCoachNote>;
+    /**
+     * The PLAYER's own timestamped observations on this match, in
+     * reading order — a self-review that points at seconds. Distinct
+     * from the ones inside a `coach_notes[]` entry, which are someone
+     * else's words. Omitted when the player has marked none.
+     *
+     */
+    moments?: Array<CoachMoment>;
 };
 
 /**
@@ -2017,6 +2040,120 @@ export type ResolveAmbiguousMatchResponses = {
 };
 
 export type ResolveAmbiguousMatchResponse = ResolveAmbiguousMatchResponses[keyof ResolveAmbiguousMatchResponses];
+
+export type DeleteMatchMomentData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * The moment's own id, minted by the CLIENT — the editor keys its save
+         * on it from the first keystroke, before any round trip.
+         *
+         */
+        moment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/moments/{moment_id}';
+};
+
+export type DeleteMatchMomentErrors = {
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteMatchMomentError = DeleteMatchMomentErrors[keyof DeleteMatchMomentErrors];
+
+export type DeleteMatchMomentResponses = {
+    /**
+     * Moment removed (or never existed).
+     */
+    204: void;
+};
+
+export type DeleteMatchMomentResponse = DeleteMatchMomentResponses[keyof DeleteMatchMomentResponses];
+
+export type SetMatchMomentData = {
+    body: MatchMomentInput;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * The moment's own id, minted by the CLIENT — the editor keys its save
+         * on it from the first keystroke, before any round trip.
+         *
+         */
+        moment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/matches/{match_key}/moments/{moment_id}';
+};
+
+export type SetMatchMomentErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type SetMatchMomentError = SetMatchMomentErrors[keyof SetMatchMomentErrors];
+
+export type SetMatchMomentResponses = {
+    /**
+     * The saved moment.
+     */
+    200: CoachMoment;
+};
+
+export type SetMatchMomentResponse = SetMatchMomentResponses[keyof SetMatchMomentResponses];
 
 export type DeleteMatchAnnotationData = {
     body?: never;

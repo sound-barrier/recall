@@ -1,6 +1,9 @@
 package app
 
-import "recall/pkg/matchedit"
+import (
+	"recall/pkg/db"
+	"recall/pkg/matchedit"
+)
 
 // The per-match sidecar surface: annotation, review, queue, play mode,
 // visibility, and the ignored-screenshot suppress list. Every rule these
@@ -181,4 +184,22 @@ func (a *App) ClearIgnoredScreenshots() error {
 		return err
 	}
 	return matchedit.ClearIgnoredScreenshots(a.store)
+}
+
+// SetMatchMoment saves one of the player's own timestamped moments —
+// a self-review that can point at seconds the way a coach's review can.
+// An empty momentID mints a new one.
+func (a *App) SetMatchMoment(matchKey, momentID string, in matchedit.MomentInput) (db.MatchMoment, error) {
+	if err := a.assertNoCoachSession(); err != nil {
+		return db.MatchMoment{}, err
+	}
+	return matchedit.SetMoment(a.store, matchKey, momentID, in)
+}
+
+// DeleteMatchMoment removes one of the player's moments. Idempotent.
+func (a *App) DeleteMatchMoment(matchKey, momentID string) error {
+	if err := a.assertNoCoachSession(); err != nil {
+		return err
+	}
+	return a.store.DeleteMatchMoment(matchKey, momentID)
 }

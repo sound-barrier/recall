@@ -95,6 +95,10 @@ type Record struct {
 	// CoachNotes is the coach-received layer: every accepted coach note on
 	// this match, oldest first. Empty for matches no coach has written about.
 	CoachNotes []CoachNote `json:"coach_notes,omitempty"`
+	// Moments are the PLAYER's own timestamped observations, in reading
+	// order — a self-review that points at seconds. Distinct from the ones
+	// inside a CoachNote, which are someone else's words.
+	Moments []CoachNoteMoment `json:"moments,omitempty"`
 }
 
 // Match provenance values for Record.Source.

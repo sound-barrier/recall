@@ -112,6 +112,15 @@ type Store interface {
 	DeleteAnnotation(matchKey string) error
 	LoadAnnotations() (map[string]Annotation, error)
 
+	// The player's own timestamped moments — many per match, so addressed by
+	// the moment's own id rather than the match key. UpsertMatchMoment keeps
+	// the id minted on the first save and refuses one already used on a
+	// DIFFERENT match (ErrMomentMatchMismatch); the id comes from the client,
+	// so it is not a namespace to trust.
+	UpsertMatchMoment(m MatchMoment) (MatchMoment, error)
+	DeleteMatchMoment(matchKey, momentID string) error
+	LoadMatchMoments() (map[string][]MatchMoment, error)
+
 	// User match-data override layer — the single source for BOTH inline
 	// edits of a parsed match AND hand-entered matches. UpsertUserMatchData
 	// replaces a match's override row + children; DeleteUserMatchData removes

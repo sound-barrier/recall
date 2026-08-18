@@ -25,6 +25,10 @@ var (
 	// a moment write naming a note that was deleted, or one from another
 	// session's id space.
 	ErrCoachNoteUnknown = errors.New("coach note not found")
+	// ErrMomentMatchMismatch reports a moment_id that already exists on a
+	// DIFFERENT match. The id is minted by the client, so it is not a
+	// namespace the store may trust.
+	ErrMomentMatchMismatch = errors.New("moment belongs to another match")
 	// ErrCoachReturnUnknown reports a returnID no coach_returns row carries.
 	ErrCoachReturnUnknown = errors.New("coach return not found")
 	// ErrMatchCoachNoteUnknown reports a match_coach_notes id that does not

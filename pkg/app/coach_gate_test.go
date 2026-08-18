@@ -11,6 +11,7 @@ import (
 	"recall/pkg/coach"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/match"
+	"recall/pkg/matchedit"
 )
 
 // The write gate (design rule 1): while a coaching session is open the
@@ -22,7 +23,12 @@ import (
 // gatedPerMatchWrites are the per-match sidecar writers.
 func gatedPerMatchWrites(a *app.App) map[string]func() error {
 	return map[string]func() error{
-		"SetMatchAnnotation":    func() error { return a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k", Note: "n"}) },
+		"SetMatchAnnotation": func() error { return a.SetMatchAnnotation(app.AnnotationInput{MatchKey: "k", Note: "n"}) },
+		"SetMatchMoment": func() error {
+			_, err := a.SetMatchMoment("k", "", matchedit.MomentInput{MatchClock: "4:45", Text: "x"})
+			return err
+		},
+		"DeleteMatchMoment":     func() error { return a.DeleteMatchMoment("k", "m") },
 		"DeleteMatchAnnotation": func() error { return a.DeleteMatchAnnotation("k") },
 		"SetMatchReview":        func() error { return a.SetMatchReview("k", "self") },
 		"ClearMatchReview":      func() error { return a.ClearMatchReview("k") },

@@ -64,6 +64,7 @@ var sentinels = []sentinel{
 	{"ErrInvalidBackupInterval", app.ErrInvalidBackupInterval, "invalid auto-backup interval"},
 	{"ErrInvalidLeaver", app.ErrInvalidLeaver, "invalid leaver: each side must be 'self', 'team', or 'enemy'"},
 	{"ErrInvalidMaintenanceOp", app.ErrInvalidMaintenanceOp, "unknown maintenance operation"},
+	{"ErrInvalidMoment", app.ErrInvalidMoment, "invalid moment"},
 	{"ErrInvalidPlayMode", app.ErrInvalidPlayMode, "invalid play_mode: must be 'quickplay' or 'competitive'"},
 	{"ErrInvalidPlayedAt", app.ErrInvalidPlayedAt, "invalid played_at: must be RFC 3339"},
 	{"ErrInvalidProfileName", app.ErrInvalidProfileName, ""}, // re-export of a leaf sentinel; message owned there
@@ -225,6 +226,7 @@ type carvedSentinel struct {
 func carvedSentinels() []carvedSentinel {
 	return []carvedSentinel{
 		{"ErrInvalidLeaver", app.ErrInvalidLeaver, matchedit.ErrInvalidLeaver},
+		{"ErrInvalidMoment", app.ErrInvalidMoment, matchedit.ErrInvalidMoment},
 		{"ErrInvalidThrower", app.ErrInvalidThrower, matchedit.ErrInvalidThrower},
 		{"ErrEmptyAnnotation", app.ErrEmptyAnnotation, matchedit.ErrEmptyAnnotation},
 		{"ErrInvalidPlayMode", app.ErrInvalidPlayMode, matchedit.ErrInvalidPlayMode},
