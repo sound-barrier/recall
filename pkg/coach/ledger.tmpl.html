@@ -86,7 +86,7 @@
   {{else}}
   <h3 class="mono">{{.MatchKey}}</h3>
   {{end}}
-  {{if .ReviewedOnly}}
+  {{if and .ReviewedOnly (not .Moments)}}
   <p class="reviewed">Reviewed — nothing to add.</p>
   {{else}}
   {{if or .FocusTags .ExtraTags}}
@@ -95,7 +95,7 @@
     {{range .ExtraTags}}<li class="chip extra">{{.}}</li>{{end}}
   </ul>
   {{end}}
-  {{if .Text}}<p class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.Text}}</p>{{end}}
+  {{if or .Text .MatchClock}}<p class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.Text}}</p>{{end}}
   {{if .Moments}}
   <ol class="moments">
     {{range .Moments}}

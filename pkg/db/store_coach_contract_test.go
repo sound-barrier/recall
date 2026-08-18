@@ -803,3 +803,54 @@ func TestCoachNoteMoments_AnEditKeepsItsPlace(t *testing.T) {
 		})
 	}
 }
+
+// A block's moments read back in the order the accept computed — by SECONDS,
+// which the stored sort_order encodes. Ordering on the clock STRING put
+// "10:00" before "9:00", discarding that work, and the Fake could not see it
+// because it returned insertion order.
+func TestMatchCoachNoteMoments_ReadBackInReadingOrder(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			_, err := s.UpsertMatchCoachNote(db.MatchCoachNote{
+				NoteID: "n1", MatchKey: coachKey, CoachName: "Ordo", SessionDate: "2026-08-15",
+				Text: "x",
+				Moments: []db.MatchCoachNoteMoment{
+					{MomentID: "early", MatchClock: "09:00", Text: "earlier", SortOrder: 0},
+					{MomentID: "late", MatchClock: "10:00", Text: "later", SortOrder: 1},
+				},
+			})
+			mustNoErr(t, err)
+
+			byMatch, err := s.LoadMatchCoachNotes()
+			mustNoErr(t, err)
+			blocks := byMatch[coachKey]
+			if len(blocks) != 1 || len(blocks[0].Moments) != 2 {
+				t.Fatalf("want one block with two moments, got %+v", blocks)
+			}
+			if blocks[0].Moments[0].MomentID != "early" {
+				t.Fatalf("9:00 comes before 10:00; got %q first", blocks[0].Moments[0].MomentID)
+			}
+		})
+	}
+}
+
+// The id comes from a file another machine wrote, so it is not a namespace to
+// trust — and two rows sharing one collide as Vue keys downstream.
+func TestMatchCoachNoteMoments_RefuseADuplicateIDInOneBlock(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			_, err := s.UpsertMatchCoachNote(db.MatchCoachNote{
+				NoteID: "n1", MatchKey: coachKey, CoachName: "Ordo", SessionDate: "2026-08-15", Text: "x",
+				Moments: []db.MatchCoachNoteMoment{
+					{MomentID: "same", MatchClock: "03:23", Text: "one"},
+					{MomentID: "same", MatchClock: "04:45", Text: "two"},
+				},
+			})
+			if err == nil {
+				t.Fatal("two moments sharing an id in one block must be refused")
+			}
+		})
+	}
+}

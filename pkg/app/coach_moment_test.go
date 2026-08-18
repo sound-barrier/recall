@@ -170,14 +170,20 @@ func TestPutCoachMoment_CapsThemPerMatch(t *testing.T) {
 func TestPutCoachMoment_RefusesWhatItCannotRead(t *testing.T) {
 	a, _ := openSession(t)
 
-	for _, tc := range []struct{ name, clock, text string }{
-		{"no clock", "", "says when?"},
-		{"three-digit minutes", "100:00", "x"},
-		{"no text", "4:45", "  "},
+	// Empty text is its own sentinel because it answers with its own status:
+	// the body parsed fine and the refusal is semantic, so it is a 409 the way
+	// an empty annotation is, not a 400.
+	for _, tc := range []struct {
+		name, clock, text string
+		want              error
+	}{
+		{"no clock", "", "says when?", coach.ErrNoteInvalid},
+		{"three-digit minutes", "100:00", "x", coach.ErrNoteInvalid},
+		{"no text", "4:45", "  ", coach.ErrMomentEmpty},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := a.PutCoachMoment(playerMatchRialto, "", stamp(tc.clock, tc.text)); !errors.Is(err, coach.ErrNoteInvalid) {
-				t.Fatalf("want ErrNoteInvalid, got %v", err)
+			if _, err := a.PutCoachMoment(playerMatchRialto, "", stamp(tc.clock, tc.text)); !errors.Is(err, tc.want) {
+				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})
 	}

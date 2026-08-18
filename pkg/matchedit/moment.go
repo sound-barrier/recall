@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -27,6 +26,10 @@ import (
 // ErrInvalidMoment reports a moment write the rules refuse. Named like its
 // siblings in this package so the HTTP layer maps it to a 400 the same way.
 var ErrInvalidMoment = errors.New("invalid moment")
+
+// ErrMomentEmpty is a moment write that parses fine and says nothing. 409
+// rather than 400, the same distinction ErrEmptyAnnotation draws.
+var ErrMomentEmpty = errors.New("a moment needs text")
 
 // MaxMomentTextRunes bounds one moment. Same as the coach's, and for the same
 // reason: a moment names a single thing, and the journal note beside it is
@@ -70,7 +73,7 @@ func ValidateMomentInput(in MomentInput) (MomentInput, error) {
 	case !matchClockPattern.MatchString(out.MatchClock):
 		return MomentInput{}, fmt.Errorf("%w: match clock %q is not MM:SS", ErrInvalidMoment, in.MatchClock)
 	case out.Text == "":
-		return MomentInput{}, fmt.Errorf("%w: a moment needs text — say what happened", ErrInvalidMoment)
+		return MomentInput{}, fmt.Errorf("%w — say what happened", ErrMomentEmpty)
 	case utf8.RuneCountInString(out.Text) > MaxMomentTextRunes:
 		return MomentInput{}, fmt.Errorf("%w: moment text exceeds %d characters", ErrInvalidMoment, MaxMomentTextRunes)
 	case out.FocusTag != "" && !slices.Contains(FocusTags, out.FocusTag):
@@ -87,36 +90,6 @@ func normalizeMatchClock(clock string) string {
 		return clock
 	}
 	return "0" + m + ":" + s
-}
-
-// SortMoments returns the moments in reading order: down the match, ties
-// broken by the order they were written.
-//
-// By SECONDS, not by the string — "10:00" sorts before "9:00" lexically.
-func SortMoments(moments []db.MatchMoment) []db.MatchMoment {
-	out := slices.Clone(moments)
-	slices.SortStableFunc(out, func(a, b db.MatchMoment) int {
-		if d := clockSeconds(a.MatchClock) - clockSeconds(b.MatchClock); d != 0 {
-			return d
-		}
-		return a.SortOrder - b.SortOrder
-	})
-	return out
-}
-
-// clockSeconds reads MM:SS into seconds; an unreadable clock sorts first so
-// the reader meets it rather than finding it buried.
-func clockSeconds(clock string) int {
-	m, s, ok := strings.Cut(clock, ":")
-	if !ok {
-		return -1
-	}
-	minutes, errM := strconv.Atoi(m)
-	seconds, errS := strconv.Atoi(s)
-	if errM != nil || errS != nil {
-		return -1
-	}
-	return minutes*60 + seconds
 }
 
 // MomentStore is the consumer-side seam the moment writes need — three

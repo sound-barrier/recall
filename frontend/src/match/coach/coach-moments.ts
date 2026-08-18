@@ -1,4 +1,3 @@
-import { parseMatchClock } from '@/match/coach/coach-notes'
 
 /**
  * A coach's timestamped moment: its shape, when it is worth saving, and how it
@@ -23,14 +22,11 @@ export function emptyMoment(momentId: string): CoachMoment {
   return { momentId, matchClock: '', text: '', focusTag: '' }
 }
 
-/**
- * A moment is savable once it has BOTH a readable clock and something to say.
- * Half of either is a draft the coach is still typing, and sending it would
- * store a moment that points at nothing or says nothing.
- */
-export function isSavable(m: CoachMoment): boolean {
-  return parseMatchClock(m.matchClock) !== null && m.text.trim() !== ''
-}
+// isSavable lives in coach-notes, beside parseMatchClock — its only
+// dependency, and the module the session tally also needs it from. Re-exported
+// here because a moment's savability is a moment concept, and this is where a
+// reader looks for it.
+export { isSavable } from '@/match/coach/coach-notes'
 
 /** The moment as the API carries it — the PUT body. */
 export interface CoachMomentWire {

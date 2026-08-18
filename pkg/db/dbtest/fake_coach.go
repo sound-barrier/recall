@@ -175,6 +175,15 @@ func (f *Fake) UpsertMatchCoachNote(n db.MatchCoachNote) (int64, error) {
 	if err := checkFocusTags(n.FocusTags); err != nil {
 		return 0, err
 	}
+	// The SQL store's UNIQUE (match_coach_note_id, moment_id) refuses this;
+	// the Fake has to as well, or the two disagree about what is storable.
+	seen := map[string]bool{}
+	for _, m := range n.Moments {
+		if seen[m.MomentID] {
+			return 0, fmt.Errorf("dbtest: duplicate moment_id %q in one block", m.MomentID)
+		}
+		seen[m.MomentID] = true
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	n.FocusTags, n.ExtraTags = distinctSorted(n.FocusTags), distinctSorted(n.ExtraTags)
@@ -215,6 +224,12 @@ func (f *Fake) LoadMatchCoachNotes() (map[string][]db.MatchCoachNote, error) {
 	})
 	out := map[string][]db.MatchCoachNote{}
 	for _, n := range ordered {
+		// The SQL store orders a block's moments by sort_order, so the Fake
+		// must too — otherwise no Fake-backed test can ever see an ordering
+		// bug, which is exactly how one shipped: the SQL read sorted the clock
+		// STRING and put "10:00" before "9:00" while every test here passed.
+		n.Moments = slices.SortedStableFunc(slices.Values(n.Moments),
+			func(a, b db.MatchCoachNoteMoment) int { return cmp.Compare(a.SortOrder, b.SortOrder) })
 		out[n.MatchKey] = append(out[n.MatchKey], n)
 	}
 	return out, nil

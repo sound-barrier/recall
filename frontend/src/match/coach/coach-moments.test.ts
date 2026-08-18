@@ -112,10 +112,19 @@ describe('notesSummaryLine with moments', () => {
     expect(notesSummaryLine({ a: noteDraft('faded late') }, 'Ordo')).toBe('1 note · Ordo')
   })
 
-  // A half-typed row is a draft, not an observation — the same rule the strip
-  // uses to decide whether to save one.
-  it('does not count a draft that says nothing yet', () => {
-    const moments = { a: [{ matchClock: '03:23', text: '   ' }, { matchClock: '', text: 'no clock yet' }] }
+  // A half-typed row is a draft, not an observation — and it is the SAME rule
+  // the strip uses to decide whether to save one. The cases that matter are
+  // the ones where a looser check would disagree: "323" and "3:" are truthy
+  // strings and are not clocks.
+  it('does not count a draft the app would never save', () => {
+    const moments = {
+      a: [
+        { matchClock: '03:23', text: '   ' },
+        { matchClock: '', text: 'no clock yet' },
+        { matchClock: '323', text: 'truthy, not a clock' },
+        { matchClock: '3:', text: 'also not a clock' },
+      ],
+    }
 
     expect(notesSummaryLine({ a: noteDraft('x') }, '', moments)).toBe('1 note')
   })

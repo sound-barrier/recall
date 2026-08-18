@@ -132,7 +132,7 @@ func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
 	rows, err := q.Query(
 		`SELECT match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order
 		 FROM match_coach_note_moments
-		 ORDER BY match_coach_note_id, match_clock, sort_order`)
+		 ORDER BY match_coach_note_id, sort_order`)
 	if err != nil {
 		return fmt.Errorf("load match coach note moments: %w", err)
 	}

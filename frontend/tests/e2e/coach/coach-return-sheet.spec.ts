@@ -182,10 +182,17 @@ test.describe('return of notes — moments', () => {
     await expect(card).toContainText('Cassidy flanked behind you.')
   })
 
-  // The whole round trip, and the only place it can be proven: the coach's
-  // moments cross the notes file, survive the import, and land on the
-  // player's own match in clock order with the replay code beside them.
-  test('carries the moments onto the match once accepted', async ({ page }) => {
+  // What this proves is the RENDERING end: an accepted note's moments reach
+  // the journal, in order, with the replay code beside them.
+  //
+  // What it does NOT prove — and the comment here used to claim it did — is
+  // the transport. This suite serves matches from a route mock, so the Go
+  // accept path, the store and the aggregator are never in the loop: mutating
+  // all three to drop moments entirely left this test green. Those links are
+  // held by pkg/coach (accept keeps a moments-only review), pkg/db (the
+  // contract suite, both implementations) and pkg/aggregate (the conversion
+  // onto the wire).
+  test('renders the moments on the match once accepted', async ({ page }) => {
     const inbox: CoachReturnSheet[] = []
     await mockInbox(page, inbox)
     await mockNotesImport(page, inbox)

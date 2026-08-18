@@ -69,7 +69,13 @@ function pick(decision: CoachDecisionEnum) {
       You already accepted this one — it is on the match now.
     </p>
 
-    <p v-if="reviewedOnly" class="return-card-text is-mark">
+    <!--
+      "Nothing to add" only when there is genuinely nothing. A moments-only
+      review IS a reviewed_only note, so the bare kind check printed "nothing
+      to add" directly above the observations it was showing — on the card the
+      player reads to decide.
+    -->
+    <p v-if="reviewedOnly && !note.moments?.length" class="return-card-text is-mark">
       Reviewed — nothing to add.
     </p>
     <p v-else-if="note.text" class="return-card-text">
