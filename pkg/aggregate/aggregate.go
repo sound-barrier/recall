@@ -36,16 +36,22 @@ import (
 // path (it re-runs Tesseract, which now correctly rejects the
 // short-name fuzzy match).
 // Sidecars bundles the user-layer maps that decorate an aggregated
-// record — annotation, hidden flag, review state, pinned flag, and the
-// coach-received note blocks. They always travel together (the
-// data-clump rule), so they thread as one value instead of five
-// parallel parameters.
+// record — annotation, hidden flag, review state, pinned flag, the
+// coach-received note blocks, and the player's own moments. They always
+// travel together (the data-clump rule), so they thread as one value
+// instead of six parallel parameters.
+//
+// Every map here has a bulk Attach* sibling in attach.go, and the two
+// paths must agree: a sidecar wired into only one of them renders on the
+// list read and blanks on the single-match refresh, which is what a
+// match-updated event triggers.
 type Sidecars struct {
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
 	Reviews     map[string]db.ReviewState
 	Pinned      map[string]bool
 	CoachNotes  map[string][]db.MatchCoachNote
+	Moments     map[string][]db.MatchMoment
 }
 
 func MatchKey(key string, snap db.Screenshots, sc Sidecars) (match.Record, bool) {
@@ -104,6 +110,9 @@ func attachMatchSidecars(rec *match.Record, key string, snap db.Screenshots, sc 
 	}
 	if rows, ok := sc.CoachNotes[key]; ok {
 		rec.CoachNotes = coachNotesFromRows(rows)
+	}
+	if rows, ok := sc.Moments[key]; ok && len(rows) > 0 {
+		rec.Moments = MatchMomentsFromRows(rows)
 	}
 	attachMatchAmbiguity(rec, key, snap.AmbiguousCandidates)
 }

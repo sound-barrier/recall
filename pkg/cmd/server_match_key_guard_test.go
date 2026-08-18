@@ -25,6 +25,7 @@ func TestPerMatchWrites_UnknownKeyIs404(t *testing.T) {
 		{"pin", http.MethodPut, pinPath("match-ghost"), map[string]any{"pinned": true}},
 		{"visibility", http.MethodPut, visibilityPath("match-ghost"), map[string]any{"hidden": true}},
 		{"annotation", http.MethodPut, annotationPath("match-ghost"), map[string]any{"note": "ally dc'd"}},
+		{"moment", http.MethodPut, "/api/v1/matches/match-ghost/moments/mo-1", map[string]any{"match_clock": "04:45", "text": "off-angle"}},
 		{"review", http.MethodPut, reviewPath("match-ghost"), map[string]any{"reviewed_by": "self"}},
 		{"queue", http.MethodPut, queuePath("match-ghost"), map[string]any{"queue_type": "role"}},
 		{"play mode", http.MethodPut, playModePath("match-ghost"), map[string]any{"play_mode": "competitive"}},

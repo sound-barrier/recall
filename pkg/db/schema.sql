@@ -287,7 +287,15 @@ CREATE TABLE IF NOT EXISTS match_moments (
   match_key TEXT NOT NULL,
   match_clock TEXT NOT NULL,
   text TEXT NOT NULL,
-  focus_tag TEXT NOT NULL DEFAULT '',
+  -- Same vocabulary as coach_note_focus_tags, plus '' for an untagged
+  -- moment. The player and their coach file a match under the same words,
+  -- which is most of what makes a review legible side by side. Unlike the
+  -- received-note tables, this one is written straight from the API, so the
+  -- CHECK is the last thing between a client and an unreadable tag.
+  focus_tag TEXT NOT NULL DEFAULT '' CHECK (focus_tag IN (
+    '', 'positioning', 'ult_economy', 'target_priority', 'cooldowns',
+    'hero_pick', 'comms', 'mechanics', 'mental'
+  )),
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))

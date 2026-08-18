@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/matchedit"
 	"recall/pkg/parser"
 )
 
@@ -125,5 +126,59 @@ func TestReParseAll_AllHeroesMisfireDoesNotEvictTypedRow(t *testing.T) {
 	}
 	if !fake.AllHeroes[file] {
 		t.Error("the all_heroes registry entry should still be recorded")
+	}
+}
+
+// A moment the player wrote must survive a re-parse of the match it is on.
+//
+// The single-key aggregate that feeds match-updated loads its own sidecars —
+// a second, hand-maintained copy of the list read's set. The player's moments
+// were wired into the list path only, so the row stayed in the database and
+// the UI blanked it the instant a re-parse touched the match: written, still
+// stored, gone from the screen, back after a reload. Nothing else in this
+// suite reaches the event's payload, so nothing else can catch it.
+func TestReParseAll_MatchUpdatedCarriesThePlayersOwnMoments(t *testing.T) {
+	a, _ := newParseReadyApp(t)
+	const file = "Overwatch 2 Screenshot 2026.07.05 - 14.54.48.79.png"
+
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, file, &parser.MatchResult{Map: "rialto", Result: "victory", Date: "2026-07-05"}, nil)
+		return nil
+	})
+	if err := a.ParseScreenshots(); err != nil {
+		t.Fatalf("first parse: %v", err)
+	}
+
+	const key = "match-2026-07-05T14-54-48"
+	if _, err := a.SetMatchMoment(key, "", matchedit.MomentInput{
+		MatchClock: "4:45", Text: "flanking Cassidy behind me",
+	}); err != nil {
+		t.Fatalf("SetMatchMoment: %v", err)
+	}
+
+	a.SSEHub = app.NewSSEHub()
+	events := a.SSEHub.Subscribe()
+
+	stubParse(t, func(progress parser.ProgressFunc) error {
+		progress(1, 1, file, &parser.MatchResult{Map: "rialto", Result: "victory", Date: "2026-07-05"}, nil)
+		return nil
+	})
+	if err := a.ReParseAll(); err != nil {
+		t.Fatalf("ReParseAll: %v", err)
+	}
+
+	for {
+		select {
+		case msg := <-events:
+			if msg.Event != "match-updated" {
+				continue
+			}
+			if !strings.Contains(msg.Data, "flanking Cassidy behind me") {
+				t.Fatalf("the re-parse blanked the player's moment: %s", msg.Data)
+			}
+			return
+		default:
+			t.Fatal("no match-updated event observed")
+		}
 	}
 }

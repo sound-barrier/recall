@@ -204,3 +204,35 @@ func TestAttachMatchMoments_KeepsThePlayersOwnSeparate(t *testing.T) {
 		t.Errorf("a player moment must not appear as a coach note: %+v", recs[0].CoachNotes)
 	}
 }
+
+// The player's own moments travel the same two paths a coach's notes do, and
+// the same way they can diverge: the list read goes through
+// AttachMatchMoments, a single-match refresh goes through MatchKey →
+// attachMatchSidecars. Wired into only one, a moment renders on the Matches
+// list and vanishes the moment a re-parse fires match-updated — which is
+// exactly the state this branch shipped in until the review caught it.
+func TestAggregateMatchKey_MomentsAgreeWithAttachMatchMoments(t *testing.T) {
+	snap := db.Screenshots{
+		Summaries: []db.SummaryRow{{ID: 1, Filename: "s.png", MatchKey: "m1", Map: "rialto", Result: "victory"}},
+	}
+	moments := map[string][]db.MatchMoment{
+		"m1": {
+			{MomentID: "a", MatchClock: "03:23", Text: "no off-angle", FocusTag: "positioning", SortOrder: 0},
+			{MomentID: "b", MatchClock: "04:45", Text: "flanking Cassidy", SortOrder: 1},
+		},
+	}
+
+	single, ok := aggregate.MatchKey("m1", snap, aggregate.Sidecars{Moments: moments})
+	if !ok {
+		t.Fatal("MatchKey ok=false for an existing key")
+	}
+	bulk := aggregate.Screenshots(snap)
+	aggregate.AttachMatchMoments(bulk, moments)
+
+	if len(single.Moments) != 2 {
+		t.Fatalf("single-key Moments = %+v, want 2", single.Moments)
+	}
+	if !reflect.DeepEqual(single.Moments, bulk[0].Moments) {
+		t.Errorf("single-key Moments = %+v\nbulk Moments = %+v\nwant identical", single.Moments, bulk[0].Moments)
+	}
+}

@@ -20,8 +20,13 @@ type MatchAnnotation = NonNullable<MatchRecord['annotation']>
 // what gets persisted), so stub the action layer rather than standing up
 // Pinia + the api seam.
 const onSetMatchAnnotation = vi.fn().mockResolvedValue(true)
+const onSetMatchMoment = vi.fn().mockResolvedValue(true)
+const onDeleteMatchMoment = vi.fn().mockResolvedValue(true)
+const onCopyReplayCode = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/composables/matches/useMatchActions', () => ({
-  useMatchActions: () => ({ onSetMatchAnnotation }),
+  useMatchActions: () => ({
+    onSetMatchAnnotation, onSetMatchMoment, onDeleteMatchMoment, onCopyReplayCode,
+  }),
 }))
 
 const KEY = 'match-2026-05-10T22-21-11'
@@ -63,6 +68,8 @@ const tagInput = () => screen.getByRole('combobox')
 
 beforeEach(() => {
   onSetMatchAnnotation.mockClear()
+  onSetMatchMoment.mockClear()
+  onDeleteMatchMoment.mockClear()
 })
 
 describe('MatchJournal — one-shot focus from the row context menu', () => {
@@ -457,5 +464,101 @@ describe('MatchJournal — the write gate', () => {
     renderJournal({ record: makeRecord({ note: 'read only' }) })
     await fireEvent.click(screen.getByText('read only'))
     expect(screen.queryByLabelText('Note')).toBeNull()
+  })
+})
+
+
+// The player's own cue strip, hosted in the journal.
+//
+// The strip is the coach's component reused, but the state around it is the
+// journal's own: the record is the truth for anything saved, and a row still
+// being typed lives here until the server takes it. Every case below is one
+// the review found by reading that seam.
+describe('the moments strip', () => {
+  beforeEach(() => { resetWriteGate(); setActivePinia(createPinia()) })
+
+  const moment = (id: string, clock: string, text: string) =>
+    ({ moment_id: id, match_clock: clock, text })
+
+  function withMoments(...ms: ReturnType<typeof moment>[]): MatchRecord {
+    return { ...makeRecord(), moments: ms } as MatchRecord
+  }
+
+  const strip = () => screen.getByRole('region', { name: 'Moments' })
+  const row = (n: number, of: number) =>
+    within(strip()).getByRole('group', { name: new RegExp(`Moment ${n} of ${of}`) })
+
+  it('holds a saved moment being retyped instead of reverting it', async () => {
+    renderJournal({ record: withMoments(moment('a', '03:23', 'first words')) })
+
+    const text = within(row(1, 1)).getByLabelText('What happened')
+    await fireEvent.update(text, '')
+
+    // The record still carries the old text — the props never change in a
+    // unit render — so a strip that reads only the record puts it straight
+    // back and the player cannot clear the field to retype.
+    expect((text as HTMLTextAreaElement).value).toBe('')
+    expect(onSetMatchMoment).not.toHaveBeenCalled()
+  })
+
+  // The window is real and narrow: a save's own refetch can land before the
+  // draft that triggered it is released. Held in a list BESIDE the record's,
+  // the same moment then rendered twice — with duplicate DOM ids, so the
+  // clock label pointed at the wrong field.
+  it('renders a moment once while its save and the refetch overlap', async () => {
+    vi.useFakeTimers()
+    try {
+      let release = (_: boolean) => {}
+      onSetMatchMoment.mockReturnValueOnce(new Promise<boolean>((r) => { release = r }))
+
+      const { rerender } = renderJournal({ record: withMoments(moment('a', '03:23', 'x')) })
+      await fireEvent.update(within(row(1, 1)).getByLabelText('What happened'), 'rewritten')
+      await vi.advanceTimersByTimeAsync(500)
+
+      // The refetch lands first, carrying the server's copy of the same row.
+      await rerender({ record: withMoments(moment('a', '03:23', 'rewritten')) })
+      expect(within(strip()).getAllByRole('group', { name: /^Moment/ })).toHaveLength(1)
+
+      release(true)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(within(strip()).getAllByRole('group', { name: /^Moment/ })).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('settles a burst of typing into one write', async () => {
+    vi.useFakeTimers()
+    try {
+      renderJournal({ record: withMoments(moment('a', '03:23', 'x')) })
+      const text = within(row(1, 1)).getByLabelText('What happened')
+
+      for (const words of ['no', 'no off', 'no off-angle']) {
+        await fireEvent.update(text, words)
+      }
+      expect(onSetMatchMoment).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(500)
+      expect(onSetMatchMoment).toHaveBeenCalledTimes(1)
+      expect(onSetMatchMoment.mock.calls[0]?.[2]).toMatchObject({ text: 'no off-angle' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not resurrect a moment removed while its save was still settling', async () => {
+    vi.useFakeTimers()
+    try {
+      renderJournal({ record: withMoments(moment('a', '03:23', 'x')) })
+
+      await fireEvent.update(within(row(1, 1)).getByLabelText('What happened'), 'rewritten')
+      await fireEvent.click(within(row(1, 1)).getByRole('button', { name: /remove/i }))
+      await vi.advanceTimersByTimeAsync(500)
+
+      expect(onDeleteMatchMoment).toHaveBeenCalledWith(KEY, 'a')
+      expect(onSetMatchMoment).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

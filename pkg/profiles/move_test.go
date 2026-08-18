@@ -77,6 +77,11 @@ func seedFullMatch(t *testing.T, s db.Store, key string) {
 		Text: "hold high ground", FocusTags: []string{"positioning"},
 	})
 	mustNoErr(t, err)
+	_, err = s.UpsertMatchMoment(db.MatchMoment{
+		MomentID: "moment-" + key, MatchKey: key, MatchClock: "04:45",
+		Text: "should have taken the off-angle", FocusTag: "positioning",
+	})
+	mustNoErr(t, err)
 }
 
 // sidecarPresence reports, per sidecar table, whether the store still carries
@@ -100,6 +105,8 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 	mustNoErr(t, err)
 	coachNotes, err := s.LoadMatchCoachNotes()
 	mustNoErr(t, err)
+	moments, err := s.LoadMatchMoments()
+	mustNoErr(t, err)
 	_, hasAnnotation := annotations[key]
 	_, hasReview := reviews[key]
 	_, hasUserData := userData[key]
@@ -115,6 +122,7 @@ func sidecarPresence(t *testing.T, s db.Store, key string) map[string]bool {
 		"queue":      hasQueue,
 		"play_mode":  hasPlayMode,
 		"coach_note": hasCoachNote,
+		"moment":     len(moments[key]) > 0,
 	}
 }
 

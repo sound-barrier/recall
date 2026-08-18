@@ -128,7 +128,25 @@ func importUserLayer(store db.Store, data DataV2, existing map[string]bool) erro
 	if err := importFlagKeys(data.Pinned, existing, "pinned", store.PinMatch); err != nil {
 		return err
 	}
+	if err := importMatchMoments(store, data.Moments, existing); err != nil {
+		return err
+	}
 	return importCoachNotes(store, data.CoachNotes, existing)
+}
+
+// importMatchMoments writes the player's own timestamped moments for keys the
+// import is bringing in. Same rule as every section above: a match already in
+// this history keeps what it has, so an import never rewrites local work.
+func importMatchMoments(store db.Store, moments []db.MatchMoment, existing map[string]bool) error {
+	for _, m := range moments {
+		if existing[m.MatchKey] {
+			continue
+		}
+		if _, err := store.UpsertMatchMoment(m); err != nil {
+			return fmt.Errorf("import: moment for %q: %w", m.MatchKey, err)
+		}
+	}
+	return nil
 }
 
 // importCoachNotes writes the accepted coach blocks whose keys are new, with

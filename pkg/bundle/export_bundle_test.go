@@ -213,3 +213,38 @@ func TestExport_SliceSectionsSortByMatchKey(t *testing.T) {
 		t.Errorf("order: user=%v annotations=%v hidden=%v, want %v", gotUser, gotAnn, d.Hidden, want)
 	}
 }
+
+// The player's OWN timestamped moments travel with a bundle, and only for the
+// keys the bundle carries.
+//
+// The feature is sold as "a self-review before sending a bundle", so a bundle
+// that strips it hands the coach a review with the player's own reading
+// removed — and an export/import round trip loses work that exists in exactly
+// one place. Every other user-layer section already travels; this one was
+// simply forgotten, and nothing in this file would have noticed.
+func TestExport_CarriesThePlayersOwnMoments(t *testing.T) {
+	shots := t.TempDir()
+	store := seededStore(t, shots)
+	writeShots(t, shots, seededParentFiles()...)
+	for _, m := range []db.MatchMoment{
+		{MomentID: "keep", MatchKey: "m1", MatchClock: "04:45", Text: "off-angle", FocusTag: "positioning"},
+		{MomentID: "drop", MatchKey: "m2", MatchClock: "01:10", Text: "another match"},
+	} {
+		if _, err := store.UpsertMatchMoment(m); err != nil {
+			t.Fatalf("seed moment: %v", err)
+		}
+	}
+
+	payload, err := bundle.Export(store, bundle.ExportBundleOptions{MatchKeys: []string{"m1"}}, nil, shots, seededVersion)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	d := exportedData(t, payload)
+	if len(d.Moments) != 1 {
+		t.Fatalf("moments = %+v, want only the selected key's", d.Moments)
+	}
+	if d.Moments[0].MomentID != "keep" || d.Moments[0].FocusTag != "positioning" {
+		t.Errorf("moment did not survive export: %+v", d.Moments[0])
+	}
+}

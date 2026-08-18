@@ -272,20 +272,29 @@ func AttachMatchMoments(recs []match.Record, moments map[string][]db.MatchMoment
 		if !ok || len(rows) == 0 {
 			continue
 		}
-		out := make([]match.CoachNoteMoment, 0, len(rows))
-		for _, m := range rows {
-			out = append(out, match.CoachNoteMoment{
-				MomentID:   m.MomentID,
-				MatchClock: m.MatchClock,
-				Text:       m.Text,
-				FocusTag:   m.FocusTag,
-			})
-		}
-		recs[i].Moments = out
+		recs[i].Moments = MatchMomentsFromRows(rows)
 	}
 }
 
-// AttachUserData overlays the per-match user override layer onto the aggregated// AttachUserData overlays the per-match user override layer onto the aggregated
+// MatchMomentsFromRows converts the player's stored moments to the wire shape.
+// Exported because the single-key path in aggregate.go must produce byte-identical
+// output — a field added to only one converter diverges the list read from the
+// single-match read with no compile error, which is exactly how the coach layer
+// grew the parity test above it.
+func MatchMomentsFromRows(rows []db.MatchMoment) []match.CoachNoteMoment {
+	out := make([]match.CoachNoteMoment, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, match.CoachNoteMoment{
+			MomentID:   m.MomentID,
+			MatchClock: m.MatchClock,
+			Text:       m.Text,
+			FocusTag:   m.FocusTag,
+		})
+	}
+	return out
+}
+
+// AttachUserData overlays the per-match user override layer onto the aggregated
 // records: non-nil scalars win over the OCR Data, the heroes-played list is
 // replaced when the user supplied one, stat-cell and SR overrides overlay, and
 // Role / GameMode re-derive from any edited hero / map. A screenshot-backed

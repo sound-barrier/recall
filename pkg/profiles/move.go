@@ -167,6 +167,9 @@ func loadMoveSource(src db.Store) (moveSource, error) {
 	if out.coachNotes, err = src.LoadMatchCoachNotes(); err != nil {
 		return moveSource{}, fmt.Errorf("move: load coach notes: %w", err)
 	}
+	if out.moments, err = src.LoadMatchMoments(); err != nil {
+		return moveSource{}, fmt.Errorf("move: load match moments: %w", err)
+	}
 	return out, nil
 }
 
@@ -181,6 +184,7 @@ type moveSource struct {
 	pinned      map[string]bool
 	reviews     map[string]db.ReviewState
 	coachNotes  map[string][]db.MatchCoachNote
+	moments     map[string][]db.MatchMoment
 }
 
 // dirIDResolver re-maps a source screenshots_dir_id onto the target by
@@ -327,7 +331,23 @@ func copyMatchSidecars(targetStore db.Store, k string, src moveSource) error {
 			return fmt.Errorf("move: copy review for %q: %w", k, err)
 		}
 	}
+	if err := copyMatchMoments(targetStore, k, src.moments[k]); err != nil {
+		return err
+	}
 	return copyCoachNotes(targetStore, k, src.coachNotes[k])
+}
+
+// copyMatchMoments reproduces the player's own timestamped moments on the
+// target. moment_id is their identity on both sides, so a retry after a failed
+// phase 2 upserts in place instead of duplicating — the same property the
+// coach blocks below rely on.
+func copyMatchMoments(targetStore db.Store, k string, moments []db.MatchMoment) error {
+	for _, m := range moments {
+		if _, err := targetStore.UpsertMatchMoment(m); err != nil {
+			return fmt.Errorf("move: copy moment %q for %q: %w", m.MomentID, k, err)
+		}
+	}
+	return nil
 }
 
 // copyCoachNotes reproduces the accepted coach-note blocks on the target.

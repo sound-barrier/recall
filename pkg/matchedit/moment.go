@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // The player's own timestamped moments — a self-review that can point at
@@ -96,6 +97,12 @@ func normalizeMatchClock(clock string) string {
 // methods, declared here rather than reaching for db.Store, so a caller can
 // see exactly what a moment write touches.
 type MomentStore interface {
+	// The unknown-key guard's dependency (design rule 2). SetMoment CREATES a
+	// row, and every sidecar table is keyed on match_key with no foreign key
+	// behind it — so an unguarded write on a key this database has never seen
+	// inserts an orphan nothing reads back, which then travels through every
+	// export and profile move after it.
+	MatchKeyExists(matchKey string) (bool, error)
 	UpsertMatchMoment(m db.MatchMoment) (db.MatchMoment, error)
 	DeleteMatchMoment(matchKey, momentID string) error
 	LoadMatchMoments() (map[string][]db.MatchMoment, error)
@@ -106,6 +113,16 @@ type MomentStore interface {
 // every position already taken — never at len(existing), which collides with
 // a survivor after any delete and leaves the tie to row order.
 func SetMoment(s MomentStore, matchKey, momentID string, in MomentInput) (db.MatchMoment, error) {
+	if matchKey == "" {
+		return db.MatchMoment{}, ErrMatchKeyRequired
+	}
+	exists, err := s.MatchKeyExists(matchKey)
+	if err != nil {
+		return db.MatchMoment{}, err
+	}
+	if !exists {
+		return db.MatchMoment{}, match.ErrMatchNotFound
+	}
 	normalized, err := ValidateMomentInput(in)
 	if err != nil {
 		return db.MatchMoment{}, err

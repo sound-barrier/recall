@@ -42,7 +42,11 @@ func (a *App) loadSidecars() aggregate.Sidecars {
 	reviews, _ := a.store.LoadReviews()
 	pinned, _ := a.store.LoadPinnedKeys()
 	coachNotes, _ := a.store.LoadMatchCoachNotes()
-	return aggregate.Sidecars{Annotations: annos, Hidden: hidden, Reviews: reviews, Pinned: pinned, CoachNotes: coachNotes}
+	moments, _ := a.store.LoadMatchMoments()
+	return aggregate.Sidecars{
+		Annotations: annos, Hidden: hidden, Reviews: reviews,
+		Pinned: pinned, CoachNotes: coachNotes, Moments: moments,
+	}
 }
 
 func (a *App) reAggregateUnknowns() (int, error) {

@@ -108,3 +108,47 @@ describe('useCoachAutosave', () => {
     expect(auto.saveStateFor('summary')).toBe('saved')
   })
 })
+
+describe('cancelSave', () => {
+  it('drops a queued save so it never runs', async () => {
+    const { queueSave, cancelSave, saveStateFor } = useCoachAutosave()
+    const run = vi.fn().mockResolvedValue(undefined)
+
+    queueSave('m1', run)
+    cancelSave('m1')
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS * 2)
+
+    expect(run).not.toHaveBeenCalled()
+    expect(saveStateFor('m1')).toBe('idle')
+  })
+
+  it('leaves every other key alone', async () => {
+    const { queueSave, cancelSave } = useCoachAutosave()
+    const kept = vi.fn().mockResolvedValue(undefined)
+
+    queueSave('m1', vi.fn().mockResolvedValue(undefined))
+    queueSave('m2', kept)
+    cancelSave('m1')
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS * 2)
+
+    expect(kept).toHaveBeenCalledTimes(1)
+  })
+
+  // A key that failed stays in the queue so the next flush retries it —
+  // cancelling must clear that too, or a discarded row is written back by
+  // whatever flushes next.
+  it('clears a failed save rather than leaving it for the next flush', async () => {
+    const { queueSave, cancelSave, flushSaves, hasFailedSaves } = useCoachAutosave()
+    const run = vi.fn().mockRejectedValue(new Error('refused'))
+
+    queueSave('m1', run)
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_MS * 2)
+    expect(hasFailedSaves.value).toBe(true)
+
+    cancelSave('m1')
+    await flushSaves()
+
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(hasFailedSaves.value).toBe(false)
+  })
+})
