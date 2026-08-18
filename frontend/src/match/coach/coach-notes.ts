@@ -87,6 +87,20 @@ export function parseMatchClock(raw: string): string | null {
   return `${m[1]!.padStart(2, '0')}:${m[2]!}`
 }
 
+/**
+ * A moment is savable once it has BOTH a readable clock and something to say.
+ * Half of either is a draft the coach is still typing, and sending it would
+ * store a moment that points at nothing or says nothing.
+ *
+ * One rule, read from two places — the strip, which decides whether to save,
+ * and the session tally, which tells the coach what the file will carry. A
+ * second truthiness check in the tally counted moments the app would never
+ * send, because a clock like "323" is truthy and is not a clock.
+ */
+export function isSavable(m: { matchClock: string; text: string }): boolean {
+  return parseMatchClock(m.matchClock) !== null && m.text.trim() !== ''
+}
+
 export interface FocusCount {
   tag: string
   count: number
@@ -128,7 +142,10 @@ export function notesSummaryLine(
   // moment count is stated separately rather than folded in. Once a coach can
   // leave three observations on one match, a single number silently answers a
   // different question than the one the reader is asking.
-  const moved = Object.values(moments).flat().filter((m) => m.matchClock && m.text.trim()).length
+  // isSavable, not a truthiness check of its own: the tally is what a coach
+  // reads before exporting, and a second rule counted moments the app would
+  // never save — a clock like "323" is truthy and is not a clock.
+  const moved = Object.values(moments).flat().filter(isSavable).length
   const parts = [`${marks.length} note${marks.length === 1 ? '' : 's'}`]
   if (moved > 0) parts.push(`${moved} moment${moved === 1 ? '' : 's'}`)
   if (reviewed > 0) parts.push(`${reviewed} reviewed only`)

@@ -155,3 +155,52 @@ func TestAggregateMatchKey_CoachNotesAgreeWithAttachCoachNotes(t *testing.T) {
 		t.Errorf("single-key CoachNotes = %+v\nbulk CoachNotes = %+v\nwant identical", single.CoachNotes, bulk[0].CoachNotes)
 	}
 }
+
+// The last link in the chain a coach's timestamped moment travels: stored on
+// an accepted block, out through the aggregator, onto the wire the UI reads.
+//
+// Worth its own test because the e2e above it cannot see this: the browser
+// suite serves its matches from a route mock, so a moment can reach the screen
+// there without any of this code running. Mutating away the conversion left
+// every browser test green.
+func TestAttachCoachNotes_CarriesTheMomentsOntoTheWire(t *testing.T) {
+	row := coachNoteRow(1, "match-2026-08-08T20-15-00", "2026-08-09T09:00:00Z")
+	row.Moments = []db.MatchCoachNoteMoment{
+		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle", FocusTag: "positioning", SortOrder: 0},
+		{MomentID: "m2", MatchClock: "04:45", Text: "flanking Cassidy", SortOrder: 1},
+	}
+	recs := []match.Record{{MatchKey: row.MatchKey}}
+
+	aggregate.AttachCoachNotes(recs, map[string][]db.MatchCoachNote{row.MatchKey: {row}})
+
+	got := recs[0].CoachNotes
+	if len(got) != 1 || len(got[0].Moments) != 2 {
+		t.Fatalf("the moments never reached the record: %+v", got)
+	}
+	want := []match.CoachNoteMoment{
+		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle", FocusTag: "positioning"},
+		{MomentID: "m2", MatchClock: "04:45", Text: "flanking Cassidy"},
+	}
+	if !reflect.DeepEqual(got[0].Moments, want) {
+		t.Errorf("moments = %+v\nwant     %+v", got[0].Moments, want)
+	}
+}
+
+// The player's own moments ride a separate field — they are the player's words
+// about their own match, not a coach's, and merging them would make "who said
+// this" a column instead of a boundary.
+func TestAttachMatchMoments_KeepsThePlayersOwnSeparate(t *testing.T) {
+	const key = "match-2026-08-08T20-15-00"
+	recs := []match.Record{{MatchKey: key}}
+
+	aggregate.AttachMatchMoments(recs, map[string][]db.MatchMoment{key: {
+		{MomentID: "p1", MatchKey: key, MatchClock: "02:10", Text: "my own read"},
+	}})
+
+	if len(recs[0].Moments) != 1 || recs[0].Moments[0].Text != "my own read" {
+		t.Fatalf("the player's moments did not attach: %+v", recs[0].Moments)
+	}
+	if len(recs[0].CoachNotes) != 0 {
+		t.Errorf("a player moment must not appear as a coach note: %+v", recs[0].CoachNotes)
+	}
+}

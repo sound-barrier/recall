@@ -696,12 +696,20 @@ CREATE TABLE IF NOT EXISTS match_coach_note_moments (
   match_clock TEXT NOT NULL,
   text TEXT NOT NULL,
   focus_tag TEXT NOT NULL DEFAULT '',
-  sort_order INTEGER NOT NULL DEFAULT 0
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  -- Unique WITHIN the block, the same constraint its authored twin carries:
+  -- the id comes from a file another machine wrote, so it is not a namespace
+  -- to trust, and two rows sharing one collide as Vue keys downstream.
+  UNIQUE (match_coach_note_id, moment_id)
 ) STRICT;
 -- statement-end
 
+-- Ordered by sort_order alone. The accept assigns it from the by-SECONDS sort,
+-- so it already encodes reading order — adding match_clock to the ORDER BY
+-- sorted the STRING and put "10:00" before "9:00", discarding the very
+-- ordering the accept had just computed.
 CREATE INDEX IF NOT EXISTS idx_match_coach_note_moments_note
-  ON match_coach_note_moments (match_coach_note_id, match_clock, sort_order);
+  ON match_coach_note_moments (match_coach_note_id, sort_order);
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS match_coach_note_extra_tags (

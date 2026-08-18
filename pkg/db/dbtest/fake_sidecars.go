@@ -274,7 +274,14 @@ func (f *Fake) UpsertMatchMoment(m db.MatchMoment) (db.MatchMoment, error) {
 func (f *Fake) DeleteMatchMoment(matchKey, momentID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.MatchMoments[matchKey] = slices.DeleteFunc(f.MatchMoments[matchKey],
+	// Deleting from a match that never had a moment is a no-op, not a write:
+	// assigning back would panic on the nil map, and the SQL store answers a
+	// DELETE that matched nothing the same way.
+	bucket, ok := f.MatchMoments[matchKey]
+	if !ok {
+		return nil
+	}
+	f.MatchMoments[matchKey] = slices.DeleteFunc(bucket,
 		func(m db.MatchMoment) bool { return m.MomentID == momentID })
 	return nil
 }

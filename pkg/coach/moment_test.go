@@ -36,6 +36,18 @@ func TestValidateMoment_KeepsAWellFormedMoment(t *testing.T) {
 	}
 }
 
+// Empty text is refused too, with its OWN sentinel: the body parsed fine and
+// the refusal is semantic, so the HTTP layer answers 409 rather than 400 —
+// the same distinction an empty annotation already draws.
+func TestValidateMoment_RefusesEmptyTextWithItsOwnError(t *testing.T) {
+	t.Parallel()
+
+	_, err := coach.ValidateMomentInput(coach.MomentInput{MatchClock: "4:45", Text: "   "})
+	if !errors.Is(err, coach.ErrMomentEmpty) {
+		t.Fatalf("want ErrMomentEmpty, got %v", err)
+	}
+}
+
 // The clock is what makes a moment a moment. Unlike the note's optional one,
 // this is required — a moment without a time is just a sentence, and the note
 // it hangs on is already the place for those.
@@ -59,7 +71,6 @@ func TestValidateMoment_RefusesWhatItCannotRead(t *testing.T) {
 		{"seconds past 59", "4:75", "x", ""},
 		{"an hours form", "1:06:40", "x", ""},
 		{"a bare number", "445", "x", ""},
-		{"no text", "4:45", "   ", ""},
 		{"a tag outside the vocabulary", "4:45", "x", "vibes"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -200,9 +211,11 @@ func TestNotesFile_RefusesV1LabelOverMoments(t *testing.T) {
 	})
 	f.Schema = coach.NotesSchemaV1
 
+	// 409, not 400: the file is readable and its contents are fine — the
+	// label just promises less than it carries.
 	err := coach.ValidateNotesFile(f)
-	if !errors.Is(err, coach.ErrNotesMalformed) {
-		t.Fatalf("want ErrNotesMalformed, got %v", err)
+	if !errors.Is(err, coach.ErrNotesSchemaMismatch) {
+		t.Fatalf("want ErrNotesSchemaMismatch, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "moments") {
 		t.Errorf("the refusal should say what is wrong, got %q", err.Error())
@@ -224,5 +237,34 @@ func TestNotesFile_ReadsBothSchemas(t *testing.T) {
 	f.Schema = "recall-coach-notes/v9"
 	if err := coach.ValidateNotesFile(f); !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
 		t.Fatalf("want ErrNotesUnsupportedSchema, got %v", err)
+	}
+}
+
+// ── Accepting a review made of moments ────────────────────────────────────
+
+// A reviewed_only mark carries nothing to keep — unless it carries moments,
+// which is the shape a review made entirely of timestamps takes. Skipping the
+// block for it threw the whole payload away on accept, silently, and then
+// reported the note accepted.
+func TestDecide_AcceptKeepsAReviewedOnlyNotesMoments(t *testing.T) {
+	st := seededStore(t)
+	// The shape a moments-only review produces: reviewed_only, no text, every
+	// observation hanging off it as a moment.
+	f := validNotesFile()
+	f.Notes[1].Moments = []coach.Moment{
+		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
+		{MomentID: "m2", MatchClock: "04:45", Text: "flanking Cassidy"},
+	}
+	f.Schema = coach.NotesSchemaFor(f.Notes)
+	sheet := stageReturn(t, st, writeNotes(t, f), "Sable")
+
+	decide(t, st, sheet.ID, coach.Decision{NoteID: noteIDTwo, Decision: coach.DecisionAccepted})
+
+	block := blockWithNoteID(t, st, f.Notes[1].MatchKey, noteIDTwo)
+	if len(block.Moments) != 2 {
+		t.Fatalf("a moments-only review lost its moments on accept: %+v", block)
+	}
+	if block.Moments[0].MatchClock != "03:23" {
+		t.Errorf("moments should land in reading order, got %q first", block.Moments[0].MatchClock)
 	}
 }

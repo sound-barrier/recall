@@ -45,6 +45,17 @@ var (
 	// ErrNoteInvalid — a note (or a decision naming one) failed validation;
 	// the wrapped message names the field (400).
 	ErrNoteInvalid = errors.New("coach: invalid note")
+	// ErrMomentEmpty — a moment write whose body is spec-valid but says
+	// nothing. Separate from ErrNoteInvalid because it maps to 409 rather
+	// than 400: the request parsed fine and the refusal is semantic, the
+	// same distinction ErrEmptyAnnotation already draws on the player side
+	// (and the one schemathesis's positive_data_acceptance check enforces).
+	ErrMomentEmpty = errors.New("coach: a moment needs text")
+	// ErrNotesSchemaMismatch — the file is readable and its contents are
+	// fine, but its label promises less than it carries: a v1 header over
+	// notes with moments. 409 rather than 400 for the same reason the schema
+	// mismatch beside it is: nothing about the payload is malformed.
+	ErrNotesSchemaMismatch = errors.New("coach: notes file label does not match its contents")
 	// ErrHandleInvalid — the player handle is blank or too long (400).
 	ErrHandleInvalid = errors.New("coach: invalid player handle")
 	// ErrHandleRequired — the session has no confirmed player handle yet

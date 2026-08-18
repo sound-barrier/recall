@@ -102,7 +102,7 @@ func validateNotesSchema(f NotesFile) error {
 	// one shape that would make that promise false.
 	case f.Schema == NotesSchemaV1 && notesSchemaFor(f.Notes) == NotesSchemaV2:
 		return fmt.Errorf("%w: notes carry moments but the file says %q — moments need %q",
-			ErrNotesMalformed, NotesSchemaV1, NotesSchemaV2)
+			ErrNotesSchemaMismatch, NotesSchemaV1, NotesSchemaV2)
 	}
 	return nil
 }
@@ -154,6 +154,38 @@ func validateFileNote(n Note) error {
 	in := NoteInput{Kind: n.Kind, Text: n.Text, FocusTags: n.FocusTags, ExtraTags: n.ExtraTags, MatchClock: n.MatchClock}
 	if _, err := ValidateNoteInput(in); err != nil {
 		return fmt.Errorf("%w: %w", ErrNotesMalformed, err)
+	}
+	return validateFileMoments(n.Moments)
+}
+
+// validateFileMoments holds the moments to the same rules a live write
+// answers to.
+//
+// This is the file the threat model is about: a hostile or hand-edited
+// notes.json is the reason this validator exists, and moments arrived here
+// unchecked — a clock that is not a clock, a tag outside the vocabulary, a
+// hundred-thousand-rune text, five hundred rows sharing one id, all of it
+// landing verbatim in the player's database and then out again through
+// GET /matches, in violation of the schema that endpoint publishes. The
+// received table has no CHECK of its own precisely because it trusts this.
+func validateFileMoments(moments []Moment) error {
+	if len(moments) > MaxMomentsPerNote {
+		return fmt.Errorf("%w: more than %d moments on one note", ErrNotesMalformed, MaxMomentsPerNote)
+	}
+	seen := make(map[string]bool, len(moments))
+	for i, m := range moments {
+		if m.MomentID == "" {
+			return fmt.Errorf("%w: moments[%d]: missing moment_id", ErrNotesMalformed, i)
+		}
+		if seen[m.MomentID] {
+			return fmt.Errorf("%w: moments[%d]: duplicate moment_id %q", ErrNotesMalformed, i, m.MomentID)
+		}
+		seen[m.MomentID] = true
+		if _, err := ValidateMomentInput(MomentInput{
+			MatchClock: m.MatchClock, Text: m.Text, FocusTag: m.FocusTag,
+		}); err != nil {
+			return fmt.Errorf("%w: moments[%d]: %w", ErrNotesMalformed, i, err)
+		}
 	}
 	return nil
 }

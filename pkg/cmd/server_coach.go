@@ -191,7 +191,11 @@ func handlePutCoachMoment(a *app.App) http.HandlerFunc {
 			return
 		}
 		moment, err := a.PutCoachMoment(matchKey, r.PathValue("moment_id"), in)
-		if writeError(w, r, err) {
+		// A spec-valid body that says nothing is a 409, not a 400 — the
+		// request parsed, the refusal is semantic. Same code ErrEmptyAnnotation
+		// answers with, and what keeps schemathesis's positive-data check
+		// honest about a body the spec permits.
+		if writeError(w, r, err, errStatus{coach.ErrMomentEmpty, probConflict}) {
 			return
 		}
 		writeJSON(w, r, moment, nil)

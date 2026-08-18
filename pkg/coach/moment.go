@@ -70,7 +70,7 @@ func ValidateMomentInput(in MomentInput) (MomentInput, error) {
 		return MomentInput{}, fmt.Errorf("%w: match clock %q is not MM:SS", ErrNoteInvalid, in.MatchClock)
 	}
 	if out.Text == "" {
-		return MomentInput{}, fmt.Errorf("%w: a moment needs text — say what happened", ErrNoteInvalid)
+		return MomentInput{}, fmt.Errorf("%w — say what happened", ErrMomentEmpty)
 	}
 	if utf8.RuneCountInString(out.Text) > MaxMomentTextRunes {
 		return MomentInput{}, fmt.Errorf("%w: moment text exceeds %d characters", ErrNoteInvalid, MaxMomentTextRunes)

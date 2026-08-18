@@ -260,6 +260,8 @@ func handleSetMatchMoment(a *app.App) http.HandlerFunc {
 		// is spec-valid and the conflict is with what is already stored.
 		if writeError(w, r, err,
 			errStatus{app.ErrInvalidMoment, probInvalidBody},
+			// Spec-valid but says nothing → 409, like ErrEmptyAnnotation.
+			errStatus{app.ErrMomentEmpty, probConflict},
 			errStatus{db.ErrMomentMatchMismatch, probConflict}) {
 			return
 		}

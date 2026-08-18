@@ -65,6 +65,7 @@ var sentinels = []sentinel{
 	{"ErrInvalidLeaver", app.ErrInvalidLeaver, "invalid leaver: each side must be 'self', 'team', or 'enemy'"},
 	{"ErrInvalidMaintenanceOp", app.ErrInvalidMaintenanceOp, "unknown maintenance operation"},
 	{"ErrInvalidMoment", app.ErrInvalidMoment, "invalid moment"},
+	{"ErrMomentEmpty", app.ErrMomentEmpty, "a moment needs text"},
 	{"ErrInvalidPlayMode", app.ErrInvalidPlayMode, "invalid play_mode: must be 'quickplay' or 'competitive'"},
 	{"ErrInvalidPlayedAt", app.ErrInvalidPlayedAt, "invalid played_at: must be RFC 3339"},
 	{"ErrInvalidProfileName", app.ErrInvalidProfileName, ""}, // re-export of a leaf sentinel; message owned there
@@ -227,6 +228,7 @@ func carvedSentinels() []carvedSentinel {
 	return []carvedSentinel{
 		{"ErrInvalidLeaver", app.ErrInvalidLeaver, matchedit.ErrInvalidLeaver},
 		{"ErrInvalidMoment", app.ErrInvalidMoment, matchedit.ErrInvalidMoment},
+		{"ErrMomentEmpty", app.ErrMomentEmpty, matchedit.ErrMomentEmpty},
 		{"ErrInvalidThrower", app.ErrInvalidThrower, matchedit.ErrInvalidThrower},
 		{"ErrEmptyAnnotation", app.ErrEmptyAnnotation, matchedit.ErrEmptyAnnotation},
 		{"ErrInvalidPlayMode", app.ErrInvalidPlayMode, matchedit.ErrInvalidPlayMode},

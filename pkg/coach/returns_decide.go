@@ -95,7 +95,13 @@ func applyDecision(st ReturnStore, returnID int64, f NotesFile, t decisionTarget
 // coach review either way. The store stamps reviewed_at with its own clock;
 // dating it with the coach's session date is left to the store's caller.
 func acceptNote(st ReturnStore, f NotesFile, n Note) error {
-	if n.Kind != KindReviewedOnly {
+	// A reviewed_only mark carries nothing to keep — UNLESS it carries
+	// moments. That is not an edge case: stamping a timestamp on a match the
+	// coach has not written a paragraph about opens exactly a reviewed_only
+	// note, so a review made entirely of moments is entirely this shape. The
+	// kind check alone threw the whole payload away on accept, silently, and
+	// then reported the note accepted.
+	if n.Kind != KindReviewedOnly || len(n.Moments) > 0 {
 		if _, err := st.UpsertMatchCoachNote(MatchCoachNoteFromNote(n, f.CoachName, f.SessionDate)); err != nil {
 			return fmt.Errorf("coach: accept note %s: %w", n.NoteID, err)
 		}

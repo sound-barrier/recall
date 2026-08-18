@@ -49,7 +49,7 @@ SRC="frontend/src"
 
 # Custom properties assigned by a Vue `:style` binding rather than a
 # stylesheet. Their fallback is the real default and must stay.
-RUNTIME_TOKENS="--card-i --ct-heat-volume"
+RUNTIME_TOKENS="--card-i --ct-heat-volume --cue-gap"
 
 fail=0
 
