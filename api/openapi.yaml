@@ -2327,6 +2327,8 @@ paths:
                 format: binary
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -3981,8 +3983,9 @@ components:
         the first share and persisted in this install's settings, so a
         request body can never claim to be somebody else; an `id` sent
         here is ignored. The handle is trimmed; blank falls back to the
-        handle remembered from the last share, and having neither is a
-        `400`.
+        handle remembered from the last share (or set in Settings →
+        Coaching), and having neither is a `409` — the body is fine, there
+        is simply no name to share under.
       required: [handle]
       properties:
         handle:

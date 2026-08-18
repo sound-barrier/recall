@@ -54,6 +54,7 @@ type sentinel struct {
 var sentinels = []sentinel{
 	{"ErrAmbiguousNotFound", app.ErrAmbiguousNotFound, "ambiguous screenshot not found"},
 	{"ErrCoachNameInvalid", app.ErrCoachNameInvalid, "invalid coach name"},
+	{"ErrNoPlayerHandle", app.ErrNoPlayerHandle, "no player handle to share under"},
 	{"ErrDataUpdateChecksum", app.ErrDataUpdateChecksum, ""},               // re-export of a leaf sentinel; message owned there
 	{"ErrDataUpdateMainFetchFailed", app.ErrDataUpdateMainFetchFailed, ""}, // re-export of a leaf sentinel; message owned there
 	{"ErrDataUpdateMalformed", app.ErrDataUpdateMalformed, ""},             // re-export of a leaf sentinel; message owned there
