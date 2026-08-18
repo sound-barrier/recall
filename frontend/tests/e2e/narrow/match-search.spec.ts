@@ -66,6 +66,20 @@ const CORPUS = [
   record('match:2', 'juno',   { map: 'ilios',  tags: ['stack'], note: 'rialto angles were rough' }),
   record('match:3', 'kiriko', { map: 'nepal',  members: ['Apollo#1234'] }),
   record('match:4', 'mercy',  { map: 'busan',  replay: '7H1XYZ', note: 'team threw the lead' }),
+  // The coached match. None of this text lives in an annotation, a map or a
+  // hero name — the surfaces search used to read. It is the player's own
+  // moment and the block a coach sent back, which is exactly the prose
+  // someone remembers a fragment of and goes looking for.
+  {
+    ...record('match:5', 'ana', { map: 'dorado' }),
+    moments: [{ moment_id: 'p1', match_clock: '03:23', text: 'no off-angle, tank ate it alone' }],
+    coach_notes: [{
+      id: 1, note_id: 'n1', coach_name: 'Ordo', session_date: '2026-05-11',
+      text: 'walk the high ground before the fight opens',
+      focus_tags: ['positioning'],
+      moments: [{ moment_id: 'c1', match_clock: '04:45', text: 'flanking Cassidy behind you' }],
+    }],
+  },
 ]
 
 async function openNarrow(page: Page) {
@@ -96,7 +110,34 @@ test.describe('match search — narrow-panel scoped-clause filter', () => {
     })
     await page.goto('/')
     await page.getByRole('tab', { name: /^Matches/ }).click()
-    await expect(page.locator('.leaf-row')).toHaveCount(4)
+    await expect(page.locator('.leaf-row')).toHaveCount(5)
+  })
+
+  // ── Coaching prose ────────────────────────────────────────────────
+  // Everything coaching writes onto a match was unsearchable: the player's own
+  // moments and the blocks a coach sent back. So the one thing people actually
+  // go looking for — "that thing the coach said about my off-angles" — came
+  // back empty while the text sat on the match in plain sight.
+  test('finds a moment the player marked', async ({ page }) => {
+    await search(page, 'off-angle')
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+    await expect(row(page, 'match:5')).toBeVisible()
+  })
+
+  test('finds what the coach wrote, and who wrote it', async ({ page }) => {
+    await search(page, 'high ground')
+    await expect(row(page, 'match:5')).toBeVisible()
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+
+    await search(page, 'ordo')
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+  })
+
+  // The half of a timestamped review that points at something.
+  test('finds a moment nested inside a returned note', async ({ page }) => {
+    await search(page, 'cassidy')
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+    await expect(row(page, 'match:5')).toBeVisible()
   })
 
   // ── Bare tokens — broad blob (regression guards) ──────────────────
@@ -185,7 +226,7 @@ test.describe('match search — narrow-panel scoped-clause filter', () => {
     await searchInput(page).fill('clutch')
     await searchInput(page).fill('')
     await page.locator('.np-close').click()
-    await expect(page.locator('.leaf-row')).toHaveCount(4)
+    await expect(page.locator('.leaf-row')).toHaveCount(5)
   })
 
   test('no hits → empty members list with the "clear narrowing" affordance', async ({ page }) => {
@@ -206,7 +247,7 @@ test.describe('match search — narrow-panel scoped-clause filter', () => {
     await search(page, 'tag:stack')
     await expect(page.locator('.leaf-row')).toHaveCount(1)
     await page.locator('.active-chip.search .chip-x').click()
-    await expect(page.locator('.leaf-row')).toHaveCount(4)
+    await expect(page.locator('.leaf-row')).toHaveCount(5)
     await expect(page.locator('.active-chip.search')).toHaveCount(0)
   })
 })
