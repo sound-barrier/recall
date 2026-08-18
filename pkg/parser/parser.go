@@ -3,37 +3,16 @@
 // Package parser turns Overwatch screenshot images into typed MatchResult
 // values via Tesseract OCR.
 //
-// The package is intentionally split into per-concern files instead of one
-// monolith:
-//
-//   - types.go            — MatchResult, HeroSR, HeroPlay, Performance,
-//     PerformanceStat
-//   - heroes.go           — heroRoles, HeroRole, extractHeroes,
-//     heroNamesByLength
-//   - maps.go             — knownMaps, snapToKnownMap, bestKnownMapInText,
-//     levenshtein
-//   - tesseract.go        — tessPath, SetTesseractPath, runTesseract,
-//     ocrInverted, runTesseractFunc seam
-//   - imageutil.go        — crop, preprocessInverted
-//   - text.go             — extractGameMode, extractInts,
-//     digitize, normalizeDate, trimShortBoundaryWords,
-//     labelToKey
-//   - parse_rank.go       — isRankScreenshot + parseRank + extractRank /
-//     extractModifiers / extractSR
-//   - parse_summary.go    — isSummaryScreenshot + parseSummary +
-//     parseHeroesPlayed / parsePerformance / parseRightCard
-//   - parse_personal.go   — isPersonalScreenshot + parsePersonal +
-//     parsePersonalHeroCell / parsePersonalStatCell
-//   - parse_teams.go — parseTeams + parsePanelStats +
-//     findHighlightedRowY / ocrRowCells / findRowXExtent /
-//     findStatColumns
-//   - parser.go (this file) — the ParseScreenshot dispatcher,
-//     ParseScreenshotsDir entry point, ProgressFunc, parseSingleFunc seam
-//   - exec_other.go / exec_windows.go — HideWindow build-tag pair for
-//     console suppression on Windows
+// The package is deliberately file-per-concern rather than one monolith: a
+// file is named for the screenshot type or the extraction step it owns, and
+// `ls pkg/parser/*.go` is the current list. A literal roster used to live in
+// this comment and had drifted by the time anyone read it — it still named a
+// file that had moved to another package — so the directory is the roster now.
 //
 // All symbols stay in the same `parser` package. The split is a navigation
-// aid, not a coupling boundary.
+// aid, not a coupling boundary. The one real boundary the package has is
+// pkg/tesseract, which owns invoking the OCR binary; everything here is about
+// deciding what to feed it and what its output means.
 package parser
 
 import (
@@ -47,10 +26,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"recall/pkg/tesseract"
 )
 
 func ParseScreenshot(imagePath string) (*MatchResult, error) {
-	tp := getTesseractPath()
+	tp := tesseract.Path()
 	if _, err := exec.LookPath(tp); err != nil {
 		return nil, fmt.Errorf("tesseract not available at %q — configure the binary in Settings → Engine (%w)", tp, err)
 	}

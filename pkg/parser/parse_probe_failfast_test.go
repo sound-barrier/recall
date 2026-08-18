@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 // A probe OCR error that survives the retry ladder means no probe result is
@@ -34,8 +35,8 @@ func TestParseScreenshot_ProbeErrorFailsFast(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = f.Close()
-	parser.SetTesseractPath(fakeTess)
-	t.Cleanup(func() { parser.SetTesseractPath("tesseract") })
+	tesseract.SetPath(fakeTess)
+	t.Cleanup(func() { tesseract.SetPath("tesseract") })
 
 	prevDelays := *parser.TesseractRetryDelays
 	*parser.TesseractRetryDelays = nil

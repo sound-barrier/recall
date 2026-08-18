@@ -1,4 +1,4 @@
-package parser_test
+package tesseract_test
 
 import (
 	"image"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 // A hung Tesseract process must not wedge the parse — every invocation is
@@ -35,10 +36,10 @@ func TestParseScreenshot_BoundsHungTesseract(t *testing.T) {
 	}
 	_ = f.Close()
 
-	parser.SetTesseractPath(fake)
-	t.Cleanup(func() { parser.SetTesseractPath("tesseract") })
-	parser.SetTesseractTimeout(100 * time.Millisecond)
-	t.Cleanup(func() { parser.SetTesseractTimeout(0) })
+	tesseract.SetPath(fake)
+	t.Cleanup(func() { tesseract.SetPath("tesseract") })
+	tesseract.SetTimeout(100 * time.Millisecond)
+	t.Cleanup(func() { tesseract.SetTimeout(0) })
 
 	// The bound leaves generous headroom for a loaded machine (each of the
 	// classifier's OCR passes costs timeout + WaitDelay + spawn overhead);

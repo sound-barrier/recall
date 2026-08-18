@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 // tesseractProbeTimeout bounds the `tesseract --version` exec so a held or
@@ -105,7 +105,7 @@ func checkTesseract(path string) TesseractStatus {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	parser.HideWindow(cmd) // no-op off Windows; suppresses console flash on Windows
+	tesseract.HideWindow(cmd) // no-op off Windows; suppresses console flash on Windows
 	if err := cmd.Run(); err != nil {
 		// A deadline almost always means the OS is holding the exec — on
 		// Windows, Defender scans a freshly-accessed .exe after a cold boot.
@@ -256,7 +256,7 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 	}
 	s := checkTesseract(cleaned)
 	a.setTessStatus(s)
-	parser.SetTesseractPath(cleaned)
+	tesseract.SetPath(cleaned)
 	return s, nil
 }
 
@@ -274,7 +274,7 @@ func (a *App) ResetTesseractPath() (TesseractStatus, error) {
 	}
 	s := checkTesseract(path)
 	a.setTessStatus(s)
-	parser.SetTesseractPath(path)
+	tesseract.SetPath(path)
 	return s, nil
 }
 

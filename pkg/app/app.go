@@ -36,7 +36,7 @@ import (
 	"recall/pkg/applog"
 	"recall/pkg/coach"
 	"recall/pkg/db"
-	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 type App struct {
@@ -366,7 +366,7 @@ func (a *App) resolveSettings() {
 	// real detection runs in the background from Startup (probeTesseractInBackground)
 	// so a cold-boot Defender scan can't block boot.
 	a.setTessStatus(TesseractStatus{Path: resolved.TesseractPath, Default: defaultTesseractPath()})
-	parser.SetTesseractPath(resolved.TesseractPath)
+	tesseract.SetPath(resolved.TesseractPath)
 
 	// First-run auto-probe — if the user hasn't set a screenshots
 	// folder yet, walk the platform-specific OW default locations

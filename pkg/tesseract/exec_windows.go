@@ -1,6 +1,6 @@
 //go:build windows
 
-package parser
+package tesseract
 
 import (
 	"os/exec"

@@ -1,12 +1,12 @@
 //go:build !windows
 
-package parser_test
+package tesseract_test
 
 import (
 	"os/exec"
 	"testing"
 
-	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 // HideWindow is a no-op on non-Windows platforms — there's no console-
@@ -17,7 +17,7 @@ import (
 
 func TestHideWindow_NoOpOnNonWindows(t *testing.T) {
 	cmd := exec.CommandContext(t.Context(), "echo", "hi")
-	parser.HideWindow(cmd)
+	tesseract.HideWindow(cmd)
 	if cmd.SysProcAttr != nil {
 		t.Errorf("HideWindow on non-Windows must not touch SysProcAttr; got %#v", cmd.SysProcAttr)
 	}

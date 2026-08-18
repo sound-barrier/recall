@@ -88,7 +88,18 @@ pkg/db                                        30
 # 22 -> 23 for modifiers.go, the accessor over modifiers.yaml. Same shape as
 # ranks.go beside ranks.yaml: the vocabulary is parser data, and one loader per
 # embedded YAML is the pattern this package already spells file-per-file.
-pkg/parser                                    23
+#
+# 23 -> 25, net of two moves in opposite directions. parse_rank.go was the
+# largest hand-written Go file in the repo at 715 lines and split five ways by
+# WHAT IT READS — detection/orchestration, the tier pill, the numeric readings,
+# the modifier chips, the SR panel — because those fail and get fixed
+# independently: a season that restyles the chip row does not touch the SR
+# panel. That is the same responsibility spelled file-per-file, which is a
+# bump. Going the other way, the Tesseract INVOCATION left for pkg/tesseract —
+# a genuine split, since running an external binary answers to different
+# pressures (path validation, timeouts, a Windows console flash) than reading
+# fields off a screenshot.
+pkg/parser                                    25
 
 # pkg/cmd — the transport surface: HTTP handlers and middleware in server mode,
 # systray/window/self-update wiring in desktop mode, split per endpoint group.
