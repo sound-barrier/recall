@@ -242,7 +242,17 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
       // The one command chord in the app. It rides this registry rather than
       // the main one for the same reason `?` does: a jump-anywhere affordance
       // that is unreachable from half the app is not one.
-      key: 'k',
+      //
+      // Ctrl+F is aliased onto it because on this app the key was dead. Wails
+      // calls PutAreBrowserAcceleratorKeysEnabled(false) on every window, so
+      // WebView2's find bar never opens and the keystroke reaches the DOM with
+      // nothing listening. Pointing it here rather than building a find bar is
+      // the deliberate half: the match list is virtualized and one view is
+      // mounted at a time, so a find over painted text would search a few
+      // dozen rendered rows of a corpus in the thousands and answer "nothing
+      // found" about matches that plainly exist. The palette searches the
+      // narrowed corpus instead of the paint, which is what the user meant.
+      key: ['k', 'f'],
       mod: true,
       allowInInput: true,
       handler: () => { openPalette.value = true },

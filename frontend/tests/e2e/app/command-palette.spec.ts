@@ -37,6 +37,36 @@ async function open(page: import('@playwright/test').Page) {
 }
 
 test.describe('command palette', () => {
+  // Ctrl+F was a dead key in this app. Wails calls
+  // PutAreBrowserAcceleratorKeysEnabled(false) on every window, so WebView2's
+  // find bar never opens and the keystroke arrives in the DOM with nothing
+  // listening — the user presses the universal "find" shortcut and gets
+  // silence.
+  //
+  // It opens the palette rather than a find bar on purpose. The match list is
+  // virtualized and one view is mounted at a time, so a find over painted text
+  // would search a few dozen rendered rows of a corpus in the thousands and
+  // answer "nothing found" about matches that plainly exist. The palette
+  // searches the narrowed corpus instead of the paint.
+  test('opens on Ctrl+F, the key a user reaches for to find something', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([record('m1', 'juno', 'rialto')]),
+      })
+    })
+    await page.goto('/')
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
+
+    await page.keyboard.press('ControlOrMeta+f')
+
+    const palette = page.getByRole('dialog', { name: /command palette/i })
+    await expect(palette).toBeVisible()
+    // And it is the real thing, not an empty shell: typing finds a match.
+    await palette.getByRole('combobox').fill('juno')
+    await expect(palette.getByRole('option').first()).toBeVisible()
+  })
+
   test('opens on the command chord and lists views', async ({ page }) => {
     const palette = await open(page)
 

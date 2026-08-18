@@ -50,6 +50,10 @@ export const SHORTCUT_GROUPS: readonly ShortcutBindingGroup[] = [
       { keys: ['g', 'e'],       action: 'Go to Elo Calculator view', seq: true },
       { keys: ['g', 'f'],       action: 'Go to the film room (during a coaching session)', seq: true },
       { keys: ['Ctrl/Cmd', 'K'], action: 'Open the command palette — jump to a view or a match' },
+      // Listed separately rather than folded into the row above: someone
+      // scanning this sheet for "find" is looking for the F, and a combined
+      // "K or F" row is the kind of thing the eye slides off.
+      { keys: ['Ctrl/Cmd', 'F'], action: 'Find — the same palette, searching your matches' },
       { keys: ['?'],            action: 'Show this cheatsheet' },
     ],
   },
