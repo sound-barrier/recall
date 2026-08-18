@@ -9,9 +9,9 @@ import {
 
 const thisYear = new Date().getFullYear()
 
-// The player plays at UTC−9: her scoreboard says 21:14 on the 8th while
+// The player plays at UTC−9: their scoreboard says 21:14 on the 8th while
 // the canonical instant is 06:14 UTC on the 9th. Every helper here must
-// keep reading her scoreboard.
+// keep reading their scoreboard.
 const nineHoursOff = {
   match_key: `match-${thisYear}-08-08T21-14-33`,
   data: {

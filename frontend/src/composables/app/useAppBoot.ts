@@ -38,12 +38,16 @@ export function useAppBoot() {
   //
   // Watched rather than read once: the session query resolves after mount, so
   // there is nothing to resume at the moment onMounted runs.
+  //
+  // `once` rather than a stop handle called from inside the callback: that
+  // form reads the const while defining it, so adding `immediate` later — or
+  // any change that makes the watcher fire during creation — is a
+  // temporal-dead-zone crash at boot, with the whole app blank behind it.
   const coachStore = useCoachStore()
-  const stop = watch(() => coachStore.sessionActive, (active) => {
+  watch(() => coachStore.sessionActive, (active) => {
     if (!active) return
-    stop()
     void appStore.goToView('coach')
-  })
+  }, { once: true })
 
   onMounted(() => {
     parseStore.restoreLastParsedAt()

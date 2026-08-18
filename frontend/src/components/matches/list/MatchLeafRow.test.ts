@@ -289,7 +289,7 @@ describe('MatchLeafRow', () => {
 })
 
 // Design rule 7: during a coaching session the rows are the PLAYER's, and
-// her scoreboard clock is the only honest one — the canonical instant would
+// their scoreboard clock is the only honest one — the canonical instant would
 // render in the coach's zone, here a different day than the one the row is
 // grouped under. The naive pair below is deliberately far from the instant
 // so the two can never coincide, whatever zone the test host is in.

@@ -96,10 +96,10 @@ describe('playerClockNote', () => {
 })
 
 describe("fmtTime — the player's clock", () => {
-  // A loaned coaching corpus belongs to someone else: her scoreboard wrote
+  // A loaned coaching corpus belongs to someone else: their scoreboard wrote
   // the naive pair, and the canonical instant renders in the COACH's zone —
   // here a different hour AND a different calendar day. Design rule 7 says
-  // the step-into views show HER clock, so the printed time agrees with the
+  // the step-into views show THEIR clock, so the printed time agrees with the
   // day the record is bucketed under (grouping reads data.date).
   const LOANED = { data: { date: '2026-05-10', finished_at: '21:14', played_at_utc: '2026-05-11T06:14:00Z' } }
 

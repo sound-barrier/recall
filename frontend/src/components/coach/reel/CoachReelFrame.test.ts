@@ -74,7 +74,7 @@ describe('CoachReelFrame', () => {
     expect(view.emitted('select')).toEqual([[KINGS_ROW.match_key]])
   })
 
-  it("quotes the player's own note on the frame she wrote it on", () => {
+  it("quotes the player's own note on the frame they wrote it on", () => {
     render(CoachReelFrame, { props: { record: NOTED } })
     expect(screen.getByText(/Peeled too late on point B/)).toBeInTheDocument()
   })

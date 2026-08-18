@@ -1,4 +1,4 @@
-// The Film Room's reel: the player's matches grouped by HER day (the naive
+// The Film Room's reel: the player's matches grouped by THEIR day (the naive
 // `data.date`, per coach-time.ts), newest day and newest frame first — the
 // order the Matches list uses, so the two agree on what "first" means.
 // Pure; the room's composable derives from these.

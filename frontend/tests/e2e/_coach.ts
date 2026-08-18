@@ -10,8 +10,8 @@
  *                            opens with a blank handle and the note routes
  *                            409 until the coach confirms one
  *   - SESSION_FIXTURE        the player "Sable": six matches over three of
- *                            HER local days, one rank screen, one with a
- *                            note of her own. Every `played_at_utc` sits
+ *                            THEIR local days, one rank screen, one with
+ *                            a note of their own. Every `played_at_utc` sits
  *                            9 h off the naive `date`+`finished_at`, so a
  *                            surface that renders the UTC instant in the
  *                            coach's zone (the app's default) shows a
@@ -195,8 +195,8 @@ export const FAKE_ZIP = Buffer.from([
 const PLAYER_ZONE_OFFSET_HOURS = 9
 
 /**
- * The player's canonical UTC instant, deliberately 9 h away from her naive
- * clock (she plays at UTC−9). A coach anywhere else sees a different HH:MM
+ * The player's canonical UTC instant, deliberately 9 h away from their naive
+ * clock (they play at UTC−9). A coach anywhere else sees a different HH:MM
  * — and often a different DAY — if a surface renders the instant instead
  * of the naive fields.
  */
@@ -272,7 +272,7 @@ const SABLE_ID = '4c1c8f6e-2d3a-4b7e-9f10-6a5d2c8e1b47'
 // (2 days back) holds three, day B (3 back) two — one of them the rank
 // screen — and day C (5 back) one. Sable's own note sits on the newest.
 
-/** The match Sable wrote her own note on — the newest, so the first frame in the reel. */
+/** The match Sable wrote their own note on — the newest, so the first frame in the reel. */
 export const NOTED_MATCH: SessionMatch = {
   ...sessionMatch({ map: 'numbani', mode: 'hybrid', hero: 'ana', role: 'support', result: 'victory', dayOffset: 2, time: '22:30', score: '4-3', ead: [12, 19, 5], healing: 10230 }),
   annotation: {
@@ -808,7 +808,7 @@ function acceptedLayer(sheet: CoachReturnSheet): Map<string, MatchCoachNote> {
 }
 
 /**
- * Serve Sable's history AFTER she accepted every note on
+ * Serve Sable's history AFTER they accepted every note on
  * RETURN_SHEET_FIXTURE: each written note is a `coach_notes[]` block on its
  * match, and every decided match carries `reviewed_by: 'coach'`. The
  * "Remove this note" DELETE drops the block, so the next GET omits it.
@@ -891,9 +891,14 @@ export async function confirmPlayer(page: Page, handle: string): Promise<void> {
 }
 
 /**
- * Land in the Film Room from wherever the app is: already there (fresh
- * open), or on a tab with the back affordance (after a resume, the app
- * boots on Matches like always).
+ * Land in the Film Room from wherever the app is: already there (a fresh
+ * open, and now a resume too), or on a tab with the back affordance.
+ *
+ * Deliberately tolerant of both, because it is used by specs that care about
+ * what happens IN the room rather than how they got there. That tolerance is
+ * also why the resume landing needs its own case in
+ * coach-session-open-end.spec.ts — this helper clicks the way in, so it
+ * passes either way.
  */
 export async function enterFilmRoom(page: Page): Promise<void> {
   await expect(filmRoom(page).or(backToFilmRoom(page))).toBeVisible()

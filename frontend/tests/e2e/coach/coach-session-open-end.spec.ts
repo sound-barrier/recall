@@ -32,6 +32,7 @@ import {
   loanSlip,
   mockCoachSession,
   openSessionViaMasthead,
+  pinSessionResume,
   seedCoachOwnMatches,
 } from '../_coach'
 import { seedProfiles, silenceParseEvents } from '../_theme-matrix'
@@ -165,7 +166,7 @@ test.describe('coaching session — open and end', () => {
     expect(session.openCount()).toBe(1)
   })
 
-  // Design rule 12. The coach's date range and picked map describe HER
+  // Design rule 12. The coach's date range and picked map describe THEIR
   // corpus; left in place over the player's they show an arbitrary subset
   // (often zero rows), which reads as "the export is broken".
   test("opening a session clears the coach's own narrow, and End restores it", async ({ page }) => {
@@ -182,7 +183,7 @@ test.describe('coaching session — open and end', () => {
     await openSessionViaMasthead(page)
     await page.getByRole('tab', { name: /^Matches/ }).click()
 
-    // Every one of the player's matches, not the handful her data happens
+    // Every one of the player's matches, not the handful their data happens
     // to share with the coach's filter.
     await expect(page.locator('.leaf-row')).toHaveCount(SESSION_FIXTURE.matches.length)
     await expect(search).toHaveValue('')
@@ -192,5 +193,24 @@ test.describe('coaching session — open and end', () => {
 
     await expect(search).toHaveValue('dorado')
     await expect(page.locator('.leaf-row')).toHaveCount(1)
+  })
+
+  // A resumed session lands IN the room. The session survived the reload; the
+  // view did not, so a coach was returned to Matches — their own history
+  // read-only, no explanation on the tab they were looking at, and the way
+  // back to be found again on every reload.
+  //
+  // Asserted WITHOUT enterFilmRoom(): that helper clicks the way in when the
+  // room is not already up, which is exactly the difference under test.
+  test('a reload lands back in the film room, not on Matches', async ({ page }) => {
+    await seedProfiles(page)
+    await seedCoachOwnMatches(page)
+    await mockCoachSession(page, { notes: RESURFACED_NOTES, active: true })
+    await pinSessionResume(page)
+
+    await page.goto('/')
+
+    await expect(filmRoom(page)).toBeVisible()
+    await expect(backToFilmRoom(page)).toHaveCount(0)
   })
 })

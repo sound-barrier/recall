@@ -54,7 +54,15 @@ const VIEW_LABELS: Record<(typeof TAB_ORDER)[number], string> = {
  * action is what the typed runner registry was built to allow — a third kind
  * is an entry here plus a runner, not an edit to a switch.
  */
-export const ACTION_ITEMS: readonly PaletteItem[] = [
+/**
+ * The targets an action can carry. A union rather than `string` so the runner
+ * map in useCommandPalette is exhaustive by the type checker — a new entry
+ * below without a runner is a compile error, not an Enter press that opens
+ * whichever branch happened to be last.
+ */
+export type PaletteActionTarget = 'share-with-coach' | 'open-bundle'
+
+export const ACTION_ITEMS: readonly (PaletteItem & { target: PaletteActionTarget })[] = [
   {
     id: 'action:share-with-coach',
     kind: 'action',
@@ -127,9 +135,19 @@ export interface DisplayNames {
   map?: (slug: string) => string
 }
 
+/**
+ * @param inCoachingSession suppresses the coaching actions. Inside the Film
+ * Room the corpus is somebody else's matches, so "Share matches with a coach"
+ * would open the share dialog over the loaned set, and "Open a player's
+ * bundle" is a 409 — one session at a time. An entry that cannot do its job
+ * is worse than no entry: it was added to make the feature findable, and a
+ * dead end teaches the opposite.
+ */
 export function buildPaletteItems(
   records: readonly PaletteRecord[],
   names: DisplayNames = {},
+  inCoachingSession = false,
 ): PaletteItem[] {
-  return [...viewItems(), ...ACTION_ITEMS, ...matchItems(records, names)]
+  const actions = inCoachingSession ? [] : ACTION_ITEMS
+  return [...viewItems(), ...actions, ...matchItems(records, names)]
 }

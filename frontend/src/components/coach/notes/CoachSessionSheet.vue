@@ -4,7 +4,7 @@ import { focusTagLabel, type FocusCount } from '@/match/coach/coach-notes'
 import type { WLDTally } from '@/match/match-stats-helpers'
 
 // The session sheet: who is being reviewed, how the session went, and
-// what the coach wants her to work on. Written on paper — the plate
+// what the coach wants them to work on. Written on paper — the plate
 // re-maps the app's text / verdict tokens inside itself, so .eyebrow,
 // .score-num and the rest render here with no parallel rules.
 

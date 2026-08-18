@@ -20,8 +20,11 @@ A share bundle is a `.zip` containing, **for the matches you selected**:
   scoreboards, which carry **every player's BattleTag**, yours and
   theirs
 - the parsed stats, ranks and hero playtimes
-- your own journal layer: notes you wrote, tags, squad members you
-  named, anyone you marked as a leaver or thrower, and replay codes
+- your own journal layer: notes you wrote, the moments you marked, tags,
+  squad members you named, anyone you marked as a leaver or thrower, and
+  replay codes
+- any review an earlier coach sent back and you accepted — a second coach
+  sees the first one's notes
 - your handle, and a message to the coach if you write one
 
 It does **not** contain your settings, your file paths, or any match you

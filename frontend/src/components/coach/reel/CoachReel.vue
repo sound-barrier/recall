@@ -8,8 +8,8 @@ import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 import type { ReelDay } from '@/match/coach/coach-reel-helpers'
 import { playerClockNote, playerClockOwner } from '@/match/match-time-helpers'
 
-// The film strip: the player's matches, her days newest first, each
-// frame a click target. The list is named for her AND for whose clock
+// The film strip: the player's matches, their days newest first, each
+// frame a click target. The list is named for them AND for whose clock
 // the times are in — the room shows player-naive times everywhere, and
 // an unlabeled 21:14 is a lie to a coach in another timezone.
 

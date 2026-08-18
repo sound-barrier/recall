@@ -228,9 +228,11 @@ onBeforeUnmount(() => {
       <p v-if="sharing" class="export-bundle-desc export-bundle-warn">
         Stamped with your name so your coach can open it as a session, and
         their notes come back as a file you decide on, match by match. It also
-        carries what you wrote about these matches — your notes, tags, squads
-        and replay codes — and the screenshots show every player's BattleTag.
-        Send fewer matches to share less.
+        carries everything you wrote about these matches — your notes and
+        moments, the tags and squads, replay codes, and who you marked as
+        leaving or throwing — plus any review an earlier coach sent back. The
+        screenshots show every player's BattleTag. Send fewer matches to share
+        less.
       </p>
 
       <div class="export-bundle-row">

@@ -26,7 +26,7 @@ export const WEEKDAYS_FULL = [
  * player's client wrote them.
  *
  * The second mode exists for a coaching session, where the records on
- * screen were exported by someone in another timezone: her 21:14 is not
+ * screen were exported by someone in another timezone: their 21:14 is not
  * the coach's 21:14, and often not even the coach's day. Grouping, the
  * date filter and the heatmap all bucket on those same naive fields, so a
  * row that printed the instant would show one day and file the match under

@@ -7,7 +7,7 @@ import {
 } from '@/composables/matches/narrow/matchesNarrow.state'
 
 // Design rule 12: a coaching session puts the coach's OWN narrow aside —
-// her date range and picked map/hero describe her corpus, and applied to
+// their date range and picked map/hero describe their corpus, and applied to
 // the player's they show an arbitrary subset that reads as a broken export.
 // End puts it back exactly as it was, which is what these two functions owe.
 

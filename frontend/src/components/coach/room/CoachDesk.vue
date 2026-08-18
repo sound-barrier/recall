@@ -8,7 +8,7 @@ import type { CoachMoment } from '@/match/coach/coach-moments'
 import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The middle column: the match the coach is looking at, and the note
-// she is writing about it. The desk owns no state — the room hands it
+// they are writing about it. The desk owns no state — the room hands it
 // a record and a draft and takes the edits back.
 
 withDefaults(defineProps<{

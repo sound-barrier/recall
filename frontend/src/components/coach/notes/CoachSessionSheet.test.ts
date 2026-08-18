@@ -18,7 +18,7 @@ function renderSheet(props: Record<string, unknown> = {}) {
 }
 
 describe('CoachSessionSheet', () => {
-  it('names the player being reviewed and repeats what she asked for', () => {
+  it('names the player being reviewed and repeats what they asked for', () => {
     renderSheet()
     expect(screen.getByRole('heading', { name: 'Reviewing Sable' })).toBeInTheDocument()
     expect(screen.getByText(/worried about my ult timing/)).toBeInTheDocument()
