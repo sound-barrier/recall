@@ -178,3 +178,20 @@ return sheet, the loan slip and the nav strip each load on first use, and
 `App.lazy-views.test.ts` fails if one of them drifts back into the entry
 graph. That test is the reason the initial number grew by 6.5KB rather
 than by the ~55KB the feature actually weighs.
+
+## 2026-08-18 — the moments feature, player side (#700)
+
+| budget | from | to | measured |
+|---|---|---|---|
+| initial JS | 332500 | 332500 | 332192 |
+| total JS | 1698000 | 1703000 | 1700179 |
+
+Phase 1 already paid for the coach's cue strip. This row is the rest of the
+feature: the player's own strip in the match journal, the returned-note
+rendering, and the palette's two coaching actions.
+
+Initial JS did not move, and that is the number worth watching. The journal
+rides the lazy match-detail chunk and the film room its own, so a moment's
+worth of new code costs nothing before someone opens a match. The coach store
+was already eager — the app must know whether a session is open before any
+view renders — and nothing here added to it.
