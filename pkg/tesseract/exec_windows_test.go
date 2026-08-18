@@ -1,13 +1,13 @@
 //go:build windows
 
-package parser_test
+package tesseract_test
 
 import (
 	"os/exec"
 	"syscall"
 	"testing"
 
-	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 // HideWindow must configure the child process so Windows doesn't
@@ -22,7 +22,7 @@ const expectedCreateNoWindow uint32 = 0x08000000
 
 func TestHideWindow_SetsCreateNoWindowFlag(t *testing.T) {
 	cmd := exec.CommandContext(t.Context(), "dummy")
-	parser.HideWindow(cmd)
+	tesseract.HideWindow(cmd)
 	if cmd.SysProcAttr == nil {
 		t.Fatal("SysProcAttr should be set after HideWindow")
 	}
@@ -37,8 +37,7 @@ func TestHideWindow_SetsCreateNoWindowFlag(t *testing.T) {
 func TestHideWindow_PreservesExistingSysProcAttrFields(t *testing.T) {
 	cmd := exec.CommandContext(t.Context(), "dummy")
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x00000010}
-	parser. // sentinel value
-		HideWindow(cmd)
+	tesseract.HideWindow(cmd)
 	if cmd.SysProcAttr.CreationFlags&0x00000010 == 0 {
 		t.Error("HideWindow must OR into existing CreationFlags, not overwrite them")
 	}

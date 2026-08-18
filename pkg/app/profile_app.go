@@ -8,7 +8,7 @@ import (
 
 	"recall/pkg/applog"
 	"recall/pkg/db"
-	"recall/pkg/parser"
+	"recall/pkg/tesseract"
 )
 
 // ProfilesResponse is the wire shape for GET /api/v1/profiles and the
@@ -362,7 +362,7 @@ func (a *App) reloadProfileSettings() Settings {
 		a.saveSettingsBestEffort()
 	}
 	a.setTessStatus(checkTesseract(resolved.TesseractPath))
-	parser.SetTesseractPath(resolved.TesseractPath)
+	tesseract.SetPath(resolved.TesseractPath)
 	a.autoProbeOnFirstRun()
 	return resolved
 }

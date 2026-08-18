@@ -1,5 +1,7 @@
 package parser
 
+import "recall/pkg/tesseract"
+
 // Test-only bridges for the external parser_test package. The OCR/text
 // primitives, the geometry detectors, and the two function-variable seams have
 // no public string→string (or image→geometry) entry point — the public surface
@@ -24,7 +26,7 @@ func NewOCRSpec(workDir, name, psm, whitelist string) OCRSpec {
 
 var (
 	RunTesseractWithRetry = runTesseractWithRetry
-	ErrTesseractTimeout   = errTesseractTimeout
+	ErrTesseractTimeout   = tesseract.ErrTimeout
 	Digitize              = digitize
 	Levenshtein           = levenshtein
 	ExtractInts           = extractInts
@@ -61,7 +63,7 @@ var (
 	UnknownChipTokens     = unknownChipTokens
 	ParseSummary          = parseSummary
 	ParsePersonal         = parsePersonal
-	GetTesseractPath      = getTesseractPath
+	GetTesseractPath      = tesseract.Path
 
 	// Function-variable seams — pointers so tests can save/set/restore the
 	// stub AND call through the current value.
