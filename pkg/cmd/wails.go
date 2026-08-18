@@ -245,7 +245,38 @@ func apiMiddleware(api http.Handler) application.Middleware {
 // caps, nosniff) matches server mode exactly. The SSE route is absent by
 // construction — see newAPIMux.
 func desktopAPIHandler(a *app.App) http.Handler {
-	return withRequestID(withSecurityHardening(newAPIMux(a)))
+	return withRequestID(withSecurityHardening(withStartupGuard(a, newAPIMux(a))))
+}
+
+// probNotStarted: startup failed and the app is running only to explain why.
+// 503 because the request is fine and the endpoint exists — there is simply
+// no database behind it. Declared here rather than beside its siblings in
+// problems.go because it is desktop-only: server mode exits on a failed
+// startup, and under the serveronly tag this file does not build.
+var probNotStarted = problemType{"not-started", "Service Unavailable", http.StatusServiceUnavailable}
+
+// withStartupGuard answers every API call with the reason startup failed,
+// instead of letting it reach a handler that dereferences a store which was
+// never opened.
+//
+// Desktop is the only mode that needs this. RunServer checks StartupError and
+// exits with the message; the asset server keeps serving BY DESIGN, so the
+// window can come up and show the user what went wrong. That design put the
+// app one fetch away from a nil dereference: the frontend boots, asks for
+// /matches like always, and the process dies on a segfault — handing the user
+// a stack trace instead of the message the app captured precisely so they
+// would not get one.
+//
+// The startup-error endpoint itself is exempt. It is what the modal reads,
+// and refusing it would leave a blank window explaining nothing.
+func withStartupGuard(a *app.App, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := a.StartupError(); err != nil && r.URL.Path != startupErrorPath {
+			writeProblem(w, r, probNotStarted, err.Error())
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // screenshotsMiddleware short-circuits `/_screenshot/...` requests to the

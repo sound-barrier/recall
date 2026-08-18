@@ -8,8 +8,11 @@
 package cmd_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -120,5 +123,91 @@ func TestDesktopAPIHandler_AppliesServerMiddlewares(t *testing.T) {
 	}
 	if rec.Header().Get("X-Request-ID") == "" {
 		t.Errorf("missing X-Request-ID (request-id parity with RunServer)")
+	}
+}
+
+// ── A failed startup must not be a segfault ──────────────────────────────
+
+// The route the modal reads. Spelled here rather than imported: the test is
+// external, and this is the contract, so it should break if the path moves.
+const startupErrorRoute = "/api/v1/system/startup-error"
+
+// brokenApp is the state a real user hits: Startup could not stand the
+// database up — an old file this build refuses, or a data dir it cannot
+// create — so the failure was captured and a.store was left nil.
+// Deliberately not a crash: the app is meant to come up and SHOW the reason.
+//
+// A real Startup against a data dir that is a FILE, which is the same
+// blocker trick server_settings_test.go uses. Not a hand-set flag: the point
+// is the state the app actually reaches.
+func brokenApp(t *testing.T) *app.App {
+	t.Helper()
+	blocker := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write blocker file: %v", err)
+	}
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", blocker)
+
+	a := app.New()
+	a.Startup(context.Background())
+	if a.StartupError() == nil {
+		t.Fatal("expected Startup to fail against a data dir that is a file")
+	}
+	return a
+}
+
+// The desktop asset server keeps serving after a failed startup, and the
+// frontend boots and calls GET /matches like always. Every handler behind
+// that reaches for a.store, which is nil — so the process died on a nil
+// dereference inside the aggregate loader, taking the window with it and
+// leaving the user a stack trace instead of the message the app captured
+// precisely so they would not get one.
+//
+// Server mode never had this: RunServer checks StartupError and exits with
+// the reason. Only the desktop path survives the failure, which is what put
+// it one HTTP request away from a segfault.
+func TestDesktopAPI_FailedStartupAnswersInsteadOfPanicking(t *testing.T) {
+	handler := cmd.APIMiddleware(cmd.DesktopAPIHandler(brokenApp(t)))(http.NotFoundHandler())
+
+	for _, path := range []string{
+		"/api/v1/matches",
+		"/api/v1/settings",
+		"/api/v1/screenshots/ignored",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			// A panic here is the bug: it crashed the process in the real app.
+			handler.ServeHTTP(rec, httptest.NewRequestWithContext(
+				t.Context(), http.MethodGet, path, nil))
+
+			if rec.Code != http.StatusServiceUnavailable {
+				t.Fatalf("status = %d, want 503; body=%s", rec.Code, rec.Body.String())
+			}
+			if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "application/problem+json") {
+				t.Errorf("content-type = %q, want problem+json", ct)
+			}
+			if !strings.Contains(rec.Body.String(), "not-a-dir") {
+				t.Errorf("the reply should carry the reason startup failed, got %s", rec.Body.String())
+			}
+		})
+	}
+}
+
+// The one endpoint that must still answer: the modal that tells the user
+// what went wrong reads it. Refusing it too would leave a blank window.
+func TestDesktopAPI_StartupErrorEndpointStillAnswers(t *testing.T) {
+	handler := cmd.APIMiddleware(cmd.DesktopAPIHandler(brokenApp(t)))(http.NotFoundHandler())
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequestWithContext(
+		t.Context(), http.MethodGet, startupErrorRoute, nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "not-a-dir") {
+		t.Errorf("the modal needs the reason, got %s", rec.Body.String())
 	}
 }
