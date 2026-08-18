@@ -7,6 +7,7 @@ import (
 
 	"recall/pkg/db"
 	"recall/pkg/match"
+	"recall/pkg/parser"
 )
 
 // matchSpec bundles the caller-planned inputs for one generated match:
@@ -137,6 +138,7 @@ func (fx *Fixture) appendGeneratedMatch(rng *rand.Rand, spec matchSpec, emit *em
 
 func (fx *Fixture) appendPlannedSummary(rng *rand.Rand, p matchPlan, emit *emitState) {
 	fx.Summaries = append(fx.Summaries, db.SummaryRow{
+		ParserGeneration:       parser.Generation,
 		Filename:               "summary-" + p.ts + ".png",
 		MatchKey:               p.key,
 		Map:                    p.gameMap,
@@ -161,14 +163,15 @@ func (fx *Fixture) appendPlannedSummary(rng *rand.Rand, p matchPlan, emit *emitS
 
 func (fx *Fixture) appendPlannedTeams(p matchPlan) {
 	fx.Teams = append(fx.Teams, db.TeamsRow{
-		Filename:     "teams-" + p.ts + ".png",
-		MatchKey:     p.key,
-		Eliminations: p.elims,
-		Assists:      p.assists,
-		Deaths:       p.deaths,
-		Damage:       p.damage,
-		Healing:      p.healing,
-		Mitigation:   p.mitigation,
+		ParserGeneration: parser.Generation,
+		Filename:         "teams-" + p.ts + ".png",
+		MatchKey:         p.key,
+		Eliminations:     p.elims,
+		Assists:          p.assists,
+		Deaths:           p.deaths,
+		Damage:           p.damage,
+		Healing:          p.healing,
+		Mitigation:       p.mitigation,
 		// Mirror real parsing: the teams carries the detected
 		// queue, so a match surfaces a queue even without a user
 		// override (the Queues seed is the override subset).
@@ -178,9 +181,10 @@ func (fx *Fixture) appendPlannedTeams(p matchPlan) {
 
 func (fx *Fixture) appendPlannedPersonal(p matchPlan) {
 	fx.Personals = append(fx.Personals, db.PersonalRow{
-		Filename: "personal-" + p.ts + ".png",
-		MatchKey: p.key,
-		Hero:     p.primary.Hero,
+		ParserGeneration: parser.Generation,
+		Filename:         "personal-" + p.ts + ".png",
+		MatchKey:         p.key,
+		Hero:             p.primary.Hero,
 		HeroStats: []db.HeroStat{
 			{Hero: p.primary.Hero, StatKey: "eliminations", StatValue: p.elims},
 			{Hero: p.primary.Hero, StatKey: "deaths", StatValue: p.deaths},
@@ -261,8 +265,9 @@ func (fx *Fixture) appendUnknownScreenshots(seed int64, n int, rangeStart time.T
 		t := time.Date(day.Year(), day.Month(), day.Day(), h, m, s, 0, time.UTC)
 		filename := "unknown-" + t.Format("2006-01-02T15-04-05") + ".png"
 		fx.Unknowns = append(fx.Unknowns, db.UnknownRow{
-			Filename: filename,
-			MatchKey: match.NewUnmatchedMatchKey(filename).String(),
+			ParserGeneration: parser.Generation,
+			Filename:         filename,
+			MatchKey:         match.NewUnmatchedMatchKey(filename).String(),
 		})
 	}
 }
@@ -309,12 +314,13 @@ func (fx *Fixture) appendAmbiguousScreenshots(seed int64, n int, rangeStart time
 		// resolver UI doesn't care about teams contents, only that the
 		// row exists.
 		fx.Teams = append(fx.Teams, db.TeamsRow{
-			Filename:     filename,
-			MatchKey:     matchKey,
-			Eliminations: 6 + ambigRng.Intn(20),
-			Assists:      4 + ambigRng.Intn(12),
-			Deaths:       2 + ambigRng.Intn(9),
-			Damage:       4000 + ambigRng.Intn(12000),
+			ParserGeneration: parser.Generation,
+			Filename:         filename,
+			MatchKey:         matchKey,
+			Eliminations:     6 + ambigRng.Intn(20),
+			Assists:          4 + ambigRng.Intn(12),
+			Deaths:           2 + ambigRng.Intn(9),
+			Damage:           4000 + ambigRng.Intn(12000),
 		})
 		fx.Ambiguous = append(fx.Ambiguous, AmbiguousSeed{
 			Filename:   filename,
