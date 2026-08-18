@@ -155,7 +155,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # a dependency, which is why this is ~1KB and not ~15KB. It is lazy-loaded, so
 # INITIAL JS is unmoved; this is the total, where a modal nobody has opened still
 # counts.
-: "${MAX_TOTAL_JS_BYTES:=1690000}"
+# 2026-08: 1690000 → 1698000 — the cue strip (the coach's timestamped
+# moments: the strip, its row, the pure placement helpers). Rides the coach
+# room's lazy chunk, so INITIAL JS is unmoved; this is the total, where a room
+# nobody has opened still counts.
+: "${MAX_TOTAL_JS_BYTES:=1698000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -169,7 +173,8 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # 2026-08: 372000 → 396000 — the film room's geometry plus the paper
 # family's per-theme values (measured 389658B).
 # 2026-08: 396000 → 400000 — the palette's scoped styles (measured 396218B).
-: "${MAX_TOTAL_CSS_BYTES:=400000}"
+# 2026-08: 400000 → 404000 — the cue strip's own sheet (measured 401396B).
+: "${MAX_TOTAL_CSS_BYTES:=404000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

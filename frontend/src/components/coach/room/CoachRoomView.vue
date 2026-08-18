@@ -11,6 +11,7 @@ import {
 } from '@/components/coach/room/coach-room-props'
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
+import type { CoachMoment } from '@/match/coach/coach-moments'
 import { notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The Film Room: reel · desk · sheet. The shell owns the layout and the
@@ -26,6 +27,8 @@ const props = withDefaults(defineProps<{
   records: MatchRecord[]
   /** The coach's drafts, keyed by match key. */
   notes: Record<string, CoachNoteDraft>
+  /** The coach's moments, keyed by match key — several per match. */
+  moments?: Record<string, CoachMoment[]>
   selectedKey?: string
   summary?: string
   /** Signed on the notes; the sheet's tally line names the coach. */
@@ -36,6 +39,7 @@ const props = withDefaults(defineProps<{
   exportReason?: string
   labels?: CoachLabels
 }>(), {
+  moments: () => ({}),
   selectedKey: '',
   summary: '',
   coachName: '',
@@ -48,6 +52,9 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   select: [matchKey: string]
   'update-note': [matchKey: string, draft: CoachNoteDraft]
+  'update-moment': [matchKey: string, moment: CoachMoment]
+  'remove-moment': [matchKey: string, momentId: string]
+  'copy-replay': [matchKey: string]
   'update-summary': [text: string]
   'confirm-player': [handle: string]
   export: []
@@ -124,12 +131,16 @@ function step(key: string | null): void {
           :record="room.selectedRecord.value"
           :handle="player.handle"
           :draft="room.activeDraft.value"
+          :moments="props.moments[room.activeKey.value] ?? []"
           :save-state="saveStateFor(room.activeKey.value)"
           :blocked-reason="blockedReason"
           :has-prev="room.prevKey.value !== null"
           :has-next="room.nextKey.value !== null"
           :labels="labels"
           @update-note="(draft: CoachNoteDraft) => emit('update-note', room.activeKey.value, draft)"
+          @update-moment="(m: CoachMoment) => emit('update-moment', room.activeKey.value, m)"
+          @remove-moment="(id: string) => emit('remove-moment', room.activeKey.value, id)"
+          @copy-replay="emit('copy-replay', room.activeKey.value)"
           @prev="step(room.prevKey.value)"
           @next="step(room.nextKey.value)"
         />

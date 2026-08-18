@@ -1,0 +1,173 @@
+/* The cue strip and its rows share this sheet: they are one surface split
+   across two components, and a rail that only lines up when both files agree
+   is a rail that will stop lining up. */
+
+.cue-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+}
+
+.cue-strip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.cue-length {
+  font-family: var(--font-mono);
+  font-size: var(--type-3xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.cue-empty {
+  margin: 0;
+  font-size: var(--type-sm);
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.cue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cue-row {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+/* The sprocket rail, echoing the reel's — same visual language, one level
+   deeper: there it separates matches, here it separates moments inside one. */
+.cue-rail {
+  position: relative;
+  align-self: stretch;
+  min-height: 2.4rem;
+  border-right: 1px dashed var(--hairline);
+}
+
+.cue-punch {
+  position: absolute;
+  top: 0.55rem;
+  right: -0.28rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--surface);
+  border: 1px solid var(--text-dim);
+  border-radius: var(--radius-pill);
+}
+
+/* Proportional placement, only when the match reported a length. The rail
+   scales against real seconds or it does not scale at all — an unscaled rail
+   is honest, a rail scaled against a guess is not. */
+.cue-list-scaled .cue-row {
+  margin-top: calc(var(--cue-at, 0%) * 0.06);
+}
+
+.cue-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.cue-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cue-clock {
+  font-family: var(--font-mono);
+  font-size: var(--type-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.cue-clock-input {
+  width: 5rem;
+  padding: 0.15rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-hair);
+}
+
+.cue-clock-input[aria-invalid="true"] {
+  border-color: var(--loss);
+  border-width: 2px;
+}
+
+.cue-remove {
+  margin-left: auto;
+  padding: 0 0.45rem;
+  line-height: 1.4;
+}
+
+.cue-text {
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  font-family: inherit;
+  font-size: var(--type-sm);
+  line-height: 1.45;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-hair);
+  resize: vertical;
+}
+
+.cue-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cue-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.cue-tag {
+  font-size: var(--type-4xs);
+}
+
+.cue-replay {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0;
+}
+
+.cue-replay-code {
+  font-family: var(--font-mono);
+  font-size: var(--type-3xs);
+  color: var(--text-dim);
+}
+
+.cue-warn {
+  margin: 0;
+  font-size: var(--type-3xs);
+  color: var(--loss);
+}
+
+.cue-add {
+  align-self: flex-start;
+  border-style: dashed;
+}

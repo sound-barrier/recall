@@ -2,12 +2,16 @@ import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
-  CloseCoachSession, DeleteCoachNote, ExportCoachNotes, OpenCoachBundle,
-  PutCoachNote, PutCoachSummary, SetCoachSessionPlayer,
+  CloseCoachSession, DeleteCoachMoment, DeleteCoachNote, ExportCoachNotes,
+  OpenCoachBundle, PutCoachMoment, PutCoachNote, PutCoachSummary,
+  SetCoachSessionPlayer,
   type CoachNote, type CoachSessionView,
 } from '@/api-client'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { fromWireNote, isEmptyDraft, toNoteInput, type CoachNoteDraft } from '@/match/coach/coach-notes'
+import {
+  fromWireMoment, isSavable, momentSaveKey, toMomentInput, type CoachMoment,
+} from '@/match/coach/coach-moments'
 import {
   clearCoachSessionData, setCoachSessionData, setCoachSessionResume,
   useCoachSessionMatchesQuery, useCoachSessionQuery,
@@ -68,6 +72,17 @@ function draftsByMatch(wire: CoachNote[]): Record<string, CoachNoteDraft> {
   return Object.fromEntries(wire.map(note => [note.match_key, fromWireNote(note)]))
 }
 
+// Moments arrive nested inside their note and are flattened by match key,
+// which is what the desk asks for — the note id is the transport's business,
+// not the strip's.
+function momentsByMatch(wire: CoachNote[]): Record<string, CoachMoment[]> {
+  const out: Record<string, CoachMoment[]> = {}
+  for (const note of wire) {
+    if (note.moments?.length) out[note.match_key] = note.moments.map(fromWireMoment)
+  }
+  return out
+}
+
 export const useCoachStore = defineStore('coach', () => {
   // ── The open session ──────────────────────────────────────────────
   const sessionQuery = useCoachSessionQuery()
@@ -83,6 +98,9 @@ export const useCoachStore = defineStore('coach', () => {
 
   // ── The room's editable state ─────────────────────────────────────
   const notes = ref<Record<string, CoachNoteDraft>>({})
+  // Per match, because several moments share one — the whole reason they are
+  // not just another field on the note.
+  const moments = ref<Record<string, CoachMoment[]>>({})
   const summary = ref('')
   const selectedKey = ref('')
   const dirtySinceExport = ref(false)
@@ -114,6 +132,7 @@ export const useCoachStore = defineStore('coach', () => {
     hydratedFor = identity
     discardSaves()
     notes.value = draftsByMatch(view?.notes ?? [])
+    moments.value = momentsByMatch(view?.notes ?? [])
     summary.value = view?.summary ?? ''
     selectedKey.value = ''
     dirtySinceExport.value = false
@@ -135,6 +154,56 @@ export const useCoachStore = defineStore('coach', () => {
       if (isEmptyDraft(next)) await DeleteCoachNote(matchKey)
       else await PutCoachNote(matchKey, toNoteInput(next))
     })
+  }
+
+  // Optimistic like the note, and for the same reason: the strip, the rail and
+  // the reel's mark all render from this value, so it moves before the server
+  // answers. Keyed on the MOMENT id rather than the match — several share a
+  // match, and a queue keyed on the match would collapse three writes into
+  // whichever typed last.
+  function updateMoment(matchKey: string, next: CoachMoment): void {
+    const bucket = moments.value[matchKey] ?? []
+    const at = bucket.findIndex((m) => m.momentId === next.momentId)
+    const merged = at < 0 ? [...bucket, next] : bucket.map((m, i) => (i === at ? next : m))
+    moments.value = { ...moments.value, [matchKey]: merged }
+    dirtySinceExport.value = true
+    // A draft that does not yet say enough stays local: PUTting it would be a
+    // 400 on the clock rules, and would leave a row pointing at nothing.
+    if (!isSavable(next)) return
+    queueSave(momentSaveKey(next.momentId), async () => {
+      await PutCoachMoment(matchKey, next.momentId, toMomentInput(next))
+    })
+  }
+
+  function removeMoment(matchKey: string, momentId: string): void {
+    const bucket = moments.value[matchKey] ?? []
+    const going = bucket.find((m) => m.momentId === momentId)
+    moments.value = { ...moments.value, [matchKey]: bucket.filter((m) => m.momentId !== momentId) }
+    dirtySinceExport.value = true
+    // Never saved means never stored: a draft the coach abandoned has nothing
+    // on the server to delete, and asking would 404.
+    if (!going || !isSavable(going)) return
+    queueSave(momentSaveKey(momentId), async () => {
+      await DeleteCoachMoment(matchKey, momentId)
+    })
+  }
+
+  // The replay code is what makes a timestamped moment actionable: Recall
+  // cannot drive the game, so handing over the code to paste into the replay
+  // viewer is as far as a link can go. Reads the LOANED corpus rather than the
+  // coach's own — useMatchActions has the same routine over the other one.
+  async function copyReplayCode(matchKey: string): Promise<void> {
+    const code = (loanedRecords.value
+      .find((r) => r.match_key === matchKey)?.annotation?.replay_code ?? '').trim()
+    if (!code) {
+      useAppStore().setError('This match carries no replay code.')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch (e) {
+      useAppStore().setErrorFromRaw(String(e))
+    }
   }
 
   function updateSummary(text: string): void {
@@ -304,6 +373,7 @@ export const useCoachStore = defineStore('coach', () => {
     coachName,
     loanedRecords,
     notes,
+    moments,
     summary,
     selectedKey,
     saveStateFor,
@@ -314,6 +384,9 @@ export const useCoachStore = defineStore('coach', () => {
     needsPlayerHandle,
     selectKey,
     updateNote,
+    updateMoment,
+    copyReplayCode,
+    removeMoment,
     updateSummary,
     setTourOpen,
     setNarrowSuspender,

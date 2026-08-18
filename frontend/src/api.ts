@@ -22,6 +22,8 @@ import { unwrap, unwrapVoid } from '@/api-unwrap'
 import * as sdk from '@/client/sdk.gen'
 import type {
   CoachDecisionEnum,
+  CoachMoment,
+  CoachMomentInput,
   CoachNote,
   CoachNoteInput,
   CoachReturnSheet,
@@ -55,6 +57,7 @@ export type {
   CoachDecisionEnum,
   CoachFocusTagEnum,
   CoachMatchContext,
+  CoachMoment,
   CoachNote,
   CoachNoteInput,
   CoachNoteKindEnum,
@@ -609,6 +612,37 @@ export function PutCoachNote(matchKey: string, input: CoachNoteBody): Promise<Co
 // a PUT with empty fields. Idempotent.
 export function DeleteCoachNote(matchKey: string): Promise<void> {
   return unwrapVoid(sdk.deleteCoachNote({ path: { match_key: matchKey } }))
+}
+
+// One timestamped moment inside a match's note. The moment id is the
+// CLIENT's to mint: the autosave queue keys on it from the first keystroke,
+// before any round trip has happened. 400 when the clock is not MM:SS, the
+// text is empty, or the match already holds the maximum.
+export interface CoachMomentBody {
+  match_clock: string
+  text: string
+  // Widened from the generated enum for the same reason CoachNoteBody widens
+  // its tag list: the room's draft type is a string, and the vocabulary is
+  // validated server-side, so a tag outside it is a 400 rather than a compile
+  // error. Widening once at the boundary keeps the cast out of the store.
+  focus_tag?: string
+}
+
+export function PutCoachMoment(
+  matchKey: string, momentID: string, input: CoachMomentBody,
+): Promise<CoachMoment> {
+  return unwrap(sdk.putCoachMoment({
+    path: { match_key: matchKey, moment_id: momentID },
+    body: input as CoachMomentInput,
+  }))
+}
+
+// Drop one moment. The note stays — a match whose last moment was deleted is
+// still a match the coach looked at. Idempotent.
+export function DeleteCoachMoment(matchKey: string, momentID: string): Promise<void> {
+  return unwrapVoid(sdk.deleteCoachMoment({
+    path: { match_key: matchKey, moment_id: momentID },
+  }))
 }
 
 // The set-level "what to work on" note. An empty string clears it.

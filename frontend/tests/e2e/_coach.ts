@@ -66,6 +66,24 @@ export interface CoachSessionNote {
 /** Body of `PUT /api/v1/coach/session/notes/{match_key}` — the note minus identity. */
 export type CoachNotePutBody = Pick<CoachSessionNote, 'kind' | 'text' | 'focus_tags' | 'extra_tags' | 'match_clock'>
 
+/** One timestamped moment inside a note. Several share a match. */
+export interface CoachSessionMoment {
+  moment_id: string
+  match_clock: string
+  text: string
+  focus_tag?: string
+  updated_at: string
+}
+
+/** Body of `PUT …/notes/{match_key}/moments/{moment_id}`. */
+export type CoachMomentPutBody = Pick<CoachSessionMoment, 'match_clock' | 'text' | 'focus_tag'>
+
+/** Zero-pad a single-digit minute, the way the server stores it. */
+function padClock(clock: string): string {
+  const [m, sec] = clock.split(':')
+  return m && m.length === 1 ? `0${m}:${sec}` : clock
+}
+
 export interface CoachPlayer {
   id: string
   handle: string
@@ -100,7 +118,7 @@ export interface SessionMatch {
     finished_at: string
     played_at_utc: string
   }
-  annotation?: { note?: string; tags?: string[] }
+  annotation?: { note?: string; tags?: string[]; replay_code?: string }
   reviewed_by?: 'self' | 'coach'
   coach_notes?: MatchCoachNote[]
 }
@@ -197,6 +215,8 @@ interface MatchSpec {
   score: string
   ead: [number, number, number]
   healing: number
+  /** MM:SS. Defaults to 11:40 — the strip needs a duration to scale against. */
+  gameLength?: string
 }
 
 function sessionMatch(spec: MatchSpec): SessionMatch {
@@ -224,6 +244,10 @@ function sessionMatch(spec: MatchSpec): SessionMatch {
       assists,
       deaths,
       healing: spec.healing,
+      // The cue strip reads this: a moment at 4:45 of a 9:12 match sits about
+      // halfway down the rail, and a stamp past the end is a typo worth
+      // warning about.
+      game_length: spec.gameLength ?? '11:40',
       heroes_played: [{ hero: spec.hero, play_time: '11:40', percent_played: 100 }],
     },
   }
@@ -255,8 +279,12 @@ export const NOTED_MATCH: SessionMatch = {
   },
 }
 /** The King's Row match — the reel/desk clock assertions read its naive time. */
-export const KINGS_ROW_MATCH: SessionMatch =
-  sessionMatch({ map: "king's row", mode: 'hybrid', hero: 'ana', role: 'support', result: 'victory', dayOffset: 2, time: '21:14', score: '3-2', ead: [14, 21, 4], healing: 9840 })
+export const KINGS_ROW_MATCH: SessionMatch = {
+  ...sessionMatch({ map: "king's row", mode: 'hybrid', hero: 'ana', role: 'support', result: 'victory', dayOffset: 2, time: '21:14', score: '3-2', ead: [14, 21, 4], healing: 9840 }),
+  // A replay code, because a moment the reader cannot get to is trivia — the
+  // strip prints this beside every one.
+  annotation: { replay_code: 'RPL45X' },
+}
 /** The Lijiang Tower match, which carries the rank screen. */
 export const RANK_MATCH: SessionMatch = withRankScreen(
   sessionMatch({ map: 'lijiang tower', mode: 'control', hero: 'juno', role: 'support', result: 'victory', dayOffset: 3, time: '20:05', score: '2-0', ead: [10, 22, 3], healing: 8880 }),
@@ -453,6 +481,12 @@ export interface CoachSessionMock {
   notePutKey: RouteCapture<string>
   /** Match keys the room sent a DELETE for, in order. */
   noteDeletes: string[]
+  /** Last `PUT …/moments/{moment_id}` body. */
+  momentPut: RouteCapture<CoachMomentPutBody>
+  /** Match key of the last moment PUT. */
+  momentPutKey: RouteCapture<string>
+  /** Moment ids the room sent a DELETE for, in order. */
+  momentDeletes: string[]
   /** Last `PUT /coach/session/summary` body. */
   summaryPut: RouteCapture<{ text: string }>
   /** Last `PUT /settings/coaching` body. */
@@ -469,6 +503,8 @@ export interface CoachSessionMock {
 interface SessionState {
   session: SessionFixture
   notes: Map<string, CoachSessionNote>
+  /** Moments per match key — several share a match, which is the point. */
+  moments: Map<string, CoachSessionMoment[]>
   summary: string
   coachName: string
   active: boolean
@@ -557,6 +593,45 @@ async function routeSessionNotes(page: Page, state: SessionState, mock: CoachSes
     mock.notePutKey.set(key)
     await fulfillJSON(route, saved)
   })
+  // Registered BEFORE the summary route and AFTER the notes one. The notes
+  // glob is `notes/*`, and Playwright's `*` stops at a slash, so it does not
+  // reach `notes/<key>/moments/<id>` — but the ordering is stated here anyway,
+  // because a future `notes/**` would silently swallow every moment write.
+  await page.route('**/api/v1/coach/session/notes/*/moments/*', async (route: Route) => {
+    if (state.session.player.handle === '') {
+      await fulfillProblem(route, 409, 'confirm the player before writing notes')
+      return
+    }
+    const parts = new URL(route.request().url()).pathname.split('/')
+    const momentID = parts[parts.length - 1] ?? ''
+    const matchKey = parts[parts.length - 3] ?? ''
+    const bucket = state.moments.get(matchKey) ?? []
+    if (route.request().method() === 'DELETE') {
+      state.moments.set(matchKey, bucket.filter((m) => m.moment_id !== momentID))
+      mock.momentDeletes.push(momentID)
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
+    const body = parseBody<CoachMomentPutBody>(route)
+    // The server refuses what it cannot read rather than storing it; the mock
+    // has to as well, or the spec proving the refusal passes against a client
+    // that never validated.
+    if (!/^\d{1,2}:[0-5]\d$/.test(body.match_clock.trim())) {
+      await fulfillProblem(route, 400, `match clock ${body.match_clock} is not MM:SS`)
+      return
+    }
+    const saved: CoachSessionMoment = {
+      moment_id: momentID,
+      match_clock: padClock(body.match_clock.trim()),
+      text: body.text,
+      ...(body.focus_tag ? { focus_tag: body.focus_tag } : {}),
+      updated_at: new Date().toISOString(),
+    }
+    state.moments.set(matchKey, [...bucket.filter((m) => m.moment_id !== momentID), saved])
+    mock.momentPut.set(body)
+    mock.momentPutKey.set(matchKey)
+    await fulfillJSON(route, saved)
+  })
   await page.route('**/api/v1/coach/session/summary', async (route: Route) => {
     // Same 409 the note route mirrors, and for the same reason: the server
     // keys the summary on the player too (PutCoachSummary → sessionPlayerLocked).
@@ -611,6 +686,7 @@ export async function mockCoachSession(page: Page, opts: CoachSessionMockOptions
   const state: SessionState = {
     session: opened,
     notes: noteMap(opts.notes ?? []),
+    moments: new Map(),
     summary: opts.summary ?? '',
     coachName: opts.coachName ?? COACH_NAME,
     active: opts.active ?? false,
@@ -622,6 +698,9 @@ export async function mockCoachSession(page: Page, opts: CoachSessionMockOptions
     notePut: routeCapture<CoachNotePutBody>('coach note PUT body'),
     notePutKey: routeCapture<string>('coach note PUT match key'),
     noteDeletes: [],
+    momentPut: routeCapture<CoachMomentPutBody>('coach moment PUT body'),
+    momentPutKey: routeCapture<string>('coach moment PUT match key'),
+    momentDeletes: [],
     summaryPut: routeCapture<{ text: string }>('coach summary PUT body'),
     coachNamePut: routeCapture<{ coach_name: string }>('coaching settings PUT body'),
     isActive: () => state.active,
