@@ -256,10 +256,21 @@ frontend/src/match/elo                        13
 # registered in WIDGET_REGISTRY. DELIBERATELY NOT SPLIT: this is the pkg/db case
 # on the frontend — one responsibility (render one dossier slice as a tile), one
 # intentional public surface (the registry), and any family taxonomy would be
-# invented rather than discovered. The evidence is in the tests: the three
-# batched suites (FormWidgets, ModifierWidgets, MomentumWidgets) each cut across
-# three or four candidate families, so those groupings are PR batches, not
-# domains. Reopen only after splitting those suites per-widget.
+# invented rather than discovered.
+#
+# The old evidence for that was the three batched test suites (FormWidgets,
+# ModifierWidgets, MomentumWidgets), each cutting across three or four candidate
+# families — PR batches, not domains — and the note here said to reopen the
+# question only after splitting them per-widget. 2026-08-17: they ARE split
+# per-widget now, so the question was reopened on the merits and the answer did
+# not change. Sorting all 44 into the best families anyone can name (winrate-by-X,
+# top-N breakdowns, rank and climb, streak and tilt, time, review) leaves eight
+# in "other" — AvgKda, HeroesPerMatch, HeroPoolSize, LeaverRate,
+# ModifierBreakdown, QuickplayVsCompetitive, Reversal, UphillBattle — and puts
+# several honestly in two at once (RankPercentile is a rank reading AND a KPI;
+# FirstGameWinrate is a win rate AND a session statistic). A taxonomy that files
+# a fifth of its members under "other" is one being imposed. The directory stays
+# whole; a genuine family would announce itself by arriving as a family.
 # 44: three trailing-window climb widgets (play-vs-rank, vs-baseline, climb
 # rate) over one shared kernel. The same responsibility spelled three concerns
 # wider — each renders one dossier slice as a tile — and they arrived together

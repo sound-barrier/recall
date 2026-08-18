@@ -136,13 +136,18 @@ changed bullets carry an inline re-evaluation note:
   useDashboardLayout 329, useEloCalculator 437, KeyboardShortcutsModal 351;
   `useMatchesDossierQueries` sits at 343 since the kernel extraction), so the
   old per-file exemptions are paid and deleted. What remains, argued fresh:
-  `MatchesView.vue` (698: ~369 script / ~208 template / ~119 style) is the
-  set-workspace composition shell — the script is pure wiring (store reads,
-  the CardStateApi/grouping/keyboard bundles, the four dossier `provide()`
-  calls; the dossier itself now lives in the matches store, so the old
-  "useWeekStart must live here" rationale is obsolete) and the only seam
-  left is splitting the workspace layout itself; growth trigger ≥750 lines
-  or any non-wiring logic landing in its script. `api.ts` (529) is the
+  `MatchesView.vue` is now 508 (2026-08-17, from 698): the style block went
+  to a sibling sheet, and three cohesive clusters left the script for
+  composables that each have one reason to change that is not this view's —
+  `useMatchesRowActions` (the right-click menu's state machine AND what each
+  item does, which is the menu's contract), `useMatchesBulkActions` (live
+  selection, the archive drawer's parallel selection, and the move picker they
+  share), and `provideMatchesContext` (the five dossier/narrow provides, one
+  decision about how the widget tree gets its data). What is left is the
+  workspace composition itself — ~200 lines of wiring and ~210 of template —
+  and the only seam remaining is splitting the layout, which would trade one
+  readable shell for three partial ones. Growth trigger unchanged at ≥750
+  lines, or any non-wiring logic landing in its script. `api.ts` (529) is the
   named-function facade over the generated SDK — 61 one-call wrappers,
   complexity 1 each; the file IS the one-page wire-surface listing, and
   splitting it buys indirection for zero win. `match-dossier-aggregate.ts`
@@ -157,7 +162,12 @@ changed bullets carry an inline re-evaluation note:
   605, useDashboardLayout.test 579 — re-counted after the Testing
   Library migration) stay whole: a suite mirrors its
   surface, and splitting one by line count scatters a single surface's
-  coverage story.
+  coverage story. The three BATCHED widget suites were the opposite case and
+  are now split per-widget (2026-08-17): FormWidgets, ModifierWidgets and
+  MomentumWidgets each covered several unrelated widgets, so they mirrored a
+  PR rather than a surface. That split was also the stated precondition for
+  reopening whether `dashboard/widgets` wants a family taxonomy; it was
+  reopened and the answer stands — see the reasoning above that budget entry.
 - **App.vue is a clean 177-line thin shell** (zero business logic — it reads a
   few store refs, wires the App-shell composables, and renders chrome + one
   view; the parse-run-state / profile / tour / first-run wiring lives in the
