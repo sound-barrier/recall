@@ -165,7 +165,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # moments: the strip, its row, the pure placement helpers). Rides the coach
 # room's lazy chunk, so INITIAL JS is unmoved; this is the total, where a room
 # nobody has opened still counts.
-: "${MAX_TOTAL_JS_BYTES:=1698000}"
+# 2026-08: 1698000 → 1703000 — the rest of the moments feature: the PLAYER's
+# own cue strip in the match journal (its draft-override state and debounced
+# per-moment save queue), the returned-note rendering, and the palette's
+# coaching actions. Measured 1700179B. INITIAL JS is unmoved at 332192B — the
+# journal rides the already-lazy match-detail chunk and the room its own, which
+# is the number that would have moved if any of it had drifted eager.
+: "${MAX_TOTAL_JS_BYTES:=1703000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
