@@ -2588,6 +2588,74 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/coach/session/notes/{match_key}/moments/{moment_id}:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+      - name: moment_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: |
+          The moment's own id. The CLIENT mints it: the autosave queue keys
+          on it from the first keystroke, before any round trip has
+          happened, so the server cannot be the one to name it.
+    put:
+      operationId: PutCoachMoment
+      tags: [Coaching]
+      summary: Save one timestamped moment on a match
+      description: |
+        Upserts one observation inside the note for a match — "3:23, you did
+        not take the off-angle". Several moments share a match, which is the
+        whole point: the note itself carries a single optional clock, so a
+        coach with three things to say at three times could only stamp one.
+
+        Creates the match's note if this is the first mark on it, as a
+        `reviewed_only` note — the coach HAS reviewed the match, they just
+        said it with a timestamp rather than a paragraph.
+
+        `404` when no session is open or the match is not in the loaned
+        corpus, `409` before the player's handle has been confirmed, `400`
+        when the clock is not `MM:SS`, the text is empty, or the match
+        already holds the maximum of 50 moments.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachMomentInput"
+      responses:
+        "200":
+          description: The saved moment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachMoment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteCoachMoment
+      tags: [Coaching]
+      summary: Remove one moment
+      description: |
+        Idempotent. The note is deliberately left behind — a match whose
+        last moment was deleted is still a match the coach looked at.
+      responses:
+        "204":
+          description: Moment removed (or never existed).
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/coach/session/summary:
     put:
       operationId: PutCoachSummary
@@ -3962,10 +4030,12 @@ components:
           description: Freeform tags outside the fixed vocabulary.
         match_clock:
           type: string
-          pattern: "^[0-9]{1,3}:[0-5][0-9]$"
+          pattern: "^[0-9]{1,2}:[0-5][0-9]$"
           description: |
             Optional in-match timestamp, `MM:SS`. Empty when the note is
-            not about a moment.
+            not about a moment. Two minute digits, not three: the server
+            has always rejected `100:00`, and the longer pattern here
+            promised a value it answers with a `400`.
           example: "06:40"
 
     CoachNote:
@@ -4006,6 +4076,71 @@ components:
             The match snapshot. Present on notes read out of an archive;
             omitted on a live session note, where the corpus already
             carries the match.
+        moments:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/CoachMoment"
+          description: |
+            The note's timestamped observations, ordered down the match.
+            Absent rather than empty when the note has none, so a note
+            written before moments existed round-trips byte-identically.
+
+    CoachMoment:
+      type: object
+      description: |
+        One timestamped observation inside a note — "3:23, you did not take
+        the off-angle". Several share a match, which is why they are
+        addressed by their own id rather than the match key.
+      required: [moment_id, match_clock, text]
+      properties:
+        moment_id:
+          type: string
+          description: |
+            Minted on the first save and kept through every edit, so an
+            edit is never mistaken for a new observation.
+        match_clock:
+          type: string
+          pattern: "^[0-9]{1,2}:[0-5][0-9]$"
+          description: |
+            When in the match it happened, `MM:SS`. REQUIRED — unlike the
+            note's optional clock, a moment without a time is just a
+            sentence, and the note is already the place for those.
+          example: "04:45"
+        text:
+          type: string
+          maxLength: 600
+          description: |
+            What happened. Bounded well below the note's own limit: a
+            moment names one thing, and the strip is meant to be scanned.
+          example: "Cassidy flanked behind you."
+        focus_tag:
+          allOf:
+            - $ref: "#/components/schemas/CoachFocusTagEnum"
+          description: |
+            Optional. A coach saying what happened at 4:45 should not have
+            to classify it first.
+        updated_at:
+          type: string
+          description: When the moment was last saved (RFC3339).
+
+    CoachMomentInput:
+      type: object
+      description: The body of a moment write — the moment minus its identity.
+      required: [match_clock, text]
+      properties:
+        match_clock:
+          type: string
+          pattern: "^[0-9]{1,2}:[0-5][0-9]$"
+          example: "04:45"
+        text:
+          type: string
+          maxLength: 600
+          example: "Cassidy flanked behind you."
+        focus_tag:
+          allOf:
+            - $ref: "#/components/schemas/CoachFocusTagEnum"
+          description: Optional.
 
     CoachSessionView:
       type: object

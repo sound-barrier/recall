@@ -819,7 +819,9 @@ export type CoachNoteInput = {
     extra_tags?: Array<string>;
     /**
      * Optional in-match timestamp, `MM:SS`. Empty when the note is
-     * not about a moment.
+     * not about a moment. Two minute digits, not three: the server
+     * has always rejected `100:00`, and the longer pattern here
+     * promised a value it answers with a `400`.
      *
      */
     match_clock?: string;
@@ -856,6 +858,63 @@ export type CoachNote = {
      *
      */
     match?: CoachMatchContext;
+    /**
+     * The note's timestamped observations, ordered down the match.
+     * Absent rather than empty when the note has none, so a note
+     * written before moments existed round-trips byte-identically.
+     *
+     */
+    moments?: Array<CoachMoment>;
+};
+
+/**
+ * One timestamped observation inside a note — "3:23, you did not take
+ * the off-angle". Several share a match, which is why they are
+ * addressed by their own id rather than the match key.
+ *
+ */
+export type CoachMoment = {
+    /**
+     * Minted on the first save and kept through every edit, so an
+     * edit is never mistaken for a new observation.
+     *
+     */
+    moment_id: string;
+    /**
+     * When in the match it happened, `MM:SS`. REQUIRED — unlike the
+     * note's optional clock, a moment without a time is just a
+     * sentence, and the note is already the place for those.
+     *
+     */
+    match_clock: string;
+    /**
+     * What happened. Bounded well below the note's own limit: a
+     * moment names one thing, and the strip is meant to be scanned.
+     *
+     */
+    text: string;
+    /**
+     * Optional. A coach saying what happened at 4:45 should not have
+     * to classify it first.
+     *
+     */
+    focus_tag?: CoachFocusTagEnum;
+    /**
+     * When the moment was last saved (RFC3339).
+     */
+    updated_at?: string;
+};
+
+/**
+ * The body of a moment write — the moment minus its identity.
+ */
+export type CoachMomentInput = {
+    match_clock: string;
+    text: string;
+    /**
+     * Optional.
+     */
+    focus_tag?: CoachFocusTagEnum;
 };
 
 /**
@@ -4266,6 +4325,122 @@ export type PutCoachNoteResponses = {
 };
 
 export type PutCoachNoteResponse = PutCoachNoteResponses[keyof PutCoachNoteResponses];
+
+export type DeleteCoachMomentData = {
+    body?: never;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * The moment's own id. The CLIENT mints it: the autosave queue keys
+         * on it from the first keystroke, before any round trip has
+         * happened, so the server cannot be the one to name it.
+         *
+         */
+        moment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/coach/session/notes/{match_key}/moments/{moment_id}';
+};
+
+export type DeleteCoachMomentErrors = {
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type DeleteCoachMomentError = DeleteCoachMomentErrors[keyof DeleteCoachMomentErrors];
+
+export type DeleteCoachMomentResponses = {
+    /**
+     * Moment removed (or never existed).
+     */
+    204: void;
+};
+
+export type DeleteCoachMomentResponse = DeleteCoachMomentResponses[keyof DeleteCoachMomentResponses];
+
+export type PutCoachMomentData = {
+    body: CoachMomentInput;
+    path: {
+        /**
+         * Match identity — same `match_key` value exposed in
+         * `MatchRecord`. URL-safe: the canonical form replaces every
+         * legacy colon separator with a dash, so no percent-encoding
+         * is required for paste-in-URL use
+         * (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         * and `ambiguous-<filename>` variants the embedded filename
+         * still needs the usual encoding for spaces / unicode.
+         *
+         */
+        match_key: string;
+        /**
+         * The moment's own id. The CLIENT mints it: the autosave queue keys
+         * on it from the first keystroke, before any round trip has
+         * happened, so the server cannot be the one to name it.
+         *
+         */
+        moment_id: string;
+    };
+    query?: never;
+    url: '/api/v1/coach/session/notes/{match_key}/moments/{moment_id}';
+};
+
+export type PutCoachMomentErrors = {
+    /**
+     * Malformed request body or query parameters.
+     */
+    400: ProblemDetails;
+    /**
+     * The requested resource was not found.
+     */
+    404: ProblemDetails;
+    /**
+     * The request was syntactically valid, but the resource state or
+     * a payload value prevents the action (e.g. duplicate profile
+     * name, screenshots directory not configured, invalid Tesseract
+     * binary path, non-candidate resolution target).
+     *
+     */
+    409: ProblemDetails;
+    /**
+     * Unhandled server-side error.
+     */
+    500: ProblemDetails;
+};
+
+export type PutCoachMomentError = PutCoachMomentErrors[keyof PutCoachMomentErrors];
+
+export type PutCoachMomentResponses = {
+    /**
+     * The saved moment.
+     */
+    200: CoachMoment;
+};
+
+export type PutCoachMomentResponse = PutCoachMomentResponses[keyof PutCoachMomentResponses];
 
 export type PutCoachSummaryData = {
     body: {

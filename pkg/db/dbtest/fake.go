@@ -83,11 +83,13 @@ type Fake struct {
 	// session summary. Coach-RECEIVED family (wiped like match history):
 	// accepted blocks on this user's own matches and the staged returns
 	// they came from (decisions live inside each CoachReturn).
-	CoachPlayers    []db.CoachPlayer
-	CoachNotes      map[int64]map[string]db.CoachNote
-	CoachSummaries  map[int64]db.CoachSummary
-	MatchCoachNotes []db.MatchCoachNote
-	CoachReturns    []db.CoachReturn
+	CoachPlayers []db.CoachPlayer
+	CoachNotes   map[int64]map[string]db.CoachNote
+	// Keyed by the parent note's PUBLIC id, mirroring the SQL loader.
+	CoachNoteMoments map[string][]db.CoachNoteMoment
+	CoachSummaries   map[int64]db.CoachSummary
+	MatchCoachNotes  []db.MatchCoachNote
+	CoachReturns     []db.CoachReturn
 
 	// Inspectable counters / call lists. Tests assert on these to
 	// verify the App layer (or HTTP handlers) actually reached the

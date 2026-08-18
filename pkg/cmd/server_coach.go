@@ -44,6 +44,8 @@ func registerCoachRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/coach/session/matches", handleGetCoachSessionMatches(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}", handlePutCoachNote(a))
 	apiMux.HandleFunc("DELETE /api/v1/coach/session/notes/{match_key}", handleDeleteCoachNote(a))
+	apiMux.HandleFunc("PUT /api/v1/coach/session/notes/{match_key}/moments/{moment_id}", handlePutCoachMoment(a))
+	apiMux.HandleFunc("DELETE /api/v1/coach/session/notes/{match_key}/moments/{moment_id}", handleDeleteCoachMoment(a))
 	apiMux.HandleFunc("PUT /api/v1/coach/session/summary", handlePutCoachSummary(a))
 	apiMux.HandleFunc("POST /api/v1/coach/session/export", handleExportCoachNotes(a))
 
@@ -167,6 +169,44 @@ func handleDeleteCoachNote(a *app.App) http.HandlerFunc {
 			return
 		}
 		if writeError(w, r, a.DeleteCoachNote(matchKey)) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handlePutCoachMoment saves one timestamped moment on a match's note. The
+// moment id is in the path rather than the body because the client mints it —
+// the autosave queue keys on it from the first keystroke, before any round
+// trip has happened.
+func handlePutCoachMoment(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		var in coach.MomentInput
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		moment, err := a.PutCoachMoment(matchKey, r.PathValue("moment_id"), in)
+		if writeError(w, r, err) {
+			return
+		}
+		writeJSON(w, r, moment, nil)
+	}
+}
+
+// handleDeleteCoachMoment removes one moment and leaves the note behind.
+// Idempotent.
+func handleDeleteCoachMoment(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		if writeError(w, r, a.DeleteCoachMoment(matchKey, r.PathValue("moment_id"))) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

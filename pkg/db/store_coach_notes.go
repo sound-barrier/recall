@@ -266,3 +266,141 @@ func (s *SQLStore) LoadCoachSummary(playerRef int64) (CoachSummary, bool, error)
 	}
 	return out, true, nil
 }
+
+// ── A note's timestamped moments ──────────────────────────────────────────
+//
+// Moments hang off a note rather than replacing it: the note stays the
+// per-match record (overall text, tags, the reviewed mark) and the moments are
+// what a coach points AT while watching the replay. Addressed by their own
+// public id, because unlike a note — which the match key identifies — there
+// can be several on one match and the path has to say which.
+
+const coachMomentFocusTagsTable = "coach_note_moment_focus_tags"
+
+// noteRowID resolves a note's public id to its row id, scoped to the player so
+// one session can never reach another's notes through a guessed id.
+func noteRowID(tx *sql.Tx, playerRef int64, noteID string) (int64, error) {
+	var id int64
+	err := tx.QueryRow(
+		`SELECT id FROM coach_notes WHERE note_id = ? AND player_ref = ?`, noteID, playerRef,
+	).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrCoachNoteUnknown
+	}
+	if err != nil {
+		return 0, fmt.Errorf("resolve coach note: %w", err)
+	}
+	return id, nil
+}
+
+func (s *SQLStore) UpsertCoachNoteMoment(playerRef int64, m CoachNoteMoment) (CoachNoteMoment, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return CoachNoteMoment{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	noteRow, err := noteRowID(tx, playerRef, m.NoteID)
+	if err != nil {
+		return CoachNoteMoment{}, err
+	}
+	if m.MomentID == "" {
+		m.MomentID = NewCoachNoteID()
+	}
+	// moment_id is absent from the SET clause for the same reason note_id is:
+	// the first save's id is the moment's identity, and an edit keeps it.
+	var id int64
+	err = tx.QueryRow(
+		`INSERT INTO coach_note_moments (moment_id, coach_note_id, match_clock, text, sort_order)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(moment_id) DO UPDATE SET
+		   match_clock = excluded.match_clock,
+		   text        = excluded.text,
+		   sort_order  = excluded.sort_order,
+		   updated_at  = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+		 RETURNING id, created_at, updated_at`,
+		m.MomentID, noteRow, m.MatchClock, m.Text, m.SortOrder,
+	).Scan(&id, &m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		return CoachNoteMoment{}, fmt.Errorf("upsert coach note moment: %w", err)
+	}
+	// One tag, stored through the set helper so it shares the sibling's CHECK.
+	tags := []string{}
+	if m.FocusTag != "" {
+		tags = append(tags, m.FocusTag)
+	}
+	if err := replaceTagSetByID(tx, coachMomentFocusTagsTable, "coach_note_moment_id", id, tags); err != nil {
+		return CoachNoteMoment{}, err
+	}
+	return m, tx.Commit()
+}
+
+// DeleteCoachNoteMoment removes one moment. Scoped to the player for the same
+// reason the upsert is: a moment id from another session must not resolve.
+func (s *SQLStore) DeleteCoachNoteMoment(playerRef int64, momentID string) error {
+	_, err := s.db.Exec(
+		`DELETE FROM coach_note_moments
+		 WHERE moment_id = ? AND coach_note_id IN (
+		   SELECT id FROM coach_notes WHERE player_ref = ?
+		 )`, momentID, playerRef)
+	return err
+}
+
+// LoadCoachNoteMoments reads every moment for one player, keyed by the PUBLIC
+// note id its parent carries — the same id the API path uses, so a caller
+// never has to know a row id.
+func (s *SQLStore) LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNoteMoment, error) {
+	rows, err := s.db.Query(
+		`SELECT m.id, m.moment_id, n.note_id, m.match_clock, m.text, m.sort_order,
+		        m.created_at, m.updated_at
+		 FROM coach_note_moments m
+		 JOIN coach_notes n ON n.id = m.coach_note_id
+		 WHERE n.player_ref = ?
+		 ORDER BY m.coach_note_id, m.match_clock, m.sort_order`, playerRef)
+	if err != nil {
+		return nil, fmt.Errorf("load coach note moments: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	// Scanned flat and assembled at the end, NOT appended into the output map
+	// while holding pointers into it: append reallocates, and a pointer taken
+	// before a regrow then decorates a copy nobody reads. The tags loaded
+	// below would silently vanish for every moment but the last.
+	type scanned struct {
+		rowID  int64
+		moment CoachNoteMoment
+	}
+	all := []scanned{}
+	for rows.Next() {
+		var row scanned
+		m := &row.moment
+		if err := rows.Scan(&row.rowID, &m.MomentID, &m.NoteID, &m.MatchClock, &m.Text,
+			&m.SortOrder, &m.CreatedAt, &m.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan coach note moment: %w", err)
+		}
+		all = append(all, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("load coach note moments: %w", err)
+	}
+
+	tagByRowID := map[int64]string{}
+
+	// #nosec G202 -- table name is the constant above.
+	query := `SELECT t.coach_note_moment_id, t.tag FROM ` + coachMomentFocusTagsTable + ` t
+	          JOIN coach_note_moments m ON m.id = t.coach_note_moment_id
+	          JOIN coach_notes n ON n.id = m.coach_note_id
+	          WHERE n.player_ref = ?`
+	err = loadChildValuesByID(s.db, query, []any{playerRef}, func(id int64, tag string) {
+		tagByRowID[id] = tag
+	})
+	if err != nil {
+		return nil, fmt.Errorf("load %s: %w", coachMomentFocusTagsTable, err)
+	}
+
+	out := map[string][]CoachNoteMoment{}
+	for _, row := range all {
+		row.moment.FocusTag = tagByRowID[row.rowID]
+		out[row.moment.NoteID] = append(out[row.moment.NoteID], row.moment)
+	}
+	return out, nil
+}

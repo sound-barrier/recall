@@ -21,6 +21,10 @@ import (
 var (
 	// ErrCoachPlayerUnknown reports a playerRef no coach_players row carries.
 	ErrCoachPlayerUnknown = errors.New("coach player not found")
+	// ErrCoachNoteUnknown reports a note_id this player has no note for —
+	// a moment write naming a note that was deleted, or one from another
+	// session's id space.
+	ErrCoachNoteUnknown = errors.New("coach note not found")
 	// ErrCoachReturnUnknown reports a returnID no coach_returns row carries.
 	ErrCoachReturnUnknown = errors.New("coach return not found")
 	// ErrMatchCoachNoteUnknown reports a match_coach_notes id that does not
@@ -55,6 +59,20 @@ type CoachStore interface {
 	// LoadCoachNotes returns every note the coach wrote about one player,
 	// keyed by match_key, tag lists sorted.
 	LoadCoachNotes(playerRef int64) (map[string]CoachNote, error)
+	// UpsertCoachNoteMoment saves one timestamped moment on a note, addressed
+	// by the note's PUBLIC id — several moments share a match, so the match key
+	// no longer identifies the write. A re-save replaces clock / text / tag and
+	// keeps the moment_id minted on the first. Scoped to the player, so an id
+	// from another session's space resolves to ErrCoachNoteUnknown rather than
+	// reaching across.
+	UpsertCoachNoteMoment(playerRef int64, m CoachNoteMoment) (CoachNoteMoment, error)
+	// DeleteCoachNoteMoment removes one moment; absent is a no-op. Player-scoped
+	// for the same reason the upsert is.
+	DeleteCoachNoteMoment(playerRef int64, momentID string) error
+	// LoadCoachNoteMoments returns every moment the coach wrote about one
+	// player, keyed by the parent note's PUBLIC id.
+	LoadCoachNoteMoments(playerRef int64) (map[string][]CoachNoteMoment, error)
+
 	// SetCoachSummary upserts the player's session summary; "" deletes it.
 	// ErrCoachPlayerUnknown when playerRef names no player.
 	SetCoachSummary(playerRef int64, text string) error
