@@ -648,6 +648,29 @@ CREATE TABLE IF NOT EXISTS match_coach_note_focus_tags (
 ) STRICT;
 -- statement-end
 
+-- The timestamped moments that came WITH an accepted note. Stored beside the
+-- block rather than merged into its text: the player reads them as a list
+-- down the match, the same way the coach wrote them, and a moment keeps its
+-- own clock and tag rather than dissolving into a paragraph.
+--
+-- No focus-tag child here. The moment carries at most one tag and it arrives
+-- already validated by the notes-file reader, so a whole table to hold one
+-- string per row would be shape for its own sake.
+CREATE TABLE IF NOT EXISTS match_coach_note_moments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  match_coach_note_id INTEGER NOT NULL REFERENCES match_coach_notes (id) ON DELETE CASCADE,
+  moment_id TEXT NOT NULL,
+  match_clock TEXT NOT NULL,
+  text TEXT NOT NULL,
+  focus_tag TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0
+) STRICT;
+-- statement-end
+
+CREATE INDEX IF NOT EXISTS idx_match_coach_note_moments_note
+  ON match_coach_note_moments (match_coach_note_id, match_clock, sort_order);
+-- statement-end
+
 CREATE TABLE IF NOT EXISTS match_coach_note_extra_tags (
   match_coach_note_id INTEGER NOT NULL REFERENCES match_coach_notes (id) ON DELETE CASCADE,
   tag TEXT NOT NULL,

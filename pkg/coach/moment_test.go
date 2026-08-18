@@ -142,3 +142,87 @@ func TestSortMoments_OrdersByTimeNotByString(t *testing.T) {
 		t.Fatalf("9:00 comes before 10:00; got %q first", got[0].MomentID)
 	}
 }
+
+// ── The notes file's schema, and what it promises an older build ──────────
+
+// notesFileWithMoments is the suite's valid file, with the moments under test
+// hung on its first note and the schema chosen the way the exporter chooses
+// it.
+func notesFileWithMoments(moments []coach.Moment) coach.NotesFile {
+	f := validNotesFile()
+	f.Notes[0].Moments = moments
+	f.Schema = coach.NotesSchemaFor(f.Notes)
+	return f
+}
+
+// A review with no moments is still v1, so a coach on this build can hand a
+// file to a player on an older one and nothing breaks. That is the common
+// case, and the one worth protecting.
+func TestNotesFile_StaysV1WithoutMoments(t *testing.T) {
+	t.Parallel()
+
+	f := notesFileWithMoments(nil)
+
+	if f.Schema != coach.NotesSchemaV1 {
+		t.Errorf("a file with no moments should be %q, got %q", coach.NotesSchemaV1, f.Schema)
+	}
+	if err := coach.ValidateNotesFile(f); err != nil {
+		t.Fatalf("valid v1 file rejected: %v", err)
+	}
+}
+
+// With moments the file says v2 — so an older build refuses it by name rather
+// than decoding it and silently dropping the half of the review that pointed
+// at something.
+func TestNotesFile_SaysV2WhenItCarriesMoments(t *testing.T) {
+	t.Parallel()
+
+	f := notesFileWithMoments([]coach.Moment{
+		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
+	})
+
+	if f.Schema != coach.NotesSchemaV2 {
+		t.Errorf("a file with moments should be %q, got %q", coach.NotesSchemaV2, f.Schema)
+	}
+	if err := coach.ValidateNotesFile(f); err != nil {
+		t.Fatalf("valid v2 file rejected: %v", err)
+	}
+}
+
+// A v1 label over v2 content is the one shape that makes the schema's promise
+// false — an older build would read it, believe it had the whole file, and
+// drop every moment without saying so.
+func TestNotesFile_RefusesV1LabelOverMoments(t *testing.T) {
+	t.Parallel()
+
+	f := notesFileWithMoments([]coach.Moment{
+		{MomentID: "m1", MatchClock: "03:23", Text: "no off-angle"},
+	})
+	f.Schema = coach.NotesSchemaV1
+
+	err := coach.ValidateNotesFile(f)
+	if !errors.Is(err, coach.ErrNotesMalformed) {
+		t.Fatalf("want ErrNotesMalformed, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "moments") {
+		t.Errorf("the refusal should say what is wrong, got %q", err.Error())
+	}
+}
+
+// Both readable schemas still import; an unknown one is still named.
+func TestNotesFile_ReadsBothSchemas(t *testing.T) {
+	t.Parallel()
+
+	for _, schema := range []string{coach.NotesSchemaV1, coach.NotesSchemaV2} {
+		f := notesFileWithMoments(nil)
+		f.Schema = schema
+		if err := coach.ValidateNotesFile(f); err != nil {
+			t.Errorf("%s should still read, got %v", schema, err)
+		}
+	}
+	f := notesFileWithMoments(nil)
+	f.Schema = "recall-coach-notes/v9"
+	if err := coach.ValidateNotesFile(f); !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
+		t.Fatalf("want ErrNotesUnsupportedSchema, got %v", err)
+	}
+}

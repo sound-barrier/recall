@@ -72,13 +72,31 @@ function pick(decision: CoachDecisionEnum) {
     <p v-if="reviewedOnly" class="return-card-text is-mark">
       Reviewed — nothing to add.
     </p>
-    <p v-else class="return-card-text">
+    <p v-else-if="note.text" class="return-card-text">
       {{ note.text }}
     </p>
 
     <p v-if="note.match_clock" class="return-card-clock">
       {{ note.match_clock }}
     </p>
+
+    <!--
+      The moments are shown BEFORE the verdict, not after accepting: a player
+      deciding whether to take a note should see everything it carries. Most
+      of a timestamped review IS the moments, so a card that hid them would be
+      asking for a decision about content the reader cannot see.
+    -->
+    <ol v-if="note.moments?.length" class="return-card-moments">
+      <li v-for="moment in note.moments" :key="moment.moment_id" class="return-card-moment">
+        <span class="return-card-moment-clock">{{ moment.match_clock }}</span>
+        <span class="return-card-moment-body">
+          <span v-if="moment.focus_tag" class="paper-chip return-card-moment-tag">
+            {{ focusTagLabel(moment.focus_tag) }}
+          </span>
+          {{ moment.text }}
+        </span>
+      </li>
+    </ol>
 
     <ul v-if="tags.length" class="return-card-tags">
       <li v-for="tag in tags" :key="tag" class="paper-chip">
@@ -172,6 +190,48 @@ function pick(decision: CoachDecisionEnum) {
   font-size: var(--type-xs);
   font-feature-settings: "tnum";
   color: var(--ink-dim);
+}
+
+/* Same arrangement as the accepted block and the ledger — one list, read
+   three places, so it reads the same in all of them. */
+.return-card-moments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.return-card-moment {
+  display: grid;
+  grid-template-columns: 3.4rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.return-card-moment + .return-card-moment {
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.return-card-moment-clock {
+  font-family: var(--mono);
+  font-size: var(--type-xs);
+  font-feature-settings: "tnum";
+  font-weight: 700;
+  color: var(--text);
+}
+
+.return-card-moment-body {
+  font-size: var(--type-sm);
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.return-card-moment-tag {
+  margin-right: 0.3rem;
+  font-size: var(--type-4xs);
 }
 
 .return-card-tags {

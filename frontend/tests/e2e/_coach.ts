@@ -145,6 +145,8 @@ export interface CoachReturnNote {
   focus_tags: string[]
   extra_tags: string[]
   match_clock: string
+  /** The coach's timestamped observations, in reading order. */
+  moments?: { moment_id: string; match_clock: string; text: string; focus_tag?: string }[]
   match: { map: string; hero: string; result: string; date: string; finished_at: string }
   /** Server-derived, always present on the wire: pending until the player
       decides, accepted once a block sits on the match, orphan when the
@@ -409,6 +411,11 @@ export const RETURN_SHEET_FIXTURE: CoachReturnSheet = {
       focus_tags: [],
       extra_tags: [],
       match_clock: '',
+      moments: [
+        { moment_id: 'mo-1', match_clock: '03:23', text: 'No off-angle — the tank ate the pressure alone.', focus_tag: 'positioning' },
+        { moment_id: 'mo-2', match_clock: '04:13', text: 'No ult tracking.', focus_tag: 'ult_economy' },
+        { moment_id: 'mo-3', match_clock: '04:45', text: 'Cassidy flanked behind you.' },
+      ],
       match: { map: KINGS_ROW_MATCH.data.map, hero: KINGS_ROW_MATCH.data.hero, result: KINGS_ROW_MATCH.data.result, date: KINGS_ROW_MATCH.data.date, finished_at: KINGS_ROW_MATCH.data.finished_at },
       status: 'pending',
     },
@@ -791,6 +798,9 @@ function acceptedLayer(sheet: CoachReturnSheet): Map<string, MatchCoachNote> {
         match_clock: n.match_clock,
         focus_tags: n.focus_tags,
         extra_tags: n.extra_tags,
+        // The moments travel onto the block with the note — the half of a
+        // timestamped review that points at something.
+        ...(n.moments?.length ? { moments: n.moments } : {}),
         accepted_at: `${daysAgo(0)}T09:15:00Z`,
       })
     })

@@ -88,7 +88,9 @@ func ExportNotes(s *Session, notes []Note, summary db.CoachSummary, coachName, r
 		notes = []Note{}
 	}
 	f := NotesFile{
-		Schema:        NotesSchemaV1,
+		// The lowest schema that describes this file: a review with no moments
+		// stays v1 and keeps working on an older build.
+		Schema:        notesSchemaFor(notes),
 		ExportedAt:    now.UTC().Format(time.RFC3339),
 		RecallVersion: recallVersion,
 		CoachName:     coachName,

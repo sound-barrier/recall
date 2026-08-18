@@ -984,6 +984,14 @@ export type CoachReturnItem = {
     focus_tags: Array<CoachFocusTagEnum>;
     extra_tags: Array<string>;
     match_clock: string;
+    /**
+     * The note's timestamped observations, in reading order. Shown on
+     * the card BEFORE the verdict: most of a timestamped review is its
+     * moments, and asking for a decision about content the reader cannot
+     * see is not asking.
+     *
+     */
+    moments?: Array<CoachMoment>;
     updated_at: string;
     match?: CoachMatchContext;
     /**
@@ -1105,6 +1113,14 @@ export type MatchCoachNote = {
      */
     focus_tags?: Array<CoachFocusTagEnum>;
     extra_tags?: Array<string>;
+    /**
+     * The coach's timestamped observations that came with this note, in
+     * reading order. Absent rather than empty when there are none, so a
+     * note accepted before moments existed carries no empty array into
+     * every match payload.
+     *
+     */
+    moments?: Array<CoachMoment>;
     /**
      * When the player accepted the note (RFC3339).
      */

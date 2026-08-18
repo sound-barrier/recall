@@ -45,6 +45,14 @@
   .chip.extra { background: var(--paper-2); color: var(--ink-dim); }
   .clock { color: var(--ink-dim); margin-right: 0.5rem; }
   .text { white-space: pre-wrap; margin: 0; }
+  /* The moments read down the match, which is the order they are already in.
+     The clock is the column the eye follows, so it is fixed-width and the
+     text hangs off it. */
+  .moments { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+  .moment { display: grid; grid-template-columns: 4.2rem auto 1fr; gap: 0.5rem;
+            align-items: baseline; padding: 0.25rem 0; }
+  .moment + .moment { border-top: 1px solid var(--rule); }
+  .moment-text { white-space: pre-wrap; }
   .reviewed { color: var(--ink-faint); font-style: italic; margin: 0; }
   footer { margin-top: 2.5rem; color: var(--ink-faint); font-size: 0.8rem; }
 </style>
@@ -87,7 +95,18 @@
     {{range .ExtraTags}}<li class="chip extra">{{.}}</li>{{end}}
   </ul>
   {{end}}
-  <p class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.Text}}</p>
+  {{if .Text}}<p class="text">{{if .MatchClock}}<span class="clock mono">[{{.MatchClock}}]</span>{{end}}{{.Text}}</p>{{end}}
+  {{if .Moments}}
+  <ol class="moments">
+    {{range .Moments}}
+    <li class="moment">
+      <span class="clock mono">{{.MatchClock}}</span>
+      {{if .FocusTag}}<span class="chip focus">{{label .FocusTag}}</span>{{end}}
+      <span class="moment-text">{{.Text}}</span>
+    </li>
+    {{end}}
+  </ol>
+  {{end}}
   {{end}}
 </article>
 {{end}}
