@@ -31,7 +31,9 @@ const emit = defineEmits<{
   // Open the same modal in its stripped leaver-exit mode — map + result only,
   // for a match Overwatch dropped from history because you left early.
   'add-leaver-exit': []
-  // Merge matches from a shared bundle (.zip). Additive — the counterpart to
+  // Merge matches from a shared bundle (.zip), or open a coach's returned
+  // notes — one affordance takes both, and the server sniffs which. Additive
+  // — the counterpart to
   // the selection-only "Export bundle" in the bulk action bar.
   'import-matches': []
   // Fold / unfold every group section at once.
@@ -114,10 +116,10 @@ const {
         class="import-matches-btn"
         data-import-matches
         :disabled="writesLocked"
-        :title="lockedTitle('Merge matches from a shared bundle (.zip) — additive, existing matches are skipped')"
+        :title="lockedTitle('Merge a shared bundle (.zip), or open the notes a coach sent back')"
         @click="emit('import-matches')"
       >
-        Import matches…
+        Import matches or notes…
       </button>
       <button
         type="button"

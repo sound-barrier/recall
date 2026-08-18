@@ -292,7 +292,20 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     target: '.profile-switcher',
     placement: 'bottom',
   },
-  // ── 17. Explore with real data — seeds + switches to "test" ─
+  // ── 17. Coaching — the one feature nothing else points at ──
+  // Same target as the step above, because the entry genuinely lives in that
+  // menu ("whose data am I looking at" is what the control already answers).
+  // Its own step because the profiles step never mentioned bundles, and this
+  // was the only feature in the app with no tour, no palette entry and no
+  // empty state — a coach who was sent a file had nothing to find.
+  {
+    id: 'coaching',
+    heading: 'Coaching',
+    body: 'Send matches to a coach: tick some rows in Matches, then Export bundle → Share with a coach. Reviewing someone else? Open their bundle from this same menu — their matches are loaned, never added to your history, and your notes travel back as a file they decide on.',
+    target: '.profile-switcher',
+    placement: 'bottom',
+  },
+  // ── 18. Explore with real data — seeds + switches to "test" ─
   // Advancing (Next) seeds the sample "test" profile and switches into
   // it, which reloads the SPA; the tour reopens on the Done step,
   // already in the test profile. See next()'s special case below.

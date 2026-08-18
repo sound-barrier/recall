@@ -63,8 +63,15 @@ describe('AppMasthead — in a coaching session', () => {
     expect(screen.getByRole('button', { name: /menu/i })).toBeInTheDocument()
   })
 
+  // A resumed session now lands IN the room, so getting to a tab is a
+  // deliberate step — which is the state this is about: the coach stepped
+  // into the player's Matches and needs the way back.
   it('shows the way back to the film room on a tab', async () => {
     await renderInSession()
+    const { useAppStore } = await import('@/stores/app')
+    await useAppStore().goToView('matches')
+    await flushPromises()
+
     expect(screen.getByRole('button', { name: /Back to the film room/ })).toBeInTheDocument()
   })
 

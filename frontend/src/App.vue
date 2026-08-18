@@ -193,6 +193,7 @@ useServerEvents()
           :can-export="coachStore.canExportNotes"
           :export-reason="coachStore.exportBlockedReason || undefined"
           :labels="coachLabels"
+          :end-armed="coachStore.endArmed"
           @select="coachStore.selectKey"
           @update-note="coachStore.updateNote"
           @update-moment="coachStore.updateMoment"
@@ -201,7 +202,8 @@ useServerEvents()
           @update-summary="coachStore.updateSummary"
           @confirm-player="coachStore.setPlayerHandle"
           @export="coachStore.exportNotes"
-          @end="coachStore.endSession"
+          @end="coachStore.requestEndSession"
+          @keep-working="coachStore.cancelEndSession"
         />
 
         <!-- ─── MATCHES VIEW ───────────────────────────────────── -->

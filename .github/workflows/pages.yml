@@ -103,6 +103,7 @@ jobs:
           cp docs/settings-reference.md   _stage/book/settings-reference.md
           cp docs/filtering.md            _stage/book/filtering.md
           cp docs/reading-your-climb.md   _stage/book/reading-your-climb.md
+          cp docs/coaching.md             _stage/book/coaching.md
           cp docs/unknown-screenshots.md  _stage/book/unknown-screenshots.md
           cp docs/feedback.md             _stage/book/feedback.md
           cp docs/faq.md                  _stage/book/faq.md

@@ -112,6 +112,10 @@ export const useCoachStore = defineStore('coach', () => {
   // next open and travel into an archive the coach thought it had left.
   const savedMomentIds = new Set<string>()
 
+  /** Where the last export landed, for the slip's receipt. '' once dismissed. */
+  const exportedTo = ref('')
+  function clearExportReceipt(): void { exportedTo.value = '' }
+
   // The per-key save queue that debounces a burst of typing into one write
   // and reports where that write stands. Per KEY, not per session: one
   // global flag let a successful save on any other match erase the only
@@ -137,6 +141,7 @@ export const useCoachStore = defineStore('coach', () => {
   // from — so a moment the coach removes right after opening still deletes.
   function rememberSavedMoments(wire: CoachNote[]): void {
     savedMomentIds.clear()
+    exportedTo.value = ''
     for (const note of wire) {
       for (const m of note.moments ?? []) savedMomentIds.add(m.moment_id)
     }
@@ -251,6 +256,29 @@ export const useCoachStore = defineStore('coach', () => {
     summary.value = text
     dirtySinceExport.value = true
     queueSave(SUMMARY_SAVE_KEY, async () => { await PutCoachSummary(text) })
+  }
+
+  // Ending with unexported notes asks once more — the archive the player
+  // receives only exists once it has been exported, so unexported work earns
+  // a second question rather than a silent goodbye.
+  //
+  // The arming lives HERE rather than in one button because there are two:
+  // the loan slip's asked, the session sheet's ended immediately, and which
+  // one a coach happened to click decided whether their work was protected.
+  const endArmed = ref(false)
+
+  function requestEndSession(): void {
+    if (dirtySinceExport.value && !endArmed.value) {
+      endArmed.value = true
+      return
+    }
+    endArmed.value = false
+    void endSession()
+  }
+
+  /** Back out of the armed state — the answer "no, not yet". */
+  function cancelEndSession(): void {
+    endArmed.value = false
   }
 
   // ── Session lifecycle ─────────────────────────────────────────────
@@ -400,12 +428,19 @@ export const useCoachStore = defineStore('coach', () => {
       return
     }
     try {
-      await ExportCoachNotes()
+      const saved = await ExportCoachNotes()
       dirtySinceExport.value = false
+      // Say so. The export succeeded silently before — no toast, no path, no
+      // change to the slip — so the only way to know the file existed was to
+      // go and look for it, on the one action in the room whose whole purpose
+      // is producing a file for someone else. Backup already flashes its path;
+      // this is the same receipt.
+      exportedTo.value = saved || 'your chosen folder'
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }
   }
+
 
   return {
     session,
@@ -425,6 +460,11 @@ export const useCoachStore = defineStore('coach', () => {
     needsPlayerHandle,
     selectKey,
     updateNote,
+    endArmed,
+    exportedTo,
+    clearExportReceipt,
+    requestEndSession,
+    cancelEndSession,
     updateMoment,
     copyReplayCode,
     removeMoment,

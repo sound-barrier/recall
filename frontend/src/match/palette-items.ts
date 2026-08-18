@@ -18,7 +18,7 @@ import { matchTime } from '@/match/match-time-helpers'
 
 // Not exported: the kind is consumed through PaletteItem, and the runner
 // registry keys off it structurally.
-type PaletteKind = 'view' | 'match'
+type PaletteKind = 'view' | 'match' | 'action'
 
 export interface PaletteItem {
   id: string
@@ -44,6 +44,32 @@ const VIEW_LABELS: Record<(typeof TAB_ORDER)[number], string> = {
   compare: 'Compare',
   elo: 'Elo Calculator',
 }
+
+/**
+ * Things the palette can DO, as opposed to places it can go.
+ *
+ * The coaching entries are here because coaching had no discoverable surface
+ * at all: not a tab, not a palette entry, and the coach's only door was the
+ * fifth item of a dropdown behind a chip labeled with a profile name. An
+ * action is what the typed runner registry was built to allow — a third kind
+ * is an entry here plus a runner, not an edit to a switch.
+ */
+export const ACTION_ITEMS: readonly PaletteItem[] = [
+  {
+    id: 'action:share-with-coach',
+    kind: 'action',
+    label: 'Share matches with a coach',
+    hint: 'Export a bundle',
+    target: 'share-with-coach',
+  },
+  {
+    id: 'action:open-bundle',
+    kind: 'action',
+    label: "Open a player's bundle",
+    hint: 'Review someone else',
+    target: 'open-bundle',
+  },
+] as const
 
 export function viewItems(): PaletteItem[] {
   return TAB_ORDER.map((id) => ({
@@ -105,5 +131,5 @@ export function buildPaletteItems(
   records: readonly PaletteRecord[],
   names: DisplayNames = {},
 ): PaletteItem[] {
-  return [...viewItems(), ...matchItems(records, names)]
+  return [...viewItems(), ...ACTION_ITEMS, ...matchItems(records, names)]
 }

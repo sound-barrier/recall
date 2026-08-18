@@ -211,15 +211,26 @@ onBeforeUnmount(() => {
       <h2 id="export-bundle-title" class="export-bundle-title">
         {{ title }}
       </h2>
-      <p v-if="sharing" id="export-bundle-desc" class="export-bundle-desc">
-        The same <code>.zip</code>, stamped with your name so your coach can
-        open it as a session. Their notes come back as a file you decide on,
-        match by match.
-      </p>
-      <p v-else id="export-bundle-desc" class="export-bundle-desc">
+      <!--
+        Share mode ADDS to the plain description, it does not replace it. The
+        sentence naming the screenshots used to disappear the moment the box
+        was ticked — so the one fact a person needs before handing a file to
+        another human ("this contains scoreboards, with everyone's BattleTag")
+        was off screen exactly when they were deciding to do it.
+      -->
+      <p id="export-bundle-desc" class="export-bundle-desc">
         A <code>.zip</code> containing each match's JSON data and
-        every referenced screenshot. Restores via Settings →
-        Backup &amp; Restore.
+        every referenced screenshot.
+        <template v-if="!sharing">
+          Restores via Settings → Backup &amp; Restore.
+        </template>
+      </p>
+      <p v-if="sharing" class="export-bundle-desc export-bundle-warn">
+        Stamped with your name so your coach can open it as a session, and
+        their notes come back as a file you decide on, match by match. It also
+        carries what you wrote about these matches — your notes, tags, squads
+        and replay codes — and the screenshots show every player's BattleTag.
+        Send fewer matches to share less.
       </p>
 
       <div class="export-bundle-row">
@@ -378,6 +389,15 @@ onBeforeUnmount(() => {
   font-size: var(--type-lg);
   color: var(--text-faint);
   line-height: 1.5;
+}
+
+/* What leaves the machine, stated where the decision is made. --text-dim
+   rather than --text-faint: this is the paragraph that must be read, not the
+   one that may be skimmed. */
+.export-bundle-warn {
+  padding-left: 0.7rem;
+  color: var(--text-dim);
+  border-left: 2px solid var(--accent);
 }
 
 .export-bundle-desc code {

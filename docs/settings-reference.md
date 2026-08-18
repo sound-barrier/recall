@@ -200,6 +200,20 @@ When to use:
 - After the new **Reference data gaps** section on the Unknown tab
   surfaces records the latest release can now resolve.
 
+## 08 / Coaching
+
+### Your coach name
+
+Signs the notes you write while reviewing another player's bundle, and
+names you on the file they get back. Notes cannot be exported until it
+is set — an unsigned review gives the player no way to tell two coaches
+apart.
+
+Only used when you are the one reviewing. Nothing about being coached
+needs it.
+
+See [Coaching](coaching.md) for both sides of the flow.
+
 ## Parse tab
 
 ### Watch Folder

@@ -104,24 +104,41 @@ describe('CoachLoanSlip', () => {
     expect(button.title).toMatch(/coach name/i)
   })
 
+  // A clean session ends without a second question — nothing is at stake, so
+  // asking would be ceremony. Asserted by what stays on screen: the arming
+  // lives in the store (both End buttons must ask the same thing), and the
+  // store's own suite proves the request reaches the server.
   it('ends a clean session on the first click', async () => {
-    const { spies } = renderSlip()
+    renderSlip()
     await fireEvent.click(within(slip()).getByRole('button', { name: 'End session' }))
-    expect(spies.endSession).toHaveBeenCalled()
+
+    expect(within(slip()).queryByRole('button', { name: /^End anyway/ })).not.toBeInTheDocument()
   })
 
   // Notes live on the server, but the ARCHIVE the player gets does not
-  // exist until Export — so unexported work earns a second question.
+  // exist until Export — so unexported work earns a second question. Asserted
+  // through what the coach SEES rather than through a spy: the store owns the
+  // arming, and the question is what the button says.
   it('asks again when notes have been written but not exported', async () => {
-    const { coach, spies } = renderSlip()
+    const { coach } = renderSlip()
     coach.updateNote(NOTED, { kind: 'note', text: 'Peel earlier.', focusTags: [], extraTags: [], matchClock: '' })
 
     await fireEvent.click(within(slip()).getByRole('button', { name: 'End session' }))
-    expect(spies.endSession).not.toHaveBeenCalled()
 
-    const confirm = await within(slip()).findByRole('button', { name: /^End anyway/ })
-    await fireEvent.click(confirm)
-    expect(spies.endSession).toHaveBeenCalled()
+    expect(await within(slip()).findByRole('button', { name: /^End anyway/ })).toBeInTheDocument()
+  })
+
+  // The armed state offers a way back. It used to replace the button in place
+  // with no Cancel, so the only escape was to not click again.
+  it('lets the coach back out of the question', async () => {
+    const { coach } = renderSlip()
+    coach.updateNote(NOTED, { kind: 'note', text: 'Peel earlier.', focusTags: [], extraTags: [], matchClock: '' })
+    await fireEvent.click(within(slip()).getByRole('button', { name: 'End session' }))
+
+    await fireEvent.click(within(slip()).getByRole('button', { name: 'Keep working' }))
+
+    expect(within(slip()).queryByRole('button', { name: /^End anyway/ })).not.toBeInTheDocument()
+    expect(within(slip()).getByRole('button', { name: 'End session' })).toBeInTheDocument()
   })
 })
 

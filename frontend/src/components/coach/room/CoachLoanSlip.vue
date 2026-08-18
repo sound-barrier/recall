@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import { formatLocalFromUTC } from '@/match/match-time-helpers'
 import { noteMark } from '@/match/coach/coach-notes'
@@ -43,15 +43,11 @@ const exportTitle = computed(() =>
 // Ending discards the loan. The notes themselves are saved server-side, but
 // the ARCHIVE the player receives only exists once it has been exported —
 // so unexported work earns a second question rather than a silent goodbye.
-const endArmed = ref(false)
-function requestEnd() {
-  if (coach.dirtySinceExport && !endArmed.value) {
-    endArmed.value = true
-    return
-  }
-  endArmed.value = false
-  void coach.endSession()
-}
+// The arming lives in the store: the session sheet has an End button too, and
+// which one a coach happened to click used to decide whether unexported work
+// was protected.
+const endArmed = computed(() => coach.endArmed)
+const requestEnd = () => coach.requestEndSession()
 </script>
 
 <template>
@@ -81,6 +77,14 @@ function requestEnd() {
       >
         Export notes
       </button>
+      <!--
+        The receipt: the export used to succeed in silence, on the one action
+        in the room whose whole point is producing a file for someone else.
+      -->
+      <p v-if="coach.exportedTo" class="coach-slip-receipt" role="status">
+        Notes saved to {{ coach.exportedTo }}.
+      </p>
+
       <button
         v-if="!endArmed"
         type="button"
@@ -90,15 +94,28 @@ function requestEnd() {
       >
         End session
       </button>
-      <button
-        v-else
-        type="button"
-        class="paper-btn primary coach-slip-btn"
-        title="These notes have not been exported yet"
-        @click="requestEnd"
-      >
-        End anyway — notes not exported
-      </button>
+      <!--
+        The armed state offers both answers. It used to replace the button in
+        place with no way back: the only escape from "End anyway" was to not
+        click it, and nothing disarmed it.
+      -->
+      <template v-else>
+        <button
+          type="button"
+          class="paper-btn primary coach-slip-btn"
+          title="These notes have not been exported yet"
+          @click="requestEnd"
+        >
+          End anyway — notes not exported
+        </button>
+        <button
+          type="button"
+          class="paper-btn coach-slip-btn"
+          @click="coach.cancelEndSession()"
+        >
+          Keep working
+        </button>
+      </template>
     </div>
   </section>
 </template>
@@ -122,6 +139,13 @@ function requestEnd() {
   font-size: var(--type-5xl);
   line-height: 1.1;
   color: var(--ink);
+}
+
+/* The export receipt. --win, because it reports something that worked. */
+.coach-slip-receipt {
+  margin: 0;
+  font-size: var(--type-3xs);
+  color: var(--win);
 }
 
 .coach-slip-line {
