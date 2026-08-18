@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 // One track's walk through a season: draw a result, move the position, decide
@@ -25,12 +26,13 @@ func (c rankCard) toRankRow(matchKey, ts, hero, result string) db.RankRow {
 	// off a screenshot — so these are never the nil that means "unreported".
 	progress, change := c.pos.prog, c.changePercent
 	return db.RankRow{
-		Filename:      "rank-" + ts + ".png",
-		MatchKey:      matchKey,
-		Rank:          tierNames[c.pos.tier],
-		Level:         c.pos.div,
-		RankProgress:  &progress,
-		ChangePercent: &change,
+		ParserGeneration: parser.Generation,
+		Filename:         "rank-" + ts + ".png",
+		MatchKey:         matchKey,
+		Rank:             tierNames[c.pos.tier],
+		Level:            c.pos.div,
+		RankProgress:     &progress,
+		ChangePercent:    &change,
 		// Every seeded card carries one. The real caption only exists from
 		// season 4, but gating the seed on that date would leave the dossier's
 		// percentile widget with a handful of points in a six-month window —
