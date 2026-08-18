@@ -189,6 +189,12 @@ else changes while it runs.
 
 When to use:
 
+- **When the Parse tab says so.** Every record is stamped with the
+  parser version that read it, so Recall can count the ones an older
+  parser produced and tell you: *"14 matches were read by an older
+  parser."* That line is the reliable trigger — it appears exactly
+  when a re-parse would actually change something, and disappears
+  when it would not.
 - After upgrading Recall to a version whose release notes mention a
   parser tightening or YAML roster update.
 - After the new **Reference data gaps** section on the Unknown tab

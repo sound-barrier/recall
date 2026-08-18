@@ -309,6 +309,25 @@ bug). Wait for the YAML to catch up, or re-parse.
 The section is hidden when no records carry the gap signal —
 common case once the latest release is installed.
 
+### Modifier chips Recall doesn't recognize
+
+The same section lists rank-update **modifiers** it could not
+explain. A rank screen's chips name why the meter moved as far as
+it did — `WIN STREAK`, `UPHILL BATTLE`, `CALIBRATION` — and Recall
+matches them against a vocabulary shipped in `modifiers.yaml`.
+
+A chip outside that vocabulary is kept and shown here rather than
+dropped. That is a deliberate change: Recall used to log an
+unrecognized chip and discard it, which is how a season's new
+`VARIANCE` modifier went unnoticed for months. A new season
+announces itself here now.
+
+You do not need to do anything about one. It means a modifier
+shipped after this Recall version was cut; the next release
+updates the vocabulary, and the chip resolves on the following
+re-parse. Garbled OCR of a chip Recall *does* know shows up here
+too, which is why the raw text is printed rather than a guess.
+
 ## Next chapter
 
 - **Get help with anything else**: [Bug reports & feature requests](feedback.md)
