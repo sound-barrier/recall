@@ -210,11 +210,13 @@ export const deleteMatchMoment = <ThrowOnError extends boolean = false>(options:
  * Several moments share a match, which is why they are addressed by their
  * own id rather than the match key.
  *
- * `400` when the clock is not `MM:SS`, the text is empty, the focus tag
- * is outside the vocabulary, or the match already holds the maximum of
- * 50 moments. `409` when the id already names a moment on a DIFFERENT
- * match, or while a coaching session is open (the player's own history is
- * read-only for its duration).
+ * `400` when the clock is not `MM:SS`, the focus tag is outside the
+ * vocabulary, or the match already holds the maximum of 50 moments.
+ * `409` when the text is empty (the body parsed fine — the refusal is
+ * semantic, the same distinction the annotation endpoint draws), when
+ * the id already names a moment on a DIFFERENT match, or while a
+ * coaching session is open (the player's own history is read-only for
+ * its duration).
  *
  */
 export const setMatchMoment = <ThrowOnError extends boolean = false>(options: Options<SetMatchMomentData, ThrowOnError>): RequestResult<SetMatchMomentResponses, SetMatchMomentErrors, ThrowOnError> => (options.client ?? client).put<SetMatchMomentResponses, SetMatchMomentErrors, ThrowOnError>({
@@ -1478,9 +1480,10 @@ export const deleteCoachMoment = <ThrowOnError extends boolean = false>(options:
  * said it with a timestamp rather than a paragraph.
  *
  * `404` when no session is open or the match is not in the loaned
- * corpus, `409` before the player's handle has been confirmed, `400`
- * when the clock is not `MM:SS`, the text is empty, or the match
- * already holds the maximum of 50 moments.
+ * corpus. `400` when the clock is not `MM:SS` or the match already
+ * holds the maximum of 50 moments. `409` before the player's handle
+ * has been confirmed, and when the text is empty — the body parsed
+ * fine, so the refusal is semantic rather than a malformed request.
  *
  */
 export const putCoachMoment = <ThrowOnError extends boolean = false>(options: Options<PutCoachMomentData, ThrowOnError>): RequestResult<PutCoachMomentResponses, PutCoachMomentErrors, ThrowOnError> => (options.client ?? client).put<PutCoachMomentResponses, PutCoachMomentErrors, ThrowOnError>({
