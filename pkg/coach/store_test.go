@@ -32,7 +32,7 @@ func TestNotes_OrderFollowsTheReelThenKey(t *testing.T) {
 		keyManual: storedNote(keyManual, "manual note", nil),
 	}
 
-	notes := coach.Notes(s, stored)
+	notes := coach.Notes(s, stored, nil)
 
 	if len(notes) != 3 {
 		t.Fatalf("got %d notes, want 3", len(notes))
@@ -54,7 +54,7 @@ func TestNotes_AttachesTheMatchContextForEachKey(t *testing.T) {
 	t.Parallel()
 	s := openSeededSession(t, sharePlayer())
 
-	notes := coach.Notes(s, map[string]db.CoachNote{keyIlios: storedNote(keyIlios, "watch the high ground", nil)})
+	notes := coach.Notes(s, map[string]db.CoachNote{keyIlios: storedNote(keyIlios, "watch the high ground", nil)}, nil)
 
 	if len(notes) != 1 {
 		t.Fatalf("got %d notes, want 1", len(notes))
@@ -75,7 +75,7 @@ func TestNotes_KeepsANoteWhoseMatchIsGone(t *testing.T) {
 	s := openSeededSession(t, sharePlayer())
 	gone := "match-2020-01-01T00-00-00"
 
-	notes := coach.Notes(s, map[string]db.CoachNote{gone: storedNote(gone, "orphan", nil)})
+	notes := coach.Notes(s, map[string]db.CoachNote{gone: storedNote(gone, "orphan", nil)}, nil)
 
 	if len(notes) != 1 || notes[0].MatchKey != gone {
 		t.Fatalf("got %+v, want the orphan note", notes)
@@ -87,7 +87,7 @@ func TestNotes_KeepsANoteWhoseMatchIsGone(t *testing.T) {
 
 func TestNotes_EmptyIsEmptyNotNil(t *testing.T) {
 	t.Parallel()
-	if got := coach.Notes(openSeededSession(t, sharePlayer()), nil); got == nil || len(got) != 0 {
+	if got := coach.Notes(openSeededSession(t, sharePlayer()), nil, nil); got == nil || len(got) != 0 {
 		t.Errorf("got %v, want an empty non-nil slice", got)
 	}
 }
@@ -95,7 +95,7 @@ func TestNotes_EmptyIsEmptyNotNil(t *testing.T) {
 func TestExportNotes_AssemblesTheFileAndValidates(t *testing.T) {
 	t.Parallel()
 	s := openSeededSession(t, sharePlayer())
-	notes := coach.Notes(s, map[string]db.CoachNote{keyIlios: storedNote(keyIlios, "hold the high ground", []string{"positioning"})})
+	notes := coach.Notes(s, map[string]db.CoachNote{keyIlios: storedNote(keyIlios, "hold the high ground", []string{"positioning"})}, nil)
 	summary := db.CoachSummary{PlayerRef: 1, Text: "Work on positioning."}
 
 	f, err := coach.ExportNotes(s, notes, summary, "Ordo", "0.31.0", exportClock)

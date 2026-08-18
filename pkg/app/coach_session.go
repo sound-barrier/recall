@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"recall/pkg/coach"
+	"recall/pkg/db"
 	"recall/pkg/match"
 )
 
@@ -193,6 +194,99 @@ func (a *App) DeleteCoachNote(matchKey string) error {
 	return nil
 }
 
+// PutCoachMoment saves one timestamped moment on the note for a match, and
+// creates that note if the coach is stamping a moment before writing anything
+// else — which is the common order: you watch, you mark 3:23, and only later
+// decide what the match as a whole was about.
+//
+// Addressed by the MOMENT's id rather than the match's, because several share
+// a match. An empty momentID mints a new one.
+func (a *App) PutCoachMoment(matchKey, momentID string, in coach.MomentInput) (coach.Moment, error) {
+	normalized, err := coach.ValidateMomentInput(in)
+	if err != nil {
+		return coach.Moment{}, err
+	}
+	a.coachMu.Lock()
+	defer a.coachMu.Unlock()
+	_, playerRef, err := a.noteTargetLocked(matchKey)
+	if err != nil {
+		return coach.Moment{}, err
+	}
+	note, err := a.ensureNoteForMomentLocked(playerRef, matchKey)
+	if err != nil {
+		return coach.Moment{}, err
+	}
+	moments, err := a.store.LoadCoachNoteMoments(playerRef)
+	if err != nil {
+		return coach.Moment{}, fmt.Errorf("coach: load note moments: %w", err)
+	}
+	existing := moments[note.NoteID]
+	if err := checkMomentRoom(existing, momentID); err != nil {
+		return coach.Moment{}, err
+	}
+	row := coach.MomentRowFromInput(note.NoteID, momentID, len(existing), normalized)
+	saved, err := a.store.UpsertCoachNoteMoment(playerRef, row)
+	if err != nil {
+		return coach.Moment{}, fmt.Errorf("coach: save moment: %w", err)
+	}
+	return coach.MomentFromRow(saved), nil
+}
+
+// checkMomentRoom refuses a NEW moment past the per-note ceiling; an edit to
+// one already stored always fits.
+func checkMomentRoom(existing []db.CoachNoteMoment, momentID string) error {
+	if momentID != "" {
+		for _, m := range existing {
+			if m.MomentID == momentID {
+				return nil
+			}
+		}
+	}
+	if len(existing) >= coach.MaxMomentsPerNote {
+		return fmt.Errorf("%w: a match holds at most %d moments", coach.ErrNoteInvalid, coach.MaxMomentsPerNote)
+	}
+	return nil
+}
+
+// ensureNoteForMomentLocked returns the note a moment hangs off, creating an
+// empty one if this is the first mark on the match. The empty note is a
+// reviewed_only mark rather than a blank note: the coach HAS reviewed the
+// match — they just said it with a timestamp instead of a paragraph.
+func (a *App) ensureNoteForMomentLocked(playerRef int64, matchKey string) (db.CoachNote, error) {
+	stored, err := a.store.LoadCoachNotes(playerRef)
+	if err != nil {
+		return db.CoachNote{}, fmt.Errorf("coach: load notes: %w", err)
+	}
+	if n, ok := stored[matchKey]; ok {
+		return n, nil
+	}
+	created, err := a.store.UpsertCoachNote(db.CoachNote{
+		PlayerRef: playerRef,
+		MatchKey:  matchKey,
+		Kind:      coach.KindReviewedOnly,
+	})
+	if err != nil {
+		return db.CoachNote{}, fmt.Errorf("coach: open note for moment: %w", err)
+	}
+	return created, nil
+}
+
+// DeleteCoachMoment removes one moment. Idempotent, and it deliberately leaves
+// the note behind: a match whose last moment was deleted is still a match the
+// coach looked at.
+func (a *App) DeleteCoachMoment(matchKey, momentID string) error {
+	a.coachMu.Lock()
+	defer a.coachMu.Unlock()
+	_, playerRef, err := a.noteTargetLocked(matchKey)
+	if err != nil {
+		return err
+	}
+	if err := a.store.DeleteCoachNoteMoment(playerRef, momentID); err != nil {
+		return fmt.Errorf("coach: delete moment: %w", err)
+	}
+	return nil
+}
+
 // PutCoachSummary saves the one set-level note for the session's player
 // ("what to work on"). An empty text clears it.
 func (a *App) PutCoachSummary(text string) error {
@@ -258,11 +352,15 @@ func (a *App) coachWorkLocked(s *coach.Session) ([]coach.Note, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("coach: load notes: %w", err)
 	}
+	moments, err := a.store.LoadCoachNoteMoments(playerRef)
+	if err != nil {
+		return nil, "", fmt.Errorf("coach: load note moments: %w", err)
+	}
 	summary, _, err := a.store.LoadCoachSummary(playerRef)
 	if err != nil {
 		return nil, "", fmt.Errorf("coach: load summary: %w", err)
 	}
-	return coach.Notes(s, stored), summary.Text, nil
+	return coach.Notes(s, stored, moments), summary.Text, nil
 }
 
 // sessionPlayerLocked returns the confirmed player every note write hangs

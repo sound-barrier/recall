@@ -379,6 +379,20 @@ type CoachNote struct {
 	UpdatedAt  string
 }
 
+// CoachNoteMoment is one timestamped observation hanging off a coach note.
+// NoteID is the parent's public id rather than its row id, so callers address
+// a moment the same way the API path does.
+type CoachNoteMoment struct {
+	MomentID   string
+	NoteID     string
+	MatchClock string
+	Text       string
+	FocusTag   string
+	SortOrder  int
+	CreatedAt  string
+	UpdatedAt  string
+}
+
 // CoachSummary is the coach's one set-level note for a player ("what to work
 // on"), authored once per player and re-surfaced on every session.
 type CoachSummary struct {

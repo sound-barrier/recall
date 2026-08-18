@@ -347,3 +347,81 @@ func collectMatchKeys[T parentRow](rows []T, into map[string]bool) {
 		into[rowMatchKey(r)] = true
 	}
 }
+
+// ── A note's timestamped moments ──────────────────────────────────────────
+
+// CoachNoteMoments mirrors the SQL store's shape: moments keyed by the parent
+// note's PUBLIC id, which is what the API path and the loader both use.
+// Guarded by f.mu like every other map here.
+
+func (f *Fake) UpsertCoachNoteMoment(playerRef int64, m db.CoachNoteMoment) (db.CoachNoteMoment, error) {
+	if m.FocusTag != "" {
+		if err := checkFocusTags([]string{m.FocusTag}); err != nil {
+			return db.CoachNoteMoment{}, err
+		}
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.noteExists(playerRef, m.NoteID) {
+		return db.CoachNoteMoment{}, db.ErrCoachNoteUnknown
+	}
+	if f.CoachNoteMoments == nil {
+		f.CoachNoteMoments = map[string][]db.CoachNoteMoment{}
+	}
+	now := nowRFC3339()
+	m.CreatedAt, m.UpdatedAt = now, now
+	existing := f.CoachNoteMoments[m.NoteID]
+	for i, prev := range existing {
+		if prev.MomentID != "" && prev.MomentID == m.MomentID {
+			// An edit keeps the first save's identity and creation instant.
+			m.CreatedAt = prev.CreatedAt
+			existing[i] = m
+			return m, nil
+		}
+	}
+	if m.MomentID == "" {
+		m.MomentID = db.NewCoachNoteID()
+	}
+	f.CoachNoteMoments[m.NoteID] = append(existing, m)
+	return m, nil
+}
+
+func (f *Fake) DeleteCoachNoteMoment(playerRef int64, momentID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for noteID, moments := range f.CoachNoteMoments {
+		if !f.noteExists(playerRef, noteID) {
+			continue
+		}
+		f.CoachNoteMoments[noteID] = slices.DeleteFunc(moments,
+			func(m db.CoachNoteMoment) bool { return m.MomentID == momentID })
+	}
+	return nil
+}
+
+func (f *Fake) LoadCoachNoteMoments(playerRef int64) (map[string][]db.CoachNoteMoment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string][]db.CoachNoteMoment{}
+	for noteID, moments := range f.CoachNoteMoments {
+		if !f.noteExists(playerRef, noteID) || len(moments) == 0 {
+			continue
+		}
+		out[noteID] = slices.Clone(moments)
+	}
+	return out, nil
+}
+
+// noteExists reports whether this player has a note with that public id —
+// the Fake's stand-in for the SQL scope check. Callers hold f.mu.
+func (f *Fake) noteExists(playerRef int64, noteID string) bool {
+	if noteID == "" {
+		return false
+	}
+	for _, n := range f.CoachNotes[playerRef] {
+		if n.NoteID == noteID {
+			return true
+		}
+	}
+	return false
+}

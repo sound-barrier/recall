@@ -18,6 +18,9 @@ type NoteStore interface {
 	UpsertCoachNote(n db.CoachNote) (db.CoachNote, error)
 	DeleteCoachNote(playerRef int64, matchKey string) error
 	LoadCoachNotes(playerRef int64) (map[string]db.CoachNote, error)
+	UpsertCoachNoteMoment(playerRef int64, m db.CoachNoteMoment) (db.CoachNoteMoment, error)
+	DeleteCoachNoteMoment(playerRef int64, momentID string) error
+	LoadCoachNoteMoments(playerRef int64) (map[string][]db.CoachNoteMoment, error)
 	SetCoachSummary(playerRef int64, text string) error
 	LoadCoachSummary(playerRef int64) (db.CoachSummary, bool, error)
 }
@@ -27,7 +30,7 @@ type NoteStore interface {
 // same way the coach worked. A note whose match is no longer in the bundle
 // still travels — the coach wrote it, and dropping it silently would lose
 // work — it simply carries no match context.
-func Notes(s *Session, stored map[string]db.CoachNote) []Note {
+func Notes(s *Session, stored map[string]db.CoachNote, moments map[string][]db.CoachNoteMoment) []Note {
 	notes := make([]Note, 0, len(stored))
 	seen := make(map[string]bool, len(stored))
 	for _, rec := range s.Records() {
@@ -36,7 +39,7 @@ func Notes(s *Session, stored map[string]db.CoachNote) []Note {
 			continue
 		}
 		seen[rec.MatchKey] = true
-		notes = append(notes, NoteFromCoachNote(n, s.MatchContextFor(rec.MatchKey)))
+		notes = append(notes, withMoments(NoteFromCoachNote(n, s.MatchContextFor(rec.MatchKey)), moments))
 	}
 	orphans := make([]string, 0, len(stored)-len(seen))
 	for key := range stored {
@@ -46,9 +49,26 @@ func Notes(s *Session, stored map[string]db.CoachNote) []Note {
 	}
 	slices.Sort(orphans)
 	for _, key := range orphans {
-		notes = append(notes, NoteFromCoachNote(stored[key], nil))
+		notes = append(notes, withMoments(NoteFromCoachNote(stored[key], nil), moments))
 	}
 	return notes
+}
+
+// withMoments hangs a note's moments on it, in the order the strip reads them.
+// A note with none keeps a nil slice rather than an empty one — omitempty then
+// keeps it out of the file entirely, which is what lets an older reader ignore
+// a field it does not know.
+func withMoments(n Note, moments map[string][]db.CoachNoteMoment) Note {
+	rows := moments[n.NoteID]
+	if len(rows) == 0 {
+		return n
+	}
+	out := make([]Moment, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, MomentFromRow(row))
+	}
+	n.Moments = SortMoments(out)
+	return n
 }
 
 // ExportNotes assembles the notes file for a session. It refuses rather

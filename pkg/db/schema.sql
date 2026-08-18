@@ -574,6 +574,44 @@ CREATE TABLE IF NOT EXISTS coach_note_extra_tags (
 ) STRICT;
 -- statement-end
 
+-- A note's timestamped moments: "3:23 — no off-angle, the tank ate the
+-- pressure alone". The note stays the per-match record (the overall text, the
+-- tags, the reviewed mark); the moments are what a coach points AT while
+-- watching the replay, so they hang off it rather than replacing it.
+--
+-- Many per note, which is the whole point — a single review says several
+-- things at several times. sort_order is the authored order, kept so two
+-- moments sharing a clock stay where the coach put them; readers order by
+-- (match_clock, sort_order) so the strip reads down the match.
+CREATE TABLE IF NOT EXISTS coach_note_moments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  moment_id TEXT NOT NULL UNIQUE,
+  coach_note_id INTEGER NOT NULL REFERENCES coach_notes (id) ON DELETE CASCADE,
+  match_clock TEXT NOT NULL,
+  text TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
+CREATE INDEX IF NOT EXISTS idx_coach_note_moments_note
+  ON coach_note_moments (coach_note_id, match_clock, sort_order);
+-- statement-end
+
+-- One focus tag per moment, same vocabulary as the note's. A moment names a
+-- single thing that happened, so this is a single tag rather than a set — the
+-- table shape exists to share the CHECK with its sibling above.
+CREATE TABLE IF NOT EXISTS coach_note_moment_focus_tags (
+  coach_note_moment_id INTEGER NOT NULL REFERENCES coach_note_moments (id) ON DELETE CASCADE,
+  tag TEXT NOT NULL CHECK (tag IN (
+    'positioning', 'ult_economy', 'target_priority', 'cooldowns',
+    'hero_pick', 'comms', 'mechanics', 'mental'
+  )),
+  PRIMARY KEY (coach_note_moment_id, tag)
+) STRICT;
+-- statement-end
+
 CREATE TABLE IF NOT EXISTS coach_session_summaries (
   player_ref INTEGER PRIMARY KEY REFERENCES coach_players (id) ON DELETE CASCADE,
   text TEXT NOT NULL,

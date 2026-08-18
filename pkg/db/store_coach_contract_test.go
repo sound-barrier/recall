@@ -534,3 +534,163 @@ func TestStoreContract_LoadMatchKeysSeesOCRAndManualLayers(t *testing.T) {
 		})
 	}
 }
+
+// ── A note's timestamped moments ──────────────────────────────────────────
+
+// assertThreeMoments checks the round trip of the three-observation review
+// this suite writes: all three present, in match order, tags carried.
+func assertThreeMoments(t *testing.T, got []db.CoachNoteMoment) {
+	t.Helper()
+	if len(got) != 3 {
+		t.Fatalf("moments = %d, want 3 on one match", len(got))
+	}
+	if got[0].MatchClock != "03:23" || got[2].MatchClock != "04:45" {
+		t.Errorf("moments should load down the match, got %q…%q", got[0].MatchClock, got[2].MatchClock)
+	}
+	if got[0].FocusTag != "positioning" {
+		t.Errorf("focus tag should survive the round trip, got %q", got[0].FocusTag)
+	}
+	if got[2].FocusTag != "" {
+		t.Errorf("an untagged moment stays untagged, got %q", got[2].FocusTag)
+	}
+}
+
+// The point of moments: several observations on ONE match, which the note
+// alone could never carry — it had a single clock field, so a coach with three
+// things to say at three times had to pick one.
+func TestCoachNoteMoments_ManyPerMatch(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p := ensurePlayer(t, s, "", "Sable")
+			note, err := s.UpsertCoachNote(db.CoachNote{
+				PlayerRef: p.ID, MatchKey: coachKey, Kind: "note", Text: "faded late",
+			})
+			mustNoErr(t, err)
+
+			for _, m := range []db.CoachNoteMoment{
+				{NoteID: note.NoteID, MatchClock: "03:23", Text: "no off-angle", FocusTag: "positioning", SortOrder: 0},
+				{NoteID: note.NoteID, MatchClock: "04:13", Text: "no ult tracking", FocusTag: "ult_economy", SortOrder: 1},
+				{NoteID: note.NoteID, MatchClock: "04:45", Text: "flanking Cassidy", SortOrder: 2},
+			} {
+				saved, err := s.UpsertCoachNoteMoment(p.ID, m)
+				mustNoErr(t, err)
+				if saved.MomentID == "" {
+					t.Fatal("a saved moment must carry a minted id")
+				}
+			}
+
+			byNote, err := s.LoadCoachNoteMoments(p.ID)
+			mustNoErr(t, err)
+			assertThreeMoments(t, byNote[note.NoteID])
+		})
+	}
+}
+
+// An edit keeps the moment's identity — the same rule the note follows, and
+// what lets the autosave queue key on an id it minted before the first save.
+func TestCoachNoteMoments_EditKeepsIdentity(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p := ensurePlayer(t, s, "", "Sable")
+			note, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: p.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+
+			first, err := s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+				NoteID: note.NoteID, MatchClock: "03:23", Text: "no off-angle",
+			})
+			mustNoErr(t, err)
+			second, err := s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+				MomentID: first.MomentID, NoteID: note.NoteID,
+				MatchClock: "03:30", Text: "no off-angle — tank ate it",
+			})
+			mustNoErr(t, err)
+
+			if second.MomentID != first.MomentID {
+				t.Errorf("an edit minted a new id %q, want %q kept", second.MomentID, first.MomentID)
+			}
+			byNote, err := s.LoadCoachNoteMoments(p.ID)
+			mustNoErr(t, err)
+			if got := byNote[note.NoteID]; len(got) != 1 || got[0].MatchClock != "03:30" {
+				t.Fatalf("want one edited moment at 03:30, got %+v", got)
+			}
+		})
+	}
+}
+
+// A moment id from another coach's player must not resolve. The session view
+// is the only thing scoping these, so the store has to hold the line itself.
+func TestCoachNoteMoments_ScopedToThePlayer(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			sable := ensurePlayer(t, s, "", "Sable")
+			ordo := ensurePlayer(t, s, "", "Ordo")
+			note, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: sable.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+
+			if _, err := s.UpsertCoachNoteMoment(ordo.ID, db.CoachNoteMoment{
+				NoteID: note.NoteID, MatchClock: "03:23", Text: "reaching across",
+			}); !errors.Is(err, db.ErrCoachNoteUnknown) {
+				t.Fatalf("want ErrCoachNoteUnknown writing to another player's note, got %v", err)
+			}
+
+			saved, err := s.UpsertCoachNoteMoment(sable.ID, db.CoachNoteMoment{
+				NoteID: note.NoteID, MatchClock: "03:23", Text: "mine",
+			})
+			mustNoErr(t, err)
+			mustNoErr(t, s.DeleteCoachNoteMoment(ordo.ID, saved.MomentID))
+
+			byNote, err := s.LoadCoachNoteMoments(sable.ID)
+			mustNoErr(t, err)
+			if len(byNote[note.NoteID]) != 1 {
+				t.Fatal("another player's delete removed a moment it should not reach")
+			}
+		})
+	}
+}
+
+// Deleting the note takes its moments with it — otherwise a re-noted match
+// would resurface observations the coach thought they had thrown away.
+func TestCoachNoteMoments_FollowTheNoteOnDelete(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p := ensurePlayer(t, s, "", "Sable")
+			note, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: p.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+			_, err = s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+				NoteID: note.NoteID, MatchClock: "03:23", Text: "no off-angle",
+			})
+			mustNoErr(t, err)
+
+			mustNoErr(t, s.DeleteCoachNote(p.ID, coachKey))
+
+			byNote, err := s.LoadCoachNoteMoments(p.ID)
+			mustNoErr(t, err)
+			if len(byNote[note.NoteID]) != 0 {
+				t.Fatalf("moments outlived their note: %+v", byNote[note.NoteID])
+			}
+		})
+	}
+}
+
+// The vocabulary is a CHECK in SQL; the Fake has to refuse the same tag or the
+// two stores disagree about what is storable.
+func TestCoachNoteMoments_RefuseATagOutsideTheVocabulary(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p := ensurePlayer(t, s, "", "Sable")
+			note, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: p.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+
+			if _, err := s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+				NoteID: note.NoteID, MatchClock: "03:23", Text: "x", FocusTag: "vibes",
+			}); err == nil {
+				t.Fatal("a tag outside the vocabulary must be refused")
+			}
+		})
+	}
+}

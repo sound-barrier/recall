@@ -24,6 +24,10 @@ type Note struct {
 	MatchClock string        `json:"match_clock"`
 	UpdatedAt  string        `json:"updated_at"`
 	Match      *MatchContext `json:"match,omitempty"`
+	// Moments are the timestamped observations inside this note, in reading
+	// order. omitempty on purpose: a note without any is byte-identical to
+	// what an older build wrote, so files keep round-tripping both ways.
+	Moments []Moment `json:"moments,omitempty"`
 }
 
 // MatchContext is the descriptive snapshot of the match a note is about,
