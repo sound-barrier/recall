@@ -390,6 +390,16 @@ export interface SessionSummary {
   w: number
   l: number
   d: number
+  // How the rank meter moved across the session, and how much of it was
+  // actually read. Same shape and same rule as RankMovement above: a total with
+  // no denominator reads as complete whether it came from every rank screen or
+  // from one of six.
+  netPercent: number
+  readCount: number
+  // When this session goes stale — the newest match plus the session gap. The
+  // toast arms its expiry from this rather than re-walking the corpus on a
+  // timer.
+  endsAt: number
 }
 
 // The trailing run of games spaced closer than the session gap,
@@ -401,6 +411,37 @@ function trailingSession(timed: TimedMatch[], gapMs: number): TimedMatch[] {
     session.unshift(timed[i]!)
   }
   return session
+}
+
+// Split from currentSessionSummary to keep it inside the complexity cap: two
+// independent tallies over the same records read better apart than as one loop
+// with two purposes.
+function tallyResults(session: readonly TimedMatch[]): { w: number; l: number; d: number } {
+  let w = 0
+  let l = 0
+  let d = 0
+  for (const { r } of session) {
+    const res = r.data?.result
+    if (res === 'victory') w++
+    else if (res === 'defeat') l++
+    else if (res === 'draw') d++
+  }
+  return { w, l, d }
+}
+
+// typeof, not truthiness: a real 0 is a reading — the match resolved and moved
+// the rank by nothing — and must count toward coverage.
+function tallyMovement(session: readonly TimedMatch[]): { netPercent: number; readCount: number } {
+  let netPercent = 0
+  let readCount = 0
+  for (const { r } of session) {
+    const change = r.data?.change_percent
+    if (typeof change === 'number') {
+      netPercent += change
+      readCount++
+    }
+  }
+  return { netPercent, readCount }
 }
 
 export function currentSessionSummary(
@@ -415,12 +456,11 @@ export function currentSessionSummary(
   if (now - timed[timed.length - 1]!.t > gapMs) return null
 
   const session = trailingSession(timed, gapMs)
-  const sum: SessionSummary = { matches: session.length, w: 0, l: 0, d: 0 }
-  for (const { r } of session) {
-    const res = r.data?.result
-    if (res === 'victory') sum.w++
-    else if (res === 'defeat') sum.l++
-    else if (res === 'draw') sum.d++
+  const newest = session[session.length - 1]!.t
+  return {
+    matches: session.length,
+    ...tallyResults(session),
+    ...tallyMovement(session),
+    endsAt: newest + gapMs,
   }
-  return sum
 }

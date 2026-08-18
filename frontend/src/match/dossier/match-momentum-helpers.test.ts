@@ -193,7 +193,10 @@ describe('currentSessionSummary', () => {
       m('c', { day: 10, hh: 21, mm: 0, result: 'defeat' }),
     ]
     const sum = currentSessionSummary(records, epoch(10, 21, 30))
-    expect(sum).toEqual({ matches: 3, w: 2, l: 1, d: 0 })
+    // The W/L/D tally, asserted field-by-field: the shape also carries the
+    // session's rank movement and expiry now, which this case says nothing
+    // about.
+    expect(sum).toMatchObject({ matches: 3, w: 2, l: 1, d: 0 })
   })
 
   it('null once the latest match falls outside the gap (stale history)', () => {
@@ -433,5 +436,52 @@ describe('netRankProgress coverage', () => {
 
     expect(got.readCount).toBe(1)
     expect(got.netPercent).toBe(0)
+  })
+})
+
+// The session toast now reports the rank movement too, under the same rule the
+// rest of the campaign follows: a total with no denominator reads as complete.
+describe('currentSessionSummary movement', () => {
+  const HOUR = 3_600_000
+  const at = (msAgo: number, result: 'victory' | 'defeat' | 'draw', change?: number) => {
+    const d = new Date(Date.now() - msAgo)
+    return {
+      match_key: `s${msAgo}-${Math.random()}`,
+      data: {
+        date: d.toISOString().slice(0, 10),
+        finished_at: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+        result,
+        ...(change === undefined ? {} : { change_percent: change }),
+      },
+    }
+  }
+
+  it('sums the session movement and says how much was read', () => {
+    const got = currentSessionSummary([at(HOUR, 'victory', 20), at(HOUR / 2, 'defeat', -10), at(60_000, 'victory')])
+
+    expect(got?.netPercent).toBe(10)
+    expect(got?.readCount).toBe(2)
+    expect(got?.matches).toBe(3)
+  })
+
+  // All unread must not read as a flat session.
+  it('reports zero coverage when nothing reported a movement', () => {
+    const got = currentSessionSummary([at(HOUR, 'victory'), at(60_000, 'defeat')])
+
+    expect(got?.readCount).toBe(0)
+    expect(got?.netPercent).toBe(0)
+  })
+
+  it('counts a real zero as a reading', () => {
+    const got = currentSessionSummary([at(60_000, 'draw', 0)])
+
+    expect(got?.readCount).toBe(1)
+  })
+
+  // The toast arms its own expiry from this rather than polling.
+  it('reports when the session goes stale', () => {
+    const got = currentSessionSummary([at(60_000, 'victory')])
+
+    expect(got!.endsAt).toBeGreaterThan(Date.now())
   })
 })
