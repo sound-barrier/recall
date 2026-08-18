@@ -13,7 +13,7 @@
 </script>
 
 <template>
-  <div class="view-lazy-fallback" role="status" aria-live="polite">
+  <div class="view-lazy-fallback" role="status" aria-live="polite" aria-label="Loading view">
     <span class="view-lazy-label">Loading view</span>
     <span class="view-lazy-dots" aria-hidden="true">
       <span class="view-lazy-dot" />
