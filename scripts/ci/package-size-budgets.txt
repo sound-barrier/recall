@@ -193,7 +193,11 @@ frontend/tests/e2e/dossier                    24
 # filename prefixes already drew. A spec count is a feature count here: the TDD
 # rule mandates one per user-visible affordance, so this climbs one considered
 # bump at a time.
-frontend/tests/e2e/match                      21
+# 21 -> 22: the player's own cue strip. It belongs with the match specs
+# because that is the surface it lives on — the journal in the detail panel —
+# not with the coaching ones, even though it reuses their component. The write
+# it exercises is the player's own route, table and gate.
+frontend/tests/e2e/match                      22
 
 # frontend/tests/e2e/matches — the Matches view around the list: grouping and
 # sorting, collapse/expand, infinite scroll and scroll affordances, bulk mode

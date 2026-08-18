@@ -24,6 +24,7 @@ import type {
   CoachDecisionEnum,
   CoachMoment,
   CoachMomentInput,
+  MatchMomentInput,
   CoachNote,
   CoachNoteInput,
   CoachReturnSheet,
@@ -648,6 +649,25 @@ export function DeleteCoachMoment(matchKey: string, momentID: string): Promise<v
 // The set-level "what to work on" note. An empty string clears it.
 export function PutCoachSummary(text: string): Promise<void> {
   return unwrapVoid(sdk.putCoachSummary({ body: { text } }))
+}
+
+// One of the PLAYER's own timestamped moments on their own match. The moment
+// id is the client's to mint, the same as the coach's. 409 when the id already
+// names a moment on a different match, or while a coaching session is open.
+export function SetMatchMoment(
+  matchKey: string, momentID: string, input: CoachMomentBody,
+): Promise<CoachMoment> {
+  return unwrap(sdk.setMatchMoment({
+    path: { match_key: matchKey, moment_id: momentID },
+    body: input as MatchMomentInput,
+  }))
+}
+
+// Drop one of the player's moments. Idempotent.
+export function DeleteMatchMoment(matchKey: string, momentID: string): Promise<void> {
+  return unwrapVoid(sdk.deleteMatchMoment({
+    path: { match_key: matchKey, moment_id: momentID },
+  }))
 }
 
 // ─── Coaching returns (the player's side) ──────────────────────────────────

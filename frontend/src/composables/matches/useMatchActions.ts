@@ -1,6 +1,8 @@
 import { computed } from 'vue'
 
 import {
+  DeleteMatchMoment,
+  SetMatchMoment,
   type DisruptionSide,
   type MatchAnnotationInput,
   type UserMatchDataInput,
@@ -23,6 +25,7 @@ import {
   BulkSetMatchQueue,
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
+  type CoachMomentBody,
 } from '@/api-client'
 import { getQueryClient } from '@/queries/client'
 import { qk } from '@/queries/keys'
@@ -260,6 +263,20 @@ export function useMatchActions() {
     if (!guardWrite()) return false
     try { await writeAnnotation(matchKey, input); await reload(); return true } catch (e) { onError(String(e)); return false }
   }
+  // The player's own timestamped moments. Same write gate as everything else
+  // on their history: a coaching session makes it read-only, and the server
+  // refuses the same write with a 409.
+  async function onSetMatchMoment(
+    matchKey: string, momentID: string, input: CoachMomentBody,
+  ): Promise<boolean> {
+    if (!guardWrite()) return false
+    try { await SetMatchMoment(matchKey, momentID, input); await reload(); return true }
+    catch (e) { onError(String(e)); return false }
+  }
+  async function onDeleteMatchMoment(matchKey: string, momentID: string) {
+    if (!guardWrite()) return
+    try { await DeleteMatchMoment(matchKey, momentID); await reload() } catch (e) { onError(String(e)) }
+  }
   async function onUpdateMatchData(matchKey: string, overrides: UserMatchDataInput) {
     if (!guardWrite()) return
     try { await UpdateMatchData(matchKey, overrides); await reload() } catch (e) { onError(String(e)) }
@@ -347,6 +364,8 @@ export function useMatchActions() {
     onMoveMatches,
     onSetDisruptionAnnotation,
     onSetMatchAnnotation,
+    onSetMatchMoment,
+    onDeleteMatchMoment,
     onUpdateMatchData,
     onResetMatchData,
     onSetMatchPinned,
