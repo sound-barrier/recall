@@ -4218,6 +4218,15 @@ components:
             type: string
         match_clock:
           type: string
+        moments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachMoment"
+          description: |
+            The note's timestamped observations, in reading order. Shown on
+            the card BEFORE the verdict: most of a timestamped review is its
+            moments, and asking for a decision about content the reader cannot
+            see is not asking.
         updated_at:
           type: string
         match:
@@ -4343,6 +4352,15 @@ components:
           type: array
           items:
             type: string
+        moments:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachMoment"
+          description: |
+            The coach's timestamped observations that came with this note, in
+            reading order. Absent rather than empty when there are none, so a
+            note accepted before moments existed carries no empty array into
+            every match payload.
         accepted_at:
           type: string
           description: When the player accepted the note (RFC3339).

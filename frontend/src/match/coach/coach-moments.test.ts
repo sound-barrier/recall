@@ -4,6 +4,10 @@ import {
   clockSeconds, isPastTheEnd, matchSeconds, railPosition, sortMoments,
 } from '@/match/coach/coach-cue-geometry'
 import { emptyMoment, isSavable, type CoachMoment } from '@/match/coach/coach-moments'
+import { notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
+
+const noteDraft = (text: string): CoachNoteDraft =>
+  ({ kind: 'note', text, focusTags: [], extraTags: [], matchClock: '' })
 
 const at = (clock: string, text = 'x'): CoachMoment =>
   ({ momentId: clock, matchClock: clock, text, focusTag: '' })
@@ -87,5 +91,32 @@ describe('clockSeconds / matchSeconds', () => {
   it('reads a match length into seconds', () => {
     expect(matchSeconds('9:30')).toBe(570)
     expect(matchSeconds(null)).toBeNull()
+  })
+})
+
+describe('notesSummaryLine with moments', () => {
+  // "7 notes" has always meant seven MATCHES noted. Once a coach can leave
+  // three observations on one match, folding those into the same number would
+  // silently answer a different question than the reader is asking.
+  it('counts matches and moments separately', () => {
+    const notes = { a: noteDraft('faded late'), b: noteDraft('good opening') }
+    const moments = {
+      a: [{ matchClock: '03:23', text: 'no off-angle' }, { matchClock: '04:13', text: 'no ult tracking' }],
+      b: [{ matchClock: '01:10', text: 'strong first fight' }],
+    }
+
+    expect(notesSummaryLine(notes, 'Ordo', moments)).toBe('2 notes · 3 moments · Ordo')
+  })
+
+  it('says nothing about moments when there are none', () => {
+    expect(notesSummaryLine({ a: noteDraft('faded late') }, 'Ordo')).toBe('1 note · Ordo')
+  })
+
+  // A half-typed row is a draft, not an observation — the same rule the strip
+  // uses to decide whether to save one.
+  it('does not count a draft that says nothing yet', () => {
+    const moments = { a: [{ matchClock: '03:23', text: '   ' }, { matchClock: '', text: 'no clock yet' }] }
+
+    expect(notesSummaryLine({ a: noteDraft('x') }, '', moments)).toBe('1 note')
   })
 })

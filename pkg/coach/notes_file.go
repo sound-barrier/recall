@@ -9,9 +9,35 @@ import (
 	"recall/pkg/match"
 )
 
-// NotesSchemaV1 is the wire-schema identifier notes.json carries. Bumping
-// it is a breaking change to every notes file already on disk.
-const NotesSchemaV1 = "recall-coach-notes/v1"
+// The wire-schema identifiers notes.json carries.
+//
+// v2 adds timestamped moments inside a note. The writer picks the LOWEST
+// schema that describes the file it is writing — a review with no moments is
+// still v1 — so a coach on a new build can hand a file to a player on an old
+// one and it keeps working, which is the common case and the one worth
+// protecting.
+//
+// When there ARE moments the file says v2, and an older build refuses it by
+// name ("this build expects v1") rather than decoding it and silently dropping
+// them. That refusal is the point: Go's decoder ignores unknown fields, so a
+// v1-labeled file carrying moments would import as a note whose specifics
+// vanished, with nothing anywhere saying so. A player who is told to update
+// has lost nothing; a player who is not has lost the half of the review that
+// pointed at something.
+const (
+	NotesSchemaV1 = "recall-coach-notes/v1"
+	NotesSchemaV2 = "recall-coach-notes/v2"
+)
+
+// notesSchemaFor is the lowest schema that describes this file.
+func notesSchemaFor(notes []Note) string {
+	for _, n := range notes {
+		if len(n.Moments) > 0 {
+			return NotesSchemaV2
+		}
+	}
+	return NotesSchemaV1
+}
 
 // NotesFile is the machine copy of a coach's notes — notes.json inside the
 // archive the coach hands the player. Player carries the identity the
@@ -63,12 +89,27 @@ func ValidateNotesFile(f NotesFile) error {
 	return nil
 }
 
-func validateNotesHeader(f NotesFile) error {
+// validateNotesSchema checks the label and that it matches the contents.
+func validateNotesSchema(f NotesFile) error {
 	switch {
 	case f.Schema == "":
 		return fmt.Errorf("%w: missing schema", ErrNotesMalformed)
-	case f.Schema != NotesSchemaV1:
-		return fmt.Errorf("%w: %q (this build expects %q)", ErrNotesUnsupportedSchema, f.Schema, NotesSchemaV1)
+	case f.Schema != NotesSchemaV1 && f.Schema != NotesSchemaV2:
+		return fmt.Errorf("%w: %q (this build reads %q and %q)",
+			ErrNotesUnsupportedSchema, f.Schema, NotesSchemaV1, NotesSchemaV2)
+	// A v1 file may not carry moments: the schema is what tells an older build
+	// whether it can read the whole file, so a v1 label over v2 content is the
+	// one shape that would make that promise false.
+	case f.Schema == NotesSchemaV1 && notesSchemaFor(f.Notes) == NotesSchemaV2:
+		return fmt.Errorf("%w: notes carry moments but the file says %q — moments need %q",
+			ErrNotesMalformed, NotesSchemaV1, NotesSchemaV2)
+	}
+	return nil
+}
+
+func validateNotesHeader(f NotesFile) error {
+	if err := validateNotesSchema(f); err != nil {
+		return err
 	}
 	if err := validateName(f.CoachName, "coach_name"); err != nil {
 		return err

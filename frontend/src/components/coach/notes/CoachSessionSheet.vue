@@ -13,7 +13,7 @@ withDefaults(defineProps<{
   wld: WLDTally
   winRate: number | null
   focusTally: FocusCount[]
-  /** "7 notes · 1 reviewed only · Ordo" — from notesSummaryLine(). */
+  /** "7 notes · 19 moments · 1 reviewed only · Ordo" — from notesSummaryLine(). */
   notesLine: string
   summary: string
   canExport?: boolean

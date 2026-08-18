@@ -416,7 +416,20 @@ type MatchCoachNote struct {
 	MatchClock  string
 	FocusTags   []string
 	ExtraTags   []string
-	AcceptedAt  string
+	// Moments are the coach's timestamped observations, in reading order.
+	// They arrive with the note and are stored beside it rather than folded
+	// into Text — the player reads them as a list down the match.
+	Moments    []MatchCoachNoteMoment
+	AcceptedAt string
+}
+
+// MatchCoachNoteMoment is one timestamped observation on an accepted note.
+type MatchCoachNoteMoment struct {
+	MomentID   string
+	MatchClock string
+	Text       string
+	FocusTag   string
+	SortOrder  int
 }
 
 // CoachReturn is a staged notes file the player has imported but not

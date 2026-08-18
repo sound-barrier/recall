@@ -54,7 +54,32 @@ func (s *SQLStore) UpsertMatchCoachNote(n MatchCoachNote) (int64, error) {
 	if err := replaceTagSetByID(tx, matchCoachNoteExtraTagsTable, matchCoachNoteParentColumn, id, n.ExtraTags); err != nil {
 		return 0, err
 	}
+	if err := replaceNoteMoments(tx, id, n.Moments); err != nil {
+		return 0, err
+	}
 	return id, tx.Commit()
+}
+
+// replaceNoteMoments rewrites an accepted block's moments wholesale, the same
+// way the tag sets are replaced: a re-import carries the coach's current list,
+// and merging would leave a moment they deleted between sessions on a match
+// the player already accepted.
+func replaceNoteMoments(tx *sql.Tx, noteID int64, moments []MatchCoachNoteMoment) error {
+	if _, err := tx.Exec(
+		`DELETE FROM match_coach_note_moments WHERE match_coach_note_id = ?`, noteID); err != nil {
+		return fmt.Errorf("clear note moments: %w", err)
+	}
+	for _, m := range moments {
+		if _, err := tx.Exec(
+			`INSERT INTO match_coach_note_moments
+			   (match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order)
+			 VALUES (?, ?, ?, ?, ?, ?)`,
+			noteID, m.MomentID, m.MatchClock, m.Text, m.FocusTag, m.SortOrder,
+		); err != nil {
+			return fmt.Errorf("insert note moment: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *SQLStore) DeleteMatchCoachNote(id int64) error {
@@ -90,12 +115,39 @@ func (s *SQLStore) LoadMatchCoachNotes() (map[string][]MatchCoachNote, error) {
 			return nil, fmt.Errorf("load %s: %w", child.table, err)
 		}
 	}
+	if err := attachNoteMoments(s.db, byID); err != nil {
+		return nil, err
+	}
 	out := map[string][]MatchCoachNote{}
 	for _, id := range order {
 		n := byID[id]
 		out[n.MatchKey] = append(out[n.MatchKey], *n)
 	}
 	return out, nil
+}
+
+// attachNoteMoments hangs each block's moments on it, already in reading
+// order — the ORDER BY is the strip's order, so no caller has to re-sort.
+func attachNoteMoments(q *sql.DB, byID map[int64]*MatchCoachNote) error {
+	rows, err := q.Query(
+		`SELECT match_coach_note_id, moment_id, match_clock, text, focus_tag, sort_order
+		 FROM match_coach_note_moments
+		 ORDER BY match_coach_note_id, match_clock, sort_order`)
+	if err != nil {
+		return fmt.Errorf("load match coach note moments: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var parent int64
+		var m MatchCoachNoteMoment
+		if err := rows.Scan(&parent, &m.MomentID, &m.MatchClock, &m.Text, &m.FocusTag, &m.SortOrder); err != nil {
+			return fmt.Errorf("scan match coach note moment: %w", err)
+		}
+		if n, ok := byID[parent]; ok {
+			n.Moments = append(n.Moments, m)
+		}
+	}
+	return rows.Err()
 }
 
 // loadMatchCoachNoteRows reads every accepted block keyed by row id, plus

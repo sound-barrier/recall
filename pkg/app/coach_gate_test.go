@@ -147,6 +147,8 @@ var ungatedByDesign = map[string]string{
 	"PutCoachNote":          "the session's own surface — coach-authored, by design",
 	"PutCoachSummary":       "the session's own surface — coach-authored, by design",
 	"DeleteCoachNote":       "the session's own surface — coach-authored, by design",
+	"PutCoachMoment":        "the session's own surface — coach-authored, by design",
+	"DeleteCoachMoment":     "the session's own surface — coach-authored, by design",
 	"CreateProfile":         "ends the session instead (design rule 4)",
 	"SwitchProfile":         "ends the session instead (design rule 4)",
 	"RenameProfile":         "ends the session instead (design rule 4)",

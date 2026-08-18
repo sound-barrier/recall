@@ -35,7 +35,15 @@ const emit = defineEmits<{
 // precedent): calling the action here, instead of emitting up the panel
 // chain, lets its Promise<boolean> outcome reach the editor so the
 // "saved" pulse is a real persistence receipt.
-const { onSetMatchAnnotation } = useMatchActions()
+const { onSetMatchAnnotation, onCopyReplayCode } = useMatchActions()
+
+// A coach's moments point at seconds inside a replay, so the block offers the
+// code beside them. Same routine the row context menu uses — it names the
+// match, looks the code up, and surfaces the one failure worth telling the
+// user about (there isn't one on file).
+function onCopyReplay() {
+  void onCopyReplayCode(props.record.match_key)
+}
 
 // Read-only sample profile or an open coaching session: the journal is the
 // player's own writing surface, and neither state may write to it. The
@@ -362,6 +370,8 @@ onMounted(() => {
         :key="coachNote.id"
         :match-key="record.match_key"
         :note="coachNote"
+        :replay-code="record.annotation?.replay_code ?? ''"
+        @copy-replay="onCopyReplay"
       />
     </div>
   </section>

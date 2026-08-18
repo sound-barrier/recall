@@ -206,8 +206,28 @@ func coachNoteFromRow(n db.MatchCoachNote) match.CoachNote {
 		MatchClock:  n.MatchClock,
 		FocusTags:   n.FocusTags,
 		ExtraTags:   n.ExtraTags,
+		Moments:     coachMomentsFromRows(n.Moments),
 		AcceptedAt:  n.AcceptedAt,
 	}
+}
+
+// coachMomentsFromRows converts the block's moments. The store already loads
+// them in reading order, so this keeps it; nil for a note with none, which
+// omitempty then keeps off the wire entirely.
+func coachMomentsFromRows(rows []db.MatchCoachNoteMoment) []match.CoachNoteMoment {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]match.CoachNoteMoment, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, match.CoachNoteMoment{
+			MomentID:   m.MomentID,
+			MatchClock: m.MatchClock,
+			Text:       m.Text,
+			FocusTag:   m.FocusTag,
+		})
+	}
+	return out
 }
 
 // coachNotesFromRows converts a store-ordered block list wholesale. The

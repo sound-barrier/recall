@@ -152,3 +152,57 @@ test.describe('return of notes — player side', () => {
     await expect(sheetDialog(page)).toHaveCount(0)
   })
 })
+
+// ── The timestamped half of a review ──────────────────────────────────────
+
+test.describe('return of notes — moments', () => {
+  test.beforeEach(async ({ page }) => {
+    await silenceParseEvents(page)
+    await seedProfiles(page)
+    await seedPlayerHistory(page)
+  })
+
+  // A player deciding whether to take a note has to see everything it
+  // carries. When a review is timestamped, most of it IS the moments — a card
+  // that hid them until after accepting would be asking for a decision about
+  // content the reader cannot see.
+  test('shows the moments before the player decides', async ({ page }) => {
+    const inbox: CoachReturnSheet[] = []
+    await mockInbox(page, inbox)
+    await mockNotesImport(page, inbox)
+    await page.goto('/')
+    await importFromSettings(page)
+
+    // The CARD, not the verdict widget cards() resolves to — the moments sit
+    // above the radios.
+    const card = sheetDialog(page).getByRole('article', { name: /king.s row/i })
+    await expect(card).toContainText('03:23')
+    await expect(card).toContainText('No off-angle — the tank ate the pressure alone.')
+    await expect(card).toContainText('04:45')
+    await expect(card).toContainText('Cassidy flanked behind you.')
+  })
+
+  // The whole round trip, and the only place it can be proven: the coach's
+  // moments cross the notes file, survive the import, and land on the
+  // player's own match in clock order with the replay code beside them.
+  test('carries the moments onto the match once accepted', async ({ page }) => {
+    const inbox: CoachReturnSheet[] = []
+    await mockInbox(page, inbox)
+    await mockNotesImport(page, inbox)
+    await page.goto('/')
+    await importFromSettings(page)
+
+    await mockMatchesWithCoachNotes(page)
+    await sheetDialog(page).getByRole('button', { name: 'Accept all' }).click()
+    await sheetDialog(page).getByRole('button', { name: /^Finish/ }).click()
+    await expect(sheetDialog(page)).toBeHidden()
+
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await page.locator('.leaf-row', { hasText: /king.s row/i }).click()
+    const block = page.getByRole('region', { name: new RegExp(`Coach.s note from ${COACH_NAME}`) })
+    await expect(block).toContainText('03:23')
+    await expect(block).toContainText('04:13')
+    await expect(block).toContainText('Cassidy flanked behind you.')
+    await expect(block.getByRole('button', { name: /copy replay code/i })).toBeVisible()
+  })
+})

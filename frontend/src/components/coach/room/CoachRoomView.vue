@@ -77,7 +77,7 @@ const { onReelKeydown } = useCoachReelKeyboard({
   reel: reelColumn,
 })
 
-const notesLine = computed(() => notesSummaryLine(props.notes, props.coachName))
+const notesLine = computed(() => notesSummaryLine(props.notes, props.coachName, props.moments))
 
 // Nobody confirmed: the room has to ask before it lets a word be typed,
 // because a note about a nameless player has no row to land in.

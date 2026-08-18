@@ -117,10 +117,20 @@ export function tallyFocus(notes: Record<string, CoachNoteDraft>): FocusCount[] 
 }
 
 /** "7 notes · 1 reviewed only · Ordo" — the reviewed clause only when there are any, the coach only when named. */
-export function notesSummaryLine(notes: Record<string, CoachNoteDraft>, coachName: string): string {
+export function notesSummaryLine(
+  notes: Record<string, CoachNoteDraft>,
+  coachName: string,
+  moments: Record<string, { matchClock: string; text: string }[]> = {},
+): string {
   const marks = Object.values(notes).map(noteMark).filter((m) => m !== null)
   const reviewed = marks.filter((m) => m === 'reviewed').length
+  // "N notes" counts MATCHES noted, which is what it always meant — and the
+  // moment count is stated separately rather than folded in. Once a coach can
+  // leave three observations on one match, a single number silently answers a
+  // different question than the one the reader is asking.
+  const moved = Object.values(moments).flat().filter((m) => m.matchClock && m.text.trim()).length
   const parts = [`${marks.length} note${marks.length === 1 ? '' : 's'}`]
+  if (moved > 0) parts.push(`${moved} moment${moved === 1 ? '' : 's'}`)
   if (reviewed > 0) parts.push(`${reviewed} reviewed only`)
   if (coachName) parts.push(coachName)
   return parts.join(' · ')

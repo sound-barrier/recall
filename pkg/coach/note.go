@@ -199,7 +199,31 @@ func MatchCoachNoteFromNote(n Note, coachName, sessionDate string) db.MatchCoach
 		MatchClock:  n.MatchClock,
 		FocusTags:   nonNilTags(n.FocusTags),
 		ExtraTags:   nonNilTags(n.ExtraTags),
+		Moments:     acceptedMoments(n.Moments),
 	}
+}
+
+// acceptedMoments carries the note's moments onto the block the player keeps,
+// numbering them by their position in the already-sorted list so the reading
+// order the coach wrote survives a round trip through the player's database.
+func acceptedMoments(moments []Moment) []db.MatchCoachNoteMoment {
+	// nil, not an empty slice: a note with no moments must be indistinguishable
+	// from one written before moments existed, both on the wire (omitempty) and
+	// to the equality checks the existing tests make.
+	if len(moments) == 0 {
+		return nil
+	}
+	out := make([]db.MatchCoachNoteMoment, 0, len(moments))
+	for i, m := range SortMoments(moments) {
+		out = append(out, db.MatchCoachNoteMoment{
+			MomentID:   m.MomentID,
+			MatchClock: m.MatchClock,
+			Text:       m.Text,
+			FocusTag:   m.FocusTag,
+			SortOrder:  i,
+		})
+	}
+	return out
 }
 
 // CoachNoteFromInput builds the store row for a validated note write on

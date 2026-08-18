@@ -61,7 +61,10 @@ func TestValidateNotesFile_Rejects(t *testing.T) {
 		reason string
 	}{
 		{"missing schema", func(f *coach.NotesFile) { f.Schema = "" }, coach.ErrNotesMalformed, "schema"},
-		{"other schema", func(f *coach.NotesFile) { f.Schema = "recall-coach-notes/v2" }, coach.ErrNotesUnsupportedSchema, "recall-coach-notes/v2"},
+		// v2 was this case's stand-in for "a schema this build does not know"
+		// until v2 became one it does. The case is about an UNRECOGNIZED
+		// schema, so it names one that stays unrecognized.
+		{"other schema", func(f *coach.NotesFile) { f.Schema = "recall-coach-notes/v9" }, coach.ErrNotesUnsupportedSchema, "recall-coach-notes/v9"},
 		{"bundle schema", func(f *coach.NotesFile) { f.Schema = "recall-bundle/v1" }, coach.ErrNotesUnsupportedSchema, "recall-bundle/v1"},
 		{"blank coach", func(f *coach.NotesFile) { f.CoachName = "  " }, coach.ErrNotesMalformed, "coach_name"},
 		{"long coach", func(f *coach.NotesFile) { f.CoachName = strings.Repeat("c", 65) }, coach.ErrNotesMalformed, "coach_name"},

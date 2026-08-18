@@ -159,7 +159,19 @@ type CoachNote struct {
 	MatchClock  string   `json:"match_clock,omitempty"`
 	FocusTags   []string `json:"focus_tags"`
 	ExtraTags   []string `json:"extra_tags,omitempty"`
-	AcceptedAt  string   `json:"accepted_at"`
+	// Moments are the coach's timestamped observations, in reading order.
+	// omitempty so a note written before moments existed carries no empty
+	// array into every match payload.
+	Moments    []CoachNoteMoment `json:"moments,omitempty"`
+	AcceptedAt string            `json:"accepted_at"`
+}
+
+// CoachNoteMoment is one timestamped observation on a received note.
+type CoachNoteMoment struct {
+	MomentID   string `json:"moment_id"`
+	MatchClock string `json:"match_clock"`
+	Text       string `json:"text"`
+	FocusTag   string `json:"focus_tag,omitempty"`
 }
 
 // ErrMatchNotFound is returned by GetMatchByKey when no match has the
