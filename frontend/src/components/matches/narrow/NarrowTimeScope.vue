@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 import { formatRangeBound } from '@/match/match-time-helpers'
+import { parseDatePhrase, SUPPORTED_PHRASES } from '@/match/match-date-phrase'
 import { useOWData } from '@/composables/shared/useOWData'
+import { useWeekStart } from '@/composables/shared/useWeekStart'
 
 // The Time-scope facet: preset range chips (All / 7d / 30d / 90d) + a custom
 // from/to date pair, each with an OPTIONAL minute bound (blank = whole day —
@@ -23,7 +27,8 @@ const { pickedRange, customFrom, customTo, customFromTime, customToTime, pickRan
 // for the <optgroup>s. A season assigns a match by its START time and ANDs
 // with the date range, so it sits above the preset chips as the coarsest scope.
 // '' = "Any season" (the empty option), which clears the filter.
-const { seasonsByChapter } = useOWData()
+const { seasonsByChapter, seasons } = useOWData()
+const { weekStart } = useWeekStart()
 
 function onSeasonChange(e: Event) {
   pickedSeason.value = (e.target as HTMLSelectElement).value
@@ -44,6 +49,45 @@ function onTimeInput(side: 'from' | 'to', value: string) {
   const timeRef = side === 'from' ? customFromTime : customToTime
   timeRef.value = value
   pickedRange.value = 'custom'
+}
+
+// A typed phrase ("last week", "since Friday", "this season") resolved against
+// the SAME state the chips and pickers write, so there is one filter and three
+// ways to reach it.
+//
+// It DECLINES loudly rather than guessing. A date filter that quietly picks the
+// wrong window is worse than one that does nothing: the user sees a filtered
+// set, believes it means what they asked for, and reads conclusions off it. On
+// a decline the existing filter is left exactly as it was — a refusal must
+// never clear what the user already set.
+const phrase = ref('')
+const phraseError = ref('')
+
+function applyPhrase() {
+  const parsed = parseDatePhrase(phrase.value, {
+    now: new Date(),
+    weekStartsOn: weekStart.value,
+    seasons: seasons.value,
+  })
+  if (!parsed) {
+    phraseError.value = phrase.value.trim()
+      ? `Not sure what "${phrase.value.trim()}" means — try ${SUPPORTED_PHRASES.slice(0, 3).join(', ')}…`
+      : ''
+    return
+  }
+  phraseError.value = ''
+  if (parsed.kind === 'season') {
+    // Written directly, NOT through pickSeason — that toggles, so applying the
+    // same phrase twice would set the filter and then clear it.
+    pickedSeason.value = parsed.name
+  } else {
+    customFrom.value = parsed.from
+    customTo.value = parsed.to
+    customFromTime.value = ''
+    customToTime.value = ''
+    pickedRange.value = 'custom'
+  }
+  phrase.value = ''
 }
 
 function clearDates() {
@@ -145,10 +189,77 @@ function clearDates() {
         Clear dates
       </button>
     </div>
+    <div class="np-phrase">
+      <label class="np-phrase-label">
+        Or describe it
+        <input
+          v-model="phrase"
+          class="np-phrase-input"
+          type="text"
+          placeholder="last week, since Friday, this season"
+          @keyup.enter="applyPhrase"
+        >
+      </label>
+      <button class="np-phrase-apply" :disabled="!phrase.trim()" @click="applyPhrase">
+        Apply
+      </button>
+      <!-- role="status" so a refusal is announced rather than only seen. -->
+      <p v-if="phraseError" class="np-phrase-error" role="status">
+        {{ phraseError }}
+      </p>
+    </div>
   </section>
 </template>
 
 <style scoped>
+.np-phrase {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.np-phrase-label {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: var(--type-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.np-phrase-input {
+  font-size: var(--type-sm);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.25rem 0.4rem;
+}
+
+.np-phrase-apply {
+  font-size: var(--type-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.5rem;
+}
+
+/* --text-dim, not --text-mute: mute drops below AA on Day's darker surfaces
+   and this is small content text carrying the refusal. */
+.np-phrase-error {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: var(--type-2xs);
+  color: var(--text-dim);
+}
+
 .np-daterange {
   display: flex;
   gap: 0.4rem;
