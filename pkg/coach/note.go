@@ -207,9 +207,9 @@ func MatchCoachNoteFromNote(n Note, coachName, sessionDate string) db.MatchCoach
 // numbering them by their position in the already-sorted list so the reading
 // order the coach wrote survives a round trip through the player's database.
 func acceptedMoments(moments []Moment) []db.MatchCoachNoteMoment {
-	// nil, not an empty slice: a note with no moments must be indistinguishable
-	// from one written before moments existed, both on the wire (omitempty) and
-	// to the equality checks the existing tests make.
+	// nil, not an empty slice: omitempty drops the key entirely, so an
+	// unmarked note carries no `"moments": []` onto every match payload, and
+	// the equality checks the existing tests make keep working.
 	if len(moments) == 0 {
 		return nil
 	}

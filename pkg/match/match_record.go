@@ -164,8 +164,8 @@ type CoachNote struct {
 	FocusTags   []string `json:"focus_tags"`
 	ExtraTags   []string `json:"extra_tags,omitempty"`
 	// Moments are the coach's timestamped observations, in reading order.
-	// omitempty so a note written before moments existed carries no empty
-	// array into every match payload.
+	// omitempty so an unmarked note carries no empty array into every match
+	// payload.
 	Moments    []CoachNoteMoment `json:"moments,omitempty"`
 	AcceptedAt string            `json:"accepted_at"`
 }

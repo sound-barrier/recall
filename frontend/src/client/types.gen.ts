@@ -861,8 +861,8 @@ export type CoachNote = {
     match?: CoachMatchContext;
     /**
      * The note's timestamped observations, ordered down the match.
-     * Absent rather than empty when the note has none, so a note
-     * written before moments existed round-trips byte-identically.
+     * Absent rather than empty when the note has none — a nil slice
+     * marshals as `null`, and this field is typed `array`.
      *
      */
     moments?: Array<CoachMoment>;
@@ -1147,9 +1147,8 @@ export type MatchCoachNote = {
     extra_tags?: Array<string>;
     /**
      * The coach's timestamped observations that came with this note, in
-     * reading order. Absent rather than empty when there are none, so a
-     * note accepted before moments existed carries no empty array into
-     * every match payload.
+     * reading order. Absent rather than empty when there are none, so an
+     * unmarked note carries no empty array into every match payload.
      *
      */
     moments?: Array<CoachMoment>;

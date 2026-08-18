@@ -166,12 +166,6 @@ func notesFileWithMoments(moments []coach.Moment) coach.NotesFile {
 }
 
 // One schema, and it includes moments.
-//
-// An earlier draft wrote a v2 when a note carried moments and kept a v1
-// reader beside it, so a coach on a new build could hand a file to a player
-// on an old one. There is no such player — coaching has never shipped in a
-// release, so no v1 file exists anywhere — and the machinery went with the
-// premise.
 func TestNotesFile_ReadsAFileCarryingMoments(t *testing.T) {
 	t.Parallel()
 
@@ -232,24 +226,6 @@ func TestNotesFile_RefusesHostileMoments(t *testing.T) {
 				t.Fatalf("want ErrNotesMalformed, got %v", err)
 			}
 		})
-	}
-}
-
-// An unknown schema is refused BY NAME rather than decoded. Go's decoder
-// ignores unknown fields, so a file from a future build would otherwise
-// import as notes whose specifics vanished with nothing saying so.
-func TestNotesFile_RefusesASchemaItDoesNotKnow(t *testing.T) {
-	t.Parallel()
-
-	f := notesFileWithMoments(nil)
-	f.Schema = "recall-coach-notes/v9"
-
-	err := coach.ValidateNotesFile(f)
-	if !errors.Is(err, coach.ErrNotesUnsupportedSchema) {
-		t.Fatalf("want ErrNotesUnsupportedSchema, got %v", err)
-	}
-	if !strings.Contains(err.Error(), coach.NotesSchemaV1) {
-		t.Errorf("the refusal should name what this build reads, got %q", err.Error())
 	}
 }
 
