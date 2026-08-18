@@ -421,6 +421,38 @@ describe('useGlobalKeyboard — command palette', () => {
     expect(deps.openPalette.value).toBe(true)
   })
 
+  // Ctrl+F is what a desktop user reaches for to find something, and on this
+  // app it did nothing at all: Wails disables WebView2's browser accelerators
+  // for every window (PutAreBrowserAcceleratorKeysEnabled(false)), so the
+  // native find bar never appears and the key arrives in the DOM unclaimed.
+  //
+  // Pointing it at the palette rather than building a find bar is deliberate.
+  // The match list is virtualized and one view is mounted at a time, so a find
+  // over painted text would search a few dozen rendered rows of a corpus in
+  // the thousands and report "no results" for matches that plainly exist. The
+  // palette searches the narrowed corpus instead of the paint.
+  it('opens on Ctrl+F, which the webview leaves unhandled', () => {
+    const deps = makeDeps()
+    mountKeyboard(deps)
+    chord('f', { ctrlKey: true })
+    expect(deps.openPalette.value).toBe(true)
+  })
+
+  it('opens on Cmd+F for the same reason on the dev machine', () => {
+    const deps = makeDeps()
+    mountKeyboard(deps)
+    chord('f', { metaKey: true })
+    expect(deps.openPalette.value).toBe(true)
+  })
+
+  // A bare f is the Elo hero-pool binding; the chord must not shadow it.
+  it('does not open on a bare f', () => {
+    const deps = makeDeps()
+    mountKeyboard(deps)
+    press('f')
+    expect(deps.openPalette.value).toBe(false)
+  })
+
   // A bare k is a real binding elsewhere in the app; it must not open this.
   it('does not open on a bare k', () => {
     const deps = makeDeps()
