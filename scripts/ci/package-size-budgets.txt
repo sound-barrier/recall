@@ -190,7 +190,10 @@ frontend/tests/e2e/matches                    25
 # are a date-range filter drawn as a calendar (they write the same customFrom /
 # customTo refs). Registered AT the default rather than left implicit, so the
 # next spec trips a number someone chose.
-frontend/tests/e2e/narrow                     12
+# 13: the date-phrase spec — one more way to reach the SAME time scope the
+# chips and pickers already write, so it belongs with them rather than in a
+# grouping of its own.
+frontend/tests/e2e/narrow                     13
 
 # frontend/tests/e2e/settings — the Settings tab and the data-administration it
 # owns: the screenshot source picker and folder persistence, the Tesseract engine
