@@ -407,6 +407,29 @@ describe('coach store — ending the session', () => {
     expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
   })
 
+  // Wails' native save dialog returns "" when the coach cancels it — no
+  // error, just no file. Treating that as success is the exact failure the
+  // receipt was added to prevent, twice over: it claims an archive that does
+  // not exist, and it clears the unexported flag, so End stops asking before
+  // the work has been saved anywhere the player can reach.
+  it('treats a cancelled save dialog as nothing having happened', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+    coach.updateNote(MATCH_A, draft())
+
+    // Reassign + re-install: setApiBacking SPREADS, so mutating `api` after
+    // the fact reaches nothing. The file's own idiom, and the reason a
+    // mockResolvedValueOnce here silently did nothing.
+    api.ExportCoachNotes = vi.fn(async () => '')
+    setApiBacking(api)
+    await coach.exportNotes()
+    await settle()
+
+    expect(coach.exportedTo).toBe('')
+    expect(coach.dirtySinceExport).toBe(true)
+  })
+
   // The receipt is a claim about the archive on disk, and writing more work
   // makes it false: "Notes saved to …" sitting beside notes that are once
   // again unexported reads as reassurance for work the player will not
