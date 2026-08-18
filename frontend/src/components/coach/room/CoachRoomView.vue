@@ -11,7 +11,7 @@ import {
 } from '@/components/coach/room/coach-room-props'
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
-import type { CoachMoment } from '@/match/coach/coach-moments'
+import { momentSaveKey, type CoachMoment } from '@/match/coach/coach-moments'
 import { notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The Film Room: reel · desk · sheet. The shell owns the layout and the
@@ -79,6 +79,13 @@ const { onReelKeydown } = useCoachReelKeyboard({
 
 const notesLine = computed(() => notesSummaryLine(props.notes, props.coachName, props.moments))
 
+// A moment queues under its own key, so its save state cannot be read off the
+// match's. Without this a rejected moment left the row looking exactly like a
+// saved one, and the only signal anywhere was the Export button turning off
+// with a message that named neither the moment nor the match.
+const momentSaveStateFor = (momentId: string): CoachSaveState =>
+  props.saveStateFor(momentSaveKey(momentId))
+
 // Nobody confirmed: the room has to ask before it lets a word be typed,
 // because a note about a nameless player has no row to land in.
 const unconfirmed = computed(() => props.player.handle === '')
@@ -132,6 +139,7 @@ function step(key: string | null): void {
           :handle="player.handle"
           :draft="room.activeDraft.value"
           :moments="props.moments[room.activeKey.value] ?? []"
+          :moment-save-state="momentSaveStateFor"
           :save-state="saveStateFor(room.activeKey.value)"
           :blocked-reason="blockedReason"
           :has-prev="room.prevKey.value !== null"

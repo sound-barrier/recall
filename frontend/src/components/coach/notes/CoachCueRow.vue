@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 
 import { FOCUS_TAGS, focusTagLabel, parseMatchClock } from '@/match/coach/coach-notes'
+import type { CoachSaveState } from '@/components/coach/room/coach-room-props'
 import { isPastTheEnd } from '@/match/coach/coach-cue-geometry'
 import { isSavable, type CoachMoment } from '@/match/coach/coach-moments'
 
@@ -11,7 +12,7 @@ import { isSavable, type CoachMoment } from '@/match/coach/coach-moments'
 // The clock keeps LOCAL raw state so a half-typed "9:9" stays on screen — the
 // same treatment the note's own clock field gets. An unreadable clock never
 // reaches the draft, so the strip cannot store a moment pointing at nothing.
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   moment: CoachMoment
   /** MM:SS from the match, or '' when no capture reported one. */
   gameLength: string
@@ -19,7 +20,12 @@ const props = defineProps<{
   replayCode: string
   blocked?: boolean
   blockedReason?: string
-}>()
+  /** Where this moment's own autosave stands. */
+  saveState?: CoachSaveState
+  /** Position on the strip, so two moments at one second are still distinct. */
+  index: number
+  total: number
+}>(), { saveState: 'idle' as CoachSaveState, blocked: false, blockedReason: '' })
 
 const emit = defineEmits<{
   update: [moment: CoachMoment]
@@ -41,8 +47,16 @@ const clockValid = computed(() => clockRaw.value === '' || parseMatchClock(clock
 // does not change the instant a clock is typed — renaming a group under a
 // screen-reader user who is still filling it in is disorienting, and it also
 // makes the row impossible to address while it is being written.
-const rowLabel = computed(() =>
-  isSavable(props.moment) ? `Moment at ${props.moment.matchClock}` : 'New moment')
+//
+// The POSITION is part of the name, because two moments can share a second
+// and a coach with two unfinished rows open has two "New moment"s. A name
+// several elements answer to is not a name.
+const rowLabel = computed(() => {
+  const nth = `${props.index + 1} of ${props.total}`
+  return isSavable(props.moment)
+    ? `Moment ${nth}, at ${props.moment.matchClock}`
+    : `New moment ${nth}`
+})
 
 const pastTheEnd = computed(() => isPastTheEnd(props.moment.matchClock, props.gameLength))
 
@@ -88,7 +102,7 @@ function onTagChange(tag: string) {
           type="button"
           class="paper-chip cue-remove"
           :disabled="blocked"
-          :aria-label="`Remove this moment${moment.matchClock ? ` at ${moment.matchClock}` : ''}`"
+          :aria-label="`Remove ${rowLabel.toLowerCase()}`"
           @click="emit('remove')"
         >
           ×
@@ -133,13 +147,22 @@ function onTagChange(tag: string) {
           <button
             type="button"
             class="paper-chip"
-            :aria-label="`Copy replay code for the moment at ${moment.matchClock || 'this match'}`"
+            :aria-label="`Copy replay code for ${rowLabel.toLowerCase()}`"
             @click="emit('copy-replay')"
           >
             Copy
           </button>
         </p>
       </div>
+
+      <!--
+        A rejected save has to be visible on the ROW. The desk's own indicator
+        is keyed on the match, and moments queue under their own ids, so a
+        moment the server refused otherwise looked exactly like a saved one.
+      -->
+      <p v-if="saveState === 'error'" class="cue-warn" role="status">
+        Not saved — check the session.
+      </p>
 
       <p v-if="pastTheEnd" class="cue-warn" role="status">
         {{ moment.matchClock }} is longer than this match ({{ gameLength }}). Saved anyway —
@@ -149,4 +172,4 @@ function onTagChange(tag: string) {
   </li>
 </template>
 
-<style scoped src="./coach-cue.css"></style>
+<style scoped src="./coach-cue-row.css"></style>

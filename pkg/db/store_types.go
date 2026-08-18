@@ -379,6 +379,20 @@ type CoachNote struct {
 	UpdatedAt  string
 }
 
+// MatchMoment is one of the PLAYER's own timestamped moments on their match —
+// a self-review that can point at seconds. Distinct from the coach families:
+// these are the player's words about their own game.
+type MatchMoment struct {
+	MomentID   string
+	MatchKey   string
+	MatchClock string
+	Text       string
+	FocusTag   string
+	SortOrder  int
+	CreatedAt  string
+	UpdatedAt  string
+}
+
 // CoachNoteMoment is one timestamped observation hanging off a coach note.
 // NoteID is the parent's public id rather than its row id, so callers address
 // a moment the same way the API path does.

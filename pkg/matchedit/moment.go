@@ -1,0 +1,120 @@
+package matchedit
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"unicode/utf8"
+
+	"recall/pkg/db"
+)
+
+// The player's own timestamped moments — a self-review that can point at
+// seconds the way a coach's can.
+//
+// Deliberately its own thing rather than a reuse of pkg/coach's: that package
+// is about someone ELSE's review of your matches, and it never touches the
+// player's own database (a property with tests behind it). Sharing the type
+// would put a coach-session import in the player's annotation path for the
+// sake of one struct.
+//
+// The RULES are the same, and stated once here so the two agree by
+// construction where it matters: MM:SS, a clock is required, text is bounded.
+
+// ErrInvalidMoment reports a moment write the rules refuse. Named like its
+// siblings in this package so the HTTP layer maps it to a 400 the same way.
+var ErrInvalidMoment = errors.New("invalid moment")
+
+// MaxMomentTextRunes bounds one moment. Same as the coach's, and for the same
+// reason: a moment names a single thing, and the journal note beside it is
+// where a longer read belongs.
+const MaxMomentTextRunes = 600
+
+// MaxMomentsPerMatch is a ceiling, not a target.
+const MaxMomentsPerMatch = 50
+
+// matchClockPattern is the in-match clock: minutes (one or two digits) and
+// seconds. Two minute digits, never three — the longest match in the corpus
+// is under 24 minutes.
+var matchClockPattern = regexp.MustCompile(`^\d{1,2}:[0-5]\d$`)
+
+// MomentInput is the body of a moment write — the moment minus its identity.
+type MomentInput struct {
+	MatchClock string `json:"match_clock"`
+	Text       string `json:"text"`
+	FocusTag   string `json:"focus_tag"`
+}
+
+// FocusTags is the vocabulary a moment may be filed under, mirroring the
+// coach's. One list, so a player and their coach describe the same game in the
+// same words — which is most of what makes a review legible.
+var FocusTags = []string{
+	"positioning", "ult_economy", "target_priority", "cooldowns",
+	"hero_pick", "comms", "mechanics", "mental",
+}
+
+// ValidateMomentInput normalizes a write and enforces the rules, returning the
+// copy to store. Every rejection wraps ErrInvalidMoment and names the field.
+func ValidateMomentInput(in MomentInput) (MomentInput, error) {
+	out := MomentInput{
+		MatchClock: normalizeMatchClock(strings.TrimSpace(in.MatchClock)),
+		Text:       strings.TrimSpace(in.Text),
+		FocusTag:   strings.TrimSpace(in.FocusTag),
+	}
+	switch {
+	case out.MatchClock == "":
+		return MomentInput{}, fmt.Errorf("%w: a moment needs a match clock — MM:SS", ErrInvalidMoment)
+	case !matchClockPattern.MatchString(out.MatchClock):
+		return MomentInput{}, fmt.Errorf("%w: match clock %q is not MM:SS", ErrInvalidMoment, in.MatchClock)
+	case out.Text == "":
+		return MomentInput{}, fmt.Errorf("%w: a moment needs text — say what happened", ErrInvalidMoment)
+	case utf8.RuneCountInString(out.Text) > MaxMomentTextRunes:
+		return MomentInput{}, fmt.Errorf("%w: moment text exceeds %d characters", ErrInvalidMoment, MaxMomentTextRunes)
+	case out.FocusTag != "" && !slices.Contains(FocusTags, out.FocusTag):
+		return MomentInput{}, fmt.Errorf("%w: focus tag %q is not in the vocabulary", ErrInvalidMoment, out.FocusTag)
+	}
+	return out, nil
+}
+
+// normalizeMatchClock zero-pads a single-digit minute so "4:45" and "04:45"
+// are one value.
+func normalizeMatchClock(clock string) string {
+	m, s, ok := strings.Cut(clock, ":")
+	if !ok || len(m) != 1 {
+		return clock
+	}
+	return "0" + m + ":" + s
+}
+
+// SortMoments returns the moments in reading order: down the match, ties
+// broken by the order they were written.
+//
+// By SECONDS, not by the string — "10:00" sorts before "9:00" lexically.
+func SortMoments(moments []db.MatchMoment) []db.MatchMoment {
+	out := slices.Clone(moments)
+	slices.SortStableFunc(out, func(a, b db.MatchMoment) int {
+		if d := clockSeconds(a.MatchClock) - clockSeconds(b.MatchClock); d != 0 {
+			return d
+		}
+		return a.SortOrder - b.SortOrder
+	})
+	return out
+}
+
+// clockSeconds reads MM:SS into seconds; an unreadable clock sorts first so
+// the reader meets it rather than finding it buried.
+func clockSeconds(clock string) int {
+	m, s, ok := strings.Cut(clock, ":")
+	if !ok {
+		return -1
+	}
+	minutes, errM := strconv.Atoi(m)
+	seconds, errS := strconv.Atoi(s)
+	if errM != nil || errS != nil {
+		return -1
+	}
+	return minutes*60 + seconds
+}

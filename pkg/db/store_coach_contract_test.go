@@ -694,3 +694,112 @@ func TestCoachNoteMoments_RefuseATagOutsideTheVocabulary(t *testing.T) {
 		})
 	}
 }
+
+// The id a moment carries is minted by the CLIENT, so it is not a namespace
+// the store may trust. A global UNIQUE made it one: an upsert conflicting on
+// the id alone matched a row belonging to another note — another PLAYER, even
+// — rewrote it, and dropped the caller's own write on the floor while
+// answering 200.
+func TestCoachNoteMoments_AnIDCollisionDoesNotCrossNotes(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			sable := ensurePlayer(t, s, "", "Sable")
+			ordo := ensurePlayer(t, s, "", "Ordo")
+			sableNote, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: sable.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+			ordoNote, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: ordo.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+
+			const shared = "collide"
+			_, err = s.UpsertCoachNoteMoment(sable.ID, db.CoachNoteMoment{
+				MomentID: shared, NoteID: sableNote.NoteID, MatchClock: "03:23", Text: "SABLE ORIGINAL",
+			})
+			mustNoErr(t, err)
+			_, err = s.UpsertCoachNoteMoment(ordo.ID, db.CoachNoteMoment{
+				MomentID: shared, NoteID: ordoNote.NoteID, MatchClock: "09:59", Text: "ORDO WROTE THIS",
+			})
+			mustNoErr(t, err)
+
+			sableMoments, err := s.LoadCoachNoteMoments(sable.ID)
+			mustNoErr(t, err)
+			if got := sableMoments[sableNote.NoteID]; len(got) != 1 || got[0].Text != "SABLE ORIGINAL" {
+				t.Fatalf("Sable's moment was overwritten across players: %+v", got)
+			}
+			ordoMoments, err := s.LoadCoachNoteMoments(ordo.ID)
+			mustNoErr(t, err)
+			if got := ordoMoments[ordoNote.NoteID]; len(got) != 1 || got[0].Text != "ORDO WROTE THIS" {
+				t.Fatalf("Ordo's write vanished: %+v", got)
+			}
+		})
+	}
+}
+
+// The reachable form of the same bug, inside ONE coach's data: any client that
+// replays an id — an autosave retry, a duplicated draft — must not rewrite a
+// different match's moment.
+func TestCoachNoteMoments_AnIDCollisionDoesNotCrossMatches(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p := ensurePlayer(t, s, "", "Sable")
+			first, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: p.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+			second, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: p.ID, MatchKey: coachOtherKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+
+			const shared = "collide"
+			_, err = s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+				MomentID: shared, NoteID: first.NoteID, MatchClock: "03:23", Text: "match one",
+			})
+			mustNoErr(t, err)
+			_, err = s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+				MomentID: shared, NoteID: second.NoteID, MatchClock: "09:59", Text: "match two",
+			})
+			mustNoErr(t, err)
+
+			byNote, err := s.LoadCoachNoteMoments(p.ID)
+			mustNoErr(t, err)
+			if got := byNote[first.NoteID]; len(got) != 1 || got[0].Text != "match one" {
+				t.Fatalf("match one's moment was rewritten: %+v", got)
+			}
+			if got := byNote[second.NoteID]; len(got) != 1 || got[0].Text != "match two" {
+				t.Fatalf("match two lost its moment: %+v", got)
+			}
+		})
+	}
+}
+
+// An edit keeps the position the coach wrote the moment at. Writing the list
+// length on every save sent a moment to the bottom of its tied group the
+// moment its typo was fixed — and since the wire carries only array order,
+// the stored sort_order IS the visible order.
+func TestCoachNoteMoments_AnEditKeepsItsPlace(t *testing.T) {
+	for _, impl := range storeImpls {
+		t.Run(impl.name, func(t *testing.T) {
+			s := impl.open(t)
+			p := ensurePlayer(t, s, "", "Sable")
+			note, err := s.UpsertCoachNote(db.CoachNote{PlayerRef: p.ID, MatchKey: coachKey, Kind: "note", Text: "x"})
+			mustNoErr(t, err)
+			for i, text := range []string{"first", "second", "third"} {
+				_, err := s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+					MomentID: text, NoteID: note.NoteID, MatchClock: "04:45", Text: text, SortOrder: i,
+				})
+				mustNoErr(t, err)
+			}
+
+			// Fix a typo in the one written FIRST.
+			_, err = s.UpsertCoachNoteMoment(p.ID, db.CoachNoteMoment{
+				MomentID: "first", NoteID: note.NoteID, MatchClock: "04:45", Text: "first, corrected", SortOrder: 0,
+			})
+			mustNoErr(t, err)
+
+			byNote, err := s.LoadCoachNoteMoments(p.ID)
+			mustNoErr(t, err)
+			got := byNote[note.NoteID]
+			if len(got) != 3 || got[0].Text != "first, corrected" {
+				t.Fatalf("an edit moved the moment out of place: %+v", got)
+			}
+		})
+	}
+}

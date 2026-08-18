@@ -53,6 +53,7 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 	for _, q := range []string{
 		`DELETE FROM hidden_matches WHERE match_key = ?`,
 		`DELETE FROM match_annotations WHERE match_key = ?`,
+		`DELETE FROM match_moments WHERE match_key = ?`,
 		`DELETE FROM match_reviews WHERE match_key = ?`,
 		`DELETE FROM user_match_data WHERE match_key = ?`, // children CASCADE
 		`DELETE FROM match_queue WHERE match_key = ?`,

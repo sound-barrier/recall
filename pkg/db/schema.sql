@@ -272,6 +272,32 @@ CREATE TABLE IF NOT EXISTS match_annotations (
 ) STRICT;
 -- statement-end
 
+-- The PLAYER's own timestamped moments — a self-review that can point at
+-- seconds the same way a coach's can. Sibling of match_annotations rather than
+-- a column on it: several share a match, which is the whole point, and the
+-- annotation is a single row by design.
+--
+-- Deliberately NOT the same table as the coach's received moments. These are
+-- the player's own words about their own match; folding both into one list
+-- would make "who said this" a column instead of a boundary, and the coach
+-- layer's rule is that a coach speaks in their own block.
+CREATE TABLE IF NOT EXISTS match_moments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  moment_id TEXT NOT NULL UNIQUE,
+  match_key TEXT NOT NULL,
+  match_clock TEXT NOT NULL,
+  text TEXT NOT NULL,
+  focus_tag TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+) STRICT;
+-- statement-end
+
+CREATE INDEX IF NOT EXISTS idx_match_moments_match_key
+  ON match_moments (match_key, match_clock, sort_order);
+-- statement-end
+
 -- Who disrupted the match, per side. Two sibling set tables rather than a
 -- scalar column: a match can carry a thrower on BOTH teams at once, and
 -- "a teammate left, then I left" needs two leaver sides on one match.
@@ -585,13 +611,20 @@ CREATE TABLE IF NOT EXISTS coach_note_extra_tags (
 -- (match_clock, sort_order) so the strip reads down the match.
 CREATE TABLE IF NOT EXISTS coach_note_moments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  moment_id TEXT NOT NULL UNIQUE,
+  -- Unique WITHIN a note, not globally. The id is minted by the client, so a
+  -- global UNIQUE made it a shared namespace: an upsert conflicting on
+  -- moment_id alone matched a row belonging to another note — another PLAYER,
+  -- even — and rewrote it, while the caller's own write silently went nowhere.
+  -- Scoping the constraint to the parent is what makes the conflict target
+  -- name a row this note actually owns.
+  moment_id TEXT NOT NULL,
   coach_note_id INTEGER NOT NULL REFERENCES coach_notes (id) ON DELETE CASCADE,
   match_clock TEXT NOT NULL,
   text TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
-  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  updated_at TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  UNIQUE (coach_note_id, moment_id)
 ) STRICT;
 -- statement-end
 

@@ -43,7 +43,13 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # wrappers (measured 325565B). The film room, the return sheet, the loan
 # slip and the nav strip are all lazy chunks and cost nothing here —
 # App.lazy-views.test.ts pins that. ~5KB headroom.
-: "${MAX_INITIAL_JS_BYTES:=331000}"
+# 2026-08: 331000 → 332500 — the coaching session store, which is EAGER by
+# construction: the app must know whether a session is open before any view
+# renders, so everything that store holds is in the first-paint graph. The
+# moments it now tracks (what has actually been written, so a removal can tell
+# an abandoned draft from a stored row) live there for that reason, not by
+# accident. Measured 331207B.
+: "${MAX_INITIAL_JS_BYTES:=332500}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -174,7 +180,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # family's per-theme values (measured 389658B).
 # 2026-08: 396000 → 400000 — the palette's scoped styles (measured 396218B).
 # 2026-08: 400000 → 404000 — the cue strip's own sheet (measured 401396B).
-: "${MAX_TOTAL_CSS_BYTES:=404000}"
+# 2026-08: 404000 → 402000, DOWN. Most of that bump paid for a duplicate: the
+# strip and its row both imported one sheet with `scoped src`, and Vue emits
+# every rule once per scope hash, so ~2.6KB shipped twice. Each component owns
+# its own selectors now; measured 400321B.
+: "${MAX_TOTAL_CSS_BYTES:=402000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never
