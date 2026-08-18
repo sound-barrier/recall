@@ -124,12 +124,14 @@ LoadError
 # the write). Stays exported for a future banner-config-debug surface.
 LoadCheckState
 
-# parser.SetTesseractTimeout — the public knob bounding each Tesseract
-# invocation (pairs with SetTesseractPath). Production runs on the
-# 2-minute default today; the setter is the black-box test seam for the
-# hung-binary bound test and the stable entry point for a future
-# Settings → Engine timeout field.
-SetTesseractTimeout
+# tesseract.SetTimeout — the public knob bounding each Tesseract
+# invocation (pairs with SetPath). Production runs on the 2-minute
+# default today; the setter is the black-box test seam for the
+# hung-binary bound test — without it that test would have to wait out
+# the real timeout — and the stable entry point for a future
+# Settings → Engine timeout field. (Was parser.SetTesseractTimeout
+# before the exec carved out into pkg/tesseract.)
+SetTimeout
 
 # gamedata.SaveManifest: the apply path stopped calling it when the manifest
 # became the atomic commit point (it stages manifest.json.tmp and renames it
