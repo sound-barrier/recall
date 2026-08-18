@@ -2,12 +2,12 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
-  DecideCoachReturn, DeleteMatchCoachNote, GetCoachReturn,
+  DecideCoachReturn, DeleteCoachReturn, DeleteMatchCoachNote, GetCoachReturn,
   type CoachDecisionEnum, type CoachReturnSheet,
 } from '@/api-client'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
 import { getQueryClient } from '@/queries/client'
-import { upsertCoachReturn, useCoachReturnsQuery } from '@/queries/coach'
+import { removeCoachReturn, upsertCoachReturn, useCoachReturnsQuery } from '@/queries/coach'
 import { qk } from '@/queries/keys'
 import { useAppStore } from '@/stores/app'
 
@@ -106,6 +106,22 @@ export const useCoachReturnsStore = defineStore('coachReturns', () => {
     await getQueryClient().refetchQueries({ queryKey: qk.matches })
   }
 
+  /**
+   * Throw a staged sheet away without deciding it. NOT "skip every note":
+   * that writes decisions and marks the matches reviewed-by-coach, which is
+   * a claim about a review the player has just said they do not want. This
+   * drops the file, and the server drops its decisions with it.
+   */
+  async function discardReturnSheet(id: number): Promise<void> {
+    try {
+      await DeleteCoachReturn(id)
+      removeCoachReturn(id)
+      returnSheet.value = null
+    } catch (e) {
+      useAppStore().setErrorFromRaw(String(e))
+    }
+  }
+
   /** Take an accepted block back off a match. A write, so it asks the gate. */
   async function removeCoachNote(matchKey: string, id: number): Promise<void> {
     if (!useWriteGate().guardWrite()) return
@@ -126,6 +142,7 @@ export const useCoachReturnsStore = defineStore('coachReturns', () => {
     closeReturnSheet,
     stageImportedNotes,
     decide,
+    discardReturnSheet,
     removeCoachNote,
   }
 })

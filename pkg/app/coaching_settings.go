@@ -19,29 +19,40 @@ import (
 // coach.ErrCoachNameRequired instead.
 var ErrCoachNameInvalid = errors.New("invalid coach name")
 
-// CoachingSettings is the wire shape of the coaching settings row.
+// CoachingSettings is the wire shape of the coaching settings row: the two
+// identities, one per direction of the loop.
 type CoachingSettings struct {
-	CoachName string `json:"coach_name"`
+	CoachName    string `json:"coach_name"`
+	PlayerHandle string `json:"player_handle"`
 }
 
 // GetCoachingSettings returns the coaching settings. An empty CoachName is
-// the "not set yet" state the Export affordance disables on.
+// the "not set yet" state the Export affordance disables on. PlayerHandle is
+// the last handle shared under — shareIdentity has always fallen back to it,
+// but nothing showed it, so the share dialog asked for it again every time.
 func (a *App) GetCoachingSettings() CoachingSettings {
-	return CoachingSettings{CoachName: a.settingsSnapshot().CoachName}
+	snap := a.settingsSnapshot()
+	return CoachingSettings{CoachName: snap.CoachName, PlayerHandle: snap.PlayerHandle}
 }
 
-// SetCoachingSettings persists the name this user signs notes with,
-// trimmed. Passing "" clears it.
-func (a *App) SetCoachingSettings(coachName string) (CoachingSettings, error) {
+// SetCoachingSettings persists both identities, trimmed. Passing "" for
+// either clears it.
+func (a *App) SetCoachingSettings(coachName, playerHandle string) (CoachingSettings, error) {
 	coachName = strings.TrimSpace(coachName)
-	if utf8.RuneCountInString(coachName) > maxCoachHandleRunes {
-		return CoachingSettings{}, fmt.Errorf("%w: exceeds %d characters", ErrCoachNameInvalid, maxCoachHandleRunes)
+	playerHandle = strings.TrimSpace(playerHandle)
+	for _, name := range []string{coachName, playerHandle} {
+		if utf8.RuneCountInString(name) > maxCoachHandleRunes {
+			return CoachingSettings{}, fmt.Errorf("%w: exceeds %d characters", ErrCoachNameInvalid, maxCoachHandleRunes)
+		}
 	}
-	snap := a.mutateSettings(func(s *Settings) { s.CoachName = coachName })
+	snap := a.mutateSettings(func(s *Settings) {
+		s.CoachName = coachName
+		s.PlayerHandle = playerHandle
+	})
 	if err := a.saveSettings(snap); err != nil {
 		return CoachingSettings{}, err
 	}
-	return CoachingSettings{CoachName: snap.CoachName}, nil
+	return CoachingSettings{CoachName: snap.CoachName, PlayerHandle: snap.PlayerHandle}, nil
 }
 
 // shareIdentity resolves the identity a share-mode export stamps into the

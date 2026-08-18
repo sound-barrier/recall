@@ -64,6 +64,16 @@ const requestEnd = () => coach.requestEndSession()
     <p class="coach-slip-promise">
       Nothing here is saved to your profile.
     </p>
+    <!--
+      Design rule 12: the coach's own narrow describes THEIR corpus, so a
+      session puts it aside and End hands it back. Correct, and it happened in
+      complete silence — a coach who had deliberately filtered their history
+      found the filters gone and no reason given, which reads as the app
+      having lost them rather than held them.
+    -->
+    <p v-if="coach.narrowSetAside" class="coach-slip-line">
+      Your own filters are set aside until this session ends.
+    </p>
     <p class="coach-slip-line">
       {{ notesLine }}
     </p>

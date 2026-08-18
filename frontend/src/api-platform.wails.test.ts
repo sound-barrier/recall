@@ -107,10 +107,25 @@ describe('native dialog dispatch (Wails mode)', () => {
     expect(await OpenCoachBundle()).toBeNull()
   })
 
-  it('ExportBundle passes (keys, includeUnknown, includeHidden) to SaveBundleToFile', async () => {
+  it('ExportBundle passes the selection AND the chosen name to SaveBundleToFile', async () => {
+    const { ExportBundle } = await import('@/api')
+    await ExportBundle({
+      matchKeys: ['match:x'], includeUnknown: true, includeHidden: false,
+      filename: 'my-backup.zip',
+    })
+    expect(callByName).toHaveBeenCalledWith(
+      FQN + 'SaveBundleToFile', ['match:x'], true, false, 'my-backup.zip')
+  })
+
+  // The name the modal showed is what the native dialog opens with. Left to
+  // the Go side it was hard-coded `recall-bundle-...` in BOTH modes, so a
+  // share was offered under the name of an ordinary backup.
+  it('falls back to a mode-appropriate default name when none was chosen', async () => {
     const { ExportBundle } = await import('@/api')
     await ExportBundle({ matchKeys: ['match:x'], includeUnknown: true, includeHidden: false })
-    expect(callByName).toHaveBeenCalledWith(FQN + 'SaveBundleToFile', ['match:x'], true, false)
+    expect(callByName).toHaveBeenCalledWith(
+      FQN + 'SaveBundleToFile', ['match:x'], true, false,
+      expect.stringMatching(/^recall-bundle-.*\.zip$/) as unknown as string)
   })
 
   // Share mode is a different native method, not a nullable argument: the
@@ -125,7 +140,9 @@ describe('native dialog dispatch (Wails mode)', () => {
     })
     expect(callByName).toHaveBeenCalledWith(
       FQN + 'SaveShareBundleToFile',
-      ['match:x'], false, true, { handle: 'Sable', message: 'Ult timing on control?' },
+      ['match:x'], false, true,
+      { handle: 'Sable', message: 'Ult timing on control?' },
+      expect.stringMatching(/^recall-share-.*\.zip$/) as unknown as string,
     )
   })
 })

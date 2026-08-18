@@ -160,8 +160,10 @@ export const useMatchesStore = defineStore('matches', () => {
   let narrowBeforeSession: MatchesNarrowSnapshot | null = null
   coach.setNarrowSuspender({
     suspend: () => {
+      const had = matchesNarrow.anyNarrow.value
       narrowBeforeSession = snapshotMatchesNarrowState(matchesNarrowState)
       matchesNarrow.resetNarrow()
+      return had
     },
     restore: () => {
       if (narrowBeforeSession) restoreMatchesNarrowState(matchesNarrowState, narrowBeforeSession)
@@ -239,7 +241,10 @@ export const useMatchesStore = defineStore('matches', () => {
   // Export flows for the Matches set — the bundle-export modal + the flat CSV
   // export. Delegated to useExportBundle; AppOverlays reads the modal state +
   // the dispatch handlers straight off this store.
-  const exportBundle = useExportBundle({ onError: (m) => useAppStore().setErrorFromRaw(m) })
+  const exportBundle = useExportBundle({
+    onError: (m) => useAppStore().setErrorFromRaw(m),
+    onSaved: (m) => useAppStore().setNotice(m),
+  })
 
   return {
     // markRaw the composable bundles: Pinia's reactive() store deep-unwraps

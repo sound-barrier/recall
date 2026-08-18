@@ -46,10 +46,15 @@
   min-width: 0;
 }
 
-/* Below the three-column width the sheet leads (it is the session's
-   frame of reference), then the desk, with the reel last as a
-   horizontal strip — the same order the room reads in on a wide
-   screen, top to bottom. */
+/* Below the three-column width the columns stack in SOURCE order — the reel
+   as a horizontal strip, then the desk, then the sheet — which is the same
+   order the room reads left to right on a wide screen.
+
+   The three `order` overrides that used to reverse this are gone. `order`
+   moves the paint and not the tab sequence, so the eye went sheet, desk, reel
+   while the keyboard went reel, desk, sheet (WCAG 2.4.3) — and the comment
+   here claimed that reversal WAS the wide-screen order, when it was its
+   mirror. */
 @media (width <= 1180px) {
   .coach-room {
     grid-template-columns: minmax(0, 1fr);
@@ -59,8 +64,4 @@
     position: static;
     max-height: none;
   }
-
-  .coach-room-reel { order: 3; }
-  .coach-room-desk { order: 2; }
-  .coach-room-sheet { order: 1; }
 }

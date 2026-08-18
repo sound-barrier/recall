@@ -182,3 +182,13 @@ export function fromWireNote(n: Pick<CoachNoteWire, 'kind'> & Partial<CoachNoteW
     matchClock: n.match_clock ?? '',
   }
 }
+
+/**
+ * The autosave key the session summary saves under.
+ *
+ * A named constant in a shared module rather than a private one in the store,
+ * because the sheet has to ask for that key's save state to show it — and a
+ * second literal 'summary' spelled at the asking end is a silent mismatch,
+ * not a compile error.
+ */
+export const SUMMARY_SAVE_KEY = 'summary'

@@ -67,7 +67,7 @@ func TestExportCoachNotes_CarriesTheHumanCopy(t *testing.T) {
 func TestExportCoachNotes_RefusesTheUnusableCases(t *testing.T) {
 	t.Run("no coach name", func(t *testing.T) {
 		a, _ := openSession(t)
-		if _, err := a.SetCoachingSettings(""); err != nil {
+		if _, err := a.SetCoachingSettings("", ""); err != nil {
 			t.Fatalf("SetCoachingSettings: %v", err)
 		}
 		if _, _, err := a.ExportCoachNotes(); !errors.Is(err, coach.ErrCoachNameRequired) {

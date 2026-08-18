@@ -197,7 +197,14 @@ export function ExportBundle(opts: {
   filename?:       string
 }): Promise<string> {
   const chosen = opts.filename?.trim() ?? ''
-  if (IS_WAILS) return saveBundleNatively(opts)
+  // Both modes take the same default name; Wails opens its dialog with it,
+  // the browser saves under it outright.
+  if (IS_WAILS) {
+    return saveBundleNatively({
+      ...opts,
+      filename: chosen || `recall-${opts.share ? 'share' : 'bundle'}-${tsFilenameStamp()}.zip`,
+    })
+  }
   return saveBlobResponse(
     sdk.exportBundle({
       body: {
@@ -216,11 +223,18 @@ function saveBundleNatively(opts: {
   matchKeys:      string[]
   includeUnknown: boolean
   includeHidden:  boolean
+  filename?:      string
   share?:         BundleShare
 }): Promise<string> {
+  // The filename travels even though the native dialog owns the naming: it
+  // is what the dialog OPENS with, and hard-coding it there meant a share
+  // was offered as `recall-bundle-...` while the modal beside it said
+  // `recall-share-...` — the one distinction that tells a coach's copy from
+  // the player's own backups later.
   const selection = [opts.matchKeys, opts.includeUnknown, opts.includeHidden] as const
-  if (opts.share) return wailsCall<string>('SaveShareBundleToFile', ...selection, opts.share)
-  return wailsCall<string>('SaveBundleToFile', ...selection)
+  const name = opts.filename ?? ''
+  if (opts.share) return wailsCall<string>('SaveShareBundleToFile', ...selection, opts.share, name)
+  return wailsCall<string>('SaveBundleToFile', ...selection, name)
 }
 
 // ExportDiagnosticBundle builds the parser-triage zip (failed screenshots +
