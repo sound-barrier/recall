@@ -13,6 +13,11 @@ import (
 // endpoints (screenshots-folder and tesseract, which return current
 // resolved state without writing) + the screenshots-folder reveal and
 // data-update actions.
+// startupErrorPath is the one API route that must answer even when startup
+// failed — it is how the app tells the user why. Named so the desktop
+// startup guard can exempt exactly it.
+const startupErrorPath = "/api/v1/system/startup-error"
+
 func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	registerSystemMetaRoutes(apiMux, a)
 	registerSystemProbeAndActionRoutes(apiMux, a)
@@ -45,7 +50,7 @@ func registerSystemMetaRoutes(apiMux *http.ServeMux, a *app.App) {
 	// unreachable: RunServer log.Fatal's before mounting routes if
 	// StartupError() is non-nil, so a non-empty response is only
 	// possible if someone wires the App differently (e.g. tests).
-	apiMux.HandleFunc("GET /api/v1/system/startup-error", func(w http.ResponseWriter, r *http.Request) {
+	apiMux.HandleFunc("GET "+startupErrorPath, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, map[string]string{"message": a.GetStartupError()}, nil)
 	})
 	apiMux.HandleFunc("GET /api/v1/system/reference-data", func(w http.ResponseWriter, r *http.Request) {
