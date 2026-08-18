@@ -257,6 +257,21 @@ closes it and hands focus back to wherever you were.
 
 Press `?` at any time for the full cheatsheet.
 
+### When a rank screen only half reads
+
+A rank update card is the hardest screen Recall reads: the tier
+pill, the progress meter, the movement percentage and the
+population percentile are four separate readings off one image,
+and a hero model standing in front of the caption or a capture
+taken mid-animation can defeat any of them individually.
+
+When that happens the Rank Update card still appears, showing what
+was read and naming what was not — rather than the whole card
+vanishing, which used to make a half-read screen look exactly like
+a match with no rank screenshot at all. You can fill the tier and
+division by hand from the detail panel; a manual value is yours
+and survives every re-parse.
+
 ### When an older parser read your matches
 
 Every parsed record is stamped with the version of the parser that read
