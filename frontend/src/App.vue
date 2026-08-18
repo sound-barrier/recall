@@ -27,8 +27,10 @@ import AppMasthead from '@/components/app/AppMasthead.vue'
 import AppOverlays from '@/components/app/AppOverlays.vue'
 import SystemAlertBanner from '@/components/app/SystemAlertBanner.vue'
 import ErrorBanner from '@/components/app/ErrorBanner.vue'
+import NoticeBanner from '@/components/app/NoticeBanner.vue'
 import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
 import UpdateReminderBanner from '@/components/update/UpdateReminderBanner.vue'
+import CoachInboxBanner from '@/components/coach/inbox/CoachInboxBanner.vue'
 
 // The floating overlay cluster (modals, detail panel, lightbox, toasts, tour)
 // lives in AppOverlays — it owns those lazy-loaded chunks now.
@@ -141,6 +143,7 @@ useServerEvents()
          dismissible — inside .container it inherited inert + aria-hidden
          whenever backgroundFrozen flipped. -->
     <ErrorBanner />
+    <NoticeBanner />
 
     <div class="container" :inert="backgroundFrozen || undefined" :aria-hidden="backgroundFrozen ? 'true' : undefined">
       <!-- Self-gates on a broken OCR install; renders above the masthead. -->
@@ -150,6 +153,13 @@ useServerEvents()
 
       <!-- Self-gates on the 90-day overdue check (reads updateInfo itself). -->
       <UpdateReminderBanner />
+
+      <!-- Coach notes waiting on a decision. Server-derived, so it survives a
+           reload and a "Decide later" until every note has a verdict — and it
+           lives in the chrome rather than on Matches, because a review that
+           arrived is news on whatever tab the player happens to be reading.
+           Self-gating, like every banner beside it. -->
+      <CoachInboxBanner />
 
       <!-- <main> is the page's primary landmark. The skip-link at the
            top of .app jumps focus here so keyboard users can bypass the

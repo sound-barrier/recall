@@ -12,7 +12,7 @@ import {
 import { useCoachReelKeyboard } from '@/composables/coach/useCoachReelKeyboard'
 import { useCoachRoom } from '@/composables/coach/useCoachRoom'
 import { momentSaveKey, type CoachMoment } from '@/match/coach/coach-moments'
-import { notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
+import { SUMMARY_SAVE_KEY, notesSummaryLine, type CoachNoteDraft } from '@/match/coach/coach-notes'
 
 // The Film Room: reel · desk · sheet. The shell owns the layout and the
 // derived state (useCoachRoom) and nothing else — it takes the loaned
@@ -140,6 +140,7 @@ function step(key: string | null): void {
       <slot name="desk">
         <CoachDesk
           :record="room.selectedRecord.value"
+          :reel-empty="room.frames.value.length === 0"
           :handle="player.handle"
           :draft="room.activeDraft.value"
           :moments="props.moments[room.activeKey.value] ?? []"
@@ -168,6 +169,7 @@ function step(key: string | null): void {
           :focus-tally="room.focusTally.value"
           :notes-line="notesLine"
           :summary="summary"
+          :summary-save-state="saveStateFor(SUMMARY_SAVE_KEY)"
           :end-armed="endArmed"
           :can-export="canExport"
           :export-reason="exportReason"

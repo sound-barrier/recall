@@ -574,8 +574,8 @@ describe('coach store — the coach\'s own narrow', () => {
     const coach = useCoachStore()
     const events: string[] = []
     coach.setNarrowSuspender({
-      suspend: () => events.push('suspend'),
-      restore: () => events.push('restore'),
+      suspend: () => { events.push('suspend'); return true },
+      restore: () => { events.push('restore') },
     })
 
     await coach.openBundle()
@@ -591,8 +591,8 @@ describe('coach store — the coach\'s own narrow', () => {
     const coach = useCoachStore()
     const events: string[] = []
     coach.setNarrowSuspender({
-      suspend: () => events.push('suspend'),
-      restore: () => events.push('restore'),
+      suspend: () => { events.push('suspend'); return true },
+      restore: () => { events.push('restore') },
     })
     await coach.openBundle()
     await settle()
@@ -609,8 +609,8 @@ describe('coach store — the coach\'s own narrow', () => {
     const coach = useCoachStore()
     const events: string[] = []
     coach.setNarrowSuspender({
-      suspend: () => events.push('suspend'),
-      restore: () => events.push('restore'),
+      suspend: () => { events.push('suspend'); return true },
+      restore: () => { events.push('restore') },
     })
 
     await coach.openBundle()
@@ -696,5 +696,29 @@ describe('coach store — confirming the player', () => {
     expect(api.SetCoachSessionPlayer).toHaveBeenCalledWith('Wren')
     expect(coach.player?.handle).toBe('Wren')
     expect(coach.notes).toEqual({})
+  })
+
+  // Emptying filters a coach deliberately set, without a word, reads as the
+  // app having lost them. Saying it unconditionally would be noise for the
+  // coach who had none — so suspend() reports whether there was anything to
+  // hold, and only then does the room say so.
+  it('flags the set-aside only when there was a narrow to set aside', async () => {
+    const coach = useCoachStore()
+    coach.setNarrowSuspender({ suspend: () => false, restore: () => {} })
+    await coach.openBundle()
+    await settle()
+    expect(coach.narrowSetAside).toBe(false)
+
+    await coach.endSession()
+    await settle()
+
+    coach.setNarrowSuspender({ suspend: () => true, restore: () => {} })
+    await coach.openBundle()
+    await settle()
+    expect(coach.narrowSetAside).toBe(true)
+
+    await coach.endSession()
+    await settle()
+    expect(coach.narrowSetAside).toBe(false)
   })
 })

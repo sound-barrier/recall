@@ -161,8 +161,8 @@ function buildMock(overrides: MountOverrides = {}) {
     DeleteCoachReturn:      vi.fn(async () => undefined),
     DecideCoachReturn:      vi.fn(async () => null),
     DeleteMatchCoachNote:   vi.fn(async () => undefined),
-    GetCoachName:           vi.fn(async () => ''),
-    SetCoachName:           vi.fn(async () => ''),
+    GetCoachingSettings:    vi.fn(async () => ({ coach_name: '', player_handle: '' })),
+    SetCoachingSettings:    vi.fn(async () => ({ coach_name: '', player_handle: '' })),
     // Profiles — single default profile is the natural test state.
     // Tests that need multi-profile state can override these with
     // their own vi.doMock before mounting.

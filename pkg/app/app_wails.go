@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -184,12 +185,12 @@ func (a *App) SaveTextToFile(defaultName, contents string) (string, error) {
 	return path, nil
 }
 
-// SaveBundleToFile is the bundle-export sibling of SaveTextToFile. Pops a native
-// save dialog defaulting to `recall-bundle-<ts>.zip`, then writes the
-// ExportBundle payload to the chosen path. Returns the path on success, "" + nil
-// on user cancel.
-func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden bool) (string, error) {
-	return a.saveBundleDialog(bundleSelection(matchKeys, includeUnknown, includeHidden), nil)
+// SaveBundleToFile is the bundle-export sibling of SaveTextToFile. Pops a
+// native save dialog defaulting to filename, then writes the ExportBundle
+// payload to the chosen path. Returns the path on success, "" + nil on user
+// cancel.
+func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden bool, filename string) (string, error) {
+	return a.saveBundleDialog(bundleSelection(matchKeys, includeUnknown, includeHidden), nil, filename)
 }
 
 // SaveShareBundleToFile is SaveBundleToFile's share-mode sibling: the same
@@ -200,8 +201,8 @@ func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden
 // export stays incapable of stamping an identity. The handle is the display
 // name the coach sees; the stable player id is minted and persisted by the
 // App, never supplied by the caller.
-func (a *App) SaveShareBundleToFile(matchKeys []string, includeUnknown, includeHidden bool, player SharePlayer) (string, error) {
-	return a.saveBundleDialog(bundleSelection(matchKeys, includeUnknown, includeHidden), &player)
+func (a *App) SaveShareBundleToFile(matchKeys []string, includeUnknown, includeHidden bool, player SharePlayer, filename string) (string, error) {
+	return a.saveBundleDialog(bundleSelection(matchKeys, includeUnknown, includeHidden), &player, filename)
 }
 
 func bundleSelection(matchKeys []string, includeUnknown, includeHidden bool) ExportBundleOptions {
@@ -215,8 +216,16 @@ func bundleSelection(matchKeys []string, includeUnknown, includeHidden bool) Exp
 // saveBundleDialog is the shared tail of both bundle savers: prompt for a
 // destination, build the payload only once the user has picked one (a cancel
 // costs nothing), write it. A nil player is the ordinary export.
-func (a *App) saveBundleDialog(opts ExportBundleOptions, player *SharePlayer) (string, error) {
-	defaultName := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+//
+// The dialog is filled with the name the MODAL showed. It used to hard-code
+// `recall-bundle-<ts>.zip` for both modes, contradicting the modal, which
+// suggests `recall-share-<ts>.zip` for a share precisely so the two can be
+// told apart later on the coach's disk among the player's own backups.
+func (a *App) saveBundleDialog(opts ExportBundleOptions, player *SharePlayer, filename string) (string, error) {
+	defaultName := strings.TrimSpace(filename)
+	if defaultName == "" {
+		defaultName = "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+	}
 	path, err := application.Get().Dialog.SaveFile().
 		SetMessage("Save Recall bundle").
 		SetFilename(defaultName).

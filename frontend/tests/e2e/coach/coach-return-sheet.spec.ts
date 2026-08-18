@@ -212,4 +212,37 @@ test.describe('return of notes — moments', () => {
     await expect(block).toContainText('Cassidy flanked behind you.')
     await expect(block.getByRole('button', { name: /copy replay code/i })).toBeVisible()
   })
+
+  // The nag lived on Matches alone, so a player who imported notes and then
+  // went to Settings, Parse or Unknown had no sign a review was waiting —
+  // on three of the app's six tabs the coaching round trip was invisible.
+  test('the waiting-notes banner follows the player onto every tab', async ({ page }) => {
+    await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: {} }])
+    await page.goto('/')
+    await expect(inboxBanner(page)).toBeVisible()
+
+    for (const tab of ['Settings', 'Parse', /^Unknown/] as const) {
+      await page.getByRole('tab', { name: tab }).click()
+      await expect(inboxBanner(page)).toBeVisible()
+    }
+  })
+
+  // Importing the wrong file, or a review the player has decided they do not
+  // want, left a sheet nagging from the banner with no way to be rid of it:
+  // the server has had DELETE /coach/returns/{id} the whole time and nothing
+  // in the app called it. Discarding is not "skip every note" — that writes
+  // decisions and marks the matches reviewed. This drops the file.
+  test('a staged sheet can be discarded, and the nagging stops', async ({ page }) => {
+    const inbox = await mockInbox(page, [{ ...RETURN_SHEET_FIXTURE, decisions: {} }])
+    await page.goto('/')
+    await inboxBanner(page).getByRole('button', { name: 'Review' }).click()
+
+    await sheetDialog(page).getByRole('button', { name: /^Discard/ }).click()
+    await page.getByRole('button', { name: /^Discard these notes/ }).click()
+
+    await expect.poll(() => inbox.deletedIds).toEqual([RETURN_SHEET_FIXTURE.id])
+    await expect(sheetDialog(page)).toHaveCount(0)
+    await expect(inboxBanner(page)).toHaveCount(0)
+    expect(inbox.decisionsPut.seen()).toBe(false)
+  })
 })

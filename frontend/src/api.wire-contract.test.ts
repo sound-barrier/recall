@@ -202,10 +202,11 @@ const COACH: WireCase[] = [
     body: { decisions: { 'note-1': 'accepted', 'note-2': 'skipped' } },
   },
   { name: 'DeleteMatchCoachNote', call: () => api.DeleteMatchCoachNote(KEY, 3), method: 'DELETE', path: `/api/v1/matches/${KEY}/coach-notes/3` },
-  { name: 'GetCoachName', call: () => api.GetCoachName(), method: 'GET', path: '/api/v1/settings/coaching' },
+  { name: 'GetCoachingSettings', call: () => api.GetCoachingSettings(), method: 'GET', path: '/api/v1/settings/coaching' },
   {
-    name: 'SetCoachName', method: 'PUT', path: '/api/v1/settings/coaching',
-    call: () => api.SetCoachName('Ordo'), body: { coach_name: 'Ordo' },
+    name: 'SetCoachingSettings', method: 'PUT', path: '/api/v1/settings/coaching',
+    call: () => api.SetCoachingSettings({ coach_name: 'Ordo', player_handle: 'Sable' }),
+    body: { coach_name: 'Ordo', player_handle: 'Sable' },
   },
 ]
 

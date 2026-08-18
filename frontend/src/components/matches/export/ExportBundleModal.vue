@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, toRef, watch } from 'vue'
 
+import { GetCoachingSettings } from '@/api-client'
 import { useScrollLock } from '@/composables/shared/keyboard/useScrollLock'
 import type { ExportBundleRequest } from '@/composables/matches/useExportBundle'
 
@@ -64,6 +65,16 @@ const includeHidden  = ref(false)
 const includeUnknown = ref(false)
 const sharing        = ref(false)
 const shareHandle    = ref('')
+
+// Best-effort: a share can still be typed by hand, so a settings read that
+// fails must not stop the dialog opening.
+async function storedPlayerHandle(): Promise<string> {
+  try {
+    return (await GetCoachingSettings()).player_handle
+  } catch (_) {
+    return ''
+  }
+}
 const shareMessage   = ref('')
 const busy           = ref(false)
 
@@ -98,6 +109,15 @@ watch(() => props.open, async (next, prev) => {
     includeUnknown.value = false
     sharing.value        = false
     shareHandle.value    = ''
+    // Filled in from the server, not awaited: the handle is stored the first
+    // time someone shares, and asking for it again every time was friction on
+    // a value the app already had. Awaiting it here would put the dialog's
+    // focus behind a network call, and only fill a field the user has not
+    // reached yet — so it lands when it lands, and never over anything typed
+    // in the meantime.
+    void storedPlayerHandle().then((handle) => {
+      if (props.open && !shareHandle.value) shareHandle.value = handle
+    })
     shareMessage.value   = ''
     busy.value           = false
     lastFocus.value =

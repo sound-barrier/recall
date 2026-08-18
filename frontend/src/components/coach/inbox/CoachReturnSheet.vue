@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import CoachReturnCard from '@/components/coach/inbox/CoachReturnCard.vue'
@@ -54,6 +54,23 @@ async function commit() {
   returns.closeReturnSheet()
 }
 
+// Discarding throws the file away rather than deciding it. Armed first,
+// because it is the one irreversible button in the dialog and it sits beside
+// two that are not — and because "skip every note" is NOT the same thing: that
+// writes decisions and marks the matches reviewed by a coach whose review the
+// player has just said they do not want.
+const discardArmed = ref(false)
+
+async function discard() {
+  const sheet = returnSheet.value
+  if (!sheet) return
+  discardArmed.value = false
+  await returns.discardReturnSheet(sheet.id)
+}
+
+// A sheet that closes while the confirm is up must not reopen holding it.
+watch(open, (isOpen) => { if (!isOpen) discardArmed.value = false })
+
 useModalFocusTrap(open, {
   containerSelector: '.coach-return-sheet',
   onClose: () => { void commit() },
@@ -107,18 +124,55 @@ useModalFocusTrap(open, {
       </div>
 
       <footer class="return-foot">
-        <button type="button" class="paper-btn" @click="commit">
-          Decide later
-        </button>
-        <button type="button" class="paper-btn primary" @click="commit">
-          Finish · save {{ decisions.acceptedCount.value }} accepted
-        </button>
+        <!--
+          Armed, and it says what it destroys. The wrong file imported, or a
+          review the player has decided against, used to leave a sheet
+          nagging from the banner with no way to be rid of it: the server has
+          had this endpoint the whole time and nothing called it.
+        -->
+        <template v-if="discardArmed">
+          <span class="return-discard-ask">Throw these notes away without deciding them?</span>
+          <button type="button" class="paper-btn" @click="discardArmed = false">
+            Keep them
+          </button>
+          <button type="button" class="paper-btn return-discard-go" @click="discard">
+            Discard these notes
+          </button>
+        </template>
+        <template v-else>
+          <button type="button" class="paper-btn return-discard" @click="discardArmed = true">
+            Discard…
+          </button>
+          <button type="button" class="paper-btn" @click="commit">
+            Decide later
+          </button>
+          <button type="button" class="paper-btn primary" @click="commit">
+            Finish · save {{ decisions.acceptedCount.value }} accepted
+          </button>
+        </template>
       </footer>
     </section>
   </div>
 </template>
 
 <style scoped>
+.return-discard-ask {
+  flex: 1 1 100%;
+  font-size: var(--type-sm);
+  color: var(--ink);
+}
+
+/* The one destructive button in the dialog: pushed left, away from the two
+   that commit, and colored only once it is the armed confirm. */
+.return-discard {
+  margin-right: auto;
+}
+
+.return-discard-go {
+  color: var(--loss);
+  border-color: var(--loss);
+}
+
 .return-backdrop {
   position: fixed;
   inset: 0;
@@ -190,7 +244,9 @@ useModalFocusTrap(open, {
 
 .return-foot {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.5rem;
   padding-top: 0.6rem;
   border-top: 1px solid var(--paper-rule);

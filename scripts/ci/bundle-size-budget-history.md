@@ -195,3 +195,21 @@ rides the lazy match-detail chunk and the film room its own, so a moment's
 worth of new code costs nothing before someone opens a match. The coach store
 was already eager — the app must know whether a session is open before any
 view renders — and nothing here added to it.
+
+## 2026-08-18 — the coaching flow fixes (#700)
+
+| budget | from | to | measured |
+|---|---|---|---|
+| initial JS | 332500 | 336000 | 335003 |
+| total JS | 1703000 | 1706000 | 1702966 |
+
+Initial JS moved this time, and deliberately. The coaching inbox banner is
+first-paint by construction, exactly as the session store beside it is: the
+app has to know a review is waiting before any view renders. It used to sit
+inside the lazy Matches view, which is why a player who imported notes and
+then went to Settings, Parse or Unknown had no sign on three of six tabs that
+anything was waiting. Measured cost 1793B for the banner and its returns
+store, 568B for the receipt strip that says where an exported file went.
+
+The rest — the Settings player-handle row, the return sheet's discard flow —
+rides lazy chunks and shows only in the total.

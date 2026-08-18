@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
-import type { CoachSaveState } from '@/components/coach/room/coach-room-props'
+import { SAVE_LABEL, type CoachSaveState } from '@/components/coach/room/coach-room-props'
 import {
   FOCUS_TAGS, focusTagLabel, noteMark, parseMatchClock, type CoachNoteDraft,
 } from '@/match/coach/coach-notes'
@@ -36,13 +36,6 @@ const emit = defineEmits<{
   prev: []
   next: []
 }>()
-
-const SAVE_LABEL: Record<CoachSaveState, string> = {
-  idle: 'Autosaves as you write',
-  saving: 'Saving…',
-  saved: 'Saved',
-  error: 'Not saved — check the session',
-}
 
 const CLOCK_HINT_ID = 'coach-note-clock-hint'
 
@@ -125,7 +118,12 @@ function toggleReviewed(): void {
   <div class="paper coach-note">
     <div class="note-head">
       <span class="eyebrow ink">Your note</span>
-      <p class="note-save" :class="{ 'note-blocked': blocked }" role="status">
+      <p
+        class="note-save"
+        :class="{ 'note-blocked': blocked }"
+        role="status"
+        aria-label="Note save state"
+      >
         {{ statusLine }}
       </p>
     </div>

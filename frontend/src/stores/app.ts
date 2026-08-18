@@ -65,6 +65,25 @@ export const useAppStore = defineStore('app', () => {
     errorRetry.value = null
   }
 
+  // ── Receipts ──────────────────────────────────────────────────────
+  // The counterpart to the error banner: an action that PRODUCED SOMETHING
+  // outside the app says where it went. Reserved for exactly that — a file
+  // written, a path the user can go and open — not for confirming ordinary
+  // in-app changes, which the UI shows by simply having changed.
+  //
+  // The share export is why this exists: the one action whose whole purpose
+  // is putting a file in front of another person finished in silence, with
+  // nothing on screen to say it had happened or where the file was.
+  const notice = ref('')
+
+  function setNotice(message: string) {
+    notice.value = message
+  }
+
+  function clearNotice() {
+    notice.value = ''
+  }
+
   // ── Version + About (the update hub) ──────────────────────────────
   // Modeled on Chrome/Firefox: the update check lives inside About, not as a
   // standalone affordance. `openAbout` opens the dialog and kicks the check;
@@ -175,6 +194,9 @@ export const useAppStore = defineStore('app', () => {
     setError,
     setErrorFromRaw,
     clearError,
+    notice,
+    setNotice,
+    clearNotice,
     appVersion,
     updateInfo,
     updateCheckBusy,

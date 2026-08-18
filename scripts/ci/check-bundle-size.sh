@@ -49,7 +49,14 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # moments it now tracks (what has actually been written, so a removal can tell
 # an abandoned draft from a stored row) live there for that reason, not by
 # accident. Measured 331207B.
-: "${MAX_INITIAL_JS_BYTES:=332500}"
+# 2026-08: 332500 -> 336000 -- the coaching INBOX, eager for the same reason
+# the session store above it is: the app must know a review is waiting before
+# any view renders. The banner used to live inside the lazy Matches view, so a
+# player who imported notes and went to Settings, Parse or Unknown had no sign
+# on three of six tabs that anything was waiting for them. Measured 335003B --
+# 1793B of it the inbox banner + its returns store, 568B the receipt strip that
+# says where an exported file went. Both are first-paint by construction.
+: "${MAX_INITIAL_JS_BYTES:=336000}"
 # 2026-07: 67000 → 68000 — the Phase-5 sample-size caveat chip
 # (.bd-low-n in components.css) landed the initial CSS 192B over the
 # old point. ~1KB headroom, same ratchet spirit: bump deliberately
@@ -171,7 +178,11 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # coaching actions. Measured 1700179B. INITIAL JS is unmoved at 332192B — the
 # journal rides the already-lazy match-detail chunk and the room its own, which
 # is the number that would have moved if any of it had drifted eager.
-: "${MAX_TOTAL_JS_BYTES:=1703000}"
+# 2026-08: 1703000 -> 1706000 -- the same two, plus the Settings player-handle
+# row and the return sheet's discard flow. Measured 1702966B, which left 34
+# bytes of headroom: a budget that tight trips the next honest change instead
+# of the next careless one.
+: "${MAX_TOTAL_JS_BYTES:=1706000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset

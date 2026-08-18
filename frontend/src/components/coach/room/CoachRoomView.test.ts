@@ -95,12 +95,17 @@ describe('CoachRoomView — what it reports upward', () => {
 })
 
 describe('CoachRoomView — an empty bundle', () => {
-  it('keeps its three regions with nothing to review', () => {
+  // The desk's two empties are not the same, and this case used to assert the
+  // wrong one: "Pick a frame from the reel" pointed the coach at an EMPTY reel
+  // and asked them to choose from it.
+  it('keeps its three regions, and says why there is nothing to pick', () => {
     renderRoom({ records: [] })
     expect(screen.getByText(/carries no matches/)).toBeInTheDocument()
-    expect(screen.getByText(/Pick a frame/)).toBeInTheDocument()
+    expect(screen.getByText(/holds no matches to review/)).toBeInTheDocument()
+    expect(screen.queryByText(/Pick a frame/)).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Reviewing Sable' })).toBeInTheDocument()
   })
+
 })
 
 describe('CoachRoomView — the region slots', () => {
@@ -135,7 +140,8 @@ describe('CoachRoomView — who is this?', () => {
   it('will not take a note that has nowhere to be saved', () => {
     renderRoom({ player: ANONYMOUS })
     expect(screen.getByRole('textbox', { name: 'Note' })).toBeDisabled()
-    expect(screen.getByRole('status')).toHaveTextContent(/before writing notes/)
+    expect(screen.getByRole('status', { name: 'Note save state' }))
+      .toHaveTextContent(/before writing notes/)
   })
 
   // The note editor was blocked but the sheet's summary was not, so a coach
@@ -166,6 +172,6 @@ describe('CoachRoomView — who is this?', () => {
 
   it('shows the save state of the frame on the desk', () => {
     renderRoom({ saveStateFor: (key: string) => (key === LATE.match_key ? 'saving' : 'idle') })
-    expect(screen.getByRole('status')).toHaveTextContent('Saving')
+    expect(screen.getByRole('status', { name: 'Note save state' })).toHaveTextContent('Saving')
   })
 })

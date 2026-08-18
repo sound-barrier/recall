@@ -10,15 +10,20 @@ import { useExportBundle } from '@/composables/matches/useExportBundle'
 
 let api: Record<string, ReturnType<typeof vi.fn>>
 const errors: string[] = []
+const receipts: string[] = []
 
 function bundle() {
-  const flow = useExportBundle({ onError: (raw) => { errors.push(raw) } })
+  const flow = useExportBundle({
+    onError: (raw) => { errors.push(raw) },
+    onSaved: (message) => { receipts.push(message) },
+  })
   flow.onExportBundleRequest(['k1', 'k2'])
   return flow
 }
 
 beforeEach(() => {
   errors.length = 0
+  receipts.length = 0
   api = {
     ExportBundle: vi.fn(async () => 'recall-bundle.zip'),
     ExportMatchesCSV: vi.fn(async () => 'matches.csv'),
@@ -90,5 +95,36 @@ describe('useExportBundle — sharing with a coach', () => {
     expect(api.ExportBundle).toHaveBeenCalledWith(
       expect.objectContaining({ filename: 'my-season-review.zip' }),
     )
+  })
+
+  // The one action whose whole purpose is producing a file for somebody else
+  // used to finish in complete silence: no path, no confirmation, nothing on
+  // screen to say it had happened.
+  it('reports where the file went, and says which kind it was', async () => {
+    const flow = bundle()
+    await flow.onExportBundleConfirm({
+      filename: 'x.zip', includeHidden: false, includeUnknown: false,
+      share: { handle: 'Sable', message: '' },
+    })
+    expect(receipts).toEqual(['Shared: recall-bundle.zip'])
+
+    receipts.length = 0
+    await flow.onExportBundleConfirm({
+      filename: 'x.zip', includeHidden: false, includeUnknown: false, share: null,
+    })
+    expect(receipts).toEqual(['Saved: recall-bundle.zip'])
+  })
+
+  // A dismissed native save dialog answers "" — nothing was written, so there
+  // is nothing to report, and a receipt would be a claim about a file that
+  // does not exist.
+  it('says nothing when the save dialog was dismissed', async () => {
+    api.ExportBundle = vi.fn(async () => '')
+    setApiBacking(api)
+    const flow = bundle()
+    await flow.onExportBundleConfirm({
+      filename: 'x.zip', includeHidden: false, includeUnknown: false, share: null,
+    })
+    expect(receipts).toEqual([])
   })
 })

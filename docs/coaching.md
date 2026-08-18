@@ -56,7 +56,8 @@ In the dialog, tick **Share with a coach**. That changes what the file
 IS — it stamps your handle on it so their Recall can open it as a
 session rather than merging it into their own history.
 
-- **Your handle** — the name your coach knows you by.
+- **Your handle** — the name your coach knows you by. Filled in from the
+  last time you shared; you can also set it in Settings → Coaching.
 - **Message for your coach** — optional, and the most useful field in
   the dialog. "Watch my ult timing on control" gets you a better review
   than silence does.

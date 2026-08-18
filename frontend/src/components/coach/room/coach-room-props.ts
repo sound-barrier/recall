@@ -32,3 +32,16 @@ function titleCase(raw: string | null | undefined): string {
 }
 
 export const DEFAULT_COACH_LABELS: CoachLabels = { map: titleCase, hero: titleCase }
+
+/**
+ * How a save reads to the coach. Shared rather than spelled per surface: the
+ * note editor and the session summary both autosave through the same queue,
+ * and two vocabularies for one mechanism is how "Saved" comes to mean
+ * different things in two boxes on the same sheet.
+ */
+export const SAVE_LABEL: Record<CoachSaveState, string> = {
+  idle: 'Autosaves as you write',
+  saving: 'Saving\u2026',
+  saved: 'Saved',
+  error: 'Not saved \u2014 check the session',
+}

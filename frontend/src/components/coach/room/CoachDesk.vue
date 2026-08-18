@@ -14,6 +14,8 @@ import type { CoachNoteDraft } from '@/match/coach/coach-notes'
 withDefaults(defineProps<{
   /** The frame on the desk; null only when the bundle has no matches. */
   record: MatchRecord | null
+  /** True when the reel has no frames at all — a different kind of empty. */
+  reelEmpty?: boolean
   handle: string
   draft: CoachNoteDraft
   /** This match's moments — several per match, unlike the note. */
@@ -77,8 +79,15 @@ const emit = defineEmits<{
         @next="emit('next')"
       />
     </template>
+    <!--
+      Two empties, and they are not the same. "Pick a frame from the reel" was
+      shown for both, so the state where there is nothing to pick pointed the
+      coach at an empty reel and asked them to choose from it.
+    -->
     <p v-else class="desk-empty">
-      Pick a frame from the reel to put a match on the desk.
+      {{ reelEmpty
+        ? 'This bundle holds no matches to review. The player can share more from their Matches tab.'
+        : 'Pick a frame from the reel to put a match on the desk.' }}
     </p>
   </div>
 </template>

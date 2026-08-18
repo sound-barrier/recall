@@ -25,11 +25,21 @@ describe('CoachDesk', () => {
     expect(screen.getByRole('textbox', { name: 'Note' })).toBeInTheDocument()
   })
 
-  it('says the reel is empty rather than showing a blank desk', () => {
+  // Two empties, and they read differently. The desk used to show one line
+  // for both, so a bundle with no matches at all told the coach to "pick a
+  // frame from the reel" — pointing at an empty reel and asking them to
+  // choose from it.
+  it('asks for a pick when there are frames to pick from', () => {
     renderDesk({ record: null })
     expect(screen.getByText(/Pick a frame/)).toBeInTheDocument()
     expect(screen.queryByRole('article')).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Note' })).not.toBeInTheDocument()
+  })
+
+  it('says there is nothing to pick when the reel itself is empty', () => {
+    renderDesk({ record: null, reelEmpty: true })
+    expect(screen.getByText(/holds no matches to review/)).toBeInTheDocument()
+    expect(screen.queryByText(/Pick a frame/)).not.toBeInTheDocument()
   })
 
   it("passes the coach's edits up with nothing added", async () => {

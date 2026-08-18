@@ -341,17 +341,30 @@ func handleGetCoachingSettings(a *app.App) http.HandlerFunc {
 	}
 }
 
-// handleSetCoachingSettings persists the name this user signs notes with.
-// An empty name is legal — it means "not set yet", and export refuses on
-// that separately.
+// handleSetCoachingSettings persists both coaching identities: the name this
+// user signs notes with as a coach, and the handle they share under as a
+// player. Empty is legal for either — it means "not set yet", and each side
+// refuses separately when it needs one.
+//
+// Both fields are required in the body rather than optional, because an
+// omitted string field is indistinguishable from an empty one after
+// decoding: "leave the handle alone" and "clear the handle" would be the
+// same request.
 func handleSetCoachingSettings(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		name, err := decodeStringBody(r, "coach_name")
-		if err != nil {
-			writeProblem(w, r, probInvalidBody, err.Error())
+		var body struct {
+			CoachName    *string `json:"coach_name"`
+			PlayerHandle *string `json:"player_handle"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeProblem(w, r, probInvalidBody, `body must be {"coach_name":"...","player_handle":"..."}`)
 			return
 		}
-		settings, err := a.SetCoachingSettings(name)
+		if body.CoachName == nil || body.PlayerHandle == nil {
+			writeProblem(w, r, probInvalidBody, "coach_name and player_handle are both required")
+			return
+		}
+		settings, err := a.SetCoachingSettings(*body.CoachName, *body.PlayerHandle)
 		if writeError(w, r, err) {
 			return
 		}

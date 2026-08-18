@@ -130,7 +130,7 @@ func coachApp(t *testing.T) (*app.App, *dbtest.Fake) {
 	isolateInstall(t)
 	store := dbtest.New()
 	a := app.NewWithStore(store)
-	if _, err := a.SetCoachingSettings(coachName); err != nil {
+	if _, err := a.SetCoachingSettings(coachName, ""); err != nil {
 		t.Fatalf("SetCoachingSettings: %v", err)
 	}
 	return a, store

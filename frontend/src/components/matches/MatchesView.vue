@@ -7,7 +7,6 @@ import { useDensity } from '@/composables/matches/table/useDensity'
 import { useSortGroupMenu } from '@/composables/matches/list/useSortGroupMenu'
 import { useScrollAffordance } from '@/composables/matches/list/useScrollAffordance'
 import { useOWData } from '@/composables/shared/useOWData'
-import CoachInboxBanner from '@/components/coach/inbox/CoachInboxBanner.vue'
 import ParseStalenessBanner from '@/components/ingest/ParseStalenessBanner.vue'
 import MatchesDossierHead from '@/components/matches/dossier/MatchesDossierHead.vue'
 import MatchesDossierSections from '@/components/matches/dossier/MatchesDossierSections.vue'
@@ -319,10 +318,6 @@ const {
     />
 
     <div class="matches-content-column">
-      <!-- Coach notes waiting on a decision. Server-derived, so it
-           survives a reload and a "Decide later" until every note in
-           the inbox has a verdict. -->
-      <CoachInboxBanner />
       <ParseStalenessBanner />
 
       <!-- ─── SET DOSSIER ─────────────────────────────────────────

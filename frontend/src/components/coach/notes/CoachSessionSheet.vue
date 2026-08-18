@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CoachPlayerView } from '@/components/coach/room/coach-room-props'
+import { SAVE_LABEL, type CoachPlayerView, type CoachSaveState } from '@/components/coach/room/coach-room-props'
 import { focusTagLabel, type FocusCount } from '@/match/coach/coach-notes'
 import type { WLDTally } from '@/match/match-stats-helpers'
 
@@ -18,6 +18,8 @@ withDefaults(defineProps<{
   /** "7 notes · 19 moments · 1 reviewed only · Ordo" — from notesSummaryLine(). */
   notesLine: string
   summary: string
+  /** Where the summary's own autosave stands. */
+  summarySaveState?: CoachSaveState
   canExport?: boolean
   /** Why Export is unavailable — shown as its title, per the write-gate copy. */
   exportReason?: string
@@ -28,7 +30,10 @@ withDefaults(defineProps<{
    * will refuse loses it.
    */
   blockedReason?: string
-}>(), { canExport: true, exportReason: undefined, blockedReason: '', endArmed: false })
+}>(), {
+  canExport: true, exportReason: undefined, blockedReason: '',
+  endArmed: false, summarySaveState: 'idle',
+})
 
 const emit = defineEmits<{
   'keep-working': []
@@ -111,8 +116,13 @@ function onSummaryInput(e: Event): void {
         placeholder="The one thing to take into the next session…"
         @input="onSummaryInput"
       />
-      <p v-if="blockedReason" class="sheet-blocked">
-        {{ blockedReason }}
+      <!--
+        The summary autosaves exactly as a note does, and said nothing while
+        it did — so the box a coach writes their one takeaway in was the only
+        surface in the room with no sign the words had landed.
+      -->
+      <p class="sheet-summary-status" role="status" aria-label="Summary save state">
+        {{ blockedReason || SAVE_LABEL[summarySaveState] }}
       </p>
     </div>
 

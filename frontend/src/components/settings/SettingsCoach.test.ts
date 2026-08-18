@@ -7,65 +7,86 @@ import { setApiBacking } from '@/api-client'
 import SettingsCoach from '@/components/settings/SettingsCoach.vue'
 import { flushPromises } from '@/test-utils'
 
-// The name a coach signs notes with. It is a SERVER setting (the exported
-// ledger is rendered server-side and needs it), so the row reads it on
-// mount and commits it on blur / Enter.
+// The two coaching identities, one per direction of the loop. Both are
+// SERVER settings — the exported ledger is rendered server-side and needs
+// the coach name, the handle is stamped into a shared bundle's manifest —
+// so the section reads them on mount and commits on blur / Enter.
 
-const GetCoachName = vi.fn(async () => 'Ordo')
-const SetCoachName = vi.fn(async (name: string) => name)
+const STORED = { coach_name: 'Ordo', player_handle: 'Sable' }
+const GetCoachingSettings = vi.fn(async () => ({ ...STORED }))
+const SetCoachingSettings = vi.fn(async (next: typeof STORED) => next)
 
 function renderRow() {
   setActivePinia(createPinia())
-  setApiBacking({ GetCoachName, SetCoachName })
+  setApiBacking({ GetCoachingSettings, SetCoachingSettings })
   return render(SettingsCoach)
 }
 
-const field = () => screen.getByLabelText('Your coach name')
+const coachField = () => screen.getByLabelText('Your coach name')
+const handleField = () => screen.getByLabelText('Your player handle')
 
 describe('SettingsCoach', () => {
   beforeEach(() => {
-    GetCoachName.mockClear()
-    SetCoachName.mockClear()
+    GetCoachingSettings.mockClear()
+    SetCoachingSettings.mockClear()
+    GetCoachingSettings.mockResolvedValue({ ...STORED })
   })
 
-  it('shows the name the server already has', async () => {
+  it('shows both identities the server already has', async () => {
     renderRow()
     await flushPromises()
-    expect(GetCoachName).toHaveBeenCalled()
-    expect(field()).toHaveValue('Ordo')
+    expect(GetCoachingSettings).toHaveBeenCalled()
+    expect(coachField()).toHaveValue('Ordo')
+    expect(handleField()).toHaveValue('Sable')
   })
 
-  it('saves a new name on blur, trimmed', async () => {
+  it('saves a new coach name on blur, trimmed', async () => {
     const user = userEvent.setup()
     renderRow()
     await flushPromises()
-    await user.clear(field())
-    await user.type(field(), '  Vex  ')
+    await user.clear(coachField())
+    await user.type(coachField(), '  Vex  ')
     await user.tab()
     await flushPromises()
-    expect(SetCoachName).toHaveBeenCalledWith('Vex')
-    expect(field()).toHaveValue('Vex')
+    expect(SetCoachingSettings).toHaveBeenCalledWith({ coach_name: 'Vex', player_handle: 'Sable' })
+    expect(coachField()).toHaveValue('Vex')
   })
 
-  it('does not re-save a name that did not change', async () => {
+  // The handle used to be settable only as a side effect of sharing, and
+  // shown nowhere — so the share dialog asked for it again every time, on a
+  // value the server had all along.
+  it('saves a new player handle, carrying the coach name along', async () => {
     const user = userEvent.setup()
     renderRow()
     await flushPromises()
-    await user.click(field())
+    await user.clear(handleField())
+    await user.type(handleField(), 'Wren')
     await user.tab()
     await flushPromises()
-    expect(SetCoachName).not.toHaveBeenCalled()
+    expect(SetCoachingSettings).toHaveBeenCalledWith({ coach_name: 'Ordo', player_handle: 'Wren' })
+    expect(handleField()).toHaveValue('Wren')
   })
 
-  it('puts the old name back when the save fails', async () => {
+  it('does not re-save what did not change', async () => {
     const user = userEvent.setup()
-    SetCoachName.mockRejectedValueOnce(new Error('nope'))
     renderRow()
     await flushPromises()
-    await user.clear(field())
-    await user.type(field(), 'Vex')
+    await user.click(coachField())
     await user.tab()
     await flushPromises()
-    expect(field()).toHaveValue('Ordo')
+    expect(SetCoachingSettings).not.toHaveBeenCalled()
+  })
+
+  it('puts the stored values back when the save fails', async () => {
+    const user = userEvent.setup()
+    SetCoachingSettings.mockRejectedValueOnce(new Error('nope'))
+    renderRow()
+    await flushPromises()
+    await user.clear(coachField())
+    await user.type(coachField(), 'Vex')
+    await user.tab()
+    await flushPromises()
+    expect(coachField()).toHaveValue('Ordo')
+    expect(handleField()).toHaveValue('Sable')
   })
 })

@@ -278,7 +278,9 @@ func TestCoachingSettings_GetIsEmptyUntilPut(t *testing.T) {
 	if got := coachName(t, get(t, mux, coachingSettingsPath)); got != "" {
 		t.Fatalf("initial coach_name = %q, want empty", got)
 	}
-	rec := put(t, mux, coachingSettingsPath, map[string]any{"coach_name": "  Ordo  "})
+	rec := put(t, mux, coachingSettingsPath, map[string]any{
+		"coach_name": "  Ordo  ", "player_handle": "  Sable  ",
+	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("put status = %d, want 200; body=%q", rec.Code, rec.Body.String())
 	}
@@ -288,14 +290,41 @@ func TestCoachingSettings_GetIsEmptyUntilPut(t *testing.T) {
 	if got := coachName(t, get(t, mux, coachingSettingsPath)); got != "Ordo" {
 		t.Errorf("persisted coach_name = %q, want Ordo", got)
 	}
+	if got := playerHandle(t, get(t, mux, coachingSettingsPath)); got != "Sable" {
+		t.Errorf("persisted player_handle = %q, want Sable", got)
+	}
 }
 
 func TestCoachingSettings_RejectsNonStringName(t *testing.T) {
 	_, mux := newCoachMux(t)
-	rec := putRaw(t, mux, coachingSettingsPath, `{"coach_name": 7}`)
+	rec := putRaw(t, mux, coachingSettingsPath, `{"coach_name": 7, "player_handle": ""}`)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%q", rec.Code, rec.Body.String())
 	}
+}
+
+// Both fields are required rather than optional, because an omitted string is
+// indistinguishable from an empty one after decoding: a half-body would mean
+// "clear the field I did not mention", which is nobody's intent.
+func TestCoachingSettings_RejectsAHalfBody(t *testing.T) {
+	_, mux := newCoachMux(t)
+	for _, body := range []string{`{"coach_name": "Ordo"}`, `{"player_handle": "Sable"}`, `{}`} {
+		rec := putRaw(t, mux, coachingSettingsPath, body)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("put %s status = %d, want 400; body=%q", body, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func playerHandle(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	var got struct {
+		PlayerHandle string `json:"player_handle"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode coaching settings %q: %v", rec.Body.String(), err)
+	}
+	return got.PlayerHandle
 }
 
 func coachName(t *testing.T, rec *httptest.ResponseRecorder) string {

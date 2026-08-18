@@ -9,6 +9,8 @@ import { ExportBundle, ExportMatchesCSV } from '@/api-client'
 // Extracted from App.vue (REVIEW.md Q13); the error surface is injected.
 export interface ExportBundleDeps {
   onError: (raw: string) => void
+  /** Where a written file landed, for the receipt strip. */
+  onSaved: (message: string) => void
 }
 
 // Who a share-mode bundle is about. The stable player id is minted
@@ -54,7 +56,7 @@ export function useExportBundle(deps: ExportBundleDeps) {
 
   async function onExportBundleConfirm(request: ExportBundleRequest) {
     try {
-      await ExportBundle({
+      const saved = await ExportBundle({
         matchKeys: exportBundleSelectedKeys.value,
         includeHidden: request.includeHidden,
         includeUnknown: request.includeUnknown,
@@ -63,6 +65,11 @@ export function useExportBundle(deps: ExportBundleDeps) {
         filename: request.filename,
         ...(request.share ? { share: request.share } : {}),
       })
+      // "" means the native save dialog was dismissed — nothing was written,
+      // so there is nothing to report. Otherwise say where it went: this is
+      // the one action whose whole point is producing a file for somebody
+      // else, and it used to finish in complete silence.
+      if (saved) deps.onSaved(request.share ? `Shared: ${saved}` : `Saved: ${saved}`)
     } catch (e) {
       deps.onError(String(e))
     } finally {

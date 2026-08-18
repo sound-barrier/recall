@@ -22,6 +22,7 @@ import { unwrap, unwrapVoid } from '@/api-unwrap'
 import * as sdk from '@/client/sdk.gen'
 import type {
   CoachDecisionEnum,
+  CoachingSettings,
   CoachMoment,
   CoachMomentInput,
   MatchMomentInput,
@@ -704,15 +705,21 @@ export function DeleteMatchCoachNote(matchKey: string, id: number): Promise<void
   return unwrapVoid(sdk.deleteMatchCoachNote({ path: { match_key: matchKey, id } }))
 }
 
-// The name this user signs notes with as a coach. A server setting, not a
-// browser preference — the exported ledger is rendered server-side and
-// needs it. Empty means "not set yet", which is what disables Export.
-export function GetCoachName(): Promise<string> {
-  return unwrap(sdk.getCoachingSettings()).then(d => d.coach_name)
+// The two coaching identities, one per direction of the loop: the name this
+// user signs notes with as a COACH, and the handle they share under as a
+// PLAYER. Server settings, not browser preferences — the exported ledger is
+// rendered server-side and the handle is stamped into a bundle's manifest.
+// Empty means "not set yet" for either; each side refuses separately.
+//
+// One pair of functions rather than two, because the PUT carries both: an
+// omitted string is indistinguishable from an empty one, so a per-field
+// setter could not tell "leave this alone" from "clear this".
+export function GetCoachingSettings(): Promise<CoachingSettings> {
+  return unwrap(sdk.getCoachingSettings())
 }
 
-export function SetCoachName(coachName: string): Promise<string> {
-  return unwrap(sdk.setCoachingSettings({ body: { coach_name: coachName } })).then(d => d.coach_name)
+export function SetCoachingSettings(next: CoachingSettings): Promise<CoachingSettings> {
+  return unwrap(sdk.setCoachingSettings({ body: next }))
 }
 
 // ─── Database health / maintenance ─────────────────────────────────────────

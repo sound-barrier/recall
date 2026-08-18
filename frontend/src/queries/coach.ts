@@ -97,3 +97,9 @@ export function upsertCoachReturn(sheet: CoachReturnSheet): void {
     return sheets.map(s => (s.id === sheet.id ? sheet : s))
   })
 }
+
+/** Drop a discarded sheet from the cached inbox, so the banner settles now. */
+export function removeCoachReturn(id: number): void {
+  getQueryClient().setQueryData<CoachReturnSheet[]>(qk.coach.returns, (current) =>
+    (current ?? []).filter(s => s.id !== id))
+}

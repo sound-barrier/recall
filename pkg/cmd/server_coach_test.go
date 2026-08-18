@@ -317,7 +317,7 @@ func TestCoachSessionExport_RefusesWithoutANameOrWork(t *testing.T) {
 	if rec := fire(t, mux, http.MethodPost, sessionPath+"/export", nil); rec.Code != http.StatusConflict {
 		t.Fatalf("nameless export status = %d, want 409; body=%q", rec.Code, rec.Body.String())
 	}
-	if rec := put(t, mux, coachingSettingsPath, map[string]any{"coach_name": "Ordo"}); rec.Code != http.StatusOK {
+	if rec := put(t, mux, coachingSettingsPath, map[string]any{"coach_name": "Ordo", "player_handle": ""}); rec.Code != http.StatusOK {
 		t.Fatalf("set coach name status = %d, want 200; body=%q", rec.Code, rec.Body.String())
 	}
 	if rec := fire(t, mux, http.MethodPost, sessionPath+"/export", nil); rec.Code != http.StatusConflict {
@@ -328,7 +328,7 @@ func TestCoachSessionExport_RefusesWithoutANameOrWork(t *testing.T) {
 func TestCoachSessionExport_StreamsZipWithDisposition(t *testing.T) {
 	_, mux := newCoachMux(t)
 	openSession(t, mux)
-	_ = put(t, mux, coachingSettingsPath, map[string]any{"coach_name": "Ordo"})
+	_ = put(t, mux, coachingSettingsPath, map[string]any{"coach_name": "Ordo", "player_handle": ""})
 	_ = put(t, mux, notePath(sessionMatch1), map[string]any{"kind": "note", "text": "Late peel on B"})
 
 	rec := fire(t, mux, http.MethodPost, sessionPath+"/export", nil)

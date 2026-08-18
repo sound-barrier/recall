@@ -8,7 +8,7 @@ import {
   type CoachNote, type CoachSessionView,
 } from '@/api-client'
 import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
-import { fromWireNote, isEmptyDraft, toNoteInput, type CoachNoteDraft } from '@/match/coach/coach-notes'
+import { SUMMARY_SAVE_KEY, fromWireNote, isEmptyDraft, toNoteInput, type CoachNoteDraft } from '@/match/coach/coach-notes'
 import {
   fromWireMoment, isSavable, momentSaveKey, toMomentInput, type CoachMoment,
 } from '@/match/coach/coach-moments'
@@ -35,7 +35,6 @@ import { useAppStore } from '@/stores/app'
  * `match-` / `unmatched-` / `ambiguous-` prefix (see `@/match/match-key`),
  * so no note can ever queue under this one and displace the summary.
  */
-const SUMMARY_SAVE_KEY = 'summary'
 
 /** Refusal shown when a bundle is opened while the walkthrough is running. */
 const TOUR_CONFLICT_REASON
@@ -62,8 +61,13 @@ const UNCONFIRMED_EXPORT_REASON = 'Say who this bundle is about before exporting
  * tour flag is.
  */
 export interface CoachNarrowSuspender {
-  /** Snapshot the coach's narrow and clear it. */
-  suspend: () => void
+  /**
+   * Snapshot the coach's narrow and clear it. Returns whether there WAS a
+   * narrow to set aside, so the room can say so — silently emptying the
+   * filters a coach deliberately set reads as the app losing them, and
+   * saying it unconditionally would be noise for the coach who had none.
+   */
+  suspend: () => boolean
   /** Put the snapshot back exactly as it was. */
   restore: () => void
 }
@@ -321,15 +325,19 @@ export const useCoachStore = defineStore('coach', () => {
     narrowSuspender = hooks
   }
 
+  /** True while the coach's own narrow is being held for them. */
+  const narrowSetAside = ref(false)
+
   function suspendCoachNarrow(): void {
     if (narrowSuspended || !narrowSuspender) return
     narrowSuspended = true
-    narrowSuspender.suspend()
+    narrowSetAside.value = narrowSuspender.suspend()
   }
 
   function restoreCoachNarrow(): void {
     if (!narrowSuspended || !narrowSuspender) return
     narrowSuspended = false
+    narrowSetAside.value = false
     narrowSuspender.restore()
   }
 
@@ -490,6 +498,7 @@ export const useCoachStore = defineStore('coach', () => {
     exportedTo,
     requestEndSession,
     cancelEndSession,
+    narrowSetAside,
     updateMoment,
     copyReplayCode,
     removeMoment,

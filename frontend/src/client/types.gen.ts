@@ -1087,9 +1087,18 @@ export type CoachDecisionsRequest = {
 };
 
 /**
- * The name this user signs notes with as a coach. Empty means "not
- * set yet"; the ledger is rendered server-side, so this is a server
- * setting rather than a browser preference.
+ * The two identities coaching needs, one per direction of the loop:
+ * the name this user signs notes with as a COACH, and the handle they
+ * share under as a PLAYER. Empty means "not set yet" for either; each
+ * side refuses separately when it needs one.
+ *
+ * Server settings rather than browser preferences: the ledger is
+ * rendered server-side, and the handle is stamped into an exported
+ * bundle's manifest.
+ *
+ * On `PUT` both fields are required. An omitted string is
+ * indistinguishable from an empty one after decoding, so "leave this
+ * alone" and "clear this" would be the same request.
  *
  */
 export type CoachingSettings = {
@@ -1097,6 +1106,13 @@ export type CoachingSettings = {
      * Display name on exported notes. Empty clears it.
      */
     coach_name: string;
+    /**
+     * The handle a share-with-a-coach export stamps into the manifest.
+     * Set as a side effect of the first share and reused after, so the
+     * share dialog does not ask again. Empty clears it.
+     *
+     */
+    player_handle: string;
 };
 
 /**

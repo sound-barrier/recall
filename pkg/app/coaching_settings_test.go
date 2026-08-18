@@ -20,7 +20,7 @@ func TestCoachingSettings_RoundTripsAndPersists(t *testing.T) {
 	if got := a.GetCoachingSettings().CoachName; got != "" {
 		t.Fatalf("fresh install coach_name = %q, want empty", got)
 	}
-	saved, err := a.SetCoachingSettings("  Ordo  ")
+	saved, err := a.SetCoachingSettings("  Ordo  ", "")
 	mustNoErr(t, err)
 	if saved.CoachName != "Ordo" {
 		t.Errorf("saved coach_name = %q, want the trimmed %q", saved.CoachName, "Ordo")
@@ -28,7 +28,7 @@ func TestCoachingSettings_RoundTripsAndPersists(t *testing.T) {
 	if got := app.LoadSettings(a).CoachName; got != "Ordo" {
 		t.Errorf("coach_name on disk = %q, want Ordo", got)
 	}
-	cleared, err := a.SetCoachingSettings("")
+	cleared, err := a.SetCoachingSettings("", "")
 	mustNoErr(t, err)
 	if cleared.CoachName != "" {
 		t.Errorf("cleared coach_name = %q, want empty", cleared.CoachName)
@@ -38,8 +38,42 @@ func TestCoachingSettings_RoundTripsAndPersists(t *testing.T) {
 func TestCoachingSettings_RejectsAnOverlongName(t *testing.T) {
 	isolateInstall(t)
 	a := app.NewWithStore(dbtest.New())
-	if _, err := a.SetCoachingSettings(strings.Repeat("x", 65)); !errors.Is(err, app.ErrCoachNameInvalid) {
-		t.Errorf("SetCoachingSettings(65 runes) = %v, want app.ErrCoachNameInvalid", err)
+	long := strings.Repeat("x", 65)
+	// Both identities answer to the same bound: they end up in the same
+	// places — a signed ledger, a bundle manifest — and a 65-rune one would
+	// be refused there instead, further from where it was typed.
+	for _, tc := range []struct {
+		name                    string
+		coachName, playerHandle string
+	}{
+		{"coach name", long, ""},
+		{"player handle", "", long},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := a.SetCoachingSettings(tc.coachName, tc.playerHandle); !errors.Is(err, app.ErrCoachNameInvalid) {
+				t.Errorf("SetCoachingSettings(65 runes) = %v, want app.ErrCoachNameInvalid", err)
+			}
+		})
+	}
+}
+
+// The handle was stored only as a side effect of a share and read back by
+// nothing, so the share dialog asked for it again every time — on a value the
+// server had all along.
+func TestCoachingSettings_RoundTripsThePlayerHandle(t *testing.T) {
+	isolateInstall(t)
+	a := app.NewWithStore(dbtest.New())
+
+	saved, err := a.SetCoachingSettings("Ordo", "  Sable  ")
+	mustNoErr(t, err)
+	if saved.PlayerHandle != "Sable" {
+		t.Errorf("saved player_handle = %q, want the trimmed %q", saved.PlayerHandle, "Sable")
+	}
+	if got := a.GetCoachingSettings().PlayerHandle; got != "Sable" {
+		t.Errorf("GetCoachingSettings player_handle = %q, want Sable", got)
+	}
+	if got := app.LoadSettings(a).PlayerHandle; got != "Sable" {
+		t.Errorf("player_handle on disk = %q, want Sable", got)
 	}
 }
 
