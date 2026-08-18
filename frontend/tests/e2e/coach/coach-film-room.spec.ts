@@ -26,7 +26,7 @@ import {
   filmRoom,
   loanSlip,
   mockCoachSession,
-  openSessionViaMasthead,
+  openSessionViaReviewsTab,
   seedCoachOwnMatches,
   type CoachSessionMock,
   type CoachSessionMockOptions,
@@ -50,7 +50,7 @@ async function openRoom(page: Page, opts: CoachSessionMockOptions = {}): Promise
   await seedCoachOwnMatches(page)
   const session = await mockCoachSession(page, opts)
   await page.goto('/')
-  await openSessionViaMasthead(page)
+  await openSessionViaReviewsTab(page)
   await expect(loanSlip(page)).toBeVisible()
   await enterFilmRoom(page)
   return session

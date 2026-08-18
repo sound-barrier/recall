@@ -37,9 +37,15 @@ export interface ExportBundleRequest {
 export function useExportBundle(deps: ExportBundleDeps) {
   const exportBundleOpen = ref(false)
   const exportBundleSelectedKeys = ref<string[]>([])
+  // Whether the dialog opens already in share mode. The bulk bar's "Export
+  // bundle…" leaves the choice to the user; the Reviews tab's "Send matches
+  // out" and the palette's share action have already made it, and asking
+  // again is a checkbox the user has to find.
+  const exportBundleShareIntent = ref(false)
 
-  function onExportBundleRequest(matchKeys: string[]) {
+  function onExportBundleRequest(matchKeys: string[], opts: { share?: boolean } = {}) {
     exportBundleSelectedKeys.value = matchKeys
+    exportBundleShareIntent.value = opts.share === true
     exportBundleOpen.value = true
   }
 
@@ -81,6 +87,7 @@ export function useExportBundle(deps: ExportBundleDeps) {
   return {
     exportBundleOpen,
     exportBundleSelectedKeys,
+    exportBundleShareIntent,
     onExportBundleRequest,
     closeExportBundle,
     onExportMatchesCSV,

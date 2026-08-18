@@ -182,7 +182,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # row and the return sheet's discard flow. Measured 1702966B, which left 34
 # bytes of headroom: a budget that tight trips the next honest change instead
 # of the next careless one.
-: "${MAX_TOTAL_JS_BYTES:=1706000}"
+# 2026-08: 1706000 -> 1710000 -- the 07 Reviews tab: its view, the shelf
+# index and one pure helper, as one lazy chunk (measured 1706142B). INITIAL JS
+# went DOWN, 335320B -> 331896B: the film room's props/emits wiring, useOWData
+# and the roving-tab special case all left App.vue for the lazy view when the
+# room moved inside the tab. A tab that shrinks first paint is the right kind.
+: "${MAX_TOTAL_JS_BYTES:=1710000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -201,7 +206,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # strip and its row both imported one sheet with `scoped src`, and Vue emits
 # every rule once per scope hash, so ~2.6KB shipped twice. Each component owns
 # its own selectors now; measured 400321B.
-: "${MAX_TOTAL_CSS_BYTES:=402000}"
+# 2026-08: 402000 -> 404000 -- the Reviews tab's scoped sheet: the waiting
+# rows, the shelf grid, the paper review card (measured 402432B). Nothing in
+# styles/ moved; the tab wears the .settings shell and the paper family.
+: "${MAX_TOTAL_CSS_BYTES:=404000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

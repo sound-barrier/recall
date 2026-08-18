@@ -84,6 +84,7 @@ const {
   unknownRecords,
   exportBundleOpen,
   exportBundleSelectedKeys,
+  exportBundleShareIntent,
   records,
 } = storeToRefs(matchesStore)
 
@@ -237,6 +238,7 @@ const lightboxSrc = computed(() => {
        "Export bundle…" button. -->
   <ExportBundleModal
     :open="exportBundleOpen"
+    :share-intent="exportBundleShareIntent"
     :selected-count="exportBundleSelectedKeys.length"
     :hidden-count="hiddenRecords.length"
     :unknown-count="unknownRecords.length"

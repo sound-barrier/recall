@@ -23,7 +23,11 @@ describe('App.vue lazy-loaded components', () => {
   const source =
     readFileSync(resolve(__dirname, 'App.vue'), 'utf-8') +
     readFileSync(resolve(__dirname, 'components/app/AppOverlays.vue'), 'utf-8') +
-    readFileSync(resolve(__dirname, 'components/app/AppMasthead.vue'), 'utf-8')
+    readFileSync(resolve(__dirname, 'components/app/AppMasthead.vue'), 'utf-8') +
+    // The film room is hosted by the Reviews view now, and stays its own
+    // chunk inside that one — the tab is visited by people who will never
+    // open a bundle.
+    readFileSync(resolve(__dirname, 'components/reviews/ReviewsView.vue'), 'utf-8')
 
   const views: Array<{ name: string; path: string }> = [
     { name: 'IngestView',             path: '@/components/ingest/IngestView.vue' },
@@ -32,6 +36,7 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'UnknownMapsView',        path: '@/components/unknown/UnknownMapsView.vue' },
     { name: 'SeasonCompareView',      path: '@/components/compare/SeasonCompareView.vue' },
     { name: 'EloCalculatorView',      path: '@/components/elo/EloCalculatorView.vue' },
+    { name: 'ReviewsView',            path: '@/components/reviews/ReviewsView.vue' },
     { name: 'MatchDetailPanel',       path: '@/components/matches/detail/MatchDetailPanel.vue' },
     { name: 'MatchScreenshotLightbox', path: '@/components/matches/detail/MatchScreenshotLightbox.vue' },
     { name: 'KeyboardShortcutsModal', path: '@/components/app/KeyboardShortcutsModal.vue' },
@@ -59,7 +64,8 @@ describe('App.vue lazy-loaded components', () => {
     // first paint.
     { name: 'CoachReturnSheet',       path: '@/components/coach/inbox/CoachReturnSheet.vue' },
     // The film room and its masthead chrome — a coach's surfaces. Nobody
-    // who never opens a bundle should carry a byte of them.
+    // who never opens a bundle should carry a byte of them; the room is
+    // lazy inside the (itself lazy) Reviews view.
     { name: 'CoachRoomView',          path: '@/components/coach/room/CoachRoomView.vue' },
     { name: 'CoachLoanSlip',          path: '@/components/coach/room/CoachLoanSlip.vue' },
     { name: 'CoachNavStrip',          path: '@/components/coach/room/CoachNavStrip.vue' },

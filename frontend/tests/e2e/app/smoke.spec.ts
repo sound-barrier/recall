@@ -15,9 +15,9 @@ test.describe('smoke — page loads + navigation', () => {
     await expect(page.locator('.brand')).toContainText(/RECALL/i)
   })
 
-  test('all six tabs are reachable by click', async ({ page }) => {
+  test('all seven tabs are reachable by click', async ({ page }) => {
     await page.goto('/')
-    for (const id of ['tab-settings', 'tab-ingest', 'tab-matches', 'tab-unknown', 'tab-compare', 'tab-elo']) {
+    for (const id of ['tab-settings', 'tab-ingest', 'tab-matches', 'tab-unknown', 'tab-compare', 'tab-elo', 'tab-reviews']) {
       await page.locator(`#${id}`).click()
       await expect(page.locator(`#${id}`)).toHaveAttribute('aria-selected', 'true')
     }
@@ -45,17 +45,17 @@ test.describe('a11y patterns — keyboard navigation', () => {
     await page.getByRole('tab', { name: 'Settings' }).press('ArrowRight')
     await expect(page.getByRole('tab', { name: 'Parse' })).toHaveAttribute('aria-selected', 'true')
 
-    // End → Elo Calculator (last tab)
+    // End → Reviews (last tab)
     await page.getByRole('tab', { name: 'Parse' }).press('End')
-    await expect(page.getByRole('tab', { name: 'Elo Calculator' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
 
     // Home → Settings (first tab)
-    await page.getByRole('tab', { name: 'Elo Calculator' }).press('Home')
+    await page.getByRole('tab', { name: /^Reviews/ }).press('Home')
     await expect(page.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true')
 
-    // ArrowLeft from Settings wraps to the Elo Calculator
+    // ArrowLeft from Settings wraps to Reviews
     await page.getByRole('tab', { name: 'Settings' }).press('ArrowLeft')
-    await expect(page.getByRole('tab', { name: 'Elo Calculator' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: /^Reviews/ })).toHaveAttribute('aria-selected', 'true')
 
     // Vim-style h / l aliases — l advances right, h walks left.
     // Same handler as ArrowLeft/ArrowRight, just an alternate key.

@@ -10,12 +10,13 @@ import { storeToRefs } from 'pinia'
 import { OpenURL } from '@/api-client'
 import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
+import { useCoachReturnsStore } from '@/stores/coachReturns'
 import { useMatchesStore } from '@/stores/matches'
 import { useParseStore } from '@/stores/parse'
 import { useSettingsStore } from '@/stores/settings'
 import { tallyWLD } from '@/match/match-stats-helpers'
 import { winrateOrNull } from '@/match/dossier/match-dossier-tally'
-import { useTabKeyboardNav } from '@/composables/shared/keyboard/useTabKeyboardNav'
+import { TABS, useTabKeyboardNav } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { GITHUB_REPO_URL } from '@/app-links'
 import MastheadParseChip from '@/components/app/masthead/MastheadParseChip.vue'
 import MastheadWatchDot from '@/components/app/masthead/MastheadWatchDot.vue'
@@ -52,10 +53,17 @@ const { onTabKeydown } = useTabKeyboardNav(view, goToView)
 const coach = useCoachStore()
 const sessionActive = computed(() => coach.sessionActive)
 
-// The film room is a view with no tab, so no tab is selected while it is
-// up. One tab must still be reachable by Tab (the roving-tabindex rule),
-// and Matches is where the back affordance lands you.
-const rovingTab = computed(() => (view.value === 'coach' ? 'matches' : view.value))
+// Two tabs carry a suffix beside their label, and both are counts of work
+// waiting: Unknown's unresolved records, and Reviews' coach notes waiting on
+// a decision. Matches carries a dot instead (filters active, a state rather
+// than a count). Rendered from the descriptor list so the tab SET is one
+// definition — TAB_ORDER — and a tab that exists there cannot be missing
+// here.
+const pendingReviewNotes = computed(() => useCoachReturnsStore().pendingNoteCount)
+const tabBadge = computed<Partial<Record<string, number>>>(() => ({
+  unknown: unknownRecords.value.length,
+  reviews: pendingReviewNotes.value,
+}))
 
 const activeFilterCount = matchesNarrow.activeClauseCount
 // W/L/D across the currently-narrowed set — same source + leaver rule the
@@ -103,99 +111,29 @@ const winRate = computed(() => winrateOrNull(wld.value.w, wld.value.w + wld.valu
            03 — the numbering communicates the intended user flow. -->
       <nav class="page-nav" role="tablist" aria-label="Primary" @keydown="onTabKeydown">
         <button
-          id="tab-settings"
+          v-for="tab in TABS"
+          :id="`tab-${tab.id}`"
+          :key="tab.id"
           class="nav-tab"
-          :class="{ active: view === 'settings' }"
-          :aria-selected="view === 'settings'"
-          :aria-current="view === 'settings' ? 'page' : undefined"
-          :tabindex="rovingTab === 'settings' ? 0 : -1"
+          :class="{ active: view === tab.id }"
+          :aria-selected="view === tab.id"
+          :aria-current="view === tab.id ? 'page' : undefined"
+          :tabindex="view === tab.id ? 0 : -1"
           role="tab"
-          aria-controls="panel-settings"
-          @click="goToView('settings')"
+          :aria-controls="`panel-${tab.id}`"
+          @click="goToView(tab.id)"
         >
-          <span class="nav-tab-num" aria-hidden="true">01</span>
-          <span class="nav-tab-label">Settings</span>
-        </button>
-        <button
-          id="tab-ingest"
-          class="nav-tab"
-          :class="{ active: view === 'ingest' }"
-          :aria-selected="view === 'ingest'"
-          :aria-current="view === 'ingest' ? 'page' : undefined"
-          :tabindex="rovingTab === 'ingest' ? 0 : -1"
-          role="tab"
-          aria-controls="panel-ingest"
-          @click="goToView('ingest')"
-        >
-          <span class="nav-tab-num" aria-hidden="true">02</span>
-          <span class="nav-tab-label">Parse</span>
-        </button>
-        <button
-          id="tab-matches"
-          class="nav-tab"
-          :class="{ active: view === 'matches' }"
-          :aria-selected="view === 'matches'"
-          :aria-current="view === 'matches' ? 'page' : undefined"
-          :tabindex="rovingTab === 'matches' ? 0 : -1"
-          role="tab"
-          aria-controls="panel-matches"
-          @click="goToView('matches')"
-        >
-          <span class="nav-tab-num" aria-hidden="true">03</span>
+          <span class="nav-tab-num" aria-hidden="true">{{ tab.number }}</span>
           <span class="nav-tab-label">
-            Matches
+            {{ tab.label }}
             <span
-              v-if="activeFilterCount > 0 && view !== 'matches'"
+              v-if="tab.id === 'matches' && activeFilterCount > 0 && view !== 'matches'"
               class="nav-tab-filter-dot"
               :title="`${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} active`"
               aria-label="filters active"
             />
+            <span v-if="(tabBadge[tab.id] ?? 0) > 0" class="nav-tab-badge">{{ tabBadge[tab.id] }}</span>
           </span>
-        </button>
-        <button
-          id="tab-unknown"
-          class="nav-tab"
-          :class="{ active: view === 'unknown' }"
-          :aria-selected="view === 'unknown'"
-          :aria-current="view === 'unknown' ? 'page' : undefined"
-          :tabindex="rovingTab === 'unknown' ? 0 : -1"
-          role="tab"
-          aria-controls="panel-unknown"
-          @click="goToView('unknown')"
-        >
-          <span class="nav-tab-num" aria-hidden="true">04</span>
-          <span class="nav-tab-label">
-            Unknown
-            <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
-          </span>
-        </button>
-        <button
-          id="tab-compare"
-          class="nav-tab"
-          :class="{ active: view === 'compare' }"
-          :aria-selected="view === 'compare'"
-          :aria-current="view === 'compare' ? 'page' : undefined"
-          :tabindex="rovingTab === 'compare' ? 0 : -1"
-          role="tab"
-          aria-controls="panel-compare"
-          @click="goToView('compare')"
-        >
-          <span class="nav-tab-num" aria-hidden="true">05</span>
-          <span class="nav-tab-label">Compare</span>
-        </button>
-        <button
-          id="tab-elo"
-          class="nav-tab"
-          :class="{ active: view === 'elo' }"
-          :aria-selected="view === 'elo'"
-          :aria-current="view === 'elo' ? 'page' : undefined"
-          :tabindex="rovingTab === 'elo' ? 0 : -1"
-          role="tab"
-          aria-controls="panel-elo"
-          @click="goToView('elo')"
-        >
-          <span class="nav-tab-num" aria-hidden="true">06</span>
-          <span class="nav-tab-label">Elo Calculator</span>
         </button>
       </nav>
     </div>

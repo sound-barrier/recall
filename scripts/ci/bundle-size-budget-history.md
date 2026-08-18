@@ -213,3 +213,23 @@ store, 568B for the receipt strip that says where an exported file went.
 
 The rest — the Settings player-handle row, the return sheet's discard flow —
 rides lazy chunks and shows only in the total.
+
+## 2026-08-18 — the 07 Reviews tab (reviews-tab campaign, phase 1)
+
+| budget | from | to | measured |
+|---|---|---|---|
+| initial JS | 336000 | 336000 | **331896** (down from 335320) |
+| total JS | 1706000 | 1710000 | 1706142 |
+| total CSS | 402000 | 404000 | 402432 |
+
+A seventh tab, and the film room moved inside it. The tab is one lazy chunk
+(the view, the shelf index, one pure helper), so its bytes show only in the
+total.
+
+Initial JS went **down** by 3.4KB, which is the number worth noticing. The
+room's props/emits wiring, `useOWData` and its labels, and the masthead's
+"park the tab stop on Matches while the room is up" special case all lived in
+`App.vue` because the room was App's own view; they left for the lazy Reviews
+view when it stopped being one. The masthead also became a `v-for` over the
+tab descriptor, which cost nothing measurable and killed six hand-written
+buttons.

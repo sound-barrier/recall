@@ -114,15 +114,11 @@ export function useCommandPalette(): {
     return Object.hasOwn(ACTION_RUNNERS, target)
   }
 
-  // Opens the share dialog over the set the user is already looking at.
-  // Not "everything": the narrow IS the selection they made, and a bundle
-  // of every match they own is rarely what someone means by "share with a
-  // coach".
+  // Land on Matches so the set being shared is the set on screen, then open
+  // the dialog through the store's one share action.
   async function shareTheNarrowedSet(): Promise<void> {
     await app.goToView('matches')
-    matches.onExportBundleRequest(
-      matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key),
-    )
+    matches.shareNarrowedWithCoach()
   }
 
   // Returns whether anything ran, so the caller can leave the palette open on

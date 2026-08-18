@@ -14,7 +14,7 @@
 import { test, expect } from '../_fixtures'
 import {
   KINGS_ROW_MATCH, enterFilmRoom, filmRoom, loanSlip, mockCoachSession,
-  openSessionViaMasthead, seedCoachOwnMatches,
+  openSessionViaReviewsTab, seedCoachOwnMatches,
 } from '../_coach'
 import { seedProfiles, silenceParseEvents } from '../_theme-matrix'
 
@@ -27,7 +27,7 @@ async function openDeskOn(page: import('@playwright/test').Page, mapName: string
   await seedCoachOwnMatches(page)
   const mock = await mockCoachSession(page)
   await page.goto('/')
-  await openSessionViaMasthead(page)
+  await openSessionViaReviewsTab(page)
   await expect(loanSlip(page)).toBeVisible()
   await enterFilmRoom(page)
   await filmRoom(page).getByRole('button', { name: new RegExp(mapName, 'i') }).first().click()

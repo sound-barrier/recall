@@ -120,8 +120,11 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   // ── 2. Masthead tablist — the navigation primitive ──────────
   {
     id: 'tablist',
-    heading: 'Five tabs',
-    body: 'Each tab is one phase of the loop: Settings to configure, Parse to ingest, Matches to explore, Unknown to triage. Click them, press the underlined numbers, or use h / l to cycle.',
+    // Was "Five tabs" — and stayed that way through the sixth. The number is
+    // spelled here so a reader of the tour and a reader of the masthead agree;
+    // the tab set itself is TAB_ORDER.
+    heading: 'Seven tabs',
+    body: 'Each tab is one phase of the loop: Settings to configure, Parse to ingest, Matches to explore, Unknown to triage, Compare and Elo to read the climb, Reviews to look back at it. Click them, press the underlined numbers, or use h / l to cycle.',
     target: '[role="tablist"]',
     placement: 'bottom',
   },

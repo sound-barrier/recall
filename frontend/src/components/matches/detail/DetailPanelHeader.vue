@@ -49,7 +49,7 @@ const sessionNote = computed(() => (canHandOff.value ? ON_LOAN_NOTE : NO_MATCH_R
 function openInFilmRoom() {
   if (!canHandOff.value) return
   coachStore.selectKey(props.record.match_key)
-  void appStore.goToView('coach')
+  void appStore.goToView('reviews')
 }
 
 const emit = defineEmits<{

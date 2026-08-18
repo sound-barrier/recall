@@ -4,7 +4,7 @@ import type { MatchRecord } from '@/api-client'
 // would force every caller and every fixture to satisfy fields this never
 // touches.
 type PaletteRecord = Pick<MatchRecord, 'match_key' | 'data'>
-import { TAB_ORDER } from '@/composables/shared/keyboard/useTabKeyboardNav'
+import { TAB_LABELS, TAB_ORDER } from '@/composables/shared/keyboard/useTabKeyboardNav'
 import { matchTime } from '@/match/match-time-helpers'
 
 /**
@@ -32,18 +32,7 @@ export interface PaletteItem {
   target: string
 }
 
-// The tabs, by their user-facing names. Keyed on the TAB ID UNION rather than
-// `string`, so a new tab is a compile error here — the earlier `?? id`
-// fallback would instead have shipped it silently labeled with its raw id
-// ("ingest" rather than "Parse").
-const VIEW_LABELS: Record<(typeof TAB_ORDER)[number], string> = {
-  settings: 'Settings',
-  ingest: 'Parse',
-  matches: 'Matches',
-  unknown: 'Unknown',
-  compare: 'Compare',
-  elo: 'Elo Calculator',
-}
+
 
 /**
  * Things the palette can DO, as opposed to places it can go.
@@ -83,7 +72,7 @@ export function viewItems(): PaletteItem[] {
   return TAB_ORDER.map((id) => ({
     id: `view:${id}`,
     kind: 'view' as const,
-    label: VIEW_LABELS[id],
+    label: TAB_LABELS[id],
     hint: 'Go to view',
     target: id,
   }))

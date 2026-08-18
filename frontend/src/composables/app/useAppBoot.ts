@@ -31,10 +31,11 @@ export function useAppBoot() {
   // Native menu bar (macOS) → in-app dialogs. No-op on other platforms.
   useNativeMenu()
 
-  // A resumed coaching session lands IN the film room. The session survived
-  // the reload; the view did not, so the coach was returned to Matches and had
-  // to find "← Back to the film room" every time — with their own history
-  // read-only and no explanation on the tab they were looking at.
+  // A resumed coaching session lands ON the Reviews tab, which is where the
+  // film room lives. The session survived the reload; the view did not, so
+  // the coach was returned to Matches and had to find their way back every
+  // time — with their own history read-only and no explanation on the tab
+  // they were looking at.
   //
   // Watched rather than read once: the session query resolves after mount, so
   // there is nothing to resume at the moment onMounted runs.
@@ -46,7 +47,7 @@ export function useAppBoot() {
   const coachStore = useCoachStore()
   watch(() => coachStore.sessionActive, (active) => {
     if (!active) return
-    void appStore.goToView('coach')
+    void appStore.goToView('reviews')
   }, { once: true })
 
   onMounted(() => {

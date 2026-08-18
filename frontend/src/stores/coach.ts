@@ -354,7 +354,7 @@ export const useCoachStore = defineStore('coach', () => {
       setCoachSessionData(view)
       setCoachSessionResume(true)
       suspendCoachNarrow()
-      await useAppStore().goToView('coach')
+      await useAppStore().goToView('reviews')
     } catch (e) {
       useAppStore().setErrorFromRaw(String(e))
     }
@@ -381,7 +381,9 @@ export const useCoachStore = defineStore('coach', () => {
     // watch clears the room's own refs as the session goes null.
     clearCoachSessionData()
     restoreCoachNarrow()
-    await useAppStore().goToView('matches')
+    // No navigation. The room lives inside the Reviews tab, which shows the
+    // index the moment the session is gone; a coach who ended from another
+    // tab stays on it, now over their own data again.
   }
 
   // A session opened or ended in ANOTHER window on this install. Both
@@ -396,7 +398,6 @@ export const useCoachStore = defineStore('coach', () => {
       discardSaves()
       clearCoachSessionData()
       restoreCoachNarrow()
-      if (useAppStore().view === 'coach') await useAppStore().goToView('matches')
       return
     }
     suspendCoachNarrow()

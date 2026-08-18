@@ -63,7 +63,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
 
     // Step 2 → tablist. After Next, a real cutout appears.
     await page.getByRole('button', { name: 'Next', exact: true }).click()
-    await expect(page.locator('.tour-callout-heading')).toContainText(/five tabs/i)
+    await expect(page.locator('.tour-callout-heading')).toContainText(/seven tabs/i)
     await expect(page.locator('.tour-spotlight')).not.toHaveClass(/tour-spotlight-no-cutout/)
 
     // Walk to "Settings (01)" — the tour drives the underlying view
@@ -307,16 +307,16 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-callout-heading')).toContainText(/welcome/i)
     // → / l advance.
     await page.keyboard.press('ArrowRight')
-    await expect(page.locator('.tour-callout-heading')).toContainText(/five tabs/i)
+    await expect(page.locator('.tour-callout-heading')).toContainText(/seven tabs/i)
     await page.keyboard.press('l')
     await expect(page.locator('.tour-callout-heading')).toContainText(/settings/i)
     // ← / h step back.
     await page.keyboard.press('h')
-    await expect(page.locator('.tour-callout-heading')).toContainText(/five tabs/i)
+    await expect(page.locator('.tour-callout-heading')).toContainText(/seven tabs/i)
     await page.keyboard.press('ArrowLeft')
     await expect(page.locator('.tour-callout-heading')).toContainText(/welcome/i)
     // Enter advances.
     await page.keyboard.press('Enter')
-    await expect(page.locator('.tour-callout-heading')).toContainText(/five tabs/i)
+    await expect(page.locator('.tour-callout-heading')).toContainText(/seven tabs/i)
   })
 })

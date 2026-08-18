@@ -1,38 +1,38 @@
 {
   "htmlAttr": {
-    "dataTheme": "day"
+    "dataTheme": "high-contrast"
   },
   "activeTab": {
-    "id": "tab-compare",
+    "id": "tab-reviews",
     "ariaSelected": "true",
-    "textContent": "05Compare"
+    "textContent": "07Reviews"
   },
   "mainPresent": true,
   "mastheadPresent": true,
   "cssTokens": {
-    "--accent": "#fa9c1b",
-    "--accent-text": "#8f4500",
-    "--accent-glow": "#fa9c1b73",
-    "--accent-soft": "#fa9c1b38",
-    "--text": "#1a1a1a",
-    "--text-dim": "#4a4a4a",
-    "--text-faint": "#5c5a52",
-    "--text-mute": "#6a675c",
-    "--surface": "#f5f3ed",
-    "--surface-2": "#e8e5dd",
-    "--surface-3": "#dcd8cd",
-    "--bg": "#efede6",
-    "--border": "#4a4a4a",
-    "--border-soft": "#b9b3a5",
-    "--border-strong": "#2a2a2a",
-    "--win": "#0c6b32",
-    "--loss": "#a82a3d",
-    "--draw": "#7a5010",
-    "--tank": "#1f5491",
-    "--dps": "#c4451f",
-    "--support": "#1e6f3a",
-    "--identity-accent": "#9c4012",
-    "--primary-text-on-accent": "#1a0a00"
+    "--accent": "#ffbf4d",
+    "--accent-text": "#ffbf4d",
+    "--accent-glow": "#ffbf4d99",
+    "--accent-soft": "#ffbf4d4d",
+    "--text": "#fff",
+    "--text-dim": "#fff",
+    "--text-faint": "#e6e6e6",
+    "--text-mute": "#d0d0d0",
+    "--surface": "#000",
+    "--surface-2": "#0a0a0a",
+    "--surface-3": "#141414",
+    "--bg": "#000",
+    "--border": "#fff",
+    "--border-soft": "#888",
+    "--border-strong": "#fff",
+    "--win": "#0f6",
+    "--loss": "#f35",
+    "--draw": "gold",
+    "--tank": "#6df",
+    "--dps": "#f86",
+    "--support": "#8fa",
+    "--identity-accent": "#ffbf4d",
+    "--primary-text-on-accent": "#000"
   },
   "designSystem": {
     "eyebrow": {
@@ -50,7 +50,7 @@
         "uppercase"
       ],
       "color": [
-        "rgb(92, 90, 82)"
+        "rgb(230, 230, 230)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"
@@ -80,20 +80,21 @@
       "borderRadius": []
     },
     "button": {
-      "count": 13,
+      "count": 11,
       "fontSize": [
-        "10.56px",
+        "12.48px",
         "13.3333px",
         "16px",
         "9.6px"
       ],
       "letterSpacing": [
-        "0.4224px",
+        "0.4992px",
         "1.536px",
         "normal"
       ],
       "fontWeight": [
         "400",
+        "600",
         "700"
       ],
       "textTransform": [
@@ -101,13 +102,11 @@
         "uppercase"
       ],
       "color": [
-        "rgb(26, 26, 26)",
-        "rgb(74, 74, 74)",
-        "rgb(92, 90, 82)"
+        "rgb(230, 230, 230)",
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
-        "color(srgb 0.925333 0.835059 0.699294)",
-        "rgb(232, 229, 221)",
+        "rgb(10, 10, 10)",
         "rgba(0, 0, 0, 0)"
       ],
       "borderRadius": [
@@ -130,10 +129,10 @@
         "uppercase"
       ],
       "color": [
-        "rgb(26, 10, 0)"
+        "rgb(0, 0, 0)"
       ],
       "backgroundColor": [
-        "rgb(122, 80, 16)"
+        "rgb(255, 215, 0)"
       ],
       "borderRadius": [
         "999px"
@@ -154,23 +153,27 @@
         "uppercase"
       ],
       "color": [
-        "rgb(26, 26, 26)"
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
-        "rgb(232, 229, 221)"
+        "rgb(10, 10, 10)"
       ],
       "borderRadius": [
         "2px"
       ]
     },
     "heading": {
-      "count": 2,
+      "count": 6,
       "fontSize": [
+        "17.6px",
+        "29.6px",
         "32px",
         "40.8px"
       ],
       "letterSpacing": [
+        "-0.148px",
         "-0.32px",
+        "0.088px",
         "1.632px"
       ],
       "fontWeight": [
@@ -181,8 +184,7 @@
         "uppercase"
       ],
       "color": [
-        "rgb(245, 243, 238)",
-        "rgb(26, 26, 26)"
+        "rgb(255, 255, 255)"
       ],
       "backgroundColor": [
         "rgba(0, 0, 0, 0)"

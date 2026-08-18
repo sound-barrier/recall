@@ -6,11 +6,12 @@ import { useAppStore } from '@/stores/app'
 import { useCoachStore } from '@/stores/coach'
 import { useUiStore } from '@/stores/ui'
 
-// The bridge between the film room and the six tabs running on the
-// player's data. From the room it offers the way IN, by name, so "step
-// into Sable's Matches" reads as one sentence; from anywhere else it is
-// the way back — visible on every tab, because a coach who wandered into
-// Settings should never have to hunt for the room.
+// The bridge between the film room (the Reviews tab, while a session is
+// open) and the other tabs running on the player's data. From the room it
+// offers the way IN, by name, so "step into Sable's Matches" reads as one
+// sentence; from anywhere else it is the way back — visible on every tab,
+// because a coach who wandered into Settings should never have to hunt for
+// the room.
 
 /** Trends is a section of the Matches view, not a tab — hence the sentinel. */
 type StepTarget = ViewId | 'trends'
@@ -31,7 +32,9 @@ const appStore = useAppStore()
 const coach = useCoachStore()
 const ui = useUiStore()
 
-const inRoom = computed(() => appStore.view === 'coach')
+// The room is the Reviews tab's content while a session is open, so "in the
+// room" and "on the Reviews tab" are the same fact.
+const inRoom = computed(() => appStore.view === 'reviews')
 const handle = computed(() => coach.player?.handle ?? '')
 
 function stepInto(target: StepTarget): void {
@@ -62,7 +65,7 @@ function stepInto(target: StepTarget): void {
       v-else
       type="button"
       class="btn ghost coach-nav-btn"
-      @click="appStore.goToView('coach')"
+      @click="appStore.goToView('reviews')"
     >
       ← Back to the film room
     </button>

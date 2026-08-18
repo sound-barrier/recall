@@ -152,30 +152,6 @@ describe('ProfileSwitcher — masthead chip', () => {
   })
 })
 
-// A coaching session is a "whose data am I looking at" switch, which is
-// exactly what this control already is — so the entry point lives here
-// rather than as a seventh thing in the masthead.
-describe('ProfileSwitcher — opening a player\'s bundle', () => {
-  it('offers the coaching entry point in the dropdown', async () => {
-    await renderChip(['main'], 'main')
-    await openMenu()
-    expect(screen.getByRole('menuitem', { name: /Open a player's bundle/ })).toBeInTheDocument()
-  })
-
-  it('hands the click to the coach store and closes the menu', async () => {
-    const { useCoachStore } = await import('@/stores/coach')
-    const openBundle = vi.spyOn(useCoachStore(), 'openBundle').mockResolvedValue(undefined)
-    await renderChip(['main'], 'main')
-    await openMenu()
-
-    await user().click(screen.getByRole('menuitem', { name: /Open a player's bundle/ }))
-    await flushPromises()
-
-    expect(openBundle).toHaveBeenCalled()
-    expect(menu()).not.toBeInTheDocument()
-  })
-})
-
 describe('ProfileSwitcher — rename', () => {
   it('hovering reveals a rename trigger per profile item', async () => {
     await renderChip(['alt', 'main'], 'main')
@@ -238,10 +214,10 @@ describe('ProfileSwitcher — rename', () => {
 
     await user().click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByLabelText('New name for profile alt')).not.toBeInTheDocument()
-    // Two actual profile rows, then the "+ New profile…" trigger and the
-    // coaching entry point — neither of which names a profile.
+    // Two actual profile rows, then the "+ New profile…" trigger, which
+    // names no profile. (The coaching entry moved to the Reviews tab.)
     const items = screen.getAllByRole('menuitem')
-    expect(items.map((i) => within(i).queryByText(/alt|main/) !== null)).toEqual([true, true, false, false])
+    expect(items.map((i) => within(i).queryByText(/alt|main/) !== null)).toEqual([true, true, false])
     expect(RenameProfile).not.toHaveBeenCalled()
   })
 })

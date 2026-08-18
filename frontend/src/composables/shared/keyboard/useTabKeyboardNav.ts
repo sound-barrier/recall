@@ -15,14 +15,46 @@ import { nextTick, type Ref } from 'vue'
 // in isolation and so adding a new tab doesn't require re-reading
 // 800 lines of script-setup to find the order constant.
 
-export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown', 'compare', 'elo'] as const
+export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown', 'compare', 'elo', 'reviews'] as const
 
 export type TabId = typeof TAB_ORDER[number]
 
-// Every surface App can show. The film room is a VIEW but not a TAB: it is
-// reached from the loan slip, the back affordance, or `g f`, and the
-// tablist stays six wide.
-export type ViewId = TabId | 'coach'
+// The tabs by their user-facing names. Keyed on the id UNION rather than
+// `string`, so a new tab is a compile error here — the one hard coupling
+// that keeps TAB_ORDER, the masthead and the palette agreeing. It sits
+// beside TAB_ORDER for the same reason TAB_ORDER sits in its own file:
+// adding a tab should not mean re-reading a masthead to find the label.
+export const TAB_LABELS: Record<TabId, string> = {
+  settings: 'Settings',
+  ingest: 'Parse',
+  matches: 'Matches',
+  unknown: 'Unknown',
+  compare: 'Compare',
+  elo: 'Elo Calculator',
+  reviews: 'Reviews',
+}
+
+/** One tab as the masthead renders it: id, label, and its position as `01`. */
+export interface TabDescriptor {
+  id: TabId
+  label: string
+  number: string
+}
+
+// Derived, not typed: the number IS the position, so `07` reads that way by
+// being seventh. Six hand-written buttons with literal `01`–`06` used to
+// carry this, and nothing checked they agreed with TAB_ORDER — a tab in
+// the array but not the masthead compiled and silently had no button.
+export const TABS: readonly TabDescriptor[] = TAB_ORDER.map((id, i) => ({
+  id, label: TAB_LABELS[id], number: String(i + 1).padStart(2, '0'),
+}))
+
+// Every surface App can show IS a tab. The film room used to be the one
+// view outside the tablist — reached from the loan slip, a back affordance,
+// or `g f`, with a hand-maintained "which tab is focusable while no tab is
+// selected" fallback in the masthead. It lives inside Reviews now, so that
+// special case and every consumer that carried it are gone.
+export type ViewId = TabId
 
 // h/l act as vim aliases for ArrowLeft/ArrowRight. The tab buttons
 // are not editable, so absorbing single-letter keys is safe.
@@ -42,27 +74,17 @@ function nextTabIndex(key: string, current: number, length: number): number {
   return length - 1
 }
 
-// Where the cycle starts. Normally that is the active view — but the film
-// room is a view with no tab, so there the anchor is whichever tab button
-// the user has focused. -1 when neither answers, and the cycle stays put.
-function cycleAnchor(view: string): number {
-  const fromView = TAB_ORDER.indexOf(view as TabId)
-  if (fromView !== -1) return fromView
-  const focused = document.activeElement
-  const id = focused instanceof HTMLElement ? focused.id : ''
-  return TAB_ORDER.indexOf(id.replace(/^tab-/, '') as TabId)
-}
-
 export function useTabKeyboardNav(
-  view: Readonly<Ref<string>>,
+  view: Readonly<Ref<TabId>>,
   goToView: (next: TabId) => void | Promise<void>,
 ) {
   function onTabKeydown(e: KeyboardEvent) {
     if (!isTabNavKey(e.key)) return
     e.preventDefault()
     const order = TAB_ORDER
-    const current = cycleAnchor(view.value)
-    if (current === -1) return
+    // The cycle starts at the active view. Every view is a tab now, so
+    // there is no "anchor on the focused button" fallback to carry.
+    const current = order.indexOf(view.value)
     const target = order[nextTabIndex(e.key, current, order.length)]!
     void goToView(target)
     // Move focus from the now-inactive tab to the newly-active one

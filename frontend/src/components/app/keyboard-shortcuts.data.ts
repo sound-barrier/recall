@@ -8,7 +8,7 @@ import type { ViewId } from '@/composables/shared/keyboard/useTabKeyboardNav'
  *   - 'always'           → render unconditionally
  *   - 'matches-no-panel' → only on the Matches view AND no panel up
  *   - 'panel'            → only when the detail panel is open
- *   - <ViewId>           → only on that view (the film room included)
+ *   - <ViewId>           → only on that view
  * The Matches/Detail-panel pair flips on `panelOpen` because
  * Matches-view bindings (j / k card focus) are suppressed while the
  * panel is up — the panel takes over those keys.
@@ -48,7 +48,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutBindingGroup[] = [
       { keys: ['g', 'u'],       action: 'Go to Unknown view', seq: true },
       { keys: ['g', 'c'],       action: 'Go to Compare view', seq: true },
       { keys: ['g', 'e'],       action: 'Go to Elo Calculator view', seq: true },
-      { keys: ['g', 'f'],       action: 'Go to the film room (during a coaching session)', seq: true },
+      { keys: ['g', 'r'],       action: 'Go to Reviews view', seq: true },
       { keys: ['Ctrl/Cmd', 'K'], action: 'Open the command palette — jump to a view or a match' },
       // Listed separately rather than folded into the row above: someone
       // scanning this sheet for "find" is looking for the F, and a combined
@@ -58,11 +58,11 @@ export const SHORTCUT_GROUPS: readonly ShortcutBindingGroup[] = [
     ],
   },
   {
-    // Only reachable while a player's bundle is open, so the group only
-    // shows there. The bracket keys work from anywhere IN the room — the
-    // coach's hands are on the note, not the reel.
+    // The room lives inside the Reviews tab, so the group shows there. The
+    // bracket keys work from anywhere IN the room — the reviewer's hands are
+    // on the note, not the reel.
     scope: 'Film room',
-    context: 'coach',
+    context: 'reviews',
     bindings: [
       { keys: ['j', '↓'],       action: 'Next frame on the reel' },
       { keys: ['k', '↑'],       action: 'Previous frame on the reel' },

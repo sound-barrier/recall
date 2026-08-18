@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useProfileSwitcher } from '@/composables/profile/useProfileSwitcher'
 import { useActiveProfile } from '@/composables/profile/useActiveProfile'
-import { useCoachStore } from '@/stores/coach'
 
 // Masthead chip + dropdown for the multi-profile feature. Behavior (the
 // profile list + open/create/rename state + switch/create/rename actions)
@@ -35,15 +34,6 @@ const {
 // A read-only sample profile (the tour's "test") shows a lock badge on the chip.
 const { isReadOnly } = useActiveProfile()
 
-// Opening a player's bundle is a "whose data am I looking at" switch, which
-// is what this control already is — so the coaching entry point lives in
-// this menu rather than as another thing in the masthead. The picker must
-// open inside the click's user gesture, so nothing may be awaited first.
-const coach = useCoachStore()
-function openPlayerBundle() {
-  toggleOpen()
-  void coach.openBundle()
-}
 </script>
 
 <template>
@@ -175,20 +165,6 @@ function openPlayerBundle() {
           a–z, 0–9, _ or -, 1–40 chars, start alphanumeric
         </p>
       </template>
-
-      <div class="profile-menu-sep" aria-hidden="true" />
-
-      <button
-        type="button"
-        class="profile-item profile-coach-trigger"
-        role="menuitem"
-        :disabled="busy"
-        title="Review a player's exported bundle without adding it to your history"
-        @click="openPlayerBundle"
-      >
-        <span class="profile-item-tick" aria-hidden="true">▤</span>
-        <span class="profile-item-name">Open a player's bundle…</span>
-      </button>
 
       <p v-if="error" class="profile-error">
         {{ error }}

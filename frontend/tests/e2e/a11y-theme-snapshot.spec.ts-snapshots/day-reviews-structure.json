@@ -3,9 +3,9 @@
     "dataTheme": "day"
   },
   "activeTab": {
-    "id": "tab-compare",
+    "id": "tab-reviews",
     "ariaSelected": "true",
-    "textContent": "05Compare"
+    "textContent": "07Reviews"
   },
   "mainPresent": true,
   "mastheadPresent": true,
@@ -80,20 +80,21 @@
       "borderRadius": []
     },
     "button": {
-      "count": 13,
+      "count": 11,
       "fontSize": [
-        "10.56px",
+        "12.48px",
         "13.3333px",
         "16px",
         "9.6px"
       ],
       "letterSpacing": [
-        "0.4224px",
+        "0.4992px",
         "1.536px",
         "normal"
       ],
       "fontWeight": [
         "400",
+        "600",
         "700"
       ],
       "textTransform": [
@@ -106,7 +107,6 @@
         "rgb(92, 90, 82)"
       ],
       "backgroundColor": [
-        "color(srgb 0.925333 0.835059 0.699294)",
         "rgb(232, 229, 221)",
         "rgba(0, 0, 0, 0)"
       ],
@@ -164,13 +164,17 @@
       ]
     },
     "heading": {
-      "count": 2,
+      "count": 6,
       "fontSize": [
+        "17.6px",
+        "29.6px",
         "32px",
         "40.8px"
       ],
       "letterSpacing": [
+        "-0.148px",
         "-0.32px",
+        "0.088px",
         "1.632px"
       ],
       "fontWeight": [
