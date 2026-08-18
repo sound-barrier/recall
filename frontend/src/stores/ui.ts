@@ -44,6 +44,14 @@ export const useUiStore = defineStore('ui', () => {
   function openCheatsheet() { cheatsheetOpen.value = true }
   function closeCheatsheet() { cheatsheetOpen.value = false }
 
+  // The command palette. Like the cheatsheet it is opened from the global
+  // keyboard registry, and like the cheatsheet it must MUTE the app's other
+  // shortcuts while open — the user is typing a query, and every bare letter in
+  // it would otherwise also be a command.
+  const paletteOpen = ref(false)
+  function openPalette() { paletteOpen.value = true }
+  function closePalette() { paletteOpen.value = false }
+
   // Pending detail-panel focus target: the row context menu sets it ('note' /
   // 'tag') and opens the match; MatchDetailPanel reads it on mount to focus the
   // right input, then clears it. Lives here (not the panel) because the panel
@@ -128,6 +136,7 @@ export const useUiStore = defineStore('ui', () => {
     || narrowOpen.value
     || manualMatchOpen.value
     || settingsDialogOpen.value
+    || paletteOpen.value
     || appStore.aboutOpen,
   )
 
@@ -163,6 +172,9 @@ export const useUiStore = defineStore('ui', () => {
     cheatsheetOpen,
     openCheatsheet,
     closeCheatsheet,
+    paletteOpen,
+    openPalette,
+    closePalette,
     backgroundFrozen,
     shortcutMutingModalOpen,
     // Anchor toast (delegated to useAnchorToast)

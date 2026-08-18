@@ -31,7 +31,7 @@ export function useAppKeyboard() {
   const { searchClauses } = storeToRefs(matchesStore)
   // The `?` cheatsheet flag lives in the UI store (KeyboardShortcutsModal reads
   // it); the registry below toggles it + suppresses shortcuts while it's open.
-  const { cheatsheetOpen, shortcutMutingModalOpen } = storeToRefs(uiStore)
+  const { cheatsheetOpen, paletteOpen, shortcutMutingModalOpen } = storeToRefs(uiStore)
 
   // Tablist Arrow/Home/End automatic-activation nav.
   const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
@@ -66,6 +66,7 @@ export function useAppKeyboard() {
     view,
     coachSessionActive,
     openCheatsheet: cheatsheetOpen,
+    openPalette: paletteOpen,
     modalOpen: shortcutMutingModalOpen,
     selectionIsOpen: selection.isOpen,
     selectedKey: selection.selectedKey,

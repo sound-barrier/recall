@@ -150,7 +150,12 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # measurement, so the next feature trips the gate on its own growth instead of
 # inheriting a wall. Initial JS unmoved — all three are dossier widgets inside
 # the already-lazy Matches chunk.
-: "${MAX_TOTAL_JS_BYTES:=1682000}"
+# 2026-08: 1682000 → 1690000 — the command palette and its two pure helpers
+# (subsequence scorer, item corpus), measured 1683092B. Hand-written rather than
+# a dependency, which is why this is ~1KB and not ~15KB. It is lazy-loaded, so
+# INITIAL JS is unmoved; this is the total, where a modal nobody has opened still
+# counts.
+: "${MAX_TOTAL_JS_BYTES:=1690000}"
 # 2026-07: 322000 → 325000 — the Season Comparison view's scoped styles
 # (the A/B/Δ table, scope toggle, controls) add ~2KB. New feature.
 # 2026-07: 325000 → 332000 — Form-mode scoped styles (verdict card, preset
@@ -163,7 +168,8 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # CSS bump above; total raw 347710 → 362389, total gzipped +674B (1.3%).
 # 2026-08: 372000 → 396000 — the film room's geometry plus the paper
 # family's per-theme values (measured 389658B).
-: "${MAX_TOTAL_CSS_BYTES:=396000}"
+# 2026-08: 396000 → 400000 — the palette's scoped styles (measured 396218B).
+: "${MAX_TOTAL_CSS_BYTES:=400000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   # Build into a PID-suffixed staging dir and measure THERE — never

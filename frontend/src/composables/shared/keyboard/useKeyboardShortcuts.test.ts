@@ -284,3 +284,45 @@ describe('useKeyboardShortcuts — exposed inspection helpers', () => {
     view.unmount()
   })
 })
+
+// The dispatcher used to bail unconditionally on any Ctrl/Cmd/Alt, which meant
+// a command chord could not be registered at all. The bail is now a PARTITION,
+// and the tests above still hold: a bare shortcut must never fire while a
+// modifier is held, because that is what keeps Ctrl+F and Ctrl+R doing what the
+// browser does.
+describe('useKeyboardShortcuts — command chords', () => {
+  it('fires a mod shortcut on Ctrl+key', () => {
+    const fn = vi.fn()
+    const view = mountWithShortcuts([{ key: 'k', mod: true, handler: fn }])
+    press('k', { ctrlKey: true })
+    expect(fn).toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+
+  // Recall ships Windows-only, but the dev loop is macOS, so both spellings of
+  // the command key must work.
+  it('fires the same shortcut on Meta+key', () => {
+    const fn = vi.fn()
+    const view = mountWithShortcuts([{ key: 'k', mod: true, handler: fn }])
+    press('k', { metaKey: true })
+    expect(fn).toHaveBeenCalledTimes(1)
+    view.unmount()
+  })
+
+  it('does not fire a mod shortcut on a bare press', () => {
+    const fn = vi.fn()
+    const view = mountWithShortcuts([{ key: 'k', mod: true, handler: fn }])
+    press('k')
+    expect(fn).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  // Alt is not the command modifier on any platform this ships to.
+  it('never fires on Alt', () => {
+    const fn = vi.fn()
+    const view = mountWithShortcuts([{ key: 'k', mod: true, handler: fn }])
+    press('k', { altKey: true })
+    expect(fn).not.toHaveBeenCalled()
+    view.unmount()
+  })
+})

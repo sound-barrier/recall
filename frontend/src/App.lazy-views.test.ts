@@ -35,6 +35,10 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'MatchDetailPanel',       path: '@/components/matches/detail/MatchDetailPanel.vue' },
     { name: 'MatchScreenshotLightbox', path: '@/components/matches/detail/MatchScreenshotLightbox.vue' },
     { name: 'KeyboardShortcutsModal', path: '@/components/app/KeyboardShortcutsModal.vue' },
+    // Command palette — a jump-to affordance nobody has opened yet has no
+    // business in the first chunk, and the initial-JS budget has only a few KB
+    // of headroom.
+    { name: 'CommandPalette',         path: '@/components/shared/CommandPalette.vue' },
     // First-run modal — only renders on a fresh install, so the cost
     // of its bytes should only be paid by users who actually see it.
     { name: 'FirstRunProfileModal',   path: '@/components/app/FirstRunProfileModal.vue' },
