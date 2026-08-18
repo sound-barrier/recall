@@ -47,13 +47,6 @@ func rankTierLevel(img image.Image, work string) (rank string, level int, bandTe
 }
 
 var (
-	rankProgressRe = regexp.MustCompile(`(-?\d{1,3})\s*%`)
-	// The sign is REQUIRED, not optional, and that is load-bearing. The bands
-	// this runs over also carry "RANK PROGRESS: 67%" and "HIGHER RANKED THAN
-	// 57% OF PLAYERS"; an optional sign would match those and store a progress
-	// or population figure as the match's rank movement. The pill always
-	// renders its sign ("+40%", "-32%"), so requiring one costs nothing.
-	rankChangeRe = regexp.MustCompile(`([+-])\s*(\d{1,3})\s*%`)
 	// Anchored on the WORDS, not on "some percentage in this band". The band
 	// also holds "RANK PROGRESS: 67%", which sits on the same row and would win
 	// a bare `(\d+)%` scan. RANKED is spelled loosely because the caption's tail

@@ -37,11 +37,6 @@ type ocrSpec struct {
 	thresh uint8
 }
 
-// runTesseractFunc is the indirection ocrInverted routes through.
-// Production points at runTesseract; tests swap it (with t.Cleanup) to
-// return canned strings keyed on spec.name — no Tesseract binary, no
-// temp files, no exec.
-
 // runTesseractFunc is the indirection every OCR call routes through.
 // Production points at pkg/tesseract; tests swap it (with t.Cleanup) to
 // return canned strings keyed on spec.name — no Tesseract binary, no

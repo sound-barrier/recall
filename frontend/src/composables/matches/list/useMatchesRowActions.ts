@@ -30,18 +30,23 @@ export function useMatchesRowActions(deps: RowActionDeps) {
   const ui = useUiStore()
   const context = useMatchesRowContext(deps.records)
 
+  // The state machine spreads; the actions ride in their own named bundle.
+  // Spreading BOTH meant an action and a context key sharing a name would
+  // silently overwrite one another in whichever order the spreads ran.
   return {
     ...context,
-    openDetail: (matchKey: string) => { ui.selection.open(matchKey) },
-    setAnchor: (matchKey: string) => { ui.onSetAnchor(matchKey) },
-    // Single key through the BULK path deliberately: one hide implementation,
-    // so the visibility write, the reload and the undo affordance behave the
-    // same whether one row or twenty were chosen.
-    hide: (matchKey: string) => { void deps.hideMatches([matchKey]) },
-    focusTag: (matchKey: string) => { ui.onOpenMatchAndFocus(matchKey, 'tag') },
-    focusNote: (matchKey: string) => { ui.onOpenMatchAndFocus(matchKey, 'note') },
-    copyReplay: (matchKey: string) => { void deps.copyReplayCode(matchKey) },
-    copyLink: (matchKey: string) => { void deps.copyMatchLink(matchKey) },
-    openSourceFolder: (matchKey: string) => { void deps.openSourceFolder(matchKey) },
+    rowAction: {
+      openDetail: (matchKey: string) => { ui.selection.open(matchKey) },
+      setAnchor: (matchKey: string) => { ui.onSetAnchor(matchKey) },
+      // Single key through the BULK path deliberately: one hide implementation,
+      // so the visibility write, the reload and the undo affordance behave the
+      // same whether one row or twenty were chosen.
+      hide: (matchKey: string) => { void deps.hideMatches([matchKey]) },
+      focusTag: (matchKey: string) => { ui.onOpenMatchAndFocus(matchKey, 'tag') },
+      focusNote: (matchKey: string) => { ui.onOpenMatchAndFocus(matchKey, 'note') },
+      copyReplay: (matchKey: string) => { void deps.copyReplayCode(matchKey) },
+      copyLink: (matchKey: string) => { void deps.copyMatchLink(matchKey) },
+      openSourceFolder: (matchKey: string) => { void deps.openSourceFolder(matchKey) },
+    },
   }
 }

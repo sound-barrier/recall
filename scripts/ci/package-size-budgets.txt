@@ -234,8 +234,20 @@ frontend/tests/e2e/settings                   19
 # archive selection models, the move picker and the tilt nudge. One over the
 # default, and the count is inherited rather than grown — this is exactly the
 # set that backs components/matches/list, which is the folder the mirror rule
-# names. The next file here is a budget conversation.
-frontend/src/composables/matches/list         13
+# names.
+#
+# 13 -> 15, and this IS the budget conversation that note asked for. Both new
+# files compose what is already here rather than adding a new kind of thing:
+# useMatchesRowActions wraps useMatchesRowContext and adds what each menu item
+# does (the state machine and its actions are one surface, and splitting them
+# across directories is what the earlier draft accidentally did), and
+# useMatchesBulkActions is the wiring between the live selection, the archive
+# selection and the move picker they share — three files already in this
+# folder, whose collaboration had been living in MatchesView.vue. Same
+# responsibility spelled two concerns wider. Placing them anywhere else would
+# have been the budget choosing the layout, which is the one reason the rules
+# say never to move a file.
+frontend/src/composables/matches/list         15
 
 
 # frontend/src/match/elo — the Elo Calculator's math kernels: the ladder model,
