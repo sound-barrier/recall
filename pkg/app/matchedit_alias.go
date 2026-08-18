@@ -21,6 +21,7 @@ type (
 )
 
 var (
+	ErrInvalidMoment     = matchedit.ErrInvalidMoment
 	ErrInvalidLeaver     = matchedit.ErrInvalidLeaver
 	ErrInvalidThrower    = matchedit.ErrInvalidThrower
 	ErrEmptyAnnotation   = matchedit.ErrEmptyAnnotation

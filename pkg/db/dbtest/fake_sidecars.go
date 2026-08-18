@@ -3,6 +3,7 @@ package dbtest
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"time"
 
 	"recall/pkg/db"
@@ -231,5 +232,61 @@ func (f *Fake) LoadHiddenKeys() (map[string]bool, error) {
 	defer f.mu.Unlock()
 	out := make(map[string]bool, len(f.Hidden))
 	maps.Copy(out, f.Hidden)
+	return out, nil
+}
+
+// ── The player's own timestamped moments ──────────────────────────────────
+
+func (f *Fake) UpsertMatchMoment(m db.MatchMoment) (db.MatchMoment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.MatchMoments == nil {
+		f.MatchMoments = map[string][]db.MatchMoment{}
+	}
+	// The id is the client's to mint, so the Fake enforces the same scope the
+	// SQL WHERE does: an id already used on another match is refused rather
+	// than silently rewriting that match's observation.
+	for key, bucket := range f.MatchMoments {
+		if key == m.MatchKey {
+			continue
+		}
+		if slices.ContainsFunc(bucket, func(x db.MatchMoment) bool { return x.MomentID == m.MomentID }) {
+			return db.MatchMoment{}, db.ErrMomentMatchMismatch
+		}
+	}
+	now := nowRFC3339()
+	m.CreatedAt, m.UpdatedAt = now, now
+	bucket := f.MatchMoments[m.MatchKey]
+	for i, prev := range bucket {
+		if prev.MomentID == m.MomentID {
+			m.CreatedAt = prev.CreatedAt
+			bucket[i] = m
+			return m, nil
+		}
+	}
+	if m.MomentID == "" {
+		m.MomentID = db.NewCoachNoteID()
+	}
+	f.MatchMoments[m.MatchKey] = append(bucket, m)
+	return m, nil
+}
+
+func (f *Fake) DeleteMatchMoment(matchKey, momentID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.MatchMoments[matchKey] = slices.DeleteFunc(f.MatchMoments[matchKey],
+		func(m db.MatchMoment) bool { return m.MomentID == momentID })
+	return nil
+}
+
+func (f *Fake) LoadMatchMoments() (map[string][]db.MatchMoment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string][]db.MatchMoment{}
+	for key, bucket := range f.MatchMoments {
+		if len(bucket) > 0 {
+			out[key] = slices.Clone(bucket)
+		}
+	}
 	return out, nil
 }

@@ -8,7 +8,9 @@ import (
 	"net/http"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 	"recall/pkg/match"
+	"recall/pkg/matchedit"
 )
 
 // Per-{match_key} sub-resource handlers for the /api/v1/matches family.
@@ -232,6 +234,52 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 			// codebase's "semantic validation" code. 400 would trip schemathesis's
 			// positive_data_acceptance ("spec-valid input → no 400").
 			errStatus{app.ErrEmptyAnnotation, probConflict}) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleSetMatchMoment saves one of the player's own timestamped moments. The
+// moment id is in the path rather than the body because the client mints it —
+// the editor keys its save on that id from the first keystroke.
+func handleSetMatchMoment(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		var in matchedit.MomentInput
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			writeProblem(w, r, probInvalidBody, "invalid JSON body")
+			return
+		}
+		saved, err := a.SetMatchMoment(matchKey, r.PathValue("moment_id"), in)
+		// A malformed clock, empty text or a tag outside the vocabulary is a
+		// 400; an id already used on another match is a 409, because the body
+		// is spec-valid and the conflict is with what is already stored.
+		if writeError(w, r, err,
+			errStatus{app.ErrInvalidMoment, probInvalidBody},
+			errStatus{db.ErrMomentMatchMismatch, probConflict}) {
+			return
+		}
+		writeJSON(w, r, match.CoachNoteMoment{
+			MomentID:   saved.MomentID,
+			MatchClock: saved.MatchClock,
+			Text:       saved.Text,
+			FocusTag:   saved.FocusTag,
+		}, nil)
+	}
+}
+
+// handleDeleteMatchMoment removes one of the player's moments. Idempotent.
+func handleDeleteMatchMoment(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		if writeError(w, r, a.DeleteMatchMoment(matchKey, r.PathValue("moment_id"))) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

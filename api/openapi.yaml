@@ -390,6 +390,67 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/{match_key}/moments/{moment_id}:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+      - name: moment_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: |
+          The moment's own id, minted by the CLIENT — the editor keys its save
+          on it from the first keystroke, before any round trip.
+    put:
+      operationId: SetMatchMoment
+      tags: [Matches]
+      summary: Save one of the player's own timestamped moments
+      description: |
+        A self-review that can point at seconds, the way a coach's review can.
+        Several moments share a match, which is why they are addressed by their
+        own id rather than the match key.
+
+        `400` when the clock is not `MM:SS`, the text is empty, the focus tag
+        is outside the vocabulary, or the match already holds the maximum of
+        50 moments. `409` when the id already names a moment on a DIFFERENT
+        match, or while a coaching session is open (the player's own history is
+        read-only for its duration).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchMomentInput"
+      responses:
+        "200":
+          description: The saved moment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachMoment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: DeleteMatchMoment
+      tags: [Matches]
+      summary: Remove one of the player's moments
+      description: Idempotent.
+      responses:
+        "204":
+          description: Moment removed (or never existed).
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/matches/{match_key}/annotation:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
@@ -4124,6 +4185,27 @@ components:
           type: string
           description: When the moment was last saved (RFC3339).
 
+    MatchMomentInput:
+      type: object
+      description: |
+        The body of a player-moment write — the moment minus its identity.
+        Same rules as a coach's, so a player and their coach describe the same
+        game in the same words.
+      required: [match_clock, text]
+      properties:
+        match_clock:
+          type: string
+          pattern: "^[0-9]{1,2}:[0-5][0-9]$"
+          example: "04:45"
+        text:
+          type: string
+          maxLength: 600
+          example: "Should have taken the off-angle here."
+        focus_tag:
+          allOf:
+            - $ref: "#/components/schemas/CoachFocusTagEnum"
+          description: Optional.
+
     CoachMomentInput:
       type: object
       description: The body of a moment write — the moment minus its identity.
@@ -4551,6 +4633,15 @@ components:
             for matches no coach has written about.
           items:
             $ref: "#/components/schemas/MatchCoachNote"
+        moments:
+          type: array
+          description: |
+            The PLAYER's own timestamped observations on this match, in
+            reading order — a self-review that points at seconds. Distinct
+            from the ones inside a `coach_notes[]` entry, which are someone
+            else's words. Omitted when the player has marked none.
+          items:
+            $ref: "#/components/schemas/CoachMoment"
 
     AutoBackupStatus:
       type: object

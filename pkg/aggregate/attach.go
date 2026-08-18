@@ -260,7 +260,32 @@ func AttachCoachNotes(recs []match.Record, notes map[string][]db.MatchCoachNote)
 	}
 }
 
-// AttachUserData overlays the per-match user override layer onto the aggregated
+// AttachMatchMoments grafts the PLAYER's own timestamped moments onto the
+// records. Distinct from the coach layer above: these are the player's words
+// about their own match, and the store already loads them in reading order.
+func AttachMatchMoments(recs []match.Record, moments map[string][]db.MatchMoment) {
+	if len(moments) == 0 {
+		return
+	}
+	for i := range recs {
+		rows, ok := moments[recs[i].MatchKey]
+		if !ok || len(rows) == 0 {
+			continue
+		}
+		out := make([]match.CoachNoteMoment, 0, len(rows))
+		for _, m := range rows {
+			out = append(out, match.CoachNoteMoment{
+				MomentID:   m.MomentID,
+				MatchClock: m.MatchClock,
+				Text:       m.Text,
+				FocusTag:   m.FocusTag,
+			})
+		}
+		recs[i].Moments = out
+	}
+}
+
+// AttachUserData overlays the per-match user override layer onto the aggregated// AttachUserData overlays the per-match user override layer onto the aggregated
 // records: non-nil scalars win over the OCR Data, the heroes-played list is
 // replaced when the user supplied one, stat-cell and SR overrides overlay, and
 // Role / GameMode re-derive from any edited hero / map. A screenshot-backed

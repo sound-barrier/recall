@@ -2,6 +2,7 @@ package app
 
 import (
 	"recall/pkg/aggregate"
+	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
 )
@@ -48,53 +49,62 @@ func (a *App) reAggregateUnknowns() (int, error) {
 	return a.store.ReAggregateUnknowns(parser.FirstKnownHeroIn, parser.FirstKnownMapIn)
 }
 
+// aggregateInputs is everything the aggregator grafts onto the screenshot
+// rows. Loaded as one step so aggregateAll reads as "load, then assemble"
+// rather than as twenty lines of error checks with the assembly hidden at the
+// bottom. Distinct from loadSidecars above, which is the best-effort variant
+// a partial read tolerates.
+type aggregateInputs struct {
+	snap       db.Screenshots
+	annos      map[string]db.Annotation
+	hidden     map[string]bool
+	reviews    map[string]db.ReviewState
+	pinned     map[string]bool
+	queues     map[string]db.QueueState
+	playModes  map[string]db.PlayModeState
+	userData   map[string]db.UserMatchData
+	coachNotes map[string][]db.MatchCoachNote
+	moments    map[string][]db.MatchMoment
+}
+
+func (a *App) loadAggregateInputs() (aggregateInputs, error) {
+	var s aggregateInputs
+	var err error
+	for _, load := range []func() error{
+		func() (err error) { s.snap, err = a.store.LoadAll(); return },
+		func() (err error) { s.annos, err = a.store.LoadAnnotations(); return },
+		func() (err error) { s.hidden, err = a.store.LoadHiddenKeys(); return },
+		func() (err error) { s.reviews, err = a.store.LoadReviews(); return },
+		func() (err error) { s.pinned, err = a.store.LoadPinnedKeys(); return },
+		func() (err error) { s.queues, err = a.store.LoadMatchQueues(); return },
+		func() (err error) { s.playModes, err = a.store.LoadMatchPlayModes(); return },
+		func() (err error) { s.userData, err = a.store.LoadAllUserMatchData(); return },
+		func() (err error) { s.coachNotes, err = a.store.LoadMatchCoachNotes(); return },
+		func() (err error) { s.moments, err = a.store.LoadMatchMoments(); return },
+	} {
+		if err = load(); err != nil {
+			return aggregateInputs{}, err
+		}
+	}
+	return s, nil
+}
+
 func (a *App) aggregateAll() ([]match.Record, error) {
-	snap, err := a.store.LoadAll()
+	d, err := a.loadAggregateInputs()
 	if err != nil {
 		return nil, err
 	}
-	annos, err := a.store.LoadAnnotations()
-	if err != nil {
-		return nil, err
-	}
-	hidden, err := a.store.LoadHiddenKeys()
-	if err != nil {
-		return nil, err
-	}
-	reviews, err := a.store.LoadReviews()
-	if err != nil {
-		return nil, err
-	}
-	pinned, err := a.store.LoadPinnedKeys()
-	if err != nil {
-		return nil, err
-	}
-	queues, err := a.store.LoadMatchQueues()
-	if err != nil {
-		return nil, err
-	}
-	playModes, err := a.store.LoadMatchPlayModes()
-	if err != nil {
-		return nil, err
-	}
-	userData, err := a.store.LoadAllUserMatchData()
-	if err != nil {
-		return nil, err
-	}
-	coachNotes, err := a.store.LoadMatchCoachNotes()
-	if err != nil {
-		return nil, err
-	}
-	recs := aggregate.Screenshots(snap)
-	recs = aggregate.SynthesizeManualMatches(recs, userData)
-	aggregate.AttachUserData(recs, userData)
-	aggregate.AttachAnnotations(recs, annos)
-	aggregate.AttachHidden(recs, hidden)
-	aggregate.AttachPinned(recs, pinned)
-	aggregate.AttachReviews(recs, reviews)
-	aggregate.AttachCoachNotes(recs, coachNotes)
-	aggregate.AttachQueues(recs, queues)
-	aggregate.AttachPlayModes(recs, playModes)
-	aggregate.AttachAmbiguity(recs, snap.AmbiguousCandidates)
+	recs := aggregate.Screenshots(d.snap)
+	recs = aggregate.SynthesizeManualMatches(recs, d.userData)
+	aggregate.AttachUserData(recs, d.userData)
+	aggregate.AttachAnnotations(recs, d.annos)
+	aggregate.AttachHidden(recs, d.hidden)
+	aggregate.AttachPinned(recs, d.pinned)
+	aggregate.AttachReviews(recs, d.reviews)
+	aggregate.AttachCoachNotes(recs, d.coachNotes)
+	aggregate.AttachMatchMoments(recs, d.moments)
+	aggregate.AttachQueues(recs, d.queues)
+	aggregate.AttachPlayModes(recs, d.playModes)
+	aggregate.AttachAmbiguity(recs, d.snap.AmbiguousCandidates)
 	return recs, nil
 }

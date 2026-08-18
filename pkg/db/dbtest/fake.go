@@ -84,6 +84,8 @@ type Fake struct {
 	// accepted blocks on this user's own matches and the staged returns
 	// they came from (decisions live inside each CoachReturn).
 	CoachPlayers []db.CoachPlayer
+	// The player's own timestamped moments, keyed by match.
+	MatchMoments map[string][]db.MatchMoment
 	CoachNotes   map[int64]map[string]db.CoachNote
 	// Keyed by the parent note's PUBLIC id, mirroring the SQL loader.
 	CoachNoteMoments map[string][]db.CoachNoteMoment
