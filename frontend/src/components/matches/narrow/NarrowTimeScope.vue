@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 
 import type { useMatchesNarrow } from '@/composables/matches/narrow/useMatchesNarrow'
 import { formatRangeBound } from '@/match/match-time-helpers'
@@ -62,6 +62,15 @@ function onTimeInput(side: 'from' | 'to', value: string) {
 // never clear what the user already set.
 const phrase = ref('')
 const phraseError = ref('')
+// Cleared, THEN set on the next tick — the clear is what makes an identical
+// refusal re-announce, and setting second means the region keeps the message
+// afterwards rather than emptying itself. See the region in the template for
+// why it is separate from the visible paragraph.
+const phraseAnnouncement = ref('')
+function announce(message: string) {
+  phraseAnnouncement.value = ''
+  void nextTick(() => { phraseAnnouncement.value = message })
+}
 
 function applyPhrase() {
   const parsed = parseDatePhrase(phrase.value, {
@@ -71,11 +80,24 @@ function applyPhrase() {
   })
   if (!parsed) {
     phraseError.value = phrase.value.trim()
-      ? `Not sure what "${phrase.value.trim()}" means — try ${SUPPORTED_PHRASES.slice(0, 3).join(', ')}…`
+      ? `Not sure what "${phrase.value.trim()}" means — try ${SUPPORTED_PHRASES.join(', ')}.`
       : ''
+    announce(phraseError.value)
     return
   }
   phraseError.value = ''
+  // Success announces too. Silence after a refusal would leave the region
+  // still reading "Not sure what…" to anyone who came back to it, and the
+  // window that got applied is worth stating anyway — the phrase field clears
+  // itself on success, so otherwise nothing says what happened.
+  announce(`Filtered to ${parsed.label}.`)
+  // A phrase names ONE window, so each branch clears the other's state. Without
+  // that, "last week" followed by "this season" leaves both set and the clauses
+  // AND them — the user described one window and got the intersection of two.
+  // The preset chips already reset the custom bounds for exactly this reason
+  // (pickRange); this is the same rule for the third way in.
+  clearDates()
+  pickedSeason.value = ''
   if (parsed.kind === 'season') {
     // Written directly, NOT through pickSeason — that toggles, so applying the
     // same phrase twice would set the filter and then clear it.
@@ -83,8 +105,6 @@ function applyPhrase() {
   } else {
     customFrom.value = parsed.from
     customTo.value = parsed.to
-    customFromTime.value = ''
-    customToTime.value = ''
     pickedRange.value = 'custom'
   }
   phrase.value = ''
@@ -197,16 +217,30 @@ function clearDates() {
           class="np-phrase-input"
           type="text"
           placeholder="last week, since Friday, this season"
+          aria-describedby="np-phrase-error"
+          :aria-invalid="phraseError ? 'true' : undefined"
           @keyup.enter="applyPhrase"
         >
       </label>
       <button class="np-phrase-apply" :disabled="!phrase.trim()" @click="applyPhrase">
         Apply
       </button>
-      <!-- role="status" so a refusal is announced rather than only seen. -->
-      <p v-if="phraseError" class="np-phrase-error" role="status">
+      <p v-if="phraseError" id="np-phrase-error" class="np-phrase-error">
         {{ phraseError }}
       </p>
+      <!--
+        The announcement rides its own region, present from first render and
+        never removed. A live region created in the same DOM mutation as its
+        text is not announced by most screen readers, and a v-if'd one also
+        stayed silent on a REPEATED refusal ("recently" twice) because Vue
+        patched no text node. Clearing before setting makes an identical
+        refusal transition through empty and announce again. Same shape as
+        App.vue's parse status line; the visible paragraph above carries the
+        sighted signal, so this one is invisible.
+      -->
+      <div class="sr-only" role="status" aria-live="polite">
+        {{ phraseAnnouncement }}
+      </div>
     </div>
   </section>
 </template>

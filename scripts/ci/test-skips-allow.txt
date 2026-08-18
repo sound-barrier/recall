@@ -33,10 +33,10 @@ pkg/probe/probe_test.go:188:		t.Skip("Windows-only behavior")
 pkg/screenshot/fuzz_test.go:78:			t.Skip()
 pkg/screenshot/fuzz_test.go:96:			t.Skipf("could not construct base request: %v", err)
 
-# pkg/parser/tesseract_timeout_test.go — the hung-Tesseract bound test
+# pkg/tesseract/tesseract_timeout_test.go — the hung-Tesseract bound test
 # fakes the binary with a sleeping shell script, which can't run on
 # Windows. The production timeout path itself is platform-neutral.
-pkg/parser/tesseract_timeout_test.go:21:		t.Skip("fake tesseract is a shell script")
+pkg/tesseract/tesseract_timeout_test.go:22:		t.Skip("fake tesseract is a shell script")
 
 # pkg/parser/integration_test.go — golden-file OCR tests are gated
 # on a real Tesseract binary + the recall-testdata image submodule

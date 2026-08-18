@@ -2,6 +2,7 @@
   "// Second type-check program": "tsconfig.json covers src/ only. This one covers the Playwright specs + their helpers + the root build/test config files, which were outside every type-check program until this file existed (TECHNICAL_DEBT §11) and had accumulated ~32 real errors.",
   "// No \"lib\" key, deliberately": "ES2022's default lib already includes DOM, which every page.evaluate() body needs. Pinning lib to ES2022 alone adds 250+ phantom errors.",
   "// Plain tsc, not vue-tsc": "The e2e tree imports no .vue components and no @/ aliases — it drives the built page through the browser — so there is nothing for the Vue compiler to resolve and no `paths` to declare.",
+  "// No ~e2e/* alias, and this was measured not assumed": "Adding paths: {'~e2e/*': ['./tests/e2e/*']} type-checks clean here, and then FAILS AT RUNTIME: Playwright 1.62 loads specs through Node ESM resolution and does not read this file's paths, so a spec importing '~e2e/_fixtures' dies with 'Cannot find package ~e2e' and the run reports 'No tests found'. The relative '../_fixtures' imports are the working form. Re-check only if Playwright ships tsconfig-paths resolution.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

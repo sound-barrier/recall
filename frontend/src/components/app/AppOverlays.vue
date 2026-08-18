@@ -143,8 +143,10 @@ const lightboxSrc = computed(() => {
     @dismiss="onUndoHideDismiss"
   />
 
-  <!-- Post-parse session tally — auto-dismissing "Session so far"
-       readout after a run lands during an active session. -->
+  <!-- Post-parse session tally — a "Session so far" readout raised when a run
+       lands during an active session. It stays up while the session is still
+       on: it expires when the session does, and a dismissed session does not
+       come back on the next parse. -->
   <SessionSummaryToast
     :state="sessionToast"
     @dismiss="parseStore.dismissSessionToast"

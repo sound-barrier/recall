@@ -49,6 +49,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutBindingGroup[] = [
       { keys: ['g', 'c'],       action: 'Go to Compare view', seq: true },
       { keys: ['g', 'e'],       action: 'Go to Elo Calculator view', seq: true },
       { keys: ['g', 'f'],       action: 'Go to the film room (during a coaching session)', seq: true },
+      { keys: ['Ctrl/Cmd', 'K'], action: 'Open the command palette — jump to a view or a match' },
       { keys: ['?'],            action: 'Show this cheatsheet' },
     ],
   },

@@ -78,11 +78,24 @@ export function roleBucket(rec: Pick<MatchRecord, 'data' | 'queue_type'>): RoleB
   return { key: 'all', label: 'All' }
 }
 
-// Epoch milliseconds for a record's match time. Reuses matchTime()
-// (SUMMARY date + finished_at, else the match_key timestamp) so the
-// trends honor the same "when did this match happen" rule as the rest
-// of the workspace. Returns null when neither source yields a parseable
-// time — such rows can't be placed on a time axis and are dropped.
+// Epoch milliseconds for a record's match time, read as the player's own wall
+// clock: matchTime() (SUMMARY date + finished_at, else the match_key stamp)
+// interpreted locally.
+//
+// NAIVE ON PURPOSE, and it was briefly changed to the canonical UTC instant
+// before the Elo snapshots caught what that costs. Almost every caller here
+// asks a CALENDAR question — which hour of the day, which weekday, which
+// bucket on the heatmap — and the honest answer to those is the clock the
+// player was looking at when they played. A game finished at 21:00 is an
+// evening game forever; re-reading it through a UTC instant re-buckets it by
+// wherever the viewer happens to be now.
+//
+// The exception is any comparison against Date.now() — "did this happen in the
+// last three hours?" is a question about absolute time, and currentSessionSummary
+// reads matchInstantUTC for exactly that one step.
+//
+// Returns null when neither source yields a parseable time — such rows can't
+// be placed on a time axis and are dropped.
 export function matchEpoch(rec: Pick<MatchRecord, 'match_key' | 'data'>): number | null {
   const stamp = matchTime(rec)
   if (!stamp) return null

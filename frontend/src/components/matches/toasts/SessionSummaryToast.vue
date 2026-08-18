@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import type { SessionSummary } from '@/match/dossier/match-momentum-helpers'
 import { signJudgment } from '@/match/trends/match-heatmap-helpers'
 
@@ -14,7 +14,9 @@ import { signJudgment } from '@/match/trends/match-heatmap-helpers'
 // It now stays until the user dismisses it or the SESSION itself goes stale,
 // which is what makes it the "sticky element during a play session" without
 // adding a fourth place that spells the same tally (the masthead scoreboard,
-// the by-session grouping and the dossier already spell it).
+// the by-session grouping and the dossier already spell it). Dismissal sticks
+// to the session — see useParseRunLifecycle — so "×" is not undone by the next
+// game.
 const props = defineProps<{
   state: (SessionSummary & { token: number }) | null
 }>()
@@ -32,24 +34,52 @@ function clearTimer() {
   }
 }
 
+// The longest single hop the timer takes before re-checking the wall clock.
+//
+// `endsAt` is an absolute instant, but setTimeout counts elapsed AWAKE time —
+// it does not advance while the machine is suspended. Armed as one long delay,
+// a toast raised at 22:55 with a three-hour session gap was still on screen the
+// next morning if the machine slept overnight, still saying "session so far"
+// about last night's games. Re-checking the real time every few minutes makes
+// the expiry self-correct across a sleep, and it also keeps every delay well
+// inside setTimeout's 32-bit ceiling, past which the browser fires immediately
+// and the toast would blink out instead.
+const MAX_HOP_MS = 60_000
+
 // Armed from the session's own expiry rather than a fixed delay: the session
 // ends when the gap since the newest match elapses, so that is when a "session
 // so far" readout stops being true.
-watch(() => props.state?.token ?? null, (tok) => {
+function armExpiry(tok: number) {
   clearTimer()
-  if (tok === null || !props.state) return
-  const ms = props.state.endsAt - Date.now()
-  if (ms <= 0) {
+  if (!props.state || props.state.token !== tok) return
+  const remaining = props.state.endsAt - Date.now()
+  if (remaining <= 0) {
     emit('dismiss', tok)
     return
   }
   timer = window.setTimeout(() => {
     timer = null
-    if (props.state && props.state.token === tok) emit('dismiss', tok)
-  }, ms)
+    armExpiry(tok)
+  }, Math.min(remaining, MAX_HOP_MS))
+}
+
+watch(() => props.state?.token ?? null, (tok) => {
+  clearTimer()
+  if (tok === null) return
+  armExpiry(tok)
 }, { immediate: true })
 
-onBeforeUnmount(clearTimer)
+// A wake or a tab-return is the moment the wall clock and the timer are most
+// likely to disagree, so re-check immediately rather than waiting out the hop.
+function recheckOnWake() {
+  if (document.visibilityState === 'visible' && props.state) armExpiry(props.state.token)
+}
+
+onMounted(() => { document.addEventListener('visibilitychange', recheckOnWake) })
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', recheckOnWake)
+  clearTimer()
+})
 
 // The session's rank movement, with what it was built from. Absent entirely
 // when no capture in the session reported one — a session whose pills went

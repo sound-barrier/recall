@@ -9,10 +9,19 @@ const rec = (key: string, date: string, hero = 'juno', map = 'rialto') => ({
 })
 
 describe('viewItems', () => {
-  // Derived from TAB_ORDER so a new tab cannot silently miss the palette. If
-  // this fails, someone added a tab and the palette does not know about it.
-  it('offers every tab', () => {
-    expect(viewItems().map((i) => i.target).sort()).toEqual([...TAB_ORDER].sort())
+  // NOT "every target is in TAB_ORDER" — viewItems maps over TAB_ORDER, so
+  // that assertion is true by construction and cannot fail. What can fail is
+  // the LABEL: a tab added to TAB_ORDER without a label entry is the real
+  // regression, and it reaches the user as a row named "ingest" instead of
+  // "Parse". So every tab must carry a label that is not merely its own id.
+  it('gives every tab a human label, not its id', () => {
+    const items = viewItems()
+
+    expect(items).toHaveLength(TAB_ORDER.length)
+    for (const item of items) {
+      expect(item.label).not.toBe(item.target)
+      expect(item.label.trim()).not.toBe('')
+    }
   })
 
   it('labels them the way the nav does, not by id', () => {
@@ -55,3 +64,23 @@ describe('buildPaletteItems', () => {
     expect(items.at(-1)!.kind).toBe('match')
   })
 })
+
+describe('display names', () => {
+  // Every other surface prints the canonical name; a palette row showing the
+  // stored slug beside them reads as debug output.
+  it('renders the canonical hero and map names when resolvers are given', () => {
+    const [item] = matchItems(
+      [rec('m1', '2026-08-10', 'soldier 76', "king's row")],
+      { hero: () => 'Soldier: 76', map: () => "King's Row" },
+    )
+
+    expect(item!.label).toBe("Soldier: 76 · King's Row")
+  })
+
+  it('falls back to the stored value when no resolver is given', () => {
+    const [item] = matchItems([rec('m1', '2026-08-10', 'juno', 'rialto')])
+
+    expect(item!.label).toBe('juno · rialto')
+  })
+})
+

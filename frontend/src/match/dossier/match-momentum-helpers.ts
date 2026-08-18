@@ -8,6 +8,7 @@
 
 import type { MatchRecord } from '@/api-client'
 import { matchEpoch } from '@/match/trends/match-trends-helpers'
+import { matchInstantUTC } from '@/match/match-time-helpers'
 import { logisticSlope, type LogisticSlopeFit } from '@/match/elo/elo-stats'
 
 // A gap longer than this between consecutive matches starts a new play
@@ -16,6 +17,11 @@ import { logisticSlope, type LogisticSlopeFit } from '@/match/elo/elo-stats'
 // the list's session grouping splits on the SAME rule the momentum
 // widgets count by.
 export const SESSION_GAP_HOURS = 3
+
+// How far ahead of this machine's clock a match may be stamped and still count
+// as just-played. Minutes, not hours: the two clocks are the same machine's,
+// so the only honest gap is drift.
+const FUTURE_SLACK_MS = 5 * 60_000
 
 const HOUR_MS = 3_600_000
 const DAY_MS = 86_400_000
@@ -400,6 +406,12 @@ export interface SessionSummary {
   // toast arms its expiry from this rather than re-walking the corpus on a
   // timer.
   endsAt: number
+  // The session's OWN identity: its first match's instant, which does not move
+  // as the session grows. `endsAt` slides forward with every new game, so it
+  // cannot answer "is this the same session I already dismissed?" — and
+  // without an answer to that, dismissing the toast bought about one game
+  // before the next parse put it straight back.
+  startedAt: number
 }
 
 // The trailing run of games spaced closer than the session gap,
@@ -453,7 +465,24 @@ export function currentSessionSummary(
   if (timed.length === 0) return null
 
   const gapMs = gapHours * HOUR_MS
-  if (now - timed[timed.length - 1]!.t > gapMs) return null
+  const newestTimed = timed[timed.length - 1]!
+  // "Is this session still going?" is the one question here that compares
+  // against real time, so it is the one that needs the ABSOLUTE instant rather
+  // than the naive wall clock every other line uses. A player who has changed
+  // timezone since a match was played has a naive stamp that reads up to a day
+  // off from when it actually happened, which is enough to call last night's
+  // games live — or tonight's stale. The gaps BETWEEN matches stay naive:
+  // both ends come from the same clock, so the difference is right either way.
+  const newestReal = Date.parse(matchInstantUTC(newestTimed.r))
+  const newestT = Number.isNaN(newestReal) ? newestTimed.t : newestReal
+  // The staleness window is bounded on BOTH sides. Guarding only the past let
+  // a future-stamped match — a mistyped year in the manual form, a machine
+  // whose timezone moved west, one misread digit in an OCR'd date — read as a
+  // live session forever, narrating games that have not happened and arming
+  // the toast's timer for as long as the stamp was wrong. FUTURE_SLACK covers
+  // ordinary clock skew between the scoreboard's wall clock and this machine;
+  // nothing beyond that is a session in progress.
+  if (now - newestT > gapMs || newestT - now > FUTURE_SLACK_MS) return null
 
   const session = trailingSession(timed, gapMs)
   const newest = session[session.length - 1]!.t
@@ -462,5 +491,6 @@ export function currentSessionSummary(
     ...tallyResults(session),
     ...tallyMovement(session),
     endsAt: newest + gapMs,
+    startedAt: session[0]!.t,
   }
 }

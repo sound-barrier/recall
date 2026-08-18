@@ -1,9 +1,10 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
 
 import { buildPaletteItems, type PaletteItem } from '@/match/palette-items'
 import { scoreMatch } from '@/match/palette-score'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
+import { useOWData } from '@/composables/shared/useOWData'
 import { useUiStore } from '@/stores/ui'
 
 // Enough to fill the list without scoring the reader's patience. The corpus is
@@ -26,17 +27,27 @@ export function useCommandPalette(): {
   results: Ref<PaletteResult[]>
   cursor: Ref<number>
   move: (delta: number) => void
-  run: (item?: PaletteResult) => void
+  run: (item?: PaletteResult) => boolean
   close: () => void
 } {
   const app = useAppStore()
   const matches = useMatchesStore()
   const ui = useUiStore()
+  const ow = useOWData()
 
   const query = ref('')
   const cursor = ref(0)
 
-  const corpus = computed(() => buildPaletteItems(matches.records))
+  // The corpus comes from narrowedRecords, NOT from every record, because the
+  // detail panel paginates against exactly that list. Offering a match outside
+  // it opened the panel with no record behind it: nothing renders, but the page
+  // is marked inert — a window that silently stops responding with no visible
+  // modal to close. Searching the set the user is looking at is also the
+  // honest reading of the feature.
+  const corpus = computed(() => buildPaletteItems(
+    matches.matchesNarrow.narrowedRecords.value,
+    { hero: ow.heroDisplayName, map: ow.mapDisplayName },
+  ))
 
   const results = computed<PaletteResult[]>(() => {
     const scored: (PaletteResult & { score: number })[] = []
@@ -48,9 +59,12 @@ export function useCommandPalette(): {
     return scored.slice(0, MAX_RESULTS)
   })
 
-  // The cursor is clamped on read rather than watched: results change on every
-  // keystroke, and a stale index would either render nothing selected or run
-  // the wrong row on Enter.
+  // Typing returns the highlight to the top. Leaving it where it was put the
+  // cursor past the end of a shorter list, where nothing renders as selected
+  // (no aria-activedescendant either) while Enter still ran the last row — an
+  // action on a result the user was never pointed at.
+  watch(query, () => { cursor.value = 0 })
+
   function move(delta: number) {
     const n = results.value.length
     if (n === 0) return
@@ -64,8 +78,10 @@ export function useCommandPalette(): {
   }
 
   // One dispatch per kind, as a lookup rather than a switch, so a new kind is
-  // an entry instead of an edit here.
-  const RUNNERS: Record<string, (target: string) => void> = {
+  // an entry instead of an edit here. Keyed on the KIND UNION rather than
+  // `string`: that is what makes a new kind a compile error here instead of an
+  // Enter press that silently does nothing.
+  const RUNNERS: Record<PaletteItem['kind'], (target: string) => void> = {
     view: (target) => { void app.goToView(target) },
     match: (target) => {
       void app.goToView('matches')
@@ -73,11 +89,15 @@ export function useCommandPalette(): {
     },
   }
 
-  function run(item?: PaletteResult) {
-    const chosen = item ?? results.value[Math.min(cursor.value, results.value.length - 1)]
-    if (!chosen) return
-    RUNNERS[chosen.kind]?.(chosen.target)
+  // Returns whether anything ran, so the caller can leave the palette open on
+  // an Enter that had nothing to act on — closing it there would discard a
+  // query the user is still in the middle of typing.
+  function run(item?: PaletteResult): boolean {
+    const chosen = item ?? results.value[cursor.value]
+    if (!chosen) return false
+    RUNNERS[chosen.kind](chosen.target)
     close()
+    return true
   }
 
   return { query, results, cursor, move, run, close }

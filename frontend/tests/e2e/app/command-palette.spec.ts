@@ -69,16 +69,48 @@ test.describe('command palette', () => {
     await expect(page.getByRole('tab', { name: /^Settings/ })).toHaveAttribute('aria-selected', 'true')
   })
 
-  // Every bare letter typed into the query is also an app shortcut. Without
-  // suppression, searching for a hero would fire half the keyboard map behind
-  // the palette.
-  test('mutes the app shortcuts while open', async ({ page }) => {
+  // The shortcuts that fire from INSIDE a text field are the ones suppression
+  // has to stop, and `?` is the one that matters: it carries allowInInput so
+  // the cheatsheet stays reachable everywhere, which means that without the
+  // palette muting it, typing a question mark into the query opens the
+  // cheatsheet on top of the palette. Typed key by key — filling the value
+  // dispatches one input event and no keydown at all, so a fill() could never
+  // have exercised the dispatcher.
+  test('mutes the shortcuts that fire inside a text field', async ({ page }) => {
     const palette = await open(page)
 
-    // `e` toggles a card and `/` focuses search when the palette is closed.
-    await palette.getByRole('combobox').fill('e/e')
-    await expect(palette.getByRole('combobox')).toHaveValue('e/e')
+    await palette.getByRole('combobox').press('?')
+
+    await expect(page.getByTestId('kbd-shortcuts-modal')).toHaveCount(0)
     await expect(palette).toBeVisible()
+    await expect(palette.getByRole('combobox')).toHaveValue('?')
+  })
+
+  // Stacked over the detail panel, which has its own Escape handling: one
+  // press must close the palette and leave the match open. Before the
+  // capture-phase handler the panel's handler ran first, blurred the query
+  // field and closed nothing — so the first Escape did nothing visible and
+  // the second closed both.
+  test('closes only itself when stacked over a match', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([record('m1', 'juno', 'rialto')]),
+      })
+    })
+    await page.goto('/')
+    await page.getByRole('tab', { name: /^Matches/ }).click()
+    await page.locator('.leaf-row').first().click()
+    const panel = page.locator('aside.detail-panel')
+    await expect(panel).toBeVisible()
+
+    await page.keyboard.press('ControlOrMeta+k')
+    const palette = page.getByRole('dialog', { name: /command palette/i })
+    await expect(palette).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await expect(palette).toHaveCount(0)
+    await expect(panel).toBeVisible()
   })
 
   test('Escape closes it', async ({ page }) => {
