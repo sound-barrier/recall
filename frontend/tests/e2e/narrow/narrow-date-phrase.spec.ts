@@ -71,14 +71,19 @@ test.describe('date phrases', () => {
   })
 
   test('reaches back to a named weekday', async ({ page }) => {
-    const baseline = await openNarrow(page)
+    await openNarrow(page)
 
     await page.getByLabel(/describe it/i).fill('since Friday')
     await page.getByRole('button', { name: 'Apply' }).click()
 
-    const rows = await page.locator('.leaf-row').count()
-    expect(rows).toBeGreaterThan(0)
-    expect(rows).toBeLessThan(baseline)
+    // Pinned, not "fewer than we started with". The corpus is one match per
+    // day, so "since Friday" has exactly one right answer — days back to the
+    // most recent past Friday, plus today. A loose bound passed equally for an
+    // implementation that always reached back seven days, or one that found
+    // NEXT Friday.
+    const FRIDAY = 5
+    const back = (new Date().getDay() - FRIDAY + 7) % 7 || 7
+    await expect(page.locator('.leaf-row')).toHaveCount(back + 1)
   })
 
   // The refusal, and the property that matters most about it: the filter the
@@ -93,20 +98,29 @@ test.describe('date phrases', () => {
     await page.getByLabel(/describe it/i).fill('sometime around the Mauga patch')
     await page.getByRole('button', { name: 'Apply' }).click()
 
-    // Scoped: other live regions exist on the page (the session toast among
-    // them), so this asks for the refusal specifically.
-    await expect(page.getByRole('status').filter({ hasText: /not sure what/i })).toBeVisible()
+    // Both halves of the refusal: the paragraph a sighted user reads, and the
+    // live region that announces it. The region is scoped by its text because
+    // other live regions exist on the page (the session toast among them).
+    await expect(page.getByText(/not sure what/i).first()).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: /not sure what/i })).toHaveCount(1)
     // Still the previous week — the refusal changed nothing.
     await expect(page.locator('.leaf-row')).toHaveCount(7)
   })
 
-  test('applying the same phrase twice leaves it applied', async ({ page }) => {
+  // A phrase names ONE window, so a second phrase REPLACES the first rather
+  // than intersecting with it. Season and range live in different narrow
+  // clauses that AND together, which is how "last week" then "this season"
+  // silently produced the overlap of two windows the user never asked to
+  // combine.
+  test('a second phrase replaces the first', async ({ page }) => {
     await openNarrow(page)
 
-    for (let i = 0; i < 2; i++) {
-      await page.getByLabel(/describe it/i).fill('last week')
-      await page.getByRole('button', { name: 'Apply' }).click()
-    }
+    await page.getByLabel(/describe it/i).fill('yesterday')
+    await page.getByRole('button', { name: 'Apply' }).click()
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+
+    await page.getByLabel(/describe it/i).fill('last week')
+    await page.getByRole('button', { name: 'Apply' }).click()
 
     await expect(page.locator('.leaf-row')).toHaveCount(7)
   })

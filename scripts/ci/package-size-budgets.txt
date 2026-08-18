@@ -101,6 +101,15 @@ pkg/db                                        30
 # fields off a screenshot.
 pkg/parser                                    25
 
+# pkg/fixtures — the seed generator: one plausible account, spelled
+# file-per-thing-it-generates (heroes, roles, annotations, chaos, the rank
+# climb). 13 rather than the default 12 because the rank climb alone is a
+# simulation with four separable mechanisms — the ladder board, the skill and
+# win-rate model with every tuning constant, the per-track season walk, and the
+# driver that runs them over a fixture — and it was one 682-line file until
+# those became four. Same responsibility, spelled one concern wider.
+pkg/fixtures                                  13
+
 # pkg/cmd — the transport surface: HTTP handlers and middleware in server mode,
 # systray/window/self-update wiring in desktop mode, split per endpoint group.
 # Four of the nineteen are !serveronly desktop chrome (selfupdate, systray,

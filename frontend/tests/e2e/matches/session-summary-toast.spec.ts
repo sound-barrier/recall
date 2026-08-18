@@ -4,8 +4,10 @@
  * When a parse run completes and the freshest matches form an ACTIVE
  * session (latest match within the 3h session gap of now), a
  * bottom-right toast tallies it: "Session so far: 3 matches · 2W-1L".
- * Auto-dismisses; stale history (re-parses of old backlogs) never
- * toasts. Driven over the SSE mock: parse-complete → refetch → toast.
+ * It persists while the session is live rather than auto-dismissing, a
+ * dismissal sticks to the session it dismissed, and stale history (re-parses
+ * of old backlogs) never toasts at all. Driven over the SSE mock:
+ * parse-complete → refetch → toast.
  */
 import type { Page, Route } from '@playwright/test'
 
@@ -98,6 +100,38 @@ test.describe('session summary toast', () => {
     await expect(toast).toBeVisible()
     await expect(toast).toContainText(/3 matches/i)
     await expect(toast).toContainText(/2W[\s·-]*1L/i)
+  })
+
+  // "×" has to mean it. Keyed on the toast instance rather than the session,
+  // dismissal lasted exactly one game: the next parse built a fresh instance
+  // and put the same readout straight back, all evening — and re-announced it
+  // to a screen reader each time, since a status region re-reads its whole
+  // contents.
+  test('a dismissed session stays dismissed across the next parse', async ({ page }) => {
+    await installSSEMock(page)
+    let batch: unknown[] = []
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(batch) })
+    })
+    const emit = () => page.evaluate(() => {
+      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit('parse-complete')
+    })
+
+    await page.goto('/')
+    await expect(page.getByRole('tab', { name: /^Matches/ })).toBeVisible()
+    batch = [rec(90, 'victory'), rec(50, 'victory')]
+    await emit()
+
+    const toast = page.locator('.session-summary-toast')
+    await expect(toast).toBeVisible()
+    await toast.getByRole('button', { name: /dismiss/i }).click()
+    await expect(toast).toHaveCount(0)
+
+    // Another game in the SAME session lands.
+    batch = [rec(90, 'victory'), rec(50, 'victory'), rec(10, 'defeat')]
+    await emit()
+
+    await expect(toast).toHaveCount(0)
   })
 
   // THE REASON THIS TOAST EXISTS AT ALL. The watcher debounces for 60 seconds

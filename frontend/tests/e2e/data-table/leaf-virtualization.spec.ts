@@ -34,7 +34,14 @@ function record(i: number) {
       hero:   'lucio',
       result: i % 2 === 0 ? 'victory' : 'defeat',
       date:   '2026-05-10',
-      finished_at: `12:${String(i % 60).padStart(2, '0')}`,
+      // A DISTINCT, strictly-descending minute per record, so record i is
+      // also ROW i once the list sorts newest-first. The old `12:${i % 60}`
+      // put ~17 records on every minute, which made the row at a given scroll
+      // position depend on the sort's tie-break rather than on the position —
+      // so `m-0500` was not the 500th row, and a one-row layout shift moved
+      // the key at a fixed position by sixty. The assertion below reads a key
+      // as an index, which is only true when the keys are ordered.
+      finished_at: `${String(Math.floor((1439 - i) / 60)).padStart(2, '0')}:${String((1439 - i) % 60).padStart(2, '0')}`,
       playlist:   'competitive',
       eliminations: 10, assists: 12, deaths: 5,
       heroes_played: [{ hero: 'lucio', play_time: '10:00', percent_played: 100 }],

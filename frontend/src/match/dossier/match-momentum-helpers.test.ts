@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import {
+  SESSION_GAP_HOURS,
   breakRust,
   formDelta,
   winrateAfterLossStreak,
@@ -443,13 +444,20 @@ describe('netRankProgress coverage', () => {
 // rest of the campaign follows: a total with no denominator reads as complete.
 describe('currentSessionSummary movement', () => {
   const HOUR = 3_600_000
+  // LOCAL date AND local time, from the same instant. Taking the date off
+  // toISOString() while taking the hour off getHours() builds a stamp up to a
+  // day away from the instant it claims — west of UTC in the evening these
+  // fixtures were a day in the FUTURE, so every case here was exercising the
+  // future-dated path rather than a live session. CI is UTC, where the two
+  // agree, which is why it stayed green.
   const at = (msAgo: number, result: 'victory' | 'defeat' | 'draw', change?: number) => {
     const d = new Date(Date.now() - msAgo)
+    const two = (n: number) => String(n).padStart(2, '0')
     return {
       match_key: `s${msAgo}-${Math.random()}`,
       data: {
-        date: d.toISOString().slice(0, 10),
-        finished_at: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+        date: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`,
+        finished_at: `${two(d.getHours())}:${two(d.getMinutes())}`,
         result,
         ...(change === undefined ? {} : { change_percent: change }),
       },
@@ -478,10 +486,36 @@ describe('currentSessionSummary movement', () => {
     expect(got?.readCount).toBe(1)
   })
 
-  // The toast arms its own expiry from this rather than polling.
-  it('reports when the session goes stale', () => {
-    const got = currentSessionSummary([at(60_000, 'victory')])
+  // The toast arms its own expiry from this rather than polling, so the value
+  // has to be the real thing: the newest match plus the session gap. "Some
+  // time in the future" passed equally for the six-second constant this
+  // surface was built to replace.
+  it('ends the session one gap after its newest match', () => {
+    const newest = Date.now() - 60_000
+    const got = currentSessionSummary([at(HOUR, 'victory'), at(60_000, 'victory')])
 
-    expect(got!.endsAt).toBeGreaterThan(Date.now())
+    // Within a minute: the fixture's stamp is minute-resolution.
+    expect(got!.endsAt).toBeGreaterThan(newest + SESSION_GAP_HOURS * HOUR - 60_000)
+    expect(got!.endsAt).toBeLessThan(newest + SESSION_GAP_HOURS * HOUR + 60_000)
+  })
+
+  // A stamp in the future cannot describe a session that is happening. It gets
+  // there by ordinary means — a mistyped year in the manual form, a machine
+  // whose timezone moved west, one misread digit in an OCR'd date — and the
+  // consequence is not cosmetic: the toast narrates a session that has not
+  // happened, and arms a timer for as long as the stamp is wrong.
+  it('refuses to call a future-stamped match a live session', () => {
+    const ahead = new Date(Date.now() + 16 * HOUR)
+    const two = (n: number) => String(n).padStart(2, '0')
+    const got = currentSessionSummary([{
+      match_key: 'future',
+      data: {
+        date: `${ahead.getFullYear()}-${two(ahead.getMonth() + 1)}-${two(ahead.getDate())}`,
+        finished_at: `${two(ahead.getHours())}:${two(ahead.getMinutes())}`,
+        result: 'victory' as const,
+      },
+    }])
+
+    expect(got).toBeNull()
   })
 })

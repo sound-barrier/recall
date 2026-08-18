@@ -45,8 +45,17 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
   // the freshest matches form an ACTIVE session (see
   // currentSessionSummary); token restarts the toast timer per run.
   const sessionToast = ref<(SessionSummary & { token: number }) | null>(null)
+  // Dismissal sticks to the SESSION, not to the toast instance. Keyed on the
+  // token, "×" survived exactly one game: the next parse built a fresh token
+  // and put the same readout back, all evening, re-announcing itself to a
+  // screen reader every time. Same shape as useTiltNudge's streakKey — the
+  // session you dismissed stays dismissed, a NEW session may speak up. Nothing
+  // persists across launches, deliberately.
+  const dismissedSessionStart = ref<number | null>(null)
   function dismissSessionToast(token: number) {
-    if (sessionToast.value?.token === token) sessionToast.value = null
+    if (sessionToast.value?.token !== token) return
+    dismissedSessionStart.value = sessionToast.value.startedAt
+    sessionToast.value = null
   }
   const parseLog = ref<ParseProgressEvent[]>([])
   // Wall-clock of the last successful manual parse → Settings "Last run · X".
@@ -167,7 +176,8 @@ export function useParseRunLifecycle(deps: ParseRunDeps) {
     const fresh = getQueryClient().getQueryData<MatchRecord[]>(qk.matches) ?? []
     if (outcome === 'complete') {
       const session = sessionActive.value ? null : currentSessionSummary(fresh)
-      sessionToast.value = session ? { ...session, token: Date.now() } : null
+      const dismissed = session !== null && session.startedAt === dismissedSessionStart.value
+      sessionToast.value = session && !dismissed ? { ...session, token: Date.now() } : null
       lastParsedAt.value = Date.now()
       try { localStorage.setItem(profileScopedKey('lastParsedAt'), String(lastParsedAt.value)) } catch (_) { /* non-fatal */ }
     }

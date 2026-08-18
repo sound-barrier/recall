@@ -231,3 +231,121 @@ describe('NarrowTimeScope season select', () => {
     expect(narrow.narrowedRecords.value).toHaveLength(CORPUS.length)
   })
 })
+
+// The phrase field is the third way to reach one filter, and the only one that
+// can refuse. Its whole value rests on two properties: an accepted phrase
+// writes the SAME state the chips and pickers write, and a refusal writes
+// nothing at all.
+describe('NarrowTimeScope date phrases', () => {
+  // "this season" only resolves inside a live window, and the season fixture
+  // above is deliberately historical. Build one around now instead — a
+  // 60-day span centered on today, so the phrase has something to name.
+  const iso = (daysFromNow: number) =>
+    new Date(Date.now() + daysFromNow * 86_400_000).toISOString()
+  const LIVE_SEASONS: Season[] = [
+    { name: 'Null Sector — Season 9', chapter: 'Null Sector', number: 9, start: iso(-90), end: iso(-30) },
+    { name: 'Null Sector — Season 10', chapter: 'Null Sector', number: 10, start: iso(-30), end: iso(30) },
+  ]
+
+  const phraseField = () => screen.getByLabelText(/describe it/i)
+  const applyPhrase = async (text: string) => {
+    await fireEvent.update(phraseField(), text)
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  }
+
+  it('writes the same custom-range state a picker would', async () => {
+    const { narrow } = setup()
+
+    await applyPhrase('today')
+
+    expect(narrow.pickedRange.value).toBe('custom')
+    expect(narrow.customFrom.value).toBe(narrow.customTo.value)
+    expect(narrow.customFrom.value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('resolves a season phrase to the season the select writes', async () => {
+    const { narrow } = setup({ seasons: LIVE_SEASONS })
+
+    await applyPhrase('this season')
+
+    // The name must be one the select offers — writing a name nothing
+    // recognizes would leave a lit filter matching nothing.
+    expect(narrow.pickedSeason.value).toBe('Null Sector — Season 10')
+  })
+
+  it('declines a season phrase when no season is live', async () => {
+    const { narrow } = setup({ seasons: SEASONS })
+
+    await applyPhrase('this season')
+
+    expect(screen.getAllByText(/not sure what/i).length).toBeGreaterThan(0)
+    expect(narrow.pickedSeason.value).toBe('')
+  })
+
+  // The refusal contract. The e2e proves it through a row count; this proves
+  // it on the state itself, which is what the count is a proxy for.
+  it('leaves every date ref untouched when it cannot read the phrase', async () => {
+    const { narrow } = setup({ seasons: LIVE_SEASONS })
+    await applyPhrase('today')
+    const before = {
+      from: narrow.customFrom.value,
+      to: narrow.customTo.value,
+      range: narrow.pickedRange.value,
+      season: narrow.pickedSeason.value,
+    }
+
+    await applyPhrase('sometime around the Mauga patch')
+
+    // Twice by design: the paragraph a sighted user reads and the live region
+    // that announces it.
+    expect(screen.getAllByText(/not sure what/i)).toHaveLength(2)
+    expect({
+      from: narrow.customFrom.value,
+      to: narrow.customTo.value,
+      range: narrow.pickedRange.value,
+      season: narrow.pickedSeason.value,
+    }).toEqual(before)
+  })
+
+  // A phrase names ONE window. Applying a range after a season, or the
+  // reverse, must not silently hand back the intersection of two windows the
+  // user never asked to combine — the chips already clear the custom bounds
+  // for exactly this reason.
+  it('replaces the previous phrase rather than intersecting with it', async () => {
+    const { narrow } = setup({ seasons: LIVE_SEASONS })
+
+    await applyPhrase('this season')
+    const season = narrow.pickedSeason.value
+    await applyPhrase('today')
+
+    expect(narrow.pickedSeason.value).toBe('')
+    expect(narrow.customFrom.value).not.toBe('')
+
+    await applyPhrase('this season')
+
+    expect(narrow.pickedSeason.value).toBe(season)
+    expect(narrow.customFrom.value).toBe('')
+    expect(narrow.customTo.value).toBe('')
+  })
+
+  it('applying one season phrase twice leaves it applied', async () => {
+    const { narrow } = setup({ seasons: LIVE_SEASONS })
+
+    await applyPhrase('this season')
+    const once = narrow.pickedSeason.value
+    await applyPhrase('this season')
+
+    expect(narrow.pickedSeason.value).toBe(once)
+  })
+
+  it('clears a stale refusal once a phrase reads', async () => {
+    setup()
+
+    await applyPhrase('recently')
+    expect(screen.getAllByText(/not sure what/i).length).toBeGreaterThan(0)
+
+    await applyPhrase('today')
+    expect(screen.queryAllByText(/not sure what/i)).toHaveLength(0)
+  })
+})
+

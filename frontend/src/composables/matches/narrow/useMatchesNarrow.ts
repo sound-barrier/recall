@@ -80,10 +80,17 @@ function uniq<T>(arr: T[]): T[] {
   return [...new Set(arr)].filter((v) => v != null && v !== '') as T[]
 }
 
-function daysAgoISO(days: number): string {
+// NAIVE-LOCAL, not a UTC instant. The date predicate slices a record's naive
+// stamp to ten characters and string-compares, so a toISOString() here shifted
+// the chip's boundary by the viewer's offset — west of UTC, "Last 7d" dropped a
+// day the moment the local clock passed the offset hour. The phrase parser
+// (match-date-phrase.ts) builds its ranges the same way; these are two ways to
+// reach one filter and they have to agree on what a day is.
+function daysAgoLocal(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 const PRESET_RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 }
@@ -152,7 +159,7 @@ export function useMatchesNarrow(
       customToTime.value = ''
     } else if (v !== 'custom') {
       const days = PRESET_RANGE_DAYS[v] ?? 90
-      customFrom.value = daysAgoISO(days)
+      customFrom.value = daysAgoLocal(days)
       customTo.value = ''
       customFromTime.value = ''
       customToTime.value = ''

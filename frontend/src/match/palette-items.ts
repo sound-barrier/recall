@@ -32,10 +32,11 @@ export interface PaletteItem {
   target: string
 }
 
-// The tabs, by their user-facing names. Derived from TAB_ORDER so a new tab
-// cannot silently miss the palette; the label map is asserted complete by a
-// test rather than trusted.
-const VIEW_LABELS: Record<string, string> = {
+// The tabs, by their user-facing names. Keyed on the TAB ID UNION rather than
+// `string`, so a new tab is a compile error here — the earlier `?? id`
+// fallback would instead have shipped it silently labeled with its raw id
+// ("ingest" rather than "Parse").
+const VIEW_LABELS: Record<(typeof TAB_ORDER)[number], string> = {
   settings: 'Settings',
   ingest: 'Parse',
   matches: 'Matches',
@@ -48,7 +49,7 @@ export function viewItems(): PaletteItem[] {
   return TAB_ORDER.map((id) => ({
     id: `view:${id}`,
     kind: 'view' as const,
-    label: VIEW_LABELS[id] ?? id,
+    label: VIEW_LABELS[id],
     hint: 'Go to view',
     target: id,
   }))
@@ -63,13 +64,24 @@ export function viewItems(): PaletteItem[] {
  * past the first handful of results anyway. Newest first, because the match a
  * player is looking for is almost always a recent one.
  */
-export function matchItems(records: readonly PaletteRecord[], limit = 300): PaletteItem[] {
+export function matchItems(
+  records: readonly PaletteRecord[],
+  names: DisplayNames = {},
+  limit = 300,
+): PaletteItem[] {
+  // Display names, not the stored slugs. Every other surface in the app shows
+  // "Soldier: 76" and "King's Row"; a palette row reading `soldier 76 ·
+  // king's row` looks like debug output beside them. The resolvers are passed
+  // in rather than imported so this module stays free of the reference-data
+  // fetch and testable without a Pinia instance.
+  const hero_ = names.hero ?? ((v: string) => v)
+  const map_ = names.map ?? ((v: string) => v)
   return [...records]
     .sort((a, b) => matchTime(b).localeCompare(matchTime(a)))
     .slice(0, limit)
     .map((r) => {
-      const hero = r.data?.hero ?? ''
-      const map = r.data?.map ?? ''
+      const hero = hero_(r.data?.hero ?? '')
+      const map = map_(r.data?.map ?? '')
       const when = r.data?.date ?? ''
       return {
         id: `match:${r.match_key}`,
@@ -83,6 +95,15 @@ export function matchItems(records: readonly PaletteRecord[], limit = 300): Pale
     })
 }
 
-export function buildPaletteItems(records: readonly PaletteRecord[]): PaletteItem[] {
-  return [...viewItems(), ...matchItems(records)]
+/** Resolvers for the canonical display names, both optional. */
+export interface DisplayNames {
+  hero?: (slug: string) => string
+  map?: (slug: string) => string
+}
+
+export function buildPaletteItems(
+  records: readonly PaletteRecord[],
+  names: DisplayNames = {},
+): PaletteItem[] {
+  return [...viewItems(), ...matchItems(records, names)]
 }

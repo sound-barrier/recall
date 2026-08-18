@@ -118,4 +118,18 @@ describe('parseDatePhrase — what it refuses', () => {
   ])('declines %j (%s)', (phrase) => {
     expect(parseDatePhrase(phrase, deps())).toBeNull()
   })
+
+  // The phrase table is looked up by an arbitrary user string, so it must not
+  // answer for anything it did not put there. An inherited member is truthy
+  // and is NOT a DatePhrase — accepting one returns an object whose `from` is
+  // undefined, which the caller writes straight into the date filter and the
+  // panel then throws on. That is the exact inverse of the decline contract:
+  // a phrase reported as understood, a filter set to nothing, and the panel
+  // holding the Clear button gone.
+  it.each([['constructor'], ['__proto__'], ['tostring'], ['isprototypeof']])(
+    'declines the inherited object member %j',
+    (phrase) => {
+      expect(parseDatePhrase(phrase, deps())).toBeNull()
+    },
+  )
 })

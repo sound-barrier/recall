@@ -101,11 +101,9 @@ function sinceWeekday(phrase: string, now: Date): DatePhrase | null {
 function seasonPhrase(phrase: string, deps: PhraseDeps): DatePhrase | null {
   if (phrase !== 'this season' && phrase !== 'last season') return null
   const ms = deps.now.getTime()
-  const sorted = [...deps.seasons]
-    .filter((s) => !!s.start)
-    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
+  const sorted = [...deps.seasons].sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
   const currentIdx = sorted.findIndex(
-    (s) => Date.parse(s.start) <= ms && (!s.end || ms < Date.parse(s.end)),
+    (s) => Date.parse(s.start) <= ms && ms < Date.parse(s.end),
   )
   if (currentIdx < 0) return null
   const wanted = phrase === 'this season' ? currentIdx : currentIdx - 1
@@ -125,8 +123,13 @@ export function parseDatePhrase(input: string, deps: PhraseDeps): DatePhrase | n
   const phrase = input.trim().toLowerCase().replace(/\s+/g, ' ')
   if (phrase === '') return null
 
-  const calendar = calendarRanges(deps)[phrase]
-  if (calendar) return calendar
+  // Object.hasOwn, not a bare lookup: `phrase` is arbitrary user text, and a
+  // plain object answers for every member it inherits. "constructor" and
+  // "__proto__" both come back truthy and are NOT DatePhrases — accepting one
+  // would report the phrase as understood and then write `undefined` into the
+  // date filter, taking the panel down with the Clear button still on it.
+  const calendar = calendarRanges(deps)
+  if (Object.hasOwn(calendar, phrase)) return calendar[phrase] ?? null
 
   return seasonPhrase(phrase, deps) ?? sinceWeekday(phrase, deps.now)
 }
