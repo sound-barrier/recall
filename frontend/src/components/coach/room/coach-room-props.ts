@@ -3,7 +3,7 @@
 // shapes live here rather than in any one SFC (a type exported from a
 // `.vue` <script> can't be resolved across the SFC boundary).
 
-/** The player whose bundle is on loan, as the room renders her. */
+/** The player whose bundle is on loan, as the room renders them. */
 export interface CoachPlayerView {
   handle: string
   message?: string

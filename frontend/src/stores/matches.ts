@@ -152,7 +152,7 @@ export const useMatchesStore = defineStore('matches', () => {
   const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
   const { searchClauses } = useSearchClauses(matchesNarrowState.searchText)
 
-  // Design rule 12 — the coach's narrow describes HER corpus. Left in place
+  // Design rule 12 — the coach's narrow describes THEIR corpus. Left in place
   // over a player's loaned records it shows an arbitrary subset (often zero
   // rows), which reads as "the export is broken". So a session puts it aside
   // and End hands it back. Pushed to the coach store for the same reason the

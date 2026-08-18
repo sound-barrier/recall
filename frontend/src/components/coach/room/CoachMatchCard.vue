@@ -10,8 +10,8 @@ import { formatPlayModeLabel, formatQueueTypeLabel, formatUnknownMapLabel } from
 import { playerClockOwner } from '@/match/match-time-helpers'
 
 // The desk: one match, in full, as the coach reads it. Everything here
-// is the PLAYER's — her clock (labeled, because the coach is usually in
-// another timezone), her note, her tags. There is no submap in this
+// is the PLAYER's — their clock (labeled, because the coach is usually
+// in another timezone), their note, their tags. There is no submap in this
 // data, so the card says map + game mode and nothing finer.
 
 const props = withDefaults(defineProps<{

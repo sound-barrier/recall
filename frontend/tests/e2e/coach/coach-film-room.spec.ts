@@ -79,7 +79,7 @@ test.describe('film room — reel', () => {
 
     await expect(desk(page).getByRole('heading', { name: KINGS_ROW_DISPLAY })).toBeVisible()
     await expect(frames(page).filter({ hasText: KINGS_ROW_DISPLAY })).toHaveAttribute('aria-current', 'true')
-    // The desk shows the player's own words as hers, on the frame she wrote them.
+    // The desk shows the player's own words as theirs, on the frame they wrote them.
     await frames(page).first().click()
     await expect(desk(page).getByRole('blockquote')).toContainText(must(NOTED_MATCH.annotation?.note, "Sable's note"))
   })

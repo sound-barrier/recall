@@ -326,7 +326,7 @@ describe('MatchTableRow', () => {
 })
 
 // Design rule 7: while a bundle is open the table shows the PLAYER's rows,
-// so the When cell reads her naive scoreboard clock — the canonical instant
+// so the When cell reads their naive scoreboard clock — the canonical instant
 // would render in the coach's zone, here a different day than the one the
 // row is grouped under.
 describe("MatchTableRow — the player's clock", () => {

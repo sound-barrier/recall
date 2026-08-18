@@ -7,8 +7,8 @@
  * opens as a dialog with one card per note; the player accepts or skips
  * each, may "Decide later" (a banner on Matches keeps nagging until every
  * note is decided — and survives a reload, because the sheet is staged
- * server-side), and Finish writes the accepted notes onto her matches as
- * a distinct coach layer she can remove again.
+ * server-side), and Finish writes the accepted notes onto their matches as
+ * a distinct coach layer they can remove again.
  *
  * A normal bundle import must still report its counts — the union
  * response has two arms and both are exercised here.

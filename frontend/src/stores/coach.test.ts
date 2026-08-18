@@ -407,6 +407,64 @@ describe('coach store — ending the session', () => {
     expect(api.CloseCoachSession).toHaveBeenCalledTimes(1)
   })
 
+  // The receipt is a claim about the archive on disk, and writing more work
+  // makes it false: "Notes saved to …" sitting beside notes that are once
+  // again unexported reads as reassurance for work the player will not
+  // receive.
+  it('withdraws the export receipt once the coach writes more', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+    coach.updateNote(MATCH_A, draft())
+    await coach.exportNotes()
+    await settle()
+    expect(coach.exportedTo).not.toBe('')
+
+    coach.updateNote(MATCH_A, draft({ text: 'one more thing' }))
+
+    expect(coach.exportedTo).toBe('')
+  })
+
+  // The armed button says "End anyway — notes not exported". Exporting makes
+  // that sentence false, and the next click would then end immediately on a
+  // label describing a state that no longer exists.
+  it('disarms once the notes have actually been exported', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+    coach.updateNote(MATCH_A, draft())
+
+    coach.requestEndSession()
+    expect(coach.endArmed).toBe(true)
+
+    await coach.exportNotes()
+    await settle()
+
+    expect(coach.endArmed).toBe(false)
+  })
+
+  // Arming is a question about the work as it stands. Writing more work is
+  // the clearest possible "not yet" — and leaving it armed means a coach who
+  // armed, kept working, and came back to End loses the second question
+  // entirely, on notes that are once again unexported.
+  it('re-arms when the coach keeps working', async () => {
+    const coach = useCoachStore()
+    await coach.openBundle()
+    await settle()
+    coach.updateNote(MATCH_A, draft())
+
+    coach.requestEndSession()
+    expect(coach.endArmed).toBe(true)
+
+    coach.updateNote(MATCH_A, draft({ text: 'and one more thing' }))
+    expect(coach.endArmed).toBe(false)
+
+    coach.requestEndSession()
+    await settle()
+    expect(coach.endArmed).toBe(true)
+    expect(api.CloseCoachSession).not.toHaveBeenCalled()
+  })
+
   // Nothing is at stake in a clean session, so asking would be ceremony.
   it('ends a clean session without asking', async () => {
     const coach = useCoachStore()
@@ -443,7 +501,7 @@ describe('coach store — ending the session', () => {
   // The notes and the summary are keyed by PLAYER, not by session: they
   // resurface the next time this bundle is opened. Typing the last sentence
   // and clicking End inside the debounce must not be how it disappears.
-  it('flushes the queued note before closing — the coach keeps what she typed', async () => {
+  it('flushes the queued note before closing — the coach keeps what they typed', async () => {
     const coach = useCoachStore()
     await coach.openBundle()
     await settle()
@@ -484,7 +542,7 @@ describe('coach store — ending the session', () => {
 })
 
 // Rule 12: the coach's date range, picked map/hero and since-anchor belong
-// to HER corpus. Applied to the player's they show an arbitrary subset and
+// to THEIR corpus. Applied to the player's they show an arbitrary subset and
 // read as a broken export. The matches store owns that state and pushes the
 // hooks here — the same inversion the tour flag uses, because the corpus
 // flows the other way.

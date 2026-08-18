@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue'
 
 import { buildPaletteItems, type PaletteItem } from '@/match/palette-items'
+import type { PaletteActionTarget } from '@/match/palette-items'
 import { scoreMatch } from '@/match/palette-score'
 import { useAppStore } from '@/stores/app'
 import { useMatchesStore } from '@/stores/matches'
@@ -49,6 +50,7 @@ export function useCommandPalette(): {
   const corpus = computed(() => buildPaletteItems(
     matches.matchesNarrow.narrowedRecords.value,
     { hero: ow.heroDisplayName, map: ow.mapDisplayName },
+    coach.sessionActive,
   ))
 
   const results = computed<PaletteResult[]>(() => {
@@ -92,18 +94,31 @@ export function useCommandPalette(): {
     // Actions run rather than navigate. Both coaching entries land the user
     // where the affordance already lives instead of duplicating it: the
     // palette is a way to FIND the feature, not a second implementation of it.
-    action: (target) => { void runAction(target) },
+    action: (target) => {
+      // A target with no runner does NOTHING. It used to fall out of an
+      // if/else into the share dialog, so an entry the palette could not run
+      // put a file holding every teammate's BattleTag in front of the user.
+      if (isActionTarget(target)) void ACTION_RUNNERS[target]()
+    },
   }
 
-  async function runAction(target: string): Promise<void> {
-    if (target === 'open-bundle') {
-      await coach.openBundle()
-      return
-    }
-    // Opens the share dialog over the set the user is already looking at.
-    // Not "everything": the narrow IS the selection they made, and a bundle
-    // of every match they own is rarely what someone means by "share with a
-    // coach".
+  // Keyed on the action-target union for the same reason RUNNERS is keyed on
+  // the kind union: adding an ACTION_ITEM without wiring it here does not
+  // compile.
+  const ACTION_RUNNERS: Record<PaletteActionTarget, () => Promise<void>> = {
+    'open-bundle': () => coach.openBundle(),
+    'share-with-coach': shareTheNarrowedSet,
+  }
+
+  function isActionTarget(target: string): target is PaletteActionTarget {
+    return Object.hasOwn(ACTION_RUNNERS, target)
+  }
+
+  // Opens the share dialog over the set the user is already looking at.
+  // Not "everything": the narrow IS the selection they made, and a bundle
+  // of every match they own is rarely what someone means by "share with a
+  // coach".
+  async function shareTheNarrowedSet(): Promise<void> {
     await app.goToView('matches')
     matches.onExportBundleRequest(
       matches.matchesNarrow.narrowedRecords.value.map((r) => r.match_key),

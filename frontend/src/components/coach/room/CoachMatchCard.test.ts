@@ -83,9 +83,9 @@ describe('CoachMatchCard', () => {
     expect(screen.getByRole('progressbar', { name: 'ana share' })).toHaveAttribute('aria-valuenow', '100')
   })
 
-  it("quotes the player's own note and shows her tags and replay code", () => {
+  it("quotes the player's own note and shows their tags and replay code", () => {
     const view = renderCard()
-    // Her words are a real quotation: the e2e reads this by
+    // Their words are a real quotation: the e2e reads this by
     // role=blockquote, which the unit runner's aria-query build has no
     // mapping for — so the element type is pinned here directly.
     // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container -- see above

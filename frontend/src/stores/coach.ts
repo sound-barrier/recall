@@ -105,6 +105,27 @@ export const useCoachStore = defineStore('coach', () => {
   const selectedKey = ref('')
   const dirtySinceExport = ref(false)
 
+  // The arming lives HERE rather than in one button because there are two:
+  // the loan slip's asked, the session sheet's ended immediately, and which
+  // one a coach happened to click decided whether their work was protected.
+  // Declared above markDirty, which withdraws it — a const read by a function
+  // defined above it is a temporal-dead-zone crash waiting for the first
+  // caller.
+  const endArmed = ref(false)
+
+  // Any new work makes the archive stale AND withdraws a pending "end the
+  // session?" — writing more is the clearest possible "not yet", and an
+  // arming left standing means the coach comes back to End and loses the
+  // second question on notes that are unexported all over again.
+  function markDirty(): void {
+    dirtySinceExport.value = true
+    endArmed.value = false
+    // And the receipt, which is a claim about the archive on disk: "Notes
+    // saved to …" beside notes that are unexported again reads as
+    // reassurance for work the player will not receive.
+    exportedTo.value = ''
+  }
+
   // Every moment id this session has actually written to the server. The
   // moment's CURRENT shape cannot answer "is there something to delete?" — a
   // saved moment whose text was cleared is unsavable and still stored, and
@@ -112,9 +133,11 @@ export const useCoachStore = defineStore('coach', () => {
   // next open and travel into an archive the coach thought it had left.
   const savedMomentIds = new Set<string>()
 
-  /** Where the last export landed, for the slip's receipt. '' once dismissed. */
+  /**
+   * Where the last export landed, for the slip's receipt. Cleared by
+   * markDirty — the receipt lives exactly as long as it is true.
+   */
   const exportedTo = ref('')
-  function clearExportReceipt(): void { exportedTo.value = '' }
 
   // The per-key save queue that debounces a burst of typing into one write
   // and reports where that write stands. Per KEY, not per session: one
@@ -174,7 +197,7 @@ export const useCoachStore = defineStore('coach', () => {
   // this one value — so it has to move before the server answers.
   function updateNote(matchKey: string, next: CoachNoteDraft): void {
     notes.value = { ...notes.value, [matchKey]: next }
-    dirtySinceExport.value = true
+    markDirty()
     queueSave(matchKey, async () => {
       // An emptied draft is a DELETE. PUTting an empty note would be a
       // 400 on the kind rules, and would leave a row saying nothing.
@@ -205,7 +228,7 @@ export const useCoachStore = defineStore('coach', () => {
     const at = bucket.findIndex((m) => m.momentId === next.momentId)
     const merged = at < 0 ? [...bucket, next] : bucket.map((m, i) => (i === at ? next : m))
     moments.value = { ...moments.value, [matchKey]: merged }
-    dirtySinceExport.value = true
+    markDirty()
     // A draft that does not yet say enough stays local: PUTting it would be a
     // 400 on the clock rules, and would leave a row pointing at nothing.
     if (!isSavable(next)) return
@@ -224,7 +247,7 @@ export const useCoachStore = defineStore('coach', () => {
   function removeMoment(matchKey: string, momentId: string): void {
     const bucket = moments.value[matchKey] ?? []
     moments.value = { ...moments.value, [matchKey]: bucket.filter((m) => m.momentId !== momentId) }
-    dirtySinceExport.value = true
+    markDirty()
     // Never written means nothing to delete: a draft the coach abandoned has
     // no row on the server, and asking would 404.
     if (!savedMomentIds.has(momentId)) return
@@ -254,7 +277,7 @@ export const useCoachStore = defineStore('coach', () => {
 
   function updateSummary(text: string): void {
     summary.value = text
-    dirtySinceExport.value = true
+    markDirty()
     queueSave(SUMMARY_SAVE_KEY, async () => { await PutCoachSummary(text) })
   }
 
@@ -262,11 +285,6 @@ export const useCoachStore = defineStore('coach', () => {
   // receives only exists once it has been exported, so unexported work earns
   // a second question rather than a silent goodbye.
   //
-  // The arming lives HERE rather than in one button because there are two:
-  // the loan slip's asked, the session sheet's ended immediately, and which
-  // one a coach happened to click decided whether their work was protected.
-  const endArmed = ref(false)
-
   function requestEndSession(): void {
     if (dirtySinceExport.value && !endArmed.value) {
       endArmed.value = true
@@ -293,7 +311,7 @@ export const useCoachStore = defineStore('coach', () => {
   }
 
   // The coach's own narrow, pushed in from the matches store for the same
-  // reason (rule 12): her date range and picked map/hero describe HER
+  // reason (rule 12): their date range and picked map/hero describe THEIR
   // corpus, and applied to the player's they show an arbitrary subset that
   // reads as a broken export.
   let narrowSuspender: CoachNarrowSuspender | null = null
@@ -341,7 +359,7 @@ export const useCoachStore = defineStore('coach', () => {
   async function endSession(): Promise<void> {
     await flushSaves()
     // The loan goes back either way — refusing to end would trap the coach
-    // in a session a broken server can never let her leave — but a note the
+    // in a session a broken server can never let them leave — but a note the
     // flush could not place is about to be discarded, and that is not
     // something to find out later.
     if (hasFailedSaves.value) useAppStore().setError(UNSAVED_END_REASON)
@@ -430,6 +448,9 @@ export const useCoachStore = defineStore('coach', () => {
     try {
       const saved = await ExportCoachNotes()
       dirtySinceExport.value = false
+      // The armed button reads "End anyway — notes not exported". They are
+      // exported now, so the question it was asking no longer exists.
+      endArmed.value = false
       // Say so. The export succeeded silently before — no toast, no path, no
       // change to the slip — so the only way to know the file existed was to
       // go and look for it, on the one action in the room whose whole purpose
@@ -440,7 +461,6 @@ export const useCoachStore = defineStore('coach', () => {
       useAppStore().setErrorFromRaw(String(e))
     }
   }
-
 
   return {
     session,
@@ -462,7 +482,6 @@ export const useCoachStore = defineStore('coach', () => {
     updateNote,
     endArmed,
     exportedTo,
-    clearExportReceipt,
     requestEndSession,
     cancelEndSession,
     updateMoment,
