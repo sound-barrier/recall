@@ -1,6 +1,7 @@
 package dbtest
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
@@ -291,9 +292,21 @@ func (f *Fake) LoadMatchMoments() (map[string][]db.MatchMoment, error) {
 	defer f.mu.Unlock()
 	out := map[string][]db.MatchMoment{}
 	for key, bucket := range f.MatchMoments {
-		if len(bucket) > 0 {
-			out[key] = slices.Clone(bucket)
+		if len(bucket) == 0 {
+			continue
 		}
+		// Reading order, matching the SQLStore's ORDER BY. Insertion order
+		// looked harmless and was not: a moment added out of sequence read
+		// back out of sequence here and in clock order there, so every
+		// app-level ordering assertion measured the wrong store.
+		ordered := slices.Clone(bucket)
+		slices.SortStableFunc(ordered, func(a, b db.MatchMoment) int {
+			if c := cmp.Compare(a.MatchClock, b.MatchClock); c != 0 {
+				return c
+			}
+			return cmp.Compare(a.SortOrder, b.SortOrder)
+		})
+		out[key] = ordered
 	}
 	return out, nil
 }

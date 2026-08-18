@@ -18,6 +18,7 @@ type bundleUserLayer struct {
 	hidden      []string
 	pinned      []string
 	coachNotes  []db.MatchCoachNote
+	moments     []db.MatchMoment
 }
 
 // loadBundleUserLayer gathers every user-layer surface for the included
@@ -32,7 +33,31 @@ func loadBundleUserLayer(store db.Store, include map[string]struct{}) (bundleUse
 		return bundleUserLayer{}, fmt.Errorf("export bundle: load coach notes: %w", err)
 	}
 	layer.coachNotes = sortedIncludedCoachNotes(coachNotes, include)
+	moments, err := store.LoadMatchMoments()
+	if err != nil {
+		return bundleUserLayer{}, fmt.Errorf("export bundle: load match moments: %w", err)
+	}
+	layer.moments = sortedIncludedMoments(moments, include)
 	return layer, nil
+}
+
+// sortedIncludedMoments collects the player's own timestamped moments for the
+// included keys. A list per key, like the coach notes above, so it needs its
+// own collector rather than the one-value-per-key helpers.
+func sortedIncludedMoments(byKey map[string][]db.MatchMoment, include map[string]struct{}) []db.MatchMoment {
+	var out []db.MatchMoment
+	for k, moments := range byKey {
+		if _, ok := include[k]; ok {
+			out = append(out, moments...)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].MatchKey != out[j].MatchKey {
+			return out[i].MatchKey < out[j].MatchKey
+		}
+		return out[i].MomentID < out[j].MomentID
+	})
+	return out
 }
 
 // loadBundleSidecars gathers the per-key user surfaces (everything but the

@@ -17,18 +17,22 @@ func TestEveryWriter_RejectsAnEmptyKeyWithTheSameSentinel(t *testing.T) {
 	writers := map[string]func() error{
 		"SetAnnotation":    func() error { return matchedit.SetAnnotation(s, matchedit.AnnotationInput{Note: "x"}) },
 		"DeleteAnnotation": func() error { return matchedit.DeleteAnnotation(s, "") },
-		"SetQueue":         func() error { return matchedit.SetQueue(s, "", "role") },
-		"ClearQueue":       func() error { return matchedit.ClearQueue(s, "") },
-		"SetPlayMode":      func() error { return matchedit.SetPlayMode(s, "", "quickplay") },
-		"ClearPlayMode":    func() error { return matchedit.ClearPlayMode(s, "") },
-		"SetReview":        func() error { return matchedit.SetReview(s, "", "self") },
-		"ClearReview":      func() error { return matchedit.ClearReview(s, "") },
-		"Hide":             func() error { return matchedit.Hide(s, "") },
-		"Unhide":           func() error { return matchedit.Unhide(s, "") },
-		"Pin":              func() error { return matchedit.Pin(s, "") },
-		"Unpin":            func() error { return matchedit.Unpin(s, "") },
-		"HardDelete":       func() error { return matchedit.HardDelete(s, "") },
-		"ResetUserData":    func() error { return matchedit.ResetUserData(s, "") },
+		"SetMoment": func() error {
+			_, err := matchedit.SetMoment(s, "", "", matchedit.MomentInput{MatchClock: "4:45", Text: "x"})
+			return err
+		},
+		"SetQueue":      func() error { return matchedit.SetQueue(s, "", "role") },
+		"ClearQueue":    func() error { return matchedit.ClearQueue(s, "") },
+		"SetPlayMode":   func() error { return matchedit.SetPlayMode(s, "", "quickplay") },
+		"ClearPlayMode": func() error { return matchedit.ClearPlayMode(s, "") },
+		"SetReview":     func() error { return matchedit.SetReview(s, "", "self") },
+		"ClearReview":   func() error { return matchedit.ClearReview(s, "") },
+		"Hide":          func() error { return matchedit.Hide(s, "") },
+		"Unhide":        func() error { return matchedit.Unhide(s, "") },
+		"Pin":           func() error { return matchedit.Pin(s, "") },
+		"Unpin":         func() error { return matchedit.Unpin(s, "") },
+		"HardDelete":    func() error { return matchedit.HardDelete(s, "") },
+		"ResetUserData": func() error { return matchedit.ResetUserData(s, "") },
 	}
 	for name, call := range writers {
 		if err := call(); !errors.Is(err, matchedit.ErrMatchKeyRequired) {

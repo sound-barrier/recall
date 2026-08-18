@@ -90,6 +90,17 @@ export function useCoachAutosave() {
     await Promise.all([...pendingSaves.keys()].map(runSave))
   }
 
+  // Drop one key's queued save without running it. The delete path needs it:
+  // a row removed while its own PUT is still settling would otherwise be
+  // written back a moment after the server was told to drop it.
+  function cancelSave(key: string): void {
+    const queued = pendingSaves.get(key)
+    if (!queued) return
+    clearQueuedTimer(queued)
+    pendingSaves.delete(key)
+    setSaveState(key, 'idle')
+  }
+
   // Throw the queue away, drafts and failures alike. Only legitimate when
   // the drafts themselves are going — a different player's notes have
   // replaced them.
@@ -99,5 +110,5 @@ export function useCoachAutosave() {
     saveStates.value = {}
   }
 
-  return { saveStateFor, hasFailedSaves, queueSave, flushSaves, discardSaves }
+  return { saveStateFor, hasFailedSaves, queueSave, cancelSave, flushSaves, discardSaves }
 }

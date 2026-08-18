@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 	"testing"
 
 	"recall/pkg/coach"
+	"recall/pkg/matchedit"
 )
 
 // notesFileFromArchive reads notes.json back out of an exported archive —
@@ -224,5 +226,19 @@ func TestExportCoachNotes_CarriesTheMoments(t *testing.T) {
 	}
 	if !strings.Contains(file.Notes[0].Moments[0].Text, "Cassidy") {
 		t.Errorf("moment text lost: %+v", file.Notes[0].Moments[0])
+	}
+}
+
+// Two packages spell the focus vocabulary out, and neither can import the
+// other without dragging a leaf's whole dependency tree behind it: pkg/coach
+// pulls bundle + aggregate + correlate, and the player's own edit layer has
+// no business depending on any of that. So the copies stay, and this is what
+// keeps them honest — a tag a coach can file a match under must be one the
+// player can file the same match under, or a review reads as two vocabularies
+// describing one game.
+func TestFocusVocabulary_IsOneListInBothPackages(t *testing.T) {
+	if !slices.Equal(coach.FocusTags, matchedit.FocusTags) {
+		t.Errorf("coach.FocusTags = %v\nmatchedit.FocusTags = %v\nwant identical",
+			coach.FocusTags, matchedit.FocusTags)
 	}
 }

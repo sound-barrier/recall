@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, nextTick, ref, watch } from 'vue'
+import { computed, onMounted, nextTick, ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { type SearchClause } from '@/match/search-query'
 import CoachCueStrip from '@/components/coach/notes/CoachCueStrip.vue'
 import CoachNoteBlock from '@/components/coach/notes/CoachNoteBlock.vue'
 import { fromWireMoment, isSavable, type CoachMoment } from '@/match/coach/coach-moments'
+import { useCoachAutosave } from '@/composables/coach/useCoachAutosave'
 import { useMatchAnnotationEditor } from '@/composables/matches/detail/useMatchAnnotationEditor'
 import { useMatchActions } from '@/composables/matches/useMatchActions'
 import { useWriteGate } from '@/composables/shared/useWriteGate'
@@ -45,46 +46,72 @@ const {
 // code beside them. Same routine the row context menu uses — it names the
 // match, looks the code up, and surfaces the one failure worth telling the
 // user about (there isn't one on file).
-// Rows being typed but not yet savable. The film room's strip is optimistic
-// because a session is a working surface with its own save queue; here the
-// stored moments come from the record and a write round-trips, so a half-typed
-// row has nowhere to live but locally. It leaves this list the moment the
-// server accepts it — the record is the truth for anything saved, and a moment
-// the server refused must not linger on the player's own match.
+// Rows being written, held here until the server takes them.
+//
+// The record is the truth for anything saved, so a draft OVERRIDES the stored
+// row it edits rather than sitting beside it. Appending was wrong twice over:
+// a moment whose text was cleared fell through both branches and reverted to
+// its stored words on the next render, and once a refetch landed mid-save the
+// same moment rendered twice, with duplicate DOM ids.
 const drafts = ref<CoachMoment[]>([])
-watch(() => props.record.match_key, () => { drafts.value = [] })
 
-const moments = computed<CoachMoment[]>(() => [
-  ...(props.record.moments ?? []).map(fromWireMoment),
-  ...drafts.value,
-])
+// Written to the server by THIS component. props.record only catches up on
+// the next refetch, so between the two a moment is on the server and not yet
+// in the record — and a remove in that window must delete rather than 404.
+const savedIds = new Set<string>()
 
-async function onMomentUpdate(moment: CoachMoment) {
+const { saveStateFor, queueSave, cancelSave } = useCoachAutosave()
+
+const stored = computed(() => (props.record.moments ?? []).map(fromWireMoment))
+
+const moments = computed<CoachMoment[]>(() => {
+  const edited = new Map(drafts.value.map((d) => [d.momentId, d]))
+  const known = new Set(stored.value.map((m) => m.momentId))
+  return [
+    ...stored.value.map((m) => edited.get(m.momentId) ?? m),
+    ...drafts.value.filter((d) => !known.has(d.momentId)),
+  ]
+})
+
+function holdDraft(moment: CoachMoment) {
   const at = drafts.value.findIndex((d) => d.momentId === moment.momentId)
-  const stored = (props.record.moments ?? []).some((m) => m.moment_id === moment.momentId)
-  if (!isSavable(moment)) {
-    // Still being written: hold it locally, and start holding it when the
-    // strip mints a new row.
-    drafts.value = at < 0 && !stored
-      ? [...drafts.value, moment]
-      : drafts.value.map((d, i) => (i === at ? moment : d))
-    return
-  }
-  const saved = await onSetMatchMoment(props.record.match_key, moment.momentId, {
-    match_clock: moment.matchClock,
-    text: moment.text,
-    ...(moment.focusTag ? { focus_tag: moment.focusTag } : {}),
+  drafts.value = at < 0
+    ? [...drafts.value, moment]
+    : drafts.value.map((d, i) => (i === at ? moment : d))
+}
+
+function onMomentUpdate(moment: CoachMoment) {
+  holdDraft(moment)
+  // A row that does not yet say enough stays local: PUTting it is a 400 on
+  // the clock rules, and would leave a row pointing at nothing.
+  if (!isSavable(moment)) return
+  // Debounced, and keyed on the moment — the journal writes on every
+  // keystroke, and each write refetches the match corpus behind it. Keying on
+  // the match instead would collapse three moments into whichever typed last.
+  queueSave(moment.momentId, async () => {
+    const saved = await onSetMatchMoment(props.record.match_key, moment.momentId, {
+      match_clock: moment.matchClock,
+      text: moment.text,
+      ...(moment.focusTag ? { focus_tag: moment.focusTag } : {}),
+    })
+    // A refused write keeps the draft, so the row stays on screen holding what
+    // the player typed rather than reverting their words for them.
+    if (!saved) throw new Error('the server refused this moment')
+    savedIds.add(moment.momentId)
+    drafts.value = drafts.value.filter((d) => d.momentId !== moment.momentId)
   })
-  // Only on success: a refused write leaves the row on screen with what the
-  // player typed, rather than dropping their words for them.
-  if (saved) drafts.value = drafts.value.filter((d) => d.momentId !== moment.momentId)
 }
 
 function onMomentRemove(momentId: string) {
-  if (drafts.value.some((d) => d.momentId === momentId)) {
-    drafts.value = drafts.value.filter((d) => d.momentId !== momentId)
-    return
-  }
+  const wasDraft = drafts.value.some((d) => d.momentId === momentId)
+  drafts.value = drafts.value.filter((d) => d.momentId !== momentId)
+  // Whatever was still settling for this row is moot now — and would write it
+  // back a moment after the server was told to drop it.
+  cancelSave(momentId)
+  const onServer = savedIds.has(momentId) || stored.value.some((m) => m.momentId === momentId)
+  // Never written means nothing to delete: asking would 404.
+  if (!onServer && wasDraft) return
+  savedIds.delete(momentId)
   void onDeleteMatchMoment(props.record.match_key, momentId)
 }
 
@@ -422,6 +449,7 @@ onMounted(() => {
         :replay-code="record.annotation?.replay_code ?? ''"
         :blocked="writesLocked"
         :blocked-reason="lockReason"
+        :save-state-for="saveStateFor"
         @update="onMomentUpdate"
         @remove="onMomentRemove"
         @copy-replay="onCopyReplay"

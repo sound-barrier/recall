@@ -111,6 +111,10 @@ type DataV2 struct {
 	// that this user accepted onto their own matches. Sorted by
 	// (match_key, note_id).
 	CoachNotes []db.MatchCoachNote `json:"coach_notes,omitempty"`
+	// The player's OWN timestamped moments. omitempty like every other
+	// user-layer section, which is what lets the layer grow without the
+	// schema string moving — see the note above.
+	Moments []db.MatchMoment `json:"moments,omitempty"`
 }
 
 // ExportBundleOptions controls which matches end up in the bundle.
@@ -300,6 +304,7 @@ func writeBundleData(zw *zip.Writer, t parentTables, user bundleUserLayer, expor
 		Hidden:        user.hidden,
 		Pinned:        user.pinned,
 		CoachNotes:    user.coachNotes,
+		Moments:       user.moments,
 	}
 	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
 		return fmt.Errorf("export bundle: write data.json: %w", err)
