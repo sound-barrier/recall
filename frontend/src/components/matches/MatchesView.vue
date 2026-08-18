@@ -30,8 +30,8 @@ const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/na
 import TrendsSection from '@/components/matches/trends/TrendsSection.vue'
 import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.vue'
 import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
-import { useMatchesBulkActions } from '@/composables/matches/useMatchesBulkActions'
-import { useMatchesRowActions } from '@/composables/matches/useMatchesRowActions'
+import { useMatchesBulkActions } from '@/composables/matches/list/useMatchesBulkActions'
+import { useMatchesRowActions } from '@/composables/matches/list/useMatchesRowActions'
 import { useNarrowMode } from '@/composables/matches/narrow/useNarrowMode'
 import { useDatabaseStore } from '@/stores/database'
 import { useMatchesStore } from '@/stores/matches'
@@ -280,7 +280,11 @@ const {
   onLeafMouseEnter,
   onLeafMouseMove,
   onLeafMouseLeave,
-  ...rowAction
+  // Named, not `...rest`: a rest element takes whatever the explicit names
+  // left over, so a new key from the wrapped state machine would land in the
+  // bundle instead of becoming a binding — silently, with no type or lint
+  // error until a template referenced the bare name at runtime.
+  rowAction,
 } = useMatchesRowActions({
   records: narrowedRecords,
   hideMatches: onHideMatches,

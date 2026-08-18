@@ -325,6 +325,38 @@ func TestSRFromLadder_Monotonic(t *testing.T) {
 	}
 }
 
+// Monotonicity alone let the whole curve slide: shifting srFromLadder by a
+// full division changed every SR the seed generator prints and the suite
+// stayed green. These pin it to the ladder it claims to encode — the bottom
+// rung, the top rung, and the step between two adjacent ones — so a retune is
+// a deliberate edit here rather than a silent rewrite of the dev corpus.
+func TestSRFromLadder_AnchoredToTheLadder(t *testing.T) {
+	t.Parallel()
+
+	bottom := fixtures.SRFromLadder(fixtures.NewLadderPos(0, 5, 0))
+	if bottom != 1000 {
+		t.Errorf("the bottom of the ladder is 1000 SR, got %d", bottom)
+	}
+
+	// A division is one rung, and each rung is worth the same.
+	oneUp := fixtures.SRFromLadder(fixtures.NewLadderPos(0, 4, 0))
+	step := oneUp - bottom
+	if step <= 0 {
+		t.Fatalf("climbing a division must raise SR, got %d -> %d", bottom, oneUp)
+	}
+	acrossATier := fixtures.SRFromLadder(fixtures.NewLadderPos(1, 5, 0)) - bottom
+	if acrossATier != step*5 {
+		t.Errorf("a tier is five divisions: want %d SR, got %d", step*5, acrossATier)
+	}
+
+	// Progress inside a division spans exactly one rung, so a full meter is
+	// worth the same as the promotion it is about to earn.
+	full := fixtures.SRFromLadder(fixtures.NewLadderPos(0, 5, 100))
+	if full-bottom != step {
+		t.Errorf("a full progress meter is worth one division (%d SR), got %d", step, full-bottom)
+	}
+}
+
 // The percentile printed on a seeded rank card has to agree with the tier
 // printed beside it, or every screenshot of the dev seed is visibly wrong.
 func TestLadderPercentile(t *testing.T) {
@@ -390,4 +422,82 @@ func indexOfTier(t *testing.T, name string) int {
 	}
 	t.Fatalf("tier %q not on the ladder", name)
 	return 0
+}
+
+// The tilt penalty had no behavioral guard: deleting it outright (tiltPts → 0,
+// or tiltRunStart → unreachable) changed a third of the generated corpus and
+// every test still passed. The story test that looks like coverage counts
+// same-day loss RUNS in the output, which the base win-rate model produces on
+// its own — so it never touched the penalty at all.
+//
+// This asserts the mechanic where it lives: the same-day loss run has to cost
+// the player win probability, and only from the threshold on.
+func TestPlayerState_TiltPenaltyCostsWinProbability(t *testing.T) {
+	t.Parallel()
+
+	const day = "2026-08-17"
+	ps := &fixtures.PlayerState{}
+	// A fresh player on a fresh day carries no penalty of any kind.
+	if got := ps.Observe(day); got != 0 {
+		t.Fatalf("clean first game should carry no penalty, got %v", got)
+	}
+
+	// Losses below the threshold stay free.
+	for i := 1; i < fixtures.TiltRunStart; i++ {
+		ps.Record("defeat")
+		if got := ps.Observe(day); got != 0 {
+			t.Fatalf("loss run of %d is below the threshold; want no penalty, got %v", i, got)
+		}
+	}
+
+	// The threshold-th consecutive same-day loss starts costing.
+	ps.Record("defeat")
+	tilted := ps.Observe(day)
+	if tilted <= 0 {
+		t.Fatalf("a %d-loss same-day run must carry a penalty, got %v", fixtures.TiltRunStart, tilted)
+	}
+
+	// An ABSOLUTE bound as well as the relative one above. Every assertion so
+	// far derives its loss count from TiltRunStart, so raising that constant
+	// out of reach — the way "the mechanic never fires" would look — satisfies
+	// them all. A five-loss evening has to tilt whatever the threshold is
+	// tuned to; a single loss never may.
+	const tiltsByAnyReasonableThreshold = 5
+	long := &fixtures.PlayerState{}
+	long.Observe(day)
+	for range tiltsByAnyReasonableThreshold {
+		long.Record("defeat")
+	}
+	if got := long.Observe(day); got <= 0 {
+		t.Fatalf("a %d-loss same-day run must tilt, got %v", tiltsByAnyReasonableThreshold, got)
+	}
+
+	one := &fixtures.PlayerState{}
+	one.Observe(day)
+	one.Record("defeat")
+	if got := one.Observe(day); got != 0 {
+		t.Fatalf("one loss is not tilt, got %v", got)
+	}
+
+	// And a win breaks the spiral rather than merely pausing it.
+	ps.Record("victory")
+	if got := ps.Observe(day); got != 0 {
+		t.Fatalf("a win must clear the tilt run; want no penalty, got %v", got)
+	}
+}
+
+// A new day is a clean slate: yesterday's losses do not follow the player into
+// tonight's queue.
+func TestPlayerState_TiltDoesNotCrossDays(t *testing.T) {
+	t.Parallel()
+
+	ps := &fixtures.PlayerState{}
+	ps.Observe("2026-08-17")
+	for range fixtures.TiltRunStart + 1 {
+		ps.Record("defeat")
+	}
+
+	if got := ps.Observe("2026-08-18"); got != 0 {
+		t.Fatalf("yesterday's loss run must not tilt today, got %v", got)
+	}
 }

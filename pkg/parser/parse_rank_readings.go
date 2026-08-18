@@ -2,6 +2,7 @@ package parser
 
 import (
 	"image"
+	"regexp"
 	"strconv"
 )
 
@@ -12,6 +13,16 @@ import (
 // An unread pill is not a zero — a 0% movement claims the match changed
 // nothing, which is a different and much more alarming statement than "this
 // capture did not show it".
+
+var (
+	rankProgressRe = regexp.MustCompile(`(-?\d{1,3})\s*%`)
+	// The sign is REQUIRED, not optional, and that is load-bearing. The bands
+	// this runs over also carry "RANK PROGRESS: 67%" and "HIGHER RANKED THAN
+	// 57% OF PLAYERS"; an optional sign would match those and store a progress
+	// or population figure as the match's rank movement. The pill always
+	// renders its sign ("+40%", "-32%"), so requiring one costs nothing.
+	rankChangeRe = regexp.MustCompile(`([+-])\s*(\d{1,3})\s*%`)
+)
 
 // rankBannerResult reads the top-left banner: "COMPETITIVE VICTORY!" /
 // "COMPETITIVE DEFEAT!" / "COMPETITIVE DRAW!". Same prefix-match rule as the

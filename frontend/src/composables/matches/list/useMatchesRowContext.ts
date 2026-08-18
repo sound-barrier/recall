@@ -3,13 +3,13 @@ import { ref, type Ref } from 'vue'
 import type { MatchRecord } from '@/api-client'
 import { summaryThumbnailURL } from '@/composables/shared/media/useSummaryThumbnail'
 
-// View-local state for the members-list row interactions that aren't
-// the row's own concern: the right-click context menu and the
-// cursor-following hover preview. MatchesView owns the *actions* (the
-// menu items forward to App.vue via emits); this composable owns the
-// open/close/position state machine, so the view's script stays
-// orchestration. `records` is the narrowed set — used to gate the menu's
-// "Copy replay code" item on whether the clicked row has a code on file.
+// View-local state for the members-list row interactions that aren't the row's
+// own concern: the right-click context menu and the cursor-following hover
+// preview. This is the STATE MACHINE only — open, close, where the menu sits,
+// what the hover preview shows. What each menu item DOES lives one level up in
+// useMatchesRowActions, which wraps this and adds the actions; a caller wants
+// that one. `records` is the narrowed set, used to gate the menu's "Copy
+// replay code" item on whether the clicked row has a code on file.
 export function useMatchesRowContext(records: Ref<MatchRecord[]>) {
   // ─── Row right-click → context menu ────────────────────────────
   //

@@ -4,11 +4,11 @@
 // flag is set, each offering Unhide + a two-step Delete-forever, plus a
 // bulk action bar (select / unhide / move-to-profile / delete-forever).
 //
-// Selection + two-step-confirm state lives in the parent-owned
-// `useArchiveSelection` composable (its onUnhide/onHardDelete callbacks
-// pipe to App.vue). The shared move-to-profile picker state stays in
-// MatchesView — this drawer just signals intent (begin-move /
-// move-to-profile / cancel-move) and the per-row unhide / hard-delete.
+// Selection + two-step-confirm state lives in `useArchiveSelection`, and the
+// move-to-profile picker this drawer shares with the live bulk bar lives in
+// `useMatchesBulkActions` — which composes both, and is where a bug in either
+// is. The drawer signals intent (begin-move / move-to-profile / cancel-move,
+// per-row unhide / hard-delete) and holds no state of its own.
 import { useMatchClock } from '@/composables/shared/useMatchClock'
 import { useOWData } from '@/composables/shared/useOWData'
 import type { UseArchiveSelectionApi } from '@/composables/matches/list/useArchiveSelection'

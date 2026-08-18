@@ -62,5 +62,5 @@ export function useMatchesMovePicker(opts: {
     }
   }
 
-  return { availableProfiles, movePickerOpen, otherProfiles, beginMoveLive, beginMoveArchive, cancelMove, commitMove }
+  return { movePickerOpen, otherProfiles, beginMoveLive, beginMoveArchive, cancelMove, commitMove }
 }
