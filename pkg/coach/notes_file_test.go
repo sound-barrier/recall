@@ -61,10 +61,13 @@ func TestValidateNotesFile_Rejects(t *testing.T) {
 		reason string
 	}{
 		{"missing schema", func(f *coach.NotesFile) { f.Schema = "" }, coach.ErrNotesMalformed, "schema"},
-		// v2 was this case's stand-in for "a schema this build does not know"
-		// until v2 became one it does. The case is about an UNRECOGNIZED
-		// schema, so it names one that stays unrecognized.
 		{"other schema", func(f *coach.NotesFile) { f.Schema = "recall-coach-notes/v9" }, coach.ErrNotesUnsupportedSchema, "recall-coach-notes/v9"},
+		// The declared breaking change: a v2 archive is refused. There was a
+		// window where this build wrote v2 when a note carried moments; that
+		// machinery was backwards compatibility for a release that never
+		// happened, and it is gone. Pinned so its removal is a decision
+		// somebody has to make again rather than a line that drifts back.
+		{"the withdrawn v2", func(f *coach.NotesFile) { f.Schema = "recall-coach-notes/v2" }, coach.ErrNotesUnsupportedSchema, "recall-coach-notes/v2"},
 		{"bundle schema", func(f *coach.NotesFile) { f.Schema = "recall-bundle/v1" }, coach.ErrNotesUnsupportedSchema, "recall-bundle/v1"},
 		{"blank coach", func(f *coach.NotesFile) { f.CoachName = "  " }, coach.ErrNotesMalformed, "coach_name"},
 		{"long coach", func(f *coach.NotesFile) { f.CoachName = strings.Repeat("c", 65) }, coach.ErrNotesMalformed, "coach_name"},

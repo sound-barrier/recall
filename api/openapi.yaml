@@ -4150,8 +4150,8 @@ components:
             $ref: "#/components/schemas/CoachMoment"
           description: |
             The note's timestamped observations, ordered down the match.
-            Absent rather than empty when the note has none, so a note
-            written before moments existed round-trips byte-identically.
+            Absent rather than empty when the note has none — a nil slice
+            marshals as `null`, and this field is typed `array`.
 
     CoachMoment:
       type: object
@@ -4462,9 +4462,8 @@ components:
             $ref: "#/components/schemas/CoachMoment"
           description: |
             The coach's timestamped observations that came with this note, in
-            reading order. Absent rather than empty when there are none, so a
-            note accepted before moments existed carries no empty array into
-            every match payload.
+            reading order. Absent rather than empty when there are none, so an
+            unmarked note carries no empty array into every match payload.
         accepted_at:
           type: string
           description: When the player accepted the note (RFC3339).
